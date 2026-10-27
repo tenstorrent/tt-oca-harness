@@ -855,9 +855,9 @@ Requirement IDs are the VPLAN TC rows or the canonical scenario those
 tests actually run. Coverage intent names the `cov/sv` collector modules and
 representative `user` cover points that measure the feature
 (`hw/sys/smc/dv/docs/SMC_FCOV.adoc`); which leaf reaches each point is the
-measured table in `hw/sys/smc/dv/docs/SMC_FCOV_OWNERS.adoc`. The covergroups
-under `ifndef VERILATOR` are the VCS `group` metric and are not part of it.
-Checker evidence names the cocotb `CHK-*` checkers on the leaf's card.
+measured table in `hw/sys/smc/dv/docs/SMC_FCOV_OWNERS.adoc`. The `cov/sv`
+covergroups are not part of it. Checker evidence names the cocotb `CHK-*`
+checkers on the leaf's card.
 
 The Groups column is resolved membership, not intent. Every feature-credit row
 below is in `all` and `hosted`; the column names the feature groups that also
@@ -48478,7 +48478,6 @@ in <<smc-deferred-disposition>>.
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in <<smc-deferred-disposition>>; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
-|Verilator does not implement SV covergroups |The covergroups under `ifndef VERILATOR` in `cov/sv/` are the VCS `group` metric; on Verilator, functional coverage is the `cov/sv` cover properties in the `user` family |See `SMC_FCOV.adoc`
 |`ISOLATE_REQ_SMC_REG` clears its FLR-latched request on any write with a byte enable anywhere in the register, whatever the data (`smc_cool_reset_wrap.sv`), where `reset_unit.rdl` makes the request a `sw = rw` field at bit 0 |`smc_isolate_req_smc_lane_test` shows it: a one-byte write of 0 at byte 1 clears the request. The leaf runs weekly in `rtl_issue` under `expect_fail` |Qualify the clear by bit 0's byte enable and a written 0; the leaf then moves to its feature testlist with the `ci` tag
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |The test modules the retired-module table in <<smc-deferred-disposition>> lists are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in <<smc-deferred-disposition>> names the blocker per row |Clear the blocker named in the row; the module is restored from git history

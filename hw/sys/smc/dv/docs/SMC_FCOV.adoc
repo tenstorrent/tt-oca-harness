@@ -20,10 +20,11 @@ and of a VCS run. `smc_fabric_fcov` instantiates `smc_axi_chan_fcov` once per
 inbound manager (`u_sep_in`, `u_sys_in`, `u_jtag_axi`), so those points exist
 once per instance.
 
-Several collectors also carry covergroups under `ifndef VERILATOR`. They are
-the commercial simulator's `group` metric, crossing what a flat point list
-cannot. They are not part of the `user` family, and <<smc-fcov-groups>>
-states the contract they are held to.
+Several collectors also carry covergroups, which every simulator compiles.
+They cross what a flat point list cannot, and land in the `functional` family
+of a Verilator run and in URG's `group` metric on VCS. They are not part of
+the `user` family, and <<smc-fcov-groups>> states the contract they are held
+to.
 
 Feature checkers stay on the VPLAN scorecard. A cover point records that the
 suite presented a legal event and that it completed; the claim that the
@@ -52,7 +53,9 @@ waiver for a `user` point |`user` family of a `--dut smc --items hosted fw
 |Line / branch / expression |Targets, not gates: the figures the coverage set
 measures on the run <<smc-fcov-owners>> names (its commit and simulator). No
 floor is set |`--coverage-line`, `--coverage-expr`
-|Condition / FSM / toggle / assertion / covergroups |Commercial sign-off |VCS
+|Covergroups |<<smc-fcov-groups>>; no floor |`functional` family on
+Verilator, `group` metric on VCS
+|Condition / FSM / toggle / assertion |Commercial sign-off |VCS
 |===
 
 The coverage set is `--dut smc --items hosted fw`: the package regression
@@ -121,11 +124,12 @@ not deferred: there is no later phase in which it becomes reachable.
 |Path |What it collects |Where it runs
 |Public Verilator |line, branch and expression (`--coverage-line`,
 `--coverage-expr`) plus the `user` family from the `cov/sv/` cover
-properties, scoped at compile time by `smc_cov_scope.vlt` |local
+properties and the `functional` family from their covergroups, scoped at
+compile time by `smc_cov_scope.vlt` |local
 `run_dv --dut smc --items hosted fw --tool verilator --cov`. Nightly and
 weekly `hosted` do not collect (`coverage: false` in `regress.yml`)
-|Commercial |code, assertion, the `user` family and the covergroups under
-`ifndef VERILATOR` |licensed VCS; not a public CI job
+|Commercial |code, assertion, the `user` family and the covergroups
+|licensed VCS; not a public CI job
 |===
 
 The address windows are the generated map's. Unit bases, strides and
@@ -316,13 +320,14 @@ them, isolation and FLR, and the protection and inbound filters.
 === Covergroups
 
 Every covergroup bin and cross cell is either walked by an `all`-group leaf
-or carried as an `ignore_bins` whose comment states the specification or bench
-fact that keeps it out of reach, the way the cover points are held. The bins
-and cells that fact removes:
+or left out of the model, as an `ignore_bins` or as a combination a tuple
+coverpoint has no bin for, with a comment that states the specification or
+bench fact that keeps it out of reach, the way the cover points are held. The
+bins and cells that fact removes:
 
 [cols="2,2,4",options="header"]
 |===
-|Group |Bin or cell |Why it is ignored
+|Group |Bin or cell |Why it is left out
 |`smc_rst_seq_fcov::cg_primary_holds` |`cp_fabric` released |The primary
 reset covers the fabric infrastructure (`clk_rst.adoc`, Primary Reset), so
 both SEP_IN ready terms are low for the whole hold
@@ -360,6 +365,28 @@ clears `CLOCK_GATE_CONTROL.ZEROER_CG_EN`, which sets `disable_cg`
 hysteresis (`dma.adoc`, SMC DMA Clock Gating Configuration)
 |===
 
+Verilator and VCS build the same goal bins for each covergroup because no
+covergroup uses a construct Verilator drops: a cross select expression
+(`binsof`, an explicit cross bin) or a `with` filter on a bin, which Verilator
+ignores with only a `COVERIGN` warning that `smc_sim_cfg.toml` makes an error.
+A cross whose unreachable cells only a select expression could remove is a
+tuple coverpoint, with one bin per reachable cell named for the bins it pairs:
+`cp_gate_contract`, `cp_gaters`, `cp_claim`, `cp_terms`, `cp_region_resp`,
+`cp_transition`, `cp_axi_terms` and `cp_reg_terms`. On Verilator, a value that
+a bin and an `ignore_bins` both list counts in the bin, without a warning, so
+no goal bin overlaps an `ignore_bins`: `cg_reset_state` lists the four
+partial-release states its ignore bins leave, and `cg_clk_ratio` has no
+stalled bin. A default bin there also counts the ignored values, which grades
+nothing.
+
+The two simulators report those bins differently. Verilator keeps one record
+per covergroup, summed over every instance, and ignores
+`option.per_instance`. URG reports a group per module instance, with each
+covergroup instance under it, so the three `smc_axi_chan_fcov` managers are
+three `cg_axi_burst_len` and three `cg_axi_resp` groups on VCS and one of each
+on Verilator. Verilator numbers auto and array bins by position (`auto_0`,
+`low[0]`), URG by value (`auto[1]`, `low_001`).
+
 `cg_map_access` grades a completion against a refusal rather than the
 response code: `memmap.adoc` and `fabric.adoc` say an address is refused but
 fix no code. `cg_sep_in_shape` crosses every AxSIZE with every burst type;
@@ -367,7 +394,7 @@ fix no code. `cg_sep_in_shape` crosses every AxSIZE with every burst type;
 the SEP_IN path refuses, and the cells record the refusal at that size.
 
 A gated clock is observed through a flop it toggles itself, and the gate
-terms it is crossed with are taken one sample late, because a movement seen at
+terms it is paired with are taken one sample late, because a movement seen at
 one sample is the edge the gate let through on the previous cycle. Sampling
 the clock net on the edge of the clock it is gated from reads the same level
 whether it runs or not.
@@ -377,7 +404,7 @@ whether it runs or not.
 
 Each cover point below is compiled only under `SMC_FCOV_PHASE2`, which no
 target defines, so it is absent from every collected database. A covergroup
-cell here is an `ignore_bins` whose comment names this list.
+cell here is one its group leaves out, with a comment that names this list.
 
 [cols="2,2,4,3",options="header"]
 |===
@@ -416,13 +443,13 @@ reads it back
 
 The planned groups are the functional coverage of the planned Phase 3 entries of SMC_VPLAN, either a
 new entry or the planned upgrade of an existing one, and of the two existing entries named at the
-end of this paragraph, whose cells have no sampler yet. Each is a VCS covergroup to be written in
-`cov/sv/` under `ifndef VERILATOR`, with a graded-window gate written by the owning leaf. Bins come
-from the specification and the register description, and every coverpoint samples a port of
-`smc_wrapper` or of `smc` (under `u_dut.u_smc`), a bench interface instance such as
-`u_output_axi_if`, a `tb_*` net or another `tb_top.sv` net of the signal list (or a count the
-planned sampler keeps from such nets), or a register field the owner reads back. A group marked
-planned is not compiled, is not in the Coverage Summary and is in
+end of this paragraph, whose cells have no sampler yet. Each is a covergroup to be written in
+`cov/sv/` within the constructs <<smc-fcov-groups>> allows, with a graded-window gate written by
+the owning leaf. Bins come from the specification and the register description, and every
+coverpoint samples a port of `smc_wrapper` or of `smc` (under `u_dut.u_smc`), a bench interface
+instance such as `u_output_axi_if`, a `tb_*` net or another `tb_top.sv` net of the signal list (or
+a count the planned sampler keeps from such nets), or a register field the owner reads back. A
+group marked planned is not compiled, is not in the Coverage Summary and is in
 no closure total; it earns credit when its sampler exists and its owner is in `all`. A single-event
 bin may get a Verilator
 `OCAH_FCOV_COVER` cover-property twin in the hosted `user` family; the twin lands with its owning
@@ -448,11 +475,12 @@ the documented values of its row.
 ==== `smc_infilt_rule_cg`
 *Description*: Inbound filter entry terms, probe shape and verdict on SYS_IN, per programmed entry.
 
-*Tool*: VCS. *Class*: planned (owner `smc_infilt_rule_matrix_rand_test` is a planned Phase 3 entry;
-no sampler exists). Owner's draw: "the seed draws the entry count (2 to 6), the entry indices (2 to
-15), the window edges at 4 KB and 8-byte granule boundaries, the overlap placement, `entry_enabled`,
-`allow_ns`, `allow_burst`, `read_allowed`, `write_allowed`, `src_id` (0 or 1 to 15), and per probe
-the AxLEN, AxPROT[1], channel and AxUSER[3:0]"; filter: entries 0 and 1 stay unprogrammed.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_infilt_rule_matrix_rand_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the entry count (2 to 6), the entry
+indices (2 to 15), the window edges at 4 KB and 8-byte granule boundaries, the overlap placement,
+`entry_enabled`, `allow_ns`, `allow_burst`, `read_allowed`, `write_allowed`, `src_id` (0 or 1 to
+15), and per probe the AxLEN, AxPROT[1], channel and AxUSER[3:0]"; filter: entries 0 and 1 stay
+unprogrammed.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -472,11 +500,11 @@ leaves it with the directed leaves).
 *Description*: Outbound filter entry, the permission bit of the probe's direction, deny priority and
 probe shape on SMC-initiated requests.
 
-*Tool*: VCS. *Class*: planned (owner `smc_outfilt_rule_matrix_rand_test` is a planned Phase 3 entry;
-no sampler exists). Owner's draw: "the seed draws the entry count (2 to 6), the entry indices (0 to
-15), the window edges at 4 KB and 8-byte granule boundaries, the overlap placement, `entry_enabled`,
-`read_allowed`, `write_allowed`, `allow_ns`, `allow_burst`, and per probe the AxLEN, AxPROT[1] and
-direction"; filter: every `src_id` is 0.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_outfilt_rule_matrix_rand_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the entry count (2 to 6), the entry
+indices (0 to 15), the window edges at 4 KB and 8-byte granule boundaries, the overlap placement,
+`entry_enabled`, `read_allowed`, `write_allowed`, `allow_ns`, `allow_burst`, and per probe the
+AxLEN, AxPROT[1] and direction"; filter: every `src_id` is 0.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -496,11 +524,12 @@ an admitted request (not graded by the owner).
 *Description*: Memory-map row, gap and outside-window class, direction, size and inbound port
 against the DECERR response the map states.
 
-*Tool*: VCS. *Class*: planned (owner `smc_map_row_response_matrix_test` is a planned Phase 3 entry;
-no sampler exists). Owner's draw: "the seed draws, inside the past-extent span of each of the 30
-rows whose Past Extent cell states a response, every gap between consecutive unit apertures and
-every class of address outside both inbound apertures, the byte offset, AxSIZE (1, 2, 4 or 8), the
-direction, the inbound port and the order of the walk"; every seed walks every one of the 30 rows.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_map_row_response_matrix_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws, inside the past-extent span of
+each of the 30 rows whose Past Extent cell states a response, every gap between consecutive unit
+apertures and every class of address outside both inbound apertures, the byte offset, AxSIZE (1, 2,
+4 or 8), the direction, the inbound port and the order of the walk"; every seed walks every one of
+the 30 rows.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -524,10 +553,10 @@ Scope limit).
 *Description*: Alias-remap region, cacheable override and address position against the region bounds
 on the JTAG initiator.
 
-*Tool*: VCS. *Class*: planned (owner `smc_alias_remap_attr_rand_test` is a planned Phase 3 entry; no
-sampler exists). Owner's draw: "the seed draws the region index, start page, page count, offset
-pages and `cacheable` value of 1 to 3 regions, and the probe addresses and page offsets"; filter:
-the drawn regions do not overlap and the offset sum stays below bit 56.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_alias_remap_attr_rand_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the region index, start page, page
+count, offset pages and `cacheable` value of 1 to 3 regions, and the probe addresses and page
+offsets"; filter: the drawn regions do not overlap and the offset sum stays below bit 56.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -546,12 +575,12 @@ Scope limit).
 ==== `smc_sys_out_error_cg`
 *Description*: SYS_OUT responder error code, issuing manager, direction and burst position.
 
-*Tool*: VCS. *Class*: planned (owner `smc_sys_out_error_inject_rand_test` is a planned Phase 3
-entry; no sampler exists). Owner's draw: "the seed draws, for 8 passes, the manager (JTAG, DMA,
-zeroer), the direction, SLVERR or DECERR, the burst of the job that takes the error (first, middle
-or last) and the recovery address"; filters: the zeroer takes write errors only, every DMA copy and
-zeroer job spans at least 3 bursts, and a JTAG injection lands on one access or one member of a
-group.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_sys_out_error_inject_rand_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws, for 8 passes, the manager (JTAG,
+DMA, zeroer), the direction, SLVERR or DECERR, the burst of the job that takes the error (first,
+middle or last) and the recovery address"; filters: the zeroer takes write errors only, every DMA
+copy and zeroer job spans at least 3 bursts, and a JTAG injection lands on one access or one member
+of a group.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -572,15 +601,16 @@ Blocked legs lists of SMC_VPLAN).
 ==== `smc_outstanding_cg`
 *Description*: Outstanding transaction depth and held response channel per inbound manager.
 
-*Tool*: VCS. *Class*: planned (owner `smc_axi_random_stress_test` is an existing Phase 3 entry and
-is not planned; it drives the depth cells today; co-owner `smc_axi_channel_timing_ports_test` is a
-planned upgrade; no sampler exists; the group is planned until that upgrade lands). Owner's draw:
-"the seed draws the AXI attributes, burst shapes, outstanding depths, transaction IDs, payload words
-and the SYS_OUT responder timing and error faults on SEP_IN, SYS_IN and JTAG"; co-owner's draw: "the
-seed draws the hold lengths on `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` and, on SEP_IN in place
-of the `b_ready_delay` of step 7, on `tb_sep_axi_b_hold` (the bench has that drive on SEP_IN only;
-the SYS_IN and JTAG legs of step 7 keep their `b_ready_delay`), the AxID set (the `axi_id` of each
-`SmcSysAxiItem`) and the interleave of the outstanding accesses".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_axi_random_stress_test` is an existing Phase
+3 entry and is not planned; it drives the depth cells today; co-owner
+`smc_axi_channel_timing_ports_test` is a planned upgrade; no sampler exists; the group is planned
+until that upgrade lands). Owner's draw: "the seed draws the AXI attributes, burst shapes,
+outstanding depths, transaction IDs, payload words and the SYS_OUT responder timing and error faults
+on SEP_IN, SYS_IN and JTAG"; co-owner's draw: "the seed draws the hold lengths on
+`tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` and, on SEP_IN in place of the `b_ready_delay` of step
+7, on `tb_sep_axi_b_hold` (the bench has that drive on SEP_IN only; the SYS_IN and JTAG legs of step
+7 keep their `b_ready_delay`), the AxID set (the `axi_id` of each `SmcSysAxiItem`) and the
+interleave of the outstanding accesses".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -604,14 +634,14 @@ under the holds (printed by the owner, not asserted).
 *Description*: Reset kind against the operation in flight, its phase and the register domain the
 reset clears.
 
-*Tool*: VCS. *Class*: planned (owner `smc_reset_mid_transaction_rand_test` is a planned Phase 3
-entry; no sampler exists). Owner's draw: "the seed draws, for 6 passes, the reset kind, the
-in-flight operation (SPM write, SPM read, DMA chunk, zeroer job), the assertion cycle inside it, the
-hold length and the non-zero patterns"; filters: every kind is drawn once per seed, every hold is at
-least 40 `clk_ref_i` cycles, the drawn FLR counter patterns are small enough for the FLR release to
-fit its bounded wait, and the `SS_COLD_RESET_N` pattern is any non-zero value, which releases the
-subsystem cold resets of its 1 bits and asserts none the reset state does not already assert
-(`reset_unit.rdl`, active low, reset 0).
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_reset_mid_transaction_rand_test` is a
+planned Phase 3 entry; no sampler exists). Owner's draw: "the seed draws, for 6 passes, the reset
+kind, the in-flight operation (SPM write, SPM read, DMA chunk, zeroer job), the assertion cycle
+inside it, the hold length and the non-zero patterns"; filters: every kind is drawn once per seed,
+every hold is at least 40 `clk_ref_i` cycles, the drawn FLR counter patterns are small enough for
+the FLR release to fit its bounded wait, and the `SS_COLD_RESET_N` pattern is any non-zero value,
+which releases the subsystem cold resets of its 1 bits and asserts none the reset state does not
+already assert (`reset_unit.rdl`, active low, reset 0).
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -633,10 +663,10 @@ row of SMC_VPLAN on `SS_CONFIG`).
 *Description*: Cool-reset pin pulse width against the 32-cycle de-glitch filter, and the overlap of
 a pin pulse with the FLR hold.
 
-*Tool*: VCS. *Class*: planned (owner `smc_cool_reset_deglitch_window_test` is a planned upgrade of
-an existing entry; no sampler exists). Owner's draw: "the seed draws the pulse widths on either side
-of the 32-reference-cycle filter and the placement and widths of the pin segments inside the FLR
-hold".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_cool_reset_deglitch_window_test` is a
+planned upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the pulse
+widths on either side of the 32-reference-cycle filter and the placement and widths of the pin
+segments inside the FLR hold".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -655,9 +685,9 @@ the broken-low restart and the release-offset legs (directed steps of the existi
 ==== `smc_powergood_glitch_cg`
 *Description*: Power-good glitch length and the cold-reset assertion under it.
 
-*Tool*: VCS. *Class*: planned (owner `smc_irq_during_powergood_glitch_test` is a planned upgrade of
-an existing entry; no sampler exists). Owner's draw: "the seed draws the glitch length"; the owner
-drives no external interrupt, so no edge position is a cell.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_irq_during_powergood_glitch_test` is a
+planned upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the glitch
+length"; the owner drives no external interrupt, so no edge position is a cell.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -677,9 +707,10 @@ cells stay with the external-interrupt entries).
 ==== `smc_state_inject_cg`
 *Description*: State-encoding injection by block, encoding, live-operation phase and recovery.
 
-*Tool*: VCS. *Class*: planned (owner `smc_state_fault_inject_test` is a planned upgrade of an
-existing entry; no sampler exists). Owner's draw: "the seed draws the unused encoding, the block
-(read, program, zeroer), the injection cycle relative to the live operation and the recovery order".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_state_fault_inject_test` is a planned
+upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the unused encoding,
+the block (read, program, zeroer), the injection cycle relative to the live operation and the
+recovery order".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -697,11 +728,11 @@ drawn).
 ==== `smc_efuse_lock_cg`
 *Description*: eFuse map lock slot, lock kind and the refusal of the locked write or read.
 
-*Tool*: VCS. *Class*: planned (owner `smc_efuse_map_locks_register_test` is an existing Phase 2
-entry and is not planned; its seeded walk reaches every cell today; no sampler exists; the group is
-planned until a sampler lands with that leaf). Owner's draw: "the seed draws the slot order and the
-fresh field values written before each lock"; the walk sets every slot's write lock and later its
-read lock.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_map_locks_register_test` is an
+existing Phase 2 entry and is not planned; its seeded walk reaches every cell today; no sampler
+exists; the group is planned until a sampler lands with that leaf). Owner's draw: "the seed draws
+the slot order and the fresh field values written before each lock"; the walk sets every slot's
+write lock and later its read lock.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -719,10 +750,10 @@ draw).
 ==== `smc_efuse_jtag_lc_cg`
 *Description*: Lifecycle image, eFuse JTAG operation and the verdict the SMC JTAG policy states.
 
-*Tool*: VCS. *Class*: planned (owner `smc_efuse_jtag_lc_access_matrix_test` is a planned upgrade of
-an existing entry; no sampler exists). Owner's draw: "the seed draws the operation, the address
-class, the lifecycle image and the order"; the images are the ones the existing walk drives (one
-encoding per state plus the integrity-error case).
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_jtag_lc_access_matrix_test` is a
+planned upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the
+operation, the address class, the lifecycle image and the order"; the images are the ones the
+existing walk drives (one encoding per state plus the integrity-error case).
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -741,10 +772,10 @@ RMA_SIP is absent from the encoding table).
 *Description*: eFuse request stall against the programmed timeout count, per interface, with the
 status.
 
-*Tool*: VCS. *Class*: planned (owner `smc_efuse_read_program_timeout_test` is a planned upgrade of
-an existing entry; needs the added bank-model stall knob; no sampler exists). Owner's draw: "the
-seed draws the timeout count and a stall length on either side of it through the added bank-model
-stall knob".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_read_program_timeout_test` is a
+planned upgrade of an existing entry; needs the added bank-model stall knob; no sampler exists).
+Owner's draw: "the seed draws the timeout count and a stall length on either side of it through the
+added bank-model stall knob".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -766,11 +797,11 @@ longer stall fits its bounded wait); the out-of-range, last-in-range, upper-ones
 ==== `smc_dma_geometry_cg`
 *Description*: DMA row width, row count, unaligned starts and burst-shaping configuration.
 
-*Tool*: VCS. *Class*: planned (owner `smc_dma_transfer_matrix_rand_test` is a planned Phase 3 entry;
-no sampler exists). Owner's draw: "the seed draws, for 12 transfers, the row width (`LENGTH`), the
-row count (`NUM_REPETITIONS`), the source and destination strides, the source and destination start
-offsets within a word, `DECOUPLE_AW`, `SRC_REDUCE_LEN`, `SRC_MAX_LLEN`, `DST_REDUCE_LEN` and
-`DST_MAX_LLEN`".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_dma_transfer_matrix_rand_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws, for 12 transfers, the row width
+(`LENGTH`), the row count (`NUM_REPETITIONS`), the source and destination strides, the source and
+destination start offsets within a word, `DECOUPLE_AW`, `SRC_REDUCE_LEN`, `SRC_MAX_LLEN`,
+`DST_REDUCE_LEN` and `DST_MAX_LLEN`".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -792,10 +823,10 @@ bursts are checked against, not bins).
 ==== `smc_zeroer_job_cg`
 *Description*: Zeroer job size and start alignment, and the destination high bits.
 
-*Tool*: VCS. *Class*: planned (owner `smc_zeroer_job_breadth_test` is an existing Phase 3 entry and
-is not planned; its jobs reach every cell today; no sampler exists; the group is planned
-until a sampler lands with that leaf). Owner's draw: "the seed draws the bucket order, the alignment
-order, the job sizes, the offsets and the poison pattern".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_zeroer_job_breadth_test` is an existing
+Phase 3 entry and is not planned; its jobs reach every cell today; no sampler exists; the group is
+planned until a sampler lands with that leaf). Owner's draw: "the seed draws the bucket order, the
+alignment order, the job sizes, the offsets and the poison pattern".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -812,9 +843,9 @@ addresses (the Blocked legs row of SMC_VPLAN).
 ==== `smc_wdt_width_cg`
 *Description*: Watchdog register against the class of the write byte-enable mask and the key state.
 
-*Tool*: VCS. *Class*: planned (owner `smc_wdt_register_map_test` is a planned upgrade of an existing
-entry; no sampler exists). Owner's draw: "the seed draws the write pattern, the byte-enable mask and
-the register order, every register walked in every run".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_wdt_register_map_test` is a planned upgrade
+of an existing entry; no sampler exists). Owner's draw: "the seed draws the write pattern, the
+byte-enable mask and the register order, every register walked in every run".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -861,8 +892,8 @@ it, the Unstated cells row of SMC_VPLAN on the second-timeout hold).
 *Description*: Scratchpad ECC inject hook on bank 0 by armed pin, arm point, fire count at the clear
 and the reads of the hold half.
 
-*Tool*: VCS. *Class*: planned (owner `smc_ecc_fault_inject_test` is a planned upgrade of an existing
-entry; no sampler exists). Owner's draw: "the seed draws the inject pin armed first
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_ecc_fault_inject_test` is a planned upgrade
+of an existing entry; no sampler exists). Owner's draw: "the seed draws the inject pin armed first
 (`tb_cpu_ecc_inject_sbe` or `tb_cpu_ecc_inject_dbe`), the arm point against the counted reads
 (before the boot release or after the first counted read), the fire count at which the pin is
 cleared and whether SEP_IN reads of bank 0 through the SPM window join the core's fetches in the
@@ -886,10 +917,10 @@ firmware tier); the SECDED correction and report (carried by `smc_ecc_codeword_s
 ==== `smc_gpio_pad_cfg_cg`
 *Description*: GPIO pad direction, interrupt type and enable, and pad level.
 
-*Tool*: VCS. *Class*: planned (owner `smc_gpio_pad_config_rand_test` is a planned Phase 3 entry; no
-sampler exists). Owner's draw: "the seed draws the GPIO interface instance, `enable_rx_tx` (0 to 3),
-`interrupt_type` (0 to 3), `interrupt_enable` and a pad level sequence of 4 to 8 levels"; the level
-sequence is driven for each drawn instance with RX enabled.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_gpio_pad_config_rand_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the GPIO interface instance,
+`enable_rx_tx` (0 to 3), `interrupt_type` (0 to 3), `interrupt_enable` and a pad level sequence of 4
+to 8 levels"; the level sequence is driven for each drawn instance with RX enabled.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -909,11 +940,11 @@ pads the integrator pad table reserves (the owner's filter); the adopter-window 
 ==== `smc_uart_frame_cg`
 *Description*: UART divisor, word format, injected frame fault and the line status flag.
 
-*Tool*: VCS. *Class*: planned (owner `smc_uart_frame_error_inject_rand_test` is a planned Phase 3
-entry; no sampler exists). Owner's draw: "the seed draws the divisor (1 to 8), the word length
-(`LCR.WLS` 0 to 3), `LCR.PEN` and its polarity, the data byte, the fault kind (none, parity flip,
-low stop bit or break) and the bit it lands on"; filter: a parity flip is drawn only when `LCR.PEN`
-is set.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_uart_frame_error_inject_rand_test` is a
+planned Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the divisor (1 to 8), the
+word length (`LCR.WLS` 0 to 3), `LCR.PEN` and its polarity, the data byte, the fault kind (none,
+parity flip, low stop bit or break) and the bit it lands on"; filter: a parity flip is drawn only
+when `LCR.PEN` is set.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -931,9 +962,9 @@ interrupt behaviour of the error (not graded by the owner).
 ==== `smc_uart_fifo_cg`
 *Description*: UART receive trigger level against the FIFO fill and the read gap.
 
-*Tool*: VCS. *Class*: planned (owner `smc_uart_fifo_control_depth_test` is a planned upgrade of an
-existing entry; no sampler exists). Owner's draw: "the seed draws the fill count, the trigger level
-and the read gap".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_uart_fifo_control_depth_test` is a planned
+upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the fill count, the
+trigger level and the read gap".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -952,11 +983,11 @@ onset occupancies (printed; the owner's Scope limit).
 *Description*: Hang detector port, threshold, hold length against the threshold and the disable
 during a hold.
 
-*Tool*: VCS. *Class*: planned (owner `smc_hang_detector_window_rand_test` is a planned Phase 3
-entry; no sampler exists). Owner's draw: "the seed draws the port (SEP, SYS or data accelerator),
-the threshold (0, 0x40, 0x80, 0x100, 0x400 or 0x1000), the hold length and whether `enable` is
-cleared during the hold and at which rise"; filters: a hold is shorter than a non-zero threshold by
-at least 16 rises or longer by at least 64, no hold equals its threshold.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_hang_detector_window_rand_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the port (SEP, SYS or data
+accelerator), the threshold (0, 0x40, 0x80, 0x100, 0x400 or 0x1000), the hold length and whether
+`enable` is cleared during the hold and at which rise"; filters: a hold is shorter than a non-zero
+threshold by at least 16 rises or longer by at least 64, no hold equals its threshold.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -975,9 +1006,9 @@ cells (the owner's Scope limit leaves them with the directed entries).
 ==== `smc_intr_mask_cg`
 *Description*: I2C interrupt bit class against enable, test and clear writes.
 
-*Tool*: VCS. *Class*: planned (owner `smc_i2c_ctrl_intr_w1c_test` is a planned upgrade of an
-existing entry; no sampler exists). Owner's draw: "the seed draws the enable mask, the test mask,
-the clear mask and their order".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_i2c_ctrl_intr_w1c_test` is a planned upgrade
+of an existing entry; no sampler exists). Owner's draw: "the seed draws the enable mask, the test
+mask, the clear mask and their order".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -995,12 +1026,13 @@ bus-event legs of instance 0 (directed steps, not drawn).
 *Description*: Mailbox pair, FIFO direction, fill and threshold against the threshold flag, the
 error flags and the flush.
 
-*Tool*: VCS. *Class*: planned (owner `smc_mailbox_fifo_model_rand_test` is a planned Phase 3 entry;
-no sampler exists). Owner's draw: "the seed draws the mailbox pair (one of the pairs the generated
-SMC address symbols provide), the direction, the number of words written (0 to 8), `WIRQT` and
-`RIRQT` (0 to 3), and extra injections (a flush of either FIFO, an extra empty read, an extra write
-to a full mailbox)"; every seed runs an empty read and a write to a full mailbox, and a drawn
-threshold of 2 or 3 is stored as `MailboxDepth` - 1 = 1 (`axil_mailbox.rdl`, `WIRQT`, `RIRQT`).
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_mailbox_fifo_model_rand_test` is a planned
+Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the mailbox pair (one of the pairs
+the generated SMC address symbols provide), the direction, the number of words written (0 to 8),
+`WIRQT` and `RIRQT` (0 to 3), and extra injections (a flush of either FIFO, an extra empty read, an
+extra write to a full mailbox)"; every seed runs an empty read and a write to a full mailbox, and a
+drawn threshold of 2 or 3 is stored as `MailboxDepth` - 1 = 1 (`axil_mailbox.rdl`, `WIRQT`,
+`RIRQT`).
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -1022,11 +1054,12 @@ failing outcome of `CHK-MBFM-LEVEL`, `CHK-MBFM-ERRFLAG`, `CHK-MBFM-CLEAR` and `C
 *Description*: I2C controller and target instance pair, address gate, role, length and NACK
 position.
 
-*Tool*: VCS. *Class*: planned (owner `smc_i2c_bus_matrix_rand_test` is a planned Phase 3 entry; no
-sampler exists). Owner's draw: "the seed draws the target address pair (`ADDRESS0` and `ADDRESS1`,
-with a full mask or a mask of 0), the transfer length (1 to 4 bytes), the NACK position (none or a
-byte index), the ordered instance pair on the shared bus and the read and write mix"; filters:
-partial masks are not drawn, the two addresses differ, the controller and target instances differ.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_i2c_bus_matrix_rand_test` is a planned Phase
+3 entry; no sampler exists). Owner's draw: "the seed draws the target address pair (`ADDRESS0` and
+`ADDRESS1`, with a full mask or a mask of 0), the transfer length (1 to 4 bytes), the NACK position
+(none or a byte index), the ordered instance pair on the shared bus and the read and write mix";
+filters: partial masks are not drawn, the two addresses differ, the controller and target instances
+differ.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -1048,12 +1081,12 @@ owner's Scope limit); an acknowledge contrary to the function (the failing outco
 *Description*: I2C timing parameter and the sign of the drawn change against the ordering of the
 measured intervals.
 
-*Tool*: VCS. *Class*: planned (owner `smc_i2c_timing_set_rand_test` is a planned Phase 3 entry; no
-sampler exists). Owner's draw: "the seed draws a base timing set, the one parameter that the second
-set changes (`THIGH`, `TLOW`, `THD_DAT`, `TSU_STA`, `THD_STA`, `TSU_STO` or `T_BUF`), the sign and
-size of the change (1 to 24 cycles either way) and the transfer shape (a write, or a write then a
-repeated START read)"; filter: `THIGH` and `TLOW` are at least 2 in both sets and the second set
-differs in the drawn parameter only.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_i2c_timing_set_rand_test` is a planned Phase
+3 entry; no sampler exists). Owner's draw: "the seed draws a base timing set, the one parameter that
+the second set changes (`THIGH`, `TLOW`, `THD_DAT`, `TSU_STA`, `THD_STA`, `TSU_STO` or `T_BUF`), the
+sign and size of the change (1 to 24 cycles either way) and the transfer shape (a write, or a write
+then a repeated START read)"; filter: `THIGH` and `TLOW` are at least 2 in both sets and the second
+set differs in the drawn parameter only.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -1074,8 +1107,9 @@ stretch and SDA-interference points (the owner's Scope limit).
 ==== `smc_dfx_abort_cg`
 *Description*: DFX abort pin and pulse width class against the sticky bit.
 
-*Tool*: VCS. *Class*: planned (owner `smc_dfx_status_abort_test` is a planned upgrade of an existing
-entry; no sampler exists). Owner's draw: "the seed draws the abort pin and the pulse width".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_dfx_status_abort_test` is a planned upgrade
+of an existing entry; no sampler exists). Owner's draw: "the seed draws the abort pin and the pulse
+width".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -1092,10 +1126,10 @@ the register description states, sticky until reset, has no owner cell here; `df
 ==== `smc_dm_cmderr_cg`
 *Description*: Debug Module abstract command against the held error and the resulting `cmderr`.
 
-*Tool*: VCS. *Class*: planned (owner `smc_jtag_dm_abstractcs_lifecycle_test` is a planned upgrade of
-an existing entry; no sampler exists). Owner's draw: "the seed draws the command sequence under a
-held error on the DMI leg"; the held errors are the ones the existing walk makes (`cmderr` 1 from a
-write while busy, `cmderr` 2 from a rejected command).
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_jtag_dm_abstractcs_lifecycle_test` is a
+planned upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the command
+sequence under a held error on the DMI leg"; the held errors are the ones the existing walk makes
+(`cmderr` 1 from a write while busy, `cmderr` 2 from a rejected command).
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -1118,7 +1152,7 @@ package, the owner's draw sentence).
 |===
 |Covergroup |Planned owner |What the owner adds
 |`smc_fabric_fcov::cg_sep_in_shape` |`smc_sep_in_axi_shape_test` |planned: the drawn AxSIZE x burst cells (`cp_awsize`, `cp_awburst` and their cross `x_size_burst`; the sampler has no burst-length point), and the zero-strobe cell of `cp_wstrb` through the existing explicit-strobe path (the `wstrb` of `SmcSysAxiItem`, which `smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`), which lifts the `cp_wstrb` `none` ignore bin of `cg_sep_in_shape` and retires the two Phase 2 rows on that cell (the `cp_wstrb` none row of the ignore table and the `c_sep_in_wstrb_none` row of the Phase 2 (not collected) table), both landing with the upgrade
-|`smc_clk_fcov::cg_clk_ratio` (`cov/sv/smc_clk_fcov.sv`, under `ifndef VERILATOR`, so VCS only) |`smc_clk_ratio_rand_test` |planned: the interior ratio cells over merged regressions
+|`smc_clk_fcov::cg_clk_ratio` (`cov/sv/smc_clk_fcov.sv`) |`smc_clk_ratio_rand_test` |planned: the interior ratio cells over merged regressions
 |`smc_dma_fcov::cg_dma_burst` |`smc_dma_transfer_matrix_rand_test` |planned: the drawn burst-length and strobe cells of the transfer matrix
 |===
 
@@ -1388,9 +1422,9 @@ column of <<smc-traceability-matrix>>.
 |FIRMWARE |`smc_cpu_fcov` boot, init and isolation ordering; `smc_int_fcov` PLIC claim and delivery; `smc_periph_fcov` the I2C, UART and telemetry traffic firmware drives; `smc_clk_fcov` and `smc_clk_domain_fcov` the ratios and domains a long firmware run walks
 |===
 
-The covergroups under `ifndef VERILATOR` are the commercial `group` metric and
-are not in this table; <<smc-fcov-groups>> states the contract they are held
-to.
+The covergroups are the `functional` family on Verilator and the `group`
+metric on VCS, and are not in this table; <<smc-fcov-groups>> states the
+contract they are held to.
 
 [[smc-cov-owners]]
 === Owning tests

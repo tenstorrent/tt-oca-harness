@@ -123,8 +123,12 @@ reason under "Verilator glob matching" below:
     coverage_off -file "*hw/sys/smc/dv/tb/smc_tb_if.sv"
     coverage_off -file "*hw/sys/smc/dv/tb/verilator_stubs/*"
     coverage_off -file "*hw/sys/smc/dv/models/*"
+    coverage_off -file "*hw/sys/smc/dv/uvm/*"
+    coverage_off -file "*verilated_std.sv"
     coverage_off -file "*chipyard_generated_files/*"
     coverage_off -file "*vendor/*"
+    coverage_off -file "*hw/ip/*"
+    coverage_off -file "*hw/common/*"
 
 `hw/sys/smc/dv/cov/sv/*` is **not** excluded — those files carry
 the `OCAH_FCOV_COVER` points that populate the `user` metric family.

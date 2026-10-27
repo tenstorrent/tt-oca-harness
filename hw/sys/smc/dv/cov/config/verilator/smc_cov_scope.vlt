@@ -47,6 +47,12 @@ coverage_off -file "*hw/sys/smc/dv/models/*"
 coverage_off -file "*hw/sys/smc/dv/uvm/*"
 
 // ---------------------------------------------------------------------------
+// Simulator library.
+// ---------------------------------------------------------------------------
+// The std package Verilator ships, which a covergroup brings into the build.
+coverage_off -file "*verilated_std.sv"
+
+// ---------------------------------------------------------------------------
 // Chipyard-generated CPU cluster.
 // ---------------------------------------------------------------------------
 // Generated third-party RTL that only the CPU-reaching tests exercise; the
