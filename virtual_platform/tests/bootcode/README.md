@@ -299,6 +299,7 @@ declare.
   ```bash
   virtual_platform/local/manifest-venv/bin/python -c "import tt_boot_manifest.pack_images, ruamel.yaml; print('ok')"
   ```
+
 - A built `sep-vp` (`make -C virtual_platform vp`), unless the case is host-only.
 - `TMPDIR` set to a roomy scratch directory.
 
