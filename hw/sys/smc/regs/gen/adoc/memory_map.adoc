@@ -36,7 +36,7 @@
 |BASE + 0x2000 – BASE + 0x27FF |2 KiB |204 B |Reset Unit Address Map |1 instance |- |System reset control. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x2800 – BASE + 0x2FFF |2 KiB |524 B |SMC Miscellaneous Wrapper Address Map |1 instance |- |Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks. |DECERR, 0xBADCAB1E / DECERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x3000 – BASE + 0x3FFF |4 KiB |1040 B |GPIO Interface Address Map |65 instances |16 B |GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x4000 – BASE + 0x4FFF |4 KiB |92 B |AVSBus Controller Address Map |1 instance |- |Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|BASE + 0x4000 – BASE + 0x4FFF |4 KiB |92 B |AVSBus Controller Address Map |1 instance |- |Command, readback, status, and interrupt registers for the AVSBus (PMBus V1.3 Part III) controller. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x5000 – BASE + 0x5FFF |4 KiB |3596 B |I2C Wrapper Address Map |1 instance |- |I2C and SMBus controller. |DECERR, 0xBADCAB1E / DECERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x6000 – BASE + 0x6FFF |4 KiB |4 KiB |UART Wrapper Address Map |1 instance |- |UART controller. |OKAY, 0x0 / OKAY; between sub-blocks: DECERR, 0xBADCAB1E / DECERR |-
 |BASE + 0x7000 – BASE + 0x7FFF |4 KiB |1 KiB |Efuse address map of physical efuse macro |1 instance |- |Address map for efuse shadow registers providing access to various chip configuration and ID fields |- |DECERR, 0xBADCAB1E / DECERR

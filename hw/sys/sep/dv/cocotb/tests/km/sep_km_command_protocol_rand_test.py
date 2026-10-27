@@ -46,10 +46,6 @@ response sequence rises by one on every frame except at a reset cause).
 The procedure steps that serve only planned checkers do not run: the single-fault
 legs (steps 4 to 8), the argument legs (11 to 13), the DEST_VALID walk (15), the
 transport leg (33 to 39) and the record of ``inbound_separator`` in step 1.
-
-Known limitation (contract): CHK-OFLOW-PEND can fail on this DUT, because the ROM
-recovers from rx_buff_oflow in main context with the mailbox interrupt unmasked.
-The overflow step runs last, so every other check grades before it.
 """
 
 from __future__ import annotations

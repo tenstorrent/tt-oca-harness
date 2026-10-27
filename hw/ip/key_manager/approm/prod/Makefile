@@ -7,6 +7,7 @@
 # Usage:
 #   make                                  # build/rom_main.rom.parhex
 #   make KM_BOOT_WIPE=0 KM_UNREC_WIPE=0   # boot and unrecoverable-fault SRAM wipe disabled
+#   make KM_OTP_CHANGE_EN=1               # arm the OTP-change IRQ at boot
 #   make BUILD_DIR=build/<variant>        # keep a variant's objects apart
 #   make RISCV_TOOLCHAIN=/path/to/bin     # explicit toolchain override
 #
@@ -46,6 +47,7 @@ include $(PROD_DIR)/toolchain.mk
 
 KM_BOOT_WIPE  ?= 1
 KM_UNREC_WIPE ?= 1
+KM_OTP_CHANGE_EN ?= 0
 
 BUILD_DIR ?= build
 override BUILD_DIR := $(abspath $(BUILD_DIR))
@@ -53,7 +55,8 @@ override BUILD_DIR := $(abspath $(BUILD_DIR))
 KM_INCLUDES := -I$(PROD_DIR)/include -I$(OCAH_ROOT)/hw/ip/key_manager/regs/gen/c
 KM_DEFINES  := \
   -DROM_KM_BOOT_WIPE_DEFAULT=$(KM_BOOT_WIPE) \
-  -DROM_KM_UNREC_WIPE_DEFAULT=$(KM_UNREC_WIPE)
+  -DROM_KM_UNREC_WIPE_DEFAULT=$(KM_UNREC_WIPE) \
+  -DROM_KM_OTP_CHANGE_EN_DEFAULT=$(KM_OTP_CHANGE_EN)
 
 LINK_DIR      := $(PROD_DIR)/link
 LINKER_SCRIPT := $(LINK_DIR)/km_production.ld
@@ -108,6 +111,7 @@ all:
 	    "$(OCAH_DOCKER_RUN)" run-here \
 	    $(MAKE) -C "$(PROD_DIR)" BUILD_DIR="$(BUILD_DIR)" \
 	    KM_BOOT_WIPE="$(KM_BOOT_WIPE)" KM_UNREC_WIPE="$(KM_UNREC_WIPE)" \
+	    KM_OTP_CHANGE_EN="$(KM_OTP_CHANGE_EN)" \
 	    PYTHON=python3 build; \
 	else \
 	  echo "error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset" >&2; \
@@ -192,5 +196,6 @@ help:
 	@echo "  make build                   - build with the toolchain already in reach"
 	@echo "  make KM_BOOT_WIPE=0          - disable the boot SRAM wipe"
 	@echo "  make KM_UNREC_WIPE=0         - disable the unrecoverable-fault SRAM wipe"
+	@echo "  make KM_OTP_CHANGE_EN=1      - arm the OTP-change IRQ at boot"
 	@echo "  make BUILD_DIR=<dir>         - output directory (default: build)"
 	@echo "  make clean                   - remove BUILD_DIR"

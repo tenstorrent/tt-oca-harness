@@ -81,9 +81,10 @@ of the scenarios that carry one (`--framework uvm`, `SMC_TB_ARCH.adoc`).
 Phase 1, Phase 2 and Phase 3 are scope tiers, not a schedule. Phase 1 is the
 bring-up and representative set. Phase 2 is the dense, breadth and fault set.
 Phase 3 is the residual set. Each test entry names its phase in its `*Phase*`
-field and its area in its `*Area*` field; the four cards of
-<<smc-held-out-testcases>> are outside `all`, take no credit and carry neither
-field. `SMC_FCOV.adoc` keeps its own
+field and its area in its `*Area*` field; the three cards of
+<<smc-held-out-testcases>> are outside `all`, take no credit and carry
+`*Status*: held out` beside those fields, and the scenarios of its SV-UVM
+subsection carry neither field. `SMC_FCOV.adoc` keeps its own
 organisation by collector module; a cover point does not follow the phase of
 its owning test. A tier says what a test is asked to prove. It does not say
 when the test is written. A Phase 3 entry takes credit under the rules of
@@ -1240,7 +1241,7 @@ and sets with a zero hold count.
 |`smc_reset_sync_async_assert_test` |3 |Resets assert asynchronously, release on their own clock.
 |`smc_scratch_banks_test` |2 |Sixteen scratch registers reset to 0 and hold independent values.
 |`smc_sync_reg_irq_test` |2 |SYNC_REG.sync drives sync_irq_o and only bit 0 is implemented.
-|`smc_isolate_req_smc_lane_test` |held out |Writes to `ISOLATE_REQ_SMC_REG` that do not clear bit 0 must leave the FLR-latched request set.
+|`smc_isolate_req_smc_lane_test` |2, held out |Writes to `ISOLATE_REQ_SMC_REG` that do not clear bit 0 must leave the FLR-latched request set.
 |`smc_reset_mid_transaction_rand_test` |3, planned |Seeded cool-pin, FLR, cold and watchdog resets,
 asserted at a drawn cycle inside a drawn in-flight operation after programming non-zero values,
 reset exactly the registers of that reset's domain, keep every other programmed value, hold warm
@@ -1781,8 +1782,8 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`smc_dual_elaboration_test` |1 |Prove the two-instance model elaborates and both instances leave reset, sense their fuses and finish memory init from the shared cold reset.
 |`smc_dual_axi_sram_probe_test` |1 |Measure that an inbound AXI manager reaches the CPU scratch SRAM window.
 |`smc_occp_sanity_test` |1 |One SMC issues OCCP GET_VERSION at another and reports through an OCCP WRITE.
-|`smc_occp_dual_unsecure_boot_test` |held out |OCCP unsecure boot end to end between two real SMCs over the shared I3C bus.
-|`smc_prod_rom_occp_ready_test` |held out |Production boot ROM reaches its OCCP command processing loop.
+|`smc_occp_dual_unsecure_boot_test` |1, held out |OCCP unsecure boot end to end between two real SMCs over the shared I3C bus.
+|`smc_prod_rom_occp_ready_test` |1, held out |Production boot ROM reaches its OCCP command processing loop.
 |===
 
 ==== FIRMWARE
@@ -6889,6 +6890,10 @@ handshakes, B cycles and completion cycles are measured and printed, not compare
 
 *Area*: POWER
 
+*Issue*: tenstorrent/tt-oca-harness#2455 -- the disagreement between `dma.adoc` and
+`dma_ctrl.rdl` on what `NEXT_ID_0` returns when no command is set up; the register-boundary
+results of the no-data commands are measured, not compared, until it is resolved.
+
 *Source Module*: `smc_dma_invalid_descriptor_test`
 
 *BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP) for the DMA registers;
@@ -7012,9 +7017,6 @@ traffic, the 2D copy writes the 136-byte span the zero-length 2D compare covers,
 moves its 16 bytes through both a 32-bit and a 64-bit submit with equal handshake counts, and the
 linear copy raises one one-cycle interrupt pulse. The register-boundary results of the no-data
 commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved. Enrolled in: `all`, `hosted`.
-
-*Open issue*: tenstorrent/tt-oca-harness#2455, the disagreement between `dma.adoc` and
-`dma_ctrl.rdl` on what `NEXT_ID_0` returns when no command is set up.
 
 *Scope limit*: The returned `NEXT_ID_0`, `DONE_0` before and after, `STATUS_0[9:0]` before and after
 and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command, and the `DONE_0` change,
@@ -12835,7 +12837,7 @@ no compare, each wait raising its own failure when its bound expires.
 `CHK-AXLWS-IDLE-AFTER-BURST`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; the probes are
 0 for 2000 cycles after reset and 64 cycles after the burst, the eFuse-shim register reads 0xE7
 after the interleaved writes and 0x20 after the restore, `SS_CONFIG` is unchanged by the pending
-writes, and exactly 36 SEP_IN accesses are issued. Enrolled in: `all`.
+writes, and exactly 36 SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The DTP activity probe is sampled and reported only. The response codes of the
 external-window writes, the external-window responses and data of the mixed group, the response
@@ -14420,9 +14422,9 @@ are printed, not compared, because the chapter prose names no AxUSER lane (the f
 FABRIC bullet of <<smc-vplan-phase3-unstated>> on the AxUSER bits above [3:0]) and no document
 states what the probe reports for overlapping entries. The `src_id` cells are driven through
 `axi_user` of the SYS_IN items; the 56-bit address leg of the directed leaves is not repeated. The
-row "A SYS_IN access whose AxUSER carries a non-zero source ID" of <<smc-vplan-phase3-noobs>> is
-superseded when this entry lands: its "not reachable" rests on the enrolled tests presenting AxUSER
-0, and this entry drives the lane non-zero through `axi_user`. This entry consolidates the cells of
+non-zero source ID has no row in <<smc-vplan-phase3-noobs>>: the cocotb SYS_IN agent already
+carries `axi_user` (every enrolled test leaves it 0), and only the SV-UVM shape of `tb_top.sv` ties
+`sys_axi_awuser` and `sys_axi_aruser` to 0. This entry consolidates the cells of
 `smc_infilt_addr_burst_match_test` and `smc_infilt_attr_match_test`, which stay until it lands.
 
 '''''
@@ -16521,7 +16523,7 @@ draws nothing from the seed.
 
 *Pass Criteria*: `CHK-COLD-31-IGNORED`, `CHK-COOL-31-IGNORED` and `CHK-NONVAC` hold; both pulses
 measure 31 samples, the hold windows check 400 and 100 samples, and the scoreboard books at least
-four reset `WAIT_STATE` checks. Enrolled in: `all`.
+four reset `WAIT_STATE` checks. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -16623,7 +16625,7 @@ draws nothing from the seed.
 `powergood_i` fall, every release lands on its own clock edge at or after the fourth edge, the
 watchdog and warm outputs stay low for 16 reference cycles after `tb_sep_wdt_reset_n` releases
 and then rise after 31 to 40 reference edges, and the scoreboard books at least two reset
-`WAIT_STATE` checks. Enrolled in: `all`.
+`WAIT_STATE` checks. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The reference-edge count from the watchdog-pin release to each output rise is
 graded inside 31 to 40. The edge counts from each source release to each output's rise are
@@ -16699,7 +16701,7 @@ bank); `smc_fuse_sense_done_o` wait before the first access
 
 *Pass Criteria*: `CHK-SCRATCH-RESET-0`, `CHK-SCRATCH-INDEPENDENT-RW` and `CHK-NONVAC` hold; all
 sixteen registers read 0 before the first write (measured), every readback of both sweeps matches
-its shadow, and the leaf issues exactly 592 SEP_IN accesses. Enrolled in: `all`.
+its shadow, and the leaf issues exactly 592 SEP_IN accesses. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The reset-value read of the sixteen scratch registers is a measured leg, not a proven
 one: the bench zero-initialises flops, so a read of 0 cannot fail on a 4-state reset value.
@@ -16777,7 +16779,7 @@ draws nothing from the seed.
 
 *Pass Criteria*: all four checkers hold; `SYNC_REG` and `sync_irq_o` read 0 after the bring-up reset (measured), the pin
 follows bit 0 inside the 64-sample bound in both directions, the upper bits are not stored, and
-the leaf issues at least nine SEP_IN accesses. Enrolled in: `all`.
+the leaf issues at least nine SEP_IN accesses. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The reset-value read of `SYNC_REG` and `sync_irq_o` is a measured leg, not a proven
 one, because the bench zero-initialises flops. The 64-sample poll is a bench ceiling and not a
@@ -16904,7 +16906,7 @@ inside the FLR hold do not shorten or extend it.
 `CHK-COOLRST-RELEASE-NO-EXTENSION`, `CHK-COOLRST-REASSERT-IN-HOLD`,
 `CHK-COOLRST-RELEASE-REASSERT-HOLD`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares;
 the offsets from a pin edge to a probe are measured and only the equalities and orderings above are
-compared. Enrolled in: `all`, `hosted`, `reset`.
+compared. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The offsets from a pin edge to a probe (assertion from the first low, release from
 the first high, release from the cool-reset rise) are measured and printed; only the equalities and
@@ -17031,7 +17033,7 @@ early combines with the FLR hold without changing its duration.
 `CHK-COOLRST-FLR-PRE-COUNT`, `CHK-COOLRST-HOLD-INVARIANT`, `CHK-COOLRST-PIN-ALONE-PRIMARY`,
 `CHK-COOLRST-PIN-EARLY-RELEASE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares;
 offsets from an edge to a probe are measured and only the deltas, equalities and orderings above are
-compared. Enrolled in: `all`, `hosted`, `reset`.
+compared. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The offsets from an edge to a probe and the cool-reset low durations are measured and
 printed; only the deltas, equalities and orderings between them are compared.
@@ -17164,7 +17166,7 @@ and sets again with a zero hold count.
 `CHK-COOLRST-PRIMARY-RELEASE`, `CHK-COOLRST-WARM-FOLLOWS`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold
 after their compares, and `CHK-COOLRST-OTHER-CSR-MEASURED` and `CHK-COOLRST-RESET-VECTOR` print
 their measured values; release offsets are measured and only the levels, orderings and register
-words above are compared. Enrolled in: `all`, `hosted`, `reset`.
+words above are compared. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The I2C0 `TIMING0` and `CPU_CTRL.SCRATCH[0]` words before and after the cool reset,
 `CPU_CTRL.RESET_VECTOR[0]` next to the reset vector, and `ISOLATE_REQ_VIS` bit 0 are printed as
@@ -18689,7 +18691,7 @@ wait whose following read is compared; the line is a record, not a compare.
 *Pass Criteria*: `CHK-AVS-CSR-RESET`, `CHK-AVS-CSR-FIELDS`, `CHK-AVS-CSR-BYTE-LANE-2`,
 `CHK-AVS-CSR-FORCE-PULSE`, `CHK-AVS-CSR-UNALLOCATED`, `CHK-CDC-AVS-RT` and `CHK-CDC-AVS-ORDER` hold
 after their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end. The values of
-the unallocated `AVS_CFG_1` bits are not claimed. Enrolled in: `all`.
+the unallocated `AVS_CFG_1` bits are not claimed. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read values of the `AVS_CFG_1` bits that carry no field, before and after the
 write of ones, are measured and printed and not compared, because the specification does not state
@@ -18784,7 +18786,7 @@ bound, each failing the run on expiry with the last pad level; the line is a rec
 *Pass Criteria*: `CHK-AVS-SELECT-TABLE`, `CHK-AVS-SELECT-TRANSITIONS` and
 `CHK-AVS-SELECT-UNGATED-RECOVERY` hold after their compares, with `CHK-NONVAC` and
 `CHK-TIMEOUT-PATHS` printed at the end. The pad behaviour in the ungated interval and the high
-fraction are not claimed. `AVS_CFG_1` is not restored at the end of the test. Enrolled in: `all`.
+fraction are not claimed. `AVS_CFG_1` is not restored at the end of the test. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The pad period in the interval after a select change written without the gate is
 measured and printed and not compared, because the specification does not state the value for that
@@ -18890,7 +18892,7 @@ listed order, each after the step it belongs to.
 `CHK-CGC-HYST-RANGE`, `CHK-CGC-RESERVED-BITS` (defined fields only), `CHK-CGC-REWRITE` hold after
 their compares, with `CHK-NONVAC` printed at the end; `CHK-CGC-NARROW-ACCESS` records the
 narrow-access responses and values without claiming them. The specification does not state the
-reserved-bit and narrow-access values. Enrolled in: `all`.
+reserved-bit and narrow-access values. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response and the read value of the reserved bits 23:14 and 63:30 after the
 writes of ones are measured and printed and not compared, because the specification does not state
@@ -18975,7 +18977,7 @@ three checker lines print in order, each after the step it belongs to.
 
 *Pass Criteria*: `CHK-BASECFG-RESET-READ`, `CHK-BASECFG-THRESHOLD-WRITE` and
 `CHK-BASECFG-RO-IGNORED` hold after their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS`
-printed at the end. The response code of the `LOCAL_BASE` write is not claimed. Enrolled in: `all`.
+printed at the end. The response code of the `LOCAL_BASE` write is not claimed. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response code of the write to the read-only `LOCAL_BASE` register is measured
 and printed and not compared, because the specification does not state it. The bounded waits are
@@ -19068,7 +19070,7 @@ compare.
 
 *Pass Criteria*: `CHK-STALL-PERIPH-READ`, `CHK-STALL-PERIPH-WRITE` and `CHK-STALL-SMC` hold after
 their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end. No completion-time
-bound is claimed for the peripheral accesses; the cycle counts are printed only. Enrolled in: `all`.
+bound is claimed for the peripheral accesses; the cycle counts are printed only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The cycles from RREADY rising to completion of the peripheral read and the completion
 cycle counts of the peripheral write are measured and printed without a bound, because the
@@ -19169,7 +19171,7 @@ catch-up) and that expiry raises an assertion; the line is a record, not a compa
 *Pass Criteria*: `CHK-ORDER-READS-SAME-ID`, `CHK-ORDER-WRITES-SAME-ID` and `CHK-ORDER-DIFFERENT-IDS`
 hold after their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end. Response
 order within one ID is not claimed: it is printed only, and the multiset of responses is what is
-compared. Enrolled in: `all`.
+compared. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Whether the same-ID read data and the same-ID write responses arrive in issue order
 is measured and printed and not compared; only the multiset of responses is compared. The bounded
@@ -19262,7 +19264,7 @@ compare.
 |===
 
 *Pass Criteria*: `CHK-RESP-ONCE-SMC`, `CHK-RESP-ONCE-PERIPH` and `CHK-RESP-ONCE-MIXED` hold after
-their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end. Enrolled in: `all`.
+their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The bounded waits are recorded, not compared.
 
@@ -19335,7 +19337,7 @@ raises an assertion; the line is a record, not a compare.
 
 *Pass Criteria*: `CHK-SCRATCH-RESET-READ`, `CHK-SCRATCH-WRITE-READ` and `CHK-SCRATCH-NO-ALIAS` hold
 after their compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end. The zero reset
-compare cannot fail on an unknown value under a two-state simulator. Enrolled in: `all`.
+compare cannot fail on an unknown value under a two-state simulator. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The zero reset compare cannot fail on an unknown value under a two-state simulator,
 so an unknown reset state is not observable from this bench. The bounded waits are recorded, not
@@ -20358,7 +20360,7 @@ order (five lines of the first three kinds, one of the last) and each after its 
 SLVERR response of the refused write and prints the register words without claiming them;
 `CHK-AVS-CLOCK-PRINT` records the pad rise counts without claiming them; `CHK-NONVAC` is printed at
 the end. The specification does not state the window extent, whether a refused write changes state or the
-AVSBus pad activity. Enrolled in: `all`.
+AVSBus pad activity. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response and data of the read at the last 4-byte address of each gated window
 are measured and printed and not compared, because the specification does not state the window
@@ -20443,7 +20445,7 @@ that expiry raises an assertion; the line is a record, not a compare.
 
 *Pass Criteria*: `CHK-PERIPH-FLOOR-ROUNDTRIP` holds in the run's cell after its compares, with
 `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end; the checker is the same for the periph10,
-periph5 and periph3 cells. Enrolled in: `all`.
+periph5 and periph3 cells. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The bounded waits are recorded, not compared.
 
@@ -20653,7 +20655,7 @@ assertion; the line is a record, not a compare.
 *Pass Criteria*: `CHK-REF-RESET-RELEASE-CYCLES` and `CHK-REF-RESET-DEGLITCH` hold after their
 compares, with `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` printed at the end. Whether the counts agree
 between the ref10 and ref4 runs is not compared inside one run; each run compares the cycle-count
-conditions above. Enrolled in: `all`.
+conditions above. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The exact count of `clk_ref_i` edges from the cold-reset release to
 `rst_primary_ref_clk_no` reading 1 (only its minimum of 255 is compared) and the cycle count from
@@ -20929,7 +20931,8 @@ Drive `smc_cpu_ctrl_map_depth_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE`, `CHK-CPU-CTRL-MAP-LOCAL-BASE-RO` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE`, `CHK-CPU-CTRL-MAP-LOCAL-BASE-RO` hold after their compares.
+Enrolled in: `all`, `hosted`, `cpu`.
 
 *Scope limit*: None stated.
 
@@ -20974,7 +20977,8 @@ Drive `smc_cpu_ctrl_scratch_window_test_seq`. Each checker below is a named comp
 |===
 
 
-*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-DUMMY-ROM`, `CHK-CPU-CTRL-SCRATCH` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-DUMMY-ROM`, `CHK-CPU-CTRL-SCRATCH` hold after their compares.
+Enrolled in: `all`, `hosted`, `cpu`.
 
 *Scope limit*: None stated.
 
@@ -21434,7 +21438,7 @@ A mutex read acquires, so the SV-UVM view -- 16 scenario passes in one simulatio
 block back as it found it: `MUTEX[0]` is released again after the read that proves the release,
 `MUTEX[1]` is released, and `SEMA[0]` is returned to its baseline. Under `--framework uvm` the
 SV-UVM checkers above hold instead, and `+SMC_MUTEX_SCOREBOARD_NEGATIVE` must fail the run.
-Enrolled in: `all`, `hosted`.
+Enrolled in: `all`, `hosted`, `cpu`.
 
 *Scope limit*: The bits of MUTEX and SEMA above the live field hold no field and are masked out of
 the compare rather than given an expectation. The release is proved only for a written value of
@@ -21570,7 +21574,8 @@ Accesses are full-width 64-bit single beats (AxSIZE = 3, every byte lane strobed
 CSR-shaped access would leave half of each word untouched and could not discriminate the
 addresses. The SV-UVM view draws a fresh pattern set per pass from the scenario seed, so its 16
 passes exercise different data and each pass also re-proves that the previous pass's words were
-replaced rather than merely re-read. Under `--framework uvm` the governing checker set is the SV-UVM one in the table above (the cocotb ids named at the head of this Pass Criteria do not run there), and `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `hosted`.
+replaced rather than merely re-read. Under `--framework uvm` the governing checker set is the SV-UVM one in the table above (the cocotb ids named at the head of this Pass Criteria do not run there), and `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` must fail the run.
+Enrolled in: `all`, `hosted`, `cpu`.
 
 *Scope limit*: Real-stall and multi-hart traffic are not claimed.
 
@@ -24670,7 +24675,7 @@ with the last observed signal or register on expiry
 `CHK-SCRATCH-NO-ALIAS` and `CHK-APERTURE-OFFSET-ISOLATION` hold after their compares;
 `CHK-DST-UNDEFINED-BITS` and `CHK-DST-INST-FIELDS-RW` hold once their accesses completed, their
 values printed (the specification does not state the values); `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every
-sequence assert holds. Enrolled in: `all`.
+sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `Trdstformat`, whose supported value set the specification does not state, and the
 fields the hardware also writes (`Trdstinsttracing`) are printed, not compared. The bit positions no
@@ -24782,7 +24787,7 @@ on expiry with the last observed response or signal
 *Pass Criteria*: `CHK-APERTURE-REGISTERS`, `CHK-APERTURE-PAST-READ`, `CHK-APERTURE-PAST-WRITE` and
 `CHK-APERTURE-NEXT-BLOCK` hold after their compares; `CHK-APERTURE-HOLE` holds once its read
 compares OKAY, 0x0 (`memory_map.adoc`); `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`.
+`CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -24873,7 +24878,7 @@ on expiry with the last observed access
 
 *Pass Criteria*: `CHK-DFX-MUX-MODE`, `CHK-DFX-MUX-ID`, `CHK-DFX-MUX-SEL03`, `CHK-DFX-MUX-SEL47`,
 `CHK-DFX-MUX-WALK1`, `CHK-DFX-MUX-ONEATATIME` and `CHK-DFX-MUX-B2B` hold after their compares, including the
-`Dbmid` readbacks of 0 and 63 and the `Rsvd158` readbacks; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`.
+`Dbmid` readbacks of 0 and 63 and the `Rsvd158` readbacks; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -24983,7 +24988,7 @@ expiry with the last observed state
 *Pass Criteria*: `CHK-DEBUGCTRL-FIELD-HOLD`, `CHK-DEBUGCTRL-EFFECT-CLEAR`,
 `CHK-DEBUGCTRL-RESET-BIT31`, `CHK-DEBUGCTRL-NO-OBSERVABLE`, `CHK-CLKGATE-INFLIGHT` and
 `CHK-CLKGATE-STATUS-ACCESS` hold after their compares, `CHK-DEBUGCTRL-NO-OBSERVABLE` being a
-measured leg; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`.
+measured leg; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The probe leg is measured: the CLA is not programmed in the leaf, so
 `tb_cla_clock_stop` and `tb_cla_halt_clock_global` are not shown to rise, and the cross-trigger
@@ -25076,7 +25081,7 @@ on expiry with the last observed access
 *Pass Criteria*: `CHK-DFX-CTRL-FIELDS`, `CHK-DFX-CTRL-CLK-BITS`, `CHK-DFX-CTRL-XTRIG`,
 `CHK-DFX-CTRL-WALK1` and `CHK-DFX-CTRL-B2B` hold after their compares; `CHK-DFX-CTRL-BIT31` holds
 once its accesses completed, the readbacks printed (the specification does not state the values); `CHK-NONVAC` and
-`CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`.
+`CHK-TIMEOUT-PATHS` hold and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Register bit 31 is covered by no field and the documents state no value for it, so
 the 4-byte write of it and the 8-byte write with the upper half set are read back and printed, not
@@ -25211,7 +25216,7 @@ compares; `CHK-DFX-STATUS-RESET-CLEARS` holds after the cold reset compare, its 
 results printed, not compared; `CHK-DFX-STATUS-WRITE-RESP` and
 `CHK-DFX-STATUS-HIGH-THROUGH-RESET` hold once their accesses and resets completed, their values
 printed, not compared; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert
-holds. Enrolled in: `all`.
+holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The AXI responses to the writes to the read-only `STATUS_SMU` are printed, not
 compared, because the documents state no response for a write to the read-only register. The
@@ -25308,7 +25313,7 @@ bounded and fail on expiry with the last readback
 `CHK-SBCS-CAPS-WRITE-ALL-ONES`, `CHK-HALTSUM0-IDLE`, `CHK-HALTSUM1-IDLE` and
 `CHK-HALTSUM-WRITE-IGNORED` hold after their compares with `sbversion` 1, `sbasize` 56, `sbaccess`
 01111 and both halt summaries 0; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold and every sequence assert
-holds. Enrolled in: `all`.
+holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The `sbcs` words read after the all-ones write and after the restore are printed;
 only the capability fields are compared. No system bus access is started.
@@ -26935,7 +26940,7 @@ assertion on expiry; the bounds and the last observed states are logged.
 *Pass Criteria*: all seven checkers hold: zero bank-control edges for the idle traffic, one `ar` and
 one `r` edge for each window read, one `aw`, one `w` and one `b` edge for each window write, 0x20
 read at reset and after each restore, expected data for the serialized window sequences, and every bounded wait finishing
-inside its bound. The re-sense delay is recorded only. Enrolled in: `all`.
+inside its bound. The re-sense delay is recorded only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The release-to-first-command delay with the reset init time and with 0x40, their
 difference and whether `EFUSE_BANK_INIT_TIME` survives the cold reset are recorded without a
@@ -27051,7 +27056,7 @@ with an assertion on expiry; the bounds and last samples are logged.
 before sense done, rises at least 16 edges after the later of the two, returns to 0 under a cold
 reset and rises only after the second sense done and boot gate, and `STATUS.efuse_sense_done`
 reads 1 and stays 1 once seen. The exact stage count and the level after the boot drop are recorded
-only. Enrolled in: `all`.
+only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The exact edge count from the boot-gate rise, and from sense done, to the rise of the
 delayed fuse reset is measured and printed without a compare, because the documented 16-stage count
@@ -27162,7 +27167,7 @@ assertion on expiry; the bounds and the last bus states are logged.
 the racing JTAG read returns only the image word or X and the final value is X, the locked word
 keeps X while the unlocked word keeps its last write across sixteen alternating writes, and the
 eight outstanding reads return in order with their image words. Arbitration order, error codes and
-the accepted depth are recorded only. Enrolled in: `all`.
+the accepted depth are recorded only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The arbitration order between the SEP_IN and JTAG ports for the same-edge reads is
 only printed, because it is not specified. The response code of the writes dropped by the write lock
@@ -27285,7 +27290,7 @@ the bound and the last sense state are logged.
 *Pass Criteria*: all twelve checkers hold: every word of the 256-word map reads its marker word at
 32-bit and 64-bit width, the past-extent reads answer DECERR with 0xBADCAB1E, the past-extent writes
 get an error response, and no word or lock bit changes. The exact write error code and the extent of
-the past-extent range are not asserted. Enrolled in: `all`.
+the past-extent range are not asserted. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The exact error code of a past-extent write is not compared: `smc.rdl` declares
 SLVERR, either error code above OKAY is accepted, and both response codes are printed beside the
@@ -27403,7 +27408,7 @@ the bound and the last sense state are logged.
 neighbour accepts its write, a read-locked field discloses neither value nor complement, a read lock
 alone leaves writes landing, both locks together leave the probe unchanged, and the shadow port is
 stable across rejected writes and hidden reads. Response codes of rejected and hidden accesses are
-not asserted. Enrolled in: `all`.
+not asserted. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response code of a rejected write and of a read-locked read is not asserted; only
 the effect on the shadow is. What the shadow-register output port is specified to show for a locked
@@ -27521,7 +27526,7 @@ and the last sense states are logged.
 32-bit, 64-bit and per-slot write, each slot's write and read lock affect only its own field, the
 unlocked fields keep accepting writes, a locked field stays unchanged on the probe, and a cold reset
 restores the image value of `LOCKS`. Response codes of rejected writes and hidden reads are not
-asserted. Enrolled in: `all`.
+asserted. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response codes of rejected writes and hidden reads are not asserted; only their
 effect on the field, read back over SEP_IN or seen on `efuse_shadow_probe_o`, is.
@@ -27647,7 +27652,7 @@ logged.
 word 0 stays hidden across the warm reset with `tb_fuse_sense_done` never dropping; after the cold
 reset `LOCKS` and SPARE[3] read 0, SPARE[5] word 0 reads the marker again and writes land; and each mid-reset read ends within its bound
 with no driver timeout and no stray data beat. The write response code and the completed-or-aborted
-outcome are recorded only. Enrolled in: `all`.
+outcome are recorded only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response code of the rejected write and of the hidden read is not asserted; the
 write response code is printed. Whether a SEP_IN read outstanding at the warm or the cold reset
@@ -27759,7 +27764,7 @@ fails with an assertion on expiry; the bounds and last samples are logged.
 `CHK-EMAP-SENSE-DEFAULT`; the unique kind replaces it with `CHK-EMAP-SENSE-UNIQUE` and an extra
 probe compare, and the other pattern kinds with `CHK-EMAP-SENSE-PATTERNS`): the probe, every SEP_IN
 read and the `shadow_regs` port equal the image, and sense done rises once and never drops.
-Enrolled in: `all`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: What the shadow-register output port is specified to show for read-locked words is
 not specified; those words are printed and not compared.
@@ -28199,7 +28204,7 @@ the bound and the last sense state are logged.
 *Pass Criteria*: all ten checkers hold: every written word reads back as written, no neighbour
 word changes, the half writes touch only their half, the word past the map returns DECERR
 with 0xBADCAB1E, and the shadow port, the word probe and `tb_efuse_locks` agree with the model.
-Enrolled in: `all`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: What the shadow-register output port is specified to show beyond the stored words is
 not specified. The upper word of `OCCP_TRANSPORT_TIMEOUT` is printed by the reserved-bits checker.
@@ -29204,7 +29209,7 @@ restore read-back) with increasing time stamps and each checker line printed aft
 
 *Pass Criteria*: all three checkers hold: the three override bits read back one at a time as 0x1,
 0x10 and 0x20 and clear to 0, and `DATA_CTRL` (0x1) and `DATA_CTRL_ENABLE` (0x31) keep their written
-values in both write orders. Enrolled in: `all`.
+values in both write orders. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Only the register fields are compared; the effect of the override bits on the pad is
 not driven or probed here.
@@ -29304,7 +29309,7 @@ ended.
 *Pass Criteria*: all four checkers hold: bits 25 and 31 of `DATA_CTRL` never change because of a
 software write, the writable bits read exactly 0x003F_0031 after all ones and 0 after zeros, and no
 undeclared bit sets. The write response codes and the set of pads with a hardware LSIO request are
-recorded only. Enrolled in: `all`.
+recorded only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response code of the software writes to the read-only bits is printed, not
 asserted. Which pads see a hardware LSIO request is read from the scan and printed, because the
@@ -29396,7 +29401,7 @@ checker line printed after its step ended.
 
 *Pass Criteria*: all five checkers hold: every field value, read-modify-write and Programmer's Guide
 constant reads back exactly as written on instance 60 with no other writable bit changed, and the
-register returns to its reset value after each phase. Enrolled in: `all`.
+register returns to its reset value after each phase. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The `core2pad_en_o` bit of instance 60 is sampled and printed after the
 `enable_rx_tx` leg without being compared.
@@ -29492,7 +29497,7 @@ SHIM boundary) with increasing time stamps and each checker line printed after i
 *Pass Criteria*: all five checkers hold: all eight supplementary-block accesses reach the external
 port with their own address and complete with DECERR, the SHIM base never reaches the external port
 while the eFuse bank activity probe moves, and the first address above the SHIM does reach it. The
-read data returned with DECERR is recorded only. Enrolled in: `all`.
+read data returned with DECERR is recorded only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The adopter's implementation of the supplementary blocks is outside this repository,
 so only the decode into the external port is measured. The read data returned with the DECERR is
@@ -29572,7 +29577,7 @@ with increasing time stamps and each checker line printed after its step ended.
 
 *Pass Criteria*: all three checkers hold: every requirement value 0 to 7 of both fields and every
 set and clear of the two enable bits reads back exactly, and the register ends at its reset word
-0x0001_0100. Enrolled in: `all`.
+0x0001_0100. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The effect of an armed filter on accesses with another protection value is not driven
 here; the accesses that change an enable bit are issued with the protection value that satisfies the
@@ -29670,7 +29675,7 @@ printed after its step ended.
 *Pass Criteria*: all five checkers hold: every instance keeps the `ACCESS_FILTER` and
 `DATA_CTRL_ENABLE` pattern written to it and reads back distinct from its neighbours, the three
 registers of an instance do not alias, and the Programmer's Guide formula matches the generated
-addresses. Enrolled in: `all`.
+addresses. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -29737,7 +29742,7 @@ increasing time stamps and the checker line printed after the write-back reads.
 |===
 
 *Pass Criteria*: both checkers hold: all 65 instances read back the reset words of the three
-registers after the write-back. Enrolled in: `all`.
+registers after the write-back. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The first reads of the three registers of every instance are taken as a snapshot only
 and are not compared, because the pad state they reflect is not specified here.
@@ -29842,7 +29847,7 @@ increasing time stamps and each checker line printed after its step ended.
 
 *Pass Criteria*: all six checkers hold: each half asserts only for its own wraps, holds until the
 last contributor clears, stays 0 when idle, and carries an edge pulse once with the raw width, all
-within the 64-cycle bounds. The absolute edge pulse width is recorded only. Enrolled in: `all`.
+within the 64-cycle bounds. The absolute edge pulse width is recorded only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The absolute width of the rising-edge interrupt pulse is an open question and is
 printed without being compared to an absolute value; only equality with the raw bit's width is
@@ -29956,7 +29961,7 @@ restore) with increasing time stamps and each checker line printed after its ste
 *Pass Criteria*: all four checkers hold: the level interrupt reads 0 from the reset assertion on,
 the edge is timed inside the reset window with a live control pulse, the in-flight write is
 outstanding across the reset fall, and the registers read 0 after the reset. The interrupt samples around the reset edge and the completion kind of the in-flight write
-are recorded only. Enrolled in: `all`.
+are recorded only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The cold-only reset is not separable from the primary reset at the SMC boundary and
 the specification does not state it, so the reset is driven through `rst_cold_ni`. The number of
@@ -30613,7 +30618,7 @@ equals the baseline for 64 rises (`CHK-EXTHOLD-BIT0`, `CHK-EXTHOLD-BIT2`, `CHK-E
 `CHK-EXTIRQ-ASSERT`, `CHK-EXTIRQ-ISOLATION`, `CHK-EXTIRQ-RELEASE`). The PLIC pending values are
 measured only (LINKED-ISSUE SF-025, SF-026, SF-027, SF-028). `CHK-NONVAC` holds when all 49 terms
 and the six checker lines appear in order; `CHK-TIMEOUT-PATHS` only logs the bounded waits. Exactly
-one SEP_IN access, the scratch read, is issued and answers OKAY. Enrolled in: `all`.
+one SEP_IN access, the scratch read, is issued and answers OKAY. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `CHK-TIMEOUT-PATHS` only logs the bounded waits taken and has no compare of its own.
 
@@ -30695,7 +30700,7 @@ draws nothing from the seed.
 and holds it for 64 rises (0x2, 0x1, then 0x3 followed by 0x2 or 0x1 and 0), with the synchroniser
 output probes agreeing with the vector. `CHK-NONVAC` holds when all five step stamps and the four checker lines appear in order;
 `CHK-TIMEOUT-PATHS` only logs the bounded waits. Ten hold phases complete and at least one SEP_IN
-access is issued. Enrolled in: `all`.
+access is issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The synchroniser output probes are compared for consistency with the vector only, not
 as an independent check. `CHK-TIMEOUT-PATHS` only logs the bounded waits taken and has no compare of
@@ -30783,7 +30788,7 @@ measurement and is not compared with an expected value. `CHK-EXTPULSE-LATENCY-LO
 every rise and fall delay is at least 3 rises.
 `CHK-NONVAC` holds when all four step stamps and the four checker lines appear in order;
 `CHK-TIMEOUT-PATHS` only logs the bounded waits. Exactly 12 wide, 12 short and 8 latency runs
-complete and at least one SEP_IN access is issued. Enrolled in: `all`.
+complete and at least one SEP_IN access is issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Whether each sub-period pulse was seen is measured and printed without a compare
 (`CHK-EXTPULSE-SHORT-SEEN-LOG`), and the rise and fall delay values are printed. `CHK-TIMEOUT-PATHS`
@@ -30938,7 +30943,7 @@ rises with `irq` = 0; `irq_test` raises them only with both enables set. `CHK-NO
 the nine fence terms, eight step stamps and eight checker lines appear in order with non-zero
 counts and six DMA jobs were started; `CHK-TIMEOUT-PATHS` holds when no bounded wait or SEP_IN
 access expired or tolerates expiry. Eight phases complete and at least 60 SEP_IN accesses are
-issued. Enrolled in: `all`.
+issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The rise at which the data interrupt first reads 1 for a stall of exactly 0x40 rises
 is printed without a compare, because the document does not say whether a stall equal to the
@@ -31025,7 +31030,7 @@ each change, each `HANG_DET_*_CTRL.irq` equals its own detector's state, raw bit
 at every sampled rise, and threshold 0 does not prevent the `irq_test` assertion. `CHK-NONVAC` holds
 when all five step stamps and the four checker lines appear in order; `CHK-TIMEOUT-PATHS` only logs
 the bounded waits. Five phases complete and at least 150 SEP_IN accesses are issued.
-Enrolled in: `all`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Threshold 0 on a stalled bus is not exercised. `CHK-TIMEOUT-PATHS` only logs the
 bounded waits taken and has no compare of its own.
@@ -31140,7 +31145,7 @@ and every toggle readback matches the written value. `CHK-DROPCTL-REENABLE-LOG`,
 `CHK-DROPCTL-TOGGLE-LOG` and `CHK-DROPCTL-BOTH-CAUSES-LOG` record measurements and are not compared
 with expected values. `CHK-NONVAC` holds when all seven step stamps and the seven checker lines appear
 in order and three held reads were started; `CHK-TIMEOUT-PATHS` only logs the bounded waits. Seven
-phases complete and at least 11 SEP_IN accesses are issued. Enrolled in: `all`.
+phases complete and at least 11 SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: How soon the interrupt returns after `irq_en` is set late, and the interplay of
 `irq_test` with a persisting timeout, are measured and printed without a compare, because the
@@ -31256,7 +31261,7 @@ lowered threshold reads back 0x40, and the interrupt reads 0 within 128 rises of
 measurements and are not compared with expected values. `CHK-NONVAC` holds when all eight step
 stamps and the eight checker lines appear in order and eight held reads were started;
 `CHK-TIMEOUT-PATHS` only logs the bounded waits. Eight phases complete and at least 40 SEP_IN
-accesses are issued. Enrolled in: `all`.
+accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The exact rise relative to each threshold, and the rise after a threshold write
 combined with an `irq_en` clear and set, are measured and printed without a compare, because the
@@ -31369,7 +31374,7 @@ interrupt rise moves by exactly the threshold difference. `CHK-SEPWIN-AT-LOG` re
 and is not compared with an expected value. `CHK-NONVAC` holds when all six step
 stamps and the four checker lines appear in order and five held reads were started;
 `CHK-TIMEOUT-PATHS` only logs the bounded waits. Six phases complete and at least 22 SEP_IN accesses
-are issued. Enrolled in: `all`.
+are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The rise for a stall of exactly 0x40 rises is measured and printed without a compare,
 because the specification does not state it; the rises from the AR handshake to the SEP interrupt
@@ -31521,7 +31526,7 @@ stall held drops the SYS interrupt and raw bit 286 within 128 rises and keeps th
 rises with `irq` = 0; `irq_test` raises them only with both enables set. `CHK-NONVAC` holds when
 the nine fence terms, eight step stamps and eight checker lines appear in order with non-zero
 counts and six held reads completed; `CHK-TIMEOUT-PATHS` holds when no bounded wait or AXI access
-expired or tolerates expiry. Eight phases complete and at least 41 SEP_IN accesses are issued. Enrolled in: `all`.
+expired or tolerates expiry. Eight phases complete and at least 41 SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The rise for a stall of exactly 0x40 rises is measured and printed without a compare,
 because the document does not say whether a stall equal to the threshold fires. `CHK-TIMEOUT-PATHS`
@@ -31611,7 +31616,7 @@ detector changes none of the other five registers, and the final restore returns
 to 0 and thresholds to their saved values. `CHK-ATTR-COUNTS-LOG` records the two counts and is not
 compared with 256 or 328. `CHK-NONVAC` holds when all seven step stamps and the five checker lines
 appear in order; `CHK-TIMEOUT-PATHS` only logs the bounded waits. Seven phases complete and at least
-80 SEP_IN accesses are issued. Enrolled in: `all`.
+80 SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `SMC_ATTRIBUTES.num_ext_interrupts` and `num_cpu_interrupts` are recorded and not
 compared with the 256 and 328 the document gives. `CHK-TIMEOUT-PATHS` only logs the bounded waits
@@ -31685,7 +31690,7 @@ draws nothing from the seed.
 and returned it to the baseline. `CHK-RSVDIDLE-INTERNAL-LOG` and `CHK-RSVDIDLE-PERIPH-LOG` record
 values and are not compared with an expected value. `CHK-NONVAC` holds when all five step stamps and
 the four checker lines appear in order; `CHK-TIMEOUT-PATHS` only logs the bounded waits. Five phases
-complete and at least one SEP_IN access is issued. Enrolled in: `all`.
+complete and at least one SEP_IN access is issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The internal raw bits 323 to 320 and the peripheral-owned raw bits 264 to 266, 268 to
 281 and 283 to 285 are sampled and printed without a compare, because the specification does not
@@ -31789,7 +31794,7 @@ bit 256 is high and raw bit 320 stays at its baseline, and raw bit 323 pulses an
 rises of the zeroer job. `CHK-VECASM-INBOUND-LOG` records the mailbox raw bits and is not compared
 with an expected value. `CHK-NONVAC` holds when the seven step stamps increase and the seven
 checker lines each print once, after their step stamp; `CHK-TIMEOUT-PATHS` only logs the bounded
-waits. At least 27 SEP_IN accesses are issued. Enrolled in: `all`.
+waits. At least 27 SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Raw bits 319 to 288 are excluded from the compare; the levels of raw bits 288 and 319
 after the mailbox 0 and mailbox 31 pushes are printed without a compare, because the specification
@@ -31870,7 +31875,7 @@ push, the vector returns to 0 within 128 rises after each clear, and the clock-g
 `CHK-MBXIN-POSITION-LOG`, `CHK-MBXIN-MULTI-LOG` and `CHK-MBXIN-CLEAR-LOG` record observed bits and
 are not compared with expected bit positions. `CHK-NONVAC` holds when all five step stamps and the
 three checker lines appear in order; `CHK-TIMEOUT-PATHS` only logs the bounded waits. At least 200
-SEP_IN accesses are issued. Enrolled in: `all`.
+SEP_IN accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The raw bits that rise for each push, for the pairs and for all 32 mailboxes, and
 which bit falls when `IRQEN.wtirq` of mailbox 5 is cleared, are printed against the expected bits
@@ -31953,7 +31958,7 @@ draws nothing from the seed.
 request set, and after the last drop the vector equals the baseline for 64 rises. `CHK-NONVAC` holds
 when all four step stamps and the three checker lines appear in order; `CHK-TIMEOUT-PATHS` only logs
 the bounded waits. Eighteen phases complete and at least one SEP_IN access is issued.
-Enrolled in: `all`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The `tb_ndmreset_irq` probe is compared for consistency with the raw bit only, not as
 an independent check. `CHK-TIMEOUT-PATHS` only logs the bounded waits taken and has no compare of
@@ -32038,7 +32043,7 @@ the baseline.
 `CHK-SEPMBX-LATENCY-LOG` records the measured delays and is not compared with an expected value.
 `CHK-NONVAC` holds when all five step stamps and the four checker lines appear in order;
 `CHK-TIMEOUT-PATHS` only logs the bounded waits. Fifty-one phases complete and at least one SEP_IN
-access is issued. Enrolled in: `all`.
+access is issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The delay from an input edge to raw bit 256, rising and falling over eight repeats,
 is measured and printed without a compare, because the specification does not state it; the
@@ -32124,7 +32129,7 @@ read 0 for 64 rises. `CHK-SEPWDT-LATENCY-LOG` records the measured delays and is
 an expected value; the level while the pin is held low through the warm reset is printed only.
 `CHK-NONVAC` holds when all five step stamps and the four checker lines appear in order;
 `CHK-TIMEOUT-PATHS` only logs the bounded waits. Four phases complete and at least one SEP_IN access
-is issued. Enrolled in: `all`.
+is issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The level of raw bit 282 while the pin is held low through the warm reset, the delay
 from the pin fall to raw bit 282 and the delay from the release to raw bit 282 reading 0 are
@@ -32208,7 +32213,7 @@ and 286 are high with `SYNC_REG.sync` at 0, and with `SYNC_REG.sync` set the out
 three source bits still high and returns to 0 with the vector at the baseline after the clears.
 `CHK-NONVAC` holds when all five step stamps and the three checker lines appear in order;
 `CHK-TIMEOUT-PATHS` only logs the bounded waits. Five phases complete and at least 9 SEP_IN accesses
-are issued. Enrolled in: `all`.
+are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `CHK-TIMEOUT-PATHS` only logs the bounded waits taken and has no compare of its own.
 '''''
@@ -33382,7 +33387,7 @@ checker line printed only after the checkpoints it depends on completed.
 `CHK-I2C-RETAIN-INTR`, `CHK-I2C-RETAIN-CYCLES` and `CHK-NONVAC` hold after their compares, the
 gap accesses all return an error response, and `tb_i2c_irq[1]` reaches 1 before
 gating; `CHK-I2C-GATE-GAP-OBS`, `CHK-I2C-GATE-IRQ-OBS` (gated levels) and
-`CHK-I2C-RETAIN-GATED-WRITE-OBS` record measurements only. Enrolled in: `all`.
+`CHK-I2C-RETAIN-GATED-WRITE-OBS` record measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response code and read data at the gap and past-extent addresses, the three
 interrupt levels while gated and 256 cycles later, and whether the gated writes to
@@ -33612,7 +33617,7 @@ with the last observed state; the line lists each bound and last state.
 *Pass Criteria*: every checker above holds after its compares and every sequence assert holds;
 `CHK-CMDC-RS-OBS` records the counts without an expected value, and the arbitration value and
 `TX_STRETCH` of `CHK-I2C12-TGT-ABNORMAL-END` and the early-STOP values of `CHK-I2C12-UNEXP-STOP` are
-logged without one. Enrolled in: `all`.
+logged without one. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The wire monitor START, STOP and data byte counts at the first read that shows
 `CMD_COMPLETE` during the write, repeated START, read transaction are measured and printed without
@@ -33743,7 +33748,7 @@ fails with the last observed state; the line lists each bound and last state.
 `CHK-NAKOK-CONTROL`, `CHK-NTO-ENABLED`, `CHK-NTO-DISABLED`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS`
 hold after their compares and every sequence assert holds; `CHK-NTO-CLEAR-OBS` additionally requires
 the clear to land inside its cycle limit, and `CHK-STATUS-HALT-OBS` records a measurement only.
-Enrolled in: `all`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `STATUS.HOSTIDLE` while the controller is halted by the NACK, and the events, STOP
 count and pad levels over the 8192 cycles after a `NACK` clear that arrives before the timeout
@@ -33957,7 +33962,7 @@ fails with the last observed state; the line lists each bound and last state.
 *Pass Criteria*: `CHK-ONE-START-PER-STOP`, `CHK-STOP-POSITION`, `CHK-ADDR-VALUES`,
 `CHK-WRITE-PATTERN`, `CHK-READ-LAST-NACK`, `CHK-READ-COUNTS`, `CHK-RX-POP`, `CHK-QUEUE-WHILE-BUSY`,
 `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds;
-`CHK-HOSTIDLE-OBS` records measurements only. Enrolled in: `all`.
+`CHK-HOSTIDLE-OBS` records measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `STATUS.HOSTIDLE` during and after a transaction, read after the push and after each
 STOP, is measured and printed with the wire monitor state without comparing.
@@ -34068,7 +34073,7 @@ fails with the last observed state; the line lists each bound and last state.
 *Pass Criteria*: `CHK-XINST-READ-1-2`, `CHK-IRQ-CMDC-LINES`, `CHK-IRQ-HALT-LINES`, `CHK-NONVAC` and
 `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds;
 `CHK-XINST-UNCFG-OBS`, `CHK-UNEXP-STOP-OBS`, `CHK-UNEXP-CLEAR-OBS` and `CHK-UNEXP-NORMAL-OBS` record
-measurements only. Enrolled in: `all`.
+measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The NACK and halt state after a write to the unconfigured address 0x6E, and
 `INTR_STATE.UNEXP_STOP` of the target instance after a controller STOP straight after the address,
@@ -34177,7 +34182,7 @@ increasing time stamps before the final PASS mark.
 *Pass Criteria*: `CHK-NONVAC` holds after its compares, and every sequence assert holds: the setup
 reads, `BUS_TIMEOUT` within twice VAL, `CONTROLLER_HALT` 1, `STRETCH_TIMEOUT` 0, FMTLVL steady, and
 no EEPROM data byte while halted, in both halts. The six `CHK-FMTRST-REPRO-*` ids record
-measurements only and carry no pass or fail from their values. Enrolled in: `all`.
+measurements only and carry no pass or fail from their values. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Whether a START reaches the pads, whether `INTR_STATE.CMD_COMPLETE` sets and whether
 the FMTLVL entries are consumed after each recovery arm are measured and printed without comparing;
@@ -34302,7 +34307,7 @@ printed after its steps.
 `CHK-I2C-IRQ-THREE-INDEPENDENT`, `CHK-I2C-INSTANCE-INTR-ISOLATION`, `CHK-I2C-CPU-NEIGHBOURS` and
 `CHK-NONVAC` hold after their compares and every sequence assert holds; `CHK-I2C-CPU-VEC-RAISE-OBS`,
 `CHK-I2C-ENABLE-MASK-OBS` and the latency values of `CHK-I2C-CPU-VEC-FALL-OBS` record measurements
-only, the last also requiring the CPU bit to rise and fall within its bound. Enrolled in: `all`.
+only, the last also requiring the CPU bit to rise and fall within its bound. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Which CPU vector bits are high while an output is high, the `tb_i2c_irq[0]` level
 with a state pending and the enable clear, after the enable, after the enable is cleared again and
@@ -34412,7 +34417,7 @@ lines have been printed.
 *Pass Criteria*: `CHK-I2C-STATUS-FORCE`, `CHK-I2C-STATUS-RELEASE`, `CHK-I2C-STATUS-SW-RO`,
 `CHK-I2C-EVENT-NO-RELEASE`, `CHK-I2C-EVENT-PARTIAL-CLEAR`, `CHK-I2C-EVENT-REARM`,
 `CHK-I2C-W1C-ISOLATION` and `CHK-NONVAC` hold after their compares and every sequence assert holds;
-`CHK-I2C-STATUS-LIVE-OBS` records measurements only. Enrolled in: `all`.
+`CHK-I2C-STATUS-LIVE-OBS` records measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Status bits that are live at baseline are not measured; the `INTR_TEST` read-back,
 the list of unmeasured bits, the write responses of the `INTR_STATE` writes on a forced status bit,
@@ -34509,7 +34514,7 @@ lines cover S2 to S6.
 pads read 1 after bring-up, the pull and release legs settle within their bound and their pull
 probes and the disabled-leg pull probes match the compares above; the pad levels of
 `CHK-I2C-OVRD-DISABLED-OBS`, `CHK-I2C-OVRD-PULL-OBS` and `CHK-I2C-OVRD-RELEASE-OBS` and
-`CHK-I2C-VAL-SENSE-OBS` record measurements only. Enrolled in: `all`.
+`CHK-I2C-VAL-SENSE-OBS` record measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The pad levels under every `OVRD` word, the settle cycle and the implied line level
 are measured and printed without comparing the pads, because the specification does not state the
@@ -34644,7 +34649,7 @@ printed after its step.
 `CHK-I2C-CTRL-FIELDS`, `CHK-I2C-CTRL-NEIGHBOURS`, `CHK-I2C-ISOLATION-MATRIX`,
 `CHK-I2C-CTRL-NO-ENGINE` (its compares) and `CHK-NONVAC` hold after their compares and every
 sequence assert holds; `CHK-I2C-RW-OBSERVED` and the printed legs named above record measurements
-only. Enrolled in: `all`.
+only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Write response codes of read-only registers, read values and response codes of
 write-only registers, reserved-bit residue, the `TARGET_ACK_CTRL.NBYTES`, `SMBALERT` and threshold
@@ -34775,7 +34780,7 @@ fails with the last observed state; the line lists each bound and last state.
 `CHK-I2C-TGT-RESTART-ADDRESS`, `CHK-I2C-TGT-ROLE-MIDTRANSFER-RECOVER`, `CHK-NONVAC` and
 `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds;
 `CHK-I2C-TGT-ADDR-ONLY` compares only the ACK and the first entry, and
-`CHK-I2C-TGT-ROLE-MIDTRANSFER-LOG` records measurements only. Enrolled in: `all`.
+`CHK-I2C-TGT-ROLE-MIDTRANSFER-LOG` records measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The ACQ entries after the first entry of an address-only write and
 `INTR_STATE.UNEXP_STOP`, and the bus levels, `STATUS.TARGETIDLE`, `ACQLVL` and entries when
@@ -34911,7 +34916,7 @@ fails with the last observed state; the line lists each bound and last state.
 `CHK-I2C-TGT-ABANDON-RECOVER`, `CHK-I2C-TGT-UNEXP-STOP-REG`, `CHK-I2C-TGT-DETECT-FLAGS`,
 `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds;
 `CHK-I2C-TGT-ABANDON-LOG`, `CHK-I2C-TGT-UNEXP-STOP-LOG` and `CHK-I2C-TGT-DETECT-RACE-LOG` record
-measurements only. Enrolled in: `all`.
+measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The ordered ACQ entry list, `STATUS.TARGETIDLE` and `TXLVL` after each early-ended
 case, `INTR_STATE.UNEXP_STOP` after each early STOP, recovery write and second case A STOP, and the
@@ -34997,7 +35002,7 @@ lines were printed in step order.
 
 *Pass Criteria*: `CHK-I2C-TGT-FLAG-DISABLED-NOSET`, `CHK-I2C-TGT-FLAG-SET`,
 `CHK-I2C-TGT-FLAG-STICKY-W1C` and `CHK-NONVAC` hold after their compares and every sequence assert
-holds; `CHK-I2C-TGT-FLAG-DISABLE-RETAIN-OBS` records measurements only. Enrolled in: `all`.
+holds; `CHK-I2C-TGT-FLAG-DISABLE-RETAIN-OBS` records measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `TARGET_EVENTS` and `INTR_STATE.TX_STRETCH` after `CTRL` is cleared with the flags
 set, read immediately, 256 cycles later and after the written ones, are measured and printed without
@@ -35148,7 +35153,7 @@ bound.
 `CHK-I2C-TGT-CG-UNGATE` (its OKAY reads and retained words) hold after their compares, the recovery write of
 `CHK-I2C-TGT-CG-MIDXFER` matches, and every sequence assert holds;
 `CHK-I2C-TGT-INSTANCE-CONTENTION-LOG`, `CHK-I2C-TGT-NACKH-LOG` and the printed legs of the gate
-checkers record measurements only; `CHK-TIMEOUT-PATHS` lists the bounded waits. Enrolled in: `all`.
+checkers record measurements only; `CHK-TIMEOUT-PATHS` lists the bounded waits. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Two targets on one address, two simultaneous controllers, the bus levels while the
 gate is set mid-transaction and after release, the ACK bits and entries of the write after ungating,
@@ -35283,7 +35288,7 @@ fails with the last observed state; the line lists each bound and last state.
 `CHK-I2C-TGT-TX-AUTO-STRETCH`, `CHK-I2C-TGT-TX-TXRST-RECOVER`, `CHK-I2C-TGT-TX-SW-STRETCH`,
 `CHK-I2C-TGT-TX-SW-RESET-RELOAD`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and
 every sequence assert holds; `CHK-I2C-TGT-TX-AUTO-MIDREAD-LOG`, `CHK-I2C-TGT-TX-TXRST-STRETCH-LOG`
-and `CHK-I2C-TGT-TX-SW-RACE-LOG` record measurements only. Enrolled in: `all`.
+and `CHK-I2C-TGT-TX-SW-RACE-LOG` record measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The exact TX FIFO residue after the two byte read, the hold after the first byte of a
 read that empties the FIFO, the outcome of `TXRST` during an empty-FIFO hold, and `TX_PENDING`, the
@@ -35408,7 +35413,7 @@ printed after its step.
 `CHK-I2C-GAP-READ-DECERR`, `CHK-I2C-DECODE-IDENTITY`, `CHK-I2C-DECODE-ALTERNATE` (its compares),
 `CHK-I2C-GAP-NO-SIDE-EFFECT`, `CHK-I2C-ACCESS-ALIGNED` and `CHK-NONVAC` hold after their compares
 and every sequence assert holds; `CHK-I2C-RESERVED-OBS` and the printed legs of
-`CHK-I2C-RESET-SIDE-OBS` record measurements only. Enrolled in: `all`.
+`CHK-I2C-RESET-SIDE-OBS` record measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The reserved-bit residue of every register and of `I2C_CTRL[0..2]`, the status-type
 `INTR_STATE` bits at reset, the response and value of the FIFO-port and sense reads
@@ -35489,7 +35494,7 @@ fails with the last readings; the line lists each bound and last state.
 
 *Pass Criteria*: `CHK-GATE-ALL-SEE-ALERT`, `CHK-GATE-OTHERS-UNMASKED` (its 1 reads and the 0 read of the cleared instance),
 `CHK-TIMEOUT-PATHS` and `CHK-NONVAC` hold after their compares and every sequence assert holds; the
-cleared instance's `INTR_STATE.SMBALERT` reading records a measurement only. Enrolled in: `all`.
+cleared instance's `INTR_STATE.SMBALERT` reading records a measurement only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The cleared instance's `INTR_STATE.SMBALERT` is measured and printed without
 comparing.
@@ -35577,7 +35582,7 @@ with increasing time stamps, each checker line printed after its step.
 
 *Pass Criteria*: `CHK-IRQ-MASKED`, `CHK-IRQ-TEST-STATE`, `CHK-IRQ-ROUTE`, `CHK-IRQ-ENABLE-TOGGLE`,
 `CHK-IRQ-CLEAR`, `CHK-TIMEOUT-PATHS` and `CHK-NONVAC` hold after their compares and every sequence
-assert holds; `CHK-IRQ-LATENCY-LOG` records measurements only. Enrolled in: `all`.
+assert holds; `CHK-IRQ-LATENCY-LOG` records measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The number of polls, `clk_smc_i` cycles and picoseconds from the enable write to the
 output rising are measured and printed per instance without comparing, because the specification
@@ -35660,7 +35665,7 @@ increasing time stamps, each checker line printed after its step.
 
 *Pass Criteria*: `CHK-SELFCLEAR-OTHER-ADDR`, `CHK-TIMEOUT-PATHS` and `CHK-NONVAC` hold after their
 compares and every sequence assert holds; `CHK-SELFCLEAR-RACE-LOG` records a measurement only.
-Enrolled in: `all`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The settled value of `SMBUS_CTRL.SMBALERT` and the alert pad when a software write of
 1 lands while a transfer to 0x10 is in flight is measured and printed without comparing, because the
@@ -35756,7 +35761,7 @@ step.
 
 *Pass Criteria*: `CHK-PMBUS-WORD-BYTES`, `CHK-PMBUS-NEG-WORD-BYTES`, `CHK-SUS-DURING-XFER`,
 `CHK-SCL-SDA-FIELD-INVARIANT`, `CHK-TIMEOUT-PATHS` and `CHK-NONVAC` hold after their compares and
-every sequence assert holds; `CHK-PMBUS-DECODE-LOG` records measurements only. Enrolled in: `all`.
+every sequence assert holds; `CHK-PMBUS-DECODE-LOG` records measurements only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The Linear11 decode (exponent, mantissa, value) of both words is measured and printed
 without comparing, because the specification does not state the expected decode.
@@ -35885,7 +35890,7 @@ state.
 `CHK-I2C-WIRE-STOP-SETUP-DELTA`, `CHK-I2C-WIRE-BUS-FREE-DELTA`, `CHK-I2C-WIRE-MIN-SET-RUN`,
 `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds;
 `CHK-I2C-WIRE-MEASURED-ONLY` and `CHK-I2C-WIRE-DATA-SETUP-MEASURED` record measurements only.
-Enrolled in: `all`, `hosted`, `i2c`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The reset readback of `TIMING0` to `TIMING4` is logged only, because a stuck-at-zero
 reset cannot be told apart on a 2-state bench; the SDA setup before the SCL rise of the transmitted
@@ -36039,7 +36044,7 @@ recorder state.
 `CHK-I2C-DUAL-LIVENESS`, `CHK-I2C-DUAL-TIMING-DIFF`, `CHK-I2C-DUAL-FIFO-LEVELS`,
 `CHK-I2C-DUAL-CMD-COMPLETE`, `CHK-I2C-DUAL-STOP-COUNT`, `CHK-I2C-DUAL-NACK-ISOLATION`,
 `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds.
-Enrolled in: `all`, `hosted`, `i2c`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The pad level with `I2C_CTRL[1].I2C_EN` clear is not compared; the overlap window and
 the absolute SCL phases, the FIFO levels and the elapsed cycles against the liveness bound are
@@ -36102,7 +36107,7 @@ draws nothing from the seed.
 *Pass Criteria*: `CHK-I2C1-ACKCTRL-NBYTES3`, `CHK-I2C1-ACKCTRL-DECREMENT`, `CHK-I2C1-ACKCTRL-RELOAD`,
 `CHK-I2C1-ACKCTRL-NBYTES-RANGE`, `CHK-I2C1-ACKCTRL-SW-NACK`, `CHK-I2C1-ACKCTRL-NACK-RECORD`,
 `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds.
-Enrolled in: `all`, `hosted`, `i2c`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The `NBYTES` read-backs between bytes, the ACK count of the 0x1FF leg and the `ACQFULL` polls are logged, not compared (LINKED-ISSUE SF-005).
 
@@ -36524,8 +36529,7 @@ and `CHK-I3C-GATE-IDEMPOTENT` hold after their compares; `CHK-I3C-GATED-WRITE-RE
 the SLVERR writes and OKAY reads and prints the slot values without claiming retention;
 `CHK-I3C-GATE-INFLIGHT-GROUPS` holds for the completion and response-class compares and prints the
 in-flight outcomes without claiming them; `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are printed at the
-end. Enrolled in: `all`; also listed in `fabric.toml`
-(tags `ci`, `fabric`).
+end. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Whether each DAT slot still equals its earlier pattern after the gate is cleared is
 measured and printed without a compare, because the specification does not state it. The responses
@@ -36676,8 +36680,7 @@ non-zero count each, and each checker line prints at its own step.
 `CHK-I3C-FULL-LANE-WRITE` and `CHK-I3C-UPPER-LANE-ONLY` hold after their compares, with
 `CHK-NONVAC` printed at the end; the values of hardware-updated fields, the R_hi value after the
 upper-lane-only write and the `RESET_CONTROL` soft-reset behaviour are not claimed. Zero reset words cannot fail on an
-unknown value under a two-state simulator. Enrolled in: `all`; also listed in `fabric.toml`
-(tags `ci`, `fabric`).
+unknown value under a two-state simulator. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The values of the fields hardware can write (hw w or rw, hwclr or hwset) are read,
 printed and compared with reset only in the printout; they are not claimed. The `RESET_CONTROL`
@@ -36804,8 +36807,7 @@ of them is required) and
 the values of hardware-updated fields, the status fields whose force does not set them, the fields
 the RDL marks not implemented, the pad effect of `SOC_PAD_CONF` and `SOC_PAD_ATTR`, and the action
 registers are not claimed. Zero reset words cannot fail on an unknown value under a two-state
-simulator. Enrolled in: `all`; also listed in `fabric.toml`
-(tags `ci`, `fabric`).
+simulator. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The values of the fields hardware can write are read and printed, not asserted. A
 `woclr` status field that stays 0 after its force is measured and printed per instance and not
@@ -37380,7 +37382,7 @@ draws nothing from the seed.
 *Pass Criteria*: all nineteen checkers hold after their compares; the leaf issues at least 80
 SEP_IN accesses and the scoreboard checks at least that many. The upper data halves, `STATUS[1:0]`,
 the ignored-write side effects and the grouped `STATUS` and `IRQS` values are recorded and are not
-part of the claim. Enrolled in: `all`.
+part of the claim. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The upper data half of an empty `READ_DATA` read and of a `WRITE_DATA` read,
 `STATUS[1:0]`, whether the ignored writes to the read-only registers touch `ERROR_FLAGS[1]` or
@@ -37543,7 +37545,7 @@ draws nothing from the seed.
 *Pass Criteria*: all twenty checkers hold after their compares; the leaf issues at least 100 SEP_IN
 accesses and the scoreboard checks at least that many. The `CTRL` 0x3 outcome, the `STATUS` empty
 and full bits, the fate of the grouped words and the grouped read result are recorded and are not
-part of the claim. Enrolled in: `all`.
+part of the claim. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: What a write of `CTRL` 0x3 does is not specified; its response and which FIFOs
 drained are printed without a compare. `STATUS[1:0]` and the empty and full bits are printed, and
@@ -37730,7 +37732,7 @@ draws nothing from the seed.
 *Pass Criteria*: all seventeen checkers hold after their compares; the leaf issues at least 150
 SEP_IN accesses and the scoreboard checks at least that many. The reassertion read count and the
 `IRQS[0]` value after the grouped acknowledge are recorded and are not part of the claim.
-Enrolled in: `all`.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The number of reads until `IRQS[1:0]` reassert is recorded and the timing is not
 compared; the `IRQS[0]` value after an acknowledge grouped with a write that raises the same bit is
@@ -37876,7 +37878,7 @@ bring-up wait; the driver's own 50 microsecond access limit
 *Pass Criteria*: all fourteen checkers hold after their compares; the leaf issues at least 80
 SEP_IN accesses and the scoreboard checks at least that many. The writer `STATUS`, the strobe-0x00
 outcome, and the full-FIFO and empty-FIFO push-with-pop outcomes are recorded and are not part of
-the claim. Enrolled in: `all`.
+the claim. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Writer `STATUS` is printed without a compare. A write with strobe 0x00 is not
 specified, so its response, the peer's following read and any further words are printed. With the
@@ -38068,7 +38070,7 @@ regression.
 *Pass Criteria*: all seventeen checkers hold after their compares; the leaf issues at least 300
 SEP_IN accesses and the scoreboard checks at least that many. The reserved upper bits, the
 `SMC_ATTRIBUTES` field values and the first-access latency are recorded and are not part of the
-claim. Enrolled in: `all`.
+claim. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Bits outside the defined fields of the reset registers are printed and not compared.
 `SMC_ATTRIBUTES.mailbox_depth` and `num_mailboxes` are printed raw and not compared, because the
@@ -38234,7 +38236,7 @@ draws nothing from the seed.
 
 *Pass Criteria*: all sixteen checkers hold after their compares; the leaf issues at least 150
 SEP_IN accesses and the scoreboard checks at least that many. The clamped and wide threshold
-read-backs are recorded and are not part of the claim. Enrolled in: `all`.
+read-backs are recorded and are not part of the claim. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The read-back of the clamped threshold values 2, 5 and 0xFF, and `STATUS[2]` with one
 word and the `WIRQT` read-back for the wider values 0x100 and 0x10000, are printed and not compared,
@@ -39255,7 +39257,7 @@ draws nothing from the seed.
 
 *Pass Criteria*: all twelve checkers hold after their compares; `CHK-UART-THRE-ETBEI-EMPTY` holds
 on its consistency requirements, and whether ID 1 appears for an empty buffer is not part of the
-claim. Enrolled in: `all`.
+claim. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Whether `IIR` reports ID 1 when `ETBEI` is set on an already empty buffer is
 recorded without a compare, because the document does not state it; only `LSR.THRE` reading 1 and
@@ -39402,7 +39404,7 @@ the register description.
 
 *Pass Criteria*: all checkers hold after their compares; the 0x0 reset legs of
 `CHK-LOGENG-RESET-ZERO` and `CHK-LOGENG-UART-EN-RW` are not part of the claim on the 2-state
-bench. The `INTR_TEST` response and data, and partial-strobe writes, are not part of the claim. Enrolled in: `all`.
+bench. The `INTR_TEST` response and data, and partial-strobe writes, are not part of the claim. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The response code and data of an `INTR_TEST` read, at reset and after a write of
 0x11, are printed and not compared, because what the read returns is not specified. Partial
@@ -40214,7 +40216,9 @@ only the harness straps and the fuse image, which the checks do not depend on.
 |`CHK-OCCP-SANITY` |Target and controller scratch 0, sampled together; `TEST_FAIL` from either fails the test
 |===
 
-*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `sanity` only -- held out of `all` because it elaborates `[targets.dual]`, and a coverage regression builds one target per run.
+*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only.
+Enrolled in: `sanity` and `occp_rom` only -- held out of `all` because it elaborates
+`[targets.dual]`, and a coverage regression builds one target per run.
 
 *Scope limit*: The firmware consoles, I3C counters and POST code are diagnostic only and are not
 compared. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` of the boot test are not
@@ -41384,7 +41388,8 @@ Drive `smc_gpio_intf_data_ctrl_write_sweep_test_seq`. Each checker below is a na
 |`CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` |On each of the 65 instances under register control `DATA_CTRL.pad2core` read the bench-driven pad level both ways, `pad2core_en_o` carried the receiver enable, `core2pad_o` carried the `core2pad` field and `core2pad_en_o` stayed 0
 |===
 
-*Pass Criteria*: `CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP`, `CHK-GPIO-INTF-IRQ-TYPE-SWEEP`, `CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP`, `CHK-GPIO-INTF-IRQ-TYPE-SWEEP`, `CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`, `gpio`.
 
 *Scope limit*: None stated.
 
@@ -43231,7 +43236,8 @@ draws nothing from the seed.
 |`CHK-I2C0-TGT-ADDR-STRETCH-READ` |When the held address phase belonged to a read, the target went on holding for a byte to send and was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `TARGET_EVENTS.TX_PENDING` is not raised on the stretched-address read path and that
 leg does not look for it; the register's own contract is checked in
@@ -43284,7 +43290,8 @@ draws nothing from the seed.
 |`CHK-I2C-TGT-ACK-CTRL-NACK` |Writing `TARGET_ACK_CTRL.NACK` at the hold made the target refuse the transfer, which the bench saw as NACKs and software can attribute from the NACKed-data entry
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -43398,7 +43405,8 @@ draws nothing from the seed.
 |`CHK-I2C-TGT-RESTART` |A repeated START in a healthy transaction was recorded as a restart entry; inside a transaction the target had already refused, the new address was acknowledged and nothing after it with `NACK_ADDR_AFTER_TIMEOUT` clear, and refused with it set, with the transaction counted once and no restart recorded
 |===
 
-*Pass Criteria*: all three checkers hold after their compares on every instance, and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares on every instance, and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -43454,7 +43462,8 @@ draws nothing from the seed.
 |`CHK-I2C0-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -43504,7 +43513,8 @@ draws nothing from the seed.
 |`CHK-I2C-CTRL-STRETCH-HELD` |At every hold point the transfer ran longer by about the hold and still delivered every byte
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -43555,7 +43565,8 @@ draws nothing from the seed.
 |`CHK-I2C-CTRL-SYMBOL-UNSTABLE` |An edge made inside the high window of a pulse the controller receives raised `SDA_UNSTABLE` and returned the controller to idle, at both received pulses
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Nothing is asserted about the transfer after an injection: on this DUT the next transaction from the same controller is NACKed even once the events are cleared, so each leg re-enables the controller from scratch. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Nothing is asserted about the transfer after an injection: on this DUT the next transaction from the same controller is NACKed even once the events are cleared, so each leg re-enables the controller from scratch.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Whether a driven pulse also reports `SDA_UNSTABLE`, or a received one
 `SDA_INTERFERENCE`, is not specified and not graded; the `INTR_STATE` word each pulse left is
@@ -43611,7 +43622,8 @@ draws nothing from the seed.
 |`CHK-UART-RXILVL-UNSUPPORTED` |With the trigger level above the FIFO depth a character still arrived and the received-data-ready interrupt stayed away
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -43666,7 +43678,8 @@ The controller's third ending, the STOP it makes when `CTRL.ENABLEHOST` is clear
 |`CHK-I2C-CTRL-READ-256` |A read with a count of zero returned 256 bytes, the target's whole memory in order
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The controller's third ending, the STOP it makes when `CTRL.ENABLEHOST` is cleared
 with a transaction still open, is left to `smc_i2c_controller_disable_stop_test`.
@@ -43775,7 +43788,8 @@ Drive `smc_i2c_target_addr_stretch_test_seq` with the instance set to 1. The ste
 |`CHK-I2C1-TGT-ADDR-STRETCH-READ` |The held address phase of a read was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -43820,7 +43834,8 @@ Drive `smc_i2c_target_addr_stretch_test_seq` with the instance set to 2. The ste
 |`CHK-I2C2-TGT-ADDR-STRETCH-READ` |The held address phase of a read was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -43864,7 +43879,8 @@ Drive `smc_i2c_target_fast_controller_test_seq` with the instance set to 1. The 
 |`CHK-I2C1-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -43909,7 +43925,8 @@ Drive `smc_i2c_target_fast_controller_test_seq` with the instance set to 2. The 
 |`CHK-I2C2-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -44112,7 +44129,8 @@ draws nothing from the seed.
 |`CHK-I2C-TGT-EVENTS-RETAIN-ABORT` |Both flags, set by the target itself, survived a word of zeros and a word of ones that strobed only the top byte lane, so their own lane carried a one it was not enabled to take, and cleared only on a written one
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -44169,7 +44187,8 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 |`CHK-I2C-CTRL-PENDING-RESTART` |The controller disabled with a repeated START pending went idle without issuing it
 |===
 
-*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: SDA changing while the controller holds a pulse high is not driven here;
 `smc_i2c_controller_control_symbol_test` covers it.
@@ -44219,7 +44238,8 @@ draws nothing from the seed.
 |`CHK-I2C-CTRL-DISABLE-STOP-IDLE` |Clearing the enable with the controller parked mid-transaction made one STOP on the pads, raised `CMD_COMPLETE`, released both pads and returned the controller to idle
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The enable cleared between two format entries of a transfer in flight is not driven,
 because no document states whether a STOP follows there; the token that graded it is withdrawn.
@@ -44516,7 +44536,8 @@ draws nothing from the seed.
 |`CHK-I2C-CTRL-RX-OVERFLOW` |An undrained over-long read raised `RX_OVERFLOW` and `RXFULL`, the FIFO held the first bytes in order, and the interrupt cleared on a written one
 |===
 
-*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -44581,7 +44602,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 |`CHK-I2C-CTRL-EDGE-SHORT-SETUP` |A repeated START set up too briefly for SCL to be seen high left the controller idle with no event
 |===
 
-*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: In the too-brief repeated START leg, how many STARTs the bench target counts and
 whether `INTR_STATE.STRETCH_TIMEOUT` is set are recorded, not compared.
@@ -44656,7 +44678,8 @@ draws nothing from the seed.
 |`CHK-TIMEOUT-PATHS` |One entry per bounded wait of the leaf, each with its bound, fail-on-expiry path and the last state its expiry reports: the SEP_IN access bound, and from the I2C0 legs the LSIO-ready poll, the `TXFULL` fill and the VIP SCL-release bound (in `smc_i2c_protocol_vip`). The I2C1 legs add pad level, pad edge, target idle, acquisition drain and level, transfer completion, `RXFULL`, RX drain and idle, `INTR_STATE`, bus recovery and their own VIP SCL-release bound. The fixed waits of the I2C0 legs are listed as fixed waits with no expiry
 |===
 
-*Pass Criteria*: every checker holds after its compare and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: every checker holds after its compare and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -44858,7 +44881,8 @@ the register description.
 |`CHK-I2C-SMBALERT-HWCLR` |`SMBALERT` stayed set when written over itself and cleared when the target was addressed
 |===
 
-*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -44914,7 +44938,8 @@ draws nothing from the seed.
 |`CHK-UART-TX-CUT` |After a character was cut off by the divisor going to 0, the next character read back intact
 |===
 
-*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Which of the two characters written with the divisor at 0 arrives is recorded,
 because no document says whether the second write replaces the first or is dropped; on this RTL the
@@ -44970,7 +44995,8 @@ draws nothing from the seed.
 |`CHK-LOG-ENGINE-WRITE-ERR-TEST` |`INTR_TEST.LOG_WRITE_ERR` set the write status alone, which raised the line with only its interrupt enabled; its written one cleared it and the line dropped
 |===
 
-*Pass Criteria*: every checker holds after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: every checker holds after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `LOG_WRITE_ERR` has no bus to come from, since the engine's write port reaches only
 its own wrapper's UART register blocks, which answer every address without error; its status is set
@@ -45268,7 +45294,8 @@ draws nothing from the seed.
 |`CHK-I2C-PAD-LSIO-DISABLE` |`lsio_disable` cleared `lsio_enable` on the SCL pad, also with `lsio_select` forced, and clearing it restored the register
 |===
 
-*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -45522,7 +45549,8 @@ draws nothing from the seed.
 |`CHK-CPU-UNCORE-RESET` |The uncore reset held alone set `reset_applied`, and releasing it cleared `reset_applied` and `reset_timeout`
 |===
 
-*Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: the checker holds after its compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`, `reset`.
 
 *Scope limit*: None stated.
 
@@ -45884,7 +45912,8 @@ draws nothing from the seed.
 |`CHK-I2C-NACK-AND-BUS-TIMEOUT` |With a NACK timeout and bus timeouts around it, the address was acknowledged, the data byte NACKed and the START entry first in the ACQ FIFO at every point
 |===
 
-*Pass Criteria*: every checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: every checker holds after its compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: In the target-disable sweep the two points between the clear-before and raised-after
 regions are recorded, not compared. In the timeout sweep the rest of the ACQ FIFO after the START
@@ -45933,7 +45962,8 @@ draws nothing from the seed.
 |`CHK-UART-FCR-ON-TIMEOUT` |After an FCR write placed around the clock the receive timeout fires, a byte received with the FIFO enabled again read back intact at every point
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds.
+Enrolled in: `all`, `hosted`.
 
 *Scope limit*: None stated.
 
@@ -46090,7 +46120,7 @@ Phase 3 tests: the weekly `rtl_issue` reproducer
 `smc_isolate_req_smc_lane_test` and the two ROM hold-outs
 `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` are held-out cards under
 <<smc-held-out-testcases>> with their own closing conditions, and their summary
-rows read "held out". The three `sanity` leaves of the dual elaboration are
+rows read "held out" beside the phase. The three `sanity` leaves of the dual elaboration are
 Phase 1 cards held out of `all` for the elaboration reason that
 <<smc-held-out-testcases>> states, not parked.
 
@@ -47900,11 +47930,6 @@ net or the register that the observation would need.
 |`ADD-PORT`
 |`smc_dual_base_addressing_test` grades the register and the decode and does not claim the port.
 |<<smc-vplan-area-fabric,FABRIC>>
-|A SYS_IN access whose AxUSER carries a non-zero source ID.
-|Every SYS_IN master of the bench presents AxUSER 0, so a non-zero source ID matched against a wildcard `src_id` 0 entry is not reachable.
-|`ADD-PORT`
-|`smc_infilt_attr_match_test` grades the other attribute matches and does not claim the source-ID match (`hw/ip/axi_filter/regs/filter_ctrl.rdl`, `src_id`). `smc_infilt_rule_matrix_rand_test` (551, planned) drives the lane non-zero through `axi_user` of the SYS_IN items and supersedes this row when it lands.
-|<<smc-vplan-area-fabric,FABRIC>>
 |The W, R and B channels of the external AXI-Lite port.
 |The signal list taps the external port's AW and AR channels only (`tb_axil_external_awvalid`, `tb_axil_external_awaddr`, `tb_axil_external_arvalid`, `tb_axil_external_araddr`).
 |`ADD-PORT`
@@ -48503,6 +48528,12 @@ the wrong reason.
 [[sec-293-smc_isolate_req_smc_lane_test]]
 ===== 293 `smc_isolate_req_smc_lane_test`
 
+*Phase*: 2
+
+*Area*: RESET
+
+*Status*: held out
+
 *Source Module*: `smc_isolate_req_smc_lane_test`
 
 *BFM / Model*: `tb_cfg_flr_pf_active` raises the request; observation on `ISOLATE_REQ_SMC_REG`
@@ -48532,6 +48563,12 @@ Drive `smc_isolate_req_smc_lane_test_seq`. Each checker below is a named compare
 '''''
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
 ===== 161 `smc_occp_dual_unsecure_boot_test`
+
+*Phase*: 1
+
+*Area*: OCCP
+
+*Status*: held out
 
 *Source Module*: `smc_occp_dual_unsecure_boot_test`
 
@@ -48583,6 +48620,12 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 
 [[sec-162-smc_prod_rom_occp_ready_test]]
 ===== 162 `smc_prod_rom_occp_ready_test`
+
+*Phase*: 1
+
+*Area*: OCCP
+
+*Status*: held out
 
 *Source Module*: `smc_prod_rom_occp_ready_test`
 

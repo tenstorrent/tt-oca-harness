@@ -15,9 +15,9 @@ msg_be=0):
     big-endian on the byte lane.
   * MSG: pushed to MSG_FIFO as 32-bit words, consumed little-endian per word
     (msg_be=0).
-  * DIGEST: CFG.digest_swap=0 -> {DIGEST_0..DIGEST_7} with DIGEST_0 as the most-
-    significant word equals the standard big-endian SHA-256 digest; so digest
-    word i == big-endian word i of the HMAC-SHA256 output.
+  * DIGEST: DIGEST_0 holds digest bytes 0..3 (hmac.adoc, CFG.digest_swap). The
+    text does not state the byte order inside a word at digest_swap=0, so the
+    golden accepts the big-endian or the little-endian read (DIGEST_ORDERS below).
 """
 
 from __future__ import annotations

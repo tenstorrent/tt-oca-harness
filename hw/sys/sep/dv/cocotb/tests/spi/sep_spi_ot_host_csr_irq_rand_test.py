@@ -41,7 +41,7 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   conditions selected by EVENT_ENABLE ... not a latched error
                   event" (hw/sys/sep/doc/spi.adoc:84-86) and "follows the level
                   of the events selected by EVENT_ENABLE"
-                  (doc/programmer/src/sep-programming.adoc:792-793).
+                  (doc/programmer/src/sep-programming.adoc:819-820).
                   INTR_ENABLE raises and drops sep_internal_interrupts[13]
                   (PIC source 14) for both sources.
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
@@ -523,7 +523,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         #   write of 1 to INTR_TEST.SPI_EVENT forces it to 1, and with
         #   EVENT_ENABLE = 0 it follows the selected event level back to 0 once
         #   INTR_TEST is written back to 0 (spi.adoc:84-86,
-        #   sep-programming.adoc:792-793).
+        #   sep-programming.adoc:819-820).
         #
         # The wrapper ORs the two core lines onto one SEP interrupt. That OR
         # is sampled on sep_internal_interrupts[13].
@@ -548,6 +548,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_TEST, 0)
+        # Control: the write of 0 landed (a non-OKAY write response raises in
+        # spi.wr), so the latch read below grades a write the DUT took.
+        self.logger.info(
+            "CTL-ZERO-WR LOG seed=%d reg=INTR_TEST data=0x0 bresp=OKAY", self.random_seed()
+        )
         st = await self.spi.rd(INTR_STATE)
         assert st & INTR_ERROR, (
             f"CHK-INTR ERROR: the state latch followed INTR_TEST down instead of "
@@ -1439,6 +1444,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         # A write of 0 clears no bit.
         expect = await self._l2_accumulate([d["cmd_kind"], "UNDERFLOW", "OVERFLOW"])
         await self.ops.wr(ERROR_STATUS, 0)
+        # Control: the write of 0 landed (a non-OKAY write response raises in
+        # ops.wr), so the readback below grades a write the DUT took.
+        self.logger.info("CTL-ZERO-WR LOG seed=%d reg=ERROR_STATUS data=0x0 bresp=OKAY", self.seed)
         got = await self.ops.rd(ERROR_STATUS)
         self._grade(
             "CHK-SPI-ERR-MASK",

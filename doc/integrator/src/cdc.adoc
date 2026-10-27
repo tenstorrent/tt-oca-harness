@@ -207,7 +207,7 @@ requirements. It is emitted per ordered clock pair, never group-wide, because a
 20 ns bound inside a group would mask genuine setup failures on synchronous paths.
 
 *Layer 2* is the per-instance `set_max_delay` output of the three steps above, with
-two deliberate carve-outs:
+three deliberate carve-outs:
 
 * *Paths from primary inputs revert to the default.* A synchronizer input
   reachable from a top-level port carries that port's `set_input_delay`, which is a
@@ -220,6 +220,14 @@ two deliberate carve-outs:
   uncertainty. These are emitted commented out. OCAH has five, where OpenTitan
   AES, KMAC and OTBN instantiate `prim_sync_reqack_data` on EDN and OTP interfaces
   that are separate domains upstream but share a clock in SEP.
+* *Same-clock paths into a synchronizer keep their setup check.* A synchronizer's
+  bound applies `-from` the clocks that launch into it (`cdc_launch_clocks`: every
+  clock but the capturing ones) and `-to` the timing endpoints behind its input pin
+  (`all_fanout -endpoints_only`), not the hierarchical pin itself, which would
+  become an endpoint and cut every other path through it. Logic on the capturing
+  clock that reaches the input -- a mux that also selects a same-domain source -- is
+  then timed against a full period, as any other path, rather than against half of
+  one.
 
 [[cdc-signoff-collateral]]
 == CDC/RDC sign-off collateral
