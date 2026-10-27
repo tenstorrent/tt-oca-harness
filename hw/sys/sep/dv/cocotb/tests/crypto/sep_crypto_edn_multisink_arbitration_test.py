@@ -105,6 +105,7 @@ from env.sep_hmac_golden import SepDigestOrder, hmac_sha2_bytes, sha2_bytes
 from env.sep_kmac_golden import kmac_family_words, sha3, shake
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import EDN
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
     AES_DATA_IN_0,
@@ -254,11 +255,13 @@ class CryptoEdnMultisinkCfg:
 _TEST_NAME = "sep_crypto_edn_multisink_arbitration_test"
 
 # Generate budget of the leg, in 32-bit EDN words. The open test writes no
-# EDN.BOOT_GEN_CMD, so EDN issues the boot Generate with the reset word 0xFFF003
-# (vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc, BOOT_GEN_CMD):
-# GLEN 0xFFF blocks of 128 bits = 16380 words. Half of it is the budget; the other
-# half covers the words the endpoint FIFOs of the other clients buffer.
-_EDN_BUDGET_WORDS = 8190
+# EDN.BOOT_GEN_CMD, so EDN issues the boot Generate with the RDL reset word of
+# BOOT_GEN_CMD. GLEN is command-header bits 23:12, in blocks of 128 bits
+# (vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md:180-183).
+# Half of the generated words is the budget; the other half covers the words the
+# endpoint FIFOs of the other clients buffer.
+_EDN_BOOT_GLEN = (EDN.reset("BOOT_GEN_CMD") >> 12) & 0xFFF
+_EDN_BUDGET_WORDS = _EDN_BOOT_GLEN * (128 // 32) // 2
 
 # crypto_edn_*_o client index per engine: 0 AES, 1 KMAC, 2 OTBN RND, 3 OTBN URND.
 _EDN_CLIENTS = {"aes": (0,), "kmac": (1,), "otbn": (2, 3), "hmac": ()}
