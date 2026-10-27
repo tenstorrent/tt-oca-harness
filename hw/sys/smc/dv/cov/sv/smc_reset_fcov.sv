@@ -140,18 +140,20 @@ module smc_reset_fcov #(
   `OCAH_FCOV_COVER(c_reset_state_partial_release, reset_state_partial_e, clk_ref_i, not_powered)
   `OCAH_FCOV_COVER(c_reset_state_all_released, reset_state_all_released_e, clk_ref_i, not_powered)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups mirroring the points above. The
-  // cross of reset source against release state is the part a flat list
-  // of cover properties cannot express.
+  // Covergroups mirroring the points above. The cross of reset source
+  // against release state is the part a flat list of cover properties cannot
+  // express.
   // ------------------------------------------------------------------
   covergroup cg_reset_state with function sample (logic [3:0] state);
     option.per_instance = 1;
     cp_state: coverpoint state {
       bins all_held = {4'b0000};
       bins all_released = {4'b1111};
-      bins partial[] = {[4'b0001 : 4'b1110]};
+      // The partial bins list only the states the ignore_bins below leave:
+      // on Verilator, a value that a bin and an ignore_bins both list counts
+      // in the bin.
+      bins partial[] = {4'b1000, 4'b1001, 4'b1100, 4'b1101};
       // The vector is {powergood, cold_stable_ref, primary_ref, primary_smc}.
       // powergood low holds the cold-stable reset and every primary derives
       // from it, so no lower bit rises while powergood is low.
@@ -190,6 +192,5 @@ module smc_reset_fcov #(
                            ndm_requested_e, flr_pf_active_e);
     end
   end
-`endif
 
 endmodule : smc_reset_fcov

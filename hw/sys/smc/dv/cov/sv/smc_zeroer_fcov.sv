@@ -249,10 +249,9 @@ module smc_zeroer_fcov (
   `OCAH_FCOV_COVER(c_zeroer_status_read, status_read_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_zeroer_write_response, b_response_e, clk_smc_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the FSM transition table and the
-  // gate-term crosses, neither of which a flat point list can express.
+  // Covergroups: the FSM transition table and the gate-term tuples, neither
+  // of which a flat point list can express.
   // ------------------------------------------------------------------
   covergroup cg_zeroer_fsm with function sample (logic [2:0] prev, logic [2:0] cur);
     option.per_instance = 1;
@@ -270,17 +269,21 @@ module smc_zeroer_fcov (
       bins issue_data = {3'b100};
       bins other = default;
     }
-    // The FSM leaves ST_IDLE only for ST_ISSUE_ADDR and ST_ISSUE_ADDR only
-    // for ST_ISSUE_DATA; ST_ERROR is entered only from an encoding outside the
-    // enum and is never left. The remaining pairs are not transitions the
-    // FSM can make.
-    x_transition: cross cp_prev, cp_cur{
-      ignore_bins from_idle = binsof(cp_prev.idle) &&
-          (binsof(cp_cur.issue_data) || binsof(cp_cur.error_s));
-      ignore_bins from_issue_addr = binsof(cp_prev.issue_addr) &&
-          (binsof(cp_cur.idle) || binsof(cp_cur.error_s));
-      ignore_bins from_issue_data = binsof (cp_prev.issue_data) && binsof (cp_cur.error_s);
-      ignore_bins leaving_error = binsof (cp_prev.error_s) && !binsof (cp_cur.error_s);
+    // {prev, cur}: the FSM leaves ST_IDLE only for ST_ISSUE_ADDR and
+    // ST_ISSUE_ADDR only for ST_ISSUE_DATA; ST_ERROR is entered only from an
+    // encoding outside the enum and is never left. The remaining pairs are
+    // not transitions the FSM can make.
+    cp_transition: coverpoint {
+      prev, cur
+    } {
+      bins error_s_to_error_s = {6'b000_000};
+      bins idle_to_idle = {6'b001_001};
+      bins idle_to_issue_addr = {6'b001_010};
+      bins issue_addr_to_issue_addr = {6'b010_010};
+      bins issue_addr_to_issue_data = {6'b010_100};
+      bins issue_data_to_idle = {6'b100_001};
+      bins issue_data_to_issue_addr = {6'b100_010};
+      bins issue_data_to_issue_data = {6'b100_100};
     }
   endgroup
 
@@ -300,15 +303,22 @@ module smc_zeroer_fcov (
     // With disable_cg and busy both clear only the reset term is left, and the
     // primary reset also clears CLOCK_GATE_CONTROL.ZEROER_CG_EN (reset 0),
     // which sets disable_cg, so the AXI clock never runs on that term alone.
-    x_axi_terms: cross cp_dis_cg, cp_busy, cp_axi_clk{
-      ignore_bins held_while_disabled = binsof (cp_dis_cg.disabled) && binsof (cp_axi_clk.held);
-      ignore_bins held_while_busy = binsof (cp_busy.busy) && binsof (cp_axi_clk.held);
-      ignore_bins running_on_reset_alone = binsof (cp_dis_cg.gating) && binsof (cp_busy.idle) &&
-          binsof (cp_axi_clk.running);
+    cp_axi_terms: coverpoint {
+      dis_cg, busy_s, axi_moving
+    } {
+      bins gating_idle_held = {3'b000};
+      bins gating_busy_running = {3'b011};
+      bins disabled_idle_running = {3'b101};
+      bins disabled_busy_running = {3'b111};
     }
-    x_reg_terms: cross cp_dis_cg, cp_bus, cp_reg_clk{
-      ignore_bins held_while_disabled = binsof (cp_dis_cg.disabled) && binsof (cp_reg_clk.held);
-      ignore_bins held_while_active = binsof (cp_bus.active) && binsof (cp_reg_clk.held);
+    cp_reg_terms: coverpoint {
+      dis_cg, bus_act, reg_moving
+    } {
+      bins gating_idle_held = {3'b000};
+      bins gating_idle_running = {3'b001};
+      bins gating_active_running = {3'b011};
+      bins disabled_idle_running = {3'b101};
+      bins disabled_active_running = {3'b111};
     }
   endgroup
 
@@ -317,7 +327,7 @@ module smc_zeroer_fcov (
 
   // A clock movement seen at one sample is the gated edge of the previous
   // cycle, which the gate enabled from the terms of that cycle, so the terms
-  // are crossed one sample late.
+  // are taken one sample late.
   logic gate_dis_cg_q, gate_busy_q, gate_rst_q, gate_bus_q;
   always_ff @(posedge clk_smc_i) begin
     gate_dis_cg_q <= disable_cg_i;
@@ -333,6 +343,5 @@ module smc_zeroer_fcov (
                                reg_clk_toggling);
     end
   end
-`endif
 
 endmodule : smc_zeroer_fcov

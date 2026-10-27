@@ -222,10 +222,9 @@ module smc_dma_fcov (
   `OCAH_FCOV_COVER(c_enable_from_backend_busy, enable_from_backend_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_gated_when_neither, gated_when_neither_e, clk_smc_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the burst-shape and gate crosses the
-  // flat point list cannot express.
+  // Covergroups: the burst-shape and gate crosses the flat point list cannot
+  // express.
   // ------------------------------------------------------------------
   covergroup cg_dma_burst with function sample (logic [7:0] awlen, logic [7:0] strb_count);
     option.per_instance = 1;
@@ -250,14 +249,15 @@ module smc_dma_fcov (
     cp_backend: coverpoint backend;
     cp_fe_clk: coverpoint fe_clk_moving {bins held = {1'b0}; bins running = {1'b1};}
     cp_be_clk: coverpoint be_clk_moving {bins held = {1'b0}; bins running = {1'b1};}
-    // dma.adoc (SMC DMA Clock Gating Configuration): the backend clock runs
-    // while the frontend or backend is busy, and the frontend clock runs then
-    // too and also while the control port has a transaction outstanding, with
-    // the same hysteresis, so the frontend clock is never held while the
-    // backend clock runs.
-    x_gaters: cross cp_fe_clk, cp_be_clk{
-      ignore_bins frontend_held_backend_running = binsof (cp_fe_clk.held) &&
-          binsof (cp_be_clk.running);
+    // {fe_clk_moving, be_clk_moving}. The backend clock runs while the
+    // frontend or backend is busy, and the frontend clock runs then too and
+    // also while the control port has a transaction outstanding, with the
+    // same hysteresis (dma.adoc, SMC DMA Clock Gating Configuration), so the
+    // frontend clock is never held while the backend clock runs.
+    cp_gaters: coverpoint {
+      fe_clk_moving, be_clk_moving
+    } {
+      bins held_held = {2'b00}; bins running_held = {2'b10}; bins running_running = {2'b11};
     }
     x_sources: cross cp_wakeup, cp_backend;
   endgroup
@@ -280,6 +280,5 @@ module smc_dma_fcov (
                             gated_clk_toggling);
     end
   end
-`endif
 
 endmodule : smc_dma_fcov

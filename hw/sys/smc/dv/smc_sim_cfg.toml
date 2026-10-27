@@ -459,9 +459,13 @@ build_dir = "hw/sys/smc/dv/build/cocotb"
 # common_cells inline asserts are compiled out on Verilator and run on VCS
 # and Xcelium. Verilator also keeps +define+ASSERTS_OFF below.
 
+# COVERIGN is an error: Verilator drops a covergroup construct it does not
+# support with only that warning, and then builds other bins than the
+# commercial simulators.
 [targets.default.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
+  "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
 ]
@@ -495,6 +499,7 @@ flags = [
   # under -Wno-fatal; a port that nothing drives must stop the build instead.
   "-Werror-IMPLICIT",
   "-Wno-BLKLOOPINIT",
+  "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
 ]

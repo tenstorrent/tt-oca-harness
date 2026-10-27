@@ -1942,11 +1942,10 @@ module smc_uvm_top
 
     // ------------------------------------------------------------------
     // Functional coverage (SMC_FCOV.adoc): shared by both tb shapes. Each
-    // module carries Verilator-safe cover-property points -- which land in
-    // the `user` metric family under --coverage-user -- plus commercial-only
-    // covergroups internally. Every port below is a smc_tb_signal_list.svh
-    // signal, so no hierarchical reference and no smc_public_scope.vlt
-    // change is needed.
+    // module carries cover-property points -- which land in the `user`
+    // metric family under --coverage-user -- and most also carry
+    // covergroups. Every port below is a smc_tb_signal_list.svh signal, so no
+    // hierarchical reference and no smc_public_scope.vlt change is needed.
     //
     // Single-instance body only: the SMC_DUAL port surface is narrower and
     // does not carry these observables.
