@@ -29,12 +29,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import RESP_CODE
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
-RESP_OKAY = 0
+RESP_OKAY = RESP_CODE["OKAY"]
 
 # AxSIZE encodings: 0 = 1 byte, 1 = 2 bytes, 2 = 4 bytes.
 SIZE_BYTES = {0: 1, 1: 2, 2: 4}
@@ -169,8 +170,12 @@ class SepAxiStrobeWindow:
         await self.test.start_seq(seq)
         return seq.resp_code
 
-    async def probe_narrow(self, w: NarrowWrite) -> str | None:
-        """None when the narrow write touched only its own byte lanes."""
+    async def stage(self, w: NarrowWrite) -> str | None:
+        """Write the prime word and read it back. None when the word holds it.
+
+        The read-back is the old word of the narrow write that follows: the
+        FCOV merge sampler takes the last read of the word as that old value.
+        """
         resp = await self._wr(w.addr, w.prime)
         if resp != RESP_OKAY:
             return f"prime write 0x{w.addr:08x} resp={resp}"
@@ -183,7 +188,13 @@ class SepAxiStrobeWindow:
                 f"0x{w.addr:08x} prime 0x{w.prime:08x} read back 0x{staged:08x};"
                 " the narrow-write compare needs a known starting word"
             )
+        return None
 
+    async def narrow(self, w: NarrowWrite) -> str | None:
+        """None when the narrow write touched only its own byte lanes.
+
+        Runs after ``stage`` returned None for the same ``w``.
+        """
         nbytes = SIZE_BYTES[w.size]
         resp = await self._wr(w.addr + w.byte_off, w.value, size=w.size)
         if resp != RESP_OKAY:

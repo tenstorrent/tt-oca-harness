@@ -44,12 +44,27 @@ Checkers:
                      answers OKAY with its staged value through the one
                      granule that holds it, so the external master reaches
                      every probe word through the filter.
+  CHK-WALK-WRITEBACK one drawn entry, two range writes from the reset bounds
+                     (hw/ip/axi_filter/doc/index.adoc:124-129): START and END
+                     in one 8-byte granule, neither on its granule edge, read
+                     back as the widened values (START rounded down, END
+                     rounded up); START and END in two adjacent granules,
+                     neither on its granule edge, read back as written. Each
+                     write is graded first with the coverage window closed,
+                     with a read of X through the enabled entry (OKAY with the
+                     staged value: matching widens the range in both cases);
+                     the same write from the same reset bounds is then graded
+                     again inside the coverage window. cp_writeback samples
+                     only on the pass label writeback_pass, which the leaf
+                     raises after the graded check passed over all four halves.
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_writeback_pass
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -57,7 +72,10 @@ from sep_reg_meta import SEP_CPU_CTRL
 from seq_lib.sep_fabric_csr_bank_seq import INFILT_BASE
 from seq_lib.sep_fabric_entry_walk_seq import (
     ADDR_MASK,
+    END_RESET,
+    GRAN_MASK,
     GRANULE_BYTES,
+    START_RESET,
     SepFilterEntryWalker,
     bit_legs,
     exact_window,
@@ -74,7 +92,10 @@ from seq_lib.sep_inbound_filter_rule_seq import (
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_N, SCRATCH_STRIDE
 
+TEST = "sep_fabric_inbound_filter_window_walk_test"
 _MAX_SENSE_CYCLES = 20_000
+# A pass label is held this many clk_i edges so the sampler sees it.
+_LABEL_CLOCKS = 2
 # Distinct non-zero disable vectors so the decoded FEAT_CTRL is non-vacuous.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
@@ -154,6 +175,62 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
             f"{chk} FAIL: entry {e} denied read 0x{addr:08x} returned the staged "
             f"value 0x{data:08x}; the blocked access reached the CSR"
         )
+
+    def _grade(self, chk: str, ok: bool, values: str) -> None:
+        """Log one PASS line; on a FAIL close the coverage window first, then raise."""
+        if ok:
+            self.logger.info("%s PASS %s", chk, values)
+            return
+        close_graded_window(self.logger)
+        line = f"{chk} FAIL {values}"
+        self.logger.error(line)
+        raise AssertionError(line)
+
+    async def _writeback_leg(
+        self, filt, e: int, leg: str, start: int, end: int, staged: int, *, graded: bool
+    ) -> None:
+        """CHK-WALK-WRITEBACK: one range write from the reset bounds, read back."""
+        if filt.models[e].start != START_RESET or filt.models[e].end != END_RESET:
+            raise RuntimeError(f"entry {e} is not at the reset bounds before the {leg} leg")
+        widened = (start & ~GRAN_MASK & ADDR_MASK, end | GRAN_MASK)
+        if widened == (start, end):
+            raise RuntimeError(f"{leg} leg 0x{start:x}..0x{end:x} sits on its granule edges")
+        same = granule(start) == granule(end)
+        want = widened if same else (start, end)
+        if graded:
+            open_graded_window(TEST, self.logger)
+        try:
+            await filt.program_window(e, start, end)
+            got = await filt.read_window(e)
+            self._grade(
+                "CHK-WALK-WRITEBACK",
+                got == want,
+                f"leg={leg} entry={e} pass={'graded' if graded else 'first'} granules="
+                f"{'one' if same else 'two'} written=0x{start:014x}/0x{end:014x} "
+                f"read=0x{got[0]:014x}/0x{got[1]:014x} want=0x{want[0]:014x}/0x{want[1]:014x} "
+                f"widened=0x{widened[0]:014x}/0x{widened[1]:014x}",
+            )
+            if graded:
+                # The cp_writeback codes of the four read-backs sample only on
+                # this release, inside the window, after the check passed.
+                set_writeback_pass(True, self.logger)
+                await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+                set_writeback_pass(False)
+                await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+        finally:
+            if graded:
+                close_graded_window(self.logger)
+        if not graded:
+            # Matching widens the range in both cases, so X is admitted.
+            await filt.set_enabled(e, True)
+            resp, data = await self._ext_read(X)
+            self._grade(
+                "CHK-WALK-WRITEBACK",
+                resp == RESP_OKAY and data == staged,
+                f"leg={leg} entry={e} ext read 0x{X:08x} resp={resp} data=0x{data:08x} "
+                f"want OKAY and 0x{staged:08x}",
+            )
+        await filt.restore(e)
 
     async def run_scenario(self) -> None:
         rng = SepSeededRng(self.random_seed())
@@ -235,6 +312,19 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
                 p.above_start,
                 p.below_end,
             )
+
+        # Write-back legs: drawn after every draw of the walk above.
+        wb_entry = rng.randrange(INFILT_N_ENTRIES)
+        xg = granule(X) * GRANULE_BYTES
+        xng = granule(X_NEXT) * GRANULE_BYTES
+        one_lo = rng.randrange(1, GRAN_MASK)
+        one = (xg | one_lo, xg | rng.randrange(one_lo, GRAN_MASK))
+        two = (xg | rng.randrange(1, GRANULE_BYTES), xng | rng.randrange(0, GRAN_MASK))
+        legs = (("one-granule", *one), ("two-granule", *two))
+        for leg, s, e_ in legs:
+            await self._writeback_leg(filt, wb_entry, leg, s, e_, staged, graded=False)
+        for leg, s, e_ in legs:
+            await self._writeback_leg(filt, wb_entry, leg, s, e_, staged, graded=True)
 
         n = len(plans)
         self.logger.info(
