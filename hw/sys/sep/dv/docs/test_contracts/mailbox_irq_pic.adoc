@@ -136,8 +136,10 @@
 . Confirm `PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` both read 0, so the assertions below cannot be satisfied by stale state.
 . HMAC control: read two bytes at the aligned HMAC `CFG` offset (AxSIZE=2). Require one R beat answered OKAY and both registers still 0.
 . HMAC narrow read: read two bytes at `CFG` + 2 (AxSIZE=2). The read ends on the word boundary, so the master issues one beat. Require one R beat answered OKAY and both registers still 0.
-. HMAC probe: write two bytes at `CFG` + 2 (byte lanes 2 and 3). `CFG` owns byte 0, so the strobe misses an owned byte. Require SLVERR, `PERIPH_BUS_ERR_STATUS` exactly the `hmac` bit, `DMA_BUS_ERR_STATUS` still 0, and `CFG` unchanged.
-. DMA control, narrow read and probe: the same three steps at the Secure DMA `INTR_STATE` offset, which owns byte 0. The probe requires SLVERR, `DMA_BUS_ERR_STATUS` exactly `reg_path_err`, `PERIPH_BUS_ERR_STATUS` still exactly the `hmac` bit, and `INTR_STATE` unchanged.
+. HMAC probe: write two bytes at `CFG` + 2 (byte lanes 2 and 3). `CFG` owns byte 0, so the strobe misses an owned byte. Require SLVERR, `PERIPH_BUS_ERR_STATUS` exactly the `hmac` bit and `DMA_BUS_ERR_STATUS` still 0. Read `CFG` back and log it (`OBS-MISALIGN-REG-KEPT`).
+. DMA control, narrow read and probe: the same three steps at the Secure DMA `INTR_STATE` offset, which owns byte 0. The probe requires SLVERR, `DMA_BUS_ERR_STATUS` exactly `reg_path_err` and `PERIPH_BUS_ERR_STATUS` still exactly the `hmac` bit; the `INTR_STATE` read-back is logged (`OBS-MISALIGN-REG-KEPT`).
+
+. Clear both latches (CHK-MISALIGN-CLEAR) and run steps 2 to 5 again inside owner window 763; every check grades the second pass too, and a FAIL closes the window first.
 
 Each access must be one beat. A four-byte access at a word offset + 2 crosses the word and goes out as a two-beat burst, and on the crypto path `doc/crypto.adoc` § "Single-Beat Access Only" refuses it with DECERR before any beat reaches HMAC.
 
@@ -148,17 +150,23 @@ Each access must be one beat. A four-byte access at a word offset + 2 crosses th
 |Checker |Contract
 |CHK-MISALIGN-BASE
 |`PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` read 0 before the probes. A bit left set by an earlier step fails here.
+|CHK-MISALIGN-CLEAR
+|After the first pass, a write of the `hmac` bit to `PERIPH_BUS_ERR_CLEAR` and of `clr` to `DMA_BUS_ERR_CLEAR` leaves both status registers 0 (`sep_cpu_ctrl.rdl`, write one to clear). The first pass set both bits, so the clear has a live latch to clear.
 |CHK-MISALIGN-CTRL, CHK-MISALIGN-DMA-CTRL
 |The aligned read completes as one OKAY beat and leaves both registers unchanged.
 |CHK-MISALIGN-RD, CHK-MISALIGN-DMA-RD
 |The narrow read at offset + 2 completes as exactly one OKAY beat and leaves both registers unchanged. A refused narrow read, a burst, or a latched bit fails here.
 |CHK-MISALIGN-LATCH, CHK-MISALIGN-DMA-LATCH
-|The partial write's response is SLVERR, both registers read exactly the expected value (the owning block's bit latched, the other register unchanged), and the register reads back its value from the control read.
+|The partial write's response is SLVERR, and both registers read exactly the expected value (the owning block's bit latched, the other register unchanged).
+|OBS-MISALIGN-REG-KEPT
+|(Logged, not graded.) The read-back of the probed register after the refused partial write, with its value from the control read. No specification sentence states the register value after a refused partial write (`sep_cpu_ctrl.rdl:354-357`, `:389-393` and `interrupts.adoc:227-231` state SLVERR, the latch and a narrow read OKAY only); open specification question.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the same term on the AES, KMAC, OTBN, CSRNG, EDN and WDT bits. The narrow read's data is not graded.
+*Functional coverage*: `sep_fault_source_report_cg.cp_partial_narrow`, second pass only. Each outcome of a block probe is held and samples only on the pass label `pbem_pass`, which the leaf raises inside the window after CHK-MISALIGN-RD and CHK-MISALIGN-LATCH of that probe passed.
+
+*Not claimed*: the same term on the AES, KMAC, OTBN, CSRNG, EDN and WDT bits in this leaf (`sep_cpu_bridge_fault_matrix_rand_test` grades the AES and WDT partial write). The narrow read's data is not graded.
 
 '''''
 
@@ -544,28 +552,50 @@ The shared config draws four distinct spares and stages `SIP_DIS` /
 *Test Procedure*:
 
 [arabic]
-. Stage write-lock and read-lock on two seed-selected spare fields, plus an unlocked spare as contrast, in one OTP image, and sense at `LC_PROD`. Require `[33]` low before any shadow access.
-. Access the shadow aperture for each of the three, watching the interrupt probe for the duration of each access beat.
-. Write and read back the unlocked spare (CHK-UNLOCKED).
-. Every seed, walk write-lock first: read the write-locked spare, write its complement, and read it again (CHK-WRITE-LOCK).
-. Then walk read-lock: read the read-locked spare (CHK-READ-LOCK).
+. Stage write-lock and read-lock on two seed-selected spare fields, plus an unlocked spare as contrast, in one OTP image, and sense at `LC_PROD`.
+. Access the shadow aperture for each of the three, watching the interrupt probe on every clock of each access.
+. Each locked access is the first locked access after a SEP reset (`rst_ni` pulse and re-sense), and `[33]` must be low before it (CTRL-IRQ-IDLE). Segment 1 starts after a reset: write and read back the unlocked spare (CHK-UNLOCKED), then read the write-locked spare, write its complement, and read it again (CHK-WRITE-LOCK). Segment 2 starts after its own reset: read the sensed shadow word of the read-locked spare at `efuse_shadow_probe_o` and require the staged pattern (CTRL-READ-STAGED), then read the read-locked spare (CHK-READ-LOCK). The reset restores every shadow from OTP, and the base test compares the shadow with the staged image after each sense.
+. At each rise of `[33]` during a locked access, require every other vector bit to equal its value one clock before (CHK-SRC34-EXCL).
+. Log the `[33]` level after each locked access and during the read that follows the locked write (OBS-LF-IRQ-DEASSERT). No specification sentence states that level.
+. Steps 3 to 5 run twice, with a reset between the runs: run 1 with the coverage window closed, then run 2 inside owner window 754 with the same accesses and checks. Run 2 opens the window for each segment and closes it before the reset. A FAIL in run 1 ends the leaf before the window opens; a FAIL in run 2 closes it first.
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CTRL-IRQ-IDLE
+|After each SEP reset, before the first access of a segment, `[33]` is low. No locked access has run since the reset, so no locked-field access violation is pending. A FAIL ends the leaf, because the rise of the next locked access could not be graded.
 |CHK-UNLOCKED
-|Unlocked spare write/read never raises `[33]`; readback matches the write.
+|The unlocked spare write and read raise no `[33]`, `[33]` is low after the read, and the readback matches the write. The field holds the staged pattern before the write, which differs from the written value. An unlocked access is no locked-field access violation (`interrupts.adoc:190-192`).
 |CHK-WRITE-LOCK
-|Bit [33] during the write, following read equals pre-write, bit [33] low after retire. BRESP is logged, not graded.
+|The pre-read returns the staged pattern with OKAY and no `[33]`. Bit [33] is high during the locked write, and the following read equals the pre-write value. BRESP is logged, not graded. The `[33]` level of the following read is logged, not graded.
+|CTRL-READ-STAGED
+|Before each read-locked read, the sensed shadow word of the read-locked spare (`efuse_shadow_probe_o`) equals the staged pattern. The sensing FSM reads a locked fuse into its shadow (`hw/sys/sep/doc/otp_fuse_controller.adoc:109-110`), and the pattern is in the OTP image before every sense of the leaf. A FAIL ends the leaf, because CHK-READ-LOCK would then compare against a value the field never held.
 |CHK-READ-LOCK
-|Bit [33] during the read, RDATA differs from the stored field value, bit [33] low after retire. RRESP and RDATA are logged, not graded. The staged pattern never equals the error-slave value named in `hw/ip/efuse/doc/architecture.adoc`, so a readback of that value still differs.
+|Bit [33] is high during the read, and RDATA differs from the stored field value. The stored value is the shadow word that CTRL-READ-STAGED probed, and the PASS line prints that probed word. RRESP is logged, not graded. The staged pattern never equals the error-slave value named in `hw/ip/efuse/doc/architecture.adoc`, so a readback of that value still differs.
+|CHK-SRC34-EXCL
+|At each rise of `[33]` (source 34, `interrupts.adoc:190-192`; bit i is source i + 1 at `:23`) during a locked access, every other vector bit equals its value one clock before; the six unstated idle bits are not compared. Each locked access must show a rise. Catches an OR-network smear or alias.
+|OBS-LF-IRQ-DEASSERT
+|(Logged, not graded.) The `[33]` level at the clock after each locked access retires, and during the read that follows the locked write. `interrupts.adoc:190-192` names source 34 and `otp_fuse_controller.adoc:107-110` states the locks; neither states whether the line is a pulse or a level, nor how it clears. Open specification question.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Scope*: This is not an OTP program: the program-lock vehicle owns `PROGRAM_ERR`. The unlocked spare in the same image is the negative control. The specification states write-lock and read-lock as two separate lock bits per field, so both are walked every seed.
+
+*Functional coverage*: `sep_efuse_lock_policy_cg.cp_locked_field_irq` and
+`sep_pic_source_map_cg.cp_src_exclusive_other[s34]`, owner window 754, run 2
+only. The leaf writes a step tag (`set_ef_hold_tag`) before each graded access;
+the sampler holds the legal value of that access, and the exclusive rise of
+source 34, with the tag, and samples them only when the leaf writes the tag to
+`ef_hold_pass` after every check of the access passed (CHK-UNLOCKED for the
+unlocked write and read, CHK-WRITE-LOCK for the pre-read, CHK-WRITE-LOCK and
+CHK-SRC34-EXCL for the locked write, CHK-READ-LOCK and CHK-SRC34-EXCL for the
+locked read). An illegal value samples at the response. The read after the
+locked write runs with tag 0 and samples nothing. A FAIL closes the window,
+which drops every held sample. The entry `sep_efuse_secure_tm_write_lock_test`
+(`+secure_tm_lock`) opens no window and fills no bin.
 
 *Facts that decide the checkers*: `hw/sys/sep/doc/otp_fuse_controller.adoc`
 (Fuse Fields) says a write-locked shadow register is not writable and a
@@ -578,24 +608,29 @@ Consequently:
   value.
 * *A read-lock has no following legal read* — `LOCKS` are OTP W1S, so the field
   stays read-locked. The read itself is the denial proof: RDATA is not the
-  stored field value, and `[33]` is high during the beat. The scoreboard does
+  stored field value, and `[33]` is high during the beat. The stored value is
+  read from the sensed shadow at `efuse_shadow_probe_o` (CTRL-READ-STAGED), so
+  a spare that never held the pattern fails before the locked read. The scoreboard does
   not grade the locked read's response code; a locked read that times out
   still fails.
-* *The interrupt is combinational and pulse-only* — there is no sticky status bit
-  and no `W1C` on this path, so the clear contract is deassertion after the
-  access retires. `sep_internal_interrupts_probe_o` must be watched continuously
-  across the beat; a sample taken after the access completes is always 0.
+* *Level of source 34 after the access* -- no specification sentence states
+  whether the line is a pulse or a level, nor how it clears. So every graded
+  `[33]` value is taken before any locked access since the last SEP reset, or
+  during the first locked access after it, and the level after a locked access
+  is logged (OBS-LF-IRQ-DEASSERT). `sep_internal_interrupts_probe_o` is
+  watched on every clock of each access, so a high level of one clock is seen.
 
 *Anti-vacuity*: the locked and unlocked accesses are the same driver, the same
 aperture and the same run, differing only in the lock bits of the field, so a
-probe stuck low fails the assert leg and a probe stuck high fails the unlocked
-leg. The deassert leg is credited only after the assert leg has been observed
-high. The denial conjunct (unchanged write-lock readback / read-lock data that
-is not the stored value) attributes `[33]` to the locked path.
+probe stuck low fails the locked legs and a probe stuck high fails the unlocked
+leg and CTRL-IRQ-IDLE. The denial conjunct (unchanged write-lock readback /
+read-lock data that is not the stored value) attributes `[33]` to the locked
+path.
 
 *Not claimed*: end-to-end delivery to the CPU — PIC claim, masking and ISR entry
-— which needs `cpu` mode and a firmware image. This entry is
-generate-and-deassert on both lock flavours of one seed-selected spare; the
+— which needs `cpu` mode and a firmware image; the level of source 34 after
+the access and its clear, which no specification sentence states. This entry
+grades the rise on both lock flavours of one seed-selected spare; the
 `SecureTmLock` fields are graded by <<sep_efuse_secure_tm_write_lock_test>>.
 
 '''''
@@ -633,8 +668,12 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 |Checker |Contract
 |CHK-SECTM-CONTROL
 |With the strap low, the write lands and the value moves — set-only rows read back the OR-merge of the pre-write value and the payload; `LC_STATE[31:8]` reads back the payload — and `[33]` stays low.
+|CTRL-SECTM-LATCH
+|`secure_tm_o` reads 0 after the first sense with the strap low and 1 after the resense with the strap high (`hw/sys/sep/doc/test_mode.adoc:29`, fuse-sense completion samples the strap). The value is logged on the line. Any other value, or an X, fails the leaf before the half that depends on it.
 |CHK-SECTM-BLOCK
-|With the strap high, the stored value is unchanged, and `[33]` pulses during the beat and is low after it retires. The write response is logged, not graded.
+|With the strap high, the stored value is unchanged: the bus readback equals the read before the write, and the sensed shadow word of the field on `efuse_shadow_probe_o` equals the word staged in the OTP image (the resense reloads every shadow from that image; `otp_fuse_controller.adoc:176-178`). The probe does not use the bus read path, so a read path that returns 0 at `secure_tm` = 1 cannot hide a refused write that reached the shadow. The write response is logged, not graded.
+|OBS-SECTM-IRQ
+|(Logged, not graded.) The `[33]` level during the refused write and after it retires, and during the contrast write that follows the refused writes. No specification sentence ties a SECURE_TM refusal to source 34: `otp_fuse_controller.adoc:176-178` says these shadows are blocked and names no interrupt, and `interrupts.adoc:190-192` names source 34 the locked-field access violation. Open specification question.
 |CHK-SECTM-CONTRAST
 |A `SecureTmUnlock` spare still takes a write with the strap high, and its readback equals what was written.
 |===
@@ -1396,6 +1435,7 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 . Error injection. The CPU-LSU master accesses an unmapped Secure DMA register offset. Expected response: `SLVERR` (`CTL-RESP LOG`). `reg_path_err` latches, and the master reads `DMA_BUS_ERR_STATUS`: it equals 0b01, and vector bit 40 reads 1 (`CTL-LATCH LOG`, the set-up of the DMA clear cells).
 . With both status registers non-zero, the master reads `PERIPH_BUS_ERR_CLEAR` and `DMA_BUS_ERR_CLEAR`: both read 0 (CHK-CLR-READ0).
 . DMA register-path cells. The master writes 0 to `DMA_BUS_ERR_CLEAR.clr`: `DMA_BUS_ERR_STATUS` still equals 0b01 and vector bit 40 reads 1 (CHK-DMA-CLR). The master writes 1: `reg_path_err` reads 0 and vector bit 40 reads 0 (`CTL-DMA-CLR LOG`, the control of the write of 0). `host_path_err` reads 0 and vector bit 41 reads 0 (CHK-DMA-CLR, the host-path 0 cell; its control is CHK-HOST of the same leaf, where a healthy DUT sets `host_path_err`).
+. Partial write. For AES `CTRL_AUX_REGWEN` and the watchdog `WDOG_BARK_THOLD` (watchdog disabled), with the window closed: a full-strobe write of the RDL reset value answers OKAY and latches nothing (`CTL-FULL-STROBE`). Then one 32-bit write whose strobe (1 to 3 contiguous lanes) misses a byte that holds a field bit answers SLVERR, sets that block bit only and vector bit 42 (CHK-PARTIAL-WR); the register read after it is logged (`OBS-PARTIAL-KEPT`); a write of that bit to `PERIPH_BUS_ERR_CLEAR` clears it (CHK-PARTIAL-CLR).
 . Clear matrix. For each clear bit i in the drawn order over the bits 0 to 6: the master first faults every drawn block whose bit reads 0, so that the full set of the three block bits is latched (CHK-NONVAC). It writes 1 to bit i only. It reads `PERIPH_BUS_ERR_STATUS`: the status equals the set minus bit i. A clear of an unlatched bit leaves the set unchanged. Vector bit 42 equals (status != 0) (CHK-CLR-MATRIX).
 . Drain. The master restores the full drawn set. It clears the latched bits one at a time in the drawn order. After each clear, the status equals the set minus the cleared bits, and vector bit 42 stays 1 while any bit is set and drops with the last bit (CHK-CLR-MATRIX).
 . Mask clears. For each of the 1 to 3 drawn steps: the master restores the full drawn set (CHK-NONVAC), writes the drawn mask over bits [6:0] (the mask includes bits of unlatched blocks), and reads the status. The status equals the previous status AND NOT the mask, and vector bit 42 equals (status != 0) (CHK-MASK).
@@ -1426,20 +1466,30 @@ A check on an outbound mailbox 0 cell that an open test grades (Test Coverage) p
 |CHK-MASK
 |A mask clear gives the previous status AND NOT the mask, and vector bit 42 equals (status != 0). A wrong DUT clears bits outside the mask, ignores a mask bit, or is disturbed by a mask bit of an unlatched block. Anchor: the status read-back and vector bit 42 after each mask step. Evidence: `CHK-MASK PASS step=1 mask=0x7F before=0x0A after=0x0 vec42=0`.
 |CHK-AGAIN
-|A cleared block latches again on a new fault, and a fault on a block that is still set leaves the other bits unchanged (`sep_cpu_ctrl.adoc`: the status bit holds until its clear). A wrong DUT does not re-latch, or a re-fault disturbs other bits. Anchor: the status read-back after each re-trigger. Evidence: `CHK-AGAIN PASS block=hmac relatched=1 others_kept=0x08`.
+|A cleared block latches again on a new fault, and a fault on a block that is still set leaves the other bits unchanged (`sep_cpu_ctrl.adoc`: the status bit holds until its clear). A wrong DUT does not re-latch, or a re-fault disturbs other bits. Anchor: the status read-back after each re-trigger. Evidence: `CHK-AGAIN PASS block=hmac relatched=1 others_kept=0x08`. The status after the clear and after the re-fault equals the model, and vector bit 42 is 1 after the re-latch.
 |CHK-CLR-READ0
 |The clear registers read 0 while status bits are set (`sep_cpu_ctrl.adoc`: "Always reads 0"). A wrong DUT returns the status or a non-zero value. Anchor: the `PERIPH_BUS_ERR_CLEAR` and `DMA_BUS_ERR_CLEAR` read-back with both status registers non-zero. Evidence: `CHK-CLR-READ0 PASS periph_status=0xH periph_clear=0x0 dma_status=0xH dma_clear=0x0`.
 |CHK-DMA-CLR
-|A write of 0 to `DMA_BUS_ERR_CLEAR.clr` clears no latch, a write of 1 clears both, and clearing one latch does not set the other (`sep_cpu_ctrl.adoc`, `DMA_BUS_ERR_CLEAR`). A wrong DUT clears on a write of 0, misses a latch on a write of 1, or sets the other latch. Anchor: the `DMA_BUS_ERR_STATUS` read-back and vector bits 40 and 41. The register-path write of 0 (the latch stays set) is a reached check. The register-path write of 1 (the latch clears) is graded in `sep_irq_ip_to_aggregator_test`; here it is the control that shows the latch can clear and prints `CTL-DMA-CLR LOG`. The host path stays 0 after the register-path clear; its control is CHK-HOST of the same leaf, where a healthy DUT sets `host_path_err`. The host-path cells use the error inject. With `host_path_err` set alone, a write of 0 keeps it, and a write of 1 clears it while `reg_path_err` and vector bit 40 stay 0. With both latches set, a write of 0 keeps both, and a write of 1 clears both and drops vector bits 40 and 41. Each write of 0 has its control in the write of 1 that follows on the same latch state, which shows that the latch can clear. The 0 of `reg_path_err` in the host-only cell has its control in the unmapped register access of the same leaf, which sets it. A `DMA_BUS_ERR_STATUS` that does not read the stated start state (0b10 or 0b11) before a host-path cell fails the check. Evidence: `CHK-DMA-CLR PASS write0=still_set reg_path_err=1 vec40=1`; `CHK-DMA-CLR PASS cell=reg_clear host_path_err=0 vec41=0`; `CHK-DMA-CLR PASS cell=host_only before=0x2 after_write0=0x2 after_write1=0x0 vec40=0 vec41=0`; `CHK-DMA-CLR PASS cell=both before=0x3 after_write0=0x3 after_write1=0x0 vec40=0 vec41=0`; `CTL-DMA-CLR LOG write1=reg_path_clear reg_path_err=0 vec40=0`.
+|A write of 0 to `DMA_BUS_ERR_CLEAR.clr` clears no latch, a write of 1 clears both, and clearing one latch does not set the other (`sep_cpu_ctrl.adoc`, `DMA_BUS_ERR_CLEAR`). A wrong DUT clears on a write of 0, misses a latch on a write of 1, or sets the other latch. Anchor: the `DMA_BUS_ERR_STATUS` read-back and vector bits 40 and 41. The register-path write of 0 (the latch stays set) is a reached check. The register-path write of 1 (the latch clears) is graded in `sep_irq_ip_to_aggregator_test`; here it is the control that shows the latch can clear and prints `CTL-DMA-CLR LOG`. The host path stays 0 after the register-path clear; its control is CHK-HOST of the same leaf, where a healthy DUT sets `host_path_err`. The host-path cells use the error inject. With `host_path_err` set alone, a write of 0 keeps it, and a write of 1 clears it while `reg_path_err` and vector bit 40 stay 0. With both latches set, a write of 0 keeps both, and a write of 1 clears both and drops vector bits 40 and 41. Each write of 0 has its control in the write of 1 that follows on the same latch state, which shows that the latch can clear. The 0 of `reg_path_err` in the host-only cell has its control in the unmapped register access of the same leaf, which sets it. A `DMA_BUS_ERR_STATUS` that does not read the stated start state (0b10 or 0b11) before a host-path cell fails the check. Evidence: `CHK-DMA-CLR PASS write0=still_set reg_path_err=1 vec40=1`; `CHK-DMA-CLR PASS cell=reg_clear host_path_err=0 vec41=0`; `CHK-DMA-CLR PASS cell=host_only before=0x2 after_write0=0x2 after_write1=0x0 vec40=0 vec41=0`; `CHK-DMA-CLR PASS cell=both before=0x3 after_write0=0x3 after_write1=0x0 vec40=0 vec41=0`; `CTL-DMA-CLR LOG write1=reg_path_clear reg_path_err=0 vec40=0`. In the cell with both latches set, the register-path fault answers SLVERR and vector bits 40 and 41 read 1 before the clear.
 |CHK-HOST
 |A non-OKAY response to a DMA source read sets `ERROR_CODE.BUS_ERROR` and `STATUS.ERROR`, latches `host_path_err` alone and raises source 42 (`interrupts.adoc`, source 42; `sep_cpu_ctrl.adoc`, `DMA_BUS_ERR_STATUS`; `secure_dma.adoc`, `ERROR_CODE`). A wrong DUT does not set `BUS_ERROR` or `ERROR`, sets `reg_path_err`, or does not raise source 42. Anchor: the `ERROR_CODE`, `STATUS` and `DMA_BUS_ERR_STATUS` read-back and vector bits 40 and 41, after the idle check shows `STATUS.ERROR` 0 and `DMA_BUS_ERR_STATUS` 0. The outbound port monitor shows one or more source reads of the copy on `smn_outbound_axi_req_o` that got `SLVERR`; a count of 0 fails the check, so a copy that never reaches the responder cannot pass. Control of `reg_path_err` 0 and vector bit 40 at 0: the unmapped Secure DMA register access of the same leaf sets `reg_path_err` and vector bit 40. Evidence: `CHK-HOST PASS seed=S side=src slverr_reads=N error=1 bus_error=1 bus_err_status=0x02 vec41=1 vec40=0 ctrl_reg_path_err=1`.
 |CHK-DMA-HOST-HOLD
-|After the host-path fault of CHK-HOST, a write of 1 to DMA `STATUS.ERROR` reads `STATUS.ERROR` = 0 and leaves `host_path_err` = 1 and source 42 (vector bit 41) high (`sep_cpu_ctrl.adoc:53-55`: "Secure DMA bridge fault status. Each bit is latched in hardware and held until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive dedicated PIC sources."; `interrupts.adoc:231-232`: source 42 "DMA host-path integrity/bus fault"; `hw/sys/sep/doc/dma.adoc:131-132`: "Status completion and error bits are write-one-to-clear"). A DUT that drops `host_path_err` or source 42 with the `STATUS.ERROR` clear fails. Anchor: the DMA `STATUS`, `DMA_BUS_ERR_STATUS` read-back and vector bit 41. Control: `STATUS.ERROR` reads 0 after the write, so the write landed, and the next cell (`cell=host_only` of CHK-DMA-CLR) writes 1 to `DMA_BUS_ERR_CLEAR` and needs `host_path_err` = 0 and source 42 low (`sep_cpu_ctrl.adoc:60`: "Writing 1 emits a single-cycle clear pulse to both latches."). Evidence: `CHK-DMA-HOST-HOLD PASS seed=<n> after=status_error_w1c error=0 host_path_err=1 bus_err_status=0x02 vec41=1`. The values of `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` after a write of 1 to `DMA_BUS_ERR_CLEAR` are logged with `OBS-DMA-HOST-CLR` and not graded.
+|After the host-path fault of CHK-HOST, a write of 1 to DMA `STATUS.ERROR` reads `STATUS.ERROR` = 0 and leaves `host_path_err` = 1 and source 42 (vector bit 41) high (`sep_cpu_ctrl.adoc:53-55`: "Secure DMA bridge fault status. Each bit is latched in hardware and held until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive dedicated PIC sources."; `interrupts.adoc:233-234`: source 42 "DMA host-path integrity/bus fault"; `hw/sys/sep/doc/dma.adoc:131-132`: "Status completion and error bits are write-one-to-clear"). A DUT that drops `host_path_err` or source 42 with the `STATUS.ERROR` clear fails. Anchor: the DMA `STATUS`, `DMA_BUS_ERR_STATUS` read-back and vector bit 41. Control: `STATUS.ERROR` reads 0 after the write, so the write landed, and the next cell (`cell=host_only` of CHK-DMA-CLR) writes 1 to `DMA_BUS_ERR_CLEAR` and needs `host_path_err` = 0 and source 42 low (`sep_cpu_ctrl.adoc:60`: "Writing 1 emits a single-cycle clear pulse to both latches."). Evidence: `CHK-DMA-HOST-HOLD PASS seed=<n> after=status_error_w1c error=0 host_path_err=1 bus_err_status=0x02 vec41=1`. The values of `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` after a write of 1 to `DMA_BUS_ERR_CLEAR` are logged with `OBS-DMA-HOST-CLR` and not graded.
 |CHK-RACE
-|A fault that arrives in the same cycle as the clear of its own latch still latches (`sep_cpu_ctrl.adoc`, `PERIPH_BUS_ERR_CLEAR` and `DMA_BUS_ERR_CLEAR`). A wrong DUT drops the fault: the block bit or `host_path_err` reads 0 after the coincident clear and fault. Anchor: the `PERIPH_BUS_ERR_STATUS` or `DMA_BUS_ERR_STATUS` read-back after the coincidence, and vector bit 42 or bit 41. `sep_cpu_ctrl_err_pulse_probe_o` shows the fault pulse and the clear pulse in one cycle, and a sweep that never shows the coincidence fails the check. Each trial starts with the latch set, and one faulting access (a hole read, or a one-word copy with one source read) gives one fault pulse. The probe shows no later fault pulse of that latch before the status read, so a later fault cannot set a dropped latch again. Controls: a clear with no fault drops the latch, for a peripheral bit in CHK-CLR-MATRIX and for `host_path_err` in the host-path cells of CHK-DMA-CLR. The DMA part uses the error inject on `smn_outbound_axi_resp_i`. Evidence: `CHK-RACE PASS seed=S kind=periph block=hmac coincident=1 later_faults=0 status_after=0x02 vec42=1` and `CHK-RACE PASS kind=dma coincident=1 later_faults=0 status_after=0x02 vec41=1`.
+|A fault that arrives in the same cycle as the clear of its own latch still latches (`sep_cpu_ctrl.adoc`, `PERIPH_BUS_ERR_CLEAR` and `DMA_BUS_ERR_CLEAR`). A wrong DUT drops the fault: the block bit or `host_path_err` reads 0 after the coincident clear and fault. Anchor: the `PERIPH_BUS_ERR_STATUS` or `DMA_BUS_ERR_STATUS` read-back after the coincidence, and vector bit 42 or bit 41. `sep_cpu_ctrl_err_pulse_probe_o` shows the fault pulse and the clear pulse in one cycle, and a sweep that never shows the coincidence fails the check. Each trial starts with the latch set, and one faulting access (a hole read, or a one-word copy with one source read) gives one fault pulse. The probe shows no later fault pulse of that latch before the status read, so a later fault cannot set a dropped latch again. Controls: a clear with no fault drops the latch, for a peripheral bit in CHK-CLR-MATRIX and for `host_path_err` in the host-path cells of CHK-DMA-CLR. The DMA part uses the error inject on `smn_outbound_axi_resp_i`. Evidence: `CHK-RACE PASS seed=S kind=periph block=hmac coincident=1 later_faults=0 status_after=0x02 vec42=1` and `CHK-RACE PASS kind=dma coincident=1 later_faults=0 status_after=0x02 vec41=1`. The whole status is graded: a peripheral race reads the model of the other bits plus the raced bit, and the DMA race reads `host_path_err` alone with vector bit 40 at 0.
+|CHK-PARTIAL-WR
+|A write to an AES or watchdog register whose strobe misses a byte the register owns answers SLVERR, `PERIPH_BUS_ERR_STATUS` reads that block bit only, vector bit 42 is 1, the error pulse probe shows the fault, and the register read before the write equals its RDL reset value (`integration/rdl/sep/aes.rdl:135` `CTRL_AUX_REGWEN` 0x1, `integration/rdl/sep/aon_timer.rdl:86` `threshold` 0x0; partial-write latch and SLVERR: `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:63-68`; `crypto.adoc:155-161`; `watchdog.adoc:19`; `interrupts.adoc:242-245`). Catches OKAY or DECERR, no latch, a wrong or extra bit and no source 43. No specification sentence states the register value after the refused write, so the read after it is logged as `OBS-PARTIAL-KEPT` and not graded (open specification question).
+|CHK-PARTIAL-CLR
+|A write of the latched bit to `PERIPH_BUS_ERR_CLEAR` clears it and drops vector bit 42 (`sep_cpu_ctrl.adoc:63-68`, held until the matching clear bit is written).
+|CHK-SRC41-EXCL, CHK-SRC42-EXCL, CHK-SRC43-EXCL
+|At each rise of vector bit 40, 41 and 42, every other bit equals its value one clock before, except the six unstated idle bits and the other two of these three bits (`interrupts.adoc:22-23`, `:33-34`). Each bit must rise at least once in the run. Catches an OR-network smear or alias.
+|OBS-PARTIAL-RSVD
+|Logged only. The raw `CTRL_AUX_REGWEN` words; bits 31:1 hold no RDL field.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Functional coverage*: owner window 322. The exclusive rises of sources 41 to 43 in the window (`cp_src_exclusive_other` bins s41 to s43) are held until the end of the run, where CHK-SRC41-EXCL, CHK-SRC42-EXCL and CHK-SRC43-EXCL grade every rise; after each of them passes the leaf sets the bit of its source in the `exo_pass` label, which samples the held rises of that source. Each other legal outcome of the owner is held and samples on the rise of the `bfault_pass` label, which the leaf writes after the checks of that instance passed. Set-up reads, the full-strobe control and every race trial run with the window closed.
 
 *Scope limit*: Not graded: whether an external access to the same holes also latches a bit (see <<sep-vplan-phase3-blocked,Blocked features>>), the command-integrity cause, a halt of the DMA after the error, and the effect of a write of 1 to `DMA_BUS_ERR_CLEAR` on `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` (`OBS-DMA-HOST-CLR`: no sentence states it). The effect of a write of 1 to `STATUS.ERROR` on `host_path_err` is graded by CHK-DMA-HOST-HOLD. The aes, csrng, edn and wdt bits, and the DMA response at a reserved window or past the mailbox wrapper extent are in <<sep-vplan-phase3-blocked,Blocked features>>. The partial-write cause is graded by `sep_periph_bus_err_misaligned_test`. The single-block latch and the DMA register-path latch are owned by `sep_irq_ip_to_aggregator_test` and `sep_periph_bus_err_misaligned_test`, and the destination-side DMA fault by `sep_dma_basic_test`.
 
