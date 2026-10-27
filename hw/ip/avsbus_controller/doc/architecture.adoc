@@ -5,9 +5,9 @@
 == Architecture
 
 The AVSBus Controller implements an Adaptive Voltage Scaling Bus (AVSBus)
-1.3.1 controller for dynamic voltage and frequency scaling (DVFS) in
-single-target systems, communicating with one AVS target device over a
-two-wire protocol interface.
+controller, as specified in PMBus Specification Version 1.3, Part III, for
+dynamic voltage and frequency scaling (DVFS) in single-target systems,
+communicating with one AVS target device over a two-wire protocol interface.
 
 The design is a register file, a pair of asynchronous FIFOs that carry
 commands and responses between the register and AVS clock domains, a protocol
@@ -96,7 +96,13 @@ slave resync.
 === CRC Verification Engine
 
 The `avsbus_crc3` module computes a 3-bit CRC combinationally over a 32-bit
-subframe. Two instances are used. The generate instance is fed the outgoing
+subframe. The generator polynomial, defined by the PMBus Specification
+Version 1.3, Part III (Adaptive Voltage Scaling Bus, AVSBus), is
+_g_(_x_) = _x_^3^ + _x_ + 1, with a zero initial value and no final XOR.
+Bit 31 of the subframe, the first bit on the wire, is the highest-order
+coefficient, so the transmitted CRC is the remainder of _M_(_x_) · _x_^3^
+divided by _g_(_x_), where _M_(_x_) is subframe bits [31:3]. Two instances
+are used. The generate instance is fed the outgoing
 master subframe with its CRC field zeroed, and its output becomes the three
 bits shifted out last. The check instance is fed the received slave subframe
 intact, including the CRC the target sent, and reports a good check when the

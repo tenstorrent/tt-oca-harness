@@ -35,7 +35,7 @@ int main(void) {
     isolate_req_smc_reg.w = read_reg(SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR);
     if (isolate_req_smc_reg.f.isolate_req_smc_reg == 1) {
         info_msg_s(hartid, "isolate_req_smc_reg set;  Clearing now");
-        isolate_req_smc_reg.f.isolate_req_smc_reg = 0;
+        isolate_req_smc_reg.f.isolate_req_smc_reg = 1;
         write_reg(SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR, isolate_req_smc_reg.w);
     }
 

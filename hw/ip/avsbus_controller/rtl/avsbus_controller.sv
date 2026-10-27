@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Bridge AXI-Lite CSR traffic onto an AVSBus V1.3.1 serial link.
+// Bridge AXI-Lite CSR traffic onto an AVSBus (PMBus V1.3 Part III) serial link.
 //
 // AXI-Lite requests reach the register block through axi_lite_to_apb. Command and readback
 // FIFOs cross between the register clock (clk_reg_i) and the AVS clock, which a programmable

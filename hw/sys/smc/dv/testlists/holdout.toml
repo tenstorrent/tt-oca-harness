@@ -15,11 +15,12 @@ schema_version = 1
 #     grades (the observed FAIL is PASS, an observed PASS is FAIL with the
 #     reason "the defect is gone"), and `expect_fail_match`, the regex the
 #     failure message must match so a leaf failing for another reason is FAIL.
-#     The weekly tier runs the group on its own row (.github/workflows/
-#     regress.yml), green while the defects stand and red the week one is
-#     fixed; the leaf then moves back to its feature testlist without the
-#     `expect_fail` pair. No `ci` tag: a graded expected failure must never
-#     count in the hosted set. One test per defect.
+#     While the group has a member the weekly tier runs it on its own row
+#     (.github/workflows/regress.yml), green while the defects stand and red
+#     the week one is fixed; the leaf then moves back to its feature testlist
+#     without the `expect_fail` pair, and the row goes with the last member.
+#     No `ci` tag: a graded expected failure must never count in the hosted
+#     set. One test per defect.
 #   * `occp_boot` -- held out on runtime. The production ROM's whole
 #     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
 #     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
@@ -36,19 +37,6 @@ schema_version = 1
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
-
-[[tests]]
-# ISOLATE_REQ_SMC_REG clears its FLR-latched request on any write with a byte
-# enable anywhere in the register, whatever the data (smc_cool_reset_wrap.sv);
-# reset_unit.rdl makes the request a sw=rw field at bit 0.
-name = "smc_isolate_req_smc_lane_test"
-module = "smc_isolate_req_smc_lane_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "ISOLATE_REQ_SMC_REG: a write outside bit 0's byte lane clears the FLR-latched request"
-expect_fail_match = "cleared the FLR-latched request from a byte lane the field does not"
 
 [[tests]]
 name = "smc_prod_rom_occp_ready_test"
@@ -190,12 +178,11 @@ tests = [
 ]
 
 [[groups]]
-# Filed-defect reproducers; the weekly tier's own row.
+# Filed-defect reproducers; the weekly tier's own row. Empty until the next
+# filed defect gets its reproducer.
 name = "rtl_issue"
-expected_count = 1
-tests = [
-    "smc_isolate_req_smc_lane_test",
-]
+expected_count = 0
+tests = []
 
 [[groups]]
 # Production boot ROM to its OCCP loop; on demand, about one hour.

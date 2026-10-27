@@ -396,8 +396,8 @@ typedef union {
 #define SECURE_DMA__CONTROL__ABORT_reset 0x0
 // Setting this bit triggers the DMA operation.
 // For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.
-// For Hardware handshake operation, DMA engine does not auto clear the Go bit.
-// Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.
+// For hardware handshake operation, the DMA engine keeps the `go` bit set across chunks and clears it, setting `status.done`, once `total_data_size` bytes have been transferred.
+// Firmware clears the `go` bit to stop the hardware handshake operation earlier.
 #define SECURE_DMA__CONTROL__GO_bm 0x80000000
 #define SECURE_DMA__CONTROL__GO_bp 31
 #define SECURE_DMA__CONTROL__GO_bw 1
@@ -432,8 +432,8 @@ typedef union {
         uint32_t :3;
         // Setting this bit triggers the DMA operation.
         // For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.
-        // For Hardware handshake operation, DMA engine does not auto clear the Go bit.
-        // Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.
+        // For hardware handshake operation, the DMA engine keeps the `go` bit set across chunks and clears it, setting `status.done`, once `total_data_size` bytes have been transferred.
+        // Firmware clears the `go` bit to stop the hardware handshake operation earlier.
         uint32_t GO :1;
     } f;
     uint32_t w;

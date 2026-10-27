@@ -81,7 +81,7 @@ of the scenarios that carry one (`--framework uvm`, `SMC_TB_ARCH.adoc`).
 Phase 1, Phase 2 and Phase 3 are scope tiers, not a schedule. Phase 1 is the
 bring-up and representative set. Phase 2 is the dense, breadth and fault set.
 Phase 3 is the residual set. Each test entry names its phase in its `*Phase*`
-field and its area in its `*Area*` field; the three cards of
+field and its area in its `*Area*` field; the two ROM cards of
 <<smc-held-out-testcases>> are outside `all`, take no credit and carry
 `*Status*: held out` beside those fields, and the scenarios of its SV-UVM
 subsection carry neither field. `SMC_FCOV.adoc` keeps its own
@@ -1215,7 +1215,7 @@ combines with the FLR hold without changing its duration.
 resets release and the warm reset follows, the cold resets stay deasserted, `SS_CONFIG` and
 `SS_COLD_RESET_N` return to their reset values while the isolation and FLR counter registers retain
 theirs, and `ISOLATE_REQ_SMC_REG` sets on the FLR edge, holds through the reset, clears on a write
-and sets with a zero hold count.
+of 1 to bit 0 and sets with a zero hold count.
 |`smc_cool_reset_x_cold_reset_test` |3 |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
 |`smc_cpu_reset_pulse_test` |3 |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, a core level reset that applies without a drain, and a withheld uncore reset whose timeout fires in give-up mode; pulses on cores 0, 2 and 3, level reset and release of cores 2 and 3 without a drain, debug-module reset release and re-assertion, and the `RESET_VECTOR[1..3]` reset value and bit-17 storage.
 |`smc_cpu_reset_source_test` |3 |SW core0 level reset reaches core 0's cluster reset without a drain; no FLR isolate_req_o.
@@ -1241,7 +1241,7 @@ and sets with a zero hold count.
 |`smc_reset_sync_async_assert_test` |3 |Resets assert asynchronously, release on their own clock.
 |`smc_scratch_banks_test` |2 |Sixteen scratch registers reset to 0 and hold independent values.
 |`smc_sync_reg_irq_test` |2 |SYNC_REG.sync drives sync_irq_o and only bit 0 is implemented.
-|`smc_isolate_req_smc_lane_test` |2, held out |Writes to `ISOLATE_REQ_SMC_REG` that do not clear bit 0 must leave the FLR-latched request set.
+|`smc_isolate_req_smc_lane_test` |3 |A write of 1 to `ISOLATE_REQ_SMC_REG` bit 0 clears the FLR-latched request; a write of 0, or one that does not strobe byte 0, leaves it set.
 |`smc_reset_mid_transaction_rand_test` |3, planned |Seeded cool-pin, FLR, cold and watchdog resets,
 asserted at a drawn cycle inside a drawn in-flight operation after programming non-zero values,
 reset exactly the registers of that reset's domain, keep every other programmed value, hold warm
@@ -22966,8 +22966,8 @@ draws nothing from the seed.
 * `isolate_req_o[3]` is `ISOLATE_REQ_REG[3]` OR (`ISOLATE_REQ_PINEN_REG[3]` AND the synchronized
   isolate-request pin) OR (`ISOLATE_REQ_SMCEN_REG[3]` AND `ISOLATE_REQ_SMC_REG`); clearing one
   source does not cancel a request held by another (`clk_rst.adoc` "Isolation Controls").
-* The synchronized FLR rising edge sets `ISOLATE_REQ_SMC_REG`; a write to that register clears the
-  latch with write data ignored; an FLR edge in the same cycle takes priority (`clk_rst.adoc`
+* The synchronized FLR rising edge sets `ISOLATE_REQ_SMC_REG`; a write of 1 to bit 0 with byte 0
+  strobed clears the latch, and a write of 0 leaves it set; an FLR edge in the same cycle takes priority (`clk_rst.adoc`
   "Function Level Reset and Isolation"). The flow does not assert the cool reset because the FLR
   counters stay at their reset value.
 * `skip_mem_repair_o` is asserted by the synchronized isolation pin or the FLR-set
@@ -23022,7 +23022,7 @@ draws nothing from the seed.
 |`CHK-FLR-LATCH-SET` |Both outputs must read 0 before the FLR edge and, after it,
   `tb_skip_mem_repair_o` and `tb_isolate_req_o[3]` must read 1 and hold on 32 rises; the rise
   counts are measured and printed.
-|`CHK-FLR-LATCH-CLEAR` |A write of 0 to ISOLATE_REQ_SMC_REG must clear both outputs, and in the
+|`CHK-FLR-LATCH-CLEAR` |A write of 1 to ISOLATE_REQ_SMC_REG bit 0 must clear both outputs, and in the
   sweep the latch must end cleared at delay 0 and a delay that leaves it set must occur; the first
   such delay must equal the clear latency minus the set latency and it and the two sampled
   delays after it must leave the latch set; the delays between 0 and it are recorded without
@@ -40952,7 +40952,7 @@ the register description.
 * The adopter strap capture registers are the `sw = r` half: `hw/sys/smc/doc/memmap.adoc` places `STRAPS_LO` / `STRAPS_HI` at BASE + 0x040_3000 / 0x040_3004 in the mandatory region of the adopter external window, and straps.rdl makes both `sw = r; hw = w`. What they captured at cold reset is read once and held against the write, not predicted from the integration; the contract proven is that every undeclared bit reads 0 and a software write changes nothing.
 * CHIP_CONFIG (`VERSION_LO`, `VERSION_HI`, `CHIP_ID`, `LC_STATE`, all `R` in chip_config.adoc) takes a 0xFFFFFFFF write with WSTRB 0xF and then 0xFF in each single byte lane (WSTRB 1<<b), each followed by a readback; every BRESP is logged, not compared, while SF-022 is open, and `CHIP_ID` / `LC_STATE` are logged against their documented resets 0x0 / 0xF (SF-023).
 * `NDMRESET_PROCESS` (`RW` 31:0 in ndm_reset.adoc) stores 0xFFFFFFFF and 0, and from 0 a 0xA5 written in lane b alone changes only byte b (SF-024, compared); `NDMRESET_REQUEST` and `NDMRESET_CLUSTER_COUNT` (`R`) take the same all-ones and single-lane writes with BRESP logged.
-* `ISOLATE_REQ_SMC_REG` takes a write of 0x00000001 with WSTRB 0x0. Its B response must arrive within the driver's bound; BRESP and the register value before and after are logged and not compared (SF-021, and the open RTL issue on this register's byte lanes held out as `smc_isolate_req_smc_lane_test`).
+* `ISOLATE_REQ_SMC_REG` takes a write of 0x00000001 with WSTRB 0x0. Its B response must arrive within the driver's bound; BRESP and the register value before and after are logged and not compared (SF-021).
 
 *Test Procedure*:
 
@@ -46116,8 +46116,7 @@ leaf requires (<<smc-vplan-evidence-gate>>), and at least one of its graded
 checks is not blocked. The legs an entry leaves ungraded are named in its
 `*Scope limit*` field; the ones a document leaves unstated are collected in
 <<smc-vplan-phase3-lists>>. The cards the plan holds out of `all` are not parked
-Phase 3 tests: the weekly `rtl_issue` reproducer
-`smc_isolate_req_smc_lane_test` and the two ROM hold-outs
+Phase 3 tests: the two ROM hold-outs
 `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` are held-out cards under
 <<smc-held-out-testcases>> with their own closing conditions, and their summary
 rows read "held out" beside the phase. The three `sanity` leaves of the dual elaboration are
@@ -48198,9 +48197,6 @@ item it rests on.
 |<<smc-vplan-area-reset,RESET>>
 |A warm-only reset (`rst_warm_ni` dropped without `rst_primary_ni`) and the registers it leaves intact.
 |No enrolled test drops the warm reset alone (`hw/sys/smc/doc/clk_rst.adoc`, Primary and Warm Reset); `smc_multi_reset_csr_persistence_test` states it as not claimed and leaves it to a testcase with a warm-only source (`SS_WARM_RESET_N` or the SEP watchdog pin).
-|<<smc-vplan-area-reset,RESET>>
-|The `ISOLATE_REQ_SMC_REG` byte-lane clear.
-|An open RTL defect with a weekly `rtl_issue` reproducer (`smc_isolate_req_smc_lane_test`, held out of `all`); a Known Limitations row, not a Phase 3 credit.
 |<<smc-vplan-area-clock,CLOCK>>
 |The adopter's PLL and PVT blocks.
 |Placeholder RTL in this harness; there is no design behind the register interface (Verification Scope). The retired `smc_pll_*` and `smc_pvt_*` modules are listed in <<smc-deferred-disposition>>; `smc_temp_interrupt_test` proves the digital pin path only.
@@ -48479,7 +48475,6 @@ in <<smc-deferred-disposition>>.
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in <<smc-deferred-disposition>>; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |Verilator does not implement SV covergroups |The covergroups under `ifndef VERILATOR` in `cov/sv/` are the VCS `group` metric; on Verilator, functional coverage is the `cov/sv` cover properties in the `user` family |See `SMC_FCOV.adoc`
-|`ISOLATE_REQ_SMC_REG` clears its FLR-latched request on any write with a byte enable anywhere in the register, whatever the data (`smc_cool_reset_wrap.sv`), where `reset_unit.rdl` makes the request a `sw = rw` field at bit 0 |`smc_isolate_req_smc_lane_test` shows it: a one-byte write of 0 at byte 1 clears the request. The leaf runs weekly in `rtl_issue` under `expect_fail` |Qualify the clear by bit 0's byte enable and a written 0; the leaf then moves to its feature testlist with the `ci` tag
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |The test modules the retired-module table in <<smc-deferred-disposition>> lists are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in <<smc-deferred-disposition>> names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
@@ -48518,8 +48513,8 @@ in `smoke`, `hosted` or `all`. Every `[[tests]]` entry carries `expect_fail` nam
 `expect_fail_match` pinned to the assertion it raises; the weekly tier runs
 the group on its own `regress.yml` row and grades the recorded failure as
 PASS, so the row goes red (`expected_fail_passed`) the week a defect is
-fixed and the leaf moves to its feature testlist. The member is
-`smc_isolate_req_smc_lane_test` (the `ISOLATE_REQ_SMC_REG` byte-lane clear).
+fixed and the leaf moves to its feature testlist. The group is
+empty until the next filed defect gets its reproducer.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -48528,24 +48523,22 @@ the wrong reason.
 [[sec-293-smc_isolate_req_smc_lane_test]]
 ===== 293 `smc_isolate_req_smc_lane_test`
 
-*Phase*: 2
+*Phase*: 3
 
 *Area*: RESET
-
-*Status*: held out
 
 *Source Module*: `smc_isolate_req_smc_lane_test`
 
 *BFM / Model*: `tb_cfg_flr_pf_active` raises the request; observation on `ISOLATE_REQ_SMC_REG`
 
-*Objective*: Writes to `ISOLATE_REQ_SMC_REG` that do not clear bit 0 must leave the FLR-latched request set.
+*Objective*: A write of 1 to `ISOLATE_REQ_SMC_REG` bit 0 clears the FLR-latched request; a write of 0, or one that does not strobe byte 0, leaves it set.
 
 *Test Coverage*:
 
-* `reset_unit.rdl` makes `isolate_req_smc_reg` a single `sw = rw` field at bit 0, set by hardware when `cfg_flr_pf_active` rises and de-asserted by software. A write that does not select its byte lane cannot change it, and a write of 1 keeps it at 1.
+* `reset_unit.rdl` makes `isolate_req_smc_reg` a single `onwrite = woclr` field at bit 0, set by hardware when `cfg_flr_pf_active` rises and cleared by a software write of 1 to bit 0 with byte 0's strobe set. A write of 0, or a write whose byte strobes do not select byte 0, leaves it unchanged; `smc_cool_reset_wrap.sv` qualifies the clear with the field's own write enable and its written data.
 * Arm leg: with the FLR counters at their reset value of 0, raising `cfg_flr_pf_active` sets the request without starting the cool-reset sequence, and bit 0 must read 1.
-* Defect leg: a one-byte write of 0 at byte 1 must leave the request reading 1, and then a write of 1 to bit 0 must leave it reading 1.
-* On this RTL the first write clears the request. `smc_cool_reset_wrap.sv` clears it on `isolate_req_smc_reg_wr_en && (|hwif_out.ISOLATE_REQ_SMC_REG.wr_biten)`, the byte enables of the whole external register, and ignores the write data.
+* Hold leg: a one-byte write of 0 at byte 1, a one-byte write of 0xFF at byte 1 and a word write of 0 must each leave the request reading 1.
+* Clear leg: a one-byte write of 1 to bit 0 must leave the request reading 0 within a bounded poll.
 
 *Test Procedure*:
 
@@ -48556,10 +48549,10 @@ Drive `smc_isolate_req_smc_lane_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ISOLATE-REQ-SMC-LANE` |The FLR-latched request stayed set across a one-byte write of 0 at byte 1 and a write of 1 to bit 0
+|`CHK-ISOLATE-REQ-SMC-LANE` |The FLR-latched request stayed set across a one-byte write of 0 at byte 1, a one-byte write of 0xFF at byte 1 and a word write of 0, and cleared on a one-byte write of 1 to bit 0
 |===
 
-*Pass Criteria*: fails on this RTL; enrolled in `rtl_issue` with `expect_fail`, not in `all`. The weekly tier grades the recorded failure as PASS and turns red the week the clear is qualified by bit 0's byte enable and a written 0.
+*Pass Criteria*: every checker above holds; enrolled in `reset.toml` with the `ci` tag and in `all`.
 '''''
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
 ===== 161 `smc_occp_dual_unsecure_boot_test`
@@ -50442,7 +50435,7 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 `dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Members: `smc_isolate_req_smc_lane_test`.
+Members: none at present; the `regress.yml` row returns with the next member.
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in

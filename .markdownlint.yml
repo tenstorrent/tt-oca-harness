@@ -46,7 +46,8 @@ MD041: false
 # styles across existing tables; not worth a repo-wide table rewrite here.
 MD060: false
 
-# MD033/no-inline-html: generated table cells use <br> for line breaks, which
-# pipe tables have no other way to express.
+# MD033/no-inline-html: a pipe-table cell cannot hold a line break, so the
+# TRM diagram index breaks its long cells with <br>; other inline HTML stays
+# an error.
 MD033:
   allowed_elements: [br]

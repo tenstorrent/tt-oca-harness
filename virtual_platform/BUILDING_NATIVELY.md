@@ -186,7 +186,7 @@ which assumes `stat -f %m` produces nothing useful outside BSD. Under GNU
 coreutils `-f` means *file system* status: `%m` is rejected, but the command
 still prints six lines of filesystem information to stdout before exiting
 non-zero. The fallback does run, and its output is appended to that, so the
-captured value begins `File: "..."` rather than a number. The numeric
+captured value begins with the indented line `File: "..."` rather than a number. The numeric
 comparison then errors, every candidate is discarded -- including the `sep-vp`
 just built -- and the runner reports `sep-vp binary not found` and builds its
 own, quietly ignoring yours.

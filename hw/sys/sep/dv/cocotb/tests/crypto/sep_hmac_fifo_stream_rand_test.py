@@ -61,14 +61,17 @@ leg, ``BP_BEAT_BOUND`` beats (a bound that ends the leg, not a spec value), and 
 data. The measurement run issues up to ``PROBE_EXTRA_MAX`` more writes with the stall held
 and logs how many complete; that count is not graded.
 
-DIGEST byte order: the register text settles the register order (DIGEST_0 holds digest bytes
-0..3) and the ``digest_swap`` swap (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117), not the byte order of a word at
-``digest_swap`` = 0. Every digest-to-golden compare of the leaf accepts the big-endian or the
-little-endian read of each word, with one order for every readback of the seed
-(``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order is logged as
-``OBS-HMAC-DIGEST-ORDER``. The wipe writes w into every digest word, so the all-w DIGEST read
-of CHK-HMAC-WIPE expects w in the order of the seed: w for the big-endian read, w with its
-four bytes reversed for the little-endian read (``digest_words`` of the bytes of w).
+DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
+gives digest[511:0] = {DIGEST0, DIGEST1, ...} for the SHA-2 hash value, which FIPS 180-4
+defines as H0 || H1 || ..., so at ``digest_swap`` = 0 DIGEST word n is the big-endian read
+of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in the final
+HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
+so each word is the little-endian read ("le").
+Every digest-to-golden compare of the leaf is at ``digest_swap`` = 0 and expects the
+big-endian read (``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order the first
+readback matches is logged as ``OBS-HMAC-DIGEST-ORDER``. The wipe writes w into every
+digest word, so the all-w DIGEST read of CHK-HMAC-WIPE expects the big-endian read of the
+bytes of w (``digest_words``).
 
 Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
 ``CTRL-HMAC-BP-CLEAN`` (a beat into a FIFO that is not full completes), ``CTRL-HMAC-LENGTHS``
@@ -1047,6 +1050,20 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         ):
             await ClockCycles(dut.clk_i, FQ_SETTLE_CLK)
             await self._pass(HMAC_FIFO_PASS_EMPTY_NOT_FULL)
+        # Control: the writes reached the message. The hash of the written bytes
+        # equals its golden, so a dropped write cannot leave fifo_empty at 0 here.
+        h = leg.h
+        msg = b"".join(v.to_bytes(n, "little") for n, v in ch)
+        digest = await self._finish(h.sha, "HMAC-FE-MSG")
+        golden = golden_digest(h.sha, h.hmac_en, KEY_ROWS[h.key_row], h.key_bits, msg)
+        self._ctrl(
+            "HMAC-FE-MSG",
+            self.digest_order.match(digest, golden)[0],
+            writes=len(ch),
+            len=len(msg),
+            digest0=f"0x{digest[0]:08x}",
+            golden0=f"0x{self.digest_order.expected(golden)[0]:08x}",
+        )
 
     async def _wipe_leg(self, leg: WipeLeg) -> None:
         """CHK-HMAC-WIPE on the values of ``leg``.
@@ -1066,7 +1083,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         d1_ok, _ = self.digest_order.match(d1, g1)
         # hmac.hjson:420-425: the value overwrites the secret key and the digest; a 64-bit
         # word of SHA-384/512 holds the 32-bit value twice, so every digest word holds w.
-        # A DIGEST word reads it in the order of the seed, fixed by the d1 compare above.
+        # A DIGEST word reads the big-endian read of the bytes of w (digest_swap = 0).
         w_read = self.digest_order.expected(leg.w.to_bytes(4, "big") * n_words)
         self._ctrl(
             "HMAC-WIPE-PRE",
