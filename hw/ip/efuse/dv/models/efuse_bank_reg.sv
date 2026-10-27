@@ -78,12 +78,42 @@ module efuse_bank_reg (
 
   logic cpuif_req_masked;
 
-  // Read & write latencies are balanced. Stalls not required
-  assign cpuif_req_stall_rd = '0;
-  assign cpuif_req_stall_wr = '0;
-  assign cpuif_req_masked = cpuif_req
-                            & !(!cpuif_req_is_wr & cpuif_req_stall_rd)
-                            & !(cpuif_req_is_wr & cpuif_req_stall_wr);
+  // Sim-only response stall knob. A testbench may set either count (hierarchically or with a
+  // force); a request of that direction is then held back for that many clock cycles before it is
+  // decoded, so pready stays low for the stall and the shim's APB transfer waits. Both counts
+  // default to 0, which leaves the request path exactly as it was: no stall, read and write
+  // latencies balanced. The counts are sampled when the request arrives.
+  logic [15:0] stall_rd_cycles = 16'd0;
+  logic [15:0] stall_wr_cycles = 16'd0;
+  logic [15:0] stall_sel;
+  logic [15:0] stall_cnt_q;
+  logic        stall_pend_q;
+
+  assign stall_sel = cpuif_req_is_wr ? stall_wr_cycles : stall_rd_cycles;
+  always_ff @(posedge clk or negedge arst_n) begin
+    if (~arst_n) begin
+      stall_pend_q <= 1'b0;
+      stall_cnt_q  <= '0;
+    end else if (cpuif_req && (stall_sel != '0)) begin
+      stall_pend_q <= 1'b1;
+      stall_cnt_q  <= stall_sel - 16'd1;
+    end else if (stall_pend_q) begin
+      if (stall_cnt_q == '0) begin
+        stall_pend_q <= 1'b0;
+      end else begin
+        stall_cnt_q <= stall_cnt_q - 16'd1;
+      end
+    end
+  end
+
+  // A request is stalled while its direction's count is non-zero; the held request is released
+  // once the countdown reaches zero.
+  assign cpuif_req_stall_rd = (stall_rd_cycles != '0);
+  assign cpuif_req_stall_wr = (stall_wr_cycles != '0);
+  assign cpuif_req_masked = (cpuif_req
+                             & !(!cpuif_req_is_wr & cpuif_req_stall_rd)
+                             & !(cpuif_req_is_wr & cpuif_req_stall_wr))
+                            | (stall_pend_q & (stall_cnt_q == '0));
 
   //--------------------------------------------------------------------------
   // Address Decode

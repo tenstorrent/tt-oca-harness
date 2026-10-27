@@ -1544,6 +1544,20 @@ module smc_uvm_top
     assign tb_efuse_readback = `SMC_EFUSE_READ.read_back_data_o;
     assign tb_efuse_read_addr = 16'(`SMC_EFUSE_IFC.reg_interface_read_addr_csr);
     assign tb_efuse_program_addr = 16'(`SMC_EFUSE_IFC.reg_interface_program_addr_csr);
+    // eFuse bank-model response stall knob: the counts of efuse_bank_reg are forced from the
+    // hooks while the enable reads 1 and to the model default 0 otherwise, so a leaf that does not
+    // drive the hooks sees the unstalled bank.
+`define SMC_EFUSE_BANK_REG u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg
+    always @(posedge clk_smc) begin
+        if (tb_efuse_bank_stall_en === 1'b1) begin
+            force `SMC_EFUSE_BANK_REG.stall_rd_cycles = tb_efuse_bank_stall_rd;
+            force `SMC_EFUSE_BANK_REG.stall_wr_cycles = tb_efuse_bank_stall_wr;
+        end else begin
+            force `SMC_EFUSE_BANK_REG.stall_rd_cycles = 16'd0;
+            force `SMC_EFUSE_BANK_REG.stall_wr_cycles = 16'd0;
+        end
+    end
+`undef SMC_EFUSE_BANK_REG
     always @(posedge clk_smc) begin
         if (tb_efuse_program_state_inject_en === 1'b1) begin
             force `SMC_EFUSE_PROGRAM.program_state_q[1:0] = tb_efuse_program_state_inject;

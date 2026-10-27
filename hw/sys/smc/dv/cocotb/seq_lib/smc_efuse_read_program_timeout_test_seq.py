@@ -29,11 +29,13 @@ in this bench.
 
 from __future__ import annotations
 
+import os
+import random
 from collections.abc import Callable
 from dataclasses import dataclass
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
@@ -86,6 +88,22 @@ READ_ADDR_ERR = efuse_ifc_u32(
 OTP_WORD0_MARKER = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"))
 _BIT = 0
 _POLL = 10_000
+
+# Drawn timeout legs (RAND-REP). Per interface the seed draws a timeout count C and a stall length
+# on either side of it, applied through the bank-model stall knob (tb_efuse_bank_stall_*):
+# W0 is the response wait the pinned recovery leg measured with no stall, in busy cycles; the
+# shorter stall is drawn in [0, C - 1 - W0] and the longer in
+# [C + 4 - W0, C + 4 - W0 + DRAW_STALL_SPAN], so the draws stay two cycles clear of C + 1; the
+# longer legs show the timeout after C + 1 busy cycles (printed). C is drawn
+# in [W0 + 3, DRAW_COUNT_MAX]: 1 and above as the field states, above W0 + 2 so that a shorter
+# stall exists, and at or below DRAW_COUNT_MAX so that the longer stall fits the poll bound.
+DRAW_COUNT_MAX = 2048
+DRAW_MARGIN = 2
+DRAW_STALL_SPAN = 512
+# Rises of clk_smc_i a busy watch may wait for one operation to rise and fall.
+BUSY_WATCH_BOUND = 4 * DRAW_COUNT_MAX
+# Cycles allowed after a timed-out request for the stalled bank transfer to finish.
+STALL_SETTLE_CYCLES = 64
 
 PROG_BUSY = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bm")
 READ_BUSY = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bm")
@@ -153,6 +171,8 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_efuse_read_program_timeout_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        self.rng = random.Random(self.seed)
         self.prog_tmo_ok = False
         self.prog_rec_ok = False
         self.read_tmo_ok = False
@@ -258,9 +278,115 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
         return st, data
 
+    async def _watch_busy(self, tap, label: str) -> int:
+        """Count the clk_smc_i rises at which ``tap`` reads 1 across one operation."""
+        seen = 0
+        for _ in range(BUSY_WATCH_BOUND):
+            await RisingEdge(cocotb.top.clk_smc_i)
+            value = tap.value
+            assert value.is_resolvable, f"{label}: busy tap sampled X/Z ({value})"
+            if int(value):
+                seen += 1
+            elif seen:
+                return seen
+        raise AssertionError(
+            f"{label}: busy did not rise and fall within {BUSY_WATCH_BOUND} rises (high {seen})"
+        )
+
+    @staticmethod
+    def _stall(rd: int, wr: int) -> None:
+        """Drive the bank-model stall knob; 0/0 restores the model default."""
+        dut = cocotb.top
+        dut.tb_efuse_bank_stall_rd.value = rd
+        dut.tb_efuse_bank_stall_wr.value = wr
+        dut.tb_efuse_bank_stall_en.value = int(rd != 0 or wr != 0)
+
+    def _draw(self, kind: str, w0: int) -> dict[str, int]:
+        """Draw the count and the two stall lengths of ``kind`` from the measured wait ``w0``."""
+        assert w0 + DRAW_MARGIN + 1 <= DRAW_COUNT_MAX, f"{kind}: unstalled wait {w0} too long"
+        count = self.rng.randint(w0 + DRAW_MARGIN + 1, DRAW_COUNT_MAX)
+        short = self.rng.randint(0, count - 1 - w0)
+        long_min = count + 2 - w0 + DRAW_MARGIN
+        long = self.rng.randint(long_min, long_min + DRAW_STALL_SPAN)
+        cells = {"w0": w0, "count": count, "short": short, "long": long}
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: %s timeout count %d (range %d..%d), stall short %d "
+            "(0..%d), stall long %d (%d..%d) bank cycles; unstalled wait w0=%d busy cycles",
+            self.seed,
+            kind,
+            count,
+            w0 + DRAW_MARGIN + 1,
+            DRAW_COUNT_MAX,
+            short,
+            count - 1 - w0,
+            long,
+            long_min,
+            long_min + DRAW_STALL_SPAN,
+            w0,
+        )
+        return cells
+
+    async def _drawn_program(self, cells: dict[str, int], which: str) -> tuple[int, int, int]:
+        """One drawn program leg; returns the CTRL word, the busy cycles and the OTP word."""
+        dut = cocotb.top
+        stall = cells[which]
+        label = f"PROG_DRAW_{which.upper()}"
+        word = TMO_EN_P | cells["count"]
+        await self.csr_write(f"{label}_TMO", PROG_TMO, word)
+        await self.csr_read(f"{label}_TMO_RB", PROG_TMO, expected=word)
+        self._stall(0, stall)
+        watch = cocotb.start_soon(self._watch_busy(dut.tb_efuse_program_busy, label))
+        st = await self._program(label, idle=False)
+        busy = await watch
+        self._stall(0, 0)
+        if which == "long":
+            assert st & PROG_ERR, (
+                f"{label}: program with count {cells['count']} and a {stall}-cycle bank stall "
+                f"(w0={cells['w0']}) did not time out: PROGRAM_CTRL=0x{st:x} busy={busy}"
+            )
+            await ClockCycles(dut.clk_smc_i, stall + STALL_SETTLE_CYCLES)
+        else:
+            assert (st & PROG_ERR) == 0, (
+                f"{label}: program with count {cells['count']} and a {stall}-cycle bank stall "
+                f"(w0={cells['w0']}) reported PROGRAM_STATUS=1: PROGRAM_CTRL=0x{st:x} busy={busy}"
+            )
+        await self.csr_write(f"{label}_IDLE", PROGRAM_CTRL, 0)
+        await self._clear_req_err()
+        return st, busy, int(dut.tb_efuse_programmed_word0.value)
+
+    async def _drawn_read(self, cells: dict[str, int], which: str) -> tuple[int, int, int]:
+        """One drawn read leg; returns the CTRL word, READ_DATA and the busy cycles."""
+        dut = cocotb.top
+        stall = cells[which]
+        label = f"READ_DRAW_{which.upper()}"
+        word = TMO_EN_R | cells["count"]
+        await self.csr_write(f"{label}_TMO", READ_TMO, word)
+        await self.csr_read(f"{label}_TMO_RB", READ_TMO, expected=word)
+        self._stall(stall, 0)
+        watch = cocotb.start_soon(self._watch_busy(dut.tb_efuse_read_busy, label))
+        st, data = await self._read(label)
+        busy = await watch
+        self._stall(0, 0)
+        if which == "long":
+            assert st & READ_ERR and data == 0, (
+                f"{label}: read with count {cells['count']} and a {stall}-cycle bank stall "
+                f"(w0={cells['w0']}) did not time out: READ_CTRL=0x{st:x} READ_DATA=0x{data:x} "
+                f"busy={busy}"
+            )
+            await ClockCycles(dut.clk_smc_i, stall + STALL_SETTLE_CYCLES)
+        else:
+            assert (st & READ_ERR) == 0 and (data & 1) == 1, (
+                f"{label}: read with count {cells['count']} and a {stall}-cycle bank stall "
+                f"(w0={cells['w0']}) did not complete with the burned word: READ_CTRL=0x{st:x} "
+                f"READ_DATA=0x{data:x} busy={busy}"
+            )
+        await self._clear_req_err()
+        return st, data, busy
+
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
+        self._stall(0, 0)
 
         await self.csr_write("PROG_TMO_SHORT", PROG_TMO, TMO_EN_P)
         got = await self.csr_read("PROG_TMO_RB", PROG_TMO, expected=TMO_EN_P)
@@ -270,17 +396,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         assert otp == OTP_WORD0_MARKER, f"timed-out program sticky-OR OTP: 0x{otp:08x}"
         self.prog_tmo_ok = True
         self.prog_tmo_ctrl = st
-        cocotb.log.info(
-            "CHK-EFUSE-TMO-PROG: DUT PROGRAM_CTRL=0x%x (PROGRAM_STATUS set by "
-            "the timeout FSM) tmo=0x%x; MODEL-BACKED: eFuse bank model word0 "
-            "still 0x%x (unburned) -- the bank is efuse_bank_model.sv, a "
-            "declared simulation stand-in, so this half is not silicon-path "
-            "coverage",
-            st,
-            got,
-            otp,
-        )
-        self.chk_seen.add("CHK-EFUSE-TMO-PROG")
+        pinned_prog = (st, got, otp)
 
         st_hold = await self.csr_read("PROG_TMO_HOLD", PROGRAM_CTRL)
         stat_hold = await self.csr_read("STATUS_HOLD", STATUS)
@@ -322,20 +438,57 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self._clear_req_err()
 
         await self.csr_write("PROG_TMO_DEF", PROG_TMO, TMO_CYC_RST_P)
+        watch = cocotb.start_soon(self._watch_busy(dut.tb_efuse_program_busy, "PROG_REC"))
         st = await self._program("PROG_REC")
+        w0_pg = await watch
         otp = int(dut.tb_efuse_programmed_word0.value)
         assert (st & PROG_ERR) == 0, f"recovery program status=1 CTRL=0x{st:x}"
         assert (otp & 1) == 1, f"recovery did not set bit0 OTP=0x{otp:08x}"
         self.prog_rec_ok = True
         self.prog_rec_ctrl = st
+
+        # Drawn program legs: the longer stall times out at the drawn count, the shorter one
+        # completes with the status clear (the bank stall knob, efuse_bank_reg.sv).
+        cells = self._draw("program", w0_pg)
+        st_long, busy_long, otp_long = await self._drawn_program(cells, "long")
+        cocotb.log.info(
+            "CHK-EFUSE-TMO-PROG: DUT PROGRAM_CTRL=0x%x (PROGRAM_STATUS set by "
+            "the timeout FSM) tmo=0x%x; MODEL-BACKED: eFuse bank model word0 "
+            "still 0x%x (unburned) -- the bank is efuse_bank_model.sv, a "
+            "declared simulation stand-in, so this half is not silicon-path "
+            "coverage; drawn=seed %d count %d stall_long %d: PROGRAM_CTRL=0x%x "
+            "(PROGRAM_STATUS set) after %d busy cycles, bank word0 0x%x once the stalled "
+            "transfer settled (model-backed, printed)",
+            pinned_prog[0],
+            pinned_prog[1],
+            pinned_prog[2],
+            self.seed,
+            cells["count"],
+            cells["long"],
+            st_long,
+            busy_long,
+            otp_long,
+        )
+        self.chk_seen.add("CHK-EFUSE-TMO-PROG")
+        st_short, busy_short, otp_short = await self._drawn_program(cells, "short")
+        await self.csr_write("PROG_TMO_DEF_AGAIN", PROG_TMO, TMO_CYC_RST_P)
         cocotb.log.info(
             "CHK-EFUSE-TMO-PROG-REC: DUT PROGRAM_CTRL=0x%x (PROGRAM_STATUS "
             "clear with the RDL-default timeout 0x%x); MODEL-BACKED: eFuse "
             "bank model word0 now 0x%x with bit0 set -- burn observed in "
-            "efuse_bank_model.sv, a declared simulation stand-in, not silicon",
+            "efuse_bank_model.sv, a declared simulation stand-in, not silicon; "
+            "drawn=seed %d count %d stall_short %d w0 %d: PROGRAM_CTRL=0x%x (PROGRAM_STATUS "
+            "clear) after %d busy cycles, bank word0 0x%x",
             st,
             TMO_CYC_RST_P,
             otp,
+            self.seed,
+            cells["count"],
+            cells["short"],
+            cells["w0"],
+            st_short,
+            busy_short,
+            otp_short,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-PROG-REC")
 
@@ -357,7 +510,9 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("READ_TMO_EN_LONG", READ_TMO, tmo_enabled_long)
         await self.csr_read("READ_TMO_EN_LONG_RB", READ_TMO, expected=tmo_enabled_long)
         await self._clear_req_err()
+        watch = cocotb.start_soon(self._watch_busy(dut.tb_efuse_read_busy, "READ_TMO_EN_LONG"))
         st_ctl, data_ctl = await self._read("READ_TMO_EN_LONG")
+        w0_rd = await watch
         assert (st_ctl & READ_ERR) == 0, (
             f"positive control read (READ_REQ_TIMOUT_ENABLE=1, cycles=RDL "
             f"default 0x{TMO_CYC_RST_R:x}) reported READ_STATUS=1 "
@@ -376,6 +531,10 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             f"returned 0x{data_ctl:x}: READ_DATA does not discriminate the two "
             f"configurations"
         )
+        # Drawn read legs: the longer stall times out at the drawn count with READ_STATUS set and
+        # READ_DATA 0, the shorter one completes with the status clear and the burned word.
+        rcells = self._draw("read", w0_rd)
+        st_rlong, data_rlong, busy_rlong = await self._drawn_read(rcells, "long")
         cocotb.log.info(
             "CHK-EFUSE-TMO-RD: with READ_REQ_TIMOUT_ENABLE=1 and cycles=0 the "
             "read aborted and READ_DATA=0x%x (CTRL=0x%x, tmo=0x%x); with the "
@@ -386,13 +545,22 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             "inequality of the two READ_DATA words. MODEL-BACKED: the specific "
             "completed value (bit0 set) is the word burned into "
             "efuse_bank_model.sv, a declared simulation stand-in, not silicon "
-            "-- no claim is made here about what a real eFuse macro returns",
+            "-- no claim is made here about what a real eFuse macro returns; "
+            "drawn=seed %d count %d stall_long %d w0 %d: READ_CTRL=0x%x (READ_STATUS set) "
+            "READ_DATA=0x%x after %d busy cycles",
             data,
             st,
             got,
             data_ctl,
             st_ctl,
             tmo_enabled_long,
+            self.seed,
+            rcells["count"],
+            rcells["long"],
+            rcells["w0"],
+            st_rlong,
+            data_rlong,
+            busy_rlong,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-RD")
 
@@ -402,16 +570,27 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         assert (st & READ_ERR) == 0, f"recovery read status=1 CTRL=0x{st:x}"
         assert (data & 1) == 1, f"recovery read missed bit0 data=0x{data:x}"
         self.read_rec_ok = True
+        st_rshort, data_rshort, busy_rshort = await self._drawn_read(rcells, "short")
+        await self.csr_write("READ_TMO_DEF_AGAIN", READ_TMO, TMO_CYC_RST_R)
         cocotb.log.info(
             "CHK-EFUSE-TMO-RD-REC: timeout disabled (READ_TMO=0x%x) -> "
             "READ_CTRL=0x%x READ_DATA=0x%x with bit0 set. DUT property: the "
             "read completes and READ_STATUS stays clear once the timeout is "
             "given the RDL-default cycle count. MODEL-BACKED: bit0 being set "
             "is the burned word from efuse_bank_model.sv, a declared "
-            "simulation stand-in, not silicon",
+            "simulation stand-in, not silicon; drawn=seed %d count %d stall_short %d w0 %d: "
+            "READ_CTRL=0x%x (READ_STATUS clear) READ_DATA=0x%x with bit0 set after %d busy "
+            "cycles",
             TMO_CYC_RST_R,
             st,
             data,
+            self.seed,
+            rcells["count"],
+            rcells["short"],
+            rcells["w0"],
+            st_rshort,
+            data_rshort,
+            busy_rshort,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-RD-REC")
 
