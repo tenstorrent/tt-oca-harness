@@ -36335,6 +36335,7 @@ module sep_fcov (
   wire km_own_br = (graded_owner == FcovOwnSepKmBootResetRandTest);
   wire km_own_ho = (graded_owner == FcovOwnSepKmHandoverRandTest);
   wire km_own_fi = (graded_owner == FcovOwnSepKmFaultInjectRandTest);
+  wire km_own_oc = (graded_owner == FcovOwnSepKmOtpChangeIrqTest);
   wire km_own_smpto = (graded_owner == FcovOwnSepKmDrbgSamplerTimeoutResetTest);
   wire km_own_hot = (graded_owner == FcovOwnSepKmHandoverTest);
   wire km_own_crc = (graded_owner == FcovOwnSepKmCrcPcpiKatTest);
@@ -37510,9 +37511,13 @@ module sep_fcov (
       bins flush[] = {4'b1_000, 4'b1_001, 4'b1_010, 4'b1_100};
     }
     // Halting handlers by rank (kq_rank_bit order) with IRQ_STATUS still set
-    // after the halt; 11 the informational shared-key handler.
+    // after the halt; 11 the informational shared-key handler; 12 the
+    // informational OTP-change handler, sampled when its owner writes
+    // km_otp_chg_pass after the sticky bit has cleared.
     cp_fr_isr_disposition: coverpoint v[3:0] iff (pt == 5'd9) {
-      bins halting[] = {[4'd0 : 4'd10]}; bins informational_shared_key = {4'd11};
+      bins halting[] = {[4'd0 : 4'd10]};
+      bins informational_shared_key = {4'd11};
+      bins informational_otp_change = {4'd12};
     }
   endgroup
 
@@ -40819,6 +40824,11 @@ module sep_fcov (
   logic [1:0] kq_par_lane = '0;
   logic [3:0] kq_par_rstrb = '0;
   logic [1:0] kq_par_st_q = '0;
+  // sep_km_otp_change_irq_test writes 1 after CHK-OTP-RETIRE passes and 0
+  // again. The rise samples informational_otp_change. It gates a sample; it
+  // is never a bin value and drives nothing.
+  int unsigned km_otp_chg_pass = 0;
+  logic kq_otp_chg_q = 1'b0;
   logic [10:0] kq_sil = '0;  // clocks of silence after a frame sent while bit 30 is high
   logic kq_unrec_q = 1'b0;
   logic [11:0] kq_st_q = '0;
@@ -41179,6 +41189,11 @@ module sep_fcov (
       // The shared-key notice while the KM runs (cp_fr_isr_disposition).
       if (km_own_fi && (kq_ev_rid == KqRespSkReady) && (kq_ev_plen == 8'd0) && !kq_unrec)
         u_sep_km_fault_report_cg.sample(5'd9, 16'd11);
+      // OTP-change informational handler. The owner writes km_otp_chg_pass
+      // only after the sticky bit has cleared and the main loop answers.
+      if (km_own_oc && (km_otp_chg_pass != 0) && !kq_otp_chg_q)
+        u_sep_km_fault_report_cg.sample(5'd9, 16'd12);
+      kq_otp_chg_q <= (km_otp_chg_pass != 0);
     end
 
     // ---- host side: SEP_WRITE_DATA accepted (cp_nx_permitted_channel) ----

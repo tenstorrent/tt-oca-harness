@@ -568,13 +568,12 @@ in cocotb and plusargs in SV-UVM.
 === Coverage Strategy
 
 The `cov/sv/` coverage modules, instantiated once in the shared `tb_top`,
-carry two layers, and every flow compiles both. Their covergroups are the
-functional coverage model. Verilator records their labeled `cover property`
-points as user coverage, and VCS grades them with the assertions. Crosses
-and illegal bins exist only in the covergroups, so the two layers do not
-carry the same bins. The debug-disable 22-cell contract keeps its
-checker-gated Python ledger; `cg_dbg_disable_scan` and
-`cg_dbg_disable_jtag2axi` record the same cells in both realizations.
+carry the covergroups that are the functional coverage model, and every flow
+compiles them. `dtp_jtag2axi_fcov` also keeps three labeled `cover property`
+points for a condition no covergroup bin records; Verilator records them as
+user coverage, and VCS grades them with the assertions. The debug-disable
+22-cell contract keeps its checker-gated Python ledger; `cg_dbg_disable_scan`
+and `cg_dbg_disable_jtag2axi` record the same cells in both realizations.
 Assertion coverage and full code coverage come from the commercial
 simulators. See `DTP_FCOV.adoc`.
 

@@ -12,11 +12,8 @@
 // configuration the port runs with when it acts; the CTM route bins follow
 // a shadow of the CT_SRC selects that the CSR writes program.
 //
-// CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
-// argument is a single continuous-assign wire; no declaration initializers
-// on always_ff-driven variables; declare wires before use.
-
-`include "ocah_fcov_macros.svh"
+// CONVENTION: no declaration initializers on always_ff-driven variables,
+// which VCS rejects (initializer_driver_checks); declare wires before use.
 
 module dtp_xtrig_fcov (
   input wire        clk_i,
@@ -75,7 +72,7 @@ module dtp_xtrig_fcov (
   localparam int unsigned NumCtp = int'(CROSS_TRIGGER_NETWORK_CTP_NUM);
   localparam int unsigned CtmPorts = int'(CROSS_TRIGGER_NETWORK_CTM_CT_SRC_NUM);
   // One port index space for the CTM: CTP ports occupy 0-15 and internal CTs
-  // 16-25, as in the c_ctm_*_index_* cover properties.
+  // 16-25.
   localparam int unsigned IntPortBase = NumCtp;
 
   // CSR windows of the cross-trigger network (generated address map).
@@ -294,107 +291,6 @@ module dtp_xtrig_fcov (
 `endif  // SIMULATION
 
   // ------------------------------------------------------------------
-  // CSR accesses (cg_xtrig_csr_write, cg_xtrig_csr_read): the word class,
-  // byte strobes, channel order, response, and response wait of every
-  // completed access.
-  // ------------------------------------------------------------------
-  wire b_rw_register = (b_region == RegionCtmSelect) || (b_region == RegionCtpConfig)
-      || (b_region == RegionCtpStretch);
-  wire csr_wr_ctm_select_e = b_hs && (b_region == RegionCtmSelect);
-  wire csr_wr_ctm_hole_e = b_hs && (b_region == RegionCtmHole);
-  wire csr_wr_ctp_config_e = b_hs && (b_region == RegionCtpConfig);
-  wire csr_wr_ctp_status_e = b_hs && (b_region == RegionCtpStatus);
-  wire csr_wr_ctp_stretch_e = b_hs && (b_region == RegionCtpStretch);
-  wire csr_wr_ctp_hole_e = b_hs && (b_region == RegionCtpHole);
-  wire csr_wr_ctm_unmapped_e = b_hs && (b_region == RegionCtmUnmapped);
-  wire csr_wr_unmapped_e = b_hs && (b_region == RegionUnmapped);
-  `OCAH_FCOV_COVER(c_xtrig_csr_write_ctm_select, csr_wr_ctm_select_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_write_ctm_hole, csr_wr_ctm_hole_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_write_ctp_config, csr_wr_ctp_config_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_write_ctp_status, csr_wr_ctp_status_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_write_ctp_stretch, csr_wr_ctp_stretch_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_write_ctp_hole, csr_wr_ctp_hole_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_write_ctm_unmapped, csr_wr_ctm_unmapped_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_write_unmapped, csr_wr_unmapped_e, clk_i, in_reset)
-  wire csr_strobe_byte0_e = b_hs && b_rw_register && (b_strb == 4'h1);
-  wire csr_strobe_byte1_e = b_hs && b_rw_register && (b_strb == 4'h2);
-  wire csr_strobe_byte2_e = b_hs && b_rw_register && (b_strb == 4'h4);
-  wire csr_strobe_byte3_e = b_hs && b_rw_register && (b_strb == 4'h8);
-  wire csr_strobe_full_e = b_hs && b_rw_register && (b_strb == 4'hF);
-  `OCAH_FCOV_COVER(c_xtrig_csr_strobe_byte0, csr_strobe_byte0_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_strobe_byte1, csr_strobe_byte1_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_strobe_byte2, csr_strobe_byte2_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_strobe_byte3, csr_strobe_byte3_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_strobe_full, csr_strobe_full_e, clk_i, in_reset)
-  wire axil_order_same_cycle_e = b_hs && (b_order == OrderSameCycle);
-  wire axil_order_aw_first_e = b_hs && (b_order == OrderAwFirst);
-  wire axil_order_w_first_e = b_hs && (b_order == OrderWFirst);
-  `OCAH_FCOV_COVER(c_xtrig_axil_order_same_cycle, axil_order_same_cycle_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_order_aw_first, axil_order_aw_first_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_order_w_first, axil_order_w_first_e, clk_i, in_reset)
-  wire axil_bresp_okay_e = b_hs && (axil_bresp_i == RespOkay);
-  wire axil_bresp_decerr_e = b_hs && (axil_bresp_i == RespDecErr);
-  wire axil_b_ready_e = b_hs && !b_held_q;
-  wire axil_b_held_e = b_hs && b_held_q;
-  `OCAH_FCOV_COVER(c_xtrig_axil_bresp_okay, axil_bresp_okay_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_bresp_decerr, axil_bresp_decerr_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_b_ready, axil_b_ready_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_b_held, axil_b_held_e, clk_i, in_reset)
-
-  wire csr_rd_ctm_select_e = r_hs && (r_region == RegionCtmSelect);
-  wire csr_rd_ctm_hole_e = r_hs && (r_region == RegionCtmHole);
-  wire csr_rd_ctp_config_e = r_hs && (r_region == RegionCtpConfig);
-  wire csr_rd_ctp_status_e = r_hs && (r_region == RegionCtpStatus);
-  wire csr_rd_ctp_stretch_e = r_hs && (r_region == RegionCtpStretch);
-  wire csr_rd_ctp_hole_e = r_hs && (r_region == RegionCtpHole);
-  wire csr_rd_ctm_unmapped_e = r_hs && (r_region == RegionCtmUnmapped);
-  wire csr_rd_unmapped_e = r_hs && (r_region == RegionUnmapped);
-  `OCAH_FCOV_COVER(c_xtrig_csr_read_ctm_select, csr_rd_ctm_select_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_read_ctm_hole, csr_rd_ctm_hole_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_read_ctp_config, csr_rd_ctp_config_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_read_ctp_status, csr_rd_ctp_status_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_read_ctp_stretch, csr_rd_ctp_stretch_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_read_ctp_hole, csr_rd_ctp_hole_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_read_ctm_unmapped, csr_rd_ctm_unmapped_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_read_unmapped, csr_rd_unmapped_e, clk_i, in_reset)
-  wire axil_rresp_okay_e = r_hs && (axil_rresp_i == RespOkay);
-  wire axil_rresp_decerr_e = r_hs && (axil_rresp_i == RespDecErr);
-  wire axil_r_ready_e = r_hs && !r_held_q;
-  wire axil_r_held_e = r_hs && r_held_q;
-  `OCAH_FCOV_COVER(c_xtrig_axil_rresp_okay, axil_rresp_okay_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_rresp_decerr, axil_rresp_decerr_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_r_ready, axil_r_ready_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_r_held, axil_r_held_e, clk_i, in_reset)
-  // A read of a register no write has reached since the last system reset.
-  wire csr_reset_value_ctm_select_e = csr_rd_ctm_select_e && r_reset_value;
-  wire csr_reset_value_ctp_config_e = csr_rd_ctp_config_e && r_reset_value;
-  wire csr_reset_value_ctp_status_e = csr_rd_ctp_status_e && r_reset_value;
-  wire csr_reset_value_ctp_stretch_e = csr_rd_ctp_stretch_e && r_reset_value;
-  `OCAH_FCOV_COVER(c_xtrig_csr_reset_value_ctm_select, csr_reset_value_ctm_select_e, clk_i,
-                   in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_reset_value_ctp_config, csr_reset_value_ctp_config_e, clk_i,
-                   in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_reset_value_ctp_status, csr_reset_value_ctp_status_e, clk_i,
-                   in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_reset_value_ctp_stretch, csr_reset_value_ctp_stretch_e, clk_i,
-                   in_reset)
-  // STATUS read in each phase of a transfer: idle, a wire-OR pulse, a
-  // point-to-point request awaiting and then holding its acknowledge, and a
-  // received request.
-  wire csr_status_idle_e = csr_rd_ctp_status_e && (r_status == 8'h00);
-  wire csr_status_pulse_e = csr_rd_ctp_status_e && (r_status == StatusBusy);
-  wire csr_status_tx_request_e = csr_rd_ctp_status_e && (r_status == (StatusBusy | StatusReqOut));
-  wire csr_status_tx_acknowledge_e = csr_rd_ctp_status_e
-      && (r_status == (StatusBusy | StatusAckIn));
-  wire csr_status_rx_acknowledge_e = csr_rd_ctp_status_e
-      && (r_status == (StatusBusy | StatusReqIn | StatusAckOut));
-  `OCAH_FCOV_COVER(c_xtrig_csr_status_idle, csr_status_idle_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_status_pulse, csr_status_pulse_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_status_tx_request, csr_status_tx_request_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_status_tx_acknowledge, csr_status_tx_acknowledge_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_csr_status_rx_acknowledge, csr_status_rx_acknowledge_e, clk_i, in_reset)
-
-  // ------------------------------------------------------------------
   // CSR port flow (cg_xtrig_axil_flow): a second request taken while the
   // first is open, a spill register holding two beats, the crossbar demux
   // holding a request behind an open one, and the demux holding an AW its
@@ -413,25 +309,9 @@ module dtp_xtrig_fcov (
   localparam int unsigned NumFlow = 9;
   wire axil_aw_accept_open_e = aw_hs && ((wr_open_q - int'(w_hs)) > 0);
   wire axil_ar_accept_open_e = ar_hs && ((rd_open_q - int'(r_hs)) > 0);
-  wire axil_w_spill_full_e = axil_w_spill_full_i;
-  wire axil_r_spill_full_e = axil_r_spill_full_i;
-  wire axil_demux_aw_held_e = demux_aw_held_i;
-  wire axil_demux_ar_held_e = demux_ar_held_i;
-  wire axil_aw_spill_full_e = axil_aw_spill_full_i;
-  wire axil_ar_spill_full_e = axil_ar_spill_full_i;
-  wire axil_demux_aw_lock_e = demux_aw_lock_i;
-  `OCAH_FCOV_COVER(c_xtrig_axil_aw_accept_open, axil_aw_accept_open_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_ar_accept_open, axil_ar_accept_open_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_w_spill_full, axil_w_spill_full_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_r_spill_full, axil_r_spill_full_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_demux_aw_held, axil_demux_aw_held_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_demux_ar_held, axil_demux_ar_held_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_aw_spill_full, axil_aw_spill_full_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_ar_spill_full, axil_ar_spill_full_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_xtrig_axil_demux_aw_lock, axil_demux_aw_lock_e, clk_i, in_reset)
-  wire [NumFlow-1:0] axil_flow = {axil_demux_aw_lock_e, axil_ar_spill_full_e,
-      axil_aw_spill_full_e, axil_demux_ar_held_e, axil_demux_aw_held_e, axil_r_spill_full_e,
-      axil_w_spill_full_e, axil_ar_accept_open_e, axil_aw_accept_open_e};
+  wire [NumFlow-1:0] axil_flow = {demux_aw_lock_i, axil_ar_spill_full_i, axil_aw_spill_full_i,
+      demux_ar_held_i, demux_aw_held_i, axil_r_spill_full_i, axil_w_spill_full_i,
+      axil_ar_accept_open_e, axil_aw_accept_open_e};
   logic [NumFlow-1:0] axil_flow_q;
   always_ff @(posedge clk_i) axil_flow_q <= in_reset ? '0 : axil_flow;
   wire [NumFlow-1:0] axil_flow_rise = axil_flow & ~axil_flow_q;
@@ -473,31 +353,6 @@ module dtp_xtrig_fcov (
   wire [15:0] ctp_rx_rise = ctp_ct_dst_i & ~ctp_ct_dst_q;
 
   // ------------------------------------------------------------------
-  // cg_ctp: every CTP transmission and reception with the port's MODE and
-  // INVERT, and the STRETCH_MULT of every wire-OR transmission.
-  // ------------------------------------------------------------------
-  wire [15:0] ctp_act = ctp_tx_rise | ctp_rx_rise;
-  wire [15:0] ctp_wire_or_tx = ctp_tx_rise & ~ctp_mode_q;
-  wire ctp_direction_transmit_e = |ctp_tx_rise;
-  wire ctp_direction_receive_e = |ctp_rx_rise;
-  wire ctp_mode_wire_or_e = |(ctp_act & ~ctp_mode_q);
-  wire ctp_mode_p2p_e = |(ctp_act & ctp_mode_q);
-  wire ctp_inversion_normal_e = |(ctp_act & ~ctp_invert_q);
-  wire ctp_inversion_inverted_e = |(ctp_act & ctp_invert_q);
-  wire ctp_stretch_min_e = |(ctp_wire_or_tx & ctp_stretch_min);
-  wire ctp_stretch_mid_e = |(ctp_wire_or_tx & ~ctp_stretch_min & ~ctp_stretch_max);
-  wire ctp_stretch_max_e = |(ctp_wire_or_tx & ctp_stretch_max);
-  `OCAH_FCOV_COVER(c_ctp_direction_transmit, ctp_direction_transmit_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_direction_receive, ctp_direction_receive_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_mode_wire_or, ctp_mode_wire_or_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_mode_p2p, ctp_mode_p2p_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_inversion_normal, ctp_inversion_normal_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_inversion_inverted, ctp_inversion_inverted_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_stretch_min, ctp_stretch_min_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_stretch_mid, ctp_stretch_mid_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_stretch_max, ctp_stretch_max_e, clk_i, in_reset)
-
-  // ------------------------------------------------------------------
   // cg_ctp_p2p: the four-phase handshake of every point-to-point CTP (pad
   // input disabled), each pad at the port's CONFIG.INVERT polarity. The
   // sender asserts CT_Req_out, sees CT_Ack_in, drops CT_Req_out, and is idle
@@ -521,18 +376,6 @@ module dtp_xtrig_fcov (
   wire [15:0] ctp_p2p_tx_idle = ctp_p2p_ack_in_q & ~ctp_p2p_ack_in & ~ctp_p2p_req_out;
   wire [15:0] ctp_p2p_rx_acknowledge = ctp_p2p_ack_out & ~ctp_p2p_ack_out_q;
   wire [15:0] ctp_p2p_rx_idle = ctp_p2p_ack_out_q & ~ctp_p2p_ack_out;
-  wire ctp_p2p_tx_request_e = |ctp_p2p_tx_request;
-  wire ctp_p2p_tx_acknowledge_e = |ctp_p2p_tx_acknowledge;
-  wire ctp_p2p_tx_request_drop_e = |ctp_p2p_tx_request_drop;
-  wire ctp_p2p_tx_idle_e = |ctp_p2p_tx_idle;
-  wire ctp_p2p_rx_acknowledge_e = |ctp_p2p_rx_acknowledge;
-  wire ctp_p2p_rx_idle_e = |ctp_p2p_rx_idle;
-  `OCAH_FCOV_COVER(c_ctp_p2p_tx_request, ctp_p2p_tx_request_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_p2p_tx_acknowledge, ctp_p2p_tx_acknowledge_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_p2p_tx_request_drop, ctp_p2p_tx_request_drop_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_p2p_tx_idle, ctp_p2p_tx_idle_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_p2p_rx_acknowledge, ctp_p2p_rx_acknowledge_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_p2p_rx_idle, ctp_p2p_rx_idle_e, clk_i, in_reset)
 
   // ------------------------------------------------------------------
   // cg_ctp_reset: a reset landing on live CTP state, and the first
@@ -587,15 +430,6 @@ module dtp_xtrig_fcov (
   wire ctp_recovery_config_e = |ctp_cfg_recovered;
   wire ctp_recovery_system_wire_or_e = sys_recovery_q && |(ctp_tx_rise & ~ctp_mode_q);
   wire ctp_recovery_system_p2p_e = sys_recovery_q && |(ctp_tx_rise & ctp_mode_q);
-  `OCAH_FCOV_COVER(c_ctp_reset_system_tx_pending, ctp_reset_system_tx_pending_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_reset_system_rx_held, ctp_reset_system_rx_held_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_reset_system_wire_or_pulse, ctp_reset_system_wire_or_pulse_e, clk_i,
-                   in_reset)
-  `OCAH_FCOV_COVER(c_ctp_reset_config_tx_pending, ctp_reset_config_tx_pending_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_reset_config_rx_held, ctp_reset_config_rx_held_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_recovery_config, ctp_recovery_config_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_recovery_system_wire_or, ctp_recovery_system_wire_or_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_recovery_system_p2p, ctp_recovery_system_p2p_e, clk_i, in_reset)
 
   // ------------------------------------------------------------------
   // cg_ctp_wire_or_rx: a port in wire-OR mode (pad input enabled) delivers a
@@ -613,19 +447,7 @@ module dtp_xtrig_fcov (
   end
   wire [15:0] ctp_wire_or_rx_rise = ctp_rx_rise & ctp_req_out_din_en_i;
   wire [15:0] ctp_wire_or_rx_own = ctp_wire_or_rx_rise & ctp_wire_or_pull_q[RxLatency-1];
-  wire ctp_wire_or_rx_normal_e = |(ctp_wire_or_rx_rise & ~ctp_req_out_dout_i);
-  wire ctp_wire_or_rx_inverted_e = |(ctp_wire_or_rx_rise & ctp_req_out_dout_i);
   wire [15:0] ctp_shared_wire = ($countones(ctp_wire_group_i) >= 2) ? ctp_wire_group_i : '0;
-  wire ctp_wire_or_rx_shared_e = |(ctp_wire_or_rx_rise & ctp_shared_wire);
-  wire ctp_wire_or_rx_one_e = |(ctp_wire_or_rx_rise & ~ctp_shared_wire);
-  wire ctp_wire_or_rx_own_e = |ctp_wire_or_rx_own;
-  wire ctp_wire_or_rx_other_e = |(ctp_wire_or_rx_rise & ~ctp_wire_or_rx_own);
-  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_normal, ctp_wire_or_rx_normal_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_inverted, ctp_wire_or_rx_inverted_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_one, ctp_wire_or_rx_one_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_shared, ctp_wire_or_rx_shared_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_own, ctp_wire_or_rx_own_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_other, ctp_wire_or_rx_other_e, clk_i, in_reset)
 
   // ------------------------------------------------------------------
   // cg_ctm: source and destination types and the per-port index bins.
@@ -643,15 +465,6 @@ module dtp_xtrig_fcov (
   wire [15:0] ctp_dst_rise = ctp_tx_rise;
   wire [9:0] int_src_rise = ctm_dst_req_i & ~ctm_dst_req_q;
   wire [9:0] int_dst_rise = ctm_src_req_i & ~ctm_src_req_q;
-
-  wire ctm_source_ctp_e = |ctp_src_rise;
-  wire ctm_source_internal_e = |int_src_rise;
-  wire ctm_dest_ctp_e = |ctp_dst_rise;
-  wire ctm_dest_internal_e = |int_dst_rise;
-  `OCAH_FCOV_COVER(c_ctm_source_type_ctp, ctm_source_ctp_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctm_source_type_internal, ctm_source_internal_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctm_dest_type_ctp, ctm_dest_ctp_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctm_dest_type_internal, ctm_dest_internal_e, clk_i, in_reset)
 
   // ------------------------------------------------------------------
   // Route attribution (cg_ctm fan-in, cg_ctm_route, cg_ctm_fanout). A
@@ -677,14 +490,13 @@ module dtp_xtrig_fcov (
   logic [CtmPorts-1:0] route_merged_q;
 
   logic [CtmPorts-1:0] route_live;
-  logic [CtmPorts-1:0] route_fanin_single, route_fanin_merged, route_merged_now;
+  logic [CtmPorts-1:0] route_fanin_single, route_merged_now;
   logic [4:0] route_src_of[CtmPorts];
   logic [4:0] route_sources[CtmPorts];
   logic [5:0] route_ctp_inc[CtmPorts];
   logic [5:0] route_int_inc[CtmPorts];
   always_comb begin
     route_fanin_single = '0;
-    route_fanin_merged = '0;
     route_merged_now = '0;
     for (int s = 0; s < CtmPorts; s++) begin
       route_live[s] = (route_age_q[s] != 6'd0);
@@ -704,7 +516,6 @@ module dtp_xtrig_fcov (
           end
         end
       end else if (route_dst_rise[d] && (route_sources[d] > 5'd1)) begin
-        route_fanin_merged[d] = 1'b1;
         route_merged_now = route_merged_now | (route_live & ctm_select_q[d]);
       end
     end
@@ -757,126 +568,8 @@ module dtp_xtrig_fcov (
     end
   end
 
-  wire ctm_fanin_single_e = |route_fanin_single;
-  wire ctm_fanin_merged_e = |route_fanin_merged;
-  wire ctm_fanout_none_e = |route_fanout_none;
-  wire ctm_fanout_single_e = |route_fanout_single;
-  wire ctm_fanout_multicast_e = |route_fanout_multicast;
-  `OCAH_FCOV_COVER(c_ctm_fanin_single, ctm_fanin_single_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctm_fanin_merged, ctm_fanin_merged_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctm_fanout_none, ctm_fanout_none_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctm_fanout_single, ctm_fanout_single_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_ctm_fanout_multicast, ctm_fanout_multicast_e, clk_i, in_reset)
-
-  // Per-port source/destination index bins (16 CTP + 10 internal each way).
-  wire ctm_src_ctp0_e = ctp_src_rise[0];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp0, ctm_src_ctp0_e, clk_i, in_reset)
-  wire ctm_src_ctp1_e = ctp_src_rise[1];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp1, ctm_src_ctp1_e, clk_i, in_reset)
-  wire ctm_src_ctp2_e = ctp_src_rise[2];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp2, ctm_src_ctp2_e, clk_i, in_reset)
-  wire ctm_src_ctp3_e = ctp_src_rise[3];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp3, ctm_src_ctp3_e, clk_i, in_reset)
-  wire ctm_src_ctp4_e = ctp_src_rise[4];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp4, ctm_src_ctp4_e, clk_i, in_reset)
-  wire ctm_src_ctp5_e = ctp_src_rise[5];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp5, ctm_src_ctp5_e, clk_i, in_reset)
-  wire ctm_src_ctp6_e = ctp_src_rise[6];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp6, ctm_src_ctp6_e, clk_i, in_reset)
-  wire ctm_src_ctp7_e = ctp_src_rise[7];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp7, ctm_src_ctp7_e, clk_i, in_reset)
-  wire ctm_src_ctp8_e = ctp_src_rise[8];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp8, ctm_src_ctp8_e, clk_i, in_reset)
-  wire ctm_src_ctp9_e = ctp_src_rise[9];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp9, ctm_src_ctp9_e, clk_i, in_reset)
-  wire ctm_src_ctp10_e = ctp_src_rise[10];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp10, ctm_src_ctp10_e, clk_i, in_reset)
-  wire ctm_src_ctp11_e = ctp_src_rise[11];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp11, ctm_src_ctp11_e, clk_i, in_reset)
-  wire ctm_src_ctp12_e = ctp_src_rise[12];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp12, ctm_src_ctp12_e, clk_i, in_reset)
-  wire ctm_src_ctp13_e = ctp_src_rise[13];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp13, ctm_src_ctp13_e, clk_i, in_reset)
-  wire ctm_src_ctp14_e = ctp_src_rise[14];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp14, ctm_src_ctp14_e, clk_i, in_reset)
-  wire ctm_src_ctp15_e = ctp_src_rise[15];
-  `OCAH_FCOV_COVER(c_ctm_source_index_ctp15, ctm_src_ctp15_e, clk_i, in_reset)
-  wire ctm_src_int0_e = int_src_rise[0];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int0, ctm_src_int0_e, clk_i, in_reset)
-  wire ctm_src_int1_e = int_src_rise[1];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int1, ctm_src_int1_e, clk_i, in_reset)
-  wire ctm_src_int2_e = int_src_rise[2];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int2, ctm_src_int2_e, clk_i, in_reset)
-  wire ctm_src_int3_e = int_src_rise[3];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int3, ctm_src_int3_e, clk_i, in_reset)
-  wire ctm_src_int4_e = int_src_rise[4];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int4, ctm_src_int4_e, clk_i, in_reset)
-  wire ctm_src_int5_e = int_src_rise[5];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int5, ctm_src_int5_e, clk_i, in_reset)
-  wire ctm_src_int6_e = int_src_rise[6];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int6, ctm_src_int6_e, clk_i, in_reset)
-  wire ctm_src_int7_e = int_src_rise[7];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int7, ctm_src_int7_e, clk_i, in_reset)
-  wire ctm_src_int8_e = int_src_rise[8];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int8, ctm_src_int8_e, clk_i, in_reset)
-  wire ctm_src_int9_e = int_src_rise[9];
-  `OCAH_FCOV_COVER(c_ctm_source_index_int9, ctm_src_int9_e, clk_i, in_reset)
-  wire ctm_dst_ctp0_e = ctp_dst_rise[0];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp0, ctm_dst_ctp0_e, clk_i, in_reset)
-  wire ctm_dst_ctp1_e = ctp_dst_rise[1];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp1, ctm_dst_ctp1_e, clk_i, in_reset)
-  wire ctm_dst_ctp2_e = ctp_dst_rise[2];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp2, ctm_dst_ctp2_e, clk_i, in_reset)
-  wire ctm_dst_ctp3_e = ctp_dst_rise[3];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp3, ctm_dst_ctp3_e, clk_i, in_reset)
-  wire ctm_dst_ctp4_e = ctp_dst_rise[4];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp4, ctm_dst_ctp4_e, clk_i, in_reset)
-  wire ctm_dst_ctp5_e = ctp_dst_rise[5];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp5, ctm_dst_ctp5_e, clk_i, in_reset)
-  wire ctm_dst_ctp6_e = ctp_dst_rise[6];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp6, ctm_dst_ctp6_e, clk_i, in_reset)
-  wire ctm_dst_ctp7_e = ctp_dst_rise[7];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp7, ctm_dst_ctp7_e, clk_i, in_reset)
-  wire ctm_dst_ctp8_e = ctp_dst_rise[8];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp8, ctm_dst_ctp8_e, clk_i, in_reset)
-  wire ctm_dst_ctp9_e = ctp_dst_rise[9];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp9, ctm_dst_ctp9_e, clk_i, in_reset)
-  wire ctm_dst_ctp10_e = ctp_dst_rise[10];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp10, ctm_dst_ctp10_e, clk_i, in_reset)
-  wire ctm_dst_ctp11_e = ctp_dst_rise[11];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp11, ctm_dst_ctp11_e, clk_i, in_reset)
-  wire ctm_dst_ctp12_e = ctp_dst_rise[12];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp12, ctm_dst_ctp12_e, clk_i, in_reset)
-  wire ctm_dst_ctp13_e = ctp_dst_rise[13];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp13, ctm_dst_ctp13_e, clk_i, in_reset)
-  wire ctm_dst_ctp14_e = ctp_dst_rise[14];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp14, ctm_dst_ctp14_e, clk_i, in_reset)
-  wire ctm_dst_ctp15_e = ctp_dst_rise[15];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_ctp15, ctm_dst_ctp15_e, clk_i, in_reset)
-  wire ctm_dst_int0_e = int_dst_rise[0];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int0, ctm_dst_int0_e, clk_i, in_reset)
-  wire ctm_dst_int1_e = int_dst_rise[1];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int1, ctm_dst_int1_e, clk_i, in_reset)
-  wire ctm_dst_int2_e = int_dst_rise[2];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int2, ctm_dst_int2_e, clk_i, in_reset)
-  wire ctm_dst_int3_e = int_dst_rise[3];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int3, ctm_dst_int3_e, clk_i, in_reset)
-  wire ctm_dst_int4_e = int_dst_rise[4];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int4, ctm_dst_int4_e, clk_i, in_reset)
-  wire ctm_dst_int5_e = int_dst_rise[5];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int5, ctm_dst_int5_e, clk_i, in_reset)
-  wire ctm_dst_int6_e = int_dst_rise[6];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int6, ctm_dst_int6_e, clk_i, in_reset)
-  wire ctm_dst_int7_e = int_dst_rise[7];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int7, ctm_dst_int7_e, clk_i, in_reset)
-  wire ctm_dst_int8_e = int_dst_rise[8];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int8, ctm_dst_int8_e, clk_i, in_reset)
-  wire ctm_dst_int9_e = int_dst_rise[9];
-  `OCAH_FCOV_COVER(c_ctm_dest_index_int9, ctm_dst_int9_e, clk_i, in_reset)
-
   // ------------------------------------------------------------------
-  // Covergroups, under the cross rules dtp_fcov.sv states: the bins of the
-  // cover properties above, plus the crosses.
+  // Covergroups, under the cross rules dtp_fcov.sv states.
   // ------------------------------------------------------------------
   localparam logic [1:0] StretchMin = 2'd0;
   localparam logic [1:0] StretchMid = 2'd1;
@@ -1142,6 +835,9 @@ module dtp_xtrig_fcov (
       bins ctp_status = {RegionCtpStatus};
       bins ctp_stretch = {RegionCtpStretch};
     }
+    // STATUS read in each phase of a transfer: idle, a wire-OR pulse, a
+    // point-to-point request awaiting and then holding its acknowledge, and a
+    // received request.
     cp_status: coverpoint status iff (region == RegionCtpStatus) {
       bins idle = {8'h00};
       bins pulse = {StatusBusy};

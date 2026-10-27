@@ -162,6 +162,10 @@ Observation probe groups:
   target. A ROM fetch that the ROM lockout blocks moves this counter and not
   `km_rom_req_count_o`. User of `km_cpu_fetch_count_o`:
   `sep_km_cpu_protect_rand_test`.
+* KM CPU KMCSR interrupt entries (`km_kmcsr_irq_entry_count_o`), reset with
+  the bench reset. It counts the 0-to-1 edges of the KMCSR bit of the KM CPU
+  `eoi` vector, which the core sets to the interrupts it serves at handler
+  entry. User: `sep_km_otp_change_irq_test` (CHK-OTP-ENTRY).
 * KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`).
 * KM SRAM read-count probes (`km_sram_rd_*`) and scrambled-write probes
   (`km_sram_scr_wr_*`).
@@ -860,8 +864,9 @@ Exceptions (a closed set):
   IRQ_SET drives the same path, but the host has no write path to the KMCSR
   and no source event sets several bits in one clock. Both inputs are 0 by
   default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the IRQ_SET field storage of the register block) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readback: `km_irqset_fired_o`. The `IRQ_STATUS` the checkers read
-  is not forced. User: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
-  CHK-STATUS-HELD, CHK-CPU-TRAP).
+  is not forced. Users: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
+  CHK-STATUS-HELD, CHK-CPU-TRAP) and `sep_km_otp_change_irq_test`
+  (CHK-OTP-PULSE).
 * *Key Manager CPU internal IRQ lines* (HK-CPUIRQ) — at the first falling
   edge with `km_cpuirq_arm_i` at 1 and a non-zero `km_cpuirq_lines_i[1:0]`,
   the bench drives bit 1 (mask bit 0: EBREAK or illegal instruction) and bit
@@ -1130,6 +1135,46 @@ Exceptions (a closed set):
   edge that samples the reset low and must be low from the next edge on (AXI
   A3.1.2 gives no reset-entry timing). No TB master can reach that port.
   Protocol, not data.
+* *VeeR CPU AXI SVA* — four observation-only `ocah_axi_sva` instances in
+  `tb_top.sv` (`u_cpu_lsu_axi_sva`, `u_cpu_ifu_axi_sva`, `u_cpu_sb_axi_sva`,
+  `u_cpu_tcm_axi_sva`) on the LSU, IFU and debug system-bus masters at the
+  core side of `sep_cpu` (`*_axi_req_raw` / `*_axi_resp_raw`, before the alias
+  remap and the demuxes) and on the DMA slave port (`cpu_tcm_axi_req_i` /
+  `cpu_tcm_axi_resp_o`). `aresetn` is the SEP system reset `rst_ni` on every
+  port, in the normal (asynchronous-reset) shape. The core side of the LSU,
+  IFU and DMA ports, and the `sep_cpu` demuxes and IFU error slave that
+  answer B and R on the LSU and IFU ports, reset on `sep_cpu_reset_n`, and
+  the VeeR IFU and LSU bus logic also resets on a debug-module core reset. A
+  CPU-only reset and a debug-module core reset are outside `aresetn`, so no
+  reset rule grades them and a transaction open at one of them stays in the
+  outstanding tracking until the next `rst_ni`. The debug system-bus master resets on `dbg_rstb_i`; its
+  checker arms on the edge after the first edge that samples `dbg_rstb_i`
+  low. Enabled by `+cpu_boot` on the full-CPU target only (`SEP_CPU_STUB`
+  compiles them out). Runs without `+cpu_boot` on that target are not
+  graded, including those that drive the debug system-bus or DMA slave port
+  from the testbench. On VCS, a `+cpu_boot` run that never arms the
+  system-bus checker fails, and a test with
+  `+axi_sva_need_<lsu|ifu|sb|tcm>` fails when that checker graded no AW
+  or AR handshake. Protocol, not data.
+* *SEP AXI master SVA* — four observation-only `ocah_axi_sva` instances in
+  `tb_top.sv` on the SEP AXI masters outside the CPU: `u_dma_axi_sva` on the
+  secure DMA master into the local crossbar (`dma_axi_req` /
+  `dma_axi_resp`), `u_smn_out_axi_sva` on the SMN outbound port
+  (`smn_outbound_req_w` / `smn_outbound_resp_w`), `u_smc_out_axi_sva` on the
+  SMC aperture port (`ext_to_smc_req_w` / `ext_to_smc_resp_w`) and
+  `u_ext_out_axi_sva` on the external aperture into the IP integration
+  (`u_dut.axi_extension_axi_req` / `u_dut.axi_extension_axi_resp`). On the
+  SMN and SMC ports the testbench models answer B and R, so those checkers
+  also grade the models; on the external port the testbench responder
+  answers under `+sep_ext_port_responder`, and the DECERR error slave of the
+  IP integration answers without it. `aresetn` is the SEP system reset `rst_ni`.
+  The DMA engine and the SMN and SMC request logic reset on `sep_reset_n`; a
+  SEP reset from software or JTAG is outside `aresetn`, so no reset rule
+  grades it and a transaction open at that reset stays in the outstanding
+  tracking until the next `rst_ni`. Compiled in every build and run mode
+  and enabled once `rst_ni` is known; the rules grade on VCS only (the SEP
+  Verilator targets pass no `--assert`). On VCS, a test with `+axi_sva_need_<dma|smn|smc|ext>`
+  fails when that checker graded no AW or AR handshake. Protocol, not data.
 
 [[sep-run-modes]]
 === Run Modes and RTL Targets
@@ -1759,9 +1804,9 @@ SLVERR and the ROM sends an unrecoverable-fault frame in place of
 rather than hanging the KM. A named `+km_rom_hex` that does not resolve is
 a t=0 `$fatal` in `tb_top`.
 
-Two more profiles build the same application ROM with the wipe knobs named in
+Three more profiles build the same application ROM with the knobs named in
 the profile, each with its own image name and a cache key whose recipe names
-both knobs. `c_compile` builds each image in a directory private to the run
+those knobs. `c_compile` builds each image in a directory private to the run
 and the test, and the prestage hook stages it into the sim directory when the
 leaf carries the matching `+km_rom_hex`.
 
@@ -1771,11 +1816,12 @@ leaf carries the matching `+km_rom_hex`.
 |`km_rom_main` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (bench build) |`rom_main.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main" }`, `+km_rom_hex=rom_main.rom.parhex`
 |`km_rom_main_default` |`KM_BOOT_WIPE=1 KM_UNREC_WIPE=1` (shipped default) |`rom_main_default.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_default" }`, `+km_rom_hex=rom_main_default.rom.parhex`. User: `sep_km_boot_reset_rand_test` (HOST-DEFAULT).
 |`km_rom_main_unrec` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=1` |`rom_main_unrec.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_unrec" }`, `+km_rom_hex=rom_main_unrec.rom.parhex`. User: the HOST-UNREC entry of `sep_km_fault_inject_rand_test`.
+|`km_rom_main_otp_change` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=0 KM_OTP_CHANGE_EN=1` |`rom_main_otp_change.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_otp_change" }`, `+km_rom_hex=rom_main_otp_change.rom.parhex`. User: `sep_km_otp_change_irq_test`.
 |===
 
-The profiles drive the `rom_main`, `rom_main_default` and `rom_main_unrec`
-targets of `hw/sys/sep/dv/cocotb/tests/km_fw/Makefile`. A leaf of
-`sep_km_boot_reset_rand_test` or `sep_km_fault_inject_rand_test` logs
+The profiles drive the `rom_main`, `rom_main_default`, `rom_main_unrec` and
+`rom_main_otp_change` targets of `hw/sys/sep/dv/cocotb/tests/km_fw/Makefile`.
+A leaf of `sep_km_boot_reset_rand_test` or `sep_km_fault_inject_rand_test` logs
 `ROM-BUILD km_boot_wipe=<0/1> km_unrec_wipe=<0/1>`.
 
 The small committed `km_rom*.parhex` assembly images are a different class

@@ -20,7 +20,9 @@ On every rising edge of ``clk_i``, in the read-only phase, the monitor records:
 Clock ``n`` is the n-th sampled edge after ``start``. A VALID or READY bit, or
 a STATUS bit, that resolves to X or Z fails the leaf with ``DMA-TAP-XZ FAIL``,
 so a check that counts no beat cannot pass on an unknown handshake. Verilator
-is 2-state.
+is 2-state. ``since`` and ``between`` raise ``DmaTapIdleError`` when the tap
+took no clock after the mark or its task ended without ``stop``, so a check
+that counts no beat cannot pass on a tap that never sampled.
 
 Usage::
 
@@ -84,6 +86,10 @@ STATUS_BITS: dict[str, int] = {
     name: _DMA.field_lsb("STATUS", name)
     for name in ("busy", "done", "aborted", "error", "sha2_digest_valid", "chunk_done")
 }
+
+
+class DmaTapIdleError(AssertionError):
+    """The tap took no clock after a mark, or its task ended without ``stop``."""
 
 
 class DmaTapXZError(AssertionError):
@@ -167,14 +173,25 @@ class SepDmaTap:
         e = self.ev
         return DmaTapMark(self.clk, (len(e.ar), len(e.aw), len(e.w), len(e.b), len(e.status_edges)))
 
+    def _require_sampled(self, mark: DmaTapMark) -> None:
+        if self._task is not None and self._task.done():
+            raise DmaTapIdleError(f"DMA-TAP FAIL: the tap task ended without stop (clk={self.clk})")
+        if self.clk <= mark.clk:
+            raise DmaTapIdleError(
+                f"DMA-TAP FAIL: the tap took no clock after the mark "
+                f"(running={self._task is not None} clk={self.clk} mark_clk={mark.clk})"
+            )
+
     def since(self, mark: DmaTapMark) -> DmaTapEvents:
         """The records after ``mark``."""
+        self._require_sampled(mark)
         e = self.ev
         a, aw, w, b, s = mark.n
         return DmaTapEvents(e.ar[a:], e.aw[aw:], e.w[w:], e.b[b:], e.status_edges[s:])
 
     def between(self, m0: DmaTapMark, m1: DmaTapMark) -> DmaTapEvents:
         """The records after ``m0`` and up to ``m1``."""
+        self._require_sampled(m0)
         e = self.ev
         (a0, aw0, w0, b0, s0), (a1, aw1, w1, b1, s1) = m0.n, m1.n
         return DmaTapEvents(

@@ -510,7 +510,7 @@ Condition 5 "3193926140" "((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) 
 Condition 9 "4289729232" "(prev_gnt == tnifState_e'(DST_GNT)) 1 -1" (2 "1")
 Condition 18 "191604408" "((prev_gnt inside {NTR_GNT}) ? DST_GNT : NTR_GNT) 1 -1" (1 "0")
 
-CHECKSUM: "3354362860 3417673543"
+CHECKSUM: "1934166905 3417673543"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
@@ -1221,7 +1221,7 @@ ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is gr
 Condition 4 "1494341974" "(zero & nd_req_valid_i & nd_req_ready_o) 1 -1" (2 "101")
 Condition 6 "3950647113" "(last & nd_req_valid_i & burst_req_ready_i) 1 -1" (2 "101")
 
-CHECKSUM: "169117402 3938785771"
+CHECKSUM: "3215156436 3938785771"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
 ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -1278,6 +1278,11 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_w
 ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1782633341" "(next_q == '1) 1 -1" (2 "1")
 Condition 2 "121455226" "(completed_q == '1) 1 -1" (2 "1")
+
+CHECKSUM: "1454847678 1105955355"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
+ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 5 "896891442" "((cur_size < (axi_data_t'(AxiStrbWidth) - axi_data_t'(cur_dest_addr[(AxiDataSize - 1):0]))) ? cur_size[(AXI_DATA_WIDTH - 1):0] : ((axi_data_t'(AxiStrbWidth) - axi_data_t'(cur_dest_addr[(AxiDataSize - 1):0])))) 1 -1" (2 "1")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[0].u_read_traffic_filter
@@ -1441,6 +1446,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_s
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
+Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[8].u_read_traffic_filter
@@ -1533,13 +1539,13 @@ CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
+Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[2].u_read_traffic_filter
@@ -1642,794 +1648,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1171358220" "(mem_init_reset_ni == 1'b0) 1 -1" (2 "1")
 Condition 7 "3550059789" "(l2_frontend_isolated & mmio_isolated) 1 -1" (2 "10")
-
-CHECKSUM: "2855826940 585039306"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile.denier
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2166481704" "(((~reset)) & ( ~ (((~winner_0)) | ((~winner_1))) )) 1 -1" (3 "11")
-Condition 3 "2532438962" "(((~winner_0)) | ((~winner_1))) 1 -1" (1 "00")
-Condition 4 "4113635697" "(((~reset)) & ( ~ (((~_nodeIn_d_valid_T)) | winner_0 | winner_1) )) 1 -1" (1 "01")
-Condition 4 "4113635697" "(((~reset)) & ( ~ (((~_nodeIn_d_valid_T)) | winner_0 | winner_1) )) 1 -1" (3 "11")
-Condition 6 "1041727026" "(((~_nodeIn_d_valid_T)) | winner_0 | winner_1) 1 -1" (1 "000")
-Condition 7 "620466423" "(((~reset)) & ( ~ (((~_GEN_0)) | ((|{tdMatch_3, tdMatch_2, tdMatch_1, tdMatch_0}))) )) 1 -1" (3 "11")
-Condition 9 "1167635842" "(((~_GEN_0)) | ((|{tdMatch_3, tdMatch_2, tdMatch_1, tdMatch_0}))) 1 -1" (1 "00")
-Condition 10 "802963704" "(_respLast_T & respLast) 1 -1" (2 "10")
-Condition 11 "210824665" "(( ~ ((selIdx == 2'b0) | _GEN_4) ) & _GEN_14) 1 -1" (3 "11")
-Condition 13 "832512123" "((selIdx == 2'b0) | _GEN_4) 1 -1" (1 "00")
-Condition 14 "2573231006" "(selIdx == 2'b0) 1 -1" (1 "0")
-Condition 15 "873622576" "(( ~ ((selIdx == 2'b1) | _GEN_5) ) & _GEN_15) 1 -1" (1 "01")
-Condition 15 "873622576" "(( ~ ((selIdx == 2'b1) | _GEN_5) ) & _GEN_15) 1 -1" (3 "11")
-Condition 17 "2963225789" "((selIdx == 2'b1) | _GEN_5) 1 -1" (2 "01")
-Condition 18 "3619103404" "(selIdx == 2'b1) 1 -1" (2 "1")
-Condition 19 "554557357" "(( ~ ((selIdx == 2'h2) | _GEN_6) ) & _GEN_16) 1 -1" (1 "01")
-Condition 19 "554557357" "(( ~ ((selIdx == 2'h2) | _GEN_6) ) & _GEN_16) 1 -1" (3 "11")
-Condition 21 "3066396584" "((selIdx == 2'h2) | _GEN_6) 1 -1" (2 "01")
-Condition 22 "756504809" "(selIdx == 2'h2) 1 -1" (2 "1")
-Condition 23 "575586430" "(( ~ (((&selIdx)) | _GEN_7) ) & _GEN_17) 1 -1" (1 "01")
-Condition 23 "575586430" "(( ~ (((&selIdx)) | _GEN_7) ) & _GEN_17) 1 -1" (3 "11")
-Condition 25 "14310556" "(((&selIdx)) | _GEN_7) 1 -1" (2 "01")
-Condition 27 "1867285264" "(((~_GEN_5)) & _GEN_15) 1 -1" (1 "01")
-Condition 27 "1867285264" "(((~_GEN_5)) & _GEN_15) 1 -1" (3 "11")
-Condition 28 "2082269634" "(((~_GEN_6)) & _GEN_16) 1 -1" (1 "01")
-Condition 28 "2082269634" "(((~_GEN_6)) & _GEN_16) 1 -1" (3 "11")
-Condition 29 "3640696695" "(((~_GEN_7)) & _GEN_17) 1 -1" (1 "01")
-Condition 29 "3640696695" "(((~_GEN_7)) & _GEN_17) 1 -1" (3 "11")
-Condition 34 "3740407641" "(respLast_r_counter == 3'b0) 1 -1" (1 "0")
-Condition 35 "605980280" "(idle & auto_in_d_ready) 1 -1" (1 "01")
-Condition 36 "1971067114" "(_GEN_8 & (_GEN_13 == 2'b0)) 1 -1" (2 "10")
-Condition 43 "1290711034" "(_GEN_8 & (_GEN_13 == 2'b1)) 1 -1" (3 "11")
-Condition 45 "2052707635" "((((~_GEN_10)) & entries_1_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 47 "748964904" "((_GEN_0 & tdMatch_1) | (((~_GEN_10)) & entries_1_dStarted)) 1 -1" (2 "01")
-Condition 48 "1029042642" "(_GEN_0 & tdMatch_1) 1 -1" (1 "01")
-Condition 48 "1029042642" "(_GEN_0 & tdMatch_1) 1 -1" (3 "11")
-Condition 49 "4141276341" "(((~_GEN_10)) & entries_1_dStarted) 1 -1" (1 "01")
-Condition 49 "4141276341" "(((~_GEN_10)) & entries_1_dStarted) 1 -1" (3 "11")
-Condition 50 "3217390835" "(_GEN_8 & (_GEN_13 == 2'h2)) 1 -1" (1 "01")
-Condition 50 "3217390835" "(_GEN_8 & (_GEN_13 == 2'h2)) 1 -1" (3 "11")
-Condition 51 "3446496216" "(_GEN_13 == 2'h2) 1 -1" (2 "1")
-Condition 52 "983299049" "((((~_GEN_11)) & entries_2_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 54 "3839690175" "((_GEN_0 & tdMatch_2) | (((~_GEN_11)) & entries_2_dStarted)) 1 -1" (2 "01")
-Condition 55 "3165368388" "(_GEN_0 & tdMatch_2) 1 -1" (1 "01")
-Condition 55 "3165368388" "(_GEN_0 & tdMatch_2) 1 -1" (3 "11")
-Condition 56 "1047934453" "(((~_GEN_11)) & entries_2_dStarted) 1 -1" (1 "01")
-Condition 56 "1047934453" "(((~_GEN_11)) & entries_2_dStarted) 1 -1" (3 "11")
-Condition 57 "3981299746" "(_GEN_8 & ((&_GEN_13))) 1 -1" (1 "01")
-Condition 57 "3981299746" "(_GEN_8 & ((&_GEN_13))) 1 -1" (3 "11")
-Condition 58 "734501989" "((((~_GEN_12)) & entries_3_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 60 "922109759" "((_GEN_0 & tdMatch_3) | (((~_GEN_12)) & entries_3_dStarted)) 1 -1" (2 "01")
-Condition 61 "4044617907" "(_GEN_0 & tdMatch_3) 1 -1" (1 "01")
-Condition 61 "4044617907" "(_GEN_0 & tdMatch_3) 1 -1" (3 "11")
-Condition 62 "4105170894" "(((~_GEN_12)) & entries_3_dStarted) 1 -1" (1 "01")
-Condition 62 "4105170894" "(((~_GEN_12)) & entries_3_dStarted) 1 -1" (3 "11")
-Condition 63 "1643034405" "(_GEN_8 & ((~(|r_counter)))) 1 -1" (2 "10")
-Condition 65 "6160239" "(_inReset_chain_io_q & ((|r_counter))) 1 -1" (3 "11")
-Condition 69 "176082489" "(((~_respLast_T)) | respBusy) 1 -1" (2 "01")
-Condition 70 "2065776212" "(((~(|r_counter))) & ((&{valid_3, valid_2, valid_1, valid_0}))) 1 -1" (1 "01")
-Condition 70 "2065776212" "(((~(|r_counter))) & ((&{valid_3, valid_2, valid_1, valid_0}))) 1 -1" (3 "11")
-Condition 71 "2473343311" "((((|r_counter)) & aSunk) | _inReset_chain_io_q) 1 -1" (3 "10")
-Condition 72 "2210476214" "(((|r_counter)) & aSunk) 1 -1" (2 "10")
-Condition 72 "2210476214" "(((|r_counter)) & aSunk) 1 -1" (3 "11")
-Condition 73 "2558685469" "((sinkA | auto_out_a_ready) & ((~aStall))) 1 -1" (2 "10")
-Condition 74 "881482146" "(sinkA | auto_out_a_ready) 1 -1" (1 "00")
-Condition 74 "881482146" "(sinkA | auto_out_a_ready) 1 -1" (3 "10")
-Condition 75 "426900802" "(tileD_ready & tileD_valid) 1 -1" (1 "01")
-Condition 76 "2274840972" "(((|r_counter_1)) & (_inReset_chain_io_q | tdPadding)) 1 -1" (3 "11")
-Condition 78 "1422610069" "(tdPad | (auto_out_d_valid & ((~_inReset_chain_io_q)))) 1 -1" (3 "10")
-Condition 79 "1132449716" "(auto_out_d_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 80 "3754315545" "(tdPad ? tdHeader_opcode : auto_out_d_bits_opcode) 1 -1" (2 "1")
-Condition 81 "2662074845" "(tdPad ? tdHeader_size : auto_out_d_bits_size) 1 -1" (2 "1")
-Condition 82 "181250117" "(tdPad ? tdHeader_source : auto_out_d_bits_source) 1 -1" (2 "1")
-Condition 85 "3499280620" "(valid_1 & (entries_1_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 85 "3499280620" "(valid_1 & (entries_1_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 87 "2183331928" "(valid_2 & (entries_2_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 87 "2183331928" "(valid_2 & (entries_2_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 89 "538187963" "(valid_3 & (entries_3_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 89 "538187963" "(valid_3 & (entries_3_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 91 "3646674697" "(valid_0 & entries_0_ours & entries_0_aDone & ((~entries_0_dStarted))) 1 -1" (3 "1101")
-Condition 91 "3646674697" "(valid_0 & entries_0_ours & entries_0_aDone & ((~entries_0_dStarted))) 1 -1" (4 "1110")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (1 "0111")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (2 "1011")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (3 "1101")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (4 "1110")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (5 "1111")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (1 "0111")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (2 "1011")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (3 "1101")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (4 "1110")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (5 "1111")
-Condition 96 "1742341114" "(respBusy ? respIdx : _selIdx_T_2) 1 -1" (2 "1")
-Condition 97 "1730390029" "(respBusy | ((|{(((valid_3 & entries_3_ours) & entries_3_aDone) & (~entries_3_dStarted)), eligible_2, eligible_1, eligible_0}))) 1 -1" (3 "10")
-Condition 99 "185949030" "(((~winner_0)) & tileD_valid) 1 -1" (1 "01")
-Condition 101 "1354896028" "(idle ? winner_0 : state_0) 1 -1" (1 "0")
-Condition 102 "3689225554" "(idle ? winner_1 : state_1) 1 -1" (1 "0")
-Condition 104 "3868607646" "(idle ? ((~winner_0)) : state_1) 1 -1" (1 "0")
-Condition 105 "1169696386" "(idle ? _nodeIn_d_valid_T : ((state_0 & winner_0) | (state_1 & tileD_valid))) 1 -1" (1 "0")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (1 "00")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (2 "01")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (3 "10")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (1 "01")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (2 "10")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (3 "11")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (1 "01")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (2 "10")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (3 "11")
-Condition 109 "2826608082" "((r_counter_1 == 3'b1) | ((tileD_bits_opcode[0] ? (~_decode_T_3[5:3]) : 3'b0) == 3'b0)) 1 -1" (1 "00")
-Condition 109 "2826608082" "((r_counter_1 == 3'b1) | ((tileD_bits_opcode[0] ? (~_decode_T_3[5:3]) : 3'b0) == 3'b0)) 1 -1" (3 "10")
-Condition 112 "1273315373" "(_GEN_0 & tdMatch_0 & tdLast) 1 -1" (3 "110")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (1 "011")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (3 "110")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (4 "111")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (1 "011")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (3 "110")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (4 "111")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (1 "011")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (3 "110")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (4 "111")
-Condition 117 "689217907" "((respLast_r_counter == 3'b1) | (respLast_r_beats1 == 3'b0)) 1 -1" (1 "00")
-Condition 117 "689217907" "((respLast_r_counter == 3'b1) | (respLast_r_beats1 == 3'b0)) 1 -1" (3 "10")
-Condition 120 "444317476" "(nodeIn_a_ready & auto_in_a_valid) 1 -1" (1 "01")
-Condition 122 "1436439917" "((r_counter == 3'b1) | (r_beats1 == 3'b0)) 1 -1" (1 "00")
-Condition 122 "1436439917" "((r_counter == 3'b1) | (r_beats1 == 3'b0)) 1 -1" (3 "10")
-Condition 127 "600798545" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b0)) 1 -1" (2 "101")
-Condition 127 "600798545" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b0)) 1 -1" (3 "110")
-Condition 129 "1228272904" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b1)) 1 -1" (2 "101")
-Condition 129 "1228272904" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b1)) 1 -1" (4 "111")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (1 "011")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (2 "101")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (4 "111")
-Condition 132 "540176258" "(allocIdx == 2'h2) 1 -1" (2 "1")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (1 "011")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (2 "101")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (4 "111")
-Condition 134 "2496762711" "(((|r_counter)) ? aIdx : allocIdx) 1 -1" (2 "1")
-Condition 135 "3153000565" "(auto_in_d_ready & (idle | state_0) & winner_0) 1 -1" (1 "011")
-Condition 135 "3153000565" "(auto_in_d_ready & (idle | state_0) & winner_0) 1 -1" (2 "101")
-Condition 136 "381691831" "(idle | state_0) 1 -1" (1 "00")
-Condition 136 "381691831" "(idle | state_0) 1 -1" (2 "01")
-Condition 138 "4107991354" "(_GEN_10 | valid_1) 1 -1" (2 "01")
-Condition 138 "4107991354" "(_GEN_10 | valid_1) 1 -1" (3 "10")
-Condition 139 "2313882930" "(_GEN_11 | valid_2) 1 -1" (2 "01")
-Condition 139 "2313882930" "(_GEN_11 | valid_2) 1 -1" (3 "10")
-Condition 140 "2879526130" "(_GEN_12 | valid_3) 1 -1" (2 "01")
-Condition 140 "2879526130" "(_GEN_12 | valid_3) 1 -1" (3 "10")
-Condition 143 "1366814174" "(muxState_1 & (tdPad ? tdHeader_sink : auto_out_d_bits_sink)) 1 -1" (1 "01")
-Condition 143 "1366814174" "(muxState_1 & (tdPad ? tdHeader_sink : auto_out_d_bits_sink)) 1 -1" (3 "11")
-Condition 144 "3341430592" "(tdPad ? tdHeader_sink : auto_out_d_bits_sink) 1 -1" (2 "1")
-Condition 145 "4185347451" "(muxState_0 | (muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied))) 1 -1" (2 "01")
-Condition 146 "2099855884" "(muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied)) 1 -1" (1 "01")
-Condition 146 "2099855884" "(muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied)) 1 -1" (3 "11")
-Condition 147 "1246590208" "(tdPad ? tdHeader_denied : auto_out_d_bits_denied) 1 -1" (2 "1")
-Condition 149 "777496957" "(((~muxState_1)) | tdPad) 1 -1" (2 "01")
-Condition 150 "2359448693" "((muxState_0 & resp_bits_opcode[0]) | (muxState_1 & (tdPad | auto_out_d_bits_corrupt))) 1 -1" (2 "01")
-Condition 151 "2338272930" "(muxState_0 & resp_bits_opcode[0]) 1 -1" (1 "01")
-Condition 152 "26777009" "(muxState_1 & (tdPad | auto_out_d_bits_corrupt)) 1 -1" (1 "01")
-Condition 153 "3834430864" "(tdPad | auto_out_d_bits_corrupt) 1 -1" (2 "01")
-Condition 154 "1867252724" "(auto_in_a_valid & ((~sinkA)) & ((~aStall))) 1 -1" (3 "110")
-Condition 155 "1356726580" "(_inReset_chain_io_q | tdPad | tileD_ready) 1 -1" (3 "010")
-
-CHECKSUM: "2855826940 585039306"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_1.denier
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2166481704" "(((~reset)) & ( ~ (((~winner_0)) | ((~winner_1))) )) 1 -1" (3 "11")
-Condition 3 "2532438962" "(((~winner_0)) | ((~winner_1))) 1 -1" (1 "00")
-Condition 4 "4113635697" "(((~reset)) & ( ~ (((~_nodeIn_d_valid_T)) | winner_0 | winner_1) )) 1 -1" (1 "01")
-Condition 4 "4113635697" "(((~reset)) & ( ~ (((~_nodeIn_d_valid_T)) | winner_0 | winner_1) )) 1 -1" (3 "11")
-Condition 6 "1041727026" "(((~_nodeIn_d_valid_T)) | winner_0 | winner_1) 1 -1" (1 "000")
-Condition 7 "620466423" "(((~reset)) & ( ~ (((~_GEN_0)) | ((|{tdMatch_3, tdMatch_2, tdMatch_1, tdMatch_0}))) )) 1 -1" (3 "11")
-Condition 9 "1167635842" "(((~_GEN_0)) | ((|{tdMatch_3, tdMatch_2, tdMatch_1, tdMatch_0}))) 1 -1" (1 "00")
-Condition 10 "802963704" "(_respLast_T & respLast) 1 -1" (2 "10")
-Condition 11 "210824665" "(( ~ ((selIdx == 2'b0) | _GEN_4) ) & _GEN_14) 1 -1" (3 "11")
-Condition 13 "832512123" "((selIdx == 2'b0) | _GEN_4) 1 -1" (1 "00")
-Condition 14 "2573231006" "(selIdx == 2'b0) 1 -1" (1 "0")
-Condition 15 "873622576" "(( ~ ((selIdx == 2'b1) | _GEN_5) ) & _GEN_15) 1 -1" (1 "01")
-Condition 15 "873622576" "(( ~ ((selIdx == 2'b1) | _GEN_5) ) & _GEN_15) 1 -1" (3 "11")
-Condition 17 "2963225789" "((selIdx == 2'b1) | _GEN_5) 1 -1" (2 "01")
-Condition 18 "3619103404" "(selIdx == 2'b1) 1 -1" (2 "1")
-Condition 19 "554557357" "(( ~ ((selIdx == 2'h2) | _GEN_6) ) & _GEN_16) 1 -1" (1 "01")
-Condition 19 "554557357" "(( ~ ((selIdx == 2'h2) | _GEN_6) ) & _GEN_16) 1 -1" (3 "11")
-Condition 21 "3066396584" "((selIdx == 2'h2) | _GEN_6) 1 -1" (2 "01")
-Condition 22 "756504809" "(selIdx == 2'h2) 1 -1" (2 "1")
-Condition 23 "575586430" "(( ~ (((&selIdx)) | _GEN_7) ) & _GEN_17) 1 -1" (1 "01")
-Condition 23 "575586430" "(( ~ (((&selIdx)) | _GEN_7) ) & _GEN_17) 1 -1" (3 "11")
-Condition 25 "14310556" "(((&selIdx)) | _GEN_7) 1 -1" (2 "01")
-Condition 27 "1867285264" "(((~_GEN_5)) & _GEN_15) 1 -1" (1 "01")
-Condition 27 "1867285264" "(((~_GEN_5)) & _GEN_15) 1 -1" (3 "11")
-Condition 28 "2082269634" "(((~_GEN_6)) & _GEN_16) 1 -1" (1 "01")
-Condition 28 "2082269634" "(((~_GEN_6)) & _GEN_16) 1 -1" (3 "11")
-Condition 29 "3640696695" "(((~_GEN_7)) & _GEN_17) 1 -1" (1 "01")
-Condition 29 "3640696695" "(((~_GEN_7)) & _GEN_17) 1 -1" (3 "11")
-Condition 34 "3740407641" "(respLast_r_counter == 3'b0) 1 -1" (1 "0")
-Condition 35 "605980280" "(idle & auto_in_d_ready) 1 -1" (1 "01")
-Condition 36 "1971067114" "(_GEN_8 & (_GEN_13 == 2'b0)) 1 -1" (2 "10")
-Condition 43 "1290711034" "(_GEN_8 & (_GEN_13 == 2'b1)) 1 -1" (3 "11")
-Condition 45 "2052707635" "((((~_GEN_10)) & entries_1_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 47 "748964904" "((_GEN_0 & tdMatch_1) | (((~_GEN_10)) & entries_1_dStarted)) 1 -1" (2 "01")
-Condition 48 "1029042642" "(_GEN_0 & tdMatch_1) 1 -1" (1 "01")
-Condition 48 "1029042642" "(_GEN_0 & tdMatch_1) 1 -1" (3 "11")
-Condition 49 "4141276341" "(((~_GEN_10)) & entries_1_dStarted) 1 -1" (1 "01")
-Condition 49 "4141276341" "(((~_GEN_10)) & entries_1_dStarted) 1 -1" (3 "11")
-Condition 50 "3217390835" "(_GEN_8 & (_GEN_13 == 2'h2)) 1 -1" (1 "01")
-Condition 50 "3217390835" "(_GEN_8 & (_GEN_13 == 2'h2)) 1 -1" (3 "11")
-Condition 51 "3446496216" "(_GEN_13 == 2'h2) 1 -1" (2 "1")
-Condition 52 "983299049" "((((~_GEN_11)) & entries_2_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 54 "3839690175" "((_GEN_0 & tdMatch_2) | (((~_GEN_11)) & entries_2_dStarted)) 1 -1" (2 "01")
-Condition 55 "3165368388" "(_GEN_0 & tdMatch_2) 1 -1" (1 "01")
-Condition 55 "3165368388" "(_GEN_0 & tdMatch_2) 1 -1" (3 "11")
-Condition 56 "1047934453" "(((~_GEN_11)) & entries_2_dStarted) 1 -1" (1 "01")
-Condition 56 "1047934453" "(((~_GEN_11)) & entries_2_dStarted) 1 -1" (3 "11")
-Condition 57 "3981299746" "(_GEN_8 & ((&_GEN_13))) 1 -1" (1 "01")
-Condition 57 "3981299746" "(_GEN_8 & ((&_GEN_13))) 1 -1" (3 "11")
-Condition 58 "734501989" "((((~_GEN_12)) & entries_3_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 60 "922109759" "((_GEN_0 & tdMatch_3) | (((~_GEN_12)) & entries_3_dStarted)) 1 -1" (2 "01")
-Condition 61 "4044617907" "(_GEN_0 & tdMatch_3) 1 -1" (1 "01")
-Condition 61 "4044617907" "(_GEN_0 & tdMatch_3) 1 -1" (3 "11")
-Condition 62 "4105170894" "(((~_GEN_12)) & entries_3_dStarted) 1 -1" (1 "01")
-Condition 62 "4105170894" "(((~_GEN_12)) & entries_3_dStarted) 1 -1" (3 "11")
-Condition 63 "1643034405" "(_GEN_8 & ((~(|r_counter)))) 1 -1" (2 "10")
-Condition 65 "6160239" "(_inReset_chain_io_q & ((|r_counter))) 1 -1" (3 "11")
-Condition 69 "176082489" "(((~_respLast_T)) | respBusy) 1 -1" (2 "01")
-Condition 70 "2065776212" "(((~(|r_counter))) & ((&{valid_3, valid_2, valid_1, valid_0}))) 1 -1" (1 "01")
-Condition 70 "2065776212" "(((~(|r_counter))) & ((&{valid_3, valid_2, valid_1, valid_0}))) 1 -1" (3 "11")
-Condition 71 "2473343311" "((((|r_counter)) & aSunk) | _inReset_chain_io_q) 1 -1" (3 "10")
-Condition 72 "2210476214" "(((|r_counter)) & aSunk) 1 -1" (2 "10")
-Condition 72 "2210476214" "(((|r_counter)) & aSunk) 1 -1" (3 "11")
-Condition 73 "2558685469" "((sinkA | auto_out_a_ready) & ((~aStall))) 1 -1" (2 "10")
-Condition 74 "881482146" "(sinkA | auto_out_a_ready) 1 -1" (1 "00")
-Condition 74 "881482146" "(sinkA | auto_out_a_ready) 1 -1" (3 "10")
-Condition 75 "426900802" "(tileD_ready & tileD_valid) 1 -1" (1 "01")
-Condition 76 "2274840972" "(((|r_counter_1)) & (_inReset_chain_io_q | tdPadding)) 1 -1" (3 "11")
-Condition 78 "1422610069" "(tdPad | (auto_out_d_valid & ((~_inReset_chain_io_q)))) 1 -1" (3 "10")
-Condition 79 "1132449716" "(auto_out_d_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 80 "3754315545" "(tdPad ? tdHeader_opcode : auto_out_d_bits_opcode) 1 -1" (2 "1")
-Condition 81 "2662074845" "(tdPad ? tdHeader_size : auto_out_d_bits_size) 1 -1" (2 "1")
-Condition 82 "181250117" "(tdPad ? tdHeader_source : auto_out_d_bits_source) 1 -1" (2 "1")
-Condition 85 "3499280620" "(valid_1 & (entries_1_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 85 "3499280620" "(valid_1 & (entries_1_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 87 "2183331928" "(valid_2 & (entries_2_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 87 "2183331928" "(valid_2 & (entries_2_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 89 "538187963" "(valid_3 & (entries_3_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 89 "538187963" "(valid_3 & (entries_3_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 91 "3646674697" "(valid_0 & entries_0_ours & entries_0_aDone & ((~entries_0_dStarted))) 1 -1" (3 "1101")
-Condition 91 "3646674697" "(valid_0 & entries_0_ours & entries_0_aDone & ((~entries_0_dStarted))) 1 -1" (4 "1110")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (1 "0111")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (2 "1011")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (3 "1101")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (4 "1110")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (5 "1111")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (1 "0111")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (2 "1011")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (3 "1101")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (4 "1110")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (5 "1111")
-Condition 96 "1742341114" "(respBusy ? respIdx : _selIdx_T_2) 1 -1" (2 "1")
-Condition 97 "1730390029" "(respBusy | ((|{(((valid_3 & entries_3_ours) & entries_3_aDone) & (~entries_3_dStarted)), eligible_2, eligible_1, eligible_0}))) 1 -1" (3 "10")
-Condition 99 "185949030" "(((~winner_0)) & tileD_valid) 1 -1" (1 "01")
-Condition 101 "1354896028" "(idle ? winner_0 : state_0) 1 -1" (1 "0")
-Condition 102 "3689225554" "(idle ? winner_1 : state_1) 1 -1" (1 "0")
-Condition 104 "3868607646" "(idle ? ((~winner_0)) : state_1) 1 -1" (1 "0")
-Condition 105 "1169696386" "(idle ? _nodeIn_d_valid_T : ((state_0 & winner_0) | (state_1 & tileD_valid))) 1 -1" (1 "0")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (1 "00")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (2 "01")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (3 "10")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (1 "01")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (2 "10")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (3 "11")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (1 "01")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (2 "10")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (3 "11")
-Condition 109 "2826608082" "((r_counter_1 == 3'b1) | ((tileD_bits_opcode[0] ? (~_decode_T_3[5:3]) : 3'b0) == 3'b0)) 1 -1" (1 "00")
-Condition 109 "2826608082" "((r_counter_1 == 3'b1) | ((tileD_bits_opcode[0] ? (~_decode_T_3[5:3]) : 3'b0) == 3'b0)) 1 -1" (3 "10")
-Condition 112 "1273315373" "(_GEN_0 & tdMatch_0 & tdLast) 1 -1" (3 "110")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (1 "011")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (3 "110")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (4 "111")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (1 "011")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (3 "110")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (4 "111")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (1 "011")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (3 "110")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (4 "111")
-Condition 117 "689217907" "((respLast_r_counter == 3'b1) | (respLast_r_beats1 == 3'b0)) 1 -1" (1 "00")
-Condition 117 "689217907" "((respLast_r_counter == 3'b1) | (respLast_r_beats1 == 3'b0)) 1 -1" (3 "10")
-Condition 120 "444317476" "(nodeIn_a_ready & auto_in_a_valid) 1 -1" (1 "01")
-Condition 122 "1436439917" "((r_counter == 3'b1) | (r_beats1 == 3'b0)) 1 -1" (1 "00")
-Condition 122 "1436439917" "((r_counter == 3'b1) | (r_beats1 == 3'b0)) 1 -1" (3 "10")
-Condition 127 "600798545" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b0)) 1 -1" (2 "101")
-Condition 127 "600798545" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b0)) 1 -1" (3 "110")
-Condition 129 "1228272904" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b1)) 1 -1" (2 "101")
-Condition 129 "1228272904" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b1)) 1 -1" (4 "111")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (1 "011")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (2 "101")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (4 "111")
-Condition 132 "540176258" "(allocIdx == 2'h2) 1 -1" (2 "1")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (1 "011")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (2 "101")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (4 "111")
-Condition 134 "2496762711" "(((|r_counter)) ? aIdx : allocIdx) 1 -1" (2 "1")
-Condition 135 "3153000565" "(auto_in_d_ready & (idle | state_0) & winner_0) 1 -1" (1 "011")
-Condition 135 "3153000565" "(auto_in_d_ready & (idle | state_0) & winner_0) 1 -1" (2 "101")
-Condition 136 "381691831" "(idle | state_0) 1 -1" (1 "00")
-Condition 136 "381691831" "(idle | state_0) 1 -1" (2 "01")
-Condition 138 "4107991354" "(_GEN_10 | valid_1) 1 -1" (2 "01")
-Condition 138 "4107991354" "(_GEN_10 | valid_1) 1 -1" (3 "10")
-Condition 139 "2313882930" "(_GEN_11 | valid_2) 1 -1" (2 "01")
-Condition 139 "2313882930" "(_GEN_11 | valid_2) 1 -1" (3 "10")
-Condition 140 "2879526130" "(_GEN_12 | valid_3) 1 -1" (2 "01")
-Condition 140 "2879526130" "(_GEN_12 | valid_3) 1 -1" (3 "10")
-Condition 143 "1366814174" "(muxState_1 & (tdPad ? tdHeader_sink : auto_out_d_bits_sink)) 1 -1" (1 "01")
-Condition 143 "1366814174" "(muxState_1 & (tdPad ? tdHeader_sink : auto_out_d_bits_sink)) 1 -1" (3 "11")
-Condition 144 "3341430592" "(tdPad ? tdHeader_sink : auto_out_d_bits_sink) 1 -1" (2 "1")
-Condition 145 "4185347451" "(muxState_0 | (muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied))) 1 -1" (2 "01")
-Condition 146 "2099855884" "(muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied)) 1 -1" (1 "01")
-Condition 146 "2099855884" "(muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied)) 1 -1" (3 "11")
-Condition 147 "1246590208" "(tdPad ? tdHeader_denied : auto_out_d_bits_denied) 1 -1" (2 "1")
-Condition 149 "777496957" "(((~muxState_1)) | tdPad) 1 -1" (2 "01")
-Condition 150 "2359448693" "((muxState_0 & resp_bits_opcode[0]) | (muxState_1 & (tdPad | auto_out_d_bits_corrupt))) 1 -1" (2 "01")
-Condition 151 "2338272930" "(muxState_0 & resp_bits_opcode[0]) 1 -1" (1 "01")
-Condition 152 "26777009" "(muxState_1 & (tdPad | auto_out_d_bits_corrupt)) 1 -1" (1 "01")
-Condition 153 "3834430864" "(tdPad | auto_out_d_bits_corrupt) 1 -1" (2 "01")
-Condition 154 "1867252724" "(auto_in_a_valid & ((~sinkA)) & ((~aStall))) 1 -1" (3 "110")
-Condition 155 "1356726580" "(_inReset_chain_io_q | tdPad | tileD_ready) 1 -1" (3 "010")
-
-CHECKSUM: "2855826940 585039306"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_2.denier
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2166481704" "(((~reset)) & ( ~ (((~winner_0)) | ((~winner_1))) )) 1 -1" (3 "11")
-Condition 3 "2532438962" "(((~winner_0)) | ((~winner_1))) 1 -1" (1 "00")
-Condition 4 "4113635697" "(((~reset)) & ( ~ (((~_nodeIn_d_valid_T)) | winner_0 | winner_1) )) 1 -1" (1 "01")
-Condition 4 "4113635697" "(((~reset)) & ( ~ (((~_nodeIn_d_valid_T)) | winner_0 | winner_1) )) 1 -1" (3 "11")
-Condition 6 "1041727026" "(((~_nodeIn_d_valid_T)) | winner_0 | winner_1) 1 -1" (1 "000")
-Condition 7 "620466423" "(((~reset)) & ( ~ (((~_GEN_0)) | ((|{tdMatch_3, tdMatch_2, tdMatch_1, tdMatch_0}))) )) 1 -1" (3 "11")
-Condition 9 "1167635842" "(((~_GEN_0)) | ((|{tdMatch_3, tdMatch_2, tdMatch_1, tdMatch_0}))) 1 -1" (1 "00")
-Condition 10 "802963704" "(_respLast_T & respLast) 1 -1" (2 "10")
-Condition 11 "210824665" "(( ~ ((selIdx == 2'b0) | _GEN_4) ) & _GEN_14) 1 -1" (3 "11")
-Condition 13 "832512123" "((selIdx == 2'b0) | _GEN_4) 1 -1" (1 "00")
-Condition 14 "2573231006" "(selIdx == 2'b0) 1 -1" (1 "0")
-Condition 15 "873622576" "(( ~ ((selIdx == 2'b1) | _GEN_5) ) & _GEN_15) 1 -1" (1 "01")
-Condition 15 "873622576" "(( ~ ((selIdx == 2'b1) | _GEN_5) ) & _GEN_15) 1 -1" (3 "11")
-Condition 17 "2963225789" "((selIdx == 2'b1) | _GEN_5) 1 -1" (2 "01")
-Condition 18 "3619103404" "(selIdx == 2'b1) 1 -1" (2 "1")
-Condition 19 "554557357" "(( ~ ((selIdx == 2'h2) | _GEN_6) ) & _GEN_16) 1 -1" (1 "01")
-Condition 19 "554557357" "(( ~ ((selIdx == 2'h2) | _GEN_6) ) & _GEN_16) 1 -1" (3 "11")
-Condition 21 "3066396584" "((selIdx == 2'h2) | _GEN_6) 1 -1" (2 "01")
-Condition 22 "756504809" "(selIdx == 2'h2) 1 -1" (2 "1")
-Condition 23 "575586430" "(( ~ (((&selIdx)) | _GEN_7) ) & _GEN_17) 1 -1" (1 "01")
-Condition 23 "575586430" "(( ~ (((&selIdx)) | _GEN_7) ) & _GEN_17) 1 -1" (3 "11")
-Condition 25 "14310556" "(((&selIdx)) | _GEN_7) 1 -1" (2 "01")
-Condition 27 "1867285264" "(((~_GEN_5)) & _GEN_15) 1 -1" (1 "01")
-Condition 27 "1867285264" "(((~_GEN_5)) & _GEN_15) 1 -1" (3 "11")
-Condition 28 "2082269634" "(((~_GEN_6)) & _GEN_16) 1 -1" (1 "01")
-Condition 28 "2082269634" "(((~_GEN_6)) & _GEN_16) 1 -1" (3 "11")
-Condition 29 "3640696695" "(((~_GEN_7)) & _GEN_17) 1 -1" (1 "01")
-Condition 29 "3640696695" "(((~_GEN_7)) & _GEN_17) 1 -1" (3 "11")
-Condition 34 "3740407641" "(respLast_r_counter == 3'b0) 1 -1" (1 "0")
-Condition 35 "605980280" "(idle & auto_in_d_ready) 1 -1" (1 "01")
-Condition 36 "1971067114" "(_GEN_8 & (_GEN_13 == 2'b0)) 1 -1" (2 "10")
-Condition 43 "1290711034" "(_GEN_8 & (_GEN_13 == 2'b1)) 1 -1" (3 "11")
-Condition 45 "2052707635" "((((~_GEN_10)) & entries_1_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 47 "748964904" "((_GEN_0 & tdMatch_1) | (((~_GEN_10)) & entries_1_dStarted)) 1 -1" (2 "01")
-Condition 48 "1029042642" "(_GEN_0 & tdMatch_1) 1 -1" (1 "01")
-Condition 48 "1029042642" "(_GEN_0 & tdMatch_1) 1 -1" (3 "11")
-Condition 49 "4141276341" "(((~_GEN_10)) & entries_1_dStarted) 1 -1" (1 "01")
-Condition 49 "4141276341" "(((~_GEN_10)) & entries_1_dStarted) 1 -1" (3 "11")
-Condition 50 "3217390835" "(_GEN_8 & (_GEN_13 == 2'h2)) 1 -1" (1 "01")
-Condition 50 "3217390835" "(_GEN_8 & (_GEN_13 == 2'h2)) 1 -1" (3 "11")
-Condition 51 "3446496216" "(_GEN_13 == 2'h2) 1 -1" (2 "1")
-Condition 52 "983299049" "((((~_GEN_11)) & entries_2_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 54 "3839690175" "((_GEN_0 & tdMatch_2) | (((~_GEN_11)) & entries_2_dStarted)) 1 -1" (2 "01")
-Condition 55 "3165368388" "(_GEN_0 & tdMatch_2) 1 -1" (1 "01")
-Condition 55 "3165368388" "(_GEN_0 & tdMatch_2) 1 -1" (3 "11")
-Condition 56 "1047934453" "(((~_GEN_11)) & entries_2_dStarted) 1 -1" (1 "01")
-Condition 56 "1047934453" "(((~_GEN_11)) & entries_2_dStarted) 1 -1" (3 "11")
-Condition 57 "3981299746" "(_GEN_8 & ((&_GEN_13))) 1 -1" (1 "01")
-Condition 57 "3981299746" "(_GEN_8 & ((&_GEN_13))) 1 -1" (3 "11")
-Condition 58 "734501989" "((((~_GEN_12)) & entries_3_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 60 "922109759" "((_GEN_0 & tdMatch_3) | (((~_GEN_12)) & entries_3_dStarted)) 1 -1" (2 "01")
-Condition 61 "4044617907" "(_GEN_0 & tdMatch_3) 1 -1" (1 "01")
-Condition 61 "4044617907" "(_GEN_0 & tdMatch_3) 1 -1" (3 "11")
-Condition 62 "4105170894" "(((~_GEN_12)) & entries_3_dStarted) 1 -1" (1 "01")
-Condition 62 "4105170894" "(((~_GEN_12)) & entries_3_dStarted) 1 -1" (3 "11")
-Condition 63 "1643034405" "(_GEN_8 & ((~(|r_counter)))) 1 -1" (2 "10")
-Condition 65 "6160239" "(_inReset_chain_io_q & ((|r_counter))) 1 -1" (3 "11")
-Condition 69 "176082489" "(((~_respLast_T)) | respBusy) 1 -1" (2 "01")
-Condition 70 "2065776212" "(((~(|r_counter))) & ((&{valid_3, valid_2, valid_1, valid_0}))) 1 -1" (1 "01")
-Condition 70 "2065776212" "(((~(|r_counter))) & ((&{valid_3, valid_2, valid_1, valid_0}))) 1 -1" (3 "11")
-Condition 71 "2473343311" "((((|r_counter)) & aSunk) | _inReset_chain_io_q) 1 -1" (3 "10")
-Condition 72 "2210476214" "(((|r_counter)) & aSunk) 1 -1" (2 "10")
-Condition 72 "2210476214" "(((|r_counter)) & aSunk) 1 -1" (3 "11")
-Condition 73 "2558685469" "((sinkA | auto_out_a_ready) & ((~aStall))) 1 -1" (2 "10")
-Condition 74 "881482146" "(sinkA | auto_out_a_ready) 1 -1" (1 "00")
-Condition 74 "881482146" "(sinkA | auto_out_a_ready) 1 -1" (3 "10")
-Condition 75 "426900802" "(tileD_ready & tileD_valid) 1 -1" (1 "01")
-Condition 76 "2274840972" "(((|r_counter_1)) & (_inReset_chain_io_q | tdPadding)) 1 -1" (3 "11")
-Condition 78 "1422610069" "(tdPad | (auto_out_d_valid & ((~_inReset_chain_io_q)))) 1 -1" (3 "10")
-Condition 79 "1132449716" "(auto_out_d_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 80 "3754315545" "(tdPad ? tdHeader_opcode : auto_out_d_bits_opcode) 1 -1" (2 "1")
-Condition 81 "2662074845" "(tdPad ? tdHeader_size : auto_out_d_bits_size) 1 -1" (2 "1")
-Condition 82 "181250117" "(tdPad ? tdHeader_source : auto_out_d_bits_source) 1 -1" (2 "1")
-Condition 85 "3499280620" "(valid_1 & (entries_1_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 85 "3499280620" "(valid_1 & (entries_1_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 87 "2183331928" "(valid_2 & (entries_2_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 87 "2183331928" "(valid_2 & (entries_2_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 89 "538187963" "(valid_3 & (entries_3_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 89 "538187963" "(valid_3 & (entries_3_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 91 "3646674697" "(valid_0 & entries_0_ours & entries_0_aDone & ((~entries_0_dStarted))) 1 -1" (3 "1101")
-Condition 91 "3646674697" "(valid_0 & entries_0_ours & entries_0_aDone & ((~entries_0_dStarted))) 1 -1" (4 "1110")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (1 "0111")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (2 "1011")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (3 "1101")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (4 "1110")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (5 "1111")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (1 "0111")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (2 "1011")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (3 "1101")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (4 "1110")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (5 "1111")
-Condition 96 "1742341114" "(respBusy ? respIdx : _selIdx_T_2) 1 -1" (2 "1")
-Condition 97 "1730390029" "(respBusy | ((|{(((valid_3 & entries_3_ours) & entries_3_aDone) & (~entries_3_dStarted)), eligible_2, eligible_1, eligible_0}))) 1 -1" (3 "10")
-Condition 99 "185949030" "(((~winner_0)) & tileD_valid) 1 -1" (1 "01")
-Condition 101 "1354896028" "(idle ? winner_0 : state_0) 1 -1" (1 "0")
-Condition 102 "3689225554" "(idle ? winner_1 : state_1) 1 -1" (1 "0")
-Condition 104 "3868607646" "(idle ? ((~winner_0)) : state_1) 1 -1" (1 "0")
-Condition 105 "1169696386" "(idle ? _nodeIn_d_valid_T : ((state_0 & winner_0) | (state_1 & tileD_valid))) 1 -1" (1 "0")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (1 "00")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (2 "01")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (3 "10")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (1 "01")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (2 "10")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (3 "11")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (1 "01")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (2 "10")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (3 "11")
-Condition 109 "2826608082" "((r_counter_1 == 3'b1) | ((tileD_bits_opcode[0] ? (~_decode_T_3[5:3]) : 3'b0) == 3'b0)) 1 -1" (1 "00")
-Condition 109 "2826608082" "((r_counter_1 == 3'b1) | ((tileD_bits_opcode[0] ? (~_decode_T_3[5:3]) : 3'b0) == 3'b0)) 1 -1" (3 "10")
-Condition 112 "1273315373" "(_GEN_0 & tdMatch_0 & tdLast) 1 -1" (3 "110")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (1 "011")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (3 "110")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (4 "111")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (1 "011")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (3 "110")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (4 "111")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (1 "011")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (3 "110")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (4 "111")
-Condition 117 "689217907" "((respLast_r_counter == 3'b1) | (respLast_r_beats1 == 3'b0)) 1 -1" (1 "00")
-Condition 117 "689217907" "((respLast_r_counter == 3'b1) | (respLast_r_beats1 == 3'b0)) 1 -1" (3 "10")
-Condition 120 "444317476" "(nodeIn_a_ready & auto_in_a_valid) 1 -1" (1 "01")
-Condition 122 "1436439917" "((r_counter == 3'b1) | (r_beats1 == 3'b0)) 1 -1" (1 "00")
-Condition 122 "1436439917" "((r_counter == 3'b1) | (r_beats1 == 3'b0)) 1 -1" (3 "10")
-Condition 127 "600798545" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b0)) 1 -1" (2 "101")
-Condition 127 "600798545" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b0)) 1 -1" (3 "110")
-Condition 129 "1228272904" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b1)) 1 -1" (2 "101")
-Condition 129 "1228272904" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b1)) 1 -1" (4 "111")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (1 "011")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (2 "101")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (4 "111")
-Condition 132 "540176258" "(allocIdx == 2'h2) 1 -1" (2 "1")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (1 "011")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (2 "101")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (4 "111")
-Condition 134 "2496762711" "(((|r_counter)) ? aIdx : allocIdx) 1 -1" (2 "1")
-Condition 135 "3153000565" "(auto_in_d_ready & (idle | state_0) & winner_0) 1 -1" (1 "011")
-Condition 135 "3153000565" "(auto_in_d_ready & (idle | state_0) & winner_0) 1 -1" (2 "101")
-Condition 136 "381691831" "(idle | state_0) 1 -1" (1 "00")
-Condition 136 "381691831" "(idle | state_0) 1 -1" (2 "01")
-Condition 138 "4107991354" "(_GEN_10 | valid_1) 1 -1" (2 "01")
-Condition 138 "4107991354" "(_GEN_10 | valid_1) 1 -1" (3 "10")
-Condition 139 "2313882930" "(_GEN_11 | valid_2) 1 -1" (2 "01")
-Condition 139 "2313882930" "(_GEN_11 | valid_2) 1 -1" (3 "10")
-Condition 140 "2879526130" "(_GEN_12 | valid_3) 1 -1" (2 "01")
-Condition 140 "2879526130" "(_GEN_12 | valid_3) 1 -1" (3 "10")
-Condition 143 "1366814174" "(muxState_1 & (tdPad ? tdHeader_sink : auto_out_d_bits_sink)) 1 -1" (1 "01")
-Condition 143 "1366814174" "(muxState_1 & (tdPad ? tdHeader_sink : auto_out_d_bits_sink)) 1 -1" (3 "11")
-Condition 144 "3341430592" "(tdPad ? tdHeader_sink : auto_out_d_bits_sink) 1 -1" (2 "1")
-Condition 145 "4185347451" "(muxState_0 | (muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied))) 1 -1" (2 "01")
-Condition 146 "2099855884" "(muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied)) 1 -1" (1 "01")
-Condition 146 "2099855884" "(muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied)) 1 -1" (3 "11")
-Condition 147 "1246590208" "(tdPad ? tdHeader_denied : auto_out_d_bits_denied) 1 -1" (2 "1")
-Condition 149 "777496957" "(((~muxState_1)) | tdPad) 1 -1" (2 "01")
-Condition 150 "2359448693" "((muxState_0 & resp_bits_opcode[0]) | (muxState_1 & (tdPad | auto_out_d_bits_corrupt))) 1 -1" (2 "01")
-Condition 151 "2338272930" "(muxState_0 & resp_bits_opcode[0]) 1 -1" (1 "01")
-Condition 152 "26777009" "(muxState_1 & (tdPad | auto_out_d_bits_corrupt)) 1 -1" (1 "01")
-Condition 153 "3834430864" "(tdPad | auto_out_d_bits_corrupt) 1 -1" (2 "01")
-Condition 154 "1867252724" "(auto_in_a_valid & ((~sinkA)) & ((~aStall))) 1 -1" (3 "110")
-Condition 155 "1356726580" "(_inReset_chain_io_q | tdPad | tileD_ready) 1 -1" (3 "010")
-
-CHECKSUM: "2855826940 585039306"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_3.denier
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2166481704" "(((~reset)) & ( ~ (((~winner_0)) | ((~winner_1))) )) 1 -1" (3 "11")
-Condition 3 "2532438962" "(((~winner_0)) | ((~winner_1))) 1 -1" (1 "00")
-Condition 4 "4113635697" "(((~reset)) & ( ~ (((~_nodeIn_d_valid_T)) | winner_0 | winner_1) )) 1 -1" (1 "01")
-Condition 4 "4113635697" "(((~reset)) & ( ~ (((~_nodeIn_d_valid_T)) | winner_0 | winner_1) )) 1 -1" (3 "11")
-Condition 6 "1041727026" "(((~_nodeIn_d_valid_T)) | winner_0 | winner_1) 1 -1" (1 "000")
-Condition 7 "620466423" "(((~reset)) & ( ~ (((~_GEN_0)) | ((|{tdMatch_3, tdMatch_2, tdMatch_1, tdMatch_0}))) )) 1 -1" (3 "11")
-Condition 9 "1167635842" "(((~_GEN_0)) | ((|{tdMatch_3, tdMatch_2, tdMatch_1, tdMatch_0}))) 1 -1" (1 "00")
-Condition 10 "802963704" "(_respLast_T & respLast) 1 -1" (2 "10")
-Condition 11 "210824665" "(( ~ ((selIdx == 2'b0) | _GEN_4) ) & _GEN_14) 1 -1" (3 "11")
-Condition 13 "832512123" "((selIdx == 2'b0) | _GEN_4) 1 -1" (1 "00")
-Condition 14 "2573231006" "(selIdx == 2'b0) 1 -1" (1 "0")
-Condition 15 "873622576" "(( ~ ((selIdx == 2'b1) | _GEN_5) ) & _GEN_15) 1 -1" (1 "01")
-Condition 15 "873622576" "(( ~ ((selIdx == 2'b1) | _GEN_5) ) & _GEN_15) 1 -1" (3 "11")
-Condition 17 "2963225789" "((selIdx == 2'b1) | _GEN_5) 1 -1" (2 "01")
-Condition 18 "3619103404" "(selIdx == 2'b1) 1 -1" (2 "1")
-Condition 19 "554557357" "(( ~ ((selIdx == 2'h2) | _GEN_6) ) & _GEN_16) 1 -1" (1 "01")
-Condition 19 "554557357" "(( ~ ((selIdx == 2'h2) | _GEN_6) ) & _GEN_16) 1 -1" (3 "11")
-Condition 21 "3066396584" "((selIdx == 2'h2) | _GEN_6) 1 -1" (2 "01")
-Condition 22 "756504809" "(selIdx == 2'h2) 1 -1" (2 "1")
-Condition 23 "575586430" "(( ~ (((&selIdx)) | _GEN_7) ) & _GEN_17) 1 -1" (1 "01")
-Condition 23 "575586430" "(( ~ (((&selIdx)) | _GEN_7) ) & _GEN_17) 1 -1" (3 "11")
-Condition 25 "14310556" "(((&selIdx)) | _GEN_7) 1 -1" (2 "01")
-Condition 27 "1867285264" "(((~_GEN_5)) & _GEN_15) 1 -1" (1 "01")
-Condition 27 "1867285264" "(((~_GEN_5)) & _GEN_15) 1 -1" (3 "11")
-Condition 28 "2082269634" "(((~_GEN_6)) & _GEN_16) 1 -1" (1 "01")
-Condition 28 "2082269634" "(((~_GEN_6)) & _GEN_16) 1 -1" (3 "11")
-Condition 29 "3640696695" "(((~_GEN_7)) & _GEN_17) 1 -1" (1 "01")
-Condition 29 "3640696695" "(((~_GEN_7)) & _GEN_17) 1 -1" (3 "11")
-Condition 34 "3740407641" "(respLast_r_counter == 3'b0) 1 -1" (1 "0")
-Condition 35 "605980280" "(idle & auto_in_d_ready) 1 -1" (1 "01")
-Condition 36 "1971067114" "(_GEN_8 & (_GEN_13 == 2'b0)) 1 -1" (2 "10")
-Condition 43 "1290711034" "(_GEN_8 & (_GEN_13 == 2'b1)) 1 -1" (3 "11")
-Condition 45 "2052707635" "((((~_GEN_10)) & entries_1_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 47 "748964904" "((_GEN_0 & tdMatch_1) | (((~_GEN_10)) & entries_1_dStarted)) 1 -1" (2 "01")
-Condition 48 "1029042642" "(_GEN_0 & tdMatch_1) 1 -1" (1 "01")
-Condition 48 "1029042642" "(_GEN_0 & tdMatch_1) 1 -1" (3 "11")
-Condition 49 "4141276341" "(((~_GEN_10)) & entries_1_dStarted) 1 -1" (1 "01")
-Condition 49 "4141276341" "(((~_GEN_10)) & entries_1_dStarted) 1 -1" (3 "11")
-Condition 50 "3217390835" "(_GEN_8 & (_GEN_13 == 2'h2)) 1 -1" (1 "01")
-Condition 50 "3217390835" "(_GEN_8 & (_GEN_13 == 2'h2)) 1 -1" (3 "11")
-Condition 51 "3446496216" "(_GEN_13 == 2'h2) 1 -1" (2 "1")
-Condition 52 "983299049" "((((~_GEN_11)) & entries_2_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 54 "3839690175" "((_GEN_0 & tdMatch_2) | (((~_GEN_11)) & entries_2_dStarted)) 1 -1" (2 "01")
-Condition 55 "3165368388" "(_GEN_0 & tdMatch_2) 1 -1" (1 "01")
-Condition 55 "3165368388" "(_GEN_0 & tdMatch_2) 1 -1" (3 "11")
-Condition 56 "1047934453" "(((~_GEN_11)) & entries_2_dStarted) 1 -1" (1 "01")
-Condition 56 "1047934453" "(((~_GEN_11)) & entries_2_dStarted) 1 -1" (3 "11")
-Condition 57 "3981299746" "(_GEN_8 & ((&_GEN_13))) 1 -1" (1 "01")
-Condition 57 "3981299746" "(_GEN_8 & ((&_GEN_13))) 1 -1" (3 "11")
-Condition 58 "734501989" "((((~_GEN_12)) & entries_3_ours) | _inReset_chain_io_q) 1 -1" (1 "00")
-Condition 60 "922109759" "((_GEN_0 & tdMatch_3) | (((~_GEN_12)) & entries_3_dStarted)) 1 -1" (2 "01")
-Condition 61 "4044617907" "(_GEN_0 & tdMatch_3) 1 -1" (1 "01")
-Condition 61 "4044617907" "(_GEN_0 & tdMatch_3) 1 -1" (3 "11")
-Condition 62 "4105170894" "(((~_GEN_12)) & entries_3_dStarted) 1 -1" (1 "01")
-Condition 62 "4105170894" "(((~_GEN_12)) & entries_3_dStarted) 1 -1" (3 "11")
-Condition 63 "1643034405" "(_GEN_8 & ((~(|r_counter)))) 1 -1" (2 "10")
-Condition 65 "6160239" "(_inReset_chain_io_q & ((|r_counter))) 1 -1" (3 "11")
-Condition 69 "176082489" "(((~_respLast_T)) | respBusy) 1 -1" (2 "01")
-Condition 70 "2065776212" "(((~(|r_counter))) & ((&{valid_3, valid_2, valid_1, valid_0}))) 1 -1" (1 "01")
-Condition 70 "2065776212" "(((~(|r_counter))) & ((&{valid_3, valid_2, valid_1, valid_0}))) 1 -1" (3 "11")
-Condition 71 "2473343311" "((((|r_counter)) & aSunk) | _inReset_chain_io_q) 1 -1" (3 "10")
-Condition 72 "2210476214" "(((|r_counter)) & aSunk) 1 -1" (2 "10")
-Condition 72 "2210476214" "(((|r_counter)) & aSunk) 1 -1" (3 "11")
-Condition 73 "2558685469" "((sinkA | auto_out_a_ready) & ((~aStall))) 1 -1" (2 "10")
-Condition 74 "881482146" "(sinkA | auto_out_a_ready) 1 -1" (1 "00")
-Condition 74 "881482146" "(sinkA | auto_out_a_ready) 1 -1" (3 "10")
-Condition 75 "426900802" "(tileD_ready & tileD_valid) 1 -1" (1 "01")
-Condition 76 "2274840972" "(((|r_counter_1)) & (_inReset_chain_io_q | tdPadding)) 1 -1" (3 "11")
-Condition 78 "1422610069" "(tdPad | (auto_out_d_valid & ((~_inReset_chain_io_q)))) 1 -1" (3 "10")
-Condition 79 "1132449716" "(auto_out_d_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 80 "3754315545" "(tdPad ? tdHeader_opcode : auto_out_d_bits_opcode) 1 -1" (2 "1")
-Condition 81 "2662074845" "(tdPad ? tdHeader_size : auto_out_d_bits_size) 1 -1" (2 "1")
-Condition 82 "181250117" "(tdPad ? tdHeader_source : auto_out_d_bits_source) 1 -1" (2 "1")
-Condition 85 "3499280620" "(valid_1 & (entries_1_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 85 "3499280620" "(valid_1 & (entries_1_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 87 "2183331928" "(valid_2 & (entries_2_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 87 "2183331928" "(valid_2 & (entries_2_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 89 "538187963" "(valid_3 & (entries_3_source == tileD_bits_source)) 1 -1" (2 "10")
-Condition 89 "538187963" "(valid_3 & (entries_3_source == tileD_bits_source)) 1 -1" (3 "11")
-Condition 91 "3646674697" "(valid_0 & entries_0_ours & entries_0_aDone & ((~entries_0_dStarted))) 1 -1" (3 "1101")
-Condition 91 "3646674697" "(valid_0 & entries_0_ours & entries_0_aDone & ((~entries_0_dStarted))) 1 -1" (4 "1110")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (1 "0111")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (2 "1011")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (3 "1101")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (4 "1110")
-Condition 92 "2770690107" "(valid_1 & entries_1_ours & entries_1_aDone & ((~entries_1_dStarted))) 1 -1" (5 "1111")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (1 "0111")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (2 "1011")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (3 "1101")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (4 "1110")
-Condition 93 "2547337943" "(valid_2 & entries_2_ours & entries_2_aDone & ((~entries_2_dStarted))) 1 -1" (5 "1111")
-Condition 96 "1742341114" "(respBusy ? respIdx : _selIdx_T_2) 1 -1" (2 "1")
-Condition 97 "1730390029" "(respBusy | ((|{(((valid_3 & entries_3_ours) & entries_3_aDone) & (~entries_3_dStarted)), eligible_2, eligible_1, eligible_0}))) 1 -1" (3 "10")
-Condition 99 "185949030" "(((~winner_0)) & tileD_valid) 1 -1" (1 "01")
-Condition 101 "1354896028" "(idle ? winner_0 : state_0) 1 -1" (1 "0")
-Condition 102 "3689225554" "(idle ? winner_1 : state_1) 1 -1" (1 "0")
-Condition 104 "3868607646" "(idle ? ((~winner_0)) : state_1) 1 -1" (1 "0")
-Condition 105 "1169696386" "(idle ? _nodeIn_d_valid_T : ((state_0 & winner_0) | (state_1 & tileD_valid))) 1 -1" (1 "0")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (1 "00")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (2 "01")
-Condition 106 "2092293647" "((state_0 & winner_0) | (state_1 & tileD_valid)) 1 -1" (3 "10")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (1 "01")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (2 "10")
-Condition 107 "2626356858" "(state_0 & winner_0) 1 -1" (3 "11")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (1 "01")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (2 "10")
-Condition 108 "3017484589" "(state_1 & tileD_valid) 1 -1" (3 "11")
-Condition 109 "2826608082" "((r_counter_1 == 3'b1) | ((tileD_bits_opcode[0] ? (~_decode_T_3[5:3]) : 3'b0) == 3'b0)) 1 -1" (1 "00")
-Condition 109 "2826608082" "((r_counter_1 == 3'b1) | ((tileD_bits_opcode[0] ? (~_decode_T_3[5:3]) : 3'b0) == 3'b0)) 1 -1" (3 "10")
-Condition 112 "1273315373" "(_GEN_0 & tdMatch_0 & tdLast) 1 -1" (3 "110")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (1 "011")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (3 "110")
-Condition 113 "2357247262" "(_GEN_0 & tdMatch_1 & tdLast) 1 -1" (4 "111")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (1 "011")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (3 "110")
-Condition 114 "3404727272" "(_GEN_0 & tdMatch_2 & tdLast) 1 -1" (4 "111")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (1 "011")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (3 "110")
-Condition 115 "227933915" "(_GEN_0 & tdMatch_3 & tdLast) 1 -1" (4 "111")
-Condition 117 "689217907" "((respLast_r_counter == 3'b1) | (respLast_r_beats1 == 3'b0)) 1 -1" (1 "00")
-Condition 117 "689217907" "((respLast_r_counter == 3'b1) | (respLast_r_beats1 == 3'b0)) 1 -1" (3 "10")
-Condition 120 "444317476" "(nodeIn_a_ready & auto_in_a_valid) 1 -1" (1 "01")
-Condition 122 "1436439917" "((r_counter == 3'b1) | (r_beats1 == 3'b0)) 1 -1" (1 "00")
-Condition 122 "1436439917" "((r_counter == 3'b1) | (r_beats1 == 3'b0)) 1 -1" (3 "10")
-Condition 127 "600798545" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b0)) 1 -1" (2 "101")
-Condition 127 "600798545" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b0)) 1 -1" (3 "110")
-Condition 129 "1228272904" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b1)) 1 -1" (2 "101")
-Condition 129 "1228272904" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'b1)) 1 -1" (4 "111")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (1 "011")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (2 "101")
-Condition 131 "1206982933" "(_GEN_8 & ((~(|r_counter))) & (allocIdx == 2'h2)) 1 -1" (4 "111")
-Condition 132 "540176258" "(allocIdx == 2'h2) 1 -1" (2 "1")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (1 "011")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (2 "101")
-Condition 133 "3188069390" "(_GEN_8 & ((~(|r_counter))) & ((&allocIdx))) 1 -1" (4 "111")
-Condition 134 "2496762711" "(((|r_counter)) ? aIdx : allocIdx) 1 -1" (2 "1")
-Condition 135 "3153000565" "(auto_in_d_ready & (idle | state_0) & winner_0) 1 -1" (1 "011")
-Condition 135 "3153000565" "(auto_in_d_ready & (idle | state_0) & winner_0) 1 -1" (2 "101")
-Condition 136 "381691831" "(idle | state_0) 1 -1" (1 "00")
-Condition 136 "381691831" "(idle | state_0) 1 -1" (2 "01")
-Condition 138 "4107991354" "(_GEN_10 | valid_1) 1 -1" (2 "01")
-Condition 138 "4107991354" "(_GEN_10 | valid_1) 1 -1" (3 "10")
-Condition 139 "2313882930" "(_GEN_11 | valid_2) 1 -1" (2 "01")
-Condition 139 "2313882930" "(_GEN_11 | valid_2) 1 -1" (3 "10")
-Condition 140 "2879526130" "(_GEN_12 | valid_3) 1 -1" (2 "01")
-Condition 140 "2879526130" "(_GEN_12 | valid_3) 1 -1" (3 "10")
-Condition 143 "1366814174" "(muxState_1 & (tdPad ? tdHeader_sink : auto_out_d_bits_sink)) 1 -1" (1 "01")
-Condition 143 "1366814174" "(muxState_1 & (tdPad ? tdHeader_sink : auto_out_d_bits_sink)) 1 -1" (3 "11")
-Condition 144 "3341430592" "(tdPad ? tdHeader_sink : auto_out_d_bits_sink) 1 -1" (2 "1")
-Condition 145 "4185347451" "(muxState_0 | (muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied))) 1 -1" (2 "01")
-Condition 146 "2099855884" "(muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied)) 1 -1" (1 "01")
-Condition 146 "2099855884" "(muxState_1 & (tdPad ? tdHeader_denied : auto_out_d_bits_denied)) 1 -1" (3 "11")
-Condition 147 "1246590208" "(tdPad ? tdHeader_denied : auto_out_d_bits_denied) 1 -1" (2 "1")
-Condition 149 "777496957" "(((~muxState_1)) | tdPad) 1 -1" (2 "01")
-Condition 150 "2359448693" "((muxState_0 & resp_bits_opcode[0]) | (muxState_1 & (tdPad | auto_out_d_bits_corrupt))) 1 -1" (2 "01")
-Condition 151 "2338272930" "(muxState_0 & resp_bits_opcode[0]) 1 -1" (1 "01")
-Condition 152 "26777009" "(muxState_1 & (tdPad | auto_out_d_bits_corrupt)) 1 -1" (1 "01")
-Condition 153 "3834430864" "(tdPad | auto_out_d_bits_corrupt) 1 -1" (2 "01")
-Condition 154 "1867252724" "(auto_in_a_valid & ((~sinkA)) & ((~aStall))) 1 -1" (3 "110")
-Condition 155 "1356726580" "(_inReset_chain_io_q | tdPad | tileD_ready) 1 -1" (3 "010")
-
-CHECKSUM: "1580154674 1189166329"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile.probeAcker
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2166481704" "(((~reset)) & ( ~ (((~winner_0)) | ((~winner_1))) )) 1 -1" (3 "11")
-Condition 3 "2532438962" "(((~winner_0)) | ((~winner_1))) 1 -1" (1 "00")
-Condition 4 "156832563" "(((~reset)) & ( ~ (((~_nodeOut_c_valid_T)) | winner_0 | winner_1) )) 1 -1" (1 "01")
-Condition 4 "156832563" "(((~reset)) & ( ~ (((~_nodeOut_c_valid_T)) | winner_0 | winner_1) )) 1 -1" (3 "11")
-Condition 6 "851151385" "(((~_nodeOut_c_valid_T)) | winner_0 | winner_1) 1 -1" (1 "000")
-Condition 7 "4277397136" "(((~reset)) & ( ~ (((~tileProbeAck)) | _delivered_io_deq_valid) )) 1 -1" (3 "11")
-Condition 9 "2773598842" "(((~tileProbeAck)) | _delivered_io_deq_valid) 1 -1" (1 "00")
-Condition 10 "3244388976" "(((~reset)) & ( ~ (((~_inReset_chain_io_q)) | first) )) 1 -1" (3 "11")
-Condition 12 "1776969267" "(((~_inReset_chain_io_q)) | first) 1 -1" (1 "00")
-Condition 13 "1958021333" "(((~reset)) & ( ~ (((~_inReset_chain_io_q)) | first_1) )) 1 -1" (3 "11")
-Condition 15 "1967199334" "(((~_inReset_chain_io_q)) | first_1) 1 -1" (1 "00")
-Condition 17 "2636673609" "(_delivered_io_deq_valid & draining) 1 -1" (3 "11")
-Condition 33 "1159308194" "(auto_out_b_valid & ((~responding)) & _delivered_io_enq_ready) 1 -1" (3 "110")
-Condition 34 "422022164" "(auto_in_c_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 35 "3195696002" "(auto_out_c_ready & allowed_1 & ((~_inReset_chain_io_q))) 1 -1" (2 "101")
-Condition 46 "734493127" "(((~winner_0)) & tileC_valid) 1 -1" (1 "01")
-Condition 63 "515200181" "(((~responding)) & auto_in_b_ready & _delivered_io_enq_ready) 1 -1" (3 "110")
-Condition 65 "445555289" "(auto_in_e_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-
-CHECKSUM: "3447362962 2808527910"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile.probeAcker.delivered
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 3 "1750755365" "(ptr_match & ((~maybe_full))) 1 -1" (2 "10")
-Condition 4 "2507565385" "(ptr_match & maybe_full) 1 -1" (3 "11")
-Condition 5 "2610450189" "(((~full)) & io_enq_valid) 1 -1" (1 "01")
-
-CHECKSUM: "1580154674 1189166329"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_1.probeAcker
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2166481704" "(((~reset)) & ( ~ (((~winner_0)) | ((~winner_1))) )) 1 -1" (3 "11")
-Condition 3 "2532438962" "(((~winner_0)) | ((~winner_1))) 1 -1" (1 "00")
-Condition 4 "156832563" "(((~reset)) & ( ~ (((~_nodeOut_c_valid_T)) | winner_0 | winner_1) )) 1 -1" (1 "01")
-Condition 4 "156832563" "(((~reset)) & ( ~ (((~_nodeOut_c_valid_T)) | winner_0 | winner_1) )) 1 -1" (3 "11")
-Condition 6 "851151385" "(((~_nodeOut_c_valid_T)) | winner_0 | winner_1) 1 -1" (1 "000")
-Condition 7 "4277397136" "(((~reset)) & ( ~ (((~tileProbeAck)) | _delivered_io_deq_valid) )) 1 -1" (3 "11")
-Condition 9 "2773598842" "(((~tileProbeAck)) | _delivered_io_deq_valid) 1 -1" (1 "00")
-Condition 10 "3244388976" "(((~reset)) & ( ~ (((~_inReset_chain_io_q)) | first) )) 1 -1" (3 "11")
-Condition 12 "1776969267" "(((~_inReset_chain_io_q)) | first) 1 -1" (1 "00")
-Condition 13 "1958021333" "(((~reset)) & ( ~ (((~_inReset_chain_io_q)) | first_1) )) 1 -1" (3 "11")
-Condition 15 "1967199334" "(((~_inReset_chain_io_q)) | first_1) 1 -1" (1 "00")
-Condition 17 "2636673609" "(_delivered_io_deq_valid & draining) 1 -1" (3 "11")
-Condition 33 "1159308194" "(auto_out_b_valid & ((~responding)) & _delivered_io_enq_ready) 1 -1" (3 "110")
-Condition 34 "422022164" "(auto_in_c_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 35 "3195696002" "(auto_out_c_ready & allowed_1 & ((~_inReset_chain_io_q))) 1 -1" (2 "101")
-Condition 38 "2419764713" "(_tileProbeAck_T_1 & ((tileProbeAck_counter == 8'b1) | (tileProbeAck_beats1 == 8'b0)) & ((auto_in_c_bits_opcode == 3'h4) | (auto_in_c_bits_opcode == 3'h5))) 1 -1" (3 "110")
-Condition 46 "734493127" "(((~winner_0)) & tileC_valid) 1 -1" (1 "01")
-Condition 54 "152575117" "((state_0 & winner_0) | (state_1 & tileC_valid)) 1 -1" (1 "00")
-Condition 54 "152575117" "((state_0 & winner_0) | (state_1 & tileC_valid)) 1 -1" (3 "10")
-Condition 55 "3667067133" "(state_0 & winner_0) 1 -1" (2 "10")
-Condition 56 "299007506" "(state_1 & tileC_valid) 1 -1" (2 "10")
-Condition 63 "515200181" "(((~responding)) & auto_in_b_ready & _delivered_io_enq_ready) 1 -1" (3 "110")
-Condition 65 "445555289" "(auto_in_e_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-
-CHECKSUM: "3447362962 2808527910"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_1.probeAcker.delivered
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 3 "1750755365" "(ptr_match & ((~maybe_full))) 1 -1" (2 "10")
-Condition 4 "2507565385" "(ptr_match & maybe_full) 1 -1" (3 "11")
-Condition 5 "2610450189" "(((~full)) & io_enq_valid) 1 -1" (1 "01")
-
-CHECKSUM: "1580154674 1189166329"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_2.probeAcker
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2166481704" "(((~reset)) & ( ~ (((~winner_0)) | ((~winner_1))) )) 1 -1" (3 "11")
-Condition 3 "2532438962" "(((~winner_0)) | ((~winner_1))) 1 -1" (1 "00")
-Condition 4 "156832563" "(((~reset)) & ( ~ (((~_nodeOut_c_valid_T)) | winner_0 | winner_1) )) 1 -1" (1 "01")
-Condition 4 "156832563" "(((~reset)) & ( ~ (((~_nodeOut_c_valid_T)) | winner_0 | winner_1) )) 1 -1" (3 "11")
-Condition 6 "851151385" "(((~_nodeOut_c_valid_T)) | winner_0 | winner_1) 1 -1" (1 "000")
-Condition 7 "4277397136" "(((~reset)) & ( ~ (((~tileProbeAck)) | _delivered_io_deq_valid) )) 1 -1" (3 "11")
-Condition 9 "2773598842" "(((~tileProbeAck)) | _delivered_io_deq_valid) 1 -1" (1 "00")
-Condition 10 "3244388976" "(((~reset)) & ( ~ (((~_inReset_chain_io_q)) | first) )) 1 -1" (3 "11")
-Condition 12 "1776969267" "(((~_inReset_chain_io_q)) | first) 1 -1" (1 "00")
-Condition 13 "1958021333" "(((~reset)) & ( ~ (((~_inReset_chain_io_q)) | first_1) )) 1 -1" (3 "11")
-Condition 15 "1967199334" "(((~_inReset_chain_io_q)) | first_1) 1 -1" (1 "00")
-Condition 17 "2636673609" "(_delivered_io_deq_valid & draining) 1 -1" (3 "11")
-Condition 33 "1159308194" "(auto_out_b_valid & ((~responding)) & _delivered_io_enq_ready) 1 -1" (3 "110")
-Condition 34 "422022164" "(auto_in_c_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 35 "3195696002" "(auto_out_c_ready & allowed_1 & ((~_inReset_chain_io_q))) 1 -1" (2 "101")
-Condition 38 "2419764713" "(_tileProbeAck_T_1 & ((tileProbeAck_counter == 8'b1) | (tileProbeAck_beats1 == 8'b0)) & ((auto_in_c_bits_opcode == 3'h4) | (auto_in_c_bits_opcode == 3'h5))) 1 -1" (3 "110")
-Condition 46 "734493127" "(((~winner_0)) & tileC_valid) 1 -1" (1 "01")
-Condition 54 "152575117" "((state_0 & winner_0) | (state_1 & tileC_valid)) 1 -1" (1 "00")
-Condition 54 "152575117" "((state_0 & winner_0) | (state_1 & tileC_valid)) 1 -1" (3 "10")
-Condition 55 "3667067133" "(state_0 & winner_0) 1 -1" (2 "10")
-Condition 56 "299007506" "(state_1 & tileC_valid) 1 -1" (2 "10")
-Condition 63 "515200181" "(((~responding)) & auto_in_b_ready & _delivered_io_enq_ready) 1 -1" (3 "110")
-Condition 65 "445555289" "(auto_in_e_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-
-CHECKSUM: "3447362962 2808527910"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_2.probeAcker.delivered
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 3 "1750755365" "(ptr_match & ((~maybe_full))) 1 -1" (2 "10")
-Condition 4 "2507565385" "(ptr_match & maybe_full) 1 -1" (3 "11")
-Condition 5 "2610450189" "(((~full)) & io_enq_valid) 1 -1" (1 "01")
-
-CHECKSUM: "1580154674 1189166329"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_3.probeAcker
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2166481704" "(((~reset)) & ( ~ (((~winner_0)) | ((~winner_1))) )) 1 -1" (3 "11")
-Condition 3 "2532438962" "(((~winner_0)) | ((~winner_1))) 1 -1" (1 "00")
-Condition 4 "156832563" "(((~reset)) & ( ~ (((~_nodeOut_c_valid_T)) | winner_0 | winner_1) )) 1 -1" (1 "01")
-Condition 4 "156832563" "(((~reset)) & ( ~ (((~_nodeOut_c_valid_T)) | winner_0 | winner_1) )) 1 -1" (3 "11")
-Condition 6 "851151385" "(((~_nodeOut_c_valid_T)) | winner_0 | winner_1) 1 -1" (1 "000")
-Condition 7 "4277397136" "(((~reset)) & ( ~ (((~tileProbeAck)) | _delivered_io_deq_valid) )) 1 -1" (3 "11")
-Condition 9 "2773598842" "(((~tileProbeAck)) | _delivered_io_deq_valid) 1 -1" (1 "00")
-Condition 10 "3244388976" "(((~reset)) & ( ~ (((~_inReset_chain_io_q)) | first) )) 1 -1" (3 "11")
-Condition 12 "1776969267" "(((~_inReset_chain_io_q)) | first) 1 -1" (1 "00")
-Condition 13 "1958021333" "(((~reset)) & ( ~ (((~_inReset_chain_io_q)) | first_1) )) 1 -1" (3 "11")
-Condition 15 "1967199334" "(((~_inReset_chain_io_q)) | first_1) 1 -1" (1 "00")
-Condition 17 "2636673609" "(_delivered_io_deq_valid & draining) 1 -1" (3 "11")
-Condition 33 "1159308194" "(auto_out_b_valid & ((~responding)) & _delivered_io_enq_ready) 1 -1" (3 "110")
-Condition 34 "422022164" "(auto_in_c_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 35 "3195696002" "(auto_out_c_ready & allowed_1 & ((~_inReset_chain_io_q))) 1 -1" (2 "101")
-Condition 38 "2419764713" "(_tileProbeAck_T_1 & ((tileProbeAck_counter == 8'b1) | (tileProbeAck_beats1 == 8'b0)) & ((auto_in_c_bits_opcode == 3'h4) | (auto_in_c_bits_opcode == 3'h5))) 1 -1" (3 "110")
-Condition 46 "734493127" "(((~winner_0)) & tileC_valid) 1 -1" (1 "01")
-Condition 54 "152575117" "((state_0 & winner_0) | (state_1 & tileC_valid)) 1 -1" (1 "00")
-Condition 54 "152575117" "((state_0 & winner_0) | (state_1 & tileC_valid)) 1 -1" (3 "10")
-Condition 55 "3667067133" "(state_0 & winner_0) 1 -1" (2 "10")
-Condition 56 "299007506" "(state_1 & tileC_valid) 1 -1" (2 "10")
-Condition 60 "453453201" "(auto_in_a_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-Condition 63 "515200181" "(((~responding)) & auto_in_b_ready & _delivered_io_enq_ready) 1 -1" (3 "110")
-Condition 65 "445555289" "(auto_in_e_valid & ((~_inReset_chain_io_q))) 1 -1" (2 "10")
-
-CHECKSUM: "3447362962 2808527910"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_3.probeAcker.delivered
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 3 "1750755365" "(ptr_match & ((~maybe_full))) 1 -1" (2 "10")
-Condition 4 "2507565385" "(ptr_match & maybe_full) 1 -1" (3 "11")
-Condition 5 "2610450189" "(((~full)) & io_enq_valid) 1 -1" (1 "01")
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_0_debug_hartReset_0.output_chain.u_rstbypass.u_mux
@@ -7090,12 +6308,12 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_readas
 ANNOTATION: "SMC-T10-CDC-SYNC-PORTS-ONLY: the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1384930558" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "679458402 3045344841"
+CHECKSUM: "1921157106 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "1252306351 3290552104"
+CHECKSUM: "1047115886 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
@@ -7106,7 +6324,7 @@ Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "01
 Condition 87 "3163058696" "(((!host_enable_i)) && trans_started) 1 -1" (3 "11")
 Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "679458402 3045344841"
+CHECKSUM: "1921157106 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
@@ -7115,7 +6333,7 @@ Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_cou
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "1252306351 3290552104"
+CHECKSUM: "1047115886 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1774200601" "(((!host_enable_i)) || event_arbitration_lost_o || bus_timeout_i) 1 -1" (2 "001")
@@ -7184,13 +6402,13 @@ Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_sy
 Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (2 "10111")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (1 "011")
 
-CHECKSUM: "331326766 467777835"
+CHECKSUM: "4138443418 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (1 "01111")
 
-CHECKSUM: "1471594334 4119665143"
+CHECKSUM: "3268358166 4119665143"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "2635010072" "(fmt_fifo_depth == 7'(CONTROLLER_TX_FIFO_DEPTH)) 1 -1" (2 "1")
@@ -7234,7 +6452,7 @@ Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | eve
 Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (7 "00100000")
 Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (8 "01000000")
 
-CHECKSUM: "679458402 3045344841"
+CHECKSUM: "1921157106 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
@@ -7243,7 +6461,7 @@ Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_cou
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "1252306351 3290552104"
+CHECKSUM: "1047115886 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
@@ -7330,7 +6548,7 @@ Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt 
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (3 "110")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (4 "111")
 
-CHECKSUM: "331326766 467777835"
+CHECKSUM: "4138443418 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
@@ -7692,14 +6910,14 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
-CHECKSUM: "1126419757 2574745303"
+CHECKSUM: "136830161 2574745303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
 ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "2232577481" "(atready_o && atvalid_i) 1 -1" (1 "01")
 Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (2 "10")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (1 "01")
 
-CHECKSUM: "1126419757 2574745303"
+CHECKSUM: "136830161 2574745303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
 ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "2232577481" "(atready_o && atvalid_i) 1 -1" (1 "01")
@@ -7718,7 +6936,7 @@ ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is grad
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (2 "001")
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "3108644366 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
@@ -7745,7 +6963,7 @@ Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.r
 Condition 61 "321101586" "(modem_status_synced_q && (dcd != dcd_last_rd_val)) 1 -1" (1 "01")
 Condition 63 "446727046" "(modem_status_synced_q && (dsr != dsr_last_rd_val)) 1 -1" (1 "01")
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "3108644366 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -7794,7 +7012,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "3108644366 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -7845,7 +7063,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "3108644366 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -7889,16 +7107,6 @@ CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
-
-CHECKSUM: "884300902 2321522201"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration
-ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 6 "371092708" "(i3c_dct_mem_sink_i[0].req & ((~i3c_dct_mem_sink_i[0].write))) 1 -1" (2 "10")
-Condition 8 "1348474867" "(i3c_dct_mem_sink_i[1].req & ((~i3c_dct_mem_sink_i[1].write))) 1 -1" (2 "10")
-Condition 10 "3334913594" "(i3c_dct_mem_sink_i[2].req & ((~i3c_dct_mem_sink_i[2].write))) 1 -1" (2 "10")
-Condition 12 "2159592749" "(i3c_dct_mem_sink_i[3].req & ((~i3c_dct_mem_sink_i[3].write))) 1 -1" (2 "10")
-Condition 14 "702031098" "(i3c_dct_mem_sink_i[4].req & ((~i3c_dct_mem_sink_i[4].write))) 1 -1" (2 "10")
-Condition 16 "1873174509" "(i3c_dct_mem_sink_i[5].req & ((~i3c_dct_mem_sink_i[5].write))) 1 -1" (2 "10")
 
 CHECKSUM: "2585843499 1130749731"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
@@ -8196,7 +7404,7 @@ ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blo
 Block 4 "711496616" "VIdToPId[vid_map[i]].pid = 1'(i);"
 Block 8 "1451315343" "pid_vector[VIdToPId[k].pid] = vid_vector[k];"
 
-CHECKSUM: "3354362860 3494525935"
+CHECKSUM: "1934166905 2883822044"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 37 "1254440351" "TrRamFreeWayMaskPend_ANY[TrRamPendPktRd_ANY[i].TrRamPendWayIdx_ANY] = 1'b0;"
@@ -8473,213 +7681,13 @@ ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded
 Block 23 "1626659636" "if (disable_sram_auto_init_i)"
 Block 24 "2390191028" "nxt_state = MEM_ZERO_DONE;"
 
-CHECKSUM: "2855826940 2220093877"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile.denier
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 2 "3636834754" "if (1)"
-Block 3 "3843413551" "$error(\"Assertion failed\n    at Arbiter.scala:77 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n\");"
-Block 5 "3636834754" "if (1)"
-Block 6 "1134513547" "$fatal;"
-Block 10 "1920306612" "if (1)"
-Block 11 "199832986" "$error(\"Assertion failed\n    at Arbiter.scala:79 assert (!valids.reduce(_||_) || winner.reduce(_||_))\n\");"
-Block 13 "1920306612" "if (1)"
-Block 14 "1245901590" "$fatal;"
-Block 18 "421214550" "if (1)"
-Block 19 "98644346" "$error(\"Assertion failed: tile responded to a request that was not delivered to it\n    at DenyDuringReset.scala:141 assert(!tileD.fire || tdMatch.asUInt.orR, \\"tile responded to a request that was not delivered to it\\")\n\");"
-Block 21 "421214550" "if (1)"
-Block 22 "4157461344" "$fatal;"
-Block 32 "863598268" "r_counter <= (r_counter - 3'b1);"
-Block 37 "576861666" "r_counter_1 <= (r_counter_1 - 3'b1);"
-Block 45 "33680240" "respLast_r_counter <= (respLast_r_counter - 3'b1);"
-Block 60 "2803555038" "entries_1_opcode <= auto_in_a_bits_opcode;"
-Block 63 "388712178" "entries_1_aDone <= aLast;"
-Block 66 "607243682" "entries_2_opcode <= auto_in_a_bits_opcode;"
-Block 69 "1437670147" "entries_2_aDone <= aLast;"
-Block 72 "1747287794" "entries_3_opcode <= auto_in_a_bits_opcode;"
-Block 75 "4264726455" "entries_3_aDone <= aLast;"
-
-CHECKSUM: "2855826940 2220093877"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_1.denier
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 2 "3636834754" "if (1)"
-Block 3 "3843413551" "$error(\"Assertion failed\n    at Arbiter.scala:77 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n\");"
-Block 5 "3636834754" "if (1)"
-Block 6 "1134513547" "$fatal;"
-Block 10 "1920306612" "if (1)"
-Block 11 "199832986" "$error(\"Assertion failed\n    at Arbiter.scala:79 assert (!valids.reduce(_||_) || winner.reduce(_||_))\n\");"
-Block 13 "1920306612" "if (1)"
-Block 14 "1245901590" "$fatal;"
-Block 18 "421214550" "if (1)"
-Block 19 "98644346" "$error(\"Assertion failed: tile responded to a request that was not delivered to it\n    at DenyDuringReset.scala:141 assert(!tileD.fire || tdMatch.asUInt.orR, \\"tile responded to a request that was not delivered to it\\")\n\");"
-Block 21 "421214550" "if (1)"
-Block 22 "4157461344" "$fatal;"
-Block 32 "863598268" "r_counter <= (r_counter - 3'b1);"
-Block 37 "576861666" "r_counter_1 <= (r_counter_1 - 3'b1);"
-Block 45 "33680240" "respLast_r_counter <= (respLast_r_counter - 3'b1);"
-Block 60 "2803555038" "entries_1_opcode <= auto_in_a_bits_opcode;"
-Block 63 "388712178" "entries_1_aDone <= aLast;"
-Block 66 "607243682" "entries_2_opcode <= auto_in_a_bits_opcode;"
-Block 69 "1437670147" "entries_2_aDone <= aLast;"
-Block 72 "1747287794" "entries_3_opcode <= auto_in_a_bits_opcode;"
-Block 75 "4264726455" "entries_3_aDone <= aLast;"
-
-CHECKSUM: "2855826940 2220093877"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_2.denier
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 2 "3636834754" "if (1)"
-Block 3 "3843413551" "$error(\"Assertion failed\n    at Arbiter.scala:77 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n\");"
-Block 5 "3636834754" "if (1)"
-Block 6 "1134513547" "$fatal;"
-Block 10 "1920306612" "if (1)"
-Block 11 "199832986" "$error(\"Assertion failed\n    at Arbiter.scala:79 assert (!valids.reduce(_||_) || winner.reduce(_||_))\n\");"
-Block 13 "1920306612" "if (1)"
-Block 14 "1245901590" "$fatal;"
-Block 18 "421214550" "if (1)"
-Block 19 "98644346" "$error(\"Assertion failed: tile responded to a request that was not delivered to it\n    at DenyDuringReset.scala:141 assert(!tileD.fire || tdMatch.asUInt.orR, \\"tile responded to a request that was not delivered to it\\")\n\");"
-Block 21 "421214550" "if (1)"
-Block 22 "4157461344" "$fatal;"
-Block 32 "863598268" "r_counter <= (r_counter - 3'b1);"
-Block 37 "576861666" "r_counter_1 <= (r_counter_1 - 3'b1);"
-Block 45 "33680240" "respLast_r_counter <= (respLast_r_counter - 3'b1);"
-Block 60 "2803555038" "entries_1_opcode <= auto_in_a_bits_opcode;"
-Block 63 "388712178" "entries_1_aDone <= aLast;"
-Block 66 "607243682" "entries_2_opcode <= auto_in_a_bits_opcode;"
-Block 69 "1437670147" "entries_2_aDone <= aLast;"
-Block 72 "1747287794" "entries_3_opcode <= auto_in_a_bits_opcode;"
-Block 75 "4264726455" "entries_3_aDone <= aLast;"
-
-CHECKSUM: "2855826940 2220093877"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.cbus.coupler_to_rockettile_3.denier
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 2 "3636834754" "if (1)"
-Block 3 "3843413551" "$error(\"Assertion failed\n    at Arbiter.scala:77 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n\");"
-Block 5 "3636834754" "if (1)"
-Block 6 "1134513547" "$fatal;"
-Block 10 "1920306612" "if (1)"
-Block 11 "199832986" "$error(\"Assertion failed\n    at Arbiter.scala:79 assert (!valids.reduce(_||_) || winner.reduce(_||_))\n\");"
-Block 13 "1920306612" "if (1)"
-Block 14 "1245901590" "$fatal;"
-Block 18 "421214550" "if (1)"
-Block 19 "98644346" "$error(\"Assertion failed: tile responded to a request that was not delivered to it\n    at DenyDuringReset.scala:141 assert(!tileD.fire || tdMatch.asUInt.orR, \\"tile responded to a request that was not delivered to it\\")\n\");"
-Block 21 "421214550" "if (1)"
-Block 22 "4157461344" "$fatal;"
-Block 32 "863598268" "r_counter <= (r_counter - 3'b1);"
-Block 37 "576861666" "r_counter_1 <= (r_counter_1 - 3'b1);"
-Block 45 "33680240" "respLast_r_counter <= (respLast_r_counter - 3'b1);"
-Block 60 "2803555038" "entries_1_opcode <= auto_in_a_bits_opcode;"
-Block 63 "388712178" "entries_1_aDone <= aLast;"
-Block 66 "607243682" "entries_2_opcode <= auto_in_a_bits_opcode;"
-Block 69 "1437670147" "entries_2_aDone <= aLast;"
-Block 72 "1747287794" "entries_3_opcode <= auto_in_a_bits_opcode;"
-Block 75 "4264726455" "entries_3_aDone <= aLast;"
-
-CHECKSUM: "1580154674 3067633426"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile.probeAcker
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 2 "3636834754" "if (1)"
-Block 3 "3843413551" "$error(\"Assertion failed\n    at Arbiter.scala:77 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n\");"
-Block 5 "3636834754" "if (1)"
-Block 6 "1134513547" "$fatal;"
-Block 10 "418673905" "if (1)"
-Block 11 "3560853492" "$error(\"Assertion failed\n    at Arbiter.scala:79 assert (!valids.reduce(_||_) || winner.reduce(_||_))\n\");"
-Block 13 "418673905" "if (1)"
-Block 14 "2509605240" "$fatal;"
-Block 18 "819578200" "if (1)"
-Block 19 "77932748" "$error(\"Assertion failed: tile acked a Probe that was not delivered to it\n    at ProbeAckDuringReset.scala:86 assert(!tileProbeAck || delivered.io.deq.valid, \\"tile acked a Probe that was not delivered to it\\")\n\");"
-Block 21 "819578200" "if (1)"
-Block 22 "658099263" "$fatal;"
-Block 26 "3866207919" "if (1)"
-Block 27 "633915612" "$error(\"Assertion failed: tile reset during an A burst; it was not quiesced\n    at ProbeAckDuringReset.scala:87 assert(!inReset || edgeIn.first(in.a), \\"tile reset during an A burst; it was not quiesced\\")\n\");"
-Block 29 "3866207919" "if (1)"
-Block 30 "2779047912" "$fatal;"
-Block 34 "447670600" "if (1)"
-Block 35 "2369814824" "$error(\"Assertion failed: tile reset during a C burst; it was not quiesced\n    at ProbeAckDuringReset.scala:88 assert(!inReset || edgeIn.first(in.c), \\"tile reset during a C burst; it was not quiesced\\")\n\");"
-Block 37 "447670600" "if (1)"
-Block 38 "4290996902" "$fatal;"
-Block 60 "360084703" "counter <= (counter - 8'b1);"
-
-CHECKSUM: "1580154674 3067633426"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_1.probeAcker
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 2 "3636834754" "if (1)"
-Block 3 "3843413551" "$error(\"Assertion failed\n    at Arbiter.scala:77 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n\");"
-Block 5 "3636834754" "if (1)"
-Block 6 "1134513547" "$fatal;"
-Block 10 "418673905" "if (1)"
-Block 11 "3560853492" "$error(\"Assertion failed\n    at Arbiter.scala:79 assert (!valids.reduce(_||_) || winner.reduce(_||_))\n\");"
-Block 13 "418673905" "if (1)"
-Block 14 "2509605240" "$fatal;"
-Block 18 "819578200" "if (1)"
-Block 19 "77932748" "$error(\"Assertion failed: tile acked a Probe that was not delivered to it\n    at ProbeAckDuringReset.scala:86 assert(!tileProbeAck || delivered.io.deq.valid, \\"tile acked a Probe that was not delivered to it\\")\n\");"
-Block 21 "819578200" "if (1)"
-Block 22 "658099263" "$fatal;"
-Block 26 "3866207919" "if (1)"
-Block 27 "633915612" "$error(\"Assertion failed: tile reset during an A burst; it was not quiesced\n    at ProbeAckDuringReset.scala:87 assert(!inReset || edgeIn.first(in.a), \\"tile reset during an A burst; it was not quiesced\\")\n\");"
-Block 29 "3866207919" "if (1)"
-Block 30 "2779047912" "$fatal;"
-Block 34 "447670600" "if (1)"
-Block 35 "2369814824" "$error(\"Assertion failed: tile reset during a C burst; it was not quiesced\n    at ProbeAckDuringReset.scala:88 assert(!inReset || edgeIn.first(in.c), \\"tile reset during a C burst; it was not quiesced\\")\n\");"
-Block 37 "447670600" "if (1)"
-Block 38 "4290996902" "$fatal;"
-Block 60 "360084703" "counter <= (counter - 8'b1);"
-
-CHECKSUM: "1580154674 3067633426"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_2.probeAcker
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 2 "3636834754" "if (1)"
-Block 3 "3843413551" "$error(\"Assertion failed\n    at Arbiter.scala:77 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n\");"
-Block 5 "3636834754" "if (1)"
-Block 6 "1134513547" "$fatal;"
-Block 10 "418673905" "if (1)"
-Block 11 "3560853492" "$error(\"Assertion failed\n    at Arbiter.scala:79 assert (!valids.reduce(_||_) || winner.reduce(_||_))\n\");"
-Block 13 "418673905" "if (1)"
-Block 14 "2509605240" "$fatal;"
-Block 18 "819578200" "if (1)"
-Block 19 "77932748" "$error(\"Assertion failed: tile acked a Probe that was not delivered to it\n    at ProbeAckDuringReset.scala:86 assert(!tileProbeAck || delivered.io.deq.valid, \\"tile acked a Probe that was not delivered to it\\")\n\");"
-Block 21 "819578200" "if (1)"
-Block 22 "658099263" "$fatal;"
-Block 26 "3866207919" "if (1)"
-Block 27 "633915612" "$error(\"Assertion failed: tile reset during an A burst; it was not quiesced\n    at ProbeAckDuringReset.scala:87 assert(!inReset || edgeIn.first(in.a), \\"tile reset during an A burst; it was not quiesced\\")\n\");"
-Block 29 "3866207919" "if (1)"
-Block 30 "2779047912" "$fatal;"
-Block 34 "447670600" "if (1)"
-Block 35 "2369814824" "$error(\"Assertion failed: tile reset during a C burst; it was not quiesced\n    at ProbeAckDuringReset.scala:88 assert(!inReset || edgeIn.first(in.c), \\"tile reset during a C burst; it was not quiesced\\")\n\");"
-Block 37 "447670600" "if (1)"
-Block 38 "4290996902" "$fatal;"
-Block 60 "360084703" "counter <= (counter - 8'b1);"
-
-CHECKSUM: "1580154674 3067633426"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.sbus.coupler_from_rockettile_3.probeAcker
-ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 2 "3636834754" "if (1)"
-Block 3 "3843413551" "$error(\"Assertion failed\n    at Arbiter.scala:77 assert((prefixOR zip winner) map { case (p,w) => !p || !w } reduce {_ && _})\n\");"
-Block 5 "3636834754" "if (1)"
-Block 6 "1134513547" "$fatal;"
-Block 10 "418673905" "if (1)"
-Block 11 "3560853492" "$error(\"Assertion failed\n    at Arbiter.scala:79 assert (!valids.reduce(_||_) || winner.reduce(_||_))\n\");"
-Block 13 "418673905" "if (1)"
-Block 14 "2509605240" "$fatal;"
-Block 18 "819578200" "if (1)"
-Block 19 "77932748" "$error(\"Assertion failed: tile acked a Probe that was not delivered to it\n    at ProbeAckDuringReset.scala:86 assert(!tileProbeAck || delivered.io.deq.valid, \\"tile acked a Probe that was not delivered to it\\")\n\");"
-Block 21 "819578200" "if (1)"
-Block 22 "658099263" "$fatal;"
-Block 26 "3866207919" "if (1)"
-Block 27 "633915612" "$error(\"Assertion failed: tile reset during an A burst; it was not quiesced\n    at ProbeAckDuringReset.scala:87 assert(!inReset || edgeIn.first(in.a), \\"tile reset during an A burst; it was not quiesced\\")\n\");"
-Block 29 "3866207919" "if (1)"
-Block 30 "2779047912" "$fatal;"
-Block 34 "447670600" "if (1)"
-Block 35 "2369814824" "$error(\"Assertion failed: tile reset during a C burst; it was not quiesced\n    at ProbeAckDuringReset.scala:88 assert(!inReset || edgeIn.first(in.c), \\"tile reset during a C burst; it was not quiesced\\")\n\");"
-Block 37 "447670600" "if (1)"
-Block 38 "4290996902" "$fatal;"
-Block 60 "360084703" "counter <= (counter - 8'b1);"
-
-CHECKSUM: "1252306351 3676063925"
+CHECKSUM: "1047115886 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "331326766 3820941057"
+CHECKSUM: "4138443418 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -8692,7 +7700,7 @@ Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
 Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "1252306351 3676063925"
+CHECKSUM: "1047115886 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
@@ -8720,7 +7728,7 @@ Block 270 "1789187456" "state_d = IDLE;"
 Block 275 "627521164" "state_d = IDLE;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "331326766 3820941057"
+CHECKSUM: "4138443418 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -8735,7 +7743,7 @@ Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
 Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "1471594334 631037930"
+CHECKSUM: "3268358166 631037930"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 19 "2351103625" "controller_tx_ready_o = 1'b0;"
@@ -8747,7 +7755,7 @@ Block 43 "351329269" "if (tx_lt_threshold)"
 Block 44 "2869887708" "target_tx_ready_o = 1'b1;"
 Block 45 "1155078305" "target_tx_ready_o = 1'b0;"
 
-CHECKSUM: "1252306351 3676063925"
+CHECKSUM: "1047115886 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
@@ -8778,7 +7786,7 @@ Block 270 "1789187456" "state_d = IDLE;"
 Block 275 "627521164" "state_d = IDLE;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "331326766 3820941057"
+CHECKSUM: "4138443418 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -8933,7 +7941,7 @@ Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
 
-CHECKSUM: "3446341511 1365442774"
+CHECKSUM: "3108644366 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -8945,7 +7953,7 @@ ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2
 Block 89 "2875201528" "rx_fifo_threshold = rx_fifo_threshold_t'(8);"
 Block 90 "1036727875" "rx_fifo_threshold = rx_fifo_threshold_t'(14);"
 
-CHECKSUM: "3446341511 1365442774"
+CHECKSUM: "3108644366 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -8971,7 +7979,7 @@ Block 112 "3774925084" "intr_id = FIFO_ERROR;"
 Block 117 "1771405728" "intr_id = MODEM_STATUS;"
 Block 130 "3619336723" "cts = 1'b0;"
 
-CHECKSUM: "3446341511 1365442774"
+CHECKSUM: "3108644366 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -8997,7 +8005,7 @@ Block 98 "1709577418" "rx_fifo_threshold = rx_fifo_threshold_t'(4096);"
 Block 112 "3774925084" "intr_id = FIFO_ERROR;"
 Block 130 "3619336723" "cts = 1'b0;"
 
-CHECKSUM: "3446341511 1365442774"
+CHECKSUM: "3108644366 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"

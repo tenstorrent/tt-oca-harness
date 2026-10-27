@@ -1613,10 +1613,13 @@ that indicates one or more monitored OTP fields have changed. Unlike the
 fault handlers, this handler does not halt the KM. It has the following
 execution flow:
 
+. Clear (write-1-to-clear) the OTP change bit in `IRQ_STATUS`.
 . Read the OTP change status to determine which fields changed.
+. Clear (write-1-to-clear) the change status bits that were read.
 . Invoke the OTP change hook to take any firmware-defined action. In the
 ROM this is a weak no-op hook intended to be overridden by later firmware.
-. Clear (write-1-to-clear) the change status bits that were handled.
+
+A change while the hook runs raises the interrupt again.
 
 The boot sequence does not enable this source, so the handler is dormant in ROM;
 leaving an informational interrupt masked keeps it from adding ISR entries during
