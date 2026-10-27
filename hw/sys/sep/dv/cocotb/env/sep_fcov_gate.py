@@ -682,6 +682,16 @@ def set_dma_smc_cpu_pass(passed: bool, log=None) -> bool:
     return _set_bound("dma_smc_cpu_pass", int(bool(passed)), "FCOV-DMA-SMC-CPU-PASS", log)
 
 
+def set_km_otp_chg_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.km_otp_chg_pass`` (1 after CHK-OTP-RETIRE passes).
+
+    ``sep_km_otp_change_irq_test`` writes 1 only after the OTP-change sticky
+    bit has cleared and CMD_STAT has completed, then 0. The rise samples
+    ``informational_otp_change``. A no-op that returns False on Verilator.
+    """
+    return _set_bound("km_otp_chg_pass", int(bool(passed)), "FCOV-KM-OTP-CHG-PASS", log)
+
+
 def set_km_strm_pass(passed: bool, log=None) -> bool:
     """Write ``u_sep_fcov.km_strm_pass`` (1 after the check passes, else 0).
 
