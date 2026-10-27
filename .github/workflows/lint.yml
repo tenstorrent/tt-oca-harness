@@ -719,6 +719,24 @@ jobs:
         if: steps.scope.outputs.run == 'true'
         run: uv run --locked --group dv python -m unittest discover tools/dv/tests
 
+  # Host unit tests for the SEP BL1 decision logic. Its manifest fixtures are
+  # packed with the tt-oca-manifest packer, so the job needs that submodule and uv.
+  bl1-host-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Checkout the manifest submodule
+        run: git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Run the BL1 host tests
+        run: make -C hw/sys/smu/bl1 host-test
+
   # Host unit tests for SEP ROM drivers. tests/host has its own Makefile because
   # the ROM Makefile needs the tt-oca-manifest submodule just to parse.
   rom-host-tests:
