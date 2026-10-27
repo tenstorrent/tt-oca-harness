@@ -119,7 +119,12 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-J2A-MATRIX-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-J2A-MATRIX-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-J2A-MATRIX-JTAG-READY",
+        )
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
@@ -136,6 +141,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             "CHK-J2A-MATRIX-GATE-OPEN",
             (gate, caps),
             (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            evidence="CHK-J2A-MATRIX-GATE-OPEN",
         )
 
         size_obs: list[tuple[int, int]] = []
@@ -183,6 +189,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             "CHK-J2A-WSTRB-WIDTH",
             tuple(v for _, v in size_obs),
             tuple(size_want),
+            evidence="CHK-J2A-WSTRB-WIDTH",
         )
 
         partial_obs: list[tuple[int, int]] = []
@@ -251,6 +258,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             "CHK-J2A-MATRIX-STICKY",
             (sticky, ver_data),
             (J2A_STATUS_SUCCESS, VERSION_LO_RESET),
+            evidence="CHK-J2A-MATRIX-STICKY",
         )
 
         self._log(

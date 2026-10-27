@@ -83,7 +83,12 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-J2A-ERROR-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-J2A-ERROR-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-J2A-ERROR-JTAG-READY",
+        )
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
@@ -100,6 +105,7 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
             "CHK-J2A-ERROR-GATE-OPEN",
             (gate, caps),
             (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            evidence="CHK-J2A-ERROR-GATE-OPEN",
         )
 
         allow_st, allow_data = await self._rd32(jtag, VERSION_LO, "VERSION_LO-ALLOW")
@@ -110,7 +116,9 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
             )
         self.s2_ok = True
         self._log(f"CHK-J2A-ERROR-ALLOW @0x{VERSION_LO:08x} data=0x{allow_data:08x} status=SUCCESS")
-        sb.expect_eq("CHK-J2A-ERROR-ALLOW", allow_data, VERSION_LO_RESET)
+        sb.expect_eq(
+            "CHK-J2A-ERROR-ALLOW", allow_data, VERSION_LO_RESET, evidence="CHK-J2A-ERROR-ALLOW"
+        )
 
         hole_st, hole_data = await self._rd32(jtag, UNMAPPED, "UNMAPPED")
         if hole_st == J2A_STATUS_SUCCESS:
@@ -160,7 +168,9 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
         self._log(
             f"CHK-J2A-ERROR-SERIES-INCR @0x{SERIES_ADDR:08x} data=0x{got_ser:016x} status=SUCCESS"
         )
-        sb.expect_eq("CHK-J2A-ERROR-SERIES-INCR", got_ser, want)
+        sb.expect_eq(
+            "CHK-J2A-ERROR-SERIES-INCR", got_ser, want, evidence="CHK-J2A-ERROR-SERIES-INCR"
+        )
 
         self._log(
             f"PASS JTAG2AXI-SMC-ERROR s1={self.s1_ok} s2={self.s2_ok} "
