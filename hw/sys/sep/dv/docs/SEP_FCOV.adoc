@@ -9,10 +9,10 @@
 This plan covers **basic legal operating modes** of every SEP IP the OSS suite
 already walks. It is the functional-coverage contract for the cocotb flow.
 
-Verilator does not compile SystemVerilog `covergroup`. Phase 1 bins are VCS
-covergroups in `hw/sys/sep/dv/cov/sv/sep_fcov.sv` (`ifndef VERILATOR`),
-sampled by the single passive `u_sep_fcov` instance in `tb/tb_top.sv`. There
-is no Verilator cover-property layer.
+Phase 1 bins are covergroups in `hw/sys/sep/dv/cov/sv/sep_fcov.sv`, sampled
+by the single passive `u_sep_fcov` instance in `tb/tb_top.sv`. Verilator and
+VCS build the same goal bins from it, and the graded number comes from VCS.
+There is no Verilator cover-property layer.
 
 Feature checkers stay on the VPLAN traceability matrix. The FCOV number is the URG
 Group report on `sep_uvm_top.u_sep_fcov`, not the DUT line/cond/toggle/FSM
@@ -26,8 +26,8 @@ SCORE.
 |Reference VPLAN |`SEP_VPLAN.adoc`
 |Open-source framework |PyUVM on cocotb
 |Coverage policy |`cov/config/vcs/coverage_policy.toml` (the URG exclusion lists) and `cov/config/vcs/sep_cov_scope.hier` (the VCS compile-time scope)
-|Open-source simulator |Verilator: checker evidence only; it compiles no covergroup
-|Commercial simulator |VCS: the Phase 1 covergroups and the graded code coverage
+|Open-source simulator |Verilator: checker evidence only; it builds the covergroups, and its coverage is not graded
+|Commercial simulator |VCS: the graded functional and code coverage
 |===
 
 === Coverage Goals
@@ -97,7 +97,7 @@ legal cells a named `all`-group test already walks.
 |===
 
 The deterministic Phase 1 covergroups and the seed-dependent `*_rand_cg`
-groups are compiled and sampled for VCS only (`ifndef VERILATOR`). Several IPs carry
+groups are compiled and sampled on Verilator and VCS alike and graded on VCS. Several IPs carry
 more than one group, because their Phase 1 contract has independent halves that different tests reach: the Key
 Manager splits generate from consume; lifecycle splits the sensed state, the
 transition taken, the `FEAT_CTRL` profile, demotion, and the SEC_DIS window
@@ -212,7 +212,7 @@ scoreboard. A covergroup counts hits, not distinct values.
 |`x_mode_key_op` |15 cells: the 9 ENC cells plus the ECB/CBC decrypt legs of the round-trip. CTR x DECRYPT is excluded, see below. A cell is sampled when that configuration reached `STATUS.output_valid` and its `DATA_OUT_0` word was read
 |===
 
-CTR x DECRYPT is an `ignore_bins` in the cross. CTR is a stream mode: the
+CTR x DECRYPT has no bin. CTR is a stream mode: the
 engine runs the forward cipher whichever way `OPERATION` is programmed, so a
 test that programmed DECRYPT there would pass with the field disconnected.
 No cipher contract stands behind that cell. The scoreable neighbour is
@@ -235,7 +235,7 @@ in the Phase 2 group `sep_aes_cfb_ofb_gcm_cg`.
 |`cp_digest` |SHA2-256, SHA2-384, SHA2-512
 |`cp_key_length` |Keyed only: 128, 256, 384, 512, 1024
 |`cp_plain` |Plain SHA (`hmac_en` = 0): the three digest sizes
-|`x_digest_key` |The 14 legal keyed cells. SHA-256 with a 1024-bit key is illegal in `hmac.sv` and is an `ignore_bins`, not an empty cell
+|`x_digest_key` |The 14 legal keyed cells. SHA-256 with a 1024-bit key is illegal in `hmac.sv` and has no bin, rather than an empty cell
 |===
 
 The digest-equals-golden claim stays on `sep_hmac_sha_variant_rand_test`.
@@ -733,7 +733,7 @@ walk either, and PROD to PROD_END is impossible under write-1-to-set at all:
 |Coverpoint |Bins
 |`cp_route` |`STATUS.done` poll, DMA-done interrupt
 |`cp_mode` |Normal, hardware handshake
-|`x_route_mode` |3 cells; interrupt x handshake is an `ignore_bins` because the SPI DMA firmware that uses handshake mode does not complete through the ISR
+|`x_route_mode` |3 cells; interrupt x handshake has no bin because the SPI DMA firmware that uses handshake mode does not complete through the ISR
 |===
 
 The DMA reports completion two ways and the suite walks both: `dma_basic_test`
@@ -753,7 +753,7 @@ lifecycle state and per override.
 |Coverpoint |Bins
 |`cp_state` |The seven legal raw encodings, taken from the SENSED shadow value
 |`cp_debug` |none / partial / full over the five defined debug bits: `DBG_1` `sep_debug`, `chiplet_dbg`, `sep_fuse_dbg`, `smc_fuse_dbg` and `DBG_2` `sip_debug`
-|`cp_sec_dis` / `x_sec_dis_debug` |SEC_DIS off/on crossed with the profile; `on` can only pair with `full`, so the other two products are `ignore_bins`
+|`cp_sec_dis` / `x_sec_dis_debug` |SEC_DIS off/on crossed with the profile; `on` can only pair with `full`, so the other two products have no bin
 |`cp_secure_tm` |The latched TEST_EN strap, both polarities
 |===
 
@@ -1151,9 +1151,8 @@ it or an RTL fact removes it.
 ==== Evidence paths
 
 * *Functional coverage.* The URG Group report on `sep_uvm_top.u_sep_fcov` from
-  a `--cov --tool vcs` run (<<sep-fcov-collection>>). Verilator does not
-  compile these groups, so a Verilator class regression is not Phase 1 fill
-  evidence.
+  a `--cov --tool vcs` run (<<sep-fcov-collection>>). Verilator coverage is
+  not graded, so a Verilator class regression is not Phase 1 fill evidence.
 * *Code coverage.* The VCS run of the `all` group:
 +
 [source,bash]
@@ -1594,7 +1593,7 @@ headline SCORE averages both.
 [cols="1,2",options="header"]
 |===
 |Item |Reason
-|SV covergroups under Verilator |Unsupported. Phase 1 groups are VCS-only (`ifndef VERILATOR`)
+|SV covergroups under Verilator |Built with the same goal bins as VCS and not graded. The Verilator public scope (`sep_public_scope.vlt`) exposes none of the sampler's gate variables, so a leaf opens no graded window there and the owner-gated bins stay empty
 |Verilator cover-property FCOV |Not used. Phase 1 is covergroups only; no `OCAH_FCOV_COVER` points are defined
 |Toggle coverage under Verilator |Database size; commercial flow only
 |`ocah_axi_cov_if` |Commercial-flow asset; not on the Verilator filelist
@@ -1624,10 +1623,10 @@ owning tests of a Phase 2 group are Phase 3 tests.
 A Phase 2 group earns credit when the sampler collects it and its owning test
 is in `all`. From then on the fill rules of <<sep-fcov-rand-phase2>> apply: a
 bin that is not seed-dependent fills in one VCS `all --cov` regression, and a
-seed-dependent bin closes over a merge of regressions. Each group defines the bins of a VCS covergroup in
-`cov/sv/sep_fcov.sv` under `ifndef VERILATOR`. The group `sep_fabric_port_silence_cp`
-is a set of cover properties in the same sampler. Verilator compiles no
-covergroup, so a Verilator run of an owning test grades by checker only. Every
+seed-dependent bin closes over a merge of regressions. Each group defines the bins of a covergroup in
+`cov/sv/sep_fcov.sv`. The group `sep_fabric_port_silence_cp`
+is a set of cover properties in the same sampler. Verilator coverage is not
+graded, so a Verilator run of an owning test grades by checker only. Every
 coverpoint samples a DUT signal. No coverpoint reads log text or a scoreboard
 count. Bins come from the specification and the register description. A bin
 is an interface event and not a golden comparison. A group stays in this
@@ -1698,10 +1697,9 @@ window of one of its owning tests. The sampler has one gate input for this,
 `graded_owner`: an integer code that names one Phase 3 entry, from one code table
 that the sampler and the leaves share, with 0 for "no window open". It is a
 variable of the Phase 2 sampler that the leaf writes through the testbench handle
-of `u_sep_fcov`. `tb_top` builds `u_sep_fcov` only on VCS (Verilator compiles no
-covergroup), so the leaf writes the gate only when that handle exists and skips
-every gate write on a Verilator leaf; the checks of a leaf do not depend on the
-gate. The gate is a monitor-only testbench variable that only the coverage sampler reads: it drives nothing and touches no DUT net, so it is an observation tap and blocks no bin. The rules are:
+of `u_sep_fcov`. The Verilator public scope (`sep_public_scope.vlt`) exposes
+none of the gate variables of `u_sep_fcov`, so the leaf skips every gate write
+on a Verilator leaf; the checks of a leaf do not depend on the gate. The gate is a monitor-only testbench variable that only the coverage sampler reads: it drives nothing and touches no DUT net, so it is an observation tap and blocks no bin. The rules are:
 
 * The leaf writes the code of its own entry at the first step of its graded
 stimulus. It writes 0 before each control leg, before each bring-up or clean-up
@@ -1794,8 +1792,8 @@ above has at least one executable bin, and its `*Class*:` line states
 [[sep-fcov-p2-crypto-entropy]]
 ==== Crypto and entropy groups
 
-Each group below has owning tests and a sampled DUT signal. Every group is a VCS
-covergroup in `cov/sv/sep_fcov.sv` under `ifndef VERILATOR`.
+Each group below has owning tests and a sampled DUT signal. Every group is a
+covergroup in `cov/sv/sep_fcov.sv`, graded on VCS.
 
 ===== Sampling rules
 
@@ -1803,7 +1801,7 @@ covergroup in `cov/sv/sep_fcov.sv` under `ifndef VERILATOR`.
 scoreboard count. `sep_aes_cfb_ofb_gcm_cg` samples the committed AES control
 and is gated by a record that its owner writes after its golden compare passed
 (see that group).
-. Every coverpoint is a VCS covergroup in the sampler under `ifndef VERILATOR`.
+. Every coverpoint is in a covergroup of the sampler, graded on VCS.
 The graded VCS coverage run builds `--target default`. In `no_cpu` mode the
 LSU master is spliced onto the CPU bus of that build.
 . Bins follow the spec and the RDL. A value that only the leaf draws (message
@@ -2654,7 +2652,7 @@ These groups extend the Phase 1 groups `sep_axi_decode_cg` and `sep_inbound_filt
 *Collection rules*
 
 1. Every coverpoint samples a DUT signal. No coverpoint samples a log line or a scoreboard count.
-2. Every coverpoint is VCS only. A covergroup sits in `cov/sv/sep_fcov.sv` under `ifndef VERILATOR`. An absence point is an SV `cover property` in the same sampler.
+2. Every coverpoint is graded on VCS. A covergroup sits in `cov/sv/sep_fcov.sv`. An absence point is an SV `cover property` in the same sampler.
 3. Bins follow the spec and the RDL. A value that only changes an address or data inside a fixed contract has no bin (see <<sep-fcov-rand>>). A value that the spec leaves to the adopter or does not define has no bin.
 4. An absence point needs two qualifiers. The initiator shows a completed response in the window (`sil_dma_not_connected` is the exception: the spec states no response for that class, so an accepted request stands in, and the done or error interrupt of the DMA run ends the window). The probed port shows at least one handshake since reset (`probe_alive`). A simulator that is off cannot fill the point. Each absence point has a paired control in the same leaf that drives the same probe. The sampler gates the silence points on one outstanding transaction of the initiator it watches.
 5. Initiator rule. A beat on a shared port belongs to the initiator whose own request tap holds an accepted, unanswered request with the same address, after the alias rule. The sampler discards the sample when no initiator or two initiators match. The initiator taps are `lsu_req`, `dma_req` and `xbar_ext_req`.
@@ -2724,7 +2722,7 @@ Each tap is a read-only reference. No tap forces a signal. Paths start at `sep_u
 
 *Build facts*
 
-* The graded VCS coverage run uses `--target default` only: one full-CPU elaboration. A `no_cpu` test force-splices the LSU VIP onto the post-alias bus `lsu_axi_req`. The sampler is not compiled under Verilator, so no coverpoint of this section has a Verilator build.
+* The graded VCS coverage run uses `--target default` only: one full-CPU elaboration. A `no_cpu` test force-splices the LSU VIP onto the post-alias bus `lsu_axi_req`. Verilator builds the sampler too, and its coverage is not graded.
 * The default target defines `SEP_SMN_INBOUND_AXI_LIVE` and `SEP_JTAG_AXIL_LIVE`. The SMC route leaves need the bench hook BH-SMC of the VPLAN: the SMC responder enabled for their target, the aperture inputs driven from plusargs or from the leaf before reset release (they are tied to 0 otherwise), and the testbench SMC decode check widened or gated by a plusarg for the aperture. The PR-SMC counters are an added tap. The SMC route fires only in a run that drives the aperture. The hook is an added hook (a top-port drive) that the owning tests add to the port table of the HDL Top section of `docs/SEP_TB_ARCH.adoc`.
 * The pre-alias net `lsu_axi_req_raw` exists in the real CPU wrapper only. The stub build has the post-alias net only.
 
@@ -2824,9 +2822,9 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 [cols="2,6,3,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Illegal bins |Sampled signal |Owning tests |Reach
-|`cp_fail_cond_fallthrough` |Instance x direction x failing condition on the lowest covering entry {`entry_disabled`, `ns_mismatch`, `src_mismatch`, `burst_mismatch`}. A higher entry admits. The lowest covering entry fails exactly one condition. `src_mismatch` compares `src_id` with AxUSER[3:0]: inbound probes carry a drawn AxUSER[3:0], outbound probes carry OTHERS or the LSU bench master AxUSER. Legal cells: inbound 4 conditions x 2 directions = 8, outbound 3 conditions x 2 directions = 6, 14 in all. The inbound cells and the outbound `entry_disabled` and `ns_mismatch` cells come from `sep_fabric_filter_match_priority_rand_test`. The outbound `src_mismatch` cells come from the AP and STEE source-ID stack of `sep_fabric_outbound_route_attr_test`, where OTHERS does not match the lowest entry and a higher entry admits. (filter doc, Match, Then Permit; `smc-traffic-filters.svg`) |Outbound `burst_mismatch`: no local master issues a multi-beat burst (`fabric.adoc`, Top Level AXI4). Ignored, not a hole of the owner |`in_filter`, `out_filter` fields; `in_req` prot, len, user; `pre_out_filter` prot, user; `in_resp` or `pre_out_filter` verdict |`sep_fabric_filter_match_priority_rand_test`, `sep_fabric_outbound_route_attr_test` (outbound `src_mismatch`) |executable. Also needs `corner_dir_group` and `src_id_all_classes`
+|`cp_fail_cond_fallthrough` |Instance x direction x failing condition on the lowest covering entry {`entry_disabled`, `ns_mismatch`, `src_mismatch`, `burst_mismatch`}. A higher entry admits. The lowest covering entry fails exactly one condition. `src_mismatch` compares `src_id` with AxUSER[3:0]: inbound probes carry a drawn AxUSER[3:0], outbound probes carry OTHERS or the LSU bench master AxUSER. Legal cells: inbound 4 conditions x 2 directions = 8, outbound 3 conditions x 2 directions = 6, 14 in all. The inbound cells and the outbound `entry_disabled` and `ns_mismatch` cells come from `sep_fabric_filter_match_priority_rand_test`. The outbound `src_mismatch` cells come from the AP and STEE source-ID stack of `sep_fabric_outbound_route_attr_test`, where OTHERS does not match the lowest entry and a higher entry admits. (filter doc, Match, Then Permit; `smc-traffic-filters.svg`) |Outbound `burst_mismatch`: no local master issues a multi-beat burst (`fabric.adoc`, Top Level AXI4). No bin, not a hole of the owner |`in_filter`, `out_filter` fields; `in_req` prot, len, user; `pre_out_filter` prot, user; `in_resp` or `pre_out_filter` verdict |`sep_fabric_filter_match_priority_rand_test`, `sep_fabric_outbound_route_attr_test` (outbound `src_mismatch`) |executable. Also needs `corner_dir_group` and `src_id_all_classes`
 |`cp_src_id_class` |Instance {`in`, `out`} x class {`wildcard`, `exact`, `mismatch`}. 6 cells. `wildcard` is `src_id` 0. `exact` is a non-zero `src_id` equal to the probe AxUSER[3:0]. `mismatch` is a non-zero `src_id` different from the probe AxUSER[3:0], AxUSER[3:0] 0 included. Outbound `exact` and `mismatch` use the LSU bench master AxUSER. (`filter_ctrl.adoc`, `FILTER_CONFIG`; filter doc, Match, Then Permit; `smc-traffic-filters.svg`) |- |`in_filter`, `out_filter` src_id; `in_req` user[3:0]; `pre_out_filter` user[3:0] |`sep_fabric_filter_match_priority_rand_test` |executable. Also needs `src_id_all_classes`
-|`cp_ar_aw_independent` |Inbound instance x {the AR winner index differs from the AW winner index for one address}. 1 cell. The outbound cell is an `ignore_bins`: an outbound path sets NS from the address, so the read and the write of one address reach the outbound filter with the same NS. (filter doc, Match, Then Permit; `fabric.adoc`, `sep-outbound-attributes-table`) |- |`in_filter`, `out_filter` fields; `in_req` and `pre_out_filter` prot |`sep_fabric_filter_match_priority_rand_test` |executable
+|`cp_ar_aw_independent` |Inbound instance x {the AR winner index differs from the AW winner index for one address}. 1 cell. The outbound cell has no bin: an outbound path sets NS from the address, so the read and the write of one address reach the outbound filter with the same NS. (filter doc, Match, Then Permit; `fabric.adoc`, `sep-outbound-attributes-table`) |- |`in_filter`, `out_filter` fields; `in_req` and `pre_out_filter` prot |`sep_fabric_filter_match_priority_rand_test` |executable
 |`cp_winner_class` |Instance x class {`lowest_allow`, `perm_block`, `perm_block_hides_allow`, `fallthrough_allow`, `no_match`}, without the cell (`in`, `perm_block`). 9 cells. The cell (`in`, `perm_block`) is a control of the owning test, because `sep_fabric_inbound_filter_rule_matrix_test` grades the inbound permission bits. `perm_block_hides_allow` means that a higher entry would admit. (filter doc, Match, Then Permit) |- |`in_filter`, `out_filter` fields; `in_req` and `pre_out_filter` request; `in_resp` and `pre_out_filter` verdict |`sep_fabric_filter_match_priority_rand_test` |executable. Also needs `corner_dir_group`
 |`cp_locked_write` |`in_cfg_lo_decerr_kept`, `in_cfg_hi_decerr_lock_kept`: an LSU write of the low or high half of `FILTER_CONFIG` of a locked inbound entry answers DECERR, and the next read of the register equals the read before the write in the written lanes. 2 bins. (filter doc, a locked entry answers DECERR to every write of its configuration; reads still return the locked configuration) |- |`lsu_req` write address and strobes; `lsu_resp`; inbound `locked` |`sep_fabric_inbound_filter_rule_matrix_test` (code 757; CHK-CONFIG-LOCK) |executable. The read before each refused write is a read of the same register, outside the window
 |`cp_locked_range_write` |`start_decerr_kept`, `end_decerr_kept`: the same for `START_ADDR` and `END_ADDR` of a locked entry of either instance. 2 bins. (filter doc, as above; `sep-smc-common.adoc`) |- |`lsu_req` write address and strobes; `lsu_resp` |`sep_fabric_slot_csr_strobe_rand_test` |executable
@@ -2922,8 +2920,8 @@ Reach values (<<sep-fcov-parked>>). "executable": the owner fills every bin as w
 [cols="2,6,3,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Illegal bins |Sampled signal |Owning tests |Reach
-|`cp_row_cell` |Row x cell kind x response cell. Rows and cells come from the address map table: 8 Reserved rows by base address (0x1005_0000, 0x1080_4000, 0x1091_4000, 0x1092_1000, 0x1093_0600, 0x1096_0000, 0x10C0_0000, 0x1200_0000; DECERR; 0xBADCAB1E read data with DECERR); hole-in-extent cells (SLVERR 0xFFFFFFFF for OTBN, HMAC, KMAC; OKAY 0 for ESRC; OKAY 0 for a drawn ABR hole word at a 32-bit access from SI); past-extent cells (DECERR for DMA, WDT, reset control, OTBN, AES, CSRNG, EDN, ESRC, LC, KM mailbox); the live word (OKAY), a stable register of the extent with no read side effect. The response and data are graded at a 32-bit access (AxSIZE 2) in either half of the 64-bit data bus, from SI for every row except reset control, and from the LSU for the reset-control cells and the live words. AxSIZE 3 has no bin. The LSU cells of the rows that `sep_unmapped_access_policy_test` and `sep_fabric_deadspace_decode_test` grade: Reserved rows 0x1080_2040, 0x1080_20C0, 0x10A1_0280, 0x10A1_0380, 0x10A2_0400, 0x10A2_1200, 0x10A3_2000 (DECERR, 0xBADCAB1E); `hole_mbox` and `past_mbox` (SLVERR, 0x0); `past_efuse_ctrl` (SLVERR, 0xBADCAB1E); `past_efuse_token` (DECERR, 0xBADCAB1E, past the 116-byte token extent, 0x1093_0574 to 0x1093_05FF); `hole_alias_remap` and `hole_filter` (OKAY, 0x0, a slot-tail word of the array); `hole_cpu_ctrl` (OKAY, 0x0, a word between `PERIPH_BUS_ERR_CLEAR` and `SEP_VERSION_ID`); `past_spi_rd` and `past_spi_wr` (DECERR, 0xBADCAB1E); `trng_unowned` (DECERR, 0xBADCAB1E, the TRNG window with no TRNG fitted: the bench TRNG responder is off, `trng_rsp_on` 0). The response codes and read data of these cells come from the generated memory map, whose codes were assigned from the RTL; `otp_fuse_controller.adoc` states SLVERR for the token span, so that cell is a specification question. The gate is the window of `sep_fabric_row_response_matrix_test` (code 231; each sample is held and samples on the `row_pass` release after every check of its instance passed), `sep_unmapped_access_policy_test` (code 755, around the probe and tail walks; its in-extent hole probes fill `hole_mbox` and `hole_cpu_ctrl`; each sample is held and samples on the `row_pass` release after CHK-UNMAPPED-CODE, the refusal, the re-read and the no-alias compare of that access recorded no failure) or `sep_fabric_deadspace_decode_test` (code 234; one probe per block window after the same probes passed with the window closed; each sample is held and samples on the `row_pass` release after CHK-DEADSPACE-REFUSE or CHK-TRNG-UNOWNED of that probe passed; its repeated TRNG passthrough accesses release on the value 4, which samples no row cell). Only code 231 fills the live-word cells (`live_*`): a live-word sample of codes 755 and 234, such as a no-alias read-back, maps to no bin. (`fabric.adoc`, DECERR between register blocks of the system CSR windows; `memory_map.adoc`, TRNG with no adopter; `spi.adoc`, no execute-in-place window) |Forwarded rows (AP, STEE), the SEP external row, the PIC rows, the DMA hole cells, the entropy pool cells and the ABR past-extent cells: not binned (graded by other tests). The cells of the LSU-graded rows above (codes 84 to 148) with an SI initiator in `x_row_cell_init`: `ignore_bins`, graded from the LSU only |`in_resp` response and read data; `lsu_resp`; `lsu_req` address |`sep_fabric_row_response_matrix_test`, `sep_unmapped_access_policy_test`, `sep_fabric_deadspace_decode_test` |executable. Also needs `row_matrix_every_seed`
-|`cp_row_init_dir` |Initiator {`LSU`, `SI`} x direction {R, W}. 4 cells. It samples only on the `row_pass` release of its owner. `x_row_cell_init` crosses `cp_row_cell` with the same initiator and direction of every row-cell sample (point `cp_row_cell_dir`, weight 0) on the SI rows of `assets/sep_axi_connectivity.svg`. The LSU cells cross only the reset-control and live-word cells. |- |`in_req`; `lsu_req` |`sep_fabric_row_response_matrix_test` |executable. The cross follows `cp_row_cell`
+|`cp_row_cell` |Row x cell kind x response cell. Rows and cells come from the address map table: 8 Reserved rows by base address (0x1005_0000, 0x1080_4000, 0x1091_4000, 0x1092_1000, 0x1093_0600, 0x1096_0000, 0x10C0_0000, 0x1200_0000; DECERR; 0xBADCAB1E read data with DECERR); hole-in-extent cells (SLVERR 0xFFFFFFFF for OTBN, HMAC, KMAC; OKAY 0 for ESRC; OKAY 0 for a drawn ABR hole word at a 32-bit access from SI); past-extent cells (DECERR for DMA, WDT, reset control, OTBN, AES, CSRNG, EDN, ESRC, LC, KM mailbox); the live word (OKAY), a stable register of the extent with no read side effect. The response and data are graded at a 32-bit access (AxSIZE 2) in either half of the 64-bit data bus, from SI for every row except reset control, and from the LSU for the reset-control cells and the live words. AxSIZE 3 has no bin. The LSU cells of the rows that `sep_unmapped_access_policy_test` and `sep_fabric_deadspace_decode_test` grade: Reserved rows 0x1080_2040, 0x1080_20C0, 0x10A1_0280, 0x10A1_0380, 0x10A2_0400, 0x10A2_1200, 0x10A3_2000 (DECERR, 0xBADCAB1E); `hole_mbox` and `past_mbox` (SLVERR, 0x0); `past_efuse_ctrl` (SLVERR, 0xBADCAB1E); `past_efuse_token` (DECERR, 0xBADCAB1E, past the 116-byte token extent, 0x1093_0574 to 0x1093_05FF); `hole_alias_remap` and `hole_filter` (OKAY, 0x0, a slot-tail word of the array); `hole_cpu_ctrl` (OKAY, 0x0, a word between `PERIPH_BUS_ERR_CLEAR` and `SEP_VERSION_ID`); `past_spi_rd` and `past_spi_wr` (DECERR, 0xBADCAB1E); `trng_unowned` (DECERR, 0xBADCAB1E, the TRNG window with no TRNG fitted: the bench TRNG responder is off, `trng_rsp_on` 0). The response codes and read data of these cells come from the generated memory map, whose codes were assigned from the RTL; `otp_fuse_controller.adoc` states SLVERR for the token span, so that cell is a specification question. The gate is the window of `sep_fabric_row_response_matrix_test` (code 231; each sample is held and samples on the `row_pass` release after every check of its instance passed), `sep_unmapped_access_policy_test` (code 755, around the probe and tail walks; its in-extent hole probes fill `hole_mbox` and `hole_cpu_ctrl`; each sample is held and samples on the `row_pass` release after CHK-UNMAPPED-CODE, the refusal, the re-read and the no-alias compare of that access recorded no failure) or `sep_fabric_deadspace_decode_test` (code 234; one probe per block window after the same probes passed with the window closed; each sample is held and samples on the `row_pass` release after CHK-DEADSPACE-REFUSE or CHK-TRNG-UNOWNED of that probe passed; its repeated TRNG passthrough accesses release on the value 4, which samples no row cell). Only code 231 fills the live-word cells (`live_*`): a live-word sample of codes 755 and 234, such as a no-alias read-back, maps to no bin. (`fabric.adoc`, DECERR between register blocks of the system CSR windows; `memory_map.adoc`, TRNG with no adopter; `spi.adoc`, no execute-in-place window) |Forwarded rows (AP, STEE), the SEP external row, the PIC rows, the DMA hole cells, the entropy pool cells and the ABR past-extent cells: not binned (graded by other tests). The cells of the LSU-graded rows above (codes 84 to 148) with an SI initiator in `x_row_cell_init`: no bin, graded from the LSU only |`in_resp` response and read data; `lsu_resp`; `lsu_req` address |`sep_fabric_row_response_matrix_test`, `sep_unmapped_access_policy_test`, `sep_fabric_deadspace_decode_test` |executable. Also needs `row_matrix_every_seed`
+|`cp_row_init_dir` |Initiator {`LSU`, `SI`} x direction {R, W}. 4 cells. It samples only on the `row_pass` release of its owner. `x_row_cell_init` pairs `cp_row_cell` with the initiator and direction of every row-cell sample (point `cp_row_cell_dir`, weight 0) on the SI rows of `assets/sep_axi_connectivity.svg`. The LSU cells cross only the reset-control and live-word cells. |- |`in_req`; `lsu_req` |`sep_fabric_row_response_matrix_test` |executable. The cross follows `cp_row_cell`
 |`cp_aperture_offset_dir` |Aperture {reset control} x class {`in_extent`, `immediately_above`, `far_inside_reserved`} x direction. 6 cells. It samples only on the `row_pass` release of its owner. |- |`lsu_req` address; `lsu_resp` response |`sep_fabric_row_response_matrix_test` |executable. Also needs `row_matrix_every_seed`
 |`cp_non_aliasing` |A gap, tail or hole write followed by a read of the live reference register, for {reset control, HMAC, KMAC}. 3 cells. It samples only on the `row_pass` release of its owner, after CHK-ROW-NOALIAS passed. (`memory_map.adoc`, Memory Map) |- |`lsu_req` write and read sequence; `in_req` write address for the SI hole cells |`sep_fabric_row_response_matrix_test` |executable
 |`cp_array_tail` |`alias_tail`, `infilt_tail`, `outfilt_tail`: an LSU 32-bit read of a slot-tail word inside the array extent returns OKAY with 0, or a write answers OKAY; `ap_tail`, `stee_tail`: the first word past the AP or STEE output-remap array (base plus `TOTAL_SIZE`) is refused with DECERR, read data 0xBADCAB1E. 5 bins. The array extents come from `SEP_TOP_<ARRAY>_TOTAL_SIZE` of the generated address map. The read data 0xBADCAB1E comes from the generated memory map, whose codes were assigned from the RTL. |- |`lsu_req` address; `lsu_resp` response and read data |`sep_unmapped_access_policy_test` (code 755; CHK-ARRAY-TAIL, CHK-UNMAPPED-CODE) |executable. `ap_tail` and `stee_tail` sample at the system-CSR probes past the AP and STEE arrays. Each code is held at the response beat and samples only on the `row_pass` release, which the owner writes after CHK-ARRAY-TAIL (with the re-read of a write), CHK-UNMAPPED-CODE and the no-alias compare of that access recorded no failure
@@ -3071,9 +3069,9 @@ Phase 2 groups of <<sep-fcov-planned>>. Each Phase 2 bin of
 these groups is scored by a Phase 3 owning test, so the Phase 1 contract of
 "full in one `all` run" does not depend on them.
 
-*Tool*: VCS only. Verilator compiles no covergroup. A VCS coverage run builds
-target `default`, which holds the full VeeR core, so the PIC and trap-unit paths
-exist in that build. The stub target removes the core and has no covergroup.
+*Tool*: VCS. A VCS coverage run builds target `default`, which holds the full
+VeeR core, so the PIC and trap-unit paths exist in that build. The stub target
+removes the core, so these bins have no source there.
 
 *Numbering*: bit `i` of the interrupt vector is PIC source `i+1`
 (`hw/sys/sep/doc/interrupts.adoc`, section "Sources and Routing"). The vector
@@ -3197,7 +3195,7 @@ written `cp_a` x `cp_b`.
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_reg_rand_test`, `sep_pic_pending_map_walk_rand_test`
 
@@ -3229,7 +3227,7 @@ written `cp_a` x `cp_b`.
 
 *Class*: executable (<<sep-fcov-parked>>).
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_pending_map_walk_rand_test`; `cp_src_exclusive_other`: `sep_km_cpu_protect_rand_test`, `sep_locked_field_access_irq_path_test`, `sep_abr_mldsa_keygen_kat_test`, `sep_efuse_token_fault_matrix_test`, `sep_cpu_bridge_fault_matrix_rand_test`
 
@@ -3261,7 +3259,7 @@ Bins that no owning test reaches are in <<sep-fcov-mbox-irq-pic-ungraded>>.
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_priority_gate_rand_test`
 
@@ -3288,7 +3286,7 @@ Bins that no owning test reaches are in <<sep-fcov-mbox-irq-pic-ungraded>>.
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_pending_map_walk_rand_test`
 
@@ -3313,7 +3311,7 @@ Bins that no owning test reaches are in <<sep-fcov-mbox-irq-pic-ungraded>>.
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_priority_gate_rand_test`
 
@@ -3336,7 +3334,7 @@ Bins that no owning test reaches are in <<sep-fcov-mbox-irq-pic-ungraded>>.
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_reg_rand_test`, `sep_pic_pending_map_walk_rand_test`, `sep_nmi_vector_bark_rand_test`
 
@@ -3363,7 +3361,7 @@ The bins "AES recoverable alert" and "AES fatal alert leave the vector unchanged
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_external_access_refuse_test`
 
@@ -3389,7 +3387,7 @@ The bins "AES recoverable alert" and "AES fatal alert leave the vector unchanged
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_priority_gate_rand_test`
 
@@ -3416,7 +3414,7 @@ The bins "boundary stimulus driven 0, driven 1, toggled" (6 cells) and "PIC inde
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_nmi_vector_bark_rand_test`
 
@@ -3438,7 +3436,7 @@ The bins "boundary stimulus driven 0, driven 1, toggled" (6 cells) and "PIC inde
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_nmi_vector_bark_rand_test`
 
@@ -3465,7 +3463,7 @@ The bins "boundary stimulus driven 0, driven 1, toggled" (6 cells) and "PIC inde
 
 *Class*: executable (<<sep-fcov-parked>>).
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_cpu_bridge_fault_matrix_rand_test`; `cp_partial_narrow`: `sep_periph_bus_err_misaligned_test`
 
@@ -3492,7 +3490,7 @@ The command-integrity cause of the DMA host path is not driven and has no bin (<
 
 *Class*: executable (<<sep-fcov-parked>>).
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_cpu_bridge_fault_matrix_rand_test`
 
@@ -3521,7 +3519,7 @@ The `host_path_err` bin of `cp_race_latch` uses the added hook `RESP`. The reset
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_mailbox_fifo_model_rand_test`, `sep_mailbox_access_error_inject_test`
 
@@ -3549,7 +3547,7 @@ The `host_path_err` bin of `cp_race_latch` uses the added hook `RESP`. The reset
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_mailbox_filter_type_matrix_test`, `sep_mailbox_debug_bypass_test`
 
@@ -3575,7 +3573,7 @@ The `host_path_err` bin of `cp_race_latch` uses the added hook `RESP`. The reset
 
 *Class*: executable (<<sep-fcov-parked>>).
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_cpu_ctrl_timeout_inert_rand_test`
 
@@ -3597,7 +3595,7 @@ The `host_path_err` bin of `cp_race_latch` uses the added hook `RESP`. The reset
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_mailbox_fifo_model_rand_test`, `sep_mailbox_access_error_inject_test`
 
@@ -3625,7 +3623,7 @@ The width of `smc_mailbox_interrupt_o` (8) is stated by `hw/sys/sep/doc/mailbox.
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_mailbox_fifo_model_rand_test`
 
@@ -3653,7 +3651,7 @@ The width of `smc_mailbox_interrupt_o` (8) is stated by `hw/sys/sep/doc/mailbox.
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_mailbox_reset_clear_test`
 
@@ -3680,7 +3678,7 @@ The width of `smc_mailbox_interrupt_o` (8) is stated by `hw/sys/sep/doc/mailbox.
 
 *Class*: executable.
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_pic_pending_map_walk_rand_test`
 
@@ -3703,7 +3701,7 @@ The width of `smc_mailbox_interrupt_o` (8) is stated by `hw/sys/sep/doc/mailbox.
 
 *Class*: executable (<<sep-fcov-parked>>).
 
-*Tool*: VCS covergroup on `u_sep_fcov`. Verilator compiles no covergroup.
+*Tool*: VCS (covergroup on `u_sep_fcov`).
 
 *Owning tests*: `sep_cpu_bridge_fault_matrix_rand_test`
 
@@ -3792,9 +3790,9 @@ shows that an owning test drives its scenario. Bins come from the
 specification and the register description only. Every coverpoint samples DUT
 signals, except the SPI lane and output-enable groups (<<sep-fcov-spi-lane>>),
 which sample a record that the leaf writes after its check passed. No
-coverpoint reads log text or a scoreboard count. The groups are VCS
-covergroups in `hw/sys/sep/dv/cov/sv/sep_fcov.sv` (`ifndef VERILATOR`).
-Verilator compiles no covergroup, so only a VCS run scores them. Feature
+coverpoint reads log text or a scoreboard count. The groups are covergroups
+in `hw/sys/sep/dv/cov/sv/sep_fcov.sv`. Verilator builds them too, but only a
+VCS run scores them. Feature
 checkers stay in the tests: a bin is an interface event and not a golden
 comparison.
 
@@ -3808,7 +3806,7 @@ cells that the specification leaves open are in
 [cols="1,4",options="header"]
 |===
 |Item |Rule
-|Tool |VCS only. The tests also run on Verilator, which scores no coverage.
+|Tool |VCS. The tests also run on Verilator, whose coverage is not graded.
 |Sampler |The existing `u_sep_fcov` sampler reads the CPU LSU request bus: register writes and reads from the `s_axi` stub and from firmware. It also reads the pad ports, the DMA done interrupt and the reset ports. Those inputs are approved. Every other input is read-only and is an added tap (<<sep-fcov-spi-dma-sampled>>). No input adds a force or a DUT port.
 |Latch |A register field marked "latched" is the field of the last write of that register that the sampler saw (`wr_ev`, `wr_data`). The latch lives in the sampler and reads no DUT register. It starts at the register description reset value after each release of `sep_reset_n_i`.
 |Gate |A gate is a sampler-side condition that must hold before a bin scores. A gate is built from sampled signals. A gate that compares a pad count with a register field makes the bin score only when the DUT behaves as the specification states. A gate never replaces a checker.
@@ -4259,7 +4257,7 @@ they add or reuse.
 |`cp_outcome` |`done`, `window_error` (`DST_ADDR_ERROR`), `opcode_error` (handshake mode), `aborted` |`dma_core.reg2hw.status.done.q`, `dma_core.reg2hw.status.error.q`, `dma_err_code_i`, `dma_aborted_i`. The first rise of `DONE`, `ERROR` or `ABORTED` after a `GO` write with `OPCODE` 4 and `INITIAL_TRANSFER` 1 |`sep_dma_zero_fill_rand_test` |executable |`dma.adoc`, Zero Fill; `secure_dma.adoc`, `STATUS`, `ERROR_CODE`
 |`cp_cont_outcome` |`size_error_no_write` (handshake off, range unlocked: `ERROR_CODE` is `SIZE_ERROR` alone and no DMA write from the GO to the `ERROR` rise), `handshake_opcode_error` (`HARDWARE_HANDSHAKE_ENABLE` set at the continuation: `ERROR_CODE` is `OPCODE_ERROR` alone), `locked_dst_addr_error` (range locked by `RANGE_REGWEN`: `ERROR_CODE` is `DST_ADDR_ERROR` alone). Illegal: a write outside the range, a `SIZE_ERROR` end after a write, or a handshake or locked end that matches no cell (`write_outside_range`). Another end of an unlocked continuation with handshake off is not a cell |`CONTROL` write decode, `RANGE_REGWEN`, the range registers, the DMA write address before the DMA window remap, `STATUS.DONE`, `STATUS.ERROR`, `dma_err_code_i`. From the issue clock of a `GO` write with `INITIAL_TRANSFER` 0 after a zero-fill start (the configuration `ERROR` rises before the B) to the first `DONE` or `ERROR` rise |`sep_dma_zero_fill_continuation_test` (CHK-DMA-ZERO-CONT-LIMIT, -HS, -LOCK) |executable |`dma.adoc:115-117`, Configuration Taken at Each Start; Zero Fill
 |`cp_tcm_outcome` |`dccm_done`, `iccm_done` (4-byte fill into the TCM ends with `DONE`), `iccm_w2_bus_error` (2-byte fill into ICCM ends with `ERROR_CODE.BUS_ERROR`); with `ERROR_CODE` `BUS_ERROR` alone: `iccm_size_4n2_bus_error`, `dccm_size_4n2_bus_error` (4-byte fill with `TOTAL_DATA_SIZE` 4n + 2), `dccm_w2_bus_error` (2-byte fill into DCCM) = 6 bins |`DST_ADDR_LO`, `TRANSFER_WIDTH` and `TOTAL_DATA_SIZE` at the initial `GO` of a zero fill, `STATUS.DONE`, `STATUS.ERROR`, `dma_err_code_i`. The first `DONE` or `ERROR` rise after that `GO` |`sep_dma_zero_test` (CHK-ZERO-DCCM, CHK-ZERO-ICCM, CHK-ZERO-TCM-NARROW, and the partial-word TCM cell check) |executable |`dma.adoc:113-121`
-|`cp_last_beat`, `cp_last_beat_width`, `x_last_beat_width` |Last write {`full`, `rem1`, `rem2`, `rem3`} x width {`w1`, `w2`, `w4`}: a zero fill that ends with `DONE` and `ERROR_CODE` 0, whose last DMA W beat strobes the width (`full`, `TOTAL_DATA_SIZE` a multiple of the width) or exactly the remaining bytes. Ignored: `w1` x `rem*`, `w2` x {`rem2`, `rem3`}; 6 cells |`TRANSFER_WIDTH` and `TOTAL_DATA_SIZE` at the issue of the initial `GO` with `OPCODE` 4, the DMA master W handshakes and WSTRB before the remap, `STATUS.DONE`, `STATUS.ERROR`, `dma_err_code_i`. Sample at the first `DONE` rise |`sep_dma_zero_fill_rand_test` (CHK-DMA-ZERO-BEAT) |executable, seed-dependent (the size draw) |`dma.adoc:113-114`
+|`cp_last_beat`, `cp_last_beat_width`, `x_last_beat_width` |Last write {`full`, `rem1`, `rem2`, `rem3`} x width {`w1`, `w2`, `w4`}: a zero fill that ends with `DONE` and `ERROR_CODE` 0, whose last DMA W beat strobes the width (`full`, `TOTAL_DATA_SIZE` a multiple of the width) or exactly the remaining bytes. No bin: `w1` x `rem*`, `w2` x {`rem2`, `rem3`}; 7 cells |`TRANSFER_WIDTH` and `TOTAL_DATA_SIZE` at the issue of the initial `GO` with `OPCODE` 4, the DMA master W handshakes and WSTRB before the remap, `STATUS.DONE`, `STATUS.ERROR`, `dma_err_code_i`. Sample at the first `DONE` rise |`sep_dma_zero_fill_rand_test` (CHK-DMA-ZERO-BEAT) |executable, seed-dependent (the size draw) |`dma.adoc:113-114`
 |`cp_src_validated` |`invalid_src_asid_asid_error`: a zero fill with `SRC_ADDR_SPACE_ID` outside {0x7, 0x9, 0xA} and `DST_ADDR_SPACE_ID` 0x7 ends with `ERROR` and `ERROR_CODE` `ASID_ERROR` alone, with no DMA write from the GO = 1 bin |`ADDR_SPACE_ID` at the issue of the initial `GO` with `OPCODE` 4, the DMA master AW handshakes, `STATUS.ERROR`, `dma_err_code_i`. Sample at the first `ERROR` rise |`sep_dma_zero_fill_rand_test` (source-validation leg check) |executable |`dma.adoc:107-109`; `vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:244-261`, `:711-713`
 |===
 
@@ -4303,7 +4301,7 @@ Kind codes: 1 data frame, 2 lane opcode, 3 output-enable window, 4 trigger cell,
 
 *Class*: executable.
 
-*Tool*: VCS. *Crosses*: `x_width_dir_test` (`cp_width` x `cp_dir` x `cp_test`). *Illegal bins*: none. *Ignore bins* of `x_width_dir_test`: `dma_handshake_tx` and `ot_dma_rx_tx` (those leaves grade read data only), `ot_dma_tx_x2` and `ot_flash_cmd_x2_tx` (the flash model has no dual program command) and `ot_dma_tx_rx` (that leaf grades program data only); 42 cells less 11 leave 31. `sep_spi_pad_timing_cfg_rand_test` draws one width per mode cell, two cells per seed, so its cells are graded on a merge of regressions. Every other owner runs each width it supports on every seed. `sep_spi_ot_flash_cmd_rand_test` records x1 TX (the 0x02 program that CHK-SPI-SB-TX grades), x1 RX (the primary READ 0x03 that CHK-SPI-SB-RX grades), x2 and x4 RX and x4 TX.
+*Tool*: VCS. *Crosses*: `x_width_dir_test` (`cp_width` x `cp_dir` x `cp_test`). *Illegal bins*: none. Cells of `x_width_dir_test` without a bin: `dma_handshake` and `ot_dma_rx` x TX (those leaves grade read data only), `ot_dma_tx` x x2 and `ot_flash_cmd` x x2 x TX (the flash model has no dual program command) and `ot_dma_tx` x RX (that leaf grades program data only); 42 cells less 11 leave 31. `sep_spi_pad_timing_cfg_rand_test` draws one width per mode cell, two cells per seed, so its cells are graded on a merge of regressions. Every other owner runs each width it supports on every seed. `sep_spi_ot_flash_cmd_rand_test` records x1 TX (the 0x02 program that CHK-SPI-SB-TX grades), x1 RX (the primary READ 0x03 that CHK-SPI-SB-RX grades), x2 and x4 RX and x4 TX.
 
 [cols="2,4,4,3,1,2",options="header"]
 |===
@@ -4311,7 +4309,7 @@ Kind codes: 1 data frame, 2 lane opcode, 3 output-enable window, 4 trigger cell,
 |`cp_test` |`pad_speed_dir_matrix`, `pad_timing_cfg`, `fifo_stall_watermark`, `dma_handshake`, `ot_dma_rx`, `ot_flash_cmd`, `ot_dma_tx` |`spi_ln_owner` mapped to a test index (`spi_ln_test`); record kind 1. A record of any other owner maps to index 7, which is no bin |`sep_spi_pad_speed_dir_matrix_test`, `sep_spi_pad_timing_cfg_rand_test`, `sep_spi_fifo_stall_watermark_rand_test`, `sep_spi_dma_handshake_rand_test`, `sep_spi_ot_dma_rx_test`, `sep_spi_ot_flash_cmd_rand_test`, `sep_spi_ot_dma_tx_test` |executable |`doc/integrator/src/smu-sep.adoc`, "SEP SPI Host Pin Assignment"
 |`cp_width` |`x1`, `x2`, `x4` |`spi_ln_width`; record kind 1 |Same |executable |`spi.adoc`, Features; `spi_controller.adoc`, `COMMAND.SPEED`
 |`cp_dir` |`tx`, `rx` |`spi_ln_dir`; record kind 1 |Same |executable |`spi_controller.adoc`, `COMMAND.DIRECTION`
-|`x_width_dir_test` |`cp_width` x `cp_dir` x `cp_test`; `ignore_bins` `dma_handshake_tx`, `ot_dma_rx_tx`, `ot_dma_tx_x2`, `ot_dma_tx_rx`, `ot_flash_cmd_x2_tx`; 31 cells |A record after CHK-SPI-SB-FRAME, CHK-SPI-SB-TX or CHK-SPI-SB-RX (and, in the firmware leaves, the firmware data check) of the frame passed |Same; each cell names its own test |executable, seed-dependent (the `pad_timing_cfg` cells) |OpenTitan SPI_HOST theory of operation, "Input and Output Byte Ordering"
+|`x_width_dir_test` |`cp_width` x `cp_dir` x `cp_test`, without the 11 cells named above; 31 cells |A record after CHK-SPI-SB-FRAME, CHK-SPI-SB-TX or CHK-SPI-SB-RX (and, in the firmware leaves, the firmware data check) of the frame passed |Same; each cell names its own test |executable, seed-dependent (the `pad_timing_cfg` cells) |OpenTitan SPI_HOST theory of operation, "Input and Output Byte Ordering"
 |===
 
 ====== `sep_spi_lane_opcode_cg`
@@ -4519,7 +4517,7 @@ that touches them in a test is logged and is not scored.
 |`sep_spi_fifo_rand_cg` |`cp_rxwm` cell `zero` x `out` |At `RX_WATERMARK` 0 the out crossing is at `RXQD` equal to the watermark, where `CONTROL.RX_WATERMARK` (the depth "reaches" the watermark) and `STATUS.RXWM` (the depth "exceeds" it) differ (`spi_controller.adoc`).
 |`sep_spi_fifo_status_cg` |`cp_depth_counter` cells {`TXQD`, `RXQD`} x `ACTIVE` = 1 x {`one`, `mid`} |While `ACTIVE` = 1, `RXQD` may be an underestimate and `TXQD` may be an overestimate (`spi_controller.adoc`, `STATUS.RXQD`, `STATUS.TXQD`), so no value is stated. The owning tests compare `TXQD` and `RXQD` only with `ACTIVE` = 0, and the stall checks grade the `zero` and `max` cells.
 |`sep_spi_interrupt_cg` |`cp_intr_test` bin `event_release` (write 0 to `INTR_TEST` bit 1) |The release of a forced `SPI_EVENT` is not stated (`spi_controller.adoc`, `INTR_TEST`).
-|`sep_spi_lane_data_cg` |`x_width_dir_test` cell `ot_flash_cmd` x `x2` x `tx` (`ignore_bins ot_flash_cmd_x2_tx`) |The flash model has no dual program command (`hw/common/dv/vip/ocah_spi_vip/README.md`, command table: the only lane program is 0x32), so `sep_spi_ot_flash_cmd_rand_test` has no x2 TX data to grade. x2 TX data is graded in the raw-segment tests (`test_contracts/spi_dma.adoc`, entry 4.20).
+|`sep_spi_lane_data_cg` |`x_width_dir_test` cell `ot_flash_cmd` x `x2` x `tx` |The flash model has no dual program command (`hw/common/dv/vip/ocah_spi_vip/README.md`, command table: the only lane program is 0x32), so `sep_spi_ot_flash_cmd_rand_test` has no x2 TX data to grade. x2 TX data is graded in the raw-segment tests (`test_contracts/spi_dma.adoc`, entry 4.20).
 |`sep_spi_error_status_cg` |`cp_csid_out_of_range` bin `csid_one` (CSID = 1) |The OpenTitan theory of operation raises `ERROR_STATUS.CSIDINVAL` for a CSID "one larger or equal to `NumCS`" (`vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:597`), while at NumCS = 1 "the CSID value is ignored" (`vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:205`), and `sep_io` has one chip select (`spi.adoc`, Features). The two texts differ for CSID = 1, so the response is logged and not graded. The owning test logs the cell as `OBS-SPI-CSID1 LOG`.
 |`sep_spi_error_status_cg` |`cp_csid_out_of_range` bin `csid_max` (CSID = 0xFFFF_FFFF) |The open test `sep_spi_ot_host_csr_irq_rand_test` drives the value with the graded window closed (<<sep-fcov-graded-window>>), and the owning leg draws v from 2 to 0xFFFF_FFFE.
 |`sep_dma_config_fault_cg` |`cp_addr_error_attribution` (`SRC_ADDR_ERROR` and `DST_ADDR_ERROR` for a region outside the range) |A copy outside the range raises no `ERROR_CODE` bit (`dma.adoc:106`, scored by `sep_dma_release_scope_cg.cp_out_of_range`) and a zero fill raises `DST_ADDR_ERROR` (`sep_dma_zero_cg`); no document states which bit a region outside the range raises for a hash.
@@ -4578,15 +4576,15 @@ differ from a plain reading of the feature list.
 The groups cover the memory apertures, the boot release,
 the reset sources and scopes, the watchdog and wakeup timers, the clock
 domains, the `sep_cpu_ctrl` registers and the CPU debug and trace paths. Each
-group is specified as a VCS `covergroup` for `cov/sv/sep_fcov.sv` under
-`ifndef VERILATOR`. Verilator runs the same tests as checker evidence and
-collects nothing. Bins come from the specification and the register
+group is specified as a `covergroup` for `cov/sv/sep_fcov.sv`, graded on VCS.
+Verilator runs the same tests as checker evidence, and its coverage is not
+graded. Bins come from the specification and the register
 description only. A bin that the specification does not define, or that no
 stimulus can reach, is not in a group (<<sep-fcov-p2-mem-boot-reset-unowned>>).
 
 *Rules for every coverpoint*
 
-* The tool is VCS only.
+* The tool is VCS.
 * A coverpoint samples a DUT net, a DUT port, or the AXI response and read data
 that the DUT returns. It does not read log text, a checker verdict or a
 scoreboard count. A stimulus value that has no DUT net (a drawn offset, a flip
@@ -5283,9 +5281,9 @@ and locked-field tests. They are named in <<sep-fcov-planned>>. In the VPLAN
 the owning tests are Phase 3 tests. The credit rule and the fill rules of
 <<sep-fcov-planned>> apply to them.
 
-Every group is VCS only. A covergroup does not compile under Verilator
-(`cov/sv/sep_fcov.sv` is `ifndef VERILATOR`), so a Verilator run of an owning
-test grades by checker only.
+Every group is graded on VCS. Verilator builds the same covergroups, but its
+coverage is not graded, so a Verilator run of an owning test grades by checker
+only.
 
 Names of specification and register description files are relative to the
 `hw` directory of the repository. Short names: `lifecycle_controller.adoc`,
@@ -6329,9 +6327,9 @@ not define, is a dead bin. The groups above do not declare these cells.
 [[sep-fcov-p2-key-manager]]
 ==== Key Manager groups
 
-The groups below belong to the Phase 2 scope of <<sep-fcov-planned>>. Each group is a VCS
-covergroup in the sampler module `sep_fcov` (`hw/sys/sep/dv/cov/sv/sep_fcov.sv`, `ifndef VERILATOR`).
-Verilator compiles no covergroup. No cover property is used.
+The groups below belong to the Phase 2 scope of <<sep-fcov-planned>>. Each group is a
+covergroup in the sampler module `sep_fcov` (`hw/sys/sep/dv/cov/sv/sep_fcov.sv`), graded on VCS.
+No cover property is used.
 
 The group names and the owning tests are the contract. The owning tests are the Key Manager tests of
 `SEP_VPLAN.adoc`.
