@@ -190,6 +190,7 @@ cd hw/ip/key_manager/approm/prod
 
 make                                  # rom_main.{elf,map,dis,sym,rom.hex,rom.parhex}
 make KM_BOOT_WIPE=0 KM_UNREC_WIPE=0 BUILD_DIR=build/nowipe
+make KM_OTP_CHANGE_EN=1 BUILD_DIR=build/otp_change
 make clean
 ```
 
@@ -200,6 +201,11 @@ loads. `rom_main.sym` is the `nm` listing beside it.
 unrecoverable-fault SRAM wipes in `drivers/rom_boot.c`; both default to 1. A
 testbench that boots `rom_main` without either wipe clears them. Changing either
 knob, or any compile flag, rebuilds every object in that `BUILD_DIR`.
+
+`KM_OTP_CHANGE_EN` sets `ROM_KM_OTP_CHANGE_EN_DEFAULT`, the boot value of
+`IRQ_ENABLE.otp_change_en` in `drivers/rom_boot.c`; it defaults to 0, so the
+OTP-change interrupt stays masked. A build with `KM_OTP_CHANGE_EN=1` arms the
+OTP-change handler at boot.
 
 `make` compiles in the OCAH toolchain container (`scripts/docker-run.sh
 run-here`) unless `RISCV_TOOLCHAIN` points at a directory of

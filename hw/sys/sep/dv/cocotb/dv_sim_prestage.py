@@ -419,14 +419,15 @@ def _resolve_preload(path: str, cwd, root) -> Path:
 
 
 # KM production ROM images built by [c_build.km_rom_main] (bench build),
-# [c_build.km_rom_main_default] (shipped default) and [c_build.km_rom_main_unrec]
-# (sep_sim_cfg.toml). c_compile builds each in
-# <run_dir>/stages/c_compile/rom_main/<item>/, a directory private to that run
-# and test, and declares no output, so this hook stages it.
+# [c_build.km_rom_main_default] (shipped default), [c_build.km_rom_main_unrec]
+# and [c_build.km_rom_main_otp_change] (sep_sim_cfg.toml). c_compile builds each
+# in <run_dir>/stages/c_compile/rom_main/<item>/, a directory private to that
+# run and test, and declares no output, so this hook stages it.
 _KM_ROM_MAIN_IMAGES = (
     "rom_main.rom.parhex",
     "rom_main_default.rom.parhex",
     "rom_main_unrec.rom.parhex",
+    "rom_main_otp_change.rom.parhex",
 )
 
 

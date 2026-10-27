@@ -112,20 +112,25 @@ rom_main:
 # knobs named in the target. rom_main_default keeps the shipped defaults
 # (KM_BOOT_WIPE=1 KM_UNREC_WIPE=1). rom_main_unrec turns the boot wipe off and
 # keeps the unrecoverable-fault wipe on (KM_BOOT_WIPE=0 KM_UNREC_WIPE=1).
-# [c_build.km_rom_main_default] and [c_build.km_rom_main_unrec] in
-# sep_sim_cfg.toml drive them. Each leaves its own image name in FW_BUILD_DIR:
-# $(FW_BUILD_DIR)/rom_main_default.rom.parhex and
-# $(FW_BUILD_DIR)/rom_main_unrec.rom.parhex.
-rom_main_default rom_main_unrec:
+# rom_main_otp_change is the bench wipe pair with the OTP-change IRQ armed
+# (KM_BOOT_WIPE=0 KM_UNREC_WIPE=0 KM_OTP_CHANGE_EN=1).
+# [c_build.km_rom_main_default], [c_build.km_rom_main_unrec] and
+# [c_build.km_rom_main_otp_change] in sep_sim_cfg.toml drive them. Each leaves
+# its own image name in FW_BUILD_DIR.
+rom_main_default rom_main_unrec rom_main_otp_change:
 	@test -n "$(FW_BUILD_DIR)" || { echo "$@: set FW_BUILD_DIR to a private build directory" >&2; exit 1; }
 	$(MAKE) -C $(KM_APPROM_DIR) build BUILD_DIR=$(FW_BUILD_DIR) \
-	    OCAH_ROOT=$(OCH_ROOT) $(KM_WIPE_KNOBS_$@)
+	    OCAH_ROOT=$(OCH_ROOT) $(KM_WIPE_KNOBS_$@) $(KM_OTP_KNOBS_$@)
 	@test -s $(FW_BUILD_DIR)/rom_main.rom.parhex
 	$(MAKE) --no-print-directory verify ROMS=km_img_h GCC_PREFIX=$(KM_VERIFY_PREFIX)
 	cp $(FW_BUILD_DIR)/rom_main.rom.parhex $(FW_BUILD_DIR)/$@.rom.parhex
 	@echo "[km_fw] built $@.rom.parhex -> $(FW_BUILD_DIR)/$@.rom.parhex"
 KM_WIPE_KNOBS_rom_main_default := KM_BOOT_WIPE=1 KM_UNREC_WIPE=1
 KM_WIPE_KNOBS_rom_main_unrec := KM_BOOT_WIPE=0 KM_UNREC_WIPE=1
+KM_WIPE_KNOBS_rom_main_otp_change := KM_BOOT_WIPE=0 KM_UNREC_WIPE=0
+KM_OTP_KNOBS_rom_main_default :=
+KM_OTP_KNOBS_rom_main_unrec :=
+KM_OTP_KNOBS_rom_main_otp_change := KM_OTP_CHANGE_EN=1
 
 # The images take their KM register addresses from the generated map rather
 # than hand-typed literals: .S files run through the C preprocessor, so the

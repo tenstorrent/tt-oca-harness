@@ -45,9 +45,10 @@ A chip select or sck sample that resolves to X or Z fails the leaf with
 
 Every query raises ``MonitorLifeError`` (env/sep_monitor_life.py) when the
 sampler task ended without ``stop``; a query from a mark also raises it when
-the mark is from an earlier run of the sampler. A clock-range query raises it
-when the range ends after the last sample. So no query passes on a record
-that a dead task left partial. The bounded waits, ``now`` and ``cs_low`` raise
+the mark is from an earlier run of the sampler, or when the sampler took no
+sample after the mark. A clock-range query raises it when the range ends
+after the last sample. So no query passes on a record that a dead task left
+partial, and no absence check passes on a record with no sample in it. The bounded waits, ``now`` and ``cs_low`` raise
 the same error, and ``stop`` raises it when the task ended before it.
 
 Usage::
@@ -284,12 +285,23 @@ class SepSpiPadSampler:
             self.log.error(msg)
             raise SpiPadOeError(msg)
 
+    def _require_sampled(self, mark: PadMark) -> None:
+        self.life.check(mark.epoch)
+        if self.clk <= mark.clk:
+            raise MonitorLifeError(
+                f"MONITOR-LIFE FAIL: SPI-PAD took no sample after the mark "
+                f"(clk={self.clk} mark_clk={mark.clk})"
+            )
+
+    def _low_after(self, mark: PadMark, complete_only: bool) -> list[CsWindow]:
+        return [w for w in self.low if w.start > mark.clk and (w.complete or not complete_only)]
+
     def windows_since(
         self, mark: PadMark, *, complete_only: bool = True, require_oe: bool | None = None
     ) -> list[CsWindow]:
         """Chip-select-low windows that started after ``mark``."""
-        self.life.check(mark.epoch)
-        wins = [w for w in self.low if w.start > mark.clk and (w.complete or not complete_only)]
+        self._require_sampled(mark)
+        wins = self._low_after(mark, complete_only)
         self._gate_oe(wins, "chip-select-low", require_oe)
         return wins
 
@@ -299,7 +311,7 @@ class SepSpiPadSampler:
     def high_windows_since(
         self, mark: PadMark, *, complete_only: bool = False, require_oe: bool | None = None
     ) -> list[CsHighWindow]:
-        self.life.check(mark.epoch)
+        self._require_sampled(mark)
         wins = [
             w for w in self.high if w.start > mark.clk and (w.end is not None or not complete_only)
         ]
@@ -328,6 +340,10 @@ class SepSpiPadSampler:
 
     def leading_edges_since(self, mark: PadMark, *, require_oe: bool | None = None) -> int:
         """Leading sck edges in every low window that is open or started after ``mark``."""
+        self._require_sampled(mark)
+        return self._leading_edges_after(mark, require_oe)
+
+    def _leading_edges_after(self, mark: PadMark, require_oe: bool | None) -> int:
         self.life.check(mark.epoch)
         total = 0
         counted = []
@@ -348,14 +364,15 @@ class SepSpiPadSampler:
         """Wait at most ``bound`` clocks for ``n`` complete low windows after ``mark``."""
         clk = self.dut.clk_i
         for _ in range(bound + 1):
-            wins = self.windows_since(mark, require_oe=False)
+            self.life.check(mark.epoch)
+            wins = self._low_after(mark, complete_only=True)
             if len(wins) >= n:
                 self._gate_oe(wins[:n], "chip-select-low", require_oe)
                 return wins[:n]
             self.life.require_running()
             await RisingEdge(clk)
         raise SpiPadTimeout(
-            f"SPI pads: {len(self.windows_since(mark, require_oe=False))} of {n} chip-select-low windows "
+            f"SPI pads: {len(self._low_after(mark, complete_only=True))} of {n} chip-select-low windows "
             f"complete within {bound} clocks after clock {mark.clk}"
         )
 
@@ -365,13 +382,13 @@ class SepSpiPadSampler:
         """Wait at most ``bound`` clocks for ``n`` leading sck edges after ``mark``."""
         clk = self.dut.clk_i
         for _ in range(bound + 1):
-            got = self.leading_edges_since(mark, require_oe=False)
+            got = self._leading_edges_after(mark, require_oe=False)
             if got >= n:
-                return self.leading_edges_since(mark, require_oe=require_oe)
+                return self._leading_edges_after(mark, require_oe=require_oe)
             self.life.require_running()
             await RisingEdge(clk)
         raise SpiPadTimeout(
-            f"SPI pads: {self.leading_edges_since(mark, require_oe=False)} of {n} leading sck edges "
+            f"SPI pads: {self._leading_edges_after(mark, require_oe=False)} of {n} leading sck edges "
             f"within {bound} clocks after clock {mark.clk}"
         )
 
