@@ -117,7 +117,7 @@ Checkers:
                    buffers for the sck, csb, and sd lines."
                    (spi_host.hjson:222). Control: one pad sample before the
                    first CONTROL write that sets OUTPUT_EN reads cs_oe =
-                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:275-276``:
+                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:291-292``:
                    the host "drives no pad until software sets its
                    ``CONTROL.OUTPUT_EN``"), else CTRL-MISSING. One clean
                    frame (Tx then Rx, CSAAT) at the same width follows and is

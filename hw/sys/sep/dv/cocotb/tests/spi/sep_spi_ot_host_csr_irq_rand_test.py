@@ -548,6 +548,11 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         await self.poll_internal_irq(_SPI_AGG, 0)
         await self.spi.wr(INTR_TEST, 0)
+        # Control: the write of 0 landed (a non-OKAY write response raises in
+        # spi.wr), so the latch read below grades a write the DUT took.
+        self.logger.info(
+            "CTL-ZERO-WR LOG seed=%d reg=INTR_TEST data=0x0 bresp=OKAY", self.random_seed()
+        )
         st = await self.spi.rd(INTR_STATE)
         assert st & INTR_ERROR, (
             f"CHK-INTR ERROR: the state latch followed INTR_TEST down instead of "
@@ -1439,6 +1444,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         # A write of 0 clears no bit.
         expect = await self._l2_accumulate([d["cmd_kind"], "UNDERFLOW", "OVERFLOW"])
         await self.ops.wr(ERROR_STATUS, 0)
+        # Control: the write of 0 landed (a non-OKAY write response raises in
+        # ops.wr), so the readback below grades a write the DUT took.
+        self.logger.info("CTL-ZERO-WR LOG seed=%d reg=ERROR_STATUS data=0x0 bresp=OKAY", self.seed)
         got = await self.ops.rd(ERROR_STATUS)
         self._grade(
             "CHK-SPI-ERR-MASK",
