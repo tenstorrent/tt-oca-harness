@@ -3214,3 +3214,57 @@ The image reports every value through the KM mailbox write register. It performs
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Scope limit*: The test extends `sep_km_mem_smoke_test`. Only the new cells are graded here: the open owner keeps the round trip under one key, the stored form that differs from the plaintext and the array word at each kept row, and those cells are controls. The byte permutation `perm8` of the KM SRAM and the address permutation `perm13` are not tabulated in the scrambler document, so the stored word and the physical row have no cipher golden (<<sep-vplan-phase3-blocked,Blocked features>>). The cipher golden is graded on the KPV path in `sep_km_kpv_rand_test`. The test grades a lock set with the enable at 0 by the scrambled-write count only: the value that SCRAMBLER_CTRL.enable reads after such a lock is not stated (<<sep-vplan-phase3-blocked,Blocked features>>). The SRAM parity status that a read under another key sets, the SRAM array contents after a cold reset and the SCRAMBLER_KEY value after a cold reset are not stated and are not graded. The number of SCRAMBLER_KEY writes in a boot, and the key provisioning order of the boot ROM, belong to `sep_km_boot_reset_rand_test`. The KPV scrambler belongs to `sep_km_kpv_rand_test`. The SCRAMBLER_KEY write and read with the lock clear belong to `sep_km_kmcsr_reset_rand_test`.
+
+'''''
+
+[[sep_km_otp_change_irq_test]]
+===== 7.38 `sep_km_otp_change_irq_test`
+
+*Phase*: 3
+
+*Area*: Key Manager vault
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense, `+esrc_noise_force`, the `rom_main_otp_change` image (`firmware = { name = "rom_main", mode = "km_rom_main_otp_change" }`, `+km_rom_hex=rom_main_otp_change.rom.parhex`). That image is the bench wipe pair (`KM_BOOT_WIPE=0 KM_UNREC_WIPE=0`) with `KM_OTP_CHANGE_EN=1`, so `IRQ_ENABLE.otp_change_en` is set at boot. The shipped default of `ROM_KM_OTP_CHANGE_EN_DEFAULT` stays 0. Seed 1. Testlist: groups `all`, `cpu_stub` and `phase3_key_manager`.
+
+*Source Module*: `sep_km_otp_change_irq_test`
+
+*Check status*: Implemented: CHK-OTP-ARM, CHK-OTP-PULSE, CHK-OTP-RETIRE. CHK-OTP-RETIRE fails on this DUT (see Known limitation). The leaf has no expected-fail entry.
+
+*BFM / Model*: Host mailbox master (`HOST-MBX`). The image is the production ROM built by `[c_build.km_rom_main_otp_change]`.
+
+* Approved: `HOST-MBX`; `KM-CSR` taps `km_csr_irq_status_o` and `km_csr_irq_enable_o`; PIC interrupt probe `sep_internal_interrupts_probe_o` bit 30 (KM unrecoverable error); `km_rom_req_count_o` (logged on the retire line); `HK-IRQSET` (`km_irqset_arm_i`, `km_irqset_mask_i`, readback `km_irqset_fired_o`).
+* Injects: one `HK-IRQSET` pulse. Mask bit 8 is `IRQ_STATUS.otp_change` (`km_csr.adoc`, `IRQ_SET.otp_change_set`).
+
+*Randomization*: None. The mask is the generated `IRQ_STATUS.OTP_CHANGE` bit. Seed 1 replays the same boot.
+
+*Objective*: With the OTP-change source armed, one `IRQ_SET` of that bit makes the informational handler run, clear the sticky bit and return to the main loop. The aggregated KMCSR interrupt is `IRQ_STATUS & IRQ_ENABLE` (`hw/ip/key_manager/doc/architecture.adoc`, "Key Manager Control and Status Registers (KMCSR)"). `IRQ_STATUS.otp_change` is sticky and write-1-to-clear (`hw/ip/key_manager/regs/gen/adoc/km_csr.adoc`, `IRQ_STATUS.otp_change`). The handler does not halt (`hw/ip/key_manager/doc/firmware.adoc`, "OTP Change Status"). A handler that returns without the write-1-to-clear leaves the line high, so the CPU re-enters and a following CMD_STAT does not complete.
+
+*Test Coverage*: One armed OTP-change interrupt, the sticky-bit clear, and a CMD_STAT that completes afterwards. The informational OTP-change bin of `sep_km_fault_report_cg.cp_fr_isr_disposition` samples when the owner writes `km_otp_chg_pass` after CHK-OTP-RETIRE passes, so a leaf that fails that check fills no bin.
+
+*Test Procedure*:
+
+[arabic]
+. Stage a production eFuse image and run real fuse sense. Park OTBN, KMAC and HMAC. Bring up entropy and release the KM. Wait for RESP_KM_READY.
+. Read `IRQ_ENABLE`, `IRQ_STATUS` and PIC vector bit 30, and send CMD_STAT (CHK-OTP-ARM). A masked source fails here.
+. Open the graded window of `FcovOwnSepKmOtpChangeIrqTest`. Pulse `HK-IRQSET` with the OTP-change mask. Read `km_irqset_fired_o` and `IRQ_STATUS.otp_change` (CHK-OTP-PULSE).
+. Wait up to 5000 clocks for `IRQ_STATUS.otp_change` to read 0. Send CMD_STAT and wait up to 5000 clocks for RESP_CMD (CHK-OTP-RETIRE). The line logs the sticky bit, the enabled line of that bit, PIC bit 30, whether CMD_STAT answered, the return code, the ROM request delta across the window and the pulse readback.
+. When CHK-OTP-RETIRE passes, write `km_otp_chg_pass` to 1, wait one clock and write it to 0. Close the window and drop the inject.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-OTP-ARM
+|Before the pulse the source is armed and the main loop answers. `IRQ_ENABLE.otp_change_en` reads 1, `IRQ_STATUS.otp_change` reads 0, PIC vector bit 30 reads 0, and CMD_STAT returns 0 (`firmware.adoc`, "OTP Change Status": the shipped boot leaves the source masked, and this image sets the enable; `km_csr.adoc`, `IRQ_ENABLE.otp_change_en` reset 0). A build that leaves the enable at 0, a sticky bit already set, or a CPU that does not answer, fails here, so a masked source cannot pass the later check. Anchor: `KM-CSR`, the PIC probe and RESP_CMD. Evidence: `CHK-OTP-ARM PASS: en_otp_change=1 status_otp_change=0 pic30=0 stat_rc=0`.
+|CHK-OTP-PULSE
+|The inject set the sticky bit. `km_irqset_fired_o` reads 1 after the arm, and `IRQ_STATUS.otp_change` reads 1 (`SEP_TB_ARCH.adoc`, HK-IRQSET: one pulse per arm, mask bit i is IRQ_STATUS bit i; `km_csr.adoc`, `IRQ_STATUS.otp_change` reset 0, set by `IRQ_SET.otp_change_set`). The fired readback shows the bench scheduled the pulse. The status read shows the bit left its reset value. A missed pulse, or a pulse that does not set the bit, fails here, so CHK-OTP-RETIRE cannot pass on the reset value. Anchor: `km_irqset_fired_o` and `KM-CSR`. Evidence: `CHK-OTP-PULSE PASS: fired=1 status_otp_change=1 mask=0x100`.
+|CHK-OTP-RETIRE
+|The handler clears the sticky bit and returns. Within 5000 clocks `IRQ_STATUS.otp_change` reads 0, the enabled line of that bit (`IRQ_STATUS & IRQ_ENABLE`) reads 0, PIC vector bit 30 stays 0, and a following CMD_STAT completes with return code 0 (`km_csr.adoc`, `IRQ_STATUS.otp_change`: sticky, write 1 to clear; `architecture.adoc`: the aggregated interrupt is the OR of the masked status bits; `firmware.adoc`, "OTP Change Status": the handler does not halt). A handler that leaves the sticky bit set keeps the line high, so the CPU re-enters and CMD_STAT does not complete. A handler that takes the fatal path raises PIC bit 30. The ROM request delta is logged and not graded: the main loop also fetches from ROM. Anchor: `KM-CSR`, the PIC probe and RESP_CMD. Evidence: `CHK-OTP-RETIRE PASS: status_otp_change=0 line=0 pic30=0 stat_answered=1 stat_rc=0 rom_req_delta=<n> fired=1`.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Known limitation*: CHK-OTP-RETIRE fails on this DUT. The handler reads `OTP_CHANGE_STATUS`, calls the change hook and clears `OTP_CHANGE_STATUS`, and does not write 1 to `IRQ_STATUS.otp_change`. The sticky bit stays 1, the aggregated line stays high and CMD_STAT does not complete. The check stays graded. CHK-OTP-ARM and CHK-OTP-PULSE pass on their own. *Issue*: #3102
+
+*Scope limit*: The stimulus is `IRQ_SET`, the software trigger of the source (`km_csr.adoc`, `IRQ_SET.otp_change_set`). The leaf does not change an OTP field and does not grade `OTP_CHANGE_STATUS`. The shipped boot leaves `otp_change_en` at 0; only this image sets it. The fatal sources and the shared-key informational handler belong to `sep_km_fault_inject_rand_test`. The leaf does not change the handler.

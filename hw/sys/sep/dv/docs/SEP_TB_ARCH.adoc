@@ -1759,9 +1759,9 @@ SLVERR and the ROM sends an unrecoverable-fault frame in place of
 rather than hanging the KM. A named `+km_rom_hex` that does not resolve is
 a t=0 `$fatal` in `tb_top`.
 
-Two more profiles build the same application ROM with the wipe knobs named in
+Three more profiles build the same application ROM with the knobs named in
 the profile, each with its own image name and a cache key whose recipe names
-both knobs. `c_compile` builds each image in a directory private to the run
+those knobs. `c_compile` builds each image in a directory private to the run
 and the test, and the prestage hook stages it into the sim directory when the
 leaf carries the matching `+km_rom_hex`.
 
@@ -1771,11 +1771,12 @@ leaf carries the matching `+km_rom_hex`.
 |`km_rom_main` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (bench build) |`rom_main.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main" }`, `+km_rom_hex=rom_main.rom.parhex`
 |`km_rom_main_default` |`KM_BOOT_WIPE=1 KM_UNREC_WIPE=1` (shipped default) |`rom_main_default.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_default" }`, `+km_rom_hex=rom_main_default.rom.parhex`. User: `sep_km_boot_reset_rand_test` (HOST-DEFAULT).
 |`km_rom_main_unrec` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=1` |`rom_main_unrec.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_unrec" }`, `+km_rom_hex=rom_main_unrec.rom.parhex`. User: the HOST-UNREC entry of `sep_km_fault_inject_rand_test`.
+|`km_rom_main_otp_change` |`KM_BOOT_WIPE=0 KM_UNREC_WIPE=0 KM_OTP_CHANGE_EN=1` |`rom_main_otp_change.rom.parhex` |`firmware = { name = "rom_main", mode = "km_rom_main_otp_change" }`, `+km_rom_hex=rom_main_otp_change.rom.parhex`. User: `sep_km_otp_change_irq_test`.
 |===
 
-The profiles drive the `rom_main`, `rom_main_default` and `rom_main_unrec`
-targets of `hw/sys/sep/dv/cocotb/tests/km_fw/Makefile`. A leaf of
-`sep_km_boot_reset_rand_test` or `sep_km_fault_inject_rand_test` logs
+The profiles drive the `rom_main`, `rom_main_default`, `rom_main_unrec` and
+`rom_main_otp_change` targets of `hw/sys/sep/dv/cocotb/tests/km_fw/Makefile`.
+A leaf of `sep_km_boot_reset_rand_test` or `sep_km_fault_inject_rand_test` logs
 `ROM-BUILD km_boot_wipe=<0/1> km_unrec_wipe=<0/1>`.
 
 The small committed `km_rom*.parhex` assembly images are a different class
