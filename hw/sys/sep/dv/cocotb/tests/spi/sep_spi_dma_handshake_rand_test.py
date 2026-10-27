@@ -55,14 +55,18 @@ Checkers:
   CHK-HS-MASKED   mask bit 0 clear: the destination keeps its sentinel while the
                   trigger probe is high, and CONTROL.GO reads 1 at the end of
                   the window.
-  CHK-HS-GO       In handshake operation the engine does not clear GO between
-                  chunks; firmware clears it to stop (secure_dma.adoc,
-                  CONTROL.GO). GO stays 1 between chunks below
-                  TOTAL_DATA_SIZE (stop run, before the firmware clear). GO
-                  once the destination holds TOTAL_DATA_SIZE bytes, GO after a
-                  further wait as long as t_fill, and STATUS.DONE at the total
-                  are logged only (OBS-HS-GO-TOTAL, OBS-HS-DONE): the register
-                  text does not state a GO clear at the total.
+  CHK-HS-GO       In handshake operation the engine keeps GO set across chunks
+                  and clears it, setting STATUS.DONE, once TOTAL_DATA_SIZE
+                  bytes have been transferred (secure_dma.adoc, CONTROL.GO).
+                  GO stays 1 between chunks below TOTAL_DATA_SIZE (stop run,
+                  before the firmware clear). After the destination holds
+                  TOTAL_DATA_SIZE bytes and a further wait as long as t_fill,
+                  GO reads 0 and STATUS.DONE reads 1 (handshake run). The
+                  text states no clock for the clear, so GO and DONE read as
+                  soon as the destination holds the total are logged only
+                  (OBS-HS-GO-TOTAL). Controls: the normal-mode copy ends with
+                  GO=0, and a poll of the handshake run before the total reads
+                  DONE=0.
   CHK-HS-STOP     re-trigger leg, GO=1: after the trigger fell, a second Rx
                   segment raises it again and the engine moves at least one more
                   chunk; the moved chunks equal the RX stream (the first segment,
@@ -131,7 +135,8 @@ each "never" window; 1 <= n_moved, and the chunks moved before the GO clear are
 fewer than chunks_total; the normal-mode copy reads GO=0 at DONE, shows
 CHUNK_DONE in a poll, and shows a rise of PIC source 10 (bit 9 of
 ``sep_internal_interrupts_probe_o``), so a dead or mis-bound bit-9 tap fails
-the control of the line leg of CHK-HS-NOCHUNK. A missing control logs
+the control of the line leg of CHK-HS-NOCHUNK; INTR_ENABLE reads back with
+DMA_CHUNK_DONE=1 in the handshake run (``CTL-HS-INTR-EN``). A missing control logs
 CTRL-MISSING and fails the leaf.
 
 Probes: ``spi_lsio_trigger_probe_o``, ``dma_busy_probe_o``, ``spi_tx_qd_probe_o``
@@ -970,6 +975,15 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         rx_bytes = cfg.n * cfg.chunk + cfg.extra_bytes
         bound = cfg.seg_clks(rx_bytes)
         await self.dma.wr(INTR_ENABLE, INTR_EN_CHUNK)
+        # Control of the line leg of CHK-HS-NOCHUNK: INTR_ENABLE resets to 0,
+        # so a lost write would also keep bit 9 low.
+        hs_intr_en = await self.dma.rd(INTR_ENABLE)
+        self.logger.info(
+            "CTL-HS-INTR-EN LOG seed=%d intr_enable=0x%08x chunk_en=%d",
+            cfg.seed,
+            hs_intr_en,
+            int(bool(hs_intr_en & INTR_EN_CHUNK)),
+        )
         m_hs_irq = self.irq.mark()
         self.dtap.start()
         m_hs_tap = self.dtap.mark()
@@ -1007,15 +1021,18 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         self.logger.info(
             "T-FILL LOG seed=%d t_fill_clks=%d polls=%d", cfg.seed, t_fill, len(hs_polls)
         )
-        # In handshake operation the engine does not clear GO (CONTROL.GO):
-        # expected GO=1 at TOTAL_DATA_SIZE and after the wait.
-        go1 = field_compare(await self.dma.rd(DMA_CONTROL), GO_MASK, GO_MASK)
+        # CHK-HS-GO at the total: CONTROL and STATUS once the destination holds
+        # TOTAL_DATA_SIZE bytes (logged), and again after a further t_fill wait
+        # (graded).
+        n_polls_before_total = len(hs_polls)
+        ctl_total = await self.dma.rd(DMA_CONTROL)
         st_total = await self.dma.read_status()
         t1 = self.tw.clk
         while self.tw.clk - t1 < t_fill:
             hs_polls.append(await self.dma.read_status())
-        go2 = field_compare(await self.dma.rd(DMA_CONTROL), GO_MASK, GO_MASK)
-        # Firmware stops the handshake operation by clearing GO.
+        ctl_after = await self.dma.rd(DMA_CONTROL)
+        st_after = await self.dma.read_status()
+        # Leave GO clear for the next run, also on a DUT that kept it set.
         await self.dma.wr(DMA_CONTROL, self.dma.last_control & ~GO_MASK)
         hs_ev = self.dtap.since(m_hs_tap)
         await self.dtap.stop()
@@ -1235,44 +1252,49 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             f"polls_with_chunk_done={hs_chunk_polls} polls={len(hs_polls)} "
             f"chunk_irq_rises={hs_irq_rises} chunk_irq_high_clks={hs_irq_high} "
             f"control_normal_polls={len(statuses)} control_chunk_irq_rises={irq_rises} "
-            f"control_normal_polls_with_chunk_done={nm_chunk_polls}"
+            f"control_normal_polls_with_chunk_done={nm_chunk_polls} "
+            f"control_hs_intr_enable=0x{hs_intr_en:08x}"
         )
         # The poll leg and the line leg each need their own control: a dead or
-        # mis-bound bit-9 tap reads 0 here.
-        if nm_chunk_polls < 1 or irq_rises < 1:
+        # mis-bound bit-9 tap reads 0 here, and so does a handshake run whose
+        # INTR_ENABLE.DMA_CHUNK_DONE write did not land.
+        if nm_chunk_polls < 1 or irq_rises < 1 or not hs_intr_en & INTR_EN_CHUNK:
             self._ctrl_missing("CHK-HS-NOCHUNK", line)
         if hs_chunk_polls or hs_irq_rises or hs_irq_high:
             self._fail("CHK-HS-NOCHUNK", line)
         self._pass("CHK-HS-NOCHUNK", line)
 
-        # CHK-HS-GO. "For Hardware handshake operation, DMA engine does not
-        # auto clear the Go bit. Firmware shall clear the Go bit when it
-        # intends to stop the hardware handshake operation" (secure_dma.adoc,
-        # CONTROL.GO). The text does not state GO at TOTAL_DATA_SIZE, so GO at
-        # the total and after the wait are logged only.
+        # CHK-HS-GO. "For hardware handshake operation, the DMA engine keeps
+        # the `go` bit set across chunks and clears it, setting `status.done`,
+        # once `total_data_size` bytes have been transferred." (secure_dma.adoc,
+        # CONTROL.GO). GO stays 1 between chunks (stop run), and GO=0 with
+        # DONE=1 after the t_fill wait that follows the total (handshake run).
+        # The text states no clock for the clear, so CONTROL and STATUS read as
+        # soon as the destination holds the total are logged only.
         control_normal_go = int(bool(go_nm.got & GO_MASK))
-        go_at_total = int(bool(go1.got & GO_MASK))
-        go_after_wait = int(bool(go2.got & GO_MASK))
-        line = f"go_held_between_chunks={go_before} control_normal_go={control_normal_go}"
-        if control_normal_go != 0:
+        go_at_total = int(bool(ctl_total & GO_MASK))
+        go_after_total = int(bool(ctl_after & GO_MASK))
+        done_before_total = [p.done for p in hs_polls[:n_polls_before_total]]
+        line = (
+            f"go_held_between_chunks={go_before} go_after_total={go_after_total} "
+            f"done_after_total={st_after.done} control_after_total=0x{ctl_after:08x} "
+            f"control_normal_go={control_normal_go} "
+            f"control_done_before_total={int(0 in done_before_total)}"
+        )
+        # Controls: the normal-mode copy ends with GO=0, and a poll of the
+        # handshake run before the total reads DONE=0, so a DONE bit that reads
+        # 1 regardless fails here.
+        if control_normal_go != 0 or 0 not in done_before_total:
             self._ctrl_missing("CHK-HS-GO", line)
         self.logger.info(
-            "OBS-HS-DONE seed=%d done_at_total=%d go_at_total=%d",
-            cfg.seed,
-            st_total.done,
-            go_at_total,
-        )
-        self.logger.info(
-            "OBS-HS-GO-TOTAL seed=%d go_at_total=%d go_after_wait=%d done_at_total=%d "
-            "control_at_total=0x%08x control_after_wait=0x%08x t_fill=%d",
+            "OBS-HS-GO-TOTAL seed=%d go_at_total=%d done_at_total=%d control_at_total=0x%08x "
+            "t_fill=%d",
             cfg.seed,
             go_at_total,
-            go_after_wait,
             st_total.done,
-            go1.got,
-            go2.got,
+            ctl_total,
             t_fill,
         )
-        if go_before != 1:
+        if go_before != 1 or go_after_total != 0 or st_after.done != 1:
             self._fail("CHK-HS-GO", line)
         self._pass("CHK-HS-GO", line)
