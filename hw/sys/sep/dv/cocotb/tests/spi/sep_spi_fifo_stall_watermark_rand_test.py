@@ -16,7 +16,7 @@ and size the stimulus.
 
 Depth sources: the SEP SPI host is the unmodified OpenTitan IP
 (``doc/trm/src/revision.adoc:191``; "The SEP SPI host is the unmodified
-OpenTitan SPI Host.", ``doc/programmer/src/sep-programming.adoc:784``). The
+OpenTitan SPI Host.", ``doc/programmer/src/sep-programming.adoc:811``). The
 OpenTitan SPI_HOST features give the FIFO sizes: "288 bytes for TX data, 256
 bytes for RX data"
 (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/README.md:26``), that is
@@ -117,7 +117,7 @@ Checkers:
                    buffers for the sck, csb, and sd lines."
                    (spi_host.hjson:222). Control: one pad sample before the
                    first CONTROL write that sets OUTPUT_EN reads cs_oe =
-                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:275-276``:
+                   sck_oe = 0 (``doc/integrator/src/smu-sep.adoc:291-292``:
                    the host "drives no pad until software sets its
                    ``CONTROL.OUTPUT_EN``"), else CTRL-MISSING. One clean
                    frame (Tx then Rx, CSAAT) at the same width follows and is

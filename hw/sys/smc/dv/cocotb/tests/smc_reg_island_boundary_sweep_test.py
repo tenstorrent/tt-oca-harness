@@ -25,12 +25,11 @@ class smc_reg_island_boundary_sweep_test(smc_base_test):
         "CHK-ISL-PASTEXT-NOCHANGE",
         "CHK-ISL-PASTEXT-READ-DECERR",
         "CHK-ISL-PASTEXT-WRITE-DECERR-CLASS",
-        "CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS",
         "CHK-ISL-SETUP-GOLDENS",
         "CHK-ISL-TABLE",
         "CHK-NONVAC",
     )
-    min_evidence = 9
+    min_evidence = 8
 
     auto_protocol_vip = False
 

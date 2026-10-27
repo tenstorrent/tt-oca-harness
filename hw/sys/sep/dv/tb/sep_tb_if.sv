@@ -76,8 +76,10 @@ interface sep_tb_if;
   logic [31:0]        km_sram_word0;
   logic [31:0]        km_sram_write_count;
 
-  // Runtime enable for the shared AXI protocol SVA checker on the CPU-LSU
-  // splice; tb_top ANDs it with the run-mode gate of u_s_axi_sva.
+  // Runtime enable for the shared AXI protocol SVA checkers on the CPU-LSU
+  // splice, the VeeR CPU ports, the secure DMA master and the SMN, SMC and
+  // external outbound ports; tb_top ANDs it with the enable of each of those
+  // checkers.
   logic axi_sva_en = 1'b1;
 
 endinterface : sep_tb_if

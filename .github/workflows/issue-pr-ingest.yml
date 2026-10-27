@@ -33,8 +33,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Check ingest script and issue-form taxonomy
-        run: python3 .github/scripts/ingest_github.py --self-test
+      - name: Check ingest script, issue-form taxonomy and notification rules
+        run: |
+          python3 .github/scripts/ingest_github.py --self-test
+          python3 .github/scripts/curator_notify.py --self-test
       - name: Assign PR author
         if: github.event.action == 'opened'
         env:
@@ -44,4 +46,4 @@ jobs:
         if: github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 .github/scripts/ingest_github.py --pr-review "${{ github.event.pull_request.number }}"
+        run: python3 .github/scripts/curator_notify.py --pr "${{ github.event.pull_request.number }}" --on-open --apply

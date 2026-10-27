@@ -2039,8 +2039,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-WDT-SMC-REQ",
             "CHK-SEP-WDT-SMC-REQ",
             "the SEP watchdog request reads 0 before the enable write and 1 within the bounded "
-            "wait after it, and falls to 0 only once the SMC primary reset asserted; bite cycles "
-            "are measured and logged only",
+            "wait after it, and falls to 0 while the primary and cold resets stay released; bite "
+            "cycles are measured and logged only",
         ),
         (
             "CHK-SEP-WDT-SMC-ASSERT",
@@ -2057,21 +2057,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-WDT-SMC-PRIMARY-COLD",
             "CHK-SEP-WDT-SMC-PRIMARY-COLD",
-            "the SMC primary reset and the stable cold reset read 1 at every sample of the hold "
-            "window that began after the request and both nets changed",
+            "the SMC primary reset and the stable cold reset read 1 at every sample from the "
+            "request rise through the closing window",
         ),
         (
             "CHK-SEP-WDT-SMC-HOLD",
             "CHK-SEP-WDT-SMC-HOLD",
-            "while the watchdog-term and warm nets read 0 the request reads 1 at every sample of "
-            "the hold window",
+            "from the first sample where both nets read 0 until the request falls, the request "
+            "reads 1 and both nets read 0",
         ),
         (
             "CHK-SEP-WDT-SMC-RELEASE",
             "CHK-SEP-WDT-SMC-RELEASE",
-            "the held cool-reset pin drives the primary reset to 0 and the request to 0; after "
-            "the pin is released primary, watchdog-term and warm nets each read 1; the order and "
-            "cycles are measured and logged only",
+            "24 reference edges after the request fall both nets still read 0, and each net "
+            "reads 1 after 31 to 32-plus-synchronizer reference edges; primary and cold stay "
+            "released",
         ),
         (
             "CHK-SEP-WDT-SMC-ORDER",
@@ -2088,14 +2088,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-NONVAC",
             "CHK-NONVAC",
-            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11<S12; "
-            "the PASS stamp is two clk_smu_i cycles after S11",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10; "
+            "the PASS stamp is two clk_smu_i cycles after S9",
         ),
         (
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
-            "eight bounded waits in five kinds (request rise 1, assert 2, primary assert 1, "
-            "request fall 1, release 3), none expired, with the last state recorded",
+            "six bounded waits in four kinds (request rise 1, assert 2, request fall 1, "
+            "release 2), none expired, with the last state recorded",
         ),
     ],
     "smu_xtrig_ctm_self_loop_test": [
@@ -2227,8 +2227,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-WDT-BITE",
             "CHK-SEP-WDT-BITE",
-            "the SEP watchdog reset request is low before the watchdog is enabled and rises "
-            "when it bites",
+            "the SEP watchdog reset request is low before the watchdog is enabled, rises "
+            "when it bites, and falls without a cool or primary reset",
         ),
     ],
     "smu_sep_stap_hold_reset_test": [

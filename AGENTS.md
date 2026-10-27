@@ -616,12 +616,11 @@ Do not set a GitHub milestone. Description heading is **What happened** (Bug),
 
 Do not add labels, assignees, or a milestone. Ingest copies those form picks
 onto empty Project 291 fields, applies matching labels, and prefixes the
-title. The curator fills leftover fields, assigns, copy-edits titles
-and bodies, nudges approved PRs that are still open after 3 days, and
-reminds assignees 3 days before a milestone or issue due date on its
-05:00 and 16:00 PDT runs and on dispatch. The weekly
-issue-activity and discussion-miner workflows are in
-`.github/ISSUE_CURATION.md`.
+title. The curator fills leftover fields, assigns, and copy-edits titles
+and bodies on its 05:00 and 16:00 PDT runs and on dispatch. Reviewer
+requests and every reminder come from `.github/scripts/curator_notify.py`,
+whose rules, and the weekly issue-activity and discussion-miner workflows,
+are in `.github/ISSUE_CURATION.md`.
 
 ### Pull requests
 
@@ -647,10 +646,13 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR.
-Ingest assigns the opener when Assignees is empty. It requests a reviewer
-from GitHub suggestions, then a linked-issue assignee, then recent committers
-on the touched paths, then the reviewer pool in `.github/issue-taxonomy.yml`.
-The curator rewrites a PR title only when it is not already this form.
+Ingest assigns the opener when Assignees is empty, without a comment. It
+requests a reviewer from GitHub suggestions, then a linked-issue assignee,
+then recent committers on the touched paths, then the reviewer pool in
+`.github/issue-taxonomy.yml`, once per PR and never someone who already
+reviewed or was removed. Remove an automatic reviewer request you cannot take
+rather than leaving it; it is not made again. The curator rewrites a PR title
+only when it is not already this form.
 
 ### Paired pull requests with the `nonfree` companion
 

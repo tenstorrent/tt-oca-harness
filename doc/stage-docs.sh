@@ -31,11 +31,11 @@ AOU_DOC="$ROOT/vendor/tenstorrent/aou/upstream/DOC/MAS"
 AOU_INTEGRATION_GUIDE="$ROOT/vendor/tenstorrent/aou/upstream/DOC/integration_guide"
 
 SUBSYSTEMS="smc sep dtp"
-# The ROM manuals are Programmer's Guide appendices.
+# The ROM manuals and the first-stage boot contract are Programmer's Guide appendices.
 if [ "$(basename "$PRODUCT")" = programmer ]; then
-  SUBSYSTEMS="$SUBSYSTEMS smc/bootrom/prod sep/bootrom/prod"
+  SUBSYSTEMS="$SUBSYSTEMS smc/bootrom/prod sep/bootrom/prod smu/bl1"
 else
-  rm -rf "${MOD:?}/smc-bootrom-prod" "${MOD:?}/sep-bootrom-prod"
+  rm -rf "${MOD:?}/smc-bootrom-prod" "${MOD:?}/sep-bootrom-prod" "${MOD:?}/smu-bl1"
 fi
 # The SMU chapter links into the TRM's ROOT module. Other products retain
 # their existing subsystem pages and the independent ROOT SMU port partial.
@@ -50,7 +50,7 @@ MODULES="ROOT $SUBSYSTEMS aou ip"
 
 clean() {
   rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/partials/meta" "$MOD/ROOT/assets"
-  for m in smc sep dtp smu aou ip smc-bootrom-prod sep-bootrom-prod; do
+  for m in smc sep dtp smu aou ip smc-bootrom-prod sep-bootrom-prod smu-bl1; do
     rm -rf "${MOD:?}/$m"
   done
   rm -f "$ASSETS"/aou-*

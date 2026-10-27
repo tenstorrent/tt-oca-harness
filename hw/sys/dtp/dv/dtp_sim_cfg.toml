@@ -121,9 +121,12 @@ build_dir = "hw/sys/dtp/dv/build/cocotb"   # per-tool subdir appended: cocotb/<t
 [targets.default.tools.verilator]
 # --assert evaluates the two-state protocol SVA (a failure prints %Error and
 # stops the run); --no-assert-case keeps the unique/priority-case checks of the
-# DUT and vendored RTL out of that set.
+# DUT and vendored RTL out of that set. COVERIGN is an error: Verilator drops a
+# covergroup construct it does not support with only that warning, and then
+# builds other bins than the commercial simulators.
 flags = [
   "-Wno-BLKLOOPINIT",
+  "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
   "--assert",
@@ -141,6 +144,7 @@ pinned_only = true
 [targets.bsr_disabled.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
+  "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
   "--assert",
@@ -149,9 +153,9 @@ flags = [
 
 [coverage.verilator]
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage
-# (the cov/sv cover-property points); toggle instrumentation stays off to
-# keep per-test databases lean. Replaces the simulator-default `--coverage`
-# (which enables all forms including toggle).
+# (the dtp_jtag2axi_fcov cover-property points); toggle instrumentation stays
+# off to keep per-test databases lean. Replaces the simulator-default
+# `--coverage` (which enables all forms including toggle).
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
