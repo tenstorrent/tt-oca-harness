@@ -16,9 +16,10 @@ from typing import Any
 
 import cocotb
 from cocotb.triggers import RisingEdge
-from cocotbext.axi import AxiBus, AxiMaster
+from cocotbext.axi import AxiBus
 from cocotbext.axi.constants import AxiBurstType, AxiLockType, AxiProt
 
+from .ocah_axi_master_backend import OcahAxiMaster
 from .ocah_axi_master_config import AxiTimingProfile
 
 __all__ = ["OcahAxiMasterDriver", "OcahAxiIdCapture", "apply_profile", "clear_profile"]
@@ -135,7 +136,7 @@ class OcahAxiMasterDriver:
         self.log = logging.getLogger(name)
         self._bus, self._clock, self._reset = self._resolve_bus_clock_reset(axi4_intf, clock, reset)
         timing = kwargs.pop("timing", None)
-        self._master = AxiMaster(
+        self._master = OcahAxiMaster(
             self._bus,
             self._clock,
             self._reset,
