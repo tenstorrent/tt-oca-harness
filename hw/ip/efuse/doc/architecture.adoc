@@ -400,3 +400,136 @@ preventing shadow register modifications.
 For SMC, `secure_tm_i` is tied to logic `0`, meaning Secure Test Mode is not
 active during normal SMC operation. This signal is primarily relevant for SEP
 where sensitive RMA tokens must be protected during manufacturing test flows.
+
+[[efuse-adopter-fuses]]
+=== Adopter Fuse Region (SMC)
+
+The SMC eFuse controller supports an optional adopter fuse region: fuses the
+adopter defines for logic elsewhere in its SoC, such as memory repair entries
+and sensor trims. The harness senses, shadows, locks and exports the region
+without interpreting its contents, so the harness RTL is the same for every
+adopter map. Harness spare fuses stay reserved for the harness, and the SEP has
+no adopter region.
+
+<<efuse-adopter-fuses-fig>> shows the region's path through the SMC controller.
+<<efuse-adopter-fuses-table>> summarises its properties.
+
+[[efuse-adopter-fuses-fig]]
+.SMC adopter fuse region
+image::efuse_adopter_architecture.svg[alt="Inside the SMC eFuse controller, register access passes through access control and the guard to the harness shadow file, which holds HARNESS_LOCKS, ADOPTER_LOCKS, named fuses and spares, and to the adopter shadow file of up to 32 lock regions, whose locks come from ADOPTER_LOCKS; the fuse sense FSM reads the harness map then the adopter map; on the adopter side, smc_adopter_shadow_regs_o feeds the adopter logic, and fuse commands go through the Interface SHIM to fuse macros holding bits 0 to 8191 and bits from 8192",width=100%,pdfwidth=100%]
+
+[[efuse-adopter-fuses-table]]
+[width="100%",cols="25%,75%",options="header",]
+.Adopter fuse region summary
+|=====================================================================================
+|Property |Description
+|Configuration |Three `CFG` fields: `SMC_ADOPTER_FUSE_BASE`,
+`SMC_ADOPTER_FUSE_WORDS` and `SMC_ADOPTER_LOCK_REGION_END`. A word count of 0,
+the default, removes the region and its logic.
+
+|Map description |Optional. The adopter can describe the payload in
+`smc_adopter_fuse_map.rdl` for its own software headers and documentation; the
+harness RTL does not read it.
+
+|Software window |At `CFG.SMC_ADOPTER_FUSE_BASE` in `smc_external`, after the
+SHIM control block, `4 * CFG.SMC_ADOPTER_FUSE_WORDS` bytes long. The fabric
+diverts the window into the eFuse controller instead of
+`smc_external_req_o`.
+
+|Fuse bit address |From bit 8192, directly after the 8 Kbit harness map.
+Harness fuse addresses do not depend on the adopter size.
+
+|Shadow file |A second `efuse_shadow_regs` instance, filled during fuse sense.
+
+|Export |`smc_adopter_shadow_regs_o` at the `smu.sv` boundary, an array of
+`CFG.SMC_ADOPTER_FUSE_WORDS` 32-bit words. With no region it is one word, tied
+to zero.
+
+|Locks |`ADOPTER_LOCKS` in the SMC harness fuse map: 32 write/read pairs, one
+per adopter-defined lock region, up to 32 regions.
+
+|Static policy |None. Every lock region is readable and writable in the shadow
+until its `ADOPTER_LOCKS` bits are set.
+
+|JTAG policy |The SMC JTAG policy for every fuse
+(<<efuse-lifecycle-based-jtag-permissions-table>>).
+|=====================================================================================
+
+==== Sensing and Boot
+
+At cold reset release the controller senses the harness map, then the adopter
+map, through the same Interface SHIM. `fuse_sense_done` asserts only when
+both regions are in their shadow files, so `smc_fuse_sense_done_o`, the
+`efuse_sense_done` status bit and the fuse-released SMC reset all wait for the
+adopter map.
+
+==== Adopter Locks
+
+The SMC harness fuse map starts with two hardware-consumed lock registers:
+
+* `HARNESS_LOCKS` governs the harness fields.
+* `ADOPTER_LOCKS` governs the adopter region.
+
+Both are lock meta-fields: they are not lock-checked themselves, their shadow
+copies are write-1-to-set, and they are kept in Class 1 storage so scan cannot
+clear them. As with every lock, a burned bit is a permanent hardware lock and a
+set shadow bit is a software lock until reset
+(<<efuse-hardware-and-software-locks-table>>). The generated SMC shadow register
+table gives their addresses and fields.
+
+`CFG.SMC_ADOPTER_LOCK_REGION_END` holds 32 entries. Entry _n_ is the word
+offset one past the end of region _n_, and region _n_ starts where region
+_n_-1 ends, so the regions tile the adopter map with no gaps. Entries after
+the last region are 0, and the last region ends at
+`CFG.SMC_ADOPTER_FUSE_WORDS`. Pair _n_ of `ADOPTER_LOCKS`, with the write lock
+at bit 2__n__ and the read lock at bit 2__n__+1, governs region _n_. Pairs
+beyond the last region are unused.
+
+The harness builds a table of region address ranges from these entries at
+elaboration, in the same form as the harness field map, and checks adopter
+accesses against it. It never reads adopter field names. Static checks in
+`smu.sv` reject entries that are not strictly increasing, that are followed by
+a non-zero entry after a 0, or whose last region does not end at
+`CFG.SMC_ADOPTER_FUSE_WORDS`.
+
+Lock pair _n_ keeps its meaning only while region _n_ does. Once parts carry
+burned `ADOPTER_LOCKS` bits, the adopter region may grow only by appending
+regions.
+
+==== Access Path
+
+The adopter shadow registers sit on the same path as the harness shadow
+registers: the functional and OTP JTAG ports, the port mux, the address decode,
+the AXI-Lite to APB bridge and the APB demux. As a result:
+
+* The SMC JTAG lifecycle filter applies unchanged. In PROD and RMA_SOP, JTAG
+accesses to the adopter window receive an error response.
+* A write to `ADOPTER_LOCKS` completes before any later access to the adopter
+window, from either port, because both windows share one APB bridge.
+* An access to a locked region returns `0xbadcab1e` without an error response
+and raises `locked_field_access_interrupt_o`, as for harness fields.
+* Until fuse sense completes, accesses to the adopter window receive an error
+response.
+* Program and read commands from the eFuse control registers address adopter
+fuses at bit 8192 and above. The guard checks each against the `ADOPTER_LOCKS`
+pair of the region that holds the target bit.
+
+==== Constraints
+
+* The adopter window lies inside `smc_external`, and its base is aligned to its
+size rounded up to a power of two. Static checks in `smu.sv` enforce both.
+* `CFG.SMC_ADOPTER_FUSE_WORDS` is at most the ceiling of the SMC fuse-command
+address and length types, which a static check in `smu.sv` enforces.
+* The region holds no secrets. Adopter words have no secure-test lock, secret
+masking or Class 1 storage, so they receive normal scan handling. Secrets
+belong in the SEP.
+* An unlocked region can be overwritten in the shadow, and burned, by any agent
+that reaches the adopter window. Locking production regions early in boot is
+the adopter firmware's responsibility; the eFuse sequences are in the
+ifdef::backend-html5[]
+xref:ocah-programmer-guide::index.adoc#smc-efuse[eFuse section]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-efuse[eFuse section]
+endif::backend-pdf[]
+of the Programmer's Guide.
