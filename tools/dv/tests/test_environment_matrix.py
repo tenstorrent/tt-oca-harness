@@ -119,7 +119,7 @@ class PythonRangeTest(unittest.TestCase):
         self.assertEqual(action_input_default(DV_RUN_ACTION.read_text(), "python-version"), pinned)
         self.assertEqual(python_versions_in(DASHBOARD_WORKFLOW.read_text()), [pinned])
         lint = LINT_WORKFLOW.read_text()
-        job = re.search(r"^  dv-unit-tests:\n(.*?)(?=^  [a-z-]+:\n)", lint, re.M | re.S)
+        job = re.search(r"^  dv-unit-tests:\n(.*?)(?=^  [a-z0-9-]+:\n)", lint, re.M | re.S)
         assert job, "dv-unit-tests job"
         self.assertEqual(python_versions_in(job.group(1)), [pinned])
 

@@ -57,6 +57,11 @@ _METRIC_ALIASES = {
     "user": "user",
 }
 _OVERALL_ALIASES = {"overall", "total", "score"}
+# Covergroup bins Verilator writes that are not coverage goals: an ignore bin
+# counts the samples the model leaves out, an illegal bin stops the simulation
+# when it is hit, and a default bin counts the values no other bin takes.
+VERILATOR_NON_GOAL_BIN_TYPES = frozenset({"default", "ignore", "illegal"})
+_VERILATOR_BIN_TYPE_RE = re.compile(r"\x01bin_type\x02([^\x01']+)")
 _PERCENT_RE = re.compile(r"(?P<value>\d+(?:\.\d+)?)\s*%?")
 _KEY_VALUE_RE = re.compile(
     r"(?im)^\s*(?P<name>line|lines|cond|condition|conditions|toggle|toggles|tgl|"
@@ -463,6 +468,9 @@ def _parse_verilator_dat(path: Path) -> tuple[dict[str, float], float | None]:
         type_match = re.search(r"\x01t\x02([^\x01]+)", line)
         count_match = re.search(r"'\s+(\d+)\s*$", line)
         if type_match is None or count_match is None:
+            continue
+        bin_type = _VERILATOR_BIN_TYPE_RE.search(line)
+        if bin_type is not None and bin_type.group(1) in VERILATOR_NON_GOAL_BIN_TYPES:
             continue
         canonical = _metric_name(type_match.group(1))
         if canonical not in CANONICAL_METRICS:

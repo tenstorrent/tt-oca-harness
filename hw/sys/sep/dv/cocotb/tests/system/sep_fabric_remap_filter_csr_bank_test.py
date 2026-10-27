@@ -2,11 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fabric remap and filter CSR banks: field R/W, 64-bit upper words, a write-once lock, RO width.
 
-OCAH provenance: ``sep_fabric_64bit_regwidth_test`` checks 64-bit and lock
-fields, ``sep_outbound_filter_cfg_test`` checks filter configuration,
-``sep_cpuctrl_misc_regs_test`` checks CPU-control registers, and
-``sep_reg_sanity_test`` checks the System-block CSR subset.
-
 Combined-per-group CSR sweep over the SEP System-block fabric banks on the CPU-LSU
 AXI master (no_cpu): local-master alias-remap, AP/STEE output-remap, and the
 inbound/outbound filter config banks. Proves field R/W + 64-bit upper-word access +
@@ -29,6 +24,7 @@ Run mode: no_cpu with +skip_fuse_sense.
 from __future__ import annotations
 
 import pyuvm
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import (
     ALIAS_ATTRS,
@@ -65,6 +61,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     SepFabricCsrBank,
     SepFabricCsrCfg,
 )
+
+TEST = "sep_fabric_remap_filter_csr_bank_test"
 
 
 @pyuvm.test()
@@ -268,13 +266,56 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
                 wrote,
                 dbw,
             )
-            # CHK-RO: data_bus_width ignores a write (stays 3).
-            orig, after = await self.fab.ro_probe(cfg_lo, DBW_LSB, DBW_MASK.bit_count())
-            assert orig == DBW_RO_VAL and after == DBW_RO_VAL, (
-                f"CHK-RO FAIL: {name} e{entry} data_bus_width RO: orig={orig} "
-                f"after-write={after}, expected 3/3"
-            )
+            await self._chk_ro(name, entry, cfg_lo)
         self.logger.info("CHK-RO PASS: data_bus_width reads 3 and ignores writes (both filters)")
+
+    async def _chk_ro(self, name: str, entry: int, cfg_lo: int) -> None:
+        """CHK-RO: data_bus_width reads 3 before and after a write of another value.
+
+        Two passes of the same write. The first runs with the coverage window
+        closed. The second runs only after the first passed; its window is open
+        only over the write of the inverted field and the read after it.
+        """
+        for graded in (False, True):
+            await self._ro_pass(name, entry, cfg_lo, graded=graded)
+
+    async def _ro_pass(self, name: str, entry: int, cfg_lo: int, *, graded: bool) -> None:
+        tag = "graded" if graded else "first"
+        before = await self.fab.read32(cfg_lo)
+        orig = (before >> DBW_LSB) & DBW_MASK
+        if orig != DBW_RO_VAL:
+            raise AssertionError(
+                f"CHK-RO FAIL: {name} e{entry} pass={tag} data_bus_width read {orig} "
+                f"before the write, expected {DBW_RO_VAL} (FILTER_CONFIG 0x{before:08x})"
+            )
+        wrote = before ^ (DBW_MASK << DBW_LSB)
+        if graded:
+            open_graded_window(TEST, self.logger)
+        try:
+            await self.fab._wr(cfg_lo, wrote)
+            word = await self.fab.read32(cfg_lo)
+            after = (word >> DBW_LSB) & DBW_MASK
+            if after != DBW_RO_VAL:
+                raise AssertionError(
+                    f"CHK-RO FAIL: {name} e{entry} pass={tag} data_bus_width read {after} "
+                    f"after a write of {(wrote >> DBW_LSB) & DBW_MASK}, expected "
+                    f"{DBW_RO_VAL} (wrote 0x{wrote:08x}, read 0x{word:08x})"
+                )
+        finally:
+            if graded:
+                close_graded_window(self.logger)
+        self.logger.info(
+            "CHK-RO PASS: %s e%d pass=%s data_bus_width %d before, wrote %d (FILTER_CONFIG "
+            "0x%08x), read %d (FILTER_CONFIG 0x%08x)",
+            name,
+            entry,
+            tag,
+            orig,
+            (wrote >> DBW_LSB) & DBW_MASK,
+            wrote,
+            after,
+            word,
+        )
 
     async def _chk_woset(self) -> None:
         """CHK-VALID-RW + CHK-WOSET on region/entry 1 (woset locks are permanent -> last).

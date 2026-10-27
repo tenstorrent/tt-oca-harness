@@ -6,12 +6,32 @@ no_cpu / +skip_fuse_sense / +esrc_noise_force. HEALTH_TEST_CTRL.ENABLE stays 0 o
 every arming leg. RANDCFG walks every supported selector through MODULE_ENABLE,
 then an unsupported selector and two low-mode falls (APT_LO, MARKOV_LO).
 
-Contract (entropy_source.rdl HT_WATERMARK):
-  CHK-NO-REARM     a selector write alone does not move the watermark.
+Contract (hw/ip/entropy_source/regs/entropy_source.rdl HT_WATERMARK_NUM :799-807,
+HT_WATERMARK :810-818; hw/ip/entropy_source/doc/architecture.adoc:130-132):
+  CHK-NO-REARM     a selector write alone does not move the watermark (rdl:800); the
+                   selector reads back as written (rdl:802, sw = rw), which proves the
+                   write reached the DUT.
   CHK-ARM-MEN      a MODULE_ENABLE pulse arms 0x0000 for a high-watermark mode and
-                   0xFFFF for a low-watermark mode.
-  CHK-UNSUPPORTED  an unsupported selector reads back as REPCNT_HI and arms as it.
-  CHK-LOW-FALL     a low-mode watermark falls from 0xFFFF once health tests run.
+                   0xFFFF for a low-watermark mode (rdl:811). The entry arm of each leg
+                   (the opposite polarity) is graded the same way.
+  CHK-UNSUPPORTED  after a write of an unsupported selector, a MODULE_ENABLE pulse arms
+                   0x0000, the REPCNT_HI value (rdl:805: "Unsupported values select
+                   REPCNT_HI"). The entry holds 0xFFFF, so a dropped write fails.
+  OBS-HT-UNSUP-SEL the HT_WATERMARK_NUM readback after that write. Logged, not graded:
+                   no text states the stored or read value of an unsupported selector.
+  CHK-LOW-FALL     a low-mode watermark arms 0xFFFF and falls from it once health
+                   tests run.
+  CHK-RANDCFG      every encoding of enum WATERMARK_TEST (rdl:790-796) armed to its value.
+
+FCOV: the graded window of owner sep_esrc_ht_watermark_arming_test opens after the
+health tests are held off and covers the arm walk, the unsupported leg and each
+low-mode fall up to its CHK-LOW-FALL grade. It closes on the first FAIL, before
+the hold-off between the two falls, and at the end. Each owned bin samples on a
+HT_WATERMARK read whose sample condition is the compare of the check that grades
+that read: SepHtWatermark.write_num reads a supported selector back before every
+MODULE_ENABLE pulse, so the selector the sampler takes at the pulse is the
+selector the check derives its golden from. The unsupported bin takes no
+selector readback: it samples on the unsupported write and the arm read alone.
 
 SepHtWatermarkCfg holds the walk and the seed-selected knobs.
 """
@@ -20,7 +40,8 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import NextTimeStep, RisingEdge
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_ht_watermark_seq import (
     APT_LO,
@@ -34,6 +55,7 @@ from seq_lib.sep_esrc_ht_watermark_seq import (
     sel_name,
 )
 
+TEST = "sep_esrc_ht_watermark_arming_test"
 _FALL_TIMEOUT_CYCLES = 80_000
 _FALL_POLL_EVERY = 64
 
@@ -42,6 +64,15 @@ _FALL_POLL_EVERY = 64
 class sep_esrc_ht_watermark_arming_test(sep_base_test):
     """HT_WATERMARK arms per mode on MODULE_ENABLE, not on a selector write."""
 
+    def _grade(self, chk: str, ok: bool, text: str) -> None:
+        """One PASS or FAIL line; a FAIL is logged, closes the graded window, then raises."""
+        if ok:
+            self.logger.info("%s PASS: %s", chk, text)
+            return
+        self.logger.error("%s FAIL: %s", chk, text)
+        close_graded_window(self.logger)
+        raise AssertionError(f"{chk} FAIL: {text}")
+
     async def _force_polarity(self, ht: SepHtWatermark, *, high: bool) -> int:
         """Arm the opposite polarity so the next leg's expected value can fail."""
         sel = REPCNT_HI if high else APT_LO
@@ -49,9 +80,11 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         await ht.write_num(sel)
         await ht.pulse_module_enable()
         got = await ht.read_watermark()
-        assert got == want, (
-            f"entry polarity {'high' if high else 'low'}: HT_WATERMARK=0x{got:04x} "
-            f"want 0x{want:04x}"
+        self._grade(
+            "CHK-ARM-MEN",
+            got == want,
+            f"entry {sel_name(sel)} ({'high' if high else 'low'}) "
+            f"HT_WATERMARK=0x{got:04x} want 0x{want:04x}",
         )
         return got
 
@@ -63,64 +96,74 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
     ) -> int:
         want = arm_value(sel)
         entry = await self._force_polarity(ht, high=(want == ARM_LOW))
-        assert entry != want, (
-            f"{sel_name(sel)}/{path}: entry 0x{entry:04x} already equals the "
-            f"arm value (leg cannot fail)"
-        )
         await ht.write_num(sel)
+        # The selector readback is the positive probe that the write reached the
+        # DUT. It is read, and a mismatch fails, before the HT_WATERMARK read that
+        # the no-rearm bin samples.
+        sel_rb = await ht.read_num()
+        if entry == want or sel_rb != sel:
+            self._grade(
+                "CHK-NO-REARM",
+                False,
+                f"{sel_name(sel)} selector write: HT_WATERMARK_NUM=0x{sel_rb:x} want "
+                f"0x{sel:x}, entry 0x{entry:04x} arm value 0x{want:04x} (must differ)",
+            )
         still = await ht.read_watermark()
-        assert still == entry, (
-            f"CHK-NO-REARM FAIL: {sel_name(sel)} selector write moved "
-            f"HT_WATERMARK 0x{entry:04x} -> 0x{still:04x}"
-        )
-        self.logger.info(
-            "CHK-NO-REARM PASS: %s write left HT_WATERMARK=0x%04x before %s",
-            sel_name(sel),
-            still,
-            path,
+        self._grade(
+            "CHK-NO-REARM",
+            still == entry,
+            f"{sel_name(sel)} selector write: HT_WATERMARK_NUM=0x{sel_rb:x} want 0x{sel:x}, "
+            f"HT_WATERMARK 0x{entry:04x} -> 0x{still:04x} want 0x{entry:04x} "
+            f"(arm value 0x{want:04x} differs from the entry) before {path}",
         )
         await ht.pulse_module_enable()
-        tag = "CHK-ARM-MEN"
         got = await ht.read_watermark()
-        assert got == want, (
-            f"{tag} FAIL: {sel_name(sel)}/{path} HT_WATERMARK=0x{got:04x} want 0x{want:04x}"
+        self._grade(
+            "CHK-ARM-MEN",
+            got == want,
+            f"{sel_name(sel)}/{path} HT_WATERMARK=0x{got:04x} want 0x{want:04x}",
         )
-        self.logger.info("%s PASS: %s %s HT_WATERMARK=0x%04x", tag, sel_name(sel), path, got)
         return got
 
     async def _check_unsupported(self, ht: SepHtWatermark, sel: int) -> None:
         entry = await self._force_polarity(ht, high=False)
-        await ht.write_num(sel)
+        await ht.write_unsupported(sel)
         got_sel = await ht.read_num()
-        assert got_sel == REPCNT_HI, (
-            f"CHK-UNSUPPORTED FAIL: wrote {sel:#x}, read {got_sel:#x}, want REPCNT_HI"
+        self.logger.info(
+            "OBS-HT-UNSUP-SEL: wrote 0x%x, HT_WATERMARK_NUM=0x%x (no stated readback)",
+            sel,
+            got_sel,
         )
         still = await ht.read_watermark()
-        assert still == entry, (
-            f"CHK-NO-REARM FAIL: unsupported {sel:#x} moved HT_WATERMARK "
-            f"0x{entry:04x} -> 0x{still:04x}"
+        self._grade(
+            "CHK-NO-REARM",
+            still == entry,
+            f"unsupported 0x{sel:x} write: HT_WATERMARK 0x{entry:04x} -> 0x{still:04x} "
+            f"want 0x{entry:04x}",
         )
         await ht.pulse_module_enable()
         got = await ht.read_watermark()
-        assert got == ARM_HIGH, (
-            f"CHK-UNSUPPORTED FAIL: after MODULE_ENABLE HT_WATERMARK=0x{got:04x} "
-            f"want 0x{ARM_HIGH:04x} (REPCNT_HI)"
-        )
-        self.logger.info(
-            "CHK-UNSUPPORTED PASS: %s resolved to REPCNT_HI and armed 0x%04x", f"0x{sel:x}", got
+        self._grade(
+            "CHK-UNSUPPORTED",
+            got == ARM_HIGH,
+            f"after MODULE_ENABLE HT_WATERMARK=0x{got:04x} want 0x{ARM_HIGH:04x} "
+            f"(0x{sel:x} resolves to REPCNT_HI)",
         )
 
     async def _check_low_fall(self, ht: SepHtWatermark, sel: int) -> None:
         await ht.write_num(sel)
         await ht.pulse_module_enable()
         armed = await ht.read_watermark()
-        assert armed == ARM_LOW, (
-            f"CHK-LOW-FALL FAIL: {sel_name(sel)} armed 0x{armed:04x}, want 0x{ARM_LOW:04x}"
+        self._grade(
+            "CHK-LOW-FALL",
+            armed == ARM_LOW,
+            f"{sel_name(sel)} armed HT_WATERMARK=0x{armed:04x} want 0x{ARM_LOW:04x}",
         )
         await ht.enable_sample_path()
         await ht.enable_health_tests()
         dut = cocotb.top
         got = armed
+        fell = False
         for cycle in range(_FALL_TIMEOUT_CYCLES):
             dut.esrc_noise_ext_i.value = cycle & 1
             await RisingEdge(dut.clk_i)
@@ -128,19 +171,14 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
                 continue
             got = await ht.read_watermark()
             if got < ARM_LOW:
+                fell = True
                 break
-        else:
-            raise AssertionError(
-                f"CHK-LOW-FALL FAIL: {sel_name(sel)} stayed 0x{got:04x} for "
-                f"{_FALL_TIMEOUT_CYCLES} cycles after ENABLE"
-            )
-        self.logger.info(
-            "CHK-LOW-FALL PASS: %s fell 0x%04x -> 0x%04x once events were allowed",
-            sel_name(sel),
-            ARM_LOW,
-            got,
+        self._grade(
+            "CHK-LOW-FALL",
+            fell,
+            f"{sel_name(sel)} HT_WATERMARK 0x{ARM_LOW:04x} -> 0x{got:04x} within "
+            f"{_FALL_TIMEOUT_CYCLES} cycles after ENABLE (want below 0x{ARM_LOW:04x})",
         )
-        await ht.hold_health_tests_off()
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -149,24 +187,38 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         self.logger.info("esrc ht watermark arming: %s", cfg.summary())
 
         await ht.hold_health_tests_off()
-        # Count only the selectors whose DUT readback matched the documented arm
-        # value, and hold that count against the size of enum WATERMARK_TEST as
-        # the RDL itself defines it. The bound does not move with the generator
-        # that drove the loop, so a walk that skips a mode fails here.
-        proven: list[int] = []
-        for sel, path in cfg.cells():
-            armed = await self._arm_leg(ht, sel, path)
-            if armed == arm_value(sel):
-                proven.append(sel)
-        assert len(proven) == RDL_MODE_COUNT, (
-            f"CHK-RANDCFG FAIL: {len(proven)} selectors armed to their documented "
-            f"value, want {RDL_MODE_COUNT} (proven={sorted(proven)})"
-        )
-        await self._check_unsupported(ht, cfg.unsupported)
-        for fall_sel in cfg.fall_sels:
-            await self._check_low_fall(ht, fall_sel)
+        try:
+            open_graded_window(TEST, self.logger)
+            # Count only the selectors whose DUT readback matched the documented arm
+            # value, and hold that count against the size of enum WATERMARK_TEST as
+            # the RDL itself defines it. The bound does not move with the generator
+            # that drove the loop, so a walk that skips a mode fails here.
+            proven: list[int] = []
+            for sel, path in cfg.cells():
+                armed = await self._arm_leg(ht, sel, path)
+                if armed == arm_value(sel):
+                    proven.append(sel)
+            self._grade(
+                "CHK-RANDCFG",
+                len(proven) == RDL_MODE_COUNT,
+                f"{len(proven)} selectors armed to their documented value, want "
+                f"{RDL_MODE_COUNT} (proven={sorted(proven)})",
+            )
+            await self._check_unsupported(ht, cfg.unsupported)
+            for fall_sel in cfg.fall_sels:
+                await self._check_low_fall(ht, fall_sel)
+                close_graded_window(self.logger)
+                await ht.hold_health_tests_off()
+                if fall_sel != cfg.fall_sels[-1]:
+                    open_graded_window(TEST, self.logger)
+        except BaseException:
+            # A failure may resume from ReadOnly, where no value can be written.
+            await NextTimeStep()
+            close_graded_window(self.logger)
+            raise
         self.logger.info(
-            "CHK-RANDCFG PASS: %d of %d HT_WATERMARK_NUM encodings armed; unsupported=%s fall=%s",
+            "esrc ht watermark arming done: %d of %d HT_WATERMARK_NUM encodings armed; "
+            "unsupported=%s fall=%s",
             len(proven),
             RDL_MODE_COUNT,
             f"0x{cfg.unsupported:x}",

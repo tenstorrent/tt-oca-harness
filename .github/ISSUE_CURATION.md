@@ -13,15 +13,16 @@ fields on issue open or edit. When a bracket-prefix title (`[WS/SS]`) is
 present but the body has no form headings, it derives W/S/C from the title.
 It also assigns issues mechanically (explicit @mention or parent-issue
 assignee), sets the `v1.0.0` milestone when Target release = v1.0.0 and
-the author is not protected, assigns PR openers, and requests a reviewer on PR
-open or ready-for-review. The picker walks GitHub suggested reviewers, then the
-assignee of a linked closing issue, then recent committers on the touched
-paths, then `curation.reviewer_pool` in `issue-taxonomy.yml`. First assignable
-human who is not the author wins.
+the author is not protected, and assigns a PR to its opener without a comment.
+On PR open, reopen, or ready-for-review it runs `curator_notify.py --on-open`,
+which requests a reviewer under the rules in
+[Reviewer requests and reminders](#reviewer-requests-and-reminders).
 
 ## Files
 
 - `issue-taxonomy.yml` — allow-lists, `automation.enabled`, and `curation.reviewer_pool`
+- `scripts/curator_notify.py` — every reviewer request and reminder; `--self-test` replays the rules
+- `workflows/curator-notify.yml` — runs `curator_notify.py` each weekday
 - `scripts/unwrap_github_mentions.py` — strips code spans around @mentions in curator comments
 - `workflows/<name>.md` — source (edit this)
 - `workflows/<name>.lock.yml` — generated; do not edit
@@ -41,16 +42,15 @@ Commit the source and the lockfile together.
 incomplete fields, missing assignee, non-house-style title/body, or a
 due reminder is processed; fully-managed items without pending reminders
 are skipped to bound credit use. It applies Project 291 fills,
-assignments, reviewer requests (same picker as ingest, when ingest found none),
-milestone backstop (`v1.0.0` only for clearly TT-owned issues), and
+assignments, milestone backstop (`v1.0.0` only for clearly TT-owned issues), and
 title/body consistency. Issue titles keep `[WORKSTREAM/SUBSYSTEM]`. PR
-titles use a path-like scope (`hw/smc:`, `dv:`), or `treewide:`; PR
-bodies are normalized to Summary/Test plan/Closes/Notes. Reminders:
-due date (≤3 days, fed by milestone due date for v1.0.0 issues),
-approved-PR merge nudge (≥3 days), review pending (>1 business day),
-unreviewed PR (≥3 days, pings the assignee), draft open (>5 business days),
-changes-requested idle (>3 business days), and stale-assigned issue (≥21 days).
-All reminders are gated by a hidden marker and minimum re-nudge spacing.
+titles use a path-like scope (`hw/smc:`, `dv:`), or `treewide:`; a PR body
+gains `## Summary` and `## Test plan` when missing, and never an unused
+`## Closes` or `## Notes`. It never requests a reviewer or posts a reminder,
+and `add_reviewer` is not among its safe outputs. Its only comment is the
+assignment comment; it does not re-assign anyone the timeline shows was
+unassigned. gh-aw strips HTML comments from agent output, so the curator
+recognizes its own earlier comments by wording, not by marker.
 Comment bodies pass through `.github/scripts/unwrap_github_mentions.py` so a
 login wrapped in a code span becomes a real @mention before posting. gh-aw
 `add_comment` then keeps mentions in `safe-outputs.mentions.allowed` (human
@@ -61,6 +61,42 @@ Actions run conclusion is the `noop` safe-output; the agent emits one every run.
 ```bash
 gh aw compile ocah-project-curator --validate
 ```
+
+## Reviewer requests and reminders
+
+`.github/scripts/curator_notify.py` decides every reviewer request and
+reminder from the item's timeline: reviews, review requests and their
+removal, pushes, draft changes, comments, and earlier automation comments.
+It is plain code, not an agent, so the same history always gives the same
+answer, and `--self-test` replays the rules on recorded pull request
+timelines. `.github/workflows/curator-notify.yml` runs it at 08:00 PDT
+(`0 15 * * 1-5` UTC) on weekdays; a manual dispatch prints the plan unless
+`apply` is set. Locally, `python3 .github/scripts/curator_notify.py --verbose`
+prints what it would post and why it skips the rest, and `--now` plans for
+another time.
+
+Durations are business days unless stated. On every item:
+
+- At most one comment per item per run, and no reminder within 1 business
+  day of the previous automation notice on that item.
+- At most 3 reminders per person per run; the rest wait for a later run.
+- No reminder on weekends, to bots, to protected authors, or on items whose
+  Curation state is Locked.
+- Its comments end in `<!-- ocah-notify:KIND:LOGINS -->`. Earlier curator
+  comments, which lost their markers, are recognized by wording.
+
+| Notice | Who | When | Never when |
+|---|---|---|---|
+| Reviewer request | First of: GitHub suggestion, linked-issue assignee, recent committer, `reviewer_pool` | On ready-for-review; else after a 1-day grace | Any review exists, any request is pending, an automatic request was already made on the PR, or the person reviewed or was removed from the PR |
+| Request withdrawal (silent) | — | Automation requested someone who had already reviewed or been removed | The author or a reviewer made the request |
+| Review reminder | Pending requested reviewers | 2 days after the request, then 3; at most 2 per request | The reviewer commented or reviewed since, the PR is approved, or it waits on the author's response to a change request |
+| Reviewer unresponsive | Assignee, else author | 3 days after the second review reminder, once | — |
+| Changes requested | Author | 3 days after the newest unanswered change request, once per request | The author pushed, commented, or reviewed since |
+| Merge | Assignee, else author | 3 days after the newest approval, then 5; at most 2 | Pushed after the approval, changes requested, checks running, `DO NOT MERGE`/`WIP` title, base not `main`, body says it depends on another PR, or the owner gave a standing reason since the last nudge |
+| Unreviewed | Assignee, else author | 3 days ready with no reviewer, then 5; at most 2 | An automatic reviewer request is still possible, or the owner gave a standing reason (blocked, waiting, out) |
+| Draft | Author | 10 days a draft, once per draft period | `DO NOT MERGE`/`WIP` title, or the author pushed or commented in the second half |
+| Due | Assignees | Milestone due within 3 calendar days, once per date | — |
+| Stale issue | Assignees | 21 calendar days without human activity, at most 2 until someone responds | Unscheduled (no milestone) or in a protected milestone, or milestone due within a week |
 
 ## Weekly issue activity
 

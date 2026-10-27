@@ -11,16 +11,20 @@ its cocotb and SV-UVM realizations.
 
 Functional coverage is collected by the SystemVerilog coverage modules under
 `hw/sys/dtp/dv/cov/sv/`, instantiated once in the shared `tb_top` so the same
-source serves the cocotb and SV-UVM flows. Each module carries two layers. Its
-SV covergroups sit under an `ifndef VERILATOR` guard, so only the commercial
-simulators compile them, and they are the functional model on VCS: the runner
-maps URG's `group` metric to the functional family.
-Its labeled `cover property` points are compiled in every flow: under
-Verilator they land in the coverage database as the functional `user` points,
-and on VCS they are graded with the assertion family as cover directives.
-Crosses, `illegal_bins`, and `ignore_bins` exist only in the covergroups, so
-the two layers do not carry the same bins. The debug-disable 22-cell contract
-additionally keeps its checker-gated Python ledger (`env/dtp_fcov.py`).
+source serves the cocotb and SV-UVM flows. Each module carries two layers, and
+every simulator compiles both. Its SV covergroups are the functional model:
+the runner maps URG's `group` metric and Verilator's `covergroup` points to the
+functional family, and leaves out Verilator's ignore and illegal bins, which
+are not coverage goals. Verilator drops cross select expressions (`binsof`,
+explicit cross bins) and coverage weights, so the covergroups use neither:
+every cross is the full product of its coverpoints, and a combination that
+must not occur is an illegal bin of a coverpoint, so both simulators build the
+same bins. Its labeled `cover property` points land in the Verilator coverage
+database as the `user` family, and on VCS they are graded with the assertion
+family as cover directives. Crosses and illegal bins exist only in the
+covergroups, so the two layers do not carry the same bins. The debug-disable
+22-cell contract additionally keeps its checker-gated Python ledger
+(`env/dtp_fcov.py`).
 
 [cols=",",options="header",]
 |===
@@ -47,14 +51,14 @@ is reported beside the effective one.
 
 The target of the functional family is 100 percent of the covergroup model,
 with no waiver. A combination that no stimulus can reach on the bench
-configuration is excluded in the model with `ignore_bins`, and one that only a
-design or checker failure produces is an `illegal_bins` entry, which VCS
-reports as a runtime error.
+configuration has no bin in the model, and one that only a design or checker
+failure produces is an illegal bin, whose hit VCS reports as a runtime error
+and Verilator as an error that stops the simulation.
 
 [cols="1,1,2,2",options="header",]
 |===
 |Metric |Target |Public evidence path (Verilator) |Commercial evidence path (VCS)
-|Functional coverage |100% of the covergroup model, no waiver; 98% effective for the Verilator `user` family |The `user` family: the `cover property` points of the `cov/sv/` modules, merged over the `all` regression and graded by the policy file |The covergroup bins (URG's `group` metric) in the merged database of the cocotb and SV-UVM `all` runs
+|Functional coverage |100% of the covergroup model, no waiver; 98% effective for the Verilator `user` family |The covergroup bins (Verilator's `covergroup` points) and the `user` family, the `cover property` points of the `cov/sv/` modules, merged over the `all` regression and graded by the policy file |The covergroup bins (URG's `group` metric) in the merged database of the cocotb and SV-UVM `all` runs
 |Line and branch coverage |98% effective, over the compile-time scope |`--coverage-line`, reported beside the functional figure |`-cm line+branch` in the merged database
 |Condition and expression coverage |98% effective, over the compile-time scope |`--coverage-expr` |`-cm cond`
 |FSM coverage |98% effective, over the compile-time scope |Not collected under Verilator |`-cm fsm`
@@ -81,8 +85,9 @@ On Verilator the scope is applied at compile time by
 `cov/config/verilator/dtp_cov_scope.vlt`, which `[coverage.verilator]` passes
 to the build. Its `coverage_off` rules select source files: the bench under
 `tb/`, the VIP interfaces, protocol checkers and shims under `hw/common/dv/`,
-the `cov/sv/` modules and `prim_cdc_rand_delay` leave the line, branch and
-expression families, and the DUT's sources stay, the vendored cells included.
+the `cov/sv/` modules, `prim_cdc_rand_delay` and Verilator's `verilated_std.sv`
+leave the line, branch and expression families, and the DUT's sources stay,
+the vendored cells included.
 A rule that selects a file cannot select an instance, so the bench's own
 instances of a DUT source stay in the scope: the `prim_jtag_scan_reg`
 instances of the iJTAG instrument stubs and the STAP host segment.
@@ -90,9 +95,9 @@ Verilator can keep one set of points for every instance of a module
 elaborated with the same parameter values, so a bench instance whose
 parameters match a DUT instance's can share that instance's points, and
 bench stimulus can cover them.
-`coverage_off` leaves a `cover property` point in place, so the `user` family
-keeps every point of the `cov/sv/` modules. Toggle and FSM coverage are not
-collected.
+`coverage_off` leaves a `cover property` point and a covergroup bin in place,
+so the `user` and `functional` families keep every point of the `cov/sv/`
+modules. Toggle and FSM coverage are not collected.
 
 === Coverage Summary
 
@@ -236,10 +241,10 @@ register on the scan path.
 |===
 
 `dtp_fcov` samples every completed DR scan of a gated instruction with the
-value of the field that gates its register; the two coverpoints carry no
-weight of their own. RUNBIST pairs with `dft_nonsecure`, the field of the
-non-secure DFT host that receives the RUNBIST control; the SIB gating of the
-other two fields does not depend on which instruction selects the network.
+value of the field that gates its register. RUNBIST pairs with
+`dft_nonsecure`, the field of the non-secure DFT host that receives the
+RUNBIST control; the SIB gating of the other two fields does not depend on
+which instruction selects the network.
 The STAP fields and `stap_host` gate the STAP chain and its return path,
 which no instruction selects, and `cg_stap_3dcr` and `cg_dbg_disable_scan`
 carry them. What a set field does to the register (no TDR update or AXI
@@ -260,7 +265,7 @@ the OTP bridges, here and in every other JTAG2AXI covergroup.
 |`cp_size` |`b1`, `b2`, `b4`, `b8`: the bytes of the beat the operation moves
 |`cp_strobe` |`none`, `single` (one lane of a beat of two or more), `partial`, `all`, `no_strobe` (a read)
 |`cp_addr` |`aligned`, `window_boundary` (the last beat of the 64 KiB responder window)
-|`x_op_shape` |`cp_target` x `cp_op` x `cp_size` x `cp_strobe`
+|`cp_op_shape` |One bin per `{target, op, size, strobe}` the buses can carry, named `<target>_<op>_<size>_<strobe>`: 17 for `smc_axi`, 5 each for `smc_otp` and `sep_otp`
 |`x_target_addr` |`cp_target` x `cp_addr`
 |===
 
@@ -269,8 +274,8 @@ AXI response, from the bridge's own status, pending, and launched-operation
 registers. The SMC fabric beat is the operation's size, at most 8 bytes; an
 AXI4-Lite beat is 4 bytes whatever the SINGLE_OP size field holds. The strobe
 class counts the lanes of the transfer from the address's lane on for the
-fabric bus and every lane of the beat for an AXI4-Lite bus. `x_op_shape`
-ignores the combinations the buses cannot carry: an OTP beat other than
+fabric bus and every lane of the beat for an AXI4-Lite bus. `cp_op_shape`
+has no bin for a combination the buses cannot carry: an OTP beat other than
 `b4`, a read with a strobe class or a write without one, a `single` or
 `partial` 1-byte beat, and a `partial` 2-byte beat. Unaligned and unmapped
 addresses are outside the bridge TDR and testbench address-map contract.
@@ -489,8 +494,8 @@ clock-stop requests into `stop_clks_o`.
 |Coverpoint / cross |Bins
 |`cp_req_source` |`line_0` to `line_8` (one `xtrig_clk_stop_req_i` line alone), `none`, `multi`
 |`cp_jtag_stop`, `cp_cla_en` |`off`, `on`
-|`cp_stop_clks` |`running`, `stopped`
-|`x_aggregation` |`cp_req_source` x `cp_jtag_stop` x `cp_cla_en` x `cp_stop_clks`: the combinations in which `stop_clks_o` is the OR of the JTAG clock stop and the request lines; every other combination is an illegal bin
+|`cp_stop_clks` |`running`, `stopped`; a `stop_clks_o` that is not the OR of the JTAG clock stop and the request lines is an illegal bin (`stopped_without_source`, `running_with_source`)
+|`x_aggregation` |`cp_req_source` x `cp_jtag_stop` x `cp_cla_en`, each combination with the `stop_clks_o` that `cp_stop_clks` requires
 |===
 
 `stop_clks_o` follows its sources three `clk_i` edges later, after the
@@ -629,7 +634,7 @@ configuration the port runs with.
 |`cp_inversion` |`normal`, `inverted`
 |`cp_stretch` |`min` (0), `mid` (1 to 0xFFFE), `max` (0xFFFF), on wire-OR transmissions
 |`x_direction_mode_inversion` |every direction, mode, and inversion
-|`x_mode_inversion_stretch` |every inversion and stretch of a wire-OR transmission; STRETCH_MULT shapes no point-to-point action, so the point-to-point combinations are ignore bins
+|`x_inversion_stretch` |every inversion and stretch of a wire-OR transmission; STRETCH_MULT shapes no point-to-point action, so `cp_stretch` samples wire-OR transmissions only
 |===
 
 A transmission is a CTP starting to assert CT_Req_out: its output enable
@@ -751,8 +756,9 @@ seeds closes its cross.
 |Coverpoint |Bins
 |`cp_source_type` |`internal`, `ctp`
 |`cp_dest_type` |`internal`, `ctp`, on an event that reached a destination
-|`cp_fanout` |`none`, `single`, `multicast`
-|`x_source_dest_fanout` |every source class, destination class, and `single` or `multicast`; an event that reached no destination has no destination class, so the `none` combinations are ignore bins
+|`cp_unrouted` |`none`: an event that reached no destination
+|`cp_fanout` |`single`, `multicast`
+|`x_source_dest_fanout` |every source class, destination class, and fanout; an event that reached no destination has no destination class, so it counts in `cp_unrouted` and not in the cross
 |===
 
 A source event closes 32 system clocks after it rose. Its fanout is the
@@ -774,7 +780,7 @@ once with fanout `none`.
 |`x_register_strobe` |every byte strobe on every read-write register
 |`cp_order` |`same_cycle`, `aw_first`, `w_first`
 |`cp_resp` |`okay`, `decerr`; EXOKAY and SLVERR are illegal bins
-|`x_region_resp` |`okay` on the six mapped classes, `decerr` on the two unmapped ones; the other combinations are illegal bins
+|`cp_region_resp` |`<region>_okay` on the six mapped classes, `<region>_decerr` on the two unmapped ones; `decerr` on a mapped class and `okay` on an unmapped one are illegal bins
 |`cp_wait` |`ready`, `held`
 |===
 
@@ -786,7 +792,7 @@ once with fanout `none`.
 |===
 |Coverpoint |Bins
 |`cp_region` |as `cg_xtrig_csr_write`
-|`cp_resp`, `x_region_resp` |as `cg_xtrig_csr_write`, with the same illegal bins
+|`cp_resp`, `cp_region_resp` |as `cg_xtrig_csr_write`, with the same illegal bins
 |`cp_wait` |`ready`, `held`
 |`cp_reset_value` |`ctm_select`, `ctp_config`, `ctp_status`, `ctp_stretch`, read before any write reaches the word after the system reset
 |`cp_status` |`idle` (0), `pulse` (BUSY), `tx_request` (BUSY, REQ_OUT), `tx_acknowledge` (BUSY, ACK_IN), `rx_acknowledge` (BUSY, REQ_IN, ACK_OUT), on STATUS reads
@@ -882,11 +888,11 @@ Sampling rules:
 |Coverpoint |Bins
 |`cp_field` |`stap_io`, `stap_smc`, `stap_sep`, `stap_extra`, `stap_host`, `dft_secure`, `dft_nonsecure`, `dfd`
 |`cp_value` |`clear`, `set`
-|`cp_outcome` |`allowed`, `blocked`
+|`cp_outcome` |`allowed` with the field clear, `blocked` with it set; the contradictory pairs are illegal bins
 |`cp_mask` |`all_clear`, `one_hot`, `multi_hot`, `all_disabled` over the eight scan-side fields
 |`cp_isolation` |on an attempt with the field clear: `other_field_set` (another scan-side field set)
 |`cp_sequence` |`released`, `recovered`
-|`x_cell` |`cp_field` x `cp_value` x `cp_outcome`: `(field, clear, allowed)` and `(field, set, blocked)`; the contradictory tuples are illegal bins
+|`x_cell` |`cp_field` x `cp_value`: `(field, clear)`, which `cp_outcome` requires to be allowed, and `(field, set)`, which it requires to be blocked
 |`x_field_isolation` |`cp_field` x `cp_isolation`
 |`x_sequence` |`cp_field` x `cp_sequence`
 |===
@@ -920,10 +926,10 @@ follows give each field's release and recovery.
 |Coverpoint |Bins
 |`cp_field` |`smc_jtag2axi`, `smc_otp_jtag2axi`, `sep_otp_jtag2axi`
 |`cp_value` |`clear`, `set`
-|`cp_outcome` |`allowed`, `blocked`
+|`cp_outcome` |`allowed` with the field clear, `blocked` with it set; the contradictory pairs are illegal bins
 |`cp_mask` |`all_clear`, `one_hot`, `multi_hot`, `all_set` over the three bridge fields
 |`cp_isolation` |on an `allowed` sample: `alone`, `other_field_set` (another debug-disable field set)
-|`x_cell` |`cp_field` x `cp_value` x `cp_outcome`: `(field, clear, allowed)` and `(field, set, blocked)`; the contradictory tuples are illegal bins
+|`x_cell` |`cp_field` x `cp_value`: `(field, clear)`, which `cp_outcome` requires to be allowed, and `(field, set)`, which it requires to be blocked
 |`x_field_isolation` |`cp_field` x `cp_isolation`
 |===
 
@@ -1141,10 +1147,10 @@ review.
 [cols=",",options="header",]
 |===
 |Flow |Strategy
-|Verilator simulation |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
+|Verilator simulation |The covergroups and labeled `cover property` points of the `cov/sv/` modules; `run_dv.py --cov` collects them as `covergroup` and `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
 |Per-group reporting |The merged run's `coverage-details.json` carries every point with its policy disposition, keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
 |Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage, leaves toggle out, and passes the compile-time scope `cov/config/verilator/dtp_cov_scope.vlt`
-|Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer) and are the functional family; the cover properties stay compiled and grade with the assertions. Both frameworks collect through the runner, cocotb with `run_dv.py --cov --tool vcs` and SV-UVM with `run_dv.py --framework uvm --cov`, with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report
+|Commercial simulation |The same modules' covergroups are the functional family; the cover properties stay compiled and grade with the assertions. Both frameworks collect through the runner, cocotb with `run_dv.py --cov --tool vcs` and SV-UVM with `run_dv.py --framework uvm --cov`, with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report
 |Code coverage |VCS line, branch, condition, FSM and toggle coverage scoped to the DUT instance, and assertion coverage over the DUT, the `cov/sv/` modules and the protocol checkers; Verilator line, branch and expression coverage over its compile-time scope
 |Closure triage |Add directed tests for reachable holes; record a blocked or unreachable point as a hole entry in the Verilator policy file, and an unreachable VCS point as an entry of `dtp_unreachable.el` or `dtp_waivers.el`, each stating the structural reason the point cannot fire
 |===
@@ -1163,9 +1169,8 @@ access, and debug-disable configuration change.
 [cols=",",options="header",]
 |===
 |Item |Reason
-|SV covergroups in Verilator |The bench's `ifndef VERILATOR` guard leaves them out of the Verilator build; the cover-property layer carries the Verilator flow
 |Capability TDR field values (JTAG_CAPS fields, JTAG2AXI bus type, address and data size, pipeline depths) |Elaboration-time constants with one reachable value each; `CHK-CAPS` compares every field on every read, and `cg_caps_tdr` covers their stability and read-only behavior
-|Illegal bins: a TAP state or instruction decode that is not one-hot, a TAP transition off the IEEE 1149.1 state graph, a Capture-IR update that is not IDCODE, an invalid IDCODE marker, a contradictory debug-disable outcome, an open SIB under its disable, a 3DCR reset result CONFIG_HOLD does not call for, an XTRIG CSR response the memory map does not give, and the other illegal bins each definition names |Only a design or checker failure reaches them; VCS reports a hit as a runtime error, and the ledger records a contradictory outcome as a checker failure, never a cell
+|Illegal bins: a TAP state or instruction decode that is not one-hot, a TAP transition off the IEEE 1149.1 state graph, a Capture-IR update that is not IDCODE, an invalid IDCODE marker, a contradictory debug-disable outcome, an open SIB under its disable, a 3DCR reset result CONFIG_HOLD does not call for, an XTRIG CSR response the memory map does not give, and the other illegal bins each definition names |Only a design or checker failure reaches them; VCS reports a hit as a runtime error, Verilator stops the simulation on one, and the ledger records a contradictory outcome as a checker failure, never a cell
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract
 |Internal cross-trigger lanes in point-to-point mode |The bench elaborates `XTRIG_INT_CT_MODE` = 0, so every internal CT runs pulse mode
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage

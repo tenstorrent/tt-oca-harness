@@ -25,19 +25,12 @@ ISSUE_TYPE_PREFIX = re.compile(r"^\[(Bug|Task|Feature)\]:\s*")
 TAXONOMY_PREFIX = re.compile(r"^\[[A-Z]+/")
 HEADING = re.compile(r"^### ([^\n]+)\n+([^\n#]+)", re.MULTILINE)
 BRACKET_PREFIX = re.compile(r"^\[([A-Z]+)/([A-Z]+)(?:-([A-Z]+))?\]")
-REVIEW_REQUEST_MARKER = "<!-- github-auto-review-request -->"
 REVIEWER_REASONS = {
     "suggested": "GitHub suggested you based on the files it touches",
     "linked_issue": "you are assigned to an issue this pull request closes",
     "path_history": "you recently committed to files this pull request touches",
     "reviewer_pool": "you are next in the repository reviewer pool",
 }
-PR_REVIEW_COMMENT = (
-    "@{login} — you've been automatically requested to review this pull "
-    "request because {reason}.\n\n"
-    "If someone else is a better fit, please feel free to reassign.\n\n"
-    f"{REVIEW_REQUEST_MARKER}"
-)
 CLOSING_ISSUE = re.compile(r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)")
 PATH_HISTORY_FILE_CAP = 8
 PATH_HISTORY_COMMITS_PER_FILE = 10
@@ -428,12 +421,6 @@ def ingest_issue(number: int, taxonomy: dict) -> None:
 
 
 ASSIGN_MARKER = "<!-- github-auto-assign -->"
-PR_ASSIGN_COMMENT = (
-    "@{login} — you've been automatically assigned to this pull request "
-    "because you opened it.\n\n"
-    "If someone else is a better fit, please feel free to reassign.\n\n"
-    f"{ASSIGN_MARKER}"
-)
 UNSUBSCRIBE = """
 mutation($id:ID!){
   updateSubscription(input:{subscribableId:$id, state:UNSUBSCRIBED}){
@@ -470,10 +457,6 @@ def _comments_contain(repo_full: str, number: int, marker: str) -> bool:
     except subprocess.CalledProcessError:
         return False
     return marker in (text or "")
-
-
-def has_assign_marker(repo_full: str, number: int) -> bool:
-    return _comments_contain(repo_full, number, ASSIGN_MARKER)
 
 
 def login_is_assignable(repo_full: str, login: str) -> bool:
@@ -687,81 +670,6 @@ def _path_history_authors(repo_full: str, number: int, base: str) -> list[str]:
     return logins
 
 
-def request_pr_reviewer(number: int, taxonomy_path: Path | None = None) -> None:
-    repo_full = os.environ.get("GITHUB_REPOSITORY", REPO)
-    owner, repo = repo_full.split("/", 1)
-    query = (
-        "query($owner:String!,$name:String!,$number:Int!){"
-        "repository(owner:$owner,name:$name){"
-        "pullRequest(number:$number){"
-        "isDraft author{login} body baseRefName "
-        "reviewRequests(first:10){nodes{requestedReviewer{...on User{login}}}} "
-        "reviews(first:10){nodes{author{login}}} "
-        "suggestedReviewers{isAuthor reviewer{login}} "
-        "closingIssuesReferences(first:10){nodes{assignees(first:10){nodes{login}}}}"
-        "}}}"
-    )
-    pr_data = gh_json(
-        [
-            "api",
-            "graphql",
-            "-f",
-            f"query={query}",
-            "-F",
-            f"owner={owner}",
-            "-F",
-            f"name={repo}",
-            "-F",
-            f"number={number}",
-        ]
-    )
-    pr = pr_data.get("data", {}).get("repository", {}).get("pullRequest") or {}
-    if pr.get("isDraft"):
-        print("skip reviewer: PR is draft")
-        return
-    existing = {
-        (n.get("requestedReviewer") or {}).get("login")
-        for n in (pr.get("reviewRequests", {}).get("nodes") or [])
-    } | {(n.get("author") or {}).get("login") for n in (pr.get("reviews", {}).get("nodes") or [])}
-    if existing - {None}:
-        print("skip reviewer: reviewer already requested or reviewed")
-        return
-    if _comments_contain(repo_full, number, REVIEW_REQUEST_MARKER):
-        print("skip reviewer: review-request comment already present")
-        return
-    author_login = (pr.get("author") or {}).get("login", "")
-    taxonomy = load_taxonomy(taxonomy_path or github_dir() / "issue-taxonomy.yml")
-    login, rule = pick_reviewer(
-        author_login,
-        _suggested_reviewer_logins(pr),
-        _linked_issue_assignees(repo_full, pr),
-        _path_history_authors(repo_full, number, pr.get("baseRefName") or "main"),
-        reviewer_pool(taxonomy),
-        usable=lambda candidate: login_is_assignable(repo_full, candidate),
-    )
-    if not login or not rule:
-        print("no usable reviewer")
-        return
-    try:
-        run(["gh", "pr", "edit", str(number), "--repo", repo_full, "--add-reviewer", login])
-    except subprocess.CalledProcessError as exc:
-        print("reviewer request failed:", exc.stderr, file=sys.stderr)
-        return
-    run(
-        [
-            "gh",
-            "pr",
-            "comment",
-            str(number),
-            "--repo",
-            repo_full,
-            "--body",
-            PR_REVIEW_COMMENT.format(login=login, reason=REVIEWER_REASONS[rule]),
-        ]
-    )
-    print("reviewer requested", login, f"({rule})")
-
-
 def assign_pr_author(number: int) -> None:
     repo_full = os.environ.get("GITHUB_REPOSITORY", REPO)
     pr = gh_json(
@@ -777,9 +685,6 @@ def assign_pr_author(number: int) -> None:
     )
     if assignee_logins(pr):
         print("PR already assigned")
-        return
-    if has_assign_marker(repo_full, number):
-        print("skip assign: assign comment already present")
         return
     login = pr_human_opener(pr)
     if not login:
@@ -804,33 +709,7 @@ def assign_pr_author(number: int) -> None:
     except subprocess.CalledProcessError as exc:
         print("assign failed:", exc.stderr, file=sys.stderr)
         return
-    check = gh_json(
-        [
-            "pr",
-            "view",
-            str(number),
-            "--repo",
-            repo_full,
-            "--json",
-            "assignees,id",
-        ]
-    )
-    if login not in assignee_logins(check):
-        print("skip comment: assign did not stick")
-        return
-    run(
-        [
-            "gh",
-            "pr",
-            "comment",
-            str(number),
-            "--repo",
-            repo_full,
-            "--body",
-            PR_ASSIGN_COMMENT.format(login=login),
-        ]
-    )
-    unsubscribe_best_effort(check.get("id") or pr.get("id"))
+    unsubscribe_best_effort(pr.get("id"))
     print("assigned", login)
 
 
@@ -954,7 +833,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--issue", type=int)
     parser.add_argument("--pr-assign", type=int)
-    parser.add_argument("--pr-review", type=int)
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument(
         "--taxonomy",
@@ -968,10 +846,8 @@ def main() -> None:
         ingest_issue(args.issue, load_taxonomy(args.taxonomy))
     elif args.pr_assign:
         assign_pr_author(args.pr_assign)
-    elif args.pr_review:
-        request_pr_reviewer(args.pr_review, args.taxonomy)
     else:
-        raise SystemExit("pass --issue, --pr-assign, --pr-review, or --self-test")
+        raise SystemExit("pass --issue, --pr-assign, or --self-test")
 
 
 if __name__ == "__main__":

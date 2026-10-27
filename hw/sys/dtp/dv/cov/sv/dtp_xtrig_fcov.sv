@@ -874,10 +874,9 @@ module dtp_xtrig_fcov (
   wire ctm_dst_int9_e = int_dst_rise[9];
   `OCAH_FCOV_COVER(c_ctm_dest_index_int9, ctm_dst_int9_e, clk_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the bins of the cover properties above,
-  // plus the crosses.
+  // Covergroups, under the cross rules dtp_fcov.sv states: the bins of the
+  // cover properties above, plus the crosses.
   // ------------------------------------------------------------------
   localparam logic [1:0] StretchMin = 2'd0;
   localparam logic [1:0] StretchMid = 2'd1;
@@ -914,10 +913,7 @@ module dtp_xtrig_fcov (
       bins min = {StretchMin}; bins mid = {StretchMid}; bins max = {StretchMax};
     }
     x_direction_mode_inversion: cross cp_direction, cp_mode, cp_inversion;
-    x_mode_inversion_stretch: cross cp_mode, cp_inversion, cp_stretch{
-      // cp_stretch samples no point-to-point action.
-      ignore_bins p2p = binsof (cp_mode.p2p);
-    }
+    x_inversion_stretch: cross cp_inversion, cp_stretch;
   endgroup
 
   // The phases of the point-to-point handshake at each pad polarity.
@@ -1020,13 +1016,13 @@ module dtp_xtrig_fcov (
     cp_dest_type: coverpoint dst_is_ctp iff (fanout != 6'd0) {
       bins internal = {1'b0}; bins ctp = {1'b1};
     }
+    cp_unrouted: coverpoint fanout {bins none = {6'd0};}
+    // An event that reaches no destination has no destination class, so the
+    // cross takes the routed fanouts only.
     cp_fanout: coverpoint fanout {
-      bins none = {6'd0}; bins single = {6'd1}; bins multicast = {[6'd2 : 6'd63]};
+      bins single = {6'd1}; bins multicast = {[6'd2 : 6'd63]};
     }
-    x_source_dest_fanout: cross cp_source_type, cp_dest_type, cp_fanout{
-      // An event that reaches no destination has no destination class.
-      ignore_bins unrouted = binsof (cp_fanout.none);
-    }
+    x_source_dest_fanout: cross cp_source_type, cp_dest_type, cp_fanout;
   endgroup
 
   // Every completed CSR write.
@@ -1070,14 +1066,27 @@ module dtp_xtrig_fcov (
       // The network's register blocks answer OKAY and its crossbar DECERR.
       illegal_bins other = {RespExOkay, RespSlvErr};
     }
-    x_region_resp: cross cp_region, cp_resp{
-      // A mapped word answers OKAY and an unmapped one DECERR.
-      illegal_bins mapped_decerr =
-          binsof (cp_region) intersect {[RegionCtmSelect : RegionCtpHole]}
-          && binsof (cp_resp.decerr);
-      illegal_bins unmapped_okay =
-          binsof (cp_region) intersect {RegionCtmUnmapped, RegionUnmapped}
-          && binsof (cp_resp.okay);
+    // A mapped word answers OKAY and an unmapped one DECERR.
+    cp_region_resp: coverpoint {
+      region, resp
+    } {
+      bins ctm_select_okay = {{RegionCtmSelect, RespOkay}};
+      bins ctm_hole_okay = {{RegionCtmHole, RespOkay}};
+      bins ctp_config_okay = {{RegionCtpConfig, RespOkay}};
+      bins ctp_status_okay = {{RegionCtpStatus, RespOkay}};
+      bins ctp_stretch_okay = {{RegionCtpStretch, RespOkay}};
+      bins ctp_hole_okay = {{RegionCtpHole, RespOkay}};
+      bins ctm_unmapped_decerr = {{RegionCtmUnmapped, RespDecErr}};
+      bins unmapped_decerr = {{RegionUnmapped, RespDecErr}};
+      illegal_bins mapped_decerr = {
+        {RegionCtmSelect, RespDecErr},
+        {RegionCtmHole, RespDecErr},
+        {RegionCtpConfig, RespDecErr},
+        {RegionCtpStatus, RespDecErr},
+        {RegionCtpStretch, RespDecErr},
+        {RegionCtpHole, RespDecErr}
+      };
+      illegal_bins unmapped_okay = {{RegionCtmUnmapped, RespOkay}, {RegionUnmapped, RespOkay}};
     }
     cp_wait: coverpoint resp_held {bins ready = {1'b0}; bins held = {1'b1};}
   endgroup
@@ -1103,14 +1112,27 @@ module dtp_xtrig_fcov (
       // The network's register blocks answer OKAY and its crossbar DECERR.
       illegal_bins other = {RespExOkay, RespSlvErr};
     }
-    x_region_resp: cross cp_region, cp_resp{
-      // A mapped word answers OKAY and an unmapped one DECERR.
-      illegal_bins mapped_decerr =
-          binsof (cp_region) intersect {[RegionCtmSelect : RegionCtpHole]}
-          && binsof (cp_resp.decerr);
-      illegal_bins unmapped_okay =
-          binsof (cp_region) intersect {RegionCtmUnmapped, RegionUnmapped}
-          && binsof (cp_resp.okay);
+    // A mapped word answers OKAY and an unmapped one DECERR.
+    cp_region_resp: coverpoint {
+      region, resp
+    } {
+      bins ctm_select_okay = {{RegionCtmSelect, RespOkay}};
+      bins ctm_hole_okay = {{RegionCtmHole, RespOkay}};
+      bins ctp_config_okay = {{RegionCtpConfig, RespOkay}};
+      bins ctp_status_okay = {{RegionCtpStatus, RespOkay}};
+      bins ctp_stretch_okay = {{RegionCtpStretch, RespOkay}};
+      bins ctp_hole_okay = {{RegionCtpHole, RespOkay}};
+      bins ctm_unmapped_decerr = {{RegionCtmUnmapped, RespDecErr}};
+      bins unmapped_decerr = {{RegionUnmapped, RespDecErr}};
+      illegal_bins mapped_decerr = {
+        {RegionCtmSelect, RespDecErr},
+        {RegionCtmHole, RespDecErr},
+        {RegionCtpConfig, RespDecErr},
+        {RegionCtpStatus, RespDecErr},
+        {RegionCtpStretch, RespDecErr},
+        {RegionCtpHole, RespDecErr}
+      };
+      illegal_bins unmapped_okay = {{RegionCtmUnmapped, RespOkay}, {RegionUnmapped, RespOkay}};
     }
     cp_wait: coverpoint resp_held {bins ready = {1'b0}; bins held = {1'b1};}
     // A register read before any write reaches it after the system reset.
@@ -1219,6 +1241,5 @@ module dtp_xtrig_fcov (
       end
     end
   end
-`endif
 
 endmodule : dtp_xtrig_fcov

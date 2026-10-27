@@ -1084,9 +1084,7 @@ hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_wrapper.sv
 hw/sys/sep/rtl/sep_ot_spi_wrap.sv
 hw/sys/sep/rtl/sep_isolate_rst_seq.sv
 hw/sys/sep/rtl/sep_reset_ctrl.sv
-hw/sys/sep/rtl/sep_rom_interface_shim.sv
 hw/sys/sep/rtl/sep_sram.sv
-hw/sys/sep/rtl/sep_sram_interface_shim.sv
 hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv
 hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv
 hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_wrapper.sv
@@ -1282,6 +1280,7 @@ hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncRese
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetRegVec_w4_i0.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i0.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i0_1.sv
+hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncResetSynchronizerShiftReg_w1_d3_i1.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_AsyncValidSync.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Atomics.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_BTB.sv
@@ -1409,6 +1408,7 @@ hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TL
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue2_TLBundleE_a56d64s6k2z4c.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue3_BundleMap.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue4_BundleMap.sv
+hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue4_ProbeInfo.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue8_AXI4BundleR.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue8_TLBroadcastData.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_Queue9_BundleMap.sv
@@ -1456,6 +1456,7 @@ hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLBusBypa
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleInner.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleInnerAsync.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDebugModuleOuter.sv
+hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLDenyDuringReset.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLError.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLError_1.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFIFOFixer.sv
@@ -1471,6 +1472,7 @@ hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLFragmen
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_clint.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_debug.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_plic.sv
+hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_cbus_to_rockettile.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_fbus_from_debug_sb.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_fbus_from_port_named_slave_port_axi4.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_mbus_to_rom.sv
@@ -1478,8 +1480,10 @@ hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterco
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_1.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_2.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_pbus_to_device_named_wdt_3.sv
+hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_sbus_from_rockettile.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLInterconnectCoupler_sbus_to_port_named_mmio_port_axi4.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLPLIC.sv
+hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLProbeAckDuringReset.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLRAM.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLToAXI4.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_TLWDT.sv
@@ -1518,6 +1522,7 @@ hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x84.
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x85.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_2x86.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_3x15.sv
+hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_4x66.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_4x8.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_8x72.sv
 hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ram_8x85.sv
@@ -1540,6 +1545,7 @@ hw/sys/smc/rtl/smc_cpu/smc_4core_cpu.sv
 hw/sys/smc/rtl/smc_cpu/smc_cpu_ctrl_wrap.sv
 hw/sys/smc/rtl/smc_cpu/smc_cpu_wrapper.sv
 hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0.sv
+hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i1.sv
 hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0.sv
 hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_NonSyncResetSynchronizerPrimitiveShiftReg_d3.sv
 hw/sys/smc/rtl/smc_data_accelerator_wrap/rtl/smc_data_accelerator_wrap.sv
