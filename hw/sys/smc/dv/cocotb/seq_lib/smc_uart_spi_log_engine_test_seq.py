@@ -86,12 +86,12 @@ MSR_CTS = reg_field_encode(_UART_16550_MAIN_H, "UART_16550_MAIN", "MSR", cts=1)
 # The bits every MSR compare is masked to: the two this test drives and reads.
 MSR_LIVE_MASK = MSR_DCTS | MSR_CTS
 
-# cts_ni driven 0  =>  CTS = ~0 = 1. First MSR read of the simulation:
-# "changed since the last time this register was read" with no prior read and
-# CTS asserted => the delta is reported => DCTS = 1.
-MSR_FIRST_READ = MSR_DCTS | MSR_CTS  # 0x11
-# Back-to-back second read: the first read is now "the last time this register
-# was read" and CTS has not moved, so DCTS must have cleared.
+# cts_ni driven 0  =>  CTS = ~0 = 1. First MSR read of the simulation: the
+# modem-status synchronizer loads the last-read levels from the pins until it
+# holds synchronized inputs (uart_core.sv, modem_status_synced), so a line
+# asserted from reset is no delta => DCTS = 0.
+MSR_FIRST_READ = MSR_CTS  # 0x10
+# Back-to-back second read: CTS has not moved, so DCTS stays clear.
 MSR_SECOND_READ = MSR_CTS  # 0x10
 # Settled words for each driven pad level (DCTS already consumed by the
 # preceding read): pad 1 => cts_ni = 1 => CTS = 0; pad 0 => CTS = 1.
@@ -286,8 +286,9 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         msr_first = await self._read_msr("UART_MSR", expected=MSR_FIRST_READ)
         cocotb.log.info(
             "CHK-UART-MSR-FIRST: UART_MSR @ 0x%08x CTS/DCTS bits = 0x%02x == "
-            "DCTS|CTS 0x%02x (this test drives CTS pad %d low -> cts_ni=0 -> "
-            "CTS=1; first read of this register -> DCTS=1; DSR/RI/DCD and "
+            "CTS 0x%02x (this test drives CTS pad %d low -> cts_ni=0 -> "
+            "CTS=1; the synchronizer seeds the last-read level from the pin, so "
+            "the first read reports no delta -> DCTS=0; DSR/RI/DCD and "
             "their delta bits are masked out of the compare)",
             UART_MSR,
             msr_first,
@@ -298,8 +299,8 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         msr_second = await self._read_msr("UART_MSR_RD2", expected=MSR_SECOND_READ)
         cocotb.log.info(
             "CHK-UART-MSR-DELTA-CLEAR: second UART_MSR read CTS/DCTS = 0x%02x == 0x%02x "
-            "-- DCTS cleared by the preceding read while CTS stayed asserted, "
-            "as the MSR delta-since-last-read contract requires",
+            "-- CTS still asserted and DCTS clear because CTS has not changed "
+            "since the first read, as the MSR delta-since-last-read contract requires",
             msr_second,
             MSR_SECOND_READ,
         )

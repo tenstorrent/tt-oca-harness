@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_sep_wdt_bite_to_smc_reset_test - SEP watchdog bite into the SMC reset unit and its release.
+"""smu_sep_wdt_bite_to_smc_reset_test - SEP watchdog bite pulses the SMC watchdog reset.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_sep_wdt_bite_to_smc_reset_test --target compile_smu_chiplet
@@ -15,7 +15,10 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_sep_wdt_bite_to_smc_reset_test(smu_base_test):
-    """SEP watchdog bite drops the SMC watchdog-term and warm resets; the cool pin releases them."""
+    """SEP watchdog bite pulses the SMC watchdog and warm resets.
+
+    Primary and cold stay released.
+    """
 
     use_shared_env = True
     required_evidence = (

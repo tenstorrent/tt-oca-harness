@@ -110,13 +110,13 @@ waive_violation -add {SMU_CDC_COHERENCY_ASYNCSRCS_RECONV_SEQ_sep_dmi_pic} \
 # =============================================================================
 
 waive_violation -add {SMU_SETUP_CLOCK_UNUSED_BOUNDARY_CLKS} \
-    -comment {Output-port memory-interface clocks (SMUCLK_ROM / SMUCLK_RAM* / SMUCLK_{I,D}CACHE_* / SEPCLK_PKA_*) and the SPICLK base of the GPIO SPI clocks clock no internal sequentials by construction. SEP_WDT_CLK clocks only the SEP watchdog, which the no-SEP configuration does not elaborate.} \
-    -filter {(Clock:ClkName =~ "SMUCLK_*") OR (Clock:ClkName =~ "SEPCLK_*") OR (Clock:ClkName == "SPICLK") OR (Clock:ClkName == "SEP_WDT_CLK")} \
+    -comment {Output-port memory-interface clocks (SMUCLK_ROM / SMUCLK_RAM* / SMUCLK_{I,D}CACHE_* / SEPCLK_PKA_* / PERIPHERALCLK_I3C_*) and the SPICLK base of the GPIO SPI clocks clock no internal sequentials by construction. SEP_WDT_CLK clocks only the SEP watchdog, which the no-SEP configuration does not elaborate.} \
+    -filter {(Clock:ClkName =~ "SMUCLK_*") OR (Clock:ClkName =~ "SEPCLK_*") OR (Clock:ClkName =~ "PERIPHERALCLK_I3C_*") OR (Clock:ClkName == "SPICLK") OR (Clock:ClkName == "SEP_WDT_CLK")} \
     -app { cdc } -tag { SETUP_CLOCK_UNUSED } -user { nbetik } -timestamp { 16-09-2026 12:50:22 }
 
 # Reset-tree edges that cross a block boundary, so neither block's RESET_OVERLAP class waiver owns them.
 waive_violation -add {SMU_SETUP_RESET_OVERLAP_CROSS_BLOCK_TREE} \
-    -comment {DTP trst_n_combined is passed through the PTAP TAP controller and the SMC STAP to smc_cpu_jtag_reset_i, where smu.sv inverts it into the active-high JTAG_RESET. SEP RST_WDT_N resets the watchdog request flop whose inverted output is a WARM_RESET_N AND-tree input. One declared reset reaching the root of another is the reset tree by construction.} \
-    -filter {((SrcRstInfo:ResetName == "trst_n_combined") AND (DesRstInfo:ResetName == "JTAG_RESET")) OR ((SrcRstInfo:ResetName == "RST_WDT_N") AND (DesRstInfo:ResetName == "WARM_RESET_N"))} \
+    -comment {DTP trst_n_combined is passed through the PTAP TAP controller and the SMC STAP to smc_cpu_jtag_reset_i, where smu.sv inverts it into the active-high JTAG_RESET. One declared reset reaching the root of another is the reset tree by construction.} \
+    -filter {(SrcRstInfo:ResetName == "trst_n_combined") AND (DesRstInfo:ResetName == "JTAG_RESET")} \
     -app { cdc } -tag { SETUP_RESET_OVERLAP } -user { nbetik } -timestamp { 17-09-2026 00:00:00 }
 waive_violation -add {SMU_SETUP_OUTPUT_MULTICLOCK_DRIVER_avs_pad} -comment {core2pad_o[50] is the AVS clock-output pad: its pad-function mux selects between the SMUCLK GPIO data register and the AVS divider clock, so the port is in the fan-out of both domains by design. The select is a quasi-static DATA_CTRL field; the SMC block run times the pad on the AVS GPIO clocks.} -filter {(PortName == "core2pad_o[50]") AND (ClockedInstanceList:ClockedInstance:InstanceName =~ "u_smc/u_smc_peripherals/u_smc_padring/gen_gpio_intf[50].u_gpio_interface/u_gpio_intf_reg/field_storage*") AND (ClockedInstanceList:ClockedInstance:ClockName =~ "u_smc/u_smc_peripherals/u_avsbus_controller/u_clk_div/clk_o")} -app { cdc } -tag { SETUP_OUTPUT_MULTICLOCK_DRIVER } -user { nbetik } -timestamp { 02-10-2026 12:45:00 }

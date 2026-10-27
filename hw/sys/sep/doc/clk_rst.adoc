@@ -53,11 +53,13 @@ Reset scope determines which state survives a restart. In normal operation
 |===
 |Reset |Scope and release condition
 |Cold reset (`rst_ni`)
-|Resets the early infrastructure, including the local AXI crossbar, OTP controller, watchdog and reset-isolation sequencers. This infrastructure can operate before the boot-qualified SEP reset is released.
+|Resets the early infrastructure, including the local AXI crossbar, OTP controller, watchdog register path and reset-isolation sequencers. This infrastructure can operate before the boot-qualified SEP reset is released.
 |Boot-qualified SEP reset (`sep_reset_n`)
 |The OTP controller qualifies release with fuse sensing complete, cold reset released and `ext_boot_seq_done_i` asserted. The SEP Reset Controller applies the SEP JTAG override and synchronizes release to `clk_i`. This reset feeds system peripherals and the reset-controller registers, and qualifies the software-controlled engine resets.
 |CPU reset (`sep_cpu_reset_n`)
 |Combines `sep_reset_n` with the aggregated SMC/SEP watchdog reset input, `wdt_rst_ni`. A watchdog reset restarts the CPU without asserting the boot-qualified SEP reset or the software-controlled cryptographic resets. It also clears the warm scratch register bank through the system CSR warm-reset input.
+|Watchdog reset (`sep_wdt_reset_n`)
+|Asserted by cold reset and by `wdt_rst_ni`. It resets the watchdog timer and its registers, so a SEP bite clears itself. Release to the timer domain is synchronized to `clk_wdt_i`.
 |Software-controlled engine resets
 |Separate requests for Key Manager, OTBN, AES, HMAC, KMAC, Adams Bridge and the shared TRNG domain. Each sequencer isolates its required AXI paths and waits for the isolation acknowledgements before asserting reset.
 |===
@@ -71,8 +73,6 @@ ifdef::backend-pdf[]
 https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#sep-software-reset[software reset section]
 endif::backend-pdf[]
 of the Programmer's Guide.
-The watchdog itself uses cold reset; its timer-domain reset release is
-synchronized to `clk_wdt_i`.
 
 JTAG can override the SEP and individual engine resets. These overrides do
 not perform the software-request isolation sequence. Scan test enable selects

@@ -167,8 +167,8 @@
 
 // DV models and AXI error slaves inside the integration wrapper. The memory
 // arrays themselves are prim_ram_*/prim_rom and are already held by the library
-// rules above. The wrapper's TT interface shims -- sep_sram_interface_shim,
-// sep_rom_interface_shim, sep_tcm_wrapper, efuse_interface_shim -- stay graded:
+// rules above. The wrapper's TT RTL -- sep_tcm_wrapper, efuse_interface_shim --
+// stays graded:
 // they are SEP RTL under hw/sys/sep/rtl and hw/ip/efuse/rtl, and a SEP test
 // states a contract on the SRAM path through them.
 //

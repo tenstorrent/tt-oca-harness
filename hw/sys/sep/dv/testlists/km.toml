@@ -604,7 +604,7 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+erro
 
 [[tests]]
 # KM fatal faults on the HOST-UNREC build: fatal-handler shreds, first-source rule, CPU lines, parity, key CRC,
-# SRAM latency, main-context fault. The leaf resets the KM while its CPU runs; the raised Verilator error limit
+# main-context fault. The leaf resets the KM while its CPU runs; the raised Verilator error limit
 # keeps it running.
 name = "sep_km_fault_inject_rand_test_unrec"
 module = "km.sep_km_fault_inject_rand_test"
@@ -618,7 +618,7 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000"]
 
 [[tests]]
-# Shard 1 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point, the key CRC leg and the SRAM latency leg. The
+# Shard 1 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point and the key CRC leg. The
 # regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_km_fault_inject_rand_test_unrec_shard1"
 module = "km.sep_km_fault_inject_rand_test"
