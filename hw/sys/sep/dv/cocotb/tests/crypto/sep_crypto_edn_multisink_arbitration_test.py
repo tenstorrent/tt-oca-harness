@@ -69,11 +69,11 @@ generate budget of the open boot Generate (CTRL-CONC-BUDGET).
                    member and CTRL-CONC-OVERLAP > 0 for every pair of the group.
   CHK-CONC-HOLD    every bystander DIGEST read equals the bystander golden; control:
                    at least one read completes while a peer is busy.
-An HMAC DIGEST readback (member and bystander) equals its golden when every word is the
-big-endian or every word is the little-endian read of digest bytes 4n..4n+3, with one
-order for every readback of the leg (env/sep_hmac_golden.py SepDigestOrder): the register
-text settles the register order and the digest_swap swap (hmac.adoc:116-117), not the byte
-order at digest_swap = 0. The order is logged as OBS-HMAC-DIGEST-ORDER.
+An HMAC DIGEST readback (member and bystander) equals its golden only when every word is
+the big-endian read of digest bytes 4n..4n+3 (env/sep_hmac_golden.py SepDigestOrder): at
+digest_swap = 0 DIGEST word n is that read (hmac.hjson:465-469, DIGEST, over the FIPS 180-4
+hash value H0 || H1 || ...). The order the first readback matches is logged as
+OBS-HMAC-DIGEST-ORDER.
 The specification implies the independence of the engines (separate host paths,
 hw/sys/sep/doc/crypto.adoc; per-domain resets, hw/sys/sep/doc/reset_controller.adoc)
 and states no direct rule, so both checks grade the implied contract.

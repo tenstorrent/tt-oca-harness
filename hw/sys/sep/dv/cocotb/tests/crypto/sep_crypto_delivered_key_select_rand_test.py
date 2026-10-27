@@ -76,11 +76,14 @@ The digest of a mismatched length above 128 bits has no stated value:
 state the padding below the delivered key. Its compare with the matching-length
 digest and the decoy golden is logged as ``OBS-KEYSEL-MISMATCH``.
 
-DIGEST byte order: the register text settles the register order (DIGEST_0 holds
-digest bytes 0..3) and the ``digest_swap`` swap (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117), not the
-byte order of a word at ``digest_swap`` = 0. Every HMAC golden compare accepts the
-big-endian or the little-endian read of each word, with one order for every
-readback of the seed (``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order is
+DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
+gives digest[511:0] = {DIGEST0, DIGEST1, ...} for the SHA-2 hash value, which FIPS 180-4
+defines as H0 || H1 || ..., so at ``digest_swap`` = 0 DIGEST word n is the big-endian read
+of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in the final
+HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
+so each word is the little-endian read ("le").
+Every HMAC golden compare is at ``digest_swap`` = 0 and expects the big-endian read
+(``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order the first readback matches is
 logged as ``OBS-HMAC-DIGEST-ORDER``.
 """
 

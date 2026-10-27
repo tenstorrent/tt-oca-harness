@@ -63,10 +63,14 @@ start; the register text does not state them) and
 ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text does not state its value after a
 blocked start), ``OBS-HMAC-DIGEST-ORDER`` (the byte order inside a DIGEST word).
 
-DIGEST byte order: hmac.adoc:114 (``CFG.digest_swap``) states a byte swap, and no register text
-states the byte order inside a DIGEST word at ``digest_swap`` = 0. A readback equals its golden
-when every word is the big-endian ("be") or every word is the little-endian ("le") read of
-digest bytes 4n..4n+3, and every readback of the seed uses the order of the first one.
+DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
+gives digest[511:0] = {DIGEST0, DIGEST1, ...} for the SHA-2 hash value, which FIPS 180-4
+defines as H0 || H1 || ..., so at ``digest_swap`` = 0 DIGEST word n is the big-endian read
+of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in the final
+HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
+so each word is the little-endian read ("le").
+Every CFG of the leaf has ``digest_swap`` = 0, so a readback equals its golden only in the
+big-endian read. The order the first readback matches is logged as ``OBS-HMAC-DIGEST-ORDER``.
 """
 
 from __future__ import annotations
@@ -81,7 +85,7 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import RFC4231_KEYS
 from env.sep_fcov_gate import close_graded_window, open_graded_window
-from env.sep_hmac_golden import hmac_sha2_bytes, sha2_bytes
+from env.sep_hmac_golden import DSWAP_ORDER, hmac_sha2_bytes, sha2_bytes
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import HMAC
@@ -392,13 +396,11 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         self.chk.finish()
 
     def _eq(self, got: tuple[int, ...], golden: tuple[int, ...]) -> bool:
-        """``got`` equals ``golden`` in the DIGEST byte order of the seed (first match sets it)."""
+        """``got`` equals ``golden`` in the big-endian read (``digest_swap`` = 0)."""
         order = _order_of(got, golden)
-        if order is None:
-            return False
-        if self._dorder is None:
+        if self._dorder is None and order is not None:
             self._dorder = order
-        return order == self._dorder
+        return order == DSWAP_ORDER[0]
 
     # Outer limit of the clean-time measurement only; never a contract.
     REF_BOUND = 20_000
