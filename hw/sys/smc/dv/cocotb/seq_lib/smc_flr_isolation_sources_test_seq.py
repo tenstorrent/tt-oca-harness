@@ -17,13 +17,14 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 
-from .smc_addr_map import _REPO, smc_addr
+from .smc_addr_map import _REPO, reset_unit_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 ISO_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_REG_BASE_ADDR")
 PINEN_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_PINEN_REG_BASE_ADDR")
 SMCEN_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR")
 SMC_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR")
+SMC_BIT = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm")
 BIT3 = 1 << 3
 _PAD_TABLE = _REPO / "doc" / "integrator" / "meta" / "ocah_gpio_table.csv"
 
@@ -125,7 +126,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
         dut = cocotb.top
         dut.tb_cfg_flr_pf_active.value = 0
         await self._await(lambda: self._bit(dut.tb_flr_sync_ref, "tb_flr_sync_ref") & 1, 0, label)
-        await self.csr_write(f"{label}_CLEAR", SMC_REG, 0)
+        await self.csr_write(f"{label}_CLEAR", SMC_REG, SMC_BIT)
         await self._await(self._skip, 0, f"{label}_SKIP0")
         await self._await(self._iso3, 0, f"{label}_ISO0")
 
@@ -155,7 +156,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
             dut.tb_cfg_flr_pf_active.value = 1
 
         raiser = cocotb.start_soon(raise_flr())
-        await self.csr_write(f"TRIAL{delay}_WR", SMC_REG, 0)
+        await self.csr_write(f"TRIAL{delay}_WR", SMC_REG, SMC_BIT)
         await raiser
         tail = []
         for _ in range(_HOLD):
@@ -260,7 +261,7 @@ class smc_flr_isolation_sources_test_seq(SmcCsrSeq):
             f"{_HOLD} of {_HOLD} rises",
         )
 
-        # S6: write 0 clears the latch; a write at a new FLR edge leaves it set.
+        # S6: a write of 1 to bit 0 clears the latch; a write at a new FLR edge leaves it set.
         # With FLR low again the latch outputs must stay set until the clearing write lands.
         dut.tb_cfg_flr_pf_active.value = 0
         for cycle in range(1, _BOUND + 1):

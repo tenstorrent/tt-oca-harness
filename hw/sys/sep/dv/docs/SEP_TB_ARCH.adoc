@@ -864,8 +864,9 @@ Exceptions (a closed set):
   IRQ_SET drives the same path, but the host has no write path to the KMCSR
   and no source event sets several bits in one clock. Both inputs are 0 by
   default. A released net keeps its forced value until its driver changes, so when the drive ends the bench forces the live value (the IRQ_SET field storage of the register block) until it equals the value forced last and then releases the net; one falling edge after the release the net must equal the live value, else the bench reports an error. Readback: `km_irqset_fired_o`. The `IRQ_STATUS` the checkers read
-  is not forced. User: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
-  CHK-STATUS-HELD, CHK-CPU-TRAP).
+  is not forced. Users: `sep_km_fault_inject_rand_test` (CHK-FATAL-SET,
+  CHK-STATUS-HELD, CHK-CPU-TRAP) and `sep_km_otp_change_irq_test`
+  (CHK-OTP-PULSE).
 * *Key Manager CPU internal IRQ lines* (HK-CPUIRQ) — at the first falling
   edge with `km_cpuirq_arm_i` at 1 and a non-zero `km_cpuirq_lines_i[1:0]`,
   the bench drives bit 1 (mask bit 0: EBREAK or illegal instruction) and bit

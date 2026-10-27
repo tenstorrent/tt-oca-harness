@@ -226,7 +226,7 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
         raise AssertionError(f"{label}: warm smc clk still {last} after {_RECOVERY_SMC} cycles")
 
     async def _clear_latch(self, label: str) -> None:
-        await self.csr_write(f"{label}_SMC_REG_CLR", SMC_REG, 0)
+        await self.csr_write(f"{label}_SMC_REG_CLR", SMC_REG, SMC_BIT)
         last = SMC_BIT
         for _ in range(_ISO_BOUND):
             last = await self.csr_read(f"{label}_SMC_REG_RB", SMC_REG)

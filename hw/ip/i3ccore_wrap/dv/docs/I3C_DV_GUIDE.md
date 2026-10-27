@@ -112,6 +112,7 @@ by bare module name.
 **Purpose**: SystemVerilog testbench top-level that instantiates the I3C core wrapper and provides simulation infrastructure.
 
 **Features**:
+
 - **Clock/Reset Generation**: 100MHz clock, 10-cycle reset assertion
 - **AXI4-Lite Interface**: Flattened signals for cocotb access
   - Write Address Channel: `axi_awaddr`, `axi_awprot`, `axi_awvalid`, `axi_awready`
@@ -140,6 +141,7 @@ by bare module name.
 **Purpose**: Core Python API providing reusable classes for all I3C operations.
 
 **Classes**:
+
 - `I3CHelper`: Low-level register I/O wrapper around AXI-Lite
 - `I3CController`: High-level controller operations (init, CCC, private transfers, IBI)
 - `I3CTarget`: High-level target operations (init, IBI transmission, descriptor management)
@@ -188,6 +190,7 @@ since the launcher only accepts names that appear in the testlist.
 collection. There is no per-TB Makefile.
 
 **Key entries**:
+
 - `[build]`: top module, filelist paths and the bender target set
 - `[cocotb]`: `python_root` and `test_dir`, which become `PYTHONPATH`
 - `[testlist]`: points at `testlists/all.toml` for the selectable groups
@@ -196,15 +199,18 @@ collection. There is no per-TB Makefile.
 ### Hardware Configuration
 
 **Dual-Instance Setup**:
+
 - **Instance 0 (Controller)**: Base address `0x0000`, drives SCL, initiates transactions
 - **Instance 1 (Target)**: Base address `0x1000`, responds to commands, can send IBI
 
 **Bus Topology**:
+
 - **SCL**: Only controller (instance 0) drives; target cannot drive SCL
 - **SDA**: Open-drain shared bus; both instances can pull low for data/ACK
 - **Pull-up**: Testbench models implicit pull-up (signal high when neither drives low)
 
 **Address Space**:
+
 - Controller registers: `0x0000` - `0x0FFF` (4KB)
 - Target registers: `0x1000` - `0x1FFF` (4KB)
 
@@ -1674,6 +1680,7 @@ ok, resp, rx_data = await ctrl.private_write([0xDE, 0xAD, 0xBE, 0xEF], target, d
 ```
 
 Returns:
+
 - `ok`: True if no error
 - `resp`: Response descriptor (32-bit)
 - `rx_data`: Data received by target
@@ -1687,6 +1694,7 @@ ok, resp, ctrl_rx_data = await ctrl.private_read(target, tx_data=[0x11, 0x22, 0x
 ```
 
 Returns:
+
 - `ok`: True if no error
 - `resp`: Response descriptor
 - `ctrl_rx_data`: Data received by controller
@@ -1718,6 +1726,7 @@ ok, ibi_id, mdb, payload = await ctrl.read_ibi()
 ```
 
 Returns:
+
 - `ok`: True if no error
 - `ibi_id`: Target address that sent IBI
 - `mdb`: Mandatory Data Byte
@@ -2358,24 +2367,28 @@ Upper 32 bits (cmd_hi):
 **Examples**:
 
 **SETDASA Broadcast**:
+
 ```
 cmd_lo = 0x8000_0287  (attr=2, ccc=0x87, toc=1, wroc=1)
 cmd_hi = 0x0000_0000
 ```
 
 **Private Write (4 bytes)**:
+
 ```
 cmd_lo = 0xC400_0000  (attr=0, rnw=0, toc=1, wroc=1)
 cmd_hi = 0x0004_0000  (data_length=4)
 ```
 
 **Private Read (4 bytes)**:
+
 ```
 cmd_lo = 0xE400_0000  (attr=0, rnw=1, toc=1, wroc=1)
 cmd_hi = 0x0004_0000  (data_length=4)
 ```
 
 **Immediate Write (2 bytes, data=0xAB, 0xCD)**:
+
 ```
 cmd_lo = 0xC180_0001  (attr=1, dtt=2, toc=1, wroc=1)
 cmd_hi = 0x0000_CDAB  (data packed little-endian)
@@ -2499,9 +2512,11 @@ Examples:
   register_value = 2 → threshold = 8 bytes
   register_value = 3 → threshold = 16 bytes
 ```
+
 For Command/Response (or TX/RX Descriptors for TTI): actual_threshold_bytes = register value
 
 See HCI 7.5.5 and 7.5.6
+
 ---
 
 ## 9. Test Execution Examples
@@ -2621,16 +2636,19 @@ PLI under VCS.
 **Key Signals to Monitor**:
 
 **I3C Bus**:
+
 - `tb_i3ccore.scl_i[0]`, `tb_i3ccore.scl_o[0]` (controller SCL)
 - `tb_i3ccore.sda_i[0]`, `tb_i3ccore.sda_o[0]` (controller SDA)
 - `tb_i3ccore.sda_i[1]`, `tb_i3ccore.sda_o[1]` (target SDA)
 
 **AXI-Lite**:
+
 - `tb_i3ccore.axi_awaddr`, `tb_i3ccore.axi_awvalid`, `tb_i3ccore.axi_awready`
 - `tb_i3ccore.axi_wdata`, `tb_i3ccore.axi_wvalid`, `tb_i3ccore.axi_wready`
 - `tb_i3ccore.axi_rdata`, `tb_i3ccore.axi_rvalid`, `tb_i3ccore.axi_rready`
 
 **Interrupts**:
+
 - `tb_i3ccore.irq[0]` (controller interrupt)
 - `tb_i3ccore.irq[1]` (target interrupt)
 
@@ -2853,8 +2871,6 @@ Not in the regression: `i3c_ibi_diag`, an IBI receive diagnostic.
 
 ### Key Register Addresses
 
-| Address | Register | Purpose |
-|---------|----------|---------|
 Offsets within one core instance; add `TGT_BASE` (0x1000) for target accesses.
 
 | Address | Register | Purpose |
