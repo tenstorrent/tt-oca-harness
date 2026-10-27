@@ -602,7 +602,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         rec = step.recovery
         assert rec is not None
         refused = await self._write_msg_logged(rec.msg)
-        process_okay = await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
         await ClockCycles(cocotb.top.clk_i, hold)
         intr_proc = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
         window_clk = self._now_clk() - t0
@@ -624,7 +624,6 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             d_prev=f"0x{d_prev[0]:08x}",
             digest0=f"0x{digest[0]:08x}",
             msg_len=len(rec.msg),
-            process_resp_okay=int(process_okay),
             window_clk=window_clk,
             hold=hold,
             t_clean=self.t_clean,
