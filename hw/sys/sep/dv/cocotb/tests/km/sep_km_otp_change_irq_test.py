@@ -6,8 +6,9 @@ no_cpu / real fuse sense / the ``rom_main_otp_change`` image, which is the
 bench wipe pair with ``IRQ_ENABLE.otp_change_en`` set at boot.
 
 CHK-OTP-ARM proves the source is armed and the main loop answers. CHK-OTP-PULSE
-proves HK-IRQSET fired and ``IRQ_STATUS.otp_change`` reads 1. CHK-OTP-RETIRE
-requires PIC vector bit 30 to stay 0 and a following CMD_STAT to complete with
+proves HK-IRQSET fired and ``IRQ_STATUS.otp_change`` reads 1. CHK-OTP-ENTRY
+requires the KM CPU to enter the KMCSR interrupt after the pulse, so the handler
+ran. CHK-OTP-RETIRE requires PIC vector bit 30 to stay 0 and a following CMD_STAT to complete with
 return code 0, since the handler does not halt the KM. OBS-OTP-STICKY logs
 ``IRQ_STATUS.otp_change`` and its enabled line after the handler; no spec
 sentence states their value, so they are not graded.
@@ -68,6 +69,9 @@ class sep_km_otp_change_irq_test(sep_base_test):
 
     def _rom_reqs(self) -> int:
         return self.rd_known(cocotb.top.km_rom_req_count_o)
+
+    def _kmcsr_entries(self) -> int:
+        return self.rd_known(cocotb.top.km_kmcsr_irq_entry_count_o)
 
     async def _stat(self, polls: int) -> tuple[bool, int]:
         """CMD_STAT with a bounded wait. ``(answered, rc)``; rc is -1 on timeout."""
@@ -160,6 +164,7 @@ class sep_km_otp_change_irq_test(sep_base_test):
             open_graded_window(TEST, self.logger)
             window = True
             rom0 = self._rom_reqs()
+            ent0 = self._kmcsr_entries()
             fired = await self._pulse()
             rose = await self._bit_is(True, 64)
             if fired != 1 or not rose:
@@ -185,6 +190,11 @@ class sep_km_otp_change_irq_test(sep_base_test):
             self.logger.info(
                 "OBS-OTP-STICKY LOG status_otp_change=%d line=%d", bit, line
             )
+            entries = self._kmcsr_entries() - ent0
+            if entries < 1:
+                self.logger.error("CHK-OTP-ENTRY FAIL: kmcsr_irq_entries=%d", entries)
+                raise AssertionError(f"CHK-OTP-ENTRY FAIL: kmcsr_irq_entries={entries}")
+            self.logger.info("CHK-OTP-ENTRY PASS: kmcsr_irq_entries=%d", entries)
             answered, rc = await self._stat(_STAT_POLLS)
             rom1 = self._rom_reqs()
             ok = pic == 0 and answered and rc == KM_RC_SUCCESS

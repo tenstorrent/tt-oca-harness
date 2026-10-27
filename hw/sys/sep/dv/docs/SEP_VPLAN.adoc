@@ -1856,10 +1856,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |Proves that a fatal source makes the ROM shred, flush, report the first source in ISR order, shred SRAM and trap, that the CPU lines report -9 and -10 above every KMCSR source, that an organic DRBG stall reports -8, that a key-path error is fatal and stops the transfer, that a main-context fatal fault sends one report, that a corrupt key read from the KPV gives the key_slot_crc fault, and that a command result does not depend on the SRAM latency.
 
 |<<sep_km_otp_change_irq_test,`sep_km_otp_change_irq_test`>>
-|3
+|4
 |no_cpu, real fuse sense, `rom_main_otp_change` (`KM_OTP_CHANGE_EN=1`), HK-IRQSET
-|Host mailbox master, `KM-CSR` IRQ status and enable taps, PIC interrupt probe (bit 30), `HK-IRQSET`
-|Proves that an armed OTP-change interrupt does not halt the KM: PIC bit 30 stays 0 and a following CMD_STAT completes. The sticky bit after the handler is logged, not graded. CHK-OTP-RETIRE fails on this DUT (<<sep_km_otp_change_irq_test>>).
+|Host mailbox master, `KM-CSR` IRQ status and enable taps, PIC interrupt probe (bit 30), KM CPU KMCSR interrupt entry count, `HK-IRQSET`
+|Proves that an armed OTP-change interrupt enters the KM CPU handler and does not halt the KM: PIC bit 30 stays 0 and a following CMD_STAT completes. The sticky bit after the handler is logged, not graded. CHK-OTP-RETIRE fails on this DUT (<<sep_km_otp_change_irq_test>>).
 
 |<<sep_km_kmcsr_reset_rand_test,`sep_km_kmcsr_reset_rand_test`>>
 |3
@@ -5492,7 +5492,7 @@ defect. Behaviour that this plan does not claim at all is in
 |`sep_km_handover_rand_test` CHK-HO-NOIRQ can fail on this DUT (<<sep_km_handover_rand_test>>). The other handover checks read their own fields of the same report.
 
 |Key Manager ROM OTP-change sticky bit (firmware gap). `hw/ip/key_manager/regs/gen/adoc/km_csr.adoc` (`IRQ_STATUS.otp_change`) states that the bit is sticky and write-1-to-clear, and `hw/ip/key_manager/doc/architecture.adoc` ("Key Manager Control and Status Registers (KMCSR)") states that the aggregated interrupt is the logical OR of the masked status bits. `hw/ip/key_manager/doc/firmware.adoc` ("OTP Change Status") states that the handler does not halt. The handler clears `OTP_CHANGE_STATUS` and does not write 1 to `IRQ_STATUS.otp_change`, so with the source enabled the line stays high, the CPU re-enters and the main loop does not answer. *Issue*: #3102
-|`sep_km_otp_change_irq_test` CHK-OTP-RETIRE fails on this DUT: CMD_STAT does not complete (<<sep_km_otp_change_irq_test>>). CHK-OTP-ARM and CHK-OTP-PULSE pass. The leaf has no expected-fail entry.
+|`sep_km_otp_change_irq_test` CHK-OTP-RETIRE fails on this DUT: CMD_STAT does not complete (<<sep_km_otp_change_irq_test>>). CHK-OTP-ARM, CHK-OTP-PULSE and CHK-OTP-ENTRY pass. The leaf has no expected-fail entry.
 
 |Key Manager OTP integrity bit across a KM reset (hardware gap). `hw/ip/key_manager/regs/gen/adoc/km_csr.adoc` (`IRQ_STATUS.otp_sigint`, reset 0x0) and `hw/ip/key_manager/doc/architecture.adoc` ("Reset Conditioning": IRQ_STATUS is in the warm and cold reset domain) state that a KM reset returns the bit to 0 when the OTP rails are complementary. On this DUT the OTP captures clear to all-zero in the reset, and the KM decodes the cleared captures as a dual-rail violation on the first clock after it, so `OTP_SIGINT` reads 1 after every warm or cold reset. *Issue*: #3211
 |`sep_km_kmcsr_reset_rand_test` CHK-RST-WARM and CHK-RST-COLD fail on this DUT (<<sep_km_kmcsr_reset_rand_test>>). CHK-CSR-STATUS shows that IRQ_SET sets the bit and W1C clears it.

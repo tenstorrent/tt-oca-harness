@@ -162,6 +162,10 @@ Observation probe groups:
   target. A ROM fetch that the ROM lockout blocks moves this counter and not
   `km_rom_req_count_o`. User of `km_cpu_fetch_count_o`:
   `sep_km_cpu_protect_rand_test`.
+* KM CPU KMCSR interrupt entries (`km_kmcsr_irq_entry_count_o`), reset with
+  the bench reset. It counts the 0-to-1 edges of the KMCSR bit of the KM CPU
+  `eoi` vector, which the core sets to the interrupts it serves at handler
+  entry. User: `sep_km_otp_change_irq_test` (CHK-OTP-ENTRY).
 * KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`).
 * KM SRAM read-count probes (`km_sram_rd_*`) and scrambled-write probes
   (`km_sram_scr_wr_*`).
