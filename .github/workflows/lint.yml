@@ -458,7 +458,8 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "24"
+          check-latest: true
       - name: Lint Markdown sources (markdownlint)
         run: make ocah-lint-markdown 2>&1 | tee lint_markdown.log || true
       - uses: ./.github/actions/reviewdog-report
@@ -763,7 +764,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "24"
+          check-latest: true
       - name: Install the converter the block catalog tests convert through
         run: npm install -g @asciidoctor/core@3
       - name: Run the documentation unit tests
