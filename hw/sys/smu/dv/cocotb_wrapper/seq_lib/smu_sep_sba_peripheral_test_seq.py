@@ -41,8 +41,9 @@ S6: the security-disable token (``hw/sys/sep/doc/security_disable.adoc``).
     earlier match.
 S7: the SEP watchdog (OpenTitan ``aon_timer``). With WDOG_CTRL.enable set and a
     small bite threshold, the watchdog bites and requests a reset ("A bite
-    triggers a reset", ``aon_timer.hjson``). The request level after the cool
-    reset pin is held is recorded: no specification states what clears it.
+    triggers a reset", ``aon_timer.hjson``). ``wdt_rst_ni`` clears the bite, so
+    the request falls while the cool-reset pin stays released
+    (``hw/sys/sep/rtl/sep_reset_ctrl.sv``, ``doc/trm/src/reset.adoc``).
 S8: the bench drives GPIO pads 4..7, 10 and 54 high while the chip runs, in
     cold reset and after it, and records what SPI receive lanes 4..7, DQS and
     the rebar loopback read. The GPIO pin table assigns those pads to the SMC
@@ -164,7 +165,6 @@ WDOG_ENABLE = c_header_u32(_AON_H, "AON_TIMER__WDOG_CTRL__ENABLE_bm")
 WDOG_THOLD = 0x20
 WDT_REQ_PATH = "sep_wdt_timer_rst_req"
 WDT_BOUND = 200000
-COOL_RESET_HOLD_REF_CYCLES = 256
 POLL_CYCLES = 200
 
 
@@ -419,19 +419,30 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         await self._sb_ok(jtag, WDOG_BARK, 2, WDOG_THOLD)
         await self._sb_ok(jtag, WDOG_BITE, 2, WDOG_THOLD)
         await self._sb_ok(jtag, WDOG_COUNT, 2, 0)
+        # The bite clears itself a few clk_i after the reset asserts, including
+        # while the enable write is still on the debug bus.
+        seen = {"high": 0}
+
+        async def watch() -> None:
+            while True:
+                if self._smu(WDT_REQ_PATH) == 1:
+                    seen["high"] = 1
+                await ClockCycles(self.dut.clk_smu_i, 1)
+
+        monitor = cocotb.start_soon(watch())
         await self._sb_ok(jtag, WDOG_CTRL, 2, WDOG_ENABLE)
-        bitten = await self._settle(WDT_REQ_PATH, 1, WDT_BOUND)
-        dut = self.dut
-        dut.tb_cool_reset_pin.value = 1
-        await ClockCycles(dut.clk_ref_i, COOL_RESET_HOLD_REF_CYCLES)
-        dut.tb_cool_reset_pin.value = 0
+        for _ in range(WDT_BOUND):
+            if seen["high"] == 1:
+                break
+            await ClockCycles(self.dut.clk_smu_i, 1)
+        bitten = seen["high"]
         released = await self._settle(WDT_REQ_PATH, 0, WDT_BOUND)
-        self._log(f"CHK-SEP-WDT-BITE idle={idle} bitten={bitten}")
-        self._log(f"OBSERVATION SEP watchdog request after the cool reset={released}")
+        monitor.cancel()
+        self._log(f"CHK-SEP-WDT-BITE idle={idle} bitten={bitten} released={released}")
         sb.expect_eq(
             "CHK-SEP-WDT-BITE",
-            (idle, bitten),
-            (0, 1),
+            (idle, bitten, released),
+            (0, 1, 0),
             evidence="CHK-SEP-WDT-BITE",
         )
         self.steps["s7"] = True

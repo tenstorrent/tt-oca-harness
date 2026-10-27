@@ -24,7 +24,7 @@ class smc_reset_sync_async_assert_test(smc_base_test):
         "CHK-NONVAC",
         "CHK-PERIPH-OUTPUT-ASSERTS-ASYNC",
         "CHK-REF-OUTPUTS-ASSERT-ASYNC",
-        "CHK-SOURCE-REASSERTS-IN-LATENCY",
+        "CHK-WDT-STRETCH-HOLDS",
     )
     min_evidence = 5
 

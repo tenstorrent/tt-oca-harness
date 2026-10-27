@@ -78,6 +78,7 @@ doc/*/modules/sep-bootrom-prod/
 doc/*/modules/dtp/
 doc/*/modules/aou/
 doc/*/modules/smu/
+doc/*/modules/smu-bl1/
 doc/*/modules/ip/
 
 

@@ -81,7 +81,7 @@ Multi-chunk start contract (CHK-DMA-GO-CHUNKS): "A start is a write of
 `INITIAL_TRANSFER` set, or a later chunk, with `GO` alone" (``dma.adoc:79-81``);
 "For a transfer in several chunks without hardware handshake, wait for
 `STATUS.CHUNK_DONE` after each chunk and start the next one by writing
-`CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`" (``sep-programming.adoc:743-745``);
+`CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`" (``sep-programming.adoc:768-770``);
 STATUS.CHUNK_DONE: "Transfer of a single chunk is complete. Only raised for
 multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``).
 DONE = 0 at those stops: "**Transfer Completion:** An interrupt is raised when

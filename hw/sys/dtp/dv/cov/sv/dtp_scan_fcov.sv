@@ -373,10 +373,9 @@ module dtp_scan_fcov (
   `OCAH_FCOV_COVER(c_dbg_disable_scan_mask_multi_hot, dbg_mask_multi_hot_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_dbg_disable_scan_mask_all_disabled, dbg_mask_all_disabled_e, tck_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups on the events the cover properties
-  // above record; the crosses have no cover-property twin.
+  // Covergroups, under the cross rules dtp_fcov.sv states, on the events the
+  // cover properties above record.
   // ------------------------------------------------------------------
   // Each SIB state is {disable, open}: a SIB whose disable is set is held
   // closed, so an open SIB under its disable is a design failure.
@@ -502,8 +501,15 @@ module dtp_scan_fcov (
     cp_value: coverpoint disabled iff (phase == PhaseAttempt) {
       bins clear = {1'b0}; bins set = {1'b1};
     }
-    cp_outcome: coverpoint is_blocked iff (phase == PhaseAttempt) {
-      bins allowed = {1'b0}; bins blocked = {1'b1};
+    // {disabled, is_blocked}: an outcome that contradicts the disable is a
+    // design failure.
+    cp_outcome: coverpoint {
+      disabled, is_blocked
+    } iff (phase == PhaseAttempt) {
+      bins allowed = {2'b00};
+      bins blocked = {2'b11};
+      illegal_bins clear_blocked = {2'b01};
+      illegal_bins set_allowed = {2'b10};
     }
     cp_mask: coverpoint disabled_count iff (phase == PhaseAttempt) {
       bins all_clear = {4'd0};
@@ -517,11 +523,7 @@ module dtp_scan_fcov (
     cp_sequence: coverpoint phase iff (phase != PhaseAttempt) {
       bins released = {PhaseRelease}; bins recovered = {PhaseRecovery};
     }
-    // An outcome that contradicts the disable is a design failure.
-    x_cell: cross cp_field, cp_value, cp_outcome iff (phase == PhaseAttempt) {
-      illegal_bins clear_blocked = binsof (cp_value.clear) && binsof (cp_outcome.blocked);
-      illegal_bins set_allowed = binsof (cp_value.set) && binsof (cp_outcome.allowed);
-    }
+    x_cell: cross cp_field, cp_value iff (phase == PhaseAttempt);
     x_field_isolation: cross cp_field, cp_isolation iff (phase == PhaseAttempt && !disabled);
     x_sequence: cross cp_field, cp_sequence iff (phase != PhaseAttempt);
   endgroup
@@ -572,6 +574,5 @@ module dtp_scan_fcov (
       end
     end
   end
-`endif
 
 endmodule : dtp_scan_fcov

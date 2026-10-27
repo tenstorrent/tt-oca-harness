@@ -542,9 +542,8 @@ module dtp_debug_tdr_fcov (
   `OCAH_FCOV_COVER(c_caps_write_attempt_alternating, caps_wr_alt_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_caps_write_attempt_random, caps_wr_mixed_e, tck_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups.
+  // Covergroups, under the cross rules dtp_fcov.sv states.
   // ------------------------------------------------------------------
   covergroup cg_tmp with function sample (
       logic [2:0] ev,
@@ -693,15 +692,17 @@ module dtp_debug_tdr_fcov (
     }
     cp_jtag_stop: coverpoint jtag_stop {bins off = {1'b0}; bins on = {1'b1};}
     cp_cla_en: coverpoint cla_en {bins off = {1'b0}; bins on = {1'b1};}
-    cp_stop_clks: coverpoint stop_clks {bins running = {1'b0}; bins stopped = {1'b1};}
-    // stop_clks_o is the OR of jtag_clock_stop and every request line;
-    // cla_clock_stop_en takes no part in it.
-    x_aggregation: cross cp_req_source, cp_jtag_stop, cp_cla_en, cp_stop_clks{
-      illegal_bins stopped_without_source =
-          binsof (cp_req_source.none) && binsof (cp_jtag_stop.off) && binsof (cp_stop_clks.stopped);
-      illegal_bins running_with_source = binsof (cp_stop_clks.running)
-          && (binsof (cp_jtag_stop.on) || !binsof (cp_req_source.none));
+    // {stop_clks_o, a stop source}: stop_clks_o is the OR of jtag_clock_stop
+    // and every request line; cla_clock_stop_en takes no part in it.
+    cp_stop_clks: coverpoint {
+      stop_clks, jtag_stop || req_source != ReqNone
+    } {
+      bins running = {2'b00};
+      bins stopped = {2'b11};
+      illegal_bins stopped_without_source = {2'b10};
+      illegal_bins running_with_source = {2'b01};
     }
+    x_aggregation: cross cp_req_source, cp_jtag_stop, cp_cla_en;
   endgroup
 
   covergroup cg_caps_tdr with function sample (
@@ -777,6 +778,5 @@ module dtp_debug_tdr_fcov (
       u_cg_clock_stop.sample(stop_req_source, stop_jtag, stop_cla_en, stop_clks_i);
     end
   end
-`endif
 
 endmodule : dtp_debug_tdr_fcov

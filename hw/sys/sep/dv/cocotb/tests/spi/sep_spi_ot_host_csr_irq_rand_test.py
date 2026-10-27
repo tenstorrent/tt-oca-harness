@@ -41,7 +41,7 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   conditions selected by EVENT_ENABLE ... not a latched error
                   event" (hw/sys/sep/doc/spi.adoc:84-86) and "follows the level
                   of the events selected by EVENT_ENABLE"
-                  (doc/programmer/src/sep-programming.adoc:794-795).
+                  (doc/programmer/src/sep-programming.adoc:819-820).
                   INTR_ENABLE raises and drops sep_internal_interrupts[13]
                   (PIC source 14) for both sources.
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
@@ -523,7 +523,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         #   write of 1 to INTR_TEST.SPI_EVENT forces it to 1, and with
         #   EVENT_ENABLE = 0 it follows the selected event level back to 0 once
         #   INTR_TEST is written back to 0 (spi.adoc:84-86,
-        #   sep-programming.adoc:794-795).
+        #   sep-programming.adoc:819-820).
         #
         # The wrapper ORs the two core lines onto one SEP interrupt. That OR
         # is sampled on sep_internal_interrupts[13].

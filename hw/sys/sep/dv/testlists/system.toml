@@ -564,7 +564,7 @@ target = "lsu_stub_all_live"
 args = ["+sep_ext_port_responder"]
 
 [[tests]]
-# Response code and data of every graded address-map row cell, the OTBN AxCACHE cells and the crypto-region burst refusal. Real PROD fuse sense.
+# Response code and data of every graded address-map row cell, the OTBN AxCACHE cells, the crypto-region burst refusal, the entropy-pool SI cells and the SPI host burst across the extent end. Real PROD fuse sense.
 name = "sep_fabric_row_response_matrix_test"
 module = "system.sep_fabric_row_response_matrix_test"
 seed = 1
@@ -790,8 +790,9 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # REFERENCE_COUNTER, the watchdog and the wakeup timer count as the register description
-# states, the watchdog registers answer on either lane, and only a cold reset sets
-# WDOG_REGWEN again.
+# states, the watchdog registers answer on either lane, a wdt_rst_ni pulse returns them
+# to their reset values and clears a held bite, and the other warm resets keep WDOG_REGWEN
+# locked.
 name = "sep_timer_clock_contract_test"
 module = "system.sep_timer_clock_contract_test"
 seed = 1

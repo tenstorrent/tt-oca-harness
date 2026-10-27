@@ -2442,11 +2442,8 @@ extent and its declared error response past it.
   `MISC`, `I2C`, `TELEM`) are read only; the watchdog state after the write is printed.
 * First past-extent word and aperture-end word of every island: reads answer DECERR with data
   0xBADCAB1E, 48 of 48 words (`smc.rdl`, `memmap.adoc` decode response codes).
-* The same words written: the nine islands whose RDL declares a DECERR write response (four
-  watchdogs, `DFX`, `MAILBOX`, `DMA`, `ZEROER`, `CPUCTRL`) answer DECERR on 18 of 18 words; the
-  fifteen islands whose RDL declares SLVERR answer SLVERR or DECERR on 30 words, counted per island
-  as match (SLVERR) or recorded as a mismatch (the DUT answers DECERR where the generated map declares SLVERR; the mismatch count is printed, the code is not compared) rather than failed; any other response
-  fails.
+* The same words written: every island's RDL declares a DECERR write response, so all 48 words
+  answer DECERR; any other response fails.
 * A refused write takes no effect: after all writes every past-extent and aperture-end word still
   reads DECERR with 0xBADCAB1E and every read-write last decoded word equals its earlier value.
 
@@ -2455,8 +2452,8 @@ extent and its declared error response past it.
 [arabic]
 . Wait for fuse sense done; read the four setup registers requiring OKAY and their reset values;
   require `LOCAL_BASE` to equal the sweep base; derive the 24-island table from the generated memory
-  map, require it to equal the sweep's table and require nine DECERR-class and fifteen SLVERR-class
-  islands; register the past-extent and aperture-end addresses as expecting DECERR; stamp S1 and
+  map, require it to equal the sweep's table and require every island to declare a DECERR write
+  response; register the past-extent and aperture-end addresses as expecting DECERR; stamp S1 and
   print the setup line.
 . Read the first word of each island requiring OKAY and 0 from declared holes; stamp S2.
 . Write the value read back to each read-write or hole first word, requiring OKAY, and read back
@@ -2467,17 +2464,14 @@ extent and its declared error response past it.
 . Error injection. Point: the first past-extent word and the aperture-end word of every island over
   SEP_IN AXI. Kind: a past-extent read of each of the 48 words. Expected response: DECERR with data
   0xBADCAB1E on every word. Stamp S6.
-. Error injection. Point: the first past-extent word and the aperture-end word of the nine
-  DECERR-class islands. Kind: a write of the value read to each of the 18 words. Expected response:
-  DECERR on each. Stamp S7.
-. Error injection. Point: the first past-extent word and the aperture-end word of the fifteen
-  SLVERR-class islands. Kind: a write of the value read to each of the 30 words. Expected response:
-  SLVERR or DECERR on each, counted as matches and mismatches, requiring 30 words in all. Stamp S8.
+. Error injection. Point: the first past-extent word and the aperture-end word of every island.
+  Kind: a write of the value read to each of the 48 words. Expected response: DECERR on each. Stamp
+  S7.
 . Read every past-extent and aperture-end word again requiring DECERR and 0xBADCAB1E, and every
-  read-write last decoded word again requiring OKAY and its earlier value; stamp S9.
+  read-write last decoded word again requiring OKAY and its earlier value; stamp S8.
 . Print the 24-row table of first, last, past-extent and aperture-end responses and data with each
   island's declared class and match or mismatch; require 24 rows with every probe word measured;
-  stamp S10, then S11, and require the access count to equal the floor of the table, the checker
+  stamp S9, then S10, and require the access count to equal the floor of the table, the checker
   lines in order and the stamps strictly increasing.
 
 *Checkers*:
@@ -2487,7 +2481,7 @@ extent and its declared error response past it.
 |Checker |Description
 |`CHK-ISL-SETUP-GOLDENS` |`REGION_SIZE`, `LOCAL_BASE`, `GLOBAL_BASE` and `CLOCK_GATE_CONTROL` read
 OKAY and equal their RDL reset values, the 24-island probe table equals the generated memory map,
-and the island split is nine DECERR-write and fifteen SLVERR-write.
+and every island declares a DECERR write response.
 |`CHK-ISL-FIRST-WORD-WRITE-OKAY` |The first word of all 24 islands answers OKAY (the `RESET` hole reads 0),
 and every read-write or hole first word takes the identity write with an OKAY write response and
 reads back the value read; read-only words are listed as read-only, with a reason column that
@@ -2500,29 +2494,23 @@ watchdog state is printed without a compare.
 |`CHK-ISL-PASTEXT-READ-DECERR` |The first past-extent word and the aperture-end word of all 24
 islands read DECERR with data 0xBADCAB1E, 48 of 48 words.
 |`CHK-ISL-PASTEXT-WRITE-DECERR-CLASS` |The first past-extent word and the aperture-end word of the
-nine DECERR-declared islands answer a write with DECERR, 18 of 18 words.
-|`CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS` |The 30 past-extent and aperture-end words of the fifteen
-SLVERR-declared islands answer a write with SLVERR or DECERR (any other response fails); the count
-of SLVERR matches and of DECERR answers (mismatches with the declared SLVERR) is printed per island.
+24 islands answer a write with DECERR, 48 of 48 words.
 |`CHK-ISL-PASTEXT-NOCHANGE` |After the refused writes every past-extent and aperture-end word still
 reads DECERR with 0xBADCAB1E and every read-write last decoded word equals its earlier value.
 |`CHK-ISL-TABLE` |The per-island table has 24 rows, each with its four probe words measured, and
 each row is counted as match or mismatch so that the two counts sum to 24.
 |`CHK-NONVAC` |The access count equals the floor derived from the table, the checker lines print in
-order each after its step, every checker line covers at least one access, and the stamps S1 to S11
+order each after its step, every checker line covers at least one access, and the stamps S1 to S10
 are strictly increasing.
 |===
 
 *Pass Criteria*: `CHK-ISL-SETUP-GOLDENS`, `CHK-ISL-FIRST-WORD-WRITE-OKAY`, `CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY`,
 `CHK-ISL-PASTEXT-READ-DECERR`, `CHK-ISL-PASTEXT-WRITE-DECERR-CLASS`, `CHK-ISL-PASTEXT-NOCHANGE` and
-`CHK-ISL-TABLE` hold after their compares; `CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS` holds when each of
-the 30 words answers SLVERR or DECERR, DECERR answers being recorded as mismatches and not as a
-match to the declared SLVERR; `CHK-NONVAC` is printed at the end. Enrolled in: `all`; also listed
+`CHK-ISL-TABLE` hold after their compares; `CHK-NONVAC` is printed at the end. Enrolled in: `all`; also listed
 in `register.toml`.
 
 *Scope limit*: The watchdog state after the last-decoded-word write is printed without a compare.
-For the fifteen SLVERR-declared islands a DECERR write answer is recorded and counted as a mismatch
-against the declared SLVERR; the mismatch count is printed and the code is not compared. Read-only
+Read-only
 first and last words are read only, and their reason column reads not specified for some islands.
 
 '''''
@@ -16575,10 +16563,11 @@ draws nothing from the seed.
   `rst_primary_smc_clk_no` and `rst_primary_periph_clk_n` are timed from the `powergood_i`
   release; `rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` from a `tb_sep_wdt_reset_n` release.
   Each rise is bounded, so an output that never releases fails with its last observed state.
-* Re-assertion: `tb_sep_wdt_reset_n` is released, then driven low again two `clk_smc_i` cycles
-  later for 16 cycles; `rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` must read 0 at every one
-  of those 16 samples, then release on their own edge after the final release. The two cycles
-  before the re-assertion are measured and printed without a compare.
+* Stretch: `tb_sep_wdt_reset_n` is driven low until both watchdog outputs read 0, then released.
+  `rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` read 0 at each of the next 16 `clk_ref_i`
+  cycles, then rise on a `clk_smc_i` edge after 31 to 40 reference edges
+  (`clk_rst.adoc`, the watchdog reset held 32 reference clocks after both requests release,
+  then the 4-stage synchronizer).
 * The two bounded handshakes (outputs released after the `powergood_i` release, and after the
   final watchdog release) are scoreboard `WAIT_STATE` checks with exact levels; the leaf requires
   at least two to have been booked and every timestamp it claims to have been taken.
@@ -16599,10 +16588,10 @@ draws nothing from the seed.
   outputs read 0, at least 16 `clk_smc_i` cycles), release it one third into a `clk_smc_i` period and
   require `rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` to rise on their own edge; stamp step S4
   and print the release-edge line.
-. Drive `tb_sep_wdt_reset_n` low for 16 cycles and release it, count the two following
-  `clk_smc_i` cycles, drive it low again, and require both outputs 0 at each of 16 samples.
-  Release it, require both outputs to rise on their own edge inside the bound, and match the
-  bounded released handshake; stamp step S5 and print the re-assertion line.
+. Drive `tb_sep_wdt_reset_n` low until both outputs read 0, release it, and require both
+  outputs to stay 0 for 16 `clk_ref_i` cycles. Require both to rise on a `clk_smc_i` edge after
+  31 to 40 reference edges, and match the bounded released handshake; stamp step S5 and print
+  the stretch line.
 . Check the ordered fence: step stamps S1 < S2 < S3 < S4 < S5 strictly increasing and each checker
   line printed after its step, then print the non-vacuity line.
 
@@ -16619,22 +16608,22 @@ draws nothing from the seed.
 |`CHK-EACH-OUTPUT-RELEASES-ON-OWN-EDGE` |Each of the six outputs rises exactly on a rising edge
   of its own clock, reads 1 in that instant and rises no earlier than the fourth own-clock edge
   after its source released; the measured edge counts are reported
-|`CHK-SOURCE-REASSERTS-IN-LATENCY` |`rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` read 0 at all
-  16 `clk_smc_i` samples while the re-asserted `tb_sep_wdt_reset_n` is low and then rise on their
-  own edge inside the bound; the two cycles before the re-assertion are recorded without
-  comparing
+|`CHK-WDT-STRETCH-HOLDS` |`rst_wdt_smc_clk_no` and `tb_rst_warm_smc_clk_n` read 0 at each of 16
+  `clk_ref_i` cycles after `tb_sep_wdt_reset_n` releases, then rise on a `clk_smc_i` edge after
+  31 to 40 reference edges
 |`CHK-NONVAC` |The ordered fence holds: steps S1 to S5 in order with strictly increasing
   simulation-time stamps, and the four checker lines printed in order, each after its own step
 |===
 
 *Pass Criteria*: all five checkers hold; the two assertion instants coincide with the
 `powergood_i` fall, every release lands on its own clock edge at or after the fourth edge, the
-re-asserted watchdog source holds both outputs at 0 for all 16 samples, and the scoreboard books
-at least two reset `WAIT_STATE` checks. Enrolled in: `all`.
+watchdog and warm outputs stay low for 16 reference cycles after `tb_sep_wdt_reset_n` releases
+and then rise after 31 to 40 reference edges, and the scoreboard books at least two reset
+`WAIT_STATE` checks. Enrolled in: `all`.
 
-*Scope limit*: The two `clk_smc_i` cycles between the watchdog release and its re-assertion are
-measured and printed without a compare. The edge counts from each source release to each output's
-rise are reported; only the at-least-fourth-edge floor is compared.
+*Scope limit*: The reference-edge count from the watchdog-pin release to each output rise is
+graded inside 31 to 40. The edge counts from each source release to each output's rise are
+reported; for the powergood releases only the at-least-fourth-edge floor is compared.
 
 '''''
 
@@ -38877,10 +38866,10 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-UART-LOG-UART_LSR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-MSR-CTS-PAD0` |After this test drives UART0 CTS pad 14 to 0, a bounded poll of the CTS and DCTS bits of `UART_MSR` reads either the pre-change word or exactly the transition word CTS=1 (the inverse of `cts_ni`) with DCTS=1 for the change since the last read, and the transition word arrives within the bound (`smc_uart_spi_log_engine_test_seq.py`)
 |`CHK-UART-MSR-CTS-PAD1` |After this test drives UART0 CTS pad 14 to 1, the same bounded poll of the CTS and DCTS bits reads the pre-change word or exactly CTS=0 with DCTS=1, and the transition word arrives within the bound (`smc_uart_spi_log_engine_test_seq.py`)
-|`CHK-UART-MSR-DELTA-CLEAR` |The CTS and DCTS bits of the second back-to-back `UART_MSR` read equal exactly 0x10: CTS still asserted with DCTS cleared by the preceding read, as the delta-since-last-read contract in `uart_16550_main.rdl` requires (`smc_uart_spi_log_engine_test_seq.py`). Every MSR compare in this card is masked to CTS and DCTS, the two bits this test drives through pad 14; DSR, RI, DCD and their delta bits are logged, not compared, because the integrator pin table (`ocah_gpio_table.csv`) pins no pad for them and the bench has no specification for their level
+|`CHK-UART-MSR-DELTA-CLEAR` |The CTS and DCTS bits of the second back-to-back `UART_MSR` read equal exactly 0x10: CTS still asserted and DCTS clear, because CTS has not changed since the first read, as the delta-since-last-read contract in `uart_16550_main.rdl` requires (`smc_uart_spi_log_engine_test_seq.py`). Every MSR compare in this card is masked to CTS and DCTS, the two bits this test drives through pad 14; DSR, RI, DCD and their delta bits are logged, not compared, because the integrator pin table (`ocah_gpio_table.csv`) pins no pad for them and the bench has no specification for their level
 |`CHK-UART-MSR-DELTA-CLEAR-PAD0` |The CTS and DCTS bits of the read after the pad-0 transition read equal exactly the settled word: DCTS cleared, CTS 1 (`smc_uart_spi_log_engine_test_seq.py`)
 |`CHK-UART-MSR-DELTA-CLEAR-PAD1` |The CTS and DCTS bits of the read after the pad-1 transition read equal exactly the settled word: DCTS cleared, CTS 0 (`smc_uart_spi_log_engine_test_seq.py`)
-|`CHK-UART-MSR-FIRST` |The CTS and DCTS bits of the first `UART_MSR` read of the run equal exactly DCTS OR CTS (0x11): CTS=1 because this test drives pad 14 low, DCTS=1 because it is the first read (`smc_uart_spi_log_engine_test_seq.py`). DSR, RI, DCD and their delta bits are outside the compare (see `CHK-UART-MSR-DELTA-CLEAR`)
+|`CHK-UART-MSR-FIRST` |The CTS and DCTS bits of the first `UART_MSR` read of the run equal exactly CTS (0x10): CTS=1 because this test drives pad 14 low, DCTS=0 because the modem-status synchronizer seeds the last-read level from the pin until it holds synchronized inputs, so a line asserted from reset is no delta (`smc_uart_spi_log_engine_test_seq.py`). DSR, RI, DCD and their delta bits are outside the compare (see `CHK-UART-MSR-DELTA-CLEAR`)
 |===
 
 

@@ -20,6 +20,9 @@ none, and that no other leaf probes:
 * the upper half of the mailbox page, past the mailbox extent;
 * the space past each eFuse sibling block (interface control, token MMR);
 * the space past the SPI host extent, to the end of its aperture;
+* a hole inside an extent: one word between two mailbox sub-blocks and one
+  word between two SEP CPU control registers, each read, written and read
+  again;
 * the tail of every remap and filter array slot, where the slot stride is
   wider than the slot's registers, and the first word past each array.
 
@@ -75,6 +78,8 @@ from sep_reg_meta import (
     block_names,
     block_size,
     indexed_block_count,
+    iter_ipxact_registers,
+    register_fields,
     sep_addr_define,
     sym,
     word_has_unreset_field,
@@ -187,6 +192,10 @@ REFUSE_GROUPS = (
     GROUP_EFUSE_MMR,
     GROUP_SPI,
 )
+# Holes inside a unit's Decoded Extent. The map states OKAY with zero for some
+# of them, so this group is graded by CHK-UNMAPPED-CODE only, not by a refusal
+# checker.
+GROUP_INEXTENT = "in_extent_hole"
 # Groups whose probes reach the system-CSR AXI-Lite port when the system CSR is
 # the point that refuses. The Lite handshake is logged for these. The local
 # crossbar's ext initiator is watched for the same probes: an access that
@@ -245,6 +254,7 @@ class SepUnmappedCfg:
         self._build_mailbox()
         self._build_efuse()
         self._build_spi()
+        self._build_inextent()
         self._self_check()
 
     # --- remap / filter arrays --------------------------------------------
@@ -537,6 +547,15 @@ class SepUnmappedCfg:
         ):
             for op in ("r", "w"):
                 self.probes.append(Probe(GROUP_EFUSE_CTRL, addr, op, note))
+        # The token span past the efuse_mmr extent, 0x1093_0574 to 0x1093_05FF,
+        # answers DECERR with read data 0xBADCAB1E:
+        # hw/sys/sep/regs/gen/adoc/memory_map.adoc:64 (eFuse Token Registers
+        # row, Past Extent column) states it, and this generated map is the
+        # golden CHK-UNMAPPED-CODE grades. Its codes were assigned from the RTL.
+        # hw/sys/sep/doc/otp_fuse_controller.adoc:45-46 states SLVERR for an
+        # address of the APB span outside the register windows; the two
+        # documents differ on this span, so the leaf also logs each code of
+        # the span as OBS-EFUSE-TOKEN-PAST-CODE.
         for addr, note in (
             (mmr_end, "first word past the efuse_mmr extent (after TOKEN_MATCH_FAULT)"),
             (mmr_base + mmr_img + tok0, "RMA_SIP_TOKEN_I[0], one extent image up"),
@@ -574,9 +593,49 @@ class SepUnmappedCfg:
             for op in ("r", "w"):
                 self.probes.append(Probe(GROUP_SPI, addr, op, note))
 
+    # --- holes inside an extent ------------------------------------------
+    def _build_inextent(self) -> None:
+        # hw/sys/sep/regs/gen/adoc/memory_map.adoc states the Hole in Extent
+        # cell of these two units: :69 SEP AXI-Lite Mailbox Wrapper (SLVERR,
+        # 0x0 / SLVERR) and :79 SEP CPU Control (OKAY, 0x0 / OKAY). Its codes
+        # were assigned from the RTL. Each word is read, written with
+        # PROBE_WDATA and read again; the second read shows the write was
+        # discarded. Each unit is probed on both 32-bit lanes of the bus.
+        g = GROUP_INEXTENT
+        out0 = "AXIL_MAILBOX_OUTBOUND_MAILBOX_0"
+        out0_end = sym(f"{out0}_REG_MAP_BASE_ADDR") + block_size(out0)
+        in0_base = sym("AXIL_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_BASE_ADDR")
+        clr = SEP_CPU_CTRL.addr("PERIPH_BUS_ERR_CLEAR")
+        clr_end = clr + register_fields(clr)[0] // 8
+        ver = SEP_CPU_CTRL.addr("SEP_VERSION_ID")
+        for addr, note in (
+            (out0_end, "first word past outbound mailbox 0, before inbound mailbox 0"),
+            (in0_base - 4, "last word before inbound mailbox 0 (other bus lane)"),
+            (clr_end, "first word past PERIPH_BUS_ERR_CLEAR"),
+            (ver - 4, "last word before SEP_VERSION_ID (other bus lane)"),
+        ):
+            for op in ("r", "w", "r"):
+                self.probes.append(Probe(g, addr, op, note))
+
     def _self_check(self) -> None:
+        backed = {
+            a + 4 * i
+            for a, width, _f in iter_ipxact_registers()
+            for i in range(max(1, width // 32))
+        }
         for p in self.probes:
             e = self.expect[(p.addr, p.op)] = expected_unbacked(p.addr, p.op)
+            if p.group == GROUP_INEXTENT:
+                if e.column != "Hole in Extent" or p.addr in backed:
+                    raise RuntimeError(
+                        f"{_probe_desc(p)}: map column {e.column} ({e.row}), register-backed "
+                        f"{p.addr in backed}; the group needs an unbacked word inside an extent"
+                    )
+                if p.op == "r" and e.rdata != 0:
+                    raise RuntimeError(
+                        f"{_probe_desc(p)}: the map states read data 0x{e.rdata:08x}"
+                    )
+                continue
             if e.resp == RESP_OKAY:
                 raise RuntimeError(
                     f"{p.group} probe {p.op} 0x{p.addr:08x} ({p.note}): the map states "
@@ -618,10 +677,27 @@ class SepUnmappedCfg:
         for p in self.probes:
             if p.addr in live:
                 raise RuntimeError(f"probe 0x{p.addr:08x} ({p.note}) is a live word")
-        for g in REFUSE_GROUPS:
+        for g in (*REFUSE_GROUPS, GROUP_INEXTENT):
             ops = {p.op for p in self.probes if p.group == g}
             if ops != {"r", "w"}:
                 raise RuntimeError(f"{g}: both channels must be probed, got {sorted(ops)}")
+        hole_units = {sep_map_row(p.addr).unit for p in self.probes if p.group == GROUP_INEXTENT}
+        if len(hole_units) != 2:
+            raise RuntimeError(f"{GROUP_INEXTENT}: two units must be probed, got {hole_units}")
+        for unit in hole_units:
+            lanes = {
+                p.addr & 0x4
+                for p in self.probes
+                if p.group == GROUP_INEXTENT and p.op == "r" and sep_map_row(p.addr).unit == unit
+            }
+            if lanes != {0, 4}:
+                raise RuntimeError(f"{GROUP_INEXTENT} {unit}: reads must cover both bus lanes")
+        for p in self.probes:
+            if p.group != GROUP_INEXTENT or p.op != "w":
+                continue
+            later = self.probes[self.probes.index(p) + 1 :]
+            if not any(q.addr == p.addr and q.op == "r" for q in later):
+                raise RuntimeError(f"{_probe_desc(p)}: no read follows the write")
         for g in (GROUP_EFUSE_CTRL, GROUP_SPI):
             lanes = {p.addr & 0x4 for p in self.probes if p.group == g and p.op == "r"}
             if lanes != {0, 4}:
@@ -646,7 +722,10 @@ class SepUnmappedCfg:
         return [w for w in self.live if w.value is not None]
 
     def summary(self) -> str:
-        per = " ".join(f"{g}={sum(1 for p in self.probes if p.group == g)}" for g in REFUSE_GROUPS)
+        per = " ".join(
+            f"{g}={sum(1 for p in self.probes if p.group == g)}"
+            for g in (*REFUSE_GROUPS, GROUP_INEXTENT)
+        )
         n_in = sum(1 for t in self.tails if t.in_extent)
         return (
             f"live={len(self.live)} programmed={len(self.programmed)} "
@@ -654,6 +733,11 @@ class SepUnmappedCfg:
             f"probes={len(self.probes)} [{per}] tails={len(self.tails)} "
             f"(in-extent={n_in}, past-extent={len(self.tails) - n_in})"
         )
+
+
+def _probe_desc(p: Probe) -> str:
+    """``group op 0xaddr (note)`` of a probe, for a config error."""
+    return f"{p.group} probe {p.op} 0x{p.addr:08x} ({p.note})"
 
 
 @dataclass
