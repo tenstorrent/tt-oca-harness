@@ -4,8 +4,8 @@
 
 smu_smc_wdt_timeout_irq_test stops at the watchdog's pending bit because it
 never sets WDOGRSTEN, the watchdog's top-level reset enable. This leaf sets
-it, follows the CORE0 timeout out to smc_wdt_first_timeout_o, lets the held
-first timeout run the second-stage counter down to smc_wdt_second_timeout_o,
+it, follows the CORE0 timeout out to smc_ras_o.wdt_first_timeout, lets the held
+first timeout run the second-stage counter down to smc_ras_o.wdt_second_timeout,
 requires the SMC warm reset to drop, and requires the warm reset to clear the
 first timeout.
 

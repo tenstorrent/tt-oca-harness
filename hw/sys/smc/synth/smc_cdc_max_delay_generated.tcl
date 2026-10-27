@@ -33,7 +33,7 @@ set_cdc_max_delay_prim_sync2 {u_smc_peripherals/u_telemetry_receiver_wrap/gen_te
 set_cdc_max_delay_prim_sync2 {u_smc_peripherals/u_telemetry_receiver_wrap/gen_telemetry_receivers[2].u_afready_sync2r} TELEMETRYCLK
 set_cdc_max_delay_prim_sync2 {u_smc_peripherals/u_telemetry_receiver_wrap/gen_telemetry_receivers[2].u_afvalid_sync2r} SMCCLK
 
-# ---- prim_sync3 (51 instances) ----
+# ---- prim_sync3 (52 instances) ----
 set_cdc_max_delay_prim_sync3 u_smc_base/u_ext_debug_bus_sync3 SMCCLK
 set_cdc_max_delay_prim_sync3 u_smc_base/u_ext_interrupts_sync3 SMCCLK
 set_cdc_max_delay_prim_sync3 u_smc_cpu_wrapper/u_smc_cpu_ctrl_wrap/u_refclk_counter/u_sync_cnt_en_count REFCLK
@@ -73,6 +73,7 @@ set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u
 set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_irq_sync SMCCLK
 set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i3c_cg_en_sync PERIPHERALCLK
 set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i3c_irq_sync SMCCLK
+set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_intg_err_sync SMCCLK
 set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_tel_cg_en_sync TELEMETRYCLK
 set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_cg_en_sync PERIPHERALCLK
 set_cdc_max_delay_prim_sync3 u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_combined_irq_sync SMCCLK

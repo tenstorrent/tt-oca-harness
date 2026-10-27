@@ -607,8 +607,8 @@
 // IRQ_STATUS.key_valid and IRQ_ENABLE.key_valid_en. The ABR bits read 0 in
 // the build without Adams Bridge.
 `SEP_TB_OUT(logic [7:0], km_engine_key_valid_o)
-// The Key Manager error outputs of the DUT (frontdoor, sep_wrapper ports
-// km_unrecoverable_err_o and km_recoverable_err_o; hw/sys/sep/doc/port_table.adoc).
+// The Key Manager error outputs of the DUT (frontdoor, sep_wrapper
+// sep_ras_o.km_uncorrectable and sep_ras_o.km_correctable).
 // Monitor only; PIC vector bits 30 and 31 carry the same faults.
 `SEP_TB_OUT(logic, km_unrecoverable_err_o)
 `SEP_TB_OUT(logic, km_recoverable_err_o)
