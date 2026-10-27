@@ -1,20 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Writes to ISOLATE_REQ_SMC_REG that must leave the FLR-latched request set.
+"""ISOLATE_REQ_SMC_REG clears only on a write of 1 to bit 0 on its own byte lane.
 
-`reset_unit.rdl` makes `isolate_req_smc_reg` a single `sw = rw`
-field at bit 0: hardware sets it when `cfg_flr_pf_active` rises and software
-de-asserts it. A write that does not select the field's byte lane cannot
-change it, and a write of 1 to it keeps it at 1.
+`reset_unit.rdl` makes `isolate_req_smc_reg` a single `onwrite = woclr`
+field at bit 0: hardware sets it when `cfg_flr_pf_active` rises, and software
+clears it by writing 1 to bit 0 with byte 0's strobe set. A write of 0, or a
+write whose byte strobes do not select byte 0, leaves it unchanged.
+`smc_cool_reset_wrap.sv` qualifies the clear with the field's own write enable
+and its written data.
 
-`smc_cool_reset_wrap.sv` clears the request on any write whose
-byte enables are non-zero anywhere in the register, whatever the data. So a
-one-byte write of 0 at byte 1 clears it, and so does a write of 1 at byte 0.
-This leaf holds the RTL to the RDL contract: the request clears only on a write
-that selects bit 0's byte lane and carries a 0.
-
-The request is raised through FLR with the FLR counters at their reset value
-of 0, which latches it without starting the cool-reset sequence.
+This leaf raises the request through FLR with the FLR counters at their reset
+value of 0, which latches it without starting the cool-reset sequence, then
+drives the three writes that must leave it set and the one write that clears it.
 """
 
 from __future__ import annotations
@@ -31,7 +28,7 @@ _BOUND = 64
 
 
 class smc_isolate_req_smc_lane_test_seq(SmcCsrSeq):
-    """Raise the request through FLR, then write lane 1 with 0 and lane 0 with 1."""
+    """Raise the request through FLR; write lane 1 with 0 and 0xFF and lane 0 with 0, then 1."""
 
     async def _await_bit(self, want: int, label: str) -> int:
         last = 0
@@ -52,23 +49,31 @@ class smc_isolate_req_smc_lane_test_seq(SmcCsrSeq):
         dut.tb_cfg_flr_pf_active.value = 0
 
         await self.csr_write("SMC_REG_LANE1_ZERO", SMC_REG + 1, 0, length=1)
-        lane1 = await self.csr_read("SMC_REG_LANE1_RB", SMC_REG)
-        assert lane1 & SMC_BIT, (
-            f"ISOLATE_REQ_SMC_REG reads 0x{lane1:x} after a one-byte write of 0 at byte 1: "
-            f"the write cleared the FLR-latched request from a byte lane the field does not "
-            f"occupy"
+        lane1_zero = await self.csr_read("SMC_REG_LANE1_ZERO_RB", SMC_REG)
+        assert lane1_zero & SMC_BIT, (
+            f"ISOLATE_REQ_SMC_REG reads 0x{lane1_zero:x} after a one-byte write of 0 at byte 1: "
+            f"a write that does not strobe byte 0 must leave the FLR-latched request set"
+        )
+        await self.csr_write("SMC_REG_LANE1_ONES", SMC_REG + 1, 0xFF, length=1)
+        lane1_ones = await self.csr_read("SMC_REG_LANE1_ONES_RB", SMC_REG)
+        assert lane1_ones & SMC_BIT, (
+            f"ISOLATE_REQ_SMC_REG reads 0x{lane1_ones:x} after a one-byte write of 0xFF at "
+            f"byte 1: a write that does not strobe byte 0 must leave the FLR-latched request set"
+        )
+        await self.csr_write("SMC_REG_WORD_ZERO", SMC_REG, 0)
+        word_zero = await self.csr_read("SMC_REG_WORD_ZERO_RB", SMC_REG)
+        assert word_zero & SMC_BIT, (
+            f"ISOLATE_REQ_SMC_REG reads 0x{word_zero:x} after a write of 0: a write-1-to-clear "
+            f"field must ignore a written 0"
         )
         await self.csr_write("SMC_REG_LANE0_ONE", SMC_REG, SMC_BIT, length=1)
-        lane0 = await self.csr_read("SMC_REG_LANE0_RB", SMC_REG)
-        assert lane0 & SMC_BIT, (
-            f"ISOLATE_REQ_SMC_REG reads 0x{lane0:x} after writing 1 to bit 0: a sw=rw field "
-            f"written with 1 has to read 1"
-        )
+        lane0_one = await self._await_bit(0, "SMC_REG_LANE0_ONE_RB")
         cocotb.log.info(
             "CHK-ISOLATE-REQ-SMC-LANE: the FLR-latched request stayed set across a one-byte "
-            "write of 0 at byte 1 (0x%x) and a write of 1 to bit 0 (0x%x)",
-            lane1,
-            lane0,
+            "write of 0 at byte 1 (0x%x), a one-byte write of 0xFF at byte 1 (0x%x) and a word "
+            "write of 0 (0x%x), and cleared on a one-byte write of 1 to bit 0 (0x%x)",
+            lane1_zero,
+            lane1_ones,
+            word_zero,
+            lane0_one,
         )
-        await self.csr_write("SMC_REG_CLEAR", SMC_REG, 0)
-        await self._await_bit(0, "SMC_REG_CLEARED")
