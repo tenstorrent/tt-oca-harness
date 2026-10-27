@@ -16,13 +16,6 @@ DV_ROOT  := $(SEP_ROOT)/dv
 
 OCAH_ROOT := $(abspath $(SEP_ROOT)/../../..)
 
-UV ?= uv
-# Cap the wheel platform on older glibc hosts; an existing environment may
-# otherwise retain an ABI-incompatible cryptography wheel.
-MANIFEST_UV_PLATFORM := $(shell python3 -c 'import platform; libc, ver = platform.libc_ver(); parts = tuple(int(x) for x in ver.split(".")[:2]) if ver else (0, 0); machine = platform.machine(); print("" if libc != "glibc" or parts >= (2, 34) else f"{machine}-manylinux_2_28" if parts >= (2, 28) else f"{machine}-manylinux_2_17")' 2>/dev/null)
-MANIFEST_UV_FLAGS := $(if $(MANIFEST_UV_PLATFORM),--python-platform $(MANIFEST_UV_PLATFORM) --reinstall-package cryptography,)
-MANIFEST_PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked --group manifest $(MANIFEST_UV_FLAGS) python
-
 # Read generated headers from the register flow to keep them aligned with the RTL.
 # Ignore ambient overlay variables while preserving command-line overrides.
 OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep :=
@@ -88,6 +81,8 @@ SEP_ROM_KEY_FILES := $(wildcard $(SEP_ROM_KEYS_DIR)/rsa_$(SEP_ROM_KEY_FORM)_key.
 KEY_DIGESTS_C     := $(BUILD_DIR)/key_digests.c
 
 TT_OCA_MANIFEST_DIR := $(TOOLS_DIR)/tt-oca-manifest
+include $(PROD_DIR)/pack.mk
+include $(PROD_DIR)/oca_config.mk
 
 ELF      := $(BUILD_DIR)/boot_rom.elf
 VMEM     := $(BUILD_DIR)/boot_rom.vmem
@@ -124,13 +119,8 @@ $(CHECK_OBJS): CFLAGS += -Wall -Wextra -Werror
 # Compile every validator source so new format support is not silently omitted.
 # Keep its objects in a separate directory because the library and ROM both
 # provide lifecycle.c; flattening the names would overwrite one object.
-OCA_LIB_DIR  := $(TT_OCA_MANIFEST_DIR)/validators/oca/lib
-OCA_LIB_SRCS := $(wildcard $(OCA_LIB_DIR)/*.c)
 OCA_OBJ_DIR  := $(BUILD_DIR)/oca
 OCA_LIB_OBJS := $(patsubst $(OCA_LIB_DIR)/%.c,$(OCA_OBJ_DIR)/%.o,$(OCA_LIB_SRCS))
-
-# PQC enables OCAP geometry but not PQC signature verification; native PQC
-# signatures remain unsupported. Disable it only to reduce ROM size.
 
 # Disabling entropy bring-up creates a diagnostic build that cannot complete entropy-dependent secure boot.
 SEP_ENTROPY_BRINGUP ?= 1
@@ -140,10 +130,6 @@ SEP_ENTROPY_BRINGUP ?= 1
 # selection. BL1 must apply every deferred lock before handing off.
 SEP_ENTROPY_DEFER_FIPS_LOCK    ?= 0
 SEP_ENTROPY_DEFER_SRC_SEL_LOCK ?= 0
-
-OCA_SUPPORT_CLASSIC ?= 1
-OCA_SUPPORT_PQC     ?= 1
-OCA_TOC_MAX_IMAGES  ?= 32
 
 OBJS += $(OCA_LIB_OBJS)
 
@@ -169,12 +155,10 @@ endif
 CFLAGS   := -Os -g -gdwarf-4 -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
 -MMD -MP \
 --specs=picolibc.specs \
-	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) -I$(OCA_LIB_DIR) $(REG_INCLUDE_DIRS) \
+	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) $(OCA_CFLAGS) $(REG_INCLUDE_DIRS) \
 	-DSEP_ENTROPY_BRINGUP=$(SEP_ENTROPY_BRINGUP) \
 	-DSEP_ENTROPY_DEFER_FIPS_LOCK=$(SEP_ENTROPY_DEFER_FIPS_LOCK) \
 	-DSEP_ENTROPY_DEFER_SRC_SEL_LOCK=$(SEP_ENTROPY_DEFER_SRC_SEL_LOCK) \
-	-DOCA_SUPPORT_CLASSIC=$(OCA_SUPPORT_CLASSIC) -DOCA_SUPPORT_PQC=$(OCA_SUPPORT_PQC) \
-	-DOCA_TOC_MAX_IMAGES=$(OCA_TOC_MAX_IMAGES) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DSEP_BL0 $(BUILD_TYPE_DEFINES) \
 	-DROM_ICCM_CLEAR_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
@@ -363,12 +347,6 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 $(OCA_LIB_OBJS): $(OCA_OBJ_DIR)/%.o: $(OCA_LIB_DIR)/%.c | $(OCA_OBJ_DIR)
 	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$<" -o "$@"
 
-# Reject an empty source glob so an uninitialized submodule cannot produce a ROM without validation.
-ifeq ($(strip $(OCA_LIB_SRCS)),)
-$(error the tt-oca-manifest submodule is not checked out: no sources under $(OCA_LIB_DIR). \
-Run: git -C $(OCAH_ROOT) submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest)
-endif
-
 $(BUILD_DIR)/rsa_3072_app_otbn.o: $(OTBN_APP_C) | $(BUILD_DIR)
 	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$<" -o "$@"
 
@@ -409,34 +387,6 @@ bl1_test:
 $(BL1_TEST_BIN):
 	@echo "error: BL1 image is missing; run 'make toolchain-images' first" >&2
 	@exit 1
-
-# Keep packing isolated from the root project. The distribution is
-# tt-oca-manifest, but its import package remains tt_boot_manifest. Resolve
-# native wheels per invocation to avoid reusing another host's ABI artifacts.
-ifneq ($(shell command -v uv 2>/dev/null),)
-PACK_RUN := $(MANIFEST_PYTHON) -m tt_boot_manifest.pack_images
-else
-# PYTHONPATH cannot express package-dir remapping, so provide a symlink shim.
-# Keep setup and execution in one shell so caller environment prefixes reach the packer.
-PACK_SHIM := $(BUILD_DIR)/.pack-shim
-PACK_RUN = sh -c 'mkdir -p "$(PACK_SHIM)" && \
-	ln -sfn "$(abspath $(TT_OCA_MANIFEST_DIR))/src" "$(PACK_SHIM)/tt_boot_manifest" && \
-	PYTHONPATH="$(PACK_SHIM)" exec python3 -m tt_boot_manifest.pack_images "$$@"' tt-pack
-endif
-
-ensure-pack-deps:
-	@test -f "$(TT_OCA_MANIFEST_DIR)/pyproject.toml" || { \
-	  echo "ERROR: the tt-oca-manifest submodule is not checked out."; \
-	  echo "       Expected: $(CURDIR)/$(TT_OCA_MANIFEST_DIR)"; \
-	  echo "       Run: git -C $(OCAH_ROOT) submodule update --init \\"; \
-	  echo "              hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"; \
-	  exit 1; }
-	@command -v uv >/dev/null || $(MANIFEST_PYTHON) -c 'import cryptography, ruamel.yaml, tomlkit, bitarray' 2>/dev/null || { \
-	  echo "ERROR: uv not found and the packer's Python deps are not importable."; \
-	  echo "       Either install uv (https://docs.astral.sh/uv/getting-started/installation/,"; \
-	  echo "       tools/dv/run_dv.py requires the same tool, so this is a one-off), or"; \
-	  echo "       provide python3 with cryptography, ruamel.yaml, tomlkit and bitarray."; \
-	  exit 1; }
 
 # SEP_SIGNING_KEY is only an existence check; each image config selects its
 # signing key independently. Trust anchors are selected by SEP_ROM_KEYS_DIR.
@@ -480,13 +430,7 @@ OCA_SMC_BIN    := $(BUILD_DIR)/oca_smc_bundle.bin
 .PHONY: oca-images
 ifeq ($(BUILD_TYPE),release)
 oca-images:
-	@echo "ERROR: oca-images is not implemented for BUILD_TYPE=release."; \
-	echo "       The configs sign with the private test keys in tests/signing_keys/,"; \
-	echo "       which must never produce a flashable release image."; \
-	echo "       Production signing needs a key store (signing_authority=hsm/aws)"; \
-	echo "       and is not wired up yet."; \
-	echo "       For test images: make BUILD_TYPE=debug oca-images"; \
-	exit 1
+	$(pack_refuse_release)
 else
 oca-images: $(OCA_HEXS) $(OCA_SMC_BIN) $(OCA_SMC_MEM_HEX) $(OCA_SMC_MEM_MISALIGNED_HEX)
 endif
