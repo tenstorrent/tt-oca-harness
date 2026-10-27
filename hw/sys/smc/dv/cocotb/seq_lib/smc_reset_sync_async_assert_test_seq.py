@@ -8,8 +8,9 @@ Spec sources: clk_rst.adoc (Reset Synchronization), port_table.adoc.
 reference and periphery outputs fall in the same simulation instant as ``powergood_i``, with no
 rising edge of the output's clock at that instant. Every output rises on a rising edge of its
 own clock, no earlier than the fourth such edge after its source released, and the measured
-edge counts are reported. The warm and watchdog outputs stay low while a re-asserted
-``tb_sep_wdt_reset_n`` is low.
+edge counts are reported. After ``tb_sep_wdt_reset_n`` releases, ``rst_wdt_smc_clk_no`` and
+``tb_rst_warm_smc_clk_n`` stay low for 32 reference clock cycles
+(``hw/sys/smc/doc/clk_rst.adoc``, reset equations) and then rise on ``clk_smc_i``.
 """
 
 from __future__ import annotations
@@ -25,7 +26,12 @@ from .smc_reset_seq_base import SmcResetSeqBase
 RELEASE_BOUND_REF_CYCLES = 700
 HOLD_POWERGOOD_LOW_REF_CYCLES = 64
 WDT_PULSE = 16
-WDT_REASSERT_AFTER_EDGES = 2
+# clk_rst.adoc: held 32 reference clocks after the request releases, then 4 SMC
+# clocks in smc_reset_sync. The probe window sits inside that hold.
+WDT_STRETCH_REF_CYCLES = 32
+WDT_STRETCH_MIN_REF_EDGES = 31
+WDT_STRETCH_PROBE_REF_CYCLES = 16
+WDT_STRETCH_SLACK_REF_CYCLES = 8
 WDT_POLL_BOUND_SMC_CYCLES = 64
 MIN_RELEASE_EDGES = 4
 _EDGE_HISTORY = 4096
@@ -72,7 +78,7 @@ class smc_reset_sync_async_assert_test_seq(SmcResetSeqBase):
         "CHK-REF-OUTPUTS-ASSERT-ASYNC",
         "CHK-PERIPH-OUTPUT-ASSERTS-ASYNC",
         "CHK-EACH-OUTPUT-RELEASES-ON-OWN-EDGE",
-        "CHK-SOURCE-REASSERTS-IN-LATENCY",
+        "CHK-WDT-STRETCH-HOLDS",
     )
 
     def __init__(self, name: str = "smc_reset_sync_async_assert_test_seq") -> None:
@@ -84,6 +90,7 @@ class smc_reset_sync_async_assert_test_seq(SmcResetSeqBase):
         self.release_edges: dict[str, int] = {}
         self.reassert_samples: int | None = None
         self.final_edges: dict[str, int] = {}
+        self.rise_ps: dict[str, int] = {}
         self._step_stamps: list[tuple[str, int]] = []
         self._chk_marks: list[tuple[str, int]] = []
 
@@ -106,6 +113,7 @@ class smc_reset_sync_async_assert_test_seq(SmcResetSeqBase):
                 f"{t_src_ps} ps (last {log.name} edge {log.last()} ps)"
             ) from exc
         t_rise = _now_ps()
+        self.rise_ps[label] = t_rise
         await ReadOnly()
         assert _bit(sig) == 1, f"{label} rose at {t_rise} ps but reads 0 in the same instant"
         assert t_rise in log.times, (
@@ -144,7 +152,6 @@ class smc_reset_sync_async_assert_test_seq(SmcResetSeqBase):
         smc_ps = int(round(self.cfg.smc_clk_period_ns * 1000))
         periph_n = self._periph_n
         bound_ns = RELEASE_BOUND_REF_CYCLES * self.cfg.ref_clk_period_ns
-        poll_ns = WDT_POLL_BOUND_SMC_CYCLES * self.cfg.smc_clk_period_ns
 
         # S1 -- fuse sense done, every observable released.
         await self.wait_fuse_sense_done()
@@ -266,34 +273,40 @@ class smc_reset_sync_async_assert_test_seq(SmcResetSeqBase):
             f"{MIN_RELEASE_EDGES}th edge",
         )
 
-        # S5 -- release, re-assert after two clk_smc_i edges, release again.
+        # S5 -- the watchdog reset stays low for 32 reference clocks after the pin releases.
         dut.tb_sep_wdt_reset_n.value = 0
-        for _ in range(WDT_PULSE):
+        polled = 0
+        while True:
             await RisingEdge(dut.clk_smc_i)
+            polled += 1
+            levels = [_bit(sig) for _n, sig in wdt_outs]
+            if polled >= WDT_PULSE and levels == [0, 0]:
+                break
+            assert polled < WDT_POLL_BOUND_SMC_CYCLES, (
+                f"after {polled} clk_smc_i edges of tb_sep_wdt_reset_n=0 the outputs read "
+                f"{dict(zip([n for n, _s in wdt_outs], levels))}, expected 0"
+            )
+        await Timer(smc_ps // 3, unit="ps")
+        self.t_final_release = _now_ps()
         dut.tb_sep_wdt_reset_n.value = 1
-        t_first_release = _now_ps()
-        early_high = 0
-        for _ in range(WDT_REASSERT_AFTER_EDGES):
-            await RisingEdge(dut.clk_smc_i)
-            early_high += sum(_bit(sig) for _n, sig in wdt_outs)
-        dut.tb_sep_wdt_reset_n.value = 0
-        samples = 0
-        for _ in range(WDT_PULSE):
-            await RisingEdge(dut.clk_smc_i)
+        low_samples = 0
+        for _ in range(WDT_STRETCH_PROBE_REF_CYCLES):
+            await RisingEdge(dut.clk_ref_i)
             for name, sig in wdt_outs:
                 assert _bit(sig) == 0, (
-                    f"{name} reads 1 at {_now_ps()} ps while the re-asserted "
-                    f"tb_sep_wdt_reset_n is low (sample {samples + 1})"
+                    f"{name} reads 1 at {_now_ps()} ps, {low_samples + 1} clk_ref_i cycles after "
+                    f"tb_sep_wdt_reset_n released at {self.t_final_release} ps"
                 )
-            samples += 1
-        self.reassert_samples = samples
-        dut.tb_sep_wdt_reset_n.value = 1
-        self.t_final_release = _now_ps()
+            low_samples += 1
+        self.reassert_samples = low_samples
+        stretch_bound_ns = (
+            WDT_STRETCH_REF_CYCLES + WDT_STRETCH_SLACK_REF_CYCLES
+        ) * self.cfg.ref_clk_period_ns
         waiters = [
             (
                 name,
                 cocotb.start_soon(
-                    self._rise_on_own_edge(sig, smc_log, self.t_final_release, poll_ns)
+                    self._rise_on_own_edge(sig, smc_log, self.t_final_release, stretch_bound_ns)
                 ),
             )
             for name, sig in wdt_outs
@@ -301,16 +314,25 @@ class smc_reset_sync_async_assert_test_seq(SmcResetSeqBase):
         for name, waiter in waiters:
             self.final_edges[name] = await waiter
         await self._wait_released("FINAL_RELEASED")
-        self._mark_step("S5", "tb_sep_wdt_reset_n re-asserted 2 clk_smc_i after release")
+        hi = WDT_STRETCH_REF_CYCLES + WDT_STRETCH_SLACK_REF_CYCLES
+        ref_edges = {
+            name: ref_log.edges_in(self.t_final_release, self.rise_ps[sig._name])
+            for name, sig in wdt_outs
+        }
+        for name, n_edges in ref_edges.items():
+            assert WDT_STRETCH_MIN_REF_EDGES <= n_edges <= hi, (
+                f"{name} rose after {n_edges} clk_ref_i edges, expected "
+                f"{WDT_STRETCH_MIN_REF_EDGES}..{hi}"
+            )
+        self._mark_step("S5", "tb_sep_wdt_reset_n release held for the 32-cycle stretch")
         self._log_chk(
-            "CHK-SOURCE-REASSERTS-IN-LATENCY",
-            f"tb_sep_wdt_reset_n released at {t_first_release} ps, re-asserted "
-            f"{WDT_REASSERT_AFTER_EDGES} clk_smc_i later for {WDT_PULSE} cycles; "
-            f"rst_wdt_smc_clk_no and tb_rst_warm_smc_clk_n read 0 at all {samples} clk_smc_i "
-            f"samples until the final release and rose {self.final_edges['rst_wdt_smc_clk_no']}/"
-            f"{self.final_edges['tb_rst_warm_smc_clk_n']} edges after it (bound "
-            f"{WDT_POLL_BOUND_SMC_CYCLES}); output reads 1 in the {WDT_REASSERT_AFTER_EDGES} "
-            f"cycles before the re-assertion: {early_high}",
+            "CHK-WDT-STRETCH-HOLDS",
+            f"tb_sep_wdt_reset_n released at {self.t_final_release} ps; "
+            f"rst_wdt_smc_clk_no and tb_rst_warm_smc_clk_n read 0 at all {low_samples} "
+            f"clk_ref_i samples inside the hold and rose after {ref_edges} clk_ref_i edges "
+            f"(floor {WDT_STRETCH_MIN_REF_EDGES}, ceiling {hi}) on clk_smc_i edges "
+            f"{self.final_edges['rst_wdt_smc_clk_no']}/"
+            f"{self.final_edges['tb_rst_warm_smc_clk_n']}",
         )
         self._finish_fence()
 

@@ -6,13 +6,13 @@
 // cg_jtag2axi_series, cg_jtag2axi_backpressure, cg_jtag2axi_reset,
 // cg_jtag2axi_cdc, cg_jtag2axi_gating, cg_dbg_disable_jtag2axi).
 //
-// One instance in the shared tb_top serves both flows. The TCK-domain points
+// One instance in the shared tb_top serves both flows. The TCK-domain samples
 // come straight from each bridge's own bookkeeping, connected by tb_top
 // through hierarchical references: the single-op status, pending and
 // launched-operation registers; the transaction the AXI state machine
 // completes and the series status it completes against; the bridge's
 // SINGLE_OP Update-DR, scanned op field and synchronized disable; its CDC's
-// TCK-side clear. The bus-timing points sample the flattened per-bridge AXI
+// TCK-side clear. The bus-timing samples read the flattened per-bridge AXI
 // handshake pins in the system-clock domain.
 //
 // The three targets are stamped by macros into ONE module with per-target
@@ -20,9 +20,10 @@
 // of a module (hierarchies collapse to `*`), so a per-target submodule would
 // lose the target dimension.
 //
-// CONVENTION (see dtp_fcov.sv): every cover-property body is a single
-// continuous-assign wire, and always_ff-driven variables carry no
-// declaration initializers.
+// CONVENTION (see dtp_fcov.sv): a cover-property body is a single
+// continuous-assign wire. No declaration initializers on always_ff-driven
+// variables, which VCS rejects (initializer_driver_checks); declare wires
+// before use.
 
 `include "ocah_fcov_macros.svh"
 
@@ -199,6 +200,9 @@ module dtp_jtag2axi_fcov (
   localparam logic [1:0] BeatFault = 2'd1;
   localparam logic [1:0] BeatAfterFault = 2'd2;
 
+  // Series beat shape: a full beat, a narrow beat on lane 0 or at a non-zero
+  // lane offset (the fabric bus), and a size field wider than the bus (the
+  // OTP buses).
   localparam logic [1:0] ShapeFull = 2'd0;
   localparam logic [1:0] ShapeNarrowLane0 = 2'd1;
   localparam logic [1:0] ShapeNarrowOffset = 2'd2;
@@ -239,10 +243,10 @@ module dtp_jtag2axi_fcov (
   wire [3:0] dis_count = 4'($countones(dbg_disable_i));
 
   // ------------------------------------------------------------------
-  // Common system-clock reset bookkeeping: reset-assertion events and the
-  // back-to-back spacing counter. Sampled values at the rst_fell edge are
-  // preponed, so on that edge the per-target phase flops below show the
-  // pre-reset state.
+  // Common system-clock reset bookkeeping: the reset-assertion event and the
+  // back-to-back spacing counter. The reset sample on the clk_i edge where
+  // rst_fell_e is set reads the per-target phase flops below before that edge
+  // updates them, so they show the pre-reset state.
   // ------------------------------------------------------------------
   wire clk_in_reset = (rst_ni !== 1'b1);
   logic rst_nq;
@@ -262,10 +266,6 @@ module dtp_jtag2axi_fcov (
   end
 
   wire reset_back_to_back = rst_seen_any_q && (rst_gap_q < 8'd64);
-  wire reset_back_to_back_e = rst_fell_e && reset_back_to_back;
-  wire reset_isolated_e = rst_fell_e && !reset_back_to_back;
-  `OCAH_FCOV_COVER(c_reset_back_to_back, reset_back_to_back_e, clk_i, 1'b0)
-  `OCAH_FCOV_COVER(c_reset_isolated, reset_isolated_e, clk_i, 1'b0)
 
   // ------------------------------------------------------------------
   // Per-target TCK-domain section.
@@ -282,6 +282,10 @@ module dtp_jtag2axi_fcov (
   // scanned op field and its synchronized disable on the update edge; one
   // TCK later a READ or WRITE that found the bridge idle has launched (the
   // pending flag rose) or has been blocked.
+  //
+  // Gating release: the synchronized disable clears after it blocked an
+  // operation. The gating covergroup samples a release inside TAP reset as
+  // well; the cover property records only a release outside it.
   //
   // Series beats: the state machine completes a transaction that did not
   // come from the single-op buffer; its response and the series status
@@ -364,100 +368,11 @@ module dtp_jtag2axi_fcov (
     wire [1:0] __t``_beat_shape = (__t``_beat_req_size_i > __t``_beat_size_i)           \
         ? ShapeOversize : (__t``_beat_size_i == __beat) ? ShapeFull                      \
         : (__t``_beat_offset_i != 3'd0) ? ShapeNarrowOffset : ShapeNarrowLane0;          \
-    wire __t``_op_write_e = __t``_axi_done_e && (__t``_op_i == OpWrite);                 \
-    wire __t``_op_read_e = __t``_axi_done_e && (__t``_op_i == OpRead);                   \
-    wire __t``_op_nop_e = __t``_poll_e && (__t``_cap == CapIdle);                        \
-    wire __t``_status_success_e = __t``_comp_e && (__t``_outcome == OutSuccess);         \
-    wire __t``_status_slverr_e = __t``_comp_e && (__t``_outcome == OutSlverr);           \
-    wire __t``_status_decerr_e = __t``_comp_e && (__t``_outcome == OutDecerr);           \
-    wire __t``_status_discard_e = __t``_comp_e && (__t``_outcome == OutDiscard);         \
-    wire __t``_status_busy_e = __t``_poll_e && (__t``_cap == CapBusy);                   \
-    wire __t``_poll_immediate_e = __t``_settled_poll_e && (__t``_polls_q == 3'd0);       \
-    wire __t``_poll_short_e =                                                            \
-        __t``_settled_poll_e && (__t``_polls_q inside {3'd1, 3'd2, 3'd3});               \
-    wire __t``_poll_long_e = __t``_settled_poll_e && (__t``_polls_q >= 3'd4);            \
     wire __t``_recovery_next_nop_e = __t``_settled_poll_e && __t``_abn_q;                \
-    wire __t``_recovery_rw_after_error_e = __t``_success_e && __t``_abn_q                \
-        && (__t``_abn_out_q != OutDiscard);                                              \
-    wire __t``_recovery_reset_abort_e = __t``_success_e && __t``_abn_q                   \
-        && (__t``_abn_out_q == OutDiscard);                                              \
-    wire __t``_wstrb_none_e = __t``_op_write_e && (__t``_strobe == StbNone);             \
-    wire __t``_wstrb_single_e = __t``_op_write_e && (__t``_strobe == StbSingle);         \
-    wire __t``_wstrb_partial_e = __t``_op_write_e && (__t``_strobe == StbPartial);       \
-    wire __t``_wstrb_all_e = __t``_op_write_e && (__t``_strobe == StbAll);               \
-    wire __t``_addr_aligned_e = __t``_axi_done_e && !__t``_boundary;                     \
-    wire __t``_addr_boundary_e = __t``_axi_done_e && __t``_boundary;                     \
-    wire __t``_series_incr_e = __t``_series_beat_e && (__t``_beat_mode == SerIncr);      \
-    wire __t``_series_no_incr_e = __t``_series_beat_e && (__t``_beat_mode == SerNoIncr); \
-    wire __t``_series_stat_e = __t``_series_beat_e && (__t``_beat_mode == SerStatus);    \
-    wire __t``_series_read_e = __t``_series_beat_e && (__t``_beat_op_i == OpRead);       \
-    wire __t``_series_write_e = __t``_series_beat_e && (__t``_beat_op_i == OpWrite);     \
-    wire __t``_series_clean_e = __t``_series_beat_e && (__t``_beat_class == BeatClean);  \
-    wire __t``_series_fault_e = __t``_series_beat_e && (__t``_beat_class == BeatFault);  \
-    wire __t``_series_after_fault_e =                                                    \
-        __t``_series_beat_e && (__t``_beat_class == BeatAfterFault);                     \
-    wire __t``_series_stat_incr_e = __t``_series_stat_e && __t``_beat_mode_i[0];         \
-    wire __t``_series_stat_hold_e = __t``_series_stat_e && !__t``_beat_mode_i[0];        \
-    wire __t``_dbg_clear_allowed_e = __t``_rw_commit_e && !__t``_dis_q && __t``_launch_e; \
-    wire __t``_dbg_set_blocked_e = __t``_rw_commit_e && __t``_dis_q && !__t``_launch_e;  \
-    wire __t``_dbg_isolation_e = __t``_dbg_clear_allowed_e && (dis_count != 4'd0);       \
     wire __t``_gating_recovery_e = __t``_success_e && __t``_released_q;                  \
     wire [1:0] __t``_clear_class = __t``_abort_i[1] ? ClrSingle                          \
         : __t``_abort_i[0] ? ClrSeries : ClrIdle;                                        \
-    wire __t``_cdc_clear_idle_e = __t``_clear_rise_e && (__t``_clear_class == ClrIdle);  \
-    wire __t``_cdc_clear_single_e = __t``_clear_rise_e && (__t``_clear_class == ClrSingle); \
-    wire __t``_cdc_clear_series_e = __t``_clear_rise_e && (__t``_clear_class == ClrSeries); \
-    `OCAH_FCOV_COVER(c_``__t``_op_write, __t``_op_write_e, tck_i, in_reset)                \
-    `OCAH_FCOV_COVER(c_``__t``_op_read, __t``_op_read_e, tck_i, in_reset)                  \
-    `OCAH_FCOV_COVER(c_``__t``_op_nop, __t``_op_nop_e, tck_i, in_reset)                    \
-    `OCAH_FCOV_COVER(c_``__t``_status_success, __t``_status_success_e, tck_i, in_reset)    \
-    `OCAH_FCOV_COVER(c_``__t``_status_slverr, __t``_status_slverr_e, tck_i, in_reset)      \
-    `OCAH_FCOV_COVER(c_``__t``_status_decerr, __t``_status_decerr_e, tck_i, in_reset)      \
-    `OCAH_FCOV_COVER(c_``__t``_status_reset_discard, __t``_status_discard_e,               \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_status_busy_or_full, __t``_status_busy_e, tck_i, in_reset)  \
-    `OCAH_FCOV_COVER(c_``__t``_poll_immediate, __t``_poll_immediate_e, tck_i, in_reset)    \
-    `OCAH_FCOV_COVER(c_``__t``_poll_short_wait, __t``_poll_short_e, tck_i, in_reset)       \
-    `OCAH_FCOV_COVER(c_``__t``_poll_long_wait, __t``_poll_long_e, tck_i, in_reset)         \
-    `OCAH_FCOV_COVER(c_``__t``_recovery_next_nop, __t``_recovery_next_nop_e,               \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_recovery_next_rw_after_error,                               \
-                     __t``_recovery_rw_after_error_e, tck_i, in_reset)                     \
-    `OCAH_FCOV_COVER(c_``__t``_recovery_reset_abort, __t``_recovery_reset_abort_e,         \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_wstrb_none, __t``_wstrb_none_e, tck_i, in_reset)            \
-    `OCAH_FCOV_COVER(c_``__t``_wstrb_single_byte, __t``_wstrb_single_e, tck_i, in_reset)   \
-    `OCAH_FCOV_COVER(c_``__t``_wstrb_partial, __t``_wstrb_partial_e, tck_i, in_reset)      \
-    `OCAH_FCOV_COVER(c_``__t``_wstrb_all_bytes, __t``_wstrb_all_e, tck_i, in_reset)        \
-    `OCAH_FCOV_COVER(c_``__t``_addr_aligned, __t``_addr_aligned_e, tck_i, in_reset)        \
-    `OCAH_FCOV_COVER(c_``__t``_addr_boundary, __t``_addr_boundary_e, tck_i, in_reset)      \
-    `OCAH_FCOV_COVER(c_``__t``_series_incr, __t``_series_incr_e, tck_i, in_reset)          \
-    `OCAH_FCOV_COVER(c_``__t``_series_no_incr, __t``_series_no_incr_e, tck_i, in_reset)    \
-    `OCAH_FCOV_COVER(c_``__t``_series_with_error_status, __t``_series_stat_e,              \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_series_read, __t``_series_read_e, tck_i, in_reset)          \
-    `OCAH_FCOV_COVER(c_``__t``_series_write, __t``_series_write_e, tck_i, in_reset)        \
-    `OCAH_FCOV_COVER(c_``__t``_series_clean, __t``_series_clean_e, tck_i, in_reset)        \
-    `OCAH_FCOV_COVER(c_``__t``_series_fault, __t``_series_fault_e, tck_i, in_reset)        \
-    `OCAH_FCOV_COVER(c_``__t``_series_after_fault, __t``_series_after_fault_e,             \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_series_status_increment, __t``_series_stat_incr_e,          \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_series_status_hold, __t``_series_stat_hold_e,               \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_dbg_disable_clear_allowed, __t``_dbg_clear_allowed_e,       \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_dbg_disable_set_blocked, __t``_dbg_set_blocked_e,           \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_dbg_disable_isolation, __t``_dbg_isolation_e,               \
-                     tck_i, in_reset)                                                      \
     `OCAH_FCOV_COVER(c_``__t``_gating_release_no_replay, __t``_release_e,                  \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_gating_recovery, __t``_gating_recovery_e, tck_i, in_reset)  \
-    `OCAH_FCOV_COVER(c_``__t``_cdc_clear_idle, __t``_cdc_clear_idle_e, tck_i, in_reset)    \
-    `OCAH_FCOV_COVER(c_``__t``_cdc_clear_single_discard, __t``_cdc_clear_single_e,         \
-                     tck_i, in_reset)                                                      \
-    `OCAH_FCOV_COVER(c_``__t``_cdc_clear_series_discard, __t``_cdc_clear_series_e,         \
                      tck_i, in_reset)
 
   `DTP_J2A_TCK_FCOV(smc_axi, SmcAxiSingleOp, SmcAxiBeatSize, 1'b0)
@@ -465,61 +380,13 @@ module dtp_jtag2axi_fcov (
   `DTP_J2A_TCK_FCOV(sep_otp, SepOtpSingleOp, OtpBeatSize, 1'b1)
   `undef DTP_J2A_TCK_FCOV
 
-  // Transfer size: the SMC fabric bridge carries 1/2/4/8-byte beats; an
-  // AXI4-Lite beat is 4 bytes whatever the SINGLE_OP size field holds.
-  wire smc_axi_size_1b_e = smc_axi_axi_done_e && (smc_axi_beat == 3'd0);
-  wire smc_axi_size_2b_e = smc_axi_axi_done_e && (smc_axi_beat == 3'd1);
-  wire smc_axi_size_4b_e = smc_axi_axi_done_e && (smc_axi_beat == 3'd2);
-  wire smc_axi_size_8b_e = smc_axi_axi_done_e && (smc_axi_beat == 3'd3);
-  wire smc_otp_size_4b_e = smc_otp_axi_done_e;
-  wire sep_otp_size_4b_e = sep_otp_axi_done_e;
-  `OCAH_FCOV_COVER(c_smc_axi_size_1b, smc_axi_size_1b_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_smc_axi_size_2b, smc_axi_size_2b_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_smc_axi_size_4b, smc_axi_size_4b_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_smc_axi_size_8b, smc_axi_size_8b_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_smc_otp_size_4b, smc_otp_size_4b_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_sep_otp_size_4b, sep_otp_size_4b_e, tck_i, in_reset)
-
-  // Series beat shape over the three bridges: a full beat, a narrow beat on
-  // lane 0 or at a non-zero lane offset (the fabric bus), and a size field
-  // wider than the bus (the OTP buses).
-  wire series_shape_full_e = (smc_axi_series_beat_e && (smc_axi_beat_shape == ShapeFull))
-      || (smc_otp_series_beat_e && (smc_otp_beat_shape == ShapeFull))
-      || (sep_otp_series_beat_e && (sep_otp_beat_shape == ShapeFull));
-  wire series_shape_narrow_lane0_e =
-      (smc_axi_series_beat_e && (smc_axi_beat_shape == ShapeNarrowLane0))
-      || (smc_otp_series_beat_e && (smc_otp_beat_shape == ShapeNarrowLane0))
-      || (sep_otp_series_beat_e && (sep_otp_beat_shape == ShapeNarrowLane0));
-  wire series_shape_narrow_offset_e =
-      (smc_axi_series_beat_e && (smc_axi_beat_shape == ShapeNarrowOffset))
-      || (smc_otp_series_beat_e && (smc_otp_beat_shape == ShapeNarrowOffset))
-      || (sep_otp_series_beat_e && (sep_otp_beat_shape == ShapeNarrowOffset));
-  wire series_shape_oversize_e =
-      (smc_axi_series_beat_e && (smc_axi_beat_shape == ShapeOversize))
-      || (smc_otp_series_beat_e && (smc_otp_beat_shape == ShapeOversize))
-      || (sep_otp_series_beat_e && (sep_otp_beat_shape == ShapeOversize));
-  `OCAH_FCOV_COVER(c_series_shape_full, series_shape_full_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_series_shape_narrow_lane0, series_shape_narrow_lane0_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_series_shape_narrow_offset, series_shape_narrow_offset_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_series_shape_oversize, series_shape_oversize_e, tck_i, in_reset)
-
-  // Debug-disable mask class of the bridge fields at any bridge's cell.
-  wire dbg_cell_e = smc_axi_rw_commit_e || smc_otp_rw_commit_e || sep_otp_rw_commit_e;
-  wire dbg_mask_all_clear_e = dbg_cell_e && (bridge_mask == 2'd0);
-  wire dbg_mask_one_hot_e = dbg_cell_e && (bridge_mask == 2'd1);
-  wire dbg_mask_multi_hot_e = dbg_cell_e && (bridge_mask == 2'd2);
-  wire dbg_mask_all_set_e = dbg_cell_e && (bridge_mask == 2'd3);
-  `OCAH_FCOV_COVER(c_dbg_disable_jtag2axi_all_clear, dbg_mask_all_clear_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_dbg_disable_jtag2axi_one_hot, dbg_mask_one_hot_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_dbg_disable_jtag2axi_multi_hot, dbg_mask_multi_hot_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_dbg_disable_jtag2axi_all_set, dbg_mask_all_set_e, tck_i, in_reset)
-
   // ------------------------------------------------------------------
   // Per-target system-clock section: handshake order, reset timing. The
-  // phase flops clear through B, R or reset; their preponed values at
-  // rst_fell_e describe the transaction the reset aborts. The bridge's
-  // output stage resets asynchronously, so at rst_fell_e a request that was
-  // waiting shows in the flops, not on the VALID pins.
+  // phase flops clear through B, R or reset; at rst_fell_e the reset sample
+  // reads them before that edge clears them, so they describe the transaction
+  // the reset aborts. The bridge's output stage resets asynchronously, so at
+  // rst_fell_e a request that was waiting shows in the flops, not on the
+  // VALID pins.
   // ------------------------------------------------------------------
   `define DTP_J2A_CLK_FCOV(__t)                                                            \
     logic __t``_aw_done_q;                                                                 \
@@ -559,31 +426,21 @@ module dtp_jtag2axi_fcov (
     wire [1:0] __t``_rst_phase =                                                           \
         ((__t``_aw_done_q && __t``_w_done_q) || __t``_rd_out_q) ? PhResponse               \
         : (__t``_aw_done_q && !__t``_w_done_q) ? PhData                                    \
-        : ((__t``_aw_wait_q && !__t``_aw_done_q) || __t``_ar_wait_q) ? PhRequest : PhIdle; \
-    wire __t``_reset_idle_e = rst_fell_e && (__t``_rst_phase == PhIdle);                   \
-    wire __t``_reset_request_e = rst_fell_e && (__t``_rst_phase == PhRequest);             \
-    wire __t``_reset_data_e = rst_fell_e && (__t``_rst_phase == PhData);                   \
-    wire __t``_reset_response_e = rst_fell_e && (__t``_rst_phase == PhResponse);           \
-    `OCAH_FCOV_COVER(c_``__t``_skew_aw_before_w, __t``_skew_aw_before_w_e, clk_i, clk_in_reset)  \
-    `OCAH_FCOV_COVER(c_``__t``_skew_w_before_aw, __t``_skew_w_before_aw_e, clk_i, clk_in_reset)  \
-    `OCAH_FCOV_COVER(c_``__t``_skew_ar_held, __t``_skew_ar_held_e, clk_i, clk_in_reset)          \
-    `OCAH_FCOV_COVER(c_``__t``_reset_timing_idle, __t``_reset_idle_e, clk_i, 1'b0)         \
-    `OCAH_FCOV_COVER(c_``__t``_reset_timing_request_issued, __t``_reset_request_e,         \
-                     clk_i, 1'b0)                                                          \
-    `OCAH_FCOV_COVER(c_``__t``_reset_timing_data_phase, __t``_reset_data_e, clk_i, 1'b0)   \
-    `OCAH_FCOV_COVER(c_``__t``_reset_timing_response_wait, __t``_reset_response_e,         \
-                     clk_i, 1'b0)
+        : ((__t``_aw_wait_q && !__t``_aw_done_q) || __t``_ar_wait_q) ? PhRequest : PhIdle;
 
   `DTP_J2A_CLK_FCOV(smc_axi)
   `DTP_J2A_CLK_FCOV(smc_otp)
   `DTP_J2A_CLK_FCOV(sep_otp)
   `undef DTP_J2A_CLK_FCOV
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the cover-property bins above, per
-  // target, and the crosses where the features interact.
+  // Covergroups, under the cross rules dtp_fcov.sv states: a coverpoint per
+  // event class, and the crosses with the target and where the features
+  // interact.
   // ------------------------------------------------------------------
+  `define DTP_J2A_SHAPE_BIN(__label, __tgt, __op, __size, __stb) \
+    bins __label = {{__tgt, __op, __size, __stb}};
+
   covergroup cg_jtag2axi_single_op with function sample (
       logic [1:0] tgt, logic [1:0] op, logic [2:0] beat, logic [2:0] strobe, logic boundary
   );
@@ -603,20 +460,44 @@ module dtp_jtag2axi_fcov (
       bins no_strobe = {StbRead};
     }
     cp_addr: coverpoint boundary {bins aligned = {1'b0}; bins window_boundary = {1'b1};}
-    x_op_shape: cross cp_target, cp_op, cp_size, cp_strobe{
-      // An AXI4-Lite beat is 4 bytes whatever the SINGLE_OP size field holds.
-      ignore_bins otp_beat = (binsof(cp_target.smc_otp) || binsof(cp_target.sep_otp))
-          && !binsof(cp_size.b4);
-      // A read drives no strobes; a write always has a strobe class.
-      ignore_bins read_strobe = binsof (cp_op.read) && !binsof (cp_strobe.no_strobe);
-      ignore_bins write_no_strobe = binsof (cp_op.write) && binsof (cp_strobe.no_strobe);
-      // A 1-byte beat has one lane and a 2-byte beat two.
-      ignore_bins one_lane = binsof(cp_size.b1)
-          && (binsof(cp_strobe.single) || binsof(cp_strobe.partial));
-      ignore_bins two_lanes = binsof (cp_size.b2) && binsof (cp_strobe.partial);
+    // Every {target, op, size, strobe class} a bridge can issue: an AXI4-Lite
+    // beat is 4 bytes whatever the SINGLE_OP size field holds, a read drives
+    // no strobes and a write always has a strobe class, and a 1-byte beat has
+    // one lane and a 2-byte beat two.
+    cp_op_shape: coverpoint {
+      tgt, op, beat, strobe
+    } {
+      `DTP_J2A_SHAPE_BIN(smc_axi_read_b1_no_strobe, TgtSmcAxi, OpRead, 3'd0, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_axi_read_b2_no_strobe, TgtSmcAxi, OpRead, 3'd1, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_axi_read_b4_no_strobe, TgtSmcAxi, OpRead, 3'd2, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_axi_read_b8_no_strobe, TgtSmcAxi, OpRead, 3'd3, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b1_none, TgtSmcAxi, OpWrite, 3'd0, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b1_all, TgtSmcAxi, OpWrite, 3'd0, StbAll)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b2_none, TgtSmcAxi, OpWrite, 3'd1, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b2_single, TgtSmcAxi, OpWrite, 3'd1, StbSingle)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b2_all, TgtSmcAxi, OpWrite, 3'd1, StbAll)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b4_none, TgtSmcAxi, OpWrite, 3'd2, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b4_single, TgtSmcAxi, OpWrite, 3'd2, StbSingle)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b4_partial, TgtSmcAxi, OpWrite, 3'd2, StbPartial)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b4_all, TgtSmcAxi, OpWrite, 3'd2, StbAll)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b8_none, TgtSmcAxi, OpWrite, 3'd3, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b8_single, TgtSmcAxi, OpWrite, 3'd3, StbSingle)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b8_partial, TgtSmcAxi, OpWrite, 3'd3, StbPartial)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b8_all, TgtSmcAxi, OpWrite, 3'd3, StbAll)
+      `DTP_J2A_SHAPE_BIN(smc_otp_read_b4_no_strobe, TgtSmcOtp, OpRead, 3'd2, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_otp_write_b4_none, TgtSmcOtp, OpWrite, 3'd2, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_otp_write_b4_single, TgtSmcOtp, OpWrite, 3'd2, StbSingle)
+      `DTP_J2A_SHAPE_BIN(smc_otp_write_b4_partial, TgtSmcOtp, OpWrite, 3'd2, StbPartial)
+      `DTP_J2A_SHAPE_BIN(smc_otp_write_b4_all, TgtSmcOtp, OpWrite, 3'd2, StbAll)
+      `DTP_J2A_SHAPE_BIN(sep_otp_read_b4_no_strobe, TgtSepOtp, OpRead, 3'd2, StbRead)
+      `DTP_J2A_SHAPE_BIN(sep_otp_write_b4_none, TgtSepOtp, OpWrite, 3'd2, StbNone)
+      `DTP_J2A_SHAPE_BIN(sep_otp_write_b4_single, TgtSepOtp, OpWrite, 3'd2, StbSingle)
+      `DTP_J2A_SHAPE_BIN(sep_otp_write_b4_partial, TgtSepOtp, OpWrite, 3'd2, StbPartial)
+      `DTP_J2A_SHAPE_BIN(sep_otp_write_b4_all, TgtSepOtp, OpWrite, 3'd2, StbAll)
     }
     x_target_addr: cross cp_target, cp_addr;
   endgroup
+  `undef DTP_J2A_SHAPE_BIN
 
   covergroup cg_jtag2axi_response with function sample (logic [1:0] tgt, logic [1:0] outcome);
     option.per_instance = 1;
@@ -758,7 +639,17 @@ module dtp_jtag2axi_fcov (
       bins sep_otp_jtag2axi = {TgtSepOtp};
     }
     cp_value: coverpoint disabled {bins clear = {1'b0}; bins set = {1'b1};}
-    cp_outcome: coverpoint blocked {bins allowed = {1'b0}; bins blocked = {1'b1};}
+    // {disabled, blocked}: a clear field never blocks its bridge and a set
+    // one never lets an operation through; either other pair is a gating
+    // failure.
+    cp_outcome: coverpoint {
+      disabled, blocked
+    } {
+      bins allowed = {2'b00};
+      bins blocked = {2'b11};
+      illegal_bins blocked_while_clear = {2'b01};
+      illegal_bins allowed_while_set = {2'b10};
+    }
     cp_mask: coverpoint mask {
       bins all_clear = {MaskAllClear};
       bins one_hot = {MaskOneHot};
@@ -768,12 +659,7 @@ module dtp_jtag2axi_fcov (
     cp_isolation: coverpoint other_set iff (!disabled && !blocked) {
       bins alone = {1'b0}; bins other_field_set = {1'b1};
     }
-    x_cell: cross cp_field, cp_value, cp_outcome{
-      // A clear field never blocks its bridge and a set one never lets an
-      // operation through: either tuple is a gating failure.
-      illegal_bins blocked_while_clear = binsof (cp_value.clear) && binsof (cp_outcome.blocked);
-      illegal_bins allowed_while_set = binsof (cp_value.set) && binsof (cp_outcome.allowed);
-    }
+    x_cell: cross cp_field, cp_value;
     x_field_isolation: cross cp_field, cp_isolation;
   endgroup
 
@@ -820,6 +706,5 @@ module dtp_jtag2axi_fcov (
   `DTP_J2A_CG_SAMPLE(smc_otp, TgtSmcOtp)
   `DTP_J2A_CG_SAMPLE(sep_otp, TgtSepOtp)
   `undef DTP_J2A_CG_SAMPLE
-`endif
 
 endmodule : dtp_jtag2axi_fcov

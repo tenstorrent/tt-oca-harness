@@ -101,6 +101,8 @@
 |Generated bits match golden. Generate segmentation is `sep_drbg_gen_segmentation_test`, not this `glen=32` budget.
 |CHK5
 |The Key Manager consumes an entropy word and it matches golden.
+|CHK-E2E-SCOREBOARD
+|The strict CHK1..CHK5 scoreboard report ends with no mismatch. This is the leaf's own evidence line; CHK-ALERTS-ZERO comes from a shared base helper.
 |CHK5_pool
 |Mux endpoint [2] (entropy-pool adapter): each post-adapter pool beat equals the next AXIS2 word, and `pool_edn_fips_o=1` on every completed beat, so the adapter forwarded the DRBG FIPS bit. Does not drain `0x1095_0000`.
 |===
@@ -722,20 +724,20 @@ drain-order and packer-scrub contracts from Python probes on Verilator.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the ML-DSA-87 key-generation path through the ABR register aperture: reset status, an ACVP keyGen known-answer public key, completion status, the PIC error and notification legs, `ZEROIZE`, and single-bit seed sensitivity. Randomization is RANDCFG — the masking entropy words, and the seed word and bit flipped in the sensitivity leg, come from the run seed (`SepAbrKeygenCfg`).
+*Objective*: Proves the ML-DSA-87 key-generation path through the ABR register aperture: reset status, an ACVP keyGen known-answer public key, completion status, the PIC error and notification legs, and `ZEROIZE`. A second keyGen on the ACVP seed with one bit flipped is logged, not graded (`OBS-ABR-KEYGEN-SENSITIVITY`). Randomization is RANDCFG — the masking entropy words, and the seed word and bit flipped in the logged keyGen, come from the run seed (`SepAbrKeygenCfg`).
 
-*Test Coverage*: ML-DSA-87 keyGen known-answer, PIC legs, `ZEROIZE`, and seed sensitivity.
+*Test Coverage*: ML-DSA-87 keyGen known-answer, PIC legs, and `ZEROIZE`.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up in `no_cpu`. Read the ML-DSA `NAME` and `VERSION` words and log them.
 . Read `MLDSA_STATUS` and require READY, not VALID and not ERROR (CHK-RESET-STATUS).
-. Enable the notifications and require PIC `[34]` and `[35]` low. Raise the error interrupt with `error_intr_trig` and require `[34]` high with `error_internal_sts` set. Clear the field by `W1C` and require it 0 and `[34]` low (CHK-PIC-ERROR).
-. Wait for READY. Write the ACVP seed and the seeded entropy words over the bus and issue KEYGEN. Wait for VALID with ERROR=0 (CHK-STATUS-VALID). Read the 648-word public key and compare it to the vector (CHK-NIST-PK).
-. Require `[34]` low and `[35]` high (CHK-PIC-NOTIF). Require `notif_cmd_done_sts` set, clear it by `W1C`, and require the field 0 and `[35]` low (CHK-PIC-NOTIF-W1C).
+. Enable the notifications and require PIC `[34]` and `[35]` low. Wait for READY and write the ACVP seed and the seeded entropy words over the bus with the window closed. Start the PIC vector watch. Open owner window 753. Raise the error interrupt with `error_intr_trig` and require one rise of `[34]` within 64 clocks (CHK-PIC-ERROR-RISE) with no other vector bit moving in that clock (CHK-SRC35-EXCL). Clear the field by `W1C` and require `[34]` low within 64 clocks (CHK-PIC-ERROR-W1C); `error_internal_sts` reads 1 after the trigger and 0 after the clear (CHK-PIC-ERROR-STS).
+. Issue KEYGEN in the same window; `[35]` rises once after the command write (CHK-PIC-NOTIF-RISE) with no other vector bit moving outside the stated same-clock bits (CHK-SRC36-EXCL). Wait for VALID with ERROR=0 (CHK-STATUS-VALID). Read the 648-word public key and compare it to the vector (CHK-NIST-PK).
+. Require `[34]` low and `[35]` high (CHK-PIC-NOTIF). Clear `notif_cmd_done_sts` by `W1C` and require `[35]` low within 64 clocks (CHK-PIC-NOTIF-W1C); the field reads 1 before and 0 after the clear (CHK-PIC-NOTIF-STS). After each of CHK-PIC-ERROR-RISE, CHK-PIC-ERROR-W1C, CHK-PIC-NOTIF-RISE and CHK-PIC-NOTIF-W1C passes, set the bit of its `cp_abr_pic` bin in `abr_pic_pass`. Grade CHK-SRC35-EXCL and CHK-SRC36-EXCL over every rise since the window opened, and after each passes set the bit of its source in `exo_pass`. Close the window. A FAIL closes it first.
 . Require VALID=1, write `ZEROIZE`, wait for VALID to drop, and require every public-key word to read zero (CHK-ZEROIZE).
-. Flip the seeded seed bit and run KEYGEN again. Require a public key that differs from the vector and is not all zero (CHK-SENSITIVITY).
+. Wait for READY, write the ACVP seed with the seeded bit flipped and the same entropy words, and run KEYGEN again with the window closed. Wait for VALID with ERROR=0 and log the public key (`OBS-ABR-KEYGEN-SENSITIVITY`: the flipped word and bit, word 0, the count of words equal to the vector and of non-zero words). Not graded: `MLDSA_SEED` is write-only and `ZEROIZE` clears it (`integration/rdl/sep/abr_reg.rdl:77-79`, `:133-135`), so the seed cannot be read back, and the tree holds no ACVP keyGen case for the flipped seed. A key that differs from the vector would also come from a keyGen on the cleared seed.
 
 *Checkers*:
 
@@ -748,16 +750,24 @@ drain-order and packer-scrub contracts from Python probes on Verilator.
 |648-word public key matches the vendored ACVP keyGen vector.
 |CHK-STATUS-VALID
 |Completion STATUS is VALID with ERROR=0.
-|CHK-PIC-ERROR
-|Aggregate `[34]` traverses `0 -> 1` via `error_intr_trig` with `error_internal_sts` set, then the `W1C` reads that field back 0 and drops `[34]`, before the KAT. The field masks come from `abr_reg.rdl`. A stuck-low probe fails this row; the later `[34]=0` at completion is then a live observation.
+|CHK-PIC-ERROR-RISE
+|After the `error_intr_trig` write, aggregate `[34]` (source 35, `interrupts.adoc:194-196`, bit = source - 1 at `:22-23`) rises once within 64 clocks (`abr_reg.rdl:569-573` trigger pulse sets the status; `:518` level interrupt). A stuck-low probe fails this row; the later `[34]=0` at completion is then a live observation.
+|CHK-PIC-ERROR-W1C
+|`[34]` is high before the `W1C` of `error_internal_intr_r` and falls within 64 clocks after it (`abr_reg.rdl:518`, write one to clear).
+|CHK-PIC-ERROR-STS
+|`error_internal_sts` reads 1 after the trigger and 0 after the `W1C`. The field masks come from `abr_reg.rdl`.
+|CHK-PIC-NOTIF-RISE
+|`[35]` (source 36, `interrupts.adoc:198-200`) rises once after the KEYGEN command write (`abr_reg.rdl:543` command-done status, `:534` level).
 |CHK-PIC-NOTIF
 |Aggregate `[35]` high and `[34]` low at completion.
 |CHK-PIC-NOTIF-W1C
-|`notif_cmd_done_sts` reads set after keyGen; its `W1C` reads that field back 0 and clears `[35]`. The field mask comes from `abr_reg.rdl`.
+|`[35]` is high before the `W1C` of `notif_internal_intr_r` and falls within 64 clocks after it.
+|CHK-PIC-NOTIF-STS
+|`notif_cmd_done_sts` reads 1 after keyGen and 0 after the `W1C`. The field mask comes from `abr_reg.rdl`.
+|CHK-SRC35-EXCL / CHK-SRC36-EXCL
+|At the rise of `[34]` (source 35) and of `[35]` (source 36), every other vector bit equals its value one clock before (`interrupts.adoc:22-23`, bit i is source i + 1; `:33-34`, slots 1 to 43 are individually assigned). Not compared: the six unstated idle bits and the same-clock bits of the ABR stimulus (source 33 beside both, and the other ABR source). A run with no rise fails. Catches an OR-network smear or alias.
 |CHK-ZEROIZE
 |STATUS reads VALID=1 just before the `ZEROIZE` write, `ZEROIZE` then drops VALID, and every word of the pubkey window then reads zero. `MLDSA_STATUS.READY` is low through the `ABR_ZEROIZE` walk (`abr_ready = (abr_prog_cntr == ABR_RESET)`), so a READY-high wait would hang rather than pass vacuously. Scope: the pubkey read port is gated on `mldsa_valid_reg`, so a zero window proves the key is not readable, *not* that the RAM was wiped. The memory walk is not claimed; proving it needs a probe on the pubkey RAM or on `zeroize_mem_done`.
-|CHK-SENSITIVITY
-|Flipping one seed bit yields a different public key, and that key is not an all-zero window — an inequality against the vector alone would be satisfied by a cleared window.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -765,10 +775,25 @@ drain-order and packer-scrub contracts from Python probes on Verilator.
 *Scope*: The aperture is a `sep_crypto` demux rule at `AbrRegMapBaseAddr` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the way the OTBN tests reach their block. It is *not* behind an `axi_lite_isolate` unit: unlike the ESRC, CSRNG and EDN legs, the external TRNG passthrough in `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv` carries none. Accesses are 32-bit beats (`AxSIZE=2`), one register each. Other access sizes and strobes are graded by <<sep_abr_access_size_test>>. The Key-Manager-side key CSR is the generated PeakRDL `abr_wrapper_key_reg`. The ABR register block behind this aperture is real RTL. This leaf writes the seed window over the bus. The key-vault seed path is not claimed here; <<sep_km_abr_mldsa_kat_test>> applies the same ACVP vector over it. The ML-DSA `NAME` and `VERSION` words are information only: `abr_reg.rdl` declares them `sw = r` with no reset and no SEP document gives their values, so this leaf does not grade them. The bus-sweep leaves use them as read targets against a reference captured from the DUT (`CHK-ABR-ID-REF`).
 
 *Anti-vacuity*: the public key is a cryptographic function of the seed words
-written over the bus. The sensitivity leg flips one seed bit after the NIST
-match, so a cached or constant engine passes the first leg and fails the second.
+written over the bus, so an engine that drops a seed write fails CHK-NIST-PK.
+The flipped-seed keyGen is logged only (`OBS-ABR-KEYGEN-SENSITIVITY`) and
+carries no anti-vacuity claim.
 `[34]` is driven high through `error_intr_trig` and cleared before the KAT, so a
-stuck-low aggregator cannot satisfy both `CHK-PIC-ERROR` and `CHK-PIC-NOTIF`.
+stuck-low aggregator cannot satisfy both `CHK-PIC-ERROR-RISE` and `CHK-PIC-NOTIF`.
+
+*Functional coverage*: `sep_abr_completion_cg.cp_abr_pic` and
+`sep_pic_source_map_cg.cp_src_exclusive_other[s35, s36]`, owner window 753. The
+window holds only the trigger, command and `W1C` writes and the edges they grade;
+the seed and entropy writes run before it. Each `cp_abr_pic` edge is held and
+samples only after the check of that edge passed: the leaf sets the bit of the
+bin in the `abr_pic_pass` label after CHK-PIC-ERROR-RISE (one rise of `[34]`),
+CHK-PIC-ERROR-W1C, CHK-PIC-NOTIF-RISE (one rise of `[35]`) and
+CHK-PIC-NOTIF-W1C, so a second rise or a failing check leaves the bin at 0. The
+`cp_src_exclusive_other` rise of each source is held and samples only after its
+check passed: after CHK-SRC35-EXCL passes the leaf sets the bit of source 35 in
+the `exo_pass` label, and after CHK-SRC36-EXCL the bit of source 36, inside the
+window. Each label value is held three clocks, so each release samples before
+the next step and before the end of the run.
 
 *Not claimed*: the key-vault seed path — a green keyGen does not close it, and
 this leaf writes the seed window over the bus. It is owned by
@@ -2209,6 +2234,8 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 . Mask trial. For each block, run 2 drawn trials and the five corner trials in the drawn order. The corner trials use (E, T) = (all ones, all ones), (all ones, 0), (0, all ones), (0, 0) and one pair that shares exactly one set bit. All ones means every driven bit of the block. Per trial: reset the block (`CTRL-INTR-RESET-CLEAN`); write E to `INTR_ENABLE`; write T to `INTR_TEST`; read `INTR_STATE`; take the vector sample of the block with a hold of 4 times the largest t_rise of the block (CHK-INTR-LINE). Each expected-high bit rises within a bounded wait of 8 times that t_rise, and a timeout fails CHK-INTR-LINE. `CTRL-INTR-LINE-CAUSE` requires a logged t_rise for every source of the block.
 . In the same trial, check that the state read of step 8 shows the bits of C that T set (`CTRL-INTR-CLEAR-PRE`). Write C to `INTR_STATE`. Read `INTR_STATE`, wait for each line that must fall (a bounded wait of 8 times t_rise) and take the vector sample with a hold of 4 times t_rise (CHK-INTR-CLEAR). C holds driven bits only.
 . In the same trial, for each state bit that remains after the clear, in the drawn flip order, run the enable flip of step 6 from the enable value E (CHK-INTR-FLIP).
+. ESRC leg (source 16, vector bit 15), with only the TRNG domain released. Before the first case, with the window closed, stop the hardware interrupt causes: write `INTR_ENABLE` 0, clear `CTRL.MODULE_ENABLE` and `HEALTH_TEST_CTRL.ENABLE`, write one to every `HEALTH_TEST_STATUS` and `INTR_STATUS` bit, wait the rise bound and require `INTR_STATUS` and `HEALTH_TEST_STATUS` to read 0 (`CTRL-ESRC-QUIET`; a set-up error otherwise). The `INTR_STATUS` bits are level interrupts (`entropy_source.rdl:113`), so a bit whose hardware cause holds sets again after its clear. After the last case, write back `CTRL` and `HEALTH_TEST_CTRL` as read. Before each case, write `INTR_ENABLE` 0 and a write-one clear of every bit and require both to read 0 and the line 0 (`CTRL-ESRC-CLEAN`). For each of the 8 `INTR_STATUS` bits in a drawn order: write `INTR_ENABLE` and `INTR_TEST` with that bit only (CHK-ESRC-LINE), then clear it with a write of one (CHK-ESRC-CLEAR). Then one case with drawn non-zero disjoint E and T (CHK-ESRC-DISABLED, with a probe that adds one bit of T to E), and one case with two bits a and b set and enabled (CHK-ESRC-PAIR), cleared one at a time (CHK-ESRC-ONE-CLEARED, then CHK-ESRC-CLEAR).
+. The whole leg (steps 4 to 10) runs twice with the same plan: first with the coverage window closed, then, when every check passed, once more with owner window 125 open per case. A FAIL closes the window first, and no window opens after it.
 . Write the baseline to `SW_RESET_N`. Print `RESULT sep_irq_ip_to_aggregator_test seed=<n> PASS checks=<k>` when every check passed.
 
 *Checkers*:
@@ -2223,12 +2250,28 @@ The ABR entry takes its register map from `integration/rdl/sep/abr_reg.rdl`. The
 |CHK-INTR-FLIP
 |For each set bit, writing the toggled enable bit moves the line to state AND the new enable, and writing it back moves the line back, so the line follows the enable in both polarities. A wrong DUT shows a line that ignores a cleared enable or does not return. Anchor: the vector probe. Control: each flip holds one toggle to enable 1, and the line rises after it (`CTRL-INTR-FLIP-RISE`), or the leaf logs `CTRL-MISSING`. Evidence: `CHK-INTR-FLIP PASS seed=<n> block=<b> src=<s> bit=<i> enable=<0 or 1> vec=<0 or 1> t=<t> bound=<b> hold=<h>`; one line per toggle.
 |CHK-INTR-BITWALK
-|For each of the 10 sources and each (state, enable) cell, the vector bit equals state AND enable and no other bit of the block changes from its value after the block reset. For a bit in a cell with the state 1, the write-one clear drops the state and the line with the enable 0 and with the enable 1. A wrong DUT shows a line that ignores the enable, a bit that moves a neighbour, a clear that works with one enable value only, or a state that stays set. Anchor: the `INTR_STATE` readback and the vector probe. Control: the cell (1, 1) of the same bit raises the line with a logged t_rise (`CTRL-INTR-CELL11`), and the state reads 1 just before the clear (`CTRL-INTR-W1C-PRE`). For the sources that the open tests walk, the cell (1, 1) and the clear with the enable set log `CTRL-INTR-OPEN` and are not claimed as new coverage, and so does the cell (0, 0) of the seven sources that `sep_irq_ip_to_aggregator_test` walks (CSRNG, EDN and `hmac_err`). Evidence: `CHK-INTR-BITWALK PASS seed=<n> block=<b> src=<s> bit=<i> cell=<s><e> state=0x<st> vec=<v> others_unchanged=1 baseline_ok=1 baseline_x=<0 or n/a> undriven=0x<u> hold=<h> w1c=<n/a, 0 or 1>`; `w1c` is the enable value at the clear, and n/a for the cell line before the clear. `baseline_x` is 0 on a 4-state simulator, where a read with an X or Z bit fails, and n/a on the 2-state Verilator.
+|For each of the 10 sources and each (state, enable) cell, the vector bit equals state AND enable and no other bit of the block changes from its value after the block reset. For a bit in a cell with the state 1, the write-one clear drops the state and the line with the enable 0 and with the enable 1. A wrong DUT shows a line that ignores the enable, a bit that moves a neighbour, a clear that works with one enable value only, or a state that stays set. Anchor: the `INTR_STATE` readback and the vector probe. Control: the cell (1, 1) of the same bit raises the line with a logged t_rise (`CTRL-INTR-CELL11`), and the state reads 1 just before the clear (`CTRL-INTR-W1C-PRE`). For the sources that the open tests walk, the cell (1, 1) and the clear with the enable set log `CTRL-INTR-OPEN` and are not claimed as new coverage, and so does the cell (0, 0) of the seven sources that `sep_irq_ip_to_aggregator_test` walks (CSRNG, EDN and `hmac_err`). Evidence: `CHK-INTR-BITWALK PASS seed=<n> block=<b> src=<s> bit=<i> cell=<s><e> state=0x<st> vec=<v> others_unchanged=1 baseline_ok=1 baseline_x=<0 or n/a> undriven=0x<u> hold=<h> w1c=<n/a, 0 or 1>`; `w1c` is the enable value at the clear, and n/a for the cell line before the clear. `baseline_x` is 0 on a 4-state simulator, where a read with an X or Z bit fails, and n/a on the 2-state Verilator. Each cell also reads `INTR_ENABLE` back equal to the enable of the cell, and a cell with the line low passes only when the line rose in the cell (1, 1) of the same run.
+|CHK-ESRC-LINE
+|With `INTR_ENABLE` and `INTR_TEST` set to bit k alone, vector bit 15 rises once, does not fall and reads 1 after the hold; `INTR_STATUS` and `INTR_ENABLE` read bit k on their field bits (`entropy_source.adoc:157-172`, `:181-196`; `interrupts.adoc:109-111`). Catches a line that ignores source k, a status that does not latch, a dead `INTR_TEST` and an enable that is not stored.
+|CHK-ESRC-CLEAR
+|A write of one to the last set bit drops the line within 8 times t_rise with no rise after the write, and `INTR_STATUS` reads 0 on its field bits (`entropy_source.adoc:133-148`, write one to clear).
+|CHK-ESRC-DISABLED
+|With E and T non-zero and disjoint, the line stays 0 over the hold; `INTR_STATUS` reads T and `INTR_ENABLE` reads E. Probe: adding one bit of T to E raises the line within the bound, so the status bits are live. Catches a line equal to the OR of the status or of the enable.
+|CHK-ESRC-PAIR
+|With two bits set and enabled, the line is 1 with no fall, and both registers read both bits.
+|CHK-ESRC-ONE-CLEARED
+|A write of one to one of the two bits leaves the line 1 with no fall, and `INTR_STATUS` reads the other bit only.
+|CTRL-ESRC-QUIET
+|(Set-up control, not a counted check.) With `CTRL.MODULE_ENABLE` 0 (`entropy_source.rdl:45`, the main state machine held idle), `HEALTH_TEST_CTRL.ENABLE` 0 (`:314`, every 32-bit stream test disabled) and `HEALTH_TEST_STATUS` and `INTR_STATUS` cleared, both read 0 after the rise bound. A status bit that a hardware cause sets again fails the leaf as a set-up error before any graded case, so every case sees only the bits its `INTR_TEST` writes set.
+|OBS-ESRC-CONTRIBUTOR
+|Logged only, no pass or fail. Which entropy-source causes the specification names as contributors to source 16 is an open specification question.
+|OBS-ESRC-RSVD
+|Logged only. The reserved bits of `INTR_STATUS` and `INTR_ENABLE`, which have no stated reset.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope limit*: This leg grades only the cells that the open tests do not walk. The cell (1, 1) and the write-one clear with the enable set of the sources that the open tests walk, and the cell (0, 0) of the seven sources that `sep_irq_ip_to_aggregator_test` walks, are controls here, and the open owners keep their grade. The `hmac_fifo_empty` and `kmac_fifo_empty` lines belong to `sep_pic_pending_map_walk_rand_test`, which makes the status read 1 from the FIFO and grades the line gate. The `otbn_done` line belongs to `sep_otbn_cmd_status_rand_test`: the OTBN reset in a cell needs the entropy chain, which this run mode does not bring up, and the status arc of the initial wipe after a reset is graded there (CHK-OTBN-INITDONE). The real done and error events of HMAC and KMAC are graded in `sep_hmac_swap_context_rand_test` and `sep_kmac_stream_cfg_rand_test`. The ESRC interrupt bits are graded in `sep_esrc_csr_rw_walk_rand_test`.
+*Scope limit*: This leg grades only the cells that the open tests do not walk. The cell (1, 1) and the write-one clear with the enable set of the sources that the open tests walk, and the cell (0, 0) of the seven sources that `sep_irq_ip_to_aggregator_test` walks, are controls here, and the open owners keep their grade. The `hmac_fifo_empty` and `kmac_fifo_empty` lines belong to `sep_pic_pending_map_walk_rand_test`, which makes the status read 1 from the FIFO and grades the line gate. The `otbn_done` line belongs to `sep_otbn_cmd_status_rand_test`: the OTBN reset in a cell needs the entropy chain, which this run mode does not bring up, and the status arc of the initial wipe after a reset is graded there (CHK-OTBN-INITDONE). The real done and error events of HMAC and KMAC are graded in `sep_hmac_swap_context_rand_test` and `sep_kmac_stream_cfg_rand_test`. The ESRC interrupt bits are graded in `sep_esrc_csr_rw_walk_rand_test`; the ESRC leg of this entry grades the source 16 line as the OR of `INTR_STATUS` AND `INTR_ENABLE`.
 
 '''''
 

@@ -2452,11 +2452,12 @@ grades the result. Two kinds of threshold apply, and both must be met:
 |Compatibility threshold
 |`--fail-under`, then `[coverage.<tool>].fail_under`, then `0.0`, compared
 with the tool's own overall percentage (`overall_percent` in
-`summary.json`): Verilator's count of hit points over all points, or the
-urg / imc dashboard total. Accepted waivers do not move that figure, so a DUT
-gated by `--fail-under` alone sees no effect from its policy. On a `--waive`
-re-grade the run's recorded `threshold` stands unless `--fail-under` is
-given.
+`summary.json`): Verilator's count of hit points over all points, leaving out
+the covergroup ignore, illegal and default bins, which are not coverage
+goals, or the urg / imc dashboard total. Accepted waivers do not move that
+figure, so a DUT gated by `--fail-under` alone sees no effect from its policy.
+On a `--waive` re-grade the run's recorded `threshold` stands unless
+`--fail-under` is given.
 
 |Policy thresholds
 |Each `pass:[[[thresholds]]]` rule of `coverage_policy.toml` names a metric

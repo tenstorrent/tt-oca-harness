@@ -22,7 +22,7 @@ The Getting Started and Contributing Guide, in particular, can be found [here](h
 
 1. Create a topic branch off `main` for your change.
 2. Make focused commits that compile and pass relevant checks where possible.
-3. Open a pull request against `main`. The template is guidance only; CI does not require Summary or Test plan, but the daily curator will normalize the title to `scope: summary` format and repair any missing template sections. Add `Fixes #N` when the PR closes an issue.
+3. Open a pull request against `main`. The template is guidance only; CI does not require Summary or Test plan, but the daily curator will normalize the title to `scope: summary` format and add a missing Summary or Test plan heading. Add `Fixes #N` when the PR closes an issue.
 4. In your first pull request, add yourself to [`CONTRIBUTORS`](CONTRIBUTORS). The weekly `update-contributors` workflow opens a pull request for commit authors who are still missing, grouped by organisation.
 5. Be responsive to review feedback.
 
@@ -30,7 +30,7 @@ Pull requests are reviewed on a weekly basis. The full how-to is in [`doc/starti
 
 ## Reporting Issues
 
-Open a [new issue](https://github.com/tenstorrent/tt-oca-harness/issues/new/choose) and pick Bug, Task, or Feature. All fields — Workstream, Subsystem, Component, Priority, and Target release — are required. If you target the current release (v0.5.0), the milestone is set automatically.
+Open a [new issue](https://github.com/tenstorrent/tt-oca-harness/issues/new/choose) and pick Bug, Task, or Feature. All fields — Workstream, Subsystem, Component, Priority, and Target release — are required. If you pick the current release as Target release, the milestone is set automatically.
 
 For security vulnerabilities, do not open a public issue. Follow the process in [SECURITY.md](SECURITY.md).
 

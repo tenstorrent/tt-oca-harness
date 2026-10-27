@@ -103,7 +103,6 @@ CPU_LINE_MASK = {1: 0b01, 2: 0b10}
 CPU_LINE_CODE = {1: CODE_ILLEGAL_INSN, 2: CODE_BUS_ERROR}
 
 PAR_N_MAX = 200  # HK-PAR read index N is drawn from [1, PAR_N_MAX]
-LAT_MAX = 4  # largest SRAM read latency graded: the specification states the minimum of 1 only
 
 # Memories of HK-PAR (km_par_mem_i) and their IRQ_STATUS parity bit.
 MEM_ROM, MEM_SRAM = 0, 1
@@ -226,9 +225,6 @@ class Plan:
     main_image: tuple[int, ...]
     main_w: int
     main_bit: int
-    # Latency leg (RANDCFG).
-    lat_fixed: int
-    lat_seed: int
 
     @property
     def max_parity_n(self) -> int:
@@ -309,9 +305,6 @@ def draw_plan(seed: int) -> Plan:
     main_image = tuple(imgh.spin_image(n, rng))
     main_w = rng.randrange(0, n + 1)  # n is the CRC-32C trailer
     main_bit = rng.randrange(0, 32)
-    # Latency leg.
-    lat_fixed = rng.randrange(2, LAT_MAX + 1)
-    lat_seed = rng.getrandbits(32)
     return Plan(
         seed=seed,
         v=v,
@@ -335,27 +328,7 @@ def draw_plan(seed: int) -> Plan:
         main_image=main_image,
         main_w=main_w,
         main_bit=main_bit,
-        lat_fixed=lat_fixed,
-        lat_seed=lat_seed,
     )
-
-
-class LatStream:
-    """The per-access latency stream of the RANDCFG leg: 1 to LAT_MAX, each at least once.
-
-    The first LAT_MAX values are a seeded permutation of 1 to LAT_MAX, then each
-    value is drawn in [1, LAT_MAX]. A pure function of the plan seed.
-    """
-
-    def __init__(self, lat_seed: int) -> None:
-        self._rng = SepSeededRng(lat_seed)
-        self._head = list(range(1, LAT_MAX + 1))
-        self._rng.shuffle(self._head)
-
-    def next(self) -> int:
-        if self._head:
-            return self._head.pop(0)
-        return self._rng.randrange(1, LAT_MAX + 1)
 
 
 def check_plan(p: Plan) -> None:
@@ -412,8 +385,6 @@ def check_plan(p: Plan) -> None:
         errs.append("the CPU-line KMCSR source")
     if not 8 <= len(p.main_image) <= 64 or not 0 <= p.main_w <= len(p.main_image):
         errs.append("the main-context image")
-    if not 2 <= p.lat_fixed <= LAT_MAX:
-        errs.append("the fixed latency")
     if errs:
         raise AssertionError("plan rule broken: " + "; ".join(errs))
 
@@ -443,59 +414,5 @@ def draw_lines(p: Plan) -> list[str]:
         f"words={hx(p.key_c)}",
         f"DRAW cpu_src={p.cpu_src}",
         f"DRAW main n={len(p.main_image)} w={p.main_w} bit={p.main_bit} image={hx(p.main_image)}",
-        f"DRAW lat_fixed={p.lat_fixed} lat_seed=0x{p.lat_seed:08x}",
     ]
     return lines
-
-
-# --- frame model of the latency leg ------------------------------------------------
-
-RESP_CMD = 0x00
-RESP_KM_READY = 0x55
-CMD_STAT = 0x03
-CMD_KEY_REVOKE = 0x23
-CMD_KEY_TRANSFER = 0x24
-CMD_ENGINE_SHRED = 0x25
-CMD_KEY_LOAD = 0x26
-LAT_KEY_DEST = 1 << AES
-LAT_FIRST_HANDLE = 1  # firmware.adoc, "Key Management": handles 1 to 255 in order
-
-
-def _signed8(v: int) -> int:
-    v &= 0xFF
-    return v - 256 if v >= 128 else v
-
-
-def lat_frame_ok(idx: int, words: list[int]) -> bool:
-    """Frame ``idx`` of the latency sequence against the stated frame fields.
-
-    0 RESP_KM_READY (sequence 0, no payload); 1 CMD_STAT success with status 0;
-    2 CMD_KEY_LOAD success with the first handle; 3 CMD_KEY_TRANSFER success with
-    the handle and the AES mask; 4 CMD_KEY_REVOKE success with the handle;
-    5 CMD_ENGINE_SHRED success with the AES mask. Command sequence numbers start
-    at 0 after the boot, and the response sequence numbers follow the frames.
-    """
-    hdr = words[0]
-    seq, rid, plen = hdr & 0xFF, (hdr >> 8) & 0xFF, (hdr >> 16) & 0xFF
-    if seq != idx:
-        return False
-    if idx == 0:
-        return rid == RESP_KM_READY and plen == 0 and len(words) == 1
-    cmd = (CMD_STAT, CMD_KEY_LOAD, CMD_KEY_TRANSFER, CMD_KEY_REVOKE, CMD_ENGINE_SHRED)[idx - 1]
-    if rid != RESP_CMD or plen != 4 or len(words) != 6:
-        return False
-    p = words[1:5]
-    if (p[0] & 0xFF) != idx - 1 or (p[1] & 0xFF) != cmd or _signed8(p[2]) != 0:
-        return False
-    if p[0] >> 8 or p[1] >> 8 or p[2] >> 8:
-        return False
-    arg = p[3]
-    if cmd == CMD_STAT:
-        return arg == 0
-    if cmd == CMD_KEY_LOAD:
-        return (arg & 0xFF) == LAT_FIRST_HANDLE
-    if cmd == CMD_KEY_TRANSFER:
-        return (arg & 0xFFFF) == (LAT_FIRST_HANDLE | (LAT_KEY_DEST << 8))
-    if cmd == CMD_KEY_REVOKE:
-        return (arg & 0xFF) == LAT_FIRST_HANDLE
-    return (arg & 0xFF) == LAT_KEY_DEST

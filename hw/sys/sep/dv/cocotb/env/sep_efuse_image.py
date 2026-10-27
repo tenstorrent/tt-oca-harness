@@ -215,11 +215,11 @@ class SepEfuseField:
 class SepEfuseImage:
     """A 256-word SEP fuse image plus the golden expected-shadow model.
 
-    Golden assumptions (must match the tb wiring): the DUT runs with
-    ``secure_tm`` tied 0 and LOCKS unlocked, so every field reads back verbatim
-    except LC_STATE (differential-encoded). KM-secret disconnect under
-    ``secure_tm`` is graded by the stitch leaf against the staged value, not
-    by forcing those words to a constant here.
+    Golden assumptions (must match the tb wiring): LOCKS unlocked, so every
+    field reads back verbatim except LC_STATE (differential-encoded). Under
+    ``secure_tm`` = 1 the four KM-secret fields read 0;
+    ``check_efuse_shadow_backdoor`` grades them exactly 0 and does not take
+    them from this golden.
     """
 
     fields: Tuple[SepEfuseField, ...] = tuple(
@@ -421,8 +421,8 @@ class SepEfuseImage:
 
         LC_STATE is transformed by the sense FSM. Everything else reads back
         verbatim (LOCKS unlocked). ``secure_tm`` does not change this golden:
-        KM-secret disconnect is a not-equal check against the staged value,
-        not an expected constant.
+        under ``secure_tm`` = 1, ``check_efuse_shadow_backdoor`` grades the
+        KM-secret words exactly 0 instead of this value.
         """
         _ = secure_tm
         if word_idx == LC_WORD_IDX:

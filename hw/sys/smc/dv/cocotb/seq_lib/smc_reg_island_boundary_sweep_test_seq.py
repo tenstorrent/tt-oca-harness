@@ -33,27 +33,26 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
 
 AXI_RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
-OKAY, SLVERR, DECERR = 0, 2, 3
+OKAY, DECERR = 0, 3
 PAST_DATA = SmcCsrSeq.ERR_SLAVE_SIGNATURE
 ISLAND_COUNT = 24
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 LOCAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 
-STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
+STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")
 CHK_STEP = (
     ("CHK-ISL-SETUP-GOLDENS", "S1"),
     ("CHK-ISL-FIRST-WORD-WRITE-OKAY", "S3"),
     ("CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY", "S5"),
     ("CHK-ISL-PASTEXT-READ-DECERR", "S6"),
     ("CHK-ISL-PASTEXT-WRITE-DECERR-CLASS", "S7"),
-    ("CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS", "S8"),
-    ("CHK-ISL-PASTEXT-NOCHANGE", "S9"),
-    ("CHK-ISL-TABLE", "S10"),
+    ("CHK-ISL-PASTEXT-NOCHANGE", "S8"),
+    ("CHK-ISL-TABLE", "S9"),
 )
 FENCE_TERMS = (
     "SETUP-GOLDENS < FIRST-WORD-WRITE-OKAY < LAST-DECODED-WORD-WRITE-OKAY < "
-    "PASTEXT-READ-DECERR < PASTEXT-WRITE-DECERR-CLASS < PASTEXT-WRITE-SLVERR-CLASS < "
+    "PASTEXT-READ-DECERR < PASTEXT-WRITE-DECERR-CLASS < "
     "PASTEXT-NOCHANGE < TABLE"
 )
 
@@ -76,7 +75,7 @@ class Island:
     write_resp: int
 
 
-_D, _S = DECERR, SLVERR
+_D = DECERR
 ISLANDS = (
     Island("C0_WDT", "smc_cluster_core0_wdt", 0x0, 0x20, 0x24, 0x3FC, RW, RW, _D),
     Island("C1_WDT", "smc_cluster_core1_wdt", 0x400, 0x420, 0x424, 0x7FC, RW, RW, _D),
@@ -107,9 +106,9 @@ ISLANDS = (
         _D,
     ),
     Island("CPUCTRL", "smc_cpu_ctrl", 0x39000, 0x392BC, 0x392C0, 0x39FFC, RW, RW, _D),
-    Island("RESET", "smc_reset_unit", 0x2000, 0x20C8, 0x20CC, 0x27FC, HOLE, RW, _S),
-    Island("MISC", "smc_misc_wrap", 0x2800, 0x2A08, 0x2A0C, 0x2FFC, RW, "ro(sw=r)", _S),
-    Island("GPIO", "gpio_intf", 0x3000, 0x340C, 0x3410, 0x3FFC, RW, HOLE, _S),
+    Island("RESET", "smc_reset_unit", 0x2000, 0x20C8, 0x20CC, 0x27FC, HOLE, RW, _D),
+    Island("MISC", "smc_misc_wrap", 0x2800, 0x2A08, 0x2A0C, 0x2FFC, RW, "ro(sw=r)", _D),
+    Island("GPIO", "gpio_intf", 0x3000, 0x340C, 0x3410, 0x3FFC, RW, HOLE, _D),
     Island(
         "AVS",
         "smc_avsbus_controller",
@@ -119,7 +118,7 @@ ISLANDS = (
         0x4FFC,
         "ro(sw=w AVS command trigger)",
         RW,
-        _S,
+        _D,
     ),
     Island(
         "I2C",
@@ -130,10 +129,10 @@ ISLANDS = (
         0x5FFC,
         "ro(not specified)",
         "ro(not specified)",
-        _S,
+        _D,
     ),
     Island(
-        "EFUSE_MAP", "smc_efuse_map", 0x7000, 0x73FC, 0x7400, 0x7FFC, "ro(woset lock bits)", RW, _S
+        "EFUSE_MAP", "smc_efuse_map", 0x7000, 0x73FC, 0x7400, 0x7FFC, "ro(woset lock bits)", RW, _D
     ),
     Island(
         "EFUSE_IF",
@@ -144,7 +143,7 @@ ISLANDS = (
         0x8FFC,
         "ro(sw=w singlepulse error-clear triggers)",
         RW,
-        _S,
+        _D,
     ),
     Island(
         "TELEM",
@@ -155,7 +154,7 @@ ISLANDS = (
         0x9FFC,
         "ro(not specified)",
         "ro(not specified)",
-        _S,
+        _D,
     ),
     Island(
         "OCTS",
@@ -166,12 +165,12 @@ ISLANDS = (
         0xAFFC,
         "ro(singlepulse start trigger)",
         RW,
-        _S,
+        _D,
     ),
-    Island("BASECFG", "smc_base_config", 0x10000, 0x10048, 0x1004C, 0x11FFC, RW, RW, _S),
-    Island("ALIAS", "smc_alias_remap", 0x12000, 0x120FC, 0x12100, 0x12FFC, RW, HOLE, _S),
-    Island("MREMAP_OUT", "smc_mmode_remap", 0x13000, 0x1303C, 0x13040, 0x13FFC, RW, RW, _S),
-    Island("XREMAP_OUT", "smc_xvisor_remap", 0x14000, 0x1403C, 0x14040, 0x14FFC, RW, RW, _S),
+    Island("BASECFG", "smc_base_config", 0x10000, 0x10048, 0x1004C, 0x11FFC, RW, RW, _D),
+    Island("ALIAS", "smc_alias_remap", 0x12000, 0x120FC, 0x12100, 0x12FFC, RW, HOLE, _D),
+    Island("MREMAP_OUT", "smc_mmode_remap", 0x13000, 0x1303C, 0x13040, 0x13FFC, RW, RW, _D),
+    Island("XREMAP_OUT", "smc_xvisor_remap", 0x14000, 0x1403C, 0x14040, 0x14FFC, RW, RW, _D),
     Island(
         "INFLT",
         "smc_inbound_filter_ctrl",
@@ -181,7 +180,7 @@ ISLANDS = (
         0x15FFC,
         "ro(woset lock field)",
         HOLE,
-        _S,
+        _D,
     ),
     Island(
         "OUTFLT",
@@ -192,7 +191,7 @@ ISLANDS = (
         0x16FFC,
         "ro(woset lock field)",
         HOLE,
-        _S,
+        _D,
     ),
 )
 
@@ -332,8 +331,7 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         self.env.axi_monitor.expected_decerr_addrs.update(
             a for words in self.addr.values() for w, a in words.items() if w in ("past", "end")
         )
-        decerr_class = [i for i in ISLANDS if i.write_resp == DECERR]
-        assert len(decerr_class) == 9 and len(ISLANDS) - len(decerr_class) == 15, "class split"
+        assert all(i.write_resp == DECERR for i in ISLANDS), "an island declares a non-DECERR write"
 
     async def _s1(self) -> None:
         await self.wait_fuse_sense_done()
@@ -356,15 +354,13 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
             "CHK-ISL-SETUP-GOLDENS",
             "S1",
             "REGION_SIZE 0x%x, LOCAL_BASE 0x%x, GLOBAL_BASE 0x%x and CLOCK_GATE_CONTROL 0x%x read "
-            "OKAY, each equal to its generated RDL reset; %d islands tabulated (%d DECERR-write, "
-            "%d SLVERR-write)",
+            "OKAY, each equal to its generated RDL reset; %d islands tabulated, every one "
+            "DECERR-write",
             self.golden["REGION_SIZE"],
             self.golden["LOCAL_BASE"],
             self.golden["GLOBAL_BASE"],
             self.golden["CLOCK_GATE_CONTROL"],
             len(self.addr),
-            sum(i.write_resp == DECERR for i in ISLANDS),
-            sum(i.write_resp == SLVERR for i in ISLANDS),
         )
 
     async def _decoded_reads(self, word: str, step: str, hole_nature) -> None:
@@ -468,7 +464,7 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
 
     async def _s7(self) -> None:
         words = 0
-        for isl in (i for i in ISLANDS if i.write_resp == DECERR):
+        for isl in ISLANDS:
             for word in ("past", "end"):
                 bresp = await self._write(isl, word, self.rec[isl.name].reads[word][1])
                 assert bresp == DECERR, (
@@ -480,53 +476,15 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         self._chk(
             "CHK-ISL-PASTEXT-WRITE-DECERR-CLASS",
             "S7",
-            "the first past-extent word and the aperture-end word of the %d DECERR-declared "
-            "islands (%s) answered BRESP DECERR (%d), %d of 18 words",
-            sum(i.write_resp == DECERR for i in ISLANDS),
-            ",".join(i.name for i in ISLANDS if i.write_resp == DECERR),
+            "the first past-extent word and the aperture-end word of all %d islands answered "
+            "BRESP DECERR (%d), %d of %d words",
+            len(ISLANDS),
             DECERR,
             words,
+            2 * ISLAND_COUNT,
         )
-
-    def _slverr_class(self) -> tuple[int, list[str], list[str]]:
-        match, linked, table = 0, [], []
-        for isl in (i for i in ISLANDS if i.write_resp == SLVERR):
-            answers = []
-            for word in ("past", "end"):
-                bresp = self.rec[isl.name].writes[word]
-                answers.append(f"{word}=0x{self.addr[isl.name][word] - self.base:x}:{_name(bresp)}")
-                if bresp == SLVERR:
-                    match += 1
-                else:
-                    linked.append(f"{isl.name}.{word}")
-            table.append(f"{isl.name} " + " ".join(answers))
-        return match, linked, table
 
     async def _s8(self) -> None:
-        for isl in (i for i in ISLANDS if i.write_resp == SLVERR):
-            for word in ("past", "end"):
-                bresp = await self._write(isl, word, self.rec[isl.name].reads[word][1])
-                assert bresp in (SLVERR, DECERR), (
-                    f"S8 {isl.name} {word} @ 0x{self.addr[isl.name][word]:08x}: write answered "
-                    f"{_name(bresp)}, the RDL declares SLVERR and only DECERR is the known family"
-                )
-        await self._done("S8")
-        match, linked, table = self._slverr_class()
-        assert match + len(linked) == 30, f"S8 probed {match + len(linked)} of 30 words"
-        self._chk(
-            "CHK-ISL-PASTEXT-WRITE-SLVERR-CLASS",
-            "S8",
-            "%d match, %d mismatch of 30 words; RDL declares SLVERR (%d); the mismatching words "
-            "answer DECERR; "
-            "mismatch table: %s; per island: %s",
-            match,
-            len(linked),
-            SLVERR,
-            ",".join(linked) or "none",
-            "; ".join(table),
-        )
-
-    async def _s9(self) -> None:
         for word in ("past", "end"):
             for isl in ISLANDS:
                 data = await self._read_decerr(isl, word)
@@ -541,10 +499,10 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
                 f"S9 {isl.name} last @ 0x{self.addr[isl.name]['last']:08x} re-reads "
                 f"{_name(resp)} 0x{data:08x}, earlier 0x{before:08x}"
             )
-        await self._done("S9")
+        await self._done("S8")
         self._chk(
             "CHK-ISL-PASTEXT-NOCHANGE",
-            "S9",
+            "S8",
             "after the %d refused-write probes every past-extent and aperture-end word still "
             "reads DECERR,0x%08x (%d words) and %d rw last decoded words equal the value read "
             "before the writes; %d islands",
@@ -571,24 +529,24 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
             f"{'match' if class_match else 'mismatch'}"
         )
 
-    async def _s10(self) -> None:
-        await self._done("S10")
+    async def _s9(self) -> None:
+        await self._done("S9")
         rows, match, linked = [], 0, 0
         for isl in ISLANDS:
             rec = self.rec[isl.name]
             assert all(w in rec.reads for w in ("first", "last", "past", "end")), (
-                f"S10 {isl.name} has an unmeasured probe word"
+                f"S9 {isl.name} has an unmeasured probe word"
             )
             ok = all(rec.writes[w] == isl.write_resp for w in ("past", "end"))
             rows.append(self._row(isl, ok))
             match += ok
             linked += not ok
         assert len(rows) == ISLAND_COUNT and match + linked == len(rows), (
-            f"S10 table has {len(rows)} rows, {match} match, {linked} mismatch"
+            f"S9 table has {len(rows)} rows, {match} match, {linked} mismatch"
         )
         self._chk(
             "CHK-ISL-TABLE",
-            "S10",
+            "S9",
             "%d rows, %d match, %d mismatch; %s",
             len(rows),
             match,
@@ -634,8 +592,7 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         await self._s7()
         await self._s8()
         await self._s9()
-        await self._s10()
-        await self._done("S11")
+        await self._done("S10")
         self._fence()
         cocotb.log.info(
             "CHK-NONVAC: ordered fence %s; checker lines %s; access counts %s; %d accesses = "
