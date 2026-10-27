@@ -15,11 +15,15 @@ not specified and are measured and printed.
 from __future__ import annotations
 
 import bisect
+import math
+import os
+import random
 import statistics
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
+from env.smc_env_cfg import measure_clock_period_ns
 from env.smc_reset_item import SmcResetOp
 
 from .smc_avsbus_protocol_utils import (
@@ -48,6 +52,18 @@ from .smc_reset_seq_base import SmcResetSeqBase
 
 IN_RESYNC_BM = avs_field("AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__AVS_SLAVE_IS_IN_RESYNC_bm")
 INTERVAL_RESET = avs_field("AVSBUS_CONTROLLER__AVS_CFG_0__RESYNC_INTERVAL_reset")
+CLK_DIV_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bm")
+CLK_DIV_BP = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bp")
+PREMUX_OFF_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__TURN_OFF_ALL_PREMUX_CLOCKS_bm")
+# The drawn divider: even and at least 2 (the field takes a lower value as 2 and
+# 0 as the hardware default), up to the field's top even value.
+DIVIDER_MIN = 2
+DIVIDER_MAX = (CLK_DIV_BM >> CLK_DIV_BP) - 1
+#: architecture.adoc, Clock Generation and Management: "Out of reset the controller runs on
+#: `clk_ref_i` divided by 4"; the ratio of the period S3 measures on the reset divider.
+RESET_DIVIDER = 4
+# Edges after the gated restart skipped before the divided period is measured.
+RESTART_EDGES = 4
 INTERVAL_SMALL = 0x0040
 INTERVAL_MID = 0x0400
 RESYNC_CYCLES = 35
@@ -57,7 +73,9 @@ CMD_AFTER_ZERO = build_avs_cmd(CMD_TYPE_READ, 0, 0x0, 0x1, READ_CMD_DATA)
 
 #: Bound on every probe wait, in clk_periph_i cycles.
 STATE_WAIT_CYCLES = 50_000
-#: Bound on every register poll: attempts, each followed by POLL_CYCLES clk_smc_i cycles.
+#: Bound on every register poll at the reset divider: attempts, each followed by POLL_CYCLES
+#: clk_smc_i cycles; a frame takes a fixed number of avs_clock_o periods, so the bound grows with
+#: the drawn divider.
 POLL_LIMIT = 400
 POLL_CYCLES = 50
 #: Bound on the flag polling loop, in AVS_NORMAL_STATUS reads.
@@ -157,12 +175,15 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
     def __init__(self, name: str = "smc_avsbus_resync_timing_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         self.dispatch_reset = None
         self.probes = _Probes()
+        self.write_ns: list[float] = []
         self.waits: list[tuple[str, int, str]] = []
         self.stamps: list[tuple[str, int]] = []
         self.chk_lines: list[tuple[str, str, int]] = []
         self.t_avs_ns = 0.0
+        self.t_avs_reset_ns = 0.0
         self.t_reg_ns = 0.0
 
     async def _dispatch_reset_item(self, item) -> None:
@@ -224,22 +245,30 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
         fifos = await self.csr_read(label, AVS_FIFOS_STATUS)
         return fifo_field(fifos, RB_FIFO_OCCUPIED_BM, RB_FIFO_OCCUPIED_BP)
 
+    def _poll_limit(self) -> int:
+        """Register-poll bound: POLL_LIMIT at the reset divider, scaled with the avs period."""
+        if not self.t_avs_reset_ns:
+            return POLL_LIMIT
+        return math.ceil(POLL_LIMIT * max(1.0, self.t_avs_ns / self.t_avs_reset_ns))
+
     async def _await_reply(self, name: str) -> int:
         occupied = 0
-        for _ in range(POLL_LIMIT):
+        limit = self._poll_limit()
+        for _ in range(limit):
             occupied = await self._occupancy(f"{name}_FIFOS")
             if occupied >= 1:
-                self.waits.append((name, POLL_LIMIT * POLL_CYCLES, f"occupied={occupied}"))
+                self.waits.append((name, limit * POLL_CYCLES, f"occupied={occupied}"))
                 return occupied
             await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
-        raise AssertionError(f"{name}: no reply after {POLL_LIMIT} polls; {self._last()}")
+        raise AssertionError(f"{name}: no reply after {limit} polls; {self._last()}")
 
     async def _drain_readback(self, label: str) -> int:
         drained = 0
-        for _ in range(POLL_LIMIT):
+        limit = self._poll_limit()
+        for _ in range(limit):
             status = await self.csr_read(f"{label}_STATUS", AVS_NORMAL_STATUS)
             if not status & READBACK_HAS_DATA_BM:
-                self.waits.append((f"{label}_DRAIN", POLL_LIMIT, f"drained={drained}"))
+                self.waits.append((f"{label}_DRAIN", limit, f"drained={drained}"))
                 return drained
             await self.csr_read(f"{label}_READBACK", AVS_READBACK)
             drained += 1
@@ -258,13 +287,42 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
         assert idx, f"no resync-coded sample between {enter_ps} and {exit_ps} ps"
         return idx[0], idx[-1]
 
+    async def _timed_write(self, label: str, addr: int, word: int) -> int:
+        """A SEP_IN write whose duration is kept, in ns, for the S8 margin."""
+        start = get_sim_time("ps")
+        await self.csr_write(label, addr, word)
+        self.write_ns.append((get_sim_time("ps") - start) / 1000)
+        return int(get_sim_time("ps"))
+
     async def _write_interval(self, label: str, cfg0: int, value: int) -> None:
         word = (cfg0 & ~RESYNC_INTERVAL_BM) | (value & RESYNC_INTERVAL_BM)
-        await self.csr_write(f"AVS_CFG_0_{label}", AVS_CFG_0, word)
+        await self._timed_write(f"AVS_CFG_0_{label}", AVS_CFG_0, word)
         await self.csr_read(f"AVS_CFG_0_{label}_RB", AVS_CFG_0, expected=word)
+
+    async def _write_divider(self, divider: int) -> int:
+        """Gate both source clocks, write the divider under the gate, ungate; return AVS_CFG_1."""
+        cfg1 = await self.csr_read("AVS_CFG_1_BEFORE_DIVIDER", AVS_CFG_1)
+        gated = cfg1 | PREMUX_OFF_BM
+        await self._timed_write("AVS_CFG_1_GATE", AVS_CFG_1, gated)
+        divided = (gated & ~CLK_DIV_BM) | (divider << CLK_DIV_BP)
+        await self._timed_write("AVS_CFG_1_DIVIDER", AVS_CFG_1, divided)
+        ungated = divided & ~PREMUX_OFF_BM
+        await self._timed_write("AVS_CFG_1_UNGATE", AVS_CFG_1, ungated)
+        await self.csr_read("AVS_CFG_1_DIVIDER_RB", AVS_CFG_1, expected=ungated)
+        return ungated
 
     async def body(self) -> None:
         dut = cocotb.top
+        rng = random.Random(self.seed)
+        divider = rng.randrange(DIVIDER_MIN, DIVIDER_MAX + 1, 2)
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: CLK_DIVIDER_VALUE %d (even, %d..%d); the S8 resync "
+            "point is drawn once the SEP_IN write time of this run is measured",
+            self.seed,
+            divider,
+            DIVIDER_MIN,
+            DIVIDER_MAX,
+        )
         for sig in (
             "tb_avs_clk_from_dut",
             "tb_avs_mdata_from_dut",
@@ -273,6 +331,10 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
         ):
             assert hasattr(dut, sig), f"{sig} is not visible on the bench top"
         probes = self.probes
+        # The reference the divider works on (architecture.adoc, Clock Generation and
+        # Management: the AVS clock is the selected source through the divider), measured
+        # once; the ratio compare of S6 is against this period.
+        t_ref_ns = await measure_clock_period_ns(dut.clk_ref_i)
 
         # S1: SETUP
         set_avs_sdata(0)
@@ -531,9 +593,35 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"AVS_RESET (counted), 0 violations out of reset",
         )
 
-        # S6: interval for the default, a small and a mid value
+        # Between S5 and S6: the drawn divider, written under the premux gate. The
+        # restart of the gated AVS clock begins with a slave resync, the episode
+        # S6 discards before it measures.
+        edge_mark = len(probes.edges_ps)
+        cfg1_divided = await self._write_divider(divider)
+        self.t_avs_reset_ns = t_avs_reset = self.t_avs_ns
+        # The period S3 measured on the reset divider is the control for the drawn ratio:
+        # clk_ref_i divided by RESET_DIVIDER within half a reference period.
+        assert abs(t_avs_reset - RESET_DIVIDER * t_ref_ns) < t_ref_ns / 2, (
+            f"avs_clock_o period {t_avs_reset:.2f} ns on the reset divider is not "
+            f"{RESET_DIVIDER} x {t_ref_ns:.2f} ns clk_ref_i within half a clk_ref_i period "
+            f"({t_ref_ns / 2:.2f} ns)"
+        )
+
+        # S6: interval for the default, a small and a mid value, under the drawn divider
         results: list[tuple[int, float]] = []
-        period_ns, _ = await self._period_after("S6_DEFAULT", discard=False)
+        period_ns, _ = await self._period_after("S6_DEFAULT", discard=True)
+        steady = probes.edges_ps[edge_mark + RESTART_EDGES :]
+        assert len(steady) > 8, f"only {len(steady)} avs_clock_o edges under the divider"
+        self.t_avs_ns = statistics.median(b - a for a, b in zip(steady, steady[1:])) / 1000
+        # CLK_DIVIDER_VALUE is the divisor of the selected source (avsbus_controller.rdl):
+        # the avs_clock_o edges are clk_ref_i-synchronous, so the median period under the
+        # drawn divider is divider times the reference period, within half a reference
+        # period (a divider off by one is outside it).
+        assert abs(self.t_avs_ns - divider * t_ref_ns) < t_ref_ns / 2, (
+            f"avs_clock_o period {self.t_avs_ns:.2f} ns under divider {divider} is not "
+            f"{divider} x {t_ref_ns:.2f} ns clk_ref_i within half a clk_ref_i period "
+            f"({t_ref_ns / 2:.2f} ns)"
+        )
         results.append((INTERVAL_RESET, period_ns))
         for label, value in (("SMALL", INTERVAL_SMALL), ("MID", INTERVAL_MID)):
             await self._write_interval(f"S6_{label}", cfg0, value)
@@ -560,12 +648,17 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._chk(
             "S6",
             "CHK-AVS-RESYNC-INTERVAL",
-            f"end of one resync to the start of the next with no frame in flight: {shown}; "
-            f"L = period - (interval + 1) - 3 * {t_avs_reg:.1f} clk_reg_i cycles, all >= 0, "
-            f"period grows with the interval; L across intervals {residuals[0]:.2f} / "
+            f"under the drawn divider {divider} (AVS_CFG_1=0x{cfg1_divided:08x}, avs_clock_o "
+            f"period {self.t_avs_ns:.1f} ns measured = {divider} x clk_ref_i {t_ref_ns:.1f} ns "
+            f"within half a clk_ref_i period ({t_ref_ns / 2:.1f} ns), compared; "
+            f"{t_avs_reset:.1f} ns on the reset divider = {RESET_DIVIDER} x clk_ref_i within "
+            f"the same half period, compared): end of one resync to the start of the next with "
+            f"no frame in flight: "
+            f"{shown}; L = period - (interval + 1) - 3 * {t_avs_reg:.1f} clk_reg_i cycles, all "
+            f">= 0, period grows with the interval; L across intervals {residuals[0]:.2f} / "
             f"{residuals[1]:.2f} / {residuals[2]:.2f} clk_reg_i cycles, constancy is "
-            f"not specified, measured (printed, not asserted; 1 avs_clock_o period = "
-            f"{self.t_avs_ns:.1f} ns)",
+            f"not specified, measured (printed, not asserted); drawn=seed {self.seed} "
+            f"divider {divider}",
         )
 
         # S7: interval 0
@@ -587,15 +680,26 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"printed only",
         )
 
-        # S8: rewrite mid-count
+        # S8: rewrite at a drawn point inside the running interval. The point leaves
+        # twice the longest SEP_IN write of this run before the interval elapses, so
+        # the write completes before a resync can begin.
         await self._write_interval("S8_RESTORE", cfg0, INTERVAL_RESET)
+        margin = math.ceil(2 * max(self.write_ns) / self.t_reg_ns)
+        point = rng.randint(1, INTERVAL_RESET - margin)
+        cocotb.log.info(
+            "RAND-DRAW: S8 resync point %d clk_reg_i cycles after the episode end (1..%d; "
+            "margin %d cycles = twice the longest SEP_IN write %.1f ns)",
+            point,
+            INTERVAL_RESET - margin,
+            margin,
+            max(self.write_ns),
+        )
         idx = await self._fresh_episode("S8_DISCARD_EPISODE")
         t_end = probes.episodes[idx][1]
-        half_ps = INTERVAL_RESET // 2 * self.t_reg_ns * 1000
-        await self._wait_probe("S8_HALF_INTERVAL", lambda: probes.t_ps[-1] >= t_end + half_ps)
+        point_ps = point * self.t_reg_ns * 1000
+        await self._wait_probe("S8_POINT", lambda: probes.t_ps[-1] >= t_end + point_ps)
         word = (cfg0 & ~RESYNC_INTERVAL_BM) | INTERVAL_SMALL
-        await self.csr_write("AVS_CFG_0_S8_REWRITE", AVS_CFG_0, word)
-        t_write = int(get_sim_time("ps"))
+        t_write = await self._timed_write("AVS_CFG_0_S8_REWRITE", AVS_CFG_0, word)
         assert len(probes.episodes) == idx + 1, (
             f"S8: a resync began before the rewrite completed; {self._last()}"
         )
@@ -615,7 +719,8 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "S8",
             "CHK-AVS-RESYNC-REWRITE",
             f"0x{INTERVAL_SMALL:04x} written {(t_write - t_end) / 1000:.1f} ns after a resync "
-            f"ended (half of 0x{INTERVAL_RESET:04x} = {half_ps / 1000:.1f} ns): next resync "
+            f"ended (drawn point {point} of 0x{INTERVAL_RESET:04x} clk_reg_i cycles = "
+            f"{point_ps / 1000:.1f} ns, margin {margin} cycles): next resync "
             f"{since_end / 1000:.1f} ns after that end and {since_write / 1000:.1f} ns after the "
             f"write (old interval period {period_default / 1000:.1f} ns), the following one "
             f"{following / 1000:.1f} ns after the end of the first (new interval period "

@@ -603,20 +603,20 @@ Blocked legs lists of SMC_VPLAN).
 
 *Tool*: Verilator and VCS. *Class*: planned (owner `smc_axi_random_stress_test` is an existing Phase
 3 entry and is not planned; it drives the depth cells today; co-owner
-`smc_axi_channel_timing_ports_test` is a planned upgrade; no sampler exists; the group is planned
-until that upgrade lands). Owner's draw: "the seed draws the AXI attributes, burst shapes,
-outstanding depths, transaction IDs, payload words and the SYS_OUT responder timing and error faults
-on SEP_IN, SYS_IN and JTAG"; co-owner's draw: "the seed draws the hold lengths on
-`tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` and, on SEP_IN in place of the `b_ready_delay` of step
-7, on `tb_sep_axi_b_hold` (the bench has that drive on SEP_IN only; the SYS_IN and JTAG legs of step
-7 keep their `b_ready_delay`), the AxID set (the `axi_id` of each `SmcSysAxiItem`) and the
-interleave of the outstanding accesses".
+`smc_axi_channel_timing_ports_test` is an existing entry that draws its hold cells; no sampler
+exists; the group is planned until the sampler lands). Owner's draw: "the seed draws the AXI
+attributes, burst shapes, outstanding depths, transaction IDs, payload words and the SYS_OUT
+responder timing and error faults on SEP_IN, SYS_IN and JTAG"; co-owner's draw: "the seed draws the
+hold lengths on `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` and, on SEP_IN in place of the
+`b_ready_delay` of step 7, on `tb_sep_axi_b_hold` (the bench has that drive on SEP_IN only; the
+SYS_IN and JTAG legs of step 7 keep their `b_ready_delay`), the AxID set (the `axi_id` of each
+`SmcSysAxiItem`) and the interleave of the outstanding accesses".
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
 |`cp_depth` |port (SEP_IN, SYS_IN, JTAG: 3) x depth (1, 2 to 4, 5 to 8, 9 to 16, 17 to 24: 5); 15 cells; the owner drives groups of depth 4, 8, 9, 16 and 24 (`fabric.adoc`, Configuration Parameters, `FabricMaxTrans` 32, local crossbar 8, AXI-Lite crossbar 4) |a per-port count the planned sampler keeps from the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` AW and AR accepts less the B and R-last accepts of the signal list |`smc_axi_random_stress_test` |planned
-|`cp_hold` |port (3) x held ready with the depth the co-owner's walk puts under it: none x depth 1 (the single writes of steps 2 and 4), none x depth 9 to 16 (the groups of sixteen of step 9: eight writes and eight reads issued as one group per port), none x depth 2 to 4 on SEP_IN only (the group of four of step 6), BREADY x depth 5 to 8 (the eight outstanding writes of step 7) and RREADY x depth 1 (the single 4-beat read of step 8); 13 cells; the SEP_IN BREADY and RREADY holds and the SYS_IN RREADY hold are the drawn lengths on `tb_sep_axi_b_hold`, `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`; the SYS_IN BREADY cells and every JTAG cell come from the `b_ready_delay` and `r_ready_delay` of the co-owner's items (the bench has no `tb_sys_axi_b_hold` and no JTAG hold drive) (`fabric.adoc`, Configuration Parameters) |the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` BREADY and RREADY nets of the signal list with the per-port count of `cp_depth` |`smc_axi_channel_timing_ports_test` (planned upgrade) |planned
+|`cp_hold` |port (3) x held ready with the depth the co-owner's walk puts under it: none x depth 1 (the single writes of steps 2 and 4), none x depth 9 to 16 (the groups of sixteen of step 9: eight writes and eight reads issued as one group per port), none x depth 2 to 4 on SEP_IN only (the group of four of step 6), BREADY x depth 5 to 8 (the eight outstanding writes of step 7) and RREADY x depth 1 (the single 4-beat read of step 8); 13 cells; the SEP_IN BREADY and RREADY holds and the SYS_IN RREADY hold are the drawn lengths on `tb_sep_axi_b_hold`, `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`; the SYS_IN BREADY cells and every JTAG cell come from the `b_ready_delay` and `r_ready_delay` of the co-owner's items (the bench has no `tb_sys_axi_b_hold` and no JTAG hold drive) (`fabric.adoc`, Configuration Parameters) |the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` BREADY and RREADY nets of the signal list with the per-port count of `cp_depth` |`smc_axi_channel_timing_ports_test` |planned
 |===
 
 *Ignore bins*: depths above 24 (no owner draws them, although the port limit is 32); the other 32
@@ -663,8 +663,8 @@ row of SMC_VPLAN on `SS_CONFIG`).
 *Description*: Cool-reset pin pulse width against the 32-cycle de-glitch filter, and the overlap of
 a pin pulse with the FLR hold.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_cool_reset_deglitch_window_test` is a
-planned upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the pulse
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_cool_reset_deglitch_window_test` is an
+existing entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the pulse
 widths on either side of the 32-reference-cycle filter and the placement and widths of the pin
 segments inside the FLR hold".
 
@@ -685,8 +685,8 @@ the broken-low restart and the release-offset legs (directed steps of the existi
 ==== `smc_powergood_glitch_cg`
 *Description*: Power-good glitch length and the cold-reset assertion under it.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_irq_during_powergood_glitch_test` is a
-planned upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the glitch
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_irq_during_powergood_glitch_test` is an
+existing entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the glitch
 length"; the owner drives no external interrupt, so no edge position is a cell.
 
 [cols="2,6,3,3,2",options="header"]
@@ -843,24 +843,25 @@ addresses (the Blocked legs row of SMC_VPLAN).
 ==== `smc_wdt_width_cg`
 *Description*: Watchdog register against the class of the write byte-enable mask and the key state.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_wdt_register_map_test` is a planned upgrade
-of an existing entry; no sampler exists). Owner's draw: "the seed draws the write pattern, the
-byte-enable mask and the register order, every register walked in every run".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_wdt_register_map_test` is an existing entry
+that draws its cells; no sampler exists). Owner's draw: "the seed draws the write pattern, the
+register order and, for every register but `CTRL`, the two cores whose mask is effective and the
+mask inside each class, every register walked with both classes in every run".
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_reg_mask` |register (`CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`, `KEY`, `CMP`: 7) x mask class (full word, one byte lane, low half, high half, other partial: 5); 31 cells (`KEY` with the full word only, see the Ignore bins); the read-back after an effective write is the value `wdt.rdl` states per register (the pattern masked to the field for `CTRL` with bit 28 masked and for `CMP`, at or above it for `COUNT`, 0 for `COUNT_HI`, 0 for `KEY` once the write re-locks, the `COUNT` bracket shifted by `wdogscale` for `SCALED_COUNT`; `FEED` printed), and the width per register is the one `watchdog.adoc`, Register Access, and the `wdt.rdl` block description state: `CTRL` takes every mask class (each `CTRL` byte is written on its own, so its one-byte-lane, half-word and other-partial cells are effective writes of the enabled bytes, read back with the other bytes unchanged), `COUNT`, `COUNT_HI`, `FEED` and `KEY` take the full word only, `SCALED_COUNT` and `CMP` take a mask that covers bytes 0 and 1 (the full word, the low half and an other-partial mask that includes both), and every narrower write answers OKAY and changes nothing (`watchdog.adoc`, Register Access) |`sep_axi_in_req_i` WSTRB for an access decoded to the watchdog window |`smc_wdt_register_map_test` |planned
-|`cp_key_state` |keyed write (after `KEY` 0x51F15E), crossed with `cp_reg_mask` for 31 cells; write while locked (`CTRL`, `CMP`: 2 cells, the write dropped); 33 cells (`wdt.rdl`, `KEY`) |as above, with the `KEY` write before it |`smc_wdt_register_map_test` |planned
+|`cp_reg_mask` |register (`CTRL`, `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED`, `KEY`, `CMP`: 7) x mask class (full word, one byte lane, low half, high half, other partial: 5); 35 cells; the read-back after an effective write is the value `wdt.rdl` states per register (the pattern masked to the field for `CTRL` with bit 28 masked and for `CMP`, the pattern plus at most the cycles elapsed between the write and the read for `COUNT`, 0 for `COUNT_HI`, 0 for `KEY` once the write re-locks, the `COUNT` bracket shifted by `wdogscale` for `SCALED_COUNT`; `FEED` printed), and the width per register is the one `watchdog.adoc`, Register Access, and the `wdt.rdl` block description state: `CTRL` takes every mask class (each `CTRL` byte is written on its own, so its one-byte-lane, half-word and other-partial cells are effective writes of the enabled bytes, read back with the other bytes unchanged), `COUNT`, `COUNT_HI`, `FEED` and `KEY` take the full word only, `SCALED_COUNT` and `CMP` take a mask that covers bytes 0 and 1 (the full word, the low half and an other-partial mask that includes both), and every narrower write answers OKAY and changes nothing (`watchdog.adoc`, Register Access; for `KEY` the lock stays unlocked, `wdt.rdl`, `KEY`; for `COUNT` the read-back is the value read before the write plus at most the cycles elapsed since that read, the counter counting on, `wdt.rdl`, `COUNT`) |`sep_axi_in_req_i` WSTRB for an access decoded to the watchdog window |`smc_wdt_register_map_test` |planned
+|`cp_key_state` |keyed write (after `KEY` 0x51F15E), crossed with `cp_reg_mask` for 35 cells; write while locked (`CTRL`, `CMP`: 2 cells, the write dropped); 37 cells (`wdt.rdl`, `KEY`) |as above, with the `KEY` write before it |`smc_wdt_register_map_test` |planned
 |===
 
 *Ignore bins*: a locked write of `COUNT`, `COUNT_HI`, `SCALED_COUNT`, `FEED` or `KEY` (the owner's
 walk keys every write; its locked legs are the `CTRL` all-ones write and the cross-core `CMP`
-writes); `KEY` x a partial mask (the owner writes the full magic word before each keyed write and
-draws no mask on it); bit 28 after the all-ones `CTRL` write (printed; the owner's Scope limit); a
-`CTRL` pattern with `wdogrsten` set together with `wdogenalways` or `wdogcoreawake` (the owner's
-filter: the pair arms the watchdog and its expiry ends in a warm reset mid-walk,
-`smc-programming.adoc`, Watchdog Timers).
+writes); the magic unlock word x a partial mask (the owner writes the full magic word before each
+keyed write; the walk's own `KEY` cell takes both mask classes); bit 28 after the all-ones `CTRL`
+write (printed; the owner's Scope limit); a `CTRL` pattern with `wdogrsten` set together with
+`wdogenalways` or `wdogcoreawake` (the owner's filter: the pair arms the watchdog and its expiry
+ends in a warm reset mid-walk, `smc-programming.adoc`, Watchdog Timers).
 
 ==== `smc_wdt_warm_reset_cg`
 *Description*: Watchdog compare value, second-stage timeout and core against the stage that resets
@@ -892,8 +893,8 @@ it, the Unstated cells row of SMC_VPLAN on the second-timeout hold).
 *Description*: Scratchpad ECC inject hook on bank 0 by armed pin, arm point, fire count at the clear
 and the reads of the hold half.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_ecc_fault_inject_test` is a planned upgrade
-of an existing entry; no sampler exists). Owner's draw: "the seed draws the inject pin armed first
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_ecc_fault_inject_test` is an existing entry
+that draws its cells; no sampler exists). Owner's draw: "the seed draws the inject pin armed first
 (`tb_cpu_ecc_inject_sbe` or `tb_cpu_ecc_inject_dbe`), the arm point against the counted reads
 (before the boot release or after the first counted read), the fire count at which the pin is
 cleared and whether SEP_IN reads of bank 0 through the SPM window join the core's fetches in the
@@ -1107,8 +1108,8 @@ stretch and SDA-interference points (the owner's Scope limit).
 ==== `smc_dfx_abort_cg`
 *Description*: DFX abort pin and pulse width class against the sticky bit.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_dfx_status_abort_test` is a planned upgrade
-of an existing entry; no sampler exists). Owner's draw: "the seed draws the abort pin and the pulse
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_dfx_status_abort_test` is an existing entry
+that draws its cells; no sampler exists). Owner's draw: "the seed draws the abort pin and the pulse
 width".
 
 [cols="2,6,3,3,2",options="header"]
@@ -1126,15 +1127,15 @@ the register description states, sticky until reset, has no owner cell here; `df
 ==== `smc_dm_cmderr_cg`
 *Description*: Debug Module abstract command against the held error and the resulting `cmderr`.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_jtag_dm_abstractcs_lifecycle_test` is a
-planned upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the command
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_jtag_dm_abstractcs_lifecycle_test` is an
+existing entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the command
 sequence under a held error on the DMI leg"; the held errors are the ones the existing walk makes
 (`cmderr` 1 from a write while busy, `cmderr` 2 from a rejected command).
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_cmd_err` |command (the two legal commands: GPR access with `transfer` set and `aarsize` 2 or 3, and a command with `transfer` clear, which is accepted for any `regno` and size; the three rejected commands: GPR access with another size, `regno` outside 0x1000 to 0x101F, `cmdtype` other than 0: 5) x held `cmderr` (0, 1, 2: 3); 11 cells plus 4 recorded bins; `cmderr` after the command is the stated function: with 0 held each of the two legal commands leaves 0 and each of the three rejected commands sets 2; (`cmdtype` other than 0) x held 1 or 2 ends at 2, replacing the held code; the two legal commands x held 1 or 2 leave the held value and execute nothing; the `aarsize` and `regno` rejects x held 1 or 2 are recorded bins (the chapter states no value for them) (`cpu.adoc`, Debug Module Configuration, Abstract Command Writes While cmderr Is Set) |JTAG debug port `tb_cpu_jtag_tdi`, `tb_cpu_jtag_tdo`; `abstractcs.cmderr`, `command` as the owner reads them over the DMI |`smc_jtag_dm_abstractcs_lifecycle_test` |planned
+|`cp_cmd_err` |command (the two legal commands: GPR access with `transfer` set and `aarsize` 2 or 3, and a command with `transfer` clear, which is accepted for any `regno` and size; the three rejected commands: GPR access with another size, `regno` outside 0x1000 to 0x101F, `cmdtype` other than 0: 5) x held `cmderr` (0, 1, 2: 3); 15 cells; `cmderr` after the command is the stated function: with 0 held each of the two legal commands leaves 0 and each of the three rejected commands sets 2; (`cmdtype` other than 0) x held 1 or 2 ends at 2, replacing the held code; the two legal commands x held 1 or 2 leave the held value and execute nothing; the `aarsize` and `regno` rejects x held 1 leave the held 1, because an Access Register form sets no code while a code is held (the owner's `CHK-DM-CMDERR-REPLACE` compares it); the same rejects x held 2 leave the held 2 for the same reason (the owner's `CHK-DM-CMDERR-STORE` compares it) (`cpu.adoc`, Debug Module Configuration, Abstract Command Writes While cmderr Is Set) |JTAG debug port `tb_cpu_jtag_tdi`, `tb_cpu_jtag_tdo`; `abstractcs.cmderr`, `command` as the owner reads them over the DMI |`smc_jtag_dm_abstractcs_lifecycle_test` |planned
 |`cp_noexec` |a command under a held error leaves the target GPR unchanged (1 bin) (`cpu.adoc`, Abstract Command Writes While cmderr Is Set) |`tb_cpu_debug_dmactive`; `data0` to `data3` as the owner reads them |`smc_jtag_dm_abstractcs_lifecycle_test` |planned
 |`cp_clear` |a write of 1s to `cmderr` clears it and the next legal GPR access executes (1 bin) (`abstractcs` `cmderr` write 1 to clear in the Debug Module register definition the owner's BFM states, not in `cpu.adoc`; the owner's `CHK-DM-CMDERR-RECOVER-GPR32`) |`abstractcs.cmderr`, `data0` as the owner reads them |`smc_jtag_dm_abstractcs_lifecycle_test` |planned
 |===
@@ -1151,7 +1152,7 @@ package, the owner's draw sentence).
 [cols="2,3,6",options="header"]
 |===
 |Covergroup |Planned owner |What the owner adds
-|`smc_fabric_fcov::cg_sep_in_shape` |`smc_sep_in_axi_shape_test` |planned: the drawn AxSIZE x burst cells (`cp_awsize`, `cp_awburst` and their cross `x_size_burst`; the sampler has no burst-length point), and the zero-strobe cell of `cp_wstrb` through the existing explicit-strobe path (the `wstrb` of `SmcSysAxiItem`, which `smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`), which lifts the `cp_wstrb` `none` ignore bin of `cg_sep_in_shape` and retires the two Phase 2 rows on that cell (the `cp_wstrb` none row of the ignore table and the `c_sep_in_wstrb_none` row of the Phase 2 (not collected) table), both landing with the upgrade
+|`smc_fabric_fcov::cg_sep_in_shape` |`smc_sep_in_axi_shape_test` |planned: the drawn AxSIZE x burst cells (`cp_awsize`, `cp_awburst` and their cross `x_size_burst`; the sampler has no burst-length point), and the zero-strobe cell of `cp_wstrb` through the existing explicit-strobe path (the `wstrb` of `SmcSysAxiItem`, which `smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`), which lifts the `cp_wstrb` `none` ignore bin of `cg_sep_in_shape` and retires the two Phase 2 rows on that cell (the `cp_wstrb` none row of the ignore table and the `c_sep_in_wstrb_none` row of the Phase 2 (not collected) table), both once a coverage run of record exists
 |`smc_clk_fcov::cg_clk_ratio` (`cov/sv/smc_clk_fcov.sv`) |`smc_clk_ratio_rand_test` |planned: the interior ratio cells over merged regressions
 |`smc_dma_fcov::cg_dma_burst` |`smc_dma_transfer_matrix_rand_test` |planned: the drawn burst-length and strobe cells of the transfer matrix
 |===

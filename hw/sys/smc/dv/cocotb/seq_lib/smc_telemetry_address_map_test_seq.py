@@ -7,6 +7,9 @@ Sources: smc/doc/memmap.adoc, telemetry_receiver/doc/{memmap,interface}.adoc, sm
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
@@ -66,7 +69,9 @@ _REG_TYPES = (
     ("TELEMETRY_COUNTER_VLDS", 0x0),
 )
 _INTR_ENABLE_PATTERNS = (0x01, 0x10, 0x11)
-_THRESHOLD_PATTERNS = (0x111, 0x222, 0x333)
+# Messages one queue holds unpopped: BUFFER_DEPTH, default 8 (telemetry_receiver
+# interface.adoc) with no SMC override.
+_QUEUE_DEPTH = 8
 
 # Offsets named by steps S4 to S6.
 _PAST_EXTENT_OFFSETS = (_EXTENT, _EXTENT + 0x4, _EXTENT + 0x80, 0xFFC)
@@ -126,6 +131,7 @@ def _all_valid_packet(probe_id: int) -> int:
 class smc_telemetry_address_map_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_telemetry_address_map_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         self.stamps: dict[str, int] = {}
         self.chk_after: list[tuple[str, str]] = []
         self.waits: list[tuple[str, str, str]] = []
@@ -203,6 +209,16 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         for rx in range(_NUM_RX):
             assert hasattr(dut, f"tb_telemetry{rx}_atvalid"), f"tb_telemetry{rx}_* ports missing"
 
+        rng = random.Random(self.seed)
+        counts = [rng.randint(1, _QUEUE_DEPTH) for _ in range(_NUM_RX)]
+        order = list(range(_NUM_RX))
+        rng.shuffle(order)
+        thresholds = rng.sample(range(1, (_THR_BM >> _THR_BP) + 1), _NUM_RX)
+        drawn = f"seed {self.seed} counts {counts} order {order} thresholds " + ",".join(
+            f"0x{t:03x}" for t in thresholds
+        )
+        cocotb.log.info("RAND-SEED: %d; RAND-DRAW: %s", self.seed, drawn)
+
         # S1
         await self.wait_fuse_sense_done(_FUSE_SENSE_MAX_CYCLES)
         self.waits.append(
@@ -230,9 +246,7 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
             await self.csr_write(
                 f"TLM{rx}_IE_WR", _reg("INTR_ENABLE", rx), _INTR_ENABLE_PATTERNS[rx]
             )
-            await self.csr_write(
-                f"TLM{rx}_THR_WR", _reg("CTRL", rx), _THRESHOLD_PATTERNS[rx] << _THR_BP
-            )
+            await self.csr_write(f"TLM{rx}_THR_WR", _reg("CTRL", rx), thresholds[rx] << _THR_BP)
         for rx in range(_NUM_RX):
             ie = await self.csr_read(
                 f"TLM{rx}_IE_RB", _reg("INTR_ENABLE", rx), expected=_INTR_ENABLE_PATTERNS[rx]
@@ -240,9 +254,9 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
             ctrl = await self.csr_read(f"TLM{rx}_THR_RB", _reg("CTRL", rx))
             thr = (ctrl & _THR_BM) >> _THR_BP
             assert ie == _INTR_ENABLE_PATTERNS[rx], f"receiver {rx} INTR_ENABLE 0x{ie:x}"
-            assert thr == _THRESHOLD_PATTERNS[rx], (
+            assert thr == thresholds[rx], (
                 f"receiver {rx} BUFFER_THRESHOLD read 0x{thr:x}, wrote "
-                f"0x{_THRESHOLD_PATTERNS[rx]:x} (CTRL=0x{ctrl:08x})"
+                f"0x{thresholds[rx]:x} (CTRL=0x{ctrl:08x})"
             )
         for rx in range(_NUM_RX):
             await self.csr_write(f"TLM{rx}_IE_RESTORE", _reg("INTR_ENABLE", rx), 0)
@@ -255,53 +269,69 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
             "CHK-TELEMETRY-APERTURE-REGS",
             "S2",
             "%d register types x %d apertures read OKAY at window base + 0x%x * i + 0x00 to 0x18 "
-            "with reset values; INTR_ENABLE %s and BUFFER_THRESHOLD %s written to receivers 0 to 2 "
-            "read back as their own and restored to 0; zero reset values are bench-limited "
-            "(2-state zero init)",
+            "with reset values; INTR_ENABLE %s and the drawn BUFFER_THRESHOLD %s written to "
+            "receivers 0 to 2 read back as their own and restored to 0; zero reset values are "
+            "bench-limited (2-state zero init); drawn=%s",
             len(_REG_TYPES),
             _NUM_RX,
             _STRIDE,
             ",".join(f"0x{p:02x}" for p in _INTR_ENABLE_PATTERNS),
-            ",".join(f"0x{p:03x}" for p in _THRESHOLD_PATTERNS),
+            ",".join(f"0x{p:03x}" for p in thresholds),
+            drawn,
         )
 
-        # S3
-        windows = []
-        for rx in range(_NUM_RX):
-            await self._send_packet(rx, _all_valid_packet(_PROBE_IDS[rx]))
-            await self._wait_empty(rx, False, "MSG")
-            vals = []
-            for other in range(_NUM_RX):
-                c0 = await self.csr_read(f"TLM{other}_C0_MSG{rx}", _counter_addr(other, 0))
-                c1 = await self.csr_read(f"TLM{other}_C1_MSG{rx}", _counter_addr(other, 1))
-                want = (0xFFFFFFFF, 0x0) if other == rx else (0x0, 0x0)
-                assert (c0, c1) == want, (
-                    f"message in receiver {rx}: receiver {other} COUNTER[0]=0x{c0:08x} "
-                    f"COUNTER[1]=0x{c1:08x}, expected 0x{want[0]:08x} 0x{want[1]:08x}"
-                )
-                vals.append((c0, c1))
-            if rx == 1:
-                for idx in range(_NUM_COUNTERS):
-                    await self.csr_read(f"TLM1_COUNTER_{idx}", _counter_addr(1, idx))
-            await self.csr_write(f"TLM{rx}_POP", _reg("CTRL", rx), _BUFFER_POP)
+        # S3: each receiver in the drawn order takes its drawn number of messages, and every
+        # message in turn is read in all three apertures before its pop.
+        windows: dict[int, list[str]] = {}
+        swept = False
+        for rx in order:
+            for _ in range(counts[rx]):
+                await self._send_packet(rx, _all_valid_packet(_PROBE_IDS[rx]))
+            lines = []
+            for msg in range(counts[rx]):
+                await self._wait_empty(rx, False, f"MSG{msg}")
+                vals = []
+                for other in range(_NUM_RX):
+                    c0 = await self.csr_read(
+                        f"TLM{other}_C0_RX{rx}_MSG{msg}", _counter_addr(other, 0)
+                    )
+                    c1 = await self.csr_read(
+                        f"TLM{other}_C1_RX{rx}_MSG{msg}", _counter_addr(other, 1)
+                    )
+                    want = (0xFFFFFFFF, 0x0) if other == rx else (0x0, 0x0)
+                    assert (c0, c1) == want, (
+                        f"message {msg} in receiver {rx}: receiver {other} COUNTER[0]=0x{c0:08x} "
+                        f"COUNTER[1]=0x{c1:08x}, expected 0x{want[0]:08x} 0x{want[1]:08x}"
+                    )
+                    vals.append((c0, c1))
+                if rx == 1 and not swept:
+                    for idx in range(_NUM_COUNTERS):
+                        await self.csr_read(f"TLM1_COUNTER_{idx}", _counter_addr(1, idx))
+                    swept = True
+                await self.csr_write(f"TLM{rx}_POP{msg}", _reg("CTRL", rx), _BUFFER_POP)
+                lines.append(" ".join(f"(0x{a:08x},0x{b:08x})" for a, b in vals))
             await self._wait_empty(rx, True, "POP")
-            windows.append(vals)
+            windows[rx] = lines
+        assert swept, "receiver 1 took no message, so its 32 counters were not swept"
         self.waits.append(
             ("buffer_status_poll", f"{_BUFFER_POLL_BOUND} polls", "STATUS.BUFFER_EMPTY")
         )
         self.waits.append(("atb_beat_accept", f"{_ATB_READY_BOUND} cycles", "atready=1"))
         self._stamp("S3")
-        for rx in range(_NUM_RX):
+        for rx in order:
             self._chk(
                 "CHK-TELEMETRY-COUNTER-WINDOW",
                 "S3",
-                "message in receiver %d: COUNTER[0]/[1] at offsets 0x%x/0x%x of receivers 0..2 "
-                "read %s; all %d counters of receiver 1 answered OKAY in 4-byte steps",
+                "%d message(s) in receiver %d: before each pop COUNTER[0]/[1] at offsets "
+                "0x%x/0x%x of receivers 0..2 read %s; BUFFER_EMPTY 1 after the last pop; all "
+                "%d counters of receiver 1 answered OKAY in 4-byte steps; drawn=%s",
+                counts[rx],
                 rx,
                 _COUNTER_BASE,
                 _COUNTER_BASE + _COUNTER_STRIDE,
-                " ".join(f"(0x{a:08x},0x{b:08x})" for a, b in windows[rx]),
+                " | ".join(windows[rx]),
                 _NUM_COUNTERS,
+                drawn,
             )
 
         # S4

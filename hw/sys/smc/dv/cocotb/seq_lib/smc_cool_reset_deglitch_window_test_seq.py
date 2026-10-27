@@ -14,6 +14,9 @@ the synchroniser latency and are logged; only equalities between runs and orderi
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
@@ -27,15 +30,20 @@ FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_
 FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
 SMC_BIT = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm")
 
-# Consecutive low samples the pin de-glitcher needs.
+# Consecutive low samples the pin de-glitcher needs. The pulse widths are drawn
+# on either side of it: a rejected low in [1, 31], an asserting low in
+# [32, ASSERT_MAX], a long low above the control, and the segments inside the
+# FLR hold with their placement after the cool-reset fall.
 DEGLITCH_SAMPLES = 32
-GLITCH_LOW = DEGLITCH_SAMPLES - 1
-CONTROL_LOW = 40
-LONG_LOW = 100
-SEGMENT_LOW = 20
+ASSERT_MAX = 64
+LONG_MAX = 160
+HOLD_LOW_MAX = 48
+HOLD_HIGH_MAX = 16
+HOLD_SEGMENTS = (2, 4)
+HOLD_MARGIN = 32
 GLITCH_AFTER_HIGH = 64
-# FLR counters: the hold covers three 20-sample low segments, two single high samples and
-# a release.
+# FLR counters: the hold covers the drawn sub-32 low segments with their single highs
+# (S7) and the drawn release and re-assert (S8), each placed with HOLD_MARGIN to spare.
 _DELAY = 0x20
 _HOLD = 0xC0
 # Reference-clock edges the counter values are given to cross into the reference domain.
@@ -75,6 +83,7 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_cool_reset_deglitch_window_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         self.window_ok: bool = False
         self._tick_no: int = 0
         self._samples: dict[int, tuple[int, int, int]] = {}
@@ -152,6 +161,35 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
             ", ".join(c[1] for c in chks),
             ",".join(str(s) for s in stamps),
         )
+
+    def _draw(self) -> dict:
+        rng = random.Random(self.seed)
+        below = lambda: rng.randint(1, DEGLITCH_SAMPLES - 1)  # noqa: E731
+        above = lambda: rng.randint(DEGLITCH_SAMPLES, ASSERT_MAX)  # noqa: E731
+        draw = {
+            "glitch": below(),
+            "control": above(),
+            "reassert_pre": below(),
+            "reassert": above(),
+        }
+        draw["long"] = rng.randint(ASSERT_MAX + 1, LONG_MAX)
+        segments = [below() for _ in range(rng.randint(*HOLD_SEGMENTS))]
+        seg7: list[tuple[int, int]] = []
+        for low in segments:
+            if seg7:
+                seg7.append((1, 1))
+            seg7.append((0, low))
+        draw["seg7"] = seg7
+        draw["delay7"] = rng.randint(0, max(0, _HOLD - sum(c for _l, c in seg7) - HOLD_MARGIN))
+        seg8 = [
+            (0, rng.randint(DEGLITCH_SAMPLES, HOLD_LOW_MAX)),
+            (1, rng.randint(1, HOLD_HIGH_MAX)),
+            (0, rng.randint(DEGLITCH_SAMPLES, HOLD_LOW_MAX)),
+        ]
+        draw["seg8"] = seg8
+        draw["delay8"] = rng.randint(0, max(0, _HOLD - sum(c for _l, c in seg8) - HOLD_MARGIN))
+        cocotb.log.info("RAND-SEED: %d; RAND-DRAW: %s", self.seed, draw)
+        return draw
 
     async def _pin_run(self, label: str, segments: list[tuple[int, int]]) -> dict:
         """Drive the pin through ``segments`` then high, and wait for primary reset to release.
@@ -255,28 +293,33 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
         )
         await self._ticks(_CDC_REF)
         self._waits.append(f"cdc_allowance={_CDC_REF}ref")
+        draw = self._draw()
+        control_low, glitch_low_n, long_low_n = draw["control"], draw["glitch"], draw["long"]
+        drawn = f"seed {self.seed} {draw}"
         self._step_done("S1")
 
-        # S2: positive control.
-        control = await self._pin_run("S2", [(0, CONTROL_LOW)])
+        # S2: positive control, a drawn low at or above the filter.
+        control = await self._pin_run("S2", [(0, control_low)])
         await self._settle_pin(control)
         self._step_done("S2")
 
-        # S3: 31 low samples, then 64 reference-clock cycles with the pin high.
+        # S3: a drawn low below the filter, then 64 reference-clock cycles with the pin high.
         glitch_low = self._pin(0)
-        await self._ticks(GLITCH_LOW)
+        await self._ticks(glitch_low_n)
         glitch_high = self._pin(1)
         await self._ticks(GLITCH_AFTER_HIGH)
         glitch_end = self._tick_no
         self._step_done("S3")
 
-        # S4: low 20, high 1, low 40.
-        reassert = await self._pin_run("S4", [(0, SEGMENT_LOW), (1, 1), (0, CONTROL_LOW)])
+        # S4: a drawn low below the filter, high 1, a drawn low at or above it.
+        reassert = await self._pin_run(
+            "S4", [(0, draw["reassert_pre"]), (1, 1), (0, draw["reassert"])]
+        )
         await self._settle_pin(reassert)
         self._step_done("S4")
 
-        # S5: 100 low samples.
-        long_low = await self._pin_run("S5", [(0, LONG_LOW)])
+        # S5: a drawn long low.
+        long_low = await self._pin_run("S5", [(0, long_low_n)])
         await self._settle_pin(long_low)
         self._step_done("S5")
 
@@ -285,16 +328,17 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
         await self._flr_finish(base)
         self._step_done("S6")
 
-        # S7: three sub-32 low segments inside the hold.
-        seg = [(0, SEGMENT_LOW), (1, 1), (0, SEGMENT_LOW), (1, 1), (0, SEGMENT_LOW)]
+        # S7: drawn sub-32 low segments inside the hold, placed after the cool fall.
         hold7 = await self._flr("S7")
-        pins7 = await self._pin_run("S7", seg)
+        await self._ticks(draw["delay7"])
+        pins7 = await self._pin_run("S7", draw["seg7"])
         await self._flr_finish(hold7)
         self._step_done("S7")
 
-        # S8: release and re-assert inside the hold.
+        # S8: release and re-assert inside the hold, widths and placement drawn.
         hold8 = await self._flr("S8")
-        pins8 = await self._pin_run("S8", [(0, CONTROL_LOW), (1, 10), (0, CONTROL_LOW)])
+        await self._ticks(draw["delay8"])
+        pins8 = await self._pin_run("S8", draw["seg8"])
         await self._flr_finish(hold8)
         self._step_done("S8")
         await ClockCycles(dut.clk_ref_i, 2)
@@ -307,16 +351,16 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
             if self._samples[t][0] != 1 or self._samples[t][1] != 1
         ]
         assert not released, (
-            f"primary reset asserted at ticks {released[:8]} after a {GLITCH_LOW}-cycle low "
+            f"primary reset asserted at ticks {released[:8]} after a {glitch_low_n}-cycle low "
             f"(pin low at tick {glitch_low}, high at {glitch_high})"
         )
         self._chk(
             "CHK-COOLRST-GLITCH-REJECT",
-            f"positive control: a {CONTROL_LOW}-cycle low asserted primary reset "
+            f"positive control: a {control_low}-cycle low asserted primary reset "
             f"smc={control_off['smc']} ref={control_off['ref']} cycles after the first low; a "
-            f"{GLITCH_LOW}-cycle low left rst_primary_smc_clk_no and rst_primary_ref_clk_no "
+            f"{glitch_low_n}-cycle low left rst_primary_smc_clk_no and rst_primary_ref_clk_no "
             f"released at all {glitch_end - glitch_low + 1} samples from the first low until "
-            f"{GLITCH_AFTER_HIGH} cycles after the pin returned high",
+            f"{GLITCH_AFTER_HIGH} cycles after the pin returned high; drawn={drawn}",
         )
 
         # CHK-COOLRST-REASSERT-RESTART
@@ -333,10 +377,10 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
             )
         self._chk(
             "CHK-COOLRST-REASSERT-RESTART",
-            f"low {SEGMENT_LOW}, high 1, low {CONTROL_LOW}: primary reset asserted "
+            f"low {draw['reassert_pre']}, high 1, low {draw['reassert']}: primary reset asserted "
             f"smc={re_off['smc']} ref={re_off['ref']} cycles after the re-assert low, equal to "
             f"the control's smc={control_off['smc']} ref={control_off['ref']} cycles after its "
-            f"first low, and not before {DEGLITCH_SAMPLES} consecutive lows",
+            f"first low, and not before {DEGLITCH_SAMPLES} consecutive lows; drawn={drawn}",
         )
 
         # CHK-COOLRST-RELEASE-NO-EXTENSION
@@ -345,13 +389,13 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
         for o in OUTPUTS:
             assert ctl_rel[o] == long_rel[o], (
                 f"{o}: release {ctl_rel[o]} cycles after the first high for a "
-                f"{CONTROL_LOW}-cycle low, {long_rel[o]} for a {LONG_LOW}-cycle low"
+                f"{control_low}-cycle low, {long_rel[o]} for a {long_low_n}-cycle low"
             )
         self._chk(
             "CHK-COOLRST-RELEASE-NO-EXTENSION",
-            f"measured release offsets from the first high sample: {CONTROL_LOW}-cycle low "
-            f"smc={ctl_rel['smc']} ref={ctl_rel['ref']}, {LONG_LOW}-cycle low "
-            f"smc={long_rel['smc']} ref={long_rel['ref']}, equal",
+            f"measured release offsets from the first high sample: {control_low}-cycle low "
+            f"smc={ctl_rel['smc']} ref={ctl_rel['ref']}, {long_low_n}-cycle low "
+            f"smc={long_rel['smc']} ref={long_rel['ref']}, equal; drawn={drawn}",
         )
 
         # CHK-COOLRST-REASSERT-IN-HOLD
@@ -368,14 +412,16 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
                 f"{base_rel[o]} for FLR alone"
             )
             assert hold_rel[o] <= _BENCH_RELEASE_BOUND, f"{o}: release {hold_rel[o]} past bound"
+        seg7_text = ",".join(str(c) for level, c in draw["seg7"] if level == 0)
         self._chk(
             "CHK-COOLRST-REASSERT-IN-HOLD",
-            f"three {SEGMENT_LOW}-cycle low segments in the hold (pin edges "
-            f"{[t for _, t in pins7['sets']]}): primary reset asserted at all "
+            f"low segments of {seg7_text} cycles separated by single highs, {draw['delay7']} "
+            f"cycles after the cool fall (pin edges {[t for _, t in pins7['sets']]}): primary "
+            f"reset asserted at all "
             f"{hold7['rise'] - first7} samples from tick {first7} to the cool rise at "
             f"{hold7['rise']}; release smc={hold_rel['smc']} ref={hold_rel['ref']} cycles after "
             f"the cool rise, FLR alone smc={base_rel['smc']} ref={base_rel['ref']} (delta 0), "
-            f"inside the bench bound of {_BENCH_RELEASE_BOUND} ref cycles",
+            f"inside the bench bound of {_BENCH_RELEASE_BOUND} ref cycles; drawn={drawn}",
         )
 
         # CHK-COOLRST-RELEASE-REASSERT-HOLD
@@ -391,14 +437,17 @@ class smc_cool_reset_deglitch_window_test_seq(SmcCsrSeq):
             assert 0 <= after <= _BENCH_RELEASE_BOUND, (
                 f"{o}: release {after} cycles after both sources ended at {end8[o]}"
             )
+        a8, h8, b8 = (c for _l, c in draw["seg8"])
         self._chk(
             "CHK-COOLRST-RELEASE-REASSERT-HOLD",
-            f"pin low {CONTROL_LOW}, high 10, low {CONTROL_LOW} inside the hold: released "
+            f"pin low {a8}, high {h8}, low {b8} placed {draw['delay8']} cycles after the cool "
+            f"fall inside the hold: released "
             f"samples smc={counts['smc']} ref={counts['ref']} from tick {first8} until the later "
             f"source ended (cool rise {hold8['rise']}, pin release {last_high}+offset), release "
             f"at smc={hold8['release']['smc']} ref={hold8['release']['ref']}, "
             f"{hold8['release']['smc'] - end8['smc']} and {hold8['release']['ref'] - end8['ref']} "
-            f"cycles after both ended, inside the bench bound of {_BENCH_RELEASE_BOUND}",
+            f"cycles after both ended, inside the bench bound of {_BENCH_RELEASE_BOUND}; "
+            f"drawn={drawn}",
         )
 
         drive_isolate_pin(dut, None)

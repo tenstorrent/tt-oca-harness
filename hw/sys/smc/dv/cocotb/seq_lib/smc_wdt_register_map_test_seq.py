@@ -8,8 +8,13 @@ hw/sys/smc/regs/blocks/wdt/wdt.rdl.
 
 from __future__ import annotations
 
+import math
+import os
+import random
+
 import cocotb
 from cocotb.utils import get_sim_time
+from env.smc_env_cfg import measure_clock_period_ns
 
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -45,7 +50,21 @@ WDT_CMP_WIDE = 0xDEAD_A5A5
 WDT_CMP_WIDE_READ = 0x0000_A5A5
 WDT_REGISTER_MAP_ACCESSES = 287
 
-STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")
+# S10, the drawn strobed walk (watchdog.adoc, Register Access): a write acts
+# only when its byte enables cover the width the register requires, and a
+# narrower one answers OKAY and changes nothing.
+WDT_REGS = ("CTRL", "COUNT", "COUNT_HI", "SCALED_COUNT", "FEED", "KEY", "CMP")
+WDT_FULL_WIDTH = ("COUNT", "COUNT_HI", "FEED", "KEY")
+WDT_LOW_HALF = ("SCALED_COUNT", "CMP")
+WDT_CTRL_RSTEN = 0x100
+WDT_CTRL_ENABLES = 0x3000
+WDT_COUNT_MASK = 0x7FFF_FFFF
+WDT_CMP_MASK = 0xFFFF
+WDT_MASK_MIN = 1
+WDT_MASK_MAX = 0xF
+WDT_EFFECTIVE_CORES = 2
+
+STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")
 CHECKERS = (
     ("CHK-WDT-CTRL-RESET", "S1"),
     ("CHK-WDT-OFFSET-DECODE", "S2"),
@@ -55,7 +74,74 @@ CHECKERS = (
     ("CHK-WDT-CTRL-RESERVED", "S7"),
     ("CHK-WDT-CTRL-LOCKED-WRITE", "S8"),
     ("CHK-WDT-CMP-WIDE-WRITE", "S9"),
+    ("CHK-WDT-DRAWN-STROBE-WALK", "S10"),
 )
+
+
+def _effective(reg: str, mask: int) -> bool:
+    if reg in WDT_FULL_WIDTH:
+        return mask == WDT_MASK_MAX
+    if reg in WDT_LOW_HALF:
+        return mask & 0x3 == 0x3
+    return True
+
+
+def _byte_mask(mask: int) -> int:
+    return sum(0xFF << (8 * lane) for lane in range(4) if mask >> lane & 1)
+
+
+def _class_masks(reg: str, eff: bool) -> list[int]:
+    """The byte masks of one class of `reg`: effective (0xF for a full-width register; 3, 7, 0xB
+    or 0xF for a half-word one; every mask for CTRL) or narrower (the rest of 1..15)."""
+    return [m for m in range(WDT_MASK_MIN, WDT_MASK_MAX + 1) if _effective(reg, m) == eff]
+
+
+def draw_walk(rng: random.Random) -> list[tuple[int, str, int, int]]:
+    """The 28 (core, register) cells in a drawn order with a pattern and a byte mask each.
+
+    The mask class is drawn per cell so that every register but CTRL takes both classes in
+    every run: two of its four cores, drawn by `rng.sample`, take an effective mask and the
+    other two a narrower one, the mask then drawn inside the class. Every CTRL byte is
+    written on its own, so CTRL takes any mask of 1..15.
+    """
+    effective = {
+        reg: set(rng.sample(WDT_CORES, WDT_EFFECTIVE_CORES)) for reg in WDT_REGS if reg != "CTRL"
+    }
+    cells = [(core, reg) for core in WDT_CORES for reg in WDT_REGS]
+    rng.shuffle(cells)
+    plan = []
+    for core, reg in cells:
+        pattern = rng.getrandbits(32)
+        while (reg == "CTRL" and pattern & WDT_CTRL_RSTEN and pattern & WDT_CTRL_ENABLES) or (
+            reg == "KEY" and pattern == WDT_MAGIC_KEY
+        ):
+            pattern = rng.getrandbits(32)
+        if reg == "CTRL":
+            mask = rng.randint(WDT_MASK_MIN, WDT_MASK_MAX)
+        else:
+            mask = rng.choice(_class_masks(reg, core in effective[reg]))
+        plan.append((core, reg, pattern, mask))
+    return plan
+
+
+def effective_cores(plan: list[tuple[int, str, int, int]]) -> dict[str, list[int]]:
+    """Per register but CTRL, the cores whose drawn mask is effective, from the plan alone."""
+    cores: dict[str, list[int]] = {reg: [] for reg in WDT_REGS if reg != "CTRL"}
+    for core, reg, _pattern, mask in plan:
+        if reg != "CTRL" and _effective(reg, mask):
+            cores[reg].append(core)
+    return {reg: sorted(c) for reg, c in cores.items()}
+
+
+def walk_accesses(plan: list[tuple[int, str, int, int]]) -> int:
+    """Accesses the drawn walk issues, from the plan alone."""
+    total = 0
+    for _core, reg, _pattern, _mask in plan:
+        total += 4
+        if reg == "SCALED_COUNT":
+            total += 2
+        total += {"CTRL": 3, "COUNT": 3, "CMP": 3}.get(reg, 0)
+    return total
 
 
 class smc_wdt_register_map_test_seq(SmcCsrSeq):
@@ -63,9 +149,12 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_wdt_register_map_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         self.stamps: list[tuple[str, int]] = []
         self.chk_marks: list[tuple[str, int]] = []
         self.cmp_model = {core: WDT_CMP_RESET for core in WDT_CORES}
+        self._walk_accesses = 0
+        self.t_smc_ns = 0.0
 
     def _reg(self, core: int, reg: str) -> int:
         return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_{reg}_BASE_ADDR")
@@ -301,6 +390,154 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             WDT_CMP_WIDE_READ,
         )
 
+    async def _s10_cell(self, core: int, reg: str, pattern: int, mask: int) -> str:
+        addr = self._reg(core, reg)
+        key = self._reg(core, "KEY")
+        eff = _effective(reg, mask)
+        tag = f"S10_C{core}_{reg}"
+        await self._unlock(f"{tag}_KEY", core)
+        before_ps = get_sim_time("ps")
+        before = (
+            await self.csr_read(f"{tag}_COUNT_BEFORE", self._reg(core, "COUNT"))
+            if reg in ("SCALED_COUNT", "COUNT")
+            else None
+        )
+        write_ps = get_sim_time("ps")
+        await self.csr_write_strobed(f"{tag}_WR", addr, pattern, mask)
+        rb = await self.csr_read(f"{tag}_RB", addr)
+        # clk_smc_i cycles between the issue of the write and the return of the read: the
+        # bound on how far a counter set by the write can have counted on by the read.
+        elapsed = math.ceil((get_sim_time("ps") - write_ps) / (self.t_smc_ns * 1000.0))
+        if reg == "CTRL":
+            want = (pattern & _byte_mask(mask)) & WDT_CTRL_ALL_WRITABLE
+            assert rb & ~WDT_CTRL_IP_BIT == want, (
+                f"{tag}: CTRL reads 0x{rb:08x} (bit 28 masked 0x{rb & ~WDT_CTRL_IP_BIT:08x}) "
+                f"after pattern 0x{pattern:08x} mask 0x{mask:x}, expected 0x{want:08x}"
+            )
+            verdict = f"rb=0x{rb:08x} == 0x{want:08x} with bit 28 masked"
+        elif reg == "CMP":
+            want = pattern & WDT_CMP_MASK if eff else self.cmp_model[core]
+            assert rb == want, f"{tag}: CMP reads 0x{rb:x}, expected 0x{want:x} (eff={eff})"
+            verdict = f"rb=0x{rb:04x} == 0x{want:04x}"
+        elif reg == "COUNT":
+            if eff:
+                # wdt.rdl: the counter is set to the written value, then counts on; a
+                # dropped write leaves the count running on from `before` instead.
+                want = pattern & WDT_COUNT_MASK
+                counted = (rb - want) & WDT_COUNT_MASK
+                assert counted <= elapsed, (
+                    f"{tag}: COUNT reads 0x{rb:x}, not within {elapsed} clk_smc_i cycles above "
+                    f"the pattern 0x{want:x} (0x{before:x} before the write)"
+                )
+                verdict = (
+                    f"before=0x{before:08x} rb=0x{rb:08x} = 0x{want:08x} + {counted} "
+                    f"<= {elapsed} cycles elapsed"
+                )
+            else:
+                # wdt.rdl: "Any other write returns OKAY and changes nothing", and the
+                # counter continues counting up from `before`, so the read-back is at most
+                # the clk_smc_i cycles since the before-read above it.
+                since = math.ceil((get_sim_time("ps") - before_ps) / (self.t_smc_ns * 1000.0))
+                counted = (rb - before) & WDT_COUNT_MASK
+                assert counted <= since, (
+                    f"{tag}: COUNT reads 0x{rb:x} after a narrower write, not within {since} "
+                    f"clk_smc_i cycles above 0x{before:x} read before it (changes nothing)"
+                )
+                verdict = (
+                    f"before=0x{before:08x} rb=0x{rb:08x} = before + {counted} <= {since} "
+                    f"cycles since the before-read (narrower write: changes nothing, counts on)"
+                )
+        elif reg == "COUNT_HI":
+            assert rb == 0, f"{tag}: COUNT_HI reads 0x{rb:x}, expected 0 (no storage)"
+            verdict = "rb=0 (no storage)"
+        elif reg == "SCALED_COUNT":
+            after = await self.csr_read(f"{tag}_COUNT_AFTER", self._reg(core, "COUNT"))
+            assert before <= rb <= after, (
+                f"{tag}: SCALED_COUNT 0x{rb:x} outside the COUNT bracket [0x{before:x}, "
+                f"0x{after:x}] at wdogscale 0"
+            )
+            verdict = f"rb=0x{rb:x} inside [0x{before:x}, 0x{after:x}]"
+        elif reg == "FEED":
+            verdict = f"rb=0x{rb:08x} printed (not specified)"
+        else:  # KEY
+            # wdt.rdl, KEY: "Reading this reg returns 1 if key has been written to it and it
+            # is unlocked, 0 otherwise"; an effective write of a non-magic word leaves it
+            # locked, a narrower one changes nothing.
+            want = WDT_KEY_LOCKED if eff else WDT_KEY_UNLOCKED
+            assert rb == want, f"{tag}: KEY reads {rb}, expected {want} (eff={eff})"
+            verdict = f"rb={rb} == {want}"
+        key_rb = await self.csr_read(f"{tag}_KEY_RB", key)
+        if reg == "KEY":
+            lock = f"KEY={key_rb} (the cell's own compare)"
+        elif eff:
+            # wdt.rdl: "Each effective write to a register other than KEY locks the watchdog".
+            assert key_rb == WDT_KEY_LOCKED, (
+                f"{tag}: KEY reads {key_rb} after an effective write, expected 0"
+            )
+            lock = f"KEY={key_rb} locked"
+        else:
+            # wdt.rdl: "Any other write returns OKAY and changes nothing, not even the lock".
+            assert key_rb == WDT_KEY_UNLOCKED, (
+                f"{tag}: KEY reads {key_rb} after a narrower write, expected 1 (the lock unchanged)"
+            )
+            lock = f"KEY={key_rb} still unlocked"
+        if reg == "CTRL":
+            await self._keyed_write(f"{tag}_RESTORE", core, "CTRL", 0)
+            await self.csr_read(f"{tag}_RESTORE_RB", addr, expected=0)
+        elif reg == "COUNT":
+            await self._keyed_write(f"{tag}_RESTORE", core, "COUNT", 0)
+        elif reg == "CMP":
+            await self._keyed_write(f"{tag}_RESTORE", core, "CMP", WDT_CMP_RESET)
+            await self.csr_read(f"{tag}_RESTORE_RB", addr, expected=WDT_CMP_RESET)
+            self.cmp_model[core] = WDT_CMP_RESET
+        return (
+            f"C{core}.{reg} p=0x{pattern:08x} m=0x{mask:x} {'eff' if eff else 'narrow'} "
+            f"{verdict} {lock}"
+        )
+
+    async def _s10(self) -> None:
+        rng = random.Random(self.seed)
+        plan = draw_walk(rng)
+        eff_cores = effective_cores(plan)
+        assert all(len(c) == WDT_EFFECTIVE_CORES for c in eff_cores.values()), (
+            f"the draw gave {eff_cores}, not two effective cores per register"
+        )
+        eff_text = " ".join(f"{r}:C{','.join(map(str, c))}" for r, c in eff_cores.items())
+        self.t_smc_ns = await measure_clock_period_ns(cocotb.top.clk_smc_i)
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: strobed walk %s; effective cores %s",
+            self.seed,
+            " ".join(f"C{c}.{r}:0x{p:08x}/0x{m:x}" for c, r, p, m in plan),
+            eff_text,
+        )
+        start = self.accesses
+        rows = [await self._s10_cell(*cell) for cell in plan]
+        assert self.accesses - start == walk_accesses(plan), (
+            f"S10 issued {self.accesses - start} accesses, the plan calls for {walk_accesses(plan)}"
+        )
+        self._step("S10")
+        self._chk(
+            "CHK-WDT-DRAWN-STROBE-WALK",
+            "S10",
+            "%d cells in the drawn order, each a keyed write of a drawn pattern under a drawn "
+            "byte mask, every register but CTRL effective on two drawn cores (%s) and narrower "
+            "on the other two: an effective write reads back as wdt.rdl states (CTRL enabled bytes "
+            "masked to its fields, bit 28 masked; CMP[15:0]; COUNT the pattern plus at most the "
+            "clk_smc_i cycles elapsed between the write and the read, COUNT read before the "
+            "write too; COUNT_HI 0; KEY 0; SCALED_COUNT inside the COUNT bracket) and a "
+            "narrower write leaves CMP, "
+            "KEY and the lock unchanged (KEY still reads 1, wdt.rdl: changes nothing, not even "
+            "the lock) and COUNT reading the value read before it plus at most the clk_smc_i "
+            "cycles since that read (the counter counts on); FEED is printed; CTRL, COUNT and "
+            "CMP restored after each cell; cells: %s; drawn=seed %d walk %s",
+            len(plan),
+            eff_text,
+            "; ".join(rows),
+            self.seed,
+            " ".join(f"C{c}.{r}:0x{p:08x}/0x{m:x}" for c, r, p, m in plan),
+        )
+        self._walk_accesses = walk_accesses(plan)
+
     async def body(self) -> None:
         await self._s1()
         await self._s2()
@@ -311,6 +548,7 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
         await self._s7()
         await self._s8()
         await self._s9()
+        await self._s10()
 
         ids = [s for s, _ in self.stamps]
         assert ids == list(STEPS), f"step order {ids}, expected {list(STEPS)}"
@@ -320,7 +558,9 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
         assert marks == [c for c, _ in CHECKERS], f"checker order {marks}"
         for (chk, step), (_, n) in zip(CHECKERS, self.chk_marks):
             assert self.stamps[n - 1][0] == step, f"{chk} printed after {self.stamps[n - 1][0]}"
-        self.assert_all_reachable(WDT_REGISTER_MAP_ACCESSES, "WDT_REGISTER_MAP")
+        self.assert_all_reachable(
+            WDT_REGISTER_MAP_ACCESSES + self._walk_accesses, "WDT_REGISTER_MAP"
+        )
         cocotb.log.info(
             "CHK-NONVAC: ordered fence checker lines in step order, strictly increasing step "
             "stamps, each line printed after its own compare; checker lines %s; stamps %s",
