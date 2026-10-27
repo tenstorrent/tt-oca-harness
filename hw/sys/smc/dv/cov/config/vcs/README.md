@@ -345,7 +345,7 @@ model, not by the build passing.
 
 ## VCS bring-up checklist
 
-On a VCS run check that: the compile accepts `-lca -cm_common_hier`; 
+On a VCS run check that: the compile accepts `-lca -cm_common_hier`;
 the committed `smc_cov_scope.hier` names every unit compiled from the dropped
 trees (a unit added to a vendored tree since the file was generated would
 otherwise be graded, and VCS accepts a stale scope file silently); and `u_dut`
@@ -462,22 +462,22 @@ every vector with no covered bit-direction, which is a real gap.
 
 Left graded, because a leaf can toggle it or no fact covers it:
 
-* the eFuse image itself, on the four signals named under EFUSE-IMAGE-COPY:
+- the eFuse image itself, on the four signals named under EFUSE-IMAGE-COPY:
   the eFuse image leaves sense full-width patterned images and the graded run
   covers it, so UNION-ALIAS and EFUSE-IMAGE-COPY take nothing on that run;
-* scratch RAM, L1 cache and I3C DCT and DAT memory words on the shells: the
+- scratch RAM, L1 cache and I3C DCT and DAT memory words on the shells: the
   CPU and the I3C controller write them, so firmware and an I3C leaf reach
   them;
-* mailbox data, the AXI filter, alias and output remap register data and the
+- mailbox data, the AXI filter, alias and output remap register data and the
   CPU write-back PC: firmware writes or reads them;
-* address high bits behind a demultiplexer: `axi_lite_demux.sv:224` and `:386`
+- address high bits behind a demultiplexer: `axi_lite_demux.sv:224` and `:386`
   copy AW and AR to every master port, so a port's address follows every
   access the demultiplexer forwards and no window holds it;
-* AxPROT, AxUSER, AxQOS and AxREGION on the inbound path: the bench drives them
+- AxPROT, AxUSER, AxQOS and AxREGION on the inbound path: the bench drives them
   from its ports (`tb_top.sv:848-991`), and leaves vary AxPROT;
-* external interrupt sources 2 to 16, which have bench pins, and every other
+- external interrupt sources 2 to 16, which have bench pins, and every other
   synchronizer cell;
-* every bit-direction the run covers inside a class's pattern: the covered
+- every bit-direction the run covers inside a class's pattern: the covered
   bits of the union views and image copies, and every covered net inside the
   ports-only units.
 
