@@ -111,8 +111,8 @@ proc cdc_min_period { args } {
 # is the only failure mode left: a wrong instance path or a renamed signal.
 proc cdc_emit { tag dly mode from to } {
     if { $dly <= 0 } { cdc_warn "$tag: no delay resolved, skipped"; return }
-    # mode `to` intentionally has no -from; only the other modes need a source.
-    if { $mode ne "to" && [sizeof_collection $from] == 0 } {
+    # mode `to` takes its source as the launching clocks (cdc_launch_clocks).
+    if { [sizeof_collection $from] == 0 } {
         cdc_warn "$tag: source empty"; return
     }
     # mode `through_only` bounds a net segment, so it has no endpoint either.
@@ -121,7 +121,11 @@ proc cdc_emit { tag dly mode from to } {
     }
     switch -- $mode {
         to {
-            set_max_delay $dly -ignore_clock_latency -to $to
+            # On the timing endpoints behind the pin: a bound on the hierarchical
+            # pin itself makes it an endpoint, leaving every other path through it
+            # (one from the capturing clock) untimed.
+            set to [all_fanout -from $to -endpoints_only -flat]
+            set_max_delay $dly -ignore_clock_latency -from $from -to $to
             set ::cdc_to_pins [add_to_collection $::cdc_to_pins $to]
         }
         from { set_max_delay $dly -ignore_clock_latency -from $from -to $to }
@@ -141,6 +145,12 @@ proc cdc_sync_delay { dst_clk delay } {
     if { $delay ne "" } { return $delay }
     return [expr { 0.5 * [cdc_min_period {*}$dst_clk] }]
 }
+# The clocks a synchronizer's crossings launch from: every clock but the capturing
+# ones. A path from the capturing clock into the synchronizer is not a crossing; the
+# bound would replace its setup check with a flat half period.
+proc cdc_launch_clocks { dst_clk } {
+    return [remove_from_collection [all_clocks] [get_clocks -quiet [cdc_clk $dst_clk]]]
+}
 # Protocol-protected data. Not a metastability bound - the payload never passes
 # through a synchronizer. The pointer does, and the read side only looks at an
 # entry once the pointer has crossed, so the real requirement is
@@ -157,45 +167,45 @@ proc cdc_data_delay { dst_clk delay } {
 ################################################################################
 # SYNCHRONIZER WRAPPERS
 ################################################################################
-# Bound the wrapper's data input. mode `to` has no -from, so it also catches
-# same-domain paths into that pin; those are bare flop-to-flop hops and meet the
-# bound trivially.
+# Bound the crossings into the wrapper's data input: mode `to` from the launching
+# clocks, on the endpoints behind the pin, so a path from the capturing clock keeps
+# its setup check.
 
 proc set_cdc_max_delay_prim_sync2 { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync2 $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/d_i" -quiet]
+        [cdc_launch_clocks $dst_clk] [get_pins "$inst/d_i" -quiet]
 }
 proc set_cdc_max_delay_prim_sync3 { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync3 $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/d_i" -quiet]
+        [cdc_launch_clocks $dst_clk] [get_pins "$inst/d_i" -quiet]
 }
 proc set_cdc_max_delay_prim_sync4 { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync4 $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/d_i" -quiet]
+        [cdc_launch_clocks $dst_clk] [get_pins "$inst/d_i" -quiet]
 }
 
 # hw/common/sync.sv, the pulp shim used by the common_cells CDC library.
 proc set_cdc_max_delay_sync { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "sync $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/serial_i" -quiet]
+        [cdc_launch_clocks $dst_clk] [get_pins "$inst/serial_i" -quiet]
 }
 
 # Reset-deassertion synchronizer; the async input is rst_ni.
 proc set_cdc_max_delay_prim_sync_reset { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync_reset $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/rst_ni" -quiet]
+        [cdc_launch_clocks $dst_clk] [get_pins "$inst/rst_ni" -quiet]
 }
 
 # Pulse crossing: toggle in the source domain, 3-stage sync in the destination.
 proc set_cdc_max_delay_prim_sync3_pulse { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync3_pulse $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/u_dest/toggle_i" -quiet]
+        [cdc_launch_clocks $dst_clk] [get_pins "$inst/u_dest/toggle_i" -quiet]
 }
 
 ################################################################################
@@ -231,9 +241,9 @@ proc set_cdc_max_delay_prim_fifo_async { inst wr_clk rd_clk { delay {} } } {
     set inst [cdc_inst $inst]
     set t "prim_fifo_async $inst"
     cdc_emit "$t wptr" [cdc_sync_delay $rd_clk $delay] to \
-        {} [get_pins "$inst/sync_wptr/d_i" -quiet]
+        [cdc_launch_clocks $rd_clk] [get_pins "$inst/sync_wptr/d_i" -quiet]
     cdc_emit "$t rptr" [cdc_sync_delay $wr_clk $delay] to \
-        {} [get_pins "$inst/sync_rptr/d_i" -quiet]
+        [cdc_launch_clocks $wr_clk] [get_pins "$inst/sync_rptr/d_i" -quiet]
     cdc_emit "$t data" [cdc_data_delay $rd_clk $delay] from \
         [get_pins "$inst/storage*_reg*/Q*" -quiet] [get_clocks [cdc_clk $rd_clk]]
 }
@@ -247,7 +257,7 @@ proc set_cdc_max_delay_avsbus_async_fifo { inst wr_clk rd_clk { delay {} } } {
     foreach {sync dst} [list u_wr_ptr_gray_sync_to_rd_clk $rd_clk \
         u_rd_ptr_gray_sync_to_wr_clk $wr_clk] {
         cdc_emit "$t $sync" [cdc_sync_delay $dst $delay] to \
-            {} [get_pins "$inst/$sync*/d_i" -quiet]
+            [cdc_launch_clocks $dst] [get_pins "$inst/$sync*/d_i" -quiet]
     }
 }
 
@@ -260,9 +270,9 @@ proc set_cdc_max_delay_cdc_fifo_gray { inst src_clk dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     set t "cdc_fifo_gray $inst"
     cdc_emit "$t wptr" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/i_dst/gen_sync*i_sync/serial_i" -quiet]
+        [cdc_launch_clocks $dst_clk] [get_pins "$inst/i_dst/gen_sync*i_sync/serial_i" -quiet]
     cdc_emit "$t rptr" [cdc_sync_delay $src_clk $delay] to \
-        {} [get_pins "$inst/i_src/gen_sync*i_sync/serial_i" -quiet]
+        [cdc_launch_clocks $src_clk] [get_pins "$inst/i_src/gen_sync*i_sync/serial_i" -quiet]
     cdc_emit "$t data" [cdc_data_delay $dst_clk $delay] from \
         [get_pins "$inst/i_src/data_q_reg*/Q*" -quiet] [get_clocks [cdc_clk $dst_clk]]
 }
@@ -285,7 +295,7 @@ proc set_cdc_max_delay_axi_cdc { inst src_clk dst_clk { delay {} } } {
         [get_clocks [cdc_clk $src_clk]]
     foreach {half dst} [list i_axi_cdc_src $dst_clk i_axi_cdc_dst $src_clk] {
         cdc_emit "$t $half ptr" [cdc_sync_delay $dst $delay] to \
-            {} [get_pins "$inst/$half/*/gen_sync*i_sync/serial_i" -quiet]
+            [cdc_launch_clocks $dst] [get_pins "$inst/$half/*/gen_sync*i_sync/serial_i" -quiet]
     }
 }
 
@@ -297,9 +307,9 @@ proc set_cdc_max_delay_prim_sync_data_autohs { inst src_clk dst_clk { delay {} }
     set inst [cdc_inst $inst]
     set t "prim_sync_data_autohs $inst"
     cdc_emit "$t req" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/*sync_req_toggle/d_i" -quiet]
+        [cdc_launch_clocks $dst_clk] [get_pins "$inst/*sync_req_toggle/d_i" -quiet]
     cdc_emit "$t ack" [cdc_sync_delay $src_clk $delay] to \
-        {} [get_pins "$inst/*sync_ack_toggle/d_i" -quiet]
+        [cdc_launch_clocks $src_clk] [get_pins "$inst/*sync_ack_toggle/d_i" -quiet]
     # -to the destination clock, not clk2_val_reg/D: before mapping, flop inputs
     # are GTECH `next_state` pins, so any /D pattern resolves empty here.
     cdc_emit "$t data" [cdc_data_delay $dst_clk $delay] from \
@@ -349,7 +359,7 @@ proc set_cdc_max_delay_dmi_wrapper { inst core_clk { delay {} } } {
     set inst [cdc_inst $inst]
     set t "dmi_wrapper $inst"
     cdc_emit "$t enable" [cdc_sync_delay $core_clk $delay] to \
-        {} [get_pins "$inst/i_dmi_jtag_to_core_sync/rd_en" -quiet]
+        [cdc_launch_clocks $core_clk] [get_pins "$inst/i_dmi_jtag_to_core_sync/rd_en" -quiet]
     cdc_emit "$t data" [cdc_data_delay $core_clk $delay] from \
         [get_pins "$inst/i_jtag_tap/dr_reg*/Q*" -quiet] [get_clocks [cdc_clk $core_clk]]
 }
