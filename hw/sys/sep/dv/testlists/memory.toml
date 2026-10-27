@@ -13,7 +13,7 @@ seed = 1
 timeout_sec = 3600
 tags = ["smoke", "boot", "cpu", "rom", "memory", "ci"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+axi_sva_need_ifu"]
 
 [[tests]]
 name = "sep_sram_smoke_test"

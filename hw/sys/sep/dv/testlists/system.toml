@@ -526,6 +526,7 @@ timeout_sec = 3600
 tags = ["fabric", "remap", "outbound_filter", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+args = ["+axi_sva_need_smn"]
 
 [[tests]]
 # Local-master alias remap: region boundary classes, the AxCACHE override and the valid gate. RANDCFG.
@@ -549,7 +550,7 @@ timeout_sec = 3600
 tags = ["fabric", "smc", "route", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+args = ["+skip_fuse_sense", "+axi_sva_need_smc"]
 
 [[tests]]
 # AXI Extension port window for the LSU and the System Interface, the eFuse shim window and the SI bursts. Real PROD fuse sense. The bench responder answers the port with seeded replies.
@@ -561,7 +562,7 @@ timeout_sec = 3600
 tags = ["fabric", "extension", "inbound_filter", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+sep_ext_port_responder"]
+args = ["+sep_ext_port_responder", "+axi_sva_need_ext"]
 
 [[tests]]
 # Response code and data of every graded address-map row cell, the OTBN AxCACHE cells, the crypto-region burst refusal, the entropy-pool SI cells and the SPI host burst across the extent end. Real PROD fuse sense.

@@ -4955,6 +4955,274 @@ module sep_uvm_top
         .rready  (cpu_axil_req.r_ready)
     );
 
+    // Pin map of an ocah_axi_sva instance onto one AXI request/response struct
+    // pair, and one AW or AR handshake on that pair. Shared by the AXI
+    // checkers below.
+`define SEP_AXI_SVA_PORTS(REQ, RSP)                                         \
+        .aclk    (clk_i),                                                   \
+        .aresetn (rst_ni),                                                  \
+        .awid    (REQ.aw.id),                                               \
+        .awaddr  (REQ.aw.addr),                                             \
+        .awlen   (REQ.aw.len),                                              \
+        .awsize  (REQ.aw.size),                                             \
+        .awburst (REQ.aw.burst),                                            \
+        .awlock  (REQ.aw.lock),                                             \
+        .awprot  (REQ.aw.prot),                                             \
+        .awvalid (REQ.aw_valid),                                            \
+        .awready (RSP.aw_ready),                                            \
+        .wdata   (REQ.w.data),                                              \
+        .wstrb   (REQ.w.strb),                                              \
+        .wlast   (REQ.w.last),                                              \
+        .wvalid  (REQ.w_valid),                                             \
+        .wready  (RSP.w_ready),                                             \
+        .bid     (RSP.b.id),                                                \
+        .bresp   (RSP.b.resp),                                              \
+        .bvalid  (RSP.b_valid),                                             \
+        .bready  (REQ.b_ready),                                             \
+        .arid    (REQ.ar.id),                                               \
+        .araddr  (REQ.ar.addr),                                             \
+        .arlen   (REQ.ar.len),                                              \
+        .arsize  (REQ.ar.size),                                             \
+        .arburst (REQ.ar.burst),                                            \
+        .arlock  (REQ.ar.lock),                                             \
+        .arprot  (REQ.ar.prot),                                             \
+        .arvalid (REQ.ar_valid),                                            \
+        .arready (RSP.ar_ready),                                            \
+        .rid     (RSP.r.id),                                                \
+        .rdata   (RSP.r.data),                                              \
+        .rresp   (RSP.r.resp),                                              \
+        .rlast   (RSP.r.last),                                              \
+        .rvalid  (RSP.r_valid),                                             \
+        .rready  (REQ.r_ready)
+
+`define SEP_AXI_HS(REQ, RSP) \
+        (((REQ.aw_valid && RSP.aw_ready) || (REQ.ar_valid && RSP.ar_ready)) === 1'b1)
+
+`ifndef SEP_CPU_STUB
+    // ------------------------------------------------------------------
+    // VeeR EL2 AXI ports, at the core side of sep_cpu (before the local alias
+    // remap and the demuxes). hw/sys/sep/doc/cpu.adoc names the IFU, LSU and
+    // debug system-bus masters AXI4 and the DMA slave port the crossbar's
+    // cpu_tcm target into the ICCM and DCCM. Each instance grades both sides
+    // of its port: on the three masters the core drives AW, W, AR and the B
+    // and R readies; on the DMA port the core answers B and R and the SEP
+    // fabric is the master.
+    //
+    // aresetn is the SEP system reset rst_ni on every port. The checker is the
+    // normal (asynchronous-reset) version: VALID is low on every edge that
+    // samples rst_ni low (IHI 0022 A3.1.2). The core side of the LSU, IFU and
+    // DMA ports, and the sep_cpu demuxes and IFU error slave that answer B and
+    // R on the LSU and IFU ports, reset on sep_cpu_reset_n, which a CPU-only
+    // reset (watchdog) drives low with rst_ni high. The VeeR IFU and LSU bus
+    // logic also resets on a debug-module core reset (ndmreset) with rst_ni
+    // high. Those resets are outside aresetn: no reset rule grades them, and
+    // a transaction open at one of them stays in the checker's outstanding
+    // tracking until the next rst_ni.
+    //
+    // On only under +cpu_boot, where the core runs firmware. Runs without it
+    // on this target are not graded here, including those that drive the
+    // debug system-bus or DMA slave port from the testbench. Held off while
+    // rst_ni is X, before the first reset drive.
+    //
+    // This checks PROTOCOL, not data: a read that returns wrong data breaks no
+    // rule here.
+    bit cpu_axi_sva_en = $test$plusargs("cpu_boot");
+
+`ifdef UVM
+`define SEP_CPU_AXI_SVA_EN (cpu_axi_sva_en && !$isunknown(rst_ni) && u_tb_if.axi_sva_en)
+`else
+`define SEP_CPU_AXI_SVA_EN (cpu_axi_sva_en && !$isunknown(rst_ni))
+`endif
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_cpu_lsu_axi_sva (                 // VeeR LSU master
+        .en_i (`SEP_CPU_AXI_SVA_EN),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.u_sep_cpu.lsu_axi_req_raw,
+                               `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_cpu_ifu_axi_sva (                 // VeeR IFU master
+        .en_i (`SEP_CPU_AXI_SVA_EN),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.u_sep_cpu.ifu_axi_req_raw,
+                               `SEP_CORE.u_sep_cpu.ifu_axi_resp_raw)
+    );
+
+    // The system-bus master logic resets on the debug reset (dbg_rstb_i), not
+    // rst_ni, so a request open across a SEP system reset fires the reset rule
+    // here. Before its own reset first acts, its request valids are X. The
+    // checker arms on the edge after the first edge that samples dbg_rstb_i
+    // low, and then stays armed.
+    bit cpu_sb_axi_sva_armed;
+    always_ff @(posedge clk_i)
+        if (dbg_rstb_i === 1'b0)
+            cpu_sb_axi_sva_armed <= 1'b1;
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_cpu_sb_axi_sva (                  // VeeR debug system-bus master
+        .en_i (`SEP_CPU_AXI_SVA_EN && cpu_sb_axi_sva_armed),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.u_sep_cpu.dbg_axi_req_raw,
+                               `SEP_CORE.u_sep_cpu.dbg_axi_resp_raw)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_cpu_tcm_axi_sva (                 // VeeR DMA slave port (ICCM, DCCM)
+        .en_i (`SEP_CPU_AXI_SVA_EN),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.u_sep_cpu.cpu_tcm_axi_req_i,
+                               `SEP_CORE.u_sep_cpu.cpu_tcm_axi_resp_o)
+    );
+
+    // AW and AR handshakes each checker graded. A test that names a port with
+    // +axi_sva_need_<lsu|ifu|sb|tcm> fails when that count is zero. With
+    // +cpu_boot, a run that never arms the system-bus checker fails. Both run
+    // on VCS only, as the checkers do (the SEP Verilator targets pass no
+    // --assert).
+    int unsigned cpu_axi_hs_lsu, cpu_axi_hs_ifu, cpu_axi_hs_sb, cpu_axi_hs_tcm;
+    always_ff @(posedge clk_i) begin
+        if (`SEP_CPU_AXI_SVA_EN && `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.lsu_axi_req_raw,
+                                                   `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw))
+            cpu_axi_hs_lsu <= cpu_axi_hs_lsu + 1;
+        if (`SEP_CPU_AXI_SVA_EN && `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.ifu_axi_req_raw,
+                                                   `SEP_CORE.u_sep_cpu.ifu_axi_resp_raw))
+            cpu_axi_hs_ifu <= cpu_axi_hs_ifu + 1;
+        if (`SEP_CPU_AXI_SVA_EN && cpu_sb_axi_sva_armed &&
+            `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.dbg_axi_req_raw,
+                            `SEP_CORE.u_sep_cpu.dbg_axi_resp_raw))
+            cpu_axi_hs_sb <= cpu_axi_hs_sb + 1;
+        if (`SEP_CPU_AXI_SVA_EN && `SEP_AXI_HS(`SEP_CORE.u_sep_cpu.cpu_tcm_axi_req_i,
+                                                   `SEP_CORE.u_sep_cpu.cpu_tcm_axi_resp_o))
+            cpu_axi_hs_tcm <= cpu_axi_hs_tcm + 1;
+    end
+`ifndef VERILATOR
+    final begin
+        if (cpu_axi_sva_en && !cpu_sb_axi_sva_armed)
+            $error("u_cpu_sb_axi_sva: never armed (no edge sampled dbg_rstb_i low)");
+        if ($test$plusargs("axi_sva_need_lsu") && cpu_axi_hs_lsu == 0)
+            $error("u_cpu_lsu_axi_sva: +axi_sva_need_lsu, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_ifu") && cpu_axi_hs_ifu == 0)
+            $error("u_cpu_ifu_axi_sva: +axi_sva_need_ifu, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_sb") && cpu_axi_hs_sb == 0)
+            $error("u_cpu_sb_axi_sva: +axi_sva_need_sb, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_tcm") && cpu_axi_hs_tcm == 0)
+            $error("u_cpu_tcm_axi_sva: +axi_sva_need_tcm, but no AW or AR handshake was graded");
+    end
+`endif
+
+`undef SEP_CPU_AXI_SVA_EN
+`endif  // SEP_CPU_STUB
+
+    // ------------------------------------------------------------------
+    // SEP AXI masters outside the CPU: the secure DMA engine into the local
+    // crossbar, and the three outbound ports (SMN outbound after the outbound
+    // filter, the SMC aperture after the alias remap, and the external
+    // aperture after its axi_cut into u_sep_ip_integration). They exist in
+    // every build and run mode, so these checkers are on in every run once
+    // rst_ni is known. On the SMN and SMC ports the TB models answer B and R,
+    // so those checkers also grade the models. On the external port the TB
+    // responder answers under +sep_ext_port_responder; without it the DECERR
+    // error slave in u_sep_ip_integration answers.
+    //
+    // aresetn is rst_ni. The DMA engine and the SMN and SMC request logic
+    // reset on sep_reset_n, which a SEP reset from software or JTAG drives low
+    // with rst_ni high. That reset is outside aresetn: no reset rule grades
+    // it, and a transaction open at that reset stays in the checker's
+    // outstanding tracking until the next rst_ni.
+    //
+    // This checks PROTOCOL, not data.
+`ifdef UVM
+`define SEP_AXI_SVA_ON (!$isunknown(rst_ni) && u_tb_if.axi_sva_en)
+`else
+`define SEP_AXI_SVA_ON (!$isunknown(rst_ni))
+`endif
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_dma_axi_sva (                     // secure DMA master into the crossbar
+        .en_i (`SEP_AXI_SVA_ON),
+        `SEP_AXI_SVA_PORTS(`SEP_CORE.dma_axi_req, `SEP_CORE.dma_axi_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (8)
+    ) u_smn_out_axi_sva (                 // SMN outbound port
+        .en_i (`SEP_AXI_SVA_ON),
+        `SEP_AXI_SVA_PORTS(smn_outbound_req_w, smn_outbound_resp_w)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_smc_out_axi_sva (                 // SMC aperture port
+        .en_i (`SEP_AXI_SVA_ON),
+        `SEP_AXI_SVA_PORTS(ext_to_smc_req_w, ext_to_smc_resp_w)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (6)
+    ) u_ext_out_axi_sva (                 // external aperture into u_sep_ip_integration
+        .en_i (`SEP_AXI_SVA_ON),
+        `SEP_AXI_SVA_PORTS(u_dut.axi_extension_axi_req, u_dut.axi_extension_axi_resp)
+    );
+
+    // AW and AR handshakes each checker graded. A test that names a port with
+    // +axi_sva_need_<dma|smn|smc|ext> fails when that count is zero (VCS only,
+    // as the checkers).
+    int unsigned axi_hs_dma, axi_hs_smn, axi_hs_smc, axi_hs_ext;
+    always_ff @(posedge clk_i) begin
+        if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(`SEP_CORE.dma_axi_req, `SEP_CORE.dma_axi_resp))
+            axi_hs_dma <= axi_hs_dma + 1;
+        if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(smn_outbound_req_w, smn_outbound_resp_w))
+            axi_hs_smn <= axi_hs_smn + 1;
+        if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(ext_to_smc_req_w, ext_to_smc_resp_w))
+            axi_hs_smc <= axi_hs_smc + 1;
+        if (`SEP_AXI_SVA_ON && `SEP_AXI_HS(u_dut.axi_extension_axi_req,
+                                           u_dut.axi_extension_axi_resp))
+            axi_hs_ext <= axi_hs_ext + 1;
+    end
+`ifndef VERILATOR
+    final begin
+        if ($test$plusargs("axi_sva_need_dma") && axi_hs_dma == 0)
+            $error("u_dma_axi_sva: +axi_sva_need_dma, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_smn") && axi_hs_smn == 0)
+            $error("u_smn_out_axi_sva: +axi_sva_need_smn, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_smc") && axi_hs_smc == 0)
+            $error("u_smc_out_axi_sva: +axi_sva_need_smc, but no AW or AR handshake was graded");
+        if ($test$plusargs("axi_sva_need_ext") && axi_hs_ext == 0)
+            $error("u_ext_out_axi_sva: +axi_sva_need_ext, but no AW or AR handshake was graded");
+    end
+`endif
+
+`undef SEP_AXI_SVA_ON
+`undef SEP_AXI_HS
+`undef SEP_AXI_SVA_PORTS
+
 
 `ifdef UVM
     // ------------------------------------------------------------------
