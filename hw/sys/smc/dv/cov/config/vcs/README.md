@@ -264,6 +264,7 @@ from it, rather than matching the expression by name:
 | `smc_tie_exclusions.el` | HIER-COPY | the scratch RAM and I3C DAT, DCT and RLT memory wires are graded on the ports of `smc_ip_integration`, where the memory macros sit (`smc_ip_integration.sv:66-68,369-370` and `:101-106,537-606`); `smc_wrapper.sv:207-212,221-224` declare the wires and `:371-381` and `:427-443` only connect `smc` to `smc_ip_integration`, `smc.sv:378-382,488-505` only pass the ports to `u_smc_cpu_wrapper` (`:722-723`) and `u_smc_peripherals` (`:900-905`), and `smc_peripherals.sv:318-335` only pass them to the I3C wrapper (`:1463-1468`), so the copies at `u_dut`, `u_smc` and `u_smc_peripherals` record the transitions of the graded port and leave the score while uncovered |
 | `smc_tie_exclusions.el` | AXI-SIDEBAND-CONST | a sideband field a literal drives, each group citing its assignment: the zeroer master port (`zeroer.sv:433-456`) on `axi_mst_mux_req[1]` of the data accelerator wrap (`smc_data_accelerator_wrap.sv:224`); the iDMA legalizer's AW and AR size and user and W user (`idma_generated.sv:3988-3995,4017-4024`, `idma_axi_write.sv:279`) on `axi_mst_mux_req[0]` (`:180`); the user fields and AW size both ports tie alike on the mux output `mst_axi_req_o` (`:234-263`) and its copies `axi_in_data_accel_req_i` and `axi_to_input_mux_req.data_accel` in the input fabric (`smc_base.sv:480,707`, `smc_fabric.sv:268`, `axi_alias_remap.sv:128-165`); the log port's `axi_lite_to_axi` request literal (`smc_input_fabric.sv:255-266`, `axi_lite_to_axi.sv:39-68`) on `log_axi_req` and, cache aside, `axi_to_input_mux_req.log`; the cluster MMIO port's region and user ties and forced `CACHE_MODIFIABLE` bit (`smc_4core_cpu.sv:501-509`) on `axi_in_mmio_req_i`, `axi_mmio_port_req_prepend_id` and `axi_to_input_mux_req.mmio` (`axi_isolate.sv:357`, `smc_cpu_wrapper.sv:332`, `smc.sv:621,710`, `smc_base.sv:478`, `smc_fabric.sv:266`, `prim_axi_id_prepend_wrap.sv:36-67`); and the output fabric's user overrides `SmcSrcId`, `MmodeSrcId` and `OthersSrcId` (`smc_output_fabric.sv:265-314`, `output_remap.sv:113-126`, `prim_axi_user_override.sv:4-7`, `smc_pkg.sv:301-303`) on each remap path's user and bits [11:4] of the mux output's. Every field the source does not tie, the data accelerator control path, every response user, the mailbox and log request prot (the latter crosses a CDC) and the local crossbar stay graded |
 | `smc_disabled_feature_exclusions.el` | B14 STROBE-FOLLOWS-ADDRESS | **a property of this bench, not of the design alone.** `uart_16550.sv:141-148` selects the write-only map only when the write address equals THR exactly, so a THR write starts at the register's own address, and every master of this bench strobes the lane at its start address: the cocotb AXI masters write contiguous bytes from it (`smc_sys_axi_agent.py:246-253` passes no strobe), a CPU store is sized and aligned, and the iDMA (`idma_axi_write.sv:118`) and the zeroer build their first strobe from the address offset. `uart_core.sv:734`'s THR-write row with the data lane unstrobed cannot occur, and no write arrives with no strobe at all, which `i2c_core.sv:379` and `:549` need, since FDATA and TXDATA take the whole `decoded_wr_biten` (`i2c_reg.sv:2764,3430`; `i2c_reg_pkg.sv:695-703`). **A master that issues sparse or empty strobes retires the class** |
+| `smc_disabled_feature_exclusions.el` | B15 ROM-LOADER-ERROR-ARMS | **a property of this bench, not of the design.** `OCAH4CORECluster_mem_swaps.sv:237-275` reads `+rom_bin64` or `+rom_hex` in a simulation-only initial block, opens the named file and loads it. Every graded SMC testlist entry passes `+rom_hex` with an image that exists (`testlists/cpu.toml`), so the arms that report a missing file (`:243`, `:259`) or no plusarg at all (`:273`) are bench misconfigurations the `$error` names, not paths of the design; the `+rom_bin64` arm stays graded, since the `holdout` production-ROM run mode passes it. **A graded entry without a ROM plusarg, or one naming a missing file, retires the class** |
 
 A regblock whose stall is `external_pending` (it has external registers)
 gets A2 only; a regblock that decodes errors gets neither. A regeneration
@@ -344,7 +345,7 @@ model, not by the build passing.
 
 ## VCS bring-up checklist
 
-On a VCS run check that: the compile accepts `-lca -cm_common_hier`; 
+On a VCS run check that: the compile accepts `-lca -cm_common_hier`;
 the committed `smc_cov_scope.hier` names every unit compiled from the dropped
 trees (a unit added to a vendored tree since the file was generated would
 otherwise be graded, and VCS accepts a stale scope file silently); and `u_dut`
@@ -461,22 +462,22 @@ every vector with no covered bit-direction, which is a real gap.
 
 Left graded, because a leaf can toggle it or no fact covers it:
 
-* the eFuse image itself, on the four signals named under EFUSE-IMAGE-COPY:
+- the eFuse image itself, on the four signals named under EFUSE-IMAGE-COPY:
   the eFuse image leaves sense full-width patterned images and the graded run
   covers it, so UNION-ALIAS and EFUSE-IMAGE-COPY take nothing on that run;
-* scratch RAM, L1 cache and I3C DCT and DAT memory words on the shells: the
+- scratch RAM, L1 cache and I3C DCT and DAT memory words on the shells: the
   CPU and the I3C controller write them, so firmware and an I3C leaf reach
   them;
-* mailbox data, the AXI filter, alias and output remap register data and the
+- mailbox data, the AXI filter, alias and output remap register data and the
   CPU write-back PC: firmware writes or reads them;
-* address high bits behind a demultiplexer: `axi_lite_demux.sv:224` and `:386`
+- address high bits behind a demultiplexer: `axi_lite_demux.sv:224` and `:386`
   copy AW and AR to every master port, so a port's address follows every
   access the demultiplexer forwards and no window holds it;
-* AxPROT, AxUSER, AxQOS and AxREGION on the inbound path: the bench drives them
+- AxPROT, AxUSER, AxQOS and AxREGION on the inbound path: the bench drives them
   from its ports (`tb_top.sv:848-991`), and leaves vary AxPROT;
-* external interrupt sources 2 to 16, which have bench pins, and every other
+- external interrupt sources 2 to 16, which have bench pins, and every other
   synchronizer cell;
-* every bit-direction the run covers inside a class's pattern: the covered
+- every bit-direction the run covers inside a class's pattern: the covered
   bits of the union views and image copies, and every covered net inside the
   ports-only units.
 

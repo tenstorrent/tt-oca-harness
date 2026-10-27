@@ -221,20 +221,22 @@ module rr_arb_tree #(
 
         assign next_idx = upper_empty      ? lower_idx : upper_idx;
         assign rr_d     = (gnt_i && req_o) ? next_idx  : rr_q;
-        // this holds the highest priority
-        always_ff @(posedge clk_i or negedge rst_ni) begin : p_rr_regs
-          if (!rst_ni) begin
-            rr_q   <= '0;
-          end else begin
-            if (flush_i) begin
-              rr_q   <= '0;
-            end else begin
-              rr_q   <= rr_d;
-            end
-          end
-        end
+
       end else begin : gen_unfair_arb
         assign rr_d = (gnt_i && req_o) ? ((rr_q == idx_t'(NumIn-1)) ? '0 : rr_q + 1'b1) : rr_q;
+      end
+
+      // this holds the highest priority
+      always_ff @(posedge clk_i or negedge rst_ni) begin : p_rr_regs
+        if (!rst_ni) begin
+          rr_q   <= '0;
+        end else begin
+          if (flush_i) begin
+            rr_q   <= '0;
+          end else begin
+            rr_q   <= rr_d;
+          end
+        end
       end
     end
 

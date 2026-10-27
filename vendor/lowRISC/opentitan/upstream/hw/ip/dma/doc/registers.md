@@ -482,8 +482,8 @@ Control register for DMA data movement.
 ### CONTROL . go
 Setting this bit triggers the DMA operation.
 For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.
-For Hardware handshake operation, DMA engine does not auto clear the Go bit.
-Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.
+For hardware handshake operation, the DMA engine keeps the `go` bit set across chunks and clears it, setting `status.done`, once `total_data_size` bytes have been transferred.
+Firmware clears the `go` bit to stop the hardware handshake operation earlier.
 
 ### CONTROL . abort
 Aborts the DMA operation if this bit is set.

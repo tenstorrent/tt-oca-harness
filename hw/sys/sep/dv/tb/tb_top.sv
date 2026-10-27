@@ -3743,6 +3743,8 @@ module sep_uvm_top
     // Every KM request is accepted and OTBN req=enable, so a count of the request strobe is
     // a count of accepted accesses (km uses .req/.we; otbn uses .enable/.write).
     logic [31:0] km_rom_req_cnt_q, km_sram_req_cnt_q, km_sram_wr_cnt_q, km_cpu_fetch_cnt_q;
+    logic [31:0] km_kmcsr_irq_entry_cnt_q;
+    logic        km_kmcsr_eoi_q;
     logic [31:0] otbn_imem_req_cnt_q, otbn_imem_wr_cnt_q;
     logic [31:0] otbn_dmem_req_cnt_q, otbn_dmem_wr_cnt_q;
     always_ff @(posedge clk_i or negedge rst_n_int) begin
@@ -3751,6 +3753,8 @@ module sep_uvm_top
             km_sram_req_cnt_q   <= '0;
             km_sram_wr_cnt_q    <= '0;
             km_cpu_fetch_cnt_q  <= '0;
+            km_kmcsr_irq_entry_cnt_q <= '0;
+            km_kmcsr_eoi_q      <= 1'b0;
             otbn_imem_req_cnt_q <= '0;
             otbn_imem_wr_cnt_q  <= '0;
             otbn_dmem_req_cnt_q <= '0;
@@ -3763,6 +3767,13 @@ module sep_uvm_top
                 `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.mem_ready &&
                 `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.mem_instr)
                 km_cpu_fetch_cnt_q <= km_cpu_fetch_cnt_q + 32'd1;
+            // A KM CPU entry into the KMCSR interrupt: the core sets eoi to the
+            // interrupts it serves at handler entry, and the KMCSR line is core
+            // interrupt 3 (picorv32_wrapper.sv, Picorv32KmcsrIrqBit).
+            km_kmcsr_eoi_q <= `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.u_picorv32.eoi[3];
+            if (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu.u_picorv32.eoi[3] &&
+                !km_kmcsr_eoi_q)
+                km_kmcsr_irq_entry_cnt_q <= km_kmcsr_irq_entry_cnt_q + 32'd1;
             if (u_dut.km_sram_mem_req.req) begin
                 km_sram_req_cnt_q <= km_sram_req_cnt_q + 32'd1;
                 if (u_dut.km_sram_mem_req.we) km_sram_wr_cnt_q <= km_sram_wr_cnt_q + 32'd1;
@@ -3783,6 +3794,7 @@ module sep_uvm_top
     assign km_sram_req_count_o     = km_sram_req_cnt_q;
     assign km_sram_write_count_o   = km_sram_wr_cnt_q;
     assign km_cpu_fetch_count_o    = km_cpu_fetch_cnt_q;
+    assign km_kmcsr_irq_entry_count_o = km_kmcsr_irq_entry_cnt_q;
     assign otbn_imem_req_count_o   = otbn_imem_req_cnt_q;
     assign otbn_imem_write_count_o = otbn_imem_wr_cnt_q;
     assign otbn_dmem_req_count_o   = otbn_dmem_req_cnt_q;
