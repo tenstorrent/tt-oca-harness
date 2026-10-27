@@ -10,8 +10,8 @@ proves HK-IRQSET fired and ``IRQ_STATUS.otp_change`` reads 1. CHK-OTP-ENTRY
 requires the KM CPU to enter the KMCSR interrupt after the pulse, so the handler
 ran. CHK-OTP-RETIRE requires PIC vector bit 30 to stay 0 and a following CMD_STAT to complete with
 return code 0, since the handler does not halt the KM. OBS-OTP-STICKY logs
-``IRQ_STATUS.otp_change`` and its enabled line after the handler; no spec
-sentence states their value, so they are not graded.
+``IRQ_STATUS.otp_change`` and its enabled line after the handler; CHK-OTP-RETIRE
+grades the effect of the handler's clear, so they are not graded again.
 """
 
 from __future__ import annotations

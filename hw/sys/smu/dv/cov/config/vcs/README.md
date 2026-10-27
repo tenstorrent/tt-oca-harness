@@ -10,7 +10,9 @@ build filelists; its contents are not fingerprinted and VCS accepts a stale
 file silently, so a build that changes the filelists needs a regenerated file
 and `--rebuild`. Any build produces the filelists the generator reads:
 
-    python3 tools/dv/run_dv.py --dut smu --items smoke
+```
+python3 tools/dv/run_dv.py --dut smu --items smoke
+```
 
 ## Generators
 
@@ -113,7 +115,9 @@ file is written from urg's `-dump full_exclusions` templates of the merged
 database and the run's raw report, so every checksum and signature comes from
 urg:
 
-    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
+```
+urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+line+cond+branch -report <dir>
+```
 
 The file is generated from an `all` run, the coverage set: a point `all`
 leaves uncovered is uncovered in `hosted` too, so the file holds for both.

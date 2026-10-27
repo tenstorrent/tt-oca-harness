@@ -46,13 +46,14 @@ the run's commit, simulator and figures. No `hosted`-only figure is recorded
 tracker
 |===
 
-`cov/sv/` carries ten cover-property modules, 109 points in all; the counts
-are the `OCAH_FCOV_COVER` invocations in each file. `tb/tb_wrapper_top.sv`
-instantiates all ten, and 101 points enter the database on its single
-target, `compile_smu_chiplet`, which has SEP present: four points sit behind
-`SMU_FCOV_PHASE2`, which no configuration defines, and the four inside
-`g_nosep` generate blocks exist only on a SEP=0 elaboration, which this
-package does not build (`hw/sys/smu/dv/docs/SMU_FCOV.adoc`).
+`cov/sv/` carries ten functional-coverage modules, 109 points in all; the
+counts are the `OCAH_FCOV_COVER` invocations in each file.
+`tb/tb_wrapper_top.sv` instantiates all ten, and 102 points enter the
+database on its single target, `compile_smu_chiplet`, which has SEP present:
+three points sit behind `SMU_FCOV_PHASE2`, which no configuration defines,
+and the four inside `g_nosep` generate blocks exist only on a SEP=0
+elaboration, which this package does not build
+(`hw/sys/smu/dv/docs/SMU_FCOV.adoc`).
 
 [cols="2,1,4",options="header",]
 |===
@@ -79,10 +80,11 @@ boundary
 [cols="2,3,3",options="header",]
 |===
 |Path |What it collects |Where it runs
-|Public Verilator |line / expr / user over `smu_wrapper_cov_scope.vlt`,
-which drops everything the wrapper instantiates at compile time -- the SMU
-block, the SEP, SMC and DTP trees, the `hw/top`
-integration shells, vendored and generated RTL. Toggle is not collected on
+|Public Verilator |line / expr / user, and the `cov/sv` covergroups as the
+`functional` family, over `smu_wrapper_cov_scope.vlt`, which drops
+everything the wrapper instantiates at compile time -- the SMU block, the
+SEP, SMC and DTP trees, the `hw/top` integration shells, vendored and
+generated RTL. Toggle is not collected on
 Verilator, as the DTP set does not collect it: `coverage_off -file` does not
 apply to a source file whose last line has no newline, and the vendored and
 `hw/common` files in that state would carry subsystem toggle points into the
@@ -91,8 +93,8 @@ wrapper's database |a developer or self-hosted run,
 followed by `tools/dv/fcov_owners.py` over its run directory, which writes
 `hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`. No `regress.yml` tier collects
 coverage: both `smu` rows carry `coverage: false`
-|Commercial |line / condition / branch / toggle / assertion databases under
-the licensed flow. `smu_wrapper_cov_scope.hier` follows the rule the SEP and SMC scopes state: SMC,
+|Commercial |line / condition / branch / toggle / assertion / group databases
+under the licensed flow. `smu_wrapper_cov_scope.hier` follows the rule the SEP and SMC scopes state: SMC,
 DTP and SEP leave as instance trees because each is graded on its own bench,
 as do the integration shells and the bench's AXI egress glue; bench units,
 library cells and the vendored interconnect cells leave by design unit; the
