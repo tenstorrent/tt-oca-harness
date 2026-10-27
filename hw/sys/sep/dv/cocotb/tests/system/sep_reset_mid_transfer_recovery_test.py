@@ -45,10 +45,10 @@ Checks:
                    the reset.
   CHK-SHADOW-CLEAR  with ``rst_ni`` low, every shadow word reads its RDL reset
                    value (``efuse_shadow_probe_o``), both after a completed sense
-                   and with sense-done low. For the LC_STATE word that is the
-                   INVALID hold that ``hw/sys/sep/doc/otp_fuse_controller.adoc``
-                   (Fuse Sensing and Boot Sequencing) gives before sensing
-                   completes, ``{~4'b1111, 4'b1111}``. The staged image differs from the
+                   and with sense-done low. The LC_STATE word reads the INVALID
+                   hold that ``hw/sys/sep/doc/otp_fuse_controller.adoc`` (Fuse
+                   Sensing and Boot Sequencing) gives before sensing completes,
+                   ``{~4'b1111, 4'b1111}``. The staged image differs from the
                    reset value in at least one word, so a shadow that keeps its
                    value through the reset fails this check. At least one reset
                    with sense-done low must find shadow words the partial sense
@@ -71,10 +71,13 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, SimTimeoutError, with_timeout
 from env.sep_efuse_image import (
+    LC_FIELD_MASK,
     LC_WORD_IDX,
     NUM_FUSE_WORDS,
     SHADOW_BASE,
     WORD_BITS,
+    WORD_MASK,
+    lc_encode,
 )
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import worst_resp
@@ -102,14 +105,17 @@ _HOLD = 20
 # the 200 kHz default one probe access outlasts the AXI timeout; eight core
 # periods keeps it inside, as in sep_reg_bit_bash_rand_test.
 _WDT_CLK_RATIO = 8
+# Logical LC_STATE before sensing completes: hw/sys/sep/doc/otp_fuse_controller.adoc
+# (Fuse Sensing and Boot Sequencing) holds the output at 4'b1111 until then.
+_LC_PRESENSE_RAW = 0xF
 
 
 def _shadow_reset_words() -> list[int]:
-    """Reset value of each shadow word, from the RDL.
-
-    The ``lc_state`` reset is the pre-sense INVALID hold, ``{~4'b1111, 4'b1111}``.
-    """
-    return [word_reset(SHADOW_BASE + 4 * i) for i in range(NUM_FUSE_WORDS)]
+    """Reset value of each shadow word: the RDL reset, and the pre-sense LC hold."""
+    words = [word_reset(SHADOW_BASE + 4 * i) for i in range(NUM_FUSE_WORDS)]
+    keep = words[LC_WORD_IDX] & WORD_MASK & ~LC_FIELD_MASK
+    words[LC_WORD_IDX] = keep | lc_encode(_LC_PRESENSE_RAW)
+    return words
 
 
 def _shadow_words() -> list[int | None]:
