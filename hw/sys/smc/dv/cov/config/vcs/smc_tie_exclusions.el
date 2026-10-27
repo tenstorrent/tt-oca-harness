@@ -27,10 +27,10 @@
 // that no longer passes it through.
 //==================================================
 
-CHECKSUM: "3517619815 4168147063"
+CHECKSUM: "1552934324 3548853123"
 ANNOTATION: "ModuleName: smc_wrapper"
 INSTANCE: smc_uvm_top.u_dut
-ANNOTATION: "SMC-HIER-COPY: this net is a scratch RAM or I3C table memory wire graded on the ports of smc_ip_integration, where the memory macros sit (smc_ip_integration.sv:63-65,366-367 and :98-103,527-584). smc_wrapper.sv:207-212,221-224 declare the wire and :371-381 and :426-442 only connect smc to smc_ip_integration; smc.sv:378-382,488-505 only pass the ports to u_smc_cpu_wrapper (:722-723) and u_smc_peripherals (:900-905); and smc_peripherals.sv:318-335 only pass them to the I3C wrapper (:1463-1468), so each copy records the transitions of the graded port. NOT waived: the wire on smc_ip_integration's ports, where the memory macros sit, and every other port of the shells. Retired by logic between a copy and the graded port."
+ANNOTATION: "SMC-HIER-COPY: this net is a scratch RAM or I3C table memory wire graded on the ports of smc_ip_integration, where the memory macros sit (smc_ip_integration.sv:66-68,369-370 and :101-106,537-606). smc_wrapper.sv:207-212,221-224 declare the wire and :371-381 and :427-443 only connect smc to smc_ip_integration; smc.sv:378-382,488-505 only pass the ports to u_smc_cpu_wrapper (:722-723) and u_smc_peripherals (:900-905); and smc_peripherals.sv:318-335 only pass them to the I3C wrapper (:1463-1468), so each copy records the transitions of the graded port. NOT waived: the wire on smc_ip_integration's ports, where the memory macros sit, and every other port of the shells. Retired by logic between a copy and the graded port."
 Toggle i3c_dct_mem_src[0].rdata "logic i3c_dct_mem_src[0].rdata[127:0]"
 Toggle i3c_dct_mem_src[1].rdata "logic i3c_dct_mem_src[1].rdata[127:0]"
 Toggle i3c_dct_mem_src[2].rdata "logic i3c_dct_mem_src[2].rdata[127:0]"
@@ -142,10 +142,10 @@ Toggle smc_scratch_ram_intf_req[29].wmask "logic smc_scratch_ram_intf_req[29].wm
 Toggle smc_scratch_ram_intf_req[30].wmask "logic smc_scratch_ram_intf_req[30].wmask[0:0]"
 Toggle smc_scratch_ram_intf_req[31].wmask "logic smc_scratch_ram_intf_req[31].wmask[0:0]"
 
-CHECKSUM: "572236210 2117341764"
+CHECKSUM: "572236210 1629599115"
 ANNOTATION: "ModuleName: smc"
 INSTANCE: smc_uvm_top.u_dut.u_smc
-ANNOTATION: "SMC-HIER-COPY: this net is a scratch RAM or I3C table memory wire graded on the ports of smc_ip_integration, where the memory macros sit (smc_ip_integration.sv:63-65,366-367 and :98-103,527-584). smc_wrapper.sv:207-212,221-224 declare the wire and :371-381 and :426-442 only connect smc to smc_ip_integration; smc.sv:378-382,488-505 only pass the ports to u_smc_cpu_wrapper (:722-723) and u_smc_peripherals (:900-905); and smc_peripherals.sv:318-335 only pass them to the I3C wrapper (:1463-1468), so each copy records the transitions of the graded port. NOT waived: the wire on smc_ip_integration's ports, where the memory macros sit, and every other port of the shells. Retired by logic between a copy and the graded port."
+ANNOTATION: "SMC-HIER-COPY: this net is a scratch RAM or I3C table memory wire graded on the ports of smc_ip_integration, where the memory macros sit (smc_ip_integration.sv:66-68,369-370 and :101-106,537-606). smc_wrapper.sv:207-212,221-224 declare the wire and :371-381 and :427-443 only connect smc to smc_ip_integration; smc.sv:378-382,488-505 only pass the ports to u_smc_cpu_wrapper (:722-723) and u_smc_peripherals (:900-905); and smc_peripherals.sv:318-335 only pass them to the I3C wrapper (:1463-1468), so each copy records the transitions of the graded port. NOT waived: the wire on smc_ip_integration's ports, where the memory macros sit, and every other port of the shells. Retired by logic between a copy and the graded port."
 Toggle smc_scratch_ram_intf_req_o[0].wmask "logic smc_scratch_ram_intf_req_o[0].wmask[0:0]"
 Toggle smc_scratch_ram_intf_req_o[1].wmask "logic smc_scratch_ram_intf_req_o[1].wmask[0:0]"
 Toggle smc_scratch_ram_intf_req_o[2].wmask "logic smc_scratch_ram_intf_req_o[2].wmask[0:0]"
@@ -339,7 +339,7 @@ Toggle axi_to_input_mux_req.mmio.w.user "logic axi_to_input_mux_req.mmio.w.user[
 Toggle axi_to_input_mux_req.mmio.aw.user "logic axi_to_input_mux_req.mmio.aw.user[11:0]"
 Toggle axi_to_input_mux_req.mmio.aw.region "logic axi_to_input_mux_req.mmio.aw.region[3:0]"
 
-CHECKSUM: "908717766 2933134181"
+CHECKSUM: "2362097360 2933134181"
 ANNOTATION: "ModuleName: smc_output_fabric"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric
 ANNOTATION: "SMC-AXI-SIDEBAND-CONST: smc_output_fabric.sv:265-274 pass the filter path through prim_axi_user_override_struct with AXI_USER_OVERRIDE SmcSrcId, and :281-314 elaborate the mmode and xvisor output_remap with USER_OVERRIDE_EN and MmodeSrcId and OthersSrcId (output_remap.sv:113-126), so each path's AW, AR and W user carry that constant (prim_axi_user_override.sv:4-7; smc_pkg.sv:301-303: 'hC, 3 and 0); the output mux (smc_output_fabric.sv:327-350) carries one of the three on axi_remapped_to_filter_req, whose user bits [11:4] are zero in all of them. NOT waived: addr, id and data, every field the source does not tie, the data accelerator control path, every response user, the mailbox and log request prot, the local crossbar and the mux output's AR size. Retired by a source that drives the field, or a stage that no longer passes it through."
@@ -353,10 +353,10 @@ Toggle gen_remap.axi_remap_out_req.xvisor.ar.user "logic gen_remap.axi_remap_out
 Toggle gen_remap.axi_remap_out_req.xvisor.w.user "logic gen_remap.axi_remap_out_req.xvisor.w.user[11:0]"
 Toggle gen_remap.axi_remap_out_req.xvisor.aw.user "logic gen_remap.axi_remap_out_req.xvisor.aw.user[11:0]"
 
-CHECKSUM: "683275578 767082031"
+CHECKSUM: "683275578 3188230095"
 ANNOTATION: "ModuleName: smc_peripherals"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals
-ANNOTATION: "SMC-HIER-COPY: this net is a scratch RAM or I3C table memory wire graded on the ports of smc_ip_integration, where the memory macros sit (smc_ip_integration.sv:63-65,366-367 and :98-103,527-584). smc_wrapper.sv:207-212,221-224 declare the wire and :371-381 and :426-442 only connect smc to smc_ip_integration; smc.sv:378-382,488-505 only pass the ports to u_smc_cpu_wrapper (:722-723) and u_smc_peripherals (:900-905); and smc_peripherals.sv:318-335 only pass them to the I3C wrapper (:1463-1468), so each copy records the transitions of the graded port. NOT waived: the wire on smc_ip_integration's ports, where the memory macros sit, and every other port of the shells. Retired by logic between a copy and the graded port."
+ANNOTATION: "SMC-HIER-COPY: this net is a scratch RAM or I3C table memory wire graded on the ports of smc_ip_integration, where the memory macros sit (smc_ip_integration.sv:66-68,369-370 and :101-106,537-606). smc_wrapper.sv:207-212,221-224 declare the wire and :371-381 and :427-443 only connect smc to smc_ip_integration; smc.sv:378-382,488-505 only pass the ports to u_smc_cpu_wrapper (:722-723) and u_smc_peripherals (:900-905); and smc_peripherals.sv:318-335 only pass them to the I3C wrapper (:1463-1468), so each copy records the transitions of the graded port. NOT waived: the wire on smc_ip_integration's ports, where the memory macros sit, and every other port of the shells. Retired by logic between a copy and the graded port."
 Toggle i3c_dct_mem_src_i[0].rdata "logic i3c_dct_mem_src_i[0].rdata[127:0]"
 Toggle i3c_dct_mem_src_i[1].rdata "logic i3c_dct_mem_src_i[1].rdata[127:0]"
 Toggle i3c_dct_mem_src_i[2].rdata "logic i3c_dct_mem_src_i[2].rdata[127:0]"

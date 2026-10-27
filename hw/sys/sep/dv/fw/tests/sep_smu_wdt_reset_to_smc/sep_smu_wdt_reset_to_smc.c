@@ -2,11 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * sep_smu_wdt_reset_to_smc - FW-armed WDT bark NMI then sticky bite.
+ * sep_smu_wdt_reset_to_smc - FW-armed WDT bark NMI then the watchdog bite.
  *
  * Brings the SMC up, installs the NMI vector, arms the SEP watchdog, handles
  * exactly one bark NMI, reports that it is still alive after it, then never
- * pets the watchdog so the real bite asserts. Recovery is out of scope.
+ * pets the watchdog so the real bite asserts. The bite holds until wdt_rst_ni
+ * asserts. At system level the watchdog reset is a pulse (about 32 reference
+ * clocks), and a cold reset must follow every watchdog timeout. The test does
+ * not drive that cold reset.
  */
 
 #include <stdint.h>

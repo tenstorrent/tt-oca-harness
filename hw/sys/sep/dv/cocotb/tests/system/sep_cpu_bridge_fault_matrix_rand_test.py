@@ -17,6 +17,14 @@ Only"; ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_d
   latches the block bit of ``PERIPH_BUS_ERR_STATUS`` (aes 0, hmac 1, kmac 2,
   otbn 3, csrng 4, edn 5, wdt 6); source 43 (vector bit 42) is the OR of the
   seven bits;
+* a partial write (a byte strobe that misses a byte the register owns) to an
+  AES or watchdog register answers SLVERR and latches that block's bit alone
+  (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:63-68``); the register
+  value after it is logged as ``OBS-PARTIAL-KEPT`` and not graded;
+* each of sources 41, 42 and 43 rises with no other vector bit changing in
+  that clock, except the other two of the three
+  (``hw/sys/sep/doc/interrupts.adoc:22-23`` "Bit ``i`` of that vector is PIC
+  source ``i + 1``"; ``:33-34`` "Slots 1–43 are individually assigned");
 * each ``PERIPH_BUS_ERR_CLEAR`` bit clears only its own block; both clear
   registers read 0;
 * ``DMA_BUS_ERR_CLEAR.clr`` clears both DMA latches for a written 1 only;
@@ -36,15 +44,54 @@ the faulting access concurrently on the CPU-LSU master and sweep the offset
 between them: each trial measures the clock of both pulses and moves the
 offset by their distance, inside a bounded range and number of trials.
 
+The read-only tap ``sep_internal_interrupts_probe_o`` is watched on every
+clock (``env/sep_bit_watch.pic_vector_watch``) for the exclusivity of each rise
+of vector bits 40, 41 and 42.
+
 Randomization (``SepSeededRng`` from the run seed): the block order of hmac,
 kmac and otbn, the sweep order, the hole offset of each block, the
 read-or-write choice of each re-fault, the clear order of bits 0 to 6, the 1
 to 3 clear masks (each with at least two set bits, one of them the bit of an
 unlatched block), the re-trigger blocks, the DMA source address inside the
-fixed outbound window and the copy size.
+fixed outbound window and the copy size; then the order of the AES and
+watchdog partial writes and, for each, the byte range of the strobe (1 to 3
+contiguous lanes of the register word that miss a byte the register owns) and
+the non-zero data of each strobed byte. Both partial-write legs run in every
+seed.
+
+The watchdog clock runs at ``WDT_CLK_RATIO`` core periods so that the
+full-strobe write of the watchdog register, which crosses the register clock
+domain crossing, completes well inside the AXI timeout. The watchdog stays
+disabled (``WDOG_CTRL.enable`` reset 0).
 
 Checkers:
   CHK-CTRL        status 0 after reset and after legal reads; vector 40..42 0.
+  CHK-PARTIAL-WR  a partial write to ``AES.CTRL_AUX_REGWEN`` and to
+                  ``WDT_TIMER.WDOG_BARK_THOLD`` answers SLVERR, raises the
+                  fault pulse of that block, gives PERIPH_BUS_ERR_STATUS = that
+                  block's bit alone and vector bit 42 = 1. The register reads
+                  its RDL reset value before the write
+                  (``integration/rdl/sep/aes.rdl:135`` ``CTRL_AUX_REGWEN[0:0] =
+                  0x1``; ``integration/rdl/sep/aon_timer.rdl:86``
+                  ``threshold[31:0] = 0x0``). No specification sentence states
+                  the register value after the refused write, so the read after
+                  it is logged as ``OBS-PARTIAL-KEPT`` and not graded. Sources:
+                  ``sep_cpu_ctrl.adoc:63-68`` "a partial write: a byte strobe
+                  that misses a byte the register owns ... also received
+                  SLVERR"; ``hw/sys/sep/doc/crypto.adoc:155-161`` (AES bridge
+                  bit); ``hw/sys/sep/doc/watchdog.adoc:19`` (watchdog bridge);
+                  ``hw/sys/sep/doc/interrupts.adoc:242-245`` (source 43 is the
+                  OR of the AES and watchdog bits). Control: a full-strobe
+                  write of the RDL reset value to the same register before the
+                  leg answers OKAY and latches nothing (``CTL-FULL-STROBE``).
+  CHK-PARTIAL-CLR a write of that block's PERIPH_BUS_ERR_CLEAR bit returns the
+                  status to 0 and vector bit 42 to 0.
+  CHK-SRC41-EXCL, CHK-SRC42-EXCL, CHK-SRC43-EXCL
+                  at every rise of vector bit 40, 41 or 42 in the run, every
+                  other vector bit keeps its value of the clock before; the
+                  six bits with an unstated idle level and the other two of
+                  the three bridge-fault bits are not compared; each bit rises
+                  at least once.
   CHK-RESP        a hole write answers SLVERR.
   CHK-LATCH       PERIPH_BUS_ERR_STATUS equals the faulted set.
   CHK-OR          vector bit 42 equals (status != 0).
@@ -52,8 +99,13 @@ Checkers:
   CHK-NONVAC      each matrix and mask step starts with at least two bits.
   CHK-MASK        a mask clear gives the faulted set AND NOT mask.
   CHK-AGAIN       a cleared block re-latches; a re-fault keeps the other bits.
+                  The status after the clear and after each re-fault equals
+                  the stimulus model, and vector bit 42 is 1 after the
+                  re-latch.
   CHK-CLR-READ0   both clear registers read 0 with both status registers set.
-  CHK-DMA-CLR     write 0 keeps, write 1 clears both, no cross-set.
+  CHK-DMA-CLR     write 0 keeps, write 1 clears both, no cross-set. In
+                  ``cell=both`` the DMA register-path fault answers SLVERR and,
+                  before the clear, vector bits 40 and 41 are both 1.
   CHK-HOST        a SLVERR DMA source read latches host_path_err alone.
   CHK-DMA-HOST-HOLD
                   after the host-path fault, a write of 1 to DMA STATUS.ERROR
@@ -63,7 +115,7 @@ Checkers:
                   "Secure DMA bridge fault status. Each bit is latched in
                   hardware and held until the corresponding DMA_BUS_ERR_CLEAR
                   write. These bits also drive dedicated PIC sources.";
-                  ``hw/sys/sep/doc/interrupts.adoc:231-232`` source 42 "DMA
+                  ``hw/sys/sep/doc/interrupts.adoc:233-234`` source 42 "DMA
                   host-path integrity/bus fault";
                   ``hw/sys/sep/doc/dma.adoc:131-132`` "Status completion and
                   error bits are write-one-to-clear". Control: the next cell
@@ -71,7 +123,24 @@ Checkers:
                   DMA_BUS_ERR_CLEAR and needs host_path_err = 0 and source 42
                   low (``sep_cpu_ctrl.adoc:60`` "Writing 1 emits a single-cycle
                   clear pulse to both latches").
-  CHK-RACE        a same-cycle fault and clear leaves the latch set.
+  CHK-RACE        a same-cycle fault and clear leaves the latch set. The
+                  whole status register is graded: for a peripheral latch,
+                  PERIPH_BUS_ERR_STATUS equals the other latched bits of the
+                  stimulus model plus the raced bit; for the DMA host path,
+                  DMA_BUS_ERR_STATUS equals host_path_err alone and vector bit
+                  40 is 0.
+
+FCOV: the owner window is open over each graded instance. The pass label
+``bfault_pass`` (``env/sep_fcov_gate.set_bfault_pass``) is written 0 at the
+start of each graded instance and 1 after its checks pass; the sampler holds
+every legal outcome of this leaf's points until that rise. The race trials run
+with the window closed; only the graded read after a same-cycle coincidence
+opens it. The exclusive rises of sources 41 to 43 in the window
+(``cp_src_exclusive_other`` bins s41 to s43) are held until the end of the
+run: CHK-SRC41/42/43-EXCL grade every rise of the run there, and after each
+check passes the leaf sets the bit of its source in ``exo_pass``
+(``env/sep_fcov_gate.set_exo_pass``), which samples the held rises of that
+source.
 
 Observed only (``OBS-DMA-HOST-CLR``): STATUS.ERROR and ERROR_CODE.BUS_ERROR
 after a write of 1 to DMA_BUS_ERR_CLEAR while both are set. No sentence states
@@ -89,13 +158,21 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
+from env.sep_bit_watch import pic_vector_watch
 from env.sep_fabric_tap import SepFabricTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    exo_pass_bit,
+    open_graded_window,
+    set_bfault_pass,
+    set_exo_pass,
+)
 from env.sep_field_compare import field_compare
 from env.sep_filter_model import FilterEntry
+from env.sep_pic_map import vec_bit, vec_mask
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, sym
+from sep_reg_meta import AES, HMAC, KMAC, OTBN, SEP_CPU_CTRL, WDT_TIMER, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import (
     _D,
@@ -164,6 +241,39 @@ RACE_TRIALS = 16  # trials of one same-cycle sweep
 RACE_RANGE = 64  # largest offset magnitude, clocks
 VEC_SETTLE = 4  # clocks before a vector sample
 VIP_NS = 20_000
+LABEL_CLK = 2  # clocks after a pass-label write before the next bus access
+
+# Partial-write legs: one register in each of the two bridge blocks that no
+# hole leg reaches. The owned bytes come from the generated field masks; the
+# golden of the register value is its RDL reset.
+PARTIAL_REG = {"aes": (AES, "CTRL_AUX_REGWEN"), "wdt": (WDT_TIMER, "WDOG_BARK_THOLD")}
+PARTIAL_BLOCKS = tuple(PARTIAL_REG)
+# Watchdog clock in core periods for this leaf (sim-timing knob, as in the
+# watchdog register leaves): the full-strobe write of WDOG_BARK_THOLD crosses
+# the register clock domain crossing and completes in a few watchdog clocks.
+WDT_CLK_RATIO = 8
+
+# Exclusivity of the three bridge-fault sources: own vector bit and the bits
+# that may move in the same clock (the other two of the three).
+EXCL_SRC = (41, 42, 43)
+EXCL_SAME = {s: vec_mask([o for o in EXCL_SRC if o != s]) for s in EXCL_SRC}
+
+
+def _owned_bytes(mask: int) -> int:
+    """Lane mask (bit k = byte k of the word) of the bytes holding a field bit."""
+    return sum(1 << k for k in range(4) if (mask >> (8 * k)) & 0xFF)
+
+
+def _partial_ranges(mask: int) -> list[tuple[int, int]]:
+    """(offset, bytes) of every 1-3 lane contiguous strobe that misses an owned byte."""
+    owned = _owned_bytes(mask)
+    out = []
+    for off in range(4):
+        for n in range(1, 4):
+            lanes = ((1 << n) - 1) << off
+            if off + n <= 4 and owned & ~lanes:
+                out.append((off, n))
+    return out
 
 
 class _Cfg:
@@ -195,6 +305,19 @@ class _Cfg:
         self.dma_size = 4 * rng.randrange(1, MAX_COPY // 4 + 1)
         span = (WIN_HI + 1 - WIN_LO - self.dma_size) // 4
         self.dma_src = WIN_LO + 4 * rng.randrange(span + 1)
+        # Partial-write legs (drawn after every earlier draw): the block order,
+        # then per block the strobe byte range and the non-zero strobed bytes.
+        self.partial_order = list(PARTIAL_BLOCKS)
+        rng.shuffle(self.partial_order)
+        self.partial: dict[str, tuple[int, int, int]] = {}
+        for b in PARTIAL_BLOCKS:
+            blk, reg = PARTIAL_REG[b]
+            cands = _partial_ranges(blk.mask32(reg))
+            off, n = cands[rng.randrange(len(cands))]
+            data = 0
+            for k in range(n):
+                data |= rng.randrange(1, 0x100) << (8 * k)
+            self.partial[b] = (off, n, data)
 
     def draw_lines(self) -> list[str]:
         return [
@@ -205,6 +328,10 @@ class _Cfg:
             f"retrigger clear={self.retrig_clear} still_set={self.retrig_set}",
             f"dma_src=0x{self.dma_src:08x} dma_size={self.dma_size}",
             "refault_ops=" + "".join("r" if o == "rd" else "w" for o in self.refault_ops),
+            "partial_order="
+            + ",".join(self.partial_order)
+            + " partial="
+            + ",".join(f"{b}:off{o}/bytes{n}/data0x{d:x}" for b, (o, n, d) in self.partial.items()),
         ]
 
 
@@ -254,6 +381,11 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
 
     required_evidence = (
         "CHK-CTRL",
+        "CHK-PARTIAL-WR",
+        "CHK-PARTIAL-CLR",
+        "CHK-SRC41-EXCL",
+        "CHK-SRC42-EXCL",
+        "CHK-SRC43-EXCL",
         "CHK-RESP",
         "CHK-LATCH",
         "CHK-OR",
@@ -275,22 +407,44 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.counts[chk] = self.counts.get(chk, 0) + 1
 
     def _fail(self, chk: str, line: str) -> None:
+        """Close the owner window first, so no held outcome of this run samples, then raise."""
+        close_graded_window(self.logger)
         msg = f"{chk} FAIL seed={self.c.seed} {line}"
         self.logger.error(msg)
         raise AssertionError(msg)
 
     def _ctrl_missing(self, line: str) -> None:
+        close_graded_window(self.logger)
         msg = f"CTRL-MISSING seed={self.c.seed} {line}"
         self.logger.error(msg)
         raise AssertionError(msg)
 
+    # ---- FCOV pass label -----------------------------------------------------------
+    async def _arm(self) -> None:
+        """Start a graded instance: bfault_pass 0 drops every held outcome."""
+        set_bfault_pass(False, self.logger)
+        await ClockCycles(cocotb.top.clk_i, LABEL_CLK)
+
+    async def _release(self) -> None:
+        """The checks of this instance passed: bfault_pass 1 samples the held outcomes."""
+        set_bfault_pass(True, self.logger)
+        await ClockCycles(cocotb.top.clk_i, LABEL_CLK)
+
+    async def _open(self) -> None:
+        """Open the owner window right before a graded step and start an instance."""
+        open_graded_window(TEST, self.logger)
+        await self._arm()
+
     # ---- accesses ----------------------------------------------------------------
-    async def _acc(self, op: SepAxiOp, addr: int, data: int = 0) -> tuple[int, int]:
-        kw = {"op": op, "addr": addr, "length": 4, "size": 2}
+    async def _acc(
+        self, op: SepAxiOp, addr: int, data: int = 0, nbytes: int = 4
+    ) -> tuple[int, int]:
+        """One single-beat access of ``nbytes`` bytes from ``addr`` (inside one word)."""
+        kw = {"op": op, "addr": addr, "length": nbytes, "size": 2}
         if op is SepAxiOp.READ:
             kw["allow_ungraded_read_resp"] = True
         else:
-            kw["wdata"] = data & 0xFFFF_FFFF
+            kw["wdata"] = data & ((1 << (8 * nbytes)) - 1)
             kw["allow_unverified_write_resp"] = True
         seq = SepAxiAccessSeq("fault_acc", **kw)
         await self.start_seq(seq)
@@ -348,6 +502,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
                 f"resp={RESP_NAME.get(resp, resp)}"
             )
             if resp != RESP_SLVERR:
+                close_graded_window(self.logger)
                 msg = f"CTL-RESP FAIL {line} expect=SLVERR"
                 self.logger.error(msg)
                 raise AssertionError(msg)
@@ -398,10 +553,128 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         if not ok:
             self._fail("CHK-CTRL", line)
         self._pass("CHK-CTRL", line)
+        await self._release()
+
+    async def _partial(self, b: str) -> None:
+        """Partial write to the register of ``b``: SLVERR, own bit alone; value after it logged."""
+        c = self.c
+        blk, reg = PARTIAL_REG[b]
+        addr = blk.addr(reg)
+        fmask = blk.mask32(reg)
+        rst = blk.reset32(reg)
+        off, n, data = c.partial[b]
+        lanes = ((1 << n) - 1) << off
+        # Entry read and the full-strobe twin, outside the owner window.
+        close_graded_window(self.logger)
+        pre = await self._rd_ok(addr)
+        st0 = await self._periph()
+        resp_c, _ = await self._acc(SepAxiOp.WRITE, addr, rst)
+        st1 = await self._periph()
+        vec_c = await self._vec()
+        ctl = (
+            f"block={b} reg={reg} addr=0x{addr:08x} wdata=0x{rst:x} strobe=0xf "
+            f"resp={RESP_NAME.get(resp_c, resp_c)} status_before=0x{st0 & PERIPH_MASK:02x} "
+            f"status_after=0x{st1 & PERIPH_MASK:02x} vec42={self._b(vec_c, 42)}"
+        )
+        self.logger.info("CTL-FULL-STROBE LOG seed=%d %s", c.seed, ctl)
+        if resp_c != RESP_OKAY or st0 & PERIPH_MASK or st1 & PERIPH_MASK or self._b(vec_c, 42):
+            self._ctrl_missing(f"CTL-FULL-STROBE {ctl} expect=OKAY,status=0,vec42=0")
+        # The graded partial write.
+        await self._open()
+        mk = self.pulses.mark()
+        exp_resp = RESP_SLVERR
+        resp, _ = await self._acc(SepAxiOp.WRITE, addr + off, data, nbytes=n)
+        st = await self._periph()
+        vec = await self._vec()
+        post = await self._rd_ok(addr)
+        pulses = self.pulses.clocks(mk, PROBE_SET[b])
+        f_st = field_compare(st, BIT[b], PERIPH_MASK)
+        f_pre = field_compare(pre, rst, fmask)
+        f_post = field_compare(post, rst, fmask)
+        line = (
+            f"block={b} reg={reg} addr=0x{addr + off:08x} lanes=0x{lanes:x} "
+            f"owned=0x{_owned_bytes(fmask):x} wdata=0x{data:x} resp={RESP_NAME.get(resp, resp)} "
+            f"expect={RESP_NAME[exp_resp]} fault_pulse_clks={pulses} "
+            f"status=0x{st & PERIPH_MASK:02x} exp_status=0x{BIT[b]:02x} vec42={self._b(vec, 42)} "
+            f"pre=0x{pre:08x} rdl_reset=0x{rst:x} field_mask=0x{fmask:x} "
+            f"status[{f_st.fields()}] pre[{f_pre.fields()}]"
+        )
+        ok = (
+            resp == exp_resp and len(pulses) >= 1 and f_st.ok and self._b(vec, 42) == 1 and f_pre.ok
+        )
+        if not ok:
+            self._fail("CHK-PARTIAL-WR", line)
+        self._pass("CHK-PARTIAL-WR", line)
+        # No specification sentence states the register value after a refused
+        # partial write: the read after it is logged only.
+        self.logger.info(
+            "OBS-PARTIAL-KEPT LOG seed=%d block=%s reg=%s pre=0x%08x post=0x%08x "
+            "rdl_reset=0x%x field_mask=0x%x post_fields_equal_reset=%d",
+            c.seed,
+            b,
+            reg,
+            pre,
+            post,
+            rst,
+            fmask,
+            int(f_post.ok),
+        )
+        if fmask != 0xFFFF_FFFF:
+            self.logger.info(
+                "OBS-PARTIAL-RSVD LOG seed=%d block=%s reg=%s pre_raw=0x%08x post_raw=0x%08x "
+                "reason=bits_outside_the_rdl_fields_have_no_stated_value",
+                c.seed,
+                b,
+                reg,
+                pre,
+                post,
+            )
+        self.latched |= BIT[b]
+        text, ok = await self._clear_write(BIT[b])
+        line = f"block={b} clear=0x{BIT[b]:02x} {text}"
+        if not ok:
+            self._fail("CHK-PARTIAL-CLR", line)
+        self._pass("CHK-PARTIAL-CLR", line)
+        await self._release()
+
+    async def _leg_partial(self) -> None:
+        for b in self.c.partial_order:
+            await self._partial(b)
+
+    async def _leg_excl(self) -> None:
+        """CHK-SRC41/42/43-EXCL over every rise of the run since the watcher mark.
+
+        After each check passes, the bit of its source joins ``exo_pass``,
+        which releases the held ``cp_src_exclusive_other`` rises of that
+        source; the label returns to 0 after the last check.
+        """
+        released = 0
+        for src in EXCL_SRC:
+            key = f"s{src}"
+            same = EXCL_SAME[src]
+            try:
+                rises = self.vw.rises_since(self.vw_mark, key)
+                smears = self.vw.smears_since(self.vw_mark, key, same_clock=same)
+            except AssertionError as exc:
+                # VecWatchNoRiseError (no rise of the own bit), an idle or dead watcher.
+                self._fail(f"CHK-SRC{src}-EXCL", f"src={src} vec_bit={vec_bit(src)} {exc}")
+            line = (
+                f"src={src} vec_bit={vec_bit(src)} rises={len(rises)} "
+                f"rise_clks={[r.clk for r in rises][:8]} smears={len(smears)} "
+                f"first_smear={[(k, hex(m)) for k, m in smears[:2]]} same_clock=0x{same:x}"
+            )
+            if smears or not rises:
+                self._fail(f"CHK-SRC{src}-EXCL", line)
+            self._pass(f"CHK-SRC{src}-EXCL", line)
+            released |= exo_pass_bit(src)
+            set_exo_pass(released, self.logger)
+            await ClockCycles(cocotb.top.clk_i, LABEL_CLK)
+        set_exo_pass(0, self.logger)
 
     async def _leg_latch(self) -> None:
         resps = []
         for b in self.c.block_order:
+            await self._arm()
             resps.append(await self._fault(b, "wr"))
             st = await self._periph()
             vec = await self._vec()
@@ -419,6 +692,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             if self._b(vec, 42) != int(bool(st & PERIPH_MASK)):
                 self._fail("CHK-OR", orl)
             self._pass("CHK-OR", orl)
+            await self._release()
 
     async def _dma_reg_fault(self) -> tuple[int, int]:
         resp, _ = await self._acc(SepAxiOp.READ, dma_reg_unmapped_addr())
@@ -446,8 +720,9 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             self._ctrl_missing(
                 f"CTL-LATCH dma_reg set-up resp={resp} dma_status=0x{d:x} vec40={self._b(vec, 40)}"
             )
-        open_graded_window(TEST, self.logger)
+        # Precondition read of PERIPH_BUS_ERR_STATUS, outside the owner window.
         p = await self._periph()
+        await self._open()
         pc = await self._acc(SepAxiOp.READ, PERIPH_CLEAR_ADDR)
         dc = await self._acc(SepAxiOp.READ, DMA_CLEAR_ADDR)
         f1 = field_compare(pc[1], 0, PERIPH_CLR_MASK)
@@ -468,7 +743,9 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         ):
             self._fail("CHK-CLR-READ0", line)
         self._pass("CHK-CLR-READ0", line)
+        await self._release()
         # Register-path write of 0, then the write of 1 (the control).
+        await self._arm()
         await self._wr_ok(DMA_CLEAR_ADDR, 0)
         d0 = await self._dma()
         v0 = await self._vec()
@@ -479,6 +756,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         if (d0 & DMA_MASK) != DMA_REG_PATH_BIT or self._b(v0, 40) != 1:
             self._fail("CHK-DMA-CLR", line)
         self._pass("CHK-DMA-CLR", line)
+        await self._release()
         close_graded_window(self.logger)
         await self._wr_ok(DMA_CLEAR_ADDR, 1)
         d1 = await self._dma()
@@ -491,7 +769,6 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         )
         if d1 & DMA_REG_PATH_BIT or self._b(v1, 40):
             self._ctrl_missing(f"CTL-DMA-CLR write of 1 did not clear: dma_status=0x{d1:x}")
-        open_graded_window(TEST, self.logger)
         line = (
             f"cell=reg_clear host_path_err={int(bool(d1 & DMA_HOST_PATH_BIT))} "
             f"vec41={self._b(v1, 41)}"
@@ -538,54 +815,84 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self._pass(chk, line)
 
     async def _leg_matrix(self) -> None:
+        open_graded_window(TEST, self.logger)
         for i in self.c.clear_order:
+            await self._arm()
             await self._restore_full()
             twin = "latched" if PERIPH_BITS[i] in BLOCKS else "unlatched_twin=latched_bits"
             await self._clear_step("CHK-CLR-MATRIX", 1 << i, f"cleared={PERIPH_BITS[i]} {twin}")
-        # Drain to zero, one latched bit at a time in the clear order.
+            await self._release()
+        # Drain to zero, one latched bit at a time in the clear order. The
+        # restore faults are graded by CHK-RESP and by the first drain step's
+        # comparison of the status before the clear with the model.
+        await self._arm()
         await self._restore_full()
         order = [i for i in self.c.clear_order if PERIPH_BITS[i] in BLOCKS]
         for k, i in enumerate(order):
+            if k:
+                await self._arm()
             text, ok = await self._clear_write(1 << i)
             line = f"drain={k + 1}/{len(order)} cleared={PERIPH_BITS[i]} {text}"
             if not ok:
                 self._fail("CHK-CLR-MATRIX", line)
             self._pass("CHK-CLR-MATRIX", line)
+            await self._release()
 
     async def _leg_masks(self) -> None:
         for k, mk in enumerate(self.c.masks):
+            await self._arm()
             await self._restore_full()
             await self._clear_step("CHK-MASK", mk, f"step={k + 1} mask=0x{mk:02x}")
+            await self._release()
 
     async def _leg_again(self) -> None:
         c = self.c
+        await self._arm()
         await self._restore_full()
         b = c.retrig_clear
         await self._wr_ok(PERIPH_CLEAR_ADDR, BIT[b])
         self.latched &= ~BIT[b]
+        exp_mid = self.latched & PERIPH_MASK
         mid = await self._periph()
         await self._fault(b, self._next_op())
         after = await self._periph()
+        vec = await self._vec()
         others = after & ~BIT[b] & PERIPH_MASK
         exp_others = self.latched & ~BIT[b]
         line = (
             f"block={b} relatched={int(bool(after & BIT[b]))} others_kept=0x{others:02x} "
-            f"cleared_status=0x{mid & PERIPH_MASK:02x} after=0x{after & PERIPH_MASK:02x}"
+            f"cleared_status=0x{mid & PERIPH_MASK:02x} exp_cleared=0x{exp_mid:02x} "
+            f"after=0x{after & PERIPH_MASK:02x} vec42={self._b(vec, 42)}"
         )
-        if mid & BIT[b] or not after & BIT[b] or others != exp_others:
+        if (
+            (mid & PERIPH_MASK) != exp_mid
+            or not after & BIT[b]
+            or others != exp_others
+            or self._b(vec, 42) != 1
+        ):
             self._fail("CHK-AGAIN", line)
         self._pass("CHK-AGAIN", line)
+        await self._release()
         b2 = c.retrig_set
+        # Precondition read; the arm after it drops its outcomes.
         before = await self._periph()
+        await self._arm()
+        exp_after = self.latched & PERIPH_MASK
         await self._fault(b2, self._next_op())
         after = await self._periph()
         line = (
             f"block={b2} still_set=1 before=0x{before & PERIPH_MASK:02x} "
-            f"after=0x{after & PERIPH_MASK:02x} others_kept=0x{after & ~BIT[b2] & PERIPH_MASK:02x}"
+            f"after=0x{after & PERIPH_MASK:02x} exp_after=0x{exp_after:02x} "
+            f"others_kept=0x{after & ~BIT[b2] & PERIPH_MASK:02x}"
         )
-        if not before & BIT[b2] or (after & PERIPH_MASK) != (before & PERIPH_MASK):
+        if (
+            not before & BIT[b2]
+            or (after & PERIPH_MASK) != (before & PERIPH_MASK)
+            or (after & PERIPH_MASK) != exp_after
+        ):
             self._fail("CHK-AGAIN", line)
         self._pass("CHK-AGAIN", line)
+        await self._release()
 
     # ---- DMA host path -------------------------------------------------------------
     async def _idle_check(self, tag: str) -> None:
@@ -616,11 +923,11 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
 
     async def _leg_host(self) -> None:
         c = self.c
+        close_graded_window(self.logger)
         await self._wr_ok(DMA_CLEAR_ADDR, 1)
         d = await self._dma()
         if d & DMA_MASK:
             self._ctrl_missing(f"DMA_BUS_ERR_STATUS=0x{d:x} after clear before the copy")
-        close_graded_window(self.logger)
         for idx, ns in zip(OUT_PAIR, (False, True)):
             await self.obank.program(
                 idx,
@@ -638,7 +945,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self.dma.program_range(0x0, 0xFFFF_FFFF, valid=True)
         await self.dma.wr(_D.addr("ADDR_SPACE_ID"), ASID_RESET)
         await self._idle_check("before host copy")
-        open_graded_window(TEST, self.logger)
+        await self._open()
         st, ars, slv = await self._failing_copy(c.dma_size)
         ecode = await self.dma.rd(_D.addr("ERROR_CODE"))
         d = await self._dma()
@@ -662,8 +969,10 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         if not ok:
             self._fail("CHK-HOST", line)
         self._pass("CHK-HOST", line)
+        await self._release()
 
         # A write of 1 to STATUS.ERROR leaves the host-path latch and source 42.
+        await self._arm()
         await self._w1c_error()
         st_w = await self.dma.read_status()
         d = await self._dma()
@@ -676,9 +985,11 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         if st_w.error != 0 or not d & DMA_HOST_PATH_BIT or self._b(vec, 41) != 1:
             self._fail("CHK-DMA-HOST-HOLD", line)
         self._pass("CHK-DMA-HOST-HOLD", line)
+        await self._release()
 
         # Host-path clear cells; cell=host_only is the control of CHK-DMA-HOST-HOLD.
         before = d & DMA_MASK
+        await self._arm()
         await self._wr_ok(DMA_CLEAR_ADDR, 0)
         a0 = await self._dma()
         await self._wr_ok(DMA_CLEAR_ADDR, 1)
@@ -697,18 +1008,45 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         ):
             self._fail("CHK-DMA-CLR", line)
         self._pass("CHK-DMA-CLR", line)
+        await self._release()
+        close_graded_window(self.logger)
         await self._w1c_error()
         await self._idle_check("before second host copy")
+        # cell=both: a second host-path fault and a register-path fault, then the
+        # write of 0 and the write of 1.
+        await self._open()
         st2, _, slv2 = await self._failing_copy(c.dma_size)
         if not st2.error or not slv2:
             self._fail("CHK-DMA-CLR", f"cell=both set-up copy: {st2.fmt()} slverr_reads={slv2}")
-        await self._dma_reg_fault()
-        before = (await self._dma()) & DMA_MASK
+        resp_r, d_r = await self._dma_reg_fault()
+        before = d_r & DMA_MASK
+        vb = await self._vec()
         await self._wr_ok(DMA_CLEAR_ADDR, 0)
         a0 = await self._dma()
         await self._wr_ok(DMA_CLEAR_ADDR, 1)
         a1 = await self._dma()
         v1 = await self._vec()
+        line = (
+            f"cell=both reg_fault_resp={RESP_NAME.get(resp_r, resp_r)} before=0x{before:x} "
+            f"before_vec40={self._b(vb, 40)} before_vec41={self._b(vb, 41)} "
+            f"after_write0=0x{a0 & DMA_MASK:x} after_write1=0x{a1 & DMA_MASK:x} "
+            f"vec40={self._b(v1, 40)} vec41={self._b(v1, 41)}"
+        )
+        both = DMA_HOST_PATH_BIT | DMA_REG_PATH_BIT
+        if (
+            resp_r != RESP_SLVERR
+            or before != both
+            or self._b(vb, 40) != 1
+            or self._b(vb, 41) != 1
+            or (a0 & DMA_MASK) != both
+            or a1 & DMA_MASK
+            or self._b(v1, 40)
+            or self._b(v1, 41)
+        ):
+            self._fail("CHK-DMA-CLR", line)
+        self._pass("CHK-DMA-CLR", line)
+        await self._release()
+        close_graded_window(self.logger)
         st_c = await self.dma.read_status()
         ecode_c = await self.dma.rd(_D.addr("ERROR_CODE"))
         self.logger.info(
@@ -718,20 +1056,6 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             st_c.error,
             int(bool(ecode_c & BUS_ERROR)),
         )
-        line = (
-            f"cell=both before=0x{before:x} after_write0=0x{a0 & DMA_MASK:x} "
-            f"after_write1=0x{a1 & DMA_MASK:x} vec40={self._b(v1, 40)} vec41={self._b(v1, 41)}"
-        )
-        both = DMA_HOST_PATH_BIT | DMA_REG_PATH_BIT
-        if (
-            before != both
-            or (a0 & DMA_MASK) != both
-            or a1 & DMA_MASK
-            or self._b(v1, 40)
-            or self._b(v1, 41)
-        ):
-            self._fail("CHK-DMA-CLR", line)
-        self._pass("CHK-DMA-CLR", line)
         await self._w1c_error()
 
     # ---- same-cycle races -------------------------------------------------------------
@@ -778,6 +1102,11 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         tried: set = set()
         d = 0
         hole = self.c.hole[b]
+        # The trials run with the owner window closed; only the graded read
+        # after a coincidence opens it. Only the clear and the faults of ``b``
+        # touch PERIPH_BUS_ERR_STATUS, so every other bit keeps its model value.
+        close_graded_window(self.logger)
+        exp_others = self.latched & ~BIT[b] & PERIPH_MASK
         for trial in range(1, RACE_TRIALS + 1):
             if not self.latched & BIT[b] or not (await self._periph()) & BIT[b]:
                 await self._fault(b, "wr")
@@ -807,21 +1136,27 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             if rresp != RESP_SLVERR or wresp != RESP_OKAY:
                 self._fail("CHK-RACE", f"kind=periph block={b} wr={wresp} rd={rresp}")
             if coin:
+                await self._open()
                 st = await self._periph()
                 vec = await self._vec()
                 later = [s for s in self.pulses.clocks(mk, sb) if s > coin[0]]
-                self.latched = st & PERIPH_MASK
+                exp = exp_others | BIT[b]
                 line = (
                     f"kind=periph block={b} coincident=1 later_faults={len(later)} "
-                    f"status_after=0x{st & PERIPH_MASK:02x} vec42={self._b(vec, 42)} "
-                    f"offset={d} trials={trial} clk={coin[0]}"
+                    f"status_after=0x{st & PERIPH_MASK:02x} exp_status=0x{exp:02x} "
+                    f"vec42={self._b(vec, 42)} offset={d} trials={trial} clk={coin[0]}"
                 )
-                if later or not st & BIT[b] or self._b(vec, 42) != 1:
+                if later or (st & PERIPH_MASK) != exp or self._b(vec, 42) != 1:
                     self._fail("CHK-RACE", line)
                 self._pass("CHK-RACE", line)
+                await self._release()
+                close_graded_window(self.logger)
+                self.latched = exp
                 return
             st = await self._periph()
-            self.latched = st & PERIPH_MASK
+            # The race outcome of ``b`` in a trial without a coincidence depends on
+            # the order of the two pulses; the other bits stay at the model.
+            self.latched = exp_others | (st & BIT[b])
             if not sets or not clrs:
                 self._fail(
                     "CHK-RACE", f"kind=periph block={b} missing pulse sets={sets} clrs={clrs}"
@@ -838,6 +1173,9 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         tried: set = set()
         d = 0
         src = self.c.dma_src
+        # The trials run with the owner window closed; only the graded read
+        # after a coincidence opens it.
+        close_graded_window(self.logger)
         for trial in range(1, RACE_TRIALS + 1):
             tried.add(d)
             await self._w1c_error()
@@ -872,17 +1210,26 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
                 s2.error,
             )
             if coin:
+                await self._open()
                 dst_ = await self._dma()
                 vec = await self._vec()
                 later = [s for s in self.pulses.clocks(mk, sb) if s > coin[0]]
                 line = (
                     f"kind=dma coincident=1 later_faults={len(later)} "
-                    f"status_after=0x{dst_ & DMA_MASK:02x} vec41={self._b(vec, 41)} offset={d} "
+                    f"status_after=0x{dst_ & DMA_MASK:02x} exp_status=0x{DMA_HOST_PATH_BIT:02x} "
+                    f"vec41={self._b(vec, 41)} vec40={self._b(vec, 40)} offset={d} "
                     f"trials={trial} clk={coin[0]}"
                 )
-                if later or not dst_ & DMA_HOST_PATH_BIT or self._b(vec, 41) != 1:
+                if (
+                    later
+                    or (dst_ & DMA_MASK) != DMA_HOST_PATH_BIT
+                    or self._b(vec, 41) != 1
+                    or self._b(vec, 40) != 0
+                ):
                     self._fail("CHK-RACE", line)
                 self._pass("CHK-RACE", line)
+                await self._release()
+                close_graded_window(self.logger)
                 await self._w1c_error()
                 return
             if not sets or not clrs:
@@ -907,6 +1254,12 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.logger.info("SEED seed=%d", seed)
         for d in c.draw_lines():
             self.logger.info("DRAW %s", d)
+        self.cfg.wdt_clk_period_ns = WDT_CLK_RATIO * self.cfg.sys_clk_period_ns
+        self.logger.info(
+            "WDT sim-timing knob: clk_wdt=%s ns (%dx core)",
+            self.cfg.wdt_clk_period_ns,
+            WDT_CLK_RATIO,
+        )
         await self.bring_up_no_cpu()
         self.suppress_host_axi_transaction_info()
         self.dma = SepDmaOps(self)
@@ -914,10 +1267,13 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.out = SepFabricTap("PR-OUT").start()
         self.out_rsp = SepFabricTap("PR-OUT-RSP").start()
         self.pulses = _PulseRec().start()
+        self.vw = pic_vector_watch({f"s{s}": vec_bit(s) for s in EXCL_SRC}).start()
+        self.vw_mark = self.vw.mark()
         self._go_word = control_word(go=1, initial=1)
 
-        open_graded_window(TEST, self.logger)
+        await self._open()
         await self._leg_ctrl()
+        await self._leg_partial()
         await self._leg_latch()
         await self._leg_dma_reg()
         await self._leg_matrix()
@@ -927,7 +1283,9 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         for b in c.sweep_order:
             await self._race_periph(b)
         await self._race_dma()
+        await self._leg_excl()
         close_graded_window(self.logger)
+        await self.vw.stop()
         await self.pulses.stop()
         await self.out.stop()
         await self.out_rsp.stop()

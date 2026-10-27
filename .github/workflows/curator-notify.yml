@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: curator-notify
+
+on:
+  schedule:
+    - cron: "0 15 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Post the planned requests and reminders (otherwise only print the plan)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: curator-notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check notification rules
+        run: python3 .github/scripts/curator_notify.py --self-test
+      - name: Request reviewers and post reminders
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURATOR_READ_TOKEN: ${{ secrets.GH_AW_READ_PROJECT_TOKEN }}
+          APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+        run: |
+          if [ "$APPLY" = true ]; then
+            python3 .github/scripts/curator_notify.py --verbose --apply
+          else
+            python3 .github/scripts/curator_notify.py --verbose
+          fi

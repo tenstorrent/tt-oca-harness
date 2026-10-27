@@ -62,7 +62,9 @@ with a block reset (SW_RESET_N bit 3 for HMAC, 4 for KMAC, 5 for CSRNG and EDN) 
 INTR_STATE and INTR_ENABLE as 0. The seed draws the block order, the source order, the
 order of the cells after the cell (1, 1), the masks and the flip order.
   CHK-INTR-BITWALK  each (state, enable) cell: the line equals state AND enable, no other
-                    line of the block moves, and a write-one clear drops state and line
+                    line of the block moves, INTR_STATE and INTR_ENABLE read the cell, a
+                    low line is one that rose in the cell (1, 1) of the same run, and a
+                    write-one clear drops state and line
   CHK-INTR-FLIP     with the state set, the line follows each enable toggle both ways
   CHK-INTR-LINE     after INTR_TEST of mask T, INTR_STATE reads T and each line equals
                     state AND enable over a hold of 4 times t_rise
@@ -70,6 +72,34 @@ order of the cells after the cell (1, 1), the masks and the flip order.
 The leg grades only the cells the body above and the simultaneous fan-in test do not
 walk; the other cells run as controls (CTRL-INTR-OPEN). t_rise is the clocks from the
 INTR_TEST write response of the cell (1, 1) to the line high, logged per source.
+
+Entropy-source interrupt-line leg (after each crypto run). The ESRC has one PIC source,
+16, on vector bit 15 (hw/sys/sep/doc/interrupts.adoc:23, :109-111). INTR_ENABLE enables
+each of the eight INTR_STATUS sources (hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc:18,
+:157-172), the status bits are level interrupts cleared by a write of one
+(hw/ip/entropy_source/regs/entropy_source.rdl:108-163) and INTR_TEST pulses a source
+(entropy_source.adoc:181-196). So the line is the OR of INTR_STATUS AND INTR_ENABLE.
+A level status bit sets again while its hardware cause holds, so before the
+first case the leg stops the hardware causes (CTRL.MODULE_ENABLE 0,
+HEALTH_TEST_CTRL.ENABLE 0, HEALTH_TEST_STATUS cleared) and requires INTR_STATUS
+to stay 0 (CTRL-ESRC-QUIET, a set-up error otherwise); it restores both control
+registers after the leg. Every case starts from INTR_ENABLE 0 and a write-one
+clear of every status bit (CTRL-ESRC-CLEAN). Every run walks all eight bits; the seed draws the bit order, the
+disabled-only masks, the probe bit and the pair.
+  CHK-ESRC-LINE         one bit enabled and pulsed: the line rises and holds, and
+                        INTR_STATUS and INTR_ENABLE read that bit only
+  CHK-ESRC-CLEAR        the write-one clear of the last set bit: the line falls and holds
+                        low, and INTR_STATUS reads 0
+  CHK-ESRC-DISABLED     status T with enable E, T AND E = 0, both non-zero: the line stays
+                        low; then enabling one bit of T raises it (the bit is live)
+  CHK-ESRC-PAIR         two bits enabled and pulsed: the line is high, INTR_STATUS reads both
+  CHK-ESRC-ONE-CLEARED  the clear of one of the two: the line does not fall, and
+                        INTR_STATUS reads the other bit only
+
+Each crypto and ESRC run executes twice with the same plan: first with the graded FCOV
+window closed, then with the window open around each graded case. A bin of this owner
+samples only in the second run, so the same case has already passed its checks once. A
+FAIL closes the window, and no window opens after a FAIL.
 """
 
 from __future__ import annotations
@@ -86,7 +116,7 @@ from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import pic
 from sep_base_test import sep_base_test
-from sep_reg_meta import CSRNG, EDN, HMAC, KMAC
+from sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, HMAC, KMAC, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_irq_aggregator_seq import (
     DMA_CLEAR_ADDR,
@@ -152,6 +182,40 @@ _IP_BLOCK = {"hmac": HMAC, "kmac": KMAC, "csrng": CSRNG, "edn": EDN}
 # sources of IRQ_TABLE, belong to the open owners.
 _NEW_SOURCES = ("hmac_done", "kmac_done", "kmac_err")
 
+# Entropy-source interrupt line. INTR_STATUS, INTR_ENABLE and INTR_TEST have one field
+# layout (hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc:133-148, :157-172, :181-196);
+# source k is the k-th field by bit position.
+TEST = "sep_irq_ip_to_aggregator_test"
+_ESRC_F = ENTROPY_SOURCE.fields("INTR_STATUS")
+ESRC_FIELDS = tuple(sorted(_ESRC_F, key=lambda f: _ESRC_F[f]["bp"]))
+ESRC_ST_BITS = tuple(_ESRC_F[f]["bp"] for f in ESRC_FIELDS)
+ESRC_EN_BITS = tuple(ENTROPY_SOURCE.fields("INTR_ENABLE")[f]["bp"] for f in ESRC_FIELDS)
+ESRC_TS_BITS = tuple(ENTROPY_SOURCE.fields("INTR_TEST")[f]["bp"] for f in ESRC_FIELDS)
+ESRC_ST_DEF = ENTROPY_SOURCE.mask("INTR_STATUS")
+ESRC_EN_DEF = ENTROPY_SOURCE.mask("INTR_ENABLE")
+ESRC_STATUS = sym("ENTROPY_SOURCE_INTR_STATUS_REG_ADDR")
+ESRC_ENABLE = sym("ENTROPY_SOURCE_INTR_ENABLE_REG_ADDR")
+ESRC_TEST = sym("ENTROPY_SOURCE_INTR_TEST_REG_ADDR")
+ESRC_LINE = agg_from_pic(pic("Entropy source IRQ"))
+# The hardware sources the ESRC leg stops before its first case: CTRL.MODULE_ENABLE
+# ("clearing this field holds the main state machine idle"), HEALTH_TEST_CTRL.ENABLE
+# ("disabling a test clears its state") and the latched HEALTH_TEST_STATUS (write
+# one to clear) (hw/ip/entropy_source/regs/entropy_source.rdl:45, :314, :352-358).
+# The INTR_STATUS bits are level interrupts (:113, "level intr"), so a bit
+# whose hardware cause holds sets again after its write-one clear.
+ESRC_CTRL = sym("ENTROPY_SOURCE_CTRL_REG_ADDR")
+ESRC_HT_CTRL = sym("ENTROPY_SOURCE_HEALTH_TEST_CTRL_REG_ADDR")
+ESRC_HT_STATUS = sym("ENTROPY_SOURCE_HEALTH_TEST_STATUS_REG_ADDR")
+ESRC_MODULE_ENABLE = ENTROPY_SOURCE.fields("CTRL")["MODULE_ENABLE"]["bm"]
+ESRC_HT_ENABLE = ENTROPY_SOURCE.fields("HEALTH_TEST_CTRL")["ENABLE"]["bm"]
+ESRC_HT_STATUS_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_STATUS")["HEALTH_STATUS"]["bm"]
+ESRC_N = len(ESRC_FIELDS)
+
+
+def esrc_reg(bits: tuple[int, ...], idx_mask: int) -> int:
+    """Map a mask over the ESRC source index to register bits."""
+    return sum(1 << b for i, b in enumerate(bits) if (idx_mask >> i) & 1)
+
 
 def cell_graded(src: str, state: int, enable: int) -> bool:
     if (state, enable) in ((0, 1), (1, 0)):
@@ -187,6 +251,14 @@ class LegPlan:
     sources: dict[str, tuple[str, ...]]
     cells: dict[str, tuple[tuple[int, int], ...]]
     trials: dict[str, tuple[MaskTrial, ...]]
+    # ESRC line leg, over the source index: the order of the single-bit cases, the
+    # disabled-only status and enable masks, the probe source, and the pair (first
+    # cleared first).
+    esrc_order: tuple[int, ...]
+    esrc_dis_test: int
+    esrc_dis_enable: int
+    esrc_probe: int
+    esrc_pair: tuple[int, int]
 
     def summary(self) -> str:
         parts = [f"blocks={','.join(self.blocks)}"]
@@ -195,7 +267,12 @@ class LegPlan:
             for t in self.trials[b]:
                 parts.append(f"{b}.{t.kind}=E0x{t.enable:x}/T0x{t.test:x}/C0x{t.clear:x}")
         cells = " ".join(f"{n}:" + ",".join(f"{s}{e}" for s, e in c) for n, c in self.cells.items())
-        return " ".join(parts) + " cells=" + cells
+        esrc = (
+            f"esrc.order={','.join(str(k) for k in self.esrc_order)} "
+            f"esrc.dis=T0x{self.esrc_dis_test:02x}/E0x{self.esrc_dis_enable:02x}"
+            f"/probe{self.esrc_probe} esrc.pair={self.esrc_pair[0]},{self.esrc_pair[1]}"
+        )
+        return " ".join(parts) + " cells=" + cells + " " + esrc
 
 
 def _draw_mixed(rng: SepSeededRng, n: int) -> int:
@@ -267,7 +344,28 @@ def draw_leg_plan(seed: int) -> LegPlan:
                 )
             )
         trials[b] = tuple(out)
-    return LegPlan(seed, tuple(blocks), sources, cells, trials)
+    # ESRC draws, after every draw above.
+    esrc_order = list(range(ESRC_N))
+    rng.shuffle(esrc_order)
+    dis_test = _draw_mixed(rng, ESRC_N)
+    while True:
+        dis_enable = rng.getrandbits(ESRC_N) & ~dis_test
+        if dis_enable:
+            break
+    probe = rng.choice([i for i in range(ESRC_N) if (dis_test >> i) & 1])
+    pair = rng.sample(range(ESRC_N), 2)
+    return LegPlan(
+        seed,
+        tuple(blocks),
+        sources,
+        cells,
+        trials,
+        tuple(esrc_order),
+        dis_test,
+        dis_enable,
+        probe,
+        (pair[0], pair[1]),
+    )
 
 
 @pyuvm.test()
@@ -275,7 +373,17 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
     """CSRNG/EDN/HMAC/DMA INTR_TEST and bridge faults set only their own aggregator bit."""
 
     # The crypto interrupt-line leg grades these; the body before it keeps its asserts.
-    required_evidence = ("CHK-INTR-LINE", "CHK-INTR-CLEAR", "CHK-INTR-FLIP", "CHK-INTR-BITWALK")
+    required_evidence = (
+        "CHK-INTR-LINE",
+        "CHK-INTR-CLEAR",
+        "CHK-INTR-FLIP",
+        "CHK-INTR-BITWALK",
+        "CHK-ESRC-LINE",
+        "CHK-ESRC-CLEAR",
+        "CHK-ESRC-DISABLED",
+        "CHK-ESRC-PAIR",
+        "CHK-ESRC-ONE-CLEARED",
+    )
 
     async def _sample_agg_known(self, mask: int) -> int:
         """Sample the vector, requiring the bits in ``mask`` to be 0 or 1.
@@ -576,13 +684,16 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         Spec: hw/sys/sep/doc/interrupts.adoc:23 (bit i is PIC source i+1) and :117-161;
         the INTR_STATE, INTR_ENABLE and INTR_TEST rows of
         vendor/lowRISC/opentitan/overlay/regs/{hmac,kmac,csrng,edn}/regs/gen/adoc/*.adoc.
-        Every trial starts from a block reset. The graded FCOV window opens at the first
-        write of a trial and closes before each block reset.
+        Every trial starts from a block reset. The leg and the ESRC leg run twice with the
+        same plan: run "closed" never opens the graded FCOV window; run "graded" opens it
+        at the first write of a trial and closes it before each block reset.
         """
         dut = cocotb.top
         seed = self.random_seed()
         plan = draw_leg_plan(seed)
-        self.chk = SepChkLog(self, "sep_irq_ip_to_aggregator_test", seed)
+        self.chk = SepChkLog(self, TEST, seed)
+        self._graded_run = False
+        self._run_tag = "closed"
         self.swrst = SepSwReset(self)
         self.swrst.value = LEG_BASELINE
         await self.swrst.release()
@@ -595,13 +706,28 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             {s.name: s.agg_idx for blk in LEG_BLOCKS.values() for s in blk},
             name="sep_internal_interrupts",
         ).start()
-        self.t_rise: dict[str, int | None] = {}
+        try:
+            for graded in (False, True):
+                self._graded_run = graded
+                self._run_tag = "graded" if graded else "closed"
+                self.logger.info("INFO-RUN %s", self._run_tag)
+                await self._crypto_run(plan)
+                await self._esrc_leg(plan)
+        finally:
+            close_graded_window(self.logger)
+        self.swrst.value = LEG_BASELINE
+        await self.swrst.release()
+        await self.vec.stop()
+        self.chk.finish()
 
+    async def _crypto_run(self, plan: LegPlan) -> None:
+        self.t_rise: dict[str, int | None] = {}
         for block in plan.blocks:
             for name in plan.sources[block]:
                 for state, enable in plan.cells[name]:
                     await self._leg_cell(block, _BY_NAME[name], state, enable)
-                self.chk.ctrl(
+                self._grade(
+                    "ctrl",
                     "INTR-CELL11",
                     self.t_rise.get(name) is not None,
                     block=block,
@@ -611,12 +737,20 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         for block in plan.blocks:
             for trial in plan.trials[block]:
                 await self._leg_mask_trial(block, trial)
-
         close_graded_window(self.logger)
-        self.swrst.value = LEG_BASELINE
-        await self.swrst.release()
-        await self.vec.stop()
-        self.chk.finish()
+
+    def _open(self) -> None:
+        """Open the owner window in the graded run only, and never after a FAIL."""
+        if self._graded_run and self.chk.failures == 0:
+            open_graded_window(TEST, self.logger)
+
+    def _grade(self, kind: str, name: str, cond: bool, **fields) -> bool:
+        """Grade a check ("chk") or a control ("ctrl"); a FAIL closes the window first."""
+        if not cond:
+            close_graded_window(self.logger)
+        fields["run"] = self._run_tag
+        rec = self.chk.ok if kind == "chk" else self.chk.ctrl
+        return rec(name, cond, **fields)
 
     @staticmethod
     def _leg_field_mask(block: str, reg: str) -> int:
@@ -713,7 +847,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         base_lv = {n: self.vec.level(n) for n in others}
 
         m0 = self.vec.mark()
-        open_graded_window("sep_irq_ip_to_aggregator_test", self.logger)
+        self._open()
         if enable:
             await self.irq.write32(src.enable_addr, bit)
         if state:
@@ -721,6 +855,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         m1 = self.vec.mark()
         high_at_resp = self.vec.level(src.name)
         st = await self.irq.read32(src.state_addr)
+        en = await self.irq.read32(src.enable_addr)
         expect = state & enable
         if (state, enable) == (1, 1):
             t_rise: int | None = 0
@@ -745,18 +880,26 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 and not self.vec.fall_clks_since(m1, src.name)
             )
         else:
-            line_ok = self.vec.high_clocks_since(m0, src.name) == 0
+            # Positive probe of a low line: the same line rose in the cell (1, 1) of this
+            # run, which runs first for every source.
+            line_ok = (
+                self.vec.high_clocks_since(m0, src.name) == 0
+                and self.t_rise.get(src.name) is not None
+            )
         others_ok = self._leg_still(m0, others) and all(
             self.vec.level(n) == base_lv[n] for n in others
         )
         state_ok = (st & drv) == (bit if state else 0)
+        enable_ok = (en & drv) == (bit if enable else 0)
         fields = dict(
             block=block,
             src=src.name,
             bit=src.test_bit,
             cell=f"{state}{enable}",
             state=f"0x{st & drv:x}",
+            enable_rb=f"0x{en & drv:x}",
             vec=self.vec.level(src.name),
+            live=int(self.t_rise.get(src.name) is not None),
             others_unchanged=int(others_ok),
             baseline_ok=int(base_ok),
             baseline_x=_baseline_x_field(),
@@ -764,19 +907,19 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             hold=hold,
             w1c="n/a",
         )
-        ok = base_ok and line_ok and others_ok and state_ok
+        ok = base_ok and line_ok and others_ok and state_ok and enable_ok
         if cell_graded(src.name, state, enable):
-            self.chk.ok("INTR-BITWALK", ok, **fields)
+            self._grade("chk", "INTR-BITWALK", ok, **fields)
         else:
-            self.chk.ctrl("INTR-OPEN", ok, **fields)
+            self._grade("ctrl", "INTR-OPEN", ok, **fields)
         if not state:
             return
 
         await self._leg_flip(block, src, bit if enable else 0)
 
         pre = await self.irq.read32(src.state_addr)
-        self.chk.ctrl(
-            "INTR-W1C-PRE", bool(pre & bit), block=block, src=src.name, state=f"0x{pre:x}"
+        self._grade(
+            "ctrl", "INTR-W1C-PRE", bool(pre & bit), block=block, src=src.name, state=f"0x{pre:x}"
         )
         tr = self._leg_hold(src.name)
         await self.irq.write32(src.state_addr, bit)
@@ -788,6 +931,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         ok = low_ok and others_ok and not (st2 & bit)
         fields.update(
             state=f"0x{st2 & drv:x}",
+            enable_rb="n/a",
             vec=self.vec.level(src.name),
             others_unchanged=int(others_ok),
             w1c=enable,
@@ -796,9 +940,9 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             hold=4 * tr,
         )
         if w1c_graded(src.name, enable):
-            self.chk.ok("INTR-BITWALK", ok, **fields)
+            self._grade("chk", "INTR-BITWALK", ok, **fields)
         else:
-            self.chk.ctrl("INTR-OPEN", ok, **fields)
+            self._grade("ctrl", "INTR-OPEN", ok, **fields)
 
     async def _leg_flip(self, block: str, src: IrqSrc, enable_reg: int) -> None:
         """Toggle the enable bit of ``src`` (state 1) and back; the line follows each write."""
@@ -809,7 +953,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             m = self.vec.mark()
             await self.irq.write32(src.enable_addr, new_reg)
             ok, t = await self._leg_settle(src.name, new_en, 8 * tr, 4 * tr)
-            self.chk.ok(
+            self._grade(
+                "chk",
                 "INTR-FLIP",
                 ok,
                 block=block,
@@ -822,7 +967,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 hold=4 * tr,
             )
             if new_en:
-                self.chk.ctrl(
+                self._grade(
+                    "ctrl",
                     "INTR-FLIP-RISE",
                     self.vec.rises_since(m, src.name) > 0,
                     block=block,
@@ -836,7 +982,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         src0 = srcs[0]
         drv = _reg_mask(srcs, (1 << len(srcs)) - 1)
         st0, en0 = await self._leg_block_reset(block)
-        self.chk.ctrl(
+        self._grade(
+            "ctrl",
             "INTR-RESET-CLEAN",
             self._leg_base_ok(block, st0, en0),
             block=block,
@@ -846,7 +993,7 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         )
         tr = self._leg_hold(*(s.name for s in srcs))
         m0 = self.vec.mark()
-        open_graded_window("sep_irq_ip_to_aggregator_test", self.logger)
+        self._open()
         await self.irq.write32(src0.enable_addr, trial.enable)
         await self.irq.write32(src0.test_addr, trial.test)
         st = await self.irq.read32(src0.state_addr) & drv
@@ -867,7 +1014,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             for s in srcs
         )
         vec = self._leg_vec(block)
-        self.chk.ok(
+        self._grade(
+            "chk",
             "INTR-LINE",
             rise_ok and bits_ok and st == trial.test,
             block=block,
@@ -880,7 +1028,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             bound=8 * tr,
             hold=4 * tr,
         )
-        self.chk.ctrl(
+        self._grade(
+            "ctrl",
             "INTR-LINE-CAUSE",
             all(self.t_rise.get(s.name) is not None for s in srcs),
             block=block,
@@ -888,7 +1037,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         )
 
         # Write-one clear of C. The LINE read above shows the bits of C that are set.
-        self.chk.ctrl(
+        self._grade(
+            "ctrl",
             "INTR-CLEAR-PRE",
             (st & trial.clear) == (trial.test & trial.clear),
             block=block,
@@ -916,7 +1066,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             for s in srcs
         )
         vec2 = self._leg_vec(block)
-        self.chk.ok(
+        self._grade(
+            "chk",
             "INTR-CLEAR",
             fall_ok and bits_ok and st2 == (trial.test & ~trial.clear & drv),
             block=block,
@@ -932,3 +1083,284 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         by_bit = {s.test_bit: s for s in srcs}
         for b in trial.flips:
             await self._leg_flip(block, by_bit[b], trial.enable)
+
+    # ---- ESRC interrupt-line leg ---------------------------------------------------------
+    async def _esrc_leg(self, plan: LegPlan) -> None:
+        """INTR_STATUS AND INTR_ENABLE of the ESRC drives vector bit 15 (see the module doc)."""
+        self.evec = SepBitWatch(
+            cocotb.top.sep_internal_interrupts_probe_o,
+            {"esrc": ESRC_LINE},
+            name="sep_internal_interrupts_esrc",
+        ).start()
+        # Largest clean rise time of the single-bit cases of this run; bounds the later cases.
+        self.esrc_t = 0
+        saved = await self._esrc_quiet()
+        try:
+            for k in plan.esrc_order:
+                await self._esrc_single(k)
+            await self._esrc_disabled(plan)
+            await self._esrc_pair(plan)
+            await self._esrc_clean("end")
+        finally:
+            close_graded_window(self.logger)
+        await self._esrc_restore(saved)
+        await self.evec.stop()
+
+    async def _esrc_quiet(self) -> tuple[int, int]:
+        """Window closed: stop the ESRC hardware interrupt causes before the leg.
+
+        The leg sets each status bit with INTR_TEST only. Clears CTRL.MODULE_ENABLE
+        and HEALTH_TEST_CTRL.ENABLE, clears HEALTH_TEST_STATUS and every INTR_STATUS
+        bit, then requires INTR_STATUS and HEALTH_TEST_STATUS to read 0 after
+        ``_LEG_RISE_BOUND`` clocks (CTRL-ESRC-QUIET). A bit that a hardware cause
+        sets again fails the leaf as a set-up error. Returns the CTRL and
+        HEALTH_TEST_CTRL values to restore after the leg."""
+        close_graded_window(self.logger)
+        ctrl = await self.irq.read32(ESRC_CTRL)
+        ht = await self.irq.read32(ESRC_HT_CTRL)
+        await self.irq.write32(ESRC_ENABLE, 0)
+        await self.irq.write32(ESRC_CTRL, ctrl & ~ESRC_MODULE_ENABLE & 0xFFFF_FFFF)
+        await self.irq.write32(ESRC_HT_CTRL, ht & ~ESRC_HT_ENABLE & 0xFFFF_FFFF)
+        await self.irq.write32(ESRC_HT_STATUS, ESRC_HT_STATUS_MASK)
+        await self.irq.write32(ESRC_STATUS, ESRC_ST_DEF)
+        await ClockCycles(cocotb.top.clk_i, self._LEG_RISE_BOUND)
+        st = await self.irq.read32(ESRC_STATUS) & ESRC_ST_DEF
+        hts = await self.irq.read32(ESRC_HT_STATUS) & ESRC_HT_STATUS_MASK
+        ok = self._grade(
+            "ctrl",
+            "ESRC-QUIET",
+            st == 0 and hts == 0,
+            ctrl=f"0x{ctrl:08x}",
+            ht_ctrl=f"0x{ht:08x}",
+            status=f"0x{st:08x}",
+            ht_status=f"0x{hts:08x}",
+            wait=self._LEG_RISE_BOUND,
+        )
+        if not ok:
+            raise AssertionError(
+                f"ESRC set-up error: INTR_STATUS=0x{st:08x} HEALTH_TEST_STATUS=0x{hts:08x} "
+                f"{self._LEG_RISE_BOUND} clocks after the hardware causes were stopped"
+            )
+        return ctrl, ht
+
+    async def _esrc_restore(self, saved: tuple[int, int]) -> None:
+        """Window closed: write back CTRL and HEALTH_TEST_CTRL as read before the leg."""
+        close_graded_window(self.logger)
+        ctrl, ht = saved
+        await self.irq.write32(ESRC_HT_CTRL, ht)
+        await self.irq.write32(ESRC_CTRL, ctrl)
+
+    def _esrc_tr(self) -> int:
+        return max(self.esrc_t, 1)
+
+    async def _esrc_read(self, case: str) -> tuple[int, int]:
+        """INTR_STATUS and INTR_ENABLE; the bits outside the defined fields are logged only."""
+        st = await self.irq.read32(ESRC_STATUS)
+        en = await self.irq.read32(ESRC_ENABLE)
+        self.chk.obs(
+            "ESRC-RSVD",
+            case=case,
+            run=self._run_tag,
+            status_rsvd=f"0x{st & ~ESRC_ST_DEF & 0xFFFF_FFFF:08x}",
+            enable_rsvd=f"0x{en & ~ESRC_EN_DEF & 0xFFFF_FFFF:08x}",
+        )
+        return st & ESRC_ST_DEF, en & ESRC_EN_DEF
+
+    async def _esrc_clean(self, case: str) -> None:
+        """Window closed: INTR_ENABLE 0, then a write-one clear of every status bit."""
+        close_graded_window(self.logger)
+        await self.irq.write32(ESRC_ENABLE, 0)
+        await self.irq.write32(ESRC_STATUS, ESRC_ST_DEF)
+        st, en = await self._esrc_read(case)
+        await ClockCycles(cocotb.top.clk_i, 4 * self._esrc_tr())
+        self._grade(
+            "ctrl",
+            "ESRC-CLEAN",
+            st == 0 and en == 0 and self.evec.level() == 0,
+            case=case,
+            status=f"0x{st:08x}",
+            enable=f"0x{en:08x}",
+            line=self.evec.level(),
+        )
+
+    async def _esrc_rise(self, m0, m1) -> int | None:
+        """Clocks from the write response (``m1``) to the line high; 0 when it rose
+        between ``m0`` and ``m1``; None when it does not rise within the bound."""
+        if self.evec.rises_since(m0) and self.evec.level() == 1:
+            return 0
+        try:
+            return await self.evec.wait_rise(m1, self._LEG_RISE_BOUND) - m1.clk
+        except BitWatchTimeout:
+            return None
+
+    async def _esrc_single(self, k: int) -> None:
+        name = ESRC_FIELDS[k]
+        st_bit = 1 << ESRC_ST_BITS[k]
+        en_bit = 1 << ESRC_EN_BITS[k]
+        case = f"single_{name}"
+        await self._esrc_clean(case)
+        m0 = self.evec.mark()
+        self._open()
+        await self.irq.write32(ESRC_ENABLE, en_bit)
+        await self.irq.write32(ESRC_TEST, 1 << ESRC_TS_BITS[k])
+        m1 = self.evec.mark()
+        t = await self._esrc_rise(m0, m1)
+        hold = 4 * max(t or 0, 1)
+        await ClockCycles(cocotb.top.clk_i, hold)
+        st, en = await self._esrc_read(case)
+        rises = self.evec.rises_since(m0)
+        ok = (
+            t is not None
+            and rises == 1
+            and not self.evec.fall_clks_since(m0)
+            and self.evec.level() == 1
+            and st == st_bit
+            and en == en_bit
+        )
+        self._grade(
+            "chk",
+            "ESRC-LINE",
+            ok,
+            src=name,
+            idx=k,
+            status=f"0x{st:08x}",
+            enable=f"0x{en:08x}",
+            expect=f"0x{st_bit:08x}",
+            line=self.evec.level(),
+            rises=rises,
+            t_rise="timeout" if t is None else t,
+            bound=self._LEG_RISE_BOUND,
+            hold=hold,
+        )
+        if t is not None:
+            self.esrc_t = max(self.esrc_t, t)
+        await self._esrc_clear_last(case, st_bit)
+
+    async def _esrc_clear_last(self, case: str, st_bit: int) -> None:
+        """Write-one clear of the one status bit left: the line falls and stays low."""
+        tr = self._esrc_tr()
+        mc = self.evec.mark()
+        await self.irq.write32(ESRC_STATUS, st_bit)
+        try:
+            await self.evec.wait_level(0, 8 * tr)
+            fell = True
+        except BitWatchTimeout:
+            fell = False
+        mh = self.evec.mark()
+        await ClockCycles(cocotb.top.clk_i, 4 * tr)
+        st, _ = await self._esrc_read(case)
+        ok = (
+            fell
+            and self.evec.level() == 0
+            and self.evec.rises_since(mc) == 0
+            and self.evec.high_clocks_since(mh) == 0
+            and st == 0
+        )
+        self._grade(
+            "chk",
+            "ESRC-CLEAR",
+            ok,
+            case=case,
+            cleared=f"0x{st_bit:08x}",
+            status=f"0x{st:08x}",
+            line=self.evec.level(),
+            bound=8 * tr,
+            hold=4 * tr,
+        )
+
+    async def _esrc_disabled(self, plan: LegPlan) -> None:
+        tr = self._esrc_tr()
+        st_t = esrc_reg(ESRC_ST_BITS, plan.esrc_dis_test)
+        en_e = esrc_reg(ESRC_EN_BITS, plan.esrc_dis_enable)
+        en_p = 1 << ESRC_EN_BITS[plan.esrc_probe]
+        await self._esrc_clean("disabled")
+        m0 = self.evec.mark()
+        self._open()
+        await self.irq.write32(ESRC_ENABLE, en_e)
+        await self.irq.write32(ESRC_TEST, esrc_reg(ESRC_TS_BITS, plan.esrc_dis_test))
+        await ClockCycles(cocotb.top.clk_i, 8 * tr)
+        st, en = await self._esrc_read("disabled")
+        high = self.evec.high_clocks_since(m0)
+        # Positive probe: enabling one set status bit raises the line.
+        mp = self.evec.mark()
+        await self.irq.write32(ESRC_ENABLE, en_e | en_p)
+        m1 = self.evec.mark()
+        t_p = await self._esrc_rise(mp, m1)
+        ok = high == 0 and st == st_t and en == en_e and t_p is not None
+        self._grade(
+            "chk",
+            "ESRC-DISABLED",
+            ok,
+            status=f"0x{st:08x}",
+            expect_status=f"0x{st_t:08x}",
+            enable=f"0x{en:08x}",
+            expect_enable=f"0x{en_e:08x}",
+            line_high_clocks=high,
+            quiet=8 * tr,
+            probe=ESRC_FIELDS[plan.esrc_probe],
+            probe_rise=int(t_p is not None),
+            t_probe="timeout" if t_p is None else t_p,
+            bound=self._LEG_RISE_BOUND,
+        )
+
+    async def _esrc_pair(self, plan: LegPlan) -> None:
+        tr = self._esrc_tr()
+        a, b = plan.esrc_pair
+        st_a, st_b = 1 << ESRC_ST_BITS[a], 1 << ESRC_ST_BITS[b]
+        en_ab = (1 << ESRC_EN_BITS[a]) | (1 << ESRC_EN_BITS[b])
+        await self._esrc_clean("pair")
+        m0 = self.evec.mark()
+        self._open()
+        await self.irq.write32(ESRC_ENABLE, en_ab)
+        await self.irq.write32(ESRC_TEST, (1 << ESRC_TS_BITS[a]) | (1 << ESRC_TS_BITS[b]))
+        m1 = self.evec.mark()
+        t = await self._esrc_rise(m0, m1)
+        await ClockCycles(cocotb.top.clk_i, 4 * tr)
+        st, en = await self._esrc_read("pair")
+        ok = (
+            t is not None
+            and self.evec.level() == 1
+            and not self.evec.fall_clks_since(m0)
+            and st == st_a | st_b
+            and en == en_ab
+        )
+        self._grade(
+            "chk",
+            "ESRC-PAIR",
+            ok,
+            srcs=f"{ESRC_FIELDS[a]},{ESRC_FIELDS[b]}",
+            status=f"0x{st:08x}",
+            enable=f"0x{en:08x}",
+            expect=f"0x{st_a | st_b:08x}",
+            line=self.evec.level(),
+            t_rise="timeout" if t is None else t,
+            bound=self._LEG_RISE_BOUND,
+            hold=4 * tr,
+        )
+        # Which register names the contributor of source 16 is an open specification
+        # question: the INTR_STATUS value with the line is logged only.
+        self.chk.obs(
+            "ESRC-CONTRIBUTOR",
+            run=self._run_tag,
+            line=self.evec.level(),
+            intr_status=f"0x{st:08x}",
+        )
+        # Clear one of the two: the line stays high, and the cleared bit drops (probe).
+        mc = self.evec.mark()
+        await self.irq.write32(ESRC_STATUS, st_a)
+        await ClockCycles(cocotb.top.clk_i, 8 * tr)
+        st, _ = await self._esrc_read("pair_one")
+        ok = self.evec.level() == 1 and not self.evec.fall_clks_since(mc) and st == st_b
+        self._grade(
+            "chk",
+            "ESRC-ONE-CLEARED",
+            ok,
+            cleared=ESRC_FIELDS[a],
+            left=ESRC_FIELDS[b],
+            status=f"0x{st:08x}",
+            expect=f"0x{st_b:08x}",
+            line=self.evec.level(),
+            falls=len(self.evec.fall_clks_since(mc)),
+            hold=8 * tr,
+        )
+        await self._esrc_clear_last("pair_last", st_b)
