@@ -9,19 +9,28 @@ cross_trigger_network.rdl (ctm @0x0, ctp[NUM_CTP] @0x200 += 0x10), cross_trigger
 architecture.adoc (Address Map), cross_trigger_matrix.rdl (CT_SRC @0x0 += 0x8), smc.rdl (DTP CSR
 window base). Addresses and masks come from the generated headers.
 
+The seed draws three distinct ports (the storage port and the two end ports), the CONFIG values
+(the three 1-bit fields MODE, INVERT and RESET; the two end ports get distinct values), the
+STRETCH_MULT values (16-bit; the storage port writes 0, 0xFFFF and a drawn value between them, the
+serial value differs from both end ports' walk values) and two distinct CT_SRC indices with a
+nonzero 26-bit CT_DST_SELECT mask written to the first of them.
+
 S1  Idle inputs, TAP in Run-Test/Idle, IDCODE, J2A gate open.
-S2  Port 3 CONFIG 0x7 and 0x0, STRETCH_MULT 0, 1 and 0xFFFF each written and read back.
-S3  Port 3 STATUS read, written 0xFFFF_FFFF, read again.
-S4  STRETCH_MULT = 0x1000 + i written to ports 0..15 and read back; CONFIG 0x1 on port 0 and 0x6 on
-    port 15; CONFIG and STRETCH_MULT of ports 0 and 15 read back.
-S5  Interleaved CT_SRC[0] and port 0 STRETCH_MULT write-then-read over JTAG2AXI, alternating reads
-    of CT_SRC[25], CTP[15], CT_SRC[0], CTP[0], then CT_SRC[0], CT_SRC[25] and CONFIG of ports 0
-    and 15 cleared.
+S2  Storage port CONFIG drawn and 0x0, STRETCH_MULT 0, 0xFFFF and a drawn value between them,
+    each written and read back.
+S3  Storage port STATUS read, written 0xFFFF_FFFF, read again.
+S4  Sixteen distinct drawn STRETCH_MULT values written to ports 0..15 and read back; drawn CONFIG
+    values on the two end ports; CONFIG and STRETCH_MULT of the end ports read back.
+S5  Interleaved CT_SRC[first] and low end port STRETCH_MULT write-then-read over JTAG2AXI,
+    alternating reads of CT_SRC[last] (never written, reads its reset 0), the high end port
+    STRETCH_MULT, CT_SRC[first] and the low end port STRETCH_MULT, then CT_SRC[first],
+    CT_SRC[last] and CONFIG of the end ports cleared.
 S6  Every bounded wait is a site with its bound, last state and expiry.
 """
 
 from __future__ import annotations
 
+import random
 from typing import cast
 
 import cocotb
@@ -58,17 +67,10 @@ INVERT_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__INVERT_bm")
 RESET_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__RESET_bm")
 STRETCH_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_bm")
 
+CT_DST_SELECT_BM = cross_trigger_u32("CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bm")
+
 CONFIG_ALL = MODE_BM | INVERT_BM | RESET_BM
-PORT_LOW = 0
-PORT_MID = 3
-PORT_HIGH = NUM_CTP - 1
-CT_SRC_FIRST = 0
-CT_SRC_LAST = NUM_CT_SRC - 1
-STRETCH_BASE = 0x1000
-CONFIG_LOW = 0x1
-CONFIG_HIGH = 0x6
-STRETCH_SERIAL = 0x2A5A
-CT_SRC_SET = 0x1
+STORAGE_STRETCH_PINNED = (0, STRETCH_BM)
 
 J2A_POLL_LIMIT = 128
 # Bounded waits: a JTAG2AXI access.
@@ -91,6 +93,44 @@ class smu_xtrig_ctn_csr_rw_test_seq:
             site: {"bound": J2A_POLL_LIMIT, "count": 0, "last": "none", "expired": 0}
             for site in SITES
         }
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.port_mid = 0
+        self.port_low = 0
+        self.port_high = 0
+        self.config_mid = 0
+        self.config_low = 0
+        self.config_high = 0
+        self.stretch_mid: list[int] = []
+        self.stretch_walk: list[int] = []
+        self.stretch_serial = 0
+        self.ct_src_first = 0
+        self.ct_src_last = 0
+        self.ct_src_set = 0
+
+    def _draw(self) -> None:
+        rng = self.rng
+        ports = rng.sample(range(NUM_CTP), 3)
+        self.port_mid = ports[0]
+        self.port_low, self.port_high = sorted(ports[1:])
+        self.config_mid = rng.randint(1, CONFIG_ALL)
+        self.config_low = rng.randint(1, CONFIG_ALL)
+        self.config_high = rng.choice([v for v in range(1, CONFIG_ALL + 1) if v != self.config_low])
+        self.stretch_mid = [*STORAGE_STRETCH_PINNED, rng.randint(1, STRETCH_BM - 1)]
+        walk_pool = [v for v in range(1, STRETCH_BM + 1) if v != self.stretch_mid[-1]]
+        self.stretch_walk = rng.sample(walk_pool, NUM_CTP)
+        end_walk = {self.stretch_walk[self.port_low], self.stretch_walk[self.port_high]}
+        self.stretch_serial = rng.choice([v for v in range(STRETCH_BM + 1) if v not in end_walk])
+        self.ct_src_first, self.ct_src_last = rng.sample(range(NUM_CT_SRC), 2)
+        self.ct_src_set = rng.randint(1, CT_DST_SELECT_BM)
+        self._log(
+            f"SEED: RANDOM_SEED={self.seed} drawn ports mid={self.port_mid} low={self.port_low} "
+            f"high={self.port_high} config mid=0x{self.config_mid:x} low=0x{self.config_low:x} "
+            f"high=0x{self.config_high:x} stretch_mid={[hex(v) for v in self.stretch_mid]} "
+            f"stretch_walk={[hex(v) for v in self.stretch_walk]} "
+            f"stretch_serial=0x{self.stretch_serial:x} ct_src first={self.ct_src_first} "
+            f"last={self.ct_src_last} ct_src_set=0x{self.ct_src_set:x}"
+        )
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -211,31 +251,37 @@ class smu_xtrig_ctn_csr_rw_test_seq:
         sb.expect_eq("every xtrig and CTP pad input idle", sum(idle.values()), 0)
         self.jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await self._tap_up()
-        self._log(f"CELL setup j2a_accesses={self.j2a} seed={getattr(cocotb, 'RANDOM_SEED', 'na')}")
+        self._draw()
+        self._log(f"CELL setup j2a_accesses={self.j2a}")
+        port_mid, port_low, port_high = self.port_mid, self.port_low, self.port_high
 
-        self._mark("S2", "CONFIG and STRETCH_MULT storage on port 3")
-        cfg3 = self._ctp_addr(PORT_MID, CTP_CONFIG_OFF)
-        str3 = self._ctp_addr(PORT_MID, CTP_STRETCH_OFF)
+        self._mark("S2", f"CONFIG and STRETCH_MULT storage on drawn port {port_mid}")
+        cfg_mid = self._ctp_addr(port_mid, CTP_CONFIG_OFF)
+        str_mid = self._ctp_addr(port_mid, CTP_STRETCH_OFF)
         s2: list = []
-        for data in (CONFIG_ALL, 0):
-            await self._wr_rd(cfg3, data, f"CTP[{PORT_MID}].CONFIG", s2)
-        for data in (0, 1, STRETCH_BM):
-            await self._wr_rd(str3, data, f"CTP[{PORT_MID}].STRETCH_MULT", s2)
+        for data in (self.config_mid, 0):
+            await self._wr_rd(cfg_mid, data, f"CTP[{port_mid}].CONFIG", s2)
+        for data in self.stretch_mid:
+            await self._wr_rd(str_mid, data, f"CTP[{port_mid}].STRETCH_MULT", s2)
+        drawn_s2 = (
+            f"drawn port={port_mid} config=0x{self.config_mid:x} "
+            f"stretch={[hex(v) for v in self.stretch_mid]}"
+        )
         sb.expect_eq(
-            "port 3 CONFIG and STRETCH_MULT readback list",
+            f"storage port CONFIG and STRETCH_MULT readback list {drawn_s2}",
             [(what, got) for what, _, got in s2],
             [(what, wrote) for what, wrote, _ in s2],
             evidence="CHK-CTP-CFG-STRETCH-RW",
         )
-        self._log(f"CHK-CTP-CFG-STRETCH-RW: readbacks={[hex(got) for _, _, got in s2]}")
+        self._log(f"CHK-CTP-CFG-STRETCH-RW: readbacks={[hex(got) for _, _, got in s2]} {drawn_s2}")
 
         self._mark("S3", "STATUS write is acknowledged and leaves the register unchanged")
-        sta3 = self._ctp_addr(PORT_MID, CTP_STATUS_OFF)
-        before = await self._rd32(sta3, f"CTP[{PORT_MID}].STATUS before")
-        await self._wr32(sta3, 0xFFFFFFFF, f"CTP[{PORT_MID}].STATUS write")
-        after = await self._rd32(sta3, f"CTP[{PORT_MID}].STATUS after")
+        sta3 = self._ctp_addr(port_mid, CTP_STATUS_OFF)
+        before = await self._rd32(sta3, f"CTP[{port_mid}].STATUS before")
+        await self._wr32(sta3, 0xFFFFFFFF, f"CTP[{port_mid}].STATUS write")
+        after = await self._rd32(sta3, f"CTP[{port_mid}].STATUS after")
         self._cell(
-            f"CTP[{PORT_MID}].STATUS",
+            f"CTP[{port_mid}].STATUS",
             sta3,
             f"before=0x{before:08x} wrote=0xffffffff status=success after=0x{after:08x}",
         )
@@ -248,76 +294,79 @@ class smu_xtrig_ctn_csr_rw_test_seq:
         self._log(f"CHK-CTP-STATUS-WRITE-IGNORED: before=0x{before:08x} after=0x{after:08x}")
 
         self._mark("S4", "sixteen port windows hold distinct STRETCH_MULT and CONFIG values")
-        for i in range(NUM_CTP):
-            await self._wr32(self._ctp_addr(i, CTP_STRETCH_OFF), STRETCH_BASE + i, f"CTP[{i}] SM")
+        for i, value in enumerate(self.stretch_walk):
+            await self._wr32(self._ctp_addr(i, CTP_STRETCH_OFF), value, f"CTP[{i}] SM")
         stretch = []
-        for i in range(NUM_CTP):
+        for i, value in enumerate(self.stretch_walk):
             addr = self._ctp_addr(i, CTP_STRETCH_OFF)
             got = await self._rd32(addr, f"CTP[{i}].STRETCH_MULT")
-            self._cell(
-                f"CTP[{i}].STRETCH_MULT", addr, f"wrote=0x{STRETCH_BASE + i:08x} read=0x{got:08x}"
-            )
+            self._cell(f"CTP[{i}].STRETCH_MULT", addr, f"wrote=0x{value:08x} read=0x{got:08x}")
             stretch.append(got)
-        cfg_low = self._ctp_addr(PORT_LOW, CTP_CONFIG_OFF)
-        cfg_high = self._ctp_addr(PORT_HIGH, CTP_CONFIG_OFF)
-        await self._wr32(cfg_low, CONFIG_LOW, f"CTP[{PORT_LOW}].CONFIG")
-        await self._wr32(cfg_high, CONFIG_HIGH, f"CTP[{PORT_HIGH}].CONFIG")
+        cfg_low = self._ctp_addr(port_low, CTP_CONFIG_OFF)
+        cfg_high = self._ctp_addr(port_high, CTP_CONFIG_OFF)
+        await self._wr32(cfg_low, self.config_low, f"CTP[{port_low}].CONFIG")
+        await self._wr32(cfg_high, self.config_high, f"CTP[{port_high}].CONFIG")
         ends = {}
-        for port in (PORT_LOW, PORT_HIGH):
+        for port in (port_low, port_high):
             for reg, off in (("CONFIG", CTP_CONFIG_OFF), ("STRETCH_MULT", CTP_STRETCH_OFF)):
                 addr = self._ctp_addr(port, off)
                 ends[(port, reg)] = await self._rd32(addr, f"CTP[{port}].{reg}")
                 self._cell(f"CTP[{port}].{reg}", addr, f"read=0x{ends[(port, reg)]:08x}")
         sb.expect_eq(
-            "per-port STRETCH_MULT and end-port CONFIG readback",
+            "per-port STRETCH_MULT and end-port CONFIG readback drawn "
+            f"stretch_walk={[hex(v) for v in self.stretch_walk]} ends low={port_low} "
+            f"high={port_high} config low=0x{self.config_low:x} high=0x{self.config_high:x}",
             (stretch, ends),
             (
-                [STRETCH_BASE + i for i in range(NUM_CTP)],
+                list(self.stretch_walk),
                 {
-                    (PORT_LOW, "CONFIG"): CONFIG_LOW,
-                    (PORT_LOW, "STRETCH_MULT"): STRETCH_BASE + PORT_LOW,
-                    (PORT_HIGH, "CONFIG"): CONFIG_HIGH,
-                    (PORT_HIGH, "STRETCH_MULT"): STRETCH_BASE + PORT_HIGH,
+                    (port_low, "CONFIG"): self.config_low,
+                    (port_low, "STRETCH_MULT"): self.stretch_walk[port_low],
+                    (port_high, "CONFIG"): self.config_high,
+                    (port_high, "STRETCH_MULT"): self.stretch_walk[port_high],
                 },
             ),
             evidence="CHK-CTP-WINDOW-INDEPENDENCE",
         )
 
         self._mark("S5", "interleaved CT_SRC and CTP accesses over JTAG2AXI")
-        src_first = self._ctm_src_addr(CT_SRC_FIRST)
-        src_last = self._ctm_src_addr(CT_SRC_LAST)
-        str_low = self._ctp_addr(PORT_LOW, CTP_STRETCH_OFF)
-        str_high = self._ctp_addr(PORT_HIGH, CTP_STRETCH_OFF)
+        first, last = self.ct_src_first, self.ct_src_last
+        src_first = self._ctm_src_addr(first)
+        src_last = self._ctm_src_addr(last)
+        str_low = self._ctp_addr(port_low, CTP_STRETCH_OFF)
+        str_high = self._ctp_addr(port_high, CTP_STRETCH_OFF)
         s5: list = []
-        await self._wr_rd(src_first, CT_SRC_SET, f"CT_SRC[{CT_SRC_FIRST}]", s5)
-        await self._wr_rd(str_low, STRETCH_SERIAL, f"CTP[{PORT_LOW}].STRETCH_MULT", s5)
+        await self._wr_rd(src_first, self.ct_src_set, f"CT_SRC[{first}]", s5)
+        await self._wr_rd(str_low, self.stretch_serial, f"CTP[{port_low}].STRETCH_MULT", s5)
         alternating = []
         for what, addr in (
-            (f"CT_SRC[{CT_SRC_LAST}]", src_last),
-            (f"CTP[{PORT_HIGH}].STRETCH_MULT", str_high),
-            (f"CT_SRC[{CT_SRC_FIRST}]", src_first),
-            (f"CTP[{PORT_LOW}].STRETCH_MULT", str_low),
+            (f"CT_SRC[{last}]", src_last),
+            (f"CTP[{port_high}].STRETCH_MULT", str_high),
+            (f"CT_SRC[{first}]", src_first),
+            (f"CTP[{port_low}].STRETCH_MULT", str_low),
         ):
             got = await self._rd32(addr, what)
             self._cell(what, addr, f"read=0x{got:08x}")
             alternating.append((what, got))
-        await self._wr32(src_first, 0, f"CT_SRC[{CT_SRC_FIRST}] restore")
-        await self._wr32(src_last, 0, f"CT_SRC[{CT_SRC_LAST}] restore")
-        await self._wr32(cfg_low, 0, f"CTP[{PORT_LOW}].CONFIG restore")
-        await self._wr32(cfg_high, 0, f"CTP[{PORT_HIGH}].CONFIG restore")
+        await self._wr32(src_first, 0, f"CT_SRC[{first}] restore")
+        await self._wr32(src_last, 0, f"CT_SRC[{last}] restore")
+        await self._wr32(cfg_low, 0, f"CTP[{port_low}].CONFIG restore")
+        await self._wr32(cfg_high, 0, f"CTP[{port_high}].CONFIG restore")
         sb.expect_eq(
-            "pipelined write-read and alternating reads return the last written values",
+            "pipelined write-read and alternating reads return the last written values drawn "
+            f"ct_src first={first} last={last} ct_src_set=0x{self.ct_src_set:x} "
+            f"stretch_serial=0x{self.stretch_serial:x} ports low={port_low} high={port_high}",
             ([(w, g) for w, _, g in s5], alternating),
             (
                 [
-                    (f"CT_SRC[{CT_SRC_FIRST}]", CT_SRC_SET),
-                    (f"CTP[{PORT_LOW}].STRETCH_MULT", STRETCH_SERIAL),
+                    (f"CT_SRC[{first}]", self.ct_src_set),
+                    (f"CTP[{port_low}].STRETCH_MULT", self.stretch_serial),
                 ],
                 [
-                    (f"CT_SRC[{CT_SRC_LAST}]", 0),
-                    (f"CTP[{PORT_HIGH}].STRETCH_MULT", STRETCH_BASE + PORT_HIGH),
-                    (f"CT_SRC[{CT_SRC_FIRST}]", CT_SRC_SET),
-                    (f"CTP[{PORT_LOW}].STRETCH_MULT", STRETCH_SERIAL),
+                    (f"CT_SRC[{last}]", 0),
+                    (f"CTP[{port_high}].STRETCH_MULT", self.stretch_walk[port_high]),
+                    (f"CT_SRC[{first}]", self.ct_src_set),
+                    (f"CTP[{port_low}].STRETCH_MULT", self.stretch_serial),
                 ],
             ),
             evidence="CHK-CTN-SERIALISED-ACCESS",

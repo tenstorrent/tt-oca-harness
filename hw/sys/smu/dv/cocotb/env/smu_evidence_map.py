@@ -400,8 +400,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OCTSR-SECONDARY-HOLD",
             "OCTSR_SECONDARY_HOLD",
-            "SECONDARY ignores TIMER_START: STATUS.RUNNING 0 and timer_count_o 0 for 1024 cycles; "
-            "a PRIMARY START sets RUNNING and moves timer_count_o within 1024 cycles",
+            "with the seed-drawn preset written, SECONDARY ignores TIMER_START: STATUS.RUNNING 0 "
+            "and timer_count_o 0 for 1024 cycles; a PRIMARY START sets RUNNING, loads the drawn "
+            "preset into timer_count_o and moves it within 1024 cycles, the moved count between "
+            "the preset and the preset plus the clk_smu_i edges counted from the START write",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -1289,25 +1291,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-AXIIN-DEPTH",
             "CHK-AXIIN-DEPTH",
             "the inbound port accepts at least two address handshakes before it returns "
-            "the first response, on the read train and on the write train, and every "
-            "read returns the VERSION_LO RDL reset value with OKAY",
+            "the first response, on the read train under the seed-drawn distinct ARIDs and on "
+            "each write train under a pinned AWID, wherever the seed places the unsupported "
+            "bursts, and every read returns the VERSION_LO RDL reset value with OKAY",
         ),
         (
             "CHK-AXIIN-DEPTH-ORDER",
             "CHK-AXIIN-DEPTH-ORDER",
-            "sixty-four inbound writes in flight under one AWID leave the last value "
-            "written in SCRATCH_COLD",
+            "sixty-four inbound writes in flight under one AWID, the all-zero and then the "
+            "all-ones ID, leave the last value written in SCRATCH_COLD each time",
         ),
         (
             "CHK-AXIIN-BURST",
             "CHK-AXIIN-BURST",
-            "INCR bursts at the register targets are OKAY and a WRAP burst read of the same "
-            "shape is refused with SLVERR",
+            "INCR bursts of the seed-drawn two or four beats at the register targets are OKAY "
+            "and a WRAP burst read of the same shape is refused with SLVERR",
         ),
         (
             "CHK-AXIIN-BURST-FIXED",
             "CHK-AXIIN-BURST-FIXED",
-            "an inbound multi-beat FIXED burst write at a register target is refused with SLVERR",
+            "an inbound FIXED burst write of the seed-drawn two or four beats at a register "
+            "target is refused with SLVERR",
         ),
     ],
     "smu_axi_in_random_id_stress_test": [
@@ -1837,12 +1841,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OTP-SMC-DECODE-SLVERR",
             "CHK-OTP-SMC-DECODE-SLVERR",
-            "OTP decode hole returns SLVERR",
+            "the gap's first word and every further seed-drawn OTP decode-hole word, read in the "
+            "drawn order, return SLVERR",
         ),
         (
             "CHK-OTP-SMC-SPARE-STABLE",
             "CHK-OTP-SMC-SPARE-STABLE",
-            "SPARE reads the same word after the decode-hole error",
+            "SPARE reads the same word after each decode-hole error",
         ),
     ],
     "smu_dtp_smc_stap_smoke_test": [
@@ -2638,19 +2643,22 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-UNMAP-BETWEEN",
             "CHK-UNMAP-BETWEEN",
-            "between-unit ext_in reads answer DECERR/0xBADCAB1E and writes DECERR",
+            "under the seed-drawn REGION_SIZE, between-unit ext_in reads at two drawn words of "
+            "the gap answer DECERR/0xBADCAB1E and writes there DECERR, in the drawn order",
         ),
         (
             "CHK-UNMAP-PAST-EXTENT",
             "CHK-UNMAP-PAST-EXTENT",
-            "past-extent reads answer DECERR/0xBADCAB1E and DECERR-declared writes answer DECERR; "
-            "the writes the RDL and memmap declare SLVERR are logged and answered DECERR in this "
-            "run, a mismatch recorded for the owner",
+            "under the seed-drawn REGION_SIZE, past-extent reads answer DECERR/0xBADCAB1E and "
+            "DECERR-declared writes answer DECERR, in the drawn order; the writes the RDL and "
+            "memmap declare SLVERR are logged and answered DECERR in this run, a mismatch "
+            "recorded for the owner",
         ),
         (
             "CHK-UNMAP-MMODE-XVISOR",
             "CHK-UNMAP-MMODE-XVISOR",
-            "M-mode and Xvisor window reads and writes from ext_in answer DECERR",
+            "M-mode and Xvisor window reads and writes from ext_in at a seed-drawn word of each "
+            "window answer DECERR, in the drawn order",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -3831,8 +3839,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SECURE-TM-NO-EARLY-FOLLOW",
             "SEP_SECURE_TM_NO_EARLY_FOLLOW",
-            "a strap pulse between response strobes 100 and 180 and the strap at 0 after done "
-            "leave secure_tm_o at 0",
+            "a strap pulse between two seed-drawn response strobe counts below 255 and the strap "
+            "at 0 after done leave secure_tm_o at 0",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -3846,8 +3854,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-RESET-REASSERT",
             "SEP_RESET_REASSERT",
             "sep_reset_n_o reads 0 on every sample while the cold reset is re-asserted after done "
-            "and after response words 0 and 128, and near 255 when that fall lands before the "
-            "256th strobe",
+            "and after response words 0 and 128, and at the seed-drawn word when that fall lands "
+            "before the 256th strobe",
         ),
         (
             "CHK-SEP-DONE-COLD-CLEAR",
@@ -3858,8 +3866,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SENSE-ABORT-RESTART",
             "SEP_SENSE_ABORT_RESTART",
-            "an aborted sense leaves done at 0 with no rise and the final sense restarts and "
-            "delivers at least 256 strobes before its single done rise",
+            "an aborted sense leaves done at 0 with no rise, the seed-drawn abort's fall lands "
+            "before the 256th strobe, and the final sense restarts and delivers at least 256 "
+            "strobes before its single done rise",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -4244,7 +4253,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TELQ-THRESHOLD-LIVE",
             "TELQ_THRESHOLD_LIVE",
-            "INTR_STATUS.BUFFER_THRESHOLD is 0 up to three queued and 1 above the threshold",
+            "after every fill and every pop INTR_STATUS.BUFFER_THRESHOLD is 1 when the number "
+            "queued is above the seed-drawn threshold in force and 0 otherwise",
         ),
         (
             "CHK-TELQ-ORDER",
@@ -4254,7 +4264,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TELQ-THRESHOLD-CLEAR",
             "TELQ_THRESHOLD_CLEAR",
-            "a write of 1 leaves the status at 1; draining to the threshold or raising it reads 0",
+            "a write of 1 to the status with eight queued and each seed-drawn threshold write "
+            "leave INTR_STATUS.BUFFER_THRESHOLD at the live value, 1 only when the number queued "
+            "is above the threshold",
         ),
         (
             "CHK-TELQ-THRESHOLD-TEST",
@@ -4694,8 +4706,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CTP-CFG-STRETCH-RW",
             "CHK-CTP-CFG-STRETCH-RW",
-            "port 3 CONFIG reads back 0x7 and 0x0 and STRETCH_MULT reads back 0, 1 and 0xFFFF as "
-            "written",
+            "the seed-drawn storage port reads back its drawn CONFIG value and then 0x0 and "
+            "STRETCH_MULT 0, 0xFFFF and its drawn value as written",
         ),
         (
             "CHK-CTP-STATUS-WRITE-IGNORED",
@@ -4705,13 +4717,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CTP-WINDOW-INDEPENDENCE",
             "CHK-CTP-WINDOW-INDEPENDENCE",
-            "each of 16 ports reads back its own STRETCH_MULT and ports 0 and 15 their own CONFIG",
+            "each of 16 ports reads back its own seed-drawn STRETCH_MULT and the two drawn end "
+            "ports their own distinct drawn CONFIG",
         ),
         (
             "CHK-CTN-SERIALISED-ACCESS",
             "CHK-CTN-SERIALISED-ACCESS",
-            "interleaved CT_SRC and CTP accesses over JTAG2AXI return the values last written to "
-            "each register",
+            "interleaved accesses to the seed-drawn CT_SRC indices and end ports over JTAG2AXI "
+            "return the nonzero drawn mask and STRETCH_MULT values last written to each register "
+            "and 0 from the CT_SRC never written",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
     ],

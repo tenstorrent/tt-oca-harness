@@ -6,9 +6,16 @@ Spec: hw/sys/smc/regs/smc.rdl (ocah_gap_resp, ocah_past_extent_resp, ocah_apertu
 hw/sys/smc/doc/memmap.adoc (Address Space Organization), doc/integrator/src/smu-smc.adoc.
 The BRESP at BASE+0x001_7000 and BASE+0x001_7FFC is logged as CHK-UNMAP-0X17000-WRITE only.
 Past-extent write BRESP of SLVERR-declared blocks is logged as CHK-UNMAP-PAST-EXTENT-WRITE only.
+
+The seed draws REGION_SIZE from the powers of two 2^25 to 2^30 (the smallest keeps every cell
+of the walk inside the aperture; the largest keeps both bases aligned and the SMC aperture clear
+of the SEP aperture), the word probed inside each ranged cell (the between-unit gap and the two
+8 MiB remap windows) and whether each cell is read or written first.
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -48,20 +55,25 @@ from seq_lib.smu_jtag_helpers import (
 from seq_lib.smu_tb_pins import smc_primary_reset
 
 BASE = SMC_APERTURE_LOCAL_BASE
-WIDE_REGION_SIZE = 0x0400_0000
+# smc_base_config.rdl REGION_SIZE: a non-zero power of two to which GLOBAL_BASE and LOCAL_BASE
+# (both BASE under this walk) stay aligned; 2^25 is the smallest size that keeps the Xvisor
+# window inside the aperture.
+REGION_SIZE_CHOICES = tuple(1 << n for n in range(25, 31))
 REGION_SIZE_RESET = smc_base_config_u32("SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
 BAR_START = BASE
-BAR_END = BASE + WIDE_REGION_SIZE - 1
 GAP_RDATA = 0xBADCAB1E
 
 # ocah_aperture_size of dfx_ctrl (smc.rdl) ends the last mapped aperture before the unmapped
 # range that runs up to smc_base_config.
 _GAP_START = smc_addr("SMC_TOP_DFX_CTRL_BASE_ADDR") + 0x800
 _GAP_END = smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
-GAP_ADDRS = (_GAP_START, (_GAP_START + _GAP_END) // 2)
 EXCEPTION_ADDRS = (BASE + 0x001_7000, BASE + 0x001_7FFC)
+# fabric.adoc "Fabric Topology": the 8 MiB M-mode window at 0x0100_0000 and the 8 MiB Xvisor
+# window at 0x0180_0000 of the aperture.
 MMODE_ADDR = BASE + 0x100_0000
 XVISOR_ADDR = BASE + 0x180_0000
+REMAP_WINDOW_BYTES = 0x80_0000
+DIRECTIONS = ("read_first", "write_first")
 
 
 def _extent_end(base_sym: str, size_sym: str) -> int:
@@ -149,6 +161,39 @@ class smu_smc_unmapped_response_test_seq:
         self.expired: list[str] = []
         self.master = None
         self.jtag = None
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.region_size = 0
+        self.gap_addrs: tuple[int, int] = (0, 0)
+        self.mmode_addr = 0
+        self.xvisor_addr = 0
+        self.direction: dict[str, str] = {}
+
+    def _word_in(self, lo: int, hi: int) -> int:
+        """A 4-byte-aligned word drawn inside [lo, hi)."""
+        return lo + 4 * self.rng.randrange((hi - lo) // 4)
+
+    def _draw(self) -> None:
+        self.region_size = self.rng.choice(REGION_SIZE_CHOICES)
+        gaps = sorted(self.rng.sample(range(_GAP_START, _GAP_END, 4), 2))
+        self.gap_addrs = (gaps[0], gaps[1])
+        self.mmode_addr = self._word_in(MMODE_ADDR, MMODE_ADDR + REMAP_WINDOW_BYTES)
+        self.xvisor_addr = self._word_in(XVISOR_ADDR, XVISOR_ADDR + REMAP_WINDOW_BYTES)
+        names = ["gap0", "gap1"]
+        names += [f"gap-0x{addr - BASE:x}" for addr in EXCEPTION_ADDRS]
+        names += [name for name, _, _ in PAST_EXTENT_CELLS]
+        names += ["mmode", "xvisor"]
+        self.direction = {name: self.rng.choice(DIRECTIONS) for name in names}
+        self._log(
+            f"SEED: RANDOM_SEED={self.seed} drawn region_size=0x{self.region_size:08x} "
+            f"gap=[0x{self.gap_addrs[0]:08x},0x{self.gap_addrs[1]:08x}] "
+            f"mmode=0x{self.mmode_addr:08x} xvisor=0x{self.xvisor_addr:08x} "
+            f"direction={self.direction}"
+        )
+
+    def _drawn(self, *names: str) -> str:
+        order = ",".join(f"{n}:{self.direction[n]}" for n in names)
+        return f"drawn region_size=0x{self.region_size:08x} order={order}"
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -262,11 +307,22 @@ class smu_smc_unmapped_response_test_seq:
         self._log(f"CELL {name}.write addr=0x{addr:08x} resp={resp_name(resp)}")
         return resp
 
+    async def _probe_cell(self, name: str, addr: int) -> tuple[int, int, int]:
+        """Read and write one cell in the drawn direction; return (rresp, rdata, bresp)."""
+        if self.direction[name] == "write_first":
+            bresp = await self._write_cell(name, addr)
+            rresp, data = await self._read_cell(name, addr)
+        else:
+            rresp, data = await self._read_cell(name, addr)
+            bresp = await self._write_cell(name, addr)
+        return rresp, data, bresp
+
     async def run(self) -> None:
         sb = self.test.env.scoreboard
         dut = self.dut
 
-        self._mark("S1", "SETUP: bring-up, aperture, REGION_SIZE 0x0400_0000, BAR window, vip")
+        self._draw()
+        self._mark("S1", "SETUP: bring-up, aperture, drawn REGION_SIZE, BAR window, vip")
         self.jtag = jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await jtag.reset_tap()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
@@ -291,10 +347,11 @@ class smu_smc_unmapped_response_test_seq:
         gate = dut.tb_smc_jtag2axi_security_disable.value
         if not gate.is_resolvable or int(gate) & 1:
             raise AssertionError(f"SMC J2A gated: security_disable={gate}")
-        await self._set_region_size(WIDE_REGION_SIZE, "WIDE", sb)
+        await self._set_region_size(self.region_size, "WIDE", sb)
+        bar_end = BAR_START + self.region_size - 1
         for addr, data, name in (
             (INBOUND0_START, BAR_START, "BAR_START"),
-            (INBOUND0_END, BAR_END, "BAR_END"),
+            (INBOUND0_END, bar_end, "BAR_END"),
             (INBOUND0_FILTER_CONFIG, PASS_RW_CONFIG, "BAR_CONFIG"),
         ):
             st, _ = await self._j2a(True, addr, data)
@@ -303,29 +360,33 @@ class smu_smc_unmapped_response_test_seq:
         sb.expect_eq("JTAG2AXI BAR_CONFIG read", st, J2A_STATUS_SUCCESS)
         sb.expect_eq("INBOUND0 FILTER_CONFIG readback", cfg_rb & 0xFFFF_FFFF, PASS_RW_CONFIG)
         self._log(
-            f"CELL bar addr=0x{BAR_START:08x}..0x{BAR_END:08x} config=0x{cfg_rb & 0xFFFFFFFF:08x}"
+            f"CELL bar addr=0x{BAR_START:08x}..0x{bar_end:08x} config=0x{cfg_rb & 0xFFFFFFFF:08x}"
         )
         self.master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
 
         self._mark("S2", "between-unit reads and writes")
         gap_obs = {}
         gap_exp = {}
-        for i, addr in enumerate(GAP_ADDRS):
+        gap_names = []
+        for i, addr in enumerate(self.gap_addrs):
             name = f"gap{i}"
-            resp, data = await self._read_cell(name, addr)
+            gap_names.append(name)
+            resp, data, bresp = await self._probe_cell(name, addr)
             gap_obs[f"{name}.read"] = (resp, data)
             gap_exp[f"{name}.read"] = (RESP_DECERR, GAP_RDATA)
-            gap_obs[f"{name}.write"] = await self._write_cell(name, addr)
+            gap_obs[f"{name}.write"] = bresp
             gap_exp[f"{name}.write"] = RESP_DECERR
         for addr in EXCEPTION_ADDRS:
             name = f"gap-0x{addr - BASE:x}"
-            resp, data = await self._read_cell(name, addr)
+            gap_names.append(name)
+            resp, data, bresp = await self._probe_cell(name, addr)
             gap_obs[f"{name}.read"] = (resp, data)
             gap_exp[f"{name}.read"] = (RESP_DECERR, GAP_RDATA)
-            bresp = await self._write_cell(name, addr)
             self._log(f"CHK-UNMAP-0X17000-WRITE: addr=0x{addr:08x} bresp={resp_name(bresp)}")
         sb.expect_eq(
-            "CHK-UNMAP-BETWEEN gap reads DECERR/0xBADCAB1E, gap writes DECERR",
+            "CHK-UNMAP-BETWEEN gap reads DECERR/0xBADCAB1E, gap writes DECERR "
+            f"drawn gap=[0x{self.gap_addrs[0]:08x},0x{self.gap_addrs[1]:08x}] "
+            f"{self._drawn(*gap_names)}",
             gap_obs,
             gap_exp,
             evidence="CHK-UNMAP-BETWEEN",
@@ -335,10 +396,9 @@ class smu_smc_unmapped_response_test_seq:
         past_obs = {}
         past_exp = {}
         for name, addr, want_bresp in PAST_EXTENT_CELLS:
-            resp, data = await self._read_cell(name, addr)
+            resp, data, bresp = await self._probe_cell(name, addr)
             past_obs[f"{name}.read"] = (resp, data)
             past_exp[f"{name}.read"] = (RESP_DECERR, GAP_RDATA)
-            bresp = await self._write_cell(name, addr)
             if want_bresp == RESP_SLVERR:
                 self._log(
                     f"CHK-UNMAP-PAST-EXTENT-WRITE: block={name} addr=0x{addr:08x} "
@@ -348,7 +408,8 @@ class smu_smc_unmapped_response_test_seq:
             past_obs[f"{name}.write"] = bresp
             past_exp[f"{name}.write"] = want_bresp
         sb.expect_eq(
-            "CHK-UNMAP-PAST-EXTENT reads DECERR/0xBADCAB1E, DECERR-declared writes DECERR",
+            "CHK-UNMAP-PAST-EXTENT reads DECERR/0xBADCAB1E, DECERR-declared writes DECERR "
+            f"{self._drawn(*(name for name, _, _ in PAST_EXTENT_CELLS))}",
             past_obs,
             past_exp,
             evidence="CHK-UNMAP-PAST-EXTENT",
@@ -357,14 +418,16 @@ class smu_smc_unmapped_response_test_seq:
         self._mark("S4", "M-mode and Xvisor windows from ext_in")
         win_obs = {}
         win_exp = {}
-        for name, addr in (("mmode", MMODE_ADDR), ("xvisor", XVISOR_ADDR)):
-            resp, _ = await self._read_cell(name, addr)
+        for name, addr in (("mmode", self.mmode_addr), ("xvisor", self.xvisor_addr)):
+            resp, _, bresp = await self._probe_cell(name, addr)
             win_obs[f"{name}.read"] = resp
-            win_obs[f"{name}.write"] = await self._write_cell(name, addr)
+            win_obs[f"{name}.write"] = bresp
             win_exp[f"{name}.read"] = RESP_DECERR
             win_exp[f"{name}.write"] = RESP_DECERR
         sb.expect_eq(
-            "CHK-UNMAP-MMODE-XVISOR windows answer DECERR to ext_in",
+            "CHK-UNMAP-MMODE-XVISOR windows answer DECERR to ext_in "
+            f"drawn mmode=0x{self.mmode_addr:08x} xvisor=0x{self.xvisor_addr:08x} "
+            f"{self._drawn('mmode', 'xvisor')}",
             win_obs,
             win_exp,
             evidence="CHK-UNMAP-MMODE-XVISOR",
