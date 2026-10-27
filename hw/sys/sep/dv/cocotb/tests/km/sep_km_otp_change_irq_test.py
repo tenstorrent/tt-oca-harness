@@ -63,9 +63,7 @@ class sep_km_otp_change_irq_test(sep_base_test):
         return self.rd_known(cocotb.top.km_csr_irq_enable_o)
 
     def _pic30(self) -> int:
-        return self.rd_known(
-            cocotb.top.sep_internal_interrupts_probe_o, mask=1 << KM_UNREC_BIT
-        )
+        return self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << KM_UNREC_BIT)
 
     def _rom_reqs(self) -> int:
         return self.rd_known(cocotb.top.km_rom_req_count_o)
@@ -145,8 +143,7 @@ class sep_km_otp_change_irq_test(sep_base_test):
             )
         else:
             self.logger.error(
-                "CHK-OTP-ARM FAIL: en=0x%x status=0x%x pic30=%d "
-                "stat_answered=%d stat_rc=%d",
+                "CHK-OTP-ARM FAIL: en=0x%x status=0x%x pic30=%d stat_answered=%d stat_rc=%d",
                 en,
                 st,
                 int(pic != 0),
@@ -187,9 +184,7 @@ class sep_km_otp_change_irq_test(sep_base_test):
             pic = self._pic30()
             line = int((st & en & OTP_CHANGE) != 0)
             bit = int((st & OTP_CHANGE) != 0)
-            self.logger.info(
-                "OBS-OTP-STICKY LOG status_otp_change=%d line=%d", bit, line
-            )
+            self.logger.info("OBS-OTP-STICKY LOG status_otp_change=%d line=%d", bit, line)
             entries = self._kmcsr_entries() - ent0
             if entries < 1:
                 self.logger.error("CHK-OTP-ENTRY FAIL: kmcsr_irq_entries=%d", entries)
