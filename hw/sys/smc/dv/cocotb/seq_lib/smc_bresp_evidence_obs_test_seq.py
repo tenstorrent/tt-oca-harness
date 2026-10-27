@@ -270,26 +270,32 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         width: int,
         beat0: int,
         beat1: int,
-        beat0_data: int | None,
-        beat1_data: int | None,
+        kinds: tuple[str | None, str | None],
         note: str = "-",
     ) -> None:
         """Two-beat INCR write from ``beat0`` (``beat0 + width/8`` is ``beat1``).
 
-        ``None`` beat data means "the word's current value": the beat rewrites what it read, so a
-        live register keeps its value. A pattern is written where the word is scratch or decodes
-        to no register, and a scratch word is restored afterwards.
+        ``kinds`` names each beat's word. ``None`` is a live register: the beat rewrites what it
+        read, so the register keeps its value. ``"P"`` is scratch or decodes to no register: the
+        beat writes the pattern and a scratch word is restored afterwards. ``"W"`` is a write-only
+        push register: the beat writes the pattern and the word is neither read nor restored,
+        since every write to it pushes one entry.
         """
         nbytes = width // 8
         assert beat1 == beat0 + nbytes, f"{label}: beats 0x{beat0:x}/0x{beat1:x} not adjacent"
         self.env.axi_monitor.expected_decerr_addrs.update((beat0, beat1))
+        pattern = WRITE_PATTERN64 if width == 64 else WRITE_PATTERN
         mask = (1 << width) - 1
         before = []
         beat_words = []
-        for i, (addr, data) in enumerate(((beat0, beat0_data), (beat1, beat1_data))):
+        for i, (addr, kind) in enumerate(zip((beat0, beat1), kinds)):
+            if kind == "W":
+                before.append(None)
+                beat_words.append(pattern)
+                continue
             _, value = await self._rd(f"{label}_pre{i}", addr, width)
             before.append(value)
-            beat_words.append(value if data is None else data)
+            beat_words.append(value if kind is None else pattern)
         singles = []
         for i, (addr, data) in enumerate(zip((beat0, beat1), beat_words)):
             singles.append(await self._wr(f"{label}_single{i}", addr, width, data))
@@ -311,15 +317,15 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
             xbar,
             note,
         )
-        for i, (addr, data, orig) in enumerate(zip((beat0, beat1), beat_words, before)):
-            if data == orig:
+        for i, (addr, kind, orig) in enumerate(zip((beat0, beat1), kinds, before)):
+            if kind is None:
                 _, after = await self._rd(f"{label}_post{i}", addr, width)
                 assert after == orig, (
                     f"{label} beat{i} live word 0x{addr:08x}: 0x{after:x} after the burst, "
                     f"was 0x{orig:x}"
                 )
                 self.live_results.append(f"{label}:0x{addr:08x}=0x{orig:x} unchanged")
-            elif singles[i] == _RESP_CODES["OKAY"]:
+            elif kind == "P" and singles[i] == _RESP_CODES["OKAY"]:
                 await self._wr(f"{label}_restore{i}", addr, width, orig)
                 _, after = await self._rd(f"{label}_restored{i}", addr, width)
                 assert after == orig, (
@@ -341,11 +347,15 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         probes = build_probes()
         for p in probes:
             await self._probe(p)
+        assert self.obs_bresp == len(probes), (
+            f"CHK-OBS-BRESP-TABLE FAIL: {self.obs_bresp} OBS-BRESP lines for {len(probes)} probes"
+        )
         self._log_chk(
             "CHK-OBS-BRESP-TABLE",
-            f"{self.obs_bresp} OBS-BRESP lines recorded over SEP_IN at LOCAL_BASE "
+            f"{self.obs_bresp} OBS-BRESP lines recorded, one per probe, over SEP_IN at LOCAL_BASE "
             f"0x{LOCAL_BASE_RESET:08X} (REGION_SIZE reset 0x{REGION_SIZE_RESET:X}); observed "
-            f"bresp tally {dict(self.bresp_tally)}; nothing graded against the declaration",
+            f"bresp tally {dict(self.bresp_tally)}; the responses are not graded against the "
+            f"declaration",
         )
 
         base = LOCAL_BASE_RESET
@@ -373,7 +383,8 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         # case b: beat0 lies in a gap, beat1 is the first decoded word of the next unit or
         # sub-block. Every pair runs with 64-bit beats and again with 32-bit beats, so the data-
         # width converter of the 32-bit paths and the burst splitter are told apart.
-        # (case, label, xbar, beat1 address, beat0 data, beat1 data, note)
+        # (case, label, xbar, beat1 address, beat0 kind, beat1 kind, note); the kinds are those
+        # of _burst.
         cases = (
             ("a", "A1_gpio_intf_past", "periph", gpio_last + 8, None, "P", "-"),
             (
@@ -404,8 +415,8 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
                 "internal",
                 mb_wd,
                 "P",
-                "P",
-                "mailbox_WRITE_DATA_push_is_the_side_effect",
+                "W",
+                "each_beat1_write_pushes_one_mailbox_entry",
             ),
             (
                 "b",
@@ -427,23 +438,19 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
             ),
         )
         for width in (64, 32):
-            pattern = WRITE_PATTERN64 if width == 64 else WRITE_PATTERN
             for case, label, xbar, beat1, d0, d1, note in cases:
                 await self._burst(
-                    case,
-                    label,
-                    xbar,
-                    width,
-                    beat1 - width // 8,
-                    beat1,
-                    pattern if d0 == "P" else None,
-                    pattern if d1 == "P" else None,
-                    note=note,
+                    case, label, xbar, width, beat1 - width // 8, beat1, (d0, d1), note=note
                 )
+        assert self.obs_burst == 2 * len(cases), (
+            f"CHK-OBS-BURST-TABLE FAIL: {self.obs_burst} OBS-BURST lines for {len(cases)} cases "
+            f"at two widths"
+        )
         self._log_chk(
             "CHK-OBS-BURST-TABLE",
-            f"{self.obs_burst} OBS-BURST lines recorded: two-beat INCR writes over SEP_IN whose "
-            f"beats fall on either side of a decoded extent; merged BRESP measured, not graded",
+            f"{self.obs_burst} OBS-BURST lines recorded, one per case and width: two-beat INCR "
+            f"writes over SEP_IN whose beats fall on either side of a decoded extent; merged BRESP "
+            f"measured, not graded",
         )
         self._log_chk(
             "CHK-BURST-LIVE-UNCHANGED",

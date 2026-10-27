@@ -12,8 +12,9 @@ samples on every ``clk_ref_i`` edge: the first edge on which the synchronised re
 edge is visible inside the wrap (``tb_flr_posedge_ref``), the first edge on which
 ``rst_cool_no`` (``tb_rst_cool_from_flr``) reads 0 and the first edge on which it reads 1 again.
 A final leg raises a second ``cfg_flr_pf_active_i`` edge while the pre-delay counter is in
-COUNT_DOWN and reports whether a second cool follows. Every measurement is an OBS-FLR line; the
-CHK line grades liveness only (each leg produced one bounded cool and the warm domain came back).
+COUNT_DOWN and reports the counter state the edge met. Every measurement is an OBS-FLR line; the
+CHK line grades liveness only: each leg produced exactly one bounded cool pulse, the warm smc
+clock reset fell after the request edge and was released again.
 #3423 asks `reset_unit.rdl` to state the clock, the pre-delay offset and the no-queue rule; the
 leaf is held out of `all` until that ruling lands.
 """
@@ -51,30 +52,48 @@ def _int(sig) -> int:
 
 
 class _RefMon:
-    """clk_ref_i sampler of the FLR request edge, counter state and rst_cool_no."""
+    """clk_ref_i sampler of the FLR request edge, counter state and rst_cool_no.
+
+    A second sampler on clk_smc_i records every fall of the warm smc clock reset, so a leg that
+    is armed before its request edge sees the warm reset the cool pulse causes however long the
+    pre-delay is.
+    """
 
     def __init__(self) -> None:
         self.edge = 0
         self.posedges: list[tuple[int, int]] = []
         self.falls: list[int] = []
         self.rises: list[int] = []
+        self.warm_falls = 0
         self._prev_cool = 1
-        self._task = None
+        self._prev_warm = 1
+        self._tasks: list = []
 
     def arm(self) -> None:
         self.edge = 0
         self.posedges = []
         self.falls = []
         self.rises = []
+        self.warm_falls = 0
         self._prev_cool = _int(cocotb.top.tb_rst_cool_from_flr) & 1
+        self._prev_warm = _int(cocotb.top.tb_rst_warm_smc_clk_n) & 1
 
     def start(self) -> None:
-        self._task = cocotb.start_soon(self._run())
+        self._tasks = [cocotb.start_soon(self._run()), cocotb.start_soon(self._run_warm())]
 
     def stop(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
-            self._task = None
+        for task in self._tasks:
+            task.cancel()
+        self._tasks = []
+
+    async def _run_warm(self) -> None:
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_smc_i)
+            warm = _int(dut.tb_rst_warm_smc_clk_n) & 1
+            if self._prev_warm and not warm:
+                self.warm_falls += 1
+            self._prev_warm = warm
 
     async def _run(self) -> None:
         dut = cocotb.top
@@ -125,15 +144,19 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
         raise AssertionError(f"{label}: SMC_REG=0x{last:x} want bit={want}")
 
     async def _recover(self, label: str) -> str:
-        """Drop the request, wait the warm domain out of and back into reset, clear the latch."""
+        """Drop the request, wait the warm domain back out of reset, clear the latch.
+
+        The warm reset must have fallen since the leg was armed (the sampler watches it from
+        before the request edge) and must be released again within the bound.
+        """
         dut = cocotb.top
         dut.tb_cfg_flr_pf_active.value = 0
-        saw_low = False
         for _ in range(_WARM_LOW_BOUND_SMC):
             await RisingEdge(dut.clk_smc_i)
-            if (_int(dut.tb_rst_warm_smc_clk_n) & 1) == 0:
-                saw_low = True
+            if self._mon.warm_falls:
                 break
+        saw_low = self._mon.warm_falls > 0
+        assert saw_low, f"{label}: warm smc clk reset never fell after the FLR cool"
         for _ in range(_RECOVERY_SMC):
             await RisingEdge(dut.clk_smc_i)
             if (_int(dut.tb_rst_warm_smc_clk_n) & 1) == 1:
@@ -143,7 +166,7 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
         post = await self.csr_read(f"SMC_REG_POST_{label}", SMC_REG)
         await self.csr_write(f"SMC_REG_CLR_{label}", SMC_REG, 0)
         await self._await_smc_bit(0, _PIN_BOUND, f"SMC_REG_CLR_RB_{label}")
-        return f"warm_low_seen={saw_low} smc_reg_post=0x{post:x}"
+        return f"warm_low_seen={saw_low} warm_falls={self._mon.warm_falls} smc_reg_post=0x{post:x}"
 
     async def _program(self, label: str, n: int, m: int) -> None:
         await self.csr_write(f"FLR_DELAY_{label}", FLR_DELAY, n)
@@ -156,6 +179,7 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
         mon = self._mon
         assert mon.posedges, f"{label}: no tb_flr_posedge_ref seen"
         assert mon.falls and mon.rises, f"{label}: no cool pulse recorded: {mon.falls} {mon.rises}"
+        assert len(mon.falls) == 1, f"{label}: {len(mon.falls)} cool pulses, want one: {mon.falls}"
         first_pos = mon.posedges[0][0]
         return {
             "N": n,
@@ -227,8 +251,6 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
             row["second"] = "not-seen"
         elif not in_count_down:
             row["second"] = "seen-in-" + _FLR_NAME.get(later[0][1], str(later[0][1]))
-        elif row["pulses"] >= 2:
-            row["second"] = "queued"
         else:
             row["second"] = "ignored"
         row["recover"] = await self._recover(label)

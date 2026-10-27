@@ -72,14 +72,15 @@ expect_fail_match = "CHK-WDT-TIMEOUT-ZERO-IDLE FAIL"
 # A SCRATCH_COLD_WARM read while the warm reset is asserted is accepted by the
 # primary-domain axi_lite_demux and never answered (smc_misc_wrap.sv has no
 # isolation on the warm-domain leg), so the peripheral crossbar's read channel
-# hangs after the release; cpu.adoc states the isolation rule for the cluster.
+# hangs after the release. The in-reset response is recorded, not graded;
+# cpu.adoc states the isolation rule only for the CPU cluster's own ports.
 name = "smc_warm_domain_access_during_reset_test"
 module = "smc_warm_domain_access_during_reset_test"
 seed = 1
 timeout_sec = 1800
 tags = ["rtl_issue"]
 run_modes = ["smoke"]
-expect_fail = "a SCRATCH_COLD_WARM read during the warm reset hangs the peripheral crossbar"
+expect_fail = "a SCRATCH_COLD_WARM read during the warm reset hangs the peripheral crossbar after the release"
 expect_fail_match = "CHK-WARM-DOMAIN-ACCESS-IN-RESET FAIL"
 
 [[tests]]

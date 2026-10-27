@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A SCRATCH_COLD_WARM read during the warm reset errors and leaves the fabric live.
+"""A SCRATCH_COLD_WARM read during the warm reset leaves the fabric live after the release.
 
 `smc_misc_wrap.sv` places `SCRATCH_COLD_WARM` on `rst_warm_ni` behind an
-`axi_lite_demux` that sits on the primary reset. `cpu.adoc` states the rule for
-a slave held in reset behind a live demux, and the CPU cluster implements it
-with `axi_isolate`: an access made during the reset is answered with an error,
-and the demux never records a request its slave cannot answer. Held to that
-rule, a read of `SCRATCH_COLD_WARM` while `rst_warm_smc_clk_n` is low completes
-with SLVERR or DECERR, and once the reset releases every read of
-`SCRATCH_COLD_WARM`, `SCRATCH_COLD`, `CHIP_CONFIG.CHIP_ID` and
-`RESET_UNIT.SS_CONFIG` completes.
+`axi_lite_demux` that sits on the primary reset. `cpu.adoc` states how the CPU
+cluster isolates its own AXI ports over a reset with `axi_isolate`: the MMIO
+master port terminates accesses presented while isolated with SLVERR and the
+L2 frontend slave port blocks them. Neither statement names the peripheral
+crossbar, so the response of a read of `SCRATCH_COLD_WARM` while
+`rst_warm_smc_clk_n` is low is recorded and not graded: a timeout, an error or
+a value are all accepted. The graded contract is liveness: once the reset
+releases, every read of `SCRATCH_COLD_WARM`, `SCRATCH_COLD`,
+`CHIP_CONFIG.CHIP_ID` and `RESET_UNIT.SS_CONFIG` completes.
 
 The generated cpuif of `scratch_reg.sv` presents ready while it is held in reset
 and drops the request, so the demux keeps a read it never gets an answer for,
@@ -46,7 +47,6 @@ SCRATCH_PATTERN = 0xC0FFEE42
 WARM_SCRATCH_PATTERN = 0x5A5AA5A5
 COLD_SCRATCH_PATTERN = 0x3C3CC3C3
 _RESP_NAMES = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
-_ERROR_RESPS = ("SLVERR", "DECERR")
 
 
 class _ReadPortMonitor:
@@ -178,15 +178,15 @@ class smc_warm_domain_access_during_reset_test_seq(SmcCsrSeq):
         }
         post_text = " ".join(f"{name}={res}" for name, res in post.items())
         hung = [name for name, res in post.items() if res == "TIMEOUT"]
-        if in_reset not in _ERROR_RESPS or hung:
+        if hung:
             raise AssertionError(
-                f"{CHK} FAIL: the read of SCRATCH_COLD_WARM during the warm reset answered "
-                f"{in_reset} (want SLVERR or DECERR); after the release {post_text}; "
-                f"{len(hung)} of 4 reads on the peripheral crossbar never completed"
+                f"{CHK} FAIL: after the release {post_text}; {len(hung)} of 4 reads on the "
+                f"peripheral crossbar never completed (the read of SCRATCH_COLD_WARM during the "
+                f"warm reset answered {in_reset}, not graded)"
             )
         cocotb.log.info(
-            "%s PASS: the read of SCRATCH_COLD_WARM during the warm reset answered %s and after "
-            "the release %s",
+            "%s PASS: the read of SCRATCH_COLD_WARM during the warm reset answered %s (not "
+            "graded) and after the release every read completed: %s",
             CHK,
             in_reset,
             post_text,

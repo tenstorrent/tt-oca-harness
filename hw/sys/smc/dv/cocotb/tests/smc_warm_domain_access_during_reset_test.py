@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A SCRATCH_COLD_WARM read during the warm reset errors and leaves the fabric live.
+"""A SCRATCH_COLD_WARM read during the warm reset leaves the fabric live after the release.
 
-Reproducer for #3408: a read of `SCRATCH_COLD_WARM` while `rst_warm_smc_clk_n`
-is low must complete with SLVERR or DECERR, and every read of
-`SCRATCH_COLD_WARM`, `SCRATCH_COLD`, `CHIP_CONFIG.CHIP_ID` and
-`RESET_UNIT.SS_CONFIG` after the release must complete.
+Reproducer for #3408: the response of a read of `SCRATCH_COLD_WARM` while
+`rst_warm_smc_clk_n` is low is recorded, and every read of `SCRATCH_COLD_WARM`,
+`SCRATCH_COLD`, `CHIP_CONFIG.CHIP_ID` and `RESET_UNIT.SS_CONFIG` after the
+release must complete.
 """
 
 from __future__ import annotations

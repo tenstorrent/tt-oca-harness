@@ -1245,7 +1245,7 @@ and sets with a zero hold count.
 |`smc_sync_reg_irq_test` |2 |SYNC_REG.sync drives sync_irq_o and only bit 0 is implemented.
 |`smc_isolate_req_smc_lane_test` |2, held out |Writes to `ISOLATE_REQ_SMC_REG` that do not clear bit 0 must leave the FLR-latched request set.
 |`smc_wdt_timeout_zero_idle_test` |2, held out |`WDT_TIMEOUT` written to 0 with no first-stage timeout must leave `smc_wdt_second_timeout_o` low and the warm reset released (#3386).
-|`smc_warm_domain_access_during_reset_test` |2, held out |A `SCRATCH_COLD_WARM` read during the warm reset must error, and every later read on the peripheral crossbar must complete (#3408).
+|`smc_warm_domain_access_during_reset_test` |2, held out |After a `SCRATCH_COLD_WARM` read during the warm reset, every read on the peripheral crossbar after the release must complete; the in-reset response is recorded (#3408).
 |`smc_flr_counter_timing_obs_test` |3, held out |FLR pre-delay and hold measured on `clk_ref_i` for several counter values, recorded for #3423.
 |`smc_reset_mid_transaction_rand_test` |3, planned |Seeded cool-pin, FLR, cold and watchdog resets,
 asserted at a drawn cycle inside a drawn in-flight operation after programming non-zero values,
@@ -48522,7 +48522,7 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |===
 |Issue |Leaf |Kind |Reason
 |#3386 |`smc_wdt_timeout_zero_idle_test` |`rtl_issue` |`CPU_CTRL.WDT_TIMEOUT` written to 0 with no first-stage timeout raises `smc_wdt_second_timeout_o` and holds the warm domain in reset; the leaf asserts the pin stays low and the warm reset released
-|#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and blocks the peripheral crossbar's read channel after the release; the leaf asserts the in-reset read errors and every later read completes
+|#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes
 |#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
 |-- |`smc_isolate_req_smc_lane_test` |`rtl_issue` |`ISOLATE_REQ_SMC_REG` clears its FLR-latched request on a write outside bit 0's byte lane; card below

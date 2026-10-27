@@ -292,6 +292,10 @@ class smc_zeroer_busy_trigger_obs_test_seq(output_fabric_pass_all_cfg_seq):
                 ),
             )
             held_status = await self._status("ZEROER_DRAIN_HELD")
+            assert held_status == 1, (
+                "STATUS reads 0 while the 2 KiB job's write responses are held and "
+                f"{self._sig('tb_zeroer_outstanding')} are outstanding, want busy"
+            )
             held_out = self._sig("tb_zeroer_outstanding")
             await self._program("R4", _R4_DEST, _R4_SIZE)
             n_before = len(wire.triggers)
