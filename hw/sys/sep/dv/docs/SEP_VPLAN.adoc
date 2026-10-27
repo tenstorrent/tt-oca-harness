@@ -844,8 +844,8 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |<<sep_esrc_conditioning_matrix_rand_test,`sep_esrc_conditioning_matrix_rand_test`>>
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
-|CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`, `esrc_whiten_push_o`, `esrc_compress_vld_o`; SHA-256 status tap (observation tap)
-|Proves the conditioning options: the decorrelator byte mask; the compressor-bypass word order and all twelve generator-to-byte positions; the exact strobe count of `DOWNSAMPLE_RATE`; the exact 16-to-8 count of the SHA-256 whitener and its `OUTPUT_COUNT`; and the pass-through.
+|CPU-LSU master, noise inject `esrc_noise_ext_i`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`, `esrc_whiten_push_o`, `esrc_compress_vld_o`; SHA-256 status tap, ESRC downsample and divider taps `esrc_downsample_count_o`, `esrc_stream_valid_gated_o`, `esrc_decor_div_lane0_o`, generator enable tap `esrc_ro_enable_o` (observation taps)
+|Proves the conditioning options: the decorrelator byte mask; the compressor-bypass word order and all twelve generator-to-byte positions; the exact strobe count of `DOWNSAMPLE_RATE` and the first FIFO word after the TRNG reset on the (N+1)th gated output; the ratio of the byte periods of two `SAMPLE_CLK_DIV` values and the first strobe one period after a lane enable; the exact 16-to-8 count of the SHA-256 whitener and its `OUTPUT_COUNT`; and the pass-through. Logs the absolute period and mid-run `DOWNSAMPLE_RATE` and `SAMPLE_CLK_DIV` writes.
 
 |<<sep_esrc_fifo_flow_rand_test,`sep_esrc_fifo_flow_rand_test`>>
 |3
@@ -2512,7 +2512,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |DECORRELATOR_CTRL.BYPASS (per lane) forces the feedback to zero. SAMPLE_CLK_DIV sets the byte period to SAMPLE_CLK_DIV + 1 cycles. The RDL names sample-clock cycles and the architecture text names clk_i cycles.
 |ESRC: time base of the byte period (RDL: sample-clock cycles; architecture text: clk_i cycles). Source: `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`DECORRELATOR_CTRL`); `hw/ip/entropy_source/doc/architecture.adoc` (Decorrelation and BIW Mixing).
-|no check uses an absolute period; the exact noise patterns change a lane bit only at a strobe of `esrc_decor_valid_o`, so their statistics count words and not clocks
+|no check uses an absolute period; the exact noise patterns change a lane bit only at a strobe of `esrc_decor_valid_o`, so their statistics count words and not clocks. `sep_esrc_conditioning_matrix_rand_test` grades only the ratio of two periods (CHK-COND-PERIOD-RATIO) and logs the period in `clk_i` cycles as `OBS-COND-PERIOD-ABS`
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |The gating 32-bit health test observes the extracted stream before SHA-256. The whitener conditions each 512-bit BIW block into a 256-bit digest. The block chaining, the padding, and the word and byte order of the input and digest words are not stated.
 |ESRC SHA-256 whitener: does each block start from the SHA-256 initial value or from the previous digest, is the block padded, and in which word and byte order do the 16 input words enter the block and the 8 digest words enter the FIFO? Source: `hw/ip/entropy_source/doc/architecture.adoc` (SHA-256 Whitening); `hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc` (`CTRL.SHA256_WHITENING_ENABLE`); `hw/sys/sep/doc/trng.adoc` (Entropy Generation).
@@ -3683,6 +3683,11 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |ACCEPT-PROBE
 |The existing tap on the entropy stream port (`esrc_compress_vld_o`, `esrc_compress_data_o`). Used by `sep_esrc_persistent_alert_rand_test`, `sep_esrc_startup_gate_rand_test`, `sep_esrc_conditioning_matrix_rand_test` and `sep_esrc_fifo_flow_rand_test`.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|The decorrelator samples one byte every SAMPLE_CLK_DIV + 1 cycles, and its divider holds at zero while the lane is disabled. With the compressor bypassed, DOWNSAMPLE_RATE = N selects every (N+1)th output that the boot gate passes.
+|-
+|ACCEPT-PROBE
+|The read-only taps `esrc_stream_valid_gated_o` (the decorrelator stream strobe after the boot gate), `esrc_downsample_count_o` (the FIFO downsample count) and `esrc_decor_div_lane0_o` (the divider count of lane 0) are observation taps. `sep_esrc_conditioning_matrix_rand_test` counts the gated strobes to the first FIFO word (CHK-COND-FIRST-PUSH); the two counts are logged and sampled by `sep_esrc_conditioning_cg`, and no check grades a count value.
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |Each domain isolates fixed paths: OTBN, AES, HMAC, KMAC and ABR isolate the host path and the Key Manager key path; the Key Manager isolates all five key paths and the eFuse path; the TRNG isolates the ESRC, CSRNG and EDN host paths. A key path isolates when either end resets. The mailbox, eFuse, life-cycle and external TRNG ports are never isolated.
 |-
 |ACCEPT-PROBE
@@ -4380,6 +4385,11 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Read-only tap
 |The next value of the `SHA256_STATUS` fields on every `clk_i`.
 |`sep_esrc_conditioning_matrix_rand_test` (CHK-COND-SHA, CHK-COND-SHA-COUNT); `sep_esrc_health_pattern_rand_test` (CHK-HT-PRESHA)
+|<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
+|ESRC downsample and divider taps
+|Read-only tap
+|`downsample_count`, `entropy_stream_valid_gated`, the lane 0 decorrelator `clk_divider` and the generator enable `jitter_ro_enable_i` (`esrc_ro_enable_o`) of the ESRC on every `clk_i`.
+|`sep_esrc_conditioning_matrix_rand_test` (CHK-COND-FIRST-PUSH, CHK-COND-FIRST-STROBE; the counts are logged only)
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |Crypto and entropy FCOV sampler taps
 |Sampler taps

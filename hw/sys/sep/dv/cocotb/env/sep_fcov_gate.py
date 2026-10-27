@@ -1118,6 +1118,31 @@ def set_esrc_pa_pass(bits: int, log=None) -> bool:
     return _set_bound("esrc_pa_pass", bits, "FCOV-ESRC-PA-PASS", log)
 
 
+# Bits of ``u_sep_fcov.esrc_cnt_pass``: one per counter check of the
+# conditioning leaf (the CzCnt* localparams of cov/sv/sep_fcov.sv).
+ESRC_CNT_PASS_PERIOD = 1 << 0  # CHK-COND-PERIOD-RATIO (cp_sample_clk_div)
+ESRC_CNT_PASS_FIRST_STROBE = 1 << 1  # CHK-COND-FIRST-STROBE (cp_first_strobe)
+ESRC_CNT_PASS_FIRST_PUSH = 1 << 2  # CHK-COND-FIRST-PUSH (cp_ds_first_push)
+
+
+def set_esrc_cnt_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.esrc_cnt_pass`` (the passed check bits ``ESRC_CNT_PASS_*``, or 0).
+
+    The pass label of ``cp_sample_clk_div``, ``cp_first_strobe`` and
+    ``cp_ds_first_push`` of ``sep_esrc_conditioning_cg``, which
+    ``sep_esrc_conditioning_matrix_rand_test`` owns. The sampler reads the
+    class of the stored ``DECORRELATOR_CTRL.SAMPLE_CLK_DIV`` or
+    ``CTRL.DOWNSAMPLE_RATE`` only when a bit rises. The leaf writes the bit
+    after the check passes, while the graded value is still stored, holds it
+    two clocks and writes 0. Same rules as ``graded_owner``: a no-op that
+    returns False on Verilator. On VCS a sampler without the variable is a
+    testbench error.
+    """
+    if bits >> 3 or bits < 0:
+        raise ValueError(f"esrc_cnt_pass bits {bits:#x} are not 0 to 0x7")
+    return _set_bound("esrc_cnt_pass", bits, "FCOV-ESRC-CNT-PASS", log)
+
+
 def set_bfault_pass(passed: bool, log=None) -> bool:
     """Write ``u_sep_fcov.bfault_pass`` (1 after the checks of an instance pass, else 0).
 

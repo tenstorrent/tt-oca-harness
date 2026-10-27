@@ -3464,6 +3464,12 @@ module sep_uvm_top
                                     `SEP_DRBG.edn_axis_endpoint_rsp[1].edn_ack,
                                     `SEP_DRBG.edn_axis_endpoint_rsp[0].edn_ack};
     assign esrc_sample_clk_lane0_o = `SEP_ESRC.u_generator_complex.u_sampler_clocks.sample_clk_o[0];
+    // ESRC FIFO downsample count, the decorrelator stream strobe after the boot
+    // gate, and the divider count of lane 0. Read-only XMR taps.
+    assign esrc_downsample_count_o   = `SEP_ESRC.downsample_count;
+    assign esrc_stream_valid_gated_o = `SEP_ESRC.entropy_stream_valid_gated;
+    assign esrc_decor_div_lane0_o    =
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[0].u_generator.u_decorrelator.clk_divider;
     // drbg_axil64_lane_adapter arbitration, sampled at each DUT adapter's
     // own AXI-Lite-64 port:
     // {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
@@ -7035,14 +7041,18 @@ module sep_uvm_top
         .iso_slv_bresp_i       (iso_slv_bresp_probe_o),
         .iso_slv_rresp_i       (iso_slv_rresp_probe_o),
         // Entropy taps of the EDN auto-mode sequence, the stream-adapter FIFO,
-        // the lane 0 sample-clock divider, the counter-copy inject, the
-        // conditioner output, the seed packer and the CSRNG seed handshake.
+        // the lane 0 sample-clock divider, the ESRC downsample and decorrelator
+        // counts, the counter-copy inject, the conditioner output, the seed
+        // packer and the CSRNG seed handshake.
         .edn_csrng_cmd_valid_i (edn_csrng_cmd_valid_o),
         .edn_csrng_cmd_ready_i (edn_csrng_cmd_ready_o),
         .edn_csrng_cmd_bus_i   (edn_csrng_cmd_bus_o),
         .drbg_adapter_push_i   (drbg_adapter_push_o),
         .esrc_rosc_clk_i       (entropy_rosc_sample_clk_i),
         .esrc_sample_clk0_i    (esrc_sample_clk_lane0_o),
+        .esrc_ds_count_i       (esrc_downsample_count_o),
+        .esrc_stream_gated_i   (esrc_stream_valid_gated_o),
+        .esrc_div0_i           (esrc_decor_div_lane0_o),
         .esrc_cntr_inj_i       (esrc_cntr_inject_i === 1'b1),
         .esrc_compress_data_i  (esrc_compress_data_o),
         .seed_word_ready_i     (`SEP_DRBG.u_csrng_seed_adapter.csrng_word_ready_o),
