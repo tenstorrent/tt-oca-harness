@@ -45,3 +45,8 @@ MD041: false
 # MD060/table-column-style: this repo mixes compact and aligned pipe-table
 # styles across existing tables; not worth a repo-wide table rewrite here.
 MD060: false
+
+# MD033/no-inline-html: generated table cells use <br> for line breaks, which
+# pipe tables have no other way to express.
+MD033:
+  allowed_elements: [br]
