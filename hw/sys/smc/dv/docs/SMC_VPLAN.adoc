@@ -35819,6 +35819,10 @@ that were changed.
   STOP completes with one acknowledge and one STOP; four is the controller's floor, since its
   stretch predictor needs `THIGH` of at least four and SCL low must outlast the output flop plus
   the two-flop input synchronizer by a cycle before the controller releases SCL.
+* `i2c.rdl` states `THIGH` and `TLOW` "Must be `>= 2`". Whether 2 is legal or the description
+  has to follow the controller is an open ruling for the I2C owner, so transfer Y at `THIGH` and
+  `TLOW` of 2 runs after the graded minimum set and is logged (`OBS-I2C-WIRE-RDL-MIN`), completed
+  or not; nothing is graded on it until the ruling lands.
 
 *Test Procedure*:
 
@@ -35878,7 +35882,8 @@ measured bus-free time of each set is printed next to its programmed `T_BUF` (th
 STOP and START condition per `i2c.rdl`); a value below it is printed, not compared.
 |`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 4 and the other fields at 1 transfer Y
 shows a START, an acknowledged address, one STOP, `HOSTIDLE` and `CMD_COMPLETE`; a missing START
-or acknowledge, another STOP count or either flag clear fails it.
+or acknowledge, another STOP count or either flag clear fails it. The RDL minimum (`THIGH` and
+`TLOW` at 2) is observed only (`OBS-I2C-WIRE-RDL-MIN`) while the ruling on the description is open.
 |`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
 lines follow them in order; a missing or misordered term fails it.
 |`CHK-TIMEOUT-PATHS` |The wait for the STOP edges, the `HOSTIDLE` poll, the LSIO ready poll and the
