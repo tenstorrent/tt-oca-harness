@@ -369,6 +369,10 @@ module ocah_axi_sva #(
           end else begin
             aw_q.push_back('{id: awid, addr: awaddr, len: awlen, size: awsize, burst: awburst,
                            lock: awlock});
+            // A W burst that started before this AW and is still in flight
+            // (legal: A3.3) binds to it: its remaining beats are checked
+            // against this AW, and its WLAST moves it to the response queue.
+            if (w_beat_idx > 0 && !w_burst_checkable) w_burst_checkable = 1'b1;
           end
         end
 
