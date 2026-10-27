@@ -188,7 +188,7 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# DMA endpoint reach, the alias forms, the output remaps, the DMA AxUSER, the SMC-port beats of the DMA and the CPU through BH-SMC, the DMA writes of an inbound filter START_ADDR and the not-connected targets, the entropy pool among them. The firmware brings up the entropy stack so the pool holds entropy. The host patches the seeded values into the firmware parameter block.
+# DMA endpoint reach, the alias forms, the output remaps, the DMA AxUSER, the SMC-port beats of the DMA and the CPU through BH-SMC, the DMA writes of an inbound filter START_ADDR and the not-connected targets, the entropy pool among them. The firmware brings up the entropy stack, the bench drives the raw noise (`+esrc_noise_force`) and fills the entropy pool through external stream 2, and the check grades only that no DMA read reaches the pool. The host patches the seeded values into the firmware parameter block.
 name = "sep_fabric_dma_endpoint_matrix_test"
 module = "cpu.sep_fabric_dma_endpoint_matrix_test"
 firmware = "dma_endpoint_matrix_test"
