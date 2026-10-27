@@ -1593,7 +1593,7 @@ headline SCORE averages both.
 [cols="1,2",options="header"]
 |===
 |Item |Reason
-|SV covergroups under Verilator |Built with the same goal bins as VCS and not graded. The Verilator public scope (`sep_public_scope.vlt`) exposes none of the sampler's gate variables, so a leaf opens no graded window there and the owner-gated bins stay empty
+|SV covergroups under Verilator |Built with the same goal bins as VCS and not graded. The gate helper (`cocotb/env/sep_fcov_gate.py`) writes no gate variable when the simulator is Verilator, so a leaf opens no graded window there and the owner-gated bins stay empty
 |Verilator cover-property FCOV |Not used. Phase 1 is covergroups only; no `OCAH_FCOV_COVER` points are defined
 |Toggle coverage under Verilator |Database size; commercial flow only
 |`ocah_axi_cov_if` |Commercial-flow asset; not on the Verilator filelist
@@ -1697,9 +1697,8 @@ window of one of its owning tests. The sampler has one gate input for this,
 `graded_owner`: an integer code that names one Phase 3 entry, from one code table
 that the sampler and the leaves share, with 0 for "no window open". It is a
 variable of the Phase 2 sampler that the leaf writes through the testbench handle
-of `u_sep_fcov`. The Verilator public scope (`sep_public_scope.vlt`) exposes
-none of the gate variables of `u_sep_fcov`, so the leaf skips every gate write
-on a Verilator leaf; the checks of a leaf do not depend on the gate. The gate is a monitor-only testbench variable that only the coverage sampler reads: it drives nothing and touches no DUT net, so it is an observation tap and blocks no bin. The rules are:
+of `u_sep_fcov`. The gate helper (`cocotb/env/sep_fcov_gate.py`) checks the
+simulator name and skips every gate write on a Verilator leaf; the checks of a leaf do not depend on the gate. The gate is a monitor-only testbench variable that only the coverage sampler reads: it drives nothing and touches no DUT net, so it is an observation tap and blocks no bin. The rules are:
 
 * The leaf writes the code of its own entry at the first step of its graded
 stimulus. It writes 0 before each control leg, before each bring-up or clean-up

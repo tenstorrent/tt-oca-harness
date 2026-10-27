@@ -13,11 +13,11 @@ sampler includes. This module reads the same file, so the leaf and the sampler
 cannot disagree on a code.
 
 ``u_sep_fcov`` exists on every simulator. On Verilator every call here is a
-no-op and returns False, because the public scope (``sep_public_scope.vlt``)
-exposes none of the gate variables of ``u_sep_fcov``; a check of a leaf never
-depends on the gate. On any other simulator a missing sampler or
-``graded_owner`` is a testbench error, so a build that lost the sampler fails
-instead of leaving the owner-gated bins empty.
+no-op and returns False: ``_sampler_expected`` reads ``cocotb.SIM_NAME`` and
+skips the handle lookup, so a leaf writes no gate variable of ``u_sep_fcov``
+there. A check of a leaf never depends on the gate. On any other simulator a
+missing sampler or ``graded_owner`` is a testbench error, so a build that lost
+the sampler fails instead of leaving the owner-gated bins empty.
 """
 
 from __future__ import annotations
