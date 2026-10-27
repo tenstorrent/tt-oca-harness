@@ -188,16 +188,16 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# DMA endpoint reach, the alias forms, the DMA AxUSER, the SMC-port beats through BH-SMC and the not-connected targets. The host patches the seeded values into the firmware parameter block.
+# DMA endpoint reach, the alias forms, the output remaps, the DMA AxUSER, the SMC-port beats of the DMA and the CPU through BH-SMC, the DMA writes of an inbound filter START_ADDR and the not-connected targets, the entropy pool among them. The firmware brings up the entropy stack so the pool holds entropy. The host patches the seeded values into the firmware parameter block.
 name = "sep_fabric_dma_endpoint_matrix_test"
 module = "cpu.sep_fabric_dma_endpoint_matrix_test"
 firmware = "dma_endpoint_matrix_test"
 seed = 1
 reseed = 4
-timeout_sec = 3600
+timeout_sec = 4500
 tags = ["fabric", "dma", "smc", "cpu", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000"]
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000"]
 
 # Mailbox, IRQ and PIC (docs/SEP_VPLAN.adoc, docs/test_contracts/mailbox_irq_pic.adoc).
 
@@ -225,13 +225,13 @@ tags = ["pic", "fabric", "filter", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
-# PIC delivery gates, the winner by effective priority in both orders, the never value, the order flip and the idle timer and software paths. The host patches the seeded rounds into the firmware parameter block.
+# PIC delivery gates, the delivery order by effective priority in both orders with a tie at the top in every run, the never value, the order flip, the idle timer and software paths, the meipt threshold, nesting through meicurpl and both internal timers. The host patches the seeded rounds and legs into the firmware parameter block.
 name = "sep_pic_priority_gate_rand_test"
 module = "cpu.sep_pic_priority_gate_rand_test"
 firmware = "pic_priority_gate_rand_test"
 seed = 1
 reseed = 3
-timeout_sec = 3600
+timeout_sec = 8000
 tags = ["pic", "interrupt", "priority", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
