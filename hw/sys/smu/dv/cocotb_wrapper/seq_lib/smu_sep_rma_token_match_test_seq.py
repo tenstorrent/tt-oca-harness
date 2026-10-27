@@ -7,12 +7,16 @@ a debug system-bus access (RISC-V Debug Specification 0.13). The eFuse MMR token
 the eight-word ``RMA_SIP_TOKEN_I`` and ``RMA_CHIPLET_TOKEN_I`` arrays; a write of 1 to the lane's
 ``TOKEN_EOP`` bit starts the hash, and the lane's result register holds idle until the digest is
 compared with the RMA digest of the SEP eFuse shadow map (``hw/sys/sep/doc/token_processing.adoc``,
-"Token Submission" and "Token result encodings").
+"Token Submission" and "Token result encodings"). The chiplet legs run the token one bit off at
+bit 0 on every run, then the correct token, then the token one bit off at a bit position from 1
+to 255 drawn from the seed. Each leg's expected result differs from the result the leg before
+it left.
 """
 
 from __future__ import annotations
 
 import hashlib
+import random
 from collections import Counter
 
 import cocotb
@@ -58,7 +62,10 @@ SB_ACCESS_32 = 2
 # differs from every other word of both tokens.
 T_SIP = 0x11111111_22222222_33333333_44444444_55555555_66666666_77777777_88888888
 T_CHIP = 0xA1A2A3A4_B1B2B3B4_C1C2C3C4_D1D2D3D4_E1E2E3E4_F1F2F3F4_01020304_05060708
-T_CHIP_ONE_BIT_OFF = T_CHIP ^ 1
+TOKEN_BITS = 256
+# The mismatch leg run on every seed, before the correct-token leg and the drawn mismatch leg.
+PINNED_FLIP_BIT = 0
+PINNED_LABEL = "pinned flip_bit=0 (word 0 bit 0)"
 
 
 def _digest(token: int) -> int:
@@ -78,14 +85,14 @@ SIP_DIGEST_WORDS = _words(_digest(T_SIP))
 RESULT_POLLS = 8
 STEP_CLOCK_GAP = 2
 
-EXPECTED_SITE_KINDS = {"sip_match": 1, "chiplet_mismatch": 1, "chiplet_match": 1}
-EXPECTED_SITES = 3
+EXPECTED_SITE_KINDS = {"sip_match": 1, "chiplet_mismatch": 2, "chiplet_match": 1}
+EXPECTED_SITES = 4
 
-STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")
+STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
 
 
 class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
-    """RMA SIP and chiplet token legs: idle, match, mismatch, match, independence."""
+    """RMA SIP and chiplet token legs: idle, match, mismatch, match, mismatch, independence."""
 
     def __init__(self, test) -> None:
         super().__init__(test)
@@ -95,6 +102,14 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         self.stamp_ps: dict[str, int] = {}
         self.accesses = 0
         self.done = False
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.flip_bit = self.rng.randint(PINNED_FLIP_BIT + 1, TOKEN_BITS - 1)
+        self.chip_one_bit_off = T_CHIP ^ (1 << self.flip_bit)
+        self.chip_pinned_off = T_CHIP ^ (1 << PINNED_FLIP_BIT)
+        self.drawn = (
+            f"drawn flip_bit={self.flip_bit} (word {self.flip_bit // 32} bit {self.flip_bit % 32})"
+        )
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -146,6 +161,7 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
 
     async def run(self) -> None:
         sb = self.test.env.scoreboard
+        self._log(f"SEED: RANDOM_SEED={self.seed} {self.drawn}; {PINNED_LABEL} first")
         await smu_dtp_sep_dm_dmi_test_seq.run(self)
         assert self.s1_ok and self.s2_ok and self.s3_ok, "SEP debug bring-up incomplete"
         jtag = self.jtag
@@ -183,16 +199,16 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         chiplet_idle = await self._read(jtag, CHIPLET_MATCH) & STATUS_MASK
         await self._mark("S5", f"chiplet result while the SIP result holds 0x{chiplet_idle:02x}")
 
-        await self._write_token(jtag, CHIPLET_TOKEN_WORDS, T_CHIP_ONE_BIT_OFF)
+        await self._write_token(jtag, CHIPLET_TOKEN_WORDS, self.chip_pinned_off)
         await self._write(jtag, TOKEN_EOP, CHIPLET_GO)
         sip_at_chiplet_start = await self._read(jtag, SIP_MATCH) & STATUS_MASK
-        chiplet_mismatch = await self._poll(
-            jtag, "chiplet_mismatch", "RMA_CHIPLET_TOKEN_MATCH", CHIPLET_MATCH
+        pinned_mismatch = await self._poll(
+            jtag, "chiplet_mismatch", "RMA_CHIPLET_TOKEN_MATCH pinned", CHIPLET_MATCH
         )
         await self._mark(
             "S6",
-            f"chiplet token one bit off, SIP result at the start 0x{sip_at_chiplet_start:02x}, "
-            f"chiplet result 0x{chiplet_mismatch:02x}",
+            f"chiplet token one bit off ({PINNED_LABEL}), SIP result at the start "
+            f"0x{sip_at_chiplet_start:02x}, chiplet result 0x{pinned_mismatch:02x}",
         )
 
         await self._write_token(jtag, CHIPLET_TOKEN_WORDS, T_CHIP)
@@ -202,21 +218,33 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         )
         await self._mark("S7", f"chiplet token correct, result 0x{chiplet_match:02x}")
 
+        await self._write_token(jtag, CHIPLET_TOKEN_WORDS, self.chip_one_bit_off)
+        await self._write(jtag, TOKEN_EOP, CHIPLET_GO)
+        chiplet_mismatch = await self._poll(
+            jtag, "chiplet_mismatch", "RMA_CHIPLET_TOKEN_MATCH drawn", CHIPLET_MATCH
+        )
+        await self._mark(
+            "S8", f"chiplet token one bit off ({self.drawn}), result 0x{chiplet_mismatch:02x}"
+        )
+
         sip_after = await self._read(jtag, SIP_MATCH) & STATUS_MASK
-        await self._mark("S8", f"SIP result after the chiplet legs 0x{sip_after:02x}")
+        await self._mark("S9", f"SIP result after the chiplet legs 0x{sip_after:02x}")
 
         fault = await self._read(jtag, MATCH_FAULT)
         self._log(f"OBSERVATION TOKEN_MATCH_FAULT=0x{fault:08x} measured and logged only")
-        await self._mark("S9", "TOKEN_MATCH_FAULT read and logged")
+        await self._mark("S10", "TOKEN_MATCH_FAULT read and logged")
 
         await ClockCycles(self.clk, STEP_CLOCK_GAP)
-        self.stamp_ps["S10"] = int(get_sim_time(unit="ps"))
-        self._log(f"STEP S10 @{self.stamp_ps['S10'] / 1000:.3f}ns: PASS stamp")
+        self.stamp_ps["S11"] = int(get_sim_time(unit="ps"))
+        self._log(f"STEP S11 @{self.stamp_ps['S11'] / 1000:.3f}ns: PASS stamp")
         self._log(f"system-bus accesses used={self.accesses}")
 
         self._check_idle(sb, sip_idle, chiplet_idle)
         self._check_start(sb, chiplet_at_sip_start, sip_at_chiplet_start)
-        self._check_results(sb, sip_idle, sip_match, chiplet_idle, chiplet_mismatch, chiplet_match)
+        self._check_pinned(sb, chiplet_idle, pinned_mismatch)
+        self._check_results(
+            sb, sip_idle, sip_match, pinned_mismatch, chiplet_match, chiplet_mismatch
+        )
         self._check_indep(sb, sip_match, sip_after, chiplet_mismatch, chiplet_match)
         self._check_integrity(sb)
         self.done = True
@@ -251,8 +279,24 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             evidence="CHK-SEP-RMA-START",
         )
 
+    def _check_pinned(self, sb, chiplet_idle, pinned_mismatch) -> None:
+        got = (chiplet_idle, pinned_mismatch)
+        want = (RESULT_IDLE, RESULT_MISMATCH)
+        self._log(
+            f"CHK-SEP-RMA-CHIP-MISMATCH: chiplet result before/after the pinned one-bit-off token="
+            f"{tuple(f'0x{v:02x}' for v in got)} expected={tuple(f'0x{v:02x}' for v in want)} "
+            f"{PINNED_LABEL}"
+        )
+        sb.expect_eq(
+            f"CHK-SEP-RMA-CHIP-MISMATCH the one-bit-off chiplet token reads mismatch "
+            f"{PINNED_LABEL}",
+            got,
+            want,
+            evidence="CHK-SEP-RMA-CHIP-MISMATCH",
+        )
+
     def _check_results(
-        self, sb, sip_idle, sip_match, chiplet_idle, chiplet_mismatch, chiplet_match
+        self, sb, sip_idle, sip_match, pinned_mismatch, chiplet_match, chiplet_mismatch
     ) -> None:
         got = (sip_idle, sip_match)
         want = (RESULT_IDLE, RESULT_MATCH)
@@ -266,22 +310,10 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             want,
             evidence="CHK-SEP-RMA-SIP-MATCH",
         )
-        got = (chiplet_idle, chiplet_mismatch)
-        want = (RESULT_IDLE, RESULT_MISMATCH)
-        self._log(
-            f"CHK-SEP-RMA-CHIP-MISMATCH: chiplet result before/after the one-bit-off token="
-            f"{tuple(f'0x{v:02x}' for v in got)} expected={tuple(f'0x{v:02x}' for v in want)}"
-        )
-        sb.expect_eq(
-            "CHK-SEP-RMA-CHIP-MISMATCH the one-bit-off chiplet token reads mismatch",
-            got,
-            want,
-            evidence="CHK-SEP-RMA-CHIP-MISMATCH",
-        )
-        got = (chiplet_mismatch, chiplet_match)
+        got = (pinned_mismatch, chiplet_match)
         want = (RESULT_MISMATCH, RESULT_MATCH)
         self._log(
-            f"CHK-SEP-RMA-CHIP-MATCH: chiplet result after the one-bit-off/correct token="
+            f"CHK-SEP-RMA-CHIP-MATCH: chiplet result after the pinned one-bit-off/correct token="
             f"{tuple(f'0x{v:02x}' for v in got)} expected={tuple(f'0x{v:02x}' for v in want)}"
         )
         sb.expect_eq(
@@ -289,6 +321,19 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             got,
             want,
             evidence="CHK-SEP-RMA-CHIP-MATCH",
+        )
+        got = (chiplet_match, chiplet_mismatch)
+        want = (RESULT_MATCH, RESULT_MISMATCH)
+        self._log(
+            f"CHK-SEP-RMA-CHIP-MISMATCH: chiplet result before/after the drawn one-bit-off token="
+            f"{tuple(f'0x{v:02x}' for v in got)} expected={tuple(f'0x{v:02x}' for v in want)} "
+            f"{self.drawn}"
+        )
+        sb.expect_eq(
+            f"CHK-SEP-RMA-CHIP-MISMATCH the one-bit-off chiplet token reads mismatch {self.drawn}",
+            got,
+            want,
+            evidence="CHK-SEP-RMA-CHIP-MISMATCH",
         )
 
     def _check_indep(self, sb, sip_match, sip_after, chiplet_mismatch, chiplet_match) -> None:
@@ -331,7 +376,7 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         pass_gap = round((stamps[-1] - stamps[-2]) / self.period_ps)
         self._log(f"CHK-NONVAC: ordered sim-time fence {fence} pass_gap_cycles={pass_gap}")
         sb.expect_eq(
-            "CHK-NONVAC ordered sim-time fence, PASS stamp two cycles after S9",
+            "CHK-NONVAC ordered sim-time fence, PASS stamp two cycles after S10",
             (all(b > a for a, b in zip(stamps, stamps[1:])), pass_gap),
             (True, STEP_CLOCK_GAP),
             evidence="CHK-NONVAC",
