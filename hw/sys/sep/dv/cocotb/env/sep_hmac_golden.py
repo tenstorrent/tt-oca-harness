@@ -107,11 +107,11 @@ def hmac_or_sha_words(
     * ``digest[511:0] = {DIGEST0, DIGEST1, ...}``
       (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:468-469): DIGEST_0
       holds the most-significant 32 bits, so word n holds digest bytes 4n..4n+3.
-      This function returns the big-endian read at ``digest_swap=0`` (reset value);
-      the register text does not state that byte order, so a test grades a
-      readback with ``SepDigestOrder``.
-    * ``CFG.digest_swap`` = 1 converts each DIGEST word to big-endian byte order and
-      keeps DIGEST_0 as the first four bytes
+      With the FIPS 180-4 hash value H0 || H1 || ..., DIGEST word n at
+      ``digest_swap=0`` (reset value) is the big-endian read of those bytes, which
+      this function returns; a test grades a readback with ``SepDigestOrder``.
+    * ``CFG.digest_swap`` = 1 reverses the bytes of each DIGEST word and keeps
+      DIGEST_0 as the first four bytes
       (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc:114-117):
       the same bytes read little-endian as a bus word.
     * ``CFG.endian_swap`` = 0 adds each MSG_FIFO value in little-endian byte order

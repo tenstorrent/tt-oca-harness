@@ -51,7 +51,8 @@ Checkers:
   CHK-HMAC-DSWAP-REL  word n at digest_swap 1 == bswap32(word n at digest_swap 0)
   CHK-HMAC-CTX        split, stop, save, restore, continue == single pass (DUT against
                       DUT, word for word) and == golden in the big-endian read
-  CHK-HMAC-STOP       after hash_stop: hmac_done reads 1 and STATUS.hmac_idle reads 1
+  CHK-HMAC-STOP       after hash_stop: hmac_done reads 1 (STATUS.hmac_idle is logged as
+                      OBS-HMAC-STOP-IDLE; the register text does not state it)
   CHK-HMAC-SHAOFF     sha_en 1 -> 0 after a finished hash: every DIGEST word reads 0
   CHK-HMAC-DONE-LINE  at a graded completion with the enable set: state 1, bit 17 rises
 """
@@ -140,8 +141,7 @@ def _digest_words(digest: bytes, sha: int, dswap: int) -> list[int]:
 def _order_of(got: list[int], digest: bytes, sha: int) -> str | None:
     """Return "be" or "le" when every DIGEST word holds its four digest bytes in that order.
 
-    hmac.adoc:117 states that DIGEST_0 holds the first 4 bytes of the digest; no register text
-    states the byte order inside a word, so both reads are candidates.
+    The caller grades the order against ``DSWAP_ORDER``; the other order is a mismatch.
     """
     be = _digest_words(digest, sha, 0)
     if list(got) == be:
@@ -285,6 +285,13 @@ def draw_plan(seed: int) -> Plan:
             interleave = rng.choice([0, 1])
             unrelated = _distinct_bytes(rng, rng.randrange(1, 129))
             trips.append(TripPlan(sha, kind, parts, interleave, unrelated))
+
+    # At least one trip of each digest size interleaves an unrelated hash, so every
+    # seed needs the restore of the saved context (CHK-HMAC-CTX).
+    for sha in sha_order:
+        mine = [t for t in trips if t.sha == sha]
+        if mine and not any(t.interleave for t in mine):
+            mine[0].interleave = 1
 
     # Completion events in run order: one per swap cell, and per trip the single pass,
     # one stop per part before the last, one unrelated hash per stop when the trip
@@ -698,22 +705,25 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
                 await self._wr(HMAC_CMD, HMAC_CMD_HASH_STOP)
 
             await self._end_hash(_stop, owner="HMAC-STOP", bound=bound, tag=f"{tag}-part{i}")
-            t_idle = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
-            if t_idle is None:
-                self.chk.ok(
-                    "HMAC-STOP", False, tag=tag, part=i, reason="timeout", bound=bound, idle=0
-                )
-                raise _TrialAbort
             self.chk.ok(
                 "HMAC-STOP",
                 True,
                 tag=tag,
                 part=i,
                 done_after_stop=1,
-                idle=1,
                 bound=bound,
                 t_single=t_single,
             )
+            # The register text states hmac_done after hash_stop, not STATUS.hmac_idle.
+            st_stop = await self._rd(HMAC_STATUS)
+            self.chk.obs(
+                "HMAC-STOP-IDLE", tag=tag, part=i, idle=int(bool(st_stop & HMAC_STATUS_IDLE))
+            )
+            # Precondition of the context save: the engine is idle.
+            t_idle = await self._poll(HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, bound)
+            self.chk.ctrl("HMAC-STOP-IDLE-WAIT", t_idle is not None, tag=tag, part=i, bound=bound)
+            if t_idle is None:
+                raise _TrialAbort
             # Step 4: save the context. Step 5: sha_en = 0 clears the digest.
             saved = await self._read_digest(CTX_DIGEST_WORDS)
             len_lo = await self._rd(HMAC_MSG_LENGTH_LOWER)

@@ -1050,6 +1050,20 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         ):
             await ClockCycles(dut.clk_i, FQ_SETTLE_CLK)
             await self._pass(HMAC_FIFO_PASS_EMPTY_NOT_FULL)
+        # Control: the writes reached the message. The hash of the written bytes
+        # equals its golden, so a dropped write cannot leave fifo_empty at 0 here.
+        h = leg.h
+        msg = b"".join(v.to_bytes(n, "little") for n, v in ch)
+        digest = await self._finish(h.sha, "HMAC-FE-MSG")
+        golden = golden_digest(h.sha, h.hmac_en, KEY_ROWS[h.key_row], h.key_bits, msg)
+        self._ctrl(
+            "HMAC-FE-MSG",
+            self.digest_order.match(digest, golden)[0],
+            writes=len(ch),
+            len=len(msg),
+            digest0=f"0x{digest[0]:08x}",
+            golden0=f"0x{self.digest_order.expected(golden)[0]:08x}",
+        )
 
     async def _wipe_leg(self, leg: WipeLeg) -> None:
         """CHK-HMAC-WIPE on the values of ``leg``.

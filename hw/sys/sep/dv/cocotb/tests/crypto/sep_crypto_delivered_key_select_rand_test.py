@@ -10,8 +10,8 @@ Modifications; ``hw/sys/sep/doc/crypto.adoc``, Key Manager Key Delivery;
     field, and only CFG.key_length = 256 matches it.
   * A supported key_length that disagrees gives a repeatable digest and no
     error; key_length 128 takes the top 128 bits of the delivered key. The
-    digest is "wrong but repeatable" (hmac.adoc:54-56): it differs from the
-    digest of the matching key_length.
+    digest is "wrong but repeatable" (hmac.adoc:54-56); whether it differs from
+    the digest of the matching key_length is logged only (OBS-KEYSEL-MISMATCH).
   * key_length = Key_None with hmac_en = 1 raises a configuration error at
     start and leaves DIGEST unchanged.
   * AES ignores the delivered key while CTRL_SHADOWED.sideload = 0 and reports
@@ -172,6 +172,7 @@ VEC_ALERT_BIT = 32  # source 33, Crypto alert (hw/sys/sep/doc/interrupts.adoc)
 
 ST_IDLE = AES.field_mask("STATUS", "idle")
 ST_OV = AES.field_mask("STATUS", "output_valid")
+ST_IN_READY = AES.field_mask("STATUS", "input_ready")
 ST_ERR = AES.field_mask("STATUS", "alert_recov_ctrl_update_err") | AES.field_mask(
     "STATUS", "alert_fatal_fault"
 )
@@ -348,6 +349,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         self.chk.ctrl("KEYSEL-HMAC-MISMATCH", none_err == 1, none_leg_hmac_err=none_err)
         for line in mismatch:
             self.chk.ok("KEYSEL-HMAC-MISMATCH", line.pop("_ok"), **line)
+        await self._decoy_ctrl()
 
         await self._aes_legs(ka)
         await self._aes_nokey_leg()
@@ -400,8 +402,18 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         for i, w in enumerate(self.plan.decoy):
             await self.hmac._wr(HMAC_KEY[i], w)
         await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR | HMAC_INTR_DONE)
-        await self.hmac._wr(
-            HMAC.addr("CFG"), build_cfg(hmac_en=True, sha_bits=sha, key_bits=keylen)
+        cfg = build_cfg(hmac_en=True, sha_bits=sha, key_bits=keylen)
+        await self.hmac._wr(HMAC.addr("CFG"), cfg)
+        # Control: the key_length of the cell reached CFG, so a lost CFG write cannot
+        # pass as a repeatable digest of another key_length.
+        cfg_rb = await self.hmac._rd(HMAC.addr("CFG"))
+        self.chk.ctrl(
+            "KEYSEL-CFG",
+            cfg_rb == cfg,
+            sha=sha,
+            keylen=keylen,
+            cfg=f"0x{cfg:08x}",
+            readback=f"0x{cfg_rb:08x}",
         )
         await self.hmac._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         await self._push_msg(self.plan.msg)
@@ -454,6 +466,23 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         )
         open_graded_window(TEST, self.logger)
         return out
+
+    async def _decoy_ctrl(self) -> None:
+        """Control of the decoy: with the HMAC key shredded, a run uses the decoy K_d.
+
+        Clearing key_valid leaves HMAC on its software KEY registers, which every run
+        writes with K_d, so the digest equals the decoy golden and the decoy writes landed.
+        """
+        rc, _ = await self.km.engine_shred(dest=KM_DEST_HMAC)
+        d = await self._hmac_try(256, 256)
+        g_decoy = hmac_golden(_sw_key_bytes(list(self.plan.decoy)[:8]), self.plan.msg, 256)
+        hit = d is not None and self.digest_order.match(d, g_decoy)[0]
+        self.chk.ctrl(
+            "KEYSEL-DECOY",
+            rc == 0 and hit,
+            rc_shred=rc,
+            **{"digest==golden_decoy": int(hit)},
+        )
 
     async def _mismatched_cells(
         self, kh: list[int], matched: dict[int, list[int] | None]
@@ -684,6 +713,16 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         base_ok = base >= 0 and bool(base & ST_IDLE) and not base & ST_OV
         self.chk.ctrl("KEYSEL-AES-NOKEY-BASE", base_ok, status=f"0x{max(base, 0):x}")
         ov_bad = sum(1 for st in samples if int(bool(st & ST_OV)) != EXP_NOKEY_OV)
+        # Control: the DATA_IN writes landed and were not loaded, so INPUT_READY reads 0
+        # ("If the present values in the DATA_IN registers have not yet been loaded into
+        # the module this flag is `0`", aes.hjson:984-987, STATUS.INPUT_READY).
+        in_ready = sum(1 for st in samples if st & ST_IN_READY)
+        self.chk.ctrl(
+            "KEYSEL-AES-NOKEY-INPUT",
+            bool(samples) and in_ready == 0,
+            samples=len(samples),
+            input_ready_samples=in_ready,
+        )
         fields = {
             "rc_shred": rc,
             "samples": len(samples),

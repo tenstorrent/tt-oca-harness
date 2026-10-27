@@ -95,7 +95,7 @@ from seq_lib.sep_hmac_seq import (
     HMAC_CMD,
     HMAC_CMD_HASH_PROCESS,
     HMAC_CMD_HASH_START,
-    HMAC_DIGEST_0,
+    HMAC_DIGEST,
     HMAC_DIGEST_SIZE,
     HMAC_DIGEST_WORDS,
     HMAC_ERR_CODE,
@@ -103,7 +103,7 @@ from seq_lib.sep_hmac_seq import (
     HMAC_INTR_DONE,
     HMAC_INTR_ERR,
     HMAC_INTR_STATE,
-    HMAC_KEY_0,
+    HMAC_KEY,
     HMAC_KEY_LENGTH,
     HMAC_MSG_FIFO,
     HMAC_NUM_PUBLIC_KEY,
@@ -408,7 +408,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
     def _now_clk(self) -> int:
         return int(get_sim_time("ps")) // self._period_ps
 
-    async def _wr(self, addr: int, data: int, *, length: int = 4) -> None:
+    async def _wr(self, addr: int, data: int, *, length: int = 4) -> bool:
         seq = SepAxiAccessSeq(
             "hmac_wr",
             op=SepAxiOp.WRITE,
@@ -420,6 +420,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         await self.start_seq(seq)
         if not seq.resp_ok:
             raise AssertionError(f"HMAC write @0x{addr:08x} not OKAY")
+        return bool(seq.resp_ok)
 
     async def _rd(self, addr: int) -> int:
         return await self.hmac._rd(addr)
@@ -484,10 +485,10 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
     async def _write_key_row(self, row: int) -> None:
         for i, word in enumerate(_row_words(row)):
             assert i < HMAC_NUM_PUBLIC_KEY
-            await self._wr(HMAC_KEY_0 + 4 * i, word)
+            await self._wr(HMAC_KEY[i], word)
 
     async def _read_digest(self, sha: int) -> tuple[int, ...]:
-        return tuple([await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(HMAC_DIGEST_WORDS[sha])])
+        return tuple([await self._rd(HMAC_DIGEST[i]) for i in range(HMAC_DIGEST_WORDS[sha])])
 
     async def _poll_done(self, t0: int, bound: int) -> int | None:
         """Clocks from ``t0`` to the first INTR_STATE read with hmac_done; None on timeout."""
@@ -601,7 +602,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         rec = step.recovery
         assert rec is not None
         refused = await self._write_msg_logged(rec.msg)
-        await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+        process_okay = await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
         await ClockCycles(cocotb.top.clk_i, hold)
         intr_proc = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
         window_clk = self._now_clk() - t0
@@ -623,7 +624,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
             d_prev=f"0x{d_prev[0]:08x}",
             digest0=f"0x{digest[0]:08x}",
             msg_len=len(rec.msg),
-            process_written=1,
+            process_resp_okay=int(process_okay),
             window_clk=window_clk,
             hold=hold,
             t_clean=self.t_clean,

@@ -737,7 +737,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`
 |CPU-LSU master, `sep_internal_interrupts_probe_o`; HMAC golden model
-|Proves the message byte order of `endian_swap`, the DIGEST byte order at each `digest_swap` value and the byte swap between the two, the stop, save, restore and continue context path of the OpenTitan programmer's guide, the digest clear when `sha_en` is cleared, and the rise of the `hmac_done` interrupt line. The byte order inside a DIGEST word at `digest_swap` = 0 is logged only.
+|Proves the message byte order of `endian_swap`, the DIGEST byte order at each `digest_swap` value and the byte swap between the two, the stop, save, restore and continue context path of the OpenTitan programmer's guide, the digest clear when `sha_en` is cleared, and the rise of the `hmac_done` interrupt line.
 
 |<<sep_crypto_delivered_key_select_rand_test,`sep_crypto_delivered_key_select_rand_test`>>
 |3
