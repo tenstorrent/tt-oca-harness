@@ -19,11 +19,8 @@
 // state a reset clears is judged against a copy taken at the last TCK edge
 // before it, so a reset applied while TCK is idle is judged too.
 //
-// CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
-// argument is a single continuous-assign wire; no declaration initializers
-// on always_ff-driven variables.
-
-`include "ocah_fcov_macros.svh"
+// CONVENTION: no declaration initializers on always_ff-driven variables,
+// which VCS rejects (initializer_driver_checks); declare wires before use.
 
 module dtp_debug_tdr_fcov (
   input wire        tck_i,
@@ -181,14 +178,6 @@ module dtp_debug_tdr_fcov (
   wire [1:0] tmp_read_value = tdo_accum_q[1:0];
   wire tmp_read = dr_update && tmp_sel && (shift_count_q >= TmpStatusLen) && tdo_direct_q;
   wire tmp_read_match = (tmp_read_value == {tmp_on_cap_q, tmp_arm_cap_q});
-  wire tmp_read_zero_e = tmp_read && (tmp_read_value == 2'b00);
-  wire tmp_read_armed_e = tmp_read && (tmp_read_value == 2'b01);
-  wire tmp_read_persist_e = tmp_read && (tmp_read_value == 2'b10);
-  wire tmp_read_persist_armed_e = tmp_read && (tmp_read_value == 2'b11);
-  `OCAH_FCOV_COVER(c_tmp_read_value_zero, tmp_read_zero_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_tmp_read_value_escape_armed, tmp_read_armed_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_tmp_read_value_persistence, tmp_read_persist_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_tmp_read_value_persistence_armed, tmp_read_persist_armed_e, tck_i, in_reset)
 
   // Persistence before this edge (held through a TAP reset), and the
   // causes the TMP unit saw at the previous edge, where a change takes
@@ -211,14 +200,6 @@ module dtp_debug_tdr_fcov (
     else tmp_change = TmpChgUncausedOff;
   end
   wire tmp_change_event = tmp_changed || tmp_reset_judged;
-  wire tmp_hold_on_e = tmp_change_event && (tmp_change == TmpChgHoldOn);
-  wire tmp_release_off_e = tmp_change_event && (tmp_change == TmpChgReleaseOff);
-  wire tmp_escape_off_e = tmp_change_event && (tmp_change == TmpChgEscapeOff);
-  wire tmp_reset_off_e = tmp_change_event && (tmp_change == TmpChgTapResetOff);
-  `OCAH_FCOV_COVER(c_tmp_persistence_clamp_hold_on, tmp_hold_on_e, tck_i, 1'b0)
-  `OCAH_FCOV_COVER(c_tmp_persistence_clamp_release_off, tmp_release_off_e, tck_i, 1'b0)
-  `OCAH_FCOV_COVER(c_tmp_persistence_bypass_escape_release, tmp_escape_off_e, tck_i, 1'b0)
-  `OCAH_FCOV_COVER(c_tmp_persistence_reset_off, tmp_reset_off_e, tck_i, 1'b0)
 
   // A BYPASS load while persistence is on, judged at the next edge as
   // {escape arm at the load, persistence after it}.
@@ -229,17 +210,9 @@ module dtp_debug_tdr_fcov (
   end
   wire tmp_bypass_judged = tmp_bypass_pending_q && !in_reset && !tap_rst_seen_q;
   wire [1:0] tmp_bypass_outcome = {tmp_bypass_armed_q, tmp_state_i};
-  wire tmp_bypass_unarmed_e = tmp_bypass_judged && (tmp_bypass_outcome == 2'b01);
-  wire tmp_bypass_armed_e = tmp_bypass_judged && (tmp_bypass_outcome == 2'b10);
-  `OCAH_FCOV_COVER(c_tmp_escape_unarmed, tmp_bypass_unarmed_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_tmp_escape_armed, tmp_bypass_armed_e, tck_i, in_reset)
 
   // {persistence, chrst_n} in Test-Logic-Reset.
   wire [1:0] tmp_tlr_chrst = {tmp_state_i, chrst_n_i};
-  wire tmp_tlr_released_e = tlr_entered && (tmp_tlr_chrst == 2'b11);
-  wire tmp_tlr_asserted_e = tlr_entered && (tmp_tlr_chrst == 2'b00);
-  `OCAH_FCOV_COVER(c_tmp_tlr_chrst_released, tmp_tlr_released_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_tmp_tlr_chrst_asserted, tmp_tlr_asserted_e, tck_i, in_reset)
 
   // Persistence on both when the system reset asserts and when it releases
   // (system-clock domain; rst_ni does not reset the TAP).
@@ -250,8 +223,6 @@ module dtp_debug_tdr_fcov (
   end
   wire sys_rst_released = !sys_rst_nq && rst_ni;
   wire tmp_sys_judged = sys_rst_released && sys_tmp_on_q;
-  wire tmp_sys_preserved_e = tmp_sys_judged && tmp_state_i;
-  `OCAH_FCOV_COVER(c_tmp_persistence_chip_reset_preserved, tmp_sys_preserved_e, clk_i, 1'b0)
 
   // ------------------------------------------------------------------
   // cg_ic_reset — slice values on each IC_RESET update, the reset_hold
@@ -265,27 +236,6 @@ module dtp_debug_tdr_fcov (
   wire [1:0] ic_ext = {ic_reset_ext_ovrd_i, ic_reset_ext_ctrl_n_i};
   wire [5:0] ic_now = {ic_smc, ic_sep, ic_ext};
   wire ic_commit = dr_update && ic_sel && (shift_count_q >= IcResetLen);
-
-  `define DTP_FCOV_IC_SLICE(__slice)                                                        \
-    wire ic_``__slice``_functional_e = ic_commit && (ic_``__slice == 2'b01);              \
-    wire ic_``__slice``_staged_e = ic_commit && (ic_``__slice == 2'b00);                  \
-    wire ic_``__slice``_override_reset_e = ic_commit && (ic_``__slice == 2'b10);          \
-    wire ic_``__slice``_override_run_e = ic_commit && (ic_``__slice == 2'b11);            \
-    `OCAH_FCOV_COVER(c_ic_reset_``__slice``_functional, ic_``__slice``_functional_e, tck_i, \
-                     in_reset)                                                            \
-    `OCAH_FCOV_COVER(c_ic_reset_``__slice``_staged, ic_``__slice``_staged_e, tck_i, in_reset) \
-    `OCAH_FCOV_COVER(c_ic_reset_``__slice``_override_reset, ic_``__slice``_override_reset_e, \
-                     tck_i, in_reset)                                                     \
-    `OCAH_FCOV_COVER(c_ic_reset_``__slice``_override_run, ic_``__slice``_override_run_e,  \
-                     tck_i, in_reset)
-  `DTP_FCOV_IC_SLICE(smc)
-  `DTP_FCOV_IC_SLICE(sep)
-  `DTP_FCOV_IC_SLICE(ext)
-  `undef DTP_FCOV_IC_SLICE
-  wire ic_hold_clear_e = ic_commit && !ic_reset_hold_i;
-  wire ic_hold_set_e = ic_commit && ic_reset_hold_i;
-  `OCAH_FCOV_COVER(c_ic_reset_hold_write_clear, ic_hold_clear_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_ic_reset_hold_write_set, ic_hold_set_e, tck_i, in_reset)
 
   // Register image {reset_hold, slices} before this edge, held through a
   // TAP reset. Test-Logic-Reset is judged on slices away from their
@@ -316,12 +266,6 @@ module dtp_debug_tdr_fcov (
     end
   end
   wire ic_reset_event = ic_tlr_judged || ic_reset_judged;
-  wire ic_hold_tlr_preserve_e = ic_reset_event && (ic_reset_outcome == IcTlrPreserve);
-  wire ic_hold_tlr_restore_e = ic_reset_event && (ic_reset_outcome == IcTlrRestore);
-  wire ic_hold_tap_reset_restore_e = ic_reset_event && (ic_reset_outcome == IcTapResetRestore);
-  `OCAH_FCOV_COVER(c_ic_reset_hold_tlr_preserve, ic_hold_tlr_preserve_e, tck_i, 1'b0)
-  `OCAH_FCOV_COVER(c_ic_reset_hold_tlr_restore, ic_hold_tlr_restore_e, tck_i, 1'b0)
-  `OCAH_FCOV_COVER(c_ic_reset_hold_tap_reset_restore, ic_hold_tap_reset_restore_e, tck_i, 1'b0)
 
   // ------------------------------------------------------------------
   // cg_debug_control — DEBUG_CONTROL fields on each update, the
@@ -332,31 +276,6 @@ module dtp_debug_tdr_fcov (
   // {jtag_clock_stop, cla_clock_stop_en, boot_stall_ovrd, boot_stall}.
   wire [3:0] dbgctl_now = {jtag_clock_stop_i, cla_clock_stop_en_i, boot_stall_ovrd_i, boot_stall_i};
   wire dbgctl_commit = dr_update && dbgctl_sel && (shift_count_q >= DebugControlLen);
-  wire boot_00_e = dbgctl_commit && (dbgctl_now[1:0] == 2'b00);
-  wire boot_01_e = dbgctl_commit && (dbgctl_now[1:0] == 2'b01);
-  wire boot_10_e = dbgctl_commit && (dbgctl_now[1:0] == 2'b10);
-  wire boot_11_e = dbgctl_commit && (dbgctl_now[1:0] == 2'b11);
-  `OCAH_FCOV_COVER(c_boot_stall_ovrd0_stall0, boot_00_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_boot_stall_ovrd0_stall1, boot_01_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_boot_stall_ovrd1_stall0, boot_10_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_boot_stall_ovrd1_stall1, boot_11_e, tck_i, in_reset)
-  wire boot_ovrd_commit = dbgctl_commit && boot_stall_ovrd_i;
-  wire boot_standalone_e = boot_ovrd_commit && (dbgctl_now[3:2] == 2'b00);
-  wire boot_with_cla_en_e = boot_ovrd_commit && (dbgctl_now[3:2] == 2'b01);
-  wire boot_with_jtag_stop_e = boot_ovrd_commit && (dbgctl_now[3:2] == 2'b10);
-  wire boot_with_both_e = boot_ovrd_commit && (dbgctl_now[3:2] == 2'b11);
-  `OCAH_FCOV_COVER(c_boot_stall_standalone, boot_standalone_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_boot_stall_with_cla_en, boot_with_cla_en_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_boot_stall_with_jtag_stop, boot_with_jtag_stop_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_boot_stall_with_both, boot_with_both_e, tck_i, in_reset)
-  wire jtag_stop_on_e = dbgctl_commit && jtag_clock_stop_i;
-  wire jtag_stop_off_e = dbgctl_commit && !jtag_clock_stop_i;
-  wire cla_en_on_e = dbgctl_commit && cla_clock_stop_en_i;
-  wire cla_en_off_e = dbgctl_commit && !cla_clock_stop_en_i;
-  `OCAH_FCOV_COVER(c_jtag_clock_stop_asserted, jtag_stop_on_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_jtag_clock_stop_deasserted, jtag_stop_off_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_cla_clock_stop_en_enabled, cla_en_on_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_cla_clock_stop_en_disabled, cla_en_off_e, tck_i, in_reset)
 
   // Bit 4 captures the request OR through a two-flop TCK synchronizer, so a
   // request change within two TCK edges of Capture-DR reads either way and
@@ -375,12 +294,6 @@ module dtp_debug_tdr_fcov (
   wire dbg_readback_valid = dbgctl_commit && tdo_direct_q;
   wire [1:0] dbg_readback = (dbg_readback_bit == (dbg_req_cap_q != ReadbackNone))
       ? dbg_req_cap_q : ReadbackRace;
-  wire cla_readback_none_e = dbg_readback_valid && (dbg_readback == ReadbackNone);
-  wire cla_readback_one_e = dbg_readback_valid && (dbg_readback == ReadbackOne);
-  wire cla_readback_multi_e = dbg_readback_valid && (dbg_readback == ReadbackMulti);
-  `OCAH_FCOV_COVER(c_cla_readback_no_request, cla_readback_none_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_cla_readback_one_request, cla_readback_one_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_cla_readback_multiple_requests, cla_readback_multi_e, tck_i, in_reset)
 
   // Fields before this edge, held through a TAP reset. Only nonzero
   // fields are judged.
@@ -395,11 +308,6 @@ module dtp_debug_tdr_fcov (
       ? (dbgctl_cleared ? DbgTapResetCleared : DbgTapResetKept)
       : (dbgctl_cleared ? DbgTlrCleared : DbgTlrKept);
   wire dbgctl_reset_event = dbgctl_tlr_judged || dbgctl_reset_judged;
-  wire dbgctl_tlr_cleared_e = dbgctl_reset_event && (dbgctl_reset_outcome == DbgTlrCleared);
-  wire dbgctl_tap_reset_cleared_e =
-      dbgctl_reset_event && (dbgctl_reset_outcome == DbgTapResetCleared);
-  `OCAH_FCOV_COVER(c_debug_control_tlr_cleared, dbgctl_tlr_cleared_e, tck_i, 1'b0)
-  `OCAH_FCOV_COVER(c_debug_control_tap_reset_cleared, dbgctl_tap_reset_cleared_e, tck_i, 1'b0)
 
   // ------------------------------------------------------------------
   // cg_clock_stop — stop_clks_o against the sources that produced it.
@@ -440,33 +348,6 @@ module dtp_debug_tdr_fcov (
       if (stop_req == (9'h1 << i)) stop_req_source = 4'(i);
     end
   end
-  `define DTP_FCOV_REQ_LINE(__label, __idx)                                    \
-    wire __label``_e = stop_sample && (stop_req_source == 4'(__idx));          \
-    `OCAH_FCOV_COVER(__label, __label``_e, clk_i, clk_in_reset)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_0, 0)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_1, 1)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_2, 2)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_3, 3)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_4, 4)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_5, 5)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_6, 6)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_7, 7)
-  `DTP_FCOV_REQ_LINE(c_clk_stop_req_bit_8, 8)
-  `undef DTP_FCOV_REQ_LINE
-  wire req_none_e = stop_sample && (stop_req_source == ReqNone);
-  wire req_multi_e = stop_sample && (stop_req_source == ReqMulti);
-  `OCAH_FCOV_COVER(c_clk_stop_req_none, req_none_e, clk_i, clk_in_reset)
-  `OCAH_FCOV_COVER(c_clk_stop_req_multi_mask, req_multi_e, clk_i, clk_in_reset)
-
-  wire stop_any_req = (stop_req != '0);
-  wire stop_out_jtag_only_e = stop_sample && stop_clks_i && stop_jtag && !stop_any_req;
-  wire stop_out_cla_only_e = stop_sample && stop_clks_i && !stop_jtag && stop_any_req;
-  wire stop_out_combined_e = stop_sample && stop_clks_i && stop_jtag && stop_any_req;
-  wire stop_out_released_e = stop_sample && !stop_clks_i && !stop_jtag && !stop_any_req;
-  `OCAH_FCOV_COVER(c_clock_stop_output_jtag_only, stop_out_jtag_only_e, clk_i, clk_in_reset)
-  `OCAH_FCOV_COVER(c_clock_stop_output_cla_only, stop_out_cla_only_e, clk_i, clk_in_reset)
-  `OCAH_FCOV_COVER(c_clock_stop_output_combined, stop_out_combined_e, clk_i, clk_in_reset)
-  `OCAH_FCOV_COVER(c_clock_stop_output_released, stop_out_released_e, clk_i, clk_in_reset)
 
   // ------------------------------------------------------------------
   // cg_caps_tdr — full-length capability-TDR scans: the register, the
@@ -511,21 +392,6 @@ module dtp_debug_tdr_fcov (
   wire caps_judged = caps_read_direct && caps_seen_q[caps_reg];
   wire caps_stable = (caps_value == caps_last_q[caps_reg]);
 
-  wire caps_read_jtag_e = caps_commit && (caps_reg == 2'd0);
-  wire caps_read_smc_e = caps_commit && (caps_reg == 2'd1);
-  wire caps_read_smc_otp_e = caps_commit && (caps_reg == 2'd2);
-  wire caps_read_sep_otp_e = caps_commit && (caps_reg == 2'd3);
-  wire caps_stable_e = caps_judged && caps_stable;
-  wire caps_after_idcode_e = caps_commit && prev_instr_idcode_q;
-  wire caps_after_bypass_e = caps_commit && prev_instr_bypass_q;
-  `OCAH_FCOV_COVER(c_caps_read_jtag_caps, caps_read_jtag_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_read_smc_jtag2axi_caps, caps_read_smc_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_read_smc_otp_jtag2axi_caps, caps_read_smc_otp_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_read_sep_otp_jtag2axi_caps, caps_read_sep_otp_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_repeated_read, caps_stable_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_read_after_idcode, caps_after_idcode_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_read_after_bypass, caps_after_bypass_e, tck_i, in_reset)
-
   wire [63:0] alt_a = 64'hAAAA_AAAA_AAAA_AAAA & shifted_mask;
   wire [63:0] alt_5 = 64'h5555_5555_5555_5555 & shifted_mask;
   wire caps_pat_zero = (shifted_bits == '0);
@@ -533,14 +399,6 @@ module dtp_debug_tdr_fcov (
   wire caps_pat_alt = (shifted_bits == alt_a) || (shifted_bits == alt_5);
   wire [1:0] caps_pattern = caps_pat_zero ? 2'd0
       : (caps_pat_ones ? 2'd1 : (caps_pat_alt ? 2'd2 : 2'd3));
-  wire caps_wr_zero_e = caps_commit && (caps_pattern == 2'd0);
-  wire caps_wr_ones_e = caps_commit && (caps_pattern == 2'd1);
-  wire caps_wr_alt_e = caps_commit && (caps_pattern == 2'd2);
-  wire caps_wr_mixed_e = caps_commit && (caps_pattern == 2'd3);
-  `OCAH_FCOV_COVER(c_caps_write_attempt_all_zero, caps_wr_zero_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_write_attempt_all_one, caps_wr_ones_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_write_attempt_alternating, caps_wr_alt_e, tck_i, in_reset)
-  `OCAH_FCOV_COVER(c_caps_write_attempt_random, caps_wr_mixed_e, tck_i, in_reset)
 
   // ------------------------------------------------------------------
   // Covergroups, under the cross rules dtp_fcov.sv states.
