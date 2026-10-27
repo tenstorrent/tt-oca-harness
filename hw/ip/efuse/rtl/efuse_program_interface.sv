@@ -7,9 +7,10 @@
 // program_read_back_enable_i requests post-program read-back.
 // program_addr_oob_i is computed upstream against the full-width CSR field because
 // casting to efuse_addr_t truncates upper bits.
-// Honors secure_tm_blocked_i, efuse_req_err_i, and optional program_req_timeout_* ;
-// sticky address errors clear with program_addr_error_clear_i.
-// is_programing_o and program_target_addr_o feed the guard while a program is active.
+// A start that secure_tm_blocked_i or program_locked_i refuses completes with an error without
+// issuing a command; a lock refusal also pulses program_blocked_o. An outstanding program ends with
+// an error on efuse_req_err_i, a bad bank response or the optional program_req_timeout_*. Sticky
+// address errors clear with program_addr_error_clear_i.
 
 `include "prim_assert.sv"
 `include "ocah_registers.svh"
@@ -30,10 +31,9 @@ module efuse_program_interface #(
 
   input  logic        program_enable_i,  // Program operations allowed; a start while low completes
                                          // immediately with an error.
-  output logic        is_programing_o,  // High while a program command is outstanding, for the
-                                        // guard.
-  output efuse_addr_t program_target_addr_o,  // Fuse bit address of the outstanding program
-                                              // command; zero when idle.
+  input  logic        program_locked_i,  // program_addr_i is write locked or a token bit without a
+                                         // token match; a start then completes with an error.
+  output logic        program_blocked_o,  // One-cycle pulse when program_locked_i refuses a start.
 
   input efuse_addr_t program_addr_i,    // Fuse bit address to program, sampled on a start.
   input logic        program_data_in_i,  // Bit value to program; a start with zero is rejected with
@@ -58,8 +58,8 @@ module efuse_program_interface #(
 
   input logic efuse_req_err_i,          // Guard lock error; ends an outstanding program with an
                                         // error.
-  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; ends an outstanding program
-                                        // with an error.
+  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; refuses a start with an
+                                        // error but does not end a program already issued.
 
   input logic        program_req_timeout_en_i,  // Enables the response timeout for program
                                                 // operations.
@@ -92,8 +92,6 @@ module efuse_program_interface #(
 
 
   efuse_program_state_e program_state_q, program_state_d;
-  assign is_programing_o = (program_state_q == ST_PROGRAM_IDLE) ? 1'b0 : 1'b1;
-  assign program_target_addr_o = (program_state_q == ST_PROGRAM_IDLE) ? efuse_addr_t'(0) : captured_program_addr;
 
   // Capture program address and data when idle
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -127,6 +125,7 @@ module efuse_program_interface #(
 
     program_timeout_event = 1'b0;
     program_addr_error_d = 1'b0;  // Default: no address error
+    program_blocked_o = 1'b0;
 
     unique case (program_state_q)
       ST_PROGRAM_IDLE: begin
@@ -149,6 +148,12 @@ module efuse_program_interface #(
             program_done_d = 1'b1;
             program_err_d = 1'b1;
             program_addr_error_d = 1'b1;
+          end else if (secure_tm_blocked_i || program_locked_i) begin
+            program_state_d = ST_PROGRAM_IDLE;
+            program_busy_d = 1'b0;
+            program_done_d = 1'b1;
+            program_err_d = 1'b1;
+            program_blocked_o = !secure_tm_blocked_i;
           end else begin
             program_state_d = ST_WAIT_RESP;
             program_busy_d = 1'b1;
@@ -163,8 +168,8 @@ module efuse_program_interface #(
       end
 
       ST_WAIT_RESP: begin
-        // If req is blocked from a shadow reg lock, or physical efuse returned error, or secure_tm blocked it
-        if (efuse_req_err_i || fuse_command_resp_i.status == 1'b1 || secure_tm_blocked_i) begin
+        // The guard refused a start on the other interface, or the physical efuse returned error
+        if (efuse_req_err_i || fuse_command_resp_i.status == 1'b1) begin
 
           program_done_d = 1'b1;
           program_busy_d = 1'b0;
@@ -262,6 +267,10 @@ module efuse_program_interface #(
   `OCAH_OT_ASSERT(
       IllegalProgramStateFailsClosed_A,
       ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |=> program_state_q == ST_PROGRAM_IDLE && !program_busy_o && program_done_o && program_error_o && !fuse_command_req_o.valid && program_read_back_data_o == EfuseProgramErrorData,
+      clk_i, !rst_ni)
+  `OCAH_OT_ASSERT(
+      BlockedProgramIsNotIssued_A,
+      program_state_q == ST_PROGRAM_IDLE && program_go_i && program_enable_i && program_data_in_i && !program_addr_oob_i && (secure_tm_blocked_i || program_locked_i) |=> program_state_q == ST_PROGRAM_IDLE && !fuse_command_req_o.valid && program_done_o && program_error_o,
       clk_i, !rst_ni)
   // verilog_format: on
 
