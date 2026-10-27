@@ -1399,8 +1399,11 @@ class CoordinatorTest(unittest.TestCase):
         from runlib.duts import resolve_dut
 
         catalog = load_test_catalog(resolve_dut(REPO_ROOT, cls.dut), REPO_ROOT)
-        # The tests expect one leaf per item, which a testlist reseed would multiply.
-        cls.items = [name for name, test in catalog.tests.items() if test.reseed is None][:2]
+        # The tests expect one leaf per item on the default target, which a testlist reseed
+        # would multiply and a testlist target would move or multiply.
+        cls.items = [
+            name for name, test in catalog.tests.items() if test.reseed is None and not test.targets
+        ][:2]
 
     def setUp(self) -> None:
         build = REPO_ROOT / "build"

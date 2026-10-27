@@ -579,11 +579,13 @@ module dtp_jtag2axi_fcov (
   `DTP_J2A_CLK_FCOV(sep_otp)
   `undef DTP_J2A_CLK_FCOV
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the cover-property bins above, per
-  // target, and the crosses where the features interact.
+  // Covergroups, under the cross rules dtp_fcov.sv states: the cover-property
+  // bins above, per target, and the crosses where the features interact.
   // ------------------------------------------------------------------
+  `define DTP_J2A_SHAPE_BIN(__label, __tgt, __op, __size, __stb) \
+    bins __label = {{__tgt, __op, __size, __stb}};
+
   covergroup cg_jtag2axi_single_op with function sample (
       logic [1:0] tgt, logic [1:0] op, logic [2:0] beat, logic [2:0] strobe, logic boundary
   );
@@ -603,20 +605,44 @@ module dtp_jtag2axi_fcov (
       bins no_strobe = {StbRead};
     }
     cp_addr: coverpoint boundary {bins aligned = {1'b0}; bins window_boundary = {1'b1};}
-    x_op_shape: cross cp_target, cp_op, cp_size, cp_strobe{
-      // An AXI4-Lite beat is 4 bytes whatever the SINGLE_OP size field holds.
-      ignore_bins otp_beat = (binsof(cp_target.smc_otp) || binsof(cp_target.sep_otp))
-          && !binsof(cp_size.b4);
-      // A read drives no strobes; a write always has a strobe class.
-      ignore_bins read_strobe = binsof (cp_op.read) && !binsof (cp_strobe.no_strobe);
-      ignore_bins write_no_strobe = binsof (cp_op.write) && binsof (cp_strobe.no_strobe);
-      // A 1-byte beat has one lane and a 2-byte beat two.
-      ignore_bins one_lane = binsof(cp_size.b1)
-          && (binsof(cp_strobe.single) || binsof(cp_strobe.partial));
-      ignore_bins two_lanes = binsof (cp_size.b2) && binsof (cp_strobe.partial);
+    // Every {target, op, size, strobe class} a bridge can issue: an AXI4-Lite
+    // beat is 4 bytes whatever the SINGLE_OP size field holds, a read drives
+    // no strobes and a write always has a strobe class, and a 1-byte beat has
+    // one lane and a 2-byte beat two.
+    cp_op_shape: coverpoint {
+      tgt, op, beat, strobe
+    } {
+      `DTP_J2A_SHAPE_BIN(smc_axi_read_b1_no_strobe, TgtSmcAxi, OpRead, 3'd0, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_axi_read_b2_no_strobe, TgtSmcAxi, OpRead, 3'd1, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_axi_read_b4_no_strobe, TgtSmcAxi, OpRead, 3'd2, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_axi_read_b8_no_strobe, TgtSmcAxi, OpRead, 3'd3, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b1_none, TgtSmcAxi, OpWrite, 3'd0, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b1_all, TgtSmcAxi, OpWrite, 3'd0, StbAll)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b2_none, TgtSmcAxi, OpWrite, 3'd1, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b2_single, TgtSmcAxi, OpWrite, 3'd1, StbSingle)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b2_all, TgtSmcAxi, OpWrite, 3'd1, StbAll)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b4_none, TgtSmcAxi, OpWrite, 3'd2, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b4_single, TgtSmcAxi, OpWrite, 3'd2, StbSingle)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b4_partial, TgtSmcAxi, OpWrite, 3'd2, StbPartial)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b4_all, TgtSmcAxi, OpWrite, 3'd2, StbAll)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b8_none, TgtSmcAxi, OpWrite, 3'd3, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b8_single, TgtSmcAxi, OpWrite, 3'd3, StbSingle)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b8_partial, TgtSmcAxi, OpWrite, 3'd3, StbPartial)
+      `DTP_J2A_SHAPE_BIN(smc_axi_write_b8_all, TgtSmcAxi, OpWrite, 3'd3, StbAll)
+      `DTP_J2A_SHAPE_BIN(smc_otp_read_b4_no_strobe, TgtSmcOtp, OpRead, 3'd2, StbRead)
+      `DTP_J2A_SHAPE_BIN(smc_otp_write_b4_none, TgtSmcOtp, OpWrite, 3'd2, StbNone)
+      `DTP_J2A_SHAPE_BIN(smc_otp_write_b4_single, TgtSmcOtp, OpWrite, 3'd2, StbSingle)
+      `DTP_J2A_SHAPE_BIN(smc_otp_write_b4_partial, TgtSmcOtp, OpWrite, 3'd2, StbPartial)
+      `DTP_J2A_SHAPE_BIN(smc_otp_write_b4_all, TgtSmcOtp, OpWrite, 3'd2, StbAll)
+      `DTP_J2A_SHAPE_BIN(sep_otp_read_b4_no_strobe, TgtSepOtp, OpRead, 3'd2, StbRead)
+      `DTP_J2A_SHAPE_BIN(sep_otp_write_b4_none, TgtSepOtp, OpWrite, 3'd2, StbNone)
+      `DTP_J2A_SHAPE_BIN(sep_otp_write_b4_single, TgtSepOtp, OpWrite, 3'd2, StbSingle)
+      `DTP_J2A_SHAPE_BIN(sep_otp_write_b4_partial, TgtSepOtp, OpWrite, 3'd2, StbPartial)
+      `DTP_J2A_SHAPE_BIN(sep_otp_write_b4_all, TgtSepOtp, OpWrite, 3'd2, StbAll)
     }
     x_target_addr: cross cp_target, cp_addr;
   endgroup
+  `undef DTP_J2A_SHAPE_BIN
 
   covergroup cg_jtag2axi_response with function sample (logic [1:0] tgt, logic [1:0] outcome);
     option.per_instance = 1;
@@ -758,7 +784,17 @@ module dtp_jtag2axi_fcov (
       bins sep_otp_jtag2axi = {TgtSepOtp};
     }
     cp_value: coverpoint disabled {bins clear = {1'b0}; bins set = {1'b1};}
-    cp_outcome: coverpoint blocked {bins allowed = {1'b0}; bins blocked = {1'b1};}
+    // {disabled, blocked}: a clear field never blocks its bridge and a set
+    // one never lets an operation through; either other pair is a gating
+    // failure.
+    cp_outcome: coverpoint {
+      disabled, blocked
+    } {
+      bins allowed = {2'b00};
+      bins blocked = {2'b11};
+      illegal_bins blocked_while_clear = {2'b01};
+      illegal_bins allowed_while_set = {2'b10};
+    }
     cp_mask: coverpoint mask {
       bins all_clear = {MaskAllClear};
       bins one_hot = {MaskOneHot};
@@ -768,12 +804,7 @@ module dtp_jtag2axi_fcov (
     cp_isolation: coverpoint other_set iff (!disabled && !blocked) {
       bins alone = {1'b0}; bins other_field_set = {1'b1};
     }
-    x_cell: cross cp_field, cp_value, cp_outcome{
-      // A clear field never blocks its bridge and a set one never lets an
-      // operation through: either tuple is a gating failure.
-      illegal_bins blocked_while_clear = binsof (cp_value.clear) && binsof (cp_outcome.blocked);
-      illegal_bins allowed_while_set = binsof (cp_value.set) && binsof (cp_outcome.allowed);
-    }
+    x_cell: cross cp_field, cp_value;
     x_field_isolation: cross cp_field, cp_isolation;
   endgroup
 
@@ -820,6 +851,5 @@ module dtp_jtag2axi_fcov (
   `DTP_J2A_CG_SAMPLE(smc_otp, TgtSmcOtp)
   `DTP_J2A_CG_SAMPLE(sep_otp, TgtSepOtp)
   `undef DTP_J2A_CG_SAMPLE
-`endif
 
 endmodule : dtp_jtag2axi_fcov

@@ -7,6 +7,7 @@ schema_version = 1
 name = "dtp_sanity_test"
 # One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
 module = { cocotb = "dtp_sanity_test", uvm = "dtp_sanity_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 reseed = 3
 timeout_sec = 1800
@@ -16,6 +17,7 @@ run_modes = ["smoke"]
 [[tests]]
 name = "dtp_jtag_idcode_test"
 module = { cocotb = "dtp_jtag_idcode_test", uvm = "dtp_jtag_idcode_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 reseed = 3
 timeout_sec = 1800
@@ -25,6 +27,7 @@ run_modes = ["smoke"]
 [[tests]]
 name = "dtp_jtag_bypass_test"
 module = { cocotb = "dtp_jtag_bypass_test", uvm = "dtp_jtag_bypass_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 timeout_sec = 1800
 tags = ["basic_jtag", "jtag"]
@@ -33,6 +36,7 @@ run_modes = ["basic_jtag"]
 [[tests]]
 name = "dtp_jtag_undef_instr_test"
 module = { cocotb = "dtp_jtag_undef_instr_test", uvm = "dtp_jtag_undef_instr_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 timeout_sec = 1800
 tags = ["basic_jtag", "jtag"]
@@ -41,6 +45,7 @@ run_modes = ["basic_jtag"]
 [[tests]]
 name = "dtp_jtag_runbist_test"
 module = { cocotb = "dtp_jtag_runbist_test", uvm = "dtp_jtag_runbist_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 reseed = 2
 timeout_sec = 1800
@@ -90,6 +95,7 @@ run_modes = ["basic_jtag"]
 [[tests]]
 name = "dtp_jtag_zero_length_bypass_test"
 module = { cocotb = "dtp_jtag_zero_length_bypass_test", uvm = "dtp_jtag_zero_length_bypass_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 timeout_sec = 1800
 tags = ["basic_jtag", "jtag"]
@@ -98,6 +104,7 @@ run_modes = ["basic_jtag"]
 [[tests]]
 name = "dtp_jtag_inv_bypass_test"
 module = { cocotb = "dtp_jtag_inv_bypass_test", uvm = "dtp_jtag_inv_bypass_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 timeout_sec = 1800
 tags = ["basic_jtag", "jtag"]
@@ -106,6 +113,7 @@ run_modes = ["basic_jtag"]
 [[tests]]
 name = "dtp_jtag_trst_test"
 module = { cocotb = "dtp_jtag_trst_test", uvm = "dtp_jtag_trst_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 timeout_sec = 1800
 tags = ["basic_jtag", "jtag"]
@@ -114,6 +122,7 @@ run_modes = ["basic_jtag"]
 [[tests]]
 name = "dtp_jtag_trst_por_independence_test"
 module = { cocotb = "dtp_jtag_trst_por_independence_test", uvm = "dtp_jtag_trst_por_independence_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 reseed = 2
 timeout_sec = 1800
@@ -123,6 +132,7 @@ run_modes = ["basic_jtag"]
 [[tests]]
 name = "dtp_jtag_tlr_reset_test"
 module = { cocotb = "dtp_jtag_tlr_reset_test", uvm = "dtp_jtag_tlr_reset_test" }
+target = ["default", "bsr_disabled"]
 seed = 1
 timeout_sec = 1800
 tags = ["basic_jtag", "jtag"]

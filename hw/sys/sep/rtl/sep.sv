@@ -21,7 +21,7 @@ module sep #(
   parameter bit KM_LATCHED_MEM_RDATA = 1'b1,  // 1 if Key Manager ROM/SRAM latch read data for
                                               // look-ahead.
   parameter bit ABR_MASKING_EN = 1'b1,        // Enable Adams Bridge 2-share DOM masking.
-  parameter int unsigned ABR_SRAM_LATENCY = 1,  // Adams Bridge SRAM read latency in cycles.
+  parameter int unsigned ABR_SRAM_LATENCY = 1,  // Clocks from an abr_mem read enable to its rdata.
   parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports; must
                                                  // be 3, one per entropy mux leg.
   parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
@@ -38,11 +38,12 @@ module sep #(
                                               // it, the SEP reset derived from it is released only
                                               // after fuse sensing and ext_boot_seq_done_i.
   input  logic dbg_rstb_i,                    // EL2 debug-module reset, active-low.
-  input  logic wdt_rst_ni,                    // Aggregated WDT resets from SMC and SEP, active-low;
-                                              // resets only the CPU.
+  input  logic wdt_rst_ni,                    // Watchdog reset, active-low: the SEP and SMC
+                                              // watchdog requests combined. Resets the CPU and
+                                              // the watchdog timer.
 
-  output logic wdt_timer_rst_req_o,           // SEP WDT bite reset request, active-high, to the SMC
-                                              // reset unit.
+  output logic wdt_timer_rst_req_o,           // SEP watchdog request (bite), active-high, to the
+                                              // SMC reset unit; held until wdt_rst_ni asserts.
 
   input  logic jtag_tck_i,                    // JTAG clock.
   input  logic jtag_tms_i,                    // JTAG test mode select, sampled on jtag_tck_i.
@@ -114,13 +115,13 @@ module sep #(
   input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,  // Per-bank ICCM and DCCM read data and ECC
                                                         // from sep_tcm_wrapper.
 
-  output sep_pkg::sep_sram_req_t    sep_sram_req_o,  // Request from the SEP SRAM memory interface
-                                                     // to the SRAM macro.
-  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,  // Read data from the SEP SRAM macro.
+  output sep_pkg::sep_sram_req_t    sep_sram_req_o,  // Read or write request, with the macro
+                                                     // clock, to the SRAM macro.
+  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,  // SRAM read data, one clock later.
 
-  output sep_pkg::sep_sram_req_t    sep_boot_rom_req_o,  // Request from the boot ROM memory
-                                                         // interface to the ROM macro.
-  input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp_i,  // Read data from the boot ROM macro.
+  output sep_pkg::sep_boot_rom_req_t sep_boot_rom_req_o,  // Read request, with the macro clock,
+                                                          // to the boot ROM macro.
+  input  sep_pkg::sep_boot_rom_rsp_t sep_boot_rom_rsp_i,  // Boot ROM read data, one clock later.
 
   output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,  // Outbound request to the SMN after the outbound filter.
   input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,  // Outbound response from the SMN.
@@ -141,7 +142,7 @@ module sep #(
   input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp_i,  // OTBN DMEM SRAM response.
 
   output sep_crypto_pkg::abr_mem_req_t                  abr_mem_req_o,  // Adams Bridge external SRAM request; tech macros in sep_ip_integration.
-  input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp_i,  // Adams Bridge external SRAM response.
+  input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp_i,  // Adams Bridge SRAM read data, ABR_SRAM_LATENCY clocks after each re.
 
   output sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_o,  // External TRNG register request for
                                                               // 0x1091_7000-0x1091_7FFF, passed
@@ -397,7 +398,8 @@ module sep #(
   logic sep_intermediate_reset_n; // Intermediate reset signal (before JTAG override) for efuse sensing being done
   logic sep_reset_n; // Efuse sensing done signal (after JTAG override)
   logic sep_cpu_reset_n; // This is the reset signal for the CPU
-  logic wdt_timer_rst_req; // This is the reset signal for the WDT timer (actitve high)
+  logic sep_wdt_reset_n; // Watchdog timer reset: rst_ni, or wdt_rst_ni captured on clk_i
+  logic wdt_timer_rst_req; // SEP watchdog request (bite), active high
   logic [2:0] ext_trng_src_sel; // External TRNG source selection from sep_cpu_ctrl
   logic km_wipe_state; // Key Manager emergency wipe control from sep_cpu_ctrl
   // Isolation handshake and sequenced resets between sep_reset_ctrl and sep_crypto
@@ -805,8 +807,7 @@ NumSramDemuxPorts
     .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
     .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
     .CSR_BASE_ADDR    (32'h0),
-    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)),
-    .NUM_BANKS        (1)
+    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR))
   ) u_sram_memory_interface (
     .clk_i                (clk_i),
     .rst_ni               (sep_reset_n),
@@ -867,8 +868,9 @@ NumSramDemuxPorts
     .MEM_ADDR_WIDTH   (sep_pkg::SEP_MEM_ADDR_WIDTH),
     .MEM_DATA_WIDTH   (sep_pkg::SEP_MEM_DATA_WIDTH),
     .MEM_ID_WIDTH     (sep_pkg::SEP_32_64_4_12_ID_WIDTH),
-    .mem_req_t        (sep_pkg::sep_sram_req_t),
-    .mem_rsp_t        (sep_pkg::sep_sram_rsp_t),
+    .mem_req_t        (sep_pkg::sep_boot_rom_req_t),
+    .mem_rsp_t        (sep_pkg::sep_boot_rom_rsp_t),
+    .READ_ONLY        (1'b1),
     .mem_axi_req_t    (sep_pkg::sep_32_64_4_12_axi_req_t),
     .mem_axi_resp_t   (sep_pkg::sep_32_64_4_12_axi_resp_t),
     .CSR_ADDR_WIDTH   (sep_pkg::SEP_32_64_4_12_ADDR_WIDTH),
@@ -876,8 +878,7 @@ NumSramDemuxPorts
     .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
     .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
     .CSR_BASE_ADDR    (32'h0),
-    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)),
-    .NUM_BANKS        (1)
+    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR))
   ) u_boot_rom_memory_interface (
     .clk_i                (clk_i),
     .rst_ni               (sep_reset_n),
@@ -1154,6 +1155,7 @@ NumSramDemuxPorts
     .clk_i                   (clk_i),
     .clk_wdt_i               (clk_wdt_i),
     .rst_ni                  (rst_ni),
+    .rst_wdt_ni              (sep_wdt_reset_n),
     .test_en_i               (test_en_i),
     .scan_rst_ni             (scan_rst_ni),
     .sep_wdt_axi_req_i       (sep_wdt_axi_req),
@@ -1182,6 +1184,7 @@ NumSramDemuxPorts
     .test_en_i                  (test_en_i),
     .scan_rst_ni                (scan_rst_ni),
     .sep_cpu_reset_no           (sep_cpu_reset_n),
+    .sep_wdt_reset_no           (sep_wdt_reset_n),
     .sep_crypto_isolate_req_o   (sep_crypto_isolate_req),
     .sep_crypto_isolated_i      (sep_crypto_isolated),
     .sep_crypto_gated_rst_no    (sep_crypto_gated_rst_n)

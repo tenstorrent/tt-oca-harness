@@ -15,8 +15,9 @@ MLKEM_SEED_D, MLKEM_SEED_Z, MLKEM_MSG. The share widths are those of
 ``architecture.adoc`` ("Key Delivery"): 12 words for OTBN, 8 for the others.
 
 Seed plan. ``draw_plan`` turns one ``SepSeededRng`` into every value the leaf
-draws (the 136 share words, the bank order, the engine order and the idle
-count) and ``draw_lines`` gives the ``DRAW`` lines the leaf logs.
+draws (the 136 share words, the bank order, the engine order, the idle count
+and, appended after them, the words of the AES single-share leg) and
+``draw_lines`` gives the ``DRAW`` lines the leaf logs.
 """
 
 from __future__ import annotations
@@ -133,6 +134,12 @@ if any(b - a != 4 for a, b in zip(SK_KEY, SK_KEY[1:])):
 # Range of the drawn idle count between the shared-key delivery and the enable write.
 IDLE_OPS_MAX = 8
 
+# AES bank of the single-share leg; AES-256 takes one 8-word key share
+# (``architecture.adoc``, "Key Delivery") and one 4-word block.
+AES_BANK = BANKS[1]
+assert AES_BANK.engine == "aes" and AES_BANK.words == 8
+AES_PT_WORDS = 4
+
 
 def vector(values: dict[int, int]) -> int:
     """Bank vector from the KEY_CTRL read of each bank (bank bit -> raw word)."""
@@ -152,12 +159,39 @@ def rsvd_bits(values: dict[int, int]) -> int:
 
 
 @dataclass(frozen=True)
+class SingleShare:
+    """One single-share instance on the AES bank.
+
+    ``pre`` holds the two shares written before the Key Manager wipe (every
+    word non-zero), ``share`` the share written after it (0 or 1) with
+    ``key``, and ``pt`` the plaintext block.
+    """
+
+    share: int
+    pre: tuple[tuple[int, ...], tuple[int, ...]]
+    key: tuple[int, ...]
+    pt: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class BothShares:
+    """The two-share delivery of the control: ``s0 ^ s1 == key``."""
+
+    s0: tuple[int, ...]
+    s1: tuple[int, ...]
+    key: tuple[int, ...]
+    pt: tuple[int, ...]
+
+
+@dataclass(frozen=True)
 class Plan:
     seed: int
     shares: dict[int, tuple[tuple[int, ...], tuple[int, ...]]]
     bank_order: tuple[int, ...]
     engine_order: tuple[str, ...]
     idle_ops: int
+    single_share: tuple[SingleShare, SingleShare]
+    both_shares: BothShares
 
     def msg_stage(self) -> tuple[tuple[int, ...], tuple[int, ...]]:
         """Message shares of each staging: share0 the drawn MLKEM_MSG share0,
@@ -193,7 +227,34 @@ def draw_plan(seed: int) -> Plan:
     engines = list(ENGINES)
     rng.shuffle(engines)
     idle = rng.randrange(0, IDLE_OPS_MAX + 1)
-    return Plan(seed, shares, tuple(order), tuple(engines), idle)
+    # Appended after the draws above, so they keep their values. Both shares
+    # run on every seed; the seed draws which one runs first.
+    first = rng.randrange(0, 2)
+    legs = []
+    for share in (first, 1 - first):
+        pre = (_nonzero_words(rng, AES_BANK.words), _nonzero_words(rng, AES_BANK.words))
+        key = _nonzero_words(rng, AES_BANK.words)
+        pt = tuple(rng.getrandbits(32) for _ in range(AES_PT_WORDS))
+        legs.append(SingleShare(share, pre, key, pt))
+    t0 = _nonzero_words(rng, AES_BANK.words)
+    tkey = _nonzero_words(rng, AES_BANK.words)
+    tpt = tuple(rng.getrandbits(32) for _ in range(AES_PT_WORDS))
+    both = BothShares(t0, tuple(a ^ k for a, k in zip(t0, tkey, strict=True)), tkey, tpt)
+    return Plan(seed, shares, tuple(order), tuple(engines), idle, (legs[0], legs[1]), both)
+
+
+def _nonzero_words(rng: SepSeededRng, n: int) -> tuple[int, ...]:
+    words = []
+    for _ in range(n):
+        w = 0
+        while w == 0:
+            w = rng.getrandbits(32)
+        words.append(w)
+    return tuple(words)
+
+
+def _hw(words) -> str:
+    return "[" + ",".join(f"0x{w:08x}" for w in words) + "]"
 
 
 def draw_lines(plan: Plan) -> list[str]:
@@ -207,4 +268,11 @@ def draw_lines(plan: Plan) -> list[str]:
     lines.append("DRAW bank_order=" + ",".join(BANKS[i].name for i in plan.bank_order))
     lines.append("DRAW engine_order=" + ",".join(plan.engine_order))
     lines.append(f"DRAW idle_ops={plan.idle_ops}")
+    for i, leg in enumerate(plan.single_share):
+        lines.append(
+            f"DRAW single_share leg={i} share={leg.share} pre_s0={_hw(leg.pre[0])} "
+            f"pre_s1={_hw(leg.pre[1])} key={_hw(leg.key)} pt={_hw(leg.pt)}"
+        )
+    b = plan.both_shares
+    lines.append(f"DRAW both_shares s0={_hw(b.s0)} s1={_hw(b.s1)} key={_hw(b.key)} pt={_hw(b.pt)}")
     return lines

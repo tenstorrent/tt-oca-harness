@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
+// SEP BL1 status values (firmware ID 2), the single source for the firmware and for status
+// decoders. Values start at 0x100 so they never collide with the SEP ROM's SEP_MSG_ values, which
+// the ROM drivers SEP BL1 reuses can still post under the same firmware ID. Keep this file to
+// plain #define lines: decoders parse it as text.
+
+#pragma once
+
+#define SEP_BL1_STARTED 0x0101
+#define SEP_BL1_HANDOFF_OK 0x0102
+#define SEP_BL1_SECURE_STATE_OK 0x0103
+#define SEP_BL1_ZONES_OK 0x0104
+#define SEP_BL1_IMAGE_LOCATED 0x0105
+#define SEP_BL1_WARM_HANDLER_ARMED 0x0106
+#define SEP_BL1_SMC_PARKED 0x0107
+#define SEP_BL1_STAGED_VERIFIED 0x0108
+#define SEP_BL1_MEASURED 0x0109
+#define SEP_BL1_SECURE_STATE_RECHECKED 0x010A
+#define SEP_BL1_FILTER_OPEN 0x010B
+#define SEP_BL1_RELEASED 0x010C
+#define SEP_BL1_CHALLENGE_SENT 0x010D
+#define SEP_BL1_CONFIRMED 0x010E
+#define SEP_BL1_REHASH_OK 0x010F
+#define SEP_BL1_VECTOR_RESTORED 0x0110
+#define SEP_BL1_DONE 0x011F
+#define SEP_BL1_CPU_CTRL_ACCESS 0x0120
+#define SEP_BL1_SMC_ALREADY_PARKED 0x0121
+#define SEP_BL1_SMC_PARK_REQUESTED 0x0122
+#define SEP_BL1_WARN_ZONE_MISMATCH 0x0140
+#define SEP_BL1_WARN_NOT_SECURE 0x0141
+#define SEP_BL1_WARN_LIFECYCLE 0x0142
+#define SEP_BL1_WARN_DEMOTED 0x0143
+#define SEP_BL1_WARN_STATUS_RING 0x0144
+#define SEP_BL1_WARN_PARK_FORCED 0x0145
+#define SEP_BL1_ERR_HANDOFF 0x0180
+#define SEP_BL1_ERR_SECURE_STATE_MISMATCH 0x0181
+#define SEP_BL1_ERR_SMC_ZONE_UNPUBLISHED 0x0182
+#define SEP_BL1_ERR_SMC_ZONE_INVALID 0x0183
+#define SEP_BL1_ERR_SMC_ZONE_TOO_SMALL 0x0184
+#define SEP_BL1_ERR_SMC_IMAGE_MISSING 0x0185
+#define SEP_BL1_ERR_SMC_IMAGE_DUPLICATE 0x0186
+#define SEP_BL1_ERR_SMC_IMAGE_RANGE 0x0187
+#define SEP_BL1_ERR_SMC_IMAGE_ENTRY 0x0188
+#define SEP_BL1_ERR_SMC_IMAGE_ZONE 0x0189
+#define SEP_BL1_ERR_PARK 0x018A
+#define SEP_BL1_ERR_STAGE_COPY 0x018B
+#define SEP_BL1_ERR_STAGE_VERIFY 0x018C
+#define SEP_BL1_ERR_ENTROPY 0x018D
+#define SEP_BL1_ERR_FILTER 0x018E
+#define SEP_BL1_ERR_RELEASE 0x018F
+#define SEP_BL1_ERR_CONFIRM_TIMEOUT 0x0190
+#define SEP_BL1_ERR_CONFIRM_BAD 0x0191
+#define SEP_BL1_ERR_REHASH 0x0192
+#define SEP_BL1_ERR_WARM_RESET 0x0193
+
+// cold_scratch indices SEP BL1 reports through.
+#define SEP_BL1_SCRATCH_VERDICT 0
+#define SEP_BL1_SCRATCH_STATUS 1
+#define SEP_BL1_SCRATCH_CONSOLE 2
+#define SEP_BL1_SCRATCH_DETAIL 3
+
+// Final verdicts in cold_scratch[0], the codes the ROM and the test platforms already use.
+#define SEP_BL1_TEST_PASS_CODE 0xACAFACA1
+#define SEP_BL1_TEST_FAIL_CODE 0xDEADBEEF

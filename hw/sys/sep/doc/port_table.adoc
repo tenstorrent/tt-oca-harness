@@ -22,8 +22,8 @@ endif::backend-html5[]
 |`clk_wdt_i` |`logic` |Input |1 |200 kHz clock for watchdog timer. |Low-frequency clock source |N/A
 |`rst_ni` |`logic` |Input |1 |Primary reset (active low). Asynchronous assertion, synchronous deassertion. |System reset |N/A
 |`dbg_rstb_i` |`logic` |Input |1 |EL2 debugger reset (active low). |JTAG debug infrastructure |N/A
-|`wdt_rst_ni` |`logic` |Input |1 |Watchdog timer reset from SMC (active low). |SMC reset unit |N/A
-|`wdt_timer_rst_req_o` |`logic` |Output |1 |WDT reset request output. Triggers memory interface reset in `sep_wrapper`. |SEP wrapper |N/A
+|`wdt_rst_ni` |`logic` |Input |1 |Aggregated SMC and SEP watchdog reset (active low). Resets the SEP CPU and the SEP watchdog. |SMC reset unit |N/A
+|`wdt_timer_rst_req_o` |`logic` |Output |1 |Watchdog bite reset request (active high). Holds until `wdt_rst_ni` resets the watchdog. |SMC reset unit |N/A
 
 |`jtag_tck_i` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
 |`jtag_tms_i` |`logic` |Input |1 |JTAG test mode select. |JTAG pads (via DTP STAP) |N/A
@@ -66,10 +66,10 @@ endif::backend-html5[]
 
 |`sep_cpu_tcm_req_o` |`sep_cpu_tcm_req_t` |Output |- |CPU tightly-coupled memory (TCM) request (ICCM + DCCM). |SRAM macros |N/A
 |`sep_cpu_tcm_rsp_i` |`sep_cpu_tcm_rsp_t` |Input |- |CPU TCM response. |SRAM macros |N/A
-|`sep_sram_req_o` |`sep_sram_req_t` |Output |- |Scratch SRAM request. |SRAM macros |N/A
-|`sep_sram_rsp_i` |`sep_sram_rsp_t` |Input |- |Scratch SRAM response. |SRAM macros |N/A
-|`sep_boot_rom_req_o` |`sep_sram_req_t` |Output |- |Boot ROM (BL0) request. |ROM macro |N/A
-|`sep_boot_rom_rsp_i` |`sep_sram_rsp_t` |Input |- |Boot ROM (BL0) response. |ROM macro |N/A
+|`sep_sram_req_o` |`sep_sram_req_t` |Output |- |Scratch SRAM read or write request with the macro clock. |SRAM macros |N/A
+|`sep_sram_rsp_i` |`sep_sram_rsp_t` |Input |- |Scratch SRAM read data, one clock after the request. |SRAM macros |N/A
+|`sep_boot_rom_req_o` |`sep_boot_rom_req_t` |Output |- |Boot ROM (BL0) read request with the macro clock. |ROM macro |N/A
+|`sep_boot_rom_rsp_i` |`sep_boot_rom_rsp_t` |Input |- |Boot ROM (BL0) read data, one clock after the request. |ROM macro |N/A
 
 |`smn_outbound_axi_req_o` |`sep_system_peripherals_outbound_axi_req_t` |Output |- |SMN outbound AXI request (system bus master). |SMN fabric |N/A
 |`smn_outbound_axi_resp_i` |`sep_system_peripherals_outbound_axi_resp_t` |Input |- |SMN outbound AXI response. |SMN fabric |N/A
@@ -83,6 +83,8 @@ endif::backend-html5[]
 |`sep_crypto_pka_imem_sram_rsp_i` |`sep_crypto_pka_imem_sram_rsp_t` |Input |- |OTBN PKA instruction memory SRAM response. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_req_o` |`sep_crypto_pka_dmem_sram_req_t` |Output |- |OTBN PKA data memory SRAM request. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_rsp_i` |`sep_crypto_pka_dmem_sram_rsp_t` |Input |- |OTBN PKA data memory SRAM response. |SRAM macro |N/A
+|`abr_mem_req_o` |`sep_crypto_pkg::abr_mem_req_t` |Output |- |Adams Bridge working SRAM requests for every channel, with the macro clock. |SRAM macros |N/A
+|`abr_mem_rsp_i` |`sep_crypto_pkg::abr_mem_rsp_t` |Input |- |Adams Bridge working SRAM read data. Each channel's data must arrive exactly `ABR_SRAM_LATENCY` clocks after its `re`. |SRAM macros |N/A
 |`ext_trng_axil_req_o` |`sep_32_32_axil_req_t` |Output |- |External TRNG AXI-Lite passthrough request (to `sep_ip_integration`). |External TRNG shim |N/A
 |`ext_trng_axil_resp_i` |`sep_32_32_axil_resp_t` |Input |- |External TRNG AXI-Lite passthrough response. |External TRNG shim |N/A
 |`ext_trng_axis_req_i` |`ext_trng_axis_req_t` |Input |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream request array (from `sep_ip_integration`). |External TRNG shim |N/A

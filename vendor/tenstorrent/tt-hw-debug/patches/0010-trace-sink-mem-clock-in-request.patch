@@ -1,0 +1,29 @@
+trace_mem_pkg, trace_sink: carry the sink RAM clock in SinkMemPktIn_s
+
+With EXTERNAL_SINK_MEM the sink RAMs sit outside the DFD block, and the
+integrator has no port that tells it which clock the request is timed to.
+Add mem_clk to the request and drive it from trace_sink's own clock, so an
+external RAM is clocked exactly as the internal trace_mem would be.
+
+diff -u --new-file -r a/rtl/trace/trace_mem_pkg.svh b/rtl/trace/trace_mem_pkg.svh
+--- a/rtl/trace/trace_mem_pkg.svh
++++ b/rtl/trace/trace_mem_pkg.svh
+@@ -12,6 +12,7 @@
+   localparam TRC_RAM_INDEX_WIDTH = $clog2(TRC_RAM_INDEX);
+ 
+   typedef struct packed {
++    logic                                  mem_clk;
+     logic                                  mem_chip_en;
+     logic                                  mem_wr_en;
+     logic [TRC_RAM_INDEX_WIDTH-1:0]        mem_wr_addr;
+diff -u --new-file -r a/rtl/trace/trace_sink.sv b/rtl/trace/trace_sink.sv
+--- a/rtl/trace/trace_sink.sv
++++ b/rtl/trace/trace_sink.sv
+@@ -1636,6 +1636,7 @@
+ 
+   always_comb begin: always_blk_1
+     for (int gc = 0; gc<TRC_RAM_INSTANCES; gc++) begin
++      SinkMemPktIn[gc].mem_clk        = clk;
+       SinkMemPktIn[gc].mem_chip_en    = TraceWrEn_TS0[gc/2] | TraceRdEn_TS1[gc];
+       SinkMemPktIn[gc].mem_wr_en      = TraceWrEn_TS0[gc/2];
+       SinkMemPktIn[gc].mem_wr_addr    = TraceAddr_ANY[gc/2];

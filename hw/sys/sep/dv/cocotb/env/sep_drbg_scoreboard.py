@@ -265,6 +265,10 @@ class SepDrbgScoreboard:
 
         self.results = {k: _StreamResult(k, w) for k, (_, w) in self._STREAMS.items()}
         self._skip = dict(self._warmup)
+        # Per-stream count of graded items (see set_graded_items()); none by default.
+        self._graded_items = {}
+        # Items past that count: (index, expected, actual), logged, never graded.
+        self.observed = {k: [] for k in self._STREAMS}
         self._tasks = []
         # Live runtime flag (not a one-shot fork decision). CHK5 sink / AXIS1
         # monitors are forked from start() but skip every cycle until
@@ -520,6 +524,7 @@ class SepDrbgScoreboard:
         """Clear per-stream stats (called at the TRNG reset that begins the run)."""
         self.results = {k: _StreamResult(k, w) for k, (_, w) in self._STREAMS.items()}
         self._skip = dict(self._warmup)
+        self.observed = {k: [] for k in self._STREAMS}
         # Drop any pre-reset genbits/sink words so the CHK5 membership pool only
         # holds the real post-reset run (pre-reset genbits are X/garbage).
         self.axis1_q.clear()
@@ -581,6 +586,11 @@ class SepDrbgScoreboard:
         r = self.results[key]
         q = self._expected_q(key)
         r.dut_items += 1
+        limit = self._graded_items.get(key)
+        if limit is not None and r.dut_items > limit:
+            exp = q.popleft() if q else None
+            self.observed[key].append((r.dut_items - 1, exp, actual))
+            return
         if not q:
             if r.first_mismatch is None:
                 r.first_mismatch = (r.dut_items - 1, None, actual)
@@ -1032,6 +1042,14 @@ class SepDrbgScoreboard:
         return list(self._sink_beat_times[name])
 
     # --------------------------------------------------------------- tuning
+    def set_graded_items(self, **limits):
+        """Grade only the first N items of a stream (e.g. set_graded_items(CHK3_seed=1)).
+
+        A later item still counts in ``dut_items`` and is kept in ``observed`` with the
+        golden it would have met, but is never a match or a mismatch. Use it where no
+        specification states the golden of the later items."""
+        self._graded_items.update(limits)
+
     def set_min_matches(self, **mins):
         """Raise/lower the per-stream minimum-evidence floor (e.g. a longer
         coverage test demands deeper streams: set_min_matches(CHK4_genbits=32))."""

@@ -191,10 +191,14 @@ module sep_fcov (
   input sep_pkg::sep_32_64_6_12_axi_req_t  dma_csr_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t dma_csr_resp_i,
   input wire        irq_dma_error_i,
-  // rom_req: the boot ROM macro port (PR-ROM). tcm_*: the CPU TCM macro
-  // port enables of the ICCM and the DCCM, apart (the DMA TCM cells only).
-  input sep_pkg::sep_sram_req_t rom_req_i,
-  input sep_pkg::sep_sram_rsp_t rom_rsp_i,
+  // rom_*: the boot ROM memory-interface stream (PR-ROM), byte addressed.
+  // tcm_*: the CPU TCM macro port enables of the ICCM and the DCCM, apart (the
+  // DMA TCM cells only).
+  input wire        rom_req_i,
+  input wire        rom_we_i,
+  input wire [31:0] rom_addr_i,
+  input wire        rom_rvalid_i,
+  input wire [63:0] rom_rdata_i,
   input wire        iccm_clken_i,
   input wire        iccm_wren_i,
   input wire        dccm_clken_i,
@@ -357,7 +361,8 @@ module sep_fcov (
   input wire [6:0]           ip_rst_n_i,        // sep_crypto_gated_rst_n, SW_RESET_N order
   input wire [13:0]          iso_req_i,         // sep_crypto_isolate_req, bench index
   input wire [13:0]          iso_ack_i,         // sep_crypto_isolated, bench index
-  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_n
+  input wire                 aon_rst_n_i,       // u_sep_wdt_wrap.rst_wdt_aon_clk_n
+  input wire                 sep_wdt_reset_n_i, // sep_wdt_reset_n (watchdog timer reset)
   input wire [1:0]           km_cond_rst_n_i,   // {rst_cold_aasd_n, rst_warm_sync_n}
   input wire [1:0]           refcnt_rst_n_i,    // reference counter {clk_ref_i, clk_i} reset
   input sep_pkg::jtag_sep_reset_ctrl_t jtag_rst_ctrl_i,  // after the pin-or-TDR mux
@@ -379,8 +384,8 @@ module sep_fcov (
   input wire [4:0]           cpu_trace_ecause_i,
   input wire [31:0]          cpu_trace_tval_i,
   input wire [3:0]           ecc_dbg_i,         // ext_debug_bus_o[367:364]
-  input sep_pkg::sep_sram_req_t sram_req_i,     // u_dut.sep_sram_req
-  input sep_pkg::sep_sram_rsp_t sram_rsp_i,     // u_dut.sep_sram_rsp
+  input wire                 sram_req_i,        // PR-SRAM request
+  input wire                 sram_rvalid_i,     // PR-SRAM response valid
   // cpu_tcm_axi_req / resp: the crossbar backdoor into the core DMA port.
   input sep_pkg::sep_32_64_6_12_axi_req_t  tcm_axi_req_i,
   input sep_pkg::sep_32_64_6_12_axi_resp_t tcm_axi_resp_i,
@@ -418,7 +423,7 @@ module sep_fcov (
   input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_rom_resp_i,
   input sep_pkg::sep_32_64_3_12_axi_req_t  lsu_xbar_req_i,
   input sep_pkg::sep_32_64_3_12_axi_resp_t lsu_xbar_resp_i,
-  // The ROM macro request after the ROM interface shim (word index).
+  // The ROM macro request out of the memory_interface (word index).
   input wire                 rom_macro_req_i,
   input wire [12:0]          rom_macro_addr_i,
   // veer.dec.tlu: trap cause, ECC counters and their requests, the counter
@@ -694,7 +699,7 @@ module sep_fcov (
   input wire [1:0]                          km_wipe_i,        // {wipe_pulse, wipe_state_i}
   input km_intf_pkg::km_otp_data_t          km_otp_data_i,    // KM otp_data_i
   input wire                                km_rom_req_i,     // km_rom_mem_req.req
-  input wire [3:0]                          km_sram_if_i,     // km_sram_mem_req/rsp {rvalid, gnt, we, req}
+  input wire [1:0]                          km_sram_if_i,     // km_sram_mem_req {we, req}
   input wire [12:0]                         km_sram_addr_i,   // km_sram_mem_req.addr
   input km_intf_pkg::km_axil_req_t          km_efuse_req_i,   // KM efuse_req_o (after the remap)
   input km_intf_pkg::km_axil_resp_t         km_efuse_resp_i,  // KM efuse_resp_i
@@ -716,8 +721,6 @@ module sep_fcov (
   input wire                                km_recov_err_i,   // km_csr_recov_err_o (KM-CSR)
   input wire                                km_rec_pic_i,     // PIC vector bit 31
   input wire [8:0]                          km_outfifo_depth_i, // km_outfifo_depth_o (KM-OUTFIFO)
-  input wire [7:0]                          km_sram_lat_i,    // km_sram_rd_lat_o (KM-LAT)
-  input wire [31:0]                         km_sram_lat_done_i, // km_sram_rd_done_count_o (KM-LAT)
   // KM-BUS key path, AW channel: port 0 OTBN, 1 AES, 2 HMAC, 3 KMAC, 4 ABR.
   input wire [4:0]                          km_key_aw_valid_i,
   input wire [4:0]                          km_key_aw_ready_i,
@@ -4103,12 +4106,14 @@ module sep_fcov (
   // sep_km_isolate_termination_test). Bench isolate stages 8 km_otbn, 9 km_aes,
   // 11 km_kmac and 12 km_abr of iso_ack_i and of the iso_slv_* taps carry the
   // Key Manager paths (hw/sys/sep/doc/crypto.adoc:93-95). A store terminates
-  // when the B response of its stage is SLVERR or DECERR while the stage
-  // reports isolated. Destination code: 0 aes, 1 kmac, 2 otbn, 3 abr.
+  // when the B response of its stage is SLVERR while the stage reports
+  // isolated (hw/sys/sep/doc/reset_controller.adoc:127-128: new transactions
+  // on an isolated path complete with SLVERR). Destination code: 0 aes,
+  // 1 kmac, 2 otbn, 3 abr.
   wire kiso_own = (graded_owner == FcovOwnSepKmIsolateTerminationTest);
   function automatic logic kiso_term(input int unsigned st);
     return (iso_slv_b_hs_i[st] === 1'b1) && (iso_ack_i[st] === 1'b1) &&
-        (iso_slv_bresp_i[2*st+1] === 1'b1);
+        (iso_slv_bresp_i[2*st+:2] === 2'b10);
   endfunction
   logic [1:0] kiso_dest;
   logic kiso_dest_v;
@@ -4131,15 +4136,16 @@ module sep_fcov (
   end
   // The Key Manager gated reset (ip_rst_n_i[0]) falls on the software path
   // (sep_reset_n high, Key Manager override off) while an engine domain is out
-  // of reset. It may fall only when the five Key Manager paths (stages 8 to
-  // 12) report isolated (hw/sys/sep/doc/reset_controller.adoc:131, :142).
+  // of reset. It may fall only when the five Key Manager key paths and the
+  // eFuse path (stages 8 to 13) report isolated
+  // (hw/sys/sep/doc/reset_controller.adoc:131, :142).
   logic kiso_km_rst_q;
   always_ff @(posedge clk_i) kiso_km_rst_q <= (ip_rst_n_i[0] !== 1'b0);
   wire kiso_km_fall = !in_reset && kiso_km_rst_q && (ip_rst_n_i[0] === 1'b0) &&
       (sep_reset_n_i === 1'b1) && (jtag_rst_ctrl_i.ovrd.km_jtag_rst_n_ovrd !== 1'b1) &&
       ((ip_rst_n_i[1] === 1'b1) || (ip_rst_n_i[2] === 1'b1) || (ip_rst_n_i[3] === 1'b1) ||
        (ip_rst_n_i[4] === 1'b1) || (ip_rst_n_i[6] === 1'b1));
-  wire kiso_all_five = (iso_ack_i[12:8] === 5'h1F);
+  wire kiso_km_paths_iso = (iso_ack_i[13:8] === 6'h3F);
 
   covergroup sep_crypto_isolate_cg @(posedge clk_i);
     option.per_instance = 1;
@@ -4151,7 +4157,7 @@ module sep_fcov (
     cp_km_iso_dest: coverpoint kiso_dest iff (kiso_own && kiso_dest_v && !in_reset) {
       bins aes = {2'd0}; bins kmac = {2'd1}; bins otbn = {2'd2}; bins abr = {2'd3};
     }
-    cp_km_rst_ordered: coverpoint kiso_all_five iff (kiso_own && kiso_km_fall) {
+    cp_km_rst_ordered: coverpoint kiso_km_paths_iso iff (kiso_own && kiso_km_fall) {
       bins after_all_five = {1'b1}; illegal_bins before_all_five = {1'b0};
     }
   endgroup
@@ -4972,7 +4978,7 @@ module sep_fcov (
                                  (dma_csr_resp_i.aw_ready === 1'b1)) ||
                                 ((dma_csr_req_i.ar_valid === 1'b1) &&
                                  (dma_csr_resp_i.ar_ready === 1'b1)));
-  wire rom_hs   = !in_reset && (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
+  wire rom_hs   = !in_reset && (rom_req_i === 1'b1);
   wire out_hs   = out_aw_hs || out_ar_hs;
   wire smc_hs   = smc_aw_hs || smc_ar_hs;
   wire ext_hs   = ext_aw_hs || ext_ar_hs;
@@ -14421,12 +14427,13 @@ module sep_fcov (
     }
     // Net: 0 sep_reset_n, 1 sep_cpu_reset_n, 2..7 ip_rst_n[1..6],
     // 8 aon_rst_n, 9 Key Manager cold, 10 Key Manager warm, 11 ip_rst_n[0],
-    // 12 reference counter clk_ref_i reset, 13 reference counter clk_i reset.
+    // 12 reference counter clk_ref_i reset, 13 reference counter clk_i reset,
+    // 14 sep_wdt_reset_n.
     // Case 0 keeps its value (test_en_i 0), 1 low before the rise
     // (test_en_i 1), 2 the release of net 0 or 8 off the clock edge.
     cp_scan_net_effect: coverpoint s.sn iff (s.sn_v) {
-      bins te0_keeps[] = {[6'd0 : 6'd13]};
-      bins te1_low[] = {[6'd16 : 6'd29]};
+      bins te0_keeps[] = {[6'd0 : 6'd14]};
+      bins te1_low[] = {[6'd16 : 6'd30]};
       bins sep_reset_n_release_bypassed = {6'd32};
       bins aon_rst_n_release_bypassed = {6'd40};
     }
@@ -14608,8 +14615,9 @@ module sep_fcov (
     logic eo_v;  // {enable, outcome 0 no count 1 advances 2 crossed}
     logic [2:0] bs;
     logic bs_v;  // bark status cell, 4 bite in a forced window
-    logic [1:0] lk;
-    logic lk_v;  // 0 sticky, 1 cold landed, 2 locked landed, 3 unlocked ignored
+    logic [2:0] lk;
+    logic lk_v;  // 0 sticky, 1 cold landed, 2 locked landed, 3 unlocked ignored,
+                 // 4 landed after a wdt_rst_ni pulse that followed a lock
     logic [2:0] ad;
     logic ad_v;  // {stage, high half}
     logic ax;
@@ -14640,10 +14648,11 @@ module sep_fcov (
       illegal_bins bite_in_forced_window = {3'd4};
     }
     cp_lock_x_reg: coverpoint s.lk iff (s.lk_v) {
-      bins regwen_sticky_after_clear = {2'd0};
-      bins cold_reset_regwen1_write_lands = {2'd1};
-      illegal_bins regwen0_landed = {2'd2};
-      illegal_bins regwen1_ignored = {2'd3};
+      bins regwen_sticky_after_clear = {3'd0};
+      bins cold_reset_regwen1_write_lands = {3'd1};
+      illegal_bins regwen0_landed = {3'd2};
+      illegal_bins regwen1_ignored = {3'd3};
+      bins wdt_reset_regwen1_write_lands = {3'd4};
     }
     // Stage: 0 sep_wdt_tlul_axi_req, 1 sep_wdt_tlul_axi_req_offset,
     // 2 axi_lite_req, 3 tl_d_i.
@@ -15074,15 +15083,19 @@ module sep_fcov (
       bins cpu_lock_survives = {3'd5};
     }
     // The first read of the graded register after the engine's own software
-    // reset returns its RDL reset value: OTBN LOAD_CHECKSUM, KMAC STATUS, HMAC
-    // DIGEST_0, AES CTRL_SHADOWED (hw/sys/sep/doc/crypto.adoc:97).
+    // reset returns its RDL reset value: OTBN LOAD_CHECKSUM, KMAC STATUS, AES
+    // CTRL_SHADOWED (hw/sys/sep/doc/crypto.adoc:97). HMAC DIGEST has no stated
+    // reset value (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:242),
+    // so its cell is not graded.
     cp_self_reset: coverpoint s.se iff (s.se_v) {
-      bins otbn = {2'd0}; bins kmac = {2'd1}; bins hmac = {2'd2}; bins aes = {2'd3};
+      bins otbn = {2'd0}; bins kmac = {2'd1}; ignore_bins hmac = {2'd2}; bins aes = {2'd3};
     }
     // An OTBN, AES or KMAC software reset cancels the engine's EDN endpoints:
-    // no acknowledge and a zero bus on the last released clock and through the
-    // reset, and the word the endpoint held is not acknowledged to any client
-    // afterwards (hw/sys/sep/doc/reset_controller.adoc:149-153).
+    // with the client's request live on the last released clock, no
+    // acknowledge on that clock and through the reset, and a committed word is
+    // not acknowledged to any client afterwards
+    // (hw/sys/sep/doc/reset_controller.adoc:149-153). No text states the bus
+    // of a cancelled endpoint, so the cell does not read it.
     cp_sw_rst_edn_cancel: coverpoint s.ec iff (s.ec_v) {
       bins aes = {3'b0_00};
       bins kmac = {3'b0_01};
@@ -15461,6 +15474,23 @@ module sep_fcov (
   logic mr_rr_arm = 1'b0;
   logic mr_ar_arm = 1'b0;
   logic mr_sn_arm = 1'b0;
+  // Scan net samples on clk_i, in the bit order of mr_sn_now: the value and an
+  // X flag per net. A net with X in the window fills no cp_scan_net_effect cell.
+  logic [14:0] mr_sn_now_q = '0;
+  logic [14:0] mr_sn_xv;
+  logic [14:0] mr_sn_xv_q = '0;
+  always_comb begin
+    mr_sn_xv[14] = $isunknown(sep_wdt_reset_n_i);
+    mr_sn_xv[13] = $isunknown(refcnt_rst_n_i[0]);
+    mr_sn_xv[12] = $isunknown(refcnt_rst_n_i[1]);
+    mr_sn_xv[11] = $isunknown(ip_rst_n_i[0]);
+    mr_sn_xv[10] = $isunknown(km_cond_rst_n_i[0]);
+    mr_sn_xv[9]  = $isunknown(km_cond_rst_n_i[1]);
+    mr_sn_xv[8]  = $isunknown(aon_rst_n_i);
+    for (int i = 1; i < 7; i++) mr_sn_xv[i+1] = $isunknown(ip_rst_n_i[i]);
+    mr_sn_xv[1] = $isunknown(cpu_reset_n_i);
+    mr_sn_xv[0] = $isunknown(sep_reset_n_i);
+  end
   always @(posedge rst_ni) begin
     mr_rr_arm   = mr_own_cold;
     mr_ar_arm   = mr_own_cold;
@@ -15483,7 +15513,9 @@ module sep_fcov (
         u_sep_reset_source_cg.sample(e);
       end
       mr_rr_arm = 1'b0;
-      if (mr_sn_arm && mr_own_scan && (off > MrEdgeTol) && (off < per - MrEdgeTol)) begin
+      // The rise counts only from a known 0 at the last clk_i edge.
+      if (mr_sn_arm && mr_own_scan && !mr_sn_now_q[0] && !mr_sn_xv_q[0] && (off > MrEdgeTol) &&
+          (off < per - MrEdgeTol)) begin
         mr_src_t e;
         e      = '0;
         e.sn   = 6'd32;
@@ -15506,7 +15538,8 @@ module sep_fcov (
         u_sep_reset_source_cg.sample(e);
       end
       mr_ar_arm = 1'b0;
-      if (mr_sn_arm && mr_own_scan && (off > MrEdgeTol) && (off < per - MrEdgeTol)) begin
+      if (mr_sn_arm && mr_own_scan && !mr_sn_now_q[8] && !mr_sn_xv_q[8] && (off > MrEdgeTol) &&
+          (off < per - MrEdgeTol)) begin
         mr_src_t e;
         e      = '0;
         e.sn   = 6'd40;
@@ -15797,9 +15830,9 @@ module sep_fcov (
   logic mr_ro_arm = 1'b0;
   logic mr_ro_low = 1'b0;
   logic mr_ro_bad_q = 1'b0;
-  logic [13:0] mr_sn_snap = '0;
-  logic [13:0] mr_sn_keep = '0;
-  logic [13:0] mr_sn_now_q = '0;
+  logic [14:0] mr_sn_snap = '0;
+  logic [14:0] mr_sn_keep = '0;
+  logic [14:0] mr_sn_kn = '0;  // the net had no X from the edge before the fall
   logic mr_sn_on = 1'b0;
   logic mr_sn_te = 1'b0;
   logic mr_sn_te_ok = 1'b0;
@@ -15810,7 +15843,8 @@ module sep_fcov (
   int unsigned mr_mp_tog = 0;
   logic mr_mp_rel = 1'b0;
   int unsigned mr_mp_cnt = 0;
-  wire [13:0] mr_sn_now = {
+  wire [14:0] mr_sn_now = {
+    sep_wdt_reset_n_i === 1'b1,
     refcnt_rst_n_i[0] === 1'b1,
     refcnt_rst_n_i[1] === 1'b1,
     ip_rst_n_i[0] === 1'b1,
@@ -15825,6 +15859,7 @@ module sep_fcov (
     logic held;
     logic bad;
     mr_sn_now_q <= mr_sn_now;
+    mr_sn_xv_q  <= mr_sn_xv;
     // cp_source_edge
     if (mr_own_cold && mr_rst_fall) mr_se(3'd0, 1'b0);
     if (mr_own_cold && mr_rst_rise) mr_se(3'd0, 1'b1);
@@ -15898,23 +15933,26 @@ module sep_fcov (
       u_sep_reset_source_cg.sample(e);
     end
 
-    // cp_scan_net_effect, the 28 net cells
+    // cp_scan_net_effect, the 30 net cells. A cell needs the net high on the
+    // last clk_i edge before the scan_rst_ni fall.
     if (mr_scan_q && !mr_scan) begin
       mr_sn_on    <= mr_own_scan;
       mr_sn_snap  <= mr_sn_now_q;
-      mr_sn_keep  <= ~(mr_sn_now ^ mr_sn_now_q);
+      mr_sn_keep  <= mr_sn_now_q & ~(mr_sn_now ^ mr_sn_now_q);
+      mr_sn_kn    <= ~(mr_sn_xv | mr_sn_xv_q);
       mr_sn_te    <= mr_te;
       mr_sn_te_ok <= 1'b1;
       mr_sn_w     <= 1;
     end else if (mr_sn_on && !mr_scan) begin
       mr_sn_keep <= mr_sn_keep & ~(mr_sn_now ^ mr_sn_snap);
+      mr_sn_kn   <= mr_sn_kn & ~mr_sn_xv;
       if (mr_te != mr_sn_te) mr_sn_te_ok <= 1'b0;
       mr_sn_w <= mr_sn_w + 1;
     end else if (mr_sn_on && !mr_scan_q && mr_scan) begin
       mr_sn_on <= 1'b0;
       if (mr_own_scan && mr_sn_te_ok && (mr_sn_w >= MrScanMinW)) begin
-        for (int n = 0; n < 14; n++) begin
-          if (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n]) begin
+        for (int n = 0; n < 15; n++) begin
+          if (mr_sn_kn[n] && mr_sn_snap[n] && (mr_sn_te ? !mr_sn_now_q[n] : mr_sn_keep[n])) begin
             mr_src_t e;
             e      = '0;
             e.sn   = {1'b0, mr_sn_te, 4'(n)};
@@ -16730,15 +16768,23 @@ module sep_fcov (
   logic mr_rw = 1'b1;
   logic mr_rw_ok = 1'b0;
   logic mr_lk_sticky = 1'b0;
-  // 1 from a gate-open rst_ni rise to the first landed WDOG_BARK_THOLD write,
-  // unless a WDOG_REGWEN write of 0 or a WDOG_REGWEN read of 0 comes first.
+  // 1 from a gate-open rst_ni rise after a reset that found regwen read as 0 to
+  // the first landed WDOG_BARK_THOLD write, unless a WDOG_REGWEN write of 0 or a
+  // WDOG_REGWEN read of 0 comes first.
   logic mr_lk_cold = 1'b0;
+  logic mr_cold_rd0 = 1'b0;  // the rst_ni reset in progress found regwen read as 0
+  // 1 from a gate-open wdt_rst_ni pulse that found regwen read as 0 to the first
+  // landed WDOG_BARK_THOLD write, unless a WDOG_REGWEN write of 0 or a
+  // WDOG_REGWEN read of 0 comes first.
+  logic mr_lk_wdt = 1'b0;
+  logic mr_rw_rd0 = 1'b0;  // the last WDOG_REGWEN read returned 0
   logic mr_bt_pend = 1'b0;
   logic [31:0] mr_bt_w = '0;
   logic [31:0] mr_bt_prev = '0;
   logic mr_bt_prev_ok = 1'b0;
   logic [1:0] mr_bt_rw = '0;  // {known, regwen}
   logic mr_bt_cold = 1'b0;
+  logic mr_bt_wdt = 1'b0;
   logic mr_bt_own = 1'b0;  // graded window open at the pending bark write
   logic mr_own_tmr_q = 1'b0;  // mr_own_tmr at the previous clk_i edge
   logic [31:0] mr_to_prev = '0;
@@ -16781,7 +16827,12 @@ module sep_fcov (
   wire [31:0] mr_wd_wa = aw_addr_q;
   wire [31:0] mr_wd_ra = ar_addr_q;
   always @(posedge clk_i) begin
-    if (!mr_rst) begin
+    // rst_ni and wdt_rst_ni both reset the aon_timer and its registers
+    // (clk_rst.adoc:62; watchdog.adoc:23), so the model forgets its register
+    // state under either reset.
+    if (!mr_rst || !mr_wdt) begin
+      mr_lk_wdt     <= mr_rst && (mr_lk_wdt || (mr_own_tmr && mr_rw_ok && !mr_rw && mr_rw_rd0));
+      mr_cold_rd0   <= !mr_rst && (mr_cold_rd0 || (mr_rw_ok && !mr_rw && mr_rw_rd0));
       mr_wd_en_ok   <= 1'b0;
       mr_wd_bark_ok <= 1'b0;
       mr_wd_cnt_ok  <= 1'b0;
@@ -16790,6 +16841,7 @@ module sep_fcov (
       mr_bs_f0      <= 1'b0;
       mr_bs_f1      <= 1'b0;
       mr_rw_ok      <= 1'b0;
+      mr_rw_rd0     <= 1'b0;
       mr_lk_sticky  <= 1'b0;
       mr_bt_pend    <= 1'b0;
       mr_to_near    <= 1'b0;
@@ -16810,7 +16862,10 @@ module sep_fcov (
       mr_wk_split   <= '0;
       mr_wk_th      <= '0;
     end else begin
-      if (mr_rst_rise) mr_lk_cold <= mr_own_tmr;
+      if (mr_rst_rise) begin
+        mr_lk_cold  <= mr_own_tmr && mr_cold_rd0;
+        mr_cold_rd0 <= 1'b0;
+      end
       // Writes.
       if (mr_wd_wr && in_blk(mr_wd_wa, WDT_TIMER_REG_MAP_BASE_ADDR, WDT_TIMER_REG_MAP_SIZE)) begin
         case (mr_wd_wa)
@@ -16853,11 +16908,13 @@ module sep_fcov (
             mr_bt_prev_ok <= mr_wd_bark_ok;
             mr_bt_rw      <= {mr_rw_ok, mr_rw};
             mr_bt_cold    <= mr_lk_cold;
+            mr_bt_wdt     <= mr_lk_wdt;
             mr_bt_own     <= mr_own_tmr;
             mr_lk_cold    <= 1'b0;
+            mr_lk_wdt     <= 1'b0;
             mr_wd_pair    <= 1'b0;
             // A write lands unless regwen is known 0. regwen resets to 1 with
-            // rst_ni, so an unknown regwen after a reset is 1.
+            // rst_ni and with wdt_rst_ni, so an unknown regwen after a reset is 1.
             if (!mr_rw_ok || mr_rw) begin
               mr_wd_bark    <= wr_data;
               mr_wd_bark_ok <= 1'b1;
@@ -16882,6 +16939,7 @@ module sep_fcov (
               mr_rw      <= 1'b0;
               mr_rw_ok   <= 1'b1;
               mr_lk_cold <= 1'b0;
+              mr_lk_wdt  <= 1'b0;
             end else if (mr_rw_ok && !mr_rw) mr_lk_sticky <= 1'b1;
           end
           MrWdIntrTest: begin
@@ -16980,17 +17038,20 @@ module sep_fcov (
                 (mr_own_tmr || mr_own_tmr_q)) begin
               mr_wdt_t e;
               e    = '0;
-              e.lk = 2'd0;
+              e.lk = 3'd0;
               if (rd_data == mr_bt_w) begin
                 if (mr_bt_cold) begin
-                  e.lk   = 2'd1;
+                  e.lk   = 3'd1;
+                  e.lk_v = 1'b1;
+                end else if (mr_bt_wdt) begin
+                  e.lk   = 3'd4;
                   e.lk_v = 1'b1;
                 end else if (mr_bt_rw == 2'b10) begin
-                  e.lk   = 2'd2;
+                  e.lk   = 3'd2;
                   e.lk_v = 1'b1;
                 end
               end else if ((rd_data == mr_bt_prev) && (mr_bt_rw == 2'b11)) begin
-                e.lk   = 2'd3;
+                e.lk   = 3'd3;
                 e.lk_v = 1'b1;
               end
               if (e.lk_v) u_sep_wdt_config_bark_cg.sample(e);
@@ -17014,14 +17075,18 @@ module sep_fcov (
             if (mr_lk_sticky && !rd_data[0] && mr_own_tmr) begin
               mr_wdt_t e;
               e      = '0;
-              e.lk   = 2'd0;
+              e.lk   = 3'd0;
               e.lk_v = 1'b1;
               u_sep_wdt_config_bark_cg.sample(e);
             end
             mr_lk_sticky <= 1'b0;
             mr_rw        <= rd_data[0];
             mr_rw_ok     <= 1'b1;
-            if (!rd_data[0]) mr_lk_cold <= 1'b0;
+            mr_rw_rd0    <= !rd_data[0];
+            if (!rd_data[0]) begin
+              mr_lk_cold <= 1'b0;
+              mr_lk_wdt  <= 1'b0;
+            end
           end
           MrWdCount: begin
             logic chg;
@@ -17569,9 +17634,11 @@ module sep_fcov (
       if (((mr_ack_q & set) != 0) && ((iso_ack_i & set) == 0)) mr_ack_clr_t[d] <= mr_cyc;
       // The KMAC fall cell belongs to the per-IP reset leaf and the TRNG fall
       // cell to the TRNG reset leaf. The isolation matrix leaf samples their
-      // fall-before-isolated cell only.
+      // fall-before-isolated cell only. Under the TRNG reset leaf the legal
+      // TRNG fall cell is held and samples on the rise of trng_drain_pass
+      // (cp_trng_drain block); only the illegal cell samples here.
       if (mr_ip_sw_fall[i] && (((d < 3) && mr_own_swiso) || ((d == 3) && mr_own_iprst) ||
-                               ((d == 4) && mr_own_trngrec) ||
+                               ((d == 4) && mr_own_trngrec && ((iso_ack_i & set) != set)) ||
                                ((d >= 3) && mr_own_swiso && ((iso_ack_i & set) != set)))) begin
         mr_scope_t e;
         e      = '0;
@@ -17969,6 +18036,17 @@ module sep_fcov (
   logic mr_td_arm = 1'b0;
   logic [3:0] mr_td_pend = '0;
   logic mr_td_set_q = 1'b0;
+  // Pass label of cp_trng_drain and cp_iso_order_per_domain[trng_fall]:
+  // sep_trng_reset_recovery_test writes 1 after CHK-TRNG-DRAIN passes, which
+  // it reaches only after CHK-TRNG-ISOLATE-ALL and CHK-TRNG-CLEAR-SYNC passed,
+  // and 0 before its window opens and after it closes. Each drain answer
+  // {OKAY, SLVERR} and the TRNG fall with all three TRNG paths isolated are
+  // held seen and sample only on the rise of trng_drain_pass. It gates a
+  // sample; it is never a DUT value and drives nothing.
+  int unsigned trng_drain_pass = 0;
+  logic mr_td_pass_q = 1'b0;
+  logic [1:0] mr_td_seen = '0;
+  logic mr_tf_seen = 1'b0;  // cp_iso_order_per_domain[trng_fall] held for trng_drain_pass
   logic [5:0] mr_ir_arlow = '0, mr_ir_awlow = '0;  // domain window open at the AR / AW
   int unsigned mr_ss_set = 0;  // clk_i cycles with sep_fuse_sense_done_o at 1
   logic mr_sh_on = 1'b0, mr_shx_bad = 1'b0;
@@ -18047,21 +18125,56 @@ module sep_fcov (
     end
 
     // cp_trng_drain: the TRNG CSR reads outstanding when the three TRNG
-    // paths report isolated each complete with OKAY or SLVERR.
-    mr_td_set_q <= ((iso_ack_i & MrSetTrng) == MrSetTrng);
+    // paths report isolated each complete with OKAY or SLVERR. An answer is
+    // held seen at its R beat and samples on the rise of trng_drain_pass; the
+    // release comes before the drop at the window close. A TRNG AR after the
+    // set stops the count; answers seen before it stay held.
+    mr_td_set_q  <= ((iso_ack_i & MrSetTrng) == MrSetTrng);
+    mr_td_pass_q <= (trng_drain_pass != 0);
+    if ((trng_drain_pass != 0) && !mr_td_pass_q) begin
+      if (mr_td_seen[0]) begin
+        mr_scope_t e;
+        e      = '0;
+        e.td   = 1'b0;
+        e.td_v = 1'b1;
+        u_sep_reset_scope_retention_cg.sample(e);
+      end
+      if (mr_td_seen[1]) begin
+        mr_scope_t e;
+        e      = '0;
+        e.td   = 1'b1;
+        e.td_v = 1'b1;
+        u_sep_reset_scope_retention_cg.sample(e);
+      end
+      if (mr_tf_seen) begin
+        mr_scope_t e;
+        e      = '0;
+        e.io   = {3'd4, 2'd0};
+        e.io_v = 1'b1;
+        u_sep_reset_scope_retention_cg.sample(e);
+      end
+      mr_td_seen <= '0;
+      mr_tf_seen <= 1'b0;
+    end else if (!mr_own_trngrec || !mr_rst) begin
+      mr_td_seen <= '0;
+      mr_tf_seen <= 1'b0;
+    end else if (mr_ip_sw_fall[MrIsoIdx[4]] && ((iso_ack_i & MrSetTrng) == MrSetTrng)) begin
+      mr_tf_seen <= 1'b1;
+    end
     if (!mr_own_trngrec || !mr_rst) begin
       mr_td_arm <= 1'b0;
     end else if (((iso_ack_i & MrSetTrng) == MrSetTrng) && !mr_td_set_q) begin
       mr_td_arm  <= !mr_dr_unk && (mr_dr_n[2] != 4'd0) && (mr_dr_n[2] == ar_out_q);
       mr_td_pend <= mr_dr_n[2];
+      mr_td_seen <= '0;
+    end else if (mr_td_arm && ar_hs && (mr_dr_cls(lsu_ar_addr_i) == 2)) begin
+      // A TRNG read issued after the set may answer before a drain read, so
+      // later R beats cannot be paired with drain reads: stop counting them.
+      mr_td_arm <= 1'b0;
     end else if (mr_td_arm && r_hs) begin
       if ((pk == 2) && (mr_td_pend != 4'd0)) begin
         if ((lsu_r_resp_i == AxiOkay) || (lsu_r_resp_i == 2'b10)) begin
-          mr_scope_t e;
-          e      = '0;
-          e.td   = (lsu_r_resp_i == 2'b10);
-          e.td_v = 1'b1;
-          u_sep_reset_scope_retention_cg.sample(e);
+          mr_td_seen[lsu_r_resp_i==2'b10] <= 1'b1;
         end
         mr_td_pend <= mr_td_pend - 4'd1;
         if (mr_td_pend == 4'd1) mr_td_arm <= 1'b0;
@@ -18653,7 +18766,7 @@ module sep_fcov (
   int unsigned mm_rn_cnt = 0;
   logic [63:0] mm_rn_mdata = '0;
   always @(posedge clk_i) begin
-    if (rom_rsp_i.rvalid === 1'b1) mm_rn_mdata <= rom_rsp_i.rdata;
+    if (rom_rvalid_i === 1'b1) mm_rn_mdata <= rom_rdata_i;
     mm_rn_pass_q <= (rom_noecc_pass != 0);
     if (in_reset || !mm_own_rom) begin
       mm_rn_pend1 <= 0;
@@ -19242,10 +19355,10 @@ module sep_fcov (
   // cp_macro_if: request and response phases of the memory macro ports.
   // ---------------------------------------------------------------------
   always @(posedge clk_i) begin
-    if (mm_own_rom && (rom_req_i.req === 1'b1)) mm_ap_rom(4'd2, 5'd0);
-    if (mm_own_rom && (rom_rsp_i.rvalid === 1'b1)) mm_ap_rom(4'd2, 5'd1);
-    if (mm_own_sram && (sram_req_i.req === 1'b1)) mm_ap(4'd2, 5'd2);
-    if (mm_own_sram && (sram_rsp_i.rvalid === 1'b1)) mm_ap(4'd2, 5'd3);
+    if (mm_own_rom && (rom_req_i === 1'b1)) mm_ap_rom(4'd2, 5'd0);
+    if (mm_own_rom && (rom_rvalid_i === 1'b1)) mm_ap_rom(4'd2, 5'd1);
+    if (mm_own_sram && (sram_req_i === 1'b1)) mm_ap(4'd2, 5'd2);
+    if (mm_own_sram && (sram_rvalid_i === 1'b1)) mm_ap(4'd2, 5'd3);
     if (mm_own_tdma && ((|tcm_i_clken_i === 1'b1) || (|tcm_d_clken_i === 1'b1))) mm_ap(4'd2, 5'd4);
   end
 
@@ -19330,10 +19443,11 @@ module sep_fcov (
   // rst_ni falls: the offset is the clk_i edges after the request handshake
   // edge (AR, or the later of AW and W) and before the fall, against W, the
   // edges strictly between the handshake and the response of the last access
-  // of that path that completed alone. A ROM read in flight is the handshake
-  // on sep_boot_rom_req with no rvalid yet. After the release, the first R
-  // or B beat (rvalid for ROM) must follow a request issued after it. The
-  // tracking is ungated; the gate applies at the fall.
+  // of that path that completed alone. A ROM read in flight is a request on
+  // the boot ROM memory_interface stream (rom_req_i) with no rom_rvalid_i yet.
+  // After the release, the first R or B beat (rom_rvalid_i for ROM) must
+  // follow a request issued after it. The tracking is ungated; the gate
+  // applies at the fall.
   // ---------------------------------------------------------------------
   logic mm_or_pend = 1'b0;
   logic mm_ow_aw = 1'b0;
@@ -19349,8 +19463,8 @@ module sep_fcov (
   logic mm_st_post = 1'b0;
   logic mm_st_post_r = 1'b0;
   wire [63:0] mm_ow_anchor = (mm_ow_awc > mm_ow_wc) ? mm_ow_awc : mm_ow_wc;
-  wire mm_rom_hs = (rom_req_i.req === 1'b1) && (rom_rsp_i.gnt === 1'b1);
-  wire mm_rom_rv = (rom_rsp_i.rvalid === 1'b1);
+  wire mm_rom_hs = (rom_req_i === 1'b1);
+  wire mm_rom_rv = (rom_rvalid_i === 1'b1);
   always @(posedge clk_i) begin
     if (in_reset) begin
       mm_or_pend <= 1'b0;
@@ -19882,10 +19996,11 @@ module sep_fcov (
 
   // ---------------------------------------------------------------------
   // cp_rom_write_master: a CPU store to the ROM aperture. A ROM macro
-  // request (after the interface shim) at the store word is a readback when
-  // a read request for that word reached sep_boot_rom_req within
-  // MmRomRdAge edges; the cell hits MmStoreQuiet edges after the store
-  // response when every such request was a readback.
+  // request (out of the memory_interface) at the store word is a readback when
+  // a read request for that word is on the boot ROM memory_interface stream
+  // (rom_req_i with rom_we_i low) within MmRomRdAge edges; the cell hits
+  // MmStoreQuiet edges after the store response when every such request was
+  // a readback.
   // ---------------------------------------------------------------------
   longint unsigned mm_rrd[int unsigned];
   logic mm_sw_on = 1'b0;
@@ -19896,8 +20011,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     int unsigned w;
     logic rb;
-    if ((rom_req_i.req === 1'b1) && (rom_req_i.wenable !== 1'b1))
-      mm_rrd[int'(rom_req_i.addr[15:3])] = mm_cyc;
+    if ((rom_req_i === 1'b1) && (rom_we_i !== 1'b1)) mm_rrd[int'(rom_addr_i[15:3])] = mm_cyc;
     if (mm_sw_on && (rom_macro_req_i === 1'b1) && (rom_macro_addr_i == mm_sw_word)) begin
       w  = int'(mm_sw_word);
       rb = mm_rrd.exists(w) && ((mm_cyc - mm_rrd[w]) <= MmRomRdAge);
@@ -20093,6 +20207,38 @@ module sep_fcov (
   wire cy_own_dfat = (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest);
   wire cy_own_drw = (graded_owner == FcovOwnSepDrbgRegwenLockRandTest);
   wire cy_own_dcmd = (graded_owner == FcovOwnSepDrbgCmdSequenceRandTest);
+
+  // Pass label of the DRBG command-sequence leaf (owner 150). Inside the
+  // window of the leaf, each sample of sep_csrng_cmd_cg, sep_edn_mode_cg,
+  // sep_crypto_alert_cg cp_csrng_recov_seq and of the x_line_gate and
+  // cp_hw_raise cells of sep_crypto_intr_cg is held as pending, and samples
+  // only when drbg_seq_pass rises to 1. The leaf writes 1 after every check
+  // since its last write passed, and 0 after. When a check or control since
+  // that write failed, the leaf writes 2 and then 0: the rise to 2 drops every
+  // pending sample, so a later rise to 1 cannot release it. At the first
+  // clock edge of the window of the leaf the pending list also drops every
+  // sample held before that edge, so the samples of an instance whose check
+  // did not pass never reach a bin; a sample held on that edge stays. Each sample keeps its hold time
+  // for that test, so the result does not depend on the order of the blocks
+  // that run on the edge. The illegal cp_reported_mode value samples at
+  // once. It gates a sample; it is never a DUT value and drives nothing.
+  typedef struct packed {
+    logic [1:0]  k;  // 0 csrng_cmd, 1 edn_mode, 2 crypto_alert, 3 crypto_intr
+    logic [3:0]  pt;
+    logic [5:0]  v;
+    logic [63:0] t;  // $time of the hold
+  } cz_dsp_t;
+  int unsigned drbg_seq_pass = 0;
+  cz_dsp_t cz_dsp[$];
+
+  task automatic cz_dsp_hold(input logic [1:0] k, input int unsigned pt, input logic [5:0] v);
+    cz_dsp_t h;
+    h.k  = k;
+    h.pt = 4'(pt);
+    h.v  = v;
+    h.t  = $time;
+    cz_dsp.push_back(h);
+  endtask
   wire cy_own_xhs = (graded_owner == FcovOwnSepTrngExtStreamHandshakeRandTest);
   wire cy_own_xrst = (graded_owner == FcovOwnSepTrngExtSinkResetRandTest);
   wire cy_own_mix = (graded_owner == FcovOwnSepDrbgSinkMixRandTest);
@@ -20413,7 +20559,8 @@ module sep_fcov (
     if (graded_owner == FcovOwnSepKmacStreamCfgRandTest) return s == 3;
     if (graded_owner == FcovOwnSepKmacEntropyModeRandTest) return s == 5;
     if (graded_owner == FcovOwnSepDrbgFatalErrInjectRandTest) return s inside {9, 11};
-    if (graded_owner == FcovOwnSepDrbgCmdSequenceRandTest) return s inside {6, 10};
+    // The owner checks read the vector bit only with the enable set.
+    if (graded_owner == FcovOwnSepDrbgCmdSequenceRandTest) return (s inside {6, 10}) && en;
     return 1'b0;
   endfunction
   // cp_hw_raise owner per source.
@@ -20562,7 +20709,7 @@ module sep_fcov (
   // held cells. It gates a sample; it is never a DUT value and drives nothing.
   int unsigned kmac_stream_pass = 0;
   // kmac_done cells of the owner-136 window: the count of hardware raises and
-  // of settled line cells (written only by cy_intr), the last line cell, and
+  // of settled line cells (written only by cy_intr_rel), the last line cell, and
   // the counts already sampled or dropped (written only by the owner-136
   // sampler of sep_kmac_cfg_cmd_cg).
   int unsigned cy_ks_hr_n = 0;
@@ -20571,7 +20718,7 @@ module sep_fcov (
   int unsigned cy_ks_hr_done = 0;
   int unsigned cy_ks_lg_done = 0;
   // otbn_done raise of the owner-138 window: the count of hardware raises
-  // (written only by cy_intr) and the count already sampled (written only by
+  // (written only by cy_intr_rel) and the count already sampled (written only by
   // the OTBN tracker, on the rise of the CHK-OTBN-CMD-END bit of
   // otbn_cmd_pass).
   int unsigned cy_oh_n = 0;
@@ -20579,7 +20726,7 @@ module sep_fcov (
   // otbn_done line cells of the owner-138 window, one counter per cell:
   //  0-3 x_line_gate {state, enable}; 4-5 cp_w1c_clear legal cells (enable);
   //  6-7 cp_enable_flip (0 rise, 1 fall). cy_odl_n counts the settled
-  // outcomes (written only by cy_intr); cy_odl_done the outcomes already
+  // outcomes (written only by cy_intr_rel); cy_odl_done the outcomes already
   // sampled or dropped (written only by the OTBN tracker, on the rise of the
   // CHK-OTBN-DONE-LINE bit of otbn_cmd_pass, at an OTBN reset and outside
   // the owner window).
@@ -20587,6 +20734,11 @@ module sep_fcov (
   int unsigned cy_odl_done[8] = '{default: 0};
 
   task automatic cy_intr(input int unsigned pt, input logic [5:0] v);
+    if (cy_own_dcmd && (pt inside {0, 3})) cz_dsp_hold(2'd3, pt, v);
+    else cy_intr_rel(pt, v);
+  endtask
+
+  task automatic cy_intr_rel(input int unsigned pt, input logic [5:0] v);
     cy_intr_t e;
     // The kmac_done cells of the owner-136 window wait for kmac_stream_pass.
     if (cy_own_kstr && (((pt == 3) && (v[3:0] == 4'd3)) || ((pt == 0) && (v[5:2] == 4'd3)))) begin
@@ -23864,7 +24016,7 @@ module sep_fcov (
           pd[i] = 1'b0;
         end
       end
-      // cp_hw_raise otbn_done of this owner (held by cy_intr).
+      // cp_hw_raise otbn_done of this owner (held by cy_intr_rel).
       if (cy_ocp_rise[CyOcpCmdEnd]) begin
         if (cy_oh_n != cy_oh_done) begin
           ie      = '0;
@@ -23874,7 +24026,7 @@ module sep_fcov (
         end
         cy_oh_done <= cy_oh_n;
       end
-      // otbn_done line cells of this owner (held by cy_intr): one sample per
+      // otbn_done line cells of this owner (held by cy_intr_rel): one sample per
       // cell seen since the last release or drop.
       if (!cy_ip[1]) begin
         cy_odl_done <= cy_odl_n;
@@ -25416,7 +25568,17 @@ module sep_fcov (
   logic [4:1] cxs_pre = '0;    // the value before the reset differed from the reset value
   logic cxo_ck_nz = 1'b0;      // last OKAY LOAD_CHECKSUM read non-zero
   logic cxh_dnz = 1'b0;         // last OKAY HMAC DIGEST_0 read non-zero
-  logic [5:0] cxa_mode = '0;   // MODE of the last CTRL_SHADOWED write
+  logic cxk_sdiff = 1'b0;       // last OKAY KMAC STATUS read differs from KmacStatusRdl reset
+  logic [31:0] cxa_wr = '0;    // fields of the last AES CTRL_SHADOWED write
+  // last OKAY AES CTRL_SHADOWED read equals that write under the field mask
+  // and differs from the reset value
+  logic cxa_pre_ok = 1'b0;
+  // KMAC STATUS fields with a stated reset value (kmac.hjson STATUS resval:
+  // sha3_idle, fifo_empty and the two alert bits). sha3_absorb, sha3_squeeze,
+  // fifo_depth and fifo_full have no stated reset value and are not compared.
+  localparam logic [31:0] KmacStatusRdl = KMAC_STATUS_SHA3_IDLE_MASK |
+      KMAC_STATUS_FIFO_EMPTY_MASK | KMAC_STATUS_ALERT_FATAL_FAULT_MASK |
+      KMAC_STATUS_ALERT_RECOV_CTRL_UPDATE_ERR_MASK;
   function automatic logic [31:0] cxs_addr(input int d);
     case (d)
       1: return OTBN_LOAD_CHECKSUM_REG_ADDR;
@@ -25429,8 +25591,9 @@ module sep_fcov (
     case (d)
       1: return v == 32'(OTBN_LOAD_CHECKSUM_REG_DEFAULT);
       2: return (v & AesCtrlFields) == (32'(AES_CTRL_SHADOWED_REG_DEFAULT) & AesCtrlFields);
-      3: return v == 32'h0;  // the published HMAC block reset; DIGEST has no RDL reset
-      default: return v == 32'(KMAC_STATUS_REG_DEFAULT);
+      3: return v == 32'h0;  // ignored cell: DIGEST has no stated reset value
+      default:
+      return (v & KmacStatusRdl) == (32'(KMAC_STATUS_REG_DEFAULT) & KmacStatusRdl);
     endcase
   endfunction
   // Client c of the EDN adapter and its domain: 0 AES (2), 1 KMAC (4),
@@ -25443,16 +25606,27 @@ module sep_fcov (
     endcase
   endfunction
   logic [3:0] cxe_ack_q = '0;
-  logic [127:0] cxe_bus_q = '0;
+  logic [3:0] cxe_ack_qq = '0;  // edn_ack two clocks back
+  logic [3:0] cxe_req_q = '0;   // the client's own edn_req one clock back
   logic [31:0] cxe_held[4] = '{default: '0};  // last non-zero word on the client's bus
   logic [3:0] cxe_lead = '0;                  // reset taken with a clean lead; still clean
   logic [31:0] cxe_word[4] = '{default: '0};
   logic [3:0] cxe_watch = '0;
   int unsigned cxe_cnt[4] = '{default: 0};
+  // Pass label of the legal cp_sw_rst_edn_cancel cells. A clean cancel is
+  // held as pending from the reset release, and samples only when
+  // iprst_edn_pass rises: the leaf writes 1 after its discard check of every
+  // word those resets cancelled passed, and 0 after. A window close does not
+  // drop a pending cell. It gates a sample; it is never a DUT value and
+  // drives nothing.
+  int unsigned iprst_edn_pass = 0;
+  logic cxe_pass_q = 1'b0;
+  logic [3:0] cxe_pend = '0;
   logic cxt_arm = 1'b0;
   logic cxt_lock0 = 1'b0;
   logic cxt_empty = 1'b0;
   logic cxt_seed_q = 1'b0;
+  logic cxt_gen = 1'b0;  // an OKAY write set RING_OSC_ENABLE.ENABLE since the TRNG fall
   logic cxsa_on = 1'b0;
   logic cxsa_bad = 1'b0;
   logic [6:0] cxsa_sw = '0;
@@ -25460,13 +25634,15 @@ module sep_fcov (
   always @(posedge clk_i) begin
     mr_crst_t e;
     // cp_self_reset
-    if (wr_ev && (aw_addr_q == AES_CTRL_SHADOWED_REG_ADDR)) begin
-      cxa_mode <= 6'((wr_data & AES_CTRL_SHADOWED_MODE_MASK) >> AES_CTRL_SHADOWED_MODE_SHIFT);
-    end
+    if (wr_ev && (aw_addr_q == AES_CTRL_SHADOWED_REG_ADDR)) cxa_wr <= wr_data & AesCtrlFields;
+    if (rd_ev && cy_rd_known && (ar_addr_q == AES_CTRL_SHADOWED_REG_ADDR))
+      cxa_pre_ok <= ((rd_data & AesCtrlFields) == cxa_wr) && !cxs_match(2, rd_data);
     if (rd_ev && cy_rd_known && (ar_addr_q == OTBN_LOAD_CHECKSUM_REG_ADDR))
       cxo_ck_nz <= (rd_data != 32'h0);
     if (rd_ev && cy_rd_known && (ar_addr_q == HMAC_DIGEST_0__REG_ADDR))
       cxh_dnz <= (rd_data != 32'h0);
+    if (rd_ev && cy_rd_known && (ar_addr_q == KMAC_STATUS_REG_ADDR))
+      cxk_sdiff <= !cxs_match(4, rd_data);
     if (!cy_own_iprst) begin
       cxs_arm <= '0;
     end else begin
@@ -25475,9 +25651,9 @@ module sep_fcov (
           cxs_arm[d] <= 1'b1;
           case (d)
             1: cxs_pre[d] <= cxo_ck_nz;
-            2: cxs_pre[d] <= (cxa_mode != AesModeNone);
+            2: cxs_pre[d] <= cxa_pre_ok;
             3: cxs_pre[d] <= cxh_dnz;
-            default: cxs_pre[d] <= 1'b1;
+            default: cxs_pre[d] <= cxk_sdiff;
           endcase
         end else if (cxs_arm[d] && mr_ip[d] && rd_ev && cy_rd_known && (ar_addr_q == cxs_addr(
                 d
@@ -25493,42 +25669,63 @@ module sep_fcov (
       end
     end
     // cp_sw_rst_edn_cancel
-    cxe_ack_q <= cy_ack;
-    cxe_bus_q <= edn_bus_i;
-    for (int c = 0; c < 4; c++) begin
-      int d;
-      logic [31:0] bus;
-      d   = cxe_dom(c);
-      bus = edn_bus_i[32*c+:32];
-      if (!$isunknown(bus) && (bus != 32'h0)) cxe_held[c] <= bus;
-      if (!cy_own_iprst) begin
-        cxe_lead[c]  <= 1'b0;
-        cxe_watch[c] <= 1'b0;
-      end else begin
-        if (mr_ip_sw_fall[d]) begin
-          cxe_lead[c] <= !cxe_ack_q[c] && (cxe_bus_q[32*c+:32] === 32'h0);
-          cxe_word[c] <= cxe_held[c];
-          cxe_watch[c] <= 1'b0;
-        end else if (!mr_ip[d]) begin
-          if (cy_ack[c] || (bus !== 32'h0)) cxe_lead[c] <= 1'b0;
-        end else if (mr_ip_rise[d] && cxe_lead[c]) begin
+    cxe_pass_q <= (iprst_edn_pass != 0);
+    if (in_reset) begin
+      cxe_pend <= '0;
+    end else if ((iprst_edn_pass != 0) && !cxe_pass_q) begin
+      for (int c = 0; c < 4; c++) begin
+        if (cxe_pend[c]) begin
           e      = '0;
           e.ec   = {1'b0, 2'(c)};
           e.ec_v = 1'b1;
           u_sep_crypto_reset_cg.sample(e);
+        end
+      end
+      cxe_pend <= '0;
+    end
+    cxe_ack_q <= cy_ack;
+    cxe_ack_qq <= cxe_ack_q;
+    for (int c = 0; c < 4; c++) cxe_req_q[c] <= (edn_req_i[c] === 1'b1);
+    for (int c = 0; c < 4; c++) begin
+      int d;
+      logic [31:0] bus;
+      logic rearm;
+      d   = cxe_dom(c);
+      bus = edn_bus_i[32*c+:32];
+      if (!$isunknown(bus) && (bus != 32'h0)) cxe_held[c] <= bus;
+      // The watch is armed only at a release inside the owner window and
+      // then runs for CxEdnWatch clocks, also after the window closes.
+      if (!cy_own_iprst) begin
+        cxe_lead[c] <= 1'b0;
+      end else begin
+        if (mr_ip_sw_fall[d]) begin
+          // Only a reset that finds the client's request live samples: edn_req
+          // high on the last released clock, with no edn_ack on it or the one
+          // before, so an acknowledge the cancel holds off was due.
+          cxe_lead[c] <= !cxe_ack_q[c] && cxe_req_q[c] && !cxe_ack_qq[c];
+          cxe_word[c] <= cxe_held[c];
+          cxe_watch[c] <= 1'b0;
+        end else if (!mr_ip[d]) begin
+          if (cy_ack[c]) cxe_lead[c] <= 1'b0;
+        end else if (mr_ip_rise[d] && cxe_lead[c]) begin
+          cxe_pend[c]  <= 1'b1;
           cxe_lead[c]  <= 1'b0;
           cxe_watch[c] <= (cxe_word[c] != 32'h0);
           cxe_cnt[c]   <= 0;
         end
-        if (cxe_watch[c]) begin
-          for (int o = 0; o < 4; o++) begin
-            if (cy_ack_rise[o] && (edn_bus_i[32*o+:32] === cxe_word[c])) begin
-              e      = '0;
-              e.ec   = {1'b1, 2'(c)};
-              e.ec_v = 1'b1;
-              u_sep_crypto_reset_cg.sample(e);
-            end
+      end
+      // A fall or an armed release in the window sets the watch above.
+      rearm = cy_own_iprst && (mr_ip_sw_fall[d] || (mr_ip[d] && mr_ip_rise[d] && cxe_lead[c]));
+      if (cxe_watch[c]) begin
+        for (int o = 0; o < 4; o++) begin
+          if (cy_ack_rise[o] && (edn_bus_i[32*o+:32] === cxe_word[c])) begin
+            e      = '0;
+            e.ec   = {1'b1, 2'(c)};
+            e.ec_v = 1'b1;
+            u_sep_crypto_reset_cg.sample(e);
           end
+        end
+        if (!rearm) begin
           if (cxe_cnt[c] >= CxEdnWatch) cxe_watch[c] <= 1'b0;
           else cxe_cnt[c] <= cxe_cnt[c] + 1;
         end
@@ -25542,8 +25739,15 @@ module sep_fcov (
       cxt_arm   <= 1'b1;
       cxt_lock0 <= 1'b0;
       cxt_empty <= 1'b0;
+      cxt_gen   <= 1'b0;
     end else if (cxt_arm && mr_ip[5]) begin
-      if ((drbg_seed_valid_i === 1'b1) && !cxt_seed_q) begin
+      // fresh_seed: a seed after the generators are enabled again; a seed
+      // before that write is not reinitialized data (hw/sys/sep/doc/trng.adoc:198-199).
+      if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_RING_OSC_ENABLE_REG_ADDR) &&
+          ((wr_data & ENTROPY_SOURCE_RING_OSC_ENABLE_ENABLE_MASK) != 32'h0)) begin
+        cxt_gen <= 1'b1;
+      end
+      if (cxt_gen && (drbg_seed_valid_i === 1'b1) && !cxt_seed_q) begin
         e      = '0;
         e.tr   = 2'd0;
         e.tr_v = 1'b1;
@@ -25830,8 +26034,12 @@ module sep_fcov (
     }
     cp_sm_err: coverpoint s.se iff (s.se_v) {
       bins set = {2'd0};
-      bins w0_keeps = {2'd1};
-      bins w1c_clears = {2'd2};
+      // While the integrity error persists ERR latches again whatever a write
+      // does, so a write of 0 cannot fail; the owner logs it as OBS-SM-ERR-W0.
+      ignore_bins w0_keeps = {2'd1};
+      // No text states whether a write of 1 clears ERR while the integrity
+      // error that set it persists; the owner logs that read as OBS-SM-ERR-W1C.
+      ignore_bins w1c_clears = {2'd2};
       bins reset_clears = {2'd3};
     }
   endgroup
@@ -26004,8 +26212,12 @@ module sep_fcov (
       bins sw_repeated_seq_alert = {2'd1};
       bins hw_port0_acknowledged = {2'd2};
     }
+    // CMD_RDY after the acknowledge is not stated (csrng.adoc SW_CMD_STS: polled
+    // before a command); the owner logs it (OBS-CSRNG-RDY-AFTER-ACK): not scored.
     cp_sw_handshake: coverpoint s.hs iff (s.hs_v) {
-      bins cmd_rdy_before = {2'd0}; bins cmd_ack_after = {2'd1}; bins cmd_rdy_after_ack = {2'd2};
+      bins cmd_rdy_before = {2'd0};
+      bins cmd_ack_after = {2'd1};
+      ignore_bins cmd_rdy_after_ack = {2'd2};
     }
     cp_recov_alert_set: coverpoint s.ra iff (s.ra_v) {
       bins enable_field = {3'd0};
@@ -26392,7 +26604,41 @@ module sep_fcov (
     u_sep_esrc_conditioning_cg.sample(e);
   endtask
 
+  // Pass label of the forced-error leaf (owner 148): the cells of
+  // sep_drbg_err_inject_cg, sep_edn_mode_cg cp_auto_fifo_words and the CSRNG
+  // and EDN ERR_CODE cells of sep_crypto_reset_cg cp_reset_evidence. Each
+  // sample of those cells is held as pending and samples only when
+  // drbg_fatal_pass rises; the leaf writes 1 after every check of a step
+  // passed, and 0 after. At the first clock edge of the window of the leaf
+  // the pending list drops every sample held before that edge, so the
+  // samples of a step whose checks did not all pass never reach a bin; a
+  // sample held on that edge stays. Each sample keeps its hold time for that
+  // test, so the result does not depend on the order of the blocks that run
+  // on the edge. It gates a sample; it is never a DUT value and drives
+  // nothing.
+  typedef struct packed {
+    logic [1:0]  k;  // 0 sep_drbg_err_inject_cg, 1 sep_edn_mode_cg, 2 sep_crypto_reset_cg
+    logic [2:0]  pt;
+    logic [5:0]  v;
+    logic [63:0] t;  // $time of the hold
+  } cz_dfp_t;
+  int unsigned drbg_fatal_pass = 0;
+  cz_dfp_t cz_dfp[$];
+
+  task automatic cz_dfp_hold(input logic [1:0] k, input int unsigned pt, input logic [5:0] v);
+    cz_dfp_t h;
+    h.k  = k;
+    h.pt = 3'(pt);
+    h.v  = v;
+    h.t  = $time;
+    cz_dfp.push_back(h);
+  endtask
+
   task automatic cz_derr(input int unsigned pt, input logic [5:0] v);
+    cz_dfp_hold(2'd0, pt, v);
+  endtask
+
+  task automatic cz_derr_rel(input int unsigned pt, input logic [5:0] v);
     cz_derr_t e;
     e = '0;
     case (pt)
@@ -26421,6 +26667,11 @@ module sep_fcov (
   endtask
 
   task automatic cz_ccmd(input int unsigned pt, input logic [2:0] v);
+    if (cy_own_dcmd) cz_dsp_hold(2'd0, pt, {3'd0, v});
+    else cz_ccmd_rel(pt, v);
+  endtask
+
+  task automatic cz_ccmd_rel(input int unsigned pt, input logic [2:0] v);
     cz_ccmd_t e;
     e = '0;
     case (pt)
@@ -26452,6 +26703,11 @@ module sep_fcov (
   endtask
 
   task automatic cz_edn(input int unsigned pt, input logic [1:0] v);
+    if (cy_own_dcmd && !((pt == 1) && (v == 2'd1))) cz_dsp_hold(2'd1, pt, {4'd0, v});
+    else cz_edn_rel(pt, v);
+  endtask
+
+  task automatic cz_edn_rel(input int unsigned pt, input logic [1:0] v);
     cz_edn_t e;
     e = '0;
     case (pt)
@@ -26625,6 +26881,11 @@ module sep_fcov (
   endtask
 
   task automatic cz_alert(input logic v);
+    if (cy_own_dcmd) cz_dsp_hold(2'd2, 0, {5'd0, v});
+    else cz_alert_rel(v);
+  endtask
+
+  task automatic cz_alert_rel(input logic v);
     cy_alert_t e;
     e      = '0;
     e.rs   = v;
@@ -26641,6 +26902,26 @@ module sep_fcov (
   function automatic logic cz_ended(input int unsigned own);
     return (cz_owner_q == own) && (graded_owner != own);
   endfunction
+  // Pass label of sep_esrc_persistent_alert_rand_test (bits CzPa*). Each cell
+  // of that owner is held as pending at its DUT event inside the window and
+  // samples only when a bit of the check that grades it rises. The leaf writes
+  // the bit through the u_sep_fcov handle after that check passes, holds it
+  // two clocks and writes 0. The pending cells clear when a window opens, so
+  // a cell is released only by a check of the leg that drove it. It gates a
+  // sample; it is never a DUT value and drives nothing.
+  int unsigned esrc_pa_pass = 0;
+  localparam int unsigned CzPaReset = 0;  // CHK-PF-RESET
+  localparam int unsigned CzPaTripCount = 1;  // CHK-PF-TRIP-COUNT
+  localparam int unsigned CzPaNotrip = 2;  // CHK-PF-NOTRIP
+  localparam int unsigned CzPaConsec = 3;  // CHK-PF-CONSEC
+  localparam int unsigned CzPaDisable = 4;  // CHK-PF-DISABLE
+  localparam int unsigned CzPaHalt = 5;  // CHK-PF-HALT
+  localparam int unsigned CzPaRecoverE = 6;  // CHK-PF-RECOVER, exit by MODULE_ENABLE
+  localparam int unsigned CzPaRecoverR = 7;  // CHK-PF-RECOVER, exit by TRNG reset
+  localparam int unsigned CzPaSmErr = 8;  // CHK-SM-ERR (set, reset_clears)
+  logic [8:0] cz_pa_q = '0;
+  wire  [8:0] cz_pa_rel = 9'(esrc_pa_pass) & ~cz_pa_q;
+  always @(posedge clk_i) cz_pa_q <= 9'(esrc_pa_pass);
   // A hardware set request: the {d, de} pair of a register field, both 1.
   function automatic logic cz_dd(input logic [1:0] p);
     return p === 2'b11;
@@ -26846,20 +27127,95 @@ module sep_fcov (
   end
 
   // ---------------------------------------------------------------------
+  // Pass label of the autotune detune leaf: cp_detune_mode and
+  // cp_detune_lane (sep_esrc_noise_gen_cg), cp_autotune
+  // (sep_esrc_fault_alert_cg) and its AUTOTUNE_FAIL cells of
+  // x_esrc_status_enable and cp_esrc_raise_path (sep_crypto_intr_cg). Inside
+  // the window of that leaf a hit of those bins is held as pending; the
+  // pending hits sample only on a 0 -> 1 change of bit 0 of esrc_tune_pass,
+  // which the leaf writes through the u_sep_fcov handle after every check and
+  // control of its tuning legs passed (those checks read INTR_STATUS
+  // AUTOTUNE_FAIL). The opening of the window drops older pending hits; the
+  // close of the window keeps them. It gates a sample; it is never a DUT value
+  // and drives nothing. The illegal cp_autotune bin samples at once.
+  // ---------------------------------------------------------------------
+  // Bit 0 releases the tuning bins above; bit 1 releases cp_div_ratio (see
+  // the cp_div_ratio block).
+  int unsigned esrc_tune_pass = 0;
+  logic cz_tp_q = 1'b0;
+  logic cz_est_q = 1'b0;
+  wire cz_tp_rise = esrc_tune_pass[0] && !cz_tp_q;
+  wire cz_est_open = cy_own_estune && !cz_est_q;
+
+  // ---------------------------------------------------------------------
   // sep_crypto_intr_cg: x_esrc_status_enable and cp_esrc_raise_path.
   // ---------------------------------------------------------------------
-  wire cz_es_hw_own = cy_own_eshp || cy_own_espa || cy_own_estune || cy_own_esfifo || cy_own_esobs;
+  // The autotune detune leaf grades only AUTOTUNE_FAIL (source 5): under its
+  // window only that source counts, held until esrc_tune_pass rises.
+  localparam int unsigned CzAtuneSrc = 5;
+  wire cz_es_hw_own = cy_own_eshp || cy_own_espa || cy_own_esfifo || cy_own_esobs;
+  logic [3:0] cz_tp_ie = '0;  // pending {status, enable} cells of source 5
+  logic cz_tp_rp = 1'b0;  // pending hardware raise of source 5
+  // sep_esrc_persistent_alert_rand_test grades only PERSISTENT_FAILURE, so
+  // under that owner only the cells of that source are taken, and each is
+  // held as pending until a check that reads the bit passes (esrc_pa_pass):
+  // 0 {status 0, enable 0}, 1 {status 0, enable 1}, 2 {status 1, enable 1},
+  // 3 the hardware raise.
+  localparam int unsigned CzPaPfSrc = ENTROPY_SOURCE_INTR_STATUS_PERSISTENT_FAILURE_SHIFT / 4;
+  localparam logic [8:0] CzPaIrNc = 9'((1 << CzPaNotrip) | (1 << CzPaConsec));
+  localparam logic [8:0] CzPaIrRel[4] = '{
+      9'((1 << CzPaRecoverR) | (1 << CzPaSmErr)),
+      9'(CzPaIrNc | (1 << CzPaDisable) | (1 << CzPaRecoverE) | (1 << CzPaSmErr)),
+      9'((1 << CzPaTripCount) | (1 << CzPaSmErr)),
+      9'((1 << CzPaTripCount) | (1 << CzPaSmErr))
+  };
+  logic [3:0] cz_pa_ir = '0;
   always @(posedge clk_i) begin
+    for (int k = 0; k < 4; k++) begin
+      if (cz_pa_ir[k] && ((cz_pa_rel & CzPaIrRel[k]) != 9'h0)) begin
+        if (k == 3) cy_intr(7, 6'(CzPaPfSrc));
+        else cy_intr(6, 6'({3'(CzPaPfSrc), (k == 2), (k != 0)}));
+        cz_pa_ir[k] <= 1'b0;
+      end
+    end
+    if (cz_win_open) cz_pa_ir <= '0;
+    if (cz_tp_rise) begin
+      for (int c = 0; c < 4; c++) if (cz_tp_ie[c]) cy_intr(6, 6'({3'(CzAtuneSrc), 2'(c)}));
+      if (cz_tp_rp) cy_intr(7, 6'(CzAtuneSrc));
+      cz_tp_ie <= '0;
+      cz_tp_rp <= 1'b0;
+    end else if (cz_est_open) begin
+      cz_tp_ie <= '0;
+      cz_tp_rp <= 1'b0;
+    end
+    if (rd_ev && (ar_addr_q == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR) && cy_rd_known && cz_es_on &&
+        cy_own_estune) begin
+      cz_tp_ie[{rd_data[4*CzAtuneSrc], cz_ien[CzAtuneSrc]}] <= 1'b1;
+    end
+    if (cz_es_on && cy_own_estune && cz_ist_rise[CzAtuneSrc] && !cz_itst_rec[CzAtuneSrc]) begin
+      cz_tp_rp <= 1'b1;
+    end
     // One cell per source at an OKAY read of INTR_STATUS: the status bit of
     // the read data and the stored enable bit.
     if (rd_ev && (ar_addr_q == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR) && cy_rd_known && cz_es_on &&
         (cy_own_eswalk || cz_es_hw_own)) begin
-      for (int i = 0; i < 8; i++) cy_intr(6, 6'({3'(i), rd_data[4*i], cz_ien[i]}));
+      for (int i = 0; i < 8; i++) begin
+        if (!cy_own_espa) begin
+          cy_intr(6, 6'({3'(i), rd_data[4*i], cz_ien[i]}));
+        end else if (i == CzPaPfSrc) begin
+          if (!rd_data[4*i] && !cz_ien[i]) cz_pa_ir[0] <= 1'b1;
+          if (!rd_data[4*i] && cz_ien[i]) cz_pa_ir[1] <= 1'b1;
+          if (rd_data[4*i] && cz_ien[i]) cz_pa_ir[2] <= 1'b1;
+        end
+      end
     end
     // A status bit that rises with no INTR_TEST write of the bit.
     if (cz_es_on && cz_es_hw_own) begin
       for (int i = 0; i < 8; i++) begin
-        if (cz_ist_rise[i] && !cz_itst_rec[i] && (i != 3)) cy_intr(7, 6'(i));
+        if (cz_ist_rise[i] && !cz_itst_rec[i] && (i != 3)) begin
+          if (!cy_own_espa) cy_intr(7, 6'(i));
+          else if (i == CzPaPfSrc) cz_pa_ir[3] <= 1'b1;
+        end
       end
     end
   end
@@ -27030,7 +27386,9 @@ module sep_fcov (
   // sep_crypto_alert_cg cp_csrng_recov_seq (1.50). Set: the
   // CMD_STAGE_INVALID_CMD_SEQ_ALERT set request while the last command
   // presented to CSRNG is an instantiate and an earlier instantiate was
-  // presented since the TRNG reset. Clear: a read of 1, a write of 0 and a
+  // presented since the TRNG reset. A software command counts at the
+  // CMD_REQ register write strobe, as in x_inst_outcome: the alert can set
+  // before the bus write response. Clear: a read of 1, a write of 0 and a
   // read of 0 with no set request between.
   // ---------------------------------------------------------------------
   logic [1:0] cz_ins_n = '0;  // instantiates since the TRNG reset, saturating
@@ -27048,8 +27406,8 @@ module sep_fcov (
     cz_app0_v_q <= cy_t(csrng_app0_req_i.csrng_req_valid);
     n    = cz_ins_n;
     last = cz_last_ins;
-    if (wr_ev && (aw_addr_q == CSRNG_CMD_REQ_REG_ADDR)) begin
-      last = (wr_data[3:0] == 4'h1);
+    if (cy_t(csrng_reg2hw_i.cmd_req.qe)) begin
+      last = (csrng_reg2hw_i.cmd_req.q[3:0] == 4'h1);
       if (last && (n != 2'd3)) n = n + 2'd1;
     end
     if (app0_new) begin
@@ -27230,6 +27588,10 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // sep_esrc_noise_gen_cg (1.41, 1.43).
   // ---------------------------------------------------------------------
+  // cp_detune_mode and cp_detune_lane hold their hits for esrc_tune_pass
+  // (pass label above sep_crypto_intr_cg x_esrc_status_enable).
+  logic [2:0] cz_tp_dm = '0;  // pending cp_detune_mode bins
+  logic [11:0] cz_tp_dl = '0;  // pending cp_detune_lane bins
   logic [2:0] cz_dt_wait = '0;
   logic [11:0] cz_dt_pre = '0;
   logic cz_atune_q = 1'b0;
@@ -27238,6 +27600,17 @@ module sep_fcov (
   always @(posedge clk_i) begin
     cz_atune_q  <= cz_atune;
     cz_detune_q <= esrc_detune_i;
+    cz_tp_q     <= esrc_tune_pass[0];
+    cz_est_q    <= cy_own_estune;
+    if (cz_tp_rise) begin
+      for (int b = 0; b < 3; b++) if (cz_tp_dm[b]) cz_ngen(0, 4'(b));
+      for (int j = 0; j < 12; j++) if (cz_tp_dl[j]) cz_ngen(1, 4'(j));
+      cz_tp_dm <= '0;
+      cz_tp_dl <= '0;
+    end else if (cz_est_open) begin
+      cz_tp_dm <= '0;
+      cz_tp_dl <= '0;
+    end
     // cp_detune_mode: four clocks after an OKAY write of RING_OSC_TUNE, the
     // effective detune against the stored DETUNE mask.
     if (cy_own_estune && cz_es_on && cz_w1 && (cz_w1_a == ENTROPY_SOURCE_RING_OSC_TUNE_REG_ADDR)) begin
@@ -27250,11 +27623,11 @@ module sep_fcov (
         logic [11:0] m;
         m = esrc_reg_out_i.RING_OSC_TUNE.DETUNE.value;
         cz_dt_wait <= '0;
-        if (!cz_atune && (m == 12'h000) && (esrc_detune_i === 12'h000)) cz_ngen(0, 4'd0);
-        else if (!cz_atune && (m != 12'h000) && (esrc_detune_i === m)) cz_ngen(0, 4'd1);
+        if (!cz_atune && (m == 12'h000) && (esrc_detune_i === 12'h000)) cz_tp_dm[0] <= 1'b1;
+        else if (!cz_atune && (m != 12'h000) && (esrc_detune_i === m)) cz_tp_dm[1] <= 1'b1;
         else if (cz_atune && (m != 12'h000) && (esrc_detune_i === cz_dt_pre) &&
                  (esrc_detune_i !== m)) begin
-          cz_ngen(0, 4'd2);
+          cz_tp_dm[2] <= 1'b1;
         end
       end else begin
         cz_dt_wait <= cz_dt_wait - 3'd1;
@@ -27267,7 +27640,7 @@ module sep_fcov (
     // toggle comes one clock after the pulse starts.
     if (cy_own_estune && cz_es_on && cz_atune && cz_atune_q && cz_dt_known && cz_dtq_known) begin
       for (int j = 0; j < 12; j++) begin
-        if ((esrc_detune_i[j] != cz_detune_q[j]) && (cz_gst_q[j] != 8'h00)) cz_ngen(1, 4'(j));
+        if ((esrc_detune_i[j] != cz_detune_q[j]) && (cz_gst_q[j] != 8'h00)) cz_tp_dl[j] <= 1'b1;
       end
     end
     // cp_lane_pattern: the class of each lane at the end of a window.
@@ -27306,6 +27679,22 @@ module sep_fcov (
   localparam logic [31:0] CzCidMask = 32'(ENTROPY_SOURCE_COMPONENT_ID_NAME_MASK |
       ENTROPY_SOURCE_COMPONENT_ID_MAJOR_VERSION_MASK | ENTROPY_SOURCE_COMPONENT_ID_MINOR_VERSION_MASK);
   wire cz_eb_own = cy_own_eshp || cy_own_espa || cy_own_esboot;
+  // Pending cells of sep_esrc_persistent_alert_rand_test in this block,
+  // released by esrc_pa_pass: 0 cp_window_class below 1024, 1 cp_window_class
+  // 2048, 2 to 4 x_enable_boot {MODULE_ENABLE rise with BOOT_PHASE_DONE 0, the
+  // (1, 1) cell, main_sm_idle after the MODULE_ENABLE fall}.
+  localparam logic [8:0] CzPaShRel[5] = '{
+      9'((1 << CzPaTripCount) | (1 << CzPaNotrip) | (1 << CzPaConsec) | (1 << CzPaDisable)),
+      9'(1 << CzPaRecoverR),
+      9'((1 << CzPaRecoverE) | (1 << CzPaRecoverR)),
+      9'((1 << CzPaRecoverE) | (1 << CzPaRecoverR)),
+      9'((1 << CzPaRecoverE) | (1 << CzPaRecoverR))
+  };
+  localparam logic [3:0] CzPaShVal[5] = '{4'd0, 4'd2, 4'b0010, 4'b0011, 4'b0000};
+  logic [4:0] cz_pa_sh = '0;
+  function automatic int cz_pa_eb(input logic [3:0] v);
+    return (v == 4'b0010) ? 2 : ((v == 4'b0011) ? 3 : 4);
+  endfunction
   wire cz_men_rise = cz_men && !cz_men_q;
   wire cz_men_fall = !cz_men && cz_men_q;
   wire [31:0] cz_tot_any = cz_tot_rep | cz_tot_ahi | cz_tot_alo | cz_tot_mhi | cz_tot_mlo;
@@ -27334,20 +27723,43 @@ module sep_fcov (
       end
     end
 
+    // Release of the pending persistent-alert cells (esrc_pa_pass); a window
+    // open clears them before this clock's events are held.
+    for (int k = 0; k < 5; k++) begin
+      if (cz_pa_sh[k] && ((cz_pa_rel & CzPaShRel[k]) != 9'h0)) begin
+        cz_sth((k < 2) ? 6 : 1, CzPaShVal[k]);
+        cz_pa_sh[k] <= 1'b0;
+      end
+    end
+    if (cz_win_open) cz_pa_sh <= '0;
+
     // x_enable_boot: the MODULE_ENABLE rise (with BOOT_PHASE_DONE), the
     // BOOT_PHASE_DONE rise with MODULE_ENABLE 1, and main_sm_idle after the
-    // MODULE_ENABLE fall.
+    // MODULE_ENABLE fall. Under the persistent-alert owner each cell is held.
     if (!cz_es_on || !cz_eb_own) begin
       cz_eb_fall <= 1'b0;
     end else begin
-      if (cz_men_rise) cz_sth(1, {2'b00, 1'b1, cz_boot});
-      if (cz_men && cz_boot && !cz_boot_q && !cz_men_rise) cz_sth(1, 4'b0011);
+      logic [3:0] eb_v;
+      logic eb_s;
+      eb_s = 1'b0;
+      eb_v = 4'b0000;
+      if (cz_men_rise) begin
+        eb_s = 1'b1;
+        eb_v = {2'b00, 1'b1, cz_boot};
+      end
+      if (cz_men && cz_boot && !cz_boot_q && !cz_men_rise) begin
+        eb_s = 1'b1;
+        eb_v = 4'b0011;
+      end
       if (cz_men_fall) cz_eb_fall <= 1'b1;
       else if (cz_men) cz_eb_fall <= 1'b0;
       else if (cz_eb_fall && cz_idle) begin
-        cz_sth(1, 4'b0000);
+        eb_s = 1'b1;
+        eb_v = 4'b0000;
         cz_eb_fall <= 1'b0;
       end
+      if (eb_s && !cy_own_espa) cz_sth(1, eb_v);
+      if (eb_s && cy_own_espa) cz_pa_sh[cz_pa_eb(eb_v)] <= 1'b1;
     end
 
     // cp_restart_edge and cp_total_fails: a MODULE_ENABLE rise with
@@ -27417,11 +27829,17 @@ module sep_fcov (
       if (cz_ht_en == 3'd6) cz_sth(5, 4'd0);
       if (cz_ht_en == 3'd5) cz_sth(5, 4'd1);
     end
-    if ((cy_own_eshp || cy_own_espa) && cz_es_on && cz_sv_ev && !$isunknown(cz_wsize)) begin
+    if (cy_own_eshp && cz_es_on && cz_sv_ev && !$isunknown(cz_wsize)) begin
       if (cz_wsize < 16'd1024) cz_sth(6, 4'd0);
       else if (cz_wsize == 16'd1024) cz_sth(6, 4'd1);
       else if (cz_wsize == 16'd2048) cz_sth(6, 4'd2);
       else if (cz_wsize > 16'd2048) cz_sth(6, 4'd3);
+    end
+    // The persistent-alert owner drives only windows below 1024 and the
+    // reset window 2048; each is held until a check of the leg passes.
+    if (cy_own_espa && cz_es_on && cz_sv_ev && !$isunknown(cz_wsize)) begin
+      if (cz_wsize < 16'd1024) cz_pa_sh[0] <= 1'b1;
+      else if (cz_wsize == 16'd2048) cz_pa_sh[1] <= 1'b1;
     end
 
     // x_tester_side and cp_test_level (1.41). Trip: a generator status bit
@@ -27539,6 +27957,7 @@ module sep_fcov (
   logic [1:0] cz_au_burst = '0;
   longint unsigned cz_au_last_tog = 0;
   logic cz_au_any_tog = 1'b0;
+  logic [4:0] cz_tp_au = '0;  // pending cp_autotune bins 0 to 4 (pass label esrc_tune_pass)
   // A lane status rises from 0 at this clock; the tune FSM of the lane
   // toggles its detune on that rise. History of the last two clocks.
   logic [11:0] cz_au_rise_now;
@@ -27559,10 +27978,40 @@ module sep_fcov (
   logic [3:0] cz_par_rec = '0;
   logic [3:0] cz_ovf_rec = '0;
   localparam logic [31:0] CzAlertMask = 32'(ENTROPY_SOURCE_MAIN_SM_STATUS_ALERT_MASK);
+  // Pending cells of sep_esrc_persistent_alert_rand_test (esrc_pa_pass):
+  // 0 to 3 cp_alert_threshold, 4 to 7 cp_any_fail, 8 to 14 cp_alert_hang, in
+  // bin order. Each is released by the checks that grade the leg driving it.
+  localparam logic [8:0] CzPaFaRel[15] = '{
+      9'(1 << CzPaDisable),
+      9'((1 << CzPaReset) | (1 << CzPaTripCount)),
+      9'(1 << CzPaTripCount),
+      9'(1 << CzPaTripCount),
+      9'((1 << CzPaNotrip) | (1 << CzPaConsec) | (1 << CzPaTripCount)),
+      9'(1 << CzPaTripCount),
+      9'(1 << CzPaDisable),
+      9'((1 << CzPaConsec) | (1 << CzPaDisable)),
+      9'((1 << CzPaHalt) | (1 << CzPaRecoverE)),
+      9'((1 << CzPaNotrip) | (1 << CzPaConsec)),
+      9'(1 << CzPaConsec),
+      9'(1 << CzPaDisable),
+      9'(1 << CzPaRecoverE),
+      9'(1 << CzPaRecoverE),
+      9'(1 << CzPaRecoverR)
+  };
+  logic [14:0] cz_pa_fa = '0;
 
   always @(posedge clk_i) begin
     logic sm_alert;
     sm_alert = cy_t(esrc_sm_alert_i);
+    for (int k = 0; k < 15; k++) begin
+      if (cz_pa_fa[k] && ((cz_pa_rel & CzPaFaRel[k]) != 9'h0)) begin
+        if (k < 4) cz_falt(2, 6'(k));
+        else if (k < 8) cz_falt(3, 6'(k - 4));
+        else cz_falt(4, 6'(k - 8));
+        cz_pa_fa[k] <= 1'b0;
+      end
+    end
+    if (cz_win_open) cz_pa_fa <= '0;
     cz_sm_alert_q <= sm_alert;
     cz_af_q       <= cz_any_fail;
     cz_flvl_q     <= cz_flvl;
@@ -27618,10 +28067,10 @@ module sep_fcov (
     if (cy_own_espa && cz_es_on && cz_thr_known &&
         (cz_sv_ev || (rd_ev && (ar_addr_q == ENTROPY_SOURCE_ALERT_THRESHOLD_REG_ADDR)))) begin
       case (cz_thr)
-        16'd0: cz_falt(2, 6'd0);
-        16'd4: cz_falt(2, 6'd1);
-        16'd5: cz_falt(2, 6'd2);
-        16'd7: cz_falt(2, 6'd3);
+        16'd0: cz_pa_fa[0] <= 1'b1;
+        16'd4: cz_pa_fa[1] <= 1'b1;
+        16'd5: cz_pa_fa[2] <= 1'b1;
+        16'd7: cz_pa_fa[3] <= 1'b1;
         default: ;
       endcase
     end
@@ -27644,8 +28093,8 @@ module sep_fcov (
       cz_af_prev_v  <= 1'b0;
     end else begin
       if (cz_any_fail > cz_af_q) begin
-        if (cz_thr != 16'd0) cz_falt(3, (cz_any_fail < cz_thr) ? 6'd0 : 6'd1);
-        else if ((cz_any_fail > 16'd8) && (cz_af_q <= 16'd8)) cz_falt(3, 6'd2);
+        if (cz_thr != 16'd0) cz_pa_fa[(cz_any_fail<cz_thr)?4 : 5] <= 1'b1;
+        else if ((cz_any_fail > 16'd8) && (cz_af_q <= 16'd8)) cz_pa_fa[6] <= 1'b1;
         if (cz_af_q == 16'h0) begin
           cz_af_peak    <= cz_any_fail;
           cz_af_alert   <= 1'b0;
@@ -27660,17 +28109,17 @@ module sep_fcov (
       if ((cz_any_fail == 16'h0) && (cz_af_q != 16'h0) && cz_af_men && cz_men && cz_wsize_ok) begin
         if (cz_afc_on &&
             ((cz_strobes + longint'(cz_strobe) - cz_afc_t0) <= longint'(esrc_af_clear_bound))) begin
-          cz_falt(3, 6'd3);
+          cz_pa_fa[7] <= 1'b1;
         end
         if (!cz_af_alert) begin
           if (cz_thr != 16'd0) begin
             if (cz_af_prev_v && ((cz_af_t_start - cz_af_prev_end) <= 5 * longint'(cz_wsize)) &&
                 (32'(cz_af_prev_peak) + 32'(cz_af_peak) >= 32'(cz_thr))) begin
-              cz_falt(4, 6'd2);
+              cz_pa_fa[10] <= 1'b1;
             end
-            if (cz_af_peak < cz_thr) cz_falt(4, 6'd1);
+            if (cz_af_peak < cz_thr) cz_pa_fa[9] <= 1'b1;
           end else if (cz_af_peak > 16'd8) begin
-            cz_falt(4, 6'd3);
+            cz_pa_fa[11] <= 1'b1;
           end
         end
         cz_af_prev_peak <= cz_af_peak;
@@ -27707,7 +28156,7 @@ module sep_fcov (
         end else if (cz_sha_busy || (cz_sha_out != 4'd0)) begin
           cz_hg_cnt <= 0;
         end else if (cz_hg_cnt >= CzHangHold) begin
-          if (pf) cz_falt(4, 6'd0);
+          if (pf) cz_pa_fa[8] <= 1'b1;
           cz_hg_arm <= 1'b0;
         end else begin
           cz_hg_cnt <= cz_hg_cnt + 1;
@@ -27735,14 +28184,14 @@ module sep_fcov (
           if ((cz_flvl > cz_flvl_q) || cz_ist[4]) begin
             cz_wc_arm <= 1'b0;
           end else if (cz_wc_cnt >= CzHangHold) begin
-            cz_falt(4, 6'd4);
+            cz_pa_fa[12] <= 1'b1;
             cz_wc_arm <= 1'b0;
           end else begin
             cz_wc_cnt <= cz_wc_cnt + 1;
           end
         end
       end else begin
-        if (cz_wc_arm && cz_hang && cy_own_espa && cz_men_fall) cz_falt(4, 6'd4);
+        if (cz_wc_arm && cz_hang && cy_own_espa && cz_men_fall) cz_pa_fa[12] <= 1'b1;
         cz_wc_arm <= 1'b0;
       end
       if (cz_men_fall) begin
@@ -27757,7 +28206,7 @@ module sep_fcov (
       if (cz_ex_men) begin
         if (cz_men_rise) cz_ex_men_up <= 1'b1;
         if (cz_ex_men_up && cz_men && cz_boot && !cz_boot_q) begin
-          if (cy_own_espa) cz_falt(4, 6'd5);
+          if (cy_own_espa) cz_pa_fa[13] <= 1'b1;
           cz_ex_men <= 1'b0;
         end
       end
@@ -27765,13 +28214,21 @@ module sep_fcov (
       // value 1 and no MODULE_ENABLE fall, BOOT_PHASE_DONE rises (the main
       // state machine runs the startup test again) with PERSISTENT_FAILURE 0.
       if (cz_ex_rst && cz_men && cz_boot && !cz_boot_q) begin
-        if (!cz_ist[4] && cy_own_espa) cz_falt(4, 6'd6);
+        if (!cz_ist[4] && cy_own_espa) cz_pa_fa[14] <= 1'b1;
         cz_ex_rst <= 1'b0;
       end
     end
     if (cz_ended(FcovOwnSepEsrcPersistentAlertRandTest)) cz_ex_rst <= 1'b0;
 
-    // cp_autotune (1.43). A lane fails: its generator status rises from 0.
+    // cp_autotune (1.43): legal bins are held as pending and sample on the
+    // rise of esrc_tune_pass (pass label above sep_crypto_intr_cg).
+    if (cz_tp_rise) begin
+      for (int b = 0; b < 5; b++) if (cz_tp_au[b]) cz_falt(5, 6'(b));
+      cz_tp_au <= '0;
+    end else if (cz_est_open) begin
+      cz_tp_au <= '0;
+    end
+    // A lane fails: its generator status rises from 0.
     // Autotune off: at the write-one clear of that status, AUTOTUNE_FAIL
     // stayed 0 and the detune did not change since the failure. Autotune
     // on: AUTOTUNE_FAIL is set and the detune bit of the lane toggled. A
@@ -27802,7 +28259,7 @@ module sep_fcov (
         end else if (cz_au_off[j]) begin
           if (cz_ist[5] || tog[j] || cz_atune) cz_au_off_bad[j] <= 1'b1;
           if ((cz_gst[j] == 8'h00) && (cz_gst_q[j] != 8'h00)) begin
-            if (!cz_au_off_bad[j] && !cz_ist[5] && !tog[j]) cz_falt(5, 6'd0);
+            if (!cz_au_off_bad[j] && !cz_ist[5] && !tog[j]) cz_tp_au[0] <= 1'b1;
             cz_au_off[j] <= 1'b0;
           end
         end
@@ -27814,7 +28271,7 @@ module sep_fcov (
           t = cz_au_tog[j] || (tog[j] && cz_atune_q);
           cz_au_tog[j] <= t;
           if (t && cz_ist[5]) begin
-            cz_falt(5, 6'd1);
+            cz_tp_au[1] <= 1'b1;
             cz_au_on[j] <= 1'b0;
           end
         end
@@ -27825,7 +28282,7 @@ module sep_fcov (
         cz_au_any_tog  <= 1'b1;
         cz_au_last_tog <= cz_strobes;
         if (new_burst && (cz_au_burst != 2'd3)) begin
-          if (cz_au_burst <= 2'd2) cz_falt(5, 6'(2 + cz_au_burst));
+          if (cz_au_burst <= 2'd2) cz_tp_au[2+cz_au_burst] <= 1'b1;
           cz_au_burst <= cz_au_burst + 2'd1;
         end
       end
@@ -28275,7 +28732,7 @@ module sep_fcov (
         if (cz_rc_arm[u]) begin
           if ((rd_data & m) == 32'h0) begin
             if (cy_own_dfat) cz_derr(2, {4'd0, 1'(u), 1'b1});
-            if (cy_own_dfat) cz_crst(5, 4'(u));
+            if (cy_own_dfat) cz_dfp_hold(2'd2, 5, 6'(u));
           end
           cz_rc_arm[u] <= 1'b0;
         end
@@ -28321,7 +28778,7 @@ module sep_fcov (
           n = (cz_ef_n[f] == 5'd31) ? 5'd31 : cz_ef_n[f] + 5'd1;
           cz_ef_n[f] <= n;
           if (cy_own_dfat && !cz_ef_err[f] && ((n == 5'd1) || (n == 5'd13))) begin
-            cz_edn(3, {1'(f), (n == 5'd13)});
+            cz_dfp_hold(2'd1, 3, {4'd0, 1'(f), (n == 5'd13)});
           end
           if (cy_own_dfat && !cz_ef_err[f] && (n == 5'd13)) begin
             cz_ef13[f]     <= 1'b1;
@@ -28375,6 +28832,10 @@ module sep_fcov (
   logic [3:0] cz_ed_en_q = '0;
   logic cz_ed_boot = 1'b0;
   logic cz_ed_auto = 1'b0;
+  logic cz_rm_one = 1'b0;  // boot only of cp_reported_mode sampled in this owner window
+  logic cz_hc_one = 1'b0;  // first hardware generate sampled in this owner window
+  logic cz_hc_sw = 1'b0;   // an EDN SW_CMD_REQ write landed in this owner window
+  logic [3:0] cz_cs_rem = '0;  // additional-data words still due for that header
   wire cz_cs_done_set = cz_dd(csrng_hw2reg_i.intr_state.cs_cmd_req_done);
   wire cz_ed_done_set = cz_dd(edn_hw2reg_i.intr_state.edn_cmd_req_done);
   wire cz_cs_ack_set = cz_dd(csrng_hw2reg_i.sw_cmd_sts.cmd_ack);
@@ -28441,12 +28902,14 @@ module sep_fcov (
     end
 
     // cp_sw_handshake (CSRNG software port): CMD_RDY 1 at the AW handshake
-    // of a CMD_REQ write, the CMD_ACK set request after it, then CMD_RDY 1.
+    // of a CMD_REQ header write, the CMD_ACK set request after it, then
+    // CMD_RDY 1 (an ignore_bins cell). An additional-data word (cz_cs_rem not 0) is no command: it
+    // only restarts the acknowledge wait.
     if (!cy_own_dcmd || cz_trng || !cy_ip[5]) begin
       cz_csh <= '0;
     end else begin
       if (wr_ev && (aw_addr_q == CSRNG_CMD_REQ_REG_ADDR)) begin
-        if (cz_aw_csrdy) cz_ccmd(1, 3'd0);
+        if (cz_aw_csrdy && (cz_cs_rem == 4'd0)) cz_ccmd(1, 3'd0);
         cz_csh     <= 2'd1;
         cz_csh_cnt <= 0;
       end else if (cz_csh == 2'd1) begin
@@ -28503,8 +28966,22 @@ module sep_fcov (
       cz_edn(0, {(bm == CzMubiTrue), (am == CzMubiTrue)});
     end
 
-    // cp_reported_mode: the stored HW_CMD_STS mode pair at each landed
-    // hardware write of BOOT_MODE or AUTO_MODE.
+    // cp_reported_mode and cp_auto_hw_cmd[generate_cmd], once per owner
+    // window, at the command whose HW_CMD_STS the check of the window reads:
+    // boot only at the first landed write of BOOT_MODE with AUTO_MODE 0;
+    // auto only and generate_cmd at the first hardware generate with
+    // AUTO_MODE 1 and BOOT_MODE 0, in a window that holds the software
+    // instantiate write to SW_CMD_REQ (the auto trial and the
+    // instantiate-seed leg; the one-edge window after an auto sequence
+    // holds no write). A later command samples nothing. The illegal pair
+    // samples at every landed write.
+    if (!cy_own_dcmd) begin
+      cz_rm_one <= 1'b0;
+      cz_hc_one <= 1'b0;
+      cz_hc_sw  <= 1'b0;
+    end else if (wr_ev && (aw_addr_q == EDN_SW_CMD_REQ_REG_ADDR)) begin
+      cz_hc_sw <= 1'b1;
+    end
     if (cz_trng || !cy_ip[5]) begin
       cz_ed_boot <= 1'b0;
       cz_ed_auto <= 1'b0;
@@ -28513,16 +28990,25 @@ module sep_fcov (
       logic ade;
       logic b;
       logic a;
+      logic hgen;  // landed CMD_TYPE write of a generate (0x3)
       bde = cy_t(edn_hw2reg_i.hw_cmd_sts.boot_mode.de);
+      hgen = cy_t(edn_hw2reg_i.hw_cmd_sts.cmd_type.de) &&
+          (edn_hw2reg_i.hw_cmd_sts.cmd_type.d == 4'd3);
       ade = cy_t(edn_hw2reg_i.hw_cmd_sts.auto_mode.de);
       b = bde ? cy_t(edn_hw2reg_i.hw_cmd_sts.boot_mode.d) : cz_ed_boot;
       a = ade ? cy_t(edn_hw2reg_i.hw_cmd_sts.auto_mode.d) : cz_ed_auto;
       cz_ed_boot <= b;
       cz_ed_auto <= a;
-      if (cy_own_dcmd && (bde || ade) && b) cz_edn(1, {1'b0, a});
-      else if (cy_own_dcmd && (bde || ade) && !b && a) cz_edn(1, 2'd2);
-      if (cy_own_dcmd && !b && a && cy_t(edn_hw2reg_i.hw_cmd_sts.cmd_type.de)) begin
-        if (edn_hw2reg_i.hw_cmd_sts.cmd_type.d == 4'd3) cz_edn(8, 2'd0);
+      if (cy_own_dcmd && (bde || ade) && b && a) begin
+        cz_edn(1, 2'd1);
+      end else if (cy_own_dcmd && (bde || ade) && b && !cz_rm_one) begin
+        cz_edn(1, 2'd0);
+        cz_rm_one <= 1'b1;
+      end
+      if (cy_own_dcmd && cz_hc_sw && !cz_hc_one && !b && a && hgen) begin
+        cz_edn(8, 2'd0);
+        cz_edn(1, 2'd2);
+        cz_hc_one <= 1'b1;
       end
     end
   end
@@ -28535,7 +29021,6 @@ module sep_fcov (
   localparam logic [31:0] CzEdBootIns = 32'h0000_0901;  // edn.hjson BOOT_INS_CMD resval
   localparam logic [31:0] CzEdBootGen = 32'h00FF_F003;  // edn.hjson BOOT_GEN_CMD resval
   logic [3:0] cz_cs_acmd = '0;  // acmd of the last software CMD_REQ header word
-  logic [3:0] cz_cs_rem = '0;   // additional-data words still due for that header
   logic cz_rl_ref = 1'b0;       // a Generate refused at the limit since the TRNG reset
   logic cz_rl_rsd = 1'b0;       // a Reseed acknowledged after that refusal
   logic cz_ed_wr = 1'b0;        // an EDN register write since the TRNG reset
@@ -28816,6 +29301,16 @@ module sep_fcov (
   // sep_entropy_delivery_cg (1.51, 1.52, 1.53).
   // ---------------------------------------------------------------------
   wire cz_dlv_own = cy_own_xhs || cy_own_xrst || cy_own_mix;
+  // Pass label of the external stream handshake leaf (env/sep_fcov_gate.py
+  // set_xhs_pass, bits XHS_PASS_*). Inside its window the cells of bits 0-8
+  // (x_ext_beat, cp_ext_stall, cp_pool_pop) and 9-11 (cp_adapter_fifo_depth
+  // per internal stream) are held as pending and sampled on the rise of their
+  // bit; a closed window drops them.
+  int unsigned xhs_pass = 0;
+  logic [11:0] xhs_pass_q = '0;
+  wire [11:0] xhs_pass_rise = 12'(xhs_pass) & ~xhs_pass_q;
+  always @(posedge clk_i) xhs_pass_q <= 12'(xhs_pass);
+  logic [8:0] cz_xh_pend = '0;
   // cp_lock_order state since the last global reset.
   logic cz_lo_sel = 1'b0;  // a select write landed
   logic cz_lo_lock = 1'b0;  // a lock write of 1
@@ -28856,6 +29351,22 @@ module sep_fcov (
     cz_sel_q      <= cz_sel;
     cz_irq_q      <= (ext_trng_irq_i === 1'b1);
     cz_pool_ack_q <= (pool_edn_ack_i === 1'b1);
+
+    // Held cells of the external stream handshake leaf: a rise of xhs_pass
+    // bit k samples held cell k. An event of the same clock stays held.
+    if (!cy_own_xhs) begin
+      cz_xh_pend <= '0;
+    end else begin
+      for (int k = 0; k < 9; k++) begin
+        if (xhs_pass_rise[k] && cz_xh_pend[k]) begin
+          // k 0/1 full beat, 2/3 partial beat; k[0] is the stream (crypto, pool).
+          if (k < 4) cz_dlv(2, {2'b00, 1'(k % 2), 1'(k / 2)});
+          else if (k < 6) cz_dlv(4, {2'b00, 1'(k - 4)});
+          else cz_dlv(6, 3'(k - 6));
+          cz_xh_pend[k] <= 1'b0;
+        end
+      end
+    end
 
     // x_sel_stream: one cell per stream at a landed select write (the
     // select equals the written field on the clock after the response).
@@ -28924,12 +29435,18 @@ module sep_fcov (
       i  = s + 1;
       ev = (ext_trng_req_i[i].tvalid === 1'b1);
       // x_ext_beat: with the external select, a full-strobe beat completes
-      // at the mux; a partial-strobe beat stays pending for two clocks.
+      // at the mux; a partial-strobe beat stays pending for two clocks. The
+      // external stream handshake leaf holds the cell until its xhs_pass bit
+      // rises; the sink reset leaf samples at once.
       pend = cz_sel[i] && ev && (ext_trng_req_i[i].tstrb != 4'hF) && (mux_rsp_i[i].tready === 1'b0);
-      if ((cy_own_xhs || cy_own_xrst) && cz_sel[i] && cz_mhs[i] && (ext_trng_req_i[i].tstrb == 4'hF)) begin
-        cz_dlv(2, {1'b0, 1'(s), 1'b0});
+      if (cz_sel[i] && cz_mhs[i] && (ext_trng_req_i[i].tstrb == 4'hF)) begin
+        if (cy_own_xrst) cz_dlv(2, {1'b0, 1'(s), 1'b0});
+        if (cy_own_xhs) cz_xh_pend[s] <= 1'b1;
       end
-      if ((cy_own_xhs || cy_own_xrst) && pend && cz_pp_q[s]) cz_dlv(2, {1'b0, 1'(s), 1'b1});
+      if (pend && cz_pp_q[s]) begin
+        if (cy_own_xrst) cz_dlv(2, {1'b0, 1'(s), 1'b1});
+        if (cy_own_xhs) cz_xh_pend[2+s] <= 1'b1;
+      end
       cz_pp_q[s] <= pend;
 
       if (cy_own_xhs) begin
@@ -28939,13 +29456,13 @@ module sep_fcov (
           cz_dlv(3, {2'b00, 1'(s)});
         end
         // cp_ext_stall: with the external select, ready falls with valid 1
-        // and rises again.
+        // and rises again. Held until xhs_pass bit 4 + stream rises.
         if (!cz_sel[i]) begin
           cz_st_arm[s] <= 1'b0;
         end else if (ev && (ext_trng_tready_i[i] === 1'b0) && !cz_st_arm[s]) begin
           cz_st_arm[s] <= 1'b1;
         end else if (cz_st_arm[s] && (ext_trng_tready_i[i] === 1'b1)) begin
-          cz_dlv(4, {2'b00, 1'(s)});
+          cz_xh_pend[4 + s] <= 1'b1;
           cz_st_arm[s] <= 1'b0;
         end
       end else begin
@@ -29009,13 +29526,13 @@ module sep_fcov (
 
     // cp_pool_pop: an OKAY DATA read at a pool level of 2 to 31 or 32 at
     // the AR handshake; the pool feed (native EDN acknowledge) at level 31,
-    // which fills the pool to 32.
+    // which fills the pool to 32. Held until xhs_pass bits 6-8 rise.
     if (cy_own_xhs) begin
       if (rd_ev && (ar_addr_q == ENTROPY_POOL_DATA_REG_ADDR) && !$isunknown(cz_pool_ar)) begin
-        if ((cz_pool_ar >= 6'd2) && (cz_pool_ar <= 6'd31)) cz_dlv(6, 3'd0);
-        if (cz_pool_ar == 6'd32) cz_dlv(6, 3'd1);
+        if ((cz_pool_ar >= 6'd2) && (cz_pool_ar <= 6'd31)) cz_xh_pend[6] <= 1'b1;
+        if (cz_pool_ar == 6'd32) cz_xh_pend[7] <= 1'b1;
       end
-      if ((pool_edn_ack_i === 1'b1) && (pool_level_i == 6'd31)) cz_dlv(6, 3'd2);
+      if ((pool_edn_ack_i === 1'b1) && (pool_level_i == 6'd31)) cz_xh_pend[8] <= 1'b1;
     end
 
     // cp_ext_irq: vector bit 16 follows a rise or fall of ext_trng_irq_i
@@ -29132,11 +29649,14 @@ module sep_fcov (
   // are counted; a reseed after exactly N of them (N =
   // MAX_NUM_REQS_BETWEEN_RESEEDS, 1 to 4), then a generate as the next
   // command, samples the cell of N. Additional-data words of a command are
-  // skipped by its clen.
+  // skipped by its clen. The acmd field is header bits [3:0], decoded
+  // whole: Instantiate 0x1, Reseed 0x2, Generate 0x3
+  // (vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md
+  // :156-157, :211-246).
   // ---------------------------------------------------------------------
-  localparam logic [2:0] CzAcmdIns = 3'd1;  // csrng_pkg acmd_e INS
-  localparam logic [2:0] CzAcmdRes = 3'd2;  // RES
-  localparam logic [2:0] CzAcmdGen = 3'd3;  // GEN
+  localparam logic [3:0] CzAcmdIns = 4'h1;
+  localparam logic [3:0] CzAcmdRes = 4'h2;
+  localparam logic [3:0] CzAcmdGen = 4'h3;
   logic [31:0] cz_ah_gens = '0;
   logic [3:0]  cz_ah_rem = '0;
   logic        cz_ah_rsd = 1'b0;
@@ -29144,9 +29664,9 @@ module sep_fcov (
   wire cz_ecmd_hs = (edn_csrng_cmd_valid_i === 1'b1) && (edn_csrng_cmd_ready_i === 1'b1);
   always @(posedge clk_i) begin
     logic [31:0] n;
-    logic [2:0] acmd;
+    logic [3:0] acmd;
     n = edn_reg2hw_i.max_num_reqs_between_reseeds.q;
-    acmd = edn_csrng_cmd_bus_i[2:0];
+    acmd = edn_csrng_cmd_bus_i[3:0];
     if (cz_trng || !cy_ip[5] || (edn_reg2hw_i.ctrl.auto_req_mode.q != CzMubiTrue) ||
         (edn_reg2hw_i.ctrl.edn_enable.q != CzMubiTrue)) begin
       cz_ah_gens <= '0;
@@ -29221,18 +29741,73 @@ module sep_fcov (
     end
   end
 
+  // Release of the held cells of the forced-error leaf on the rise of
+  // drbg_fatal_pass (declared with cz_derr). The release does not depend on
+  // the window, so a window close in the same timestep keeps the cells. At the
+  // first edge of the window only the cells held on that edge stay pending.
+  logic cz_dfp_q = 1'b0;
+  logic cz_dfo_q = 1'b0;
+  always @(posedge clk_i) begin
+    cz_dfp_q <= (drbg_fatal_pass != 0);
+    cz_dfo_q <= cy_own_dfat;
+    if ((drbg_fatal_pass != 0) && !cz_dfp_q) begin
+      foreach (cz_dfp[i]) begin
+        case (cz_dfp[i].k)
+          2'd0: cz_derr_rel(cz_dfp[i].pt, cz_dfp[i].v);
+          2'd1: cz_edn(cz_dfp[i].pt, cz_dfp[i].v[1:0]);
+          default: cz_crst(cz_dfp[i].pt, cz_dfp[i].v[3:0]);
+        endcase
+      end
+      cz_dfp.delete();
+    end else if (cy_own_dfat && !cz_dfo_q) begin
+      cz_dfp = cz_dfp.find(item) with (item.t == $time);
+    end
+  end
+
+  // Release of the held cells of the DRBG command-sequence leaf on the rise
+  // of drbg_seq_pass to 1 (declared with cy_own_dcmd). The release does not
+  // depend on the window, so a check that runs after the window closed still
+  // releases the cells of its instance. A rise to 2 (a failed check) drops
+  // every pending cell. At the first edge of the window only the cells held
+  // on that edge stay pending.
+  logic cz_dsp_q = 1'b0;
+  logic cz_dso_q = 1'b0;
+  always @(posedge clk_i) begin
+    cz_dsp_q <= (drbg_seq_pass != 0);
+    cz_dso_q <= cy_own_dcmd;
+    if ((drbg_seq_pass == 2) && !cz_dsp_q) begin
+      cz_dsp.delete();
+    end else if ((drbg_seq_pass == 1) && !cz_dsp_q) begin
+      foreach (cz_dsp[i]) begin
+        case (cz_dsp[i].k)
+          2'd0: cz_ccmd_rel(int'(cz_dsp[i].pt), cz_dsp[i].v[2:0]);
+          2'd1: cz_edn_rel(int'(cz_dsp[i].pt), cz_dsp[i].v[1:0]);
+          2'd2: cz_alert_rel(cz_dsp[i].v[0]);
+          default: cy_intr_rel(int'(cz_dsp[i].pt), cz_dsp[i].v);
+        endcase
+      end
+      cz_dsp.delete();
+    end else if (cy_own_dcmd && !cz_dso_q) begin
+      cz_dsp = cz_dsp.find(item) with (item.t == $time);
+    end
+  end
+
   // ---------------------------------------------------------------------
   // sep_entropy_delivery_cg cp_adapter_fifo_depth. The words in the
   // endpoint FIFO of internal stream i are the pushes (drbg_adapter_push)
   // minus the pops (drbg_int handshakes) since the FIFO last read empty
-  // (drbg_int tvalid 0). The cell samples when that count is 8 after
-  // CzAdHold clocks with the output held (tvalid 1, tready 0) and no push.
+  // (drbg_int tvalid 0). The cell is held when that count is 8 after
+  // CzAdHold or more clocks with the output held (tvalid 1, tready 0) and no
+  // push, with the external select of the stream, once per held run. It is
+  // sampled on the rise of xhs_pass bit 9 + stream; a broken run or a closed
+  // window drops it.
   // ---------------------------------------------------------------------
   localparam int unsigned CzAdHold = 64;
   localparam int unsigned CzAdDepth = 8;  // trng.adoc: one 8-entry FIFO per endpoint
   int unsigned cz_ad_occ[3] = '{default: 0};
   int unsigned cz_ad_hold[3] = '{default: 0};
   logic [2:0] cz_ad_done = '0;
+  logic [2:0] cz_ad_pend = '0;
   always @(posedge clk_i) begin
     for (int i = 0; i < 3; i++) begin
       logic push;
@@ -29241,6 +29816,12 @@ module sep_fcov (
       push = (drbg_adapter_push_i[i] === 1'b1);
       vld  = (drbg_int_req_i[i].tvalid === 1'b1);
       pop  = vld && (drbg_int_rsp_i[i].tready === 1'b1);
+      if (!cy_own_xhs) begin
+        cz_ad_pend[i] <= 1'b0;
+      end else if (xhs_pass_rise[9+i] && cz_ad_pend[i]) begin
+        cz_dlv(11, 4'd0);
+        cz_ad_pend[i] <= 1'b0;
+      end
       if (in_reset || !vld) begin
         cz_ad_occ[i] <= push ? 1 : 0;
       end else begin
@@ -29249,14 +29830,15 @@ module sep_fcov (
       end
       if (!in_reset && vld && (drbg_int_rsp_i[i].tready === 1'b0) && !push) begin
         cz_ad_hold[i] <= cz_ad_hold[i] + 1;
-        if (((cz_ad_hold[i] + 1) == CzAdHold) && (cz_ad_occ[i] == CzAdDepth) && !cz_ad_done[i] &&
-            cy_own_xhs) begin
-          cz_dlv(11, 4'd0);
+        if (((cz_ad_hold[i] + 1) >= CzAdHold) && (cz_ad_occ[i] == CzAdDepth) && !cz_ad_done[i] &&
+            cy_own_xhs && cz_sel[i]) begin
+          cz_ad_pend[i] <= 1'b1;
           cz_ad_done[i] <= 1'b1;
         end
       end else begin
         cz_ad_hold[i] <= 0;
         cz_ad_done[i] <= 1'b0;
+        cz_ad_pend[i] <= 1'b0;
       end
     end
   end
@@ -29333,7 +29915,7 @@ module sep_fcov (
   // The first offset past the slot of the last register: offsets from the
   // decoded extent up to it are unmapped, offsets beyond it are past the extent.
   localparam logic [31:0] CzPoolSlotEnd = ENTROPY_POOL_REG_MAP_BASE_ADDR + 32'h0000_0020;
-  localparam int unsigned CzStallHeld = 3 * 4096;  // three stall thresholds
+  localparam int unsigned CzStallHeld = 3 * 4096;  // the DV hold of CHK-STALL-DURATION
   logic       cz_pq_on = 1'b0;    // an outcome waits for the next STATUS read
   logic [3:0] cz_pq_kind = '0;    // 0..8 a cp_pool_access cell, 14/15 cp_pool_status_read
   logic [5:0] cz_pq_lvl = '0;     // the level that read must show
@@ -29449,7 +30031,12 @@ module sep_fcov (
   // (SAMPLE_CLK_SELECT bit 0 is 0), the lane is enabled, the value is the
   // same as at the edge before, and the last two periods both equal the
   // stated division (2^v for v 0 to 5, 4 for 6 to 31; ESA "Sample clocks")
-  // within a quarter of a source period.
+  // within a quarter of a source period. Such an edge inside the window of
+  // the autotune detune leaf is held as a pending hit of its class
+  // (cz_dv_hit counts them) and samples only on the rise of bit 1 of
+  // esrc_tune_pass, which the leaf writes after the exact in-window
+  // CHK-SCLK-DIV of that value passes. The opening of the window drops older
+  // pending hits; the close keeps them.
   // ---------------------------------------------------------------------
   realtime cz_src_t = 0.0;
   realtime cz_src_per = 0.0;
@@ -29457,12 +30044,27 @@ module sep_fcov (
   realtime cz_dv_per = 0.0;
   logic [4:0] cz_dv_val = '0;
   logic [1:0] cz_dv_ok = '0;  // the last two periods matched the stored value
+  int unsigned cz_dv_hit[7] = '{default: 0};  // hits per class (sample-clock block)
+  int unsigned cz_dv_seen[7] = '{default: 0};  // hits already sampled or dropped
+  logic cz_dv_tp_q = 1'b0;
+  always @(posedge clk_i) begin
+    cz_dv_tp_q <= esrc_tune_pass[1];
+    if (esrc_tune_pass[1] && !cz_dv_tp_q) begin
+      for (int k = 0; k < 7; k++) begin
+        if (cz_dv_hit[k] != cz_dv_seen[k]) cz_ngen(3, 4'(k));
+        cz_dv_seen[k] <= cz_dv_hit[k];
+      end
+    end else if (cz_est_open) begin
+      for (int k = 0; k < 7; k++) cz_dv_seen[k] <= cz_dv_hit[k];
+    end
+  end
   always @(posedge esrc_rosc_clk_i) begin
     if (cz_src_t != 0.0) cz_src_per = $realtime - cz_src_t;
     cz_src_t = $realtime;
   end
   always @(posedge esrc_sample_clk0_i) begin
     logic [4:0] d;
+    int unsigned cls;
     logic lane_ok;
     realtime per;
     realtime want;
@@ -29480,15 +30082,20 @@ module sep_fcov (
       cz_dv_ok = 2'b00;
     end
     cz_dv_val = d;
-    if ((cz_dv_ok == 2'b11) && cy_own_estune) cz_ngen(3, {1'b0, (d <= 5'd5) ? d[2:0] : 3'd6});
+    if ((cz_dv_ok == 2'b11) && cy_own_estune) begin
+      cls = (d <= 5'd5) ? int'(d) : 6;
+      cz_dv_hit[cls] = cz_dv_hit[cls] + 1;
+    end
   end
 
   // ---------------------------------------------------------------------
   // sep_esrc_fault_alert_cg cp_sm_err (ESRC_RDL MAIN_SM_STATUS.ERR, sticky,
   // write one to clear). Each cell is a pair of OKAY MAIN_SM_STATUS reads:
-  // set (0, then 1 after a counter-copy inject), kept by a write of 0 (1,
-  // write 0, 1), cleared by a write of 1 (1, write 1, 0), cleared by the TRNG
-  // reset (1, TRNG reset window, 0).
+  // set (0, then 1 after a counter-copy inject), cleared by the TRNG reset
+  // (1, TRNG reset window, 0). Both are held as pending at the second read
+  // and sample on the rise of esrc_pa_pass bit 8 (CHK-SM-ERR, which also
+  // grades PERSISTENT_FAILURE); a window open drops them. The writes of 0
+  // and 1 run with the window closed and are ignore_bins.
   // ---------------------------------------------------------------------
   localparam logic [31:0] CzErrMask = 32'(ENTROPY_SOURCE_MAIN_SM_STATUS_ERR_MASK);
   logic       cz_se_v = 1'b0;    // a MAIN_SM_STATUS read since the window opened
@@ -29497,8 +30104,15 @@ module sep_fcov (
   logic       cz_se_inj = 1'b0;  // a counter-copy inject since that read
   logic       cz_se_rst = 1'b0;  // a TRNG reset window since that read
   logic       cz_se_inj_q = 1'b0;
+  logic [1:0] cz_se_pend = '0;   // pending {reset_clears, set}
   always @(posedge clk_i) begin
     cz_se_inj_q <= esrc_cntr_inj_i;
+    if (cz_pa_rel[CzPaSmErr]) begin
+      if (cz_se_pend[0]) cz_falt(8, 6'd0);
+      if (cz_se_pend[1]) cz_falt(8, 6'd3);
+      cz_se_pend <= '0;
+    end
+    if (cz_win_open || in_reset) cz_se_pend <= '0;
     if (!cy_own_espa || in_reset) begin
       cz_se_v <= 1'b0;
     end else begin
@@ -29511,10 +30125,8 @@ module sep_fcov (
         logic e;
         e = ((rd_data & CzErrMask) != 32'h0);
         if (cz_se_v) begin
-          if (!cz_se_rd && e && cz_se_inj && !cz_se_rst) cz_falt(8, 6'd0);
-          if (cz_se_rd && e && (cz_se_w == 2'd1) && !cz_se_rst) cz_falt(8, 6'd1);
-          if (cz_se_rd && !e && (cz_se_w == 2'd2) && !cz_se_rst) cz_falt(8, 6'd2);
-          if (cz_se_rd && !e && (cz_se_w == 2'd0) && cz_se_rst) cz_falt(8, 6'd3);
+          if (!cz_se_rd && e && cz_se_inj && !cz_se_rst) cz_se_pend[0] <= 1'b1;
+          if (cz_se_rd && !e && (cz_se_w == 2'd0) && cz_se_rst) cz_se_pend[1] <= 1'b1;
         end
         cz_se_v   <= 1'b1;
         cz_se_rd  <= e;
@@ -29534,9 +30146,21 @@ module sep_fcov (
   // cp_fifo_closed_seed: a seed queued at the CSRNG seed port (seed_valid
   // rises) under FIPS_LOCK with FIFO_CTRL.ENABLE 0 and the FIFO level 0, then
   // an OKAY FIFO_STATUS read with LEVEL 0; and a FIFO_CTRL write of ENABLE 1
-  // under the lock that leaves ENABLE 0, then a seed queued, then an OKAY
+  // under the lock, completed with a B response of any code (the code of a
+  // locked write is stated nowhere), that leaves ENABLE 0, then a seed queued, then an OKAY
   // FIFO_STATUS read with LEVEL 0.
+  // Pass label esrc_e2e_pass of the end-to-end owner (both entries): each
+  // event above and in the conditioner-to-seed block below is held as
+  // pending inside the window, and samples only when esrc_e2e_pass rises
+  // there. The leaf writes it 1 after every check of the run passed (the
+  // strict scoreboard report included) and 0 before. A window close or a
+  // reset drops the pending events. It gates a sample; it is never a DUT
+  // value and drives nothing.
   // ---------------------------------------------------------------------
+  int unsigned esrc_e2e_pass = 0;
+  logic cz_e2e_pass_q = 1'b0;
+  wire  cz_e2e_rel = (esrc_e2e_pass != 0) && !cz_e2e_pass_q && cz_own_e2e && !in_reset;
+  always @(posedge clk_i) cz_e2e_pass_q <= (esrc_e2e_pass != 0);
   localparam logic [31:0] CzUnfMask = 32'(ENTROPY_SOURCE_INTR_STATUS_FIFO_UNDERFLOW_MASK);
   localparam logic [31:0] CzOvfMask = 32'(ENTROPY_SOURCE_INTR_STATUS_FIFO_OVERFLOW_MASK);
   localparam logic [31:0] CzFLvlMask = 32'(ENTROPY_SOURCE_FIFO_STATUS_LEVEL_MASK);
@@ -29549,11 +30173,22 @@ module sep_fcov (
   logic cz_fs_ews = 1'b0;    // then a seed queued
   logic cz_fs_ew_pend = 1'b0;
   logic cz_sv_q = 1'b0;
+  logic cz_us_hit = 1'b0;      // underflow_set pending
+  logic [1:0] cz_fs_hit = '0;  // cp_fifo_closed_seed values pending
   wire  cz_fc_own = cz_own_e2e && cz_fifo_closed;
   always @(posedge clk_i) begin
     logic seed_rise;
     seed_rise = (drbg_seed_valid_i === 1'b1) && !cz_sv_q;
     cz_sv_q <= (drbg_seed_valid_i === 1'b1);
+    if (!cz_fc_own || in_reset) begin
+      cz_us_hit <= 1'b0;
+      cz_fs_hit <= '0;
+    end else if (cz_e2e_rel) begin
+      if (cz_us_hit) cz_falt(6, 6'd2);
+      for (int v = 0; v < 2; v++) if (cz_fs_hit[v]) cz_cond(16, 4'(v));
+      cz_us_hit <= 1'b0;
+      cz_fs_hit <= '0;
+    end
     if (!cz_fc_own || in_reset || cz_trng) begin
       cz_us_arm     <= 1'b0;
       cz_us_pop     <= 1'b0;
@@ -29570,7 +30205,7 @@ module sep_fcov (
       if (rd_ev && cy_rd_known && (ar_addr_q == ENTROPY_SOURCE_INTR_STATUS_REG_ADDR)) begin
         if (cz_us_arm && cz_us_pop && !cz_us_tst && ((rd_data & CzUnfMask) != 32'h0) &&
             ((rd_data & CzOvfMask) == 32'h0)) begin
-          cz_falt(6, 6'd2);
+          cz_us_hit <= 1'b1;
         end
         cz_us_arm <= ((rd_data & CzUnfMask) == 32'h0);
         cz_us_pop <= 1'b0;
@@ -29578,7 +30213,7 @@ module sep_fcov (
       end
       if (seed_rise && cz_lock && !cz_fen && (cz_flvl == 7'd0)) cz_fs_seed <= 1'b1;
       if (seed_rise && cz_fs_ew) cz_fs_ews <= 1'b1;
-      if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_FIFO_CTRL_REG_ADDR) && cz_aw_lock &&
+      if (cz_wr_any && (aw_addr_q == ENTROPY_SOURCE_FIFO_CTRL_REG_ADDR) && cz_aw_lock &&
           ((wr_data & CzFEnMask) != 32'h0)) begin
         cz_fs_ew_pend <= 1'b1;
       end else begin
@@ -29590,8 +30225,8 @@ module sep_fcov (
       end
       if (rd_ev && cy_rd_known && (ar_addr_q == ENTROPY_SOURCE_FIFO_STATUS_REG_ADDR) &&
           ((rd_data & CzFLvlMask) == 32'h0)) begin
-        if (cz_fs_seed) cz_cond(16, 4'd0);
-        if (cz_fs_ew && cz_fs_ews) cz_cond(16, 4'd1);
+        if (cz_fs_seed) cz_fs_hit[0] <= 1'b1;
+        if (cz_fs_ew && cz_fs_ews) cz_fs_hit[1] <= 1'b1;
         cz_fs_seed <= 1'b0;
         if (cz_fs_ews) begin
           cz_fs_ew  <= 1'b0;
@@ -29610,9 +30245,15 @@ module sep_fcov (
   // non-empty FIFO whose word is a held conditioner word fills
   // cp_biw_scored. A CSRNG seed handshake whose 384 bits equal 12 consecutive
   // packed words (word 0 at bits [31:0], as the DRBG seed path packs them)
-  // fills cp_seed_handshake; cp_esrc_sink fills at the window close when at
-  // least two seed handshakes of the window matched and none differed.
-  // cp_genbits_fips takes the FIPS flag of each CTR_DRBG output block.
+  // fills cp_seed_handshake. cp_esrc_sink fills when at least two seed
+  // handshakes of the window had every 32-bit word equal to a held
+  // conditioner output word and none had a word that is not held: the
+  // membership that CHK-SEED-SW grades, with no word order and no packer-ready
+  // condition. The packer ring holds conditioner words too; it only keeps a
+  // queued seed's words longer than the conditioner ring does. cp_genbits_fips takes
+  // the FIPS flag of each CTR_DRBG output block. Each legal value is held as
+  // pending and samples on the rise of esrc_e2e_pass (see the FIFO-closed
+  // block above); the illegal fips_0 samples at once.
   // ---------------------------------------------------------------------
   localparam int unsigned CzCwRing = 64;
   localparam int unsigned CzSwRing = 96;
@@ -29624,6 +30265,22 @@ module sep_fcov (
   int unsigned cz_sw_wp = 0;
   int unsigned cz_sd_ok = 0;
   logic cz_sd_bad = 1'b0;
+  logic [2:0] cz_e2e_hit = '0;  // {genbits fips_1, seed handshake, biw scored} pending
+  // Every 32-bit word of the seed equals a held conditioner output word.
+  function automatic logic cz_seed_words_held(input logic [383:0] bits);
+    for (int unsigned k = 0; k < 12; k++) begin
+      logic hit;
+      hit = 1'b0;
+      for (int unsigned i = 0; i < CzCwRing; i++) begin
+        hit |= cz_cw_v[i] && (cz_cw[i] == bits[32*k+:32]);
+      end
+      for (int unsigned i = 0; i < CzSwRing; i++) begin
+        hit |= (i < cz_sw_n) && (cz_sw[i] == bits[32*k+:32]);
+      end
+      if (!hit) return 1'b0;
+    end
+    return 1'b1;
+  endfunction
   function automatic logic cz_seed_in_ring(input logic [383:0] bits, input int unsigned n,
                                            input int unsigned wp);
     for (int unsigned st = 0; st + 12 <= n; st++) begin
@@ -29662,19 +30319,27 @@ module sep_fcov (
         logic hit;
         hit = 1'b0;
         for (int k = 0; k < CzCwRing; k++) hit |= cz_cw_v[k] && (cz_cw[k] == rd_data);
-        if (hit) cz_cond(12, 4'd0);
+        if (hit) cz_e2e_hit[0] <= 1'b1;
       end
       if ((drbg_es_ack_i === 1'b1) && !$isunknown(drbg_es_bits_i)) begin
-        if (cz_seed_in_ring(drbg_es_bits_i, cz_sw_n, cz_sw_wp)) begin
-          cz_cond(13, 4'd0);
-          cz_sd_ok <= cz_sd_ok + 1;
-        end else begin
-          cz_sd_bad <= 1'b1;
-        end
+        if (cz_seed_in_ring(drbg_es_bits_i, cz_sw_n, cz_sw_wp)) cz_e2e_hit[1] <= 1'b1;
+        if (cz_seed_words_held(drbg_es_bits_i)) cz_sd_ok <= cz_sd_ok + 1;
+        else cz_sd_bad <= 1'b1;
       end
-      if (drbg_genbits_vld_i === 1'b1) cz_cond(14, {3'd0, (drbg_genbits_fips_i === 1'b1)});
+      if (drbg_genbits_vld_i === 1'b1) begin
+        if (drbg_genbits_fips_i === 1'b1) cz_e2e_hit[2] <= 1'b1;
+        else cz_cond(14, 4'd0);
+      end
     end
-    if (cz_ended(FcovOwnSepEsrcE2eSmokeTest) && (cz_sd_ok >= 2) && !cz_sd_bad) cz_cond(15, 4'd0);
+    if (!cz_own_e2e || in_reset) begin
+      cz_e2e_hit <= '0;
+    end else if (cz_e2e_rel) begin
+      if (cz_e2e_hit[0]) cz_cond(12, 4'd0);
+      if (cz_e2e_hit[1]) cz_cond(13, 4'd0);
+      if (cz_e2e_hit[2]) cz_cond(14, 4'd1);
+      if ((cz_sd_ok >= 2) && !cz_sd_bad) cz_cond(15, 4'd0);
+      cz_e2e_hit <= '0;
+    end
   end
 
   // ---------------------------------------------------------------------
@@ -30079,7 +30744,9 @@ module sep_fcov (
   // instantiate header (acmd 1, clen 0) arms the cell. It samples at the rise
   // of the EDN CMD_ACK set request with CMD_STS 0 when, since the write,
   // CzIaHold clocks passed with no seed handshake and no acknowledge, and a
-  // seed handshake (seed_valid and es_ack) came before the acknowledge.
+  // seed handshake (seed_valid and es_ack) came before the acknowledge. An
+  // unknown bit on either seed handshake input before the hold completes
+  // disarms the cell, so an X or Z does not count as a clock without a seed.
   // ---------------------------------------------------------------------
   localparam int unsigned CzIaHold = 256;
   logic        cz_ia_arm = 1'b0;
@@ -30087,6 +30754,7 @@ module sep_fcov (
   logic        cz_ia_seed = 1'b0;
   int unsigned cz_ia_cnt = 0;
   logic        cz_ia_ack_q = 1'b0;
+  wire         cz_ia_hs_x = $isunknown(drbg_seed_valid_i) || $isunknown(drbg_es_ack_i);
   always @(posedge clk_i) begin
     logic ack_rise;
     logic hs;
@@ -30100,6 +30768,8 @@ module sep_fcov (
       cz_ia_hold <= 1'b0;
       cz_ia_seed <= 1'b0;
       cz_ia_cnt  <= 0;
+    end else if (cz_ia_arm && !cz_ia_hold && cz_ia_hs_x) begin
+      cz_ia_arm <= 1'b0;
     end else if (cz_ia_arm) begin
       if (hs) cz_ia_seed <= 1'b1;
       if (!cz_ia_seed && !hs) begin
@@ -30246,11 +30916,14 @@ module sep_fcov (
   // MARKOV_LO; an unsupported value selects REPCNT_HI.
   // x_ht_arm: the first OKAY HT_WATERMARK read after a MODULE_ENABLE rise
   // equals the arm value of the stored selector, and the last read before
-  // the rise held the other polarity. cp_ht_unsup: a write of a selector of
-  // 5 or more, an OKAY HT_WATERMARK_NUM read of 0, then that arm with 0xFFFF
-  // before and 0x0000 after. cp_ht_no_rearm: after a selector write whose arm
-  // value differs from the last read watermark, the next OKAY HT_WATERMARK
-  // read with no MODULE_ENABLE rise between equals that last read.
+  // the rise held the other polarity; a rise after an unsupported selector
+  // write is not an x_ht_arm cell. cp_ht_unsup: a write of a selector of
+  // 5 or more, no other selector write before the next MODULE_ENABLE rise,
+  // and the first OKAY HT_WATERMARK read after that rise 0x0000 with the last
+  // read before it 0xFFFF. No selector readback enters: the read value of an
+  // unsupported selector is stated nowhere. cp_ht_no_rearm: after a selector
+  // write whose arm value differs from the last read watermark, the next OKAY
+  // HT_WATERMARK read with no MODULE_ENABLE rise between equals that last read.
   // ---------------------------------------------------------------------
   localparam logic [31:0] CzWmMask = 32'(ENTROPY_SOURCE_HT_WATERMARK_WATERMARK_VALUE_MASK);
   localparam logic [31:0] CzWmNumMask = 32'(ENTROPY_SOURCE_HT_WATERMARK_NUM_WATERMARK_NUM_MASK);
@@ -30263,8 +30936,8 @@ module sep_fcov (
   logic [3:0]  cz_wa_sel = '0;
   logic [15:0] cz_wa_pre = '0;
   logic        cz_wa_pre_v = 1'b0;
-  logic        cz_hu_w = 1'b0;   // an unsupported selector write
-  logic        cz_hu_rd = 1'b0;  // then a selector read of 0
+  logic        cz_hu_w = 1'b0;   // the last selector write was unsupported
+  logic        cz_wa_hu = 1'b0;  // cz_hu_w at the MODULE_ENABLE rise
   logic        cz_hn_arm = 1'b0;
   logic [15:0] cz_hn_pre = '0;
   always @(posedge clk_i) begin
@@ -30272,7 +30945,7 @@ module sep_fcov (
       cz_wm_v   <= 1'b0;
       cz_wa_arm <= 1'b0;
       cz_hu_w   <= 1'b0;
-      cz_hu_rd  <= 1'b0;
+      cz_wa_hu  <= 1'b0;
       cz_hn_arm <= 1'b0;
     end else begin
       if (cz_men_rise) begin
@@ -30280,37 +30953,32 @@ module sep_fcov (
         cz_wa_sel   <= esrc_reg_out_i.HT_WATERMARK_NUM.WATERMARK_NUM.value;
         cz_wa_pre   <= cz_wm_last;
         cz_wa_pre_v <= cz_wm_v;
+        cz_wa_hu    <= cz_hu_w;
         cz_hn_arm   <= 1'b0;
       end
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_HT_WATERMARK_NUM_REG_ADDR)) begin
         logic [3:0] sel;
         sel = 4'(wr_data & CzWmNumMask);
         cz_hu_w  <= (sel > 4'd4);
-        cz_hu_rd <= 1'b0;
         cz_hn_arm <= cz_wm_v && (cz_wm_arm((sel > 4'd4) ? 4'd0 : sel) != cz_wm_last);
         cz_hn_pre <= cz_wm_last;
-      end
-      if (rd_ev && cy_rd_known && (ar_addr_q == ENTROPY_SOURCE_HT_WATERMARK_NUM_REG_ADDR) && cz_hu_w) begin
-        cz_hu_rd <= ((rd_data & CzWmNumMask) == 32'h0);
       end
       if (rd_ev && cy_rd_known && (ar_addr_q == ENTROPY_SOURCE_HT_WATERMARK_REG_ADDR)) begin
         logic [15:0] w;
         w = 16'(rd_data & CzWmMask);
         if (cz_wa_arm && !cz_men_rise) begin
-          if ((cz_wa_sel <= 4'd4) && cz_wa_pre_v && (w == cz_wm_arm(
+          if ((cz_wa_sel <= 4'd4) && !cz_wa_hu && cz_wa_pre_v && (w == cz_wm_arm(
                   cz_wa_sel
               )) && (cz_wa_pre != cz_wm_arm(
                   cz_wa_sel
               ))) begin
             cz_sth(12, cz_wa_sel);
           end
-          if (cz_hu_rd && (cz_wa_sel == 4'd0) && cz_wa_pre_v && (cz_wa_pre == 16'hFFFF) &&
-              (w == 16'h0000)) begin
+          if (cz_wa_hu && cz_wa_pre_v && (cz_wa_pre == 16'hFFFF) && (w == 16'h0000)) begin
             cz_sth(13, 4'd0);
           end
           cz_wa_arm <= 1'b0;
-          cz_hu_w   <= 1'b0;
-          cz_hu_rd  <= 1'b0;
+          cz_wa_hu  <= 1'b0;
         end
         if (cz_hn_arm && !cz_men_rise && !cz_wa_arm && (w == cz_hn_pre)) cz_sth(14, 4'd0);
         cz_hn_arm  <= 1'b0;
@@ -35536,13 +36204,6 @@ module sep_fcov (
     cp_mem_boot_type: coverpoint v[0] iff (pt == 5'd7) {
       bins cold_boot_writes_key = {1'b0}; bins warm_boot_writes_no_key = {1'b1};
     }
-    // Grant-to-rvalid latency 1 to 4; 9: two different delayed latencies in
-    // one run.
-    cp_km_sram_latency: coverpoint v[3:0] iff (pt == 5'd8) {
-      bins latency[] = {[4'd1 : 4'd4]};
-      bins two_values_in_one_run = {4'd9};
-      illegal_bins latency0 = {4'd0};
-    }
   endgroup
 
   covergroup sep_km_kpv_slot_cg with function sample (logic [4:0] pt, logic [15:0] v);
@@ -36382,6 +37043,19 @@ module sep_fcov (
   logic [7:0] km_bank_ctrl_written = '0;
   // A delivery of the shared key consumed in this boot, and W1C of its IRQ.
   logic km_sk_consumed = 1'b0, km_sk_irq_cleared = 1'b0;
+  // Pass label km_sk_pass of sep_km_key_bank_register_rand_test (owner 736):
+  // bit 0 after CHK-BANK-SK-CONSUME passes releases the held cp_sk_write_dir
+  // cells; bit 1 after CHK-BANK-SK-SW passes releases the held
+  // cp_sk_delivery_state[firmware_consumes] cell. A held cell is dropped when the
+  // window of the owner closes or the KM resets. Bit 2 after CHK-BANK-SK-IRQ
+  // passes releases the held cp_sk_interrupt line cells (enable0_line_low,
+  // enable1_line_high); those survive the window close, and drop on a KM reset
+  // or on any other change of the label. It gates a sample; it is never a bin
+  // value and drives nothing.
+  int unsigned km_sk_pass = 0;
+  logic [2:0] km_sk_pass_q = '0;
+  logic [1:0] km_sk_dir_pend = '0;
+  logic km_sk_cons_pend = 1'b0;
   // Share words written with a non-zero value (cp_nx_share_read).
   logic [255:0] km_nx_written = '0;
   // eFuse remap: upper address bits seen per map.
@@ -36462,9 +37136,28 @@ module sep_fcov (
       km_sk_consumed <= 1'b0;
       km_sk_irq_cleared <= 1'b0;
       km_nx_written <= '0;
+      km_sk_dir_pend <= '0;
+      km_sk_cons_pend <= 1'b0;
     end
-    if ((km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) && (km_sram_if_i[2] === 1'b1) &&
-        (km_scr_en_i === 1'b1)) begin
+    // ---- km_sk_pass release (cp_sk_write_dir, cp_sk_delivery_state
+    // firmware_consumes) ----
+    km_sk_pass_q <= 3'(km_sk_pass);
+    if (!km_own_bank) begin
+      km_sk_dir_pend <= '0;
+      km_sk_cons_pend <= 1'b0;
+    end else begin
+      if (km_sk_pass[0] && !km_sk_pass_q[0]) begin
+        if (km_sk_dir_pend[0]) u_sep_km_abr_shared_key_cg.sample(5'd1, 16'd0);
+        if (km_sk_dir_pend[1]) u_sep_km_abr_shared_key_cg.sample(5'd1, 16'd1);
+        km_sk_dir_pend <= '0;
+      end
+      if (km_sk_pass[1] && !km_sk_pass_q[1] && km_sk_cons_pend) begin
+        u_sep_km_abr_shared_key_cg.sample(5'd0, 16'd2);
+        km_sk_consumed <= 1'b1;
+        km_sk_cons_pend <= 1'b0;
+      end
+    end
+    if ((km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) && (km_scr_en_i === 1'b1)) begin
       km_scr_resident <= 1'b1;
       if (km_lock_en0_pend && (km_own_scr || km_own_br))
         u_sep_km_memory_boot_cg.sample(5'd2, 16'd6);
@@ -36704,15 +37397,14 @@ module sep_fcov (
       end
       // ABR shared key (cp_sk_delivery_state, cp_sk_write_dir,
       // cp_sk_interrupt).
+      // cp_sk_write_dir and firmware_consumes are held here and sample on the
+      // rise of their km_sk_pass bit.
       if ((kw_addr == KmSkKeyCtrl) && km_own_bank) begin
         if (!kw_data[0] && (kw_resp == KmOkay) && (km_sk_valid_i === 1'b0))
-          u_sep_km_abr_shared_key_cg.sample(5'd1, 16'd0);
-        if (kw_data[0] && !kwp_sk_valid && (km_sk_valid_i === 1'b0))
-          u_sep_km_abr_shared_key_cg.sample(5'd1, 16'd1);
-        if (!kw_data[0] && kwp_sk_valid && (km_sk_valid_i === 1'b0) && (km_sk_key_i === '0)) begin
-          u_sep_km_abr_shared_key_cg.sample(5'd0, 16'd2);
-          km_sk_consumed <= 1'b1;
-        end
+          km_sk_dir_pend[0] <= 1'b1;
+        if (kw_data[0] && !kwp_sk_valid && (km_sk_valid_i === 1'b0)) km_sk_dir_pend[1] <= 1'b1;
+        if (!kw_data[0] && kwp_sk_valid && (km_sk_valid_i === 1'b0) && (km_sk_key_i === '0))
+          km_sk_cons_pend <= 1'b1;
       end
       if ((kw_addr == KmSkIrqStatus) && km_own_bank) begin
         if (kw_data[0] && kwp_sk_irq && (km_sk_irq_status_i === 1'b0)) begin
@@ -37270,10 +37962,8 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   // Memory interface, SRAM stores, ROM and fetch protection.
   // ---------------------------------------------------------------------
-  wire km_sram_rd = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b0) &&
-      (km_sram_if_i[2] === 1'b1);
-  wire km_sram_wr = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1) &&
-      (km_sram_if_i[2] === 1'b1);
+  wire km_sram_rd = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b0);
+  wire km_sram_wr = (km_sram_if_i[0] === 1'b1) && (km_sram_if_i[1] === 1'b1);
   logic [3:0] km_st_cnt = '0;
   logic [4:0] km_st_region = '0;
   logic [12:0] km_st_word = '0;
@@ -38525,6 +39215,8 @@ module sep_fcov (
   // ---------------------------------------------------------------------
   logic km_skv_q = 1'b0, km_ski_q = 1'b0;
   logic [1:0] km_sk_line_st = 2'b11;
+  // Held cp_sk_interrupt line cells: [0] enable0_line_low, [1] enable1_line_high.
+  logic [1:0] km_sk_line_pend = '0;
   always @(posedge clk_i) begin
     logic v, i, e;
     logic [1:0] ls;
@@ -38544,13 +39236,22 @@ module sep_fcov (
       end
       ls = {i, e};
       if (ls != km_sk_line_st) begin
-        if ((ls == 2'b10) && (km_cpu_sk_irq_i === 1'b0))
-          u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd1);
-        if ((ls == 2'b11) && (km_cpu_sk_irq_i === 1'b1))
-          u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd2);
+        if ((ls == 2'b10) && (km_cpu_sk_irq_i === 1'b0)) km_sk_line_pend[0] <= 1'b1;
+        if ((ls == 2'b11) && (km_cpu_sk_irq_i === 1'b1)) km_sk_line_pend[1] <= 1'b1;
       end
     end
     km_sk_line_st <= {i, e};
+    // The line cells are held until CHK-BANK-SK-IRQ, which grades the CPU
+    // line through the handler count, passes (km_sk_pass bit 2).
+    if (!km_rst_cold_n || !km_rst_warm_n) begin
+      km_sk_line_pend <= '0;
+    end else if (km_sk_pass[2] && !km_sk_pass_q[2]) begin
+      if (km_sk_line_pend[0]) u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd1);
+      if (km_sk_line_pend[1]) u_sep_km_abr_shared_key_cg.sample(5'd2, 16'd2);
+      km_sk_line_pend <= '0;
+    end else if (3'(km_sk_pass) != km_sk_pass_q) begin
+      km_sk_line_pend <= '0;
+    end
   end
 
   // =====================================================================
@@ -39304,13 +40005,6 @@ module sep_fcov (
   logic [1:0] kq_par_lane = '0;
   logic [3:0] kq_par_rstrb = '0;
   logic [1:0] kq_par_st_q = '0;
-  logic [31:0] kq_lat_done_q = '0;
-  logic [7:0] kq_lat_prev = '0;
-  // Sub-window of cp_km_sram_latency: sep_km_fault_inject_rand_test writes 1
-  // through the u_sep_fcov handle while its latency watcher grades the fixed
-  // and the random runs, and 0 before the watcher stops. It gates a sample;
-  // it is never a bin value and drives nothing.
-  int unsigned km_lat_graded = 0;
   logic [10:0] kq_sil = '0;  // clocks of silence after a frame sent while bit 30 is high
   logic kq_unrec_q = 1'b0;
   logic [11:0] kq_st_q = '0;
@@ -39344,7 +40038,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     logic [7:0] rc, id, msk, pol, sz, wid;
     logic [31:0] arg;
-    logic has_arg, valid, rcmd, jump, lat_new, gw, ofd;
+    logic has_arg, valid, rcmd, jump, gw, ofd;
     logic [2:0] ff, cls;
     logic [3:0] pr, r, rb;
     logic [11:0] st, hi_m, lo_m, ranked;
@@ -39690,22 +40384,6 @@ module sep_fcov (
     if (km_rel_ev && !km_rel_cold && kq_rec_pre && !kq_recov && (km_own_cp || km_own_fi))
       u_sep_km_kmcsr_status_cg.sample(5'd8, 16'd2);
 
-    // ---- SRAM read latency (cp_km_sram_latency) ----
-    lat_new = (km_sram_lat_done_i !== kq_lat_done_q) && !$isunknown(km_sram_lat_done_i);
-    kq_lat_done_q <= km_sram_lat_done_i;
-    // The previous latency holds only a read of the current graded run: it
-    // reads 0, outside 2 to 4, while km_lat_graded is 0, so the pair of
-    // two_values_in_one_run cannot span two runs.
-    if (km_lat_graded == 0) kq_lat_prev <= '0;
-    else if (lat_new && !$isunknown(km_sram_lat_i)) kq_lat_prev <= km_sram_lat_i;
-    if (lat_new && !$isunknown(km_sram_lat_i)) begin
-      if (km_own_fi && (km_lat_graded != 0) && (km_sram_lat_i <= 8'd4))
-        u_sep_km_memory_boot_cg.sample(5'd8, 16'(km_sram_lat_i));
-      if (km_own_fi && (km_lat_graded != 0) && (km_sram_lat_i >= 8'd2) && (km_sram_lat_i <= 8'd4) &&
-          (kq_lat_prev >= 8'd2) && (kq_lat_prev <= 8'd4) && (km_sram_lat_i != kq_lat_prev))
-        u_sep_km_memory_boot_cg.sample(5'd8, 16'd9);
-    end
-
     // ---- HK-PAR parity flips (cp_if_parity): the lane that the hook
     // flipped and the KM checked, then the parity bit of that memory ----
     kq_par_q <= (km_par_fired_i === 1'b1);
@@ -39992,10 +40670,18 @@ module sep_fcov (
   logic [7:0] km_wc_cnt = '0;
   // cp_fr_err_out port_equals_pic.
   logic km_up_q = 1'b0, km_pb_q = 1'b0;
-  // cp_sd_single_share.
+  // cp_sd_single_share. Pass label km_ss_pass: sep_km_key_bank_register_rand_test
+  // writes 0 through the u_sep_fcov handle before each single-share instance
+  // and 1 after CHK-SINGLE-SHARE passes on it. The cell seen at the KEY_VALID
+  // rise is held as pending and samples only when the label rises; the next
+  // wipe pulse drops a pending cell. It gates a sample; it is never a bin value
+  // and drives nothing.
   logic km_ss_wiped = 1'b0;
   logic [15:0] km_ss_w = '0;
   logic km_ss_kv_q = 1'b0;
+  int unsigned km_ss_pass = 0;
+  logic km_ss_pass_q = 1'b0;
+  logic km_ss_pend = 1'b0, km_ss_cell = 1'b0;
   // cp_vw_sideload_clear.
   logic km_sc_on = 1'b0;
   logic [5:0] km_sc_cnt = '0;
@@ -40293,10 +40979,16 @@ module sep_fcov (
     // ---- cp_sd_single_share: AES bank (KM-BUS port 1, offsets 0x00 to 0x1C
     // share 0, 0x20 to 0x3C share 1) ----
     km_ss_kv_q <= (km_key_valid_i[2] === 1'b1);
+    km_ss_pass_q <= (km_ss_pass != 0);
+    if ((km_ss_pass != 0) && !km_ss_pass_q && km_ss_pend) begin
+      u_sep_km_sideload_delivery_cg.sample(5'd5, 16'(km_ss_cell));
+      km_ss_pend <= 1'b0;
+    end
     if (km_wipe_i[1] === 1'b1) begin
       km_ss_wiped <= (km_aes_key0_i != '0) && (km_aes_key1_i != '0) && !$isunknown(km_aes_key0_i) &&
           !$isunknown(km_aes_key1_i);
       km_ss_w <= '0;
+      km_ss_pend <= 1'b0;
     end else if ((km_key_aw_valid_i[1] === 1'b1) && (km_key_aw_ready_i[1] === 1'b1) &&
                  (km_key_aw_addr_i[32+:8] < 8'h40))
       km_ss_w[km_key_aw_addr_i[32+2+:4]] <= 1'b1;
@@ -40305,13 +40997,17 @@ module sep_fcov (
       if (km_own_bank && (km_ss_w == 16'h00FF) && (km_aes_key1_i === '0) && (km_aes_key0_i != '0) &&
           !$isunknown(
               km_aes_key0_i
-          ))
-        u_sep_km_sideload_delivery_cg.sample(5'd5, 16'd0);
+          )) begin
+        km_ss_pend <= 1'b1;
+        km_ss_cell <= 1'b0;
+      end
       if (km_own_bank && (km_ss_w == 16'hFF00) && (km_aes_key0_i === '0) && (km_aes_key1_i != '0) &&
           !$isunknown(
               km_aes_key1_i
-          ))
-        u_sep_km_sideload_delivery_cg.sample(5'd5, 16'd1);
+          )) begin
+        km_ss_pend <= 1'b1;
+        km_ss_cell <= 1'b1;
+      end
     end
 
     // ---- cp_vw_sideload_clear: the HMAC KEY_CTRL key-path AW in the clock of
