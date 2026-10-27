@@ -91,7 +91,7 @@ chapter cites revision 6 for electrical and timing requirements.
 |Power Management Bus (PMBus) specification, revision 1.4
 |I2C controller PMBus operation.
 
-|AVSBus specification, version 1.3.1
+|PMBus specification, version 1.3, Part III (Adaptive Voltage Scaling Bus, AVSBus)
 |AVSBus controller voltage-scaling frames and responses.
 
 |MIPI I3C Basic specification, versions 1.0 and 1.1.1
