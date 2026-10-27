@@ -171,10 +171,9 @@ module smu_dbg_fcov #(
                      sep_otp_access_succeeds_while_fabric_blocked_e, clk_smu_i, in_reset)
   end
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the three debug-disable bits as one
-  // vector, which is the selectivity a flat point list cannot cross.
+  // Covergroup: the three debug-disable bits as one vector, which is the
+  // selectivity a flat point list cannot cross.
   // ------------------------------------------------------------------
   covergroup cg_dbg_disable_slice with function sample (logic fabric, logic smc_otp, logic sep_otp);
     option.per_instance = 1;
@@ -196,6 +195,5 @@ module smu_dbg_fcov #(
                                     dbg_disable_sep_otp_i);
     end
   end
-`endif
 
 endmodule : smu_dbg_fcov
