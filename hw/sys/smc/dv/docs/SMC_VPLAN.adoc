@@ -7114,8 +7114,12 @@ ID (`dma_ctrl.rdl`, `ENABLED_ND`), the two cells `CHK-DXM-ND-CLEAR` compares; th
 `STATUS_0` and the response code of the launch read are printed, not compared, as the place the
 error response the field description names may appear.
 . Error injection. Point: `LENGTH` 0 with `ENABLED_ND` set. Kind: launch with one `NEXT_ID_0` read.
-Expected response: the transfer is rejected and no destination byte changes; print the `NEXT_ID_0`
-value and `DONE_0`.
+Expected response: the launch returns a non-zero ID, no destination byte changes and `DONE_0`
+reaches that ID (`dma.adoc`, Transfer Configuration, Linear and Two-Dimensional Copies: a command
+with a length of 0 moves no data and still retires a transfer ID, the backend answering it with an
+error response the control aperture does not expose), the cells `CHK-DXM-ZERO-LENGTH` compares;
+the `NEXT_ID_0` value, `STATUS_0` and the response code of the launch read are printed, not
+compared, as the place that error response may appear.
 . Require 14 launches; print `CHK-TIMEOUT-PATHS`, then run the fence that prints `CHK-NONVAC`.
 
 *Checkers*:
@@ -47899,7 +47903,7 @@ net or the register that the observation would need.
 |A SYS_IN access whose AxUSER carries a non-zero source ID.
 |Every SYS_IN master of the bench presents AxUSER 0, so a non-zero source ID matched against a wildcard `src_id` 0 entry is not reachable.
 |`ADD-PORT`
-|`smc_infilt_attr_match_test` grades the other attribute matches and does not claim the source-ID match (`hw/ip/axi_filter/regs/filter_ctrl.rdl`, `src_id`).
+|`smc_infilt_attr_match_test` grades the other attribute matches and does not claim the source-ID match (`hw/ip/axi_filter/regs/filter_ctrl.rdl`, `src_id`). `smc_infilt_rule_matrix_rand_test` (551, planned) drives the lane non-zero through `axi_user` of the SYS_IN items and supersedes this row when it lands.
 |<<smc-vplan-area-fabric,FABRIC>>
 |The W, R and B channels of the external AXI-Lite port.
 |The signal list taps the external port's AW and AR channels only (`tb_axil_external_awvalid`, `tb_axil_external_awaddr`, `tb_axil_external_arvalid`, `tb_axil_external_araddr`).
