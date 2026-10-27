@@ -2582,9 +2582,10 @@ module smc_uvm_top
 `endif
 
     // The force-mode CPU reset of the read-wedge leaf withdraws the R beat the
-    // CPU presents without ready and leaves a stale R on SYS_IN; that leaf's
-    // +smc_front_port_r_arb_assertoff also holds the SYS_IN and CPU-port
-    // checkers off, as it holds the front-port R arbiter assertion off.
+    // CPU presents without ready; that leaf's +smc_front_port_r_arb_assertoff
+    // holds the two CPU-port checkers off, as it holds the front-port R
+    // arbiter assertion off. The SYS_IN checker stays on: the stale R the
+    // isolate flush leaves on SYS_IN is graded there.
     bit cpu_reset_probe = $test$plusargs("smc_front_port_r_arb_assertoff");
 
 `define SMC_AXI_MASTER_KNOWN(REQ) \
@@ -2606,7 +2607,7 @@ module smc_uvm_top
         .ID_WIDTH        (6),
         .MAX_OUTSTANDING (16)
     ) u_sys_in_axi_sva (                  // SYS_IN, TB master into smc
-        .en_i (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed && !cpu_reset_probe),
+        .en_i (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed),
         `SMC_AXI_SVA_PORTS(sys_axi_in_req, sys_axi_in_resp)
     );
 
@@ -2711,7 +2712,7 @@ module smc_uvm_top
     int unsigned axi_hs_cpu_front, axi_hs_cpu_mmio, axi_hs_otp_jtag, axi_hs_dtp_csr;
     int unsigned axi_hs_log_engine, axi_hs_periph;
     always_ff @(posedge clk_smc) begin
-        if (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed && !cpu_reset_probe &&
+        if (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed &&
             `SMC_AXI_HS(sys_axi_in_req, sys_axi_in_resp))
             axi_hs_sys_in <= axi_hs_sys_in + 1;
         if (`SMC_AXI_SVA_ON && jtag_in_axi_sva_armed &&
