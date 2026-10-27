@@ -1010,6 +1010,7 @@ single-byte writes.
 |`smc_dma_invalid_descriptor_test` |3 |ENABLED_ND-cleared and zero-length DMA commands move no data against a valid copy; their registers are measured.
 |`smc_dma_linear_copy_test` |2 |Linear DMA copies match byte for byte across offsets and sizes.
 |`smc_zeroer_busy_outstanding_test` |3 |Zeroer stays busy to the last B; over 32 bursts; AW/W in order.
+|`smc_zeroer_busy_trigger_obs_test` |3, held out |A second `CTRL_STATUS` trigger in the issue and drain windows of a running clear, recorded for #3422.
 |`smc_zeroer_irq_test` |3 |Zeroer completion pulse comes once, after the last B, only with INT_EN.
 |`smc_zeroer_job_breadth_test` |3 |Zeroer jobs clear exactly their range: aligned, high, random.
 |`smc_zeroer_resp_unchecked_test` |3 |Zeroer jobs complete despite SLVERR and DECERR write responses.
@@ -1188,6 +1189,7 @@ reset words of the regions logged as a control.
 the SYS_OUT responder, over a drawn manager, direction and burst, return the injected code at the
 JTAG port that issued the access, leave the zeroer finishing with no error report and the recovery
 copy after an errored DMA burst completing byte-exact, and leave the recovery access answering OKAY.
+|`smc_bresp_evidence_obs_test` |3, held out |Every declared past-extent and gap write recorded beside its declaration, and the merged BRESP of split two-beat writes, for #3426.
 |===
 
 ==== RESET
@@ -1242,6 +1244,9 @@ and sets with a zero hold count.
 |`smc_scratch_banks_test` |2 |Sixteen scratch registers reset to 0 and hold independent values.
 |`smc_sync_reg_irq_test` |2 |SYNC_REG.sync drives sync_irq_o and only bit 0 is implemented.
 |`smc_isolate_req_smc_lane_test` |2, held out |Writes to `ISOLATE_REQ_SMC_REG` that do not clear bit 0 must leave the FLR-latched request set.
+|`smc_wdt_timeout_zero_idle_test` |2, held out |`WDT_TIMEOUT` written to 0 with no first-stage timeout must leave `smc_wdt_second_timeout_o` low and the warm reset released (#3386).
+|`smc_warm_domain_access_during_reset_test` |2, held out |A `SCRATCH_COLD_WARM` read during the warm reset must error, and every later read on the peripheral crossbar must complete (#3408).
+|`smc_flr_counter_timing_obs_test` |3, held out |FLR pre-delay and hold measured on `clk_ref_i` for several counter values, recorded for #3423.
 |`smc_reset_mid_transaction_rand_test` |3, planned |Seeded cool-pin, FLR, cold and watchdog resets,
 asserted at a drawn cycle inside a drawn in-flight operation after programming non-zero values,
 reset exactly the registers of that reset's domain, keep every other programmed value, hold warm
@@ -1427,6 +1432,8 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_dfd_trace_writeout_phase_test` |3 |Sink-mode and stop writes walked a cycle at a time across the memory-arm flush and the single memory write-out.
 |`smc_dfd_dbm_mode_lock_test` |3 |Every debug-bus mux mode programmed on every mux, then the CLA lock latched and held.
 |`smc_dfd_cla_snapshot_capture_test` |3 |Every CLA pair driven over its whole action range on its own node, with the snapshot registers read.
+|`smc_dfd_cla_irq_w2c_release_test` |2, held out |The single `CDbgEapStatus` W2C write must drop `cla_interrupt` with the status (#3389).
+|`smc_dfd_cla_clock_halt_release_test` |2, held out |`halt_clock_global_or_o` must deassert once the clock-halt action drops and `DisableGlobalClockHalt` is set (#3390).
 |`smc_dfd_trace_sink_concurrent_test` |3 |The trace sink read out through its MMR port while the trace is still writing it.
 |`smc_dfd_sanity_test` |1 |Run diagnostic CSR reads as the public DFD bounded checker.
 |`smc_dfx_status_abort_test` |3, planned upgrade |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
@@ -48509,6 +48516,22 @@ defect or a ruling: each passes on the dual bench. Issue #2479 tracks giving
 the package regression both elaborations, and these three rejoin `all` when it
 closes.
 
+Every leaf outside `all`, with the issue it reproduces or waits on:
+
+[cols="1,3,1,5",options="header",]
+|===
+|Issue |Leaf |Kind |Reason
+|#3386 |`smc_wdt_timeout_zero_idle_test` |`rtl_issue` |`CPU_CTRL.WDT_TIMEOUT` written to 0 with no first-stage timeout raises `smc_wdt_second_timeout_o` and holds the warm domain in reset; the leaf asserts the pin stays low and the warm reset released
+|#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and blocks the peripheral crossbar's read channel after the release; the leaf asserts the in-reset read errors and every later read completes
+|#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
+|#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
+|-- |`smc_isolate_req_smc_lane_test` |`rtl_issue` |`ISOLATE_REQ_SMC_REG` clears its FLR-latched request on a write outside bit 0's byte lane; card below
+|#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
+|#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
+|#3426 |`smc_bresp_evidence_obs_test` |`held_out` |The merged BRESP of a split write burst has no stated rule; the `OBS-BRESP` lines record every past-extent and gap write beside its #3294 declaration and the `OBS-BURST` lines the merged response, the CHK lines grade the table counts and unchanged live words
+|-- |`smc_ref_clock_timer_rate_test` |`held_out` |The OCTS timer-rate comparison disagrees with `clk_rst.adoc`; below
+|===
+
 The reproducers are the `rtl_issue` group:
 
 Tests whose job is to fail. Each holds the runnable evidence for one RTL
@@ -48518,8 +48541,8 @@ in `smoke`, `hosted` or `all`. Every `[[tests]]` entry carries `expect_fail` nam
 `expect_fail_match` pinned to the assertion it raises; the weekly tier runs
 the group on its own `regress.yml` row and grades the recorded failure as
 PASS, so the row goes red (`expected_fail_passed`) the week a defect is
-fixed and the leaf moves to its feature testlist. The member is
-`smc_isolate_req_smc_lane_test` (the `ISOLATE_REQ_SMC_REG` byte-lane clear).
+fixed and the leaf moves to its feature testlist. The members are the
+`rtl_issue` rows of the table above.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -48662,6 +48685,12 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 fails the rate comparison it was written to make (`clk_rst.adoc` places the OCTS
 system timer in the reference clock domain; `smc_peripherals.sv` clocks it from
 `clk_smc_i`), and is re-measured on demand.
+
+The three observation leaves of `held_out` (`smc_zeroer_busy_trigger_obs_test`,
+`smc_flr_counter_timing_obs_test`, `smc_bresp_evidence_obs_test`) pass today:
+each logs `OBS-*` lines for the value its specification issue (#3422, #3423,
+#3426) has to rule on and grades nothing about it. When the ruling lands the
+`OBS-*` line becomes a `CHK-*` grade and the leaf joins its feature testlist.
 
 ===== SV-UVM held-out scenarios
 
@@ -50429,6 +50458,9 @@ to make; its *Closes when* cell names the ruling that closes it.
 |`smc_cpu_mmio_read_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`: the wedge image is built with RISC-V GCC and picolibc, so no hosted-runner tier can run it. The two `smc_cpu_l2_*_wedge_test` leaves beside it in `cpu.toml` need no image and are enrolled in `hosted`; these two are not |Toolchain as above; the leaf then joins `hosted` alongside the L2 pair and this row closes
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |As above
 |`smc_ref_clock_timer_rate_test` |none |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It fails the rate comparison it was written to make: `clk_rst.adoc` places the OCTS system timer in the reference clock domain and `smc_peripherals.sv` clocks `system_timer_octs` from `clk_smc_i`, so TIMER_COUNT advances at the `clk_smc_i` rate. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
+|`smc_zeroer_busy_trigger_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records what a `CTRL_STATUS` trigger does while the zeroer is busy and grades nothing about it; #3422 asks the zeroer chapter and `zeroer_ctrl.rdl` for the rule |#3422 is ruled: the `OBS-ZEROER-BUSY` line becomes a `CHK-ZEROER-BUSY-TRIGGER` grade and the leaf joins its feature testlist
+|`smc_flr_counter_timing_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It measures the FLR pre-delay and hold on `clk_ref_i` and grades nothing about them; #3423 asks `reset_unit.rdl` to name the clock and the offset |#3423 is ruled: the `OBS-FLR` lines become `CHK-FLR-PRE-DELAY-CYCLES` and `CHK-FLR-HOLD-CYCLES` grades and the leaf joins `reset`
+|`smc_bresp_evidence_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records the write response of every declared past-extent and gap address and the merged BRESP of split two-beat writes, and grades nothing about them; #3426 asks for the merge rule |#3426 is ruled: the `OBS-BURST` lines become a `CHK-BURST-MERGE-RESP` grade and the leaf joins `fabric`
 |===
 
 `smc_rom.toml` is in the toolchain bucket: every leaf in it declares
@@ -50442,7 +50474,9 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 `dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Members: `smc_isolate_req_smc_lane_test`.
+Members: `smc_isolate_req_smc_lane_test`, `smc_wdt_timeout_zero_idle_test` (#3386),
+`smc_warm_domain_access_during_reset_test` (#3408), `smc_dfd_cla_irq_w2c_release_test`
+(#3389) and `smc_dfd_cla_clock_halt_release_test` (#3390).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in
