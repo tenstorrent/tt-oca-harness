@@ -333,7 +333,7 @@ vendor_package:
   # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
   - name: aou
     target_dir: "vendor/tenstorrent/aou/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "d8515cc9da2be57e881959483ab140095b3dcfc6" }
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "080724cadbed25fccf24a61ed893d40d7d6ab97c" }
     include_from_upstream:
       - "RTL"
       - "csr"
@@ -345,7 +345,7 @@ vendor_package:
   # the patches move from upstream's hw/ip/aou/dv to this tree.
   - name: aou-dv
     target_dir: "vendor/tenstorrent/aou/dv/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "d8515cc9da2be57e881959483ab140095b3dcfc6" }
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "080724cadbed25fccf24a61ed893d40d7d6ab97c" }
     include_from_upstream:
       - "hw/ip/aou/dv"
     patch_dir: "vendor/tenstorrent/aou/dv/patches"
