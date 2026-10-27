@@ -1118,7 +1118,7 @@ package, the owner's draw sentence).
 |===
 |Covergroup |Planned owner |What the owner adds
 |`smc_fabric_fcov::cg_sep_in_shape` |`smc_sep_in_axi_shape_test` |planned: the drawn AxSIZE x burst cells (`cp_awsize`, `cp_awburst` and their cross `x_size_burst`; the sampler has no burst-length point), and the zero-strobe cell of `cp_wstrb` through the existing explicit-strobe path (the `wstrb` of `SmcSysAxiItem`, which `smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`), which lifts the `cp_wstrb` `none` ignore bin of `cg_sep_in_shape` and retires the two Phase 2 rows on that cell (the `cp_wstrb` none row of the ignore table and the `c_sep_in_wstrb_none` row of the Phase 2 (not collected) table), both landing with the upgrade
-|`smc_clk_fcov::cg_clk_ratio` |`smc_clk_ratio_rand_test` |planned: the interior ratio cells over merged regressions
+|`smc_clk_fcov::cg_clk_ratio` (`cov/sv/smc_clk_fcov.sv`, under `ifndef VERILATOR`, so VCS only) |`smc_clk_ratio_rand_test` |planned: the interior ratio cells over merged regressions
 |`smc_dma_fcov::cg_dma_burst` |`smc_dma_transfer_matrix_rand_test` |planned: the drawn burst-length and strobe cells of the transfer matrix
 |===
 

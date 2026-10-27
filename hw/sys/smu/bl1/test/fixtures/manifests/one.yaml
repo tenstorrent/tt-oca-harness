@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# Unsigned host-test bundle: one SEP BL1 and one SMC BL1 entry. Paths are relative to the
+# host-test build directory, where the Makefile writes the image files.
+manifest_format: oca-classic
+manifest_identifier: "OCAHSMU"
+description: "SMU BL1 host-test bundle, one SMC BL1 entry"
+secure_boot: 0
+timestamp: 1764633600
+manifest_content_version:
+  major: 1
+  minor: 0
+  patch: 0
+payload_images:
+  - type: "OCAHSEP BLSTAGE1"
+    path: "sep_image.bin"
+    load_addr: 0xC0000000
+  - type: "OCAHSMC BLSTAGE1"
+    path: "smc_image.bin"
+    load_addr: 0xC0080000
+    entry_point: 0x40

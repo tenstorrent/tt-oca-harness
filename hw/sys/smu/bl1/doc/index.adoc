@@ -1,0 +1,303 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-bl1-contract]]
+= SMU First-Stage Boot Contract
+:toc: left
+:toclevels: 3
+:sectnums:
+
+[WARNING]
+====
+The reference first-stage bootloaders and this contract are works in progress and are not
+ready for production use.
+====
+
+[[smu-bl1-overview]]
+== Overview
+
+After the SEP Boot ROM authenticates a boot image, it starts SEP BL1. SEP BL1 is responsible
+for SMC hart 0's first mutable code, SMC BL1:
+
+. It finds the SMC BL1 image in the payload the ROM authenticated.
+. It makes sure SMC hart 0 is parked.
+. It copies the image into SMC SRAM and checks the copy.
+. It records a measurement.
+. It restarts hart 0 at the SMC BL1 entry point.
+. It waits for SMC BL1 to confirm, over a SEP host mailbox, that it is running.
+
+This chapter is the contract between the two stages, and between SEP BL1 and the SMC Boot
+ROM. `hw/sys/smu/bl1/include/smu_bl1_contract.h` encodes every value it names. Both BL1
+images include that header, and the BL1 build checks it against the SMC Boot ROM's own
+definitions.
+
+[[smu-bl1-address-views]]
+== Address views
+
+The SEP reaches SMC-local address _a_ at `0x4000_0000 + (_a_ - 0xC000_0000)`.
+
+[[smu-bl1-address-view-table]]
+.Addresses used across the contract
+[cols="3,2,2",options="header"]
+|===
+|Item |SMC-local |SEP view
+
+|SMC SRAM (1 MiB)
+|`0xC006_0000`
+|`0x4006_0000`
+
+|SMC `CPU_CTRL`
+|`0xC003_9000`
+|`0x4003_9000`
+
+|SMC `CHIP_CONFIG.LC_STATE`
+|`0xC000_290C`
+|`0x4000_290C`
+
+|SEP mailbox 0, outbound port (the SEP pushes)
+|SEP aperture + `0x10A0_0000`
+|`0x10A0_0000`
+
+|SEP mailbox 0, inbound port (the SMC pushes)
+|SEP aperture + `0x10A0_0800`
+|`0x10A0_0800`
+|===
+
+The SEP aperture is the base of the SEP's global window in the SMC address map. The integrator
+programs it; the reference value is `0x5000_0000`.
+
+[[smu-bl1-sram-layout]]
+== SMC SRAM layout
+
+All ranges are SMC-local and half-open.
+
+[[smu-bl1-sram-layout-table]]
+.SMC SRAM regions
+[cols="2,2,4",options="header"]
+|===
+|Region |Range |Rule
+
+|SEP zone
+|`[0xC006_6400, 0xC015_B000)`
+|Equal to the SEP-safe range the SMC Boot ROM publishes in coordination scratch 13 and 14.
+Excludes the ROM's own data, stack and status rings.
+
+|SMC BL1 image window
+|`[0xC008_0000, 0xC00C_0000)`
+|The manifest image range must lie inside it.
+
+|SMC BL1 writable window
+|`[0xC00C_0000, 0xC015_B000)`
+|SMC BL1 `.data`, `.bss` and stack. The SMC BL1 link fails if a writable section leaves it.
+|===
+
+SEP BL1 checks three nested ranges before it copies anything:
+
+* the manifest image range lies inside the image window;
+* the image window lies inside the SEP zone;
+* the SEP zone lies inside the SMC zone that the SMC Boot ROM publishes.
+
+A published SMC zone that differs from the SEP zone but still contains it is reported as a
+warning, and the boot continues.
+
+[[smu-bl1-boot-image]]
+== Boot image
+
+The payload of the signed boot manifest carries exactly one SMC BL1 image, with these TOC
+fields:
+
+* **Image type**: `"OCAHSMC BLSTAGE1"`: vendor string `OCAHSMC`, label `BLSTAGE1`.
+* **`load_addr`**: the SMC-local execution address, below 4 GiB and 8-byte aligned.
+* **`length`**: nonzero and a multiple of 4.
+* **`entry_point`**: an offset from `load_addr`, 4-byte aligned and below `length`. The
+  manifest format leaves the meaning of these fields to each image type; this contract fixes
+  it for the SMC BL1 type.
+
+The payload hash chain binds the image to the signed manifest, so the SEP Boot ROM has
+verified it before SEP BL1 runs. SEP BL1 checks the image's hash again after copying it into
+SMC SRAM, before handing it to the SMC, so the bytes the SMC executes are the bytes that were
+verified.
+
+The same packed image boots from SPI flash and from SMC SRAM.
+
+[[smu-bl1-park-interlock]]
+== SMC hart 0 park interlock
+
+An SMC core reset applies without draining the core's memory traffic, so a core must be
+quiesced before it is reset. The interlock lets SEP BL1 ask the SMC Boot ROM to quiesce hart 0.
+
+[[smu-bl1-park-registers]]
+.Park interlock registers
+[cols="2,2,4",options="header"]
+|===
+|Register |Location |Rule
+
+|Park request
+|SMC scratch 3 (`0x4003_9098` in the SEP view)
+|Written only by the SEP. `0x5052_4B31` requests a park; any other value does not. The SMC
+Boot ROM clears it on entry.
+
+|Hart 0 parked
+|SMC scratch 9, bit 4
+|Set only by the SMC Boot ROM's park routine, after the routine has written back its data
+cache. The ROM clears it on entry.
+|===
+
+The SMC Boot ROM stops hart 0 through one park routine. That covers the park after
+`AuthenticateImage`, each ROM halt, and a park on request. The routine:
+
+. completes outstanding memory accesses;
+. writes back and invalidates its data cache;
+. sets the parked bit;
+. disables interrupts and waits in `wfi`.
+
+The OCCP command loop checks the park request between commands.
+
+SEP BL1 parks hart 0 as follows:
+
+. If the parked bit is set, hart 0 is already quiescent and no reset is needed.
+. Otherwise, it writes the park request and waits up to 10 ms for the parked bit.
+. If the bit does not appear, it forces the park. It restarts hart 0 alone into the SMC Boot
+  ROM's secondary-hart `wfi` loop with a core reset pulse, and reports a park-forced warning.
+. In every case it then requires the SMC data accelerator to be idle.
+
+SEP BL1 clears the park request before it releases hart 0 into SMC BL1.
+
+[[smu-bl1-sequence]]
+== SEP BL1 sequence
+
+SEP BL1 performs these steps in order. Any failure before the release leaves the SMC
+unreleased.
+
+. **Warm-reset handler**: arm the handler, then validate the state the SEP Boot ROM handed
+  over.
+. **Secure-boot state**: re-derive it from the validated manifest, the live fuses, the
+  lifecycle and the chiplet-debug lock, and compare the result with what the ROM recorded. A
+  disagreement, or an SMC lifecycle register that differs from the SEP lifecycle, stops the
+  boot.
+. **Image and zones**: check the zones, then locate and check the SMC BL1 image.
+. **Park**: park hart 0 through the interlock.
+. **Stage**: copy the image into SMC SRAM with the secure DMA, read it back through the SEP's
+  window, and compare its hash with the verified hash.
+. **Measure**: extend the SMC BL1 measurement into soft-PCR slot 2.
+. **Re-check**: repeat the secure-boot state check.
+. **Open the mailbox**: drain SEP mailbox 0. Open one locked SEP inbound-filter entry that
+  admits the SMC to mailbox 0's inbound port only.
+. **Release**: clear the park request. Set `RESET_VECTOR[0]` to the SMC BL1 entry and pulse
+  hart 0 alone.
+. **Challenge**: send a fresh challenge on mailbox 0's outbound port.
+. **Confirm**: wait for the confirmation.
+. **Re-hash**: re-hash the image in SMC SRAM and compare it with the measurement.
+. **Restore**: set `RESET_VECTOR[0]` back to the SMC Boot ROM base, `0xC004_0000`.
+
+SEP BL1 writes `CPU_CTRL.RESET_CTRL` only with whole constant values:
+
+* `0x10F`: idle;
+* `0x11F`: pulse core 0;
+* `0x10E`: hold core 0.
+
+Before each SMC SRAM phase it requires `RESET_CTRL` to show the uncore out of reset. An uncore
+reset isolates the SMC cluster and would stall the SEP's accesses. SEP BL1 never writes
+`RESET_TIMEOUT`, which governs only uncore resets.
+
+If a step fails after the release, SEP BL1:
+
+* holds hart 0 in reset;
+* extends a failure record into slot 2;
+* reports the failure and stops.
+
+[[smu-bl1-smc-obligations]]
+== SMC BL1 obligations
+
+SMC BL1:
+
+* sets its own trap vector, stack and global pointer, because the SMC Boot ROM's start-up code
+  does not run for it;
+* copies its initialised data into the writable window and never writes inside its image
+  range;
+* pops the challenge from SEP mailbox 0 through the SEP aperture, then pushes the
+  confirmation;
+* leaves the SMC inbound filter, the SMC DMA and the log engine in their reset state;
+* reports progress in its POST word and status ring, then parks in `wfi` with interrupts
+  disabled.
+
+[[smu-bl1-messages]]
+== Challenge and confirmation
+
+Each mailbox entry carries its value in the low 32-bit half.
+
+[[smu-bl1-message-table]]
+.Mailbox 0 messages
+[cols="2,1,3",options="header"]
+|===
+|Message |Entry |Value
+
+.3+|Challenge, SEP to SMC (outbound port)
+|0 |`0x5345_5031` ("SEP1")
+|1 |challenge bits 31:0
+|2 |challenge bits 63:32
+
+.3+|Confirmation, SMC to SEP (inbound port)
+|0 |`0x534D_4331` ("SMC1")
+|1 |challenge bits 31:0
+|2 |challenge bits 63:32
+|===
+
+The challenge comes from the CSRNG, is sent only after the release, and is never written to
+SMC SRAM. SEP BL1 accepts only these three entries, in this order, within the time limit. The
+confirmation shows that SMC BL1 is running. The re-hash that follows audits the image range.
+Neither gates what the SMC executes.
+
+[[smu-bl1-time-limits]]
+== Time limits
+
+Both limits are measured on the SEP cycle counter, at the 100 MHz reference clock used when
+the PLL strap is clear:
+
+* the park request to the parked bit: 10 ms;
+* the release to the confirmation: 100 ms.
+
+Debug builds may shorten either limit for timeout tests. Release builds reject any change.
+
+[[smu-bl1-exit-state]]
+== State left for the next stage
+
+* **SEP inbound filter**: entry 15 admits the SMC to mailbox 0's inbound port, and is locked.
+* **SEP region size**: `SEP_REGION_SIZE` is `0x2000_0000`.
+* **SMC reset control**:
+** `RESET_VECTOR[0]` holds the SMC Boot ROM base;
+** the park request is cleared;
+** `RESET_TIMEOUT` is untouched.
+* **SMC harts**: hart 0 is parked in SMC BL1; harts 1 to 3 are in the SMC Boot ROM's `wfi`
+  loop.
+* **Measurements**: soft-PCR slots 0 to 2 are at SEP BL1's fixed DCCM state address.
+
+[[smu-bl1-residual-risk]]
+== Residual risk by lifecycle
+
+[[smu-bl1-residual-risk-table]]
+.What the contract does not cover
+[cols="2,5",options="header"]
+|===
+|Condition |Exposure
+
+|Any lifecycle, before the park
+|An external OCCP host can write SMC SRAM above the ROM's own area. SEP BL1 never trusts SMC
+SRAM contents: it copies from its own verified copy and checks the copy.
+
+|Forced park
+|Hart 0 is reset without quiescing. Its dirty cache data and in-flight writes are lost. That
+data is SMC-side and is never trusted.
+
+|TEST_DEV, RMA, security-disable, or after demotion
+|JTAG-to-AXI can write SMC SRAM between the copy check and the release. The post-confirmation
+re-hash detects a persistent change only after the fact.
+
+|Non-secure SMC lifecycle
+|The SMC Boot ROM itself accepts OCCP `ExecuteImage` and writes to `CPU_CTRL`. SEP BL1 provides
+integrity checking, measurement and reporting, but not exclusivity.
+
+|SEP debug lifecycles
+|The SEP inbound filter is bypassed, so SEP SRAM, including the authenticated payload, is
+writable from outside.
+|===
