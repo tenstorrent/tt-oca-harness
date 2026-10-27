@@ -78,8 +78,6 @@ void rom_boot_init(void) {
     irq_en.f.otp_sigint_en = 1;
     irq_en.f.exec_violation_en = 1;
     irq_en.f.rom_access_violation_en = 1;
-    /* Shipped builds leave the OTP-change source masked. A build that sets
-     * ROM_KM_OTP_CHANGE_EN_DEFAULT arms the informational handler at boot. */
     irq_en.f.otp_change_en = ROM_KM_OTP_CHANGE_EN_DEFAULT;
     rom_kmcsr_irq_status_clear(0xFFFFFFFF);
     rom_kmcsr_irq_enable_write(irq_en.w);
