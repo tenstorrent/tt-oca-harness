@@ -413,7 +413,7 @@ they leave out; the checker table of each linked entry is the full set.
 |Fabric reachability / address map |<<sep_axi_smoke_test,`sep_axi_smoke_test`>>, <<sep_address_map_test,`sep_address_map_test`>> |smoke, all, cpu_stub |`sep_axi_decode_cg` |`sep_axi_smoke_test`, `sep_address_map_test` (`sep_cpu_ctrl` + one CSR per LSU-reachable block, including ABR and entropy pool) |YES
 |Inbound filter (block-by-default, allow, `SEP_DBG`) |<<sep_lcc_uvm_inbound_filter_gating_test,`sep_lcc_uvm_inbound_filter_gating_test`>>, <<sep_fabric_inbound_filter_rule_matrix_test,`sep_fabric_inbound_filter_rule_matrix_test`>>, <<sep_fabric_inbound_filter_window_walk_test,`sep_fabric_inbound_filter_window_walk_test`>> |all, cpu_stub |`sep_inbound_filter_allow_cg` |`sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`, `sep_fabric_inbound_filter_window_walk_test` (every entry, full 56-bit bounds). Firmware must keep CFG outside allow windows. |YES on `sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`, `sep_fabric_inbound_filter_window_walk_test`
 |Outbound filter / live remap |<<sep_fabric_output_remap_datapath_proxy_test,`sep_fabric_output_remap_datapath_proxy_test`>>, <<sep_fabric_outbound_remap_filter_walk_test,`sep_fabric_outbound_remap_filter_walk_test`>>, <<sep_fabric_remap_filter_csr_bank_test,`sep_fabric_remap_filter_csr_bank_test`>> |all, cpu_stub |`sep_axi_decode_cg` |`sep_fabric_output_remap_datapath_proxy_test` (live), `sep_fabric_outbound_remap_filter_walk_test` (every region and entry, full 56-bit width, valid pass-through); CSR bank on `sep_fabric_remap_filter_csr_bank_test` |YES
-|CPU alias window (LSU + IFU) |<<sep_cpu_ifu_lsu_alias_remap_matrix_test,`sep_cpu_ifu_lsu_alias_remap_matrix_test`>> |all, cpu |None |The checker table of each entry named. |YES
+|CPU alias window (LSU + IFU) |<<sep_cpu_ifu_lsu_alias_remap_matrix_test,`sep_cpu_ifu_lsu_alias_remap_matrix_test`>> |all, cpu |None |The checker table of each entry named. `CHK-IFU-SINGLE-BEAT` grades AxLEN 0 on every IFU read on PR-IFU. `cp_master_ch[ifu_ar_101]` and `cp_cpu_single_beat[ifu_ar]` sample in owner window 764, from the CPU release to the end of the run. |YES
 |Mailbox → PIC |<<sep_mailbox_plic_test,`sep_mailbox_plic_test`>> |all, cpu |`sep_mailbox_pic_cg`, `sep_mailbox_channel_cg` |The checker table of each entry named. |YES
 |EL2 boot + ROM fetch / LSU |<<sep_hello_world_test,`sep_hello_world_test`>>, <<sep_cpu_trace_diag_test,`sep_cpu_trace_diag_test`>>, <<sep_boot_rom_smoke_test,`sep_boot_rom_smoke_test`>>, <<sep_boot_rom_lsu_read_test,`sep_boot_rom_lsu_read_test`>>, <<sep_rom_sanity_test,`sep_rom_sanity_test`>> |all, cpu |`sep_cpu_boot_cg`, `sep_boot_rom_cg` |The checker table of each entry named. |YES
 |VeeR CPU AXI port protocol (LSU, IFU, debug system bus, DMA slave) |<<sep_hello_world_test,`sep_hello_world_test`>>, <<sep_boot_rom_smoke_test,`sep_boot_rom_smoke_test`>>, <<sep_cpu_reset_entry_test,`sep_cpu_reset_entry_test`>>, <<sep_dma_basic_test,`sep_dma_basic_test`>> |all, cpu |None |Under `+cpu_boot` four `ocah_axi_sva` instances grade the AXI4 reset, handshake, X, burst, ID and response rules on the core side of each VeeR port, with SEP `rst_ni` as `aresetn`, in every `cpu` test (VCS); the named tests drive the LSU, IFU (boot ROM fetch), debug system-bus and DMA slave ports, and each fails when its port carries no AW or AR handshake. Protocol only, not data. |YES
@@ -911,7 +911,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM, and that every IFU read carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`).
+|Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM, that every IFU read carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`), and that every IFU read on PR-IFU is a single beat, AxLEN 0 (CHK-IFU-SINGLE-BEAT; `fabric.adoc`: the CPU masters issue single-beat transactions only).
 |<<sep_fabric_inbound_filter_rule_matrix_test,`sep_fabric_inbound_filter_rule_matrix_test`>>
 |2
 |no_cpu, real PROD fuse sense
@@ -1068,13 +1068,13 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, `+skip_fuse_sense`
 |CPU LSU firmware master, direct-address twin model
-|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, that with `SEP_LOCAL_BASE_ADDR` moved to a drawn base the moved alias of the scratch word and the SPI host `CSID` answers as its direct twin for a read and a write, and that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`). Extends the open alias matrix test with the unit classes, the window edges and a moved window base.
+|Proves that an address in the 768 MiB local alias window answers as its direct twin on the scratch, AES, system CSR, SPI host, entropy source and SRAM targets, that with `SEP_LOCAL_BASE_ADDR` moved to a drawn base the moved alias of the scratch word and the SPI host `CSID` answers as its direct twin for a read and a write, that every LSU read and write carries the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`), and that every LSU read and write on PR-LSU-XBAR and PR-LSU-ROM is a single beat, AxLEN 0 (CHK-CPU-SINGLE-BEAT). Extends the open alias matrix test with the unit classes, the window edges and a moved window base.
 
 |<<sep_fabric_dma_endpoint_matrix_test,`sep_fabric_dma_endpoint_matrix_test`>>
 |3
 |cpu, `+skip_fuse_sense`, SMC aperture plusargs
 |DMA firmware master, outbound filter source-ID model, request probes (observation taps), SMC aperture plusargs and SMC memory model (BH-SMC, added hook)
-|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends with a DMA interrupt; the end state is logged), gets a DMA bus error from the DECERR extension port, carries OTHERS (AxUSER zero in all 12 bits) on the AP path and a source ID that is not OTHERS with NS 1 on the SMU path, as the outbound source-ID stack shows, drives the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`) on every read and write, and that CPU beats carry a source ID that is not OTHERS, the same as the DMA beats on the SMU path (the number of SEP's ID is logged, because no specification states it). The SMC leg runs on every seed through BH-SMC, a top-port drive. Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
+|Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends with a DMA interrupt; the end state is logged), gets a DMA bus error from the DECERR extension port, carries OTHERS (AxUSER zero in all 12 bits) on the AP path and a source ID that is not OTHERS with NS 1 on the SMU path, as the outbound source-ID stack shows, drives the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`) on every read and write, and that CPU beats carry a source ID that is not OTHERS, the same as the DMA beats on the SMU path (the number of SEP's ID is logged, because no specification states it). The SMC leg runs on every seed through BH-SMC, a top-port drive. Also proves that a DMA read of the entropy pool, issued with the pool level 1 or more and below its depth (the test fills it through the external stream 2), does not reach the pool: the run ends with a DMA interrupt and pops nothing (CHK-DMA-NOTCONN), that a DMA write and read through AP region 0 and through two STEE regions leave on PR-OUT at {offset[55:19], address[18:0]} with AxUSER 0 and the NS that the path sets, both STEE NS values on every run (CHK-DMA-REMAP), that the CPU read, store and read-back on PR-SMC carry one source ID, equal to the SMU-path ID, with AxPROT 0b001 (CHK-DMA-SMC-CPU), and that a DMA write of an inbound filter `START_ADDR` lands while the entry is unlocked and answers DECERR with the word kept once it is locked (CHK-DMA-FILT-WR). Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only.
 |===
 
 [[phase2-mailbox-irq-pic]]
@@ -1172,7 +1172,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, +skip_fuse_sense
 |CPU FW, PIC register golden
-|Proves the PIC register map: reset to 0, read-back, entry 0 and holes read 0 and discard writes, and source 0 never takes an interrupt. The reset X check samples `pic_rd_data_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
+|Proves the PIC register map: reset to 0, read-back, entry 0 and holes read 0 and discard writes, and source 0 never takes an interrupt. Also proves that a write of 0 and of all ones to `meip[0]` with a held pending bit changes no bit (CHK-MEIP-WR) and that each store reaches the PIC as one write at the `meip[0]` offset on `pic_wr_probe_o` (CHK-MEIP-WR-STORE); the response of the write is logged (`OBS-PIC-MEIP-WR`). The reset X check samples `pic_rd_data_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
 |<<sep_pic_external_access_refuse_test,`sep_pic_external_access_refuse_test`>>
 |3
 |cpu with external SMN master, real PROD fuse sense
@@ -1182,7 +1182,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, +skip_fuse_sense
 |CPU FW, PIC priority golden
-|Proves that a pending source runs only when enabled, above the never priority and with `mstatus.MIE` set. Also proves that the highest effective priority runs first in either priority order and that no timer or software trap is taken.
+|Proves that a pending source runs only when enabled, above the never priority and with `mstatus.MIE` set. Also proves that the highest effective priority runs first in either priority order, that a tie at the top runs the lowest source ID first and every later delivery of a round follows the same order (CHK-WINNER, CHK-FLIP), that a source at the `meipt` threshold stays pending and one level above it is delivered (CHK-THRESHOLD), that with `meicurpl` set to the level of the running handler a source at that level waits and one level above nests (CHK-NEST), that each internal timer traps with its own cause only with its `mie.MITIE` bit set and not through `mie.MTIE` or `mie.MSIE` (CHK-INT-TIMER-HOLD, CHK-INT-TIMER-TRAP), and that no timer or software trap is taken.
 |<<sep_pic_pending_map_walk_rand_test,`sep_pic_pending_map_walk_rand_test`>>
 |3
 |cpu, +skip_fuse_sense, +esrc_noise_force
@@ -1202,7 +1202,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, +skip_fuse_sense
 |CPU FW
-|Proves that a bark jumps to the programmed or the reset vector, is not masked by `mstatus.MIE` or the PIC state, and moves no pending bit.
+|Proves that a bark jumps to the programmed or the reset vector, is not masked by `mstatus.MIE` or the PIC state, and moves no pending bit. Also proves that a bark fired while an external-interrupt handler waits is taken once inside that handler (CHK-NMI-IN-EXT); the return path after that NMI is not graded. `mstatus.MPIE` at the NMI entry is logged (`OBS-NMI-MPIE`) and not graded, because no cited specification states it.
 |===
 
 [[sep-vplan-summary-4]]
@@ -1487,13 +1487,13 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |3
 |cpu and no_cpu (full-CPU build, core held), VCS only
 |DTM shifter and TAP pins (added hook), `dmi_core_enable_i` and `dmi_uncore_enable_i` inputs (added hook), debug master port observation taps
-|Proves that the debug-module AXI master reaches the SEP fabric through the DMI core aperture only while `dmi_core_enable_i` is high, that the uncore outputs stay inactive while `dmi_uncore_enable_i` is low, and that `dbg_rstb_i` resets the debug module without a CPU or SEP reset.
+|Proves that the debug-module AXI master reaches the SEP fabric through the DMI core aperture only while `dmi_core_enable_i` is high, that the uncore outputs stay inactive while `dmi_uncore_enable_i` is low, and that `dbg_rstb_i` resets the debug module without a CPU or SEP reset. Also proves that the debug master writes and reads the reset controller `SW_RESET_N` and the SPI host `CSID` (CHK-DBG-SBA), reads the entropy-pool `STATUS` without changing it and gets SLVERR on a pool write (CHK-DBG-POOL-RD, CHK-DBG-POOL-WR), reaches the extension port and returns the reply of the port (CHK-DBG-EXT), does not reach the boot ROM or the CPU TCM (CHK-DBG-NC), passes the AP and STEE output remaps with AxUSER 0 and the NS that the path sets (CHK-DBG-REMAP), and drives AxPROT 0b001 on every request (CHK-DBG-AXPROT).
 
 |<<sep_cpu_isa_pmp_csr_test,`sep_cpu_isa_pmp_csr_test`>>
 |3
 |cpu
 |CPU firmware, CPU trace port, architectural instruction table
-|Proves that the core executes M, C, Zba, Zbb and Zbc instructions and that Zbs is illegal, that the 16 PMP address entries do not alias, that `mrac` grants no permission, and that the trace port matches `minstret`. Extends the open ROM and trace tests with those cells only. Zbe execution is graded by `sep_cpu_zbe_exec_test`.
+|Proves that the core executes M, C, Zba, Zbb and Zbc instructions and that Zbs is illegal, that the 16 PMP address entries do not alias, that `mrac` grants no permission, and that the trace port matches `minstret`. Extends the open ROM and trace tests with those cells only. Zbe execution is graded by `sep_cpu_zbe_exec_test`. On VCS it also proves that `lockstep_status_o` reads 0 while `lockstep_ctrl_i` takes each of its four values over retired instructions (CHK-LOCKSTEP-INERT).
 
 |<<sep_cpu_zbe_exec_test,`sep_cpu_zbe_exec_test`>>
 |3
@@ -2720,7 +2720,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |DMA and CPU debug not-connected response
 |What bus response code does the DMA receive on its not-connected cells (DMA CSR, entropy pool, boot ROM), and what does the CPU debug master receive on its not-connected cells (boot ROM, CPU TCM)? No DMA path reaches these targets (`hw/sys/sep/doc/assets/sep_axi_connectivity.svg`), and a bus error response ends the transfer with `STATUS.ERROR` and `ERROR_CODE.BUS_ERROR` (`secure_dma.adoc`; OpenTitan DMA `programmers_guide.md`, "Error Condition"), but no spec sentence states that the fabric answers such a request with an error.
-|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN) grades that the request does not reach the target and that each run ends with a DMA interrupt; the end state (`STATUS`, `ERROR_CODE`) is logged as `OBS-DMA-NOTCONN-RESP`. The rom_dst leg grades the PR-ROM silence and the dma_csr_src leg grades the PR-DMACSR silence, and PR-ROM and PR-DMACSR are observation taps the test adds to the SEP_TB_ARCH observation-probe list
+|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN) grades that the request does not reach the target and that each run ends with a DMA interrupt; the end state (`STATUS`, `ERROR_CODE`) is logged as `OBS-DMA-NOTCONN-RESP`. The rom_dst leg grades the PR-ROM silence and the dma_csr_src leg grades the PR-DMACSR silence, and PR-ROM and PR-DMACSR are observation taps the test adds to the SEP_TB_ARCH observation-probe list. The pool_src leg needs a pool level of 1 or more and below the 32-entry depth before the GO (precondition `CTL-DMA-POOL-PRE`; the test sends fewer word pairs than the depth on the external stream 2), stops the pool fill before the GO, shows the DMA read on the DMA master tap `dma_axi_req_probe_o`, keeps the staged SRAM word and leaves the level equal to the level before the GO
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Initiator arbitration and outstanding limits
 |What is the arbitration policy between the five initiators, the outstanding limit per initiator and per target, and the starvation rule?
@@ -2740,7 +2740,7 @@ the test does.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Source ID value of the CPU masters
 |What is the numeric value of `SepSourceId`? The OTHERS value of zero is used only for remapped and DMA traffic.
-|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-SMC) grades that the CPU beats on PR-OUT carry a source ID AxUSER[3:0] other than 0 and that the CPU beats on PR-SMC carry an AxUSER other than 0, the value of OTHERS (`fabric.adoc`, "Transaction Routing": the CPU masters drive SEP's ID), and logs the value. On the SMU path, which sets SEP's ID, `sep_fabric_outbound_route_attr_test` (CHK-OUT-CAPTURE), `sep_fabric_filter_match_priority_rand_test` (CHK-FILTER-SRC) and `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER) grade that AxUSER[3:0] is not 0 and is one value per leaf, and log the value.
+|`sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-SMC) grades that the CPU beats on PR-OUT carry a source ID AxUSER[3:0] other than 0 and that the CPU beats on PR-SMC carry an AxUSER other than 0, the value of OTHERS (`fabric.adoc`, "Transaction Routing": the CPU masters drive SEP's ID), and logs the value. On the SMU path, which sets SEP's ID, `sep_fabric_outbound_route_attr_test` (CHK-OUT-CAPTURE), `sep_fabric_filter_match_priority_rand_test` (CHK-FILTER-SRC) and `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER) grade that AxUSER[3:0] is not 0 and is one value per leaf, and log the value. CHK-DMA-SMC-CPU grades that every CPU beat on PR-SMC carries one AxUSER[3:0] value, equal to the SMU-path value of CHK-DMA-USER, with AxPROT 0b001.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Overlapping alias remap entries
 |Which entry applies when two or more valid alias remap entries cover one address? No draw overlaps valid entries.
@@ -2800,7 +2800,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Tie-break among equal-priority enabled sources
 |Which source wins among equal-priority enabled sources? (`hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc`, `meipl` states no tie-break.)
-|-
+|`sep_pic_priority_gate_rand_test` (CHK-WINNER) grades the lowest source ID first on a tie, the rule of the VeeR EL2 PRM section 8.3.3 (cited at `hw/sys/sep/doc/cpu.adoc:22-23`)
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |`meigwclr` write to a level source
 |What does a `meigwclr[N]` write do to a level-configured source? (`el2_pic.adoc`, `meigwctrl` names edge sources only.)
@@ -2824,7 +2824,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Running priority, claim and complete, nesting
 |Does the PIC have a running-priority threshold, a claim and complete register, or a nesting rule? (`hw/sys/sep/doc/interrupts.adoc`, "Software Handling" says "and related registers"; `el2_pic.adoc` lists none.)
-|-
+|`sep_pic_priority_gate_rand_test` grades the `meipt` threshold (CHK-THRESHOLD) and nesting through `meicidpl` and `meicurpl` (CHK-NEST) against the VeeR EL2 PRM sections 8.8, 8.12.5, 8.12.9 and 8.12.10 (cited at `hw/sys/sep/doc/cpu.adoc:22-23`). The claim and complete registers are not graded
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Width and mapping of `extintsrc_req_i`
 |What is the width of `extintsrc_req_i`, and which bit drives which of sources 44 to 255? (`hw/sys/sep/doc/interrupts.adoc`; `hw/sys/sep/doc/port_table.adoc`.)
@@ -2840,7 +2840,15 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Order of bark against a takeable PIC interrupt
 |Is a bark or a takeable PIC interrupt taken first, and does an NMI preempt a running external handler? (`hw/sys/sep/doc/interrupts.adoc`, "NMI — Watchdog Timer Bark".)
-|-
+|`sep_nmi_vector_bark_rand_test` (CHK-NMI-IN-EXT) grades the preempt part: a bark fired while an external handler waits is taken once inside that handler (VeeR EL2 PRM section 3.16, cited at `hw/sys/sep/doc/cpu.adoc:22-23`). The order of a bark against a takeable PIC interrupt is not graded
+|<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
+|`mstatus` at NMI entry
+|Does an NMI entry update `mstatus.MPIE` and `mstatus.MIE`, and to what values? `hw/sys/sep/doc/interrupts.adoc` ("NMI — Watchdog Timer Bark") and VeeR EL2 PRM section 3.16 (cited at `hw/sys/sep/doc/cpu.adoc:22-23`) state no `mstatus` update on NMI entry.
+|`sep_nmi_vector_bark_rand_test` logs `mstatus.MPIE` read in the NMI handler with `mstatus.MIE` read back right before the bark (`OBS-NMI-MPIE`); no check and no bin depends on it
+|<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
+|Internal-timer trap latency
+|How many core clocks after an internal timer reaches its bound (`mitcnt` >= `mitb`) may the trap be taken? VeeR EL2 PRM chapter 6, Internal Timers (cited at `hw/sys/sep/doc/cpu.adoc:22-23`), states the compare and the count rate, and no trap latency.
+|`sep_pic_priority_gate_rand_test` (CHK-INT-TIMER-TRAP) grades that the trap comes at least `mitb` clocks after the enable and, with the timer stopped, that `mitcnt` one below `mitb` takes no trap and `mitcnt` at `mitb` takes one; it logs the clocks past the bound (`OBS-INT-TIMER-TRAP-LATENCY`), and no check and no bin depends on them
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Boundary input reach
 |Which bits of the boundary input `extintsrc_req_i` can an off-SEP driver assert, and can any reach sources 1 to 43? (`hw/sys/sep/doc/interrupts.adoc`; `hw/sys/sep/doc/port_table.adoc`.)
@@ -2852,7 +2860,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>; <<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Arming of internal timers
 |Which CSRs arm the two internal timers (`mip.MITIP0`, `mip.MITIP1`), and what does "linked" mean? They are not in the specification set. (`hw/sys/sep/doc/interrupts.adoc`, "Timer and Software Interrupts".)
-|-
+|`sep_pic_priority_gate_rand_test` arms both timers through the CSRs of the VeeR EL2 PRM chapter 6, Internal Timers (cited at `hw/sys/sep/doc/cpu.adoc:22-23`), and grades the cause, the `mie.MITIE` gate and the bound: no trap with the timer stopped at one below `mitb`, one trap at `mitb` (CHK-INT-TIMER-HOLD, CHK-INT-TIMER-TRAP). The linked mode is not graded
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Source 13
 |What does source 13 aggregate, when `hw/sys/sep/doc/interrupts.adoc` calls it the WDT aggregated alert and `hw/sys/sep/doc/watchdog.adoc` says the alert outputs are left unconnected?
@@ -2876,7 +2884,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |The response to a write of the read-only `meip` register is not stated, and the read and write behaviour of the reserved bits of the PIC registers is not stated.
 |What response does a write to the read-only `meip` register get, and what do the reserved bits of the PIC registers read and write as? Source: `hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc` (`meip`, access types).
-|`sep_pic_reg_rand_test` does not write `meip` or the reserved bits: the specification does not state the response or the reserved-bit behaviour.
+|`sep_pic_reg_rand_test` writes 0 and all ones to `meip[0]` with a held pending bit and grades that no bit changes (CHK-MEIP-WR; `meip` is read-only, `el2_pic.adoc`) and that each store reaches the PIC (CHK-MEIP-WR-STORE, one write at the `meip[0]` offset on `pic_wr_probe_o`); the response of the write is logged (`OBS-PIC-MEIP-WR`). It does not write the reserved bits: the specification does not state the reserved-bit behaviour.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |An external access to a Secure DMA, OTBN, HMAC or KMAC hole may or may not latch the `PERIPH_BUS_ERR_STATUS` or `reg_path_err` bit.
 |Do the interrupts and `sep_cpu_ctrl` documents cover external accesses, or CPU accesses only? Source: `hw/sys/sep/doc/interrupts.adoc`; `hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc` (`PERIPH_BUS_ERR_STATUS`).
@@ -2995,8 +3003,12 @@ the test does.
 |-
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Lockstep status
-|What does `lockstep_status_o` report for a `lockstep_ctrl_i` value? The core build disables lockstep, so no control input can move the status, and a check on the constant status cannot fail (`hw/sys/sep/doc/cpu.adoc`, Processor Core; `hw/sys/sep/doc/port_table.adoc`).
-|-
+|What does `lockstep_status_o` report for a `lockstep_ctrl_i` value? The core build disables lockstep (`hw/sys/sep/doc/cpu.adoc`, Processor Core), and the status reads 0 and the control is inert unless the core is built with `RV_LOCKSTEP_ENABLE` (`hw/sys/sep/doc/port_table.adoc`).
+|`sep_cpu_isa_pmp_csr_test` (CHK-LOCKSTEP-INERT, VCS only) holds each of the four `lockstep_ctrl_i` values over retired instructions and grades `lockstep_status_o` 0 on every clock. The check fails on a lockstep-enabled build or on a status tied to a control bit
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|`lockstep_ctrl_i` bit layout
+|Which bit of `lockstep_ctrl_i` is the corruption-detection disable and which is the error-injection enable? `hw/sys/sep/doc/port_table.adoc:58` names the two controls and states no bit position.
+|`sep_cpu_isa_pmp_csr_test` names the bits by position only and logs the width of `lockstep_ctrl_i` (`OBS-LOCKSTEP-LAYOUT`); the walk drives all four values, and no check or bin depends on which bit holds which control
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Halt and run request combinations
 |What is the priority, combination and pulse-width rule for the halt and run requests?
@@ -3704,7 +3716,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |CPU debug master column of the connectivity matrix
 |No fabric Phase 3 entry drives the debug master, and no probe names its initiator.
 |ADD-PORT
-|The JTAG and DMI system-bus driver of `sep_debug_master_target_matrix_test` (a top-port drive of the JTAG pins with `dmi_core_enable_i` high, an added hook) gives the stimulus for this column and for the debug cells of the extension window reach and of the AP and STEE reach. No fabric Phase 3 entry uses it for these cells.
+|The JTAG and DMI system-bus driver of `sep_debug_master_target_matrix_test` (a top-port drive of the JTAG pins with `dmi_core_enable_i` high, an added hook) gives the stimulus for this column and for the debug cells of the extension window reach and of the AP and STEE reach. Its `_sba` entry uses it for the extension window cells (CHK-DBG-EXT) and the AP and STEE cells (CHK-DBG-REMAP).
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |CPU TCM backdoor and the core-internal ICCM and DCCM path
 |`sep_cpu_tcm_req_o` carries both the core path and the backdoor.
@@ -3719,7 +3731,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |DMA unreachability of the entropy pool
 |No request probe on the entropy pool target.
 |ACCEPT-PROBE
-|A read-only probe on the entropy pool target request gives the observation, and no test adds it. `sep_fabric_dma_endpoint_matrix_test` does not use the pool as a DMA target.
+|A read-only probe on the entropy pool target request gives the observation, and no test adds it. `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-NOTCONN, pool_src leg) grades the DMA side without it: with the pool level 1 or more and below its depth, the DMA read shows on the DMA master tap `dma_axi_req_probe_o`, the run ends with a DMA interrupt (its end state is logged as `OBS-DMA-NOTCONN-RESP`), the staged SRAM word stays and, with the pool fill stopped before the GO, the pool level after the run equals the level before it.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Alarm AGP
 |Structural absence of the Alarm AGP.
@@ -3759,7 +3771,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Outbound request fields at `smn_outbound_axi_req_o`
 |AW and AR fields (address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxBURST) and the W beats (data, strobe, last, W user) of `smn_outbound_axi_req_o`. The net `smn_outbound_req_w` exists and no port exports it.
 |ACCEPT-PROBE
-|PR-OUT is an observation tap. The always-ready outbound responder answers OKAY and shows nothing of the request. Checks that use it: CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT and CHK-OUT-NOEXTRA of `sep_fabric_outbound_route_attr_test`, the supplement and the SMU source ID of CHK-FILTER-SRC of `sep_fabric_filter_match_priority_rand_test`, CHK-DMA-USER and CHK-DMA-PAIR of `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`, and CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`.
+|PR-OUT is an observation tap. The always-ready outbound responder answers OKAY and shows nothing of the request. Checks that use it: CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT and CHK-OUT-NOEXTRA of `sep_fabric_outbound_route_attr_test`, the supplement and the SMU source ID of CHK-FILTER-SRC of `sep_fabric_filter_match_priority_rand_test`, CHK-DMA-USER, CHK-DMA-PAIR and CHK-DMA-REMAP of `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`, CHK-IFU-NEVER of `sep_cpu_demux_unmapped_fetch_test`, and CHK-DBG-REMAP of `sep_debug_master_target_matrix_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Extension port request at `axi_extension_axi_req_o` and reply at `axi_extension_axi_resp_i`
 |Address, AxSIZE, AxLEN, strobe and data of the extension port request; code, read data and RLAST of each reply beat
@@ -3789,7 +3801,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |SMC outbound request at `sep_ext_to_smc_axi_req_o`
 |The request to the SMC outbound port
 |ACCEPT-PROBE
-|PR-SMC is an observation tap. The SMC route also needs BH-SMC, an added hook (top-port drive, <<sep-vplan-phase3-added-hooks>>). Checks that use PR-SMC and BH-SMC: `sep_fabric_smc_route_test` (CHK-SMC-ATTR included) and CHK-DMA-SMC of `sep_fabric_dma_endpoint_matrix_test`.
+|PR-SMC is an observation tap. The SMC route also needs BH-SMC, an added hook (top-port drive, <<sep-vplan-phase3-added-hooks>>). Checks that use PR-SMC and BH-SMC: `sep_fabric_smc_route_test` (CHK-SMC-ATTR included) and CHK-DMA-SMC and CHK-DMA-SMC-CPU of `sep_fabric_dma_endpoint_matrix_test`.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |DMA CSR target request
 |The request at the DMA CSR target port
@@ -3855,6 +3867,11 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |A read-only copy of the PIC register read data (`picm_rd_data`) at each PIC register read, four-state on VCS
 |ACCEPT-PROBE
 |`pic_rd_data_probe_o` is an observation tap the test adds to the SEP_TB_ARCH observation-probe list. It anchors CHK-RESET-X of `sep_pic_reg_rand_test` and the `meip` X part of CHK-BASE in `sep_pic_pending_map_walk_rand_test`.
+|<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
+|A CPU store to the read-only `meip[0]` that reaches the PIC
+|A read-only copy of the PIC register write strobe and offset (`picm_wren_ff`, `picm_waddr_ff[14:0]`) on each clock
+|ACCEPT-PROBE
+|`pic_wr_probe_o` is an observation tap the test adds to the SEP_TB_ARCH observation-probe list. A store to `meip` changes no register, so the write strobe is the only sign that it reached the PIC. It anchors CHK-MEIP-WR-STORE of `sep_pic_reg_rand_test`.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Boundary interrupt input `sep_ext_interrupts_i`, tied to 0 in `tb_top.sv`
 |A drive of one or two bits of the input from the test
@@ -4372,7 +4389,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |PR-OUT
 |Read-only probe
 |AW and AR fields (address, ID, AxUSER, AxCACHE, AxPROT, AxLEN, AxBURST) and W beats (data, strobe, last, W user) of `smn_outbound_axi_req_o`. The net `smn_outbound_req_w` exists and no port exports it.
-|`sep_fabric_outbound_route_attr_test` (CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT, CHK-OUT-NOEXTRA), `sep_fabric_filter_match_priority_rand_test` (supplement, CHK-FILTER-SRC), `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-PAIR), `sep_fabric_smc_route_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER)
+|`sep_fabric_outbound_route_attr_test` (CHK-OUT-ROUTE, CHK-OUT-CAPTURE, CHK-OUT-HIBIT, CHK-OUT-NOEXTRA), `sep_fabric_filter_match_priority_rand_test` (supplement, CHK-FILTER-SRC), `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-USER, CHK-DMA-PAIR, CHK-DMA-REMAP), `sep_fabric_smc_route_test`, `sep_cpu_demux_unmapped_fetch_test` (CHK-IFU-NEVER), `sep_debug_master_target_matrix_test` (CHK-DBG-REMAP)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-EXT
 |Read-only probe
@@ -4402,7 +4419,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |PR-SMC
 |Read-only probe
 |`sep_ext_to_smc_axi_req_o`.
-|`sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-SMC)
+|`sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-SMC, CHK-DMA-SMC-CPU)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |PR-DMACSR
 |Read-only probe
@@ -4423,6 +4440,11 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Read-only probe
 |A copy of the PIC register read data (`picm_rd_data`) at each PIC register read, four-state on VCS.
 |`sep_pic_reg_rand_test` (CHK-RESET-X), `sep_pic_pending_map_walk_rand_test` (the `meip` X part of CHK-BASE)
+|<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
+|`pic_wr_probe_o`
+|Read-only probe
+|A copy of the PIC register write strobe and offset (`picm_wren_ff`, `picm_waddr_ff[14:0]`) on each clock.
+|`sep_pic_reg_rand_test` (CHK-MEIP-WR-STORE)
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>; <<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |`sep_cpu_ctrl_err_pulse_probe_o`
 |Read-only probe
@@ -4506,8 +4528,8 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`dbg_sb_req` and `dbg_sb_rsp`
 |Read-only tap
-|The system-bus master port of the debug module: ID bits, AxSIZE, AxLEN, W strobes and beat shape.
-|`sep_debug_master_target_matrix_test` (CHK-DBG-SBA), `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
+|The system-bus master port of the debug module: ID bits, AxSIZE, AxLEN, AxPROT, W strobes and beat shape.
+|`sep_debug_master_target_matrix_test` (CHK-DBG-SBA, CHK-DBG-POOL-RD, CHK-DBG-POOL-WR, CHK-DBG-EXT, CHK-DBG-NC, CHK-DBG-REMAP, CHK-DBG-AXPROT), `sep_cpu_reset_entry_test` (CHK-WDT-STORE-RESP)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |PR-DBG-IN and PR-DBG-OUT
 |Read-only tap
@@ -4523,6 +4545,11 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |Read-only tap
 |DUT outputs that are open in the DUT instance.
 |`sep_debug_master_target_matrix_test`
+|<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|`dmi_req_probe_o`
+|Read-only tap
+|The DMI request of the core debug transport module before the core and uncore mux (`dmi_en`, `dmi_wr_en` and `dmi_addr` of `u_el2_veer_wrapper`). Tied to 0 on the CPU-stub build.
+|`sep_debug_master_target_matrix_test` (CHK-DMI-GATE, CHK-DMI-UNCORE)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Clock-gater test pins and AXI cell test inputs
 |Read-only tap
@@ -4711,7 +4738,7 @@ use it" names the entries whose checks need the hook.
 |Top-port drive
 |A drive of `smc_global_base_addr_i` and `smc_region_size_i`, from plusargs or from the leaf before reset release, and an SMC responder on `sep_ext_to_smc_axi`, in the `lsu_stub_all_live` target and in the `cpu` run mode of `sep_fabric_dma_endpoint_matrix_test`. The default bench ties the aperture inputs to 0.
 |`smc_global_base_addr_i`, `smc_region_size_i`, `sep_ext_to_smc_axi_resp_i`
-|`sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-SMC)
+|`sep_fabric_smc_route_test`, `sep_fabric_dma_endpoint_matrix_test` (CHK-DMA-SMC, CHK-DMA-SMC-CPU)
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Extension port responder
 |Top-port drive
