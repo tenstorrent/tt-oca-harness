@@ -1900,9 +1900,11 @@ module smu_wrapper_uvm_top
   // reset, so the SEP-driven VALIDs are X until then.
   //
   // MAX_OUTSTANDING on the inbound path (u_smu_in_axi_sva,
-  // u_xbar_ext_in_axi_sva, u_xbar_smc_in_axi_sva) sizes the checker's write
-  // tracking, which holds 2 * MAX_OUTSTANDING open writes: the inbound window
-  // sweep keeps up to 34 writes open on the external inbound port.
+  // u_xbar_ext_in_axi_sva, u_xbar_smc_in_axi_sva, u_xbar_sep_in_axi_sva)
+  // sizes the checker's write tracking, which holds 2 * MAX_OUTSTANDING open
+  // writes: the inbound window sweep keeps up to 34 writes open on the
+  // external inbound port, and the SEP aperture leaf up to 36 on the
+  // crossbar SEP port.
   //
   // The rules grade on VCS only: both Verilator targets pass ASSERTS_OFF and
   // no --assert. The handshake counters below count the AW and AR handshakes
@@ -2019,10 +2021,11 @@ module smu_wrapper_uvm_top
   );
 
   ocah_axi_sva #(
-    .IS_LITE    (1'b0),
-    .ADDR_WIDTH (56),
-    .DATA_WIDTH (64),
-    .ID_WIDTH   (10)
+    .IS_LITE         (1'b0),
+    .ADDR_WIDTH      (56),
+    .DATA_WIDTH      (64),
+    .MAX_OUTSTANDING (32),
+    .ID_WIDTH        (10)
   ) u_xbar_sep_in_axi_sva (           // crossbar target port: SEP
     .en_i (`SMU_AXI_SVA_ON),
     `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.sep_in_req_o,

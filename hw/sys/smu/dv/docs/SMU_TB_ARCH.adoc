@@ -157,9 +157,7 @@ handshake. Protocol, not data.
   the SEP watchdog and `sep_reset_n` behind the SEP ports, are outside
   `aresetn`: no reset rule grades them, and a transaction open at one of
   them stays in the checker's outstanding tracking until the next primary
-  reset. `MAX_OUTSTANDING` is 32 on `u_xbar_ext_in_axi_sva` and 16 on
-  `u_xbar_smc_in_axi_sva`, sized for the inbound window sweep, which keeps
-  up to 34 writes open on the external inbound port.
+  reset. `MAX_OUTSTANDING` is 32 on `u_xbar_ext_in_axi_sva` and `u_xbar_sep_in_axi_sva` and 16 on `u_xbar_smc_in_axi_sva`, sized for the inbound window sweep, which keeps up to 34 writes open on the external inbound port, and for the SEP aperture leaf, which keeps up to 36 open on the crossbar SEP port.
 * *SMU boundary AXI SVA* -- `u_smu_in_axi_sva` on `smu_axi_in_req` /
   `smu_axi_in_resp`, which also grades the bench master, and
   `u_smu_out_axi_sva` on `smu_axi_out_req` / `smu_axi_out_resp`, which also
