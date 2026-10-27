@@ -196,10 +196,10 @@ passing run logs the same summary at info level in `report_phase`.
 === Coverage Strategy
 
 `SMU_FCOV.adoc` owns coverage intent: the metric choice, the `cov/sv`
-cover-property modules, and what the plan may claim from a database. Verilator
-does not compile SystemVerilog covergroups, so `smu_fcov.py` records
-scenario intent Python-side -- `run_phase` marks the bins a testcase claims
-before the scoreboard checks -- and that table is not coverage.
+cover properties and covergroups, and what the plan may claim from a
+database. `smu_fcov.py` records scenario intent Python-side -- `run_phase`
+marks the bins a testcase claims before the scoreboard checks -- and that
+table is not coverage.
 
 === Open-Source BFM Policy
 
