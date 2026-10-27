@@ -200,9 +200,11 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         provide the zeroer's downstream back-pressure. A DMA job on the same
         accelerator master port runs alongside, and the responder stalls AW and
         W in bounded repeating windows; the zeroer must be seen holding a data
-        beat with WVALID up and WREADY low while the responder refuses that
-        same beat on the output port, the job must still clear both halves
-        without touching the witness, and every DMA repetition must land.
+        beat with WVALID up and WREADY low while the responder refuses a zeroer
+        beat on the output port (the input mux and the output cut buffer W
+        between the two, so the refused beat may be an older one), the job must
+        still clear both halves without touching the witness, and every DMA
+        repetition must land.
 
         The accelerator mux hands WREADY to the port whose write heads its W
         order FIFO (axi_mux.sv), so the DMA job's beats hold the zeroer's
@@ -279,7 +281,7 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
             )
         assert self.w_stall_responder_cycles > 0, (
             "the zeroer never held WVALID high with WREADY low in a cycle where the output "
-            "responder refused its all-zero beat, so the responder's stall did not reach the "
+            "responder refused a zeroer beat, so the responder's stall did not reach the "
             f"data phase ({self.w_stall_cycles} zeroer W stall cycles in all, the rest owed to "
             "the DMA job holding the mux's W order)"
         )
@@ -297,7 +299,7 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
             "CHK-ZEROER-BACKPRESSURE: with a %d-repetition DMA job contending for the "
             "accelerator master port and the output responder stalling AW and W for %d-cycle "
             "windows, the zeroer held WVALID high against WREADY low for %d clk_smc_i "
-            "cycle(s) in which the responder refused its all-zero beat on the output port "
+            "cycle(s) in which the responder refused a zeroer (all-zero) beat on the output port "
             "(%d zeroer W stall cycles in all, the rest owed to the DMA job heading the mux's "
             "W order; AWVALID against AWREADY low for %d: the mux's AW spill register takes "
             "the address); the job still zeroed all %d probe words with the witness word "
