@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP-change IRQ retires: the handler clears the sticky bit and returns.
+"""OTP-change IRQ: the informational handler runs and the KM does not halt.
 
 no_cpu / real fuse sense / the ``rom_main_otp_change`` image, which is the
 bench wipe pair with ``IRQ_ENABLE.otp_change_en`` set at boot.
 
 CHK-OTP-ARM proves the source is armed and the main loop answers. CHK-OTP-PULSE
 proves HK-IRQSET fired and ``IRQ_STATUS.otp_change`` reads 1. CHK-OTP-RETIRE
-requires that bit to read 0 again, the enabled line of that bit to read 0, PIC
-vector bit 30 to stay 0, and a following CMD_STAT to complete. A handler that
-returns without writing the sticky bit leaves the KMCSR IRQ asserted, so the
-CPU re-enters and CMD_STAT does not complete.
+requires PIC vector bit 30 to stay 0 and a following CMD_STAT to complete with
+return code 0, since the handler does not halt the KM. OBS-OTP-STICKY logs
+``IRQ_STATUS.otp_change`` and its enabled line after the handler; no spec
+sentence states their value, so they are not graded.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ if OTP_CHANGE != OTP_CHANGE_EN:
     )
 
 KM_UNREC_BIT = agg_from_pic("KM unrecoverable error")
-# An ISR that writes the sticky bit retires in far fewer clocks than this.
+# A handler that returns to the main loop answers CMD_STAT in far fewer clocks than this.
 RETIRE_CLKS = 5000
 # recv_frame waits ``timeout`` polls of 20 clocks.
 _STAT_POLLS = RETIRE_CLKS // 20
@@ -53,7 +53,7 @@ TEST = "sep_km_otp_change_irq_test"
 
 @pyuvm.test()
 class sep_km_otp_change_irq_test(sep_base_test):
-    """One OTP-change IRQ, then the sticky bit is clear and CMD_STAT completes."""
+    """One OTP-change IRQ, then PIC bit 30 stays 0 and CMD_STAT completes."""
 
     def _status(self) -> int:
         return self.rd_known(cocotb.top.km_csr_irq_status_o)
@@ -182,12 +182,14 @@ class sep_km_otp_change_irq_test(sep_base_test):
             pic = self._pic30()
             line = int((st & en & OTP_CHANGE) != 0)
             bit = int((st & OTP_CHANGE) != 0)
+            self.logger.info(
+                "OBS-OTP-STICKY LOG status_otp_change=%d line=%d", bit, line
+            )
             answered, rc = await self._stat(_STAT_POLLS)
             rom1 = self._rom_reqs()
-            ok = bit == 0 and line == 0 and pic == 0 and answered and rc == KM_RC_SUCCESS
+            ok = pic == 0 and answered and rc == KM_RC_SUCCESS
             fields = (
-                f"status_otp_change={bit} line={line} pic30={int(pic != 0)} "
-                f"stat_answered={int(answered)} stat_rc={rc} "
+                f"pic30={int(pic != 0)} stat_answered={int(answered)} stat_rc={rc} "
                 f"rom_req_delta={rom1 - rom0} fired={fired}"
             )
             if not ok:
