@@ -224,7 +224,9 @@ argues nothing here.
 
 ## Reading a finished run
 
-    python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov
+```
+python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov
+```
 
 `all` is the coverage set, as it is for SEP: the whole package regression,
 including the SEP firmware and lifecycle leaves whose images the
