@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# DV-TESTCASE-CONTRACT: SMC_COV_W2T_009 ANCHOR: smc_efuse_jtag_otp_data_walk_test
+# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 03c331b6d757c468b7825f65e5567b17e7096676e54f0cbd29d565b017edfc05
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 5 ENV: cocotb
 """eFuse interface control written from the JTAG eFuse port, read back over SEP_IN.
 
-Contract: ``SMC_COV_W2T_009`` revision 1
+Contract: ``SMC_COV_W2T_009`` revision 2
 (``hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md``).
 
 The ``ej_axi`` AXI-Lite manager drives ``axil_smc_otp_jtag_req_i``; the sequence runs on
@@ -67,9 +70,9 @@ class smc_efuse_jtag_otp_data_walk_test(smc_base_test):
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
             # Directed SEP_IN reads without the polls: 1 status, 104 walk readbacks,
-            # 3 partial-strobe readbacks, 1 program-interface read, 4 dout reads and
+            # 4 partial-strobe readbacks, 1 program-interface read, 4 dout reads and
             # 4 restore readbacks.
-            min_csr_accesses=117,
+            min_csr_accesses=118,
             csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
             proxy=False,
             details=(
