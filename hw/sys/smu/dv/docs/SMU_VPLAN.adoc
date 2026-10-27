@@ -2557,7 +2557,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 [arabic]
 . Wait for the bench reset, open the TAP, require the SMC JTAG2AXI path to be enabled and drive GPIO 53 low.
-. Write `ISOLATE_REQ_REG`, `ISOLATE_REQ_PINEN_REG` and `ISOLATE_REQ_SMCEN_REG`, pulse `tb_cfg_flr_pf_active` to set `ISOLATE_REQ_SMC_REG` (a write to it only clears it), read the four registers back and log them, run a cool reset and require the values above.
+. Write `ISOLATE_REQ_REG`, `ISOLATE_REQ_PINEN_REG` and `ISOLATE_REQ_SMCEN_REG`, pulse `tb_cfg_flr_pf_active` to set `ISOLATE_REQ_SMC_REG` (a write of 1 to bit 0 clears it), read the four registers back and log them, run a cool reset and require the values above.
 . Repeat that programming, run a cold reset with GPIO 53 low and require the three registers to read their reset values.
 . Program `ISOLATE_REQ_PINEN_REG`, run a cold reset with GPIO 53 low and require its reset value; program it again, drive GPIO 53 high, run a cold reset and require the programmed value to remain; drive GPIO 53 low again.
 . Program the two FLR counters to 5 and 7, run a cool reset and require 5 and 7, run a cold reset and require both counters to read their reset values.

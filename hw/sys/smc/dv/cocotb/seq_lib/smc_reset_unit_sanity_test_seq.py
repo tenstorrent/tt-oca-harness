@@ -70,13 +70,13 @@ _SS_SWEEP_REGS = (
 #     `smc_reset_unit_lock_test_seq` covers them.
 #   * `ISOLATE_REQ_VIS` @0xC0 -- `sw = r; hw = w` pin visibility
 #     (reset_unit.rdl).
-#   * `ISOLATE_REQ_SMC_REG` @0xB8 -- hardware-set, software-cleared, and one bit
-#     wide. `smc_cool_reset_wrap.sv` sets it to 1 when
-#     `cfg_flr_pf_active` asserts and clears it to 0 on ANY software write with
-#     a non-zero bit enable, regardless of the data; its read data is
-#     `{31'b0, isolate_req_smc_reg}`. A write/readback probe therefore reads
-#     0x0 by specification. Proving the set half needs an FLR event, which is
-#     out of this testcase's scope.
+#   * `ISOLATE_REQ_SMC_REG` @0xB8 -- hardware-set, write-1-to-clear
+#     (`onwrite = woclr`), and one bit wide. `smc_cool_reset_wrap.sv` sets it
+#     to 1 when `cfg_flr_pf_active` asserts and clears it to 0 only on a
+#     software write whose byte-0 strobe is set and whose bit 0 is 1; its read
+#     data is `{31'b0, isolate_req_smc_reg}`. A write/readback probe from the
+#     reset value therefore reads 0x0 by specification. Proving the set half
+#     needs an FLR event, which is out of this testcase's scope.
 #   * `ISOLATE_REQ_PINEN_REG` @0xB4 and `ISOLATE_REQ_SMCEN_REG` @0xBC -- plain
 #     `sw = rw` storage, but both OR into the pin this testcase observes:
 #     `smc_cool_reset_wrap.sv` computes `isolate_req_o[i] =
