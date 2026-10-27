@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-labelledby="title desc">
+  <title id="title">Adopter fuse support: one sense pass, two shadow files</title>
+  <desc id="desc">For each subsystem, the harness fuse map, a harness-owned adopter region wrapper, the adopter-owned adopter fuse map and the CFG window size are elaboration-time inputs. Inside smu.sv the eFuse controller's single sense FSM reads the harness region and then the adopter region through one adopter Interface SHIM that fronts fuse macros 0 to N. The harness shadow file feeds harness hardware consumers; the adopter shadow file, with 32 lock pairs governing 32 equal slices, is exported at the smu.sv boundary as a flat word array. Software reaches the adopter fuses through a window diverted from the adopter external window into the controller's guard.</desc>
+  <defs>
+    <marker id="gray-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#374151"/>
+    </marker>
+    <marker id="req-end" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="resp-end" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 z" fill="#b45309"/>
+    </marker>
+    <marker id="done-end" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 z" fill="#7c3aed"/>
+    </marker>
+    <marker id="tech-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#287a45"/>
+    </marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #1f2937; }
+      .heading { font-weight: bold; font-size: 20px; }
+      .label { font-weight: bold; font-size: 14px; }
+      .small { font-size: 12px; }
+      .note { font-size: 11px; fill: #4b5563; }
+      .cell { font-size: 9px; fill: #1f2937; }
+      .port { font-family: "Courier New", monospace; font-size: 11px; font-weight: bold; }
+      .harness { fill: #eff6ff; stroke: #1d4ed8; stroke-width: 1.5; }
+      .adopter { fill: #ecfdf3; stroke: #287a45; stroke-width: 1.5; }
+      .neutral { fill: #f9fafb; stroke: #374151; stroke-width: 1.5; }
+      .rest { fill: #e5e7eb; stroke: #6b7280; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="780" fill="#ffffff"/>
+
+  <text x="20" y="34" class="heading">Adopter fuse support: one sense pass, two shadow files</text>
+  <text x="20" y="54" class="note">Drawn once for &lt;sub&gt; = smc or sep. Each subsystem has its own controller, SHIM, adopter map and adopter port.</text>
+
+  <!-- ============ Build-time inputs ============ -->
+  <rect x="20" y="80" width="250" height="440" rx="6" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="35" y="102" class="label">Elaboration-time inputs</text>
+
+  <rect x="35" y="115" width="220" height="78" rx="4" class="harness"/>
+  <text x="45" y="135" class="port">&lt;sub&gt;_efuse_map.rdl</text>
+  <text x="45" y="153" class="small">Harness-owned</text>
+  <text x="45" y="170" class="note">1. HW-consumed  2. named</text>
+  <text x="45" y="184" class="note">3. harness-reserved spares</text>
+
+  <rect x="35" y="205" width="220" height="92" rx="4" class="harness"/>
+  <text x="45" y="225" class="port">&lt;sub&gt;_adopter_fuse_region.rdl</text>
+  <text x="45" y="243" class="small">Harness-owned wrapper</text>
+  <text x="45" y="261" class="note">LOCKS @ 0x0: 32 write/read pairs</text>
+  <text x="45" y="275" class="note">(write 2n, read 2n+1)</text>
+  <text x="45" y="289" class="note">adopter payload @ 0x8</text>
+
+  <rect x="35" y="320" width="220" height="78" rx="4" class="adopter"/>
+  <text x="45" y="340" class="port">&lt;sub&gt;_adopter_fuse_map.rdl</text>
+  <text x="45" y="358" class="small">Adopter-owned, exact filename</text>
+  <text x="45" y="375" class="note">Payload fields only</text>
+  <text x="45" y="389" class="note">Harness ships an empty stub</text>
+  <line x1="145" y1="320" x2="145" y2="301" stroke="#287a45" stroke-width="1.5" marker-end="url(#tech-end)"/>
+
+  <rect x="35" y="420" width="220" height="86" rx="4" class="neutral"/>
+  <text x="45" y="440" class="port">smu_pkg CFG</text>
+  <text x="45" y="458" class="note">&lt;SUB&gt;_ADOPTER_FUSE_BASE (window)</text>
+  <text x="45" y="472" class="note">&lt;SUB&gt;_ADOPTER_FUSE_SIZE</text>
+  <text x="45" y="492" class="note">RTL sees sizes only, no field names</text>
+
+  <!-- Legend -->
+  <rect x="20" y="540" width="250" height="140" rx="6" fill="none" stroke="#d1d5db"/>
+  <text x="35" y="560" class="label">Legend</text>
+  <rect x="35" y="570" width="16" height="12" class="harness"/>
+  <text x="60" y="580" class="small">Harness-owned</text>
+  <rect x="35" y="590" width="16" height="12" class="adopter"/>
+  <text x="60" y="600" class="small">Adopter-owned</text>
+  <line x1="35" y1="616" x2="51" y2="616" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="60" y="620" class="small">Fuse command request</text>
+  <line x1="35" y1="636" x2="51" y2="636" stroke="#b45309" stroke-width="2"/>
+  <text x="60" y="640" class="small">Sensed fuse data</text>
+  <line x1="35" y1="656" x2="51" y2="656" stroke="#7c3aed" stroke-width="2"/>
+  <text x="60" y="660" class="small">Sense-done status</text>
+
+  <!-- ============ smu.sv boundary ============ -->
+  <rect x="300" y="80" width="540" height="560" rx="6" fill="none" stroke="#374151" stroke-width="2.5"/>
+  <text x="315" y="102" class="label">smu.sv (harness)</text>
+
+  <!-- Software access window -->
+  <text x="320" y="125" class="small">Software access: &lt;sub&gt;_external window</text>
+  <rect x="320" y="132" width="90" height="38" class="harness"/>
+  <text x="365" y="149" class="cell" text-anchor="middle">SHIM control</text>
+  <text x="365" y="161" class="cell" text-anchor="middle">(existing)</text>
+  <rect x="410" y="132" width="150" height="38" class="harness"/>
+  <text x="485" y="149" class="cell" text-anchor="middle">Adopter fuse window</text>
+  <text x="485" y="161" class="cell" text-anchor="middle">LOCKS + payload</text>
+  <rect x="560" y="132" width="260" height="38" class="rest"/>
+  <text x="690" y="149" class="cell" text-anchor="middle">Rest of the window</text>
+  <text x="690" y="161" class="cell" text-anchor="middle">&#8594; &lt;sub&gt;_external_req_o (adopter decodes)</text>
+  <text x="320" y="186" class="note">The first SHIM size + adopter size bytes are diverted into the eFuse controller.</text>
+  <line x1="440" y1="170" x2="440" y2="236" stroke="#374151" stroke-width="1.5" marker-end="url(#gray-end)"/>
+
+  <!-- eFuse controller -->
+  <rect x="320" y="200" width="500" height="340" rx="5" class="neutral"/>
+  <text x="335" y="220" class="label">eFuse controller</text>
+
+  <rect x="335" y="238" width="470" height="56" rx="4" class="harness"/>
+  <text x="345" y="256" class="small" font-weight="bold">Access control and guard</text>
+  <text x="345" y="272" class="note">Harness field rules + 33 generated adopter rules (LOCKS meta entry + 32 slices)</text>
+  <text x="345" y="286" class="note">Lifecycle and JTAG policy apply to both regions</text>
+
+  <!-- Harness shadow -->
+  <rect x="345" y="305" width="250" height="95" rx="4" class="harness"/>
+  <text x="355" y="324" class="small" font-weight="bold">Harness shadow file</text>
+  <rect x="355" y="335" width="34" height="24" fill="#bfdbfe" stroke="#1d4ed8"/>
+  <text x="372" y="351" class="cell" text-anchor="middle">LOCKS</text>
+  <rect x="389" y="335" width="62" height="24" fill="#dbeafe" stroke="#1d4ed8"/>
+  <text x="420" y="351" class="cell" text-anchor="middle">HW fuses</text>
+  <rect x="451" y="335" width="62" height="24" fill="#eff6ff" stroke="#1d4ed8"/>
+  <text x="482" y="351" class="cell" text-anchor="middle">Named</text>
+  <rect x="513" y="335" width="72" height="24" fill="#ffffff" stroke="#1d4ed8"/>
+  <text x="549" y="351" class="cell" text-anchor="middle">Spares</text>
+  <text x="355" y="377" class="note">Fuse bits [0, 8 Kbit)</text>
+  <text x="355" y="391" class="note">Spares stay reserved for the harness</text>
+
+  <!-- Adopter shadow -->
+  <rect x="345" y="415" width="250" height="110" rx="4" class="adopter"/>
+  <text x="355" y="434" class="small" font-weight="bold">Adopter shadow file</text>
+  <rect x="355" y="445" width="38" height="24" fill="#bbf7d0" stroke="#287a45"/>
+  <text x="374" y="461" class="cell" text-anchor="middle">LOCKS</text>
+  <rect x="393" y="445" width="38" height="24" fill="#ffffff" stroke="#287a45"/>
+  <text x="412" y="461" class="cell" text-anchor="middle">slice 0</text>
+  <rect x="431" y="445" width="38" height="24" fill="#ffffff" stroke="#287a45"/>
+  <text x="450" y="461" class="cell" text-anchor="middle">slice 1</text>
+  <rect x="469" y="445" width="38" height="24" fill="#ffffff" stroke="#287a45"/>
+  <text x="488" y="461" class="cell" text-anchor="middle">slice 2</text>
+  <rect x="507" y="445" width="38" height="24" fill="#ffffff" stroke="#287a45"/>
+  <text x="526" y="461" class="cell" text-anchor="middle">&#8230;</text>
+  <rect x="545" y="445" width="40" height="24" fill="#ffffff" stroke="#287a45"/>
+  <text x="565" y="461" class="cell" text-anchor="middle">slice 31</text>
+  <text x="355" y="487" class="note">Lock pair n governs slice n</text>
+  <text x="355" y="501" class="note">Slice = size / 32 words, rounded up to 2^k</text>
+  <text x="355" y="515" class="note">Example: 128 words &#8594; 4 words per pair</text>
+
+  <!-- Sense FSM -->
+  <rect x="615" y="305" width="190" height="220" rx="4" class="harness"/>
+  <text x="625" y="324" class="small" font-weight="bold">Fuse sense FSM</text>
+  <text x="625" y="344" class="note">At reset release:</text>
+  <text x="625" y="362" class="note">1. Harness region</text>
+  <text x="625" y="378" class="note">2. Adopter region</text>
+  <text x="625" y="398" class="note">Sense done = both regions in.</text>
+  <text x="625" y="412" class="note">It releases the CPU reset and</text>
+  <text x="625" y="426" class="note">the SEP secure-test latch.</text>
+  <text x="625" y="450" class="note">SHIM commands transfer on</text>
+  <text x="625" y="464" class="note">valid &amp;&amp; ready; the mux switches</text>
+  <text x="625" y="478" class="note">only with no responses</text>
+  <text x="625" y="492" class="note">outstanding. Fuse address</text>
+  <text x="625" y="506" class="note">type widened, bounded by CFG.</text>
+
+  <line x1="615" y1="352" x2="599" y2="352" stroke="#b45309" stroke-width="2" marker-end="url(#resp-end)"/>
+  <line x1="615" y1="470" x2="599" y2="470" stroke="#b45309" stroke-width="2" marker-end="url(#resp-end)"/>
+
+  <!-- Harness consumers -->
+  <rect x="320" y="560" width="200" height="62" rx="4" class="harness"/>
+  <text x="330" y="580" class="small" font-weight="bold">Harness HW consumers</text>
+  <text x="330" y="597" class="note">SEP key manager (UIDs, CLASS_KEY),</text>
+  <text x="330" y="611" class="note">lifecycle state, boot config</text>
+  <path d="M345,380 L332,380 L332,556" fill="none" stroke="#374151" stroke-width="1.5" marker-end="url(#gray-end)"/>
+
+  <!-- Adopter shadow export -->
+  <path d="M560,525 L560,686" fill="none" stroke="#287a45" stroke-width="2" marker-end="url(#tech-end)"/>
+  <text x="568" y="660" class="port">&lt;sub&gt;_adopter_shadow_regs_o</text>
+  <text x="568" y="675" class="port">logic [N-1:0][31:0]</text>
+
+  <!-- Sense-done outputs -->
+  <line x1="660" y1="525" x2="660" y2="640" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#done-end)"/>
+  <line x1="760" y1="525" x2="760" y2="640" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#done-end)"/>
+  <text x="666" y="580" class="cell">&lt;sub&gt;_fuse_sense_</text>
+  <text x="666" y="592" class="cell">done_o (all regions)</text>
+  <text x="766" y="580" class="cell">adopter done</text>
+  <text x="766" y="592" class="cell">(observability)</text>
+
+  <!-- Adopter logic -->
+  <rect x="420" y="690" width="260" height="60" rx="4" class="adopter"/>
+  <text x="430" y="711" class="small" font-weight="bold">Adopter logic in the SoC</text>
+  <text x="430" y="728" class="note">Casts the words to the struct generated</text>
+  <text x="430" y="742" class="note">from &lt;sub&gt;_adopter_fuse_map.rdl</text>
+
+  <!-- ============ Adopter side: SHIM and macros ============ -->
+  <rect x="875" y="300" width="160" height="110" rx="4" class="adopter"/>
+  <text x="885" y="321" class="small" font-weight="bold">Adopter Interface SHIM</text>
+  <text x="885" y="340" class="note">One SHIM per subsystem</text>
+  <text x="885" y="356" class="note">Drives ready when idle;</text>
+  <text x="885" y="370" class="note">maps addresses to macros</text>
+  <text x="885" y="392" class="note">Macro-side signals are</text>
+  <text x="885" y="404" class="note">technology-specific</text>
+
+  <line x1="805" y1="335" x2="871" y2="335" stroke="#1d4ed8" stroke-width="2" marker-end="url(#req-end)"/>
+  <text x="838" y="328" class="cell" text-anchor="middle">command</text>
+  <line x1="875" y1="355" x2="809" y2="355" stroke="#374151" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#gray-end)"/>
+  <text x="838" y="350" class="cell" text-anchor="middle">ready</text>
+  <line x1="875" y1="375" x2="809" y2="375" stroke="#b45309" stroke-width="2" marker-end="url(#resp-end)"/>
+  <text x="838" y="390" class="cell" text-anchor="middle">response</text>
+  <path d="M820,260 L955,260 L955,296" fill="none" stroke="#374151" stroke-width="1.5" marker-end="url(#gray-end)"/>
+  <text x="890" y="253" class="cell" text-anchor="middle">efuse_bank_ctrl</text>
+
+  <rect x="1065" y="250" width="115" height="40" rx="4" class="adopter"/>
+  <text x="1122" y="274" class="small" text-anchor="middle">Fuse macro 0</text>
+  <rect x="1065" y="305" width="115" height="40" rx="4" class="adopter"/>
+  <text x="1122" y="329" class="small" text-anchor="middle">Fuse macro 1</text>
+  <circle cx="1122" cy="357" r="2" fill="#287a45"/>
+  <circle cx="1122" cy="365" r="2" fill="#287a45"/>
+  <circle cx="1122" cy="373" r="2" fill="#287a45"/>
+  <rect x="1065" y="385" width="115" height="40" rx="4" class="adopter"/>
+  <text x="1122" y="409" class="small" text-anchor="middle">Fuse macro N</text>
+  <line x1="1035" y1="340" x2="1065" y2="270" stroke="#287a45" stroke-width="1.5"/>
+  <line x1="1035" y1="350" x2="1065" y2="325" stroke="#287a45" stroke-width="1.5"/>
+  <line x1="1035" y1="365" x2="1065" y2="405" stroke="#287a45" stroke-width="1.5"/>
+
+  <!-- Fuse bit-address space -->
+  <text x="875" y="475" class="label">Fuse bit-address space (one SHIM)</text>
+  <rect x="875" y="488" width="140" height="30" class="harness"/>
+  <text x="945" y="507" class="cell" text-anchor="middle">Harness map (8 Kbit)</text>
+  <rect x="1015" y="488" width="30" height="30" fill="#bbf7d0" stroke="#287a45"/>
+  <text x="1030" y="507" class="cell" text-anchor="middle">LOCKS</text>
+  <rect x="1045" y="488" width="135" height="30" class="adopter"/>
+  <text x="1112" y="507" class="cell" text-anchor="middle">Adopter payload</text>
+  <text x="875" y="532" class="cell">0</text>
+  <text x="1015" y="532" class="cell" text-anchor="middle">8192</text>
+  <text x="1045" y="546" class="cell" text-anchor="middle">8256</text>
+  <text x="1180" y="532" class="cell" text-anchor="end">8256 + size</text>
+  <text x="875" y="568" class="note">Harness fuse addresses never move.</text>
+  <text x="875" y="582" class="note">Only the adopter size varies (CFG).</text>
+  <text x="875" y="596" class="note">Where the bits physically sit across</text>
+  <text x="875" y="610" class="note">macros 0..N is the SHIM's choice.</text>
+</svg>
