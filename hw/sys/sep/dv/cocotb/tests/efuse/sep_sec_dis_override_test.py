@@ -549,9 +549,9 @@ class sep_sec_dis_override_test(sep_base_test):
           "In addition to the shadow-register access control defined by
           <<sep-fuse-fields-table>>, the JTAG port shall be further restricted:
           in the PROD and RMA_SIP states it may reach only the eFuse MMR token
-          block." The held ``LC_STATE`` reset value is neither state under
-          either reading (adoc INVALID 4'b1111, RDL reset raw 4'b0000), so JTAG
-          has the table's access.
+          block." The held ``LC_STATE`` reset value, INVALID 4'b1111 in both
+          the adoc and the RDL, is neither state, so JTAG has the table's
+          access.
         * otp_fuse_controller.adoc, controller overview: the
           ``security_disable_i`` input "skips fuse sensing and opens the shadow
           registers to software". Fuse field table: REQUIRED_SIGNERS is "SW
@@ -561,9 +561,10 @@ class sep_sec_dis_override_test(sep_base_test):
         * LC_STATE: lifecycle_controller.adoc says the shadow output holds the
           INVALID encoding 4'b1111 before sensing, and "Invalid lifecycle
           encodings are terminal" (otp_fuse_controller.adoc, LC_STATE row);
-          sep_efuse_map.rdl gives the ``lc_state`` reset 0xf0 (raw 4'b0000).
-          The two disagree on the held word, so OBS-SECDIS-LC-WR logs the write
-          and readback without a verdict.
+          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. The
+          specification does not state the effect of a write to that terminal
+          word, so OBS-SECDIS-LC-WR logs the write and readback without a
+          verdict.
 
         The REQUIRED_SIGNERS write is graded by a frontdoor readback ("A read of the eFuse
         shadow map over the SEP bus completes with OKAY", security_disable.adoc).
@@ -639,9 +640,9 @@ class sep_sec_dis_override_test(sep_base_test):
             rs_want,
         )
 
-        # The LC_STATE shadow word before sense has no single spec value: the
-        # adoc INVALID encoding gives [7:0] = 0x0f, the RDL reset gives 0xf0. The
-        # terminal-rule outcome is logged until the spec settles the reset value.
+        # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f. The
+        # specification does not state the effect of a write to it, so the
+        # outcome is logged without a verdict.
         lc_post = await self._fd_read_word("CHK-SECDIS-DBG-BUS", lc_addr, "lc_state")
         self.logger.info(
             "OBS-SECDIS-LC-WR: sec_dis=1 sense_done=0 JTAG wr LC_STATE @0x%08x "

@@ -3231,7 +3231,7 @@ the test does.
 |-
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`LC_STATE` shadow reset value and pre-sense upper nibble
-|The register description gives `LC_STATE` the reset value `0xF0`. The specification holds the INVALID state `4'b1111` before sense. No test grades the shadow reset value of `LC_STATE` or the upper nibble of `lc_state_o` before sense.
+|The register description and the specification agree that `LC_STATE` holds the INVALID state `4'b1111` (word `0x0F`) before sense. `sep_reset_mid_transfer_recovery_test` grades that word with `rst_ni` low (`CHK-SHADOW-CLEAR`). No test grades it under SEC_DIS, or the upper nibble of `lc_state_o` before sense.
 |`sep_sec_dis_override_test` logs the pre-sense `LC_STATE` word and the outcome of a JTAG write to it under SEC_DIS (`OBS-SECDIS-LC-WR`), without a verdict.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |`LC_STATE` write with a wrong upper nibble
