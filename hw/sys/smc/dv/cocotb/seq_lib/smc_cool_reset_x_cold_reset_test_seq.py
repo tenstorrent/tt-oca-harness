@@ -7,10 +7,11 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import RisingEdge
 
-from .smc_addr_map import smc_addr
+from .smc_addr_map import reset_unit_u32, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 SMC_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR")
+SMC_BIT = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm")
 SMCEN = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR")
 FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR")
 FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
@@ -149,7 +150,7 @@ class smc_cool_reset_x_cold_reset_test_seq(SmcCsrSeq):
             self.cool_scratch_before[1],
             self.cool_scratch_after[1],
         )
-        await self.csr_write("SMC_REG_CLR", SMC_REG, 0)
+        await self.csr_write("SMC_REG_CLR", SMC_REG, SMC_BIT)
 
         await self.csr_write("SMCEN_ALL", SMCEN, _SMCEN)
         await self.csr_read("SMCEN_RB", SMCEN, expected=_SMCEN)

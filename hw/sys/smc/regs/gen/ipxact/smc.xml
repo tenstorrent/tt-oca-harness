@@ -1443,7 +1443,9 @@ cannot be written to again</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>isolate_req_smc_reg</ipxact:name>
-              <ipxact:description>Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw</ipxact:description>
+              <ipxact:description>Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+to clear. A write of 0, or a write whose byte strobes do not select this field,
+leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1452,6 +1454,7 @@ cannot be written to again</ipxact:description>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToClear</ipxact:modifiedWriteValue>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
