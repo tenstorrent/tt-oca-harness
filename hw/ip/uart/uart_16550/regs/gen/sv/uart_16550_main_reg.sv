@@ -256,20 +256,31 @@ module uart_16550_main_reg (
         automatic logic is_valid_rw;
         automatic logic is_external;
         is_external = '0;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.RBR = cpuif_req_masked & (cpuif_addr == 6'h0) & !cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 6'h0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h0);
         decoded_reg_strb.IER = cpuif_req_masked & (cpuif_addr == 6'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h4);
         decoded_reg_strb.IIR = cpuif_req_masked & (cpuif_addr == 6'h8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h8);
         decoded_reg_strb.LCR = cpuif_req_masked & (cpuif_addr == 6'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'hc);
         decoded_reg_strb.MCR = cpuif_req_masked & (cpuif_addr == 6'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h10);
         decoded_reg_strb.LSR = cpuif_req_masked & (cpuif_addr == 6'h14) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h14);
         decoded_reg_strb.MSR = cpuif_req_masked & (cpuif_addr == 6'h18) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h18);
         decoded_reg_strb.SCR = cpuif_req_masked & (cpuif_addr == 6'h1c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h1c);
         decoded_reg_strb.ECR = cpuif_req_masked & (cpuif_addr == 6'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h20);
         decoded_reg_strb.ITR = cpuif_req_masked & (cpuif_addr == 6'h24);
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 6'h24);
+        is_valid_addr = cpuif_addr < 6'h28;
+        decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
     logic external_wr_ack;
@@ -1402,7 +1413,7 @@ module uart_16550_main_reg (
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -1505,7 +1516,7 @@ module uart_16550_main_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign external_rd_ack = readback_external_rd_ack;
