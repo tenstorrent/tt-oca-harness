@@ -38,6 +38,7 @@ _GOLDENS = (
     _HERE / "sep_rv_isa_golden.py",
     _HERE / "sep_rv32_asm.py",
     _HERE / "sep_rv32_trace_decode.py",
+    _HERE / "sep_rom_observer.py",
     _HERE.parent / "tests" / "rom_fw" / "sep_measurement_golden.py",
     # Freshness of the committed expected shadow the SV-UVM sense test loads.
     _HERE / "sep_efuse_default_shadow.py",
@@ -46,7 +47,7 @@ _GOLDENS = (
 
 def main() -> int:
     failures = []
-    python_path = [str(_MODELS.parent), str(_HERE)]
+    python_path = [str(_MODELS.parent), str(_HERE), str(_HERE.parent)]
     if current := os.environ.get("PYTHONPATH"):
         python_path.append(current)
     child_env = {**os.environ, "PYTHONPATH": ":".join(python_path)}

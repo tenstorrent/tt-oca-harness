@@ -87,6 +87,11 @@ def imm_i(insn: int) -> int:
     return v - 0x1000 if v & 0x800 else v
 
 
+def imm_s(insn: int) -> int:
+    v = ((insn >> 25) << 5) | ((insn >> 7) & 0x1F)
+    return v - 0x1000 if v & 0x800 else v
+
+
 def is_load(insn: int) -> bool:
     return opcode(insn) == OP_LOAD
 
@@ -159,13 +164,32 @@ class RegTracker:
         return self._v.get(reg)
 
     def csr_operand(self, insn: int) -> int | None:
-        """The rs1 or immediate operand of a CSR instruction; for csrrs and csrrc it is the set or clear mask."""
+        """The rs1 or immediate operand of a CSR instruction; csrrs/csrrc: the set/clear mask."""
         op = decode_csr(insn)
         if op is None:
             return None
         return op.src if op.imm else self._v.get(op.src)
 
+    def mem_addr(self, insn: int) -> int | None:
+        """Effective address of a load or store when its base register is known."""
+        if is_load(insn):
+            off = imm_i(insn)
+        elif is_store(insn):
+            off = imm_s(insn)
+        else:
+            return None
+        base = self._v.get(rs1_of(insn))
+        return None if base is None else (base + off) & MASK32
+
+    def store_data(self, insn: int) -> int | None:
+        """The value a store writes when its rs2 register is known."""
+        return self._v.get((insn >> 20) & 0x1F) if is_store(insn) else None
+
     def step(self, insn: int, pc: int = 0) -> None:
+        # A compressed word names its rd in format-specific bits, so forget every register.
+        if insn & 0x3 != 0x3:
+            self._v = {0: 0}
+            return
         dest = writes_rd(insn)
         if dest is None:
             return
@@ -270,6 +294,20 @@ def _selftest() -> None:
     csrrc_x0 = (CSR_MTVEC << 20) | (3 << 12) | 0x73
     assert not decode_csr(csrrc_x0).writes, "csrrc with x0 only reads"
     assert decode_csr(asm.csrw(CSR_MTVEC, asm.ZERO)).writes, "csrrw x0 still writes"
+
+    # Load and store effective addresses, and a compressed word.
+    t = RegTracker()
+    t.step(asm.lui(asm.T0, 0x10802))
+    assert t.mem_addr(asm.sw(asm.T1, asm.T0, 8)) == 0x1080_2008, "sw positive offset"
+    assert t.mem_addr(asm.sw(asm.T1, asm.T0, -8)) == 0x1080_1FF8, "sw negative offset"
+    assert t.mem_addr(asm.lw(asm.T1, asm.T0, 0x10)) == 0x1080_2010, "lw offset"
+    assert t.mem_addr(asm.sw(asm.T1, asm.T2, 0)) is None, "unknown base"
+    assert t.store_data(asm.sw(asm.T0, asm.T2, 0)) == 0x1080_2000, "store data from rs2"
+    assert t.store_data(asm.sw(asm.T1, asm.T0, 0)) is None, "unknown rs2"
+    assert t.store_data(asm.lw(asm.T0, asm.T0, 0)) is None, "a load stores nothing"
+    assert t.mem_addr(asm.addi(asm.T1, asm.T0, 1)) is None, "not a memory access"
+    t.step(0x4501)  # c.li a0, 0
+    assert t.value(asm.T0) is None, "a compressed word must forget tracked registers"
 
     # NAPOT: 8-byte region (no trailing ones) and a 4 KiB region.
     assert pmp_napot(0x1000 >> 2) == (0x1000, 8)

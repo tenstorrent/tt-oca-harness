@@ -3402,3 +3402,19 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
 ]
+
+[[tests]]
+# The ROM observer records retirements, status, console, a watched port, the hand-off mret and the
+# BL1 verdict of an SMC-SRAM boot to BL1.
+name = "sep_rom_observer_smoke_test"
+module = "rom_fw.sep_rom_observer_smoke_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
