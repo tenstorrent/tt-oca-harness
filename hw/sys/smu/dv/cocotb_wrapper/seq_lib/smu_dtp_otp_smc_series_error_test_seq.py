@@ -92,7 +92,12 @@ class smu_dtp_otp_smc_series_error_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-OTP-SMC-SERIES-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-OTP-SMC-SERIES-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-OTP-SMC-SERIES-JTAG-READY",
+        )
 
         gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         lc = self._sample_int("lc_state_o") & 0xFF
@@ -108,7 +113,9 @@ class smu_dtp_otp_smc_series_error_test_seq:
             raise AssertionError(f"lc_sigint_err_o={sigint} want 0 (demux err_slv)")
         self.s1_ok = True
         self._log(f"CHK-OTP-SMC-SERIES-GATE-OPEN disable={gate} lc=0x{lc:02x} sigint={sigint}")
-        sb.expect_eq("CHK-OTP-SMC-SERIES-GATE-OPEN", gate, 0)
+        sb.expect_eq(
+            "CHK-OTP-SMC-SERIES-GATE-OPEN", gate, 0, evidence="CHK-OTP-SMC-SERIES-GATE-OPEN"
+        )
 
         mask = otp_series_data_mask()
         want = PATTERN_A & mask
@@ -129,7 +136,7 @@ class smu_dtp_otp_smc_series_error_test_seq:
             )
         self.s2_ok = True
         self._log(f"CHK-OTP-SMC-SERIES-RW @0x{SPARE0:08x} data=0x{got:08x} status=SUCCESS")
-        sb.expect_eq("CHK-OTP-SMC-SERIES-RW", got, want)
+        sb.expect_eq("CHK-OTP-SMC-SERIES-RW", got, want, evidence="CHK-OTP-SMC-SERIES-RW")
 
         allow_st, allow_data = await self._single_rd(jtag, SPARE0, "SPARE0-ALLOW")
         if allow_st != J2A_STATUS_SUCCESS or allow_data != want:
@@ -140,7 +147,9 @@ class smu_dtp_otp_smc_series_error_test_seq:
         self._log(
             f"CHK-OTP-SMC-SINGLE-OP-ALLOW @0x{SPARE0:08x} data=0x{allow_data:08x} status=SUCCESS"
         )
-        sb.expect_eq("CHK-OTP-SMC-SINGLE-OP-ALLOW", allow_data, want)
+        sb.expect_eq(
+            "CHK-OTP-SMC-SINGLE-OP-ALLOW", allow_data, want, evidence="CHK-OTP-SMC-SINGLE-OP-ALLOW"
+        )
 
         hole_st, hole_data = await self._single_rd(jtag, HOLE, "HOLE")
         if hole_st == J2A_STATUS_SUCCESS:
@@ -173,7 +182,9 @@ class smu_dtp_otp_smc_series_error_test_seq:
             f"CHK-OTP-SMC-SPARE-STABLE @0x{SPARE0:08x} data=0x{stab_data:08x} "
             f"status=SUCCESS hole=0x{HOLE:08x}"
         )
-        sb.expect_eq("CHK-OTP-SMC-SPARE-STABLE", stab_data, want)
+        sb.expect_eq(
+            "CHK-OTP-SMC-SPARE-STABLE", stab_data, want, evidence="CHK-OTP-SMC-SPARE-STABLE"
+        )
 
         self._log(
             f"PASS DTP-OTP-SMC-SERIES-ERROR s1={self.s1_ok} s2={self.s2_ok} "
