@@ -248,7 +248,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <circle class="cn" cx="23" cy="1073" r="9"/><text class="cnt" x="23" y="1077" text-anchor="middle">4</text>
 <text class="s" x="40" y="1078">APB demux: a fifth target widens the select enum in efuse_pkg from 2 to 3 bits for SMC and SEP; the SEP answers the adopter target with SLVERR.</text>
 <circle class="cn" cx="23" cy="1091" r="9"/><text class="cnt" x="23" y="1095" text-anchor="middle">5</text>
-<text class="s" x="40" y="1096">Adopter instance: the offset is the address minus the window base, so the base must be aligned to the window size. Locked regions read 0xBADCAB1E without SLVERR.</text>
+<text class="s" x="40" y="1096">Adopter instance: the offset is the address minus the window base, so the base needs no alignment. Locked regions read 0xBADCAB1E without SLVERR.</text>
 <circle class="cn" cx="23" cy="1109" r="9"/><text class="cnt" x="23" y="1113" text-anchor="middle">6</text>
 <text class="s" x="40" y="1114">Command mux: stays in sense mode until both instances finish, so fuse_sense_done_o and the SMC reset release wait for the adopter region.</text>
 <circle class="cn" cx="23" cy="1127" r="9"/><text class="cnt" x="23" y="1131" text-anchor="middle">7</text>

@@ -516,10 +516,8 @@ pair of the region that holds the target bit.
 
 ==== Constraints
 
-* The adopter window lies inside `smc_external`, and its base is aligned to its
-size rounded up to a power of two. Static checks in `smu.sv` enforce both.
-* `CFG.SMC_ADOPTER_FUSE_WORDS` is at most the ceiling of the SMC fuse-command
-address and length types, which a static check in `smu.sv` enforces.
+* The adopter window lies inside `smc_external`, after the SHIM control block.
+A static check in `smu.sv` enforces this.
 * The region holds no secrets. Adopter words have no secure-test lock, secret
 masking or Class 1 storage, so they receive normal scan handling. Secrets
 belong in the SEP.

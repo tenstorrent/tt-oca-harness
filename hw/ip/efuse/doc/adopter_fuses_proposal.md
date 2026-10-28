@@ -47,7 +47,6 @@ logic [31:0][15:0] SMC_ADOPTER_LOCK_REGION_END;  // word one past the end of reg
   expressed.
 - Static checks in `smu.sv`, in the style of the existing SHIM size check:
   - the window fits inside `smc_external` and does not overlap the SHIM control block;
-  - the window base is aligned to its size rounded up to a power of two (section 8);
   - the used entries are non-zero and strictly increasing, every later entry is zero, and the last
     used entry equals `SMC_ADOPTER_FUSE_WORDS`;
   - with `SMC_ADOPTER_FUSE_WORDS = 0`, every entry is zero.
@@ -331,9 +330,10 @@ has these consequences.
 - **APB demux.** A fifth target (adopter shadow) widens `efuse_reg_map_e` in the shared `efuse_pkg`
   from 2 to 3 bits; it is full today with MAP, CTRL, MMR and the error target. The SEP, and an SMC
   without adopter fuses, answer the new target with SLVERR in the same way the SMC answers MMR today.
-- **Window alignment.** The shadow module indexes by the low address bits, so the adopter window base
-  must be aligned to its size rounded up to a power of two. Add this to the `smu.sv` static check
-  (section 2), which may push the window base past the SHIM block (section 6).
+- **Window offset.** The harness instance takes the low bits of the APB address as its offset,
+  which relies on the MAP window being aligned. The adopter instance takes its offset as the address
+  minus `SMC_ADOPTER_FUSE_BASE`, a subtraction of a constant, so its base needs no alignment and the
+  window can sit directly after the SHIM block (section 6), keeping the diverted range contiguous.
 - **Blocked accesses.** Like the harness instance, the adopter access control answers a locked region
   with `0xBADCAB1E` and no SLVERR, and raises `locked_field_access_interrupt_o`. OR the two instances'
   interrupt and debug lock outputs, or give the adopter its own bits in `efuse_debug_o`.
@@ -374,7 +374,7 @@ and figures that meet the inline font-size floors.
     regions; fields are left to the generated register table.
   - Access path: same functional/JTAG path as the harness shadow, JTAG lifecycle policy unchanged,
     locked regions read `0xBADCAB1E`, and the guard checks program and read commands to adopter fuses.
-  - Constraints: window alignment, size ceiling, no secrets, append-only growth, no region by
+  - Constraints: window placement, size ceiling, no secrets, append-only growth, no region by
     default.
 - Corrections to existing text:
   - `index.adoc`: add a feature bullet.
