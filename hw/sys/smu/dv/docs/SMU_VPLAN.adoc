@@ -2423,9 +2423,9 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 *Test Coverage*:
 
 * The complement of <<sec-031-smu_sram_auto_init_done_test>> on the same composition: the same consumer nodes that are required to move there are required to stay idle here; the done output that is required to assert there is only recorded here.
-* The cold-reset leg is bounded by the same specification gap. With the sweep held off the output's level before the reset is unspecified, so requiring it high would claim that unspecified behaviour from the other side; this leaf compares only that the output reads low while the reset is asserted, and records what it read beforehand. The clear of an output established high is <<sec-031-smu_sram_auto_init_done_test>>, which runs the sweep to completion and requires the output high before asserting the same reset.
+* The cold-reset leg compares only that the output reads low while the reset is asserted, and records what it read beforehand. The clear of an output established high is <<sec-031-smu_sram_auto_init_done_test>>, which runs the sweep to completion and requires the output high before asserting the same reset.
 * The preloaded image must survive to first fetch, which is what the hold-off exists for; the leaf reads the enable high at the SMU boundary rather than assuming it.
-* EXPECT-SOURCE: the no-sweep and no-write legs follow from the input's stated purpose (`smu.adoc`, `cpu.adoc`), and the output reading low under an asserted cold reset from its being a completion status (`port_table.adoc`). Specification gap, recorded here: neither document states what `smc_init_mem_done_o` does when the sweep is held off, so the leaf logs whether and when it rose and how it held after the release, and that record carries no token. A specification statement would turn it into a claim; the implementation is not consulted for one.
+* EXPECT-SOURCE: the no-sweep and no-write legs follow from the input's stated purpose (`smu.adoc`, `cpu.adoc`), and the output reading low under an asserted cold reset from its being a completion status (`port_table.adoc`). `cpu.adoc` (Reset and Boot) states that `smc_init_mem_done_o` reports either completion or bypass; the leaf logs whether and when it rose and how it held after the release, and that record carries no token; the record is not graded against that sentence here.
 
 *Test Procedure*:
 
@@ -12163,9 +12163,9 @@ A disposition says what is done about the missing observation. `ADD-PORT`: a tes
 |PERMANENT-HOLE
 |The wrapper's SMC eFuse model answers a `SINGLE_OP` in tens of `clk_smu_i` cycles against a 39-bit data-register shift, so the BUSY window an abort needs never exists; the scenario is catalogued `not-runnable` in the disposition record.
 |RESET
-|The asynchronous assertion of the cold reset with every wrapper clock static.
+|The assertion of the cold reset with every wrapper clock static.
 |PERMANENT-HOLE
-|`hw/sys/smu/doc/port_table.adoc` states an asynchronous assertion; the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch register, so with the clocks held no output moves and no check can fail. The scenario is catalogued in the disposition record with the ruling it waits on.
+|`hw/sys/smu/doc/port_table.adoc` states that the assertion of `rst_cold_ni` is synchronous to `clk_ref_i`, de-glitched for 32 cycles, and does not propagate while that clock is stopped, and the SMC reset controller samples `rst_cold_ni` through a `clk_ref_i` deglitch register, so with the clocks held no output moves and no check can fail. The scenario is catalogued in the disposition record.
 |MISC
 |The four-phase cross-trigger matrix handshake, the CLA feedback loop and cross-trigger glue injection.
 |PERMANENT-HOLE
