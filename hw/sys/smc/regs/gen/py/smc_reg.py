@@ -11777,12 +11777,12 @@ class RESET_UNIT_ISOLATE_REQ_PINEN_REG_reg_u(Union):
 
 RESET_UNIT_ISOLATE_REQ_SMC_REG_REG_DEFAULT = 0x00000000
 RESET_UNIT_ISOLATE_REQ_SMC_REG_REG_FIELD_ACCESS = (
-    ('isolate_req_smc_reg', 'rw', '', '', False),
+    ('isolate_req_smc_reg', 'rw', 'woclr', '', False),
 )
 
 RESET_UNIT_ISOLATE_REQ_SMC_REG_REG_WIDTH = 32
 RESET_UNIT_ISOLATE_REQ_SMC_REG_REG_FIELDS = (
-    ('isolate_req_smc_reg', 0, 0, 'rw', 'r', '', '', False, False, 0),
+    ('isolate_req_smc_reg', 0, 0, 'rw', 'r', 'woclr', '', False, False, 0),
 )
 
 class RESET_UNIT_ISOLATE_REQ_SMC_REG_reg_t(Structure):

@@ -8,7 +8,7 @@ Spec sources: hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/fabric.adoc.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
@@ -79,7 +79,12 @@ def _val(dut, name: str) -> int:
 
 
 class _Sampler:
-    """Logs (id, data, resp) of every AR, R, AW and B handshake on clk_smc."""
+    """Logs (id, data, resp) of every AR, R, AW and B handshake on clk_smc.
+
+    The sample is taken in the read-only phase of the edge, after the non-blocking
+    updates, so a handshake is logged in the cycle it is asserted whichever
+    coroutine the simulator resumes first on that edge.
+    """
 
     def __init__(self, dut) -> None:
         self.dut = dut
@@ -92,6 +97,7 @@ class _Sampler:
         dut = self.dut
         while True:
             await RisingEdge(dut.clk_smc)
+            await ReadOnly()
             if _val(dut, "s_axi_arvalid") & _val(dut, "s_axi_arready"):
                 self.ar.append(_val(dut, "s_axi_arid"))
             if _val(dut, "s_axi_awvalid") & _val(dut, "s_axi_awready"):

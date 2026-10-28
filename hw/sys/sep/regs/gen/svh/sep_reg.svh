@@ -6674,7 +6674,7 @@ localparam longint unsigned KM_MAILBOX_SEP_IRQ_ENABLE_REG_REG_DEFAULT           
 localparam longint unsigned KM_MAILBOX_SEP_CTRL_REG_REG_DEFAULT                                                   = 32'h00000000;
 localparam longint unsigned SEP_EFUSE_MAP_LOCKS_REG_DEFAULT                                                       = 64'h0000000000000000;
 localparam longint unsigned SEP_EFUSE_MAP_LOCKS_SPARE_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT                                                    = 32'h000000F0;
+localparam longint unsigned SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT                                                    = 32'h0000000F;
 localparam longint unsigned SEP_EFUSE_MAP_SBOOT_DIS_REG_DEFAULT                                                   = 32'h00000000;
 localparam longint unsigned SEP_EFUSE_MAP_TRANSIENT_RMA_EN_REG_DEFAULT                                            = 32'h00000000;
 localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_REG_DEFAULT                                                  = 64'h0000000000000000;

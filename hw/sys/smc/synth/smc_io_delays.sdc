@@ -86,10 +86,6 @@ set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*$io_budget(default)] 
 set_output_delay [expr $clock_periods(TELEMETRYCLK_PERIOD)*$io_budget(default)] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_afvalid_o*}] -add_delay
 set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*$io_budget(default)] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_afready_i*}] -add_delay
 
-# WDT
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports smc_wdt_first_timeout_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports smc_wdt_second_timeout_o] -add_delay
-
 # interrupts
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {smc_ext_interrupts_i*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {sep_mailbox_interrupts_i*}] -add_delay
@@ -114,7 +110,7 @@ cdc_pinned_port_delay set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {lc_state_i*}] -add_delay
 
 # RAS
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports smc_cluster_ded_o] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {smc_ras_o*}] -add_delay
 
 # NDM
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(default)]  -clock [get_clock ck_feedthru] [get_ports {smc_ndmreset_request_i*}] -add_delay
@@ -149,7 +145,7 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]      
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMCCLK] [filter_collection [get_ports {smc_l1_dcache_data_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMCCLK] [get_ports {smc_l1_dcache_data_intf_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMCCLK] [get_ports {trace_mem_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SMCCLK] [filter_collection [get_ports {trace_mem_req_o*}] {full_name !~ ".*mem_clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SMCCLK] [get_ports {trace_mem_resp_i*}] -add_delay
 
 # OCTS
@@ -214,7 +210,7 @@ foreach mem {dat dct rlt} {
         set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] -clock [get_clock PERIPHERALCLK] $i3c_mem_src_ports -add_delay
         puts "INFO: set_input_delay PERIPHERALCLK on i3c_${mem}_mem_src_i* ([sizeof_collection $i3c_mem_src_ports] ports)"
     }
-    set i3c_mem_sink_ports [get_ports -quiet "i3c_${mem}_mem_sink_o*"]
+    set i3c_mem_sink_ports [filter_collection [get_ports -quiet "i3c_${mem}_mem_sink_o*"] {full_name !~ ".*clk.*"}]
     if {[sizeof_collection $i3c_mem_sink_ports] > 0} {
         set_output_delay [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] -clock [get_clock PERIPHERALCLK] $i3c_mem_sink_ports -add_delay
         puts "INFO: set_output_delay PERIPHERALCLK on i3c_${mem}_mem_sink_o* ([sizeof_collection $i3c_mem_sink_ports] ports)"
@@ -224,7 +220,6 @@ foreach mem {dat dct rlt} {
 # SMC control/status signals
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {smc_global_base_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {smc_region_size_o*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports lc_sigint_err_o] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports smc_init_mem_done_o] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports {cla_ext_action_custom_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SMCCLK] [get_ports tdr_dbg_ctrl_clocks_stopped_by_cla_o] -add_delay

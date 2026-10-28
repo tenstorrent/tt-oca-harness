@@ -20,9 +20,12 @@ SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADD
 COLD_PAT = 0xDEADBEEF
 WARM_PAT = 0xCAFEB0BA
 # WDT reset into the COLD_WARM domain is async; 16 SMC clocks cover the
-# wrapper sync into rst_wdt. Proof is the post-pulse CSR handshake, not this
+# wrapper sync into rst_wdt. The watchdog reset stays low for 32 reference
+# clocks after the pin releases (clk_rst.adoc). The scratch read waits until
+# both outputs are high. Proof is the post-pulse CSR handshake, not this
 # pulse width alone.
 _WDT_PULSE = 16
+_WDT_RELEASE_BOUND_REF_CYCLES = 64
 _CSR_BOUND = 64
 
 # ---------------------------------------------------------------------------
@@ -70,13 +73,13 @@ _SS_SWEEP_REGS = (
 #     `smc_reset_unit_lock_test_seq` covers them.
 #   * `ISOLATE_REQ_VIS` @0xC0 -- `sw = r; hw = w` pin visibility
 #     (reset_unit.rdl).
-#   * `ISOLATE_REQ_SMC_REG` @0xB8 -- hardware-set, software-cleared, and one bit
-#     wide. `smc_cool_reset_wrap.sv` sets it to 1 when
-#     `cfg_flr_pf_active` asserts and clears it to 0 on ANY software write with
-#     a non-zero bit enable, regardless of the data; its read data is
-#     `{31'b0, isolate_req_smc_reg}`. A write/readback probe therefore reads
-#     0x0 by specification. Proving the set half needs an FLR event, which is
-#     out of this testcase's scope.
+#   * `ISOLATE_REQ_SMC_REG` @0xB8 -- hardware-set, write-1-to-clear
+#     (`onwrite = woclr`), and one bit wide. `smc_cool_reset_wrap.sv` sets it
+#     to 1 when `cfg_flr_pf_active` asserts and clears it to 0 only on a
+#     software write whose byte-0 strobe is set and whose bit 0 is 1; its read
+#     data is `{31'b0, isolate_req_smc_reg}`. A write/readback probe from the
+#     reset value therefore reads 0x0 by specification. Proving the set half
+#     needs an FLR event, which is out of this testcase's scope.
 #   * `ISOLATE_REQ_PINEN_REG` @0xB4 and `ISOLATE_REQ_SMCEN_REG` @0xBC -- plain
 #     `sw = rw` storage, but both OR into the pin this testcase observes:
 #     `smc_cool_reset_wrap.sv` computes `isolate_req_o[i] =
@@ -553,6 +556,23 @@ class smc_reset_unit_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
             await RisingEdge(dut.clk_smc_i)
         raise AssertionError(f"{label}: COLD_WARM last=0x{last:x} want=0 after {_CSR_BOUND} polls")
 
+    async def _await_wdt_outputs_released(self, dut) -> None:
+        for n in range(_WDT_RELEASE_BOUND_REF_CYCLES):
+            wdt = int(dut.rst_wdt_smc_clk_no.value)
+            warm = int(dut.tb_rst_warm_smc_clk_n.value)
+            if wdt == 1 and warm == 1:
+                cocotb.log.info(
+                    "OBSERVATION rst_wdt_smc_clk_no and tb_rst_warm_smc_clk_n high %d "
+                    "clk_ref_i cycles after the pin release",
+                    n,
+                )
+                return
+            await RisingEdge(dut.clk_ref_i)
+        raise AssertionError(
+            "rst_wdt_smc_clk_no and tb_rst_warm_smc_clk_n still low after "
+            f"{_WDT_RELEASE_BOUND_REF_CYCLES} clk_ref_i cycles"
+        )
+
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
@@ -575,6 +595,7 @@ class smc_reset_unit_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         for _ in range(_WDT_PULSE):
             await RisingEdge(dut.clk_smc_i)
         dut.tb_sep_wdt_reset_n.value = 1
+        await self._await_wdt_outputs_released(dut)
 
         got_w = await self._await_warm_cleared(dut, "POST")
         got_c = await self.csr_read("SCRATCH_COLD_0_POST", SCRATCH_COLD_0, expected=COLD_PAT)

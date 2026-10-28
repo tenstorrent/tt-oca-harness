@@ -16,7 +16,9 @@ The `BOOT_I2C`, `BOOT_RECOVERY`, and `PRIMARY_CHIPLET` straps are observable sta
 === Address selection
 
 I3C controllers 0, 1, and 3 use eFuse identifier slots 0, 1, and 3.
-The eFuse driver reads each slot as two 32-bit words but caches it in a 32-bit field, so the current ROM passes only the low 32 bits onward.
+The eFuse driver reads and caches each slot as a 64-bit value and passes the
+whole value to the I3C driver.
+The open HCI driver uses bits 6:0 as the static address.
 I2C controllers 0 and 1 take the low seven bits of slots 6 and 7.
 An I2C value outside `0x08` through `0x77` is replaced with `0x55`.
 

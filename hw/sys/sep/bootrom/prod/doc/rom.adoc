@@ -1841,7 +1841,18 @@ without a reset.
 [[req-SEP-ROM-ENT-030]]*[SEP-ROM-ENT-030]* The ROM shall lock the ESRC configuration
 (`FIPS_LOCK`) after the startup health test passes and *before* any entropy reaches a
 consumer. Locking earlier freezes a configuration that has not proved itself; locking later
-exposes entropy from a still-mutable source. `DEBUG_CTRL` stays outside this lock by design.
+exposes entropy from a still-mutable source. The lock also freezes `DEBUG_CTRL`, the
+observe-tap enables and `FIFO_CTRL.ENABLE` at their current values. Before setting the lock,
+the ROM therefore closes the `FIFO_RDATA` read path to the DRBG seed words:
+
+. Clear `FIFO_CTRL.ENABLE` and keep every other `FIFO_CTRL` field as configured.
+. Read `FIFO_RDATA` until `FIFO_STATUS.LEVEL` is zero, bounded by the 64-entry FIFO depth
+  plus a final level check.
+. Set `FIPS_LOCK`.
+
+If the FIFO does not empty within that bound, entropy bring-up fails
+(<<req-SEP-ROM-ENT-020,SEP-ROM-ENT-020>>). While `ENTROPY_DBG` disables FIFO access the FIFO
+captures nothing, so `FIFO_STATUS.LEVEL` stays zero and the drain completes immediately.
 
 [[req-SEP-ROM-ENT-040]]*[SEP-ROM-ENT-040]* The ROM shall lock the TRNG source selection
 (`EXT_TRNG_SRC_SEL_LOCK`) once bring-up completes, so later software cannot move the
@@ -1850,6 +1861,7 @@ crypto-block entropy stream to a different source after BL0's own crypto has run
 Both locks are one-way until reset and are applied by default. Each has a build-time defer
 switch (`SEP_ENTROPY_DEFER_FIPS_LOCK`, `SEP_ENTROPY_DEFER_SRC_SEL_LOCK`) for builds that
 intend BL1 to own the configuration; a production build shall leave both locks enabled.
+Deferring `FIPS_LOCK` also leaves the FIFO close step to BL1.
 
 === External TRNG Seam
 

@@ -663,9 +663,9 @@ def aon_timer_regwen_gates(regwen: str) -> frozenset[str]:
         raise KeyError(f"{regwen!r} gates no register in aon_timer.hjson") from exc
 
 
-# AON timer wakeup prescaler. OpenTitan "AON Timer Technical Specification",
-# Wakeup timer section: "The number of cycles per tick is one more than the
-# 12-bit WKUP_CTRL.prescaler field."
+# AON timer wakeup prescaler. OpenTitan AON Timer, Wakeup timer section
+# (vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:32): "The number
+# of cycles per tick is one more than the 12-bit WKUP_CTRL.prescaler field."
 #
 # DV-owned transcription. The rate is stated in neither aon_timer.rdl nor
 # aon_timer.hjson -- both describe the field only as "Pre-scaler value for

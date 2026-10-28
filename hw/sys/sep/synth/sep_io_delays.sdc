@@ -95,18 +95,18 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SEPCLK] [get_ports {sep_cpu_tcm_rsp_i*}] -add_delay
 
 # Scratchpad SRAM interface
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [get_ports {sep_sram_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [filter_collection [get_ports {sep_sram_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SEPCLK] [get_ports {sep_sram_rsp_i*}] -add_delay
 
 # Boot ROM interface
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [get_ports {sep_boot_rom_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [filter_collection [get_ports {sep_boot_rom_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(rom_rsp)]       -clock [get_clock SEPCLK] [get_ports {sep_boot_rom_rsp_i*}] -add_delay
 
 # Key Manager memory interfaces
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [get_ports {km_rom_mem_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [filter_collection [get_ports {km_rom_mem_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(rom_rsp)]       -clock [get_clock SEPCLK] [get_ports {km_rom_mem_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [get_ports {km_sram_mem_req_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(mem_req)]       -clock [get_clock SEPCLK] [filter_collection [get_ports {km_sram_mem_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(sram_rsp)]       -clock [get_clock SEPCLK] [get_ports {km_sram_mem_rsp_i*}] -add_delay
 
 # Adams-Bridge crypto memory interface (request out to macros, response data back)
@@ -139,9 +139,8 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 # of the period is owed to its arrival.
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*$io_budget(async)]  -clock [get_clock ck_feedthru] [get_ports ext_trng_irq_i] -add_delay
 
-# Key Manager interfaces
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports km_unrecoverable_err_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports km_recoverable_err_o] -add_delay
+# RAS
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {sep_ras_o*}] -add_delay
 
 # Efuse interface
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {efuse_bank_ctrl_req_o*}] -add_delay
@@ -160,7 +159,6 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       
 
 # LC state
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports {lc_state_o*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports lc_sigint_err_o] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*$io_budget(default)]       -clock [get_clock SEPCLK] [get_ports security_disable_o] -add_delay
 
 # Mailbox interrupts

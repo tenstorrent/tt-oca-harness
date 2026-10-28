@@ -365,6 +365,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_sep_to_smc",
 ]
 
 # SEP AP/STEE output-remap programming. The firmware is a stimulus generator,
@@ -510,6 +512,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_xbar_sep_out",
 ]
 
 # SEP lifecycle flow: real eFuse sense, then firmware-driven demotes. The SEP
@@ -1164,6 +1168,11 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
   "+pll_sys_period_ns=10",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_smu_out",
+  "+axi_sva_need_xbar_smc_out",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_xbar_ext_out",
 ]
 
 [[tests]]
@@ -2500,6 +2509,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_dtp_dbg",
 ]
 
 [[tests]]
@@ -4644,6 +4655,10 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_xbar_smc_in",
 ]
 
 [[tests]]

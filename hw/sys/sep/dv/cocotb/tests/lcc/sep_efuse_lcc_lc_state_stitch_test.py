@@ -34,7 +34,7 @@ is not blocked by ``efuse_guard``.
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
 The test injects a broken pair at the LCC decoder input through the tb_top
 ``lc_sigint_inject_i`` port after the walk. Observation is the DUT
-``lc_sigint_err_o`` probe plus an AXI ``FEAT_CTRL`` readback of 0 (fail-closed),
+``sep_ras_o.lc_sigint_err`` probe plus an AXI ``FEAT_CTRL`` readback of 0 (fail-closed),
 then release and both restore.
 
 FCOV owner window (``env/sep_fcov_gate.py``): it opens after the eFuse image is
@@ -519,27 +519,27 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                         blanked,
                     )
 
-                # CHK-SECURE-TM-PROG-BLOCK: while the strap is up, efuse_guard
-                # empties the fuse command request and the program interface
-                # completes with PROGRAM_DONE+ERR because secure_tm_blocked_i
-                # is set. That is a failed completion, not a starved DONE.
-                # The one-shot injection (percent 0) can fail only the first
-                # bank write after the resense. Two failed attempts therefore
-                # cannot both be that injection: a guard that let the command
-                # through would complete the second attempt.
+                # CHK-SECURE-TM-PROG-BLOCK: while secure_tm is set, LC_STATE updates
+                # from SEP are blocked (hw/sys/sep/doc/lifecycle_controller.adoc,
+                # "secure_tm and the Secure Scan Chain"). Two program attempts must
+                # not succeed, and after the strap drops and the bank is sensed again
+                # the LC_STATE shadow still equals the image without the bit. No spec
+                # sentence states the PROGRAM_CTRL status of a blocked program, so it
+                # is logged. The one-shot injection (percent 0) can fail only the
+                # first bank write after the resense, so it cannot fail both attempts.
                 blocked = _lcc_otp_program_seq(_LC_STATE_BIT_BASE + 0, max_attempts=2)
                 try:
                     await self.start_seq(blocked)
                 except AssertionError as exc:
                     status = blocked.last_status
-                    done = int(bool(status & _PG_DONE))
-                    err = int(bool(status & _PG_STATUS))
-                    if not (done and err):
-                        raise AssertionError(
-                            "CHK-SECURE-TM-PROG-BLOCK FAIL: expected PROGRAM_DONE+ERR "
-                            "(secure_tm_blocked completes the program FSM with "
-                            f"error); status=0x{status:08x} ({exc})"
-                        ) from exc
+                    self.logger.info(
+                        "OBS-STM-PROG-BLOCK-STATUS: PROGRAM_DONE=%d PROGRAM_ERR=%d "
+                        "status=0x%08x (%s)",
+                        int(bool(status & _PG_DONE)),
+                        int(bool(status & _PG_STATUS)),
+                        status,
+                        exc,
+                    )
                     if blocked.retry_count < 1:
                         raise AssertionError(
                             "CHK-SECURE-TM-PROG-BLOCK FAIL: one PROGRAM_DONE+ERR is "
@@ -548,14 +548,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                             f"{blocked.retry_count})"
                         )
                     self._secure_tm_prog_blocked = True
-                    self.logger.info(
-                        "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] failed "
-                        "%d attempt(s) with PROGRAM_DONE+ERR (status=0x%08x) "
-                        "while secure_tm=1; one injection cannot cover both",
-                        _LC_STATE_BIT_BASE,
-                        blocked.retry_count + 1,
-                        status,
-                    )
+                    blocked_attempts = blocked.retry_count + 1
                 else:
                     raise AssertionError(
                         f"CHK-SECURE-TM-PROG-BLOCK FAIL: OTP bit[{_LC_STATE_BIT_BASE}] programmed "
@@ -576,6 +569,16 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     raw,
                     secure_tm=0,
                     prev_raw=prev_raw,
+                )
+                # resense compared the whole sensed shadow with the image, which does
+                # not hold the blocked bit, so a written bit fails there.
+                self.logger.info(
+                    "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] not programmed after %d "
+                    "refused attempt(s) under secure_tm=1; the post-sense shadow equals "
+                    "the image without it (expected LC=0x%x)",
+                    _LC_STATE_BIT_BASE,
+                    blocked_attempts,
+                    raw,
                 )
             else:
                 await self._program_state_and_resense(image, raw)

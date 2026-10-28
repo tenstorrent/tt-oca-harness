@@ -163,9 +163,8 @@ module smu_ext_fcov #(
                      sep_efuse_bank_ctrl_response_returned_e, clk_smu_i, in_reset)
   end
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the ID values carried on each port.
+  // Covergroup: the ID values carried on each port.
   // ------------------------------------------------------------------
   covergroup cg_smn_ids with function sample (logic [7:0] in_id, logic [9:0] out_id);
     option.per_instance = 1;
@@ -187,6 +186,5 @@ module smu_ext_fcov #(
       u_cg_smn_ids.sample(s_axi_awid_i, axi_out_aw_id_i);
     end
   end
-`endif
 
 endmodule : smu_ext_fcov

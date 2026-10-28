@@ -97,7 +97,12 @@ class smu_dtp_otp_smc_map_rw_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-OTP-SMC-MAP-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-OTP-SMC-MAP-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-OTP-SMC-MAP-JTAG-READY",
+        )
 
         gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         lc = self._sample_int("lc_state_o") & 0xFF
@@ -113,7 +118,7 @@ class smu_dtp_otp_smc_map_rw_test_seq:
             raise AssertionError(f"lc_sigint_err_o={sigint} want 0 (demux err_slv)")
         self.s1_ok = True
         self._log(f"CHK-OTP-SMC-MAP-GATE-OPEN disable={gate} lc=0x{lc:02x} sigint={sigint}")
-        sb.expect_eq("CHK-OTP-SMC-MAP-GATE-OPEN", gate, 0)
+        sb.expect_eq("CHK-OTP-SMC-MAP-GATE-OPEN", gate, 0, evidence="CHK-OTP-SMC-MAP-GATE-OPEN")
 
         caps = int(await jtag.read("SMC_OTP_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
         require_jtag_tdo_resolved("OTP CAPS")
@@ -123,7 +128,12 @@ class smu_dtp_otp_smc_map_rw_test_seq:
             )
         self.s2_ok = True
         self._log(f"CHK-OTP-SMC-MAP-CAPS caps=0x{caps:04x} spare0=0x{SPARE0:08x}")
-        sb.expect_eq("CHK-OTP-SMC-MAP-CAPS", caps, DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS)
+        sb.expect_eq(
+            "CHK-OTP-SMC-MAP-CAPS",
+            caps,
+            DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS,
+            evidence="CHK-OTP-SMC-MAP-CAPS",
+        )
 
         await self._otp_wr(jtag, SPARE0, PATTERN_A, "SPARE0-A")
         got_a = await self._otp_rd(jtag, SPARE0, "SPARE0-A")
@@ -143,7 +153,9 @@ class smu_dtp_otp_smc_map_rw_test_seq:
         if got_c == PATTERN_A:
             raise AssertionError("SPARE[0] still holds PATTERN_A; write path is dead")
         self.s4_ok = True
-        sb.expect_eq("CHK-OTP-SMC-MAP-ALLOW-PATH", got_c, PATTERN_C)
+        sb.expect_eq(
+            "CHK-OTP-SMC-MAP-ALLOW-PATH", got_c, PATTERN_C, evidence="CHK-OTP-SMC-MAP-ALLOW-PATH"
+        )
 
         self._log(
             f"PASS DTP-OTP-SMC-MAP-RW s1={self.s1_ok} s2={self.s2_ok} "

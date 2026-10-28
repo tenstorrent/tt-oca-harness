@@ -71,7 +71,7 @@ python -m sepvp.cli --bin <elf> [--boot primary|secondary] [--recovery] [--rotat
 
 - **`[SEP_STATUS]`** — production status (`report_status` → SMC-SRAM ring), always on, symbolic:
   `BL0 INFO 0x0044 SEP_MSG_BOOTROM_START`, with a leading
-  `[<t>] [INFO 2] [SEP_STATUS] - ` or without it depending on the model
+  `[<t>] [INFO 2] [SEP_STATUS] -` or without it depending on the model
   generation -- the harness matches either. Assert with
   `harness.expect_status("SEP_MSG_...", type=..., fwid=...)`. Prefer this for stable boot-flow
   and error assertions. The symbolic names come from the checked-in bootrom header

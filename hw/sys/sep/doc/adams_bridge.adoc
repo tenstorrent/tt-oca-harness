@@ -165,7 +165,12 @@ documentation of Key Vault word order does not apply to the Key Manager path.
 The working SRAM is brought out of the wrapper as packed
 `abr_mem_req_t` / `abr_mem_rsp_t` structs. Word-write channels are `we` / `re` /
 address / data; `sig_z` and `pk` also carry one-bit-per-byte `wstrobe`.
-`SEP_ABR_SRAM_LATENCY` is the macros' native registered-read latency (default 1).
+`SEP_ABR_SRAM_LATENCY` (default 1, at least 1) is the number of clocks from a
+channel's `re` to its read data on `abr_mem_rsp_i`. Adams Bridge delays its read
+enables by that many clocks and samples the data then; it adds no delay itself,
+so the macros must return each channel's data exactly that many clocks after
+`re`. The reference integration's one-clock `prim_ram_1r1w` macros support only
+the default of 1.
 `SEP_ABR_MASKING_EN` (default 1) selects Adams Bridge 2-share DOM: thirteen 1R1W
 macros versus nine, plus a second NTT. That choice changes ABR internal behavior
 (sequencing, SCA, memory topology), not merely throughput.

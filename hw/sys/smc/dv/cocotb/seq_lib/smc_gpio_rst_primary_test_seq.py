@@ -8,6 +8,9 @@ hw/ip/gpio/regs/gpio_intf.rdl, hw/sys/smc/doc/clk_rst.adoc.
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
@@ -56,6 +59,7 @@ AXI_BOUND_CYCLES = 256
 RESET_ASSERT_BOUND_CYCLES = 1024
 RESET_RELEASE_BOUND_CYCLES = 8192
 EDGE_SETUP_WINDOW_CYCLES = 4
+# Floor on the measured L only; the drawn lead is bounded by the measured write latencies.
 AXI_LAUNCH_LEAD_CYCLES = 4
 EDGE_LEAD_CYCLES = 2
 IN_RESET_WINDOW_CYCLES = 64
@@ -97,10 +101,14 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_gpio_rst_primary_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        self.rng = random.Random(self.seed)
         self.dispatch_reset = None
         self.steps: list[tuple[str, int]] = []
         self.chk_steps: list[tuple[str, str]] = []
         self.latency = 0
+        self.lead = 0
+        self.lead_range = (0, 0)
 
     def _mark(self, step: str) -> None:
         self.steps.append((step, int(get_sim_time("ps"))))
@@ -287,9 +295,73 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             f"the pad at the active level; cold-only reset not separable)"
         )
 
+    async def _timed_write(self, label: str, addr: int, data: int) -> tuple[int, int]:
+        """A plain write; returns its launch-to-AW and launch-to-completion cycle counts."""
+        dut = cocotb.top
+        item = SmcSysAxiItem(label)
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = addr
+        item.length = 4
+        item.wdata = data
+        outcome = {"done": False}
+
+        async def write() -> None:
+            await self.start_item(item)
+            await self.finish_item(item)
+            outcome["done"] = True
+
+        task = cocotb.start_soon(write())
+        issued = done_at = None
+        for cycle in range(AXI_BOUND_CYCLES + 1):
+            aw = dut.s_axi_awvalid.value
+            assert aw.is_resolvable, "s_axi_awvalid is X/Z"
+            if issued is None and int(aw):
+                issued = cycle
+            if outcome["done"]:
+                done_at = cycle
+                break
+            await RisingEdge(dut.clk_smc_i)
+        assert task.done() and issued is not None and done_at is not None, (
+            f"{label}: write not seen on AW or not completed within {AXI_BOUND_CYCLES} cycles "
+            f"(issued={issued} done={done_at})"
+        )
+        self.accesses += 1
+        return issued, done_at
+
+    def _draw_lead(self, latency: int, issued: int, done_at: int) -> int:
+        """Draw the launch lead: the write must reach AW before the reset fall and outlive it.
+
+        The lead is the number of cycles before the reset fall at which the write is launched:
+        above the measured launch-to-AW latency so that `s_axi_awvalid` is seen no later than
+        the fall, below the measured launch-to-completion latency so that the write is still
+        outstanding at the fall, and below L so that the launch follows the assertion.
+        """
+        low = issued + 1
+        high = min(done_at - 1, latency - 1)
+        assert low <= high, (
+            f"no legal launch lead: launch-to-AW {issued}, launch-to-completion {done_at}, "
+            f"L={latency}"
+        )
+        self.lead_range = (low, high)
+        self.lead = self.rng.randint(low, high)
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: step 4 launch lead %d cycles before the reset fall "
+            "(range %d..%d from launch-to-AW %d, launch-to-completion %d, L=%d)",
+            self.seed,
+            self.lead,
+            low,
+            high,
+            issued,
+            done_at,
+            latency,
+        )
+        return self.lead
+
     async def _step_access(self, dut, sampler: _Sampler) -> str:
         latency = self.latency
-        assert latency > AXI_LAUNCH_LEAD_CYCLES, f"L={latency} too small for the launch lead"
+        assert latency > AXI_LAUNCH_LEAD_CYCLES, (
+            f"L={latency} at or below the floor AXI_LAUNCH_LEAD_CYCLES={AXI_LAUNCH_LEAD_CYCLES}"
+        )
         driver_bound_ns = self.cfg.axi_timeout_ns
         item = SmcSysAxiItem("wr_in_flight_DATA_CTRL")
         item.op = SmcSysAxiOp.WRITE
@@ -304,13 +376,16 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
             await self.finish_item(item)
             outcome["done"] = True
 
-        await self.csr_write("ACCESS_ENABLE_PRIME", DATA_CTRL_ENABLE, _ENABLE_USE_REG)
+        issued0, done0 = await self._timed_write(
+            "wr_ACCESS_ENABLE_PRIME", DATA_CTRL_ENABLE, _ENABLE_USE_REG
+        )
         primed = await self.csr_read("ACCESS_ENABLE_PRIME_RB", DATA_CTRL_ENABLE)
         assert primed & _ENABLE_USE_REG == _ENABLE_USE_REG, (
             f"DATA_CTRL_ENABLE reads 0x{primed:08x} after writing 0x{_ENABLE_USE_REG:08x}"
         )
+        lead = self._draw_lead(latency, issued0, done0)
         await self._assert_pin()
-        for _ in range(latency - AXI_LAUNCH_LEAD_CYCLES):
+        for _ in range(latency - lead):
             await RisingEdge(dut.clk_smc_i)
         has_aw = hasattr(dut, "s_axi_awvalid")
         assert has_aw, "s_axi_awvalid probe missing"
@@ -364,8 +439,10 @@ class smc_gpio_rst_primary_test_seq(SmcCsrSeq):
         )
         return (
             f"the write of DATA_CTRL=0x{CFG_IN_FLIGHT:08x} launched "
-            f"{latency - AXI_LAUNCH_LEAD_CYCLES} cycles after the rst_cold_ni assert "
-            f"(L={latency}) was issued {issued} cycles after the launch, "
+            f"{latency - lead} cycles after the rst_cold_ni assert "
+            f"(L={latency}; drawn=seed {self.seed} lead {lead} of {self.lead_range[0]}.."
+            f"{self.lead_range[1]}, prime write AW at {issued0}, completion at {done0}) "
+            f"was issued {issued} cycles after the launch, "
             f"rst_primary_smc_clk_no fell {fall} cycles after the launch and the "
             f"write completed {done_at} cycles after the launch; DATA_CTRL_ENABLE read "
             f"0x{primed:08x} before the reset; "

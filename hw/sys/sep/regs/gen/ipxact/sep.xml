@@ -536,8 +536,8 @@ Any OpenTitan-internal transactions are guaranteed to complete, but there are no
               <ipxact:name>GO</ipxact:name>
               <ipxact:description>Setting this bit triggers the DMA operation.
 For normal operation, the DMA engine clears the `go` bit automatically after the configured operation is complete.
-For Hardware handshake operation, DMA engine does not auto clear the Go bit.
-Firmware shall clear the Go bit when it intends to stop the hardware handshake operation.</ipxact:description>
+For hardware handshake operation, the DMA engine keeps the `go` bit set across chunks and clears it, setting `status.done`, once `total_data_size` bytes have been transferred.
+Firmware clears the `go` bit to stop the hardware handshake operation earlier.</ipxact:description>
               <ipxact:bitOffset>31</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9128,7 +9128,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
-                  <ipxact:value>'hf0</ipxact:value>
+                  <ipxact:value>'hf</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>8</ipxact:bitWidth>
