@@ -277,8 +277,7 @@ tests = [
 ]
 
 [[groups]]
-# Filed-defect reproducers; the weekly tier's own row. Empty until the next
-# filed defect gets its reproducer.
+# Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
 expected_count = 4
 tests = [
