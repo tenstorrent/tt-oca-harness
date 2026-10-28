@@ -163,7 +163,8 @@ typedef union {
 #define UART_16550_MAIN__LCR__WLS_reset 0x0
 // Stop Bits:
 // * `0` - 1 stop bit.
-// * `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)
+// * `1` - 2 stop bits. The transmitter always sends 2 stop bits; with 5-bit
+// words the receiver checks only the first.
 #define UART_16550_MAIN__LCR__STB_bm 0x4
 #define UART_16550_MAIN__LCR__STB_bp 2
 #define UART_16550_MAIN__LCR__STB_bw 1
@@ -194,7 +195,8 @@ typedef union {
 #define UART_16550_MAIN__LCR__SET_BREAK_reset 0x0
 // Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers
 // when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access
-// to the `THR`, `RBR`, and `IIR` registers.
+// to the `THR`, `RBR`, and `IER` registers. `IIR` and `FCR` are accessible
+// regardless of this bit.
 #define UART_16550_MAIN__LCR__DLAB_bm 0x80
 #define UART_16550_MAIN__LCR__DLAB_bp 7
 #define UART_16550_MAIN__LCR__DLAB_bw 1
@@ -209,7 +211,8 @@ typedef union {
         uint32_t WLS :2;
         // Stop Bits:
         // * `0` - 1 stop bit.
-        // * `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)
+        // * `1` - 2 stop bits. The transmitter always sends 2 stop bits; with 5-bit
+        // words the receiver checks only the first.
         uint32_t STB :1;
         // Parity Enable.
         uint32_t PEN :1;
@@ -225,7 +228,8 @@ typedef union {
         uint32_t SET_BREAK :1;
         // Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers
         // when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access
-        // to the `THR`, `RBR`, and `IIR` registers.
+        // to the `THR`, `RBR`, and `IER` registers. `IIR` and `FCR` are accessible
+        // regardless of this bit.
         uint32_t DLAB :1;
         uint32_t :24;
     } f;
@@ -303,10 +307,11 @@ typedef union {
 #define UART_16550_MAIN__LSR__DR_bp 0
 #define UART_16550_MAIN__LSR__DR_bw 1
 #define UART_16550_MAIN__LSR__DR_reset 0x0
-// Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
-// Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
-// is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
-// This bit triggers the Receiver Line Status Interrupt.
+// Overrun Error. When set, indicates that the RX FIFO was full when a new
+// character was received; the new character is dropped. This bit sets only in
+// FIFO mode: in non-FIFO mode a new character overwrites an unread character in
+// the RBR without setting it. This bit triggers the Receiver Line Status
+// Interrupt.
 #define UART_16550_MAIN__LSR__OE_bm 0x2
 #define UART_16550_MAIN__LSR__OE_bp 1
 #define UART_16550_MAIN__LSR__OE_bw 1
@@ -360,10 +365,11 @@ typedef union {
         // Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO
         // mode) contains data.
         uint32_t DR :1;
-        // Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
-        // Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
-        // is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
-        // This bit triggers the Receiver Line Status Interrupt.
+        // Overrun Error. When set, indicates that the RX FIFO was full when a new
+        // character was received; the new character is dropped. This bit sets only in
+        // FIFO mode: in non-FIFO mode a new character overwrites an unread character in
+        // the RBR without setting it. This bit triggers the Receiver Line Status
+        // Interrupt.
         uint32_t OE :1;
         // Parity Error. When set, indicates that the character at the top of the receiver
         // FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the

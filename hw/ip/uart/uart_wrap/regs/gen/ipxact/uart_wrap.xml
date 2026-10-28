@@ -224,7 +224,8 @@ Interrupt.</ipxact:description>
                 <ipxact:name>STB</ipxact:name>
                 <ipxact:description>Stop Bits:
 * `0` - 1 stop bit.
-* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</ipxact:description>
+* `1` - 2 stop bits. The transmitter always sends 2 stop bits; with 5-bit
+  words the receiver checks only the first.</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -290,7 +291,8 @@ on the receiving UART.</ipxact:description>
                 <ipxact:name>DLAB</ipxact:name>
                 <ipxact:description>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers
 when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access
-to the `THR`, `RBR`, and `IIR` registers.</ipxact:description>
+to the `THR`, `RBR`, and `IER` registers. `IIR` and `FCR` are accessible
+regardless of this bit.</ipxact:description>
                 <ipxact:bitOffset>7</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -406,10 +408,11 @@ mode) contains data.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>OE</ipxact:name>
-                <ipxact:description>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
-Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
-is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
-This bit triggers the Receiver Line Status Interrupt.</ipxact:description>
+                <ipxact:description>Overrun Error. When set, indicates that the RX FIFO was full when a new
+character was received; the new character is dropped. This bit sets only in
+FIFO mode: in non-FIFO mode a new character overwrites an unread character in
+the RBR without setting it. This bit triggers the Receiver Line Status
+Interrupt.</ipxact:description>
                 <ipxact:bitOffset>1</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
