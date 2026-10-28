@@ -493,7 +493,10 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
         self._stamp("RSVD")
         self._chk(
             "CHK-I2C-CTRL-RSVD-WRITE",
-            "; ".join(parts) + " (reserved readback: LINKED-ISSUE SF-005)",
+            "; ".join(parts)
+            + " (reserved readback: LINKED-ISSUE SF-005; the 0xffffffff write carries the "
+            "defined fields already held, so only its bresp tells a taken write from a "
+            "dropped one)",
         )
 
     async def _strobed(
@@ -538,7 +541,9 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
             f"ctrl1 lane1 set={vals[1]['set']:#05x} clr={vals[1]['clr']:#05x} "
             f"lane0={lane0:#05x} half_lo={half_lo:#05x} half_hi={half_hi & WRAP_FIELDS:#05x} "
             f"(raw {half_hi:#010x}); ctrl2 lane1 set={vals[2]['set']:#05x} "
-            f"clr={vals[2]['clr']:#05x}; bresp={','.join(bresps)} (SF-004)",
+            f"clr={vals[2]['clr']:#05x}; bresp={','.join(bresps)} (SF-004; the WSTRB 0b1100 "
+            f"write strobes only reserved lanes, so only its bresp tells a taken write from a "
+            f"dropped one)",
         )
 
     async def _entries(self, label: str, want: tuple[int, int, int]) -> list[int]:

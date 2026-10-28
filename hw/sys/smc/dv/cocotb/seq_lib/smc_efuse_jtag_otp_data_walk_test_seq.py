@@ -24,10 +24,14 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
   responses are logged (SF-009).
 * S4 reads bit A through the read interface, programs it with ``efuse_data`` 1 and polls
   ``program_done``; S5 reads A again; S6 issues a data-0 program to bit A2, polls until
-  the request lifecycle shows (busy seen, or ``program_done`` / ``program_status``
-  changed from their pre-GO values) and reads A2 before and after; ``program_status`` is
-  logged only (SF-034). Each read first clears EFUSE_PROGRAM_CTRL, since ``program_enable``
-  and ``read_enable`` are mutually exclusive owners of the command path.
+  the GO write has completed and ``program_busy`` has read 0 on DATA0_SETTLE_READS
+  consecutive samples, and reads A2 before and after. The graded part is the unchanged
+  dout; whether the request shows a lifecycle at all (busy seen, or ``program_done`` /
+  ``program_status`` changed from their pre-GO values) and the ``program_status`` it leaves
+  are logged only, since ``efuse_interface_ctrl.rdl`` says a request with ``efuse_data`` 0
+  "will be ignored" and what that means is open (SF-034). Each read first clears
+  EFUSE_PROGRAM_CTRL, since ``program_enable`` and ``read_enable`` are mutually exclusive
+  owners of the command path.
 * S9 reads EFUSE_PROGRAM_CTRL over the JTAG eFuse port and writes the value read back,
   with AxPROT 0b101, then 0b000, then the port default 0b010. Every response is OKAY and
   the 0b101 and 0b000 reads equal the 0b010 reference read (SF-033). The register holds
@@ -128,6 +132,9 @@ RESP_OKAY = 0
 WORD = 0xFFFF_FFFF
 JTAG_ACCESS_TIMEOUT_NS = 2_000
 POLL_BOUND = 10_000
+#: S6: consecutive SEP_IN reads with ``program_busy`` 0 after the GO write completed before
+#: A2 is read again; a busy sample restarts the count.
+DATA0_SETTLE_READS = 8
 
 FENCE = ("SETUP", "WALK", "PARTIAL-STROBE", "PROGRAM", "READ-BACK", "DATA0", "RESTORED")
 
@@ -490,25 +497,26 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
 
         go = cocotb.start_soon(_go())
         samples: list[int] = []
-        lifecycle = None
+        lifecycle = "none"
+        idle = 0
         for _ in range(POLL_BOUND):
             value = await self._sep_read("S6_REQ_POLL", PROGRAM_CTRL)
             samples.append(value)
-            if lifecycle is None:
+            if lifecycle == "none":
                 if value & PROG_BUSY:
                     lifecycle = "busy"
                 elif value & PROG_DONE != done0:
                     lifecycle = "done-change"
                 elif value & PROG_ERR != status0:
                     lifecycle = "status-change"
-            if lifecycle is not None and not value & PROG_BUSY and go.done():
+            idle = 0 if value & PROG_BUSY else idle + 1
+            if go.done() and idle >= DATA0_SETTLE_READS:
                 break
         else:
             raise AssertionError(
-                f"S6: data-0 program request lifecycle={lifecycle} not complete within "
-                f"{POLL_BOUND} SEP_IN reads (pre-GO 0x{pre_go:08x}, last 0x{samples[-1]:08x}); "
-                f"no busy sample and program_done / program_status unchanged means the request "
-                f"was not processed"
+                f"S6_REQ_POLL: GO write not completed with program_busy 0 on "
+                f"{DATA0_SETTLE_READS} consecutive samples within {POLL_BOUND} SEP_IN reads "
+                f"(pre-GO 0x{pre_go:08x}, last 0x{samples[-1]:08x}, lifecycle={lifecycle})"
             )
         await go
         ctrl = samples[-1]
@@ -522,15 +530,16 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         self._stamp("DATA0")
         self._chk(
             "CHK-EFUSE-JTAG-DATA0",
-            "A2=0x%04x lifecycle=%s status_pre=%d status_post=%d (SF-034), dout 0x%08x == 0x%08x; "
-            "pre-GO PROGRAM_CTRL=0x%08x, done/busy=%s over %d samples (logged; "
-            "PROGRAM_CTRL=0x%08x)",
+            "A2=0x%04x dout 0x%08x == 0x%08x (graded); lifecycle=%s status_pre=%d "
+            "status_post=%d, pre-GO PROGRAM_CTRL=0x%08x, done/busy=%s over %d samples, "
+            "PROGRAM_CTRL=0x%08x (logged only, LINKED-ISSUE SF-034: the RDL says a data-0 "
+            "request is ignored)",
             BIT_A2,
+            pre,
+            post,
             lifecycle,
             int(bool(status0)),
             int(bool(ctrl & PROG_ERR)),
-            pre,
-            post,
             pre_go,
             ",".join(f"{int(bool(s & PROG_DONE))}/{int(bool(s & PROG_BUSY))}" for s in samples[:8]),
             len(samples),
@@ -557,7 +566,8 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-EFUSE-JTAG-PROT",
             "prot5 rd=%d wr=%d data==ref y, prot0 rd=%d wr=%d data==ref y, prot2 rd=%d wr=%d "
-            "(reference EFUSE_PROGRAM_CTRL=0x%08x; LINKED-ISSUE SF-033)",
+            "(reference EFUSE_PROGRAM_CTRL=0x%08x; each write-back carries the word just read, "
+            "so only its BRESP tells a taken write from a dropped one; LINKED-ISSUE SF-033)",
             legs["prot5"][1],
             legs["prot5"][2],
             legs["prot0"][1],

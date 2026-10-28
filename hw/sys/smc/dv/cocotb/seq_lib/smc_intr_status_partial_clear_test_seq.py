@@ -242,7 +242,7 @@ class smc_intr_status_partial_clear_test_seq(SmcCsrSeq):
         )
         self.bits_held += bin(second).count("1")
         if block == "i2c":
-            self.i2c_held[status.index] = self.i2c_held.get(status.index, 0) | second
+            self.i2c_held[status.index] = self.i2c_held.get(status.index, 0) | (held & second)
 
         await self.csr_write(f"{block}{status.index}_CLEAR_REST", status.addr, second)
         cleared = await self.csr_read(f"{block}{status.index}_STATUS_CLEARED", status.addr)
@@ -307,16 +307,17 @@ class smc_intr_status_partial_clear_test_seq(SmcCsrSeq):
                 f"I2C{idx} INTR_STATE reads 0x{cleared:08x} after the written "
                 f"0x{I2C_FIRST_HALF:08x}; expected 0x00000000"
             )
-            self.i2c_held[idx] |= I2C_FIRST_HALF
+            self.i2c_held[idx] |= held & ~cleared
             covered = self.i2c_held[idx] & I2C_RW1C_MASK
             assert covered == I2C_RW1C_MASK, (
-                f"I2C{idx}: the two passes held 0x{covered:08x} against a zero; all 13 RW1C "
-                f"bits 0x{I2C_RW1C_MASK:08x} have to be held once"
+                f"I2C{idx}: the held readbacks of the two passes cover 0x{covered:08x}; all 13 "
+                f"RW1C bits 0x{I2C_RW1C_MASK:08x} have to be read held once"
             )
             words[idx] = (raised, held, cleared)
         self._chk(
             "CHK-I2C12-W1C-SWAP-HOLD",
-            "%s; %d/13 bits held+cleared per instance across both passes",
+            "%s; %d/13 bits read held then cleared per instance across both passes (from the "
+            "held readbacks)",
             "; ".join(
                 f"i2c{idx} raised=0x{r:08X} held=0x{h:08X} cleared=0x{c:x}"
                 for idx, (r, h, c) in words.items()

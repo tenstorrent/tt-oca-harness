@@ -713,7 +713,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             "CHK-SWEEP-VALID-LANE",
             f"{visited} regions (mmode {families['mmode']}, xvisor {families['xvisor']}, "
             f"alias {families['alias']}): resp OKAY {okay}/{okay}, "
-            f"valid-after-lane7={after_lane7}, valid-kept-after-0x7F={kept}, "
+            f"valid-after-lane7={after_lane7}, valid-after-0x7F={kept} (bit 63 written 1, "
+            f"no lane-7 strobe evidence), "
             f"valid-0 lane-7-unstrobed kept 0 {zero_kept}/{zero_saved}, "
             f"restored {restored}/{total} (SF-009)",
         )
