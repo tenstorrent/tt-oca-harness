@@ -198,6 +198,8 @@ DIV_DRAW_MAX = 1023
 RATE_HI = 16
 # Clocks the leaf holds a bit of esrc_cnt_pass before it writes 0.
 CNT_HOLD_CLKS = 2
+# Clean starts tried for a first push whose strobe counts can tell the count start.
+FIRST_PUSH_TRIES = 3
 # Clocks from a RING_OSC_ENABLE write of 0 to esrc_ro_enable_o reading 0 (outer cap).
 RO_OFF_CLKS = 64
 # Outer cap of the mid-run trace (clocks); never a contract.
@@ -230,6 +232,19 @@ RESET_DIV = _get(ENTROPY_SOURCE.reset("DECORRELATOR_CTRL"), "DECORRELATOR_CTRL",
 
 def _held(h: set[int] | None) -> str:
     return "none" if h is None else "/".join(str(v) for v in sorted(h))
+
+
+def _first_push_tells(trace: dict) -> bool:
+    """A count of every strobe from the TRNG release, or from the enable write, misses N+1.
+
+    Such a count reaches N+1 on the first gated strobe j with (u + j) % (N+1) == 0,
+    where u is the strobes it saw before the first gated one, so it pushes on strobe
+    N+1 only when u % (N+1) == 0.
+    """
+    if trace["u0"] is None:
+        return True
+    m = trace["n"] + 1
+    return trace["u0"] % m != 0 and (trace["u0"] - trace["u_at_ctrl"]) % m != 0
 
 
 def _lane_byte(bit: int, mask: int) -> int:
@@ -393,9 +408,17 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             # Outer cap: the boot bound of wait_boot_done, the strobes before the clean
             # start, two first-push distances and the period measurement.
             bound = (
-                2 * WINDOW + 64 + MAX_PRE_CLEAN_STROBES + 2 * (self.plan.n_r + 1)
+                2 * WINDOW + 64 + MAX_PRE_CLEAN_STROBES + 2 * RATE_HI
             ) * RESET_STROBE_CLK + PERIOD_CAP
-            trace = {"g": 0, "pre_push": 0, "k": None, "ds_count": None, "reason": ""}
+            trace = {
+                "g": 0,
+                "u": 0,
+                "u0": None,
+                "pre_push": 0,
+                "k": None,
+                "ds_count": None,
+                "reason": "",
+            }
             trace["task"] = cocotb.start_soon(self._first_push_trace(trace, bound))
         await self._wr(ESRC_INTR_ENABLE, INTR_ENABLE_ALL)
         await self._wr(ESRC_ALERT_THRESHOLD, _val("ALERT_THRESHOLD", THRESHOLD=0))
@@ -404,6 +427,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         ).run(release_mark=mark)
         if trace is not None:
             trace["gated_at_ctrl"] = trace["g"]
+            trace["u_at_ctrl"] = trace["u"]
         self.p = await self.setup.measure_period(self.chk)
         await self.setup.wait_boot_done(self.esrc, WINDOW)
         return trace
@@ -411,7 +435,9 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
     async def _first_push_trace(self, st: dict, bound: int) -> None:
         """Counts ``esrc_stream_valid_gated_o`` strobes up to the first FIFO word.
 
-        On every ``clk_i`` (ReadOnly): ``g`` counts the gated strobes; a word of
+        On every ``clk_i`` (ReadOnly): ``g`` counts the gated strobes and ``u`` the
+        ungated ``esrc_decor_valid_o`` strobes; ``u0`` = ``u`` before the first gated
+        strobe; a word of
         ``esrc_compress_vld_o`` before the first gated strobe counts in ``pre_push``;
         the first word after it sets ``k`` = the gated strobes up to and including
         that clock and ``ds_count`` = ``esrc_downsample_count_o`` on that clock. A
@@ -424,7 +450,11 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             if self.rd(dut.esrc_stream_valid_gated_o):
+                if st["g"] == 0:
+                    st["u0"] = st["u"]
                 st["g"] += 1
+            if self.rd(dut.esrc_decor_valid_o):
+                st["u"] += 1
             if self.rd(dut.esrc_compress_vld_o):
                 if st["g"] == 0:
                     st["pre_push"] += 1
@@ -598,10 +628,16 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         (``_midrun_obs``) run in the same graded window.
         """
         plan = self.plan
-        trace = await self._setup(
-            ctrl_fields={"BYPASS_ENTROPY_COMPRESSOR": 1, "DOWNSAMPLE_RATE": plan.n_r},
-            first_push=True,
-        )
+        for tries in range(1, FIRST_PUSH_TRIES + 1):
+            n = 2 + (plan.n_r - 2 + tries - 1) % (RATE_HI - 2)
+            trace = await self._setup(
+                ctrl_fields={"BYPASS_ENTROPY_COMPRESSOR": 1, "DOWNSAMPLE_RATE": n},
+                first_push=True,
+            )
+            await trace["task"]
+            trace.update(n=n, tries=tries)
+            if _first_push_tells(trace):
+                break
         open_graded_window(TEST, self.logger)
         await self._grade_first_push(trace)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
@@ -730,13 +766,17 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         the bypass before the boot gate passes any strobe, so the count of selected
         outputs starts at the first gated strobe. Anchor: ``esrc_stream_valid_gated_o``
         and ``esrc_compress_vld_o``; the clean start is the only stimulus.
+
+        The control needs the CTRL readback and a trace where a count of every strobe
+        from the TRNG release or from the enable write would push on another strobe
+        (``_first_push_tells``). The leg repeats the clean start with the next rate,
+        up to FIRST_PUSH_TRIES times, until the trace tells the count start.
         """
-        plan = self.plan
-        await trace["task"]
+        n = trace["n"]
         k = trace["k"]
-        expect = plan.n_r + 1
+        expect = n + 1
         fields = {
-            "n": plan.n_r,
+            "n": n,
             "first_push_gated": "none" if k is None else k,
             "expect": expect,
             "gated_at_ctrl": trace["gated_at_ctrl"],
@@ -752,14 +792,17 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             "COND-FIRST-PUSH",
             trace["gated_at_ctrl"] == 0
             and trace["pre_push"] == 0
-            and plan.n_r >= 1
             and bypass_rb == 1
-            and rate_rb == plan.n_r,
+            and rate_rb == n
+            and _first_push_tells(trace),
             gated_at_ctrl=trace["gated_at_ctrl"],
             pre_push=trace["pre_push"],
-            n=plan.n_r,
+            n=n,
             bypass_rb=bypass_rb,
             rate_rb=rate_rb,
+            u0="none" if trace["u0"] is None else trace["u0"],
+            u_at_ctrl=trace["u_at_ctrl"],
+            tries=trace["tries"],
         )
         if self.chk.ok("COND-FIRST-PUSH", k == expect, **fields):
             await self._cnt_pass(ESRC_CNT_PASS_FIRST_PUSH)
