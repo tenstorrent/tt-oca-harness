@@ -202,12 +202,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-SMU-ALLOW-NS-S1", "CHK-SMU-ALLOW-NS-S1", "allow_ns=0 secure OKAY / NS DECERR"),
         ("CHK-SMU-ALLOW-NS-S2", "CHK-SMU-ALLOW-NS-S2", "dual-slot admits secure and NS"),
         ("CHK-SMU-ALLOW-NS-S3", "CHK-SMU-ALLOW-NS-S3", "clear returns DECERR for both"),
-        (
-            "CHK-SMU-ALLOW-NS-BASIC",
-            "CHK-SMU-ALLOW-NS-BASIC",
-            "completion marker: the secure, NS-block, dual-slot and clear legs each reached "
-            "their own compare; not a proof of the legs",
-        ),
     ],
     "smu_axi_in_attribute_sweep_test": [
         (
@@ -1369,12 +1363,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-FILTER-IN-INSTANCES-S1",
             "CHK-FILTER-IN-INSTANCES-S1",
             "inbound filter instances 0,1,7,14,15 programmed and read back at their indexed bases",
-        ),
-        (
-            "CHK-FILTER-IN-INSTANCES-BASIC",
-            "CHK-FILTER-IN-INSTANCES-BASIC",
-            "completion marker: every leg s1..s5 passed its own response check; not a proof of "
-            "the legs",
         ),
     ],
     "smu_axi_filter_out_instance_matrix_test": [

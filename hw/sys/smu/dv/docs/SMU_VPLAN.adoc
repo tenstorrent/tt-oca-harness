@@ -757,8 +757,6 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-SMU-ALLOW-NS-S1` |Evidence token, emitted only after the compares it names have held
 |`CHK-SMU-ALLOW-NS-S2` |Evidence token, emitted only after the compares it names have held
 |`CHK-SMU-ALLOW-NS-S3` |Evidence token, emitted only after the compares it names have held
-|`CHK-SMU-ALLOW-NS-BASIC` |Completion marker that the secure, NS-block, dual-slot and clear legs
-each reached their own compare; not a proof of the legs
 |assertion |allow_ns incomplete s1s=<value> s1n=<value>
 |===
 
@@ -805,8 +803,6 @@ each reached their own compare; not a proof of the legs
 |Checker |Description
 |`CHK-FILTER-IN-J2A-READY` |Evidence token, emitted only after the compares it names have held
 |`CHK-FILTER-IN-INSTANCES-S1` |Evidence token, emitted only after the compares it names have held
-|`CHK-FILTER-IN-INSTANCES-BASIC` |Completion marker that every leg s1..s5 passed its own
-response check; not a proof of the legs
 |assertion |in-matrix incomplete s1=<value> s2=<value>
 |===
 

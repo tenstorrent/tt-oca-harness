@@ -311,12 +311,6 @@ class smu_axi_filter_allow_ns_test_seq:
         )
         self.clear_ok = True
         self._log("CHK-SMU-ALLOW-NS-S3: clear → DECERR for secure and NS")
-        sb.expect_eq(
-            "CHK-SMU-ALLOW-NS-BASIC",
-            self.secure_ok and self.ns_block_ok and self.dual_ok and self.clear_ok,
-            True,
-            evidence="CHK-SMU-ALLOW-NS-BASIC",
-        )
         self._log(
             "CHK-SMU-ALLOW-NS-BASIC: s1=%s s2=%s s3=%s (inbound only; no Force)"
             % (
