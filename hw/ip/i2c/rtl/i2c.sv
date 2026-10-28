@@ -77,6 +77,9 @@ module i2c
   output logic                             irq_o,           // Level interrupt; OR of the INTR_STATE
                                                             // sources masked by INTR_ENABLE.
 
+  output logic                             fifo_intg_err_o, // FIFO pointer or data parity
+                                                            // integrity error; see i2c_core.
+
   output logic [3:0]                       debug_o          // Four-bit debug bus; see i2c_core for
                                                             // field definitions.
 );
@@ -131,6 +134,7 @@ module i2c
 
     // Interrupt Interface
     .irq_o,
+    .fifo_intg_err_o,
 
     // Debug Interface
     .debug_o

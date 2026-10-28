@@ -309,8 +309,8 @@ Observation probe groups:
   `sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test`,
   `sep_sec_dis_timing_rand_test`, `sep_lcc_state_codeword_rand_test`,
   `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`.
-* eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of `u_sep_fcov`,
-  VCS only): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
+* eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of
+  `u_sep_fcov`): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
   comparator fault bits), `token_go_i` (hash start pulses),
   `sec_disable_expected_i` (SEC_DIS expected digest), `rd_addr_err_i`,
   `pg_addr_err_i` and `req_err_i` (the `EFUSE_INTERFACE_CTRL_STATUS` error
@@ -328,7 +328,7 @@ Observation probe groups:
   latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`
   (with `efuse_shadow_probe_o`) and `sep_km_otp_interface_rand_test` (with
   `sep_fuse_sense_done_o`).
-* Key Manager error outputs (`km_unrecoverable_err_o`, `km_recoverable_err_o`):
+* Key Manager error outputs (`sep_ras_o.km_uncorrectable`, `sep_ras_o.km_correctable`):
   the `sep_wrapper` outputs of the Key Manager unrecoverable and recoverable
   faults (`hw/sys/sep/doc/port_table.adoc`), read only. PIC vector bits 30 and
   31 carry the same faults. User: `sep_km_cpu_protect_rand_test` (the
@@ -404,7 +404,7 @@ Observation probe groups:
   clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
-  `u_sep_fcov` port list (VCS only): the KM CPU AXI master and its error
+  `u_sep_fcov` port list: the KM CPU AXI master and its error
   pulses, the KM CPU memory bus, `cpu_trap`, `irq_active`, the PicoRV32
   `dbg_insn_opcode` (the opcode of the instruction in execution) and the CPU
   interrupt lines, the error flags, the SRAM write-lock and violation bits,
@@ -425,7 +425,7 @@ Observation probe groups:
   `efuse_shadow_i`, and the unmasked sensed shadow through the port
   `stored_shadow_i`. The eFuse and lifecycle taps above define these three
   ports; the KM taps reuse them. The sampler reads the Key Manager error
-  output `km_unrecoverable_err_o` through the port `km_unrec_port_i`. Owners: the Key Manager groups of `docs/SEP_FCOV.adoc`.
+  output `sep_ras_o.km_uncorrectable` through the port `km_unrec_port_i`. Owners: the Key Manager groups of `docs/SEP_FCOV.adoc`.
 * SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`).
 * KM SRAM word probes (`km_sram_word0_o` / `km_sram_probe_o`): continuous reads
   of the KM SRAM macro array that carry the KM ROM images' result words.
@@ -1732,9 +1732,9 @@ else is watching there for a checker miss.
 
 === Coverage Strategy
 
-Verilator does not support SystemVerilog covergroups on the acceptance path
-(guard SV covergroups with `` `ifndef VERILATOR ``). Cocotb phases collect
-named checker evidence and the traceability matrix in
+Verilator and VCS build the covergroups of `cov/sv/sep_fcov.sv` with the same
+goal bins, and the graded functional-coverage figures come from VCS. Cocotb
+phases collect named checker evidence and the traceability matrix in
 xref:SEP_VPLAN.adoc#iconic-scorecard[SEP_VPLAN Matrix]. RTL code coverage is a different number
 from feature coverage and carries no threshold. `[coverage.verilator]` in
 `sep_sim_cfg.toml` instruments line, expression and user coverage (toggle off).

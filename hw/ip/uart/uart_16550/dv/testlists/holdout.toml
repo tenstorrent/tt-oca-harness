@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+schema_version = 1
+
+# Leaves defined but outside `all`. Each entry is a reproducer for a filed RTL
+# defect (`rtl_issue`), EXPECTED TO FAIL against current RTL: `expect_fail`
+# names the defect, which the runner grades (the observed FAIL is PASS, an
+# observed PASS is FAIL with the reason "the defect is gone"), and
+# `expect_fail_match` is the regex the failure message must match so a leaf
+# failing for another reason is FAIL. No `ci` tag: a graded expected failure
+# must never count in the hosted set. One test per defect. Once the fix lands
+# the leaf moves into all.toml without the `expect_fail` pair.
+
+[[tests]]
+# uart_rx.sv flags LSR.PE from the parity of the data bits under stick
+# parity instead of comparing the sampled parity bit with the stuck level.
+# The match pins the four cases that deviate today, so a partial fix grades
+# expected_fail_mismatch. uart_16550_interrupt_test (in `all`) asserts the
+# same defective receive through the loopback; when the fix lands that
+# assertion moves to the external-line form and this leaf moves into
+# all.toml.
+name = "uart_16550_stick_parity_rx_test"
+module = { cocotb = "uart_16550_stick_parity_rx_test" }
+seed = 1
+timeout_sec = 900
+tags = ["rtl_issue", "uart", "parity"]
+run_modes = ["functional"]
+expect_fail = "LSR.PE under stick parity follows the data parity, not the sampled parity bit"
+expect_fail_match = "CHK-STICK FAIL: cases eps0_odd_ok,eps0_even_wrong,eps1_odd_ok,eps1_even_wrong deviate from the 16550 contract"
+
+[[tests]]
+# uart_core.sv clears the reception-timeout latch only on a FIFO-mode
+# RBR read, so it survives FCR.FIFO_ENABLE=0. Only that release is graded;
+# the IER=0 leg is observed only because the architecture document states
+# the timeout request is not gated by IER.
+name = "uart_16550_timeout_latch_release_test"
+module = { cocotb = "uart_16550_timeout_latch_release_test" }
+seed = 1
+timeout_sec = 900
+tags = ["rtl_issue", "uart", "interrupt"]
+run_modes = ["functional"]
+expect_fail = "a latched reception timeout survives FIFO_ENABLE=0"
+expect_fail_match = "CHK-TO-FIFODIS FAIL"
+
+[[groups]]
+# Filed-defect reproducers; run on demand.
+name = "rtl_issue"
+expected_count = 2
+tests = [
+  "uart_16550_stick_parity_rx_test",
+  "uart_16550_timeout_latch_release_test",
+]

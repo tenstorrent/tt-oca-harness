@@ -1438,7 +1438,7 @@ Shared rules:
 * A read-back of each programmed filter register sits between its write and the first dependent transaction, because the specification states no ordering between a CSR write and the next transaction.
 * Every check logs `CHK-<NAME> PASS: ...` or `CHK-<NAME> FAIL: ...` with the values it compared. A leaf fails when a named check line is missing from `results.xml`.
 * A `no_cpu` leaf runs on Verilator on target `lsu_stub_all_live` and on VCS on `--target default` (the shared Phase 3 testlist-entry rule), group `cpu_stub` and `testlists/system.toml`. A `cpu` leaf uses a firmware image, group `cpu` and `testlists/cpu.toml`.
-* Tool "Both" means Verilator and VCS. Covergroup collection is VCS only.
+* Tool "Both" means Verilator and VCS. Covergroup figures are graded on VCS.
 
 [[sep_fabric_inbound_rebase_test]]
 ===== 2.25 `sep_fabric_inbound_rebase_test`
