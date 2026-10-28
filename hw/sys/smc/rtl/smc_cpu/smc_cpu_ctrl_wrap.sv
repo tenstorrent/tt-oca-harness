@@ -250,7 +250,7 @@ module smc_cpu_ctrl_wrap #(
   always_comb begin
     smc_wdt_timeout = {(MaxCPUCores) {1'b0}};
     for (int i = 0; i < NUM_CPU_CORES; i = i + 1) begin
-      if (cycle_count[i] == 32'h0) begin
+      if (wdt_timeout_cluster_i[i] && (cycle_count[i] == 32'h0)) begin
         smc_wdt_timeout[i] = 1'b1;
       end
     end
