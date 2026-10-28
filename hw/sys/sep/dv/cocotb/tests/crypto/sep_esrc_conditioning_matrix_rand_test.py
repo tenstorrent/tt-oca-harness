@@ -55,9 +55,11 @@ Checkers:
   CHK-COND-FIRST-PUSH  with the compressor bypassed and N_r written by the clean start
                        after the TRNG reset, the first FIFO word comes on the (N_r+1)th
                        strobe of ``esrc_stream_valid_gated_o`` (the stream after the boot
-                       gate, architecture.adoc:40-47; entropy_source.adoc:106). Control:
-                       no gated strobe before the clean start returned and no FIFO word
-                       before the first gated strobe.
+                       gate, architecture.adoc:40-47; entropy_source.adoc:106). "Every
+                       (N+1)th output" selects outputs N+1, 2(N+1), ...; for N >= 1 the
+                       first output is not one of them. Control: no gated strobe before
+                       the clean start returned and no FIFO word before the first gated
+                       strobe.
   CHK-COND-PERIOD-RATIO  with every lane disabled, D written, then the lanes enabled,
                        the steady gap g_D of ``esrc_decor_valid_o`` meets
                        g_D x (D_ref + 1) == g_ref x (D + 1) for D = 0 and D_r against the
@@ -66,7 +68,10 @@ Checkers:
   CHK-COND-FIRST-STROBE  for D = D_ref, 0 and D_r, the distance from the clock where
                        ``esrc_ro_enable_o`` reads all ones to the first strobe equals the
                        steady gap g_D (architecture.adoc:113). Control: 6 strobes after
-                       the enable, five equal gaps and no strobe while disabled.
+                       the enable, five equal gaps and no strobe while disabled. The
+                       divider count at the lane disable is logged (``div_at_off``); a
+                       DUT that keeps its count while disabled fails where it is not 0
+                       (after D = 0 it is always 0).
   CHK-COND-SHA         16 whitener input words give 8 output words (architecture.adoc:142),
                        exact: over the span between the first and the last quiet clock
                        of the window (SHA256_STATUS BUSY = 0 and OUTPUT_COUNT = 0, no
@@ -703,7 +708,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         """CHK-COND-FIRST-PUSH: the first FIFO word on the (N_r+1)th gated strobe.
 
         entropy_source.adoc:106: DOWNSAMPLE_RATE = N selects every (N+1)th
-        decorrelator output while BIW extraction is bypassed; architecture.adoc:40-47:
+        decorrelator output while BIW extraction is bypassed, that is outputs N+1,
+        2(N+1), ..., so for N >= 1 the first output is not selected; architecture.adoc:40-47:
         the boot gate passes the uncompressed bytes only after a passing boot window,
         and the output select downsamples them by DOWNSAMPLE_RATE. The register block
         and the downsample count share the TRNG reset; the clean start writes N_r and
@@ -735,11 +741,32 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         if self.chk.ok("COND-FIRST-PUSH", k == expect, **fields):
             await self._cnt_pass(ESRC_CNT_PASS_FIRST_PUSH)
 
-    async def _lanes_off(self) -> int | None:
-        """RING_OSC_ENABLE.ENABLE = 0; clocks until ``esrc_ro_enable_o`` reads 0, or None."""
+    async def _lanes_off(self, st: dict | None = None) -> int | None:
+        """RING_OSC_ENABLE.ENABLE = 0; clocks until ``esrc_ro_enable_o`` reads 0, or None.
+
+        With ``st``, ``st["div_at_off"]`` is ``esrc_decor_div_lane0_o`` on the last clock
+        where ``esrc_ro_enable_o`` read every lane enabled: the count the divider had
+        when the lanes went off.
+        """
         dut = cocotb.top
+        run = [True]
+
+        async def _off_trace() -> None:
+            while run[0]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if self.rd(dut.esrc_ro_enable_o) != RO_ENABLE_ALL:
+                    break
+                st["div_at_off"] = self.rd(dut.esrc_decor_div_lane0_o)
+            await NextTimeStep()
+
+        trace = None if st is None else cocotb.start_soon(_off_trace())
         await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE", ENABLE=0))
-        return await self.setup.wait_probe(lambda: self.rd(dut.esrc_ro_enable_o) == 0, RO_OFF_CLKS)
+        off = await self.setup.wait_probe(lambda: self.rd(dut.esrc_ro_enable_o) == 0, RO_OFF_CLKS)
+        if trace is not None:
+            run[0] = False
+            await trace
+        return off
 
     async def _set_div(self, div: int) -> None:
         """Lanes off, SAMPLE_CLK_DIV = ``div``, lanes on; raises if the lanes do not stop.
@@ -783,11 +810,18 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
 
     async def _walk_one(self, div: int) -> dict:
         """Lanes off, SAMPLE_CLK_DIV = ``div``, then the lane enable under the trace."""
-        off = await self._lanes_off()
+        st = {
+            "e0": None,
+            "pre": 0,
+            "div_tap": None,
+            "div_at_off": None,
+            "strobes": [],
+            "reason": "",
+        }
+        off = await self._lanes_off(st)
         await self._wr(
             ESRC_DECORRELATOR_CTRL, _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL, SAMPLE_CLK_DIV=div)
         )
-        st = {"e0": None, "pre": 0, "div_tap": None, "strobes": [], "reason": ""}
         if off is None:
             st["reason"] = f"timeout:enable_off bound={RO_OFF_CLKS}"
         task = cocotb.start_soon(self._enable_trace(st, 8 * (div + 1) + 256))
@@ -852,6 +886,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
                 div=div,
                 first_clk="none" if st["first"] is None else st["first"],
                 gap_clk="none" if st["gap"] is None else st["gap"],
+                div_at_off="none" if st["div_at_off"] is None else st["div_at_off"],
             )
             if first_ok:
                 await self._cnt_pass(ESRC_CNT_PASS_FIRST_STROBE)
