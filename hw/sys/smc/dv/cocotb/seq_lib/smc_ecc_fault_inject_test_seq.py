@@ -201,21 +201,6 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         mid = int(dut.tb_cpu_ecc_inject_fire_count.value)
         scratch_hold = int(dut.tb_cpu_scratch_read_count.value)
 
-        # Drawn: SEP_IN reads of bank 0 through the SPM window join the hold half;
-        # whether the hook counts them is printed, the hold compare below is the same.
-        join_text = "no SEP_IN reads joined"
-        if join:
-            await boot_task
-            reads_before = int(dut.tb_cpu_scratch_read_count.value)
-            for i in range(JOIN_READS):
-                await self.csr_read(f"SPM_BANK0_JOIN_{i}", SPM_BASE + 8 * i, length=8)
-            reads_after = int(dut.tb_cpu_scratch_read_count.value)
-            join_text = (
-                f"{JOIN_READS} SEP_IN 8-byte reads of bank 0 joined the hold half; "
-                f"scratch_read_count {reads_before} -> {reads_after} across them (whether the "
-                f"hook counts them: not specified, measured)"
-            )
-
         # Recovery: further scratch traffic with inject clear must not score.
         #
         # `fire_count` is incremented by
@@ -236,6 +221,9 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         # that scratch traffic survives the clear. It does not prove Rocket
         # SECDED behaviour -- no corrupted data is forced onto any macro
         # response in this bench (CHK-ECC-INJECT-NO-DUT-SECDED says the same).
+        #
+        # The wait runs before any drawn SEP_IN read is issued and no other master is
+        # active, so the reads it counts past `scratch_hold` are the core's fetches.
         await self._wait_scratch_reads_gt(scratch_hold, label="RECOVERY")
         await ClockCycles(clk, 8)
         mid_after = int(dut.tb_cpu_ecc_inject_fire_count.value)
@@ -245,6 +233,32 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
             f"{mid_after} with both inject pins 0 (armed half advanced "
             f"{base} -> {sbe}; scratch_reads {scratch_hold} -> {scratch_after})"
         )
+
+        # Drawn: SEP_IN reads of bank 0 through the SPM window join the hold half once the
+        # core's fetches have been counted; the fire count must still hold across them, and
+        # whether the hook counts them is printed.
+        join_text = join_range = "no SEP_IN reads joined"
+        if join:
+            await boot_task
+            reads_before = int(dut.tb_cpu_scratch_read_count.value)
+            for i in range(JOIN_READS):
+                await self.csr_read(f"SPM_BANK0_JOIN_{i}", SPM_BASE + 8 * i, length=8)
+            reads_after = int(dut.tb_cpu_scratch_read_count.value)
+            mid_join = int(dut.tb_cpu_ecc_inject_fire_count.value)
+            assert mid_join == mid, (
+                f"fire_count moved {mid} -> {mid_join} across the joined SEP_IN reads with "
+                f"both inject pins 0 (scratch_reads {reads_before} -> {reads_after})"
+            )
+            join_text = (
+                f"{JOIN_READS} SEP_IN 8-byte reads of bank 0 joined the hold half after the "
+                f"core's fetches were counted ({scratch_hold} -> {scratch_after}); "
+                f"scratch_read_count {reads_before} -> {reads_after} across them (whether the "
+                f"hook counts them: not specified, measured), fire_count held at {mid_join}"
+            )
+            join_range = (
+                f"held at {mid_join} across the {JOIN_READS} joined SEP_IN reads, scratch reads "
+                f"{reads_before}->{reads_after}"
+            )
         cocotb.log.info(
             "CHK-ECC-INJECT-RECOVERY: armed %s fire_count %d -> %d, then with "
             "inject cleared held at %d across scratch_reads %d -> %d "
@@ -301,8 +315,8 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         assert dbe > mid, f"{second.upper()} arm did not advance fire_count ({mid} -> {dbe})"
         cocotb.log.info(
             "CHK-ECC-INJECT: TB inject fire_count %s %d->%d (advanced while armed, cleared at "
-            "the drawn count %d), held at %d with inject clear across scratch reads %d->%d, "
-            "%s %d->%d (advanced again); drawn=%s",
+            "the drawn count %d), held at %d with inject clear across scratch reads %d->%d "
+            "(the core's fetches), %s, %s %d->%d (advanced again); drawn=%s",
             first.upper(),
             base,
             sbe,
@@ -310,6 +324,7 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
             mid_after,
             scratch_hold,
             scratch_after,
+            join_range,
             second.upper(),
             mid,
             dbe,

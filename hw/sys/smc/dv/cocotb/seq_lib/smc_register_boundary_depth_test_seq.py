@@ -77,18 +77,25 @@ class smc_register_boundary_depth_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_register_boundary_depth_test_seq") -> None:
         super().__init__(name)
         self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        self.compared_window = ""
 
     def _draw_probes(self) -> list[tuple[str, int, int, int]]:
         rng = random.Random(self.seed)
+        # One drawn window takes a 4-byte probe, so every run carries a compared probe (OKAY,
+        # and the RDL word at a first or last word); the other two draw any AxSIZE.
+        compared = rng.randrange(len(PROBE_WINDOWS))
         probes = []
-        for name, base, size in PROBE_WINDOWS:
-            length = rng.choice(PROBE_SIZES)
+        for index, (name, base, size) in enumerate(PROBE_WINDOWS):
+            length = 4 if index == compared else rng.choice(PROBE_SIZES)
             offset = rng.randrange(0, size - length + 1, length)
             probes.append((name, base + offset, offset, length))
+        self.compared_window = PROBE_WINDOWS[compared][0]
+        assert any(length == 4 for _n, _a, _o, length in probes), f"no 4-byte probe in {probes}"
         cocotb.log.info(
-            "RAND-SEED: %d; RAND-DRAW: window probes %s",
+            "RAND-SEED: %d; RAND-DRAW: window probes %s (the 4-byte probe pinned to %s)",
             self.seed,
             ", ".join(f"{n}+0x{o:x} len={ln}" for n, _a, o, ln in probes),
+            self.compared_window,
         )
         return probes
 
@@ -151,7 +158,8 @@ class smc_register_boundary_depth_test_seq(SmcCsrSeq):
             "each compared against its expected value (%s); %d hardware-status "
             "last-of-window read(s) answered OKAY and reported (%s); %d last-of-window "
             "write(s) read back the pattern and then the saved value (%s); all %d "
-            "access(es) checked by the scoreboard; drawn=seed %d probes [%s]",
+            "access(es) checked by the scoreboard; drawn=seed %d probes [%s], the %s probe "
+            "being the run's 4-byte compared probe",
             len(BOUNDARY_READS),
             "; ".join(f"{name}@0x{addr:08x}==0x{exp:x}" for name, addr, exp in BOUNDARY_READS),
             len(BOUNDARY_STATUS_READS),
@@ -164,4 +172,5 @@ class smc_register_boundary_depth_test_seq(SmcCsrSeq):
             expected_accesses,
             self.seed,
             "; ".join(probe_lines),
+            self.compared_window,
         )

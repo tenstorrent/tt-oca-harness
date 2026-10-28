@@ -117,6 +117,18 @@ SHAPE_KINDS = ("incr_scratch", "incr_spm", "fixed", "wrap")
 BURST_NAME = {BURST_FIXED: "FIXED", BURST_INCR: "INCR", BURST_WRAP: "WRAP"}
 
 
+def _model_burst(
+    model: bytearray, burst: int, size: int, beats: int, offset: int, payload: int
+) -> None:
+    """Apply an accepted FIXED or WRAP burst of `payload` (beat 0 in the low bytes) to `model`."""
+    window = beats * size
+    base = offset - offset % window
+    for beat in range(beats):
+        data = (payload >> (8 * size * beat)) & ((1 << (8 * size)) - 1)
+        at = offset if burst == BURST_FIXED else base + (offset - base + beat * size) % window
+        model[at : at + size] = data.to_bytes(size, "little")
+
+
 def draw_shapes(rng: random.Random) -> list[tuple[str, int, int, int, int, int]]:
     """(kind, AxSIZE, beats, byte offset, burst type, payload) per drawn shape."""
     plan = []
@@ -264,11 +276,12 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
                 await self._pair_words(label, model)
                 outcome = f"resp={item.resp_code} (reported), both words unchanged"
             else:
-                word0 = int.from_bytes(model[0:4], "little")
-                word1 = int.from_bytes(model[4:8], "little")
-                await self._axi(f"{label}_reseed0", SmcSysAxiOp.WRITE, SCRATCH_COLD_0, wdata=word0)
-                await self._axi(f"{label}_reseed1", SmcSysAxiOp.WRITE, SCRATCH_COLD_1, wdata=word1)
-                outcome = "resp=OKAY (reported), both words re-seeded"
+                # An accepted burst is read back against the model of what it wrote: a FIXED
+                # burst leaves its last beat at the one address, a WRAP burst fills its
+                # aligned window from the offset and wraps (AMBA AXI, burst addressing).
+                _model_burst(model, burst, size, beats, offset, payload)
+                await self._pair_words(label, model)
+                outcome = "resp=OKAY (reported), both words read back from the model of the burst"
             self.drawn_lines[kind].append(f"{head} {outcome}")
 
     async def _zero_strobe(self, size: int, offset: int, data: int, model: bytearray) -> None:

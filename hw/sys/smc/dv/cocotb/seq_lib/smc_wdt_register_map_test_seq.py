@@ -63,6 +63,8 @@ WDT_CMP_MASK = 0xFFFF
 WDT_MASK_MIN = 1
 WDT_MASK_MAX = 0xF
 WDT_EFFECTIVE_CORES = 2
+WDT_SCALE_MASK = 0xF
+WDT_SCALED_MASK = 0xFFFF
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")
 CHECKERS = (
@@ -139,7 +141,8 @@ def walk_accesses(plan: list[tuple[int, str, int, int]]) -> int:
     for _core, reg, _pattern, _mask in plan:
         total += 4
         if reg == "SCALED_COUNT":
-            total += 2
+            # The COUNT read before, and the COUNT and CTRL reads after, the strobed write.
+            total += 3
         # CTRL: background write, read-back and second unlock before the strobed write, and
         # the restore write and read-back after it.
         total += {"CTRL": 6, "COUNT": 3, "CMP": 3}.get(reg, 0)
@@ -475,11 +478,30 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             verdict = "rb=0 (no storage)"
         elif reg == "SCALED_COUNT":
             after = await self.csr_read(f"{tag}_COUNT_AFTER", self._reg(core, "COUNT"))
-            assert before <= rb <= after, (
-                f"{tag}: SCALED_COUNT 0x{rb:x} outside the COUNT bracket [0x{before:x}, "
-                f"0x{after:x}] at wdogscale 0"
+            ctrl = await self.csr_read(f"{tag}_CTRL", self._reg(core, "CTRL"))
+            scale = ctrl & WDT_SCALE_MASK
+            # wdt.rdl: the write changes nothing in COUNT, which counts on from `before`;
+            # a write that leaked into COUNT would move it by more than the cycles since.
+            since = math.ceil((get_sim_time("ps") - before_ps) / (self.t_smc_ns * 1000.0))
+            counted = (after - before) & WDT_COUNT_MASK
+            assert counted <= since, (
+                f"{tag}: COUNT reads 0x{after:x} after the SCALED_COUNT write, not within "
+                f"{since} clk_smc_i cycles above 0x{before:x} read before it (changes nothing)"
             )
-            verdict = f"rb=0x{rb:x} inside [0x{before:x}, 0x{after:x}]"
+            # The 16-bit field against the two COUNT reads shifted by wdogscale and masked
+            # to 16 bits; the bracket wraps when the low half-word did between the reads.
+            lo = (before >> scale) & WDT_SCALED_MASK
+            hi = (after >> scale) & WDT_SCALED_MASK
+            inside = lo <= rb <= hi if lo <= hi else rb >= lo or rb <= hi
+            assert inside, (
+                f"{tag}: SCALED_COUNT 0x{rb:x} outside the COUNT bracket [0x{before:x}, "
+                f"0x{after:x}] shifted by wdogscale {scale} and masked to 16 bits "
+                f"[0x{lo:x}, 0x{hi:x}]"
+            )
+            verdict = (
+                f"rb=0x{rb:04x} inside [0x{lo:04x}, 0x{hi:04x}] (COUNT 0x{before:x}..0x{after:x} "
+                f">> wdogscale {scale}, 16 bits; COUNT counted {counted} <= {since} cycles)"
+            )
         elif reg == "FEED":
             verdict = f"rb=0x{rb:08x} printed (not specified)"
         else:  # KEY
@@ -544,10 +566,13 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             "S10",
             "%d cells in the drawn order, each a keyed write of a drawn pattern under a drawn "
             "byte mask, every register but CTRL effective on two drawn cores (%s) and narrower "
-            "on the other two: an effective write reads back as wdt.rdl states (CTRL enabled bytes "
-            "masked to its fields, bit 28 masked; CMP[15:0]; COUNT the pattern plus at most the "
-            "clk_smc_i cycles elapsed between the write and the read, COUNT read before the "
-            "write too; COUNT_HI 0; KEY 0; SCALED_COUNT inside the COUNT bracket) and a "
+            "on the other two: an effective write reads back as wdt.rdl states (CTRL the pattern "
+            "in its enabled bytes over the non-zero, non-arming background the cell wrote first, "
+            "masked to its fields, bit 28 masked, so a zero-fill of the unstrobed bytes fails; "
+            "CMP[15:0]; COUNT the pattern plus at most the clk_smc_i cycles elapsed between the "
+            "write and the read, COUNT read before the write too; COUNT_HI 0; KEY 0; "
+            "SCALED_COUNT inside the two COUNT reads shifted by wdogscale and masked to 16 bits, "
+            "COUNT itself moving by at most the cycles since the before-read) and a "
             "narrower write leaves CMP, "
             "KEY and the lock unchanged (KEY still reads 1, wdt.rdl: changes nothing, not even "
             "the lock) and COUNT reading the value read before it plus at most the clk_smc_i "

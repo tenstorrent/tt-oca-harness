@@ -91,7 +91,8 @@ _PROBE_ID_LSB = 56
 _PROBE_ID_BITS = 5
 _LAST_PACKET_BIT = 63
 _NEXT_BLOCK_LSB = 54
-_PROBE_IDS = (0x05, 0x0A, 0x13)
+_PROBE_ID_BM = _tel("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bm")
+_PROBE_ID_BP = _tel("TELEMETRY_RECEIVER__TELEMETRY_PROBE_ID__PROBE_ID_bp")
 _ATIDS = (0x00, 0x11, 0x22)
 
 _FUSE_SENSE_MAX_CYCLES = 200_000
@@ -214,8 +215,16 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         order = list(range(_NUM_RX))
         rng.shuffle(order)
         thresholds = rng.sample(range(1, (_THR_BM >> _THR_BP) + 1), _NUM_RX)
-        drawn = f"seed {self.seed} counts {counts} order {order} thresholds " + ",".join(
-            f"0x{t:03x}" for t in thresholds
+        # A distinct non-zero probe ID per queued message, so TELEMETRY_PROBE_ID before each
+        # pop tells the queue advancing by one from standing still (0 is the empty read).
+        probe_ids = [rng.sample(range(1, 1 << _PROBE_ID_BITS), counts[rx]) for rx in range(_NUM_RX)]
+        drawn = (
+            f"seed {self.seed} counts {counts} order {order} thresholds "
+            + ",".join(f"0x{t:03x}" for t in thresholds)
+            + " probe_ids "
+            + " ".join(
+                f"rx{rx}:" + ",".join(f"0x{p:02x}" for p in ids) for rx, ids in enumerate(probe_ids)
+            )
         )
         cocotb.log.info("RAND-SEED: %d; RAND-DRAW: %s", self.seed, drawn)
 
@@ -285,11 +294,20 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
         windows: dict[int, list[str]] = {}
         swept = False
         for rx in order:
-            for _ in range(counts[rx]):
-                await self._send_packet(rx, _all_valid_packet(_PROBE_IDS[rx]))
+            for probe_id in probe_ids[rx]:
+                await self._send_packet(rx, _all_valid_packet(probe_id))
             lines = []
             for msg in range(counts[rx]):
                 await self._wait_empty(rx, False, f"MSG{msg}")
+                probe = await self.csr_read(
+                    f"TLM{rx}_PROBE_MSG{msg}", _reg("TELEMETRY_PROBE_ID", rx)
+                )
+                head = (probe & _PROBE_ID_BM) >> _PROBE_ID_BP
+                assert head == probe_ids[rx][msg], (
+                    f"message {msg} in receiver {rx}: TELEMETRY_PROBE_ID reads 0x{probe:08x} "
+                    f"(probe 0x{head:02x}), expected the message's own 0x{probe_ids[rx][msg]:02x} "
+                    f"(the queue did not advance to it)"
+                )
                 vals = []
                 for other in range(_NUM_RX):
                     c0 = await self.csr_read(
@@ -309,7 +327,9 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
                         await self.csr_read(f"TLM1_COUNTER_{idx}", _counter_addr(1, idx))
                     swept = True
                 await self.csr_write(f"TLM{rx}_POP{msg}", _reg("CTRL", rx), _BUFFER_POP)
-                lines.append(" ".join(f"(0x{a:08x},0x{b:08x})" for a, b in vals))
+                lines.append(
+                    f"probe 0x{head:02x} " + " ".join(f"(0x{a:08x},0x{b:08x})" for a, b in vals)
+                )
             await self._wait_empty(rx, True, "POP")
             windows[rx] = lines
         assert swept, "receiver 1 took no message, so its 32 counters were not swept"
@@ -322,7 +342,8 @@ class smc_telemetry_address_map_test_seq(SmcCsrSeq):
             self._chk(
                 "CHK-TELEMETRY-COUNTER-WINDOW",
                 "S3",
-                "%d message(s) in receiver %d: before each pop COUNTER[0]/[1] at offsets "
+                "%d message(s) in receiver %d: before each pop TELEMETRY_PROBE_ID reads the "
+                "message's own drawn probe ID and COUNTER[0]/[1] at offsets "
                 "0x%x/0x%x of receivers 0..2 read %s; BUFFER_EMPTY 1 after the last pop; all "
                 "%d counters of receiver 1 answered OKAY in 4-byte steps; drawn=%s",
                 counts[rx],

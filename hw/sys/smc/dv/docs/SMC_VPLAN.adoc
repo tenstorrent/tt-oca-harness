@@ -2287,7 +2287,8 @@ verdict unposted and the run times out) and is not credited.
 *Randomization*: RAND-REP; the seed draws one probe read inside each of the three windows the entry
 names (`SCRATCH_COLD`, `SCRATCH_COLD_WARM` and `CHIP_CONFIG`): its byte offset and its AxSIZE (1, 2,
 4 or 8 bytes on the same `SmcSysAxiItem` driver; filter: the offset is aligned to the AxSIZE and the
-access does not cross the end of its window). The six 4-byte first/last reads keep their RDL
+access does not cross the end of its window), one drawn window taking a 4-byte probe in every run,
+so each run carries at least one compared probe. The six 4-byte first/last reads keep their RDL
 compares and the pattern write at the last word of each scratch window stays a 4-byte write, so
 `CHK-CSR-BOUNDARY-SWEEP` reads the whole pattern back; a 4-byte probe is compared on its OKAY
 response and, at a first or last word with an RDL value, on its data, while a 1-, 2- or 8-byte probe
@@ -2300,7 +2301,8 @@ grades the probe and carries the drawn cells; 3 seeds per regression (`reseed = 
 *Test Coverage*:
 
 * Compact register-boundary depth sweep over real SEP_IN AXI.
-* One seed-drawn probe read per window at a drawn offset and AxSIZE.
+* One seed-drawn probe read per window at a drawn offset and AxSIZE, one drawn window's probe
+  being 4 bytes in every run.
 
 *Test Procedure*:
 
@@ -2312,7 +2314,7 @@ Drive `smc_register_boundary_depth_test_seq`. Each checker below is a named comp
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CSR-BOUNDARY-SWEEP` |First/last registers of the SCRATCH_COLD and SCRATCH_COLD_WARM windows and the first register of CHIP_CONFIG read their RDL value over SEP_IN AXI; the last CHIP_CONFIG register, LC_STATE (`sw = r; hw = w`, the lifecycle value the SEP drives), is derived from the window size, answers OKAY and is reported, not compared; the last register of each scratch window reads back its written pattern and then its saved value; one drawn probe read per window answers OKAY and, as a 4-byte read at a first or last word with an RDL value, reads it, a 1-, 2- or 8-byte probe being reported; all 19 accesses were checked by the scoreboard. Fails on a read mismatch, a non-OKAY response, a wrong access count, or traffic that never reached the scoreboard
+|`CHK-CSR-BOUNDARY-SWEEP` |First/last registers of the SCRATCH_COLD and SCRATCH_COLD_WARM windows and the first register of CHIP_CONFIG read their RDL value over SEP_IN AXI; the last CHIP_CONFIG register, LC_STATE (`sw = r; hw = w`, the lifecycle value the SEP drives), is derived from the window size, answers OKAY and is reported, not compared; the last register of each scratch window reads back its written pattern and then its saved value; one drawn probe read per window answers OKAY and, as a 4-byte read at a first or last word with an RDL value, reads it, a 1-, 2- or 8-byte probe being reported, and one drawn window's probe is 4 bytes in every run; all 19 accesses were checked by the scoreboard. Fails on a read mismatch, a non-OKAY response, a wrong access count, or traffic that never reached the scoreboard
 |===
 
 
@@ -3856,12 +3858,15 @@ ATB beat driver on `tb_telemetry0_*`, `tb_telemetry1_*` and `tb_telemetry2_*` (`
 the order in which the three receivers are taken (each receiver's queue is filled with its drawn
 count and drained to `BUFFER_EMPTY` 1 before the next receiver's queue is filled, so the other two
 queues are empty at every compare) and the three `BUFFER_THRESHOLD` patterns (distinct, non-zero,
-masked to the field, bits [23:12]); `CHK-TELEMETRY-APERTURE-REGS` grades the patterns (each reads
-back as written and restores to 0) and `CHK-TELEMETRY-COUNTER-WINDOW` the counts and the order (each
-message in turn shows `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `[1]` 0 in its own aperture and 0 and 0
-in the others before its pop, `CTRL.BUFFER_POP` advancing the queue and reads not consuming it,
-`telemetry_receiver` `architecture.adoc`, Message Queue and Readout, and `BUFFER_EMPTY` reads 1
-after the last pop); the `INTR_ENABLE` patterns stay pinned; 3 seeds per regression (`reseed = 3`).
+masked to the field, bits [23:12]) and a distinct non-zero 5-bit probe ID per queued message (an
+`rng.sample` of 1 to 31 per receiver); `CHK-TELEMETRY-APERTURE-REGS` grades the patterns (each reads
+back as written and restores to 0) and `CHK-TELEMETRY-COUNTER-WINDOW` the counts, the order and the
+probe IDs (each message in turn shows its own probe ID in `TELEMETRY_PROBE_ID`, so the queue is seen
+to advance by one message at each pop, and `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `[1]` 0 in its own
+aperture and 0 and 0 in the others before its pop, `CTRL.BUFFER_POP` advancing the queue and reads
+not consuming it, `telemetry_receiver` `architecture.adoc`, Message Queue and Readout, and
+`BUFFER_EMPTY` reads 1 after the last pop); the `INTR_ENABLE` patterns stay pinned; 3 seeds per
+regression (`reseed = 3`).
 
 *Objective*: The three telemetry receiver apertures decode their registers and
 counter windows separately, and accesses past the third aperture or at unbacked offsets complete
@@ -3878,7 +3883,8 @@ with recorded responses and disturb no receiver.
   as their own, then are restored to 0.
 * Counter window (`telemetry_receiver/doc/memmap.adoc`, 32 counter registers at offsets 0x80 to
   0xFC): each of a drawn number of all-valid one-packet messages sent to receiver i, the receivers
-  taken in a drawn order, shows `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `TELEMETRY_COUNTER[1]` 0 in
+  taken in a drawn order, shows its own drawn probe ID in `TELEMETRY_PROBE_ID` and
+  `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `TELEMETRY_COUNTER[1]` 0 in
   receiver i's aperture and 0 and 0 in the other two before its pop; all 32 counters of receiver 1
   answer OKAY in four-byte steps.
 * Past the third receiver (`hw/sys/smc/doc/memmap.adoc`, Decode Response Codes): reads and writes at
@@ -3902,7 +3908,8 @@ with recorded responses and disturb no receiver.
   the distinct `INTR_ENABLE` and the drawn `BUFFER_THRESHOLD` patterns to all three, read all six
   back and compare, restore all six to 0 and read the restore back.
 . For each receiver in the drawn order send its drawn number of all-valid single-packet messages
-  over the ATB pins, then for each message poll `STATUS.BUFFER_EMPTY` to 0, read
+  over the ATB pins, each with its drawn probe ID, then for each message poll `STATUS.BUFFER_EMPTY`
+  to 0, read `TELEMETRY_PROBE_ID` and compare it to the message's own probe ID, read
   `TELEMETRY_COUNTER[0]` and `[1]` in all three apertures and compare, and pop with
   `CTRL.BUFFER_POP`; for receiver 1 also read all 32 counters once; poll `BUFFER_EMPTY` back to 1
   after the last pop.
@@ -3931,7 +3938,9 @@ with recorded responses and disturb no receiver.
   `BUFFER_THRESHOLD` patterns each read back as their own and restore to 0; the zero reset values
   are bench-limited (2-state zero init)
 |`CHK-TELEMETRY-COUNTER-WINDOW` |Each of the drawn number of messages in receiver i, the receivers
-  taken in the drawn order, reads `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `[1]` 0 in receiver i's
+  taken in the drawn order, shows its own drawn probe ID in `TELEMETRY_PROBE_ID` (distinct per
+  message, so a queue that did not advance at the pop fails) and reads `TELEMETRY_COUNTER[0]`
+  0xFFFF_FFFF and `[1]` 0 in receiver i's
   aperture and 0 and 0 in the others before its pop, `BUFFER_EMPTY` reads 1 after the last pop, and
   all 32 counters of receiver 1 answer OKAY at four-byte steps
 |`CHK-TELEMETRY-PAST-EXTENT` |Measures and prints the read response, read data and write response at
@@ -5009,7 +5018,11 @@ pattern masked to `wdogcmp0[15:0]`, `COUNT` the pattern masked to `wdogcount[30:
 `clk_smc_i` cycles elapsed between the write and the read (the counter is set to the written value
 and counts on; `COUNT` is read before the write too, so a dropped write shows as the count running
 on from that value), `COUNT_HI` 0 (no storage), `KEY` 0 (`wdt.rdl`, `KEY`: "returns 1 if key has
-been written to it and it is unlocked, 0 otherwise") and `SCALED_COUNT` inside the `COUNT` bracket;
+been written to it and it is unlocked, 0 otherwise") and `SCALED_COUNT`, the 16-bit field, inside
+the two `COUNT` reads around the write shifted right by `wdogscale` (read from `CTRL`) and masked to
+16 bits, with `COUNT` itself moving by at most the `clk_smc_i` cycles since its first read (the
+write changes nothing in `COUNT`, so a write that leaked into it fails and a `COUNT` above 0xFFFF
+does not fail the field);
 after a narrower write `CMP` and `KEY` read unchanged, `COUNT_HI` 0 and the lock unchanged, `KEY`
 still reading 1 after a narrower write to another register (`wdt.rdl`: "Any other write returns
 OKAY and changes nothing, not even the lock"), and `COUNT` after a narrower write reads the value
@@ -5060,8 +5073,9 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
   0x0000_A5A5.
 * Drawn strobed walk (`watchdog.adoc`, Register Access): every register of the four cores, in a
   drawn order, takes a keyed write of a drawn pattern under a drawn byte-enable mask, every
-  register but `CTRL` effective on two drawn cores and narrower on the other two; an effective
-  write reads back as `wdt.rdl` states and a narrower write changes nothing, not even the lock
+  register but `CTRL` effective on two drawn cores and narrower on the other two, each `CTRL` cell
+  over a non-zero, non-arming background; an effective write reads back as `wdt.rdl` states
+  and a narrower write changes nothing, not even the lock
   (`KEY` still reads 1, and `COUNT` reads the value read before the write plus at most the
   `clk_smc_i` cycles since that read, the counter counting on).
 
@@ -5094,7 +5108,8 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
 . Error injection. Point: the core 0 `CMP` register. Kind: a keyed 32-bit `CMP` write of
   0xDEAD_A5A5, wider than the 16-bit field. Expected response: `CMP` reads back 0x0000_A5A5. Restore
   `CMP` 0x1000 and require it.
-. For the 28 (core, register) cells in the drawn order: write `KEY`, write the drawn pattern under
+. For the 28 (core, register) cells in the drawn order: for a `CTRL` cell write `KEY` then the
+  background and read it back; write `KEY`, write the drawn pattern under
   the drawn byte-enable mask through `wstrb`, read the register back and compare as the
   Randomization field states, read `KEY`, and restore `CTRL`, `COUNT` or `CMP`; require every access
   reachable, the step stamps and checker lines in order, and print the ordered fence.
@@ -5127,7 +5142,9 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
   cell wrote first, masked to its fields with bit 28 masked, `CMP`
   [15:0], `COUNT` the pattern plus at most the `clk_smc_i` cycles elapsed between the write and
   the read, `COUNT_HI` 0, `KEY` 0 per the `KEY` field, "returns 1 if key has been written to it
-  and it is unlocked, 0 otherwise", `SCALED_COUNT` inside the `COUNT` bracket) and a narrower write
+  and it is unlocked, 0 otherwise", `SCALED_COUNT`
+  inside the two `COUNT` reads shifted by `wdogscale` and masked to 16 bits with `COUNT` moving by
+  at most the cycles since its first read) and a narrower write
   leaves `CMP`, `KEY` and the lock unchanged (`KEY` reads 1 after a narrower write to another
   register: `wdt.rdl`, "Any other write returns OKAY and changes nothing, not even the lock";
   `COUNT` after a narrower write reads the value read before the write plus at most the
@@ -8574,8 +8591,11 @@ page) and the payload; a byte model of the two scratch registers gives the exact
 every shape: `CHK-SEP-IN-BURST-INCR` grades the INCR shapes on the scratch registers (both words
 read back from the model), `CHK-SEP-IN-BURST-LONG` the INCR bursts into the SPM (the first and the
 last beat and the whole burst read back), `CHK-SEP-IN-BURST-UNSUPPORTED` the FIXED and WRAP shapes
-(an error response leaves both words as the model; an OKAY is reported, as the Scope limit says, and
-the words re-seeded) and `CHK-SEP-IN-NARROW-STROBES` the zero-strobe beat (a drawn AxSIZE, aligned
+(an error response leaves both words as the model; an OKAY is reported, as the Scope limit says,
+and both words are read back against the model of the accepted burst, a FIXED burst leaving its
+last beat at the one address and a WRAP burst filling its aligned window from the offset and
+wrapping, AMBA AXI burst addressing) and `CHK-SEP-IN-NARROW-STROBES` the zero-strobe beat (a drawn
+AxSIZE, aligned
 offset and data through the explicit `wstrb` of `SmcSysAxiItem`, the existing bench hook
 `smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`; its BRESP is printed and both
 words read back unchanged); the zero-strobe beat lifts the `cp_wstrb` `none` ignore bin of
@@ -8615,7 +8635,7 @@ have reached its floor.
 |Checker |Description
 |`CHK-SEP-IN-NARROW-STROBES` |The seeded word, the word after the one-byte write and the word after the two-byte write are exact scoreboard compares, as are the narrow reads of the same lanes; the drawn zero-strobe beat leaves both scratch words as the model, its BRESP reported; a strobe the fabric ignored or widened fails one of them
 |`CHK-SEP-IN-BURST-INCR` |The two beats of the AxLEN=1 INCR write are read back from their own registers and again as one AxLEN=1 read, and after each drawn INCR shape on the scratch registers both words read back from the byte model, all exact compares
-|`CHK-SEP-IN-BURST-UNSUPPORTED` |The FIXED and the WRAP burst each answered an AXI error response -- the scoreboard fails an OKAY or a timed-out access marked expect-error -- and both registers, read back right after each burst, still held the values the INCR burst left; each FIXED or WRAP burst at the other beat sizes that answered an error left both registers unchanged, as exact compares, as does each drawn FIXED or WRAP shape (an OKAY is reported and the words re-seeded); the error codes are reported, not asserted
+|`CHK-SEP-IN-BURST-UNSUPPORTED` |The FIXED and the WRAP burst each answered an AXI error response -- the scoreboard fails an OKAY or a timed-out access marked expect-error -- and both registers, read back right after each burst, still held the values the INCR burst left; each FIXED or WRAP burst at the other beat sizes that answered an error left both registers unchanged, as exact compares, as does each drawn FIXED or WRAP shape (an OKAY is reported and both registers are read back against the byte model of the accepted burst); the error codes are reported, not asserted
 |`CHK-SEP-IN-DECERR-WRITE` |The write to the unimplemented page is compared against DECERR by the sequence; the run fails if it mismatches
 |`CHK-SEP-IN-BURST-LONG` |The first and last beat of the AxLEN=15 INCR write are read back from their own SPM addresses and the AxLEN=15 read returns every beat in order, and each drawn INCR burst into the SPM page reads back its first and last beat and the whole burst, all as exact scoreboard compares; the response of the 8-byte FIXED burst is reported
 |===
@@ -16895,12 +16915,21 @@ filter (the rejected low 1 to 31 cycles and the asserting control low 32 to 64, 
 `CHK-COOLRST-GLITCH-REJECT`; the step 4 pre-low 1 to 31 and re-assert low 32 to 64, graded as
 `CHK-COOLRST-REASSERT-RESTART`; the long low 65 to 160, graded with the control as
 `CHK-COOLRST-RELEASE-NO-EXTENSION`) and the placement and widths of the pin segments inside the FLR
-hold (step 7: two to four lows of 1 to 31 cycles separated by single highs; step 8: lows of 32 to 48
-cycles around a high of 1 to 16; each run placed zero or more cycles after the cool-reset fall and
-ending at least 32 cycles before the 0xC0-cycle hold does; graded as `CHK-COOLRST-REASSERT-IN-HOLD`
-and `CHK-COOLRST-RELEASE-REASSERT-HOLD`), the same draw covering the cool-pin cells of
-`smc_reset_pin_deglitch_test` (its cold-pin cell stays with that test); 3 seeds per regression
-(`reseed = 3`).
+hold (step 7: two to four lows of 1 to 31 cycles separated by single highs, placed zero or more
+cycles after the cool-reset fall and ending at least 32 cycles before the 0xC0-cycle hold does;
+step 8: a low of 32 to 48 cycles, a high of 1 to 16 and a re-assert low, with the later reset source
+drawn: on the hold cell the re-assert low is 32 to 48 cycles and the run is placed so that it ends
+before the hold does by the release offset measured on the control plus 32 cycles, so the hold is
+the later source, on the pin cell the re-assert low is 64 to 96 cycles, placed so that its 32nd low
+sample lands 8 to 16 cycles before the hold ends and the low outlasts the hold, so the de-glitched
+pin is the later source; `hw/sys/smc/doc/clk_rst.adoc`, Reset Distribution, states the outcome for
+both cells, the primary reset being the AND of the de-glitched cool-reset pin and the FLR cool
+reset, so no sample is released until the later source ends and the release follows it; graded as
+`CHK-COOLRST-REASSERT-IN-HOLD` and `CHK-COOLRST-RELEASE-REASSERT-HOLD`, the latter also requiring
+the drawn cell to have landed on both outputs, which holds by construction of the placement and
+fails only on a cool-reset rise further from the programmed hold than the placement's spare), the
+same draw covering the cool-pin cells of `smc_reset_pin_deglitch_test` (its cold-pin cell stays with
+that test); 3 seeds per regression (`reseed = 3`).
 
 *Objective*: A low pulse on `rst_cool_ni` shorter than 32 reference-clock samples is rejected, a
 high sample restarts the count, the release does not depend on the low duration, and pin segments
@@ -16923,10 +16952,13 @@ inside the FLR hold do not shorten or extend it.
 * Inside the FLR hold, two to four drawn sub-32 lows separated by single highs, placed a drawn
   number of cycles after the cool fall, leave primary reset asserted at every sample of the hold
   and release at the same offset from the cool-reset rise as FLR alone.
-* Inside the FLR hold, a drawn low of 32 to 48 cycles, a drawn high of 1 to 16 and a drawn low of 32
-  to 48, placed a drawn number of cycles after the cool fall, leave primary reset asserted until the
-  later of the two sources ends and release inside a bench bound of 256 reference-clock cycles
-  afterwards.
+* Inside the FLR hold, a drawn low of 32 to 48 cycles, a drawn high of 1 to 16 and a drawn re-assert
+  low that on the drawn hold cell ends inside the hold, the control's release offset and 32 cycles
+  to spare, and on the drawn pin cell outlasts it, placed a drawn number of cycles after the cool
+  fall, leave primary reset asserted until the later of the two sources ends (`clk_rst.adoc`, Reset
+  Distribution: the AND of the de-glitched pin and the FLR cool reset) and release inside a bench
+  bound of 256 reference-clock cycles afterwards; the drawn source is the later one by construction
+  of the placement, asserted on both outputs.
 
 *Test Procedure*:
 
@@ -16958,7 +16990,8 @@ inside the FLR hold do not shorten or extend it.
   `cfg_flr_pf_active_i` first to start the hold.
 . Pulse `cfg_flr_pf_active_i`; the drawn number of cycles after the cool-reset output fell drive the
   drawn low, high and low, then high; require no released sample from the first assertion until the
-  later source ends and the release inside the bench bound.
+  later source ends (the drawn source, the hold or the de-glitched pin, which must have ended after
+  the other on both outputs) and the release inside the bench bound.
 . Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the
   last step, and print the bounded waits.
 
@@ -16983,8 +17016,12 @@ the drawn control low and the drawn long low on both outputs, and are printed as
   rise as FLR alone, inside the bench bound; a released sample, a differing offset or a timeout
   fails it
 |`CHK-COOLRST-RELEASE-REASSERT-HOLD` |With the drawn release and re-assert of the pin placed inside
-  the FLR hold no sample is released before both sources end and release follows inside the bench
-  bound; a released sample, a release past the bound or a timeout fails it
+  the FLR hold, the re-assert low ending inside the hold or, on the drawn pin cell, outlasting it,
+  no sample is released before both sources end (`clk_rst.adoc`, Reset Distribution: the primary
+  reset is the AND of the de-glitched pin and the FLR cool reset) and release follows inside the
+  bench bound; a released sample, a release past the bound, a drawn later source that did not end
+  after the other on both outputs (the pin source ending at the control's release offset after the
+  last high, so the drawn cell lands by construction of the placement), or a timeout fails it
 |`CHK-NONVAC` |The ordered fence holds: steps S1 to S8 in order with strictly increasing
   simulation-time stamps and the five checker lines printed in order after the last step
 |`CHK-TIMEOUT-PATHS` |Every bounded wait (assertion 128, release 512, cool-reset fall 160,
@@ -21409,9 +21446,11 @@ are testbench pins into the bound `smc_cpu_mem_dv` collateral, not product ports
 `tb_cpu_ecc_inject_dbe`, the other pin armed second while the fill is in flight), the arm point
 against the counted reads (before the boot release or after the first counted read), the fire count
 at which the first pin is cleared (1 to 3) and whether four 8-byte SEP_IN reads of bank 0 through
-the SPM window join the core's fetches in the hold half (those reads are stimulus of the hold half
-only, issued on the existing SEP_IN driver, and whether the hook counts them is printed by
-`CHK-ECC-INJECT-RECOVERY`); the armed advance, the cleared hold and the second advance of
+the SPM window join the hold half (those reads are stimulus of the hold half only, issued on the
+existing SEP_IN driver once the `RECOVERY` wait has counted the core's fetches past the clear, so
+that wait sees the core alone, no other master being active; whether the hook counts the SEP_IN
+reads is printed by `CHK-ECC-INJECT-RECOVERY` and the fire count is asserted unchanged across
+them); the armed advance, the cleared hold and the second advance of
 `CHK-ECC-INJECT` grade every drawn cell, the hold being unchanged by the extra reads; the counted
 reads are the core's fetches of the fixed `min_pass.ecc.hex` boot, which no seed controls, and the
 hook corrupts no data, so no entry or bit position is drawn; the CPU trap leg stays with the
@@ -21444,7 +21483,7 @@ Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the
 |Checker |Description
 |`CHK-ECC-INJECT` |Emitted only after three asserted compares on `tb_cpu_ecc_inject_fire_count`: it advanced while the drawn first pin was armed, up to the drawn clear count, held while both inject pins were clear across further scratch reads (and the drawn SEP_IN reads of bank 0), and advanced again while the second pin was armed (`smc_ecc_fault_inject_test_seq.py`); any of the three failing fails the run before the token
 |`CHK-ECC-INJECT-NO-DUT-SECDED` |Carries no compare of its own: a scope statement that this leaf proves the inject hook and its enable gating, not the DUT's SECDED detector, which `smc_ecc_codeword_corrupt_test` covers
-|`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over, and whether the drawn SEP_IN reads of bank 0 were counted
+|`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over (the `RECOVERY` wait counts the core's fetches before any drawn SEP_IN read is issued), and whether the drawn SEP_IN reads of bank 0, issued afterwards with the fire count asserted unchanged across them, were counted
 |===
 
 
@@ -46299,7 +46338,7 @@ entry's `*Randomization*` field.
 |`smc_telemetry_address_map_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-REP
-|the seed draws the message count per receiver (1 to 8), the receiver order and the three `BUFFER_THRESHOLD` patterns; 3 seeds per regression.
+|the seed draws the message count per receiver (1 to 8), the receiver order, the three `BUFFER_THRESHOLD` patterns and a distinct probe ID per queued message, which `CHK-TELEMETRY-COUNTER-WINDOW` compares before each pop; 3 seeds per regression.
 |`smc_telemetry_ctrl_access_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE
