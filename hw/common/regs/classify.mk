@@ -137,6 +137,13 @@ OCAH_REG_ERR_CHECK_BLOCKS ?= \
   otbn_wrapper_key
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 
+# Blocks whose regblock answers OKAY even past its last register: each is arrayed
+# at a stride wider than one instance, and the maps state OKAY between instances.
+OCAH_REG_NO_ERR_BLOCKS ?= \
+  alias_remap \
+  filter_ctrl \
+  gpio_intf
+
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
