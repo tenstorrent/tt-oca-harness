@@ -47771,7 +47771,7 @@ entry's `*Randomization*` field.
 |`smc_uart_fifo_control_depth_test`
 |<<smc-vplan-area-uart,UART>>
 |RAND-REP
-|the seed draws the fill count (in [level + 1, 32] below level 32; the fill count 32 at level 32, the only occupancy at the level, nothing above it), the trigger level (1, 4, 8, 14 or 32 characters, codes 0 to 4 of `ECR.RCVR_TRIGGER_MS2B` with `FCR.RCVR_TRIGGER`) and the read gap (a full drain, or a partial drain of a drawn count before a one-character refill) of a leg inside step 7; the pending ID 2 of `IIR` compared absent below the level and present at the level and above it (`uart_16550/doc/architecture.adoc`, interrupt service table), beside the relative compares of `CHK-UART-TRIG-COMPOSE`, printed after the drain and the refill; 3 seeds per regression.
+|the seed draws the fill count (in [level + 1, 32] below level 32; the fill count 32 at level 32, the only occupancy at the level, nothing above it), the trigger level (1, 4, 8, 14 or 32 characters, codes 0 to 4 of `ECR.RCVR_TRIGGER_MS2B` with `FCR.RCVR_TRIGGER`) and the read gap (a full drain, or a partial drain of a drawn count before a one-character refill) of a leg inside step 7; the pending ID 2 of `IIR` compared absent below the level and present above it (`uart_16550/doc/architecture.adoc`, interrupt service table) and printed at the level, where `smc-programming.adoc` differs by one character, beside the relative compares of `CHK-UART-TRIG-COMPOSE`, printed after the drain and the refill; 3 seeds per regression.
 |`smc_uart_irq_thre_identify_test`
 |<<smc-vplan-area-uart,UART>>
 |RAND-NONE
