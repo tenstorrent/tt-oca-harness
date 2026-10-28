@@ -762,14 +762,18 @@ module sep_fcov (
   input wire [27:0]                         iso_slv_bresp_i,   // iso_slv_bresp_probe_o
   input wire [27:0]                         iso_slv_rresp_i,   // iso_slv_rresp_probe_o
   // Entropy taps of the EDN auto-mode sequence, the stream-adapter FIFO, the
-  // lane 0 sample-clock divider, the ESRC counter-copy inject, the conditioner
-  // output, the seed packer and the CSRNG seed handshake: read-only, no force.
+  // lane 0 sample-clock divider, the ESRC downsample and decorrelator counts,
+  // the ESRC counter-copy inject, the conditioner output, the seed packer and
+  // the CSRNG seed handshake: read-only, no force.
   input wire                                edn_csrng_cmd_valid_i, // edn_csrng_cmd_valid_o
   input wire                                edn_csrng_cmd_ready_i, // edn_csrng_cmd_ready_o
   input wire [31:0]                         edn_csrng_cmd_bus_i,   // edn_csrng_cmd_bus_o
   input wire [2:0]                          drbg_adapter_push_i,   // drbg_adapter_push_o
   input wire                                esrc_rosc_clk_i,       // entropy_rosc_sample_clk_i
   input wire                                esrc_sample_clk0_i,    // esrc_sample_clk_lane0_o
+  input wire [9:0]                          esrc_ds_count_i,       // esrc_downsample_count_o
+  input wire                                esrc_stream_gated_i,   // esrc_stream_valid_gated_o
+  input wire [19:0]                         esrc_div0_i,           // esrc_decor_div_lane0_o
   input wire                                esrc_cntr_inj_i,       // esrc_cntr_inject_i
   input wire [31:0]                         esrc_compress_data_i,  // esrc_compress_data_o
   input wire                                seed_word_ready_i,     // seed packer csrng_word_ready_o
@@ -28448,6 +28452,15 @@ module sep_fcov (
     logic sk_v;  // every seed handshake of the window carried packed conditioner words
     logic fs;
     logic fs_v;  // FIFO closed: 0 a seed queued while LEVEL reads 0, 1 an ENABLE write refused under the lock
+    logic [1:0] sd;
+    logic sd_v;  // stored SAMPLE_CLK_DIV at a CHK-COND-PERIOD-RATIO pass: 0 zero, 1 reset value, 2 above
+    logic fe_v;  // CHK-COND-FIRST-STROBE pass with the stored SAMPLE_CLK_DIV above the reset value
+    logic fp_v;  // CHK-COND-FIRST-PUSH pass with the compressor bypassed and the stored rate 2 to 15
+    logic [1:0] dm;
+    logic dm_v;  // DOWNSAMPLE_RATE change while running: 0 up, 1 down to >= count, 2 down below count
+    logic [1:0] dv;
+    logic dv_v;  // SAMPLE_CLK_DIV change, lane 0 on: 0 up, 1 down to >= count, 2 down below count
+    logic rs_v;  // DOWNSAMPLE_RATE changed while the gated stream is stopped, then a gated strobe
   } cz_cond_t;
 
   covergroup sep_esrc_conditioning_cg with function sample (cz_cond_t s);
@@ -28517,6 +28530,22 @@ module sep_fcov (
     cp_fifo_closed_seed: coverpoint s.fs iff (s.fs_v) {
       bins seed_packed_level0 = {1'b0}; bins enable_write_locked = {1'b1};
     }
+    cp_sample_clk_div: coverpoint s.sd iff (s.sd_v) {
+      bins div_0 = {2'd0}; bins div_reset = {2'd1}; bins div_above_reset = {2'd2};
+    }
+    cp_first_strobe: coverpoint s.fe_v iff (s.fe_v) {bins pre_enable_write = {1'b1};}
+    cp_ds_first_push: coverpoint s.fp_v iff (s.fp_v) {bins after_trng_reset = {1'b1};}
+    cp_ds_midrun: coverpoint s.dm iff (s.dm_v) {
+      bins increase = {2'd0};
+      bins decrease_at_or_above_count = {2'd1};
+      bins decrease_below_count = {2'd2};
+    }
+    cp_div_midrun: coverpoint s.dv iff (s.dv_v) {
+      bins increase = {2'd0};
+      bins decrease_at_or_above_count = {2'd1};
+      bins decrease_below_count = {2'd2};
+    }
+    cp_ds_resume: coverpoint s.rs_v iff (s.rs_v) {bins rate_write_while_stopped = {1'b1};}
   endgroup
 
   typedef struct packed {
@@ -28973,6 +29002,22 @@ module sep_fcov (
         e.fs   = v[0];
         e.fs_v = 1'b1;
       end
+      17: begin
+        e.sd   = v[1:0];
+        e.sd_v = 1'b1;
+      end
+      18: e.fe_v = 1'b1;
+      19: e.fp_v = 1'b1;
+      20: begin
+        e.dm   = v[1:0];
+        e.dm_v = 1'b1;
+      end
+      21: begin
+        e.dv   = v[1:0];
+        e.dv_v = 1'b1;
+      end
+      22: e.rs_v = 1'b1;
+      // Index 11 (cp_obs_lock); every other index has its own arm above.
       default: e.lk_v = 1'b1;
     endcase
     u_sep_esrc_conditioning_cg.sample(e);
@@ -29296,6 +29341,19 @@ module sep_fcov (
   logic [8:0] cz_pa_q = '0;
   wire  [8:0] cz_pa_rel = 9'(esrc_pa_pass) & ~cz_pa_q;
   always @(posedge clk_i) cz_pa_q <= 9'(esrc_pa_pass);
+  // Pass label of the counter checks of sep_esrc_conditioning_matrix_rand_test
+  // (bits CzCnt*). cp_sample_clk_div, cp_first_strobe and cp_ds_first_push
+  // sample the stored value only when the bit of the check that grades it
+  // rises. The leaf writes the bit through the u_sep_fcov handle after that
+  // check passes, while the graded value is still stored, holds it two clocks
+  // and writes 0. It gates a sample; it is never a DUT value and drives nothing.
+  int unsigned esrc_cnt_pass = 0;
+  localparam int unsigned CzCntPeriod = 0;  // CHK-COND-PERIOD-RATIO
+  localparam int unsigned CzCntFirstStrobe = 1;  // CHK-COND-FIRST-STROBE
+  localparam int unsigned CzCntFirstPush = 2;  // CHK-COND-FIRST-PUSH
+  logic [2:0] cz_cnt_q = '0;
+  wire  [2:0] cz_cnt_rel = 3'(esrc_cnt_pass) & ~cz_cnt_q;
+  always @(posedge clk_i) cz_cnt_q <= 3'(esrc_cnt_pass);
   // A hardware set request: the {d, de} pair of a register field, both 1.
   function automatic logic cz_dd(input logic [1:0] p);
     return p === 2'b11;
@@ -30922,6 +30980,81 @@ module sep_fcov (
             cz_aw_ist[6] && !cz_ist[6])
           cz_cond(10, 4'b0011);
       end
+    end
+  end
+
+  // cp_sample_clk_div, cp_first_strobe, cp_ds_first_push (1.45): the class of
+  // the stored value at the rise of the esrc_cnt_pass bit of the check that
+  // grades it. cp_ds_midrun, cp_div_midrun, cp_ds_resume (1.45, logged only
+  // by the owner): a stored DOWNSAMPLE_RATE or SAMPLE_CLK_DIV change against
+  // the tapped count. A decrease below the count is the clock where the count
+  // is above the stored value (the downsample count at a gated strobe, the
+  // lane 0 divider count with lane 0 enabled); no other stimulus reaches it.
+  localparam logic [19:0] CzResetDiv =
+      20'((ENTROPY_SOURCE_DECORRELATOR_CTRL_REG_DEFAULT &
+           ENTROPY_SOURCE_DECORRELATOR_CTRL_SAMPLE_CLK_DIV_MASK) >>
+          ENTROPY_SOURCE_DECORRELATOR_CTRL_SAMPLE_CLK_DIV_SHIFT);
+  wire [19:0] cz_sdiv = esrc_reg_out_i.DECORRELATOR_CTRL.SAMPLE_CLK_DIV.value;
+  wire [11:0] cz_roen = esrc_reg_out_i.RING_OSC_ENABLE.ENABLE.value;
+  wire cz_ro0 = cy_t(cz_roen[0]);
+  wire cz_gated = cy_t(esrc_stream_gated_i);
+  logic [9:0] cz_drate_q = '0;
+  logic [19:0] cz_sdiv_q = '0;
+  logic cz_ro0_q = 1'b0;
+  logic cz_rs_pend = 1'b0;  // a rate change while the lanes are off, after BOOT_PHASE_DONE
+
+  always @(posedge clk_i) begin
+    cz_drate_q <= cz_drate;
+    cz_sdiv_q  <= cz_sdiv;
+    cz_ro0_q   <= cz_ro0;
+    if (cy_own_escond && cz_es_on && !$isunknown({cz_sdiv, cz_drate})) begin
+      if (cz_cnt_rel[CzCntPeriod]) begin
+        if (cz_sdiv == 20'd0) cz_cond(17, 4'd0);
+        else if (cz_sdiv == CzResetDiv) cz_cond(17, 4'd1);
+        else if (cz_sdiv > CzResetDiv) cz_cond(17, 4'd2);
+      end
+      if (cz_cnt_rel[CzCntFirstStrobe] && (cz_sdiv > CzResetDiv)) cz_cond(18, 4'd0);
+      if (cz_cnt_rel[CzCntFirstPush] && cz_bypass && (cz_drate >= 10'd2) &&
+          (cz_drate <= 10'd15)) begin
+        cz_cond(19, 4'd0);
+      end
+    end
+
+    // cp_ds_midrun: a DOWNSAMPLE_RATE change with the compressor bypassed
+    // after BOOT_PHASE_DONE; the decrease below the count is a gated strobe
+    // with the downsample count above the stored rate.
+    if (cy_own_escond && cz_es_on && cz_bypass && cz_boot && !$isunknown(
+            {cz_drate, cz_drate_q, esrc_ds_count_i}
+        )) begin
+      if (cz_drate > cz_drate_q) cz_cond(20, 4'd0);
+      else if ((cz_drate < cz_drate_q) && (esrc_ds_count_i <= cz_drate)) cz_cond(20, 4'd1);
+      if (cz_gated && (esrc_ds_count_i > cz_drate)) cz_cond(20, 4'd2);
+    end
+
+    // cp_div_midrun: a SAMPLE_CLK_DIV change with lane 0 enabled; the
+    // decrease below the count is a clock with the lane 0 divider count above
+    // the stored value.
+    if (cy_own_escond && cz_es_on && cz_ro0 && cz_ro0_q && !$isunknown(
+            {cz_sdiv, cz_sdiv_q, esrc_div0_i}
+        )) begin
+      if (cz_sdiv > cz_sdiv_q) cz_cond(21, 4'd0);
+      else if ((cz_sdiv < cz_sdiv_q) && (esrc_div0_i <= cz_sdiv)) cz_cond(21, 4'd1);
+      if (esrc_div0_i > cz_sdiv) cz_cond(21, 4'd2);
+    end
+
+    // cp_ds_resume: a DOWNSAMPLE_RATE change while every lane is off after
+    // BOOT_PHASE_DONE with a non-zero downsample count, sampled at the next
+    // gated strobe.
+    if (!cy_own_escond || !cz_es_on || !cz_boot) begin
+      cz_rs_pend <= 1'b0;
+    end else if (cz_rs_pend && cz_gated) begin
+      cz_cond(22, 4'd0);
+      cz_rs_pend <= 1'b0;
+    end else if ((cz_roen === 12'h000) && (cz_drate !== cz_drate_q) &&
+                 (esrc_ds_count_i !== 10'd0) && !$isunknown(
+            esrc_ds_count_i
+        )) begin
+      cz_rs_pend <= 1'b1;
     end
   end
 

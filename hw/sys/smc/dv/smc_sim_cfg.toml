@@ -135,6 +135,12 @@ sources = [
   # holds the scratch bank/entry decode both it and tb_top.sv use.
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  # Clean-room AXI4 protocol checker, instantiated on the SMC AXI master
+  # links at the foot of the single-instance body of tb_top. The Verilator
+  # targets pass no --assert, so Verilator drops its two-state rules; the
+  # X-hygiene rules are gated by OCAH_INC_ASSERT, which Verilator does not
+  # define. The rules are live under VCS.
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
   # this list feeds the cocotb/Verilator filelist, and the
   # [frameworks.uvm.build] sources list (which replaces this one) repeats the

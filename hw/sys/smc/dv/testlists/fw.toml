@@ -50,6 +50,8 @@ firmware = "hello_world"
 args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex=hello_world.ecc.hex",
+    "+axi_sva_need_cpu_front",
+    "+axi_sva_need_cpu_mmio",
 ]
 
 [[tests]]
@@ -220,6 +222,7 @@ firmware = "uart_log_engine_single_entry"
 args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex=uart_log_engine_single_entry.ecc.hex",
+    "+axi_sva_need_log_engine",
 ]
 
 [[tests]]
