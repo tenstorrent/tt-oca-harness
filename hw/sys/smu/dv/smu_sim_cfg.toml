@@ -213,6 +213,9 @@ ccache = true
 # --output-groups 0 compiles the generated .cpp files one by one, as the other
 # DUTs do: grouped, one unit of the coverage-instrumented model grows past
 # what the CI compiler finishes in time.
+#
+# smu_fcov.vlt keeps the covergroup bin counters of the cov/sv collectors
+# valid in the coverage database.
 build_args = [
   "--coverage-line",
   "--coverage-expr",
@@ -220,6 +223,7 @@ build_args = [
   "--output-groups",
   "0",
   "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
+  "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_fcov.vlt",
 ]
 # The policy file is named explicitly rather than discovered at
 # cov/config/verilator/coverage_policy.toml.
