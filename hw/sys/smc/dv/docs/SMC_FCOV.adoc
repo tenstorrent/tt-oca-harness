@@ -446,9 +446,10 @@ reads it back
 [[smc-fcov-planned]]
 === Planned Groups
 
-The planned groups are the functional coverage of the planned Phase 3 entries of SMC_VPLAN, either a
-new entry or the planned upgrade of an existing one, and of the two existing entries named at the
-end of this paragraph, whose cells have no sampler yet. Each is a covergroup to be written in
+The planned groups are covergroups whose sampler does not exist yet: the functional coverage of the
+Phase 3 entries of SMC_VPLAN, either a new entry (with or without its test) or the planned upgrade
+of an existing one, and of the two existing entries named at the end of this paragraph. Each is a
+covergroup to be written in
 `cov/sv/` within the constructs <<smc-fcov-groups>> allows, with a graded-window gate written by
 the owning leaf. Bins come from the specification and the register description, and every
 coverpoint samples a port of `smc_wrapper` or of `smc` (under `u_dut.u_smc`), a bench interface
@@ -480,12 +481,16 @@ the documented values of its row.
 ==== `smc_infilt_rule_cg`
 *Description*: Inbound filter entry terms, probe shape and verdict on SYS_IN, per programmed entry.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_infilt_rule_matrix_rand_test` is a planned
-Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the entry count (2 to 6), the entry
-indices (2 to 15), the window edges at 4 KB and 8-byte granule boundaries, the overlap placement,
-`entry_enabled`, `allow_ns`, `allow_burst`, `read_allowed`, `write_allowed`, `src_id` (0 or 1 to
-15), and per probe the AxLEN, AxPROT[1], channel and AxUSER[3:0]"; filter: entries 0 and 1 stay
-unprogrammed.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_infilt_rule_matrix_rand_test`, the test
+that draws these cells; no sampler exists). Owner's draw: "the seed draws 4 rule sets, each of 2 to
+6 inbound entries at distinct indices 2 to 15, and 12 SYS_IN probes per set"; the field goes on to
+the terms and the window of each entry (a two-page `allow_burst` 1 window with its edges inside its
+granules), the overlap placement, per probe the cell kind, the address, AxPROT[1], AxUSER[3:0],
+AxLEN and the channel, and the no-match probes pinned in every set (one granule outside each
+enabled window with a permission bit set whose outside granule matches no entry, inside a disabled
+window, AxPROT[1] failing, a 2-beat burst against `allow_burst` 0) and, in every set holding a
+lowest-entry block, the pinned twin of one such probe on the other channel; filter: entries 0 and
+1 stay unprogrammed.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -505,11 +510,15 @@ leaves it with the directed leaves).
 *Description*: Outbound filter entry, the permission bit of the probe's direction, deny priority and
 probe shape on SMC-initiated requests.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_outfilt_rule_matrix_rand_test` is a planned
-Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the entry count (2 to 6), the entry
-indices (0 to 15), the window edges at 4 KB and 8-byte granule boundaries, the overlap placement,
-`entry_enabled`, `read_allowed`, `write_allowed`, `allow_ns`, `allow_burst`, and per probe the
-AxLEN, AxPROT[1] and direction"; filter: every `src_id` is 0.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_outfilt_rule_matrix_rand_test`, the test
+that draws these cells; no sampler exists). Owner's draw: "the seed draws 4 rule sets, each of 2 to
+6 outbound entries at distinct indices 0 to 15, and 10 JTAG probes per set"; the field goes on to
+the terms and the window of each entry (a two-page `allow_burst` 1 window with its edges inside its
+granules), the overlap placement, per probe the cell kind, the address, AxPROT[1], AxLEN and the
+direction, a 2-beat burst against `allow_burst` 0 pinned in every set, one probe pinned one
+granule outside each enabled window whose entry has the bit of the probe's direction clear, at an
+address that matches no entry, and, in every set holding a lowest-entry denial, the pinned twin of
+one such probe in the other direction; filter: every `src_id` is 0.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -529,12 +538,11 @@ an admitted request (not graded by the owner).
 *Description*: Memory-map row, gap and outside-window class, direction, size and inbound port
 against the DECERR response the map states.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_map_row_response_matrix_test` is a planned
-Phase 3 entry; no sampler exists). Owner's draw: "the seed draws, inside the past-extent span of
-each of the 30 rows whose Past Extent cell states a response, every gap between consecutive unit
-apertures and every class of address outside both inbound apertures, the byte offset, AxSIZE (1, 2,
-4 or 8), the direction, the inbound port and the order of the walk"; every seed walks every one of
-the 30 rows.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_map_row_response_matrix_test`, the test
+that draws these cells; no sampler exists). Owner's draw: "every seed walks all 30 rows whose Past
+Extent cell states a response, all 7 gaps between consecutive unit apertures (6 inside the window
+and the one after the Xvisor region) and 8 classes of address outside both inbound apertures; the
+seed selects offset, size, direction, port and order only".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -558,10 +566,12 @@ Scope limit).
 *Description*: Alias-remap region, cacheable override and address position against the region bounds
 on the JTAG initiator.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_alias_remap_attr_rand_test` is a planned
-Phase 3 entry; no sampler exists). Owner's draw: "the seed draws the region index, start page, page
-count, offset pages and `cacheable` value of 1 to 3 regions, and the probe addresses and page
-offsets"; filter: the drawn regions do not overlap and the offset sum stays below bit 56.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_alias_remap_attr_rand_test`, the test that
+draws these cells; no sampler exists). Owner's draw: "the seed draws 4 configurations, each of 1 to
+3 valid regions plus one region programmed with `valid` clear"; the field goes on to the region
+indices, page counts, start and translated pages and `cacheable` values, and per probe the target
+region, the offset and AxCACHE; filter: the drawn regions do not overlap and the offset sum stays
+below bit 56.
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -580,12 +590,16 @@ Scope limit).
 ==== `smc_sys_out_error_cg`
 *Description*: SYS_OUT responder error code, issuing manager, direction and burst position.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_sys_out_error_inject_rand_test` is a planned
-Phase 3 entry; no sampler exists). Owner's draw: "the seed draws, for 8 passes, the manager (JTAG,
-DMA, zeroer), the direction, SLVERR or DECERR, the burst of the job that takes the error (first,
-middle or last) and the recovery address"; filters: the zeroer takes write errors only, every DMA
-copy and zeroer job spans at least 3 bursts, and a JTAG injection lands on one access or one member
-of a group.
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_sys_out_error_inject_rand_test`, the test
+that draws these cells; no sampler exists). Owner's draw: "the seed draws, for 8 passes, the manager
+(JTAG, DMA, zeroer; five passes are pinned legs in a drawn order, a JTAG single access, a JTAG
+group, a DMA read, a DMA write and a zeroer write, so every seed runs each of them at least once,
+and the other three are drawn freely), the direction (read or write; the zeroer pass is a write),
+SLVERR or DECERR, the burst that takes the error (first, middle or last of the bursts the reference
+job issued; on a JTAG group the first, middle or last member)"; filters: "the zeroer takes write
+errors only, the 12 KiB zeroer job and the 6 KiB DMA copy each span at least 3 bursts in the
+reference run (read and write bursts of the copy counted apart), and a JTAG injection lands on one
+access or one member of a group".
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -639,19 +653,29 @@ under the holds (printed by the owner, not asserted).
 *Description*: Reset kind against the operation in flight, its phase and the register domain the
 reset clears.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_reset_mid_transaction_rand_test` is a
-planned Phase 3 entry; no sampler exists). Owner's draw: "the seed draws, for 6 passes, the reset
-kind, the in-flight operation (SPM write, SPM read, DMA chunk, zeroer job), the assertion cycle
-inside it, the hold length and the non-zero patterns"; filters: every kind is drawn once per seed,
-every hold is at least 40 `clk_ref_i` cycles, the drawn FLR counter patterns are small enough for
-the FLR release to fit its bounded wait, and the `SS_COLD_RESET_N` pattern is any non-zero value,
-which releases the subsystem cold resets of its 1 bits and asserts none the reset state does not
-already assert (`reset_unit.rdl`, active low, reset 0).
+*Tool*: Verilator, the simulator of the scheduled runs (the owner prints the X-resolution leg of
+`CHK-RMT-ALLZERO-X-FREE` there and grades it only on a four-state simulator, none of which is in the
+scheduled runs). *Class*: planned (owner `smc_reset_mid_transaction_rand_test`, the test that draws
+these cells; no sampler exists). Owner's draw: "the seed draws, for 6 passes, the reset kind (the
+first four passes a permutation of cool pin, FLR, cold and watchdog, the last two one kind each),
+the in-flight operation (SPM burst write, SPM burst read, DMA chunk of 4 KiB, zeroer job of 8 KiB)";
+the field goes on to the assertion cycle in it, the hold length and the non-zero patterns;
+filters: "every kind is drawn once per seed, every hold is at least 40 `clk_ref_i` cycles, past the
+32-cycle de-glitcher, the drawn FLR counter patterns are small enough for the FLR cool reset to fall
+within the pre-reset count + 128 and rise within the hold count + 128 `clk_ref_i` edges
+(`reset_unit.rdl`, `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, the cycles the cool reset is held), and
+the patterns of one pass are pairwise distinct and differ from each register's reset value; the
+`SS_COLD_RESET_N` pattern is any non-zero value, which releases the subsystem cold resets of its 1
+bits for the pass and asserts none the reset state does not already assert (`reset_unit.rdl`,
+`SS_COLD_RESET_N`: "Subsystem active low cold resets", reset 0). The watchdog kind is never drawn
+with an SPM operation (an SPM draw on a watchdog pass is redrawn, at most 64 times, and the draw
+asserts the pair absent), because a watchdog warm reset with an SPM access in flight leaves the
+cluster boundary unanswering until a primary reset (recorded as a candidate, not graded here)."
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_kind_op_phase` |reset kind (cold, cool pin, FLR cool reset, watchdog: 4) x in-flight operation (SPM write, SPM read, DMA chunk, zeroer job: 4) x phase at the assertion cycle (before the address handshake, in the data phase, awaiting the response: 3); 48 cells; each reset kind also has an `OCAH_FCOV_COVER` twin; the stated outcome is warm reset low at every sample at which primary is low, and for the watchdog warm low with primary high (`clk_rst.adoc`, Reset Architecture, the reset equations) |`rst_cold_ni`, `rst_cool_n_from_pin_i`, `tb_cfg_flr_pf_active`, `tb_sep_wdt_reset_n`; `sep_axi_in_req_i` handshakes; `rst_primary_smc_clk_no`, `tb_rst_warm_smc_clk_n` |`smc_reset_mid_transaction_rand_test` |planned
+|`cp_kind_op_phase` |reset kind (cold, cool pin, FLR cool reset, watchdog: 4) x in-flight operation (SPM write, SPM read, DMA chunk, zeroer job: 4) x phase at the assertion cycle (before the address handshake, in the data phase, awaiting the response: 3); 48 cells, of which the 6 watchdog x SPM write and SPM read cells are a documented ignore (the owner never draws the pair: a watchdog warm reset with an SPM access in flight leaves the cluster boundary unanswering until a primary reset, the RESET row of the Blocked legs table of SMC_VPLAN), so 42 goal cells; for the SPM operations the owner counts the SEP_IN address handshakes and completed responses up to the reset's assertion and samples the L2-frontend isolate's pending count, prints whether the burst was inside the reset (issued into the cluster, response not returned) and requires one such pass per seed, so an SPM pass whose burst completed before the assertion is a recorded bin, not one of the 42; each reset kind also has an `OCAH_FCOV_COVER` twin; the stated outcome is warm reset low at every sample at which primary is low, and for the watchdog warm low with primary high (`clk_rst.adoc`, Reset Architecture, the reset equations) |`rst_cold_ni`, `rst_cool_n_from_pin_i`, `tb_cfg_flr_pf_active`, `tb_sep_wdt_reset_n`; `sep_axi_in_req_i` handshakes; `tb_cpu_l2_pending_aw`, `tb_cpu_l2_pending_ar`; `rst_primary_smc_clk_no`, `tb_rst_warm_smc_clk_n` |`smc_reset_mid_transaction_rand_test` |planned
 |`cp_kind_domain` |reset kind (4) x register class (cold-only: the isolation registers and the FLR counters; primary: `SS_COLD_RESET_N`, `CPU_CTRL.RESET_VECTOR[0]`, `CPU_CTRL.SCRATCH[0]`; warm scratch: `misc_wrap.SCRATCH_COLD_WARM(0)`: 3); 8 cells plus 4 recorded bins; the value after the reset is the stated function of the cell for the 8 cells of the first two classes (the cold reset clears both; the cool pin and the FLR clear the primary class and keep the cold-only class; the watchdog keeps both, the CPU control registers being on the primary reset and keeping their values across a warm reset), and the 4 cells of `misc_wrap.SCRATCH_COLD_WARM(0)` are recorded bins (`clk_rst.adoc`, Reset Architecture, states that `rst_warm_smc_clk_no` resets "the warm scratch register" without naming which register it is; the Blocked features row of SMC_VPLAN); `SS_CONFIG` is in no class (the owner prints it; its reset domain is stated, the primary reset of `clk_rst.adoc`, Reset Architecture, and only whether it stores a software write is open, the Blocked legs row of SMC_VPLAN on `SS_CONFIG`) (`clk_rst.adoc`, Primary and Warm Reset, Isolation Controls, Reset Architecture) |register fields read back by the owner after the reset: `ISOLATE_REQ_*`, `SS_COLD_RESET_N`, `CPU_CTRL.RESET_VECTOR[0]`, `CPU_CTRL.SCRATCH[0]`, `misc_wrap.SCRATCH_COLD_WARM(0)` |`smc_reset_mid_transaction_rand_test` |planned
 |===
 
@@ -807,19 +831,20 @@ longer stall fits its bounded wait); the out-of-range, last-in-range, upper-ones
 ==== `smc_dma_geometry_cg`
 *Description*: DMA row width, row count, unaligned starts and burst-shaping configuration.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_dma_transfer_matrix_rand_test` is a planned
-Phase 3 entry; no sampler exists). Owner's draw: "the seed draws, for 12 transfers, the row width
-(`LENGTH`), the row count (`NUM_REPETITIONS`), the source and destination strides, the source and
-destination start offsets within a word, `DECOUPLE_AW`, `SRC_REDUCE_LEN`, `SRC_MAX_LLEN`,
-`DST_REDUCE_LEN` and `DST_MAX_LLEN`".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_dma_transfer_matrix_rand_test`, the test
+that draws these cells; no sampler exists). Owner's draw: "the seed draws, for 12 transfers, the
+row width (`LENGTH`, 1 to 2048 bytes), the row count (`NUM_REPETITIONS`, 1 to 16), the source and
+destination strides (each the row width plus 0 to 256 bytes), the source and destination start
+offsets within a 64-bit word (0 to 7), `DECOUPLE_AW`, `SRC_REDUCE_LEN`, `SRC_MAX_LLEN` (0 to 7),
+`DST_REDUCE_LEN` and `DST_MAX_LLEN` (0 to 7)".
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
 |`cp_length_reps` |`LENGTH` (1, 2 to 7, 8, 9 to 255, 256 and above: 5) x `NUM_REPETITIONS` (1, 2, 3 to 15, 16 and above: 4); 20 cells; a byte-exact copy and the retired ID are the stated outcome (`dma.adoc`, Transfer Configuration; `dma_ctrl.rdl`, repetition enable) |`tb_dma_length`, `tb_dma_reps` |`smc_dma_transfer_matrix_rand_test` |planned
 |`cp_start` |source start offset in the word (0, 1 to 7: 2) x destination start offset (0, 1 to 7: 2); 4 cells, crossed with `cp_length_reps` for 80 cells (`dma.adoc`, Linear and Two-Dimensional Copies) |`tb_dma_src_addr`, `tb_dma_dst_addr` |`smc_dma_transfer_matrix_rand_test` |planned
-|`cp_burst_cfg` |`SRC_REDUCE_LEN` (0, 1) x `DST_REDUCE_LEN` (0, 1) x `DECOUPLE_AW` (0, 1); 8 cells; every sampled burst lies inside the bound its field states: with the reduce bit set the 2^(`*_MAX_LLEN`+3)-byte boundary, with it clear 256 beats inside a 2 KiB-aligned block, so the (0, x) and (x, 0) cells are graded on the reduce-clear bound of the clear side (`dma_ctrl.rdl`, `SRC_REDUCE_LEN`, `DST_REDUCE_LEN`, `SRC_MAX_LLEN`, `DST_MAX_LLEN`, `DECOUPLE_AW`) |the `CONFIG` write data on `sep_axi_in_req_i` decoded to the DMA `CONFIG` register; `tb_dma_mst_awlen`; `u_output_axi_if` `arlen`, `awlen` at the handshakes |`smc_dma_transfer_matrix_rand_test` |planned
-|`cp_no_data` |`LENGTH` 0 launch (1 bin: a non-zero ID, no destination byte changes and `DONE_0` reaches the ID); `ENABLED_ND` clear launch (1 bin: the same); 2 cells, one launch each with one drawn configuration (`dma.adoc`, Transfer Configuration, the two commands that move no data; `dma_ctrl.rdl`, `NEXT_ID`, `ENABLED_ND`) |`tb_dma_length`; `DONE_0`, `NEXT_ID_0` as the owner reads them |`smc_dma_transfer_matrix_rand_test` |planned
+|`cp_burst_cfg` |`SRC_REDUCE_LEN` (0, 1) x `DST_REDUCE_LEN` (0, 1) x `DECOUPLE_AW` (0, 1); 8 cells; every sampled burst lies inside the bound its field states: with the reduce bit set at most 2^`*_MAX_LLEN` beats inside the 2^(`*_MAX_LLEN`+3)-byte boundary, with it clear 256 beats inside a 2 KiB-aligned block, so the (0, x) and (x, 0) cells are graded on the reduce-clear bound of the clear side (`dma_ctrl.rdl`, `SRC_REDUCE_LEN`, `DST_REDUCE_LEN`, `SRC_MAX_LLEN`, `DST_MAX_LLEN`, `DECOUPLE_AW`) |the `CONFIG` write data on `sep_axi_in_req_i` decoded to the DMA `CONFIG` register; `tb_dma_mst_awlen`; `u_output_axi_if` `arlen`, `awlen` at the handshakes |`smc_dma_transfer_matrix_rand_test` |planned
+|`cp_no_data` |`LENGTH` 0 launch (1 bin: a non-zero ID and no destination byte changes, `DONE_0` after it printed and not compared as the owner's Scope limit states); `ENABLED_ND` clear launch (1 bin: a non-zero ID, no destination byte changes and `DONE_0` reaches the ID); 2 cells, one launch each with one drawn configuration (`dma.adoc`, Transfer Configuration, the two commands that move no data; `dma_ctrl.rdl`, `NEXT_ID`, `ENABLED_ND`) |`tb_dma_length`; `DONE_0`, `NEXT_ID_0` as the owner reads them |`smc_dma_transfer_matrix_rand_test` |planned
 |===
 
 *Ignore bins*: a write width axis (not a dimension of the owner's draw; the strobe cells of the
@@ -877,15 +902,21 @@ ends in a warm reset mid-walk, `smc-programming.adoc`, Watchdog Timers).
 *Description*: Watchdog compare value, second-stage timeout and core against the stage that resets
 the warm domain.
 
-*Tool*: VCS. *Class*: planned (owner `smc_wdt_warm_reset_rand_test` is a planned Phase 3 entry; the
-owning entry runs on VCS only; no sampler exists). Owner's draw: "the seed draws the core (0 to 3),
-the second-stage timeout programmed in `CPU_CTRL.WDT_TIMEOUT` and the first-stage compare value
-`CMP`"; filter: the drawn timeouts fit the bounded wait.
+*Tool*: Verilator, the simulator of the scheduled runs (the owner prints the X-resolution leg of
+`CHK-WWR-STATE-XFREE` there and grades it only on a four-state simulator, none of which is in the
+scheduled runs). *Class*: planned (owner `smc_wdt_warm_reset_rand_test`, the test that draws these
+cells; no sampler exists). Owner's draw: "the seed draws the core (0 to 3), the second-stage timeout
+programmed in `CPU_CTRL.WDT_TIMEOUT` (0x40 to 0x2000) and the first-stage compare value `CMP` (0x40
+to 0x800, `wdogscale` 0)"; filters: "both ranges are small enough for the expiry to fit its bounded
+waits (the first timeout within 8 x `CMP` + 4096 `clk_smc_i` rises of the arming, the second within
+`WDT_TIMEOUT` + 4 rises of the first) and exclude the reset value of the register they are written
+to (0x4000 of `WDT_TIMEOUT`, 0x1000 of `CMP`), so each compare after the reset tells the reset value
+from the programmed one"
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_timeout_core` |`CMP` (1 to 15, 16 to 255, 256 and above: 3, bench buckets) x `WDT_TIMEOUT` (below 256, 256 and above: 2, bench buckets) x core (0 to 3: 4); 24 cells; the first timeout leaves the warm reset high and the second asserts it (`wdt.rdl`, `CMP`; `clk_rst.adoc`, Reset Architecture and Primary and Warm Reset) |`smc_wdt_first_timeout_o`, `tb_wdt_first_timeout_seen`, `tb_wdt_second_timeout_seen`; `CPU_CTRL.WDT_TIMEOUT` as the owner writes and reads it |`smc_wdt_warm_reset_rand_test` |planned
+|`cp_timeout_core` |`CMP` (0x40 to 0x1FF, 0x200 to 0x3FF, 0x400 to 0x800: 3, bench buckets over the owner's drawn range) x `WDT_TIMEOUT` (0x40 to 0xFFF, 0x1000 to 0x2000: 2, bench buckets over the owner's drawn range) x core (0 to 3: 4); 24 cells; the first timeout leaves the warm reset high and the second asserts it (`wdt.rdl`, `CMP`; `clk_rst.adoc`, Reset Architecture and Primary and Warm Reset) |`smc_wdt_first_timeout_o`, `tb_wdt_first_timeout_seen`, `tb_wdt_second_timeout_seen`; `CPU_CTRL.WDT_TIMEOUT` as the owner writes and reads it |`smc_wdt_warm_reset_rand_test` |planned
 |`cp_reset_seen` |warm reset (not seen after the first timeout, seen after the second: 2) with `wdogrsten` set and the first-stage request `smc_wdt_first_timeout_o` latched from the first timeout until the warm reset asserts; 2 cells (`wdt.rdl`, `CTRL.wdogrsten`; `smc-programming.adoc`, Watchdog Timers: the latched request starts the `CPU_CTRL` countdown whose expiry asserts the warm reset; `clk_rst.adoc`, Primary and Warm Reset) |`smc_wdt_first_timeout_o`, `smc_wdt_second_timeout_o`, `tb_rst_warm_smc_clk_n` |`smc_wdt_warm_reset_rand_test` |planned
 |`cp_state_after_reset` |register class after the warm reset: cleared (`CTRL`, `COUNT`, `CMP` of the drawn core at their `wdt.rdl` reset values 0, 0 and 0x1000: 3) x core (0 to 3: 4), 12 cells, plus kept (`CPU_CTRL.WDT_TIMEOUT` at the programmed value: 1 cell); 13 cells; the warm reset holds the uncore in reset, the uncore reset resets the four watchdogs and only it clears their `COUNT` and configuration registers, while `WDT_TIMEOUT` is on the primary reset and keeps its value across a warm reset (`clk_rst.adoc`, Reset Architecture; `wdt.rdl`, `CTRL`, `COUNT`, `CMP`; `cpu_ctrl.rdl`, `WDT_TIMEOUT`) |`tb_rst_warm_smc_clk_n` at its release; `CTRL`, `COUNT`, `CMP` of the drawn core and `CPU_CTRL.WDT_TIMEOUT` as the owner reads them after the release |`smc_wdt_warm_reset_rand_test` |planned
 |===
@@ -894,10 +925,11 @@ the second-stage timeout programmed in `CPU_CTRL.WDT_TIMEOUT` and the first-stag
 `wdogcoreawake` gates (not drawn; the owner's Scope limit leaves them with the SV-UVM hold-outs);
 `COUNT_HI`, `SCALED_COUNT`, `KEY` and the watchdogs of the other three cores after the warm reset
 (not read; the owner's Scope limit); a value other than the reset value in a cleared cell or other
-than the programmed value in the kept cell (the failing outcome of `CHK-WWR-STATE-XFREE`); a
-Verilator run (the entry takes no credit on Verilator); the hold of `smc_wdt_second_timeout_o`
-between its rise and the warm reset (measured and logged only by the owner; no cited document states
-it, the Unstated cells row of SMC_VPLAN on the second-timeout hold).
+than the programmed value in the kept cell (the failing outcome of `CHK-WWR-STATE-XFREE`); the
+bit resolution of those reads on Verilator (printed there as not graded); the hold of
+`smc_wdt_second_timeout_o` between its rise and the warm reset (measured and logged only by the
+owner; no cited document states it, the Unstated cells row of SMC_VPLAN on the second-timeout
+hold).
 
 ==== `smc_ecc_inject_cg`
 *Description*: Scratchpad ECC inject hook on bank 0 by armed pin, arm point, fire count at the clear
@@ -1158,14 +1190,14 @@ executing under a held error (the failing outcome of `CHK-DM-CMDERR-NOEXEC`); he
 package, the owner's draw sentence).
 
 
-==== Existing covergroups that gain a planned owner
+==== Existing covergroups that gain planned cells from an owner
 
 [cols="2,3,6",options="header"]
 |===
-|Covergroup |Planned owner |What the owner adds
+|Covergroup |Owner |What the owner adds
 |`smc_fabric_fcov::cg_sep_in_shape` |`smc_sep_in_axi_shape_test` |planned: the drawn AxSIZE x burst cells (`cp_awsize`, `cp_awburst` and their cross `x_size_burst`; the sampler has no burst-length point), and the zero-strobe cell of `cp_wstrb` through the existing explicit-strobe path (the `wstrb` of `SmcSysAxiItem`, which `smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`), which lifts the `cp_wstrb` `none` ignore bin of `cg_sep_in_shape` and retires the two Phase 2 rows on that cell (the `cp_wstrb` none row of the ignore table and the `c_sep_in_wstrb_none` row of the Phase 2 (not collected) table), both once a coverage run of record exists
 |`smc_clk_fcov::cg_clk_ratio` (`cov/sv/smc_clk_fcov.sv`) |`smc_clk_ratio_rand_test` |planned: the interior ratio cells over merged regressions
-|`smc_dma_fcov::cg_dma_burst` |`smc_dma_transfer_matrix_rand_test` |planned: the drawn burst-length and strobe cells of the transfer matrix
+|`smc_dma_fcov::cg_dma_burst` |`smc_dma_transfer_matrix_rand_test` |planned: the drawn burst-length cells of the transfer matrix
 |===
 
 [[smc-coverage-policy]]

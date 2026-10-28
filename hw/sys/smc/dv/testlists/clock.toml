@@ -270,6 +270,15 @@ tags = ["clock"]
 run_modes = ["smoke"]
 args = ["+smc_cell=periph3"]
 
+[[tests]]
+name = "smc_clk_ratio_rand_test"
+module = "smc_clk_ratio_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "clock"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "clock"
 tests = [
@@ -299,6 +308,7 @@ tests = [
     "smc_cg_test_mode_bypass_test",
     "smc_cg_dft_reset_bringup_test",
     "smc_cg_zeroer_activity_bringup_test",
+    "smc_clk_ratio_rand_test",
 ]
 
 [[tests]]
