@@ -513,25 +513,3 @@ response.
 * Program and read commands from the eFuse control registers address adopter
 fuses at bit 8192 and above. The guard checks each against the `ADOPTER_LOCKS`
 pair of the region that holds the target bit.
-
-==== Constraints
-
-* The adopter window lies inside `smc_external`, after the SHIM control block.
-A static check in `smu.sv` enforces this.
-* The region holds no secrets. Adopter words have no secure-test lock, secret
-masking or Class 1 storage, so they receive normal scan handling. Secrets
-belong in the SEP.
-* A region is unprotected until its `ADOPTER_LOCKS` write lock is set, either
-burned in the fuses (permanent) or set in the shadow copy (until reset). Until
-then, any agent that reaches the adopter window can overwrite the region's
-shadow words, and any agent that reaches the eFuse control registers can
-program its fuses. For regions whose locks are not burned, setting the shadow
-locks early in boot is the adopter firmware's responsibility; the eFuse
-sequences are in the
-ifdef::backend-html5[]
-xref:ocah-programmer-guide::index.adoc#smc-efuse[eFuse section]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-https://docs.tenstorrent.com/tt-oca-harness/ocah-programmer-guide/latest/index.html#smc-efuse[eFuse section]
-endif::backend-pdf[]
-of the Programmer's Guide.
