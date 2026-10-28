@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B1_008 ANCHOR: smc_cpuif_handshake_instances_test
-# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 4d68d1879a666d752f86205bbe7816fd6beb72a0287f15da626741cf702c43c4
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 8 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 6 RECORD-SHA256: f165cbf1e38c36bc5b0814ec5d5439e1f9733d3ed543509569a5eb40f6507947
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 9 ENV: cocotb
 """Every register-block instance: pipelined, back to back, W ahead of AW and held.
 
 Every instance of the multi-instance families (GPIO interfaces 0..64, inbound and
@@ -14,9 +14,10 @@ interface control and shadow, zeroer and iDMA control, I3C 0, DFD/CLA,
 chip_config, ndm_reset, straps) take, through SEP_IN: pipelined reads (and on
 the pinned-map families pipelined interleaved writes and reads), back-to-back
 reads, writes with W ahead of AW, a read and a write against a held RREADY /
-BREADY, and sixteen-deep groups queued behind a held response. One instance of
-each family the contract lists takes the held groups again behind a 512-cycle
-hold.
+BREADY, and sixteen-deep groups queued behind a held response. Every instance
+of the inbound and outbound filter, M-mode, Xvisor and alias remap and telemetry
+families, and one instance of each of ten other families, 69 instances in 16
+families, take the held groups again behind a 512-cycle hold.
 
 Run:
     python3 tools/dv/run_dv.py --dut smc --items smc_cpuif_handshake_instances_test --tool vcs
@@ -47,13 +48,14 @@ from smc_base_test import smc_base_test
 # instances at 153 each (reference, 4 pipelined reads, 2 back-to-back reads,
 # write-back leg and sweep (63), RREADY-held read, 82 in the held groups), 4 LCR
 # accesses around each of the 4 divisor latches, and 5 CLOCK_GATE_CONTROL
-# accesses for the mailbox clock. The long-hold instances (6 pinned-map, 10
-# plain) repeat the held groups: 86 accesses each on a pinned-map instance and
-# 82 on a plain one.
+# accesses for the mailbox clock. The long-hold instances (57 pinned-map: 32
+# filter entries, 24 remaps and one GPIO interface; 12 plain: 3 telemetry
+# receivers and one instance of nine other families) repeat the held groups: 86
+# accesses each on a pinned-map instance and 82 on a plain one.
 PINNED = 187
 PLAIN = 38
-LONG_PINNED = 6
-LONG_PLAIN = 10
+LONG_PINNED = 57
+LONG_PLAIN = 12
 CPUIF_INSTANCES_MIN_CSR_ACCESSES = (
     PINNED * 188 + (32 + 8 + 128) + PLAIN * 153 + 4 * 4 + 5 + LONG_PINNED * 86 + LONG_PLAIN * 82
 )

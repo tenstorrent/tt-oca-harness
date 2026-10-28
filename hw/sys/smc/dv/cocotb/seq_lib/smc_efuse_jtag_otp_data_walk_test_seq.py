@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# DV-TESTCASE-CONTRACT: SMC_COV_W2T_009 ANCHOR: smc_efuse_jtag_otp_data_walk_test
+# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 03c331b6d757c468b7825f65e5567b17e7096676e54f0cbd29d565b017edfc05
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 5 ENV: cocotb
 """eFuse interface control written from the JTAG eFuse port, read back over SEP_IN.
 
-Contract: ``SMC_COV_W2T_009`` revision 1
+Contract: ``SMC_COV_W2T_009`` revision 2
 (``hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md``).
 
 Every write goes through the ``ej_axi`` AXI-Lite manager on the JTAG eFuse port; every
@@ -17,7 +20,8 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
   0x0080_0000 reset to the timeouts. Each SEP_IN readback masked to the RW fields equals
   the written word and the status fields read 0. One JTAG read of each register follows.
 * S3 writes EFUSE_PROGRAM_CTRL full-width 0x1234, with WSTRB 0x1 and data 0x0805_FFA5,
-  then full-width 0. The strobed readback and response are logged (SF-009).
+  with WSTRB 0x2 and the same data, then full-width 0. Both strobed readbacks and
+  responses are logged (SF-009).
 * S4 reads bit A through the read interface, programs it with ``efuse_data`` 1 and polls
   ``program_done``; S5 reads A again; S6 issues a data-0 program to bit A2 and reads A2
   before and after. Each read first clears EFUSE_PROGRAM_CTRL, since ``program_enable``
@@ -101,6 +105,9 @@ PARTIAL_PRE = 0x0000_1234
 PARTIAL_DATA = 0x0805_FFA5
 PARTIAL_STRB = 0x1
 PARTIAL_EXPECT = 0x0000_12A5
+PARTIAL_STRB1 = 0x2
+#: Byte lane 1 of PARTIAL_DATA: efuse_addr[15:8] of the WSTRB 0x2 write.
+PARTIAL_LANE1 = PARTIAL_DATA & 0x0000_FF00
 
 #: Documented write counts per register in S2 (all RW, zero, one per RW bit).
 WALK_COUNTS = {"PROGRAM_CTRL": 21, "READ_CTRL": 19, "READ_TO": 31, "PROG_TO": 31}
@@ -373,6 +380,10 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
             "S3_STRB", PROGRAM_CTRL, PARTIAL_DATA, strb=PARTIAL_STRB, check=False
         )
         strobed = await self._sep_read("S3_STRB_RB", PROGRAM_CTRL)
+        resp1 = await self._jtag_write(
+            "S3_STRB1", PROGRAM_CTRL, PARTIAL_DATA, strb=PARTIAL_STRB1, check=False
+        )
+        strobed1 = await self._sep_read("S3_STRB1_RB", PROGRAM_CTRL)
         await self._jtag_write("S3_POST", PROGRAM_CTRL, 0)
         post = await self._sep_read("S3_POST_RB", PROGRAM_CTRL)
         assert post == 0, f"S3: readback 0x{post:08x} after the zero write, expected 0x0"
@@ -380,11 +391,16 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         self._chk(
             "CHK-EFUSE-JTAG-PARTIAL-STRB",
             "pre=0x%08x exact, strobe0 rb=0x%08x resp=%d (logged against 0x%08x, LINKED-ISSUE "
-            "SF-009), post=0x%08x exact",
+            "SF-009), strobe1 rb=0x%08x resp=%d (logged against 0x%08x: lane 1 0x%02x over the "
+            "strobe0 readback, LINKED-ISSUE SF-009), post=0x%08x exact",
             pre,
             strobed,
             resp,
             PARTIAL_EXPECT,
+            strobed1,
+            resp1,
+            (strobed & ~0x0000_FF00 & WORD) | PARTIAL_LANE1,
+            PARTIAL_LANE1 >> 8,
             post,
         )
 

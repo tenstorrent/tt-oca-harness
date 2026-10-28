@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B1_007 ANCHOR: smc_axil_endpoint_prot_sweep_test
-# DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: dc47a2b61b4edb0599729c5ce139a1ec08ebd24ae4262a16e3f82a5fb86c790c
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 3 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 6a415424767d2d0610ab649b8df314737f74940c086eb25d90b57e67e4b9f87a
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 10 ENV: cocotb
 """Request attributes carried from SEP_IN to every AXI-Lite register endpoint.
 
 ``fabric.adoc`` (Protection Bit Pass-Through) passes every protection bit
@@ -27,6 +27,17 @@ nothing; these are the endpoints whose content or reach is open
 the response code of every AxLOCK = 1 access. AxLEN > 0 is driven only on the
 burst set the contract names, whose footprint lies in side-effect-free
 read-write registers; there each beat and the footprint are logged.
+
+Four legs follow the outstanding-ID leg. The first word of the eFuse SHIM
+control block takes a read, a write-back and a second read; its registers are
+adopter-defined (``memmap.adoc``), so the two reads are compared with each
+other and the response is measured. The supplementary region of the external
+window takes a read and a zero-data write with AxPROT 0x7 and 0x0, each
+answering the DECERR the reference integration documents there. Every endpoint
+the AxUSER leg writes back takes a strobed write-back with WUSER 0xFFF and
+0x000, each followed by a zero-attribute read of the reference. CPU_CTRL
+SCRATCH[0..15], the only pinned 128-byte read-write footprint, takes an AxLEN
+15 read burst and a write-back burst of the words read; its beats are logged.
 """
 
 from __future__ import annotations
@@ -47,6 +58,7 @@ from .smc_rdl_regmap import rdl_contract
 
 BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
 RESP_OKAY = 0
+RESP_DECERR = 3
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", None: "none"}
 
 # Bound on every response wait the sequence takes; the driver's own bound sits
@@ -73,6 +85,15 @@ ID_VALUES = (0x01, 0x15, 0x2A, 0x3F, 0x00)
 OUTSTANDING_IDS = (0x01, 0x02, 0x03, 0x04)
 DEBUG_PROTS = (0x3, 0x0)
 
+SHIM_WINDOW = BASE + 0x40_0000
+EXTERNAL_WINDOW = BASE + 0x40_4000
+assert SHIM_WINDOW == smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
+assert EXTERNAL_WINDOW == smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
+EXTERNAL_PROTS = (0x7, 0x0)
+WUSER_VALUES = (0xFFF, 0x000)
+LEN15_REGS = tuple(f"smc_cpu_ctrl/SCRATCH[{i}]" for i in range(16))
+NO_128B_FOOTPRINT = ("out-remap-mmode", "out-remap-xvisor", "alias-remap", "reset-unit")
+
 TERMS = (
     "REFERENCE",
     "PROT",
@@ -85,6 +106,10 @@ TERMS = (
     "LEN",
     "ID",
     "OUTSTANDING",
+    "SHIM",
+    "EXTERNAL",
+    "WUSER",
+    "LEN15",
 )
 
 
@@ -436,11 +461,15 @@ class smc_axil_endpoint_prot_sweep_test_seq(SmcCsrSeq):
         expected: int | None = None,
         tolerate: bool = False,
         capture: bool = False,
+        wuser: int | None = None,
     ) -> SmcSysAxiItem:
         item = self._item(
             label, op, ep.addr, ep.width, attrs, wdata=wdata, expected=expected, tolerate=tolerate
         )
         item.capture_resp_id = capture
+        if wuser is not None:
+            item.wstrb = (1 << ep.width) - 1
+            item.axi_wuser = wuser
         await self._drive(item, f"{op.value} {ep.name} 0x{ep.addr:08x} {attrs}")
         assert not item.timed_out, f"{label}: {ep.name} timed out"
         return item
@@ -861,6 +890,182 @@ class smc_axil_endpoint_prot_sweep_test_seq(SmcCsrSeq):
             notes.append(note)
         return notes
 
+    async def _shim(self) -> str:
+        """S13: read, write-back and second read of the first SHIM word."""
+        ep = Endpoint("efuse_shim", "shim", SHIM_WINDOW, 8)
+        mask = self._mask(ep)
+        rd1 = await self._access("shim_rd1", SmcSysAxiOp.READ, ep, ZERO, tolerate=True)
+        v1 = rd1.rdata & mask
+        wr = await self._access("shim_wr", SmcSysAxiOp.WRITE, ep, ZERO, wdata=v1, tolerate=True)
+        rd2 = await self._access("shim_rd2", SmcSysAxiOp.READ, ep, ZERO, tolerate=True)
+        v2 = rd2.rdata & mask
+        assert rd1.resp_code is not None and rd2.resp_code is not None, (
+            f"SHIM 0x{ep.addr:08x}: a read completed without a response code"
+        )
+        assert rd1.resp_code == rd2.resp_code, (
+            f"SHIM 0x{ep.addr:08x}: rd1 answered {_resp(rd1.resp_code)}, "
+            f"rd2 answered {_resp(rd2.resp_code)}"
+        )
+        if rd1.resp_code == RESP_OKAY:
+            assert v1 == v2, f"SHIM 0x{ep.addr:08x}: rd1 0x{v1:x}, rd2 0x{v2:x}"
+        else:
+            self._measure(
+                f"SHIM 0x{ep.addr:08x}: rd1 {_resp(rd1.resp_code)} 0x{v1:x}, "
+                f"wr {_resp(wr.resp_code)}, rd2 {_resp(rd2.resp_code)} 0x{v2:x} (SF-041)"
+            )
+        return (
+            f"rd 0x{ep.addr:08x} resp={_resp(rd1.resp_code)} data=0x{v1:016x}, "
+            f"wr-back resp={_resp(wr.resp_code)}, rd2 resp={_resp(rd2.resp_code)} "
+            f"data=0x{v2:016x} equal={'yes' if v1 == v2 else 'no'}"
+        )
+
+    async def _external(self) -> tuple[str, int]:
+        """S14: read and zero-data write at the supplementary region, AxPROT 0x7 then 0x0."""
+        ep = Endpoint("smc_external", "external", EXTERNAL_WINDOW, 8)
+        parts = []
+        for prot in EXTERNAL_PROTS:
+            attrs = Attrs(prot=prot)
+            got = {}
+            for op in (SmcSysAxiOp.READ, SmcSysAxiOp.WRITE):
+                item = self._item(
+                    f"ext_{op.value}_prot{prot}", op, ep.addr, ep.width, attrs, tolerate=True
+                )
+                item.expect_error = True
+                item.expected_resp = RESP_DECERR
+                await self._drive(item, f"{op.value} {ep.name} 0x{ep.addr:08x} {attrs}")
+                assert not item.timed_out, f"{item.get_name()} timed out"
+                assert item.resp_code == RESP_DECERR, (
+                    f"{ep.name} {op.value} with AxPROT 0x{prot:x} answered "
+                    f"{_resp(item.resp_code)}, expected DECERR"
+                )
+                got[op] = item
+            self._measure(
+                f"EXTERNAL 0x{ep.addr:08x} prot=0x{prot:x} rdata="
+                f"0x{got[SmcSysAxiOp.READ].rdata & self._mask(ep):x}"
+            )
+            parts.append(
+                f"prot{prot:x} rd={_resp(got[SmcSysAxiOp.READ].resp_code)} "
+                f"wr={_resp(got[SmcSysAxiOp.WRITE].resp_code)}"
+            )
+        return f"ext 0x{ep.addr:08x} {', '.join(parts)}", 2 * len(EXTERNAL_PROTS)
+
+    async def _wuser(self) -> tuple[int, int, int, int]:
+        """S15: every endpoint the AxUSER leg writes back, WUSER 0xFFF then 0x000."""
+        n = writes_ok = readbacks_ok = accesses = 0
+        for ep in self.endpoints:
+            ref_resp, ref = self.reference[ep.name]
+            mask = self._mask(ep)
+            rd = await self._access(
+                f"wuser_rd_{ep.name}", SmcSysAxiOp.READ, ep, ZERO, tolerate=ep.logged
+            )
+            value = rd.rdata & mask
+            accesses += 1
+            for wuser in WUSER_VALUES:
+                wr = await self._access(
+                    f"wuser_wr_{ep.name}_{wuser:03x}",
+                    SmcSysAxiOp.WRITE,
+                    ep,
+                    ZERO,
+                    wdata=value,
+                    tolerate=ep.logged,
+                    wuser=wuser,
+                )
+                rb = await self._access(
+                    f"wuser_rb_{ep.name}_{wuser:03x}",
+                    SmcSysAxiOp.READ,
+                    ep,
+                    ZERO,
+                    expected=None if ep.logged else ref,
+                    tolerate=ep.logged,
+                )
+                accesses += 2
+                got = rb.rdata & mask
+                if ep.logged:
+                    self._measure(
+                        f"WUSER {ep.name} 0x{ep.addr:08x} wuser=0x{wuser:03x}: "
+                        f"bresp={_resp(wr.resp_code)} rresp={_resp(rb.resp_code)} "
+                        f"rdata=0x{got:x} (reference rresp={_resp(ref_resp)} 0x{ref:x})"
+                    )
+                    continue
+                assert wr.resp_code == RESP_OKAY, (
+                    f"WUSER: {ep.name} write-back with WUSER 0x{wuser:03x} answered "
+                    f"{_resp(wr.resp_code)}"
+                )
+                writes_ok += 1
+                assert rb.resp_code == RESP_OKAY and got == ref, (
+                    f"WUSER: after the write-back with WUSER 0x{wuser:03x}, {ep.name} answered "
+                    f"{_resp(rb.resp_code)} 0x{got:x}, reference 0x{ref:x}"
+                )
+                readbacks_ok += 1
+            if not ep.logged:
+                n += 1
+        assert writes_ok == readbacks_ok == len(WUSER_VALUES) * n, (
+            f"WUSER: {writes_ok} write-backs and {readbacks_ok} readbacks held over {n} endpoints"
+        )
+        return n, writes_ok, readbacks_ok, accesses
+
+    async def _len15(self) -> str:
+        """S16: AxLEN 15 read burst and write-back burst over CPU_CTRL SCRATCH[0..15]."""
+        regs = [rdl_contract(path) for path in LEN15_REGS]
+        addrs = [r.addr for r in regs]
+        assert addrs[0] == BASE + 0x39080, f"SCRATCH[0] sits at 0x{addrs[0]:x}"
+        assert all(r.width_bytes == 8 for r in regs), "a SCRATCH register is not 8 bytes"
+        assert all(b == a + 8 for a, b in zip(addrs, addrs[1:])), (
+            f"SCRATCH footprint {[hex(a) for a in addrs]} is not contiguous"
+        )
+        beats = len(regs)
+        monitor = getattr(self.env, "axi_monitor", None)
+        if monitor is not None:
+            monitor.expected_decerr_addrs.add(addrs[0])
+        mark = self.recorder.mark()
+        rd = self._item("len15_rd", SmcSysAxiOp.READ, addrs[0], 8, ZERO, tolerate=True, beats=beats)
+        await self._drive(rd, f"len15 read burst 0x{addrs[0]:08x} x{beats}")
+        assert not rd.timed_out, "the AxLEN 15 read burst timed out"
+        rbeats = await self._beats_since(mark, "r", beats, "len15 read")
+        mark = self.recorder.mark()
+        wr = self._item(
+            "len15_wr",
+            SmcSysAxiOp.WRITE,
+            addrs[0],
+            8,
+            ZERO,
+            wdata=rd.rdata,
+            tolerate=True,
+            beats=beats,
+        )
+        await self._drive(wr, f"len15 write-back burst 0x{addrs[0]:08x} x{beats}")
+        assert not wr.timed_out, "the AxLEN 15 write-back burst timed out"
+        bbeats = await self._beats_since(mark, "b", 1, "len15 write")
+        if monitor is not None:
+            monitor.expected_decerr_addrs.discard(addrs[0])
+        words = [(rd.rdata >> (64 * i)) & ((1 << 64) - 1) for i in range(beats)]
+        equal = 0
+        after = []
+        for reg, word in zip(regs, words):
+            ep = Endpoint(reg.path, "len15", reg.addr, 8)
+            item = await self._access(
+                f"len15_post_{reg.path}", SmcSysAxiOp.READ, ep, ZERO, tolerate=True
+            )
+            got = item.rdata & self._mask(ep)
+            after.append(f"{_resp(item.resp_code)}:0x{got:x}")
+            equal += got == word
+        per_beat = ",".join(
+            f"{_resp(e.resp)}:0x{e.data:x}" if e.data is not None else f"{_resp(e.resp)}:X"
+            for e in rbeats[:beats]
+        )
+        self._measure(
+            f"LEN15 cpu_ctrl.SCRATCH[0..15] rbeats=[{per_beat}] bresp={_resp(bbeats[0].resp)} "
+            f"after=[{', '.join(after)}]"
+        )
+        resps = sorted({_resp(e.resp) for e in rbeats[:beats]})
+        return (
+            f"ep=cpu_ctrl.SCRATCH[0..15] 0x{addrs[0]:08x} len15 rd beats="
+            f"{len(rbeats[:beats])}/{beats} resp=[{per_beat}] (codes {'/'.join(resps)}), "
+            f"wr beats={beats} bresp={_resp(bbeats[0].resp)}, read==write-back "
+            f"{equal}/{beats}, no-128B-footprint=[{', '.join(NO_128B_FOOTPRINT)}] "
+            f"(AxLEN 15: no pinned 128-byte RW footprint)"
+        )
+
     # -- body --------------------------------------------------------------
 
     async def body(self) -> None:
@@ -965,6 +1170,39 @@ class smc_axil_endpoint_prot_sweep_test_seq(SmcCsrSeq):
             f"{len(outstanding)} classes x 4 reads, RID set=={{0x01,0x02,0x03,0x04}}, "
             f"data==reference; {' | '.join(outstanding)}",
         )
+
+        cocotb.log.info("STEP S13: eFuse SHIM word 0x%08x read, write-back, read", SHIM_WINDOW)
+        if monitor is not None:
+            monitor.expected_decerr_addrs.add(SHIM_WINDOW)
+        shim = await self._shim()
+        if monitor is not None:
+            monitor.expected_decerr_addrs.discard(SHIM_WINDOW)
+        self._stamp("SHIM", 3)
+        self._chk("CHK-ATTR-SHIM-WINDOW", shim)
+
+        cocotb.log.info("STEP S14: external window 0x%08x, AxPROT 0x7 then 0x0", EXTERNAL_WINDOW)
+        if monitor is not None:
+            monitor.expected_decerr_addrs.add(EXTERNAL_WINDOW)
+        external, ext_count = await self._external()
+        if monitor is not None:
+            monitor.expected_decerr_addrs.discard(EXTERNAL_WINDOW)
+        self._stamp("EXTERNAL", ext_count)
+        self._chk("CHK-ATTR-EXTERNAL-PROT", external)
+
+        cocotb.log.info("STEP S15: WUSER %s on every AxUSER write-back endpoint", WUSER_VALUES)
+        n, writes_ok, readbacks_ok, wuser_accesses = await self._wuser()
+        self._stamp("WUSER", wuser_accesses)
+        self._chk(
+            "CHK-ATTR-WUSER",
+            f"{n} endpoints x {len(WUSER_VALUES)} values, write-backs OKAY "
+            f"{writes_ok}/{2 * n}, readbacks==reference {readbacks_ok}/{2 * n}, "
+            f"logged-only={len(self.endpoints) - n}",
+        )
+
+        cocotb.log.info("STEP S16: AxLEN 15 bursts over CPU_CTRL SCRATCH[0..15]")
+        len15 = await self._len15()
+        self._stamp("LEN15", 2 + len(LEN15_REGS))
+        self._chk("CHK-ATTR-LEN15", len15)
         self.recorder.stop = True
         self.ar_watch.stop = True
         await recorder_task
