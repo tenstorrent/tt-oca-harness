@@ -46,10 +46,6 @@ response sequence rises by one on every frame except at a reset cause).
 The procedure steps that serve only planned checkers do not run: the single-fault
 legs (steps 4 to 8), the argument legs (11 to 13), the DEST_VALID walk (15), the
 transport leg (33 to 39) and the record of ``inbound_separator`` in step 1.
-
-Known limitation (contract): CHK-OFLOW-PEND can fail on this DUT, because the ROM
-recovers from rx_buff_oflow in main context with the mailbox interrupt unmasked.
-The overflow step runs last, so every other check grades before it.
 """
 
 from __future__ import annotations
@@ -91,7 +87,7 @@ from seq_lib.sep_sw_reset_seq import SepSwReset
 
 TEST = "sep_km_command_protocol_rand_test"
 
-# Probe bit 31 of sep_internal_interrupts_probe_o is km_recoverable_err_o
+# Probe bit 31 of sep_internal_interrupts_probe_o is sep_ras_o.km_correctable
 # (PIC source 32, hw/sys/sep/doc/interrupts.adoc).
 _KM_RECOV = agg_from_pic("KM recoverable error")
 

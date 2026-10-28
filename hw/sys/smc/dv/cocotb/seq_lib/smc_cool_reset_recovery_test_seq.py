@@ -7,7 +7,7 @@ reset, the de-glitched cool-reset pin and the FLR cool reset; the warm reset is 
 primary reset, the watchdog reset and the fuse reset; ``u_reset_unit_reg``, ``SS_CONFIG`` and
 ``SS_COLD_RESET_N`` are reset by the primary reset while the isolation registers and FLR
 counters are reset only by the stable cold reset; the FLR edge sets ``ISOLATE_REQ_SMC_REG``
-and a software write clears it; a zero hold count disables the timed reset but still sets the
+and a software write of 1 to bit 0 clears it; a zero hold count disables the timed reset but still sets the
 latch), hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl, hw/sys/smc/doc/cpu.adoc (reset vector
 ``0xC004_0000``).
 
@@ -279,7 +279,7 @@ class smc_cool_reset_recovery_test_seq(smc_cool_reset_pin_flr_overlap_test_seq):
         s5["after"] = await self._rd("S5_SMC_REG_AFTER", SMC_REG)
         s5["window"] = (flr["set"], self._tick_no)
         s5["samples"] = [self._samples[t] for t in range(flr["set"] + 1, self._tick_no + 1)]
-        await self._wr("S5_SMC_REG_CLR", SMC_REG, 0)
+        await self._wr("S5_SMC_REG_CLR", SMC_REG, SMC_BIT)
         s5["cleared"] = await self._rd("S5_SMC_REG_CLR_RB", SMC_REG, 0)
         await self._wr("S5_FLR_HOLD_RESTORE", FLR_HOLD, _H)
         s5["hold_restored"] = await self._rd("S5_FLR_HOLD_RESTORE_RB", FLR_HOLD, _H)

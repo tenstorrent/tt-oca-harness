@@ -95,9 +95,8 @@ module smu_dtp_fcov (
   `OCAH_FCOV_COVER(c_ctp_unused_input_tied_zero_inert, ctp_unused_input_tied_zero_inert_e,
                    clk_smu_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the override slice as a pair.
+  // Covergroup: the override slice as a pair.
   // ------------------------------------------------------------------
   covergroup cg_ic_reset_ext with function sample (logic ovrd, logic ctrl_n);
     option.per_instance = 1;
@@ -111,6 +110,5 @@ module smu_dtp_fcov (
   always_ff @(posedge clk_smu_i) begin
     if (!in_reset) u_cg_ic_reset_ext.sample(jtag_ic_reset_ext_ovrd_i, jtag_ic_reset_ext_ctrl_n_i);
   end
-`endif
 
 endmodule : smu_dtp_fcov

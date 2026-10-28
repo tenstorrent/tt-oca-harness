@@ -182,10 +182,9 @@ module smc_rst_seq_fcov (
   `OCAH_FCOV_COVER(c_telemetry_reset_asserted, telemetry_reset_asserted_e, clk_smc_i, not_powered)
   `OCAH_FCOV_COVER(c_telemetry_reset_released, telemetry_reset_released_e, clk_smc_i, not_powered)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the held-domain tuple while the primary
-  // reset is asserted, which the flat list cannot cross.
+  // Covergroup: the held-domain tuple while the primary reset is asserted,
+  // which the flat list cannot cross.
   // ------------------------------------------------------------------
   covergroup cg_primary_holds with function sample (
       logic core_held, logic fabric_held, logic periph_held, logic warm_held
@@ -214,6 +213,5 @@ module smc_rst_seq_fcov (
                                 rst_primary_periph_clk_ni === 1'b0, rst_warm_smc_clk_ni === 1'b0);
     end
   end
-`endif
 
 endmodule : smc_rst_seq_fcov

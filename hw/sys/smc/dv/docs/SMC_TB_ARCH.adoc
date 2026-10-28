@@ -609,10 +609,11 @@ that is not a DUT contract.
 [[coverage-strategy]]
 === Coverage Strategy
 
-Verilator does not support SystemVerilog covergroups. The SMC open-source path
-collects Python-side functional observations in `SmcScoreboard`
-(`FUNC_COV_VALUE` bins) and relies on commercial simulators for SV covergroups,
-assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
+Every simulator compiles the SV covergroups in `cov/sv/`, which use only the
+constructs Verilator supports. The SMC open-source path collects them, the
+Python-side functional observations in `SmcScoreboard` (`FUNC_COV_VALUE` bins)
+and line, branch and expression coverage, and relies on commercial simulators
+for condition, FSM, toggle and assertion coverage. See `SMC_FCOV.adoc`.
 
 [[canonical-rtl-selection]]
 === Canonical RTL Selection

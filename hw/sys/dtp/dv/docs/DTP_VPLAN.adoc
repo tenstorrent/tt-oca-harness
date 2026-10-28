@@ -65,7 +65,7 @@ disables (full debug access) by default; gating scenarios assert exactly the
 target's disable field and settle four toggling TCK cycles (the TB margin over
 the DUT's 2-stage TCK-domain synchronizers).
 . *Coverage*: the covergroups of the `cov/sv/` modules are the functional coverage model,
-credited on VCS; Verilator builds the same covergroup bins and also records the modules' `cover property` points (see `DTP_FCOV.adoc`).
+credited on VCS; Verilator builds the same covergroup bins (see `DTP_FCOV.adoc`).
 . *Scenario expansion*: multi-scenario families are expanded into separate, named test
 cases (see Naming Rules) so each scenario is independently selectable in the
 testlists.
@@ -213,11 +213,9 @@ Executable membership is resolved from the testlists; each group's
   credited once; a realization whose evidence differs is named in the
   row's Checker-evidence cell.
 * Coverage credit is the covergroup bins of the `cov/sv/` modules,
-  collected on VCS from both realizations and merged. The `cover property`
-  points the modules record under Verilator carry no crosses, so they are
-  not the same bins and do not stand in for them. A combination no stimulus
-  reaches on the bench configuration has no bin in its covergroup, and no
-  credited row leans on a waiver.
+  collected on VCS from both realizations and merged. A combination no
+  stimulus reaches on the bench configuration has no bin in its covergroup,
+  and no credited row leans on a waiver.
 * The 22-cell debug-disable contract is credited only through the two
   matrix tests: in cocotb their checker-gated ledger refuses to finish with a
   missing cell, and in SV-UVM every pass runs each field's one-hot row and both

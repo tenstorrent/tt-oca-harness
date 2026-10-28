@@ -39,12 +39,24 @@ Checkers:
                      (untranslated) address answers OKAY, and the granule at
                      the translated address answers DECERR: the beat passes
                      through with its address unchanged.
+
+FCOV: the owner window of this leaf
+(``sep_remap_output_offset_cg.cp_valid0_passthru``) is open only for the
+CHK-WALK-PASSTHRU read at the beat's own address, one read per pair, after the
+remap region and the filter entry are programmed and read back. It closes
+after that read is graded, or before its FAIL raises. The sampler takes the
+read only when the PR-OUT address equals the issued address while the region
+``valid`` is 0 and the read completes OKAY, the response CHK-WALK-PASSTHRU
+grades, so it samples only a read that passes the check.
 """
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles
 from env.sep_fabric_common import outbound_ns
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import AP_BASE, OUTFILT_BASE, STEE_BASE
@@ -71,6 +83,12 @@ from seq_lib.sep_outbound_remap_seq import (
     remap_probe_seq,
     remapped_addr,
 )
+
+TEST = "sep_fabric_outbound_remap_filter_walk_test"
+
+# clk_i edges the window stays open after a passing read, so the close never
+# falls in the clock of the read completion that the sampler counts.
+WINDOW_HOLD_CYCLES = 2
 
 _REGION_SPAN = 1 << IDX_START
 TOP_BIT = 1 << (ADDR_W - 1)
@@ -130,15 +148,35 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
         await self.start_seq(seq)
         return seq.resp_code
 
-    async def _expect(self, chk: str, pair: _Pair, addr: int, x: int, win, *, deny: bool) -> None:
+    async def _expect(
+        self, chk: str, pair: _Pair, addr: int, x: int, win, *, deny: bool, graded: bool = False
+    ) -> None:
+        """Read ``addr`` and grade its response.
+
+        ``graded`` opens the owner window right before the read; it closes
+        after a pass, or before the FAIL raises.
+        """
+        if graded:
+            open_graded_window(TEST, self.logger)
         resp = await self._read(addr, deny=deny)
         want = RESP_DECERR if deny else RESP_OKAY
-        assert resp == want, (
-            f"{chk} FAIL: {pair.tag()} read 0x{addr:08x} (target 0x{x:014x}) with window "
-            f"0x{win[0]:014x}..0x{win[1]:014x} resp={resp}, want {want}"
-        )
+        if resp != want:
+            close_graded_window(self.logger)
+            raise AssertionError(
+                f"{chk} FAIL: {pair.tag()} read 0x{addr:08x} (target 0x{x:014x}) with window "
+                f"0x{win[0]:014x}..0x{win[1]:014x} resp={resp}, want {want}"
+            )
+        if graded:
+            await ClockCycles(cocotb.top.clk_i, WINDOW_HOLD_CYCLES)
+            close_graded_window(self.logger)
 
     async def run_scenario(self) -> None:
+        try:
+            await self._walk()
+        finally:
+            close_graded_window(self.logger)
+
+    async def _walk(self) -> None:
         rng = SepSeededRng(self.random_seed())
         pairs = [_Pair(rng, b, r) for b in ("AP", "STEE") for r in range(N_REGIONS)]
         self.logger.info(
@@ -224,7 +262,9 @@ class sep_fabric_outbound_remap_filter_walk_test(sep_base_test):
             await filt.program_window(e, *own)
             win = await filt.check_window(e, "passthru-own")
             await filt.set_enabled(e, True, ns=outbound_ns(p.bank.lower(), p.access))
-            await self._expect("CHK-WALK-PASSTHRU", p, p.access, p.access, win, deny=False)
+            await self._expect(
+                "CHK-WALK-PASSTHRU", p, p.access, p.access, win, deny=False, graded=True
+            )
 
             await filt.restore(e)
             await remap.program(p.csr_base, p.region, 0, False)

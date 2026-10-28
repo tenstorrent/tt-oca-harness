@@ -11,6 +11,14 @@
 // are listed; the ANNOTATION before each block states the fact.
 //==================================================
 
+CHECKSUM: "521771762 485106105"
+ANNOTATION: "SMC-B15-ROM-LOADER-ERROR-ARMS: a property of this bench, not of the design. The CPU cluster's external ROM loader reads +rom_bin64 or +rom_hex in a simulation-only initial block, opens the named file and loads it; every graded SMC testlist entry passes +rom_hex with an image that exists, so the arms that report a missing file or no plusarg at all are bench misconfigurations the $error names, not paths of the design. The +rom_bin64 arm stays graded: the holdout production-ROM run mode passes it. A graded entry without a ROM plusarg, or one naming a missing file, retires the class."
+MODULE: OCAH4CORECluster_rom_ext
+Branch 0 "1137474691" "$value$plusargs(\"rom_bin64=%s\", rom_mem_path)" (1) "$value$plusargs(\"rom_bin64=%s\", rom_mem_path) 1,0,-,-"
+Branch 0 "1137474691" "$value$plusargs(\"rom_bin64=%s\", rom_mem_path)" (3) "$value$plusargs(\"rom_bin64=%s\", rom_mem_path) 0,-,1,0"
+Branch 0 "1137474691" "$value$plusargs(\"rom_bin64=%s\", rom_mem_path)" (4) "$value$plusargs(\"rom_bin64=%s\", rom_mem_path) 0,-,0,-"
+Branch 1 "785626954" "(!file_loaded)" (0) "(!file_loaded) 1"
+
 CHECKSUM: "3775597833 2443394120"
 ANNOTATION: "SMC-P10-PACKET-SHORTER-THAN-BANK: a bank spans BANK_DATA_WIDTH_IN_BYTES bytes, 32 at this instantiation, and the packetizer is elaborated with PACKET_WIDTH_IN_BYTES = VLT_PACKET_WIDTH / 8, which a 64-bit debug bus makes 10, so one write cannot both start at or below a bank's first byte and end past its last; the term asking whether it does is false for the life of the design. The two sibling terms of the same condition are reachable and stay graded."
 MODULE: accumulator_bank
@@ -223,12 +231,9 @@ Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtri
 
 CHECKSUM: "2949011289 1776738744"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur. The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select until that AW's W is taken while its B FIFO holds each W back until the previous B, so when the next AW can first arrive the block holds the previous AW and W with no response in flight and accepts them that cycle, and an accept never meets a response ack. The zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake and popped at B or R, so its second AW or AR arrives only after the block answered the first. Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks see the next AW only two cycles after W is taken, while a held read defers the write accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of two or less, so it admits one transaction at a time and passes the next AW, AR or W only after the previous response, when the block's holding registers are empty."
-ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty. cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that AW is handled, the ID FIFO in front of the block clears on the same B, and the block, empty by then, takes the AW in that cycle."
 MODULE: cpu_ctrl_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "1876497610 1878539093"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
@@ -305,12 +310,12 @@ MODULE: efuse_interface_shim
 Condition 4 "1965672997" "(fuse_command_req_i.valid && ((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK))) 1 -1" (1 "01")
 Condition 9 "3774810071" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
 
-CHECKSUM: "968667134 2700233996"
+CHECKSUM: "321180704 2700233996"
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 MODULE: efuse_program_interface
 Condition 4 "2745518814" "(efuse_req_err_i || (fuse_command_resp_i.status == 1'b1) || secure_tm_blocked_i) 1 -1" (2 "001")
 
-CHECKSUM: "2454482988 3469611085"
+CHECKSUM: "2215532120 3469611085"
 ANNOTATION: "SMC-P29-FIELD-MAP-LOCKS: smc_efuse_pkg's field map gives every field WriteUnlock and ReadUnlock save the LOCKS meta-field, which is WriteSetOnly under the all-ones index the lock lookups never lock, and an unmapped address reads a lock of zero. No address carries the write-lock or read-lock code or lock bit 3, and a set-only address is never hardware write-locked."
 ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
 MODULE: efuse_shadow_reg_access_control
@@ -320,7 +325,7 @@ Condition 15 "57363498" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11)) 1 -1" 
 Condition 16 "1432529323" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
 Condition 17 "2025791036" "(is_read_locked | sw_lock_bits[0]) 1 -1" (2 "01")
 
-CHECKSUM: "2638662622 2051484095"
+CHECKSUM: "3666838869 2051484095"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms, the preload flag the initial block sets only with sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
 MODULE: efuse_shadow_regs
@@ -341,7 +346,7 @@ Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.prea
 Condition 2 "4011173503" "(sim_skip_fuse_sense == 1'b1) 1 -1" (2 "1")
 Condition 3 "1907892326" "(preload_plusarg_found == 1'b0) 1 -1" (1 "0")
 
-CHECKSUM: "2638662622 2252613779"
+CHECKSUM: "3666838869 2252613779"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms, the preload flag the initial block sets only with sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
@@ -394,12 +399,12 @@ Branch 0 "2316299915" "MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn" (0) "MMR_Trfunn
 Branch 11 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 11 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
-CHECKSUM: "679458402 3045344841"
+CHECKSUM: "1921157106 3045344841"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: i2c_bus_monitor
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "1252306351 3290552104"
+CHECKSUM: "1047115886 3290552104"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: i2c_controller_fsm
 Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
@@ -407,12 +412,12 @@ Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stret
 Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
 Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "1252306351 2125022970"
+CHECKSUM: "1047115886 2125022970"
 ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns T_NO_DELAY only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing T_SETUP_DATA or T_HOLD_DATA. The case's default item, and the target's T_NO_DELAY item, never execute. The controller reloads with T_NO_DELAY on purpose, so that item stays graded there."
 MODULE: i2c_controller_fsm
 Branch 0 "1166353581" "load_tcount" (10) "load_tcount 1,default,-"
 
-CHECKSUM: "1471594334 4119665143"
+CHECKSUM: "3268358166 4119665143"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 MODULE: i2c_core
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
@@ -454,7 +459,7 @@ Condition 135 "972124682" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2
 Condition 139 "3992516998" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
 Condition 143 "376664427" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
 
-CHECKSUM: "331326766 571373665"
+CHECKSUM: "4138443418 571373665"
 ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns T_NO_DELAY only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing T_SETUP_DATA or T_HOLD_DATA. The case's default item, and the target's T_NO_DELAY item, never execute. The controller reloads with T_NO_DELAY on purpose, so that item stays graded there."
 MODULE: i2c_target_fsm
 Branch 0 "3014248919" "load_tcount" (2) "load_tcount 1,T_NO_DELAY ,-"
@@ -483,7 +488,7 @@ ANNOTATION: "SMC-P27-PAGE-WIDTH-BOUND: the iDMA page splitter forms page_addr_wi
 MODULE: idma_legalizer_page_splitter
 Branch 0 "3110941386" "not_bursting_i" (1) "not_bursting_i 0,1"
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "3108644366 1051719324"
 ANNOTATION: "SMC-P28-LOG-WRITE-OKAY: uart_log_engine_wrap wires the log engine's write port only to its own UART, whose demux sends every write to one of three PeakRDL register blocks generated with cpuif_wr_err at zero, and axi_lite_from_mem reports an error only on SLVERR or DECERR, so log_write_mem_resp_error and log_write_err hold zero and a row that needs either high cannot occur. The INTR_TEST path still sets the status bit, and its rows stay graded."
 MODULE: log_engine
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
@@ -564,7 +569,7 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
-CHECKSUM: "4215336085 1053676856"
+CHECKSUM: "2846000842 1053676856"
 ANNOTATION: "SMC-P31-OCTS-CREDIT-SPEC: the system timer's register specification requires CREDIT_VAL to exceed PULSE_WIDTH, a PULSE_WIDTH of zero counts as one, and the RTL asserts the same bound on that effective width, so CREDIT_VAL is at least two and above the pulse width. The timer's enable only ever sets, and until it does the credit counter is held at zero, so the counter never meets CREDIT_VAL minus one with the enable low. A pulse lasts its width, a credit follows the last credit or counter reset by CREDIT_VAL cycles, a start resets the counter, and both values change in one register write, so no credit arrives while a pulse is active. A specification that admits a CREDIT_VAL at or below the pulse width retires the class."
 ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur. A pair is taken only where VCS cannot score it in a zero-time delta: either one process writes both sides, or the condition sits in a clocked process, which samples settled values. cla_arithmetic_compare derives compare_equal and below_compare_int in one always_comb from the same masked value, so they are never high together; efuse_shadow_reg_access_control raises write_locked_o in the same always_comb only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. In clocked processes, uart_core assigns tx_enable and rx_enable the same expression and forms thr_rready from a term that includes thr_rvalid, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 ANNOTATION: "SMC-C13-COUNTER-VALID-PAIRED: the iDMA write unit resets its beat counter and its valid flag together, loads them together, and clears the flag in the cycle the counter steps from one to zero, so with the flag low the counter is zero. The system timer holds its count at zero until a start or sync load, and either one sets its sticky enable on the same edge, so with the enable low the count is zero too."
@@ -637,7 +642,7 @@ Condition 17 "3721999652" "(upstrm_tr_ntrace_bp & upstrm_tr_enabled_srcs[RELATIV
 Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (2 "10")
 Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (3 "11")
 
-CHECKSUM: "3354362860 3417673543"
+CHECKSUM: "1934166905 3417673543"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. The read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
 ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. The pending entries are flops reset to zero and written only by a pending write, so their source, way and address fields, and the read inhibits set from them, never read one. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free, save the frame-start guard whose first term conjoins the south valid with the second, which the south valid alone rules out."
 ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default. The south write pointer is an OR over no cores, so the south write way and its staged copies read zero; a core's pointer never matches its own pending frame, so with one core the overflow-pending flop never sets; and the north write way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero way comes with the north write enable. Each trace hop has one core in its path and zero upstream repeaters and hops to the tail, so at most one core is enabled and its setup counter never leaves its target of zero."
@@ -1320,7 +1325,7 @@ Condition 518 "933719883" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_st
 Condition 519 "2440650197" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(6 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(6 / 2)])) & ((~TrdstMemRamRdEn_TS2[6])) & ((~TrdstMemRdBufferVld_TS3[6])) & ((~TrdstMemRdBufferVld_TS4[6])) & ((~TrdstMemRdBufferVld_TS5[6])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
 Condition 520 "3216549117" "(TrdstMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrdstRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrdstMemRamRdEn_TS2[7])) & ((~TrdstMemRdBufferVld_TS3[7])) & ((~TrdstMemRdBufferVld_TS4[7])) & ((~TrdstMemRdBufferVld_TS5[7])) & ((&trdstMemRamRdEnFromCore_ANY)) & ((|trdstNumFramesFilledInSRAM_ANY_d1))) 1 -1" (3 "110111111")
 
-CHECKSUM: "3354362860 1334787416"
+CHECKSUM: "1934166905 1334787416"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. The read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
 ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default. The south write pointer is an OR over no cores, so the south write way and its staged copies read zero; a core's pointer never matches its own pending frame, so with one core the overflow-pending flop never sets; and the north write way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero way comes with the north write enable. Each trace hop has one core in its path and zero upstream repeaters and hops to the tail, so at most one core is enabled and its setup counter never leaves its target of zero."
 MODULE: trace_sink
