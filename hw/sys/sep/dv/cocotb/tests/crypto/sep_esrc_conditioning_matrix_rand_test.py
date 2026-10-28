@@ -519,18 +519,25 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self._wr(ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=0))
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         for whiten in (1, 0):
-            await self._wr(
-                ESRC_CTRL,
-                _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, SHA256_WHITENING_ENABLE=whiten),
+            ctrl = _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, SHA256_WHITENING_ENABLE=whiten)
+            await self._wr(ESRC_CTRL, ctrl)
+            ctrl_rb = await self._rd(ESRC_CTRL)
+            self.chk.ctrl(
+                "COND-BYPASS",
+                ctrl_rb == ctrl,
+                whiten=whiten,
+                ctrl=f"0x{ctrl:08x}",
+                ctrl_rb=f"0x{ctrl_rb:08x}",
             )
             for pas in SIGNATURE_PASSES:
-                if not await self._bypass_pass(whiten, pas):
+                if not await self._bypass_pass(ctrl_rb, pas):
                     close_graded_window(self.logger)
                     return
         close_graded_window(self.logger)
 
-    async def _bypass_pass(self, whiten: int, pas) -> bool:
+    async def _bypass_pass(self, ctrl_rb: int, pas) -> bool:
         plan = self.plan
+        whiten = _get(ctrl_rb, "CTRL", "SHA256_WHITENING_ENABLE")
         bits = [1] * NUM_LANES if pas == "all1" else [(j >> pas) & 1 for j in range(NUM_LANES)]
         await self._drive_stuck(bits)
         await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE", ENABLE=0))
