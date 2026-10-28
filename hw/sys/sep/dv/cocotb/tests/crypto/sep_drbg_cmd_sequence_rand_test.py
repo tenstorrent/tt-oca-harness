@@ -1156,10 +1156,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
     # --- boot group -----------------------------------------------------------------
     async def _boot(
         self, auto: bool, bound: int, graded: bool = True
-    ) -> tuple[int | None, int, int]:
+    ) -> tuple[int | None, int, int, int | None]:
         """One boot with BOOT_REQ_MODE true. Returns (clocks to BOOT_MODE or None, the
-        HW_CMD_STS read that first shows BOOT_MODE, the CTRL word). Only a ``graded``
-        boot, one that CHK-EDN-BOOT grades, opens the coverage window."""
+        HW_CMD_STS read that first shows BOOT_MODE, the CTRL word, the CTRL readback
+        after that read or None). Only a ``graded`` boot, one that CHK-EDN-BOOT grades,
+        opens the coverage window."""
         off = _edn_ctrl(boot=True, auto=auto, enable=False)
         on = _edn_ctrl(boot=True, auto=auto, enable=True)
         await self.reg._wr(EDN_BOOT_INS_CMD, BOOT_INS_ZERO_SEED)
@@ -1173,13 +1174,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             )
         except TrialTimeout:
             close_graded_window(self.logger)
-            return None, 0, on
+            return None, 0, on, None
+        ctrl_rb = await self.reg._rd(EDN_CTRL)
         close_graded_window(self.logger)
-        return clk, sts, on
+        return clk, sts, on, ctrl_rb
 
     async def _boot_group(self) -> None:
         await self._clean_start("boot_ref")
-        t0, sts, ctrl = await self._boot(auto=False, bound=FIRST_CAP, graded=False)
+        t0, sts, ctrl, _ = await self._boot(auto=False, bound=FIRST_CAP, graded=False)
         if t0 is None:
             self.chk.ok(
                 "EDN-BOOT",
@@ -1198,7 +1200,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         for auto in (True, False):
             for graded in (False, True):
                 await self._clean_start(f"boot_auto{int(auto)}{'_cov' if graded else ''}")
-                clk, sts, ctrl = await self._boot(auto=auto, bound=bound, graded=graded)
+                clk, sts, ctrl, ctrl_rb = await self._boot(auto=auto, bound=bound, graded=graded)
+                self.chk.ctrl(
+                    "EDN-BOOT",
+                    ctrl_rb == ctrl,
+                    instance="cov" if graded else "first",
+                    ctrl=f"0x{ctrl:04x}",
+                    ctrl_rb="na" if ctrl_rb is None else f"0x{ctrl_rb:04x}",
+                )
                 fields = {
                     "instance": "cov" if graded else "first",
                     "ctrl": f"0x{ctrl:04x}",

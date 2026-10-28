@@ -70,10 +70,11 @@ Checkers:
                        the same for D = 0 and D_r as for D_ref (architecture.adoc:113:
                        the divider holds at zero while disabled); a fixed enable delay
                        cancels. Control: 6 strobes after the enable, five equal gaps, no
-                       strobe while disabled, and min(k_D, D) differs from
-                       min(k_ref, D_ref), where k is the divider count at the disable
-                       (``div_at_off``): a DUT that keeps its count while disabled
-                       gives an offset of L - min(k_D, D), so it then fails.
+                       strobe while disabled, and min(k, D) differs from
+                       min(k', D_ref) for every count k a DUT that keeps its count
+                       while disabled would hold at D and k' at D_ref (``held``, from
+                       the divider trace): such a DUT gives an offset of
+                       L - min(k, D), so it then fails.
   CHK-COND-SHA         16 whitener input words give 8 output words (architecture.adoc:142),
                        exact: over the span between the first and the last quiet clock
                        of the window (SHA256_STATUS BUSY = 0 and OUTPUT_COUNT = 0, no
@@ -225,6 +226,10 @@ def _val(reg: str, **fields: int) -> int:
 
 # DECORRELATOR_CTRL.SAMPLE_CLK_DIV reset value, the reference of the period ratio.
 RESET_DIV = _get(ENTROPY_SOURCE.reset("DECORRELATOR_CTRL"), "DECORRELATOR_CTRL", "SAMPLE_CLK_DIV")
+
+
+def _held(h: set[int] | None) -> str:
+    return "none" if h is None else "/".join(str(v) for v in sorted(h))
 
 
 def _lane_byte(bit: int, mask: int) -> int:
@@ -743,32 +748,11 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         if self.chk.ok("COND-FIRST-PUSH", k == expect, **fields):
             await self._cnt_pass(ESRC_CNT_PASS_FIRST_PUSH)
 
-    async def _lanes_off(self, st: dict | None = None) -> int | None:
-        """RING_OSC_ENABLE.ENABLE = 0; clocks until ``esrc_ro_enable_o`` reads 0, or None.
-
-        With ``st``, ``st["div_at_off"]`` is ``esrc_decor_div_lane0_o`` on the last clock
-        where ``esrc_ro_enable_o`` read every lane enabled: the count the divider had
-        when the lanes went off.
-        """
+    async def _lanes_off(self) -> int | None:
+        """RING_OSC_ENABLE.ENABLE = 0; clocks until ``esrc_ro_enable_o`` reads 0, or None."""
         dut = cocotb.top
-        run = [True]
-
-        async def _off_trace() -> None:
-            while run[0]:
-                await RisingEdge(dut.clk_i)
-                await ReadOnly()
-                if self.rd(dut.esrc_ro_enable_o) != RO_ENABLE_ALL:
-                    break
-                st["div_at_off"] = self.rd(dut.esrc_decor_div_lane0_o)
-            await NextTimeStep()
-
-        trace = None if st is None else cocotb.start_soon(_off_trace())
         await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE", ENABLE=0))
-        off = await self.setup.wait_probe(lambda: self.rd(dut.esrc_ro_enable_o) == 0, RO_OFF_CLKS)
-        if trace is not None:
-            run[0] = False
-            await trace
-        return off
+        return await self.setup.wait_probe(lambda: self.rd(dut.esrc_ro_enable_o) == 0, RO_OFF_CLKS)
 
     async def _set_div(self, div: int) -> None:
         """Lanes off, SAMPLE_CLK_DIV = ``div``, lanes on; raises if the lanes do not stop.
@@ -811,19 +795,49 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await NextTimeStep()
 
     async def _walk_one(self, div: int) -> dict:
-        """Lanes off, SAMPLE_CLK_DIV = ``div``, then the lane enable under the trace."""
+        """Lanes off, SAMPLE_CLK_DIV = ``div``, then the lane enable under the trace.
+
+        ``held`` is the set of counts that a divider which keeps its count while
+        disabled would hold, from ``esrc_decor_div_lane0_o`` on every clock from the
+        disable write to the end of the ``div`` write: the count on the clock before
+        the last run of zeros, and also 0 when that count is the stored value (the run
+        can then start at a wrap); {0} when every count is 0; None when the trace does
+        not end in zeros.
+        """
+        dut = cocotb.top
         st = {
             "e0": None,
             "pre": 0,
             "div_tap": None,
-            "div_at_off": None,
+            "held": None,
             "strobes": [],
             "reason": "",
         }
-        off = await self._lanes_off(st)
+        stored = _get(await self._rd(ESRC_DECORRELATOR_CTRL), "DECORRELATOR_CTRL", "SAMPLE_CLK_DIV")
+        counts: list[int] = []
+        run = [True]
+
+        async def _div_trace() -> None:
+            while run[0]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                counts.append(self.rd(dut.esrc_decor_div_lane0_o))
+            await NextTimeStep()
+
+        trace = cocotb.start_soon(_div_trace())
+        off = await self._lanes_off()
         await self._wr(
             ESRC_DECORRELATOR_CTRL, _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL, SAMPLE_CLK_DIV=div)
         )
+        run[0] = False
+        await trace
+        z = len(counts)
+        while z and counts[z - 1] == 0:
+            z -= 1
+        if z == 0 and counts:
+            st["held"] = {0}
+        elif z < len(counts):
+            st["held"] = {counts[z - 1], 0} if counts[z - 1] == stored else {counts[z - 1]}
         if off is None:
             st["reason"] = f"timeout:enable_off bound={RO_OFF_CLKS}"
         task = cocotb.start_soon(self._enable_trace(st, 8 * (div + 1) + 256))
@@ -857,8 +871,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         the offset of D_ref, with no time base and no assumed L. A divider that
         keeps its count k while disabled gives the offset L - min(k, D), so the
         control CTRL-COND-FIRST-STROBE needs min(k, D) of the graded value to
-        differ from that of D_ref, with k the count at the disable
-        (``div_at_off``). The enable of a lane is
+        differ from that of D_ref for every k in ``held`` (see ``_walk_one``). The enable of a lane is
         RING_OSC_ENABLE.ENABLE (entropy_source.adoc:357); each value is written with
         every lane disabled and then the lanes are enabled, the order of
         ``doc/programmer/src/sep-programming.adoc:409-411,427``. Anchor:
@@ -891,30 +904,27 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             )
             st["offset"] = st["first"] - st["gap"] if st["ok"] else None
             self.logger.info(
-                "INFO-COND-FIRST-OFFSET seed=%d div=%d first_clk=%s gap_clk=%s offset=%s "
-                "div_at_off=%s",
+                "INFO-COND-FIRST-OFFSET seed=%d div=%d first_clk=%s gap_clk=%s offset=%s held=%s",
                 plan.seed,
                 div,
                 "none" if st["first"] is None else st["first"],
                 "none" if st["gap"] is None else st["gap"],
                 "none" if st["offset"] is None else st["offset"],
-                "none" if st["div_at_off"] is None else st["div_at_off"],
+                _held(st["held"]),
             )
             if div == RESET_DIV:
                 ref = st
                 continue
             ref_off = None if ref is None else ref["offset"]
-            ref_k = None if ref is None else ref["div_at_off"]
-            held = None if st["div_at_off"] is None else min(st["div_at_off"], div)
-            ref_held = None if ref_k is None else min(ref_k, RESET_DIV)
+            h, h_ref = st["held"], None if ref is None else ref["held"]
             self.chk.ctrl(
                 "COND-FIRST-STROBE",
-                held is not None and ref_held is not None and held != ref_held,
+                h is not None
+                and h_ref is not None
+                and all(min(a, div) != min(b, RESET_DIV) for a in h for b in h_ref),
                 div=div,
-                div_at_off="none" if st["div_at_off"] is None else st["div_at_off"],
-                ref_div_at_off="none" if ref_k is None else ref_k,
-                held="none" if held is None else held,
-                ref_held="none" if ref_held is None else ref_held,
+                held=_held(h),
+                ref_held=_held(h_ref),
             )
             if self.chk.ok(
                 "COND-FIRST-STROBE",
