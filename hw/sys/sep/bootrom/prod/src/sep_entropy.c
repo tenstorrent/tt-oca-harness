@@ -102,6 +102,9 @@
 #define SEP_ENTROPY_SEED_TIMEOUT 2000000u
 #endif
 
+// Main FIFO depth in 32-bit words.
+#define ESRC_FIFO_DEPTH 64u
+
 // ESRC_CTRL with every field at its reset value. MODULE_ENABLE and
 // SHA256_WHITENING_ENABLE both reset to 1, which is already what this ROM
 // wants, so the write is an explicit statement of intent rather than a change.
@@ -164,6 +167,32 @@ static int wait_boot_phase_done(void) {
     }
     simputs("ESRC_BOOT_PHASE_TIMEOUT=");
     simputhex32(mmio_read32(SEP_TOP_ENTROPY_SOURCE_MAIN_SM_STATUS_BASE_ADDR));
+    simputs("\n");
+    return -1;
+}
+
+// Close the FIFO_RDATA path to the DRBG seed words. Clearing ENABLE stops new
+// writes but leaves queued words readable, so the FIFO is drained as well.
+static int close_fifo(void) {
+    uint32_t ctrl = mmio_read32(SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR);
+    mmio_write32(SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR,
+                 ctrl & ~(uint32_t)ENTROPY_SOURCE__FIFO_CTRL__ENABLE_bm);
+    __asm__ volatile("fence" ::: "memory");
+
+    uint32_t s;
+    for (uint32_t i = 0; i < ESRC_FIFO_DEPTH; ++i) {
+        s = mmio_read32(SEP_TOP_ENTROPY_SOURCE_FIFO_STATUS_BASE_ADDR);
+        if ((s & ENTROPY_SOURCE__FIFO_STATUS__LEVEL_bm) == 0u) {
+            return 0;
+        }
+        (void)mmio_read32(SEP_TOP_ENTROPY_SOURCE_FIFO_RDATA_BASE_ADDR);
+    }
+    s = mmio_read32(SEP_TOP_ENTROPY_SOURCE_FIFO_STATUS_BASE_ADDR);
+    if ((s & ENTROPY_SOURCE__FIFO_STATUS__LEVEL_bm) == 0u) {
+        return 0;
+    }
+    simputs("ESRC_FIFO_DRAIN_FAIL=");
+    simputhex32(s);
     simputs("\n");
     return -1;
 }
@@ -298,7 +327,12 @@ int sep_entropy_init(void) {
     // passed and BEFORE any entropy is exposed to a consumer, which is the
     // window the programmer guide specifies. Locking earlier would freeze a
     // configuration that had not yet proved itself; later would expose entropy
-    // from a still-mutable source. DEBUG_CTRL stays outside this lock by design.
+    // from a still-mutable source. The lock also freezes DEBUG_CTRL, both
+    // observe-tap capture enables and FIFO_CTRL.ENABLE at their current values,
+    // so the FIFO read path is closed first.
+    if (close_fifo() != 0) {
+        entropy_fail();
+    }
     if (apply_lock(SEP_TOP_ENTROPY_SOURCE_FIPS_LOCK_BASE_ADDR, ENTROPY_SOURCE__FIPS_LOCK__LOCK_bm,
                    "ESRC_FIPS") != 0) {
         entropy_fail();
