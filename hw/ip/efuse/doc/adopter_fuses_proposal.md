@@ -285,11 +285,14 @@ bits alone. The adopter lock regions use no static policy.
 
 Risks and the contract rules that cover them:
 
-- **Protection depends on someone setting the locks.** Until a region's write lock is set, anything
-  that can reach the adopter window can override the shadow and burn extra 1s into the fuses, which
-  is permanent. Extra bits in repair data break repair; a bad trim mis-calibrates a sensor. The
-  harness ROM does not know the adopter's regions, so the adopter's firmware must lock its
-  production regions early in boot, and the adopter documents which regions those are.
+- **Protection depends on someone setting the locks.** Until a region's write lock is set, burned in
+  the fuses (permanent) or set in the shadow copy (until reset), anything that reaches the adopter
+  window can override the region's shadow words, and anything that reaches the eFuse control
+  registers can program extra 1s into its fuses, which is permanent. Extra bits in repair data
+  break repair; a bad trim mis-calibrates a sensor. Burning a region's write lock at manufacture
+  protects it with no firmware involvement. For regions whose locks are not burned, the harness ROM
+  does not know the adopter's regions, so the adopter's firmware must set their shadow locks early
+  in boot, and the adopter documents which regions those are.
 - **No secrets in the adopter region.** Without a secure-test lock, secret ranges or Class 1
   storage, adopter words get normal scan handling. Repair and trim data are fine. Adopter secrets
   belong in the SEP, which this proposal does not extend.

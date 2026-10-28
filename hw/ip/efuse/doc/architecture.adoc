@@ -523,9 +523,13 @@ address and length types, which a static check in `smu.sv` enforces.
 * The region holds no secrets. Adopter words have no secure-test lock, secret
 masking or Class 1 storage, so they receive normal scan handling. Secrets
 belong in the SEP.
-* An unlocked region can be overwritten in the shadow, and burned, by any agent
-that reaches the adopter window. Locking production regions early in boot is
-the adopter firmware's responsibility; the eFuse sequences are in the
+* A region is unprotected until its `ADOPTER_LOCKS` write lock is set, either
+burned in the fuses (permanent) or set in the shadow copy (until reset). Until
+then, any agent that reaches the adopter window can overwrite the region's
+shadow words, and any agent that reaches the eFuse control registers can
+program its fuses. For regions whose locks are not burned, setting the shadow
+locks early in boot is the adopter firmware's responsibility; the eFuse
+sequences are in the
 ifdef::backend-html5[]
 xref:ocah-programmer-guide::index.adoc#smc-efuse[eFuse section]
 endif::backend-html5[]
