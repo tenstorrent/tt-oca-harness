@@ -87,10 +87,16 @@ MSR_CTS = reg_field_encode(_UART_16550_MAIN_H, "UART_16550_MAIN", "MSR", cts=1)
 # The bits every MSR compare is masked to: the two this test drives and reads.
 MSR_LIVE_MASK = MSR_DCTS | MSR_CTS
 
-# cts_ni driven 0  =>  CTS = ~0 = 1. The RDL defines DCTS as "changed since
-# the last time this register was read", which gives the bit no value on a
-# read with no predecessor, so the first read is compared on CTS alone and its
-# DCTS is logged.
+# cts_ni driven 0  =>  CTS = ~0 = 1. DCTS on this first read is an open spec
+# question, tracked with the UART RDL alignment ticket #3428 (history: #3293,
+# fixed in the RTL by #3312): uart_16550_main.rdl defines DCTS as "changed
+# since the last time this register was read" and resets both DCTS and CTS to
+# 0, so read against the reset value a live CTS = 1 is a change (DCTS = 1),
+# while read as a delta between two reads the first read has no predecessor
+# and the RTL reports 0 (uart_core.sv seeds the last-read shadow from the pin
+# until the synchronizer holds it). The RDL does not say which reading is the
+# contract, so until the UART owner rules the first read is compared on CTS
+# alone and its DCTS is logged, not graded.
 MSR_FIRST_READ = MSR_CTS  # 0x10, compared under MSR_CTS only
 # Back-to-back second read: CTS has not moved since the first read, so DCTS
 # is clear.
@@ -153,6 +159,9 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_uart_spi_log_engine_test_seq") -> None:
         super().__init__(name)
         self.msr_reads = 0
+        # Full word of the most recent UART_MSR read, for logging bits a
+        # narrowed compare leaves out (the first read's DCTS).
+        self.msr_word = 0
 
     def _drive_cts_pad(self, level: int) -> None:
         """Drive UART0 CTS pad 14 to ``level`` via the top-level TB pad pins."""
@@ -187,19 +196,24 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         """
         rdata = await self.csr_read(name, UART_MSR)
         self.msr_reads += 1
+        self.msr_word = rdata
         live = rdata & mask
         cocotb.log.info(
-            "%s: UART_MSR full word 0x%08x, CTS/DCTS bits 0x%02x, bits outside the "
-            "compare 0x%08x (DSR/RI/DCD and their delta bits, logged only)",
+            "%s: UART_MSR full word 0x%08x, compared bits 0x%02x under mask 0x%02x, "
+            "CTS 0x%02x, DCTS 0x%02x, bits outside CTS/DCTS 0x%08x (DSR/RI/DCD and "
+            "their delta bits, logged only)",
             name,
             rdata,
             live,
+            mask,
+            rdata & MSR_CTS,
+            rdata & MSR_DCTS,
             rdata & ~MSR_LIVE_MASK,
         )
         if expected is not None:
             assert live == expected, (
-                f"{name}: UART_MSR CTS/DCTS bits 0x{live:02x} != expected "
-                f"0x{expected:02x} (full word 0x{rdata:08x})"
+                f"{name}: UART_MSR compared bits 0x{live:02x} != expected "
+                f"0x{expected:02x} under mask 0x{mask:02x} (full word 0x{rdata:08x})"
             )
         return live
 
@@ -296,13 +310,16 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-UART-MSR-FIRST: UART_MSR @ 0x%08x CTS bit = 0x%02x == "
             "CTS 0x%02x (this test drives CTS pad %d low -> cts_ni=0 -> "
-            "CTS=1); DCTS on a read with no predecessor has no RDL value and is "
-            "logged only; DSR/RI/DCD and their delta bits are masked out of the "
-            "compare",
+            "CTS=1); DCTS = 0x%02x on this first read is logged, not compared: "
+            "whether a CTS level that differs from its reset value counts as a "
+            "change on a read with no predecessor is an open RDL question "
+            "(#3428, history #3293 / #3312); DSR/RI/DCD and their delta bits "
+            "are masked out of the compare",
             UART_MSR,
             msr_first,
             MSR_FIRST_READ,
             UART0_CTS_PAD,
+            self.msr_word & MSR_DCTS,
         )
 
         msr_second = await self._read_msr("UART_MSR_RD2", expected=MSR_SECOND_READ)
