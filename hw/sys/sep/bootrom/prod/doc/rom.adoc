@@ -614,7 +614,8 @@ The following actions occur strictly in order, before any other memory or MMIO a
 On the cold-boot path (`cold_scratch[7]` = 0), the stub then establishes the C execution
 environment:
 
-1. `cold_scratch[7]` is defensively cleared.
+1. `cold_scratch[7]` is poisoned with `0xFFFFFFFF`, so a later warm reset with no handler
+   armed fails the range check and hangs instead of cold booting.
 2. [[req-SEP-ROM-CPU-150]]*[SEP-ROM-CPU-150]* The stack and the C globals shall live in DCCM.
    The stub sets the stack pointer to `__stack_top` and the global pointer to
    `__global_pointer$`, both placed in DCCM by the linker script `link/rom.ld`. SEP SRAM is
@@ -653,7 +654,7 @@ start
 :mtvec -> trap_vector;
 :MRAC CSR 0x7C0 = 0xAAAAAAA8;
 :warm-reset check (see Warm-Reset chapter);
-:clear cold_scratch[7];
+:poison cold_scratch[7] (write 0xFFFFFFFF);
 :sp = __stack_top, gp;
 :status 'entered _start' -> cold_scratch[1];
 :disable interrupts (mie, mstatus.MIE);
@@ -859,7 +860,7 @@ start
 :set mtvec, configure MRAC;
 :read cold_scratch[7];
 if (value == 0 ?) then (yes — cold boot)
-  :clear cold_scratch[7];
+  :poison cold_scratch[7] (write 0xFFFFFFFF);
   :cold boot init
   (stack, filter, PMP, scrub,
   .data/.bss, rom_main);
