@@ -134,6 +134,46 @@ them:
 `expect_eq` and `expect_true` are the only two check primitives; both take an
 optional `evidence=` argument naming the TOKEN they prove.
 
+Three groups of observation-only `ocah_axi_sva` instances in
+`tb/tb_wrapper_top.sv` grade the AXI4 reset, handshake, X, burst, ID and
+response rules on the SMU AXI links. `aresetn` is the primary SMC-clock reset
+`rst_primary_smc_clk_n_o` on every link, the reset of the crossbar, the DTP
+and the SEP system logic; the clock is `clk_smu_i`. The checkers are held off
+while `aresetn` is X and until the first `clk_ref` edge that samples
+`powergood_stable` low, because the SEP reset passes through the IC_RESET
+override that the DTP loads at its power-on reset. Under the SV-UVM build the
+enable also takes `smu_tb_if.axi_sva_en`. The rules grade on VCS only: both
+Verilator targets define `ASSERTS_OFF` and pass no `--assert`. On VCS a test
+with `+axi_sva_need_<port>` fails when that checker graded no AW or AR
+handshake. Protocol, not data.
+
+* *Crossbar AXI SVA* -- six instances on the six ports of `smu_axi_xbar`,
+  bound by hierarchical reference: `u_xbar_sep_out_axi_sva`,
+  `u_xbar_smc_out_axi_sva` and `u_xbar_ext_in_axi_sva` on the SEP SMN
+  outbound, SMC outbound and external inbound initiator ports, and
+  `u_xbar_sep_in_axi_sva`, `u_xbar_smc_in_axi_sva` and
+  `u_xbar_ext_out_axi_sva` on the SEP, SMC and external outbound target
+  ports. The SMC watchdog and reset-unit domains behind the SMC ports, and
+  the SEP watchdog and `sep_reset_n` behind the SEP ports, are outside
+  `aresetn`: no reset rule grades them, and a transaction open at one of
+  them stays in the checker's outstanding tracking until the next primary
+  reset. `MAX_OUTSTANDING` is 32 on `u_xbar_ext_in_axi_sva` and `u_xbar_sep_in_axi_sva` and 16 on `u_xbar_smc_in_axi_sva`, sized for the inbound window sweep, which keeps up to 34 writes open on the external inbound port, and for the SEP aperture leaf, which keeps up to 36 open on the crossbar SEP port.
+* *SMU boundary AXI SVA* -- `u_smu_in_axi_sva` on `smu_axi_in_req` /
+  `smu_axi_in_resp`, which also grades the bench master, and
+  `u_smu_out_axi_sva` on `smu_axi_out_req` / `smu_axi_out_resp`, which also
+  grades the bench responder behind `u_axi_out_cut`. The bench side of both
+  links resets on `rst_cold_n_o`, which asserts whenever the primary reset
+  asserts. `MAX_OUTSTANDING` is 32 on `u_smu_in_axi_sva`.
+* *SEP-to-SMC and DTP debug AXI SVA* -- `u_sep_to_smc_axi_sva` on the
+  dedicated SEP-to-SMC port that bypasses the crossbar
+  (`sep_ext_to_smc_axi_req` / `sep_ext_to_smc_axi_resp`), and
+  `u_dtp_smc_dbg_axi_sva` on the DTP JTAG2AXI port into the SMC fabric
+  (`dtp_axi_smc_dbg_req` / `dtp_axi_smc_dbg_resp`). The SMC watchdog and
+  reset-unit domains, the SEP watchdog and `sep_reset_n`, and the DTP
+  power-on reset are outside `aresetn`: no reset rule grades them, and a
+  transaction open at one of them stays in the checker's outstanding
+  tracking until the next primary reset.
+
 [[sep-processor-state-monitor]]
 === SEP Processor-State Monitoring (wrapper)
 
