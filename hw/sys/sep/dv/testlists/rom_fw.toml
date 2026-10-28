@@ -3468,3 +3468,21 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
+
+[[tests]]
+# Fails on the current ROM: ISSUE-008 in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
+# CPU-100 in part: every SRAM byte and ICCM bank row is zero-written, and the probed SRAM residue
+# words read zero, before the first manifest read. ICCM residue is planted but not graded.
+name = "sep_rom_sram_iccm_clear_test"
+module = "rom_fw.sep_rom_sram_iccm_clear_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_sram_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_sram_residue.hex",
+]
