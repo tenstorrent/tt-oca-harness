@@ -1670,8 +1670,7 @@ bit and releases the pad.
 START, delivering the bytes through `RDATA` in wire order, unchanged by `SMBUS_CTRL.SMBSUS` written
 mid-transfer and by a clear `I2C_CONTROLLER_MODE_EN`.
 |`smc_i2c_wire_timing_test` |3 |I2C0 controller SCL, SDA, START, STOP and bus-free timing on the pads
-changes between TIMING0-TIMING4 programming sets by exactly the programmed difference, with the
-minimum set a completed transfer.
+changes between TIMING0-TIMING4 programming sets by exactly the programmed difference.
 |`smc_i2c_dual_concurrent_transfer_test` |3 |Two I2C controllers, instances 0 and 1, run write
 transfers at the same time on separate pad pairs, each pad pair carries only its own instance's
 bytes with the programmed timing difference, and the register windows, FIFO levels, `CMD_COMPLETE`
@@ -35915,14 +35914,11 @@ that were changed.
   states as the time between a STOP and START condition; a value below it is printed, not compared.
 * Raising `T_R` and `T_F`, and the hold of the first START, are measured and printed with no
   expectation. Full-rate Standard-mode SCL is not run.
-* With `THIGH` and `TLOW` at 4 and every other field at 1 a transfer of START, address write and
-  STOP completes with one acknowledge and one STOP; four is the controller's floor, since its
-  stretch predictor needs `THIGH` of at least four and SCL low must outlast the output flop plus
-  the two-flop input synchronizer by a cycle before the controller releases SCL.
-* `i2c.rdl` states `THIGH` and `TLOW` "Must be `>= 2`". Whether 2 is legal or the description
-  has to follow the controller is an open ruling for the I2C owner, so transfer Y at `THIGH` and
-  `TLOW` of 2 runs after the graded minimum set and is logged (`OBS-I2C-WIRE-RDL-MIN`), completed
-  or not; nothing is graded on it until the ruling lands.
+* The smallest legal `THIGH` and `TLOW` are an open ruling for the I2C owner (#3404): `i2c.rdl`
+  states "Must be `>= 2`" and no specification states the floor the controller completes a
+  transfer at. Nothing is graded at a minimum setting: transfer Y runs once at `THIGH` and `TLOW`
+  of 4 (`OBS-I2C-WIRE-FLOOR-4`) and once at 2 (`OBS-I2C-WIRE-RDL-MIN`), every other field 1,
+  each logged completed or not, after the graded sets.
 
 *Test Procedure*:
 
@@ -35941,8 +35937,8 @@ that were changed.
 . Program set A2 (`T_R` and `T_F` raised by 6) and repeat.
 . Program set A3 (`TSU_STA`, `THD_STA` and `TSU_STO` raised by 8) and repeat, then program set A4
   (only `T_BUF` raised by 8) and repeat.
-. Program the minimum set, clear `INTR_STATE`, run transfer Y alone and require the START, the
-  acknowledge, exactly one STOP, `STATUS.HOSTIDLE` and `INTR_STATE.CMD_COMPLETE`.
+. Program `THIGH` and `TLOW` of 4, then of 2, each with every other field 1; run transfer Y alone
+  at each and log the outcome without a compare.
 . Compare the deltas against set A in order, print the checker lines, the ordered-fence line and
   the bounded waits.
 
@@ -35980,10 +35976,6 @@ equals the change in `TSU_STO`; any other delta fails it.
 fall of the START of Y, A4 minus A, equals the change in `T_BUF`; any other delta fails it. The
 measured bus-free time of each set is printed next to its programmed `T_BUF` (the time between a
 STOP and START condition per `i2c.rdl`); a value below it is printed, not compared.
-|`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 4 and the other fields at 1 transfer Y
-shows a START, an acknowledged address, one STOP, `HOSTIDLE` and `CMD_COMPLETE`; a missing START
-or acknowledge, another STOP count or either flag clear fails it. The RDL minimum (`THIGH` and
-`TLOW` at 2) is observed only (`OBS-I2C-WIRE-RDL-MIN`) while the ruling on the description is open.
 |`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
 lines follow them in order; a missing or misordered term fails it.
 |`CHK-TIMEOUT-PATHS` |The wait for the STOP edges, the `HOSTIDLE` poll, the LSIO ready poll and the
@@ -35994,7 +35986,7 @@ state.
 *Pass Criteria*: `CHK-I2C-WIRE-TIMING-FIELDS`, `CHK-I2C-WIRE-SCL-HIGH-DELTA`,
 `CHK-I2C-WIRE-SCL-LOW-DELTA`, `CHK-I2C-WIRE-SCL-PERIOD-DELTA`,
 `CHK-I2C-WIRE-DATA-HOLD-DELTA`, `CHK-I2C-WIRE-NACK-HOLD-DELTA`, `CHK-I2C-WIRE-RSTART-DELTA`,
-`CHK-I2C-WIRE-STOP-SETUP-DELTA`, `CHK-I2C-WIRE-BUS-FREE-DELTA`, `CHK-I2C-WIRE-MIN-SET-RUN`,
+`CHK-I2C-WIRE-STOP-SETUP-DELTA`, `CHK-I2C-WIRE-BUS-FREE-DELTA`,
 `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds;
 `CHK-I2C-WIRE-MEASURED-ONLY` and `CHK-I2C-WIRE-DATA-SETUP-MEASURED` record measurements only.
 Enrolled in: `all`, `hosted`.

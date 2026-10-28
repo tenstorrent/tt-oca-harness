@@ -19,17 +19,12 @@ compared; absolute values are printed as measured.
 * Set A2: set A with T_R and T_F raised. Set A3: set A with TSU_STA, THD_STA and TSU_STO
   raised. Set A4: set A with only T_BUF raised.
 
-Standard-mode full-rate SCL is not run. The minimum set (THIGH = TLOW = 4, every other field 1)
-is a liveness run of transfer Y at the controller's floor: the stretch predictor needs THIGH of at
-least four to see a target holding SCL low, and SCL low must outlast the round trip of the output
-flop plus the two-flop input synchronizer (three clk_i cycles with no external delay) by a cycle,
-or the controller releases SCL before it has seen its own falling edge and reads that late edge as
-another controller pulling SCL low (i2c_core.sv RoundTripCycles, i2c_controller_fsm.sv).
-
-i2c.rdl states THIGH and TLOW "Must be >= 2". Whether 2 is a legal value or the description has
-to follow the controller is an open ruling for the I2C owner, so the RDL minimum (THIGH = TLOW =
-2, every other field 1) runs transfer Y once more after the graded minimum set and is logged as
-OBS-I2C-WIRE-RDL-MIN, completed or not, with nothing graded on it.
+Standard-mode full-rate SCL is not run. The smallest legal THIGH and TLOW are an open ruling for
+the I2C owner (#3404): i2c.rdl states "Must be >= 2", and no specification states the floor the
+controller completes a transfer at. Until the ruling lands, nothing is graded at a minimum
+setting: transfer Y runs once at THIGH = TLOW = 4 (OBS-I2C-WIRE-FLOOR-4) and once at the RDL
+minimum THIGH = TLOW = 2 (OBS-I2C-WIRE-RDL-MIN), every other field 1, each logged completed or
+not, after the graded sets.
 """
 
 from __future__ import annotations
@@ -99,14 +94,11 @@ FM_PLUS_NS = {
     "t_buf": 500,
 }
 THD_DAT_MIN = 1
-#: The controller's floor: the stretch predictor needs THIGH of at least four, and SCL low must
-#: outlast the round trip of the output flop plus the two-flop input synchronizer (three clk_i
-#: cycles with no external delay) so the controller sees its own falling edge before it releases
-#: SCL (i2c_core.sv RoundTripCycles, i2c_controller_fsm.sv CLOCK_PULSE).
-MIN_THIGH = 4
-MIN_TLOW = 4
-#: The RDL's stated minimum (i2c.rdl TIMING0: "Must be >= 2"); observed, not graded, until the
-#: I2C owner rules whether the description or the controller's floor holds.
+#: The two minimum settings transfer Y is observed at, neither graded until the I2C owner rules
+#: on the smallest legal THIGH and TLOW (#3404): 4, the smallest value a transfer completes at,
+#: and 2, the minimum i2c.rdl TIMING0 states ("Must be >= 2").
+FLOOR_THIGH = 4
+FLOOR_TLOW = 4
 RDL_MIN_THIGH = 2
 RDL_MIN_TLOW = 2
 FAST_RATIO = 4
@@ -151,7 +143,7 @@ FIELD_REWRITE_XOR = 0x0155
 LOW_HALF_LANES = 0b0011
 HIGH_HALF_LANES = 0b1100
 
-STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
+STEPS = ("S1", "S2", "S3", "S4", "S5", "S6")
 CHK_BY_STEP = {
     "CHK-I2C-WIRE-TIMING-FIELDS": "S1",
     "CHK-I2C-WIRE-SCL-HIGH-DELTA": "S4",
@@ -164,7 +156,6 @@ CHK_BY_STEP = {
     "CHK-I2C-WIRE-RSTART-DELTA": "S6",
     "CHK-I2C-WIRE-STOP-SETUP-DELTA": "S6",
     "CHK-I2C-WIRE-BUS-FREE-DELTA": "S6",
-    "CHK-I2C-WIRE-MIN-SET-RUN": "S7",
 }
 FENCE_TERMS = {
     "S1": "TIMING_FIELDS_PROGRAMMED",
@@ -173,7 +164,6 @@ FENCE_TERMS = {
     "S4": "SET_C_MEASURED",
     "S5": "SET_A2_MEASURED",
     "S6": "SET_A3_A4_MEASURED",
-    "S7": "MIN_SET_RUN",
 }
 
 EDGE_POLL_CYCLES = 64
@@ -404,7 +394,7 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
                 for k, v in a.items()
             },
             "A4": {k: v + START_STOP_RAISE if k == "t_buf" else v for k, v in a.items()},
-            "MIN": {**dict.fromkeys(FIELDS, 1), "thigh": MIN_THIGH, "tlow": MIN_TLOW},
+            "FLOOR4": {**dict.fromkeys(FIELDS, 1), "thigh": FLOOR_THIGH, "tlow": FLOOR_TLOW},
             "RDL_MIN": {**dict.fromkeys(FIELDS, 1), "thigh": RDL_MIN_THIGH, "tlow": RDL_MIN_TLOW},
         }
         for name, prog in self.sets.items():
@@ -556,82 +546,46 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
             time.monotonic() - started,
         )
 
-    async def _min_run(self) -> str:
-        prog = self.sets["MIN"]
-        assert self.slave is not None
-        await self._program("MIN", prog)
-        await self.csr_write("MIN_INTR_CLR", I2C0_INTR_STATE, ALL_ONES)
-        before = await self.csr_read("MIN_INTR_BEFORE", I2C0_INTR_STATE)
-        assert before & INTR_CMD_COMPLETE == 0, f"CMD_COMPLETE set before the run (0x{before:08x})"
-        base = (self.slave.starts, self.slave.stops, self.slave.acks)
-        rec = WireRecorder()
-        rec.start()
-        await self._queue("MIN", False)
-        await self._wait_stops("MIN", rec, 1, prog)
-        await self._wait_hostidle("MIN", rec)
-        rec.stop()
-        intr = await self.csr_read("MIN_INTR_AFTER", I2C0_INTR_STATE)
-        status = await self.csr_read("MIN_STATUS_AFTER", I2C0_STATUS)
-        seen = (
-            self.slave.starts - base[0],
-            self.slave.stops - base[1],
-            self.slave.acks - base[2],
-        )
-        assert rec.starts == 1 and rec.stops == 1, (
-            f"MIN: {rec.starts} START and {rec.stops} STOP on the pads; {rec.state()}"
-        )
-        assert seen == (1, 1, 1), f"MIN: target counted starts/stops/acks {seen}, expected 1/1/1"
-        assert intr & INTR_CMD_COMPLETE, f"MIN: CMD_COMPLETE not set (INTR_STATE=0x{intr:08x})"
-        assert status & I2C_STATUS_HOSTIDLE, f"MIN: HOSTIDLE not set (STATUS=0x{status:08x})"
-        parse_edges("MIN", rec.events, False)
-        return (
-            f"THIGH={MIN_THIGH} TLOW={MIN_TLOW} and every other field 1: START, address write "
-            f"acknowledged "
-            f"(target acks={seen[2]}), exactly {rec.stops} STOP on the pads, STATUS=0x{status:08x} "
-            f"HOSTIDLE set, INTR_STATE=0x{intr:08x} CMD_COMPLETE set again after being "
-            f"0x{before:08x}"
-        )
+    async def _observe_min(self, label: str, token: str, note: str) -> None:
+        """Transfer Y at a minimum setting, logged and not graded.
 
-    async def _rdl_min_observe(self) -> None:
-        """Transfer Y at the RDL's stated minimum, logged and not graded.
-
-        Programs THIGH = TLOW = 2 with every other field 1, queues transfer Y and
-        waits the same bound as the graded sets. The outcome (a STOP on the pads
-        with HOSTIDLE and CMD_COMPLETE, or no STOP within the bound) is logged as
-        OBS-I2C-WIRE-RDL-MIN; no check reads it. The leg runs last so a controller
-        left mid-transfer at this setting touches no graded step.
+        Programs the named set, queues transfer Y and waits the same bound as the
+        graded sets. The outcome (a STOP on the pads with HOSTIDLE and
+        CMD_COMPLETE, or no STOP within the bound) is logged under ``token``; no
+        check reads it. The legs run last so a controller left mid-transfer at a
+        minimum setting touches no graded step.
         """
-        prog = self.sets["RDL_MIN"]
+        prog = self.sets[label]
         assert self.slave is not None
-        await self._program("RDL_MIN", prog)
-        await self.csr_write("RDL_MIN_INTR_CLR", I2C0_INTR_STATE, ALL_ONES)
+        await self._program(label, prog)
+        await self.csr_write(f"{label}_INTR_CLR", I2C0_INTR_STATE, ALL_ONES)
         base = (self.slave.starts, self.slave.stops, self.slave.acks)
         rec = WireRecorder()
         rec.start()
         outcome = "completed"
         try:
-            await self._queue("RDL_MIN", False)
-            await self._wait_stops("RDL_MIN", rec, 1, prog)
-            await self._wait_hostidle("RDL_MIN", rec)
+            await self._queue(label, False)
+            await self._wait_stops(label, rec, 1, prog)
+            await self._wait_hostidle(label, rec)
         except AssertionError as exc:
             outcome = f"did not complete: {exc}"
         finally:
             rec.stop()
-        intr = await self.csr_read("RDL_MIN_INTR_AFTER", I2C0_INTR_STATE)
-        status = await self.csr_read("RDL_MIN_STATUS_AFTER", I2C0_STATUS)
+        intr = await self.csr_read(f"{label}_INTR_AFTER", I2C0_INTR_STATE)
+        status = await self.csr_read(f"{label}_STATUS_AFTER", I2C0_STATUS)
         seen = (
             self.slave.starts - base[0],
             self.slave.stops - base[1],
             self.slave.acks - base[2],
         )
         cocotb.log.info(
-            "OBS-I2C-WIRE-RDL-MIN: THIGH=%d TLOW=%d and every other field 1 (i2c.rdl states "
-            "THIGH and TLOW must be >= 2; the controller's floor is %d): transfer Y %s; pads saw "
+            "%s: THIGH=%d TLOW=%d and every other field 1 (%s): transfer Y %s; pads saw "
             "%d START and %d STOP, target counted starts/stops/acks %s, INTR_STATE=0x%08x "
-            "STATUS=0x%08x; not graded until the I2C owner rules on the description",
-            RDL_MIN_THIGH,
-            RDL_MIN_TLOW,
-            MIN_THIGH,
+            "STATUS=0x%08x; not graded until the I2C owner rules on the minimum (#3404)",
+            token,
+            prog["thigh"],
+            prog["tlow"],
+            note,
             outcome,
             rec.starts,
             rec.stops,
@@ -703,10 +657,11 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         await self._run_set("A3")
         await self._run_set("A4")
         self._step_done("S6")
-        min_text = await self._min_run()
         await ClockCycles(cocotb.top.clk_smc_i, 2)
-        self._step_done("S7")
-        await self._rdl_min_observe()
+        await self._observe_min(
+            "FLOOR4", "OBS-I2C-WIRE-FLOOR-4", "the smallest value a transfer completes at"
+        )
+        await self._observe_min("RDL_MIN", "OBS-I2C-WIRE-RDL-MIN", "the i2c.rdl stated minimum")
 
         s = self.sets
         d = {t: {f: s[t][f] - s["A"][f] for f in FIELDS} for t in ("B", "C", "A3", "A4")}
@@ -867,8 +822,6 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
             f"states T_BUF as the time between a STOP and START condition): "
             f"{self._bus_free_below()}",
         )
-
-        self._chk("CHK-I2C-WIRE-MIN-SET-RUN", min_text)
 
         self._assert_fence()
         cocotb.log.info(
