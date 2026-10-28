@@ -391,7 +391,8 @@ endif::backend-html5[]
 Every outbound SMC request carries a source ID in AxUSER. The SMC outbound
 filter (<<smc-fabric-outbound-filtering>>) and the filters in front of other
 targets in the system match on it, together with address and NS, to decide
-what the request may reach.
+what the request may reach. The source ID occupies AxUSER[3:0], and the SMC
+inbound and outbound filters compare those four bits.
 
 The output remaps change that source ID. A request to a remap window is
 translated through the window's programmed regions and leaves with the
@@ -402,6 +403,10 @@ processor in the system.
 Xvisor remap:: `OTHER_ID`, the source ID of that processor's hypervisor and
 its guests.
 Direct path:: Any other address goes out untranslated, with `SMC_ID`.
+
+Each path replaces the whole AWUSER, ARUSER and WUSER with its source ID, so
+bits [11:4] leave as zero. BUSER and RUSER pass back through the replacement
+unchanged.
 
 The remaps are useful when the system integrates such a processor, for example
 an application processor (AP) running machine-mode firmware and the Xvisor
@@ -720,12 +725,12 @@ value; any other keeps the AxCACHE its initiator issued.
 
 [[smc-source-id-by-traffic-path-table]]
 .SMC Source ID by Traffic Path
-[width="100%",cols="30%,25%,45%",options="header",]
+[width="100%",cols="30%,15%,10%,45%",options="header",]
 |==============================
-|Traffic Path |Source ID |Acts For
-|Direct to NoC |SMC_ID |The SMC
-|Through Xvisor remap |OTHER_ID |Another processor's hypervisor and guests
-|Through M-mode remap |MMODE_ID |Another processor's machine-mode firmware
+|Traffic Path |Source ID |Value |Acts For
+|Direct to NoC |SMC_ID |0x3 |The SMC
+|Through Xvisor remap |OTHER_ID |0x0 |Another processor's hypervisor and guests
+|Through M-mode remap |MMODE_ID |0xC |Another processor's machine-mode firmware
 |==============================
 
 ifdef::backend-html5[]
