@@ -601,7 +601,8 @@ tracking until the next primary reset. The force-mode CPU reset that
 `ready`; that leaf's `+smc_front_port_r_arb_assertoff` holds `u_cpu_front_axi_sva` and
 `u_cpu_mmio_axi_sva` off, as it holds the front-port R arbiter assertion off, so no
 other leaf loses those checkers. `u_sys_in_axi_sva` stays on in that leaf: the stale R
-the isolate flush leaves on SYS_IN is graded there and the leaf is RED on it.
+the isolate flush leaves on SYS_IN is graded there and the leaf is RED on it; the
+Known Limitations table of `SMC_VPLAN.adoc` names the issue that records that beat.
 
 RTL and vendor-IP SVA participate only on commercial simulators, matching
 SEP. OpenTitan / PeakRDL / OCAH assertion macros compile and run under
