@@ -252,6 +252,16 @@ def _first_push_tells(trace: dict) -> bool:
     return trace["u0"] % m != 0 and (trace["u0"] - trace["u_at_ctrl"]) % m != 0
 
 
+def _next_telling_rate(trace: dict) -> int:
+    """The first rate after ``trace["n"]`` (15 wraps to 2) whose trace would tell, given its u0."""
+    n = trace["n"]
+    for k in range(1, RATE_HI - 2):
+        c = 2 + (n - 2 + k) % (RATE_HI - 2)
+        if _first_push_tells({**trace, "n": c}):
+            return c
+    return 2 + (n - 1) % (RATE_HI - 2)
+
+
 def _lane_byte(bit: int, mask: int) -> int:
     return (0xFF if bit else 0x00) & mask
 
@@ -633,8 +643,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         (``_midrun_obs``) run in the same graded window.
         """
         plan = self.plan
+        n = plan.n_r
         for tries in range(1, FIRST_PUSH_TRIES + 1):
-            n = 2 + (plan.n_r - 2 + tries - 1) % (RATE_HI - 2)
             trace = await self._setup(
                 ctrl_fields={"BYPASS_ENTROPY_COMPRESSOR": 1, "DOWNSAMPLE_RATE": n},
                 first_push=True,
@@ -643,6 +653,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             trace.update(n=n, tries=tries)
             if _first_push_tells(trace):
                 break
+            n = _next_telling_rate(trace)
         open_graded_window(TEST, self.logger)
         await self._grade_first_push(trace)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
@@ -774,8 +785,9 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
 
         The control needs the CTRL readback and a trace where a count of every strobe
         from the TRNG release or from the enable write would push on another strobe
-        (``_first_push_tells``). The leg repeats the clean start with the next rate,
-        up to FIRST_PUSH_TRIES times, until the trace tells the count start.
+        (``_first_push_tells``). The leg repeats the clean start, up to FIRST_PUSH_TRIES
+        times, with the next rate that the u0 and u_at_ctrl of the last try would tell
+        (``_next_telling_rate``), until the trace tells the count start.
         """
         n = trace["n"]
         k = trace["k"]
