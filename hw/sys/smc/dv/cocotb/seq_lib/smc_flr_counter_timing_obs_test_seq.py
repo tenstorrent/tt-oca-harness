@@ -164,7 +164,7 @@ class smc_flr_counter_timing_obs_test_seq(SmcCsrSeq):
         else:
             raise AssertionError(f"{label}: warm smc clk reset still 0 after the FLR cool")
         post = await self.csr_read(f"SMC_REG_POST_{label}", SMC_REG)
-        await self.csr_write(f"SMC_REG_CLR_{label}", SMC_REG, 0)
+        await self.csr_write(f"SMC_REG_CLR_{label}", SMC_REG, SMC_BIT)
         await self._await_smc_bit(0, _PIN_BOUND, f"SMC_REG_CLR_RB_{label}")
         return f"warm_low_seen={saw_low} warm_falls={self._mon.warm_falls} smc_reg_post=0x{post:x}"
 
