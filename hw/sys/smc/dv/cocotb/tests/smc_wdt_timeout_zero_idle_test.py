@@ -3,7 +3,7 @@
 """WDT_TIMEOUT written to 0 with no first-stage timeout leaves the second stage idle.
 
 Reproducer for #3386: with no core's first-stage timeout raised, a write of 0
-to `CPU_CTRL.WDT_TIMEOUT` must leave `smc_wdt_second_timeout_o` low and the
+to `CPU_CTRL.WDT_TIMEOUT` must leave `smc_ras_o.wdt_second_timeout` low and the
 warm reset released.
 """
 

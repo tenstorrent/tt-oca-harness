@@ -44,7 +44,7 @@ schema_version = 1
 
 [[tests]]
 # CPU_CTRL.WDT_TIMEOUT written to 0 with no first-stage timeout raises
-# smc_wdt_second_timeout_o on the next clock and holds the warm domain in
+# smc_ras_o.wdt_second_timeout on the next clock and holds the warm domain in
 # reset (smc_cpu_ctrl_wrap.sv flags the second timeout whenever the reloaded
 # counter reads 0); cpu_ctrl.rdl gives the field no range and defines no 0.
 name = "smc_wdt_timeout_zero_idle_test"

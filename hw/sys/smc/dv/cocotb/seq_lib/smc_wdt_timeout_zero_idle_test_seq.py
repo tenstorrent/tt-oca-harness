@@ -6,7 +6,7 @@
 second-stage watchdog timeout occurs, with no range and no meaning given to 0.
 The second stage times the interval after a core's first-stage timeout, so
 with no first-stage timeout raised a write of 0 must leave
-`smc_wdt_second_timeout_o` low and the warm reset released.
+`smc_ras_o.wdt_second_timeout` low and the warm reset released.
 
 `smc_cpu_ctrl_wrap.sv` reloads each core's stage-2 counter from WDT_TIMEOUT
 while that core's first-stage timeout is low and flags the second timeout
@@ -90,10 +90,10 @@ class smc_wdt_timeout_zero_idle_test_seq(SmcCsrSeq):
         if rise is not None or fall is not None or second_after or not warm_after:
             raise AssertionError(
                 f"{CHK} FAIL: WDT_TIMEOUT=0 with no first-stage timeout raised "
-                f"smc_wdt_second_timeout_o and asserted the warm reset ({samples})"
+                f"smc_ras_o.wdt_second_timeout and asserted the warm reset ({samples})"
             )
         cocotb.log.info(
-            "%s PASS: WDT_TIMEOUT=0 with no first-stage timeout left smc_wdt_second_timeout_o "
+            "%s PASS: WDT_TIMEOUT=0 with no first-stage timeout left smc_ras_o.wdt_second_timeout "
             "low and the warm reset released (%s)",
             CHK,
             samples,
