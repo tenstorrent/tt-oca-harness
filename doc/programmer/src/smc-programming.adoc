@@ -2218,7 +2218,8 @@ void telemetry_drain(unsigned i) {
   and resets assembly position, without erasing stored bytes or flushing the
   wrapper crossing FIFO. New traffic can make the queue nonempty again.
 * *Upstream flush:* set `CTRL.TELEMETRY_TX_FLUSH` and poll until hardware clears
-  it after acknowledgement. Choose a firmware timeout appropriate to the producer;
+  it after acknowledgement. Write `CTRL` only with a read-modify-write until
+  then; a write with the bit clear withdraws the request. Choose a firmware timeout appropriate to the producer;
   the core provides no fixed completion deadline.
 
 Neither operation makes stale trailing blocks safe: producers must still
