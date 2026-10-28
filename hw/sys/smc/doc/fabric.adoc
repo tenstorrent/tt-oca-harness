@@ -364,6 +364,12 @@ AxCACHE value that replaces the transaction's own on a hit. This enables:
 - Setting cacheable attributes on locally initiated transactions for optimal
   performance
 
+A region contains the addresses from `REGION_START` up to, but not including,
+`REGION_END`, so a region whose `REGION_END` is at or below its `REGION_START`
+contains no address and never remaps. When more than one valid region contains
+an address, the lowest-numbered region applies. The offset is added to address
+bits [55:12] modulo 2^44: a carry out of bit 55 is discarded.
+
 At reset, remap logic defaults to transparent mapping (no remap), using the
 local alias base address (0xC000_0000) for local resources until programmed.
 The Programmer's Guide gives the
