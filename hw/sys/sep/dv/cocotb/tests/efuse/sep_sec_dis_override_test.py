@@ -119,6 +119,8 @@ from env.sep_rma_token import token_digest
 from sep_base_test import sep_base_test
 from sep_reg_meta import register_fields, word_reset
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_efuse_rma_token_seq import _MATCH_STATUS_LSB as _STATUS_LSB
+from seq_lib.sep_efuse_rma_token_seq import _MATCH_STATUS_MASK as _STATUS_MASK
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_MATCH,
     TOKEN_MISMATCH,
@@ -201,12 +203,32 @@ class _BusChangeWatch:
         await ClockCycles(self._clk, 2)
 
 
+class _CountedTokenSeq(SepRmaTokenMatchSeq):
+    """Token presentation that counts the Idle (0x00) status reads after its go.
+
+    token_processing.adoc, Token Submission: a go clears digest validity, so the
+    comparison reads Idle until the new digest is available. A poll that reads
+    Idle at least once shows that this go, and not a result kept from an earlier
+    one, gave the code it returns.
+    """
+
+    def __init__(self, kind: int, token: int) -> None:
+        super().__init__(kind, token)
+        self.idle_reads = 0
+
+    async def _read(self, addr: int, label: str) -> int:
+        raw = await super()._read(addr, label)
+        if label == "token_match" and (raw & _STATUS_MASK) >> _STATUS_LSB == 0:
+            self.idle_reads += 1
+        return raw
+
+
 @pyuvm.test()
 class sep_sec_dis_override_test(sep_base_test):
     """Match opens FEAT_CTRL but does not release the sense-gated reset."""
 
-    async def _present(self, token: int) -> SepRmaTokenMatchSeq:
-        seq = SepRmaTokenMatchSeq(TOKEN_SEC_DISABLE, token)
+    async def _present(self, token: int) -> _CountedTokenSeq:
+        seq = _CountedTokenSeq(TOKEN_SEC_DISABLE, token)
         await self.start_seq(seq)
         return seq
 
@@ -793,13 +815,18 @@ class sep_sec_dis_override_test(sep_base_test):
             fabric_rst,
         )
 
+        # CHK-DROP left a Mismatch result, which a retained digest gives again after
+        # the reset, so the code alone does not show that this go ran.
         mm = await self._present(_MISMATCH_TOKEN)
-        assert mm.match_code == TOKEN_MISMATCH, (
+        assert mm.match_code == TOKEN_MISMATCH and mm.idle_reads >= 1, (
             f"CHK-MISMATCH FAIL: token=1 code=0x{(mm.match_code or 0):02x} "
-            f"want MISMATCH 0x{TOKEN_MISMATCH:02x}"
+            f"want MISMATCH 0x{TOKEN_MISMATCH:02x}, idle_reads={mm.idle_reads} want >= 1 "
+            "(no Idle read after the go: the code can be the result of the earlier go)"
         )
         self.logger.info(
-            "CHK-MISMATCH PASS: SEC_DISABLE_TOKEN_MATCH=0x%02x after token=1", mm.match_code
+            "CHK-MISMATCH PASS: SEC_DISABLE_TOKEN_MATCH=0x%02x after token=1, idle_reads=%d",
+            mm.match_code,
+            mm.idle_reads,
         )
         await self._check_feat(0, "CHK-NO-OVERRIDE")
 
