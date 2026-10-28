@@ -364,8 +364,8 @@ static int expect_tcm_reject(const char *chk, uint32_t st, uint32_t *err_out, ui
 
 // One rejected TCM zero fill of `total` bytes at `width` from the start of the
 // ICCM window (iccm != 0) or of dccm_buf. Words [0 .. span - 1] are the words
-// the fill targets; words [span .. NWORDS + 1] lie past TOTAL_DATA_SIZE and
-// keep their pattern.
+// the fill targets; words [span .. NWORDS + 1] and the bytes of word span - 1
+// past TOTAL_DATA_SIZE keep their pattern.
 static int tcm_reject_leg(const char *chk, int iccm, uint32_t total, uint32_t width, uint32_t n) {
     int e = 0;
     const uint32_t nwords = NWORDS + 2u;
@@ -403,6 +403,11 @@ static int tcm_reject_leg(const char *chk, int iccm, uint32_t total, uint32_t wi
     __asm__ volatile("fence" ::: "memory");
     for (uint32_t i = span; i < nwords; i++) {
         e += expect_word(chk, base + 4u * i, w[i], pattern(i));
+    }
+    if (total % 4u) {
+        const uint32_t past = ~0u << (8u * (total % 4u));
+        e += expect_word(chk, base + 4u * (span - 1u), w[span - 1u] & past,
+                         pattern(span - 1u) & past);
     }
     uint32_t zeroed = 0;
     for (uint32_t i = 0; i < span; i++) {
