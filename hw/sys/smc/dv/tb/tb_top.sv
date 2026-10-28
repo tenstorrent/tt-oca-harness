@@ -1546,7 +1546,7 @@ module smc_uvm_top
     assign tb_efuse_program_addr = 16'(`SMC_EFUSE_IFC.reg_interface_program_addr_csr);
     // eFuse bank-model response stall knob: the counts of efuse_bank_reg are forced from the
     // hooks while the enable reads 1 and to the model default 0 otherwise, so a leaf that does not
-    // drive the hooks sees the unstalled bank.
+    // drive the hooks sees the bank without a stall.
 `define SMC_EFUSE_BANK_REG u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg
     always @(posedge clk_smc) begin
         if (tb_efuse_bank_stall_en === 1'b1) begin

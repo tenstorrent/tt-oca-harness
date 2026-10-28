@@ -81,8 +81,8 @@ module efuse_bank_reg (
   // Sim-only response stall knob. A testbench may set either count (hierarchically or with a
   // force); a request of that direction is then held back for that many clock cycles before it is
   // decoded, so pready stays low for the stall and the shim's APB transfer waits. Both counts
-  // default to 0, which leaves the request path exactly as it was: no stall, read and write
-  // latencies balanced. The counts are sampled when the request arrives.
+  // default to 0: a request is decoded on the cycle it arrives, with no stall, and read and
+  // write latencies are balanced. The counts are sampled when the request arrives.
   logic [15:0] stall_rd_cycles = 16'd0;
   logic [15:0] stall_wr_cycles = 16'd0;
   logic [15:0] stall_sel;

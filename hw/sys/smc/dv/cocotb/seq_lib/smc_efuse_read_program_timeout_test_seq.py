@@ -303,7 +303,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
 
     def _draw(self, kind: str, w0: int) -> dict[str, int]:
         """Draw the count and the two stall lengths of ``kind`` from the measured wait ``w0``."""
-        assert w0 + DRAW_MARGIN + 1 <= DRAW_COUNT_MAX, f"{kind}: unstalled wait {w0} too long"
+        assert w0 + DRAW_MARGIN + 1 <= DRAW_COUNT_MAX, f"{kind}: stall-free wait {w0} too long"
         count = self.rng.randint(w0 + DRAW_MARGIN + 1, DRAW_COUNT_MAX)
         short = self.rng.randint(0, count - 1 - w0)
         long_min = count + 2 - w0 + DRAW_MARGIN
@@ -311,7 +311,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         cells = {"w0": w0, "count": count, "short": short, "long": long}
         cocotb.log.info(
             "RAND-SEED: %d; RAND-DRAW: %s timeout count %d (range %d..%d), stall short %d "
-            "(0..%d), stall long %d (%d..%d) bank cycles; unstalled wait w0=%d busy cycles",
+            "(0..%d), stall long %d (%d..%d) bank cycles; stall-free wait w0=%d busy cycles",
             self.seed,
             kind,
             count,

@@ -39343,18 +39343,17 @@ leg run inside step 7 (the trigger level among the five encodings the register d
 defines at or below the 32-deep receive FIFO, 1, 4, 8, 14 and 32 characters, codes 0 to 4 of
 `ECR.RCVR_TRIGGER_MS2B` with `FCR.RCVR_TRIGGER` per `smc-programming.adoc`; the fill count in
 [level + 1, 32] below level 32, so that occupancies below, at and above the level all occur and
-the three compares run in every seed, and the fill count 32 at level 32 (the only occupancy at
-the level, nothing above it), filters the code needs; the read gap a full drain or a partial
-drain of a drawn count before a one-character refill); after each looped character the pending
-ID 2 of `IIR` is compared absent below the level and present at the level and above it
+the compares below and above the level run in every seed, and the fill count 32 at level 32 (the
+only occupancy at the level, nothing above it), filters the code needs; the read gap a full drain
+or a partial drain of a drawn count before a one-character refill); after each looped character
+the pending ID 2 of `IIR` is compared absent below the level and present above it
 (`uart_16550/doc/architecture.adoc`, interrupt service table: ID 2 is cleared by draining `RBR`
-below the selected trigger, so it is pending while the occupancy is at or above the level),
-beside the relative compares of
-`CHK-UART-TRIG-COMPOSE`; after a full drain `IIR` is compared with neither ID 2 nor the receive
-timeout ID 6 pending (at occupancy 0 the same table lets neither source stay pending); after a
-partial drain, where the timeout source can preempt ID 2, and after the refill the interrupt is
-printed; every character reads back in order; the states A to D stay pinned; 3 seeds per
-regression (`reseed = 3`).
+below the selected trigger) and printed at the level, as the Scope limit says, beside the
+relative compares of `CHK-UART-TRIG-COMPOSE`; after a full drain `IIR` is compared with neither
+ID 2 nor the receive timeout ID 6 pending (at occupancy 0 the same table lets neither source stay
+pending); after a partial drain, where the timeout source can preempt ID 2, and after the refill
+the interrupt is printed; every character reads back in order; the states A to D stay pinned;
+3 seeds per regression (`reseed = 3`).
 
 *Objective*: UART0 FIFO enable change, depth, trigger fields and read order.
 
@@ -39393,12 +39392,12 @@ regression (`reseed = 3`).
   field back to 0, `ECR` 1) and D (`ECR` 0, `FCR` field 0). The exact onset values of the four
   states are printed only and their compares are relative: A has an onset, B shows none within 32
   characters, C equals A, and D is below A. The drawn leg compares the pending ID 2 at every
-  occupancy of its fill: absent below the level, present at the level and above it, per the
-  interrupt service table of `uart_16550/doc/architecture.adoc` (ID 2 is cleared by draining
-  `RBR` below the selected trigger, so it is pending while the occupancy is at or above the
-  level); the sentence of `smc-programming.adoc` ("while the receive FIFO contains more than this
-  amount of characters") differs from that table by one character at the level, and the pinned
-  states A and D measure the onset at the level.
+  occupancy of its fill: absent below the level and present above it, per the interrupt service
+  table of `uart_16550/doc/architecture.adoc` (ID 2 is cleared by draining `RBR` below the
+  selected trigger), and printed at the level: there the sentence of `smc-programming.adoc`
+  ("while the receive FIFO contains more than this amount of characters") differs from that
+  table by one character, so the at-level cell is printed until an owner rules between the two
+  documents; the pinned states A and D measure the onset at the level.
 * Receive order: five looped characters read from `RBR` in arrival order with `LSR.DR` 1 before
   each read and still 1 after every read except the last; an `RBR` read with the buffer empty is
   issued, its response, data and `LSR` printed without a compare, and the next looped character
@@ -39438,7 +39437,7 @@ regression (`reseed = 3`).
   at a time reading `IIR` after each, record the occupancy of the first pending ID 2, and drain.
   Require the onset of A, none for B, C equal to A, and D below A. Then the drawn leg: program
   the drawn level, loop the drawn fill count one character at a time reading `IIR` after each
-  (ID 2 required absent below the level and present at the level and above it), drain fully or
+  (ID 2 required absent below the level and present above it, printed at the level), drain fully or
   partially as drawn, read `IIR`, loop one more character, read `IIR`, drain and require every
   character in order. Stamp S7 and print the line.
 . Error injection. Point: UART0 `RBR`. Kind: an `RBR` read with the receive buffer empty (`LSR.DR`
@@ -39508,10 +39507,11 @@ the extra write is accepted or refused. Whether a second `FIFO_ENABLE` = 1 write
 four held characters, and whether a held character survives the `FCR` reset bits with the FIFOs
 disabled, are printed, not required, since the document does not say. The exact trigger onset
 occupancies of states A to D are printed only and their compares are relative; the drawn leg
-compares the pending ID 2 at each occupancy against the interrupt service table of
-`uart_16550/doc/architecture.adoc` (pending at and above the level), which the
-`smc-programming.adoc` sentence "more than this amount" contradicts by one character at the
-level, a document discrepancy recorded for an issue against the programmer's guide. The response,
+compares the pending ID 2 below and above the level against the interrupt service table of
+`uart_16550/doc/architecture.adoc` and prints it at the level, where the `smc-programming.adoc`
+sentence "more than this amount" contradicts that table by one character: whether the comparator
+fires at or above the level is not settled between the two documents, a discrepancy for an issue
+against the programmer's guide, and the cell stays printed until an owner rules. The response,
 data and `LSR` of the empty `RBR` read are printed without a compare.
 
 '''''
