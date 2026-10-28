@@ -7,7 +7,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from .smc_addr_map import _REPO, reg_field_encode, smc_indexed_addr
+from .smc_addr_map import _REPO, reg_field_encode, reg_reset_word, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 _UART_LOG_ENGINE_CTRL_H = (
@@ -24,12 +24,13 @@ _UART_LOG_ENGINE_CTRL_H = (
 _UART_16550_MAIN_H = (
     _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
 )
+_LOG_ENGINE_H = _REPO / "hw" / "ip" / "uart" / "log_engine" / "regs" / "gen" / "c" / "log_engine.h"
 
 # Every expected value below is derived from the register definition and, for
 # the modem-status pair, from the pad level this test drives.
 #
-#   UART_IIR=0x01, UART_LSR=0x60, UART_LOG_ENGINE_CTRL / LOG_ENGINE CTRL &
-#   INTR_STATUS = 0: RDL reset constants (uart_16550_main.rdl / log_engine.rdl).
+#   UART_IIR, UART_LSR, UART_LOG_ENGINE_CTRL and the LOG_ENGINE CTRL and
+#   INTR_STATUS words: the RDL reset words composed from the generated headers.
 #
 # UART_MSR expected values (spec-derived, see the MSR block below).
 UART_MSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MSR_BASE_ADDR", 0)
@@ -86,12 +87,17 @@ MSR_CTS = reg_field_encode(_UART_16550_MAIN_H, "UART_16550_MAIN", "MSR", cts=1)
 # The bits every MSR compare is masked to: the two this test drives and reads.
 MSR_LIVE_MASK = MSR_DCTS | MSR_CTS
 
-# cts_ni driven 0  =>  CTS = ~0 = 1. First MSR read of the simulation: the
-# modem-status synchronizer loads the last-read levels from the pins until it
-# holds synchronized inputs (uart_core.sv, modem_status_synced), so a line
-# asserted from reset is no delta => DCTS = 0.
-MSR_FIRST_READ = MSR_CTS  # 0x10
-# Back-to-back second read: CTS has not moved, so DCTS stays clear.
+# cts_ni driven 0  =>  CTS = ~0 = 1. DCTS on this first read is an open spec
+# question for the UART owner (#3461): uart_16550_main.rdl defines DCTS as
+# "changed since the last time this register was read" and resets both DCTS
+# and CTS to 0, so read against the reset value a live CTS = 1 is a change
+# (DCTS = 1), while read as a delta between two reads the first read has no
+# predecessor. The RDL does not say which reading is the contract, so until
+# the UART owner rules the first read is compared on CTS alone and its DCTS is
+# logged, not graded.
+MSR_FIRST_READ = MSR_CTS  # 0x10, compared under MSR_CTS only
+# Back-to-back second read: CTS has not moved since the first read, so DCTS
+# is clear.
 MSR_SECOND_READ = MSR_CTS  # 0x10
 # Settled words for each driven pad level (DCTS already consumed by the
 # preceding read): pad 1 => cts_ni = 1 => CTS = 0; pad 0 => CTS = 1.
@@ -110,28 +116,32 @@ UART0_CTS_PAD = 14
 MSR_POLL_READS = 40
 
 UART_LOG_READS = [
-    ("UART_LOG_ENGINE_CTRL", UART_LOG_ENGINE_CTRL_CTRL, 0x0),
+    (
+        "UART_LOG_ENGINE_CTRL",
+        UART_LOG_ENGINE_CTRL_CTRL,
+        reg_reset_word(_UART_LOG_ENGINE_CTRL_H, "UART_LOG_ENGINE_CTRL", "CTRL"),
+    ),
     (
         "UART_IIR",
         smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0),
-        0x1,
+        reg_reset_word(_UART_16550_MAIN_H, "UART_16550_MAIN", "IIR"),
     ),
     (
         "UART_LSR",
         smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0),
-        0x0000_0060,
+        reg_reset_word(_UART_16550_MAIN_H, "UART_16550_MAIN", "LSR"),
     ),
     (
         "LOG_ENGINE_CTRL",
         smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_CTRL_BASE_ADDR", 0),
-        0x0,
+        reg_reset_word(_LOG_ENGINE_H, "LOG_ENGINE", "CTRL"),
     ),
     (
         "LOG_ENGINE_INTR_STATUS",
         smc_indexed_addr(
             "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR", 0
         ),
-        0x0,
+        reg_reset_word(_LOG_ENGINE_H, "LOG_ENGINE", "INTR_STATUS"),
     ),
 ]
 
@@ -147,6 +157,9 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_uart_spi_log_engine_test_seq") -> None:
         super().__init__(name)
         self.msr_reads = 0
+        # Full word of the most recent UART_MSR read, for logging bits a
+        # narrowed compare leaves out (the first read's DCTS).
+        self.msr_word = 0
 
     def _drive_cts_pad(self, level: int) -> None:
         """Drive UART0 CTS pad 14 to ``level`` via the top-level TB pad pins."""
@@ -169,28 +182,36 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         dut.tb_gpio_ext_drive_en.value = int(dut.tb_gpio_ext_drive_en.value) & ~mask
         dut.tb_gpio_ext_drive_value.value = int(dut.tb_gpio_ext_drive_value.value) & ~mask
 
-    async def _read_msr(self, name: str, expected: int | None = None) -> int:
+    async def _read_msr(
+        self, name: str, expected: int | None = None, mask: int = MSR_LIVE_MASK
+    ) -> int:
         """Read UART_MSR and return its CTS / DCTS bits.
 
-        ``expected`` is compared against the masked word, so the pass asserts
-        nothing about DSR / RI / DCD or their delta bits. The unmasked word is
-        logged on every read, so those bits stay visible without being asserted.
+        ``expected`` is compared against the word masked to ``mask`` (CTS and
+        DCTS unless a leg narrows it), so the pass asserts nothing about DSR /
+        RI / DCD or their delta bits. The unmasked word is logged on every
+        read, so those bits stay visible without being asserted.
         """
         rdata = await self.csr_read(name, UART_MSR)
         self.msr_reads += 1
-        live = rdata & MSR_LIVE_MASK
+        self.msr_word = rdata
+        live = rdata & mask
         cocotb.log.info(
-            "%s: UART_MSR full word 0x%08x, CTS/DCTS bits 0x%02x, bits outside the "
-            "compare 0x%08x (DSR/RI/DCD and their delta bits, logged only)",
+            "%s: UART_MSR full word 0x%08x, compared bits 0x%02x under mask 0x%02x, "
+            "CTS 0x%02x, DCTS 0x%02x, bits outside CTS/DCTS 0x%08x (DSR/RI/DCD and "
+            "their delta bits, logged only)",
             name,
             rdata,
             live,
+            mask,
+            rdata & MSR_CTS,
+            rdata & MSR_DCTS,
             rdata & ~MSR_LIVE_MASK,
         )
         if expected is not None:
             assert live == expected, (
-                f"{name}: UART_MSR CTS/DCTS bits 0x{live:02x} != expected "
-                f"0x{expected:02x} (full word 0x{rdata:08x})"
+                f"{name}: UART_MSR compared bits 0x{live:02x} != expected "
+                f"0x{expected:02x} under mask 0x{mask:02x} (full word 0x{rdata:08x})"
             )
         return live
 
@@ -283,17 +304,20 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
             "UART_LOG_ENGINE_CTRL_UART_EN", UART_LOG_ENGINE_CTRL_CTRL, UART_LOG_ENGINE_CTRL_UART_EN
         )
 
-        msr_first = await self._read_msr("UART_MSR", expected=MSR_FIRST_READ)
+        msr_first = await self._read_msr("UART_MSR", expected=MSR_FIRST_READ, mask=MSR_CTS)
         cocotb.log.info(
-            "CHK-UART-MSR-FIRST: UART_MSR @ 0x%08x CTS/DCTS bits = 0x%02x == "
+            "CHK-UART-MSR-FIRST: UART_MSR @ 0x%08x CTS bit = 0x%02x == "
             "CTS 0x%02x (this test drives CTS pad %d low -> cts_ni=0 -> "
-            "CTS=1; the synchronizer seeds the last-read level from the pin, so "
-            "the first read reports no delta -> DCTS=0; DSR/RI/DCD and "
-            "their delta bits are masked out of the compare)",
+            "CTS=1); DCTS = 0x%02x on this first read is logged, not compared: "
+            "whether a CTS level that differs from its reset value counts as a "
+            "change on a read with no predecessor is an open RDL question "
+            "(#3461); DSR/RI/DCD and their delta bits "
+            "are masked out of the compare",
             UART_MSR,
             msr_first,
             MSR_FIRST_READ,
             UART0_CTS_PAD,
+            self.msr_word & MSR_DCTS,
         )
 
         msr_second = await self._read_msr("UART_MSR_RD2", expected=MSR_SECOND_READ)

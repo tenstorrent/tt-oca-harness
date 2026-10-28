@@ -49,16 +49,16 @@
 // Two simulation trees. The two-state rules and the tracking state use
 // `OCAH_SVA_RULE / `OCAH_SVA_ASSERT_I (ocah_sva_macros.svh): live on every
 // SIMULATION compile, evaluated by Verilator under --assert, and on every
-// FORMAL elaboration of a licensed backend. The X-hygiene rules and the
-// covers use `OCAH_RULE (ocah_sva_macros.svh) / `OCAH_COVER
-// (ocah_assert.svh): live only where OCAH_INC_ASSERT is defined, i.e. on a
-// four-state simulator or a licensed backend. Not synthesizable: the tracking
+// FORMAL elaboration of a licensed backend. The X-hygiene rules use `OCAH_RULE
+// (ocah_sva_macros.svh): live only where OCAH_INC_ASSERT is defined, i.e. on a
+// four-state simulator or a licensed backend. The covers use `OCAH_FCOV_COVER
+// (ocah_fcov_macros.svh): live in every view but synthesis, Verilator included,
+// which records them as user coverage points. Not synthesizable: the tracking
 // state uses queues and associative arrays, so it stays under SIMULATION. The
 // open-source formal frontend reads none of the concurrent operators here;
-// ocah_axi_fv.sv beside this file carries the boolean-subset rules for that
-// path.
+// ocah_axi_fv.sv beside this file carries the boolean-subset rules for that path.
 
-`include "ocah_assert.svh"
+`include "ocah_fcov_macros.svh"
 `include "ocah_sva_macros.svh"
 
 module ocah_axi_sva #(
@@ -216,18 +216,19 @@ module ocah_axi_sva #(
   // ------------------------------------------------------------------
   // Handshake / backpressure / error-response covers (rule non-vacuity).
   // ------------------------------------------------------------------
-  `OCAH_COVER(OCAH_AXI_C_AW_HANDSHAKE, en_i && awvalid && awready, aclk, !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_AW_BACKPRESSURE, en_i && awvalid && !awready, aclk, !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_W_HANDSHAKE, en_i && wvalid && wready, aclk, !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_W_BACKPRESSURE, en_i && wvalid && !wready, aclk, !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_W_PARTIAL_STRB, en_i && wvalid && wready && (wstrb != '1), aclk, !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_B_HANDSHAKE, en_i && bvalid && bready, aclk, !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_B_ERR_RESP, en_i && bvalid && bready && bresp inside {2'b10, 2'b11}, aclk,
-              !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_AR_HANDSHAKE, en_i && arvalid && arready, aclk, !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_R_HANDSHAKE, en_i && rvalid && rready, aclk, !aresetn)
-  `OCAH_COVER(OCAH_AXI_C_R_ERR_RESP, en_i && rvalid && rready && rresp inside {2'b10, 2'b11}, aclk,
-              !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_AW_HANDSHAKE, en_i && awvalid && awready, aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_AW_BACKPRESSURE, en_i && awvalid && !awready, aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_W_HANDSHAKE, en_i && wvalid && wready, aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_W_BACKPRESSURE, en_i && wvalid && !wready, aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_W_PARTIAL_STRB, en_i && wvalid && wready && (wstrb != '1), aclk,
+                   !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_B_HANDSHAKE, en_i && bvalid && bready, aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_B_ERR_RESP, en_i && bvalid && bready && bresp inside {2'b10, 2'b11},
+                   aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_AR_HANDSHAKE, en_i && arvalid && arready, aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_R_HANDSHAKE, en_i && rvalid && rready, aclk, !aresetn)
+  `OCAH_FCOV_COVER(OCAH_AXI_C_R_ERR_RESP, en_i && rvalid && rready && rresp inside {2'b10, 2'b11},
+                   aclk, !aresetn)
 
   if (!IS_LITE) begin : gen_axi4_rules
 
@@ -278,8 +279,10 @@ module ocah_axi_sva #(
                 + ((13'(arlen) + 13'd1) << arsize)) <= 13'h1000),
                    aclk, !aresetn)
 
-    `OCAH_COVER(OCAH_AXI_C_AW_MULTI_BEAT, en_i && awvalid && awready && (awlen > 0), aclk, !aresetn)
-    `OCAH_COVER(OCAH_AXI_C_AR_MULTI_BEAT, en_i && arvalid && arready && (arlen > 0), aclk, !aresetn)
+    `OCAH_FCOV_COVER(OCAH_AXI_C_AW_MULTI_BEAT, en_i && awvalid && awready && (awlen > 0), aclk,
+                     !aresetn)
+    `OCAH_FCOV_COVER(OCAH_AXI_C_AR_MULTI_BEAT, en_i && arvalid && arready && (arlen > 0), aclk,
+                     !aresetn)
 
 `ifdef SIMULATION
     // --------------------------------------------------------------

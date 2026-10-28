@@ -100,7 +100,12 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-J2A-WSTRB-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-J2A-WSTRB-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-J2A-WSTRB-JTAG-READY",
+        )
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
@@ -117,6 +122,7 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
             "CHK-J2A-WSTRB-GATE-OPEN",
             (gate, caps),
             (0, DTP_EXPECTED_SMC_JTAG2AXI_CAPS),
+            evidence="CHK-J2A-WSTRB-GATE-OPEN",
         )
 
         await self._wr64(jtag, WORD_A, SEED_A, wstrb=0xFF, name="SEED-A")
@@ -132,7 +138,9 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
         self._log(
             f"CHK-J2A-WSTRB-SEED A@0x{WORD_A:08x}=0x{got_a0:016x} B@0x{WORD_B:08x}=0x{got_b0:016x}"
         )
-        sb.expect_eq("CHK-J2A-WSTRB-SEED", (got_a0, got_b0), (SEED_A, SEED_B))
+        sb.expect_eq(
+            "CHK-J2A-WSTRB-SEED", (got_a0, got_b0), (SEED_A, SEED_B), evidence="CHK-J2A-WSTRB-SEED"
+        )
 
         await self._wr64(jtag, WORD_A, PARTIAL, wstrb=WSTRB, name="PARTIAL-A")
         got_a = await self._rd64(jtag, WORD_A, "PARTIAL-A")
@@ -163,7 +171,9 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq:
             )
         self.s4_ok = True
         self._log("CHK-J2A-WSTRB-STICKY status=SUCCESS")
-        sb.expect_eq("CHK-J2A-WSTRB-STICKY", sticky, J2A_STATUS_SUCCESS)
+        sb.expect_eq(
+            "CHK-J2A-WSTRB-STICKY", sticky, J2A_STATUS_SUCCESS, evidence="CHK-J2A-WSTRB-STICKY"
+        )
 
         self._log(
             f"PASS JTAG2AXI-WSTRB-NBR s1={self.s1_ok} s2={self.s2_ok} "

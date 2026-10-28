@@ -1,14 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A real log-engine transfer on all four uart_log_engine_wrap instances.
+# DV-TESTCASE-CONTRACT: SMC_COV_R4_001 ANCHOR: smc_log_engine_transfer_test
+# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 047d42022e2d641a47ec590f36f30504d88952df77710af282fbfb6d5b7d11fd
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_R4_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
+"""Log-engine registers and all-16-slot transfers on all four uart_log_engine_wrap instances.
 
-Loads four logs into the SPM log region of each wrapper, each filling its whole
-slot so its fetch takes more than one beat, points the engine at them and at
-the wrapper's own UART transmit holding register, puts that UART in MCR.LOOP,
-triggers all four LOG_CTRL elements at once, and reads the byte stream back out
-of RBR. The compare is the received stream against the bytes written into
-memory, the LOG_CTRL lengths hardware cleared, and an INTR_STATUS that stayed
-clear.
+Reads the log-engine bank and the wrapper control register of every wrapper at reset,
+writes and reads back the writable log-engine registers other than LOG_CTRL with
+CTRL.EN = 0, sends two characters through each UART in MCR.LOOP, then gives all 16 LOG_CTRL
+elements of every wrapper a non-zero length of at most one fetch word over its own 0x80-byte
+SPM region and receives the 72 bytes back through RBR. Every element must read 0 afterwards, a length held with CTRL.EN = 0 must stay pending
+and send nothing until the engine is enabled, wrapper 0's fetches from SYS_OUT memory must
+each be one 8-byte AR, and INTR_STATUS must read clear after the transfers and follow
+INTR_TEST and RW1C.
+
+Run:
+    python3 tools/dv/run_dv.py --dut smc --items smc_log_engine_transfer_test --tool vcs
 """
 
 from __future__ import annotations
@@ -20,35 +27,45 @@ from smc_base_test import smc_base_test
 
 # Directed stimulus floor, written out here rather than read back from
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
-# sequence that silently stopped issuing accesses. The drain loop polls LSR, so
-# the real count is higher and depends on the baud rate.
+# sequence that silently stopped issuing accesses. Every poll adds to it.
 #
-# 4 wrappers, at least 191 SEP_IN AXI accesses each:
-#   the four two-word logs written into their slots and read back            16
-#   UART setup: pad-mux enable, DLAB, both divisor latches, the 8-bit line
-#     control, MCR.LOOP, the FIFO control, IER, the MCR readback and the
-#     quiet-receiver read                                                    10
-#   engine setup: disable, region size, both halves of the region address,
-#     the write address, the INTR_STATUS clear and its readback, INTR_ENABLE,
-#     enable and its readback                                                10
-#   the idle read and the trigger write of each of the four elements          8
-#   at least one LSR read and one RBR read for each of the 64 bytes         128
-#   at least one LOG_CTRL read per element                                    4
-#   the quiet LSR read and the final INTR_STATUS read                         2
-#   the engine half of the restore, then the UART half                    5 + 8
-LOG_ENGINE_TRANSFER_MIN_CSR_ACCESSES = 4 * 191
+#   setup read                                                                1
+#   S2: 4 x (23 reset words, INTR_TEST, wrapper CTRL, 10 UART registers)    140
+#   S3: 4 x (CTRL.EN read, 5 registers x 3 values written and read, UART_EN
+#       written and read twice)                                             140
+#   S4: 4 x (UART arm 10, two characters x THR, LSR, RBR, LSR)               72
+#   S5: 4 x (16 slot words written and read, 8 engine setup accesses, 16
+#       triggers, one LSR and one RBR read per byte of 72)                  800
+#   S6: 4 x (16 clear polls, LSR, INTR_STATUS)                               72
+#   S7: 4 x (EN off, 16 triggers, 256 hold reads, 16 held reads, EN on,
+#       first-character poll and RBR, 15 bytes x 2, 16 clear polls)        1352
+#   S8: EN off, 3 filter saves, 3 filter writes, region 3, EN on, 4 triggers,
+#       34 bytes x 2, 4 clear polls, EN off, 3 filter restores               91
+#   S9: 4 x (INTR_ENABLE read, 2 bits x 3 writes and reads)                  52
+#   S10: 4 x (EN off and read, 4 registers cleared and read, UART restore 8,
+#        UART_EN read)                                                       76
+LOG_ENGINE_TRANSFER_MIN_CSR_ACCESSES = 2796
 
 
 @pyuvm.test()
 class smc_log_engine_transfer_test(smc_base_test):
-    """Run a real log transfer through every wrapper's engine and UART."""
+    """Run the log-engine register, transfer, enable and outbound-fetch legs on every wrapper."""
 
     required_evidence = (
+        "CHK-LE-ENABLE-GATE",
+        "CHK-LE-FETCH-OUTBOUND",
+        "CHK-LE-FIFO-DRAIN",
+        "CHK-LE-LEN-PENDING",
+        "CHK-LE-REG-RESET",
+        "CHK-LE-REG-RW",
+        "CHK-LE-UART-LOOP",
         "CHK-LOG-ENGINE-TRANSFER-BYTES",
         "CHK-LOG-ENGINE-TRANSFER-CLEAN",
         "CHK-LOG-ENGINE-TRANSFER-HWCLR",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 3
+    min_evidence = 12
 
     auto_protocol_vip = False
 
