@@ -111,8 +111,9 @@ to initialize SRAM before use. This can be performed like so:
 . Disable interrupts to the core.
 . Write the SRAM base address (`0xC006_0000`) to the Memory Zeroer's `DEST_ADDR`
 register.
-. Write the size of SRAM (1 MiB = `0x0010_0000`, reported as
-`SMC_ATTRIBUTES.sram_size`) to the Memory Zeroer's `SIZE` register.
+. Write the size of SRAM (1 MiB = `0x0010_0000`) to the Memory Zeroer's `SIZE`
+register. `SMC_ATTRIBUTES.sram_size` reports the size as a power of two: the
+SRAM is 2^`sram_size`^ bytes.
 . Write zero to the Memory Zeroer's `CTRL_STATUS` register, which starts the
 operation.
 . Poll the Memory Zeroer's `CTRL_STATUS` register until the `STATUS` bit (bit
