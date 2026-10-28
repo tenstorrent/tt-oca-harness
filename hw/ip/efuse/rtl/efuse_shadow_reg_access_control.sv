@@ -6,9 +6,8 @@
 // Filter APB requests using efuse_field_map_i and locks_i before they reach the shadow
 // regs.
 //
-// LockVectorBits is 2*(EFUSE_FIELDS-1), with write-lock at 2n and read-lock at 2n+1 per
-// real field. The LOCKS meta-field uses sentinel idx all-ones and is excluded from hw-lock
-// checks.
+// locks_i carries write-lock at 2n and read-lock at 2n+1 for lock index n. The lock
+// meta-field uses sentinel idx all-ones and is excluded from hw-lock checks.
 //
 // Report write_locked_o, read_locked_o, write_setup_only_o, and lc_state_access_o.
 // locked_field_access_interrupt_o signals locked-field hits.
@@ -28,10 +27,11 @@ module efuse_shadow_reg_access_control #(
                                         // offset for the field-range lookups.
   parameter type efuse_data_t = logic,  // Fuse data-word type.
 
-  localparam type efuse_strb_t = logic [3:0],  // APB write-strobe type.
+  parameter int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1),  // Hardware lock bits: a write and a read
+                                                                     // lock per lock index; field-map indices
+                                                                     // must stay below LOCK_VECTOR_BITS/2.
 
-  localparam int unsigned LockVectorBits = 2 * (EFUSE_FIELDS - 1)    // Hardware lock bits: a write and a read lock
-                                                                     // per field, excluding the LOCKS meta-field.
+  localparam type efuse_strb_t = logic [3:0]  // APB write-strobe type.
 ) (
   input  logic                                  clk_i,  // System clock; not used, the module is
                                                         // combinational.
@@ -84,9 +84,8 @@ module efuse_shadow_reg_access_control #(
                                                                 // read locked by its hardware or
                                                                 // software lock bit.
 
-  input  logic [LockVectorBits-1:0]           locks_i,    // Hardware lock bits from the shadow
-                                                          // LOCKS words: write lock at 2n, read
-                                                          // lock at 2n+1 for field n.
+  input  logic [LOCK_VECTOR_BITS-1:0]         locks_i,    // Hardware lock bits: write lock at 2n,
+                                                          // read lock at 2n+1 for lock index n.
 
   output logic                                  locked_field_access_interrupt_o  // High during an APB access that a
                                                                                  // lock blocks.
@@ -100,6 +99,7 @@ module efuse_shadow_reg_access_control #(
   ////////////////////////////////////////////////////////////////////////////
   `OCAH_ASSERT_STATIC(EfuseAddrWidthCheck_A, EFUSE_ADDR_WIDTH >= 4)
   `OCAH_ASSERT_STATIC(EfuseFieldsCheck_A, EFUSE_FIELDS >= 1)
+  `OCAH_ASSERT_STATIC(LockVectorBitsCheck_A, LOCK_VECTOR_BITS >= 2)
 
   // Bounds every mapped field idx for the locks_i[index*2] / [index*2+1] lookups.
   // The code this guards also skips idx '1, so this does too.
@@ -108,7 +108,7 @@ module efuse_shadow_reg_access_control #(
     in_range = 1'b1;
     for (int unsigned i = 0; i < EFUSE_FIELDS; i++) begin
       if ((efuse_field_map_i[i].idx != '1) &&
-          (int'(efuse_field_map_i[i].idx) >= int'(EFUSE_FIELDS) - 1)) begin
+          (int'(efuse_field_map_i[i].idx) >= int'(LOCK_VECTOR_BITS / 2))) begin
         in_range = 1'b0;
       end
     end

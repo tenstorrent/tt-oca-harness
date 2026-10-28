@@ -10,6 +10,10 @@
 // Block program or read when shadow locks or failed RMA token matches apply; secure_tm_i
 // can force a secure-TM block.
 //
+// Targets at or above ADOPTER_BIT_BASE are looked up in the adopter field map, at byte offsets
+// from that base, against adopter_locks_i; targets below it use the harness field map and
+// locks_i. The full bit address selects the table, so no adopter target aliases a harness field.
+//
 // The outputs report the filtering result:
 //
 // - Filtered command req/resp pass allowed traffic.
@@ -19,7 +23,11 @@
 module efuse_guard #(
   parameter int unsigned EFUSE_FIELDS     = 1,  // eFuse field-map entry count.
   parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // eFuse byte-address width.
-  parameter type         efuse_map_t      = logic,  // Shadow eFuse map type.
+  parameter int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1),  // Harness lock bits on locks_i.
+  parameter int unsigned ADOPTER_FIELDS = 0,  // Adopter field-map entry count; 0 disables the
+                                              // adopter lookup.
+  parameter int unsigned ADOPTER_BIT_BASE = 0,  // Fuse bit address of the first adopter fuse.
+  parameter int unsigned ADOPTER_LOCK_VECTOR_BITS = 2,  // Adopter lock bits on adopter_locks_i.
   parameter type         fuse_command_req_t      = logic,  // Fuse-command request type.
   parameter type         fuse_command_resp_t      = logic,  // Fuse-command response type.
 
@@ -36,6 +44,8 @@ module efuse_guard #(
                                                // module.
 
   localparam type efuse_byte_addr_t = logic [EFUSE_ADDR_WIDTH-1:0],  // Fuse byte-address type.
+  localparam int unsigned NumAdopterRules = ADOPTER_FIELDS > 0 ? ADOPTER_FIELDS : 1,  // Adopter field-map
+                                                                                      // port width.
   localparam efuse_addr_t SipTokenBitAddr = efuse_addr_t'(LC_STATE_BIT_POSITION + 1),  // Bit address of the RMA SiP token bit.
   localparam efuse_addr_t ChipletTokenBitAddr = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)  // Bit address of the RMA chiplet token bit.
 ) (
@@ -46,7 +56,11 @@ module efuse_guard #(
 
   input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Per-field byte ranges and lock
                                                                  // indices used to find the lock
-                                                                 // bits for a target address.
+                                                                 // bits for a harness target.
+  input efuse_pkg::rule_t [NumAdopterRules-1:0] adopter_field_map_i,  // Per-region byte ranges, from
+                                                                      // ADOPTER_BIT_BASE, and lock
+                                                                      // indices for an adopter target;
+                                                                      // unused when ADOPTER_FIELDS is 0.
 
   input logic [5:0] rma_sip_token_match_i,  // RMA SiP token-match status code from token
                                             // processing.
@@ -68,8 +82,10 @@ module efuse_guard #(
   output fuse_command_resp_t fuse_command_resp_filtered_o,  // Fuse command response to the
                                                             // controller; zero when blocked.
 
-  input efuse_map_t shadow_regs_i,      // Shadow eFuse map supplying the per-field read and write
-                                        // lock bits.
+  input logic [LOCK_VECTOR_BITS-1:0] locks_i,  // Harness lock bits: write lock at 2n, read lock
+                                               // at 2n+1 for lock index n.
+  input logic [ADOPTER_LOCK_VECTOR_BITS-1:0] adopter_locks_i,  // Adopter lock bits, in the same
+                                                               // layout as locks_i.
   input logic is_programing_i,          // High while the program interface has a command
                                         // outstanding.
   input efuse_addr_t program_target_addr_i,  // Fuse bit address of the outstanding program command.
@@ -86,14 +102,21 @@ module efuse_guard #(
   logic is_program_locked;
   logic is_read_locked;
   logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] pro_read_intf_rd_index, pro_read_intf_wr_index;
+  logic rd_is_adopter, wr_is_adopter;
   logic pro_read_intf_lock_lc_state_write;
   logic pro_read_intf_rm_lc_state_write_lock;
   logic pro_read_intf_rm_lc_state_read_lock;
 
   // If read or write is from programming interface or read interface
   always_comb begin
-    pro_read_intf_rd_index = find_efuse_field_index(efuse_byte_addr_t'(read_target_addr_i >> 3));     // need to shift since address is a bit address and the shadow registers are byte address
-    pro_read_intf_wr_index = find_efuse_field_index(efuse_byte_addr_t'(program_target_addr_i >> 3));  // need to shift since address is a bit address and the shadow registers are byte address
+    rd_is_adopter = (ADOPTER_FIELDS > 0) && (read_target_addr_i >= efuse_addr_t'(ADOPTER_BIT_BASE));
+    wr_is_adopter = (ADOPTER_FIELDS > 0) && (program_target_addr_i >= efuse_addr_t'(ADOPTER_BIT_BASE));
+
+    // Shift since the address is a bit address and the field maps are byte addresses.
+    pro_read_intf_rd_index = rd_is_adopter ? find_adopter_field_index(read_target_addr_i) :
+        find_efuse_field_index(efuse_byte_addr_t'(read_target_addr_i >> 3));
+    pro_read_intf_wr_index = wr_is_adopter ? find_adopter_field_index(program_target_addr_i) :
+        find_efuse_field_index(efuse_byte_addr_t'(program_target_addr_i >> 3));
 
     pro_read_intf_rm_lc_state_write_lock = 1'b0; // In SEP, LC_STATE has write/read lock but even if their lock is set, it should not block the pro_read_interface
     pro_read_intf_rm_lc_state_read_lock = 1'b0;
@@ -107,15 +130,12 @@ module efuse_guard #(
         pro_read_intf_lock_lc_state_write = 1'b1;
       end
     end
-    if (HAS_LC_STATE) begin
-      // SEP
-      pro_read_intf_rm_lc_state_write_lock = (pro_read_intf_wr_index == '0)? 1'b0 : entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
-      pro_read_intf_rm_lc_state_read_lock = (pro_read_intf_rd_index == '0)? 1'b0 : entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
-    end else begin
-      // SMC
-      pro_read_intf_rm_lc_state_write_lock = entry_write_locked(pro_read_intf_wr_index, shadow_regs_i);
-      pro_read_intf_rm_lc_state_read_lock = entry_read_locked(pro_read_intf_rd_index, shadow_regs_i);
-    end
+    pro_read_intf_rm_lc_state_write_lock =
+        (HAS_LC_STATE && !wr_is_adopter && (pro_read_intf_wr_index == '0)) ? 1'b0 :
+        entry_locked(wr_is_adopter, pro_read_intf_wr_index, 1'b0);
+    pro_read_intf_rm_lc_state_read_lock =
+        (HAS_LC_STATE && !rd_is_adopter && (pro_read_intf_rd_index == '0)) ? 1'b0 :
+        entry_locked(rd_is_adopter, pro_read_intf_rd_index, 1'b1);
 
     is_program_locked = pro_read_intf_rm_lc_state_write_lock || pro_read_intf_lock_lc_state_write;
     is_read_locked = pro_read_intf_rm_lc_state_read_lock;
@@ -166,7 +186,7 @@ module efuse_guard #(
 
   assign efuse_err_o = err;
 
-  // Returns '1 (all-ones) for the LOCKS meta-field or any unmapped address;
+  // Returns '1 (all-ones) for the lock meta-field or any unmapped address;
   // both cases are excluded from hardware lock checks.
   function automatic logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] find_efuse_field_index(
       efuse_byte_addr_t address);
@@ -178,20 +198,27 @@ module efuse_guard #(
     return '1;
   endfunction
 
-  // idx '1 (all-ones) is the sentinel for the LOCKS meta-field and unmapped
-  // addresses; hardware lock bits are never applied to either.
-  function automatic logic entry_write_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index,
-                                              efuse_map_t shadow_regs);
-    if (index != '1) begin
-      return shadow_regs.locks.locks[index*2];
-    end else return 1'b0;
+  // Returns '1 for an unused entry or any address outside the adopter regions.
+  function automatic logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] find_adopter_field_index(
+      efuse_addr_t address);
+    efuse_addr_t offset;
+    offset = efuse_addr_t'((address - efuse_addr_t'(ADOPTER_BIT_BASE)) >> 3);
+    for (int i = 0; i < NumAdopterRules; i = i + 1) begin
+      if (offset >= efuse_addr_t'(adopter_field_map_i[i].start_addr) &&
+          offset <= efuse_addr_t'(adopter_field_map_i[i].end_addr)) begin
+        return adopter_field_map_i[i].idx;
+      end
+    end
+    return '1;
   endfunction
 
-  function automatic logic entry_read_locked(logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index,
-                                             efuse_map_t shadow_regs);
-    if (index != '1) begin
-      return shadow_regs.locks.locks[index*2+1];
-    end else return 1'b0;
+  // idx '1 (all-ones) is the sentinel for the lock meta-field and unmapped
+  // addresses; hardware lock bits are never applied to either.
+  function automatic logic entry_locked(logic adopter,
+                                        logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] index,
+                                        logic read);
+    if (index == '1) return 1'b0;
+    return adopter ? adopter_locks_i[index*2+int'(read)] : locks_i[index*2+int'(read)];
   endfunction
 
 endmodule

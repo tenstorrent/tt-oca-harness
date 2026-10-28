@@ -18,14 +18,15 @@ addrmap smc_efuse_map {
 
     // The map fills exactly one 8192-bit efuse bank and must tile it without gaps: the
     // efuse_map_t union in smc_efuse_pkg overlays a field struct on the raw word array, and an
-    // unmapped address resolves to the LOCKS meta-field sentinel, which is never lock-checked and
+    // unmapped address resolves to the lock meta-field sentinel, which is never lock-checked and
     // would leave programmable OTP that cannot be locked.
     //
-    // LOCKS holds one write/read pair per lockable field, at bits 2n and 2n+1 of slot n. All 32
-    // slots the 64-bit field can address are assigned: slots 0-3 to the functional registers and
-    // slots 4-31 to SPARE[0] through SPARE[27]. A 33rd field would need a wider lock field, since
-    // the hardware indexes this register directly.
-    reg LOCKS {
+    // HARNESS_LOCKS and ADOPTER_LOCKS are hardware-consumed lock meta-fields and sit together at
+    // the top of the map. HARNESS_LOCKS holds one write/read pair per lockable field, at bits 2n
+    // and 2n+1 of slot n. All 32 slots the 64-bit field can address are assigned: slots 0-3 to the
+    // functional registers, slots 4-30 to SPARE[0] through SPARE[26], and slot 31 to SPARE_TAIL. A
+    // 33rd field would need a wider lock field, since the hardware indexes this register directly.
+    reg HARNESS_LOCKS {
         desc = "Lock controls for each fuse field. When write locked, the corresponding field is not
                 programmable. When read locked, the shadow register is not readable.";
 
@@ -467,15 +468,472 @@ addrmap smc_efuse_map {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.";
-        } spare27_write_lock[62:62] = 0x0;
+            desc = "Spare tail write lock (slot 31). When set, no SPARE_TAIL element is writable.";
+        } spare_tail_write_lock[62:62] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.";
-        } spare27_read_lock[63:63] = 0x0;
+            desc = "Spare tail read lock (slot 31). When set, no SPARE_TAIL element is readable.";
+        } spare_tail_read_lock[63:63] = 0x0;
+    };
+
+    // ADOPTER_LOCKS holds one write/read pair per adopter lock region, at bits 2n and 2n+1 of
+    // pair n. Pair n governs the n-th region of the adopter fuse region; pairs beyond the last
+    // region are unused.
+    reg ADOPTER_LOCKS {
+        desc = "Lock controls for the adopter fuse region. When write locked, the corresponding
+                adopter lock region is not programmable. When read locked, its shadow register is
+                not readable.";
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 0 write lock. When set, adopter lock region 0 is not writable.";
+        } region0_write_lock[0:0] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 0 read lock. When set, adopter lock region 0 is not readable.";
+        } region0_read_lock[1:1] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 1 write lock. When set, adopter lock region 1 is not writable.";
+        } region1_write_lock[2:2] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 1 read lock. When set, adopter lock region 1 is not readable.";
+        } region1_read_lock[3:3] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 2 write lock. When set, adopter lock region 2 is not writable.";
+        } region2_write_lock[4:4] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 2 read lock. When set, adopter lock region 2 is not readable.";
+        } region2_read_lock[5:5] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 3 write lock. When set, adopter lock region 3 is not writable.";
+        } region3_write_lock[6:6] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 3 read lock. When set, adopter lock region 3 is not readable.";
+        } region3_read_lock[7:7] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 4 write lock. When set, adopter lock region 4 is not writable.";
+        } region4_write_lock[8:8] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 4 read lock. When set, adopter lock region 4 is not readable.";
+        } region4_read_lock[9:9] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 5 write lock. When set, adopter lock region 5 is not writable.";
+        } region5_write_lock[10:10] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 5 read lock. When set, adopter lock region 5 is not readable.";
+        } region5_read_lock[11:11] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 6 write lock. When set, adopter lock region 6 is not writable.";
+        } region6_write_lock[12:12] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 6 read lock. When set, adopter lock region 6 is not readable.";
+        } region6_read_lock[13:13] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 7 write lock. When set, adopter lock region 7 is not writable.";
+        } region7_write_lock[14:14] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 7 read lock. When set, adopter lock region 7 is not readable.";
+        } region7_read_lock[15:15] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 8 write lock. When set, adopter lock region 8 is not writable.";
+        } region8_write_lock[16:16] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 8 read lock. When set, adopter lock region 8 is not readable.";
+        } region8_read_lock[17:17] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 9 write lock. When set, adopter lock region 9 is not writable.";
+        } region9_write_lock[18:18] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 9 read lock. When set, adopter lock region 9 is not readable.";
+        } region9_read_lock[19:19] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 10 write lock. When set, adopter lock region 10 is not writable.";
+        } region10_write_lock[20:20] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 10 read lock. When set, adopter lock region 10 is not readable.";
+        } region10_read_lock[21:21] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 11 write lock. When set, adopter lock region 11 is not writable.";
+        } region11_write_lock[22:22] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 11 read lock. When set, adopter lock region 11 is not readable.";
+        } region11_read_lock[23:23] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 12 write lock. When set, adopter lock region 12 is not writable.";
+        } region12_write_lock[24:24] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 12 read lock. When set, adopter lock region 12 is not readable.";
+        } region12_read_lock[25:25] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 13 write lock. When set, adopter lock region 13 is not writable.";
+        } region13_write_lock[26:26] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 13 read lock. When set, adopter lock region 13 is not readable.";
+        } region13_read_lock[27:27] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 14 write lock. When set, adopter lock region 14 is not writable.";
+        } region14_write_lock[28:28] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 14 read lock. When set, adopter lock region 14 is not readable.";
+        } region14_read_lock[29:29] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 15 write lock. When set, adopter lock region 15 is not writable.";
+        } region15_write_lock[30:30] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 15 read lock. When set, adopter lock region 15 is not readable.";
+        } region15_read_lock[31:31] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 16 write lock. When set, adopter lock region 16 is not writable.";
+        } region16_write_lock[32:32] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 16 read lock. When set, adopter lock region 16 is not readable.";
+        } region16_read_lock[33:33] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 17 write lock. When set, adopter lock region 17 is not writable.";
+        } region17_write_lock[34:34] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 17 read lock. When set, adopter lock region 17 is not readable.";
+        } region17_read_lock[35:35] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 18 write lock. When set, adopter lock region 18 is not writable.";
+        } region18_write_lock[36:36] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 18 read lock. When set, adopter lock region 18 is not readable.";
+        } region18_read_lock[37:37] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 19 write lock. When set, adopter lock region 19 is not writable.";
+        } region19_write_lock[38:38] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 19 read lock. When set, adopter lock region 19 is not readable.";
+        } region19_read_lock[39:39] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 20 write lock. When set, adopter lock region 20 is not writable.";
+        } region20_write_lock[40:40] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 20 read lock. When set, adopter lock region 20 is not readable.";
+        } region20_read_lock[41:41] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 21 write lock. When set, adopter lock region 21 is not writable.";
+        } region21_write_lock[42:42] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 21 read lock. When set, adopter lock region 21 is not readable.";
+        } region21_read_lock[43:43] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 22 write lock. When set, adopter lock region 22 is not writable.";
+        } region22_write_lock[44:44] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 22 read lock. When set, adopter lock region 22 is not readable.";
+        } region22_read_lock[45:45] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 23 write lock. When set, adopter lock region 23 is not writable.";
+        } region23_write_lock[46:46] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 23 read lock. When set, adopter lock region 23 is not readable.";
+        } region23_read_lock[47:47] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 24 write lock. When set, adopter lock region 24 is not writable.";
+        } region24_write_lock[48:48] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 24 read lock. When set, adopter lock region 24 is not readable.";
+        } region24_read_lock[49:49] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 25 write lock. When set, adopter lock region 25 is not writable.";
+        } region25_write_lock[50:50] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 25 read lock. When set, adopter lock region 25 is not readable.";
+        } region25_read_lock[51:51] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 26 write lock. When set, adopter lock region 26 is not writable.";
+        } region26_write_lock[52:52] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 26 read lock. When set, adopter lock region 26 is not readable.";
+        } region26_read_lock[53:53] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 27 write lock. When set, adopter lock region 27 is not writable.";
+        } region27_write_lock[54:54] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 27 read lock. When set, adopter lock region 27 is not readable.";
+        } region27_read_lock[55:55] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 28 write lock. When set, adopter lock region 28 is not writable.";
+        } region28_write_lock[56:56] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 28 read lock. When set, adopter lock region 28 is not readable.";
+        } region28_read_lock[57:57] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 29 write lock. When set, adopter lock region 29 is not writable.";
+        } region29_write_lock[58:58] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 29 read lock. When set, adopter lock region 29 is not readable.";
+        } region29_read_lock[59:59] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 30 write lock. When set, adopter lock region 30 is not writable.";
+        } region30_write_lock[60:60] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 30 read lock. When set, adopter lock region 30 is not readable.";
+        } region30_read_lock[61:61] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 31 write lock. When set, adopter lock region 31 is not writable.";
+        } region31_write_lock[62:62] = 0x0;
+
+        field {
+            sw = rw;
+            onwrite = woset;
+            hw = r;
+            desc = "Adopter region 31 read lock. When set, adopter lock region 31 is not readable.";
+        } region31_read_lock[63:63] = 0x0;
     };
 
     reg JTAG_PUBLIC_IDENTITY {
@@ -567,7 +1025,7 @@ addrmap smc_efuse_map {
 
     reg SPARE_256_BITS {
         desc = "Individually lockable 256-bit spare region, reserved for fields assigned after the
-                RTL is frozen. Each element has its own write/read lock pair in LOCKS.";
+                RTL is frozen. Each element has its own write/read lock pair in HARNESS_LOCKS.";
         regwidth = 256;
 
         field {
@@ -577,17 +1035,32 @@ addrmap smc_efuse_map {
         } rsvd[255:0] = 0x0;
     };
 
+    reg SPARE_64_BITS {
+        desc = "64-bit spare region at the end of the map, reserved for fields assigned after the
+                RTL is frozen. All elements share the slot-31 write/read lock pair in
+                HARNESS_LOCKS.";
+        regwidth = 64;
+
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Spare fuse bits for future use.";
+        } rsvd[63:0] = 0x0;
+    };
+
     /////////////////
     // Address Map //
     /////////////////
 
-    // Sizes total 8 + 32 + 72 + 8 + 8 + 896 = 1024 B, ending at 0x3FF.
-    LOCKS                   LOCKS                   @ 0x0;
-    JTAG_PUBLIC_IDENTITY    JTAG_PUBLIC_IDENTITY    @ 0x8;
-    I2C_I3C_ID              I2C_I3C_ID[9]           @ 0x28;
-    SMC_CONFIG              SMC_CONFIG              @ 0x70;
-    OCCP_TRANSPORT_TIMEOUT  OCCP_TRANSPORT_TIMEOUT  @ 0x78;
-    SPARE_256_BITS          SPARE[28]               @ 0x80;
+    // Sizes total 8 + 8 + 32 + 72 + 8 + 8 + 864 + 24 = 1024 B, ending at 0x3FF.
+    HARNESS_LOCKS           HARNESS_LOCKS           @ 0x0;
+    ADOPTER_LOCKS           ADOPTER_LOCKS           @ 0x8;
+    JTAG_PUBLIC_IDENTITY    JTAG_PUBLIC_IDENTITY    @ 0x10;
+    I2C_I3C_ID              I2C_I3C_ID[9]           @ 0x30;
+    SMC_CONFIG              SMC_CONFIG              @ 0x78;
+    OCCP_TRANSPORT_TIMEOUT  OCCP_TRANSPORT_TIMEOUT  @ 0x80;
+    SPARE_256_BITS          SPARE[27]               @ 0x88;
+    SPARE_64_BITS           SPARE_TAIL[3]           @ 0x3E8;
 
 };
 
