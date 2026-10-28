@@ -200,6 +200,8 @@ RATE_HI = 16
 CNT_HOLD_CLKS = 2
 # Clean starts tried for a first push whose strobe counts can tell the count start.
 FIRST_PUSH_TRIES = 3
+# Reference walks tried for a held set without 0.
+REF_WALK_TRIES = 3
 # Clocks from a RING_OSC_ENABLE write of 0 to esrc_ro_enable_o reading 0 (outer cap).
 RO_OFF_CLKS = 64
 # Outer cap of the mid-run trace (clocks); never a contract.
@@ -228,6 +230,9 @@ def _val(reg: str, **fields: int) -> int:
 
 # DECORRELATOR_CTRL.SAMPLE_CLK_DIV reset value, the reference of the period ratio.
 RESET_DIV = _get(ENTROPY_SOURCE.reset("DECORRELATOR_CTRL"), "DECORRELATOR_CTRL", "SAMPLE_CLK_DIV")
+# Clocks between two reference walks: half a reference period, so the disable of the
+# next walk lands away from the count and the wrap that put 0 in the held set.
+REF_WALK_SHIFT_CLKS = (RESET_DIV + 1) // 2
 
 
 def _held(h: set[int] | None) -> str:
@@ -930,7 +935,10 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         the offset of D_ref, with no time base and no assumed L. A divider that
         keeps its count k while disabled gives the offset L - min(k, D), so the
         control CTRL-COND-FIRST-STROBE needs min(k, D) of the graded value to
-        differ from that of D_ref for every k in ``held`` (see ``_walk_one``). The enable of a lane is
+        differ from that of D_ref for every k in ``held`` (see ``_walk_one``). That
+        control cannot hold for 0 when the ``held`` of D_ref contains 0, so the walk of
+        D_ref repeats, REF_WALK_SHIFT_CLKS clocks later each time, up to REF_WALK_TRIES
+        times until its ``held`` has no 0. The enable of a lane is
         RING_OSC_ENABLE.ENABLE (entropy_source.adoc:357); each value is written with
         every lane disabled and then the lanes are enabled, the order of
         ``doc/programmer/src/sep-programming.adoc:409-411,427``. Anchor:
@@ -942,6 +950,11 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         ratio_pass = 0
         for div in plan.div_walk:
             st = await self._walk_one(div)
+            tries = 1
+            while div == RESET_DIV and st["held"] and 0 in st["held"] and tries < REF_WALK_TRIES:
+                await ClockCycles(cocotb.top.clk_i, REF_WALK_SHIFT_CLKS)
+                st = await self._walk_one(div)
+                tries += 1
             self.chk.ctrl(
                 "COND-PERIOD",
                 st["ok"],
@@ -963,9 +976,11 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             )
             st["offset"] = st["first"] - st["gap"] if st["ok"] else None
             self.logger.info(
-                "INFO-COND-FIRST-OFFSET seed=%d div=%d first_clk=%s gap_clk=%s offset=%s held=%s",
+                "INFO-COND-FIRST-OFFSET seed=%d div=%d tries=%d first_clk=%s gap_clk=%s offset=%s"
+                " held=%s",
                 plan.seed,
                 div,
+                tries,
                 "none" if st["first"] is None else st["first"],
                 "none" if st["gap"] is None else st["gap"],
                 "none" if st["offset"] is None else st["offset"],
