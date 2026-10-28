@@ -5471,8 +5471,8 @@ defect. Behaviour that this plan does not claim at all is in
 |Adams Bridge absent build. Only `sep_abr_absent_decerr_test` runs on the `lsu_stub_abr_absent` model. Every other leaf runs with `SEP_ABR_EN` defined.
 |The ABR memory tie-off and the held-low ABR interrupts of that build have no checker.
 
-|Verilator covergroups. SystemVerilog covergroups are not available under Verilator.
-|Feature coverage on Verilator is the feature matrix (<<iconic-scorecard>>). The VCS Phase 1 bins are in <<sep-dv-functional-coverage,SEP_FCOV>>. RTL code coverage is a separate, unthresholded number (<<sep-fcov-evidence-paths>>).
+|Verilator covergroups. Verilator builds the SystemVerilog covergroups with the goal bins VCS builds; their Verilator counts are not graded.
+|Feature coverage on Verilator is the feature matrix (<<iconic-scorecard>>). The graded Phase 1 bins are the VCS figures in <<sep-dv-functional-coverage,SEP_FCOV>>. RTL code coverage is a separate, unthresholded number (<<sep-fcov-evidence-paths>>).
 
 |ROM-FW ownership. Boot ROM firmware contracts belong to the `rom_fw` class, which has its own owner.
 |This plan grades none of them. <<sep-vplan-scope>> states why.

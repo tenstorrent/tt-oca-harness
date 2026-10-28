@@ -309,8 +309,8 @@ Observation probe groups:
   `sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test`,
   `sep_sec_dis_timing_rand_test`, `sep_lcc_state_codeword_rand_test`,
   `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`.
-* eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of `u_sep_fcov`,
-  VCS only): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
+* eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of
+  `u_sep_fcov`): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
   comparator fault bits), `token_go_i` (hash start pulses),
   `sec_disable_expected_i` (SEC_DIS expected digest), `rd_addr_err_i`,
   `pg_addr_err_i` and `req_err_i` (the `EFUSE_INTERFACE_CTRL_STATUS` error
@@ -404,7 +404,7 @@ Observation probe groups:
   clock. User: `sep_km_boot_reset_rand_test` (CHK-RST-AXI-VALID).
 * Key Manager sampler taps (KM-COV): the KM nets that only the coverage
   sampler `u_sep_fcov` reads, bound by hierarchical reference in the
-  `u_sep_fcov` port list (VCS only): the KM CPU AXI master and its error
+  `u_sep_fcov` port list: the KM CPU AXI master and its error
   pulses, the KM CPU memory bus, `cpu_trap`, `irq_active`, the PicoRV32
   `dbg_insn_opcode` (the opcode of the instruction in execution) and the CPU
   interrupt lines, the error flags, the SRAM write-lock and violation bits,
@@ -1732,9 +1732,9 @@ else is watching there for a checker miss.
 
 === Coverage Strategy
 
-Verilator does not support SystemVerilog covergroups on the acceptance path
-(guard SV covergroups with `` `ifndef VERILATOR ``). Cocotb phases collect
-named checker evidence and the traceability matrix in
+Verilator and VCS build the covergroups of `cov/sv/sep_fcov.sv` with the same
+goal bins, and the graded functional-coverage figures come from VCS. Cocotb
+phases collect named checker evidence and the traceability matrix in
 xref:SEP_VPLAN.adoc#iconic-scorecard[SEP_VPLAN Matrix]. RTL code coverage is a different number
 from feature coverage and carries no threshold. `[coverage.verilator]` in
 `sep_sim_cfg.toml` instruments line, expression and user coverage (toggle off).

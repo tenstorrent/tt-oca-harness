@@ -12,11 +12,12 @@ The codes come from one table, ``tb/sep_fcov_owner_codes.svh``, which the
 sampler includes. This module reads the same file, so the leaf and the sampler
 cannot disagree on a code.
 
-``u_sep_fcov`` exists on every simulator except Verilator (``tb/tb_top.sv``
-instantiates it under ``ifndef VERILATOR``). On Verilator every call here is a
-no-op and returns False; a check of a leaf never depends on the gate. On any
-other simulator a missing sampler or ``graded_owner`` is a testbench error, so a
-build that lost the sampler fails instead of leaving the owner-gated bins empty.
+``u_sep_fcov`` exists on every simulator. On Verilator every call here is a
+no-op and returns False: ``_sampler_expected`` reads ``cocotb.SIM_NAME`` and
+skips the handle lookup, so a leaf writes no gate variable of ``u_sep_fcov``
+there. A check of a leaf never depends on the gate. On any other simulator a
+missing sampler or ``graded_owner`` is a testbench error, so a build that lost
+the sampler fails instead of leaving the owner-gated bins empty.
 """
 
 from __future__ import annotations
@@ -65,7 +66,7 @@ def _gate_handle():
     if not hasattr(dut, "u_sep_fcov"):
         raise AttributeError(
             f"{cocotb.SIM_NAME}: tb_top has no u_sep_fcov; the FCOV sampler must exist on "
-            "every simulator except Verilator (tb/tb_top.sv, cov/sv/sep_fcov.sv)"
+            "every simulator (tb/tb_top.sv, cov/sv/sep_fcov.sv)"
         )
     fcov = dut.u_sep_fcov
     if not hasattr(fcov, "graded_owner"):
@@ -74,7 +75,7 @@ def _gate_handle():
 
 
 def fcov_present() -> bool:
-    """True when the build carries the sampler (every simulator except Verilator)."""
+    """True when a leaf can write the sampler's variables (every simulator except Verilator)."""
     return _gate_handle() is not None
 
 

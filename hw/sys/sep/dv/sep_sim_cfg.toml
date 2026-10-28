@@ -81,7 +81,7 @@ sources = [
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
   # BH-SMC responder on the SEP->SMC AXI (docs/SEP_TB_ARCH.adoc, HDL Top port table).
   "hw/sys/sep/dv/tb/sep_smc_route_mem.sv",
-  # FCOV covergroup sampler (VCS only; the module is `ifndef VERILATOR`).
+  # FCOV covergroup sampler.
   "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
   # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
   # buses at the foot of tb_top. The Verilator targets pass no --assert, so
@@ -237,7 +237,16 @@ compile_args = [
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
 # several hundred MB that a hosted runner cannot compile.
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
+# sep_fcov.vlt keeps the covergroup bin counters of the FCOV sampler valid in
+# the coverage database.
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/sep/dv/cov/config/verilator/sep_fcov.vlt",
+]
 
 [frameworks.cocotb]
 # Flow-first layout: cocotb env/seq_lib/tests live under cocotb/, the SV-UVM
@@ -621,6 +630,9 @@ defines = [
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
 ]
+# COVERIGN is an error: Verilator drops a covergroup construct it does not
+# support with only that warning, and then builds other bins than the
+# commercial simulators.
 [targets.default.tools.verilator]
 flags = [
   # PeakRDL reg blocks reset their axil_resp_buffer struct arrays with
@@ -630,6 +642,7 @@ flags = [
   "-Wno-BLKLOOPINIT",
   "-Wno-UNUSEDSIGNAL",
   "-Wno-UNUSEDPARAM",
+  "-Werror-COVERIGN",
 ]
 
 # rom_boot: default (full VeeR CPU) + the shared AXI slave agent on the SEP->SMC
@@ -657,6 +670,7 @@ flags = [
   "-Wno-BLKLOOPINIT",
   "-Wno-UNUSEDSIGNAL",
   "-Wno-UNUSEDPARAM",
+  "-Werror-COVERIGN",
 ]
 
 # CPU-stub model: SEP_CPU_STUB drops the VeeR EL2 core (shims/cpu/sep_cpu_stub.sv
@@ -681,7 +695,7 @@ sources = [
 run_on = "default"
 
 [targets.lsu_stub_all_live.tools.verilator]
-flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Werror-COVERIGN"]
 
 # The lsu_stub_all_live model built without Adams Bridge. SEP_ABR_EN comes
 # from the `sep` Bender target, and `bender script flist-plus` emits it as one
@@ -705,7 +719,7 @@ sources = [
 ]
 
 [targets.lsu_stub_abr_absent.tools.verilator]
-flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Werror-COVERIGN"]
 
 # SystemVerilog UVM view (`--dut sep --framework uvm`, VCS): the same DUT recipe
 # (Bender targets, stubs) with the shared framework library and AXI VIP

@@ -423,8 +423,9 @@ async def spi_lane_fcov(
     1 rst_ni; with ``lanes``), ``chain`` (``chain``: 0 same width, 1 width
     changes), ``fullcyc`` (``lanes``: an RX frame read with
     CONFIGOPTS.FULLCYC = 1), ``cmdq`` (``lanes``: a command queue fill whose
-    CHK-SPI-CMDQD-DEPTH passed at that width). Returns False on Verilator (no sampler). On any other simulator
-    a sampler without ``spi_ln_seq`` is a testbench error.
+    CHK-SPI-CMDQD-DEPTH passed at that width). Returns False on Verilator
+    (``fcov_present``). On any other simulator a sampler without ``spi_ln_seq``
+    is a testbench error.
     """
     if kind not in _KIND:
         raise ValueError(f"spi_lane_fcov kind={kind!r}: one of {sorted(_KIND)}")
