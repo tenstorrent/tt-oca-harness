@@ -34478,7 +34478,7 @@ module sep_fcov (
     x_state_strap_feat: coverpoint s.sf iff (s.sf_v) {
       bins cells[] = {[3'd0 : 3'd5]};
     }
-    // The LC_STATE word is excluded.
+    // The LC_STATE word holds its reset value 0x0F, every other word 0.
     cp_reset_values_hold: coverpoint s.rv iff (s.rv_v) {
       bins shadow_at_reset_values = {1'b1};
     }
@@ -37248,7 +37248,8 @@ module sep_fcov (
     if (in_reset) ef_since_rel <= 0;
     else if (ef_since_rel <= EfRelWin) ef_since_rel <= ef_since_rel + 1;
   end
-  localparam logic [EfFuseBits-1:0] EfLcWordMask = EfFuseBits'(32'hFFFF_FFFF) << (32 * EfWLc);
+  // Shadow probe at its RDL reset: LC_STATE {~4'b1111, 4'b1111}, every other word 0.
+  localparam logic [EfFuseBits-1:0] EfShadowResetValue = EfFuseBits'(32'h0000_000F) << (32 * EfWLc);
   always @(posedge clk_i) begin
     logic open;
     ef_sd_q <= ef_sd && !in_reset;
@@ -37289,11 +37290,11 @@ module sep_fcov (
         if (ef_own_sdt && !ef_ss_bad && (efuse_shadow_i === ef_ss_snap)) begin
           ef_rob(1, {2'b00, ef_ss_phase});
           // cp_reset_values_hold: at the end of the same bounded hold, in the
-          // window that starts at a reset release, when every shadow word
-          // except the LC_STATE word read 0 at the release and on every clock
-          // of the hold. A design that senses under the match loads a word
+          // window that starts at a reset release, when every shadow word read
+          // its reset value (0x0F for the LC_STATE word, 0 for every other
+          // word) at the release and on every clock of the hold. A design that senses under the match loads a word
           // inside the bound, so the bin cannot fill on the release clock.
-          if (ef_ss_phase && ((ef_ss_snap & ~EfLcWordMask) == '0)) ef_rob(3, 3'd1);
+          if (ef_ss_phase && (ef_ss_snap == EfShadowResetValue)) ef_rob(3, 3'd1);
         end
       end
     end
