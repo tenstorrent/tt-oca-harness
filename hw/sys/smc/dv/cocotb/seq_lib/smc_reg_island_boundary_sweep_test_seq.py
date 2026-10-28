@@ -11,7 +11,11 @@ map and compared with the island table before the first probe.
 
 from __future__ import annotations
 
+import os
+import random
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
@@ -31,6 +35,12 @@ from .smc_addr_map import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
+
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
+
+import smc_reg  # noqa: E402
 
 AXI_RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 OKAY, DECERR = 0, 3
@@ -200,6 +210,95 @@ def _writable(nature: str) -> bool:
     return nature in (RW, HOLE)
 
 
+# Per-register field tables of the generated register module (`regs/gen/py/
+# smc_reg.py`, from the same RDL as the memory map): absolute address -> field
+# rows of (name, lsb, msb, sw, hw, onwrite, onread, singlepulse, volatile, reset).
+def _register_fields() -> dict[int, list[tuple]]:
+    fields: dict[int, list[tuple]] = {}
+    for name, addr in vars(smc_reg).items():
+        if not name.endswith("_REG_ADDR") or not isinstance(addr, int):
+            continue
+        reg_type = getattr(smc_reg, name[: -len("_REG_ADDR")] + "_REG_TYPE", None)
+        rows = getattr(smc_reg, f"{reg_type}_REG_FIELDS", None)
+        if rows is not None:
+            fields[addr] = list(rows)
+    return fields
+
+
+REG_FIELDS = _register_fields()
+# Register types whose sw-writable fields are plain storage the pattern write may use.
+PATTERN_TYPES = ("SCRATCH_SCRATCH",)
+PROBE_SIZES = (1, 2, 4, 8)
+
+
+def _no_read_side_effect(addr: int) -> bool:
+    rows = REG_FIELDS.get(addr)
+    return rows is not None and all("r" in row[3] and not row[6] for row in rows)
+
+
+def interior_words(isl: Island) -> list[int]:
+    """Island offsets strictly inside the decoded extent that a read does not disturb."""
+    return [
+        off
+        for off in range(isl.first + 4, isl.last, 4)
+        if _no_read_side_effect(LOCAL_BASE_RESET + off)
+    ]
+
+
+def pattern_mask(addr: int) -> int:
+    """Mask of the sw-writable bits when the word takes a pattern write, else 0.
+
+    A word qualifies when it is a scratch register type whose sw-writable fields
+    the RDL gives hardware no write path to (`hw` r or na), with no `onwrite`
+    and no `singlepulse`, so the written value reads back.
+    """
+    rows = REG_FIELDS.get(addr)
+    if rows is None:
+        return 0
+    for name, value in vars(smc_reg).items():
+        if value == addr and name.endswith("_REG_ADDR"):
+            reg_type = getattr(smc_reg, name[: -len("_REG_ADDR")] + "_REG_TYPE", "")
+            break
+    else:
+        return 0
+    if reg_type not in PATTERN_TYPES:
+        return 0
+    mask = 0
+    for _name, lsb, msb, sw, hw, onwrite, _onread, singlepulse, _vol, _reset in rows:
+        if "w" not in sw:
+            continue
+        if hw not in ("r", "na") or onwrite or singlepulse:
+            return 0
+        mask |= ((1 << (msb - lsb + 1)) - 1) << lsb
+    return mask
+
+
+def draw_probes(rng: random.Random) -> dict[str, tuple[int, int]]:
+    """Per island one (offset, AxSIZE): aligned to the size, no crossing, side-effect-free."""
+    probes = {}
+    for isl in ISLANDS:
+        words = interior_words(isl)
+        assert words, f"{isl.name} has no side-effect-free interior word"
+        length = rng.choice(PROBE_SIZES)
+        if length == 8:
+            # Two side-effect-free words at or before the last decoded word: the
+            # upper half may be the last word itself when a read does not disturb it.
+            last_free = _no_read_side_effect(LOCAL_BASE_RESET + isl.last)
+            pairs = [
+                w
+                for w in words
+                if w % 8 == 0 and (w + 4 in words or (w + 4 == isl.last and last_free))
+            ]
+            if not pairs:
+                length = 4
+            else:
+                words = pairs
+        word = rng.choice(words)
+        offset = word if length >= 4 else word + rng.randrange(0, 4, length)
+        probes[isl.name] = (offset, length)
+    return probes
+
+
 def _name(resp: int | None) -> str:
     return AXI_RESP_NAME.get(resp, f"resp={resp}")
 
@@ -219,6 +318,9 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
 
     def __init__(self, name: str = "smc_reg_island_boundary_sweep_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        self.probes: dict[str, tuple[int, int]] = {}
+        self.patterns: dict[str, int] = {}
         self.base = LOCAL_BASE_RESET
         self.addr: dict[str, dict[str, int]] = {}
         self.rec = {isl.name: Record() for isl in ISLANDS}
@@ -282,9 +384,33 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         self.rec[isl.name].writes[word] = item.resp_code
         return item.resp_code
 
+    async def _pattern_cycle(self, isl: Island, word: str, step: str) -> None:
+        """Write the drawn pattern to an eligible word, read it back, restore the value read."""
+        resp, data = self.rec[isl.name].reads[word]
+        addr = self.addr[isl.name][word]
+        pattern = self.patterns[f"{isl.name}_{word}"] & pattern_mask(addr)
+        bresp = await self._write(isl, word, pattern)
+        assert bresp == OKAY, f"{step} {isl.name} {word} @ 0x{addr:08x}: pattern write {bresp}"
+        rresp, back = await self._read(isl, word, f"{word}_pattern_rb")
+        assert rresp == OKAY and back == pattern, (
+            f"{step} {isl.name} {word} @ 0x{addr:08x}: read-back {_name(rresp)} 0x{back:08x} "
+            f"after the pattern 0x{pattern:08x}"
+        )
+        bresp = await self._write(isl, word, data)
+        assert bresp == OKAY, f"{step} {isl.name} {word} @ 0x{addr:08x}: restore write {bresp}"
+        rresp, back = await self._read(isl, word, f"{word}_rb")
+        self.rec[isl.name].readbacks[word] = back
+        assert rresp == OKAY and back == data, (
+            f"{step} {isl.name} {word} @ 0x{addr:08x}: restore read-back {_name(rresp)} "
+            f"0x{back:08x}, value read 0x{data:08x}"
+        )
+
     async def _identity_cycle(self, isl: Island, word: str, nature: str, step: str) -> None:
         resp, data = self.rec[isl.name].reads[word]
         if not _writable(nature):
+            return
+        if f"{isl.name}_{word}" in self.patterns:
+            await self._pattern_cycle(isl, word, step)
             return
         bresp = await self._write(isl, word, data)
         assert bresp == OKAY, (
@@ -333,8 +459,37 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         )
         assert all(i.write_resp == DECERR for i in ISLANDS), "an island declares a non-DECERR write"
 
+    def _draw(self) -> None:
+        rng = random.Random(self.seed)
+        self.probes = draw_probes(rng)
+        for isl in ISLANDS:
+            for word, nature in (("first", isl.first_nature), ("last", isl.last_nature)):
+                if nature == RW and pattern_mask(LOCAL_BASE_RESET + getattr(isl, word)):
+                    self.patterns[f"{isl.name}_{word}"] = rng.getrandbits(32)
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: interior probes %s; patterns %s",
+            self.seed,
+            " ".join(f"{n}:+0x{o:x}/{ln}" for n, (o, ln) in self.probes.items()),
+            " ".join(f"{k}=0x{v:08x}" for k, v in self.patterns.items()) or "none eligible",
+        )
+
+    async def _probe(self, isl: Island) -> str:
+        offset, length = self.probes[isl.name]
+        addr = LOCAL_BASE_RESET + offset
+        resp, data = await self.read_any(f"{isl.name}_interior", addr, length)
+        self._count(isl)
+        assert resp is not None, f"{isl.name} interior @ 0x{addr:08x}: no read response"
+        if length == 4:
+            assert resp == OKAY, f"S9 {isl.name} interior @ 0x{addr:08x} answered {_name(resp)}"
+            graded = "OKAY compared, data printed"
+        else:
+            graded = "printed"
+        self.rec[isl.name].reads["interior"] = (resp, data)
+        return f"{isl.name}@0x{offset:x} len={length} {_name(resp)},0x{data:x} ({graded})"
+
     async def _s1(self) -> None:
         await self.wait_fuse_sense_done()
+        self._draw()
         reads = (
             ("REGION_SIZE", REGION_SIZE, REGION_SIZE_RESET, 8),
             ("LOCAL_BASE", LOCAL_BASE, LOCAL_BASE_RESET & 0xFFFF_FFFF, 4),
@@ -396,18 +551,25 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         await self._done("S3")
         ro = [f"{i.name}={i.first_nature}" for i in ISLANDS if not _writable(i.first_nature)]
         written = sum(_writable(i.first_nature) for i in ISLANDS)
+        patterned = [k for k in self.patterns if k.endswith("_first")]
         self._chk(
             "CHK-ISL-FIRST-WORD-WRITE-OKAY",
             "S3",
             "first word of %d islands answered OKAY (RESET hole OKAY,0x%x); %d rw or hole words "
-            "took the identity write with BRESP OKAY and read back the value read; %d ro words "
-            "not written (%s); values: %s",
+            "took a write with BRESP OKAY: the drawn pattern at the %d eligible scratch word(s) "
+            "(%s), read back masked to the sw-writable bits and restored to the value read, the "
+            "identity write elsewhere, each reading back the value read; %d ro words not "
+            "written (%s); values: %s; drawn=seed %d patterns %s",
             len(ISLANDS),
             self.rec["RESET"].reads["first"][1],
             written,
+            len(patterned),
+            ", ".join(f"{k}=0x{self.patterns[k]:08x}" for k in patterned) or "none",
             len(ro),
             ", ".join(ro),
             self._decoded_values("first", lambda i: i.first_nature),
+            self.seed,
+            " ".join(f"{k}=0x{v:08x}" for k, v in self.patterns.items()) or "none",
         )
 
     async def _s4(self) -> None:
@@ -530,11 +692,12 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         )
 
     async def _s9(self) -> None:
+        probe_lines = [await self._probe(isl) for isl in ISLANDS]
         await self._done("S9")
         rows, match, linked = [], 0, 0
         for isl in ISLANDS:
             rec = self.rec[isl.name]
-            assert all(w in rec.reads for w in ("first", "last", "past", "end")), (
+            assert all(w in rec.reads for w in ("first", "last", "past", "end", "interior")), (
                 f"S9 {isl.name} has an unmeasured probe word"
             )
             ok = all(rec.writes[w] == isl.write_resp for w in ("past", "end"))
@@ -547,11 +710,16 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         self._chk(
             "CHK-ISL-TABLE",
             "S9",
-            "%d rows, %d match, %d mismatch; %s",
+            "%d rows, %d match, %d mismatch; %s; drawn interior probes (a 4-byte read compared "
+            "on OKAY with its data printed, a 1-, 2- or 8-byte read printed): %s; drawn=seed %d "
+            "probes %s",
             len(rows),
             match,
             linked,
             " || ".join(rows),
+            "; ".join(probe_lines),
+            self.seed,
+            " ".join(f"{n}:+0x{o:x}/{ln}" for n, (o, ln) in self.probes.items()),
         )
         self.chk_accesses["CHK-ISL-TABLE"] = sum(r.accesses for r in self.rec.values())
 
@@ -562,8 +730,17 @@ class smc_reg_island_boundary_sweep_test_seq(SmcDecodeProbeSeq):
         first = sum(_writable(i.first_nature) for i in ISLANDS)
         last = sum(_writable(i.last_nature) for i in ISLANDS)
         rw_last = sum(i.last_nature == RW for i in ISLANDS)
-        setup, probe_reads, refused_writes, rereads = 4, 4 * islands, 2 * islands, 2 * islands
-        return setup + probe_reads + refused_writes + rereads + rw_last + 2 * (first + last)
+        setup, probe_reads, refused_writes, rereads = 4, 5 * islands, 2 * islands, 2 * islands
+        patterned = 2 * len(self.patterns)
+        return (
+            setup
+            + probe_reads
+            + refused_writes
+            + rereads
+            + rw_last
+            + 2 * (first + last)
+            + patterned
+        )
 
     def _fence(self) -> None:
         total = sum(r.accesses for r in self.rec.values())
