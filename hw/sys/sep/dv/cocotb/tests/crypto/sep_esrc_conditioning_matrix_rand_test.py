@@ -65,13 +65,14 @@ Checkers:
                        g_D x (D_ref + 1) == g_ref x (D + 1) for D = 0 and D_r against the
                        reset value D_ref (entropy_source.adoc:387; architecture.adoc:107).
                        A ratio of two DUT gaps: no time base.
-  CHK-COND-FIRST-STROBE  for D = D_ref, 0 and D_r, the distance from the clock where
-                       ``esrc_ro_enable_o`` reads all ones to the first strobe equals the
-                       steady gap g_D (architecture.adoc:113). Control: 6 strobes after
-                       the enable, five equal gaps and no strobe while disabled. The
-                       divider count at the lane disable is logged (``div_at_off``); a
-                       DUT that keeps its count while disabled fails where it is not 0
-                       (after D = 0 it is always 0).
+  CHK-COND-FIRST-STROBE  the offset o_D = (distance from the clock where
+                       ``esrc_ro_enable_o`` reads all ones to the first strobe) - g_D is
+                       the same for D = 0 and D_r as for D_ref (architecture.adoc:113:
+                       the divider holds at zero while disabled); a fixed enable delay
+                       cancels. Control: 6 strobes after the enable, five equal gaps, no
+                       strobe while disabled, and the divider count at the disable
+                       (``div_at_off``) differs from that of D_ref, so a DUT that keeps
+                       its count while disabled moves the offset.
   CHK-COND-SHA         16 whitener input words give 8 output words (architecture.adoc:142),
                        exact: over the span between the first and the last quiet clock
                        of the window (SHA256_STATUS BUSY = 0 and OUTPUT_COUNT = 0, no
@@ -848,10 +849,16 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         SAMPLE_CLK_DIV + 1 cycles, so the steady gaps of two values D and D_ref meet
         g_D x (D_ref + 1) == g_ref x (D + 1) whatever the unit of a cycle.
         architecture.adoc:113: while ``enable_i`` is low the divider holds at zero,
-        so a value written before the enable sets the first distance: one full
-        period, the steady gap. The enable of a lane is RING_OSC_ENABLE.ENABLE
-        (entropy_source.adoc:357); each value is written with every lane disabled
-        and then the lanes are enabled, the order of
+        so a value written before the enable sets the first distance. Any fixed
+        delay L from the ``esrc_ro_enable_o`` tap to the lane enable is the same for
+        every value, so the offset first distance - steady gap is equal for D_ref,
+        0 and D_r; CHK-COND-FIRST-STROBE grades the offsets of 0 and D_r against
+        the offset of D_ref, with no time base and no assumed L. A divider that
+        keeps its count k while disabled moves the offset by k, so the control
+        CTRL-COND-FIRST-STROBE needs the count at the disable (``div_at_off``) of
+        the graded value to differ from that of D_ref. The enable of a lane is
+        RING_OSC_ENABLE.ENABLE (entropy_source.adoc:357); each value is written with
+        every lane disabled and then the lanes are enabled, the order of
         ``doc/programmer/src/sep-programming.adoc:409-411,427``. Anchor:
         ``esrc_ro_enable_o`` and ``esrc_decor_valid_o``.
         """
@@ -880,19 +887,40 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
                 div,
                 "none" if st["div_tap"] is None else st["div_tap"],
             )
-            first_ok = self.chk.ok(
-                "COND-FIRST-STROBE",
-                st["ok"] and st["first"] == st["gap"],
-                div=div,
-                first_clk="none" if st["first"] is None else st["first"],
-                gap_clk="none" if st["gap"] is None else st["gap"],
-                div_at_off="none" if st["div_at_off"] is None else st["div_at_off"],
+            st["offset"] = st["first"] - st["gap"] if st["ok"] else None
+            self.logger.info(
+                "INFO-COND-FIRST-OFFSET seed=%d div=%d first_clk=%s gap_clk=%s offset=%s "
+                "div_at_off=%s",
+                plan.seed,
+                div,
+                "none" if st["first"] is None else st["first"],
+                "none" if st["gap"] is None else st["gap"],
+                "none" if st["offset"] is None else st["offset"],
+                "none" if st["div_at_off"] is None else st["div_at_off"],
             )
-            if first_ok:
-                await self._cnt_pass(ESRC_CNT_PASS_FIRST_STROBE)
             if div == RESET_DIV:
                 ref = st
                 continue
+            ref_off = None if ref is None else ref["offset"]
+            ref_k = None if ref is None else ref["div_at_off"]
+            self.chk.ctrl(
+                "COND-FIRST-STROBE",
+                ref_k is not None and st["div_at_off"] is not None and st["div_at_off"] != ref_k,
+                div=div,
+                div_at_off="none" if st["div_at_off"] is None else st["div_at_off"],
+                ref_div_at_off="none" if ref_k is None else ref_k,
+            )
+            if self.chk.ok(
+                "COND-FIRST-STROBE",
+                st["offset"] is not None and ref_off is not None and st["offset"] == ref_off,
+                div=div,
+                ref_div=RESET_DIV,
+                first_clk="none" if st["first"] is None else st["first"],
+                gap_clk="none" if st["gap"] is None else st["gap"],
+                offset="none" if st["offset"] is None else st["offset"],
+                ref_offset="none" if ref_off is None else ref_off,
+            ):
+                await self._cnt_pass(ESRC_CNT_PASS_FIRST_STROBE)
             g = st["gap"]
             g_ref = None if ref is None else ref["gap"]
             lhs = None if g is None else g * (RESET_DIV + 1)
