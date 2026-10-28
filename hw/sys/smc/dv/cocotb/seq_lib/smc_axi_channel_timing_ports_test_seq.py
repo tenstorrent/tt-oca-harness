@@ -419,8 +419,11 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
 
         tb_top gates BVALID and BREADY while the hold is up, so the watch's B handshake count,
         recorded when the hold goes up, must stand still until the hold drops and be below the W
-        handshake count at the drop; the count of held cycles with a W handshake seen and its B
-        not yet handshaken is the stall evidence beside it.
+        handshake count at the drop. That holds on the gated nets by construction, so it is the
+        hold's own consistency, not the stall evidence: the stall evidence of the leg is the
+        manager's BREADY delay after the hold drops, which needs a BVALID-high, BREADY-low cycle
+        from the DUT and is counted by the watch as on the other ports. The count of held cycles
+        with a W handshake seen and its B not yet handshaken is logged beside it.
         """
         dut = cocotb.top
         clk = dut.clk_smc_i
@@ -549,13 +552,18 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             ]
             rng.shuffle(items)
             if port in _B_HOLD_KNOB:
+                # The drawn hold on the bench knob, then the manager's BREADY delay on the
+                # ungated B: the delay supplies the stall cycles the DUT has to present.
                 holder = cocotb.start_soon(self._hold_b(port, win))
-                await self._issue_group(port, "bready_hold", items)
+                await self._issue_group(
+                    port, "bready_hold", items, AxiTimingProfile(b_ready_delay=B_HOLD)
+                )
                 await holder
-                stall = self.b_hold_pending
+                stall = watch.stalled(win, "b")
                 held, dropped, w_hs = self.b_hold_hs
                 how = (
-                    f"b_hold={self.b_hold} cycles held_pending={stall} "
+                    f"b_hold={self.b_hold} cycles then b_ready_delay={B_HOLD} b_stall={stall} "
+                    f"held_pending={self.b_hold_pending} "
                     f"b_hs {held} at the raise == {dropped} at the drop < w_hs {w_hs}"
                 )
             else:
@@ -753,8 +761,8 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
         self._mark_step("S7")
         self._log_chk(
             "CHK-CTP-BREADY-PORTS",
-            f"B held on SEP_IN by tb_sep_axi_b_hold and BREADY held {B_HOLD} cycles on SYS_IN "
-            f"and JTAG: {bready}; drawn=seed {self.seed} b_hold {self.b_hold} ids "
+            f"B held on SEP_IN by tb_sep_axi_b_hold and then BREADY held {B_HOLD} cycles on every "
+            f"port: {bready}; drawn=seed {self.seed} b_hold {self.b_hold} ids "
             f"{self._ids_text()}",
         )
 

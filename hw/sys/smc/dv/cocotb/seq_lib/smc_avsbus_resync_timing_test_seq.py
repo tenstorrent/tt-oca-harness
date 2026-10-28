@@ -314,14 +314,20 @@ class smc_avsbus_resync_timing_test_seq(SmcResetSeqBase, SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         rng = random.Random(self.seed)
-        divider = rng.randrange(DIVIDER_MIN, DIVIDER_MAX + 1, 2)
+        # Never the reset divider: a drawn period equal to the default would also pass
+        # when the written divider never reaches avs_clock_o.
+        divider = rng.choice(
+            [d for d in range(DIVIDER_MIN, DIVIDER_MAX + 1, 2) if d != RESET_DIVIDER]
+        )
         cocotb.log.info(
-            "RAND-SEED: %d; RAND-DRAW: CLK_DIVIDER_VALUE %d (even, %d..%d); the S8 resync "
-            "point is drawn once the SEP_IN write time of this run is measured",
+            "RAND-SEED: %d; RAND-DRAW: CLK_DIVIDER_VALUE %d (even, %d..%d, never the reset "
+            "divider %d); the S8 resync point is drawn once the SEP_IN write time of this run "
+            "is measured",
             self.seed,
             divider,
             DIVIDER_MIN,
             DIVIDER_MAX,
+            RESET_DIVIDER,
         )
         for sig in (
             "tb_avs_clk_from_dut",

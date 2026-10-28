@@ -3440,8 +3440,10 @@ probe; `tb_avs_sdata_ext` held low by the bench; bench clocks `clk_smc_i` and `c
 `smoke`; `timeout_sec` 1800; tags `ci`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
 *Randomization*: RANDCFG; the seed draws the divider value (`AVS_CFG_1.CLK_DIVIDER_VALUE` of
-`avsbus_controller.rdl`: even, 2 to 254, because the field takes a lower value as 2 and 0 as the
-hardware default and a 50 % duty cycle is possible only on even values; the duty cycle enters no
+`avsbus_controller.rdl`: even, 2 to 254 and never the reset value 4, so the drawn period differs
+from the default and a written divider that never reaches `avs_clock_o` fails the compare; even
+because the field takes a lower value as 2 and 0 as the hardware default and a 50 % duty cycle is
+possible only on even values; the duty cycle enters no
 compare, the interval compares being in `avs_clock_o` periods, so the parity is a convention of the
 draw and not a graded property) and writes it between step 5 and step 6, so steps 3 to 5 run on the
 reset divider, `clk_ref_i` divided by 4 (`hw/ip/avsbus_controller/doc/architecture.adoc`, Clock
@@ -5001,7 +5003,8 @@ register requires takes effect and a narrower one answers OKAY and leaves the re
 (`hw/sys/smc/doc/watchdog.adoc`, Register Access: all four bytes of `COUNT`, `COUNT_HI`, `FEED` and
 `KEY`, bytes 0 and 1 of `SCALED_COUNT` and `CMP`, and each `CTRL` byte on its own); the read-back
 after an effective write is the value `wdt.rdl` states per register: `CTRL` the pattern in its
-enabled bytes with the other bytes unchanged, masked to its fields with bit 28 masked, `CMP` the
+enabled bytes with the other bytes keeping the non-zero, non-arming background written and read
+back before the strobed write, masked to its fields with bit 28 masked, `CMP` the
 pattern masked to `wdogcmp0[15:0]`, `COUNT` the pattern masked to `wdogcount[30:0]` plus at most the
 `clk_smc_i` cycles elapsed between the write and the read (the counter is set to the written value
 and counts on; `COUNT` is read before the write too, so a dropped write shows as the count running
@@ -5120,7 +5123,8 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
 |`CHK-WDT-DRAWN-STROBE-WALK` |Each of the 28 (core, register) cells, in the drawn order, takes a
   keyed write of its drawn pattern under its drawn byte-enable mask, every register but `CTRL`
   effective on two drawn cores and narrower on the other two: an effective write reads back as
-  `wdt.rdl` states (`CTRL` in its enabled bytes masked to its fields with bit 28 masked, `CMP`
+  `wdt.rdl` states (`CTRL` in its enabled bytes over the non-zero, non-arming background the
+  cell wrote first, masked to its fields with bit 28 masked, `CMP`
   [15:0], `COUNT` the pattern plus at most the `clk_smc_i` cycles elapsed between the write and
   the read, `COUNT_HI` 0, `KEY` 0 per the `KEY` field, "returns 1 if key has been written to it
   and it is unlocked, 0 otherwise", `SCALED_COUNT` inside the `COUNT` bracket) and a narrower write
@@ -12526,17 +12530,19 @@ scoreboard's per-bus access counts and exact-value compare count
 
 *Randomization*: RAND-REP; the seed draws the hold length of the R-hold pulses on
 `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` (1 to 64 `clk_smc_i` cycles per beat, in place of the
-eight of the directed walk), on SEP_IN in place of the `b_ready_delay` of step 7 the length of a
+eight of the directed walk), on SEP_IN before the `b_ready_delay` of step 7 the length of a
 hold on `tb_sep_axi_b_hold` (16 to 256 cycles, raised once a W handshake is seen; the bench has that
-drive on SEP_IN only, so the SYS_IN and JTAG legs of step 7 keep their `b_ready_delay`), the AxID of
+drive on SEP_IN only, and every port keeps the `b_ready_delay`, which supplies the stall cycles the
+DUT has to present), the AxID of
 every item of steps 7 to 9 (the `axi_id` of each `SmcSysAxiItem`, from the port's ID space: 64 on
 SEP_IN and SYS_IN, 4 on JTAG, the 6-, 6- and 2-bit inbound widths of `hw/sys/smc/doc/fabric.adoc`,
 AXI ID Widths by Fabric Stage) and the interleave of the outstanding accesses (the item order of
 each group of steps 7 and 9); every access answers OKAY with the word of its own address, as
 `CHK-CTP-BREADY-PORTS` (the B hold, the IDs and the order of step 7; the bench gates BVALID and
 BREADY while the hold is up, so the watch's B handshake count, recorded when the hold goes up, must
-stand still until the hold drops and be below the W handshake count at the drop, with at least one
-held cycle while a B was pending), `CHK-CTP-RREADY-BEATS` (the R-hold lengths and the IDs) and
+stand still until the hold drops and be below the W handshake count at the drop, and the stall
+evidence is the BREADY delay after the drop: at least one BVALID-high, BREADY-low cycle from the
+DUT, as on the other ports), `CHK-CTP-RREADY-BEATS` (the R-hold lengths and the IDs) and
 `CHK-CTP-RANDOM-STALLS` (the IDs and the interleave, with the AW, W and AR delays the directed walk
 already drew) grade it; 3 seeds per regression (`reseed = 3`).
 
@@ -12560,8 +12566,8 @@ still completes OKAY with the word of its own address.
   0xC0DE_3004..0xC0DE_3007.
 * Eight outstanding 8-byte writes per port, in a drawn order with drawn AxIDs, all complete OKAY
   under a hold of B: on SEP_IN a drawn `tb_sep_axi_b_hold` length, under which the B handshake
-  count stands still and stays below the W handshake count, with at least one held cycle while a B
-  was pending, on SYS_IN and JTAG a 64-cycle BREADY hold with at least one B stall cycle; the port
+  count stands still and stays below the W handshake count, followed on every port by a 64-cycle
+  BREADY hold with at least one B stall cycle from the DUT; the port
   watch sees at least eight B handshakes and each word reads back as written (`fabric.adoc`,
   Configuration Parameters, transaction limits).
 * A 4-beat 8-byte read per port, with a drawn AxID, under a 32-cycle RREADY hold returns the four
@@ -12636,8 +12642,8 @@ fewer AW handshakes fail the run.
 |`CHK-CTP-BREADY-PORTS` |On each port the eight writes, in the drawn order with drawn AxIDs, answer
 OKAY under the hold of B (the drawn `tb_sep_axi_b_hold` length on SEP_IN, under which the watch's B
 handshake count recorded when the hold went up is unchanged when it drops and below the W handshake
-count at the drop, with at least one held cycle while a B was pending; the 64-cycle BREADY hold on
-SYS_IN and JTAG with at least one B stall cycle), the watch counts at least eight B handshakes, and
+count at the drop; then the 64-cycle BREADY hold on every port with at least one B stall cycle from
+the DUT), the watch counts at least eight B handshakes, and
 every word reads back equal to the word written.
 |`CHK-CTP-RREADY-BEATS` |On each port the 4-beat read returns the four words written in the BREADY
 step in order with RLAST on the fourth beat only, and the watch counts at least one R stall cycle;
@@ -46285,7 +46291,7 @@ entry's `*Randomization*` field.
 |`smc_avsbus_resync_timing_test`
 |<<smc-vplan-area-power,POWER>>
 |RANDCFG
-|the seed draws the divider (`AVS_CFG_1.CLK_DIVIDER_VALUE`, even, 2 to 254) written under the premux gate between steps 5 and 6, and the resync point at which step 8 rewrites the interval; 3 seeds per regression.
+|the seed draws the divider (`AVS_CFG_1.CLK_DIVIDER_VALUE`, even, 2 to 254, never the reset value 4) written under the premux gate between steps 5 and 6, and the resync point at which step 8 rewrites the interval; 3 seeds per regression.
 |`smc_octs_csr_access_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE

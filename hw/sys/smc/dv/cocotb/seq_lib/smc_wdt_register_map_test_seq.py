@@ -140,7 +140,9 @@ def walk_accesses(plan: list[tuple[int, str, int, int]]) -> int:
         total += 4
         if reg == "SCALED_COUNT":
             total += 2
-        total += {"CTRL": 3, "COUNT": 3, "CMP": 3}.get(reg, 0)
+        # CTRL: background write, read-back and second unlock before the strobed write, and
+        # the restore write and read-back after it.
+        total += {"CTRL": 6, "COUNT": 3, "CMP": 3}.get(reg, 0)
     return total
 
 
@@ -396,6 +398,21 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
         eff = _effective(reg, mask)
         tag = f"S10_C{core}_{reg}"
         await self._unlock(f"{tag}_KEY", core)
+        background = 0
+        if reg == "CTRL":
+            # A non-zero, non-arming background (no enable bit) in every writable byte,
+            # written and read back before the strobed write, so a DUT that zero-fills the
+            # bytes the strobe leaves out fails the compare below.
+            background = ~pattern & WDT_CTRL_ALL_WRITABLE & ~WDT_CTRL_ENABLES
+            for lane in (WDT_CTRL_ALL_WRITABLE & 0xFF, WDT_CTRL_ALL_WRITABLE & 0xFF00):
+                if not background & lane:
+                    background |= lane & -lane
+            await self.csr_write(f"{tag}_BG_WR", addr, background)
+            bg_rb = await self.csr_read(f"{tag}_BG_RB", addr)
+            assert bg_rb & ~WDT_CTRL_IP_BIT == background, (
+                f"{tag}: CTRL reads 0x{bg_rb:08x} after the background write 0x{background:08x}"
+            )
+            await self._unlock(f"{tag}_KEY_AGAIN", core)
         before_ps = get_sim_time("ps")
         before = (
             await self.csr_read(f"{tag}_COUNT_BEFORE", self._reg(core, "COUNT"))
@@ -409,12 +426,18 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
         # bound on how far a counter set by the write can have counted on by the read.
         elapsed = math.ceil((get_sim_time("ps") - write_ps) / (self.t_smc_ns * 1000.0))
         if reg == "CTRL":
-            want = (pattern & _byte_mask(mask)) & WDT_CTRL_ALL_WRITABLE
+            # The enabled bytes take the pattern, the other bytes keep the background.
+            lanes = _byte_mask(mask)
+            want = ((pattern & lanes) | (background & ~lanes)) & WDT_CTRL_ALL_WRITABLE
             assert rb & ~WDT_CTRL_IP_BIT == want, (
                 f"{tag}: CTRL reads 0x{rb:08x} (bit 28 masked 0x{rb & ~WDT_CTRL_IP_BIT:08x}) "
-                f"after pattern 0x{pattern:08x} mask 0x{mask:x}, expected 0x{want:08x}"
+                f"after pattern 0x{pattern:08x} mask 0x{mask:x} over background "
+                f"0x{background:08x}, expected 0x{want:08x}"
             )
-            verdict = f"rb=0x{rb:08x} == 0x{want:08x} with bit 28 masked"
+            verdict = (
+                f"rb=0x{rb:08x} == 0x{want:08x} with bit 28 masked (background 0x{background:08x} "
+                f"in the bytes the strobe left out)"
+            )
         elif reg == "CMP":
             want = pattern & WDT_CMP_MASK if eff else self.cmp_model[core]
             assert rb == want, f"{tag}: CMP reads 0x{rb:x}, expected 0x{want:x} (eff={eff})"
