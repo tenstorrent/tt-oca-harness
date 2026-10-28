@@ -287,8 +287,8 @@ async def aes_mode_fcov(plan: Plan) -> bool:
     Writes the owner code, the MODE, KEY_LEN and OPERATION codes of the cell into the
     ``aes_mx_*`` variables of ``u_sep_fcov`` and adds 1 to ``aes_mx_seq``. The sampler
     scores the cell only when these codes equal the committed AES control. Returns False
-    on Verilator (no sampler); on any other simulator a sampler without ``aes_mx_seq`` is
-    a testbench error.
+    on Verilator (``fcov_present``); on any other simulator a sampler without
+    ``aes_mx_seq`` is a testbench error.
     """
     code = owner_code(TEST)
     if not fcov_present():

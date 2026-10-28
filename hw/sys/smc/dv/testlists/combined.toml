@@ -13,6 +13,7 @@ run_modes = ["smoke"]
 name = "smc_irq_during_powergood_glitch_test"
 module = "smc_irq_during_powergood_glitch_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "combined"]
 run_modes = ["smoke"]
@@ -40,6 +41,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["smoke", "ci", "combined", "canonical"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_periph"]
 
 [[groups]]
 name = "combined"

@@ -1652,7 +1652,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
-                <ipxact:value>'hf0</ipxact:value>
+                <ipxact:value>'hf</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>8</ipxact:bitWidth>

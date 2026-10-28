@@ -731,11 +731,13 @@ class smu_axi_in_attribute_sweep_test_seq:
             "CHK-SMCMAP-SIZE the regrown REGION_SIZE reaches the SMC broadcast port",
             self._sample_int("smc_region_size_o"),
             REGION_SIZE_RESET,
+            evidence="CHK-SMCMAP-SIZE",
         )
         sb.expect_eq(
             "CHK-SMCMAP-SIZE REGION_SIZE reads back its reset value after the regrow",
             await self._j2a_rd32(jtag, REGION_SIZE_ADDR, "REGION_SIZE_REGROW_RB"),
             REGION_SIZE_RESET,
+            evidence="CHK-SMCMAP-SIZE",
         )
         self._log(
             f"CHK-SMCMAP-SIZE: shrunk 0x{REGION_SIZE_SHRUNK:x} -> reset 0x{REGION_SIZE_RESET:x} "

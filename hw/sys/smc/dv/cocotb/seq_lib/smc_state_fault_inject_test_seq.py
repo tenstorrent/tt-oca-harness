@@ -27,6 +27,9 @@ responder count carries it end to end.
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 
@@ -89,11 +92,94 @@ EFUSE_ERROR_DATA = 0xBADCAB1E
 ZEROER_ERROR = 0b000
 ZEROER_IDLE = 0b001
 ZEROER_ILLEGAL_STATES = (0b011, 0b101, 0b110, 0b111)
+EFUSE_UNUSED_STATES = (0b00, 0b11)
+BLOCKS = ("program", "read", "zeroer")
+RECOVERY_ORDERS = (("legal", "clear"), ("clear", "legal"))
 _BOUND = 10_000
 
 
 class smc_state_fault_inject_test_seq(SmcCsrSeq):
-    """Prove same-cycle request suppression and fail-closed recovery."""
+    """Prove same-cycle request suppression and fail-closed recovery.
+
+    RAND-REP: the seed draws the block order, which unused encoding of each eFuse interface is
+    injected with no request outstanding and which concurrently with a live operation, the
+    injection cycle of the live one relative to the request (an offset inside the cycles the
+    baseline operation held its request valid, so the corruption lands while the operation is
+    live), the order in which the legal read and the read-error clear follow the two illegal-state
+    injections and the physical read error, and the order of the four illegal Zeroer encodings.
+    Every encoding is still walked in every run; the Zeroer injection stays from IDLE as the
+    entry pins it.
+    """
+
+    def __init__(self, name: str = "smc_state_fault_inject_test_seq") -> None:
+        super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(self.seed)
+        self.block_order = rng.sample(BLOCKS, len(BLOCKS))
+        # Per eFuse block: (encoding injected idle, encoding injected live, idle first?).
+        self.efuse_cells: dict[str, tuple[int, int, bool]] = {}
+        for kind in ("program", "read"):
+            idle, live = rng.sample(EFUSE_UNUSED_STATES, 2)
+            self.efuse_cells[kind] = (idle, live, rng.random() < 0.5)
+        # The live injection offset is a fraction of the measured request window, resolved once
+        # the baseline operation has been timed (see _live_offset).
+        self.offset_fraction = {kind: rng.random() for kind in ("program", "read")}
+        # The order is drawn for the two illegal-state injections and the physical error. The
+        # guard error keeps the clear first: the bench forces the read interface's request-error
+        # input and a released input holds the forced value until its driver next changes, which
+        # the clear does. The secure-test refusal is followed by the clear alone: its forced input
+        # is driven by a constant, so nothing re-drives it after the release.
+        self.recovery = {
+            label: rng.choice(RECOVERY_ORDERS)
+            for label in ("ILLEGAL_IDLE", "ILLEGAL_LIVE", "PHYSICAL")
+        }
+        self.recovery["GUARD"] = ("clear", "legal")
+        self.recovery["SECURE_TEST"] = ("clear",)
+        self.zeroer_order = rng.sample(ZEROER_ILLEGAL_STATES, len(ZEROER_ILLEGAL_STATES))
+        self.valid_cycles: dict[str, int] = {}
+        self.offsets: dict[str, int] = {}
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: block order %s; eFuse (idle, live, idle first) program=%s "
+            "read=%s; live offset fractions program=%.3f read=%.3f; read recovery order %s; "
+            "zeroer order %s",
+            self.seed,
+            self.block_order,
+            self.efuse_cells["program"],
+            self.efuse_cells["read"],
+            self.offset_fraction["program"],
+            self.offset_fraction["read"],
+            {k: "->".join(v) for k, v in self.recovery.items()},
+            [f"{e:03b}" for e in self.zeroer_order],
+        )
+
+    def _live_offset(self, kind: str) -> int:
+        """Injection cycle of the live corruption: inside the measured request window."""
+        window = self.valid_cycles[kind]
+        offset = int(self.offset_fraction[kind] * max(0, window - 1))
+        offset = min(offset, max(0, window - 2))
+        self.offsets[kind] = offset
+        cocotb.log.info(
+            "RAND-DRAW: %s live injection offset %d cycles after the request rose (baseline "
+            "request window %d cycles)",
+            kind,
+            offset,
+            window,
+        )
+        return offset
+
+    async def _watch_valid(self, kind: str, label: str) -> int:
+        """Count the clk_smc_i rises at which the ``kind`` request valid reads 1 in one op."""
+        signal = getattr(cocotb.top, f"tb_efuse_{kind}_req_valid")
+        seen = 0
+        for _ in range(_BOUND):
+            await RisingEdge(cocotb.top.clk_smc_i)
+            await ReadOnly()
+            assert signal.value.is_resolvable, f"{label}: request valid sampled X/Z"
+            if int(signal.value):
+                seen += 1
+            elif seen:
+                return seen
+        raise AssertionError(f"{label}: request valid never rose and fell within {_BOUND} cycles")
 
     async def _wait_signal(self, signal, value: int, label: str) -> None:
         for _ in range(_BOUND):
@@ -109,6 +195,7 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         kind: str,
         encoding: int,
         expect_prior_request: bool,
+        offset: int = 0,
     ) -> None:
         dut = cocotb.top
         state = getattr(dut, f"tb_efuse_{kind}_state")
@@ -119,6 +206,13 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
 
         if expect_prior_request:
             await self._wait_signal(request, 1, f"{kind} request before corruption")
+            for n in range(offset):
+                await RisingEdge(dut.clk_smc_i)
+                await ReadOnly()
+                assert int(request.value) == 1, (
+                    f"{kind}: the operation completed {n + 1} cycles after its request rose, "
+                    f"before the drawn injection cycle {offset}"
+                )
         # The error flag is clear going in, so the flag the FSM raises on the
         # illegal encoding is a transition this injection caused.
         assert int(error.value) == 0, f"{kind}: error already set before corruption"
@@ -182,28 +276,47 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         await self.csr_write(f"{label}_IDLE", PROGRAM_CTRL, 0)
         return value
 
-    async def _program_faults(self) -> None:
-        dut = cocotb.top
+    async def _program_idle_injection(self, encoding: int) -> None:
+        await self._inject_efuse_state(
+            kind="program", encoding=encoding, expect_prior_request=False
+        )
+        await self._check_efuse_fault_csr("program", f"PROGRAM_ILLEGAL_{encoding:02b}_CSR")
+        await self._program_recovered(f"PROGRAM_RECOVERED_{encoding:02b}")
 
-        value = await self._program_legal("PROGRAM_BASELINE")
-        assert not (value & PROG_STATUS), f"program baseline completed with error (0x{value:08x})"
-        prior = int(dut.tb_efuse_program_readback.value)
-        assert prior != EFUSE_ERROR_DATA, "program baseline already equals illegal-state sentinel"
-
-        await self._inject_efuse_state(kind="program", encoding=0b00, expect_prior_request=False)
-        await self._check_efuse_fault_csr("program", "PROGRAM_ILLEGAL_00_CSR")
-        await self._program_recovered("PROGRAM_RECOVERED_00")
-
+    async def _program_live_injection(self, encoding: int) -> None:
         monitor = cocotb.start_soon(
-            self._inject_efuse_state(kind="program", encoding=0b11, expect_prior_request=True)
+            self._inject_efuse_state(
+                kind="program",
+                encoding=encoding,
+                expect_prior_request=True,
+                offset=self._live_offset("program"),
+            )
         )
         await self.csr_write(
             "PROGRAM_CORRUPT_GO", PROGRAM_CTRL, PROG_DATA | PROG_GO | PROG_RB | PROG_EN
         )
         await monitor
-        await self._check_efuse_fault_csr("program", "PROGRAM_ILLEGAL_11_CSR")
+        await self._check_efuse_fault_csr("program", f"PROGRAM_ILLEGAL_{encoding:02b}_CSR")
         await self.csr_write("PROGRAM_CORRUPT_IDLE", PROGRAM_CTRL, 0)
-        await self._program_recovered("PROGRAM_RECOVERED_11")
+        await self._program_recovered(f"PROGRAM_RECOVERED_{encoding:02b}")
+
+    async def _program_faults(self) -> None:
+        dut = cocotb.top
+
+        watch = cocotb.start_soon(self._watch_valid("program", "PROGRAM_BASELINE"))
+        value = await self._program_legal("PROGRAM_BASELINE")
+        self.valid_cycles["program"] = await watch
+        assert not (value & PROG_STATUS), f"program baseline completed with error (0x{value:08x})"
+        prior = int(dut.tb_efuse_program_readback.value)
+        assert prior != EFUSE_ERROR_DATA, "program baseline already equals illegal-state sentinel"
+
+        idle, live, idle_first = self.efuse_cells["program"]
+        legs = [
+            (self._program_idle_injection, idle),
+            (self._program_live_injection, live),
+        ]
+        for leg, encoding in legs if idle_first else reversed(legs):
+            await leg(encoding)
 
     async def _program_recovered(self, label: str) -> None:
         """The block is back in service after an illegal state.
@@ -232,34 +345,85 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         await completion
         await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
 
-    async def _read_faults(self) -> None:
+    async def _read_refused(self, label: str) -> None:
+        """A start the interface refuses: no command issues and done stays set.
+
+        The read interface answers a secure-test-mode start from IDLE in one
+        cycle with read_error set, the return data cleared and read_done left
+        at 1 (efuse_read_interface.sv, ST_READ_IDLE refused branch), so there
+        is no done-low window to wait for.
+        """
         dut = cocotb.top
-        await self._read_once("READ_BASELINE")
-        prior = int(dut.tb_efuse_readback.value)
-        assert prior != EFUSE_ERROR_DATA, "read baseline already equals illegal-state sentinel"
-
-        await self._inject_efuse_state(kind="read", encoding=0b00, expect_prior_request=False)
-        await self._check_efuse_fault_csr("read", "READ_ILLEGAL_00_CSR")
-        await self._read_once("READ_SUCCESS_AFTER_ILLEGAL")
-        assert int(dut.tb_efuse_read_error.value) == 0, (
-            "successful read did not clear the illegal-state error"
+        await self.csr_write(f"{label}_GO", READ_CTRL, READ_GO | READ_EN)
+        await self._wait_signal(dut.tb_efuse_read_error, 1, f"{label} refused")
+        assert int(dut.tb_efuse_read_done.value) == 1, (
+            f"{label}: a refused start dropped read_done; the command was issued"
         )
+        await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
 
+    async def _read_recovery(self, key: str, label: str) -> None:
+        """The legal read and the read-error clear that follow an injection, in the drawn order.
+
+        The legal read must clear the prior read error (observed at its acceptance) and
+        complete without one; the clear is the REQ_ERROR W1P write. Either order holds, as
+        the clear does not touch the read interface's own error flag.
+        """
+        dut = cocotb.top
+        for step in self.recovery[key]:
+            if step == "legal":
+                assert int(dut.tb_efuse_read_error.value) == 1, (
+                    f"{label}: the read error is not set when the legal read starts"
+                )
+                await self._read_once(f"READ_{label}_LEGAL")
+                assert int(dut.tb_efuse_read_error.value) == 0, (
+                    f"{label}: the legal read after the injection left the read error set"
+                )
+            else:
+                await self.csr_write(f"READ_{label}_REQ_ERR_CLEAR", STATUS, REQ_ERR_CLR)
+                await self.csr_write(f"READ_{label}_REQ_ERR_CLEAR_IDLE", STATUS, 0)
+
+    async def _read_idle_injection(self, encoding: int) -> None:
+        await self._inject_efuse_state(kind="read", encoding=encoding, expect_prior_request=False)
+        await self._check_efuse_fault_csr("read", f"READ_ILLEGAL_{encoding:02b}_CSR")
+        await self._read_recovery("ILLEGAL_IDLE", f"ILLEGAL_{encoding:02b}")
+
+    async def _read_live_injection(self, encoding: int) -> None:
         monitor = cocotb.start_soon(
-            self._inject_efuse_state(kind="read", encoding=0b11, expect_prior_request=True)
+            self._inject_efuse_state(
+                kind="read",
+                encoding=encoding,
+                expect_prior_request=True,
+                offset=self._live_offset("read"),
+            )
         )
         await self.csr_write("READ_CORRUPT_GO", READ_CTRL, READ_GO | READ_EN)
         await monitor
-        await self._check_efuse_fault_csr("read", "READ_ILLEGAL_11_CSR")
+        await self._check_efuse_fault_csr("read", f"READ_ILLEGAL_{encoding:02b}_CSR")
         await self.csr_write("READ_CORRUPT_IDLE", READ_CTRL, 0)
-        await self._read_once("READ_SUCCESS_AFTER_CORRUPT")
-        assert int(dut.tb_efuse_read_error.value) == 0, (
-            "successful read did not clear the in-flight illegal-state error"
-        )
+        await self._read_recovery("ILLEGAL_LIVE", f"CORRUPT_{encoding:02b}")
+
+    async def _read_faults(self) -> None:
+        dut = cocotb.top
+        watch = cocotb.start_soon(self._watch_valid("read", "READ_BASELINE"))
+        await self._read_once("READ_BASELINE")
+        self.valid_cycles["read"] = await watch
+        prior = int(dut.tb_efuse_readback.value)
+        assert prior != EFUSE_ERROR_DATA, "read baseline already equals illegal-state sentinel"
+
+        idle, live, idle_first = self.efuse_cells["read"]
+        legs = [(self._read_idle_injection, idle), (self._read_live_injection, live)]
+        for leg, encoding in legs if idle_first else reversed(legs):
+            await leg(encoding)
 
         for selector, name in ((0b01, "PHYSICAL"), (0b10, "GUARD"), (0b11, "SECURE_TEST")):
             dut.tb_efuse_read_error_inject.value = selector
-            await self._read_once(f"READ_{name}_ERROR")
+            if name == "SECURE_TEST":
+                # Secure test mode is checked at the start: the read interface
+                # refuses the start without issuing a command, so read_done
+                # never drops and the error is reported from IDLE.
+                await self._read_refused(f"READ_{name}_ERROR")
+            else:
+                await self._read_once(f"READ_{name}_ERROR")
             assert int(dut.tb_efuse_read_error.value) == 1, (
                 f"{name}: read error output did not assert"
             )
@@ -268,8 +432,7 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             )
             dut.tb_efuse_read_error_inject.value = 0
             await RisingEdge(dut.clk_smc_i)
-            await self.csr_write(f"READ_{name}_REQ_ERR_CLEAR", STATUS, REQ_ERR_CLR)
-            await self.csr_write(f"READ_{name}_REQ_ERR_CLEAR_IDLE", STATUS, 0)
+            await self._read_recovery(name, name)
 
     async def _zeroer_cold_reset(self, label: str) -> None:
         dut = cocotb.top
@@ -388,12 +551,13 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             f"{seen['busy_cycles']} cycle(s) in states {sorted(seen['states'])}, produced "
             f"exactly one output-fabric write beat (0 at 0x{OUTPUT_FABRIC_ADDR:x}) and "
             "returned to IDLE with CSR busy clear, so the SYS_OUT write path is open "
-            "immediately before the deny that follows"
+            f"immediately before the deny that follows; drawn=seed {self.seed} zeroer order "
+            f"{[f'{e:03b}' for e in self.zeroer_order]}"
         )
 
     async def _zeroer_faults(self) -> None:
         dut = cocotb.top
-        for encoding in ZEROER_ILLEGAL_STATES:
+        for encoding in self.zeroer_order:
             # Each encoding gets its own control immediately before its
             # injection, so the deny below differs from the control in the FSM
             # state alone: the filters the control programs are still in place,
@@ -471,14 +635,29 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
-        await self._program_faults()
-        await self._read_faults()
-        await self._zeroer_faults()
+        blocks = {
+            "program": self._program_faults,
+            "read": self._read_faults,
+            "zeroer": self._zeroer_faults,
+        }
+        for block in self.block_order:
+            await blocks[block]()
+        cells = "; ".join(
+            f"{kind}: {idle:02b} idle, {live:02b} live at offset {self.offsets[kind]} of "
+            f"{self.valid_cycles[kind]} request cycles, {'idle' if first else 'live'} first"
+            for kind, (idle, live, first) in self.efuse_cells.items()
+        )
         cocotb.log.info(
             "CHK-STATE-FAULT PASS: eFuse 00/11 suppressed the request, failed closed with "
             "done/status set in the CSR and the sentinel read-back, then completed a legal "
             "operation; read error sources set status; Zeroer 011/101/110/111 each entered the "
             "absorbing error state from IDLE, reported busy over the CSR, ignored the CTRL_STATUS "
             "start write that its own control had just used to zero a programmed region from "
-            "IDLE over an open SYS_OUT path, and a cold reset returned it to IDLE"
+            "IDLE over an open SYS_OUT path, and a cold reset returned it to IDLE; drawn=seed %d "
+            "block order %s; %s; read recovery order %s; zeroer order %s",
+            self.seed,
+            self.block_order,
+            cells,
+            {k: "->".join(v) for k, v in self.recovery.items()},
+            [f"{e:03b}" for e in self.zeroer_order],
         )

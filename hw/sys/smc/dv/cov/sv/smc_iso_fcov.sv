@@ -114,10 +114,9 @@ module smc_iso_fcov (
       && (rst_primary_smc_clk_ni === 1'b0);
   `OCAH_FCOV_COVER(c_cool_reset_from_gpio_pin_61, cool_from_pin_e, clk_smc_i, not_powered)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: which isolation terms were live at
-  // once, which the flat point list cannot cross.
+  // Covergroup: which isolation terms were live at once, which the flat
+  // point list cannot cross.
   // ------------------------------------------------------------------
   covergroup cg_isolate_terms with function sample (
       logic sw_term, logic flr_term, logic any_isolated
@@ -126,11 +125,19 @@ module smc_iso_fcov (
     cp_sw: coverpoint sw_term {bins clear = {1'b0}; bins set = {1'b1};}
     cp_flr: coverpoint flr_term {bins clear = {1'b0}; bins set = {1'b1};}
     cp_any: coverpoint any_isolated {bins none = {1'b0}; bins some = {1'b1};}
-    // Each subsystem's isolation is the OR of the software, pin and FLR terms
-    // (clk_rst.adoc, Isolation Control Architecture), so a software request
-    // with nothing isolated is not a state the composition can hold.
-    x_terms: cross cp_sw, cp_flr, cp_any{
-      ignore_bins sw_without_isolation = binsof (cp_sw.set) && binsof (cp_any.none);
+    // {sw_term, flr_term, any_isolated}: each subsystem's isolation is the OR
+    // of the software, pin and FLR terms (clk_rst.adoc, Isolation Control
+    // Architecture), so a software request with nothing isolated is not a
+    // state the composition can hold.
+    cp_terms: coverpoint {
+      sw_term, flr_term, any_isolated
+    } {
+      bins clear_clear_none = {3'b000};
+      bins clear_clear_some = {3'b001};
+      bins clear_set_none = {3'b010};
+      bins clear_set_some = {3'b011};
+      bins set_clear_some = {3'b101};
+      bins set_set_some = {3'b111};
     }
   endgroup
 
@@ -142,6 +149,5 @@ module smc_iso_fcov (
                                 isolate_req_i != 32'd0);
     end
   end
-`endif
 
 endmodule : smc_iso_fcov
