@@ -232,6 +232,9 @@ compile_args = [
 # drops never enters the database. See cov/config/vcs/README.md for what the
 # scoped number is and why; the sibling .hier file carries the same intent for
 # VCS and has to be kept in step by hand.
+#
+# smc_fcov.vlt keeps the covergroup bin counters of the cov/sv collectors
+# valid in the coverage database.
 build_args = [
   "--coverage-line",
   "--coverage-expr",
@@ -239,6 +242,7 @@ build_args = [
   "--output-groups",
   "0",
   "{repo_root}/hw/sys/smc/dv/cov/config/verilator/smc_cov_scope.vlt",
+  "{repo_root}/hw/sys/smc/dv/cov/config/verilator/smc_fcov.vlt",
 ]
 
 [frameworks.cocotb]

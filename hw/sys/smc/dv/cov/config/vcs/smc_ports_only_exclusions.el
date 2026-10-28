@@ -1221,7 +1221,7 @@ ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is gr
 Condition 4 "1494341974" "(zero & nd_req_valid_i & nd_req_ready_o) 1 -1" (2 "101")
 Condition 6 "3950647113" "(last & nd_req_valid_i & burst_req_ready_i) 1 -1" (2 "101")
 
-CHECKSUM: "3215156436 3938785771"
+CHECKSUM: "2313761690 3938785771"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
 ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -1278,11 +1278,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_w
 ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1782633341" "(next_q == '1) 1 -1" (2 "1")
 Condition 2 "121455226" "(completed_q == '1) 1 -1" (2 "1")
-
-CHECKSUM: "1454847678 1105955355"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
-ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 5 "896891442" "((cur_size < (axi_data_t'(AxiStrbWidth) - axi_data_t'(cur_dest_addr[(AxiDataSize - 1):0]))) ? cur_size[(AXI_DATA_WIDTH - 1):0] : ((axi_data_t'(AxiStrbWidth) - axi_data_t'(cur_dest_addr[(AxiDataSize - 1):0])))) 1 -1" (2 "1")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[0].u_read_traffic_filter
@@ -1361,6 +1356,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_s
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
+Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[1].u_read_traffic_filter
@@ -1446,7 +1442,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_s
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[8].u_read_traffic_filter
@@ -1539,13 +1534,13 @@ CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[14].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[2].u_read_traffic_filter
@@ -1620,13 +1615,13 @@ CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[8].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
+Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[8].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_output_fabric.u_smc_sys_outbound_filter.gen_filter_config[9].u_read_traffic_filter
@@ -6308,12 +6303,12 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_readas
 ANNOTATION: "SMC-T10-CDC-SYNC-PORTS-ONLY: the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1384930558" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "1921157106 3045344841"
+CHECKSUM: "2147923145 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "1047115886 3290552104"
+CHECKSUM: "3038696307 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
@@ -6324,7 +6319,7 @@ Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "01
 Condition 87 "3163058696" "(((!host_enable_i)) && trans_started) 1 -1" (3 "11")
 Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "1921157106 3045344841"
+CHECKSUM: "2147923145 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
@@ -6333,7 +6328,7 @@ Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_cou
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "1047115886 3290552104"
+CHECKSUM: "3038696307 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "1774200601" "(((!host_enable_i)) || event_arbitration_lost_o || bus_timeout_i) 1 -1" (2 "001")
@@ -6402,26 +6397,26 @@ Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_sy
 Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (2 "10111")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (1 "011")
 
-CHECKSUM: "4138443418 467777835"
+CHECKSUM: "646034759 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (1 "01111")
 
-CHECKSUM: "3268358166 4119665143"
+CHECKSUM: "2117159968 4067590397"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "2635010072" "(fmt_fifo_depth == 7'(CONTROLLER_TX_FIFO_DEPTH)) 1 -1" (2 "1")
 Condition 9 "2160510923" "(tx_fifo_depth == 7'(TARGET_TX_FIFO_DEPTH)) 1 -1" (2 "1")
-Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
-Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (3 "0010")
-Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (4 "0100")
-Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
-Condition 15 "379368309" "(target_enable && line_loopback) 1 -1" (3 "11")
-Condition 20 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
-Condition 22 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
-Condition 23 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (2 "101")
-Condition 23 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (3 "110")
+Condition 14 "379368309" "(target_enable && line_loopback) 1 -1" (3 "11")
+Condition 19 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
+Condition 21 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
+Condition 22 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (2 "101")
+Condition 22 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (3 "110")
+Condition 34 "3530662444" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
+Condition 34 "3530662444" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (3 "0010")
+Condition 34 "3530662444" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (4 "0100")
+Condition 34 "3530662444" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
 Condition 35 "200185853" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
 Condition 36 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
 Condition 39 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
@@ -6443,16 +6438,13 @@ Condition 97 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error
 Condition 98 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 99 "2062372808" "(target_rx_fifo_error || target_rx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 100 "1299123668" "(event_bus_active_timeout && ((!host_idle))) 1 -1" (3 "11")
-Condition 103 "1461493260" "(host_enable && ((!line_loopback))) 1 -1" (2 "10")
-Condition 104 "3437070940" "(smbalert_sync_n | ((~smbus_en_i)) | (host_enable & line_loopback)) 1 -1" (2 "001")
-Condition 105 "3451897251" "(host_enable & line_loopback) 1 -1" (3 "11")
 Condition 107 "2208493021" "(target_enable && ((!target_loopback))) 1 -1" (2 "10")
 Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (3 "00000010")
 Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (5 "00001000")
 Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (7 "00100000")
 Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (8 "01000000")
 
-CHECKSUM: "1921157106 3045344841"
+CHECKSUM: "2147923145 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
@@ -6461,7 +6453,7 @@ Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_cou
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "1047115886 3290552104"
+CHECKSUM: "3038696307 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
@@ -6548,7 +6540,7 @@ Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt 
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (3 "110")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (4 "111")
 
-CHECKSUM: "4138443418 467777835"
+CHECKSUM: "646034759 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
@@ -6910,14 +6902,14 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
-CHECKSUM: "136830161 2574745303"
+CHECKSUM: "3370008930 2574745303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
 ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "2232577481" "(atready_o && atvalid_i) 1 -1" (1 "01")
 Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (2 "10")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (1 "01")
 
-CHECKSUM: "136830161 2574745303"
+CHECKSUM: "3370008930 2574745303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
 ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "2232577481" "(atready_o && atvalid_i) 1 -1" (1 "01")
@@ -6936,7 +6928,7 @@ ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is grad
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (2 "001")
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 
-CHECKSUM: "3108644366 1051719324"
+CHECKSUM: "1864467169 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
@@ -6963,7 +6955,7 @@ Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.r
 Condition 61 "321101586" "(modem_status_synced_q && (dcd != dcd_last_rd_val)) 1 -1" (1 "01")
 Condition 63 "446727046" "(modem_status_synced_q && (dsr != dsr_last_rd_val)) 1 -1" (1 "01")
 
-CHECKSUM: "3108644366 1051719324"
+CHECKSUM: "1864467169 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -7012,7 +7004,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "3108644366 1051719324"
+CHECKSUM: "1864467169 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -7063,7 +7055,7 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "3108644366 1051719324"
+CHECKSUM: "1864467169 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -7681,13 +7673,13 @@ ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded
 Block 23 "1626659636" "if (disable_sram_auto_init_i)"
 Block 24 "2390191028" "nxt_state = MEM_ZERO_DONE;"
 
-CHECKSUM: "1047115886 3676063925"
+CHECKSUM: "3038696307 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "4138443418 3820941057"
+CHECKSUM: "646034759 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -7700,7 +7692,7 @@ Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
 Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "1047115886 3676063925"
+CHECKSUM: "3038696307 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
@@ -7728,7 +7720,7 @@ Block 270 "1789187456" "state_d = IDLE;"
 Block 275 "627521164" "state_d = IDLE;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "4138443418 3820941057"
+CHECKSUM: "646034759 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -7743,7 +7735,7 @@ Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
 Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "3268358166 631037930"
+CHECKSUM: "2117159968 631037930"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 19 "2351103625" "controller_tx_ready_o = 1'b0;"
@@ -7755,7 +7747,7 @@ Block 43 "351329269" "if (tx_lt_threshold)"
 Block 44 "2869887708" "target_tx_ready_o = 1'b1;"
 Block 45 "1155078305" "target_tx_ready_o = 1'b0;"
 
-CHECKSUM: "1047115886 3676063925"
+CHECKSUM: "3038696307 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
@@ -7786,7 +7778,7 @@ Block 270 "1789187456" "state_d = IDLE;"
 Block 275 "627521164" "state_d = IDLE;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "4138443418 3820941057"
+CHECKSUM: "646034759 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -7941,7 +7933,7 @@ Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
 
-CHECKSUM: "3108644366 1365442774"
+CHECKSUM: "1864467169 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -7953,7 +7945,7 @@ ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2
 Block 89 "2875201528" "rx_fifo_threshold = rx_fifo_threshold_t'(8);"
 Block 90 "1036727875" "rx_fifo_threshold = rx_fifo_threshold_t'(14);"
 
-CHECKSUM: "3108644366 1365442774"
+CHECKSUM: "1864467169 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -7979,7 +7971,7 @@ Block 112 "3774925084" "intr_id = FIFO_ERROR;"
 Block 117 "1771405728" "intr_id = MODEM_STATUS;"
 Block 130 "3619336723" "cts = 1'b0;"
 
-CHECKSUM: "3108644366 1365442774"
+CHECKSUM: "1864467169 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
@@ -8005,7 +7997,7 @@ Block 98 "1709577418" "rx_fifo_threshold = rx_fifo_threshold_t'(4096);"
 Block 112 "3774925084" "intr_id = FIFO_ERROR;"
 Block 130 "3619336723" "cts = 1'b0;"
 
-CHECKSUM: "3108644366 1365442774"
+CHECKSUM: "1864467169 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
