@@ -43,9 +43,9 @@ In that retained window (SEC_DIS=1, sense stopped, every shadow at its reset
 value) the JTAG AXI-Lite port writes the shadow map. The lifecycle filter
 restricts JTAG only in PROD and RMA_SIP, and the held ``LC_STATE`` is
 neither, so the port reaches the map. A writable shadow takes the write. The
-``LC_STATE`` write is logged (OBS-SECDIS-LC-WR): the specification gives the
-pre-sense shadow word two values (adoc INVALID, RDL reset), so the
-terminal-rule outcome has no single golden. The external debug bus
+``LC_STATE`` write is logged (OBS-SECDIS-LC-WR): the held word is the INVALID
+encoding, and the specification does not state the effect of a write to that
+terminal word, so the outcome has no golden. The external debug bus
 must change around those writes and hold still in the quiet windows on each
 side of them; no lane position is assumed.
 
@@ -62,6 +62,8 @@ Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR is a log
   CHK-MAP-OPEN           LC_STATE shadow read answers OKAY under SEC_DIS
   CHK-SENSE-STUCK        sense stays stopped and the reset held under SEC_DIS
   CHK-RETAIN-*           the same five contracts after rst_ni with the token kept
+  CHK-RETAIN-LC-RESET    after that rst_ni the LC_STATE word reads its reset value
+                         0x0F (control: the word read a sensed value before it)
   CHK-SECDIS-SHADOW-WR   JTAG write of a 0 bit of REQUIRED_SIGNERS lands (frontdoor)
   CHK-SECDIS-DBG-BUS     ext_debug_bus_o changes around the JTAG writes and not
                          in the quiet windows (control: CHK-HOOK)
@@ -115,7 +117,7 @@ from env.sep_lcc_golden import (
 )
 from env.sep_rma_token import token_digest
 from sep_base_test import sep_base_test
-from sep_reg_meta import register_fields
+from sep_reg_meta import register_fields, word_reset
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_MATCH,
@@ -377,10 +379,11 @@ class sep_sec_dis_override_test(sep_base_test):
             label,
         )
 
-    async def _read_shadow_map(self, label: str) -> None:
+    async def _read_shadow_map(self, label: str) -> int:
         """Require an OKAY read of the LC_STATE shadow word while sense is open.
 
         The scoreboard does not also grade this response: this checker owns it.
+        Returns the read data.
         """
         self._require_sense_open(label, sec_dis=1)
         addr = SepEfuseImage.field("LC_STATE").shadow_addr
@@ -404,6 +407,39 @@ class sep_sec_dis_override_test(sep_base_test):
             label,
             addr,
             seq.rdata & 0xFFFF_FFFF,
+        )
+        return seq.rdata & 0xFFFF_FFFF
+
+    def _check_lc_reset_after_pulse(self, pre: int, post: int) -> None:
+        """CHK-RETAIN-LC-RESET: the rst_ni pulse under SEC_DIS returns LC_STATE to reset.
+
+        security_disable.adoc, Reset Persistence: after a cold reset with the match
+        kept, "Fuse sensing then does not start, every shadow register keeps its
+        reset value". The reset value is the RDL ``lc_state`` reset 0x0F, the
+        INVALID hold that otp_fuse_controller.adoc (Fuse Sensing and Boot
+        Sequencing) gives before sensing completes. The control is the read
+        before the pulse: the sense that the match stopped had loaded the LC_STATE
+        word, so it differs from the reset value, and a DUT that ignores the pulse
+        keeps it.
+        """
+        addr = SepEfuseImage.field("LC_STATE").shadow_addr
+        want = word_reset(addr) & 0xFFFF_FFFF
+        assert pre != want, (
+            f"CHK-RETAIN-LC-RESET FAIL: control: LC_STATE read 0x{pre:08x} before the "
+            f"rst_ni pulse, equal to its reset value 0x{want:08x}, so the readback after "
+            "the pulse cannot show the reset"
+        )
+        assert post == want, (
+            f"CHK-RETAIN-LC-RESET FAIL: LC_STATE @0x{addr:08x} read 0x{post:08x} after "
+            f"rst_ni under SEC_DIS, want its reset value 0x{want:08x} "
+            f"(before the pulse 0x{pre:08x})"
+        )
+        self.logger.info(
+            "CHK-RETAIN-LC-RESET PASS: LC_STATE @0x%08x pre=0x%08x post=0x%08x want=0x%08x",
+            addr,
+            pre,
+            post,
+            want,
         )
 
     async def _check_sense_stuck(self, label: str) -> None:
@@ -549,9 +585,9 @@ class sep_sec_dis_override_test(sep_base_test):
           "In addition to the shadow-register access control defined by
           <<sep-fuse-fields-table>>, the JTAG port shall be further restricted:
           in the PROD and RMA_SIP states it may reach only the eFuse MMR token
-          block." The held ``LC_STATE`` reset value is neither state under
-          either reading (adoc INVALID 4'b1111, RDL reset raw 4'b0000), so JTAG
-          has the table's access.
+          block." The held ``LC_STATE`` reset value, INVALID 4'b1111 in both
+          the adoc and the RDL, is neither state, so JTAG has the table's
+          access.
         * otp_fuse_controller.adoc, controller overview: the
           ``security_disable_i`` input "skips fuse sensing and opens the shadow
           registers to software". Fuse field table: REQUIRED_SIGNERS is "SW
@@ -561,9 +597,10 @@ class sep_sec_dis_override_test(sep_base_test):
         * LC_STATE: lifecycle_controller.adoc says the shadow output holds the
           INVALID encoding 4'b1111 before sensing, and "Invalid lifecycle
           encodings are terminal" (otp_fuse_controller.adoc, LC_STATE row);
-          sep_efuse_map.rdl gives the ``lc_state`` reset 0xf0 (raw 4'b0000).
-          The two disagree on the held word, so OBS-SECDIS-LC-WR logs the write
-          and readback without a verdict.
+          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. The
+          specification does not state the effect of a write to that terminal
+          word, so OBS-SECDIS-LC-WR logs the write and readback without a
+          verdict.
 
         The REQUIRED_SIGNERS write is graded by a frontdoor readback ("A read of the eFuse
         shadow map over the SEP bus completes with OKAY", security_disable.adoc).
@@ -639,9 +676,9 @@ class sep_sec_dis_override_test(sep_base_test):
             rs_want,
         )
 
-        # The LC_STATE shadow word before sense has no single spec value: the
-        # adoc INVALID encoding gives [7:0] = 0x0f, the RDL reset gives 0xf0. The
-        # terminal-rule outcome is logged until the spec settles the reset value.
+        # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f. The
+        # specification does not state the effect of a write to it, so the
+        # outcome is logged without a verdict.
         lc_post = await self._fd_read_word("CHK-SECDIS-DBG-BUS", lc_addr, "lc_state")
         self.logger.info(
             "OBS-SECDIS-LC-WR: sec_dis=1 sense_done=0 JTAG wr LC_STATE @0x%08x "
@@ -705,7 +742,7 @@ class sep_sec_dis_override_test(sep_base_test):
             f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 0/0"
         )
         await self._graded(self._check_override_after_match("CHK-OVR-AFTER"), OVR_PASS_ALONE_OPEN)
-        await self._read_shadow_map("CHK-MAP-OPEN")
+        lc_pre_reset = await self._read_shadow_map("CHK-MAP-OPEN")
         await self._check_sense_stuck("CHK-SENSE-STUCK")
 
         # Recovery flow: reset with the token kept.
@@ -713,7 +750,8 @@ class sep_sec_dis_override_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         await self._check_window_feat(1, "CHK-RETAIN-FEAT")
         self._check_reset_stays_sense_gated("CHK-RETAIN-RESET")
-        await self._read_shadow_map("CHK-RETAIN-MAP-OPEN")
+        lc_post_reset = await self._read_shadow_map("CHK-RETAIN-MAP-OPEN")
+        self._check_lc_reset_after_pulse(lc_pre_reset, lc_post_reset)
         await self._check_jtag_writes_under_sec_dis()
         await self._check_override_after_match("CHK-RETAIN-OVR")
         await self._check_sense_stuck("CHK-RETAIN-STUCK")
@@ -735,18 +773,24 @@ class sep_sec_dis_override_test(sep_base_test):
             f"CHK-SENSE-CONTROL FAIL: a healthy sense took {healthy} cycles, not fewer "
             f"than the {_STUCK_CYCLES}-cycle stuck windows, so those windows prove nothing"
         )
-        self.logger.info(
-            "CHK-SENSE-CONTROL PASS: healthy sense done %d cycles after rst_ni release "
-            "(< %d-cycle stuck windows)",
-            healthy,
-            _STUCK_CYCLES,
-        )
         cpu_rst = self.rd_known(cocotb.top.sep_cpu_reset_n_o)
         fabric_rst = self.rd_known(cocotb.top.dbg_sep_reset_n_o)
         assert cpu_rst == 1 and fabric_rst == 1, (
-            f"CHK-SENSE-GATED-RESET FAIL: after sense-done "
+            f"CHK-SENSE-CONTROL FAIL: after sense-done "
             f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 1/1 "
             "-- the pre-sense low check has no live high control without this"
+        )
+        # _healthy_sense_cycles raises unless the backdoor compare of every staged
+        # word against the sensed shadow finds no mismatch.
+        self.logger.info(
+            "CHK-SENSE-CONTROL PASS: healthy sense done %d cycles after rst_ni release "
+            "(< %d-cycle stuck windows); shadow_vs_staged words=%d mismatches=0; "
+            "sep_cpu_reset_n_o=%d dbg_sep_reset_n_o=%d",
+            healthy,
+            _STUCK_CYCLES,
+            len(self._efuse_compare_image.words),
+            cpu_rst,
+            fabric_rst,
         )
 
         mm = await self._present(_MISMATCH_TOKEN)
