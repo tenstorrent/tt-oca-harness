@@ -41,9 +41,6 @@ module efuse_shadow_regs
     parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,  // Token-match code that permits the RMA
                                                          // lifecycle-state transitions.
 
-    parameter type addr_t = logic,      // Address type; declared but not used in this module.
-    parameter type data_t = logic,      // Data type; declared but not used in this module.
-    parameter type efuse_apb_req_t  = logic,  // eFuse APB request type.
     parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
 
     parameter type efuse_addr_t = logic,  // Fuse bit-address type.
@@ -63,8 +60,6 @@ module efuse_shadow_regs
     input  logic                                clk_i,  // System clock.
     input  logic                                rst_ni,  // Active-low asynchronous reset; its
                                                          // release starts fuse sensing.
-    input  logic                                test_en_i,  // DFT test enable; not used in this
-                                                            // module.
     input  logic                                security_disable_i,  // Security disable, active-high; stops loading
                                                                      // from the fuses and opens APB access to the
                                                                      // shadow file before sensing completes.
@@ -79,7 +74,6 @@ module efuse_shadow_regs
 
     input  logic [REG_ADDR_WIDTH-1:0]           apb_req_paddr_i,  // Byte offset within the MAP
                                                                   // window.
-    input  logic [2:0]                          apb_req_pprot_i,  // APB protection attributes.
     input  logic                                apb_req_psel_i,  // APB select for the MAP window.
     input  logic                                apb_req_penable_i,  // APB access phase.
     input  logic                                apb_req_pwrite_i,  // APB transfer direction, high
@@ -396,7 +390,7 @@ module efuse_shadow_regs
         apb_resp_q.pslverr <= 1'b0;
         apb_resp_q.prdata  <= apb_req_pwrite_i ? efuse_data_t'(0) : shadow_efuse.values[word_sel];
       end
-    end else if (shadow_ready) begin
+    end else begin
       apb_resp_q <= '0;
     end
   end
