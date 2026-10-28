@@ -126,7 +126,12 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-OTP-COMPLETE-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-OTP-COMPLETE-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-OTP-COMPLETE-JTAG-READY",
+        )
 
         gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         lc = self._sample_int("lc_state_o") & 0xFF
@@ -146,6 +151,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
             "CHK-OTP-COMPLETE-GATE-OPEN",
             (gate, lc, sigint),
             (0, LC_STATE_NO_LCC, 0),
+            evidence="CHK-OTP-COMPLETE-GATE-OPEN",
         )
 
         for addr, pat, idx in zip(RESERVED_ADDRS, PATTERNS, RESERVED_IDX):
@@ -189,6 +195,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
             "CHK-OTP-MAP-ISOLATE",
             (got0, tuple(hold)),
             (REWRITE0, PATTERNS[1:]),
+            evidence="CHK-OTP-MAP-ISOLATE",
         )
 
         self._log(
