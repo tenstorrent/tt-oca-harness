@@ -3451,3 +3451,20 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
+
+[[tests]]
+# CPU-160 in part: with DCCM errors planted before reset, every DCCM read up to the hand-off
+# returns a value this boot wrote, and [DCCM base, __stack_top) is zero-written before rom_main.
+# The spec contradicts itself on the "at most __stack_top" upper bound, so it is not graded.
+name = "sep_rom_dccm_scrub_test"
+module = "rom_fw.sep_rom_dccm_scrub_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "ecc", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
