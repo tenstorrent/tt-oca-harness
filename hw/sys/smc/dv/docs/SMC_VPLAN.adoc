@@ -914,9 +914,9 @@ feature rows.
 |`smc_periph_regblock_sweep_test` |3 |The peripheral register blocks no other leaf writes -- AVSBus, telemetry, system timer, eFuse interface, DMA configuration and the log-engine region registers -- cycled against their RDL contract and restored.
 |`smc_rdl_field_sweep_test` |3 |Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
 |`smc_regblock_subword_strobe_sweep_test` |3 |One reference register of each of the 133 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
-|`smc_register_boundary_depth_test` |3, planned upgrade |Run a compact safe register-boundary sweep.
+|`smc_register_boundary_depth_test` |3 |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |1 |Run the SMC OSS register-sanity scenario.
-|`smc_reg_island_boundary_sweep_test` |3, planned upgrade |Each of 24 register islands answers OKAY inside its decoded
+|`smc_reg_island_boundary_sweep_test` |3 |Each of 24 register islands answers OKAY inside its decoded
 extent and its declared error response past it.
 |===
 
@@ -953,7 +953,7 @@ cleared, `DATA_CTRL.lsio_select` alone is written and read back on pads 49 to 51
 |`smc_avsbus_resync_force_test` |3 |A forced slave resync (`AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION`)
 from idle gives one resync episode, lets in-flight frames and replies complete, launches queued
 commands once each in write order, and survives two back-to-back requests.
-|`smc_avsbus_resync_timing_test` |3, planned upgrade |After a cold reset the AVSBus controller resyncs on its own, the
+|`smc_avsbus_resync_timing_test` |3 |After a cold reset the AVSBus controller resyncs on its own, the
 resync lasts 35 `avs_clock_o` periods with `avs_mdata` high, the status flags track the probe, the
 probe stays one-hot, and the resync interval follows `AVS_CFG_0.RESYNC_INTERVAL`.
 |`smc_octs_csr_access_test` |3 |The nine OCTS registers decode at their own offsets, reset to their
@@ -962,7 +962,7 @@ registers, and the dwords past the map are recorded.
 |`smc_octs_primary_count_test` |2 |The PRIMARY count on `timer_count_o` starts from the preset, steps
 by one per `clk_smc_i` rise, never stops on any register write, and COUNT_HI/COUNT_LO read back the
 carry and the 64-bit wrap.
-|`smc_telemetry_address_map_test` |3, planned upgrade |The three telemetry receiver apertures decode their registers and
+|`smc_telemetry_address_map_test` |3 |The three telemetry receiver apertures decode their registers and
 counter windows separately, and accesses past the third aperture or at unbacked offsets complete
 with recorded responses and disturb no receiver.
 |`smc_telemetry_ctrl_access_test` |3 |Telemetry receiver 0 CTRL, INTR_ENABLE and INTR_TEST fields read
@@ -990,7 +990,7 @@ watchdog reset indication, and the core 2 watchdog pending bit at PLIC ID 331 is
 raw vector.
 |`smc_wdt_key_relock_test` |3 |The core 0 watchdog stays locked for any key other than 0x51F15E, a key
 write unlocks exactly one register write, and every register write re-locks it.
-|`smc_wdt_register_map_test` |3, planned upgrade |The four per-core watchdog apertures decode their registers at the
+|`smc_wdt_register_map_test` |3 |The four per-core watchdog apertures decode their registers at the
 right offsets, stay independent of each other, and the CTRL fields and the CMP width read back as
 `wdt.rdl` defines them.
 |`smc_wdt_scale_zerocmp_test` |2 |`SCALED_COUNT` follows `COUNT` shifted right by `CTRL.wdogscale`, and
@@ -1065,7 +1065,7 @@ while `CPU_CTRL.WDT_TIMEOUT` keeps its programmed value.
 |`smc_region_size_plic_clint_beu_decode_test` |2 |At 256 MiB `REGION_SIZE` the PLIC, CLINT and four BEUs decode with co-resident patterns; what the PLIC address answers above the 16 MiB reset aperture is reported, not claimed.
 |`smc_remap_cla_test` |2 |ALIAS_REMAP address translation, remap-table reset sweep, CLA window.
 |`smc_sep_in_axi_flow_control_test` |3 |SEP_IN keeps writes and reads outstanding while the manager holds BREADY and RREADY low; every access still returns its own address's word.
-|`smc_sep_in_axi_shape_test` |2, planned upgrade |Narrow AxSIZE with byte strobes, a multi-beat INCR burst, and the FIXED and WRAP bursts the data-width converter rejects.
+|`smc_sep_in_axi_shape_test` |2 |Narrow AxSIZE with byte strobes, a multi-beat INCR burst, and the FIXED and WRAP bursts the data-width converter rejects.
 |`smc_sys_axi_in_port_test` |2 |With inbound filter entry 0 admitting, `sys_axi_in` carries a read of a non-zero generated reset and a write both ports read back.
 |`smc_sys_out_aw_w_split_test` |3 |Discriminate a SYS_OUT write hang: AW vs W at both ends.
 |`smc_xvisor_remap_test` |2 |Hypervisor remap table (0xC001_4000) sweep.
@@ -1122,7 +1122,7 @@ never reverses.
 |`smc_region_gated_units_decode_test` |3 |DECERR until REGION_SIZE covers PLIC, CLINT and BEU units.
 |`smc_region_zero_reset_recovery_test` |3 |REGION_SIZE zero collapse and cold reset recovery.
 |`smc_xbar_outstanding_limits_test` |3 |Outstanding read groups over the AXI-Lite and local crossbars.
-|`smc_axi_channel_timing_ports_test` |3, planned upgrade |On SEP_IN, SYS_IN and JTAG the AW and W channels are skewed
+|`smc_axi_channel_timing_ports_test` |3 |On SEP_IN, SYS_IN and JTAG the AW and W channels are skewed
 in both orders, BREADY and RREADY are held and AW, W and AR are randomly delayed, and every access
 still completes OKAY with the word of its own address.
 |`smc_axi_contested_ports_test` |3 |Reads released from one clock edge on two and three inbound
@@ -1204,7 +1204,7 @@ copy after an errored DMA burst completing byte-exact, and leave the recovery ac
 |`smc_cold_reset_test` |1 |Run the SMC OSS cold-reset / POR / cool scenario.
 |`smc_cool_reset_from_pcie_test` |2 |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
 |`smc_cool_reset_zero_delay_test` |3 |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
-|`smc_cool_reset_deglitch_window_test` |3, planned upgrade |A pin low below 32 reference-clock samples is rejected, a
+|`smc_cool_reset_deglitch_window_test` |3 |A pin low below 32 reference-clock samples is rejected, a
 high sample restarts the count, the release does not depend on the low duration, and pin segments
 inside the FLR hold neither shorten nor extend it.
 |`smc_cool_reset_pin_flr_overlap_test` |3 |The FLR cool-reset fall and low duration follow the two
@@ -1223,7 +1223,7 @@ of 1 to bit 0 and sets with a zero hold count.
 |`smc_beu_access_core_reset_test` |3 |A core's BEU answers SEP_IN with SLVERR, not a hang, while that core is held in reset; the other cores' BEUs still answer.
 |`smc_flr_sanity_test` |1 |Run the SMC OSS FLR post-release sanity scenario.
 |`smc_gpio_boot_stall_test` |2 |Pad-57 boot stall hold/release/sticky lockout.
-|`smc_irq_during_powergood_glitch_test` |3, planned upgrade |SMC OSS PyUVM IRQ-during-powergood-glitch test.
+|`smc_irq_during_powergood_glitch_test` |3 |SMC OSS PyUVM IRQ-during-powergood-glitch test.
 |`smc_jtag_boot_stall_sanity_test` |1 |JTAG boot-stall override clears sticky while pad 57 is held.
 |`smc_jtag_reset_ctrl_test` |2 |Struct pin mux; not boot-stall JTAG, FLR, or rst_cool_ni proxy.
 |`smc_jtag_reset_ovrd_walk_test` |3 |Every override mux smc_jtag_reset_ctrl_test leaves idle, through its reset pin.
@@ -1378,7 +1378,7 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_ecc_codeword_ded_test` |2 |Two flipped codeword bits: the CPU raises cluster_ded_o.
 |`smc_ecc_codeword_sec_test` |2 |One flipped codeword bit: the CPU reads the bank and DED stays low.
 |`smc_ecc_dfd_dbs_sanity_test` |1 |Run the diagnostic representative CSR precheck.
-|`smc_ecc_fault_inject_test` |3, planned upgrade |The scratch bank0 ECC inject hook is reached during FW boot and is gated by its enable pins.
+|`smc_ecc_fault_inject_test` |3 |The scratch bank0 ECC inject hook is reached during FW boot and is gated by its enable pins.
 |`smc_mutex_semaphore_test` |2 |CPU_CTRL MUTEX/SEMA over SEP_IN AXI (expectations from cpu_ctrl.rdl).
 |`smc_occp_sanity_secure_error_test` |2 |Secure program-fail completes and reports done; recovery burn programs bit0; signature positive gate.
 |`smc_reference_counter_test` |2 |64-bit refclk counter rate check; not the OCTS timer.
@@ -1392,7 +1392,7 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_cpu_ctrl_access_rules_test` |3 |CPU_CTRL zero, read-only, reserved-bit and AxPROT rules.
 |`smc_cpu_ctrl_dummy_rom_test` |2 |DUMMY_ROM line read and read-write storage with restore.
 |`smc_cpu_ctrl_mutex_all_test` |3 |MUTEX[0..3] hold, release, independence, back-to-back, stalled R.
-|`smc_cpu_ctrl_scratch_all_test` |3, planned upgrade |SCRATCH[0..15] isolation, walking entry and 32-bit storage.
+|`smc_cpu_ctrl_scratch_all_test` |3 |SCRATCH[0..15] isolation, walking entry and 32-bit storage.
 |`smc_cpu_ctrl_sema_test` |3 |SEMA[0..3] signed accumulate, independence, wrap and pipelined writes.
 |`smc_cpu_ctrl_wb_pc_test` |3 |WB_PC_CORE0..3[0..7] read decode and idle values beside probes.
 |`smc_cpu_ctrl_wdt_regs_test` |3 |WDT_TIMEOUT, WDT_TIMEOUT_RESET pulse bits and TEST_CTRL read-only.
@@ -1429,7 +1429,7 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_dfd_cla_snapshot_capture_test` |3 |Every CLA pair driven over its whole action range on its own node, with the snapshot registers read.
 |`smc_dfd_trace_sink_concurrent_test` |3 |The trace sink read out through its MMR port while the trace is still writing it.
 |`smc_dfd_sanity_test` |1 |Run diagnostic CSR reads as the public DFD bounded checker.
-|`smc_dfx_status_abort_test` |3, planned upgrade |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
+|`smc_dfx_status_abort_test` |3 |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
 |`smc_ijtag_basic_test` |2 |Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario.
 |`smc_jtag_dm_cmderr_command_test` |3 |Debug Module `command` writes over the DMI while `abstractcs.cmderr` is nonzero: the stored command is replaced, a Quick Access write replaces cmderr 4 with 2, and nothing executes.
 |`smc_jtag_dmi_smoke_test` |1 |DTMCS, then a DMI read of `dmstatus.version` == 2 after `dmactive`.
@@ -1444,7 +1444,7 @@ generated reset words and written patterns, with each measured period equal to t
 and the stored word reads back in `CPU_CTRL.SCRATCH[0]`.
 |`smc_jtag_dm_sba_scratchpad_test` |2 |Debug Module system bus writes and reads the scratchpad at 8,
 16, 32 and 64 bits and the SEP_IN AXI driver sees the same words.
-|`smc_jtag_dm_abstractcs_lifecycle_test` |3, planned upgrade |`abstractcs.busy` observed during a program-buffer loop
+|`smc_jtag_dm_abstractcs_lifecycle_test` |3 |`abstractcs.busy` observed during a program-buffer loop
 and `cmderr` 1 and 2 set and cleared.
 |`smc_dfd_mmr_rand_test` |3, planned |A drawn register order, pattern and lane take the access
 classes that the DFD register descriptions state, with the reset values and the read-only holds
@@ -2277,33 +2277,32 @@ verdict unposted and the run times out) and is not credited.
 
 *Area*: MISC
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_register_boundary_depth_test`
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
 *Run mode*: one testlist entry in `testlists/register.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`, `axil`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`, `axil`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RAND-REP; the seed draws the offset inside each of the
-three windows the entry names (`SCRATCH_COLD`, `SCRATCH_COLD_WARM` and `CHIP_CONFIG`) and the AxSIZE
-of each probe read (1, 2, 4 or 8 bytes on the same `SmcSysAxiItem` driver; the pattern write at the
-last word of each scratch window stays a 4-byte write, so `CHK-CSR-BOUNDARY-SWEEP` reads the whole
-pattern back; the response code is compared on the 4-byte reads and the RDL value on the 4-byte
-reads of the first and last words only, except `LC_STATE`, the last `CHIP_CONFIG` word, which is
-reported and not compared as `CHK-CSR-BOUNDARY-SWEEP` and the Scope limit state, the response code
-and the read data of a 1-, 2- or 8-byte read and the read data of the interior words being printed,
-because `memmap.adoc`, Address Space Organization, states the answer to a 32-bit access only;
-filter: a drawn offset is aligned to its AxSIZE and no access crosses the end of its window); 3
-seeds per regression.
+*Randomization*: RAND-REP; the seed draws one probe read inside each of the three windows the entry
+names (`SCRATCH_COLD`, `SCRATCH_COLD_WARM` and `CHIP_CONFIG`): its byte offset and its AxSIZE (1, 2,
+4 or 8 bytes on the same `SmcSysAxiItem` driver; filter: the offset is aligned to the AxSIZE and the
+access does not cross the end of its window), one drawn window taking a 4-byte probe in every run,
+so each run carries at least one compared probe. The six 4-byte first/last reads keep their RDL
+compares and the pattern write at the last word of each scratch window stays a 4-byte write, so
+`CHK-CSR-BOUNDARY-SWEEP` reads the whole pattern back; a 4-byte probe is compared on its OKAY
+response and, at a first or last word with an RDL value, on its data, while a 1-, 2- or 8-byte probe
+and the data of an interior word or of `LC_STATE` are printed, not compared, because `memmap.adoc`,
+Address Space Organization, states the answer to a 32-bit access only; `CHK-CSR-BOUNDARY-SWEEP`
+grades the probe and carries the drawn cells; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: Run a compact safe register-boundary sweep.
 
 *Test Coverage*:
 
 * Compact register-boundary depth sweep over real SEP_IN AXI.
+* One seed-drawn probe read per window at a drawn offset and AxSIZE, one drawn window's probe
+  being 4 bytes in every run.
 
 *Test Procedure*:
 
@@ -2315,7 +2314,7 @@ Drive `smc_register_boundary_depth_test_seq`. Each checker below is a named comp
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CSR-BOUNDARY-SWEEP` |First/last registers of the SCRATCH_COLD and SCRATCH_COLD_WARM windows and the first register of CHIP_CONFIG read their RDL value over SEP_IN AXI; the last CHIP_CONFIG register, LC_STATE (`sw = r; hw = w`, the lifecycle value the SEP drives), is derived from the window size, answers OKAY and is reported, not compared; the last register of each scratch window reads back its written pattern and then its saved value; all 16 accesses were checked by the scoreboard. Fails on a read mismatch, a non-OKAY response, a wrong access count, or traffic that never reached the scoreboard
+|`CHK-CSR-BOUNDARY-SWEEP` |First/last registers of the SCRATCH_COLD and SCRATCH_COLD_WARM windows and the first register of CHIP_CONFIG read their RDL value over SEP_IN AXI; the last CHIP_CONFIG register, LC_STATE (`sw = r; hw = w`, the lifecycle value the SEP drives), is derived from the window size, answers OKAY and is reported, not compared; the last register of each scratch window reads back its written pattern and then its saved value; one drawn probe read per window answers OKAY and, as a 4-byte read at a first or last word with an RDL value, reads it, a 1-, 2- or 8-byte probe being reported, and one drawn window's probe is 4 bytes in every run; all 19 accesses were checked by the scoreboard. Fails on a read mismatch, a non-OKAY response, a wrong access count, or traffic that never reached the scoreboard
 |===
 
 
@@ -2386,8 +2385,6 @@ this card's Pass Criteria.
 
 *Area*: MISC
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_reg_island_boundary_sweep_test`
 
 *BFM / Model*: SEP_IN AXI driver (`SmcDecodeProbeSeq` / `SmcSysAxiItem` 4-byte reads and writes with
@@ -2402,25 +2399,28 @@ past-extent and aperture-end addresses expect DECERR; a CSR protocol-VIP record 
 the access floor; no probe is sampled
 
 *Run mode*: one testlist entry in `testlists/register.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`, `axil`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`, `axil`; seed 1, `reseed` 1; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the leaf walks the whole cell set in one run. Planned upgrade:
-RAND-REP; the seed draws the interior offsets of each of the 24 islands (read only, at words the
-generated map declares without a read side effect, so the side-effect words of the walk's read-only
-rule are not drawn; the OKAY response of a 4-byte read is the compare and the read data is printed),
-the AxSIZE of each read (1, 2, 4 or 8 bytes on the same `SmcSysAxiItem` driver; the response code is
-compared on the 4-byte reads and the read data on the 4-byte reads of the first and last words, the
-only size `memmap.adoc` states, and the response code and the read data of a 1-, 2- or 8-byte read
-are printed, not compared; filter: a drawn offset is aligned to its AxSIZE and no access crosses the
-end of its island; every write stays a 4-byte write) and the write pattern (a 4-byte write at a
-read-write first or last word the walk writes today, read back against the pattern masked to the
-word's sw-writable bits of `smc.rdl`; filter: the pattern goes only to an unkeyed word whose
-sw-writable fields `smc.rdl` declares `hw=r` with no write side effect, so the written value reads
-back; the `CTRL` and `CMP` words of the four watchdog islands (keyed: `wdt.rdl` drops a write not
-preceded by `KEY`), `GLOBAL_BASE` of `BASECFG` (the global aperture, `smc_base_config.rdl`) and
-every other base, size, reset, enable, remap or command word keep the identity write of today, as a
-hole word does), every island walked in every run; 1 seed per regression, because the leaf walks the
-whole set and the seed selects only order, value and timing.
+*Randomization*: RAND-REP; the seed draws, for each of the 24 islands, one interior word (strictly
+between the first and the last decoded word, from the words the generated register module
+`regs/gen/py/smc_reg.py` declares with every field software-readable and without a read side effect,
+so the side-effect words of the walk's read-only rule are not drawn) and the AxSIZE of that read (1,
+2, 4 or 8 bytes on the same `SmcSysAxiItem` driver; filter: the offset is aligned to the AxSIZE, an
+8-byte read covers two side-effect-free words at or before the last decoded word and no access
+crosses the end of its island; the OKAY response of a 4-byte read is compared and its data printed,
+the response and the data of a 1-, 2- or 8-byte read are printed, `CHK-ISL-TABLE` grading them), and
+the write pattern of the pattern-eligible read-write first or last words (a 4-byte write read back
+against the pattern masked to the word's software-writable bits of `smc.rdl`, then the value read
+restored and read back; filter: the pattern goes only to an unkeyed scratch register whose
+software-writable fields the RDL gives hardware no write path to, with no write side effect, so the
+written value reads back: at this base the `MISC` first word, `SCRATCH_COLD[0]`, alone; the `CTRL`
+and `CMP` words of the four watchdog islands (keyed: `wdt.rdl` drops a write not preceded by `KEY`),
+`GLOBAL_BASE` of `BASECFG` (`smc_base_config.rdl`) and every other base, size, reset, enable, remap,
+command or count word keep the identity write of today, as a hole word does;
+`CHK-ISL-FIRST-WORD-WRITE-OKAY` grades it); the first and last words keep their 4-byte reads and
+compares, every write stays a 4-byte write and every island is walked in every run; 1 seed per
+regression (`reseed = 1`), because the leaf walks the whole set and the seed selects only the
+interior word, its size and the pattern.
 
 *Objective*: Each of 24 register islands answers OKAY inside its decoded
 extent and its declared error response past it.
@@ -2435,14 +2435,18 @@ extent and its declared error response past it.
   response (`smc.rdl` `ocah_past_extent_resp`).
 * First word of each island: reads answer OKAY, a declared hole (`RESET` first word) reads 0; every
   first word that is read-write or a hole takes a write of the value just read with an OKAY write
-  response and reads it back unchanged; read-only first words (`DFX`, `MAILBOX`, `AVS`, `I2C`,
-  `EFUSE_MAP`, `EFUSE_IF`, `TELEM`, `OCTS`, `INFLT`, `OUTFLT`) are read only.
+  response and reads it back unchanged, the eligible scratch first word (`MISC`, `SCRATCH_COLD[0]`)
+  taking a drawn pattern first, read back masked to its software-writable bits, then the value read;
+  read-only first words (`DFX`, `MAILBOX`, `AVS`, `I2C`, `EFUSE_MAP`, `EFUSE_IF`, `TELEM`, `OCTS`,
+  `INFLT`, `OUTFLT`) are read only.
 * Last decoded word of each island (last word of the last instance for arrays): reads answer OKAY,
   declared holes (`GPIO`, `ALIAS`, `INFLT`, `OUTFLT`) read 0, and read-write or hole words take the
   identity write and read back unchanged; read-only or side-effect words (`MAILBOX`, `ZEROER`,
   `MISC`, `I2C`, `TELEM`) are read only; the watchdog state after the write is printed.
 * First past-extent word and aperture-end word of every island: reads answer DECERR with data
   0xBADCAB1E, 48 of 48 words (`smc.rdl`, `memmap.adoc` decode response codes).
+* One drawn interior word per island, read at a drawn AxSIZE: a 4-byte read answers OKAY with its
+  data printed; a 1-, 2- or 8-byte read is printed.
 * The same words written: every island's RDL declares a DECERR write response, so all 48 words
   answer DECERR; any other response fails.
 * A refused write takes no effect: after all writes every past-extent and aperture-end word still
@@ -2470,8 +2474,9 @@ extent and its declared error response past it.
   S7.
 . Read every past-extent and aperture-end word again requiring DECERR and 0xBADCAB1E, and every
   read-write last decoded word again requiring OKAY and its earlier value; stamp S8.
-. Print the 24-row table of first, last, past-extent and aperture-end responses and data with each
-  island's declared class and match or mismatch; require 24 rows with every probe word measured;
+. Read the drawn interior word of each island at its drawn AxSIZE, then print the 24-row table of
+  first, last, past-extent, aperture-end and interior responses and data with each island's declared
+  class and match or mismatch; require 24 rows with every probe word measured;
   stamp S9, then S10, and require the access count to equal the floor of the table, the checker
   lines in order and the stamps strictly increasing.
 
@@ -2484,9 +2489,10 @@ extent and its declared error response past it.
 OKAY and equal their RDL reset values, the 24-island probe table equals the generated memory map,
 and every island declares a DECERR write response.
 |`CHK-ISL-FIRST-WORD-WRITE-OKAY` |The first word of all 24 islands answers OKAY (the `RESET` hole reads 0),
-and every read-write or hole first word takes the identity write with an OKAY write response and
-reads back the value read; read-only words are listed as read-only, with a reason column that
-reads not specified for some islands.
+and every read-write or hole first word takes a write with an OKAY write response and reads back
+the value read (the drawn pattern at the eligible scratch word, read back masked to its
+software-writable bits and then restored; the identity write elsewhere); read-only words are
+listed as read-only, with a reason column that reads not specified for some islands.
 |`CHK-ISL-LAST-DECODED-WORD-WRITE-OKAY` |The last decoded word of all 24 islands answers OKAY (declared
 holes read 0), and every read-write or hole word takes the identity write with an OKAY write
 response and reads back the value read; read-only words are listed as read-only, with a reason
@@ -2498,8 +2504,9 @@ islands read DECERR with data 0xBADCAB1E, 48 of 48 words.
 24 islands answer a write with DECERR, 48 of 48 words.
 |`CHK-ISL-PASTEXT-NOCHANGE` |After the refused writes every past-extent and aperture-end word still
 reads DECERR with 0xBADCAB1E and every read-write last decoded word equals its earlier value.
-|`CHK-ISL-TABLE` |The per-island table has 24 rows, each with its four probe words measured, and
-each row is counted as match or mismatch so that the two counts sum to 24.
+|`CHK-ISL-TABLE` |The per-island table has 24 rows, each with its four probe words and its drawn
+interior word measured (a 4-byte interior read answered OKAY, the other sizes reported), and each
+row is counted as match or mismatch so that the two counts sum to 24.
 |`CHK-NONVAC` |The access count equals the floor derived from the table, the checker lines print in
 order each after its step, every checker line covers at least one access, and the stamps S1 to S10
 are strictly increasing.
@@ -3423,8 +3430,6 @@ resync or two; only one or two episodes is required.
 
 *Area*: POWER
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_avsbus_resync_timing_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN; reset agent (`SmcResetOp.COLD_RST_LO` / `COLD_RST_HI`
@@ -3434,31 +3439,36 @@ on `rst_cold_ni`); FSM debug probe `tb_avsbus_cur_state_debug` (17-bit one-hot, 
 probe; `tb_avs_sdata_ext` held low by the bench; bench clocks `clk_smc_i` and `clk_periph_i`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RANDCFG; the seed draws the divider value
-(`AVS_CFG_1.CLK_DIVIDER_VALUE` of `avsbus_controller.rdl`: 2 and above, because the field takes a
-lower value as 2 and 0 as the hardware default, and even (`avsbus_controller.rdl`: a 50 % duty cycle
-is possible only on even values and with `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR` at 128; the duty cycle
-enters no compare, the interval compares being in `avs_clock_o` periods, so the parity is a
-convention of the draw and not a graded property); written between step 5 and step 6, after the cold
-reset of step 2 has returned the field to its reset value, so steps 3 to 5 (the first resync episode
-after the reset, which precedes any register write, the flag polls and the one-hot count) run on the
+*Randomization*: RANDCFG; the seed draws the divider value (`AVS_CFG_1.CLK_DIVIDER_VALUE` of
+`avsbus_controller.rdl`: even, 2 to 254 and never the reset value 4, so the drawn period differs
+from the default and a written divider that never reaches `avs_clock_o` fails the compare; even
+because the field takes a lower value as 2 and 0 as the hardware default and a 50 % duty cycle is
+possible only on even values; the duty cycle enters no
+compare, the interval compares being in `avs_clock_o` periods, so the parity is a convention of the
+draw and not a graded property) and writes it between step 5 and step 6, so steps 3 to 5 run on the
 reset divider, `clk_ref_i` divided by 4 (`hw/ip/avsbus_controller/doc/architecture.adoc`, Clock
-Generation and Management: out of reset the controller runs on `clk_ref_i` divided by 4, both
-divider fields resetting to 0 as the sentinel for the hardware defaults), and steps 6 to 8 run under
-the drawn divider; the write follows the order the same section requires:
-`AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS` set first, so both source clocks are gated, the drawn divider
-written under the gate and `TURN_OFF_ALL_PREMUX_CLOCKS` cleared afterwards, because a divider change
-is not glitch-free on its own; the restart of the gated AVS clock begins with a slave resync, which
-is the episode discarded before step 6 measures, so the step 6 residuals and the probe samples from
-step 6 onward are taken under the settled divided clock; the interval legs run under the drawn
-divider with their compares in `avs_clock_o` periods and `clk_reg_i` cycles) and the resync point
-(the point inside the running interval at which step 8 writes 0x0040, in place of the half; filter:
-the point leaves at least the SEP_IN write bound before the 0x1000 interval elapses, so the write
-completes before a resync can begin, as `CHK-AVS-RESYNC-REWRITE` requires; the times stay printed);
-the firmware twin `smc_avsbus_clock_divider_test` stays as it is; 3 seeds per regression.
+Generation and Management), and steps 6 to 8 under the drawn divider; the write follows the order
+that section requires: `AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS` set first, the drawn divider written
+under the gate and `TURN_OFF_ALL_PREMUX_CLOCKS` cleared afterwards; the restart of the gated AVS
+clock begins with a slave resync, the episode step 6 discards before it measures, and the
+`avs_clock_o` period is measured again under the divider for the residuals, which
+`CHK-AVS-RESYNC-INTERVAL` grades, and compared to the divider times the `clk_ref_i` period, measured
+once before step 1, within half a `clk_ref_i` period (`CLK_DIVIDER_VALUE` is the divisor of the
+selected source, `clk_ref_i` out of reset: `avsbus_controller.rdl`, and Clock Generation and
+Management; the `avs_clock_o` edges are `clk_ref_i`-synchronous, so a divider off by one is outside
+that), the period on the reset divider, measured in step 3, being four times the `clk_ref_i`
+period within the same half period (architecture.adoc: "Out of reset the controller runs on
+`clk_ref_i` divided by 4"), the control for the drawn ratio; the register-poll bounds of the reply
+and drain waits grow with the measured period, a frame taking a fixed number of `avs_clock_o`
+periods; the seed also draws the resync point, the number of
+`clk_reg_i` cycles after a resync ends at which step 8 writes 0x0040, in place of the half (filter:
+the point leaves twice the longest SEP_IN write measured in this run before the 0x1000 interval
+elapses, so the write completes before a resync can begin, as `CHK-AVS-RESYNC-REWRITE` requires; the
+50 us SEP_IN access bound exceeds the 20.48 us interval, so it cannot be the margin; the times stay
+printed); the firmware twin `smc_avsbus_clock_divider_test` stays as it is; 3 seeds per regression
+(`reseed = 3`).
 
 *Objective*: After a cold reset the AVSBus controller resyncs on its own, the
 resync lasts 35 `avs_clock_o` periods with `avs_mdata` high, the status flags track the probe, the
@@ -3482,16 +3492,22 @@ probe stays one-hot, and the resync interval follows `AVS_CFG_0.RESYNC_INTERVAL`
 * One-hot: every probe sample out of reset has exactly one of 17 bits set (`architecture.adoc`,
   Protocol State Machine), over at least 1000 out-of-reset samples; the all-zero samples of the
   in-reset run ending in `AVS_RESET` are counted and printed.
-* Interval: for `RESYNC_INTERVAL` 0x1000, 0x0040 and 0x0400 the time from the end of one resync to
-  the start of the next, with no frame in flight, is measured. The residual over (interval + 1)
-  `clk_reg_i` cycles plus three `avs_clock_o` periods must be at least 0 and the period must grow
-  with the interval. Whether that residual is constant across intervals is not stated by the specification; it is printed.
+* Interval: under the drawn divider, written between steps 5 and 6, the `avs_clock_o` period is the
+  divider times the `clk_ref_i` period within half a `clk_ref_i` period, the period measured on the
+  reset divider in step 3 being four times the `clk_ref_i` period within the same half period
+  (`architecture.adoc`, Clock Generation and Management: "Out of reset the controller runs on
+  `clk_ref_i` divided by 4"), and for `RESYNC_INTERVAL`
+  0x1000, 0x0040 and 0x0400 the time from the end of one resync to the start of the next, with no
+  frame in flight, is measured. The residual over (interval + 1) `clk_reg_i` cycles plus three
+  `avs_clock_o` periods must be at least 0 and the period must grow with the interval. Whether that
+  residual is constant across intervals is not stated by the specification; it is printed.
 * Interval 0: the period is measured and printed (the specification gives no behaviour for it) and a
   command queued afterwards must be answered.
-* Rewrite: 0x0040 is written at half the elapsed 0x1000 interval; a next and a following resync must
-  each occur within the bounded wait, and no resync may begin before the rewrite completes. The
-  times from the previous end, from the write, and from the first resync's end, next to the periods
-  measured earlier, are printed; whether a rewrite restarts or retargets the running interval is not stated by the specification.
+* Rewrite: 0x0040 is written at the drawn point of the 0x1000 interval; a next and a following
+  resync must each occur within the bounded wait, and no resync may begin before the rewrite
+  completes. The times from the previous end, from the write, and from the first resync's end, next
+  to the periods measured earlier, are printed; whether a rewrite restarts or retargets the running
+  interval is not stated by the specification.
 
 *Test Procedure*:
 
@@ -3510,12 +3526,16 @@ probe stays one-hot, and the resync interval follows `AVS_CFG_0.RESYNC_INTERVAL`
   inside the span and deep inside idle.
 . Require the probe to have shown no sample other than one-hot, and at least 1000 out-of-reset
   samples.
-. Measure the period after the default interval, write 0x0040 and measure, write 0x0400 and measure
-  (discarding one episode after each write), compute the residuals and require them non-negative and
-  the periods ordered 0x0040 < 0x0400 < 0x1000.
+. Write the drawn divider under `TURN_OFF_ALL_PREMUX_CLOCKS`, require the period of step 3 to be
+  four times the `clk_ref_i` period measured before step 1 within half a `clk_ref_i` period,
+  discard the restart episode, measure the `avs_clock_o` period again and require it to be the
+  divider times the `clk_ref_i` period within the same half period; measure the period after the
+  default interval, write 0x0040 and measure, write 0x0400 and measure (discarding one episode
+  after each write), compute the residuals and require them non-negative and the periods ordered
+  0x0040 < 0x0400 < 0x1000.
 . Write `RESYNC_INTERVAL` 0, measure the period, write one read command to AVS_CMD, wait for a
   readback entry and drain the readback FIFO.
-. Restore 0x1000 and wait one episode, wait half the interval, write 0x0040, require no resync began
+. Restore 0x1000 and wait one episode, wait the drawn point, write 0x0040, require no resync began
   meanwhile, wait for the next and following resync, measure and print the times and restore 0x1000.
 . Stop the recorders, require the probe to end without an open all-zero run, report the bounded
   waits (including the reset agent and SEP_IN access bounds), require step stamps and checker lines
@@ -3543,15 +3563,19 @@ probe stays one-hot, and the resync interval follows `AVS_CFG_0.RESYNC_INTERVAL`
 |`CHK-AVS-FSM-ONEHOT` |Every resolvable probe sample out of reset had exactly one of 17 bits set,
   over at least 1000 out-of-reset samples; the all-zero samples of the in-reset run are counted and
   printed
-|`CHK-AVS-RESYNC-INTERVAL` |For intervals 0x1000, 0x0040 and 0x0400 the residual period was at least
-  0 and the period grew with the interval; the periods and residuals are printed, and their
-  constancy across intervals is printed and not compared
+|`CHK-AVS-RESYNC-INTERVAL` |Under the drawn divider the `avs_clock_o` period equals the divider
+  times the `clk_ref_i` period within half a `clk_ref_i` period (`CLK_DIVIDER_VALUE`; Clock
+  Generation and Management), the period on the reset divider equals four times the `clk_ref_i`
+  period within the same half period (Clock Generation and Management: out of reset the controller
+  runs on `clk_ref_i` divided by 4), and for intervals 0x1000, 0x0040 and 0x0400 the residual
+  period was at least 0 and the period grew with the interval; the periods and residuals are
+  printed, and their constancy across intervals is printed and not compared
 |`CHK-AVS-RESYNC-INTERVAL-ZERO` |With `RESYNC_INTERVAL` 0 the bus kept resyncing and a command
   queued afterwards was answered with a readback entry; the measured period is printed without a
   compare
-|`CHK-AVS-RESYNC-REWRITE` |After 0x0040 was written at half of the 0x1000 interval a next and a
-  following resync were each observed within their bounded waits and none began before the write
-  completed; the measured times are printed without a compare
+|`CHK-AVS-RESYNC-REWRITE` |After 0x0040 was written at the drawn point of the 0x1000 interval a
+  next and a following resync were each observed within their bounded waits and none began before
+  the write completed; the measured times are printed without a compare
 |`CHK-NONVAC` |Ordered fence MONITORS_RUNNING < COLD_RESET_SEQUENCE < RESYNC_SHAPE < FLAGS_POLLED <
   ONEHOT_COUNTED < INTERVALS_MEASURED < INTERVAL_ZERO < REWRITE: step stamps S1 to S9 strictly
   increasing and the checker lines logged in order, each after its step
@@ -3815,8 +3839,6 @@ than 0x40). The reload sample index is printed. The `STATUS` reads around the wr
 
 *Area*: POWER
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_telemetry_address_map_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (4-byte reads and writes; the raw access items accept
@@ -3829,23 +3851,22 @@ ATB beat driver on `tb_telemetry0_*`, `tb_telemetry1_*` and `tb_telemetry2_*` (`
 `tb_fuse_sense_done`
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RAND-REP; the seed draws the message count per
-receiver (one at least and no more than the queue holds unpopped, the queue depth `BUFFER_DEPTH` of
-`hw/ip/telemetry_receiver/doc/interface.adoc`, default 8 with no SMC override in `periphs.adoc`,
-which `telemetry_receiver.rdl` names in `BUFFER_THRESHOLD` without a value), the order in which the
-three receivers are taken (each receiver's queue is filled with its drawn count and drained to
-`BUFFER_EMPTY` 1 before the next receiver's queue is filled, as step 3 does today, so the other two
-queues are empty at every compare) and the `BUFFER_THRESHOLD` pattern (masked to its field, bits
-[23:12]), feeding `CHK-TELEMETRY-APERTURE-REGS` (each pattern reads back as written and restores to
-0) and `CHK-TELEMETRY-COUNTER-WINDOW` (each popped message in turn shows `TELEMETRY_COUNTER[0]`
-0xFFFF_FFFF and `[1]` 0 in its own aperture and 0 and 0 in the others, whose queues are empty,
-`CTRL.BUFFER_POP` advancing the queue and reads not consuming it, `telemetry_receiver`
-`architecture.adoc`, Message Queue and Readout, and `BUFFER_EMPTY` reads 1 after the last pop); the
-drawn message count populates the one queue step 3 fills and pops per receiver; 3 seeds per
-regression.
+*Randomization*: RAND-REP; the seed draws the message count per receiver (1 to 8, the queue depth
+`BUFFER_DEPTH` of `hw/ip/telemetry_receiver/doc/interface.adoc`, default 8 with no SMC override),
+the order in which the three receivers are taken (each receiver's queue is filled with its drawn
+count and drained to `BUFFER_EMPTY` 1 before the next receiver's queue is filled, so the other two
+queues are empty at every compare) and the three `BUFFER_THRESHOLD` patterns (distinct, non-zero,
+masked to the field, bits [23:12]) and a distinct non-zero 5-bit probe ID per queued message (an
+`rng.sample` of 1 to 31 per receiver); `CHK-TELEMETRY-APERTURE-REGS` grades the patterns (each reads
+back as written and restores to 0) and `CHK-TELEMETRY-COUNTER-WINDOW` the counts, the order and the
+probe IDs (each message in turn shows its own probe ID in `TELEMETRY_PROBE_ID`, so the queue is seen
+to advance by one message at each pop, and `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `[1]` 0 in its own
+aperture and 0 and 0 in the others before its pop, `CTRL.BUFFER_POP` advancing the queue and reads
+not consuming it, `telemetry_receiver` `architecture.adoc`, Message Queue and Readout, and
+`BUFFER_EMPTY` reads 1 after the last pop); the `INTR_ENABLE` patterns stay pinned; 3 seeds per
+regression (`reseed = 3`).
 
 *Objective*: The three telemetry receiver apertures decode their registers and
 counter windows separately, and accesses past the third aperture or at unbacked offsets complete
@@ -3857,13 +3878,15 @@ with recorded responses and disturb no receiver.
   offset inside the aperture and reads its reset value (`hw/ip/telemetry_receiver/doc/memmap.adoc`,
   256 bytes per receiver; `hw/sys/smc/doc/memmap.adoc`, Memory Map; `smc.rdl`). `CTRL` reads 0 and
   `STATUS` reads `BUFFER_EMPTY` set after the flush.
-* Isolation of the three apertures: distinct `INTR_ENABLE` (0x01, 0x10, 0x11) and
-  `CTRL.BUFFER_THRESHOLD` (0x111, 0x222, 0x333) patterns written to receivers 0, 1 and 2 before any
-  read each read back as their own, then are restored to 0.
+* Isolation of the three apertures: distinct `INTR_ENABLE` (0x01, 0x10, 0x11) and drawn
+  `CTRL.BUFFER_THRESHOLD` patterns written to receivers 0, 1 and 2 before any read each read back
+  as their own, then are restored to 0.
 * Counter window (`telemetry_receiver/doc/memmap.adoc`, 32 counter registers at offsets 0x80 to
-  0xFC): an all-valid one-packet message sent to receiver i shows `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF
-  and `TELEMETRY_COUNTER[1]` 0 in receiver i's aperture and 0 and 0 in the other two; all 32
-  counters of receiver 1 answer OKAY in four-byte steps.
+  0xFC): each of a drawn number of all-valid one-packet messages sent to receiver i, the receivers
+  taken in a drawn order, shows its own drawn probe ID in `TELEMETRY_PROBE_ID` and
+  `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `TELEMETRY_COUNTER[1]` 0 in
+  receiver i's aperture and 0 and 0 in the other two before its pop; all 32 counters of receiver 1
+  answer OKAY in four-byte steps.
 * Past the third receiver (`hw/sys/smc/doc/memmap.adoc`, Decode Response Codes): reads and writes at
   window offsets 0x300, 0x304, 0x380 and 0xFFC are measured. Their expected responses are not stated by the specification, so the response and data are printed and not compared, except that a read
   must not answer OKAY with data equal to receiver 0's `STATUS`.
@@ -3882,12 +3905,14 @@ with recorded responses and disturb no receiver.
 . Wait (bounded) for `tb_fuse_sense_done`, save `CLOCK_GATE_CONTROL`, clear `TELEMETRY_CG_EN` and
   read it back exactly, then flush each receiver and poll `STATUS.BUFFER_EMPTY` to 1.
 . For receivers 0 to 2 read the seven register types and compare each with its reset value, write
-  the distinct `INTR_ENABLE` and `BUFFER_THRESHOLD` patterns to all three, read all six back and
-  compare, restore all six to 0 and read the restore back.
-. For each receiver in turn send an all-valid single-packet message over the ATB pins, poll
-  `STATUS.BUFFER_EMPTY` to 0, read `TELEMETRY_COUNTER[0]` and `[1]` in all three apertures and
-  compare; for receiver 1 also read all 32 counters; pop with `CTRL.BUFFER_POP` and poll
-  `BUFFER_EMPTY` back to 1.
+  the distinct `INTR_ENABLE` and the drawn `BUFFER_THRESHOLD` patterns to all three, read all six
+  back and compare, restore all six to 0 and read the restore back.
+. For each receiver in the drawn order send its drawn number of all-valid single-packet messages
+  over the ATB pins, each with its drawn probe ID, then for each message poll `STATUS.BUFFER_EMPTY`
+  to 0, read `TELEMETRY_PROBE_ID` and compare it to the message's own probe ID, read
+  `TELEMETRY_COUNTER[0]` and `[1]` in all three apertures and compare, and pop with
+  `CTRL.BUFFER_POP`; for receiver 1 also read all 32 counters once; poll `BUFFER_EMPTY` back to 1
+  after the last pop.
 . Error injection. Point: window offsets 0x300, 0x304, 0x380 and 0xFFC past the third receiver
   aperture. Kind: a read and a write at each. Expected response: each access completes and its
   response and data word are recorded and not compared; a read answering OKAY with data equal to
@@ -3909,12 +3934,15 @@ with recorded responses and disturb no receiver.
 |===
 |Checker |Description
 |`CHK-TELEMETRY-APERTURE-REGS` |All seven register types answer OKAY with their reset values in each
-  of the three apertures, and the three distinct `INTR_ENABLE` and `BUFFER_THRESHOLD` patterns each
-  read back as their own and restore to 0; the zero reset values are bench-limited (2-state zero
-  init)
-|`CHK-TELEMETRY-COUNTER-WINDOW` |A message in receiver i reads `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF
-  and `[1]` 0 in receiver i's aperture and 0 and 0 in the others, and all 32 counters of receiver 1
-  answer OKAY at four-byte steps
+  of the three apertures, and the three distinct `INTR_ENABLE` patterns and the three drawn
+  `BUFFER_THRESHOLD` patterns each read back as their own and restore to 0; the zero reset values
+  are bench-limited (2-state zero init)
+|`CHK-TELEMETRY-COUNTER-WINDOW` |Each of the drawn number of messages in receiver i, the receivers
+  taken in the drawn order, shows its own drawn probe ID in `TELEMETRY_PROBE_ID` (distinct per
+  message, so a queue that did not advance at the pop fails) and reads `TELEMETRY_COUNTER[0]`
+  0xFFFF_FFFF and `[1]` 0 in receiver i's
+  aperture and 0 and 0 in the others before its pop, `BUFFER_EMPTY` reads 1 after the last pop, and
+  all 32 counters of receiver 1 answer OKAY at four-byte steps
 |`CHK-TELEMETRY-PAST-EXTENT` |Measures and prints the read response, read data and write response at
   window offsets 0x300, 0x304, 0x380 and 0xFFC without comparing the values; a read answering OKAY
   with receiver `STATUS` data fails
@@ -4962,8 +4990,6 @@ write is not stated by the specification.
 
 *Area*: POWER
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_wdt_register_map_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (watchdog blocks `SMC_TOP_SMC_CLUSTER_CORE0_WDT_*` to
@@ -4971,30 +4997,48 @@ write is not stated by the specification.
 `CMP`; 4-byte accesses)
 
 *Run mode*: one testlist entry in `testlists/power.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`, `wdt`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`, `wdt`; seed 1, `reseed` 1; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the cells are the stated reset values and access classes of
-the register description. Planned upgrade: RAND-REP; the seed draws the write pattern, the
-byte-enable mask and the register order, every register walked in every run (the mask through the
-explicit `wstrb` of `SmcSysAxiItem`; a write whose byte enables cover the width the register
-requires takes effect and a narrower one answers OKAY and leaves the register unchanged
-(`hw/sys/smc/doc/watchdog.adoc`, Register Access; the width per register is in its Detailed Register
-Map, the `wdt.rdl` block description: all four bytes of `COUNT`, `COUNT_HI`, `FEED` and `KEY`, bytes
-0 and 1 of `SCALED_COUNT` and `CMP`, and each `CTRL` byte on its own, so a one-byte `CTRL` write is
-an effective write of that byte); the read-back after an effective write is the value `wdt.rdl`
-states per register: `CTRL` the pattern in its enabled bytes with the other bytes unchanged, masked
-to its fields with bit 28 masked, `CMP` the pattern masked to `wdogcmp0[15:0]`, `COUNT` at or above
-the pattern masked to `wdogcount[30:0]` (it may count on), `COUNT_HI` 0 (no storage), `KEY` 0 (the
-effective write locks the watchdog again) and `SCALED_COUNT` inside the `COUNT` bracket shifted
-right by `wdogscale`, while what `FEED` reads is printed and not compared, as
-`smc_wdt_write_width_test` states; filter: the drawn `CTRL` pattern never sets `wdogrsten` (bit 8)
-together with `wdogenalways` (bit 12) or `wdogcoreawake` (bit 13), because that pair arms the
-watchdog against the drawn `CMP` and its expiry latches a reset request that starts the `CPU_CTRL`
-countdown and ends in a warm reset of the cluster mid-walk
-(`doc/programmer/src/smc-programming.adoc`, Watchdog Timers), and the enable bits are cleared again
-after their read, as the walk does today; `KEY` takes the full magic word before each keyed write),
-the same draw covering the cells of `smc_wdt_write_width_test`; 1 seed per regression, because the
-leaf walks the whole set and the seed selects only order, value and timing.
+*Randomization*: RAND-REP; the seed draws, in step 10 after the directed walk, the order of the 28
+(core, register) cells, the 32-bit write pattern of each cell and its byte-enable mask through the
+explicit `wstrb` of `SmcSysAxiItem` (the zero-strobe beat stays the cell of
+`smc_rdl_field_sweep_test`): the mask class is drawn per cell so that every register but `CTRL`
+takes both classes in every run, two of its four cores (an `rng.sample` of the cores) effective and
+the other two narrower, and the mask is then drawn inside the class (0xF for `COUNT`, `COUNT_HI`,
+`FEED` and `KEY`; 3, 7, 0xB or 0xF for `SCALED_COUNT` and `CMP`; the rest of 1 to 15 for the
+narrower class; `CTRL` takes any mask of 1 to 15, each of its bytes being written on its own);
+`CHK-WDT-DRAWN-STROBE-WALK` grades every cell: a write whose byte enables cover the width the
+register requires takes effect and a narrower one answers OKAY and leaves the register unchanged
+(`hw/sys/smc/doc/watchdog.adoc`, Register Access: all four bytes of `COUNT`, `COUNT_HI`, `FEED` and
+`KEY`, bytes 0 and 1 of `SCALED_COUNT` and `CMP`, and each `CTRL` byte on its own); the read-back
+after an effective write is the value `wdt.rdl` states per register: `CTRL` the pattern in its
+enabled bytes with the other bytes keeping the non-zero, non-arming background written and read
+back before the strobed write, masked to its fields with bit 28 masked, `CMP` the
+pattern masked to `wdogcmp0[15:0]`, `COUNT` the pattern masked to `wdogcount[30:0]` plus at most the
+`clk_smc_i` cycles elapsed between the write and the read (the counter is set to the written value
+and counts on; `COUNT` is read before the write too, so a dropped write shows as the count running
+on from that value), `COUNT_HI` 0 (no storage), `KEY` 0 (`wdt.rdl`, `KEY`: "returns 1 if key has
+been written to it and it is unlocked, 0 otherwise") and `SCALED_COUNT`, the 16-bit field, inside
+the two `COUNT` reads around the write shifted right by `wdogscale` (read from `CTRL`) and masked to
+16 bits, with `COUNT` itself moving by at most the `clk_smc_i` cycles since its first read (the
+write changes nothing in `COUNT`, so a write that leaked into it fails and a `COUNT` above 0xFFFF
+does not fail the field; the cell writes `wdogscale` 2 into `CTRL` and 0x1_0000 into `COUNT` first,
+so the bracket is above zero, shifted by a non-zero scale and taken from a `COUNT` above 0xFFFF,
+and `CTRL` and `COUNT` are restored to 0 after it);
+after a narrower write `CMP` and `KEY` read unchanged, `COUNT_HI` 0 and the lock unchanged, `KEY`
+still reading 1 after a narrower write to another register (`wdt.rdl`: "Any other write returns
+OKAY and changes nothing, not even the lock"), and `COUNT` after a narrower write reads the value
+read before the write plus at most the `clk_smc_i` cycles elapsed since that read (the write
+changes nothing and the counter continues counting up, `wdt.rdl`, `COUNT`), while what `FEED`
+reads is printed and not compared; filter: the drawn `CTRL` pattern never sets
+`wdogrsten` (bit 8) together with `wdogenalways` (bit 12) or `wdogcoreawake` (bit 13), because that
+pair arms the watchdog against the drawn `CMP` and its expiry ends in a warm reset of the cluster
+mid-walk (`doc/programmer/src/smc-programming.adoc`, Watchdog Timers), the drawn `KEY` pattern is
+never the magic word, `KEY` takes the full magic word before each cell and `CTRL`, `COUNT` and `CMP`
+are restored after their cell; the same draw covers the cells of `smc_wdt_write_width_test`; 1 seed
+per regression (`reseed = 1`), because the leaf walks the whole set with both mask classes of every
+register in every run and the seed selects only the order, the values, the effective cores and the
+mask inside its class.
 
 *Objective*: The four per-core watchdog apertures decode their registers at the
 right offsets, stay independent of each other, and the CTRL fields and the CMP width read back as
@@ -5029,6 +5073,13 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
   write is not stated by the specification).
 * `CMP` width (`wdt.rdl`, `CMP.wdogcmp0[15:0]`): a 32-bit `CMP` write of 0xDEAD_A5A5 reads back
   0x0000_A5A5.
+* Drawn strobed walk (`watchdog.adoc`, Register Access): every register of the four cores, in a
+  drawn order, takes a keyed write of a drawn pattern under a drawn byte-enable mask, every
+  register but `CTRL` effective on two drawn cores and narrower on the other two, each `CTRL` cell
+  over a non-zero, non-arming background; an effective write reads back as `wdt.rdl` states
+  and a narrower write changes nothing, not even the lock
+  (`KEY` still reads 1, and `COUNT` reads the value read before the write plus at most the
+  `clk_smc_i` cycles since that read, the counter counting on).
 
 *Test Procedure*:
 
@@ -5058,8 +5109,12 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
   the keyed write reads 0x0000_330F under the bit 28 mask. Restore `CTRL` 0.
 . Error injection. Point: the core 0 `CMP` register. Kind: a keyed 32-bit `CMP` write of
   0xDEAD_A5A5, wider than the 16-bit field. Expected response: `CMP` reads back 0x0000_A5A5. Restore
-  `CMP` 0x1000 and require it; require every access reachable, the step stamps and checker lines in
-  order, and print the ordered fence.
+  `CMP` 0x1000 and require it.
+. For the 28 (core, register) cells in the drawn order: for a `CTRL` cell write `KEY` then the
+  background and read it back; write `KEY`, write the drawn pattern under
+  the drawn byte-enable mask through `wstrb`, read the register back and compare as the
+  Randomization field states, read `KEY`, and restore `CTRL`, `COUNT` or `CMP`; require every access
+  reachable, the step stamps and checker lines in order, and print the ordered fence.
 
 *Checkers*:
 
@@ -5082,11 +5137,26 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
 |`CHK-WDT-CTRL-LOCKED-WRITE` |An all-ones `CTRL` write while locked reads back 0, and after `KEY` it
   reads 0x0000_330F with bit 28 masked; bit 28 is printed and not compared
 |`CHK-WDT-CMP-WIDE-WRITE` |A 32-bit `CMP` write of 0xDEAD_A5A5 reads back 0x0000_A5A5
-|`CHK-NONVAC` |Ordered fence: step stamps S1 to S9 strictly increasing and the eight checker lines
+|`CHK-WDT-DRAWN-STROBE-WALK` |Each of the 28 (core, register) cells, in the drawn order, takes a
+  keyed write of its drawn pattern under its drawn byte-enable mask, every register but `CTRL`
+  effective on two drawn cores and narrower on the other two: an effective write reads back as
+  `wdt.rdl` states (`CTRL` in its enabled bytes over the non-zero, non-arming background the
+  cell wrote first, masked to its fields with bit 28 masked, `CMP`
+  [15:0], `COUNT` the pattern plus at most the `clk_smc_i` cycles elapsed between the write and
+  the read, `COUNT_HI` 0, `KEY` 0 per the `KEY` field, "returns 1 if key has been written to it
+  and it is unlocked, 0 otherwise", `SCALED_COUNT`, with `wdogscale` 2 and `COUNT` 0x1_0000
+  written before the cell and both restored to 0 after it,
+  inside the two `COUNT` reads shifted by `wdogscale` and masked to 16 bits with `COUNT` moving by
+  at most the cycles since its first read) and a narrower write
+  leaves `CMP`, `KEY` and the lock unchanged (`KEY` reads 1 after a narrower write to another
+  register: `wdt.rdl`, "Any other write returns OKAY and changes nothing, not even the lock";
+  `COUNT` after a narrower write reads the value read before the write plus at most the
+  `clk_smc_i` cycles since that read, the counter counting on); `FEED` is printed; 28 of 28 cells
+|`CHK-NONVAC` |Ordered fence: step stamps S1 to S10 strictly increasing and the nine checker lines
   printed in step order, each after its own step, with every access reachable
 |===
 
-*Pass Criteria*: all nine checkers hold and every sequence assert holds. Bit 28 after the all-ones
+*Pass Criteria*: all ten checkers hold and every sequence assert holds. Bit 28 after the all-ones
 write is reported only. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Bit 28 (`wdogip0`) after the all-ones `CTRL` write is printed and not compared,
@@ -8504,24 +8574,37 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 
 *Area*: FABRIC
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_sep_in_axi_shape_test`
 
 *BFM / Model*: SEP_IN AXI driver (`ocah_axi_vip` AXI4 master), no external VIP
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RAND-REP; the seed draws the AxSIZE, the burst type,
-the burst length and the aligned offset of each SEP_IN access (the scoreboard's exact compares grade
-every readback; an INCR burst longer than two beats targets the SPM, as the 16-beat burst does, and
-a FIXED or WRAP burst keeps the two scratch registers, its error response reported as the Scope
-limit says), and the zero-strobe beat through the explicit `wstrb` of `SmcSysAxiItem` (existing
-bench hook, the path `smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`), which lifts
-the `cp_wstrb` `none` ignore bin of `cg_sep_in_shape` and retires the two Phase 2 rows of SMC_FCOV
-on that cell, both landing with the upgrade; 3 seeds per regression.
+*Randomization*: RAND-REP; after the directed legs the seed draws six transfer shapes, one of each
+of the four kinds first and then two drawn freely from the four, so every seed carries every kind,
+and one zero-strobe beat on SEP_IN: for each shape the burst type (the four kinds: INCR on the two
+scratch registers, INCR into an SPM page, FIXED or WRAP on the scratch registers), the AxSIZE (1, 2
+or 4 bytes on the
+scratch registers, 1, 2, 4 or 8 bytes in the SPM), the burst length (INCR one or two beats on the
+scratch registers and three to sixteen beats in the SPM, as the 16-beat burst does; FIXED two to
+eight beats; WRAP two, four or eight beats with the burst inside the two scratch registers), the
+aligned offset (filter: aligned to the AxSIZE, inside `SCRATCH_COLD_0/1` or inside one 4 KiB SPM
+page) and the payload; a byte model of the two scratch registers gives the exact read-back after
+every shape: `CHK-SEP-IN-BURST-INCR` grades the INCR shapes on the scratch registers (both words
+read back from the model), `CHK-SEP-IN-BURST-LONG` the INCR bursts into the SPM (the first and the
+last beat and the whole burst read back), `CHK-SEP-IN-BURST-UNSUPPORTED` the FIXED and WRAP shapes
+(an error response leaves both words as the model; an OKAY is reported, as the Scope limit says,
+and both words are read back against the model of the accepted burst, a FIXED burst leaving at
+the one address the last beat the manager drove in that address's lane and a WRAP burst filling
+its aligned window from the offset and wrapping, AMBA AXI burst addressing, each beat landing only
+where the manager's lane is the lane of the beat's address, since the cocotbext manager places
+beat k in the lanes of offset + k * AxSIZE for every burst type) and `CHK-SEP-IN-NARROW-STROBES` the zero-strobe beat (a drawn
+AxSIZE, aligned
+offset and data through the explicit `wstrb` of `SmcSysAxiItem`, the existing bench hook
+`smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`; its BRESP is printed and both
+words read back unchanged); the zero-strobe beat lifts the `cp_wstrb` `none` ignore bin of
+`cg_sep_in_shape` once a coverage run of record exists; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: The transfer shapes the 64-to-32-bit conversion chain on the SEP_IN path has to resolve: narrow AxSIZE with byte strobes, a multi-beat INCR burst, and the FIXED and WRAP burst types the path refuses.
 
@@ -8534,22 +8617,32 @@ on that cell, both landing with the upgrade; 3 seeds per regression.
 * A 16-beat INCR burst of full-width beats into the SPM: every beat lands at its own address, read back at both ends and as one 16-beat read, so a splitter that drops, repeats or reorders beats past the first few is caught. A 2-beat FIXED burst of full-width beats to the scratch registers carries the words they already hold, so whether the path stores or refuses it the readbacks still test the INCR result; its response is reported, not asserted.
 * The same two burst types at the other beat sizes a 64-bit manager may issue: two-beat FIXED and WRAP bursts of one-byte and two-byte beats, and a two-beat WRAP of eight-byte beats, each aligned for WRAP. A refused one must leave both scratch registers as the INCR burst left them; one the path accepts is reported and the registers re-seeded. Each response is reported.
 * A write to the last unmapped page below `mmode_region`, must answer DECERR, so the write channel of the error slave is shown on SEP_IN as the read channel already is.
+* Six seed-drawn shapes (burst type, AxSIZE, length, aligned offset and payload), one of each of
+  the four kinds first and then two free draws, so every seed carries every kind, and one drawn
+  zero-strobe beat follow the directed legs; a byte model of the two scratch registers gives the
+  exact read-back after each.
 * Both scratch registers are restored to zero before the sequence ends.
 
 *Test Procedure*:
 
-Drive `smc_sep_in_axi_shape_test_seq` on the SEP_IN AXI sequencer: seed a scratch word, overwrite one byte and then one half of it with narrow writes and read the merge back, read the same lanes narrowly, place a two-beat INCR burst across two scratch registers and read it back per register and as one burst, issue the FIXED and the WRAP burst and require an error response with both registers read back unchanged after each, then restore both registers. The leaf requires the scoreboard's exact-value compare count to have reached its floor.
+Drive `smc_sep_in_axi_shape_test_seq` on the SEP_IN AXI sequencer: seed a scratch word, overwrite
+one byte and then one half of it with narrow writes and read the merge back, read the same lanes
+narrowly, place a two-beat INCR burst across two scratch registers and read it back per register and
+as one burst, issue the FIXED and the WRAP burst and require an error response with both registers
+read back unchanged after each, run the drawn shapes and the zero-strobe beat against the byte
+model, then restore both registers. The leaf requires the scoreboard's exact-value compare count to
+have reached its floor.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SEP-IN-NARROW-STROBES` |The seeded word, the word after the one-byte write and the word after the two-byte write are exact scoreboard compares, as are the narrow reads of the same lanes; a strobe the fabric ignored or widened fails one of them
-|`CHK-SEP-IN-BURST-INCR` |The two beats of the AxLEN=1 INCR write are read back from their own registers and again as one AxLEN=1 read, all exact compares
-|`CHK-SEP-IN-BURST-UNSUPPORTED` |The FIXED and the WRAP burst each answered an AXI error response -- the scoreboard fails an OKAY or a timed-out access marked expect-error -- and both registers, read back right after each burst, still held the values the INCR burst left; each FIXED or WRAP burst at the other beat sizes that answered an error left both registers unchanged, as exact compares; the error codes are reported, not asserted
+|`CHK-SEP-IN-NARROW-STROBES` |The seeded word, the word after the one-byte write and the word after the two-byte write are exact scoreboard compares, as are the narrow reads of the same lanes; the drawn zero-strobe beat leaves both scratch words as the model, its BRESP reported; a strobe the fabric ignored or widened fails one of them
+|`CHK-SEP-IN-BURST-INCR` |The two beats of the AxLEN=1 INCR write are read back from their own registers and again as one AxLEN=1 read, and after each drawn INCR shape on the scratch registers both words read back from the byte model, all exact compares
+|`CHK-SEP-IN-BURST-UNSUPPORTED` |The FIXED and the WRAP burst each answered an AXI error response -- the scoreboard fails an OKAY or a timed-out access marked expect-error -- and both registers, read back right after each burst, still held the values the INCR burst left; each FIXED or WRAP burst at the other beat sizes that answered an error left both registers unchanged, as exact compares, as does each drawn FIXED or WRAP shape (an OKAY is reported and both registers are read back against the byte model of the accepted burst); the error codes are reported, not asserted
 |`CHK-SEP-IN-DECERR-WRITE` |The write to the unimplemented page is compared against DECERR by the sequence; the run fails if it mismatches
-|`CHK-SEP-IN-BURST-LONG` |The first and last beat of the AxLEN=15 INCR write are read back from their own SPM addresses and the AxLEN=15 read returns every beat in order, all as exact scoreboard compares; the response of the 8-byte FIXED burst is reported
+|`CHK-SEP-IN-BURST-LONG` |The first and last beat of the AxLEN=15 INCR write are read back from their own SPM addresses and the AxLEN=15 read returns every beat in order, and each drawn INCR burst into the SPM page reads back its first and last beat and the whole burst, all as exact scoreboard compares; the response of the 8-byte FIXED burst is reported
 |===
 
 *Pass Criteria*: every narrow and burst readback matches its exact expectation, the two rejected burst types answer an error response without changing either register, the 16-beat burst reads back in order, and the scoreboard books at least the expected number of value compares, the unimplemented-page write answers DECERR. Enrolled in: `all`, `hosted`.
@@ -12444,8 +12537,6 @@ the document gives the limits but not whether an access past a limit stalls or e
 
 *Area*: FABRIC
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_axi_channel_timing_ports_test`
 
 *BFM / Model*: `ocah_axi_vip (AXI)` managers on SEP_IN (`env.sys_axi_agent`), SYS_IN
@@ -12460,17 +12551,26 @@ AR, B and R valid/ready lines and `rlast`; the R-hold drives `tb_sep_axi_r_hold`
 scoreboard's per-bus access counts and exact-value compare count
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the seed selects only timing: the AW-to-W skew and the AR
-delays of the random step on each port; every access must complete once with its data whatever the
-timing. Planned upgrade: RAND-REP; the seed draws the hold lengths on `tb_sep_axi_r_hold` and
-`tb_sys_axi_r_hold` and, on SEP_IN in place of the `b_ready_delay` of step 7, on `tb_sep_axi_b_hold`
-(the bench has that drive on SEP_IN only; the SYS_IN and JTAG legs of step 7 keep their
-`b_ready_delay`), the AxID set (the `axi_id` of each `SmcSysAxiItem`) and the interleave of the
-outstanding accesses (every access answering OKAY with the word of its own address, as
-`CHK-CTP-BREADY-PORTS`, `CHK-CTP-RREADY-BEATS` and `CHK-CTP-RANDOM-STALLS` grade it); 3 seeds per
-regression.
+*Randomization*: RAND-REP; the seed draws the hold length of the R-hold pulses on
+`tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` (1 to 64 `clk_smc_i` cycles per beat, in place of the
+eight of the directed walk), on SEP_IN before the `b_ready_delay` of step 7 the length of a
+hold on `tb_sep_axi_b_hold` (16 to 256 cycles, raised once a W handshake is seen, over the first
+three writes of the group; the bench has that drive on SEP_IN only, and every port keeps the
+`b_ready_delay`, on SEP_IN armed on the other five writes once the hold has dropped, since the delay
+counts from its arming; it supplies the stall cycles the DUT has to present), the AxID of
+every item of steps 7 to 9 (the `axi_id` of each `SmcSysAxiItem`, from the port's ID space: 64 on
+SEP_IN and SYS_IN, 4 on JTAG, the 6-, 6- and 2-bit inbound widths of `hw/sys/smc/doc/fabric.adoc`,
+AXI ID Widths by Fabric Stage) and the interleave of the outstanding accesses (the item order of
+each group of steps 7 and 9); every access answers OKAY with the word of its own address, as
+`CHK-CTP-BREADY-PORTS` (the B hold, the IDs and the order of step 7; the bench gates BVALID and
+BREADY while the hold is up, so the watch's B handshake count, recorded when the hold goes up, must
+stand still until the hold drops and be below the W handshake count at the drop, and the stall
+evidence is the BREADY delay armed after the drop on the other five writes: at least one
+BVALID-high, BREADY-low cycle from the DUT, as on the other ports), `CHK-CTP-RREADY-BEATS` (the R-hold lengths and the IDs) and
+`CHK-CTP-RANDOM-STALLS` (the IDs and the interleave, with the AW, W and AR delays the directed walk
+already drew) grade it; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: On SEP_IN, SYS_IN and JTAG the AW and W channels are skewed
 in both orders, BREADY and RREADY are held and AW, W and AR are randomly delayed, and every access
@@ -12490,17 +12590,20 @@ still completes OKAY with the word of its own address.
 * Four single writes queued as one group with W held back 16 cycles are all accepted: at least two
   AW handshakes are seen before the first W handshake and `SCRATCH_COLD(4..7)` reads
   0xC0DE_3004..0xC0DE_3007.
-* Eight outstanding 8-byte writes per port under a 64-cycle BREADY hold all complete OKAY, the
-  port watch sees at least one B stall cycle and at least eight B handshakes, and each word reads
-  back as written (`fabric.adoc`, Configuration Parameters, transaction limits).
-* A 4-beat 8-byte read per port under a 32-cycle RREADY hold returns the four words in order with
-  RLAST on the fourth beat only; on SEP_IN and SYS_IN the R-hold drive additionally pulses for
-  eight cycles after each beat; at least one R stall cycle is seen (`fabric.adoc`, Configuration
-  Parameters).
-* Per port two groups of eight writes and eight reads at distinct addresses, once with a random
-  `aw_delay` (1 to 8) and once with a random `w_delay` (1 to 8), each also with a random
-  `ar_delay` (0 to 8), return for every read the word its own address was seeded with; the run's
-  seed and the drawn delays are printed.
+* Eight outstanding 8-byte writes per port, in a drawn order with drawn AxIDs, all complete OKAY
+  under a hold of B: on SEP_IN a drawn `tb_sep_axi_b_hold` length, under which the B handshake
+  count stands still and stays below the W handshake count, followed on every port by a 64-cycle
+  BREADY hold with at least one B stall cycle from the DUT; the port
+  watch sees at least eight B handshakes and each word reads back as written (`fabric.adoc`,
+  Configuration Parameters, transaction limits).
+* A 4-beat 8-byte read per port, with a drawn AxID, under a 32-cycle RREADY hold returns the four
+  words in order with RLAST on the fourth beat only; on SEP_IN and SYS_IN the R-hold drive
+  additionally pulses for a drawn length after each beat; at least one R stall cycle is seen
+  (`fabric.adoc`, Configuration Parameters).
+* Per port two groups of eight writes and eight reads at distinct addresses, in a drawn interleave
+  with drawn AxIDs, once with a random `aw_delay` (1 to 8) and once with a random `w_delay` (1 to
+  8), each also with a random `ar_delay` (0 to 8), return for every read the word its own address
+  was seeded with; the run's seed and the drawn delays are printed.
 * The inbound filter entry 0 is opened for pass-all over SEP_IN as setup and returned to its
   `filter_ctrl.rdl` reset values (`FILTER_CONFIG` 0x3000, `START_ADDR` 0x0, `END_ADDR` 0x7) at the
   end.
@@ -12525,19 +12628,24 @@ and read it back as one 8-beat burst; print `CHK-CTP-W-FIRST`.
 . On SEP_IN issue one group of four single writes of 0xC0DE_3000+i to `SCRATCH_COLD(i)`, i = 4..7,
 with `w_delay`=16, read the four registers back, and require at least two AW handshakes before the
 first W handshake; print `CHK-CTP-AW-QUEUE`.
-. For each port k issue one group of eight 8-byte writes of distinct words at the SPM base plus
-0x7_0000 plus 0x1000*(k+1) with `b_ready_delay`=64, read the eight words back singly, and require
-at least eight B handshakes and at least one B stall cycle on the port; print
-`CHK-CTP-BREADY-PORTS`.
-. For each port k read four 8-byte beats at the same address with `r_ready_delay`=32 and compare
-the four words in order; on SEP_IN and SYS_IN run the R-hold pulse driver for the four beats, each
-pulse eight `clk_smc_i` cycles long once a beat's raw R valid is seen, each wait bounded at 2000
-rises; require RLAST to be 0, 0, 0, 1 and at least one R stall cycle; print
+. For each port k issue eight 8-byte writes of distinct words, in a drawn order with drawn AxIDs,
+at the SPM base plus 0x7_0000 plus 0x1000*(k+1): on SYS_IN and JTAG as one group with
+`b_ready_delay`=64; on SEP_IN as a group of three under `tb_sep_axi_b_hold`, raised for the drawn
+length once a W handshake is seen, then, once the hold has dropped, a group of five with
+`b_ready_delay`=64 (the delay counts from its arming, so it is armed after the hold); read
+the eight words back singly, and require at least eight B handshakes, at least one stalled
+B cycle on the port and, on SEP_IN, the B handshake count unchanged under the hold and below the W
+handshake count at its drop; print `CHK-CTP-BREADY-PORTS`.
+. For each port k read four 8-byte beats at the same address, with a drawn AxID, with
+`r_ready_delay`=32 and compare the four words in order; on SEP_IN and SYS_IN run the R-hold pulse
+driver for the four beats, each pulse the drawn length once a beat's raw R valid is seen, each wait
+bounded at 2000 rises; require RLAST to be 0, 0, 0, 1 and at least one R stall cycle; print
 `CHK-CTP-RREADY-BEATS`.
 . Print the run's random seed. For each port k seed eight words, then run two groups of eight
-writes and eight reads with random AW-lead or W-lead delay and a random `ar_delay`, read the eight
-written words back after each group, and require the drawn AW, W and AR delays to be non-zero in
-total; print `CHK-CTP-RANDOM-STALLS` with the seed and the drawn delays.
+writes and eight reads, in a drawn interleave with drawn AxIDs, with random AW-lead or W-lead delay
+and a random `ar_delay`, read the eight written words back after each group, and require the drawn
+AW, W and AR delays to be non-zero in total; print `CHK-CTP-RANDOM-STALLS` with the seed and the
+drawn delays.
 . Write `SCRATCH_COLD(0..7)` to 0 and restore inbound filter entry 0 `FILTER_CONFIG`, `START_ADDR`
 and `END_ADDR` to their reset values; stop the watches and require no X/Z probe sample on any of
 them.
@@ -12559,15 +12667,21 @@ order; on each of these writes AW is presented before W and the lead is printed.
 |`CHK-CTP-AW-QUEUE` |The watch counts at least two AW handshakes before the first W handshake of
 the group, all four writes answer OKAY and `SCRATCH_COLD(4..7)` reads 0xC0DE_3004..0xC0DE_3007;
 fewer AW handshakes fail the run.
-|`CHK-CTP-BREADY-PORTS` |On each port the eight writes answer OKAY under the 64-cycle BREADY hold,
-the watch counts at least eight B handshakes and at least one B stall cycle, and every word reads
-back equal to the word written.
+|`CHK-CTP-BREADY-PORTS` |On each port the eight writes, in the drawn order with drawn AxIDs, answer
+OKAY under the hold of B (the drawn `tb_sep_axi_b_hold` length on SEP_IN, under which the watch's B
+handshake count recorded when the hold went up is unchanged when it drops and below the W handshake
+count at the drop, over the first three writes; then the 64-cycle BREADY hold on every port, on
+SEP_IN armed after the drop over the other five writes, with at least one B stall cycle from
+the DUT), the watch counts at least eight B handshakes, and
+every word reads back equal to the word written.
 |`CHK-CTP-RREADY-BEATS` |On each port the 4-beat read returns the four words written in the BREADY
 step in order with RLAST on the fourth beat only, and the watch counts at least one R stall cycle;
-the R-hold pulses on SEP_IN and SYS_IN each end with the beat accepted within its bound.
+the R-hold pulses of the drawn length on SEP_IN and SYS_IN each end with the beat accepted within
+its bound; the reads carry drawn AxIDs.
 |`CHK-CTP-RANDOM-STALLS` |On each port all accesses of both groups answer OKAY, every read returns
 the word its own address was seeded with and every written word reads back, and the delays drawn
-for AW, W and AR are each non-zero in total; the seed and the drawn delays are printed.
+for AW, W and AR are each non-zero in total; the items of each group carry drawn AxIDs in a drawn
+interleave; the seed and the drawn delays are printed.
 |`CHK-NONVAC` |The step stamps S1 to S10 are in increasing time order, the six checker lines above
 were printed in step order each after its own step, at least 257 accesses were issued, the
 scoreboard's per-bus access counts equal the issued counts on SEP_IN, SYS_IN and JTAG, and its
@@ -15596,23 +15710,21 @@ Drive `smc_gpio_boot_stall_test_seq`. Each checker below is a named compare the 
 
 *Area*: RESET
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_irq_during_powergood_glitch_test`
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP)
 
 *Run mode*: one testlist entry in `testlists/combined.toml`; groups `all`, `hosted`, `combined`,
-`irq`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `combined`; seed 1; tool Verilator
-(cocotb).
+`irq`; `run_modes` `smoke`; `timeout_sec` 1800; tags `ci`, `combined`; seed 1, `reseed` 3; tool
+Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RAND-REP; the seed draws the glitch length (at or
-above the 8 reference cycles the mid-glitch samples need, a bench bucket; the IRQ aggregate reading
-0 at every sample from before the glitch until after the recovery is the compare of
-`CHK-IRQ-PG-GLITCH-NO-SPURIOUS` at every length); no external interrupt edge is driven by this
-entry, so no position against one is drawn, and the every-sample hold cell of
-`smc_powergood_glitch_test` stays with that test; 3 seeds per regression.
+*Randomization*: RAND-REP; the seed draws the glitch length (8 to 256 `clk_ref_i` cycles: the floor
+is what the mid-glitch samples need, the ceiling a bench bucket; the IRQ aggregate reading 0 at
+every sample from before the glitch until after the recovery is the compare of
+`CHK-IRQ-PG-GLITCH-NO-SPURIOUS` at every length, and its line carries the drawn length); no external
+interrupt edge is driven by this entry, so no position against one is drawn, and the every-sample
+hold cell of `smc_powergood_glitch_test` stays with that test; 3 seeds per regression (`reseed =
+3`).
 
 *Objective*: SMC OSS PyUVM IRQ-during-powergood-glitch test.
 
@@ -15633,7 +15745,7 @@ Drive `smc_irq_during_powergood_glitch_test_seq`. Each checker below is a named 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-IRQ-PG-GLITCH-NO-SPURIOUS` |Named compare in `smc_irq_during_powergood_glitch_test_seq.py`; the run fails if it mismatches
+|`CHK-IRQ-PG-GLITCH-NO-SPURIOUS` |Named compare in `smc_irq_during_powergood_glitch_test_seq.py` at the drawn glitch length; the run fails if it mismatches
 |===
 
 
@@ -16894,8 +17006,6 @@ latency claim; the sample count at which the pin changed is printed, not compare
 
 *Area*: RESET
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_cool_reset_deglitch_window_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN programming and reading `ISOLATE_REQ_FLR_COUNTER_VALUE`,
@@ -16907,15 +17017,28 @@ output) and `tb_rst_warm_smc_clk_n`, each sampled on every `clk_ref_i` edge or, 
 on `clk_smc_i`; `tb_skip_mem_repair_o`; `clk_ref_i`, `clk_smc_i`
 
 *Run mode*: one testlist entry in `testlists/reset.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `flr`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`, `reset`, `flr`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RAND-REP; the seed draws the pulse widths on either
-side of the 32-reference-cycle filter and the placement and widths of the pin segments inside the
-FLR hold (the filtered and asserted outcomes graded as `CHK-COOLRST-GLITCH-REJECT` and the control
-of step 2 grade them, the hold outcomes as `CHK-COOLRST-REASSERT-IN-HOLD` and
-`CHK-COOLRST-RELEASE-REASSERT-HOLD` grade them), the same draw covering the cool-pin cells of
-`smc_reset_pin_deglitch_test` (its cold-pin cell stays with that test); 3 seeds per regression.
+*Randomization*: RAND-REP; the seed draws the pulse widths on either side of the 32-reference-cycle
+filter (the rejected low 1 to 31 cycles and the asserting control low 32 to 64, graded as
+`CHK-COOLRST-GLITCH-REJECT`; the step 4 pre-low 1 to 31 and re-assert low 32 to 64, graded as
+`CHK-COOLRST-REASSERT-RESTART`; the long low 65 to 160, graded with the control as
+`CHK-COOLRST-RELEASE-NO-EXTENSION`) and the placement and widths of the pin segments inside the FLR
+hold (step 7: two to four lows of 1 to 31 cycles separated by single highs, placed zero or more
+cycles after the cool-reset fall and ending at least 32 cycles before the 0xC0-cycle hold does;
+step 8: a low of 32 to 48 cycles, a high of 1 to 16 and a re-assert low, with the later reset source
+drawn: on the hold cell the re-assert low is 32 to 48 cycles and the run is placed so that it ends
+before the hold does by the release offset measured on the control plus 32 cycles, so the hold is
+the later source, on the pin cell the re-assert low is 64 to 96 cycles, placed so that its 32nd low
+sample lands 8 to 16 cycles before the hold ends and the low outlasts the hold, so the de-glitched
+pin is the later source; `hw/sys/smc/doc/clk_rst.adoc`, Reset Distribution, states the outcome for
+both cells, the primary reset being the AND of the de-glitched cool-reset pin and the FLR cool
+reset, so no sample is released until the later source ends and the release follows it; graded as
+`CHK-COOLRST-REASSERT-IN-HOLD` and `CHK-COOLRST-RELEASE-REASSERT-HOLD`, the latter also requiring
+the drawn cell to have landed on both outputs, which holds by construction of the placement and
+fails only on a cool-reset rise further from the programmed hold than the placement's spare), the
+same draw covering the cool-pin cells of `smc_reset_pin_deglitch_test` (its cold-pin cell stays with
+that test); 3 seeds per regression (`reseed = 3`).
 
 *Objective*: A low pulse on `rst_cool_ni` shorter than 32 reference-clock samples is rejected, a
 high sample restarts the count, the release does not depend on the low duration, and pin segments
@@ -16923,22 +17046,28 @@ inside the FLR hold do not shorten or extend it.
 
 *Test Coverage*:
 
-* Positive control: a 40-cycle low on `rst_cool_ni` asserts primary reset; the offsets from the
-  first low to the assertion and from the first high to the release are measured on both primary
-  outputs.
-* A 31-cycle low leaves both primary resets released at every sample from the first low until 64
-  cycles after the pin returned high.
-* Low 20, high 1, low 40 asserts primary reset at the same offset from the re-assert low as the
-  control does from its first low, and not before 32 consecutive lows.
-* A 100-cycle low releases at the same offset from the first high as the 40-cycle low, so the
-  release carries the filter and synchroniser offset only.
+* Positive control: a drawn low of 32 to 64 cycles on `rst_cool_ni` asserts primary reset; the
+  offsets from the first low to the assertion and from the first high to the release are measured
+  on both primary outputs.
+* A drawn low of 1 to 31 cycles leaves both primary resets released at every sample from the first
+  low until 64 cycles after the pin returned high.
+* A drawn low below the filter, high 1, a drawn low at or above it asserts primary reset at the
+  same offset from the re-assert low as the control does from its first low, and not before 32
+  consecutive lows.
+* A drawn long low of 65 to 160 cycles releases at the same offset from the first high as the
+  control low, so the release carries the filter and synchroniser offset only.
 * FLR alone gives the baseline for the cool-reset fall and rise and the primary reset assertion and
   release.
-* Inside the FLR hold, three 20-cycle lows separated by single highs leave primary reset asserted at
-  every sample of the hold and release at the same offset from the cool-reset rise as FLR alone.
-* Inside the FLR hold, a 40-cycle low, a 10-cycle high and a 40-cycle low leave primary reset
-  asserted until the later of the two sources ends and release inside a bench bound of 256
-  reference-clock cycles afterwards.
+* Inside the FLR hold, two to four drawn sub-32 lows separated by single highs, placed a drawn
+  number of cycles after the cool fall, leave primary reset asserted at every sample of the hold
+  and release at the same offset from the cool-reset rise as FLR alone.
+* Inside the FLR hold, a drawn low of 32 to 48 cycles, a drawn high of 1 to 16 and a drawn re-assert
+  low that on the drawn hold cell ends inside the hold, the control's release offset and 32 cycles
+  to spare, and on the drawn pin cell outlasts it, placed a drawn number of cycles after the cool
+  fall, leave primary reset asserted until the later of the two sources ends (`clk_rst.adoc`, Reset
+  Distribution: the AND of the de-glitched pin and the FLR cool reset) and release inside a bench
+  bound of 256 reference-clock cycles afterwards; the drawn source is the later one by construction
+  of the placement, asserted on both outputs.
 
 *Test Procedure*:
 
@@ -16946,31 +17075,32 @@ inside the FLR hold do not shorten or extend it.
 . Wait for fuse sense, hold the isolate-request pad low, write the two FLR counters (pre-delay 0x20,
   hold 0xC0), read them back, require both primary resets and the cool-reset output released, and
   allow 64 reference-clock cycles for the counts to cross into the reference domain.
-. Drive `rst_cool_ni` low for 40 reference-clock cycles, then high, and wait for primary reset to
+. Drive `rst_cool_ni` low for the drawn control width, then high, and wait for primary reset to
   assert and release; record the assertion offset from the first low and the release offset from the
   first high.
-. Error injection. Point: the `rst_cool_ni` pin. Kind: a 31-cycle low, one sample short of the
+. Error injection. Point: the `rst_cool_ni` pin. Kind: a drawn low of 1 to 31 cycles, short of the
   32-sample filter. Expected response: both primary resets read released at every sample through
   the 64 cycles after the pin returned high. Sample both primary resets for those 64 further
   cycles.
-. Error injection. Point: the `rst_cool_ni` pin. Kind: a 20-cycle low broken by a single high
-  sample, then a 40-cycle low. Expected response: primary reset asserts at the same offset from
-  the re-assert low as the step 2 control does from its first low, and not before 32 consecutive
-  lows. Wait for assertion and release, then compare the assertion offset with step 2 and
-  require it to be at least 32.
-. Drive the pin low for 100 cycles, then high; wait for release; compare the release offset from the
-  first high with step 2.
+. Error injection. Point: the `rst_cool_ni` pin. Kind: a drawn low below the filter broken by a
+  single high sample, then a drawn low at or above it. Expected response: primary reset asserts at
+  the same offset from the re-assert low as the step 2 control does from its first low, and not
+  before 32 consecutive lows. Wait for assertion and release, then compare the assertion offset
+  with step 2 and require it to be at least 32.
+. Drive the pin low for the drawn long width, then high; wait for release; compare the release
+  offset from the first high with step 2.
 . Pulse `cfg_flr_pf_active_i`, wait for the cool-reset output to fall and rise and both primary
   resets to release, wait for the warm reset and clear the latched request; record the release
   offset from the cool-reset rise.
-. Error injection. Point: the `rst_cool_ni` pin inside the FLR hold. Kind: three 20-cycle lows
-  separated by single high samples, driven once the cool-reset output is low. Expected response:
-  primary reset is asserted at every sample from the first assertion to the cool-reset rise and
-  releases at the same offset from the rise as step 6. Pulse `cfg_flr_pf_active_i` first to start
-  the hold.
-. Pulse `cfg_flr_pf_active_i`; once the cool-reset output is low drive low 40, high 10, low 40, then
-  high; require no released sample from the first assertion until the later source ends and the
-  release inside the bench bound.
+. Error injection. Point: the `rst_cool_ni` pin inside the FLR hold. Kind: the drawn sub-32 lows
+  separated by single high samples, driven the drawn number of cycles after the cool-reset output
+  fell. Expected response: primary reset is asserted at every sample from the first assertion to the
+  cool-reset rise and releases at the same offset from the rise as step 6. Pulse
+  `cfg_flr_pf_active_i` first to start the hold.
+. Pulse `cfg_flr_pf_active_i`; the drawn number of cycles after the cool-reset output fell drive the
+  drawn low, high and low, then high; require no released sample from the first assertion until the
+  later source ends (the drawn source, the hold or the de-glitched pin, which must have ended after
+  the other on both outputs) and the release inside the bench bound.
 . Print each checker after its compare, stamp the ordered fence two reference-clock cycles after the
   last step, and print the bounded waits.
 
@@ -16979,22 +17109,28 @@ inside the FLR hold do not shorten or extend it.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-COOLRST-GLITCH-REJECT` |After a 40-cycle low asserts primary reset, a 31-cycle low leaves
-  `rst_primary_smc_clk_no` and `rst_primary_ref_clk_no` released at every sample until 64 cycles
-  after the pin returned high; any asserted sample, an absent control assertion or an X sample fails
-  it
-|`CHK-COOLRST-REASSERT-RESTART` |After low 20, high 1, low 40 primary reset asserts at the same
-  offset from the re-assert low as in the control, on both outputs, and no earlier than 32 cycles
-  after it; a differing offset, an earlier assertion or a timeout fails it
+|`CHK-COOLRST-GLITCH-REJECT` |After the drawn control low asserts primary reset, the drawn low
+  below the filter leaves `rst_primary_smc_clk_no` and `rst_primary_ref_clk_no` released at every
+  sample until 64 cycles after the pin returned high; any asserted sample, an absent control
+  assertion or an X sample fails it
+|`CHK-COOLRST-REASSERT-RESTART` |After the drawn low below the filter, high 1 and the drawn low at
+  or above it primary reset asserts at the same offset from the re-assert low as in the control, on
+  both outputs, and no earlier than 32 cycles after it; a differing offset, an earlier assertion or
+  a timeout fails it
 |`CHK-COOLRST-RELEASE-NO-EXTENSION` |The cycles from the first high to primary release are equal for
-  the 40-cycle and the 100-cycle low on both outputs, and are printed as measured; a differing
-  offset or a timeout fails it
-|`CHK-COOLRST-REASSERT-IN-HOLD` |With three sub-32 low segments in the FLR hold primary reset is
-  asserted at every sample of the hold and releases at the same offset from the cool-reset rise as
-  FLR alone, inside the bench bound; a released sample, a differing offset or a timeout fails it
-|`CHK-COOLRST-RELEASE-REASSERT-HOLD` |With a release and a re-assert of the pin inside the FLR hold
-  no sample is released before both sources end and release follows inside the bench bound; a
-  released sample, a release past the bound or a timeout fails it
+the drawn control low and the drawn long low on both outputs, and are printed as measured; a
+  differing offset or a timeout fails it
+|`CHK-COOLRST-REASSERT-IN-HOLD` |With the drawn sub-32 low segments placed in the FLR hold primary
+  reset is asserted at every sample of the hold and releases at the same offset from the cool-reset
+  rise as FLR alone, inside the bench bound; a released sample, a differing offset or a timeout
+  fails it
+|`CHK-COOLRST-RELEASE-REASSERT-HOLD` |With the drawn release and re-assert of the pin placed inside
+  the FLR hold, the re-assert low ending inside the hold or, on the drawn pin cell, outlasting it,
+  no sample is released before both sources end (`clk_rst.adoc`, Reset Distribution: the primary
+  reset is the AND of the de-glitched pin and the FLR cool reset) and release follows inside the
+  bench bound; a released sample, a release past the bound, a drawn later source that did not end
+  after the other on both outputs (the pin source ending at the control's release offset after the
+  last high, so the drawn cell lands by construction of the placement), or a timeout fails it
 |`CHK-NONVAC` |The ordered fence holds: steps S1 to S8 in order with strictly increasing
   simulation-time stamps and the five checker lines printed in order after the last step
 |`CHK-TIMEOUT-PATHS` |Every bounded wait (assertion 128, release 512, cool-reset fall 160,
@@ -21406,28 +21542,29 @@ NDM-reset cluster count itself is reported, not compared; only its bounds are ch
 
 *Area*: CPU
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_ecc_fault_inject_test`
 
 *BFM / Model*: ocah_axi_vip (AXI); `tb_cpu_ecc_inject_sbe` / `tb_cpu_ecc_inject_dbe`
 are testbench pins into the bound `smc_cpu_mem_dv` collateral, not product ports
 
 *Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
-`timeout_sec` 1800; tags `ci`; seed 1; args `+smc_hold_cpu_boot`,
+`timeout_sec` 1800; tags `ci`; seed 1, `reseed` 3; args `+smc_hold_cpu_boot`,
 `+smc_scratch_ram_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.ecc.hex`; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RAND-REP; the seed draws the inject pin armed first
-(`tb_cpu_ecc_inject_sbe` or `tb_cpu_ecc_inject_dbe`), the arm point against the counted reads
-(before the boot release or after the first counted read), the fire count at which the pin is
-cleared and whether SEP_IN reads of bank 0 through the SPM window join the core's fetches in the
-hold half (those reads are stimulus of the hold half only, issued on the existing SEP_IN driver, and
-whether the hook counts them is printed; the armed advance and the cleared hold of `CHK-ECC-INJECT`
-grade every drawn cell, the hold being unchanged by the extra reads); the counted reads are the
-core's fetches of the fixed `min_pass.ecc.hex` boot, which no seed controls, and the hook corrupts
-no data, so no entry or bit position is drawn; the CPU trap leg stays with the firmware tier; 3
-seeds per regression.
+*Randomization*: RAND-REP; the seed draws the inject pin armed first (`tb_cpu_ecc_inject_sbe` or
+`tb_cpu_ecc_inject_dbe`, the other pin armed second while the fill is in flight), the arm point
+against the counted reads (before the boot release or after the first counted read), the fire count
+at which the first pin is cleared (1 to 3) and whether four 8-byte SEP_IN reads of bank 0 through
+the SPM window join the hold half (those reads are stimulus of the hold half only, issued on the
+existing SEP_IN driver once the `RECOVERY` wait has counted the core's fetches past the clear, so
+that wait sees the core alone, no other master being active; whether the hook counts the SEP_IN
+reads is printed by `CHK-ECC-INJECT-RECOVERY`, with the fire count read across them, printed and
+not compared, since with both inject pins at 0 the hook's enable term cannot fire and that compare
+could not fail); the armed advance, the cleared hold and the second advance of
+`CHK-ECC-INJECT` grade every drawn cell, the hold being unchanged by the extra reads; the counted
+reads are the core's fetches of the fixed `min_pass.ecc.hex` boot, which no seed controls, and the
+hook corrupts no data, so no entry or bit position is drawn; the CPU trap leg stays with the
+firmware tier; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: The scratch bank0 ECC inject hook is reached during FW boot and is gated by its enable pins.
 
@@ -21454,9 +21591,9 @@ Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ECC-INJECT` |Emitted only after three asserted compares on `tb_cpu_ecc_inject_fire_count`: it advanced while SBE inject was armed, held while both inject pins were clear across further scratch reads, and advanced again while DBE inject was armed (`smc_ecc_fault_inject_test_seq.py`); any of the three failing fails the run before the token
+|`CHK-ECC-INJECT` |Emitted only after three asserted compares on `tb_cpu_ecc_inject_fire_count`: it advanced while the drawn first pin was armed, up to the drawn clear count, held while both inject pins were clear across further scratch reads (and the drawn SEP_IN reads of bank 0), and advanced again while the second pin was armed (`smc_ecc_fault_inject_test_seq.py`); any of the three failing fails the run before the token
 |`CHK-ECC-INJECT-NO-DUT-SECDED` |Carries no compare of its own: a scope statement that this leaf proves the inject hook and its enable gating, not the DUT's SECDED detector, which `smc_ecc_codeword_corrupt_test` covers
-|`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over
+|`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over (the `RECOVERY` wait counts the core's fetches before any drawn SEP_IN read is issued), and whether the drawn SEP_IN reads of bank 0, issued afterwards with the fire count read across them (printed, not compared: with both inject pins at 0 it cannot move), were counted
 |===
 
 
@@ -22626,32 +22763,37 @@ only their order of return is compared.
 
 *Area*: CPU
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_cpu_ctrl_scratch_all_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 4-byte reads and writes); bench
 probe `tb_top.tb_fuse_sense_done`; CPU_CTRL SCRATCH[0..15], the 32-bit `data` field of each entry.
 
 *Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
-`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+`timeout_sec` 1800; tags `ci`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, the leaf walks the whole cell set in one run. Planned upgrade:
-RAND-REP; the seed draws the patterns, the interior offsets and the AxSIZE of each read-back (1, 2,
-4 or 8 bytes on the same `SmcSysAxiItem` driver; every write stays a 4-byte write of one `SCRATCH`
-entry, so no write spans two entries and no narrow write lands part of a pattern; the pattern
-compare of `CHK-SCRATCH-UNIQUE`, `CHK-SCRATCH-WALK` and `CHK-SCRATCH-BITS` holds on the 4-byte
-read-backs and the narrow and 8-byte read-backs are printed; filter: a drawn offset is aligned to
-its AxSIZE and no access crosses the end of the `SCRATCH[0..15]` array); 3 seeds per regression.
+*Randomization*: RAND-REP; the seed draws the sixteen unique patterns and the sixteen walking
+patterns (distinct, non-zero 32-bit words; the three width patterns stay pinned) and sixteen
+read-back probes after the unique sweep, each with an AxSIZE (1, 2, 4 or 8 bytes on the same
+`SmcSysAxiItem` driver) and a byte offset inside the 128-byte `SCRATCH[0..15]` array (filter:
+aligned to its AxSIZE and not crossing the end of the array; every write stays a 4-byte write of one
+`SCRATCH` entry, so no write spans two entries and no narrow write lands part of a pattern); the
+pattern compare of `CHK-SCRATCH-UNIQUE` holds on the 4-byte read-backs of an entry's `data` word,
+including a 4-byte probe at one, and on the low word of an 8-byte probe (the `data` field of
+`cpu_ctrl.rdl`; the upper word of an entry has no field), while the narrow probes, the upper word of
+an 8-byte probe and a 4-byte probe of an entry's upper word are printed; `CHK-SCRATCH-WALK` grades
+the walking patterns and `CHK-SCRATCH-BITS` stays
+as it is; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: SCRATCH[0..15] isolation, walking entry and 32-bit storage.
 
 *Test Coverage*:
 
 * All sixteen SCRATCH entries are software read-write 32-bit registers with reset 0
-  (`cpu_ctrl.rdl` SCRATCH; `smc-programming.adoc`): a distinct pattern per entry reads back in
-  order and in reverse order with no aliasing.
-* Walking entry: a pattern written to entry k alone leaves the other fifteen entries at 0.
+  (`cpu_ctrl.rdl` SCRATCH; `smc-programming.adoc`): a drawn distinct pattern per entry reads back
+  in order and in reverse order with no aliasing, and sixteen drawn probes read the array back at a
+  drawn offset and AxSIZE, a 4-byte probe of a `data` word and the low word of an 8-byte probe
+  reading the entry's pattern.
+* Walking entry: a drawn pattern written to entry k alone leaves the other fifteen entries at 0.
 * Width: `0xFFFF_FFFF`, `0x0000_0001` and `0x8000_0000` written to every entry read back exactly.
 * Every entry is restored to its value read before the sweep. Which entries the bench and the
   firmware use is not identified, so all sixteen are swept and restored.
@@ -22662,11 +22804,11 @@ its AxSIZE and no access crosses the end of the `SCRATCH[0..15]` array); 3 seeds
 . Wait for `tb_fuse_sense_done` (bound 200000 `clk_smc_i` cycles); require the sixteen entry
   addresses to be distinct.
 . Read and save all sixteen entries.
-. Write `0xA5A5_0000 | (index << 8) | index` to each entry; read all back in order and then in
-  reverse order and compare each with its own pattern; require the sixteen patterns read in order
-  to be distinct.
-. Write 0 to all entries; for each k write `0xDEAD_BE00 | k` to entry k, read all sixteen and
-  compare entry k with the pattern and the other fifteen with 0, then write 0 to entry k.
+. Write its drawn pattern to each entry; read all back in order and then in reverse order and
+  compare each with its own pattern; require the sixteen patterns read in order to be distinct;
+  read the sixteen drawn probes.
+. Write 0 to all entries; for each k write its drawn walking pattern to entry k, read all sixteen
+  and compare entry k with the pattern and the other fifteen with 0, then write 0 to entry k.
 . For each of `0xFFFF_FFFF`, `0x0000_0001` and `0x8000_0000` write it to every entry and read
   every entry back comparing exactly.
 . Write each saved value back and compare the read-back of every entry; require the total access
@@ -22678,10 +22820,12 @@ its AxSIZE and no access crosses the end of the `SCRATCH[0..15]` array); 3 seeds
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SCRATCH-UNIQUE` |Each of the sixteen entries must read its own distinct pattern in order and
-  in reverse order, and the restore must return the saved words.
-|`CHK-SCRATCH-WALK` |With one entry written alone it must hold its pattern and the fifteen idle
-  entries must read 0, for each of the sixteen entries.
+|`CHK-SCRATCH-UNIQUE` |Each of the sixteen entries must read its own drawn distinct pattern in
+  order and in reverse order, a 4-byte drawn probe of a data word must read its pattern and an
+  8-byte probe must read it in its low word (`cpu_ctrl.rdl` `data`; the other probes are
+  reported), and the restore must return the saved words.
+|`CHK-SCRATCH-WALK` |With one entry written its drawn pattern alone it must hold it and the
+  fifteen idle entries must read 0, for each of the sixteen entries.
 |`CHK-SCRATCH-BITS` |All sixteen entries must read back `0xFFFF_FFFF`, `0x0000_0001` and
   `0x8000_0000` exactly as written.
 |`CHK-NONVAC` |The six steps must stamp in order with strictly increasing time and the checker
@@ -23472,22 +23616,19 @@ Drive `smc_dfd_sanity_test_seq`. Each checker below is a named compare the DUT c
 
 *Area*: JTAG
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_dfx_status_abort_test`
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
 *Run mode*: one testlist entry in `testlists/jtag.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`, `dfx`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`, `dfx`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RAND-REP; the seed draws the abort pin and the pulse
-width (in `clk_smc_i` cycles, one and above, the one-clock floor a bench bucket:
-`dfx_ctrl_status.rdl` states the inputs sticky 1 until reset and no minimum width, and
-`port_table.adoc` has no row for them; the sticky bit of the pulsed pin reading 1 afterwards with
-the other bit 0 is the compare of `CHK-DFX-ABORT-REPAIR` and `CHK-DFX-ABORT-MBIST`); 3 seeds per
-regression.
+*Randomization*: RAND-REP; the seed draws which abort pin is pulsed first and the pulse width of
+each pin (1 to 64 `clk_smc_i` cycles; the one-clock floor a bench bucket: `dfx_ctrl_status.rdl`
+states the inputs sticky 1 until reset and no minimum width, and `port_table.adoc` has no row for
+them); the sticky bit of the pulsed pin reading 1 after the pin returned to 0, with the other bit at
+its earlier value, is the compare of `CHK-DFX-ABORT-REPAIR` and `CHK-DFX-ABORT-MBIST`, each carrying
+the drawn order and width; 3 seeds per regression (`reseed = 3`).
 
 *Objective*: mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
 
@@ -23508,8 +23649,8 @@ Drive `smc_dfx_status_abort_test_seq`. Each checker below is a named compare the
 |Checker |Description
 |`CHK-DFX-ABORT-BASIC` |Named compare in `smc_dfx_status_abort_test_seq.py`; the run fails if it mismatches
 |`CHK-DFX-ABORT-IDLE` |Named compare in `smc_dfx_status_abort_test_seq.py`; the run fails if it mismatches
-|`CHK-DFX-ABORT-MBIST` |Named compare in `smc_dfx_status_abort_test_seq.py`; the run fails if it mismatches
-|`CHK-DFX-ABORT-REPAIR` |Named compare in `smc_dfx_status_abort_test_seq.py`; the run fails if it mismatches
+|`CHK-DFX-ABORT-MBIST` |Named compare in `smc_dfx_status_abort_test_seq.py`: the `mbist_abort` sticky bit reads 1 after a pulse of the drawn width, in the drawn order, with the other bit at its earlier value; the run fails if it mismatches
+|`CHK-DFX-ABORT-REPAIR` |Named compare in `smc_dfx_status_abort_test_seq.py`: the `mem_repair_abort` sticky bit reads 1 after a pulse of the drawn width, in the drawn order, with the other bit at its earlier value; the run fails if it mismatches
 |===
 
 
@@ -25672,8 +25813,6 @@ sixteen-read `sbbusy` wait are bounded and fail on expiry with the last `sbcs` a
 
 *Area*: JTAG
 
-*Status*: planned upgrade (seed-drawn cells; the directed walk stays until the upgrade lands)
-
 *Source Module*: `smc_jtag_dm_abstractcs_lifecycle_test`
 
 *BFM / Model*: ocah_jtag_vip bit-banging the CPU TAP pins `tb_cpu_jtag_tck`, `tb_cpu_jtag_tms`,
@@ -25687,16 +25826,26 @@ Register fields `aarsize`, `postexec`, `transfer`, `write` and `regno` 0x1000..0
 the program-buffer loop; `clk_smc_i` measured by the leaf to size the loop count
 
 *Run mode*: one testlist entry in `testlists/jtag.toml`; groups `all`, `hosted`; `run_modes`
-`smoke`; `timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
-*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
-draws nothing from the seed. Planned upgrade: RAND-REP; the seed draws the command sequence under a
-held error on the DMI leg (the stored command, the replaced or held `cmderr` and the unchanged GPR
-graded by `CHK-DM-CMDERR-STORE`, `CHK-DM-CMDERR-REPLACE` and `CHK-DM-CMDERR-NOEXEC`; the `aarsize`
-and `regno` rejects under a held code are printed), the same draw covering the held `cmderr` 2 cell
-of `smc_jtag_dm_cmderr_command_test` (its held `cmderr` 4 cell, made by a command to a hart that is
-not halted, stays with that test); execution over DMI stays with the Debug Module package; 3 seeds
-per regression.
+*Randomization*: RAND-REP; the seed draws the command sequence under a held error on the DMI leg:
+the reject form written first in step 4 with `cmderr` 1 held (an Access Register command with
+`transfer` set and `regno` 0x1020, or one with `transfer` set and `aarsize` 1; it leaves `cmderr`
+1, since only a command type other than Access Register sets 2 and no command executes while
+`cmderr` is nonzero), followed by the pinned Quick Access, which replaces the held code with 2,
+both graded by `CHK-DM-CMDERR-REPLACE` (`hw/sys/smc/doc/cpu.adoc`, Abstract Command Writes While
+cmderr Is Set);
+and one to four commands written in step 6 with `cmderr` 2 held, the first a drawn write form of
+`x8` (the 64- or the 32-bit Access Register write, so that an executed store would show in `x8`)
+and the rest drawn from the 64- and 32-bit Access Register writes of `x8`, the Access Register read
+of `x8`, Quick Access and the two reject forms above; each reads back from `command` as written and
+leaves `cmderr` 2, the reject forms included (an Access Register form sets no code while a code is
+held and Quick Access sets the 2 already held: `cpu.adoc`, Abstract Command Writes While cmderr Is
+Set), graded by `CHK-DM-CMDERR-STORE`; `x8` still reads pattern A after the clear,
+graded by `CHK-DM-CMDERR-NOEXEC`; the same draw covers the held `cmderr` 2 cell of
+`smc_jtag_dm_cmderr_command_test` (its held `cmderr` 4 cell, made by a command to a hart that is not
+halted, stays with that test); execution over DMI stays with the Debug Module package; 3 seeds per
+regression (`reseed = 3`).
 
 *Objective*: `abstractcs.busy` is observed while a program-buffer loop runs, and command misuse sets
 `cmderr` 1 and 2 without executing anything and clears on a write of 1s.
@@ -25708,13 +25857,15 @@ per regression.
   observable) and later 0 with `cmderr` 0.
 * A command written while `busy` is 1 does not execute (`x6` unchanged) and leaves `cmderr` 1; the
   wait for `busy` 0 is a bench bound, not a specification value.
-* With `cmderr` 1 held and `busy` 0, a Quick Access write replaces the held code with 2; a write of
-  1s then reads `cmderr` 0.
+* With `cmderr` 1 held and `busy` 0, the drawn `regno` 0x1020 or `aarsize` 1 form is written first
+  and leaves `cmderr` 1, then the pinned Quick Access write replaces the held code with 2; a
+  write of 1s then reads `cmderr` 0.
 * With `cmderr` 0, a Quick Access command, an Access Register command with `transfer` set,
   `aarsize` 3 and `regno` 0x1020, and one with `transfer` set, `aarsize` 1 and `regno` 0x1008 each
   leave `cmderr` 2; the same operands with `transfer` clear leave `cmderr` 0.
-* A command written with `busy` 0 and `cmderr` 2 replaces the stored command and leaves `cmderr` 2;
-  it does not execute, so `x8` still reads its earlier pattern after the clear.
+* Each of one to four drawn commands written with `busy` 0 and `cmderr` 2, the first a drawn write
+  form of `x8` with pattern B, replaces the stored command and leaves `cmderr` 2, the reject forms
+  included; none executes, so `x8` still reads its earlier pattern after the clear.
 * After the clear a 32-bit Access Register write and read of `x8` execute with `cmderr` 0.
 
 *Test Procedure*:
@@ -25733,8 +25884,9 @@ per regression.
   (sixty-four reads at most); require a `busy` 1 read, then `busy` 0 and `cmderr` 0.
 . Error injection. Point: the Debug Module `command` register over the DMI. Kind: the `x6` Access
   Register command written while `abstractcs.busy` reads 1 with the program-buffer loop running,
-  then a Quick Access command written with `cmderr` 1 held. Expected response: `cmderr` 1 once
-  `busy` reads 0 (sixty-four reads at most), then `cmderr` 2 after the Quick Access write; after
+  then the drawn reject form and the pinned Quick Access written in turn with `cmderr` 1 held.
+  Expected response: `cmderr` 1 once `busy` reads 0 (sixty-four reads at most), `cmderr` 1 still
+  after the reject form, then `cmderr` 2 after the Quick Access write; after
   1s are written to `cmderr` it reads 0 and `x6` reads its earlier value. Setup before the
   injection: write `x6`, re-arm `x5`, load the `x6` busy-write data, write the postexec command
   and read `abstractcs` until `busy` reads 1.
@@ -25745,11 +25897,12 @@ per regression.
   after each rejected leg. Then issue the `transfer` clear `aarsize` 1 `regno` 0x1020 command and
   read `abstractcs` after it.
 . Error injection. Point: the Debug Module `command` register over the DMI. Kind: a Quick Access
-  command that makes `cmderr` 2, then the Access Register command that writes `x8` issued with
-  `busy` 0 and `cmderr` 2 held. Expected response: `command` reads back the stored write and
-  `abstractcs` still reads `cmderr` 2; the command does not execute, and after 1s are written to
-  `cmderr` a command read of `x8` returns pattern A. Setup before the injection: load pattern B in
-  `data0` and `data1`.
+  command that makes `cmderr` 2, then the drawn sequence of one to four commands, the first a drawn
+  write form of `x8`, issued with `busy` 0 and `cmderr` 2 held. Expected response: `command` reads
+  back each stored write and `abstractcs` still reads `cmderr` 2 after every stored form, the
+  reject forms included; no command executes, and after 1s are
+  written to `cmderr` a command read of `x8` returns pattern A. Setup before the injection: load
+  pattern B in `data0` and `data1`.
 . Wait two `clk_smc_i` cycles, write a 32-bit Access Register write of `x8` with pattern C and a
   32-bit read, reading `abstractcs` after each and `data0` after the read.
 . Require the steps in order with increasing stamps and each checker line after its step, print the
@@ -25774,20 +25927,28 @@ fails it
 `aarsize` 1 leaves `cmderr` 2; any other value fails it
 |`CHK-DM-CMDERR-NOTRANSFER` |The operands rejected with `transfer` set leave `cmderr` 0 and `busy` 0
 with `transfer` clear, and the two rejected legs read `cmderr` 2; any other value fails it
-|`CHK-DM-CMDERR-STORE` |A command written with `busy` 0 and `cmderr` 2 reads back from `command` as
-written and leaves `cmderr` 2; the earlier value or another `cmderr` fails it
-|`CHK-DM-CMDERR-REPLACE` |With `cmderr` 1 held and `busy` 0 a Quick Access write leaves `cmderr` 2;
-`cmderr` 1 or any other value fails it
-|`CHK-DM-CMDERR-NOEXEC` |`x8` reads pattern A after the pattern-B write command issued with `cmderr`
-2; pattern B or any other value fails it
+|`CHK-DM-CMDERR-STORE` |Each of the drawn commands written with `busy` 0 and `cmderr` 2, the first
+slot pinned to a drawn write form of `x8` (64- or 32-bit), reads back from `command` as written and
+leaves `cmderr` 2, the `aarsize` and `regno` reject forms included (an Access Register form sets
+no code while a code is held: `hw/sys/smc/doc/cpu.adoc`, Abstract Command Writes While cmderr Is
+Set); the earlier value or another `cmderr` fails it
+|`CHK-DM-CMDERR-REPLACE` |With `cmderr` 1 held and `busy` 0 the drawn `regno` 0x1020 or `aarsize` 1
+form is written first and leaves `cmderr` 1 and `busy` 0 (only a command type other than Access
+Register sets 2 and no command executes while `cmderr` is nonzero: `hw/sys/smc/doc/cpu.adoc`,
+Abstract Command Writes While cmderr Is Set); the pinned Quick Access written next leaves `cmderr`
+2 and `busy` 0; `cmderr` 2 after the reject form, `cmderr` 1 after the Quick Access or any other
+value fails it
+|`CHK-DM-CMDERR-NOEXEC` |`x8` reads pattern A after the drawn commands issued with `cmderr` 2, the
+first slot pinned to a drawn write form of `x8` (64- or 32-bit) with pattern B, and the clear;
+pattern B or any other value fails it
 |`CHK-DM-CMDERR-RECOVER-GPR32` |After the clear a 32-bit write of `x8` and a 32-bit read return
 `cmderr` 0 and `busy` 0 and the read returns pattern C; any other value fails it
 |`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
 lines follow their steps; a missing or misordered term fails it
 |`CHK-TIMEOUT-PATHS` |Seven bounded waits: the DMI busy retries (four at most), the sixteen-read
 `dmactive` and halt waits on `dmstatus`, the sixteen-read idle wait on `abstractcs` that every
-command (the GPR writes and reads, the rejected-command legs, the replace and store waits) and
-every `cmderr` clear use, and the sixty-four-read loop, busy-observe and busy-write waits; each
+command (the GPR writes and reads, the rejected-command legs, the reject, replace and store waits)
+and every `cmderr` clear use, and the sixty-four-read loop, busy-observe and busy-write waits; each
 fails on expiry with the last `dmstatus`, `abstractcs`, `command` and DMI response
 |===
 
@@ -46290,12 +46451,12 @@ entry's `*Randomization*` field.
 |Test Case |Area |Class |Dimensions
 |`smc_register_boundary_depth_test`
 |<<smc-vplan-area-misc,MISC>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed; planned upgrade: the seed draws the offset inside each of the three windows the entry names (`SCRATCH_COLD`, `SCRATCH_COLD_WARM` and `CHIP_CONFIG`) and the AxSIZE of each probe read (1, 2, 4 or 8 bytes on the same `SmcSysAxiItem` driver; the pattern write at the last word of each scratch window stays a 4-byte write, so `CHK-CSR-BOUNDARY-SWEEP` reads the whole pattern back; the response code is compared on the 4-byte reads and the RDL value on the 4-byte reads of the first and last words only, except `LC_STATE`, the last `CHIP_CONFIG` word, which is reported and not compared as `CHK-CSR-BOUNDARY-SWEEP` and the Scope limit state, the response code and the read data of a 1-, 2- or 8-byte read and the read data of the interior words being printed, because `memmap.adoc`, Address Space Organization, states the answer to a 32-bit access only; filter: a drawn offset is aligned to its AxSIZE and no access crosses the end of its window); 3 seeds per regression.
+|RAND-REP
+|the seed draws one probe read per window: its byte offset and AxSIZE (1, 2, 4 or 8 bytes, aligned, not crossing the window); a 4-byte probe is compared, the other sizes printed; 3 seeds per regression.
 |`smc_reg_island_boundary_sweep_test`
 |<<smc-vplan-area-misc,MISC>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, the leaf walks the whole cell set in one run; planned upgrade: the seed draws the interior offsets of each of the 24 islands (read only, at words the generated map declares without a read side effect, so the side-effect words of the walk's read-only rule are not drawn; the OKAY response of a 4-byte read is the compare and the read data is printed), the AxSIZE of each read (1, 2, 4 or 8 bytes on the same `SmcSysAxiItem` driver; the response code is compared on the 4-byte reads and the read data on the 4-byte reads of the first and last words, the only size `memmap.adoc` states, and the response code and the read data of a 1-, 2- or 8-byte read are printed, not compared; filter: a drawn offset is aligned to its AxSIZE and no access crosses the end of its island; every write stays a 4-byte write) and the write pattern (a 4-byte write at a read-write first or last word the walk writes today, read back against the pattern masked to the word's sw-writable bits of `smc.rdl`; filter: the pattern goes only to an unkeyed word whose sw-writable fields `smc.rdl` declares `hw=r` with no write side effect, so the written value reads back; the `CTRL` and `CMP` words of the four watchdog islands (keyed: `wdt.rdl` drops a write not preceded by `KEY`), `GLOBAL_BASE` of `BASECFG` (the global aperture, `smc_base_config.rdl`) and every other base, size, reset, enable, remap or command word keep the identity write of today, as a hole word does), every island walked in every run; 1 seed per regression, because the leaf walks the whole set and the seed selects only order, value and timing.
+|RAND-REP
+|the seed draws one side-effect-free interior word per island and the AxSIZE of its read (a 4-byte read compared on OKAY, the other sizes printed), and the write pattern of the eligible scratch first word (`SCRATCH_COLD[0]`); 1 seed per regression.
 |`smc_avsbus_clock_config_proxy_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE
@@ -46322,16 +46483,16 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_avsbus_resync_timing_test`
 |<<smc-vplan-area-power,POWER>>
-|RAND-NONE (planned upgrade to RANDCFG)
-|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed; planned upgrade: the seed draws the divider value (`AVS_CFG_1.CLK_DIVIDER_VALUE` of `avsbus_controller.rdl`: 2 and above, because the field takes a lower value as 2 and 0 as the hardware default, and even (`avsbus_controller.rdl`: a 50 % duty cycle is possible only on even values and with `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR` at 128; the duty cycle enters no compare, the interval compares being in `avs_clock_o` periods, so the parity is a convention of the draw and not a graded property); written between step 5 and step 6, after the cold reset of step 2 has returned the field to its reset value, so steps 3 to 5 (the first resync episode after the reset, which precedes any register write, the flag polls and the one-hot count) run on the reset divider, `clk_ref_i` divided by 4 (`hw/ip/avsbus_controller/doc/architecture.adoc`, Clock Generation and Management: out of reset the controller runs on `clk_ref_i` divided by 4, both divider fields resetting to 0 as the sentinel for the hardware defaults), and steps 6 to 8 run under the drawn divider; the write follows the order the same section requires: `AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS` set first, so both source clocks are gated, the drawn divider written under the gate and `TURN_OFF_ALL_PREMUX_CLOCKS` cleared afterwards, because a divider change is not glitch-free on its own; the restart of the gated AVS clock begins with a slave resync, which is the episode discarded before step 6 measures, so the step 6 residuals and the probe samples from step 6 onward are taken under the settled divided clock; the interval legs run under the drawn divider with their compares in `avs_clock_o` periods and `clk_reg_i` cycles) and the resync point (the point inside the running interval at which step 8 writes 0x0040, in place of the half; filter: the point leaves at least the SEP_IN write bound before the 0x1000 interval elapses, so the write completes before a resync can begin, as `CHK-AVS-RESYNC-REWRITE` requires; the times stay printed); the firmware twin `smc_avsbus_clock_divider_test` stays as it is; 3 seeds per regression.
+|RANDCFG
+|the seed draws the divider (`AVS_CFG_1.CLK_DIVIDER_VALUE`, even, 2 to 254, never the reset value 4) written under the premux gate between steps 5 and 6, and the resync point at which step 8 rewrites the interval; 3 seeds per regression.
 |`smc_octs_csr_access_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE
 |none; directed, the cells are the stated reset values and access classes of the register description.
 |`smc_telemetry_address_map_test`
 |<<smc-vplan-area-power,POWER>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed; planned upgrade: the seed draws the message count per receiver (one at least and no more than the queue holds unpopped, the queue depth `BUFFER_DEPTH` of `hw/ip/telemetry_receiver/doc/interface.adoc`, default 8 with no SMC override in `periphs.adoc`, which `telemetry_receiver.rdl` names in `BUFFER_THRESHOLD` without a value), the order in which the three receivers are taken (each receiver's queue is filled with its drawn count and drained to `BUFFER_EMPTY` 1 before the next receiver's queue is filled, as step 3 does today, so the other two queues are empty at every compare) and the `BUFFER_THRESHOLD` pattern (masked to its field, bits [23:12]), feeding `CHK-TELEMETRY-APERTURE-REGS` (each pattern reads back as written and restores to 0) and `CHK-TELEMETRY-COUNTER-WINDOW` (each popped message in turn shows `TELEMETRY_COUNTER[0]` 0xFFFF_FFFF and `[1]` 0 in its own aperture and 0 and 0 in the others, whose queues are empty, `CTRL.BUFFER_POP` advancing the queue and reads not consuming it, `telemetry_receiver` `architecture.adoc`, Message Queue and Readout, and `BUFFER_EMPTY` reads 1 after the last pop); the drawn message count populates the one queue step 3 fills and pops per receiver; 3 seeds per regression.
+|RAND-REP
+|the seed draws the message count per receiver (1 to 8), the receiver order, the three `BUFFER_THRESHOLD` patterns and a distinct probe ID per queued message, which `CHK-TELEMETRY-COUNTER-WINDOW` compares before each pop; 3 seeds per regression.
 |`smc_telemetry_ctrl_access_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE
@@ -46358,8 +46519,8 @@ entry's `*Randomization*` field.
 |none; directed, the stimulus is the named frame, command or sequence the specification states.
 |`smc_wdt_register_map_test`
 |<<smc-vplan-area-power,POWER>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, the cells are the stated reset values and access classes of the register description; planned upgrade: the seed draws the write pattern, the byte-enable mask and the register order, every register walked in every run (the mask through the explicit `wstrb` of `SmcSysAxiItem`; a write whose byte enables cover the width the register requires takes effect and a narrower one answers OKAY and leaves the register unchanged (`hw/sys/smc/doc/watchdog.adoc`, Register Access; the width per register is in its Detailed Register Map, the `wdt.rdl` block description: all four bytes of `COUNT`, `COUNT_HI`, `FEED` and `KEY`, bytes 0 and 1 of `SCALED_COUNT` and `CMP`, and each `CTRL` byte on its own, so a one-byte `CTRL` write is an effective write of that byte); the read-back after an effective write is the value `wdt.rdl` states per register: `CTRL` the pattern in its enabled bytes with the other bytes unchanged, masked to its fields with bit 28 masked, `CMP` the pattern masked to `wdogcmp0[15:0]`, `COUNT` at or above the pattern masked to `wdogcount[30:0]` (it may count on), `COUNT_HI` 0 (no storage), `KEY` 0 (the effective write locks the watchdog again) and `SCALED_COUNT` inside the `COUNT` bracket shifted right by `wdogscale`, while what `FEED` reads is printed and not compared, as `smc_wdt_write_width_test` states; filter: the drawn `CTRL` pattern never sets `wdogrsten` (bit 8) together with `wdogenalways` (bit 12) or `wdogcoreawake` (bit 13), because that pair arms the watchdog against the drawn `CMP` and its expiry latches a reset request that starts the `CPU_CTRL` countdown and ends in a warm reset of the cluster mid-walk (`doc/programmer/src/smc-programming.adoc`, Watchdog Timers), and the enable bits are cleared again after their read, as the walk does today; `KEY` takes the full magic word before each keyed write), the same draw covering the cells of `smc_wdt_write_width_test`; 1 seed per regression, because the leaf walks the whole set and the seed selects only order, value and timing.
+|RAND-REP
+|the seed draws, in step 10, the order of the 28 (core, register) cells, the write pattern of each and its byte-enable mask through `wstrb`, every register but `CTRL` effective on two drawn cores and narrower on the other two; 1 seed per regression.
 |`smc_wdt_write_width_test`
 |<<smc-vplan-area-power,POWER>>
 |RAND-NONE
@@ -46542,8 +46703,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_axi_channel_timing_ports_test`
 |<<smc-vplan-area-fabric,FABRIC>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, the seed selects only timing: the AW-to-W skew and the AR delays of the random step on each port; every access must complete once with its data whatever the timing; planned upgrade: the seed draws the hold lengths on `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` and, on SEP_IN in place of the `b_ready_delay` of step 7, on `tb_sep_axi_b_hold` (the bench has that drive on SEP_IN only; the SYS_IN and JTAG legs of step 7 keep their `b_ready_delay`), the AxID set (the `axi_id` of each `SmcSysAxiItem`) and the interleave of the outstanding accesses (every access answering OKAY with the word of its own address, as `CHK-CTP-BREADY-PORTS`, `CHK-CTP-RREADY-BEATS` and `CHK-CTP-RANDOM-STALLS` grade it); 3 seeds per regression.
+|RAND-REP
+|the seed draws the R-hold lengths on SEP_IN and SYS_IN, the B-hold length on SEP_IN, the AxID of every item of steps 7 to 9 and the interleave of each group, with the AW, W and AR delays of the directed walk; 3 seeds per regression.
 |`smc_axi_contested_ports_test`
 |<<smc-vplan-area-fabric,FABRIC>>
 |RAND-NONE
@@ -46626,8 +46787,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_irq_during_powergood_glitch_test`
 |<<smc-vplan-area-reset,RESET>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed; planned upgrade: the seed draws the glitch length (at or above the 8 reference cycles the mid-glitch samples need, a bench bucket; the IRQ aggregate reading 0 at every sample from before the glitch until after the recovery is the compare of `CHK-IRQ-PG-GLITCH-NO-SPURIOUS` at every length); no external interrupt edge is driven by this entry, so no position against one is drawn, and the every-sample hold cell of `smc_powergood_glitch_test` stays with that test; 3 seeds per regression.
+|RAND-REP
+|the seed draws the glitch length (8 to 256 `clk_ref_i` cycles); 3 seeds per regression.
 |`smc_mixed_boot_stall_test`
 |<<smc-vplan-area-reset,RESET>>
 |RAND-NONE
@@ -46666,8 +46827,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_cool_reset_deglitch_window_test`
 |<<smc-vplan-area-reset,RESET>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed; planned upgrade: the seed draws the pulse widths on either side of the 32-reference-cycle filter and the placement and widths of the pin segments inside the FLR hold (the filtered and asserted outcomes graded as `CHK-COOLRST-GLITCH-REJECT` and the control of step 2 grade them, the hold outcomes as `CHK-COOLRST-REASSERT-IN-HOLD` and `CHK-COOLRST-RELEASE-REASSERT-HOLD` grade them), the same draw covering the cool-pin cells of `smc_reset_pin_deglitch_test` (its cold-pin cell stays with that test); 3 seeds per regression.
+|RAND-REP
+|the seed draws the pulse widths on either side of the 32-cycle filter, the long low, and the widths and placement of the pin segments inside the FLR hold; 3 seeds per regression.
 |`smc_cool_reset_pin_flr_overlap_test`
 |<<smc-vplan-area-reset,RESET>>
 |RAND-NONE
@@ -46862,8 +47023,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_ecc_fault_inject_test`
 |<<smc-vplan-area-cpu,CPU>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed; planned upgrade: the seed draws the inject pin armed first (`tb_cpu_ecc_inject_sbe` or `tb_cpu_ecc_inject_dbe`), the arm point against the counted reads (before the boot release or after the first counted read), the fire count at which the pin is cleared and whether SEP_IN reads of bank 0 through the SPM window join the core's fetches in the hold half (those reads are stimulus of the hold half only, issued on the existing SEP_IN driver, and whether the hook counts them is printed; the armed advance and the cleared hold of `CHK-ECC-INJECT` grade every drawn cell, the hold being unchanged by the extra reads); the counted reads are the core's fetches of the fixed `min_pass.ecc.hex` boot, which no seed controls, and the hook corrupts no data, so no entry or bit position is drawn; the CPU trap leg stays with the firmware tier; 3 seeds per regression.
+|RAND-REP
+|the seed draws the inject pin armed first, the arm point, the fire count at which the pin is cleared (1 to 3) and whether SEP_IN reads of bank 0 join the hold half; 3 seeds per regression.
 |`smc_spm_mem_boundary_test`
 |<<smc-vplan-area-cpu,CPU>>
 |RAND-NONE
@@ -46890,8 +47051,8 @@ entry's `*Randomization*` field.
 |the seed draws the 64-bit value of the fourth release write.
 |`smc_cpu_ctrl_scratch_all_test`
 |<<smc-vplan-area-cpu,CPU>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, the leaf walks the whole cell set in one run; planned upgrade: the seed draws the patterns, the interior offsets and the AxSIZE of each read-back (1, 2, 4 or 8 bytes on the same `SmcSysAxiItem` driver; every write stays a 4-byte write of one `SCRATCH` entry, so no write spans two entries and no narrow write lands part of a pattern; the pattern compare of `CHK-SCRATCH-UNIQUE`, `CHK-SCRATCH-WALK` and `CHK-SCRATCH-BITS` holds on the 4-byte read-backs and the narrow and 8-byte read-backs are printed; filter: a drawn offset is aligned to its AxSIZE and no access crosses the end of the `SCRATCH[0..15]` array); 3 seeds per regression.
+|RAND-REP
+|the seed draws the unique and walking patterns and sixteen read-back probes (offset and AxSIZE inside the array); 3 seeds per regression.
 |`smc_cpu_ctrl_sema_test`
 |<<smc-vplan-area-cpu,CPU>>
 |RAND-NONE
@@ -46914,8 +47075,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_dfx_status_abort_test`
 |<<smc-vplan-area-jtag,JTAG>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed; planned upgrade: the seed draws the abort pin and the pulse width (in `clk_smc_i` cycles, one and above, the one-clock floor a bench bucket: `dfx_ctrl_status.rdl` states the inputs sticky 1 until reset and no minimum width, and `port_table.adoc` has no row for them; the sticky bit of the pulsed pin reading 1 afterwards with the other bit 0 is the compare of `CHK-DFX-ABORT-REPAIR` and `CHK-DFX-ABORT-MBIST`); 3 seeds per regression.
+|RAND-REP
+|the seed draws which abort pin is pulsed first and the pulse width of each (1 to 64 `clk_smc_i` cycles); 3 seeds per regression.
 |`smc_jtag_dm_cmderr_command_test`
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-NONE
@@ -47018,8 +47179,8 @@ entry's `*Randomization*` field.
 |none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed.
 |`smc_jtag_dm_abstractcs_lifecycle_test`
 |<<smc-vplan-area-jtag,JTAG>>
-|RAND-NONE (planned upgrade to RAND-REP)
-|none; directed, every stimulus value is pinned by the entry and the sequence draws nothing from the seed; planned upgrade: the seed draws the command sequence under a held error on the DMI leg (the stored command, the replaced or held `cmderr` and the unchanged GPR graded by `CHK-DM-CMDERR-STORE`, `CHK-DM-CMDERR-REPLACE` and `CHK-DM-CMDERR-NOEXEC`; the `aarsize` and `regno` rejects under a held code are printed), the same draw covering the held `cmderr` 2 cell of `smc_jtag_dm_cmderr_command_test` (its held `cmderr` 4 cell, made by a command to a hart that is not halted, stays with that test); execution over DMI stays with the Debug Module package; 3 seeds per regression.
+|RAND-REP
+|the seed draws the reject form written under the held `cmderr` 1 before the pinned Quick Access, and one to four commands stored under a held `cmderr` 2 with the first slot pinned to a drawn write form of `x8` (64- or 32-bit); 3 seeds per regression.
 |`smc_dfd_mmr_rand_test`
 |<<smc-vplan-area-jtag,JTAG>>
 |RAND-REP (planned)

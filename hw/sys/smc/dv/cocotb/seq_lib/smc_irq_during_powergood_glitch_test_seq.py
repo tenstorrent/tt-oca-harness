@@ -43,6 +43,9 @@ last observed state; no fixed delay stands in for a completion handshake
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
@@ -64,12 +67,13 @@ _IRQ_PROBES = {
 
 class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
     # Stimulus quantity: the minimum time powergood_i is held low, in clk_ref_i
-    # cycles, enforced in the body -- the mid-glitch SAMPLEs usually take longer
-    # than this on their own, and whatever they do not cover is topped up before
-    # powergood_i is released. The measured hold is reported in the evidence
-    # line, so the width of the observed negative window is stated rather than
-    # incidental.
-    GLITCH_REF_CYCLES = 8
+    # cycles, drawn from the seed between the floor the mid-glitch SAMPLEs need
+    # and a bench bucket, and enforced in the body -- whatever the SAMPLEs do
+    # not cover is topped up before powergood_i is released. The measured hold
+    # is reported in the evidence line, so the width of the observed negative
+    # window is stated rather than incidental.
+    GLITCH_REF_CYCLES_MIN = 8
+    GLITCH_REF_CYCLES_MAX = 256
     # powergood_stable_o is the stretcher output, so the glitch must become
     # visible within a few clk_ref_i edges. Generous ceiling, never the checked
     # quantity -- expiry is a failure.
@@ -86,6 +90,10 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
 
     def __init__(self, name: str = "smc_irq_during_powergood_glitch_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        self.glitch_ref_cycles = random.Random(self.seed).randint(
+            self.GLITCH_REF_CYCLES_MIN, self.GLITCH_REF_CYCLES_MAX
+        )
         self.dispatch_reset = None
         self.dispatch_irq = None
         self.baseline_irq = None
@@ -161,6 +169,13 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
     # ------------------------------------------------------------------ body --
     async def body(self) -> None:
         dut = cocotb.top
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: glitch length %d clk_ref_i cycles (floor %d, bucket %d)",
+            self.seed,
+            self.glitch_ref_cycles,
+            self.GLITCH_REF_CYCLES_MIN,
+            self.GLITCH_REF_CYCLES_MAX,
+        )
 
         # S1: pre-glitch idle baseline (scoreboard: resolvable + all aggregates 0).
         self.baseline_irq = await self._irq_sample("irq_baseline")
@@ -195,18 +210,17 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
             expect_left_stable=True,
         )
 
-        # S4: hold the glitch for at least GLITCH_REF_CYCLES clk_ref_i cycles
-        # before releasing it, so the observed low window is a stated stimulus
+        # S4: hold the glitch for at least the drawn glitch length before
+        # releasing it, so the observed low window is a stated stimulus
         # quantity and not whatever the mid-glitch SAMPLEs happened to take.
         held = self._watch_cycles - hold_start_cycle
-        if held < self.GLITCH_REF_CYCLES:
-            await ClockCycles(dut.clk_ref_i, self.GLITCH_REF_CYCLES - held)
+        if held < self.glitch_ref_cycles:
+            await ClockCycles(dut.clk_ref_i, self.glitch_ref_cycles - held)
         self.glitch_hold_ref_cycles = self._watch_cycles - hold_start_cycle
-        assert self.glitch_hold_ref_cycles >= self.GLITCH_REF_CYCLES, (
+        assert self.glitch_hold_ref_cycles >= self.glitch_ref_cycles, (
             f"powergood_i was held low for only "
-            f"{self.glitch_hold_ref_cycles} clk_ref_i cycles, below the "
-            f"{self.GLITCH_REF_CYCLES}-cycle minimum this test states as its "
-            f"glitch width"
+            f"{self.glitch_hold_ref_cycles} clk_ref_i cycles, below the drawn "
+            f"{self.glitch_ref_cycles}-cycle glitch length"
         )
 
         # Release powergood and keep sampling IRQ while recovery is in flight.
@@ -250,17 +264,19 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
         cocotb.log.info(
             "CHK-IRQ-PG-GLITCH-NO-SPURIOUS: glitch observed "
             "(powergood_stable=0, primary resets asserted) after %d ref cycles, "
-            "powergood_i held low for %d clk_ref_i cycles (>= the stated %d), "
+            "powergood_i held low for %d clk_ref_i cycles (>= the drawn %d), "
             "recovery proven after %d ref cycles, %d dispatched SAMPLEs "
             "(1 baseline + %d mid-glitch + %d recovering + 1 recovered) and %d "
             "continuously observed clk_ref_i cycles with every IRQ aggregate "
-            "resolvable and 0",
+            "resolvable and 0; drawn=seed %d glitch_length %d",
             self.glitch_effect.wait_ref_cycles,
             self.glitch_hold_ref_cycles,
-            self.GLITCH_REF_CYCLES,
+            self.glitch_ref_cycles,
             self.recovery_wait.wait_ref_cycles,
             2 + len(self.glitch_irq_samples) + len(self.recovery_irq_samples),
             len(self.glitch_irq_samples),
             len(self.recovery_irq_samples),
             self._watch_cycles,
+            self.seed,
+            self.glitch_ref_cycles,
         )
