@@ -143,10 +143,9 @@ module smu_xbar_fcov #(
     `OCAH_FCOV_COVER(c_map_sep_size_reprogrammed, sep_size_reprogrammed_e, clk_smu_i, in_reset)
     `OCAH_FCOV_COVER(c_map_sep_size_zero, sep_size_zero_e, clk_smu_i, in_reset)
 
-`ifndef VERILATOR
-    // Commercial-simulator covergroup: the states the SEP window passes
-    // through. A zero size is only recorded once the size has been
-    // programmed, so an unprogrammed zero-size state does not exist.
+    // Covergroup: the states the SEP window passes through. A zero size is
+    // only recorded once the size has been programmed, so an unprogrammed
+    // zero-size state does not exist.
     covergroup cg_sep_window with function sample (logic [1:0] prog_zero);
       option.per_instance = 1;
       cp_state: coverpoint prog_zero {
@@ -159,7 +158,6 @@ module smu_xbar_fcov #(
     always_ff @(posedge clk_smu_i) begin
       if (!in_reset) u_cg_sep_window.sample({sep_size_prog_q, sep_size_zero_e});
     end
-`endif
   end
 
   // ------------------------------------------------------------------
@@ -244,10 +242,9 @@ module smu_xbar_fcov #(
   wire no_route_ext_in_to_ext_out_e = b_accept && (out_since_in_q === 1'b0);
   `OCAH_FCOV_COVER(c_no_route_ext_in_to_ext_out, no_route_ext_in_to_ext_out_e, clk_smu_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the response-code distribution and
-  // the programmed-window cross a flat point list cannot express.
+  // Covergroups: the response-code distribution and the programmed-window
+  // cross a flat point list cannot express.
   // ------------------------------------------------------------------
   covergroup cg_axi_in_resp with function sample (logic [1:0] resp);
     option.per_instance = 1;
@@ -280,6 +277,5 @@ module smu_xbar_fcov #(
       u_cg_smc_window.sample(smc_size_prog_q, smc_size_zero_e);
     end
   end
-`endif
 
 endmodule : smu_xbar_fcov

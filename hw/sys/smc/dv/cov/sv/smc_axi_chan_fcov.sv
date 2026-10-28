@@ -100,11 +100,9 @@ module smc_axi_chan_fcov (
   `OCAH_FCOV_COVER(c_rresp_slverr, rresp_slverr_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_rresp_decerr, rresp_decerr_e, clk_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: burst-length distribution, sampled on
-  // the address channel, and response codes, sampled on the response
-  // channel.
+  // Covergroups: burst-length distribution, sampled on the address channel,
+  // and response codes, sampled on the response channel.
   //
   // No length-against-response cross: AXI lets the
   // address channel advance while earlier transactions are still
@@ -148,6 +146,5 @@ module smc_axi_chan_fcov (
       if (r_accept_e) u_cg_rresp.sample(rresp_i);
     end
   end
-`endif
 
 endmodule : smc_axi_chan_fcov

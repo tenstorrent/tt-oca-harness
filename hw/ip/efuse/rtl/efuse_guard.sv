@@ -1,27 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Filter fuse commands against field locks, lifecycle-state rules, and RMA token checks.
+// Check program and read targets against field locks, lifecycle-state rules, and RMA token checks.
 //
 // HAS_LC_STATE distinguishes SEP (lifecycle field present) from SMC.
 // LC_STATE_BIT_POSITION and TOKEN_MATCH_CODE locate and encode token checks; the SIP and
 // chiplet token bit addresses are LC_STATE_BIT_POSITION+1 and +2.
 //
-// Block program or read when shadow locks or failed RMA token matches apply; secure_tm_i
-// can force a secure-TM block.
+// The program and read interfaces sample the lock and secure-TM status when firmware starts a
+// command and refuse a blocked start without issuing it; a command already issued completes.
 //
-// The outputs report the filtering result:
-//
-// - Filtered command req/resp pass allowed traffic.
-// - efuse_err_o sticks until error_clear_i.
+// - efuse_err_o sets on a lock-refused start and sticks until error_clear_i.
 // - Lock and secure-TM status are exported.
 
 module efuse_guard #(
   parameter int unsigned EFUSE_FIELDS     = 1,  // eFuse field-map entry count.
   parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // eFuse byte-address width.
   parameter type         efuse_map_t      = logic,  // Shadow eFuse map type.
-  parameter type         fuse_command_req_t      = logic,  // Fuse-command request type.
-  parameter type         fuse_command_resp_t      = logic,  // Fuse-command response type.
 
   parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: exempts field index 0 from locks and gates
                                         // the RMA token bits on token matches; clear for SMC.
@@ -41,7 +36,7 @@ module efuse_guard #(
 ) (
   input logic clk_i,                    // System clock.
   input logic rst_ni,                   // Active-low synchronous reset; clears efuse_err_o.
-  input logic secure_tm_i,              // Secure test mode, active-high; blocks all fuse traffic
+  input logic secure_tm_i,              // Secure test mode, active-high; blocks every start
                                         // without raising the error.
 
   input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Per-field byte ranges and lock
@@ -53,34 +48,24 @@ module efuse_guard #(
   input logic [5:0] rma_chiplet_token_match_i,  // RMA chiplet token-match status code from token
                                                 // processing.
 
-  output logic efuse_err_o,             // Sticky error set when a program or read is blocked by a
-                                        // lock or, for a program, by a missing RMA token match; not
-                                        // set by secure test mode.
+  output logic efuse_err_o,             // Sticky error set when a program or read start is refused
+                                        // by a lock or, for a program, by a missing RMA token match;
+                                        // not set by secure test mode.
   input  logic error_clear_i,           // Clears the sticky error; a same-cycle new error takes
                                         // priority.
 
-  input fuse_command_req_t fuse_command_req_i,  // Fuse command selected by the controller, before
-                                                // filtering.
-  output fuse_command_req_t fuse_command_req_filtered_o,  // Fuse command to the SHIM; zero when
-                                                          // blocked.
-
-  input fuse_command_resp_t fuse_command_resp_i,  // Fuse command response from the SHIM.
-  output fuse_command_resp_t fuse_command_resp_filtered_o,  // Fuse command response to the
-                                                            // controller; zero when blocked.
-
   input efuse_map_t shadow_regs_i,      // Shadow eFuse map supplying the per-field read and write
                                         // lock bits.
-  input logic is_programing_i,          // High while the program interface has a command
-                                        // outstanding.
-  input efuse_addr_t program_target_addr_i,  // Fuse bit address of the outstanding program command.
-  input logic is_reading_i,             // High while the read interface has a command outstanding.
-  input efuse_addr_t read_target_addr_i,  // Fuse bit address of the outstanding read command.
+  input efuse_addr_t program_target_addr_i,  // Fuse bit address a program start would target.
+  input efuse_addr_t read_target_addr_i,  // Fuse bit address a read start would target.
+  input logic program_blocked_i,        // One-cycle pulse: a lock refused a program start.
+  input logic read_blocked_i,           // One-cycle pulse: a lock refused a read start.
 
   output logic is_read_locked_o,        // High when the read target address falls in a read-locked
                                         // field.
   output logic is_program_locked_o,     // High when the program target address is write locked or
                                         // is an RMA token bit without a token match.
-  output logic secure_tm_blocked_o      // High while secure test mode blocks fuse traffic.
+  output logic secure_tm_blocked_o      // High while secure test mode blocks fuse command starts.
 );
 
   logic is_program_locked;
@@ -121,42 +106,17 @@ module efuse_guard #(
     is_read_locked = pro_read_intf_rm_lc_state_read_lock;
   end
 
-  logic error_capture, err;
-  logic secure_tm_blocked;
+  logic err;
 
   assign is_program_locked_o = is_program_locked;
   assign is_read_locked_o = is_read_locked;
-  assign secure_tm_blocked_o = secure_tm_blocked;
-
-  localparam fuse_command_req_t EmptyReq = '0;
-  localparam fuse_command_resp_t FuseCommandRespDefault = '0;
-
-  always_comb begin
-    fuse_command_req_filtered_o = fuse_command_req_i;
-    error_capture  = 1'b0;
-    secure_tm_blocked = 1'b0;
-    fuse_command_resp_filtered_o   = fuse_command_resp_i;
-    if (secure_tm_i) begin
-      fuse_command_req_filtered_o = EmptyReq;
-      error_capture  = 1'b0;  // secure_tm is on, but it is not an error_capture, error_capture is for read/write blocked
-      secure_tm_blocked = 1'b1;
-      fuse_command_resp_filtered_o   = FuseCommandRespDefault; // all output of the efuse is connected to 0;
-    end else if (is_programing_i && is_program_locked) begin
-      error_capture  = 1'b1;
-      fuse_command_req_filtered_o = EmptyReq;
-      fuse_command_resp_filtered_o   = FuseCommandRespDefault;
-    end else if (is_reading_i && is_read_locked) begin
-      error_capture  = 1'b1;
-      fuse_command_req_filtered_o = EmptyReq;
-      fuse_command_resp_filtered_o   = FuseCommandRespDefault;
-    end
-  end
+  assign secure_tm_blocked_o = secure_tm_i;
 
   always_ff @(posedge clk_i) begin
     if (!rst_ni) begin
       err <= 1'b0;
     end else begin
-      if (error_capture) begin
+      if (program_blocked_i || read_blocked_i) begin
         err <= 1'b1;
       end else if (error_clear_i) begin
         err <= 1'b0;

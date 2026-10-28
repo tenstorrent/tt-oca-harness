@@ -51,7 +51,7 @@ STRAP_CAPTURE_SETTLE_CYCLES = 16
 
 AXI_TIMEOUT_NS = 20_000
 
-# The port carries {diff_n, diff_p}; halves that are not complements raise lc_sigint_err_o.
+# The port carries {diff_n, diff_p}; halves that are not complements raise smc_ras_o.lc_sigint_err.
 LC_STATE_WIDTH = 4
 
 LC_STATE_TEST_DEV_VALUE = 0

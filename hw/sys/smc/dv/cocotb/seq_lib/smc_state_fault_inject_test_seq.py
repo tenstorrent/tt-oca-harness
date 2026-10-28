@@ -232,6 +232,22 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         await completion
         await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
 
+    async def _read_refused(self, label: str) -> None:
+        """A start the interface refuses: no command issues and done stays set.
+
+        The read interface answers a secure-test-mode start from IDLE in one
+        cycle with read_error set, the return data cleared and read_done left
+        at 1 (efuse_read_interface.sv, ST_READ_IDLE refused branch), so there
+        is no done-low window to wait for.
+        """
+        dut = cocotb.top
+        await self.csr_write(f"{label}_GO", READ_CTRL, READ_GO | READ_EN)
+        await self._wait_signal(dut.tb_efuse_read_error, 1, f"{label} refused")
+        assert int(dut.tb_efuse_read_done.value) == 1, (
+            f"{label}: a refused start dropped read_done; the command was issued"
+        )
+        await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
+
     async def _read_faults(self) -> None:
         dut = cocotb.top
         await self._read_once("READ_BASELINE")
@@ -259,7 +275,13 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
 
         for selector, name in ((0b01, "PHYSICAL"), (0b10, "GUARD"), (0b11, "SECURE_TEST")):
             dut.tb_efuse_read_error_inject.value = selector
-            await self._read_once(f"READ_{name}_ERROR")
+            if name == "SECURE_TEST":
+                # Secure test mode is checked at the start: the read interface
+                # refuses the start without issuing a command, so read_done
+                # never drops and the error is reported from IDLE.
+                await self._read_refused(f"READ_{name}_ERROR")
+            else:
+                await self._read_once(f"READ_{name}_ERROR")
             assert int(dut.tb_efuse_read_error.value) == 1, (
                 f"{name}: read error output did not assert"
             )

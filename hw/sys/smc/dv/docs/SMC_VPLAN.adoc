@@ -855,9 +855,9 @@ Requirement IDs are the VPLAN TC rows or the canonical scenario those
 tests actually run. Coverage intent names the `cov/sv` collector modules and
 representative `user` cover points that measure the feature
 (`hw/sys/smc/dv/docs/SMC_FCOV.adoc`); which leaf reaches each point is the
-measured table in `hw/sys/smc/dv/docs/SMC_FCOV_OWNERS.adoc`. The covergroups
-under `ifndef VERILATOR` are the VCS `group` metric and are not part of it.
-Checker evidence names the cocotb `CHK-*` checkers on the leaf's card.
+measured table in `hw/sys/smc/dv/docs/SMC_FCOV_OWNERS.adoc`. The `cov/sv`
+covergroups are not part of it. Checker evidence names the cocotb `CHK-*`
+checkers on the leaf's card.
 
 The Groups column is resolved membership, not intent. Every feature-credit row
 below is in `all` and `hosted`; the column names the feature groups that also
@@ -941,7 +941,7 @@ extent and its declared error response past it.
 |`smc_telemetry_atb_capture_test` |3 |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
 |`smc_telemetry_receiver_csr_test` |2 |TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
 |`smc_wdt_key_csr_test` |2 |WDT writes are gated by the KEY magic value, COUNT_HI re-locks, and narrow writes are dropped, proven per core.
-|`smc_wdt_timeout_pin_test` |2 |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
+|`smc_wdt_timeout_pin_test` |2 |A programmed first timeout raises `smc_ras_o.wdt_first_timeout`; uncleared, the second timeout raises `smc_ras_o.wdt_second_timeout` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |2 |Run zeroer over output-fabric payload bytes and check the model.
 |`smc_zeroer_multi_burst_test` |2 |Clear a region larger than one AXI burst and check the first and last word of each half, with a witness word past the end.
 |`smc_zeroer_unaligned_test` |3 |Run two in-page jobs that start partway into a word and check that exactly their bytes are zeroed, with the rest of each edge word and the guard words either side keeping their poison.
@@ -2970,13 +2970,13 @@ Drive `smc_wdt_key_csr_test_seq`. Each checker below is a named compare the DUT 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: A programmed first timeout raises `smc_wdt_first_timeout_o` at the DUT boundary; left uncleared, the stage-2 count in `CPU_CTRL.WDT_TIMEOUT` raises `smc_wdt_second_timeout_o`, and the reset unit turns that into the warm reset.
+*Objective*: A programmed first timeout raises `smc_ras_o.wdt_first_timeout` at the DUT boundary; left uncleared, the stage-2 count in `CPU_CTRL.WDT_TIMEOUT` raises `smc_ras_o.wdt_second_timeout`, and the reset unit turns that into the warm reset.
 
 *Test Coverage*:
 
 * core-0 WDT armed over SEP_IN with the magic-key protocol of `wdt.rdl` (`KEY` before each of `CMP`, `COUNT`, `CTRL`; `CTRL.wdogrsten | wdogenalways`);
-* `smc_wdt_first_timeout_o` latched within a bound of arming, with `smc_wdt_second_timeout_o` still 0 on that cycle;
-* `smc_wdt_second_timeout_o` latched `WDT_TIMEOUT` (`cpu_ctrl.rdl` reset `0x4000`) cycles after the first, within a stated slack;
+* `smc_ras_o.wdt_first_timeout` latched within a bound of arming, with `smc_ras_o.wdt_second_timeout` still 0 on that cycle;
+* `smc_ras_o.wdt_second_timeout` latched `WDT_TIMEOUT` (`cpu_ctrl.rdl` reset `0x4000`) cycles after the first, within a stated slack;
 * `rst_warm` still released on the cycle the first timeout latches, asserted after the second timeout, then released; both live pins read 0 afterwards while both sticky latches still read 1.
 * The stage-2 count is kept per core (`smc_cpu_ctrl_wrap.sv`), so after core 0's pass the same sequence runs on cores 1, 2 and 3 in turn, each after the previous warm reset has released. The sticky latches are already set by then, so each of those passes observes the live pins, which the warm reset clears again.
 
@@ -21162,7 +21162,7 @@ The DUT offers no frontdoor way to corrupt a stored codeword, so the sequence
 XORs two bits into scratch bank0 entry 0 through `tb_cpu_ecc_poke_en` /
 `tb_cpu_ecc_poke_entry` / `tb_cpu_ecc_poke_mask` before the CPU boot release;
 that pulse is the only write this leaf makes into DUT state. The reaction is
-observed frontdoor: `smc_cluster_ded_o` on the wrapper (held sticky in
+observed frontdoor: `smc_ras_o.cluster_ded` on the wrapper (held sticky in
 `tb_cluster_ded_seen`) must assert after the reset-vector fetch, and the bound
 module's scratch read counter must have advanced, so the DED came from a read
 of the poked word and not from a bench that never fetched.
@@ -21219,7 +21219,7 @@ XORs one bit into scratch bank0 entry 0 through `tb_cpu_ecc_poke_en` /
 `tb_cpu_ecc_poke_entry` / `tb_cpu_ecc_poke_mask` before the CPU boot release;
 that pulse is the only write this leaf makes into DUT state. The reaction is
 observed frontdoor: the bound module's scratch read counter must advance (the
-CPU fetched the poked word) and `smc_cluster_ded_o` on the wrapper, held sticky
+CPU fetched the poked word) and `smc_ras_o.cluster_ded` on the wrapper, held sticky
 in `tb_cluster_ded_seen`, must stay 0 for 20 000 further cycles. The paired
 `smc_ecc_codeword_ded_test` is the positive control that the same tap does
 assert on a two-bit fault.
@@ -35815,8 +35815,14 @@ that were changed.
   states as the time between a STOP and START condition; a value below it is printed, not compared.
 * Raising `T_R` and `T_F`, and the hold of the first START, are measured and printed with no
   expectation. Full-rate Standard-mode SCL is not run.
-* With `THIGH` and `TLOW` at 2 and every other field at 1 a transfer of START, address write and
-  STOP completes with one acknowledge and one STOP.
+* With `THIGH` and `TLOW` at 4 and every other field at 1 a transfer of START, address write and
+  STOP completes with one acknowledge and one STOP; four is the controller's floor, since its
+  stretch predictor needs `THIGH` of at least four and SCL low must outlast the output flop plus
+  the two-flop input synchronizer by a cycle before the controller releases SCL.
+* `i2c.rdl` states `THIGH` and `TLOW` "Must be `>= 2`". Whether 2 is legal or the description
+  has to follow the controller is an open ruling for the I2C owner, so transfer Y at `THIGH` and
+  `TLOW` of 2 runs after the graded minimum set and is logged (`OBS-I2C-WIRE-RDL-MIN`), completed
+  or not; nothing is graded on it until the ruling lands.
 
 *Test Procedure*:
 
@@ -35874,9 +35880,10 @@ equals the change in `TSU_STO`; any other delta fails it.
 fall of the START of Y, A4 minus A, equals the change in `T_BUF`; any other delta fails it. The
 measured bus-free time of each set is printed next to its programmed `T_BUF` (the time between a
 STOP and START condition per `i2c.rdl`); a value below it is printed, not compared.
-|`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 2 and the other fields at 1 transfer Y
+|`CHK-I2C-WIRE-MIN-SET-RUN` |With `THIGH` and `TLOW` at 4 and the other fields at 1 transfer Y
 shows a START, an acknowledged address, one STOP, `HOSTIDLE` and `CMD_COMPLETE`; a missing START
-or acknowledge, another STOP count or either flag clear fails it.
+or acknowledge, another STOP count or either flag clear fails it. The RDL minimum (`THIGH` and
+`TLOW` at 2) is observed only (`OBS-I2C-WIRE-RDL-MIN`) while the ruling on the description is open.
 |`CHK-NONVAC` |The steps are stamped in order with increasing simulation times and the checker
 lines follow them in order; a missing or misordered term fails it.
 |`CHK-TIMEOUT-PATHS` |The wait for the STOP edges, the `HOSTIDLE` poll, the LSIO ready poll and the
@@ -41620,7 +41627,7 @@ draws nothing from the seed.
 * `ZEROER_CTRL_STATUS_START` is packed with `int_en = 1`, so the start write leaves `CTRL_STATUS.INT_EN` holding a one. The field is bit 0 of a 64-bit register. A four-byte write of 0 at the upper half leaves INT_EN's byte lane deasserted, so a field that honours the strobe keeps its one, while one that took the zero-filled lower lanes would clear; the whole word outside the STATUS bit then has to read back as the armed word.
 * INT_EN is then cleared by a four-byte write of 0 at the low half, which selects its lane, and held clear across a four-byte write of all ones at the upper half. The only upper-half field is `STATUS` (`sw = r`), so that write can change nothing, while a DUT that steered the upper word onto the low lanes or decoded +4 onto the low word would set INT_EN. So INT_EN is held against an unselected write both set and clear, each time against data that would change it.
 * Every one of those writes is also the zeroer's trigger -- `INT_EN.wr_swacc` fires on any write of the register, whichever half is written -- and a trigger starts a job even at a size of zero, writing one burst to `DEST_ADDR` before the size is ever tested. That is why these writes happen here, where each one re-runs this leaf's own job over the region it has already zeroed, and not at reset, where `DEST_ADDR` is 0. After each write `CTRL_STATUS.STATUS` must leave its idle level and return to it, so the re-run is checked, not assumed. INT_EN ends at its RDL reset of 0, and `SIZE` and `DEST_ADDR` are cleared afterwards as before.
-* The job then runs again while the output side pushes back. `zeroer.adoc` (Outstanding Transaction Management) has `AWREADY` and `WREADY` provide the zeroer's downstream back-pressure, but the output fabric absorbs a single master's addresses, so a 64-repetition DMA job is started on the same accelerator master port and the SYS_OUT responder stalls AW and W in repeating eight-cycle windows. The zeroer must be seen holding `AWVALID` high against `AWREADY` low for at least one cycle, the re-poisoned probe words must read zero with the witness intact, and every DMA repetition must land at its destination.
+* The job then runs again while the output side pushes back. `zeroer.adoc` (Outstanding Transaction Management) has `AWREADY` and `WREADY` provide the zeroer's downstream back-pressure; the accelerator mux carries an AW spill register per master port and none on W, so a stall reaches the zeroer's W channel directly while its address phase is taken by the spill register. A 64-repetition DMA job is started on the same accelerator master port and the SYS_OUT responder stalls AW and W in repeating eight-cycle windows. The zeroer must be seen holding `WVALID` high against `WREADY` low for at least one cycle in which the responder refuses a zeroer beat on the output port (`WVALID` high, `WREADY` low and all-zero data there, the zeroer's; the DMA job carries its seeds; the input mux and the output cut buffer W between the two, so the refused beat may be an older one), because the mux hands `WREADY` to the port heading its W order FIFO and the DMA job's beats hold the zeroer's `WREADY` low on their own; the unattributed W stall count and the `AWVALID` against `AWREADY` low count are printed, not required. The re-poisoned probe words must read zero with the witness intact, and every DMA repetition must land at its destination.
 
 *Test Procedure*:
 
@@ -41634,7 +41641,7 @@ Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare t
 |`CHK-ZEROER-MULTI-BURST-PRELOAD` |The four probe words spanning both halves of the job and the witness word past its end were poisoned with distinct values and read back exactly, so the zero readbacks that follow can fail
 |`CHK-ZEROER-MULTI-BURST-STATUS` |`CTRL_STATUS.STATUS` left the level it rests at while the zeroer is idle and returned to it, and the output responder booked at least the two write transactions a 0x1000-byte job needs under AxLEN's 256-transfer cap, so the zeroer took a second address phase after its first data phase
 |`CHK-ZEROER-MULTI-BURST-ZEROED` |All four probe words read 0 after the job, including the first and last word of each half, and the witness word immediately past the end still holds its poison
-|`CHK-ZEROER-BACKPRESSURE` |With the DMA job contending and the responder stalling AW and W, the zeroer held AWVALID high against AWREADY low for a counted, non-zero number of cycles; the re-poisoned probe words, read back as poisoned before the job, read 0 after it, the witness kept its poison, and every DMA repetition read back its seed
+|`CHK-ZEROER-BACKPRESSURE` |With the DMA job contending and the responder stalling AW and W, the zeroer held WVALID high against WREADY low for a counted, non-zero number of cycles in which the output port presented the zeroer's all-zero beat with WVALID high and the responder's WREADY low (a zeroer stall the DMA job's W ownership of the mux causes is counted separately and printed; the AWVALID against AWREADY low count is printed, not required: the accelerator mux's AW spill register takes the address); the re-poisoned probe words, read back as poisoned before the job, read 0 after it, the witness kept its poison, and every DMA repetition read back its seed
 |`CHK-ZEROER-INT-EN-HALF-WRITE` |CTRL_STATUS.INT_EN held a one across a four-byte write of 0 at the half of the 64-bit register it does not occupy, with the armed word read back after it; was cleared by a four-byte write of 0 at the half it does occupy; and held a zero across a four-byte write of all ones at the other half. After each write STATUS left its idle level and returned
 |===
 
@@ -48474,7 +48481,6 @@ in <<smc-deferred-disposition>>.
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in <<smc-deferred-disposition>>; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
-|Verilator does not implement SV covergroups |The covergroups under `ifndef VERILATOR` in `cov/sv/` are the VCS `group` metric; on Verilator, functional coverage is the `cov/sv` cover properties in the `user` family |See `SMC_FCOV.adoc`
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |The test modules the retired-module table in <<smc-deferred-disposition>> lists are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in <<smc-deferred-disposition>> names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB

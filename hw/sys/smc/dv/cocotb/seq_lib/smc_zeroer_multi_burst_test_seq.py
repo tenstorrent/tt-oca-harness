@@ -115,6 +115,8 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         #: comes back.
         self.status_idle_level = -1
         self.aw_stall_cycles = 0
+        self.w_stall_cycles = 0
+        self.w_stall_responder_cycles = 0
 
     def _ensure_model_region(self) -> None:
         if OUTPUT_FABRIC_MODEL_REGION not in self.memory_model.regions:
@@ -197,10 +199,21 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         zeroer.adoc (Outstanding Transaction Management): AWREADY and WREADY
         provide the zeroer's downstream back-pressure. A DMA job on the same
         accelerator master port runs alongside, and the responder stalls AW and
-        W in bounded repeating windows; the zeroer must be seen holding an
-        address phase with AWVALID up and AWREADY low, the job must still clear
-        both halves without touching the witness, and every DMA repetition must
-        land.
+        W in bounded repeating windows; the zeroer must be seen holding a data
+        beat with WVALID up and WREADY low while the responder refuses a zeroer
+        beat on the output port (the input mux and the output cut buffer W
+        between the two, so the refused beat may be an older one), the job must
+        still clear both halves without touching the witness, and every DMA
+        repetition must land.
+
+        The accelerator mux hands WREADY to the port whose write heads its W
+        order FIFO (axi_mux.sv), so the DMA job's beats hold the zeroer's
+        WREADY low on their own; a zeroer stall counts only in a cycle where the
+        output port presents an all-zero beat (the zeroer's data; the DMA
+        carries its seeds) with WVALID up and the responder's WREADY low. The
+        mux carries an AW spill register per master port and none on W, so the
+        address phase is taken by the spill register; the AW stall count and
+        the unattributed W stall count are reported, not required.
         """
         responder = self.cfg.sys_out_mem
         assert responder is not None, "SYS_OUT responder not bound"
@@ -213,14 +226,27 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
                 f"its re-poison of 0x{poison:016x}; a later zero would prove nothing"
             )
         dut = cocotb.top
-        stalled = [0]
+        stalled = {"aw": 0, "w": 0, "w_responder": 0}
 
-        async def _count_aw_stalls() -> None:
+        def _stalled(prefix: str, chan: str) -> bool:
+            valid = getattr(dut, f"{prefix}_{chan}valid").value
+            ready = getattr(dut, f"{prefix}_{chan}ready").value
+            return valid.is_resolvable and ready.is_resolvable and int(valid) and not int(ready)
+
+        async def _count_stalls() -> None:
             while True:
                 await cocotb.triggers.RisingEdge(dut.clk_smc_i)
-                valid, ready = dut.tb_zeroer_awvalid.value, dut.tb_zeroer_awready.value
-                if valid.is_resolvable and ready.is_resolvable and int(valid) and not int(ready):
-                    stalled[0] += 1
+                for chan in ("aw", "w"):
+                    if _stalled("tb_zeroer", chan):
+                        stalled[chan] += 1
+                wdata = dut.tb_output_axi_wdata.value
+                if (
+                    _stalled("tb_zeroer", "w")
+                    and _stalled("tb_output_axi", "w")
+                    and wdata.is_resolvable
+                    and int(wdata) == 0
+                ):
+                    stalled["w_responder"] += 1
 
         # A DMA job on the same accelerator master port keeps write addresses
         # queued ahead of the zeroer's, so the stalled output channel reaches it.
@@ -229,7 +255,7 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         await self._program_dma()
         dma_done_before = await self.csr_read("DMA_DONE_0_BEFORE", _dma("DONE_0"))
         responder.enable_backpressure(channels=("aw", "w"), stall_cycles=_BP_STALL_CYCLES)
-        sampler = cocotb.start_soon(_count_aw_stalls())
+        sampler = cocotb.start_soon(_count_stalls())
         try:
             dma_id = await self.csr_read("DMA_NEXT_ID_0_START", _dma("NEXT_ID_0"))
             assert dma_id != 0, "the DMA did not accept the contending job"
@@ -244,16 +270,20 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         finally:
             sampler.cancel()
             responder.disable_backpressure()
-        self.aw_stall_cycles = stalled[0]
+        self.aw_stall_cycles = stalled["aw"]
+        self.w_stall_cycles = stalled["w"]
+        self.w_stall_responder_cycles = stalled["w_responder"]
         for rep in range(_DMA_REPS):
             got = responder.read_int(_DMA_DST + rep * _DMA_BYTES, 8)
             assert got == _DMA_SEED + rep, (
                 f"DMA repetition {rep} left 0x{got:016x} at its destination, expected "
                 f"0x{_DMA_SEED + rep:016x}"
             )
-        assert self.aw_stall_cycles > 0, (
-            "the zeroer never held AWVALID high with AWREADY low while the output responder "
-            "stalled its AW channel, so the back-pressure did not reach the address phase"
+        assert self.w_stall_responder_cycles > 0, (
+            "the zeroer never held WVALID high with WREADY low in a cycle where the output "
+            "responder refused a zeroer beat, so the responder's stall did not reach the "
+            f"data phase ({self.w_stall_cycles} zeroer W stall cycles in all, the rest owed to "
+            "the DMA job holding the mux's W order)"
         )
         for name, offset, poison in _PROBES:
             got = await self._fabric_read(OUTPUT_FABRIC_ADDR + offset)
@@ -268,11 +298,16 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         cocotb.log.info(
             "CHK-ZEROER-BACKPRESSURE: with a %d-repetition DMA job contending for the "
             "accelerator master port and the output responder stalling AW and W for %d-cycle "
-            "windows, the zeroer held AWVALID high against AWREADY low for %d clk_smc_i "
-            "cycle(s); the job still zeroed all %d probe words with the witness word intact, "
-            "and every DMA repetition landed",
+            "windows, the zeroer held WVALID high against WREADY low for %d clk_smc_i "
+            "cycle(s) in which the responder refused a zeroer (all-zero) beat on the output port "
+            "(%d zeroer W stall cycles in all, the rest owed to the DMA job heading the mux's "
+            "W order; AWVALID against AWREADY low for %d: the mux's AW spill register takes "
+            "the address); the job still zeroed all %d probe words with the witness word "
+            "intact, and every DMA repetition landed",
             _DMA_REPS,
             _BP_STALL_CYCLES,
+            self.w_stall_responder_cycles,
+            self.w_stall_cycles,
             self.aw_stall_cycles,
             len(_PROBES),
         )

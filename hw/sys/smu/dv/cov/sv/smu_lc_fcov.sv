@@ -83,24 +83,27 @@ module smu_lc_fcov #(
                      in_reset)
     `OCAH_FCOV_COVER(c_nosepcfg_differs_only_in_sep, nosepcfg_differs_only_in_sep_e, clk_smu_i,
                      in_reset)
+
+    // Covergroup: the lifecycle value presented at release. LcStateSep0 is
+    // the SEP-absent broadcast value; with the SEP present the released value
+    // is its eFuse shadow word.
+    covergroup cg_lc_state_at_release with function sample (logic [7:0] lc_state);
+      option.per_instance = 1;
+      cp_lc_state: coverpoint lc_state {bins sep0 = {LcStateSep0}; bins other = default;}
+    endgroup
+
+    cg_lc_state_at_release u_cg_lc_state_at_release = new();
+
+    always_ff @(posedge clk_smu_i) begin
+      if (!in_reset && primary_rose_e) u_cg_lc_state_at_release.sample(lc_state_i);
+    end
   end
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the lifecycle value presented at
-  // release, against the demote pair.
+  // Covergroup: the demote pair presented at release.
   // ------------------------------------------------------------------
-  covergroup cg_lc_at_release with function sample (
-      logic [7:0] lc_state, logic [1:0] demote1, logic [1:0] demote2
-  );
+  covergroup cg_lc_at_release with function sample (logic [1:0] demote1, logic [1:0] demote2);
     option.per_instance = 1;
-    // LcStateSep0 is the SEP-absent broadcast value; with the SEP present the
-    // released value is its eFuse shadow word.
-    cp_lc_state: coverpoint lc_state {
-      bins sep0 = {LcStateSep0};
-      bins other = default;
-      ignore_bins sep_present = {LcStateSep0} with (SEP_PRESENT);
-    }
     // Each demote output is a differential code: 2'b10 not demoted, 2'b01
     // demoted. 2'b00 and 2'b11 are not codes, and the demote register is
     // written by SEP firmware, which has not run at the primary release.
@@ -117,9 +120,8 @@ module smu_lc_fcov #(
 
   always_ff @(posedge clk_smu_i) begin
     if (!in_reset && primary_rose_e) begin
-      u_cg_lc_at_release.sample(lc_state_i, lcc_demote_state_1_i, lcc_demote_state_2_i);
+      u_cg_lc_at_release.sample(lcc_demote_state_1_i, lcc_demote_state_2_i);
     end
   end
-`endif
 
 endmodule : smu_lc_fcov
