@@ -516,6 +516,9 @@ typedef union {
 // * `0x9` - 1024 characters
 // * `0xA` - 2048 characters
 // * `0xB` - 4096 characters
+// The Received Data Ready interrupt asserts while the receive FIFO holds
+// at least the selected number of characters. A level above the receive
+// FIFO depth, and any combined value above `0xB`, never asserts it.
 #define UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bm 0x3
 #define UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bp 0
 #define UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bw 2
@@ -537,6 +540,9 @@ typedef union {
         // * `0x9` - 1024 characters
         // * `0xA` - 2048 characters
         // * `0xB` - 4096 characters
+        // The Received Data Ready interrupt asserts while the receive FIFO holds
+        // at least the selected number of characters. A level above the receive
+        // FIFO depth, and any combined value above `0xB`, never asserts it.
         uint32_t RCVR_TRIGGER_MS2B :2;
         uint32_t :30;
     } f;
