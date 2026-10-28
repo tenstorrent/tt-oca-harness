@@ -70,9 +70,10 @@ Checkers:
                        the same for D = 0 and D_r as for D_ref (architecture.adoc:113:
                        the divider holds at zero while disabled); a fixed enable delay
                        cancels. Control: 6 strobes after the enable, five equal gaps, no
-                       strobe while disabled, and the divider count at the disable
-                       (``div_at_off``) differs from that of D_ref, so a DUT that keeps
-                       its count while disabled moves the offset.
+                       strobe while disabled, and min(k_D, D) differs from
+                       min(k_ref, D_ref), where k is the divider count at the disable
+                       (``div_at_off``): a DUT that keeps its count while disabled
+                       gives an offset of L - min(k_D, D), so it then fails.
   CHK-COND-SHA         16 whitener input words give 8 output words (architecture.adoc:142),
                        exact: over the span between the first and the last quiet clock
                        of the window (SHA256_STATUS BUSY = 0 and OUTPUT_COUNT = 0, no
@@ -854,9 +855,10 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         every value, so the offset first distance - steady gap is equal for D_ref,
         0 and D_r; CHK-COND-FIRST-STROBE grades the offsets of 0 and D_r against
         the offset of D_ref, with no time base and no assumed L. A divider that
-        keeps its count k while disabled moves the offset by k, so the control
-        CTRL-COND-FIRST-STROBE needs the count at the disable (``div_at_off``) of
-        the graded value to differ from that of D_ref. The enable of a lane is
+        keeps its count k while disabled gives the offset L - min(k, D), so the
+        control CTRL-COND-FIRST-STROBE needs min(k, D) of the graded value to
+        differ from that of D_ref, with k the count at the disable
+        (``div_at_off``). The enable of a lane is
         RING_OSC_ENABLE.ENABLE (entropy_source.adoc:357); each value is written with
         every lane disabled and then the lanes are enabled, the order of
         ``doc/programmer/src/sep-programming.adoc:409-411,427``. Anchor:
@@ -903,12 +905,16 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
                 continue
             ref_off = None if ref is None else ref["offset"]
             ref_k = None if ref is None else ref["div_at_off"]
+            held = None if st["div_at_off"] is None else min(st["div_at_off"], div)
+            ref_held = None if ref_k is None else min(ref_k, RESET_DIV)
             self.chk.ctrl(
                 "COND-FIRST-STROBE",
-                ref_k is not None and st["div_at_off"] is not None and st["div_at_off"] != ref_k,
+                held is not None and ref_held is not None and held != ref_held,
                 div=div,
                 div_at_off="none" if st["div_at_off"] is None else st["div_at_off"],
                 ref_div_at_off="none" if ref_k is None else ref_k,
+                held="none" if held is None else held,
+                ref_held="none" if ref_held is None else ref_held,
             )
             if self.chk.ok(
                 "COND-FIRST-STROBE",
