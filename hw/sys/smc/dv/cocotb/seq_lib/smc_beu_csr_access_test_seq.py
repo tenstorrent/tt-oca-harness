@@ -9,7 +9,7 @@ hw/sys/smc/doc/memmap.adoc, hw/sys/smc/doc/fabric.adoc (REGION_SIZE).
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
@@ -105,7 +105,12 @@ def _val(dut, name: str) -> int:
 
 
 class _HandshakeSampler:
-    """Counts s_axi request and response handshakes per clk_smc cycle."""
+    """Counts s_axi request and response handshakes per clk_smc cycle.
+
+    The sample is taken in the read-only phase of the edge, after the non-blocking
+    updates, so a handshake is counted in the cycle it is asserted whichever
+    coroutine the simulator resumes first on that edge.
+    """
 
     def __init__(self, dut) -> None:
         self.dut = dut
@@ -119,6 +124,7 @@ class _HandshakeSampler:
         dut = self.dut
         while True:
             await RisingEdge(dut.clk_smc)
+            await ReadOnly()
             self.cycle += 1
             for kind, sig in (
                 ("AR", "arvalid"),
