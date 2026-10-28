@@ -31,8 +31,21 @@ without), they read back as start rounded down and end rounded up to it.
 
 While ``FILTER_CONFIG.locked`` is set, a write to the entry's
 ``FILTER_CONFIG``, ``START_ADDR`` or ``END_ADDR`` leaves the entry unchanged
-and completes DECERR (``filter_ctrl.rdl`` ``locked``: the write is steered to
-the AXI error subordinate). Every refused write's response code is graded.
+and completes DECERR (``hw/ip/axi_filter/regs/filter_ctrl.rdl:80-84``
+``locked``: the write is steered to the AXI error subordinate;
+``hw/ip/axi_filter/doc/index.adoc:151-156``). Every refused write's response
+code is graded, and the register is read whole before the write and on exactly
+the written byte lanes after it.
+
+FCOV: when the caller names its owner in ``graded_owner``, the owner window is
+open for one refused ``START_ADDR`` or ``END_ADDR`` write and the reads after
+it at a time (``sep_filter_match_cg.cp_locked_range_write``). It opens after
+the whole register read back its model value. The sampler holds the cell of
+a DECERR write whose read-back equals the read before the write on the
+written lanes; the pass label ``slot_lock_pass`` releases it only after the
+read-back and the whole read of every register of the entry matched the
+model. The window closes at the first mismatch, which drops the held cell,
+and no window opens again.
 """
 
 from __future__ import annotations
@@ -41,16 +54,18 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import RESP_CODE
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_slot_lock_pass
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import AxiTimingProfile
 from sep_reg_meta import FieldMeta, indexed_block_count, register_fields, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
-RESP_OKAY = 0
-RESP_DECERR = 3
+RESP_OKAY = RESP_CODE["OKAY"]
+RESP_DECERR = RESP_CODE["DECERR"]
 
 # AXI IDs of the overlapped write/read pair. Non-zero, so the pair does not
 # queue behind background ID-0 reads on s_axi.
@@ -63,7 +78,7 @@ RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "none"}
 # AxSIZE per transfer length in bytes; every access is naturally aligned.
 SIZE_OF = {1: 0, 2: 1, 4: 2, 8: 3}
 
-# filter_ctrl.rdl allow_burst: "4KB when it is 1".
+# hw/ip/axi_filter/regs/filter_ctrl.rdl:71 allow_burst: "4KB when it is 1".
 FILTER_BURST_GRANULE_LOG2 = 12
 
 # (bank tag, generated block prefix, registers of one slot). The register
@@ -80,6 +95,17 @@ BANKS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ("infilt", "INBOUND_FILTER_CTRL", ("FILTER_CONFIG", "START_ADDR", "END_ADDR")),
 )
 FILTER_BANKS = ("outfilt", "infilt")
+# Filter range registers: one refused write to each per locked entry is
+# forced, and these writes are the ones the owner window covers.
+RANGE_REGS = ("START_ADDR", "END_ADDR")
+
+# Salt of the stream that draws the forced range writes. A separate stream
+# keeps the sweep draws of a seed where they are.
+FORCED_RANGE_SALT = 0x5107_7A5E
+
+# clk_i edges the owner window stays open after a passing read-back, so the
+# close never falls in the clock of the read-back beat that the sampler counts.
+WINDOW_HOLD_CYCLES = 2
 
 # Fields the sweep never sets through an active lane, and always sets through
 # an inactive one. An alias region with `valid` set rewrites the CPU-LSU
@@ -229,6 +255,10 @@ class SepFabricSlotCsrStrobe:
         self.test = test
         self.log = test.logger
         self.rng = SepSeededRng(seed)
+        self.forced_rng = SepSeededRng(seed ^ FORCED_RANGE_SALT)
+        # Test name whose owner window covers the refused range writes; None
+        # keeps the window closed.
+        self.graded_owner: str | None = None
         self.slots = build_slots()
         self.regs = [r for s in self.slots for r in s.regs.values()]
         agent = test.env.axi_agent
@@ -279,7 +309,9 @@ class SepFabricSlotCsrStrobe:
         if "send" in vars(self._w_channel):
             del self._w_channel.send
 
-    def _fill_for(self, reg: RegModel, acc: Access) -> tuple[int, bool]:
+    def _fill_for(
+        self, reg: RegModel, acc: Access, rng: SepSeededRng | None = None
+    ) -> tuple[int, bool]:
         """Seeded inactive-lane fill, and whether it would move ``reg``.
 
         Guarded bits are always 1 on an inactive lane. The flag says the fill
@@ -287,7 +319,7 @@ class SepFabricSlotCsrStrobe:
         block that ignored the strobe would read back changed.
         """
         en = lane_bits(acc.offset, acc.nbytes)
-        fill = self.rng.getrandbits(64) | (reg.guard_mask & ~en)
+        fill = (rng or self.rng).getrandbits(64) | (reg.guard_mask & ~en)
         moved = (fill ^ reg.value) & reg.rw_mask & ~en
         moved |= fill & ~reg.value & reg.set_mask & ~en
         return fill, bool(moved)
@@ -319,9 +351,17 @@ class SepFabricSlotCsrStrobe:
                 f" != model 0x{exp:0{2 * acc.nbytes}x}"
             )
 
-    async def _write(self, reg: RegModel, acc: Access, data: int, *, locked: bool) -> int:
+    async def _write(
+        self,
+        reg: RegModel,
+        acc: Access,
+        data: int,
+        *,
+        locked: bool,
+        rng: SepSeededRng | None = None,
+    ) -> int:
         """One strobed write with inactive-lane fill; returns the response code."""
-        fill, moved = self._fill_for(reg, acc)
+        fill, moved = self._fill_for(reg, acc, rng)
         if not locked:
             self.stats["inactive_fill_writes"] += moved
         self._arm_fill(fill)
@@ -593,15 +633,18 @@ class SepFabricSlotCsrStrobe:
                 "w_first",
             )
 
-    def _refused_access(self, slot: SlotModel, reg: RegModel) -> tuple[Access, int]:
+    def _refused_access(
+        self, slot: SlotModel, reg: RegModel, rng: SepSeededRng | None = None
+    ) -> tuple[Access, int]:
         """An access and data that would move the entry if the write were taken.
 
         Checked on a copy of the slot model with the granule write-back
         applied, so a write the write-back would undo is never chosen.
         """
+        rng = rng or self.rng
         for _ in range(256):
-            acc = random_access(self.rng)
-            data = self.rng.getrandbits(8 * acc.nbytes)
+            acc = random_access(rng)
+            data = rng.getrandbits(8 * acc.nbytes)
             saved = {name: r.value for name, r in slot.regs.items()}
             reg.apply_write(acc.offset, acc.nbytes, data)
             slot.settle()
@@ -612,8 +655,78 @@ class SepFabricSlotCsrStrobe:
                 return acc, data
         raise RuntimeError(f"{reg.tag}: no write found that would move the locked entry")
 
+    async def _gate(self, open_window: bool, hold: int = 1) -> None:
+        """Write the owner window after ``hold`` clk_i edges (never in ReadOnly).
+
+        Opening writes the pass label 0 first, so a held sample of an earlier
+        write never rides into this one.
+        """
+        await ClockCycles(cocotb.top.clk_i, hold)
+        if open_window:
+            set_slot_lock_pass(False, self.log)
+            open_graded_window(self.graded_owner, self.log)
+        else:
+            close_graded_window(self.log)
+
+    async def _release(self) -> None:
+        """Raise the pass label for two clk_i edges, then close the window."""
+        await ClockCycles(cocotb.top.clk_i, 1)
+        set_slot_lock_pass(True, self.log)
+        await ClockCycles(cocotb.top.clk_i, WINDOW_HOLD_CYCLES)
+        set_slot_lock_pass(False, self.log)
+        close_graded_window(self.log)
+
+    async def _refused_write(
+        self, slot: SlotModel, reg: RegModel, rng: SepSeededRng
+    ) -> tuple[int, bool]:
+        """One write to a locked entry that would move it if taken.
+
+        Reads the register whole first (graded against the model), then
+        writes, grades DECERR, reads back exactly the written lanes, then
+        reads every register of the entry whole (each graded against the
+        model). Returns the response code and whether every check of this
+        write passed. For a range register the owner window covers the write
+        and every read after it while no mismatch is recorded; it closes at
+        the first mismatch, and the pass label rises only after every check of
+        this write passed.
+        """
+        acc, data = self._refused_access(slot, reg, rng)
+        await self._read(reg, Access(0, 8), "CHK-SLOT-LOCK")
+        n_bad = len(self.mismatches)
+        gated = self.graded_owner is not None and reg.name in RANGE_REGS and not n_bad
+
+        async def close_on_fail() -> bool:
+            nonlocal gated
+            if gated and len(self.mismatches) != n_bad:
+                await self._gate(False)
+                gated = False
+            return gated
+
+        if gated:
+            await self._gate(True)
+        code = await self._write(reg, acc, data, locked=True, rng=rng)
+        self._grade_locked_resp(reg, code)
+        await close_on_fail()
+        await self._read(reg, acc, "CHK-SLOT-LOCK")
+        await close_on_fail()
+        for other in slot.regs.values():
+            await self._read(other, Access(0, 8), "CHK-SLOT-LOCK")
+            await close_on_fail()
+        passed = len(self.mismatches) == n_bad
+        if gated:
+            await self._release()
+        if passed:
+            self.stats[f"locked_kept_{reg.name}"] += 1
+        return code, passed
+
     async def lock_sweep(self, writes_per_entry: int = 4) -> None:
-        """CHK-SLOT-LOCK: every filter entry locks, then ignores its writes."""
+        """CHK-SLOT-LOCK: every filter entry locks, then ignores its writes.
+
+        Per entry: ``writes_per_entry`` refused writes to seeded registers,
+        then one refused write to ``START_ADDR`` and one to ``END_ADDR`` drawn
+        from ``forced_rng``, so both range registers are refused on every
+        entry whatever the seed draws.
+        """
         order = [s for s in self.slots if s.is_filter]
         self.rng.shuffle(order)
         for slot in order:
@@ -634,12 +747,15 @@ class SepFabricSlotCsrStrobe:
             await self._read(cfg, Access(0, 8), "CHK-SLOT-LOCK")
             for _ in range(writes_per_entry):
                 reg = self.rng.choice(list(slot.regs.values()))
-                racc, rdata = self._refused_access(slot, reg)
-                code = await self._write(reg, racc, rdata, locked=True)
-                self._grade_locked_resp(reg, code)
+                code, _ = await self._refused_write(slot, reg, self.rng)
                 slot.lock_resp[RESP_NAME.get(code, str(code))] += 1
                 self.stats["locked_writes"] += 1
                 await self._read(reg, random_access(self.rng), "CHK-SLOT-LOCK")
+            for name in RANGE_REGS:
+                code, passed = await self._refused_write(slot, slot.regs[name], self.forced_rng)
+                slot.lock_resp[RESP_NAME.get(code, str(code))] += 1
+                self.stats["locked_writes"] += 1
+                self.stats[f"forced_kept_{name}"] += passed
             # Writing 0 to the lock bit leaves it set (onwrite = woset).
             code = await self._write(cfg, Access(lane, 1), 0, locked=True)
             self._grade_locked_resp(cfg, code)

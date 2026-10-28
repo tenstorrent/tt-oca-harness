@@ -31,11 +31,26 @@ Checkers:
                    transaction per direction and forwards W only after its AW.
   CHK-SLOT-LOCK    every filter entry is locked by a write that strobes
                    FILTER_CONFIG.locked; then seeded writes to FILTER_CONFIG,
-                   START_ADDR and END_ADDR, each chosen to move the entry if it
-                   were taken, and a write of 0 to the lock bit, leave the entry
+                   START_ADDR and END_ADDR, one more write to START_ADDR and
+                   one to END_ADDR, each chosen to move the entry if it were
+                   taken, and a write of 0 to the lock bit, leave the entry
                    unchanged. Each of those writes completes DECERR
-                   (filter_ctrl.rdl locked).
+                   (hw/ip/axi_filter/regs/filter_ctrl.rdl:80-84 locked). Each
+                   refused register write is framed by a whole-register read
+                   before it, and a read of exactly its written lanes and a
+                   whole read of every register of the entry after it, all
+                   equal to the model; every entry has one passing refused
+                   START_ADDR and one END_ADDR write.
   CHK-SLOT-FINAL   every register of every slot still holds its model value.
+
+FCOV: owner window of this leaf (sep_filter_match_cg.cp_locked_range_write)
+opens for one refused START_ADDR or END_ADDR write and the reads after it at
+a time, after the whole-register read before it matched the model. The held
+cell samples on the pass label slot_lock_pass, raised only after the read-back
+of the written lanes and the whole read of every register of the entry passed;
+the window closes at the first mismatch, which drops it; see
+seq_lib.sep_fabric_slot_csr_strobe_seq. After the first recorded mismatch no
+window opens again.
 
 no_cpu / +skip_fuse_sense.
 """
@@ -43,8 +58,11 @@ no_cpu / +skip_fuse_sense.
 from __future__ import annotations
 
 import pyuvm
+from env.sep_fcov_gate import close_graded_window
 from sep_base_test import sep_base_test
-from seq_lib.sep_fabric_slot_csr_strobe_seq import SepFabricSlotCsrStrobe
+from seq_lib.sep_fabric_slot_csr_strobe_seq import RANGE_REGS, SepFabricSlotCsrStrobe
+
+TEST = "sep_fabric_slot_csr_strobe_rand_test"
 
 
 @pyuvm.test()
@@ -68,6 +86,7 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
         seed = self.random_seed()
         await self.bring_up_no_cpu()
         sweep = SepFabricSlotCsrStrobe(self, seed)
+        sweep.graded_owner = TEST
         n_regs = len(sweep.regs)
         self.logger.info(
             "slot sweep seed=%d: %d slots, %d registers",
@@ -78,6 +97,7 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
         try:
             await self._run(sweep, n_regs)
         finally:
+            close_graded_window(self.logger)
             sweep.restore_w_channel()
 
     def _slot_fill_verdict(self, sweep: SepFabricSlotCsrStrobe, st) -> None:
@@ -191,6 +211,12 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
         n_filters = sum(1 for s in sweep.slots if s.is_filter)
         locked = sum(1 for s in sweep.slots if s.locked)
         assert locked == n_filters, f"CHK-SLOT-LOCK FAIL: {locked} of {n_filters} entries locked"
+        forced = {name: st[f"forced_kept_{name}"] for name in RANGE_REGS}
+        assert all(n == n_filters for n in forced.values()), (
+            "CHK-SLOT-LOCK FAIL: passing refused range writes per register "
+            + ", ".join(f"{k}={v}" for k, v in forced.items())
+            + f"; planned {n_filters} each (one per locked entry)"
+        )
         codes = sweep.lock_codes()
         self.logger.info(
             "CHK-SLOT-LOCK locked-entry write responses (each graded DECERR): %s",
@@ -198,9 +224,18 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SLOT-LOCK PASS: %d filter entries locked; %d writes to locked entries, "
-            "each one that would move the entry, left every entry unchanged",
+            "each one that would move the entry, left every entry unchanged; refused "
+            "register writes whose written lanes read back unchanged: FILTER_CONFIG=%d "
+            "START_ADDR=%d END_ADDR=%d (one START_ADDR and one END_ADDR per entry "
+            "forced: %d, %d); %d reads matched the RDL model",
             locked,
             st["locked_writes"],
+            st["locked_kept_FILTER_CONFIG"],
+            st["locked_kept_START_ADDR"],
+            st["locked_kept_END_ADDR"],
+            forced["START_ADDR"],
+            forced["END_ADDR"],
+            st["CHK-SLOT-LOCK_reads"],
         )
 
         await sweep.final_walk()

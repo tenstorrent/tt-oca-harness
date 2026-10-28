@@ -2943,6 +2943,124 @@ module sep_uvm_top
 `undef DMA_HOST_CMD_INTG_DI
 
     // ------------------------------------------------------------------
+    // Mailbox WRITE_DATA unstrobed-lane inject.
+    // ------------------------------------------------------------------
+    // A 32-bit store of the SEP CPU reaches the mailbox unit as one 64-bit
+    // AXI-Lite W beat with WSTRB 0x0F or 0xF0, and the CPU drives 0 on the
+    // unstrobed lanes, so firmware cannot show that the mailbox pushes the
+    // unstrobed lanes of WRITE_DATA as 0. Non-zero data on unstrobed lanes is
+    // legal AXI. While mbox_lane_inject_arm_i is 1, a W beat at the mailbox unit
+    // port (u_sep_system_peripherals.mailbox_axil_req) whose write address is
+    // the WRITE_DATA register of the outbound port of a mailbox selected in
+    // mbox_lane_inject_mbx_i, and whose WSTRB is 0x0F or 0xF0, carries
+    // mbox_lane_inject_data_i on its unstrobed byte lanes. The strobed lanes,
+    // WSTRB and the other channels keep their values. The write address of the
+    // beat is the one address the port accepted without its W beat, or the
+    // address on the AW channel when none waits (AXI keeps W in AW order); with
+    // more than one address waiting the beat keeps its value.
+    // The value is set on every falling edge (Verilator snapshots a force RHS).
+    // A released net keeps its forced value until its driver changes, so the
+    // bench ends a force by forcing the live W data (the input of the address
+    // fixer that drives the port) and releases the net only in a clock in which
+    // the live value equals the value forced last; one falling edge after the
+    // release the net must equal the live value, else the bench reports an
+    // error. Default 0: no force.
+    // Taps (read-only): mbox_axil_aw_hs_o / mbox_axil_aw_addr_o and
+    // mbox_axil_w_hs_o / mbox_axil_w_strb_o / mbox_axil_w_data_o show the AW
+    // and W handshakes of the same port, with the W data the mailbox unit takes.
+`define MBX_LANE_PORT `SEP_CORE.u_sep_system_peripherals.mailbox_axil_req
+`define MBX_LANE_RSP  `SEP_CORE.u_sep_system_peripherals.mailbox_axil_resp
+`define MBX_LANE_LIVE `SEP_CORE.u_sep_system_peripherals.mailbox_from_csr_axil_req
+    localparam logic [31:0] MbxLaneBase =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    localparam logic [31:0] MbxLaneWdata =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    // Mailbox stride and the end of the mailbox aperture, both from the
+    // generated address map.
+    localparam logic [31:0] MbxLaneStride =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    localparam logic [31:0] MbxLaneEnd =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_BASE_ADDR +
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_SIZE -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    wire mbx_lane_aw_hs = (`MBX_LANE_PORT.aw_valid === 1'b1) && (`MBX_LANE_RSP.aw_ready === 1'b1);
+    wire mbx_lane_w_hs  = (`MBX_LANE_PORT.w_valid === 1'b1) && (`MBX_LANE_RSP.w_ready === 1'b1);
+    assign mbox_axil_aw_hs_o   = mbx_lane_aw_hs;
+    assign mbox_axil_aw_addr_o = 32'(`MBX_LANE_PORT.aw.addr);
+    assign mbox_axil_w_hs_o    = mbx_lane_w_hs;
+    assign mbox_axil_w_strb_o  = `MBX_LANE_PORT.w.strb;
+    assign mbox_axil_w_data_o  = `MBX_LANE_PORT.w.data;
+    // Write addresses the port accepted without their W beat, and the address
+    // of the one waiting (valid while exactly one waits and it was recorded).
+    logic [3:0]  mbx_lane_awn_q;
+    logic [31:0] mbx_lane_awa_q;
+    logic        mbx_lane_awa_ok_q;
+    wire  [3:0]  mbx_lane_awn_d = mbx_lane_awn_q + 4'(mbx_lane_aw_hs) -
+        4'(mbx_lane_w_hs && ((mbx_lane_awn_q != 4'd0) || mbx_lane_aw_hs));
+    always @(posedge clk_i) begin
+        if (rst_ni !== 1'b1) begin
+            mbx_lane_awn_q    <= 4'd0;
+            mbx_lane_awa_ok_q <= 1'b0;
+        end else begin
+            mbx_lane_awn_q <= mbx_lane_awn_d;
+            if (mbx_lane_awn_d != 4'd1) begin
+                mbx_lane_awa_ok_q <= 1'b0;
+            end else if (mbx_lane_aw_hs) begin
+                mbx_lane_awa_q    <= 32'(`MBX_LANE_PORT.aw.addr);
+                mbx_lane_awa_ok_q <= 1'b1;
+            end else if (mbx_lane_awn_q != 4'd1) begin
+                mbx_lane_awa_ok_q <= 1'b0;
+            end
+        end
+    end
+    wire        mbx_lane_addr_v = (mbx_lane_awn_q == 4'd0) ? (`MBX_LANE_PORT.aw_valid === 1'b1) :
+                                  ((mbx_lane_awn_q == 4'd1) && mbx_lane_awa_ok_q);
+    wire [31:0] mbx_lane_off = ((mbx_lane_awn_q == 4'd0) ? 32'(`MBX_LANE_PORT.aw.addr) :
+                                                            mbx_lane_awa_q) - MbxLaneBase;
+    wire [31:0] mbx_lane_m = mbx_lane_off / MbxLaneStride;
+    wire        mbx_lane_tgt = mbx_lane_addr_v && (mbx_lane_off < MbxLaneEnd) &&
+        (((mbx_lane_off % MbxLaneStride) >> 3) == (MbxLaneWdata >> 3)) &&
+        (mbox_lane_inject_mbx_i[mbx_lane_m[$clog2($bits(mbox_lane_inject_mbx_i))-1:0]] === 1'b1);
+    function automatic logic [63:0] mbx_lane_mix(input logic [63:0] live, input logic [7:0] strb,
+                                                 input logic [63:0] inj);
+        logic [63:0] v;
+        for (int i = 0; i < 8; i++) v[i*8 +: 8] = strb[i] ? live[i*8 +: 8] : inj[i*8 +: 8];
+        return v;
+    endfunction
+    logic [63:0] mbx_lane_fv;
+    logic        mbx_lane_forced, mbx_lane_rel_chk;
+    initial begin
+        mbx_lane_fv      = '0;
+        mbx_lane_forced  = 1'b0;
+        mbx_lane_rel_chk = 1'b0;
+    end
+    always @(negedge clk_i) begin
+        if (mbx_lane_rel_chk && (`MBX_LANE_PORT.w.data !== `MBX_LANE_LIVE.w.data))
+            $error("[tb] mailbox lane inject: W data differs from the live value after the release");
+        mbx_lane_rel_chk = 1'b0;
+        if ((mbox_lane_inject_arm_i === 1'b1) && (`MBX_LANE_PORT.w_valid === 1'b1) &&
+            mbx_lane_tgt &&
+            ((`MBX_LANE_PORT.w.strb === 8'h0F) || (`MBX_LANE_PORT.w.strb === 8'hF0))) begin
+            mbx_lane_fv     = mbx_lane_mix(`MBX_LANE_LIVE.w.data, `MBX_LANE_PORT.w.strb,
+                                           mbox_lane_inject_data_i);
+            mbx_lane_forced = 1'b1;
+            force `MBX_LANE_PORT.w.data = mbx_lane_fv;
+        end else if (mbx_lane_forced && (mbx_lane_fv !== `MBX_LANE_LIVE.w.data)) begin
+            mbx_lane_fv = `MBX_LANE_LIVE.w.data;
+            force `MBX_LANE_PORT.w.data = mbx_lane_fv;
+        end else if (mbx_lane_forced) begin
+            release `MBX_LANE_PORT.w.data;
+            mbx_lane_forced  = 1'b0;
+            mbx_lane_rel_chk = 1'b1;
+        end
+    end
+`undef MBX_LANE_PORT
+`undef MBX_LANE_RSP
+`undef MBX_LANE_LIVE
+
+    // ------------------------------------------------------------------
     // HMAC message-FIFO drain stall.
     // ------------------------------------------------------------------
     // hmac_fifo_drain_stall_i=1 holds the read side of the message FIFO idle,
@@ -5516,6 +5634,9 @@ module sep_uvm_top
     assign efuse_sense_status_word_i = '0;
     assign efuse_shim_resp_hold_i   = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign mbox_lane_inject_arm_i   = 1'b0;
+    assign mbox_lane_inject_mbx_i   = '0;
+    assign mbox_lane_inject_data_i  = '0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
     assign crypto_alert_inject_i    = 1'b0;

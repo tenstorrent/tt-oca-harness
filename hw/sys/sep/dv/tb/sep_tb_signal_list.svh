@@ -132,6 +132,13 @@
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block in tb_top.sv.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
+// Mailbox WRITE_DATA unstrobed-lane inject. Default 0. While the arm is 1, a
+// W beat with WSTRB 0x0F or 0xF0 to the outbound WRITE_DATA of a mailbox
+// selected in mbox_lane_inject_mbx_i carries mbox_lane_inject_data_i on its
+// unstrobed lanes at the mailbox unit port. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, mbox_lane_inject_arm_i)
+`SEP_TB_IN(logic [sep_pkg::NumMailboxes-1:0], mbox_lane_inject_mbx_i)
+`SEP_TB_IN(logic [63:0], mbox_lane_inject_data_i)
 // HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
 // side idle and the core's message valid toward the SHA-2 engine low, so the
 // hash engine takes no word and the FIFO fills. A port rather
@@ -1594,6 +1601,14 @@
 // PIC source and leaves this line low; a push at the outbound aperture raises
 // this line and no PIC source. One bit per mailbox channel.
 `SEP_TB_OUT(logic [sep_pkg::NumMailboxes-1:0], smc_mailbox_interrupt_o)
+// Mailbox unit port tap (u_sep_system_peripherals.mailbox_axil_req/resp),
+// read-only: the AW and W handshakes, the AW address, and the W strobe and
+// data the mailbox unit takes (after the mailbox lane inject).
+`SEP_TB_OUT(logic, mbox_axil_aw_hs_o)
+`SEP_TB_OUT(logic [31:0], mbox_axil_aw_addr_o)
+`SEP_TB_OUT(logic, mbox_axil_w_hs_o)
+`SEP_TB_OUT(logic [7:0], mbox_axil_w_strb_o)
+`SEP_TB_OUT(logic [63:0], mbox_axil_w_data_o)
 `SEP_TB_OUT(logic, spi_cs_n_o)
 `SEP_TB_OUT(logic, spi_sck_o)
 `SEP_TB_OUT(logic, spi_mosi_o)

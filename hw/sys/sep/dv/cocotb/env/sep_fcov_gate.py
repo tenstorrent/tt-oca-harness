@@ -1574,3 +1574,264 @@ def set_tcm_trap_pass(passed: bool, log=None) -> bool:
     Verilator. On VCS a sampler without the variable is a testbench error.
     """
     return _set_bound("tcm_trap_pass", int(bool(passed)), "FCOV-TCM-TRAP-PASS", log)
+
+
+# Values of ``u_sep_fcov.spi_csr_irq_pass`` (the ScpRelease / ScpDrop bits and
+# the ScpFam + f family bits of cov/sv/sep_fcov.sv).
+SPI_CSR_IRQ_PASS_RELEASE = 1  # bit 0: release the held owner-410 cells
+SPI_CSR_IRQ_PASS_DROP = 2  # bit 1: drop the held owner-410 cells
+_SPI_CSR_IRQ_FAM_LSB = 2
+SPI_CSR_IRQ_FAM_SEC = 1 << (_SPI_CSR_IRQ_FAM_LSB + 0)  # cp_event_src_x_en_x_cond
+SPI_CSR_IRQ_FAM_IES = 1 << (_SPI_CSR_IRQ_FAM_LSB + 1)  # cp_intr_en_x_state
+SPI_CSR_IRQ_FAM_CF = 1 << (_SPI_CSR_IRQ_FAM_LSB + 2)  # cp_clear_form
+SPI_CSR_IRQ_FAM_SW = 1 << (_SPI_CSR_IRQ_FAM_LSB + 3)  # cp_swrst_midseg
+SPI_CSR_IRQ_FAM_MK = 1 << (_SPI_CSR_IRQ_FAM_LSB + 4)  # cp_masked_kind
+SPI_CSR_IRQ_FAM_RC = 1 << (_SPI_CSR_IRQ_FAM_LSB + 5)  # cp_error_raised_cleared
+SPI_CSR_IRQ_FAM_IL = 1 << (_SPI_CSR_IRQ_FAM_LSB + 6)  # cp_intr_error_latch
+SPI_CSR_IRQ_FAM_UF = 1 << (_SPI_CSR_IRQ_FAM_LSB + 7)  # cp_underflow_cell
+SPI_CSR_IRQ_FAM_OF = 1 << (_SPI_CSR_IRQ_FAM_LSB + 8)  # cp_overflow_cell
+SPI_CSR_IRQ_FAM_ZS = 1 << (_SPI_CSR_IRQ_FAM_LSB + 9)  # cp_zero_strobe_cell
+SPI_CSR_IRQ_FAM_CV = 1 << (_SPI_CSR_IRQ_FAM_LSB + 10)  # cp_csid_out_of_range
+SPI_CSR_IRQ_FAM_TE = 1 << (_SPI_CSR_IRQ_FAM_LSB + 11)  # cp_txdata_empty_half
+SPI_CSR_IRQ_FAM_EA = 1 << (_SPI_CSR_IRQ_FAM_LSB + 12)  # cp_event_aggregation
+SPI_CSR_IRQ_FAM_IT = 1 << (_SPI_CSR_IRQ_FAM_LSB + 13)  # cp_intr_test
+SPI_CSR_IRQ_FAM_CBZ = 1 << (_SPI_CSR_IRQ_FAM_LSB + 14)  # cp_cmdbusy_cell
+# cp_spien0_cmd_write and cp_spien_hold_run.
+SPI_CSR_IRQ_FAM_SZ = 1 << (_SPI_CSR_IRQ_FAM_LSB + 15)
+# cp_sw_rst_domain and cp_sw_rst_hold.
+SPI_CSR_IRQ_FAM_DOM = 1 << (_SPI_CSR_IRQ_FAM_LSB + 16)
+_SPI_CSR_IRQ_FAM_ALL = ((1 << 17) - 1) << _SPI_CSR_IRQ_FAM_LSB
+
+
+def set_spi_csr_irq_pass(value: int, log=None) -> bool:
+    """Write ``u_sep_fcov.spi_csr_irq_pass``.
+
+    Legal values: 0, SPI_CSR_IRQ_PASS_DROP, or SPI_CSR_IRQ_PASS_RELEASE ORed
+    with one or more SPI_CSR_IRQ_FAM_* bits. The pass label of
+    ``sep_spi_ot_host_csr_irq_rand_test`` (owner 410). The sampler holds every
+    owner-410 cell of the SPI sampling blocks taken inside the window of that
+    leaf as pending. A rise of bit 0 samples the pending cells of the families
+    whose bits the same write sets and drops the others; a rise of bit 1 or a
+    reset drops them; a window close keeps them. The leaf writes the release
+    value after the last check of an instance has passed, with the families
+    that the checks of that instance grade, holds it two clocks and writes 0,
+    and writes SPI_CSR_IRQ_PASS_DROP on a FAIL or CTRL-MISSING line. Same rules
+    as ``graded_owner``: a no-op that returns False on Verilator. On VCS a
+    sampler without the variable is a testbench error.
+    """
+    fam = value & _SPI_CSR_IRQ_FAM_ALL
+    rest = value & ~_SPI_CSR_IRQ_FAM_ALL
+    legal = (value in (0, SPI_CSR_IRQ_PASS_DROP)) or (rest == SPI_CSR_IRQ_PASS_RELEASE and fam != 0)
+    if not legal:
+        raise ValueError(
+            f"spi_csr_irq_pass value 0x{value:x} is not 0, the drop bit, or the "
+            f"release bit with at least one family bit"
+        )
+    return _set_bound("spi_csr_irq_pass", value, "FCOV-SPI-CSR-IRQ-PASS", log)
+
+
+def set_spi_csr_irq_graded_read(on: bool) -> bool:
+    """Write ``u_sep_fcov.spi_csr_irq_rd`` (1 for one graded read, else 0).
+
+    The graded-read mark of ``sep_spi_ot_host_csr_irq_rand_test`` (owner
+    410). The leaf writes 1 immediately before a read whose value a check of
+    the instance compares, and 0 after that read. The sampler holds a cell that
+    a read keys (a source level at a STATUS read, an SPI_EVENT edge or an
+    INTR_ENABLE x INTR_STATE cell at an INTR_STATE read, the masked kind, the
+    UNDERFLOW, CSID and empty-half cells at an ERROR_STATUS read, the SW_RST
+    hold at a CONTROL read) only at a read with the mark. The write is not
+    logged, because the leaf writes it around many reads. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a
+    sampler without the variable is a testbench error.
+    """
+    return _set_bound("spi_csr_irq_rd", int(bool(on)), "FCOV-SPI-CSR-IRQ-RD")
+
+
+def set_spi_tx_wm_pass(wm: int, log=None) -> bool:
+    """Write ``u_sep_fcov.spi_tx_wm_pass`` (the graded TX_WATERMARK, or 0).
+
+    The pass label of ``sep_spi_host_rand_cg.cp_tx_wm`` (owner
+    ``sep_spi_ot_host_csr_irq_rand_test``). The sampler holds the
+    TX_WATERMARK of a CONTROL write inside the window of that owner; any other
+    CONTROL write and a reset drop it. The leaf writes the watermark that
+    CHK-WATERMARK graded after that check passed, holds it two clocks and
+    writes 0. The rise samples the held value only when it equals ``wm``. Same
+    rules as ``graded_owner``: a no-op that returns False on Verilator. On VCS
+    a sampler without the variable is a testbench error.
+    """
+    if wm < 0 or wm >> 8:
+        raise ValueError(f"spi_tx_wm_pass {wm} is not an 8-bit TX_WATERMARK")
+    return _set_bound("spi_tx_wm_pass", wm, "FCOV-SPI-TX-WM-PASS", log)
+
+
+# Bits of ``u_sep_fcov.hs_mask_pass``.
+HS_MASK_PASS_MASK = 0x1  # cp_hs_mask, CHK-HS-MASKED / CHK-HS-STOP / CHK-HS-CLR
+HS_MASK_PASS_INTR_CLEAR = 0x2  # cp_intr_clear, CHK-HS-CLR
+# The other owned cells of the leaf, held at their DUT event in the run's window.
+HS_MASK_PASS_RUN = 0x4
+
+
+def set_hs_mask_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.hs_mask_pass`` (the passed cells, or 0).
+
+    The pass label of the ``sep_spi_dma_handshake_rand_test`` cells
+    ``cp_hs_mask`` (bit 0), ``cp_intr_clear`` (bit 1) and its other cells
+    (bit 2: ``cp_use_case_matrix``, ``cp_peripheral_stream``,
+    ``cp_src_x_dst_endpoint``, the handshake bins of ``cp_go_lifecycle`` and
+    ``cp_chunk_done_class``). The sampler holds each cell at its DUT event inside
+    the window of that leaf, and samples a held cell only when its bit rises
+    inside that window; a window close or a reset drops it. The leaf writes 0 at each
+    handshake GO, and the bits after every check of the run passed, holds them
+    two clocks and writes 0. Same rules as ``graded_owner``: a no-op that returns
+    False on Verilator. On VCS a sampler without the variable is a testbench
+    error.
+    """
+    if bits < 0 or bits >> 3:
+        raise ValueError(f"hs_mask_pass 0x{bits:x} is out of range")
+    return _set_bound("hs_mask_pass", bits, "FCOV-HS-MASK-PASS", log)
+
+
+def set_slot_lock_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.slot_lock_pass`` (1 after every check of one refused write passed).
+
+    The pass label of ``sep_filter_match_cg.cp_locked_range_write`` (owner
+    ``sep_fabric_slot_csr_strobe_rand_test``). The sampler holds the cell of a
+    refused ``START_ADDR`` or ``END_ADDR`` write inside the window of that leaf
+    and samples it only when this value rises; a window close and a reset drop
+    it. The leaf writes 0 when it opens the window for one refused write, and 1
+    after the DECERR response, the read-back of the written lanes and the whole
+    read of every register of the entry passed, holds it two clocks and writes
+    0. Same rules as ``graded_owner``: a no-op that returns False on Verilator.
+    On VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("slot_lock_pass", int(bool(passed)), "FCOV-SLOT-LOCK-PASS", log)
+
+
+def set_dma_matrix_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.dma_matrix_pass`` (1 after every check of the run passed, else 0).
+
+    The pass label of every cell of owner ``sep_dma_transfer_matrix_rand_test``
+    (``sep_dma_transfer_cg``, ``sep_dma_xfer_rand_cg``, ``sep_dma_endpoint_cg``,
+    ``sep_dma_completion_cg``, ``sep_dma_range_config_cg``, ``sep_dma_hash_cg``,
+    and ``cp_len``, ``cp_hash_opcode``, ``cp_cfg_regwen``). The sampler holds
+    each such cell inside the window of that leaf and samples the held cells
+    only when this value rises; a reset drops them, a window close does not.
+    The leaf writes 0 before its first window, and 1 after every check of the
+    run passed, holds it two clocks and writes 0. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    return _set_bound("dma_matrix_pass", int(bool(passed)), "FCOV-DMA-MATRIX-PASS", log)
+
+
+def set_dma_zero_pass(passed: bool, log=None) -> bool:
+    """Write ``u_sep_fcov.dma_zero_pass`` (1 after every check of one fill passed, else 0).
+
+    The pass label of the ``sep_dma_zero_fill_rand_test`` cells of
+    ``sep_dma_zero_cg``: ``cp_dst_mode``, ``cp_width``, ``x_mode_width``,
+    ``cp_outcome``, ``cp_last_beat``, ``cp_last_beat_width``,
+    ``x_last_beat_width`` and ``cp_src_validated``. An initial GO inside the
+    window of that leaf starts a fill and drops the cells held since the last
+    release; the sampler holds the GO cell and the end cells of that zero fill
+    and samples them once when this value rises, also after the window closed.
+    A reset drops them; a GO outside the window does not. The leaf writes 1
+    after every check of that fill passed, holds it two clocks and writes 0.
+    Same rules as ``graded_owner``: a no-op that returns False on Verilator. On
+    VCS a sampler without the variable is a testbench error.
+    """
+    return _set_bound("dma_zero_pass", int(bool(passed)), "FCOV-DMA-ZERO-PASS", log)
+
+
+# Bits of ``u_sep_fcov.timer_contract_pass`` (owner sep_timer_clock_contract_test).
+TIMER_CONTRACT_PASS_RELEASE = 1 << 0  # rise samples every held cell of the owner
+TIMER_CONTRACT_PASS_DROP = 1 << 1  # rise drops every held cell (the leaf failed)
+TIMER_CONTRACT_PASS_ORDER_RUN = 1 << 2  # high while a graded CHK-WDT-ORDER run is in progress
+TIMER_CONTRACT_PASS_MASK = (
+    TIMER_CONTRACT_PASS_RELEASE | TIMER_CONTRACT_PASS_DROP | TIMER_CONTRACT_PASS_ORDER_RUN
+)
+
+
+def set_timer_contract_pass(bits: int, log=None) -> bool:
+    """Write ``u_sep_fcov.timer_contract_pass`` (a mask of ``TIMER_CONTRACT_*``, or 0).
+
+    The whole-leaf pass label of ``sep_timer_clock_contract_test``. The sampler
+    holds every legal cell of that owner at its event and samples the held
+    cells only when ``TIMER_CONTRACT_PASS_RELEASE`` rises; the holds survive the
+    resets and window closes of the leaf. A rise of ``TIMER_CONTRACT_PASS_DROP`` and
+    the window of another owner drop them. ``TIMER_CONTRACT_PASS_ORDER_RUN`` is high
+    only while a graded watchdog run is in progress; the bark-line cells of
+    ``cp_thold_order`` fill only then. The leaf writes the release bit once,
+    after every check of the leaf passed, holds it two clocks and writes 0, and
+    writes the drop bit when it fails. Illegal bins sample at once. Same rules
+    as ``graded_owner``: a no-op that returns False on Verilator. On VCS a
+    sampler without the variable is a testbench error.
+    """
+    if bits < 0 or bits & ~TIMER_CONTRACT_PASS_MASK:
+        raise ValueError(
+            f"timer_contract_pass bits {bits:#x} are not inside {TIMER_CONTRACT_PASS_MASK:#x}"
+        )
+    return _set_bound("timer_contract_pass", bits, "FCOV-TIMER-CONTRACT-PASS", log)
+
+
+# Bits of ``u_sep_fcov.dma_basic_pass``: bit c releases cell c of
+# ``sep_dma_config_fault_cg.cp_error_class_exclusive`` (the order of ``ec_cls``
+# in cov/sv/sep_fcov.sv).
+DMA_BASIC_PASS_SIZE = 0  # size_width3, CHK-ERR-SIZE
+DMA_BASIC_PASS_SRC = 1  # src_addr_misaligned, CHK-ERR-ADDR
+DMA_BASIC_PASS_DST = 2  # dst_addr_misaligned, CHK-ERR-ADDR
+DMA_BASIC_PASS_RANGE_VALID = 3  # range_valid, CHK-RANGE-REGWEN
+DMA_BASIC_PASS_BASE_LIMIT = 4  # base_limit, CHK-RANGE-REGWEN
+DMA_BASIC_PASS_ASID = 5  # asid, CHK-ERR-ASID
+DMA_BASIC_PASS_BITS = 6
+
+
+def set_dma_basic_pass(mask: int, log=None) -> bool:
+    """Write ``u_sep_fcov.dma_basic_pass`` (one bit per released cell, or 0).
+
+    The pass label of the ``sep_dma_basic_test`` cells of
+    ``cp_error_class_exclusive``. The sampler holds a cell at the ERROR_CODE
+    read of its error leg inside the window of that leaf, and samples a held
+    cell only when its bit (``DMA_BASIC_PASS_*``) rises inside that window; a
+    reset and a clock without that window drop the held cells. The leaf writes
+    0 when it opens the window and, after it has parsed the firmware console,
+    the bits of the checks whose PASS line it found; it holds them two clocks,
+    writes 0 and then closes the window. Same rules as ``graded_owner``: a
+    no-op that returns False on Verilator. On VCS a sampler without the
+    variable is a testbench error.
+    """
+    if mask < 0 or mask >> DMA_BASIC_PASS_BITS:
+        raise ValueError(f"dma_basic_pass 0x{mask:x} is out of range")
+    return _set_bound("dma_basic_pass", mask, "FCOV-DMA-BASIC-PASS", log)
+
+
+# Bits of ``u_sep_fcov.dma_zero_tcm_pass``: bit k releases the held
+# ``sep_dma_zero_cg.cp_tcm_outcome`` cell of value k (cov/sv/sep_fcov.sv).
+DMA_ZERO_TCM_PASS_CELLS = (
+    "dccm_done",
+    "iccm_done",
+    "iccm_w2_bus_error",
+    "iccm_size_4n2_bus_error",
+    "dccm_size_4n2_bus_error",
+    "dccm_w2_bus_error",
+)
+DMA_ZERO_TCM_PASS_ALL = (1 << len(DMA_ZERO_TCM_PASS_CELLS)) - 1
+
+
+def set_dma_zero_tcm_pass(mask: int, log=None) -> bool:
+    """Write ``u_sep_fcov.dma_zero_tcm_pass`` (one bit per released cell, or 0).
+
+    The pass label of the ``sep_dma_zero_test`` cells of
+    ``sep_dma_zero_cg.cp_tcm_outcome``. The sampler holds each cell at the DONE
+    or ERROR rise of a TCM zero fill inside the window of that leaf, and samples
+    a held cell only when its bit (``DMA_ZERO_TCM_PASS_CELLS`` index) rises, also
+    after the window closed; a reset and the next window open drop the held
+    cells. The leaf writes 0 before the boot, and the bits after the firmware
+    completed with PASS and every console check passed, holds them two clocks
+    and writes 0. Same rules as ``graded_owner``: a no-op that returns False on
+    Verilator. On VCS a sampler without the variable is a testbench error.
+    """
+    if mask < 0 or mask & ~DMA_ZERO_TCM_PASS_ALL:
+        raise ValueError(
+            f"dma_zero_tcm_pass 0x{mask:x} sets a bit outside 0x{DMA_ZERO_TCM_PASS_ALL:x}"
+        )
+    return _set_bound("dma_zero_tcm_pass", mask, "FCOV-DMA-ZERO-TCM-PASS", log)

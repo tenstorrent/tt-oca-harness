@@ -1,17 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B1_007 ANCHOR: smc_axil_endpoint_prot_sweep_test
-# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 6a415424767d2d0610ab649b8df314737f74940c086eb25d90b57e67e4b9f87a
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 10 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 18e22c56354b6e27812ebeae2ef2e8df773878386d4af34317e9f84e7a617ed6
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 11 ENV: cocotb
 """AxPROT, AxUSER, AxREGION, AxQOS, AxLOCK, AxCACHE, AxLEN and AxID at every AXI-Lite endpoint.
 
 From SEP_IN, one register of every internal AXI-Lite endpoint takes a read and
 a write-back of the value it holds under each value of each request attribute,
 and the debug manager (JTAG AXI) reads the reset unit with AxPROT 0x3 and 0x0.
 Every compared read returns the zero-attribute reference and every write-back
-leaves the register unchanged. The eFuse SHIM word, the external window under
-AxPROT 0x7 and 0x0, WUSER 0xFFF and 0x000 on every write-back endpoint and an
-AxLEN 15 burst over CPU_CTRL SCRATCH[0..15] follow.
+leaves the register unchanged. The eFuse SHIM word with AxPROT 0, then 0x2
+and 0x0, the external window under AxPROT 0x7 and 0x0, WUSER 0xFFF and 0x000
+on every write-back endpoint and an AxLEN 15 burst over CPU_CTRL
+SCRATCH[0..15] follow.
 
 Run:
     python3 tools/dv/run_dv.py --dut smc --items smc_axil_endpoint_prot_sweep_test --tool vcs
@@ -32,16 +33,17 @@ from smc_base_test import smc_base_test
 # footprint reads (34 before, 34 after), burst reads and writes (2 x 8); and
 # the five mailbox clock-gate accesses; per seeded endpoint (52) a pre-seed
 # read, the seed write and the restoring write and read; the SHIM read,
-# write-back and read; the four external-window accesses; per endpoint a read
-# and two WUSER write-backs each with a readback; and the two AxLEN 15 bursts
-# with the sixteen SCRATCH reads after them.
+# write-back and read, then the same under AxPROT 0x2 and 0x0; the four
+# external-window accesses; per endpoint a read and two WUSER write-backs each
+# with a readback; and the two AxLEN 15 bursts with the sixteen SCRATCH reads
+# after them.
 ENDPOINTS = 59
 SEEDED_ENDPOINTS = 52
 ATTRIBUTE_VALUES = 8 + 14 + 6 + 6 + 2 + 10 + 1 + 5
 PROT_SWEEP_MIN_CSR_ACCESSES = (
     ENDPOINTS * (1 + 3 * ATTRIBUTE_VALUES + 1) + 8 * 4 + 2 * 34 + 2 * 8 + 5 + 4 * SEEDED_ENDPOINTS
 )
-SHIM_ACCESSES = 3
+SHIM_ACCESSES = 3 * (1 + 2)
 EXTERNAL_ACCESSES = 4
 WUSER_ACCESSES_PER_ENDPOINT = 1 + 2 * 2
 LEN15_ACCESSES = 2 + 16
@@ -67,13 +69,14 @@ class smc_axil_endpoint_prot_sweep_test(smc_base_test):
         "CHK-ATTR-PROT",
         "CHK-ATTR-QOS",
         "CHK-ATTR-REGION",
+        "CHK-ATTR-SHIM-PROT",
         "CHK-ATTR-SHIM-WINDOW",
         "CHK-ATTR-USER",
         "CHK-ATTR-WUSER",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 16
+    min_evidence = 17
 
     auto_protocol_vip = False
 
