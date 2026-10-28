@@ -390,7 +390,7 @@ module efuse_shadow_regs
         apb_resp_q.pslverr <= 1'b0;
         apb_resp_q.prdata  <= apb_req_pwrite_i ? efuse_data_t'(0) : shadow_efuse.values[word_sel];
       end
-    end else begin
+    end else if (shadow_ready) begin
       apb_resp_q <= '0;
     end
   end
