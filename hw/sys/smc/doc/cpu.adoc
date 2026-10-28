@@ -180,7 +180,7 @@ Requests repair bypass. The ROM skips its repair-status check when this
 strap is set; the external integration owns the repair bypass behavior.
 `mem_repair_done` / `mem_repair_success`::
 External completion and success status, visible in
-`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`.
+`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_C000`.
 
 The ROM checks repair status during early startup, before normal stack use.
 It treats a clear `mem_repair_done` as repair not required rather than waiting

@@ -61,7 +61,10 @@ address bits are replaced by those of `LOCAL_BASE`, so a request for the global
 window reaches the same register as one for the local window. The local
 crossbar `u_smc_local_xbar` connects every initiator to every target, widens the
 ID to 8 bits, registers every port and answers unmapped addresses with DECERR,
-as do the internal CSR and peripheral crossbars. Its targets, in port order, are
+as do the internal CSR and peripheral crossbars. Each of its address rules spans
+whole 4 KiB pages: an AXI burst cannot cross a 4 KiB boundary, so a burst never
+reaches a second target, and an address in a page past a target's registers is
+answered by that target. Its targets, in port order, are
 the CPU cluster front port, the data accelerator control port, the internal CSR
 crossbar, the peripheral crossbar and the CLA register window of the DFD block,
 which is reached over APB. The converters in front of the last three belong to

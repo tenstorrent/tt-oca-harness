@@ -2707,16 +2707,16 @@ localparam int unsigned DTP_CTRL_REG_MEM_SIZE                                   
 //==============================================================================
 
 
-localparam int unsigned DFX_CTRL_REG_MAP_BASE_ADDR                                                                = 32'hC000B800;
+localparam int unsigned DFX_CTRL_REG_MAP_BASE_ADDR                                                                = 32'hC000C000;
 localparam int unsigned DFX_CTRL_REG_MAP_SIZE                                                                     = 32'h00000018;
 
 
 localparam int unsigned DFX_CTRL_STATUS_SMU_REG_OFFSET                                                            = 32'h00000000;
-localparam int unsigned DFX_CTRL_STATUS_SMU_REG_ADDR                                                              = 32'hC000B800;
+localparam int unsigned DFX_CTRL_STATUS_SMU_REG_ADDR                                                              = 32'hC000C000;
 localparam int unsigned DFX_CTRL_DEBUG_CTRL_REG_OFFSET                                                            = 32'h00000008;
-localparam int unsigned DFX_CTRL_DEBUG_CTRL_REG_ADDR                                                              = 32'hC000B808;
+localparam int unsigned DFX_CTRL_DEBUG_CTRL_REG_ADDR                                                              = 32'hC000C008;
 localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_OFFSET                                                         = 32'h00000010;
-localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR                                                           = 32'hC000B810;
+localparam int unsigned DFX_CTRL_DEBUG_BUS_MUX_REG_ADDR                                                           = 32'hC000C010;
 
 
 //==============================================================================

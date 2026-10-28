@@ -4,7 +4,8 @@
 // Accept AXI control traffic in an iDMA register frontend and emit 1-D iDMA requests.
 //
 // Each control interface has its own chain: an axi_cut, an axi_dw_converter to 32-bit AXI, a
-// second axi_cut, an axi_to_reg_v2 bridge to a 32-bit register interface, the idma_reg64_2d
+// second axi_cut, an axi_to_reg_v2 bridge to a 32-bit register interface, a reg_demux that
+// answers an offset past the last iDMA register with an error, the idma_reg64_2d
 // register frontend, a stream_fifo that buffers 2-D requests between the register frontend and
 // the 2-D midend, and an idma_nd_midend that splits each 2-D request into 1-D requests. An
 // idma_transfer_id_gen per interface issues transfer IDs and retires one on each midend
@@ -106,6 +107,11 @@ module idma_frontend_wrapper #(
 
   // Local type derivations from width parameters
   typedef logic [CTRL_ADDR_WIDTH-1:0] ctrl_addr_t;
+
+  // idma_reg64_2d decodes only its low BlockAw address bits, so a wider offset aliases back
+  // onto its registers, and an unmapped one inside BlockAw answers OKAY.
+  localparam ctrl_addr_t DmaCtrlRegEnd =
+      ctrl_addr_t'(idma_reg64_2d_reg_pkg::IDMA_REG64_2D_REPS_2_HIGH_OFFSET) + ctrl_addr_t'(4);
   typedef logic [CTRL_ID_WIDTH-1:0] ctrl_id_t;
   typedef logic [CTRL_DATA_WIDTH-1:0] ctrl_data_t;
   typedef logic [CTRL_DATA_WIDTH/8-1:0] ctrl_strb_t;
@@ -254,6 +260,25 @@ module idma_frontend_wrapper #(
       .busy_o(fe_busy[i])  // busy when there is an inflight AXI command
     );
 
+    reg_req_t  [1:0] range_reqs;
+    reg_resp_t [1:0] range_resps;
+
+    reg_demux #(
+      .NoPorts(2),
+      .req_t  (reg_req_t),
+      .rsp_t  (reg_resp_t)
+    ) u_reg_range_demux (
+      .clk_i      (clk_i),
+      .rst_ni     (rst_ni),
+      .in_select_i(reg_reqs[i].addr >= DmaCtrlRegEnd),
+      .in_req_i   (reg_reqs[i]),
+      .in_rsp_o   (reg_resps[i]),
+      .out_req_o  (range_reqs),
+      .out_rsp_i  (range_resps)
+    );
+
+    assign range_resps[1] = '{rdata: '0, error: 1'b1, ready: 1'b1};
+
     // ----------
     // Frontend
     // ----------
@@ -268,8 +293,8 @@ module idma_frontend_wrapper #(
       .clk_i (clk_i),
       .rst_ni(rst_ni),
 
-      .dma_ctrl_req_i(reg_reqs[i]),
-      .dma_ctrl_rsp_o(reg_resps[i]),
+      .dma_ctrl_req_i(range_reqs[0]),
+      .dma_ctrl_rsp_o(range_resps[0]),
 
       .dma_req_o   (fe_nd_req[i]),
       .req_valid_o (fe_req_valid[i]),

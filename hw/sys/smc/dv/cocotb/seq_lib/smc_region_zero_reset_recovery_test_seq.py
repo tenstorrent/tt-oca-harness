@@ -135,7 +135,7 @@ _UNITS = (
     ("EFUSE_IF", 0x8000, 0x8FFF, "efuse_interface_ctrl/EFUSE_INTERFACE_CTRL_STATUS"),
     ("TELEMETRY", 0x9000, 0x9FFF, "smc_telemetry_receiver_wrap/telemetry_receiver/CTRL"),
     ("OCTS_TIMER", 0xA000, 0xAFFF, "smc_system_timer_octs/TIMER_START"),
-    ("DFX", 0xB800, 0xBFFF, "dfx_ctrl/STATUS_SMU"),
+    ("DFX", 0xC000, 0xC7FF, "dfx_ctrl/STATUS_SMU"),
     ("BASE_CONFIG", 0x1_0000, 0x1_1FFF, "smc_base_config/GLOBAL_BASE"),
     ("ALIAS_REMAP", 0x1_2000, 0x1_2FFF, "smc_alias_remap/REGION/region_start"),
     ("MMODE_REMAP", 0x1_3000, 0x1_3FFF, "smc_mmode_remap/REGION/region_attrs"),

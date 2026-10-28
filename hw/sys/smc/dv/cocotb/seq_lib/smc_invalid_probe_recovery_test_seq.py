@@ -71,7 +71,7 @@ CLOCK_GATE_CONTROL_WORD = 0x1F00_0000
 OUTSIDE_ADDRS = (0xBFFF_FFFC, 0x8000_0000, 0xD000_0000, 0x0000_0100_0000_0000)
 _WDT0_FIRST, _ = generated_window("smc_cluster_core0_wdt")
 GAP_ADDRS = (
-    LOCAL_BASE_RESET + 0xC000,
+    LOCAL_BASE_RESET + 0xD000,
     LOCAL_BASE_RESET + 0x3_8300,
     LOCAL_BASE_RESET + 0x1_6200,
     LOCAL_BASE_RESET + _WDT0_FIRST + generated_decoded_extent("smc_cluster_core0_wdt"),

@@ -144,6 +144,10 @@ OCAH_REG_NO_ERR_BLOCKS ?= \
   filter_ctrl \
   gpio_intf
 
+# Blocks an AXI demux selects across a whole 4 KiB page: the regblock decodes the page
+# offset so an access past its registers errors instead of aliasing onto them.
+OCAH_REG_ADDR_WIDTH_cpu_ctrl ?= 12
+
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))

@@ -71,7 +71,7 @@ addrmap smc_top #(
     system_timer_octs              smc_system_timer_octs          @BASE_ADDR + 0x000_a000;
 
     external ext_memory #(.NUM_ENTRIES(512)) dtp_ctrl_reg         @BASE_ADDR + 0x000_b000;
-    dfx_ctrl_status                dfx_ctrl                       @BASE_ADDR + 0x000_b800; // These CSRs are for ROMs knowledge of dfx status
+    dfx_ctrl_status                dfx_ctrl                       @BASE_ADDR + 0x000_c000; // These CSRs are for ROMs knowledge of dfx status
 
     smc_base_config                smc_base_config                @BASE_ADDR + 0x001_0000;
     alias_remap                    smc_alias_remap[8]             @BASE_ADDR + 0x001_2000 += 0x20;

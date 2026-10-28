@@ -71,9 +71,11 @@ module smc_local_xbar
   // ===========================================================================
   // Address Map Configuration
   // ===========================================================================
-  // Direct CPU-cluster resources use separate rules so gaps between them
-  // decode-error here instead of reaching the cluster. The debug module's
-  // hart-facing window has no rule: only the cluster's harts may reach it.
+  // A rule that does not end on a 4 KiB boundary only ever meets a rule for the same port,
+  // so no AXI burst, which cannot cross 4 KiB, reaches a second port. The front-port rules
+  // keep their exact extents so the gaps between them decode-error here: the cluster answers
+  // OKAY for an address it does not map. The debug module's hart-facing window has no rule:
+  // only the cluster's harts may reach it.
   localparam smc_local_xbar_pkg::addr_rule_t [smc_local_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR),
@@ -125,38 +127,41 @@ module smc_local_xbar
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE)},
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE)},
-    '{idx: 1,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE)},
+      end_addr:   33'(smc_pkg::axi_window_end(
+                      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR,
+                      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))},
     // The internal and peripheral child xbars reject holes within these
     // generated aggregate bounds.
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE)},
+      end_addr:   33'(smc_pkg::axi_window_end(
+                      smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR,
+                      smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE))},
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE)},
+      end_addr:   33'(smc_pkg::axi_window_end(
+                      smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR,
+                      smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE))},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE)},
+      end_addr:   33'(smc_pkg::axi_window_end(
+                      smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR,
+                      smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE))},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
+      end_addr:   33'(smc_pkg::axi_window_end(
+                      smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR,
+                      smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE))},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
-                    + smc_pkg::SmcExternalWindowSize)},
+      end_addr:   33'(smc_pkg::axi_window_end(
+                      smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR,
+                      smc_pkg::SmcExternalWindowSize))},
     '{idx: 4,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_SIZE)}
+      end_addr:   33'(smc_pkg::axi_window_end(
+                      smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR,
+                      smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_SIZE))}
   };
 
   // ===========================================================================

@@ -567,7 +567,7 @@ and apply it to SRAM arrays according to your memory architecture.
 === Status Monitoring
 
 Repair completion and success are reported through
-`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
+`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_C000`. The `mem_repair_done` bit
 indicates completion regardless of success, while `mem_repair_success` indicates
 successful repair. Both bits are set by the external repair controller. The SMC
 ROM FW monitors these bits during initialization to verify repair

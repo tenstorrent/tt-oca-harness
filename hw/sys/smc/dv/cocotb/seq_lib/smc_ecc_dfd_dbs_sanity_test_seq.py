@@ -72,7 +72,7 @@ _DEBUG_BUS_MUX_BYTES = 8
 # Value-compared diagnostic reads, identical on Verilator and VCS. Every
 # expectation here traces to a cited RDL declaration:
 #   * NDMRESET_PROCESS (ndm_reset.rdl): RDL reset 0x0 -> spec-anchored.
-#   * DFX DEBUG_CTRL / DEBUG_BUS_MUX: PeakRDL symbols at 0xC000_B808/B810,
+#   * DFX DEBUG_CTRL / DEBUG_BUS_MUX: PeakRDL symbols at 0xC000_C008/C010,
 #     RDL reset 0x0.
 #     DEBUG_CTRL is regwidth 32; DEBUG_BUS_MUX is regwidth 64 (see above).
 # NDMRESET_CLUSTER_COUNT is not in this table: no document fixes its value, so

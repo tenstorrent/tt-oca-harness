@@ -118,7 +118,7 @@ localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE = 64'h24;
 localparam longint unsigned SMC_TOP_DTP_CTRL_REG_BASE_ADDR = 64'hC000B000;
 localparam longint unsigned SMC_TOP_DTP_CTRL_REG_SIZE = 64'h800;
 
-localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC000B800;
+localparam longint unsigned SMC_TOP_DFX_CTRL_BASE_ADDR = 64'hC000C000;
 localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
 
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
@@ -935,9 +935,9 @@ localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_AD
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR = 64'hC000A018;
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADDR = 64'hC000A01C;
 localparam longint unsigned SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR = 64'hC000A020;
-localparam longint unsigned SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR = 64'hC000B800;
-localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR = 64'hC000B808;
-localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR = 64'hC000B810;
+localparam longint unsigned SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR = 64'hC000C000;
+localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR = 64'hC000C008;
+localparam longint unsigned SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR = 64'hC000C010;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR = 64'hC0010008;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR = 64'hC0010010;

@@ -24939,9 +24939,9 @@ compared, because `dfd_dst.rdl` declares no field there. The reads of `Trdstinst
 *Source Module*: `smc_dfx_aperture_extent_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, reads and writes of the `dfx_ctrl` block at
-`STATUS_SMU` (0xC000_B800, 8 bytes), `DEBUG_CTRL` (0xC000_B808) and `DEBUG_BUS_MUX` (0xC000_B810,
-8 bytes), past the register extent at 0xC000_B818, 0xC000_B900 and 0xC000_BFFC, at the first
-address after the 0x800 aperture (0xC000_C000) and at offset 0xC (0xC000_B80C); the AXI
+`STATUS_SMU` (0xC000_C000, 8 bytes), `DEBUG_CTRL` (0xC000_C008) and `DEBUG_BUS_MUX` (0xC000_C010,
+8 bytes), past the register extent at 0xC000_C018, 0xC000_C100 and 0xC000_C7FC, at the first
+address after the 0x800 aperture (0xC000_C800) and at offset 0xC (0xC000_C00C); the AXI
 response code and read data seen by the SEP_IN scoreboard; bench signals `tb_fuse_sense_done` and
 `clk_smc_i`
 
@@ -24956,7 +24956,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * `STATUS_SMU`, `DEBUG_CTRL` and `DEBUG_BUS_MUX` answer OKAY at the addresses of the
-  `dfx_ctrl_status.rdl` address map placed by `smc.rdl` at 0xC000_B800 (`memory_map.adoc`, DFX
+  `dfx_ctrl_status.rdl` address map placed by `smc.rdl` at 0xC000_C000 (`memory_map.adoc`, DFX
   Control and Status Address Map). `STATUS_SMU` reads the idle word and the other two read 0. The
   idle word is a property of this bench: the bench drives the memory repair done and success and
   the MBIST done and pass inputs high, which sets bits 0, 1, 4 and 8 of `STATUS`, and no abort
@@ -24971,7 +24971,7 @@ draws nothing from the seed.
   response and the word are taken from the generated map row of `dfx_ctrl`
   (`memory_map.adoc`, Past Extent: DECERR, 0xBADCAB1E).
 * Writes past the register extent answer DECERR and leave the three registers as they were.
-* The first address after the aperture, 0xC000_C000, lies between the `dfx_ctrl` aperture and
+* The first address after the aperture, 0xC000_C800, lies between the `dfx_ctrl` aperture and
   `smc_base_config` at BASE + 0x1_0000, so it reaches no unit; `memmap.adoc` states that a read
   or write between unit apertures answers DECERR, and a read returns 0xBADCAB1E.
 * The offset 0xC between `DEBUG_CTRL` and `DEBUG_BUS_MUX`, inside the register extent, holds no
@@ -24986,18 +24986,18 @@ draws nothing from the seed.
   `DEBUG_BUS_MUX` (8 bytes, expected 0), and require the idle word, 0 and 0. Write 0x2A5A5A5A to
   `DEBUG_CTRL` and 0x0123456789ABCDEF to `DEBUG_BUS_MUX`, require each to read back exactly, then
   write 0 to each and require 0 on reading it back.
-. Error injection. Point: the SEP_IN AXI read address, at 0xC000_B818, 0xC000_B900 and
-  0xC000_BFFC, past the `dfx_ctrl` register extent. Kind: past-extent reads. Expected response:
+. Error injection. Point: the SEP_IN AXI read address, at 0xC000_C018, 0xC000_C100 and
+  0xC000_C7FC, past the `dfx_ctrl` register extent. Kind: past-extent reads. Expected response:
   each answers the generated past-extent response (DECERR) and returns the generated past-extent
   word 0xBADCAB1E.
-. Error injection. Point: the SEP_IN AXI write address, at 0xC000_B818 and 0xC000_BFFC, past the
+. Error injection. Point: the SEP_IN AXI write address, at 0xC000_C018 and 0xC000_C7FC, past the
   `dfx_ctrl` register extent. Kind: all-ones past-extent writes. Expected response: each answers
   the generated past-extent write response (DECERR). Read the three registers again and require
   them equal to their step 2 values.
-. Error injection. Point: the SEP_IN AXI read address, at 0xC000_C000, the first address after
+. Error injection. Point: the SEP_IN AXI read address, at 0xC000_C800, the first address after
   the `dfx_ctrl` aperture, which lies between unit apertures and reaches no unit. Kind: read of
   an address between unit apertures. Expected response: DECERR carrying 0xBADCAB1E.
-. Read 0xC000_B80C and require OKAY with data 0x0.
+. Read 0xC000_C00C and require OKAY with data 0x0.
 . Wait one rising edge of `clk_smc_i`, log the two bounded waits (the SEP_IN access bound and
   fuse sense), then require the step stamps in order and increasing and print the ordered-fence
   line.
@@ -25011,12 +25011,12 @@ draws nothing from the seed.
 `DEBUG_BUS_MUX` reads 0, all OKAY, at their generated addresses, and `DEBUG_CTRL` and
 `DEBUG_BUS_MUX` read back a distinct non-zero word written to them; any other word or a
 non-OKAY response fails it
-|`CHK-APERTURE-PAST-READ` |Reads at 0xC000_B818, 0xC000_B900 and 0xC000_BFFC answer DECERR
+|`CHK-APERTURE-PAST-READ` |Reads at 0xC000_C018, 0xC000_C100 and 0xC000_C7FC answer DECERR
 carrying 0xBADCAB1E; any other response or data fails it
-|`CHK-APERTURE-PAST-WRITE` |Writes at 0xC000_B818 and 0xC000_BFFC answer DECERR and `STATUS_SMU`,
+|`CHK-APERTURE-PAST-WRITE` |Writes at 0xC000_C018 and 0xC000_C7FC answer DECERR and `STATUS_SMU`,
 `DEBUG_CTRL` and `DEBUG_BUS_MUX` read the values they held before; an OKAY response or a changed
 register fails it
-|`CHK-APERTURE-NEXT-BLOCK` |The read at 0xC000_C000 answers DECERR carrying 0xBADCAB1E; any other
+|`CHK-APERTURE-NEXT-BLOCK` |The read at 0xC000_C800 answers DECERR carrying 0xBADCAB1E; any other
 response or data fails it
 |`CHK-APERTURE-HOLE` |The read at offset 0xC compares OKAY, 0x0; any other response or data
 fails it
@@ -25046,7 +25046,7 @@ compares OKAY, 0x0 (`memory_map.adoc`); `CHK-NONVAC` and
 *Source Module*: `smc_dfx_debug_bus_mux_storage_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 8-byte writes and reads of `DEBUG_BUS_MUX`
-(`dfx_ctrl` at 0xC000_B810; fields `Dbmmode` 1:0, `Dbmid` 7:2, `Rsvd158` 15:8 and `Muxselseg0` to
+(`dfx_ctrl` at 0xC000_C010; fields `Dbmmode` 1:0, `Dbmid` 7:2, `Rsvd158` 15:8 and `Muxselseg0` to
 `Muxselseg7` at 21:16, 27:22, 33:28, 39:34, 45:40, 51:46, 57:52 and 63:58); bench signal
 `tb_fuse_sense_done`
 
@@ -25137,8 +25137,8 @@ on expiry with the last observed access
 *Source Module*: `smc_dfx_debug_ctrl_noeffect_gate_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 4-byte accesses to `DEBUG_CTRL` (`dfx_ctrl` at
-0xC000_B808), an 8-byte `STATUS_SMU` read (0xC000_B800) and an 8-byte `DEBUG_BUS_MUX` read
-(0xC000_B810) issued with a `DEBUG_CTRL` write as one outstanding group; SMC reset agent driving
+0xC000_C008), an 8-byte `STATUS_SMU` read (0xC000_C000) and an 8-byte `DEBUG_BUS_MUX` read
+(0xC000_C010) issued with a `DEBUG_CTRL` write as one outstanding group; SMC reset agent driving
 `rst_cold_ni` (cold reset, observed on the powergood, cold, primary and fuse-sense signals);
 bench probes `tb_cla_clock_stop` and `tb_cla_halt_clock_global` sampled on `clk_smc_i`; SEP_IN
 handshake signals `s_axi_arvalid`, `s_axi_arready`, `s_axi_awvalid`, `s_axi_awready`,
@@ -25251,7 +25251,7 @@ The documents state no value for register bit 31; the leaf requires 0.
 *Source Module*: `smc_dfx_debug_ctrl_storage_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 4-byte and 8-byte writes and reads of `DEBUG_CTRL`
-(`dfx_ctrl` at 0xC000_B808; fields `chiplet_enable` 1:0, `gpio_en` 2, `cg_en` 3, `force_clk_en` 4,
+(`dfx_ctrl` at 0xC000_C008; fields `chiplet_enable` 1:0, `gpio_en` 2, `cg_en` 3, `force_clk_en` 4,
 `dtb_ns_en` 5, `dtb_ew_en` 6, `xtrig_clk_halt_mask` 22:7, `debug_marker` 30:23, bit 31 not in
 any field); bench signal `tb_fuse_sense_done`
 
@@ -25342,7 +25342,7 @@ compared. Only the storage of `cg_en` and `force_clk_en` is checked, not any clo
 *Source Module*: `smc_dfx_status_smu_pulse_reset_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) on SEP_IN, 8-byte reads and writes of `STATUS_SMU` (`dfx_ctrl` at
-0xC000_B800; `mem_repair_abort` bit 2, `mbist_abort` bit 12; the idle word is bits 0, 1, 4 and 8,
+0xC000_C000; `mem_repair_abort` bit 2, `mbist_abort` bit 12; the idle word is bits 0, 1, 4 and 8,
 set because the bench drives the done and pass inputs high), writes with
 byte strobes 0x01 and 0x10, 4-byte accesses to `SS_WARM_RESET_N` (`smc_reset_unit`) bit 0; bench
 abort inputs `tb_mem_repair_abort` and `tb_mbist_abort`; SMC reset agent driving `rst_cold_ni` and

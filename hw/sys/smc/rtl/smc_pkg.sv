@@ -346,10 +346,11 @@ package smc_pkg;
   // DMA backend internal ID width (for axi_mux inside DMA backend)
   localparam int unsigned DmaBackendMstIdW = SmcInputFabricSlaveIdWidth - 2;  // 2.
 
-  // DMA control interface (9-bit addr, reuses 64-bit data / 8-bit ID / 12-bit user)
-  localparam int unsigned DmaCtrlAddrW = 9;
+  // DMA control interface (12-bit addr, reuses 64-bit data / 8-bit ID / 12-bit user). The
+  // full 4 KiB page offset reaches the iDMA so it can reject an offset past its registers.
+  localparam int unsigned DmaCtrlAddrW = 12;
   typedef logic [DmaCtrlAddrW-1:0] smc_dma_ctrl_addr_t;
-  `AXI_TYPEDEF_ALL(smc_dma_ctrl_9_64_8_12_axi, smc_dma_ctrl_addr_t,
+  `AXI_TYPEDEF_ALL(smc_dma_ctrl_12_64_8_12_axi, smc_dma_ctrl_addr_t,
                    smc_local_fabric_xbar_master_id_t, smc_axi_data_t, smc_axi_strb_t,
                    smc_axi_user_t)
 
@@ -515,6 +516,14 @@ package smc_pkg;
 
   function automatic logic is_pow2(input logic [31:0] value);
     return (value != '0) && ((value & (value - 32'd1)) == '0);
+  endfunction
+
+  // End of an AXI decode window holding [base, base + size), rounded up to a 4 KiB boundary.
+  // An AXI burst never crosses one, so with page-aligned bases a burst cannot leave the target
+  // its start address selects.
+  function automatic longint unsigned axi_window_end(input longint unsigned base,
+                                                     input longint unsigned size);
+    return (base + size + 64'hFFF) & ~64'hFFF;
   endfunction
 
 endpackage

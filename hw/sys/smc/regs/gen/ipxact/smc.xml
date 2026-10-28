@@ -8178,7 +8178,7 @@ If PRIMARY, this field is always 0.</ipxact:description>
           <ipxact:name>dfx_ctrl</ipxact:name>
           <ipxact:displayName>DFX Control and Status Address Map</ipxact:displayName>
           <ipxact:description>Memory-repair and MBIST status, debug clock and cross-trigger controls, and debug-mux selects.</ipxact:description>
-          <ipxact:addressOffset>'hc000b800</ipxact:addressOffset>
+          <ipxact:addressOffset>'hc000c000</ipxact:addressOffset>
           <ipxact:range>'h18</ipxact:range>
           <ipxact:register>
             <ipxact:name>STATUS_SMU</ipxact:name>

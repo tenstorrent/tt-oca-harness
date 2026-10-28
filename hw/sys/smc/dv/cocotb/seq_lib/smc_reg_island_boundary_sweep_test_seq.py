@@ -91,7 +91,7 @@ ISLANDS = (
     Island("C1_WDT", "smc_cluster_core1_wdt", 0x400, 0x420, 0x424, 0x7FC, RW, RW, _D),
     Island("C2_WDT", "smc_cluster_core2_wdt", 0x800, 0x820, 0x824, 0xBFC, RW, RW, _D),
     Island("C3_WDT", "smc_cluster_core3_wdt", 0xC00, 0xC20, 0xC24, 0xFFC, RW, RW, _D),
-    Island("DFX", "dfx_ctrl", 0xB800, 0xB814, 0xB818, 0xBFFC, "ro(sw=r)", RW, _D),
+    Island("DFX", "dfx_ctrl", 0xC000, 0xC014, 0xC018, 0xC7FC, "ro(sw=r)", RW, _D),
     Island(
         "MAILBOX",
         "smc_mailbox",

@@ -73,7 +73,7 @@ BASES = (("LOCAL", LOCAL_BASE_RESET), ("GLOBAL", GLOBAL_BASE_RESET))
 COMBOS = tuple((p, b) for b in BASES for p in PORTS)
 OTHER_COMBOS = tuple(c for c in COMBOS if c != ("SEP", BASES[0]))
 
-GAP_C000 = ("GAP_C000", 0xC000, 0xFFF8)
+GAP_D000 = ("GAP_D000", 0xD000, 0xFFF8)
 GAP_ZC = ("GAP_ZEROER_CPU", 0x3_8300, 0x3_8FF8)
 WINDOW_FIRST = 0x1_7000
 WINDOW_LAST = 0x1_7FF8
@@ -288,11 +288,11 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
         admit = await self._setup()
         self._mark_step("S1")
 
-        text = await self._gap_words("SEP", local_name, local, GAP_C000, "r")
+        text = await self._gap_words("SEP", local_name, local, GAP_D000, "r")
         self._mark_step("S2")
         self._log_chk("CHK-GAP-READ-DECERR", f"{text}; {admit}")
 
-        text = await self._gap_words("SEP", local_name, local, GAP_C000, "w")
+        text = await self._gap_words("SEP", local_name, local, GAP_D000, "w")
         self._mark_step("S3")
         self._log_chk("CHK-GAP-WRITE-DECERR", text)
 
@@ -302,7 +302,7 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
 
         texts = []
         for port, (base_name, base) in OTHER_COMBOS:
-            for gap in (GAP_C000, GAP_ZC):
+            for gap in (GAP_D000, GAP_ZC):
                 texts.append(await self._gap_words(port, base_name, base, gap, "rw"))
         self._mark_step("S5")
         self._log_chk(

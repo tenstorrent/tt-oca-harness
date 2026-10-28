@@ -5,8 +5,10 @@
 //
 // Adapts accelerator control and master data ports to the SMC fabric.
 // Exposes status and clock-gater activity indicators alongside clock-gating control.
-// The control demux decodes the DMA and zeroer windows from smc_top_addrmap_pkg and sends
-// any other address to the DMA; the master mux prepends a source bit to the transfer IDs.
+// The control demux sends the DMA and zeroer windows from smc_top_addrmap_pkg to their blocks
+// and any other address in the page to a DECERR responder; a burst that starts in the DMA
+// window and runs past its registers gets SLVERR from the DMA frontend. The master mux
+// prepends a source bit to the transfer IDs.
 
 module smc_data_accelerator_wrap #(
   parameter int unsigned DMA_BUFFER_DEPTH = 16  // DMA buffer depth in beats.
@@ -66,42 +68,36 @@ module smc_data_accelerator_wrap #(
 
   localparam int unsigned NumAccelerators = 2;
 
+  // The control demux has a third port, a DECERR responder for the rest of the page.
+  localparam int unsigned NumCtrlPorts = NumAccelerators + 1;
+  localparam int unsigned CtrlErrSlv   = NumAccelerators;
+  typedef logic [$clog2(NumCtrlPorts)-1:0] ctrl_select_t;
+
   // Intermediate signals for demuxed control interfaces
-  smc_pkg::smc_local_32_64_8_12_axi_req_t  [NumAccelerators-1:0] axi_ctrl_demux_req;
-  smc_pkg::smc_local_32_64_8_12_axi_resp_t [NumAccelerators-1:0] axi_ctrl_demux_resp;
+  smc_pkg::smc_local_32_64_8_12_axi_req_t  [NumCtrlPorts-1:0] axi_ctrl_demux_req;
+  smc_pkg::smc_local_32_64_8_12_axi_resp_t [NumCtrlPorts-1:0] axi_ctrl_demux_resp;
 
   // Intermediate signals for master data interfaces (with narrower ID width)
   smc_pkg::smc_cpu_mmio_axi_req_t  [NumAccelerators-1:0] axi_mst_mux_req;
   smc_pkg::smc_cpu_mmio_axi_resp_t [NumAccelerators-1:0] axi_mst_mux_resp;
 
-  // Address decode logic for DMA/Zeroer selection
-  smc_pkg::data_accelerator_type_e aw_select_dma_zeroer, ar_select_dma_zeroer;
-
-  always_comb begin
-    // Default to DMA (index 0)
-    aw_select_dma_zeroer = smc_pkg::DMA;
-    // Check if address matches ZEROER_CTRL region
-    if (ctrl_axi_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR &&
-        ctrl_axi_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE) begin
-      aw_select_dma_zeroer = smc_pkg::DMA;  // DMA
-    end else if (ctrl_axi_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR &&
-        ctrl_axi_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE) begin
-      aw_select_dma_zeroer = smc_pkg::ZEROER;  // Zeroer
+  function automatic ctrl_select_t ctrl_select(smc_pkg::smc_axi_local_addr_t addr);
+    if (addr >= smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR &&
+        addr < smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR +
+               smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE) begin
+      return ctrl_select_t'(smc_pkg::DMA);
     end
-  end
-
-  always_comb begin
-    // Default to DMA (index 0)
-    ar_select_dma_zeroer = smc_pkg::DMA;
-    // Check if address matches ZEROER_CTRL region
-    if (ctrl_axi_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR &&
-        ctrl_axi_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE) begin
-      ar_select_dma_zeroer = smc_pkg::DMA;  // DMA
-    end else if (ctrl_axi_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR &&
-        ctrl_axi_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE) begin
-      ar_select_dma_zeroer = smc_pkg::ZEROER;  // Zeroer
+    if (addr >= smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR &&
+        addr < smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR +
+               smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE) begin
+      return ctrl_select_t'(smc_pkg::ZEROER);
     end
-  end
+    return ctrl_select_t'(CtrlErrSlv);
+  endfunction
+
+  ctrl_select_t aw_select_ctrl, ar_select_ctrl;
+  assign aw_select_ctrl = ctrl_select(ctrl_axi_req_i.aw.addr);
+  assign ar_select_ctrl = ctrl_select(ctrl_axi_req_i.ar.addr);
 
   // Address demux for DMA/Zeroer control interfaces
   axi_demux #(
@@ -114,7 +110,7 @@ module smc_data_accelerator_wrap #(
     .r_chan_t                           (smc_pkg::smc_local_32_64_8_12_axi_r_chan_t),
     .axi_req_t                          (smc_pkg::smc_local_32_64_8_12_axi_req_t),
     .axi_resp_t                         (smc_pkg::smc_local_32_64_8_12_axi_resp_t),
-    .NoMstPorts                         (NumAccelerators),
+    .NoMstPorts                         (NumCtrlPorts),
     .MaxTrans                           (smc_pkg::FabricMaxTrans),
     .AxiLookBits                        (smc_pkg::FabricIdLookupBits)
   ) u_axi_demux (
@@ -123,16 +119,31 @@ module smc_data_accelerator_wrap #(
     .test_i                             (test_en_i),
     .sel_hash_i                         (2'b00),
     .slv_req_i                          (ctrl_axi_req_i),
-    .slv_aw_select_i                    (aw_select_dma_zeroer),
-    .slv_ar_select_i                    (ar_select_dma_zeroer),
+    .slv_aw_select_i                    (aw_select_ctrl),
+    .slv_ar_select_i                    (ar_select_ctrl),
     .slv_resp_o                         (ctrl_axi_resp_o),
     .mst_reqs_o                         (axi_ctrl_demux_req),
     .mst_resps_i                        (axi_ctrl_demux_resp)
   );
 
-  // Downsize the CTRL Address Width for DMA (32 -> 9)
-  smc_pkg::smc_dma_ctrl_9_64_8_12_axi_req_t  dma_ctrl_axi_req;
-  smc_pkg::smc_dma_ctrl_9_64_8_12_axi_resp_t dma_ctrl_axi_resp;
+  axi_err_slv #(
+    .AxiIdWidth (smc_pkg::SmcLocalFabricXbarMasterIdWidth),
+    .axi_req_t  (smc_pkg::smc_local_32_64_8_12_axi_req_t),
+    .axi_resp_t (smc_pkg::smc_local_32_64_8_12_axi_resp_t),
+    .Resp       (axi_pkg::RESP_DECERR),
+    .ATOPs      (1'b0),
+    .MaxTrans   (smc_pkg::FabricMaxTrans)
+  ) u_ctrl_err_slv (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (test_en_i),
+    .slv_req_i  (axi_ctrl_demux_req[CtrlErrSlv]),
+    .slv_resp_o (axi_ctrl_demux_resp[CtrlErrSlv])
+  );
+
+  // Downsize the CTRL Address Width for DMA (32 -> 12)
+  smc_pkg::smc_dma_ctrl_12_64_8_12_axi_req_t  dma_ctrl_axi_req;
+  smc_pkg::smc_dma_ctrl_12_64_8_12_axi_resp_t dma_ctrl_axi_resp;
 
   `AXI_ASSIGN_ADDR_WIDTH_ADJ_CASTING(dma_ctrl_axi_req, dma_ctrl_axi_resp,
                                      axi_ctrl_demux_req[smc_pkg::DMA],
@@ -152,8 +163,8 @@ module smc_data_accelerator_wrap #(
     .BYPASS_DMA_CTRL_FLOPS              (1'b0),
     .BYPASS_DMA_MST_FLOPS               (1'b0),
     .CG_HYSTERESIS_W                    (smc_pkg::CgHysteresisW),
-    .dma_ctrl_req_t                     (smc_pkg::smc_dma_ctrl_9_64_8_12_axi_req_t),
-    .dma_ctrl_resp_t                    (smc_pkg::smc_dma_ctrl_9_64_8_12_axi_resp_t),
+    .dma_ctrl_req_t                     (smc_pkg::smc_dma_ctrl_12_64_8_12_axi_req_t),
+    .dma_ctrl_resp_t                    (smc_pkg::smc_dma_ctrl_12_64_8_12_axi_resp_t),
     .dma_mst_req_t                      (smc_pkg::smc_cpu_mmio_axi_req_t),
     .dma_mst_resp_t                     (smc_pkg::smc_cpu_mmio_axi_resp_t),
     .AXI_ADDR_WIDTH                     (smc_pkg::AxiAddrWidth),

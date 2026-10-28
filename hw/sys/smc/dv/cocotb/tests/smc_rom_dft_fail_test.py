@@ -55,7 +55,7 @@ DEFAULT_POLL_ITERS = 4000
 # The register the ROM's early check reads (DFX_CTRL_STATUS_SMU_REG_ADDR in smc_rom_defs.h).
 # Fields: mem_repair_done[0], mem_repair_success[1], mbist_done[4], mbist_pass[8],
 # mbist_abort[12].
-DFX_CTRL_STATUS_SMU = 0xC000_B800
+DFX_CTRL_STATUS_SMU = 0xC000_C000
 
 # Halt observation. The settle lets the ROM reach WFI after writing scratch 15; the window
 # is long enough that a boot that merely paused would be seen resuming.

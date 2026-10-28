@@ -88,7 +88,7 @@ The ROM does not perform a DMA-reset step.
 
 The production ROM FW image links strong overrides for both early checks, so
 the weak no-op definitions in `mbist_check.S` are not used.
-Both checks read the SMU DFX status register at `0xC000B800`.
+Both checks read the SMU DFX status register at `0xC000C000`.
 They run after SRAM initialization and before stack setup.
 
 The MBIST check uses:

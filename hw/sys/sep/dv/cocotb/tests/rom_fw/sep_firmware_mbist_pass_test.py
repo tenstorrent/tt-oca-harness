@@ -8,7 +8,7 @@ The pass-side partner of ``sep_firmware_mbist_fail_test``, whose comment above
 ``mem_repair_success[1]``, ``mem_repair_abort[2]``, ``mbist_done[4]``, ``mbist_pass[8]`` and
 ``mbist_abort[12]``. The gate keys on ``mem_repair_success`` and ``mbist_pass``, after it waits
 for ``mbist_done``. ``hw/sys/smc/regs/gen/c/smc_addr.h`` places
-``SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR`` at 0xC000_B800, seen from SEP as 0x4000_B800. The SMC
+``SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR`` at 0xC000_C000, seen from SEP as 0x4000_C000. The SMC
 responder is a flat memory, so this test cannot fail on the address; ``tb_top.sv`` flags an access
 outside a declared window through ``smc_addr_violations_o``.
 

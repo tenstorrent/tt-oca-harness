@@ -44,7 +44,7 @@ _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # The gate in bootrom/prod/src/vector.S, as this test drives it:
 #
-#     lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xB800 (hw/sys/smc/regs/gen/c/smc_addr.h)
+#     lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xC000 (hw/sys/smc/regs/gen/c/smc_addr.h)
 #     # arm 1: memory repair, skipped entirely if BYPASS_SRAM_REPAIR is strapped
 #     and  t2, straps_lo, STRAP_BYPASS_SRAM_REPAIR
 #     bnez t2, 1f
