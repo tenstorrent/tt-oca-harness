@@ -121,9 +121,30 @@ build_dir = "hw/sys/dtp/dv/build/cocotb"   # per-tool subdir appended: cocotb/<t
 [targets.default.tools.verilator]
 # --assert evaluates the two-state protocol SVA (a failure prints %Error and
 # stops the run); --no-assert-case keeps the unique/priority-case checks of the
-# DUT and vendored RTL out of that set.
+# DUT and vendored RTL out of that set. COVERIGN is an error: Verilator drops a
+# covergroup construct it does not support with only that warning, and then
+# builds other bins than the commercial simulators.
 flags = [
   "-Wno-BLKLOOPINIT",
+  "-Werror-COVERIGN",
+  "+define+VERILATOR",
+  "+define+ASSERTS_OFF",
+  "--assert",
+  "--no-assert-case",
+]
+
+# DTP_BSR_DISABLED elaborates the DUT with the boundary-scan instructions
+# disabled (tb/dtp_dv_cfg_pkg.sv).
+[targets.bsr_disabled]
+description = "DTP cocotb target with the boundary-scan instructions disabled"
+build_dir = "hw/sys/dtp/dv/build/bsr_disabled/cocotb"
+defines = ["DTP_BSR_DISABLED"]
+pinned_only = true
+
+[targets.bsr_disabled.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "-Werror-COVERIGN",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
   "--assert",
@@ -132,9 +153,9 @@ flags = [
 
 [coverage.verilator]
 # Instrument line/branch (--coverage-line), expression, and SVL user coverage
-# (the cov/sv cover-property points); toggle instrumentation stays off to
-# keep per-test databases lean. Replaces the simulator-default `--coverage`
-# (which enables all forms including toggle).
+# (the dtp_jtag2axi_fcov cover-property points); toggle instrumentation stays
+# off to keep per-test databases lean. Replaces the simulator-default
+# `--coverage` (which enables all forms including toggle).
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
@@ -246,3 +267,8 @@ description = "DTP SV-UVM default target"
 build_dir = "hw/sys/dtp/dv/build/uvm"
 # The bare `UVM` define (adds the SV-UVM harness block of the shared tb_top.sv) comes from
 # the native profile's [frameworks.uvm] overlay — no per-DUT copy.
+
+[frameworks.uvm.targets.bsr_disabled]
+description = "DTP SV-UVM target with the boundary-scan instructions disabled"
+build_dir = "hw/sys/dtp/dv/build/bsr_disabled/uvm"
+work_dir = "hw/sys/dtp/dv/build/bsr_disabled/uvm"

@@ -56,7 +56,12 @@ vp = [
     # ML-DSA-87 vectors at build time, which needs the ML-DSA API added in 48.
     "cryptography>=48.0",
 ]
-manifest = ["tt-oca-manifest"]
+manifest = [
+    "tt-oca-manifest",
+    # The release ROM build checks its image for the ML-DSA-87 test key in this group,
+    # which needs the ML-DSA API added in 48.
+    "cryptography>=48.0",
+]
 
 [tool.uv]
 package = false

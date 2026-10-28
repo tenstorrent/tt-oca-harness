@@ -561,15 +561,21 @@ modules simply do not elaborate. Its contents:
   FIXED<=16, WRAP length+alignment, 4KB), WLAST/RLAST position, strobe
   lane-window, B/R ordering and ID matching, EXOKAY-exclusive, and the Lite
   response-legality rules. `IS_LITE` selects the subset; `en_i` is the
-  runtime suppress knob. The `dv/` harness binds it to every VIP-driven
+  runtime suppress knob. `MASTER_SYNC_RESET` (default 0) is for a master
+  that clears its requests with synchronous-reset flops: the AW, W and AR
+  reset rules then allow VALID high on the first clock edge that samples
+  `aresetn` low and require it low from the next edge on; every other rule
+  keeps the true reset. The `dv/` harness binds it to every VIP-driven
   bundle; the response-ID corruption bundles stay unbound because the
   ID-ordering rules fire there by design. Rules implement the IHI 0022 rule
   descriptions. Simulator capability selects between two trees. The two-state
   rules use `OCAH_SVA_RULE` (`hw/common/assert/ocah_sva_macros.svh`) and run
   on every simulator, Verilator included under `--assert`, and on licensed
-  formal backends under `FORMAL`; the X-hygiene rules and the covers use
-  `OCAH_RULE` / `OCAH_COVER` and run on four-state simulators and licensed
-  backends only. Each rule belongs to the side that drives its signals, and
+  formal backends under `FORMAL`; the X-hygiene rules use `OCAH_RULE` and run
+  on four-state simulators and licensed backends only. The `OCAH_AXI_C_*`
+  covers use `OCAH_FCOV_COVER` (`hw/common/assert/ocah_fcov_macros.svh`) and
+  run on every simulator; Verilator records them as user coverage points.
+  Each rule belongs to the side that drives its signals, and
   `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
   assumptions, so a formal environment asserts the design's side and assumes
   its own; both default to assertions.

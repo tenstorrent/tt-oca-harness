@@ -29,10 +29,15 @@ in this bench.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 import cocotb
 from cocotb.triggers import RisingEdge
+from cocotb.utils import get_sim_time
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import efuse_ifc_u32, smc_addr
+from .smc_addr_map import efuse_ifc_u32, smc_addr, smc_efuse_map_u32, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
 
@@ -82,6 +87,66 @@ OTP_WORD0_MARKER = efuse_preload_word_at(smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_B
 _BIT = 0
 _POLL = 10_000
 
+PROG_BUSY = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_BUSY_bm")
+READ_BUSY = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_BUSY_bm")
+PROG_ADDR_ERR_CLR = efuse_ifc_u32(
+    "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_PROGRAM_ADDR_ERROR_CLEAR_bm"
+)
+READ_ADDR_ERR_CLR = efuse_ifc_u32(
+    "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_READ_ADDR_ERROR_CLEAR_bm"
+)
+STATUS_ERRORS = REQ_ERR | PROG_ADDR_ERR | READ_ADDR_ERR
+
+# Fuse bit address of a SMC_EFUSE_MAP byte: map word n is preload word n, which
+# holds fuse bits 32n..32n+31 (smc_efuse_vip_utils preload layout).
+EFUSE_MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
+LOCKS_ADDR = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+SPARE4_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 4)
+SPARE27_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 27)
+SPARE0_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
+SPARE4_WLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE4_WRITE_LOCK_bm")
+SPARE4_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE4_READ_LOCK_bm")
+SPARE27_WLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE27_WRITE_LOCK_bm")
+SPARE27_RLOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__SPARE27_READ_LOCK_bm")
+
+#: Bit addresses of SMC_COV_B4_010: 0xFFFF is out of range under every reading;
+#: 0x2000 and 0x6000 are measured only, and 0x1FFF is the last bit of the
+#: 8192-bit reading (SF-025).
+OOR_ADDR = 0xFFFF
+OOR_EXTRA = (0x2000, 0x6000)
+LAST_IN_RANGE = 0x1FFF
+#: Word w of the S7 upper-ones read: the first word of SPARE[0], unlocked here.
+ONES_WORD_BIT = (SPARE0_ADDR - EFUSE_MAP_BASE) * 8
+UPPER_ONES = (29, 30, 31)
+UPPER_ONES_MASK = sum(1 << b for b in UPPER_ONES)
+SPARE4_BIT = (SPARE4_ADDR - EFUSE_MAP_BASE) * 8
+WORD_MASK = 0xFFFF_FFFF
+
+FENCE = (
+    "EXISTING-TIMEOUT-LEGS",
+    "OOR-PROG",
+    "PROG-CLEAR",
+    "OOR-READ",
+    "READ-CLEAR",
+    "LAST-IN-RANGE",
+    "UPPER-ONES",
+    "WRITE-LOCKS",
+    "READ-LOCKS",
+)
+
+
+@dataclass
+class _BoundedWait:
+    """One bounded poll: its bound, whether expiry is tolerated, and what it last saw."""
+
+    name: str
+    bound: int
+    unit: str
+    allow_timeout: bool = False
+    timed_out: bool = False
+    used: int = 0
+    last: str = "not sampled"
+
 
 class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
     """Timeout CSR aborts program/read; default timeout recovers the burn."""
@@ -99,6 +164,56 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self.read_tmo_data = None
         self.read_ctl_data = None
         self.chk_seen: set[str] = set()
+        self.waits: list[_BoundedWait] = []
+        self.axi_items: list[SmcSysAxiItem] = []
+        self.fence: list[tuple[str, int, int]] = []
+
+    async def finish_item(self, item) -> None:
+        await super().finish_item(item)
+        self.axi_items.append(item)
+
+    def _stamp(self, term: str) -> None:
+        """Close fence term ``term``; its count is the SEP_IN accesses issued since the last term."""
+        count = len(self.axi_items) - sum(c for _t, c, _ns in self.fence)
+        self.fence.append((term, count, int(get_sim_time("ns"))))
+
+    async def _poll(self, wait: _BoundedWait, addr: int, done: Callable[[int], bool]) -> int:
+        """Read ``addr`` until ``done`` holds, at most ``wait.bound`` reads."""
+        self.waits.append(wait)
+        value = 0
+        for i in range(wait.bound):
+            value = await self.csr_read(wait.name, addr)
+            wait.used = i + 1
+            wait.last = f"0x{value:08x}"
+            if done(value):
+                cocotb.log.info(
+                    "WAIT %s: bound=%d %s allow_timeout=%s timed_out=%s used=%d last=%s",
+                    wait.name,
+                    wait.bound,
+                    wait.unit,
+                    wait.allow_timeout,
+                    wait.timed_out,
+                    wait.used,
+                    wait.last,
+                )
+                return value
+            await RisingEdge(cocotb.top.clk_smc_i)
+        wait.timed_out = True
+        cocotb.log.info(
+            "WAIT %s: expired after bound=%d %s allow_timeout=%s timed_out=%s last=%s",
+            wait.name,
+            wait.bound,
+            wait.unit,
+            wait.allow_timeout,
+            wait.timed_out,
+            wait.last,
+        )
+        if not wait.allow_timeout:
+            raise AssertionError(
+                f"{wait.name}: condition not met within {wait.bound} {wait.unit}; "
+                f"last observed {wait.last}"
+            )
+        return value
 
     async def _wait_mask(self, addr: int, mask: int, label: str) -> int:
         last = 0
@@ -368,3 +483,324 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             data,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-BASIC")
+
+        await self._range_legs()
+
+    async def _status(self, label: str) -> int:
+        return await self.csr_read(label, STATUS)
+
+    async def _prog_cmd(self, label: str, addr: int, complete: bool) -> tuple[int, int]:
+        """Program ``addr`` with efuse_data 1; poll busy low (and done high when ``complete``)."""
+        await self.csr_write(f"{label}_GO", PROGRAM_CTRL, addr | PROG_DATA | PROG_GO | PROG_EN)
+
+        def want(v: int) -> bool:
+            return not v & PROG_BUSY and (not complete or bool(v & PROG_DONE))
+
+        ctrl = await self._poll(_BoundedWait(f"{label}_BUSY", _POLL, "polls"), PROGRAM_CTRL, want)
+        return ctrl, await self._status(f"{label}_STATUS")
+
+    async def _read_cmd(self, label: str, addr: int, complete: bool) -> tuple[int, int]:
+        """Read ``addr``; poll busy low (and done high when ``complete``)."""
+        await self.csr_write(f"{label}_GO", READ_CTRL, addr | READ_GO | READ_EN)
+
+        def want(v: int) -> bool:
+            return not v & READ_BUSY and (not complete or bool(v & READ_DONE))
+
+        ctrl = await self._poll(_BoundedWait(f"{label}_BUSY", _POLL, "polls"), READ_CTRL, want)
+        return ctrl, await self._status(f"{label}_STATUS")
+
+    async def _read_locks(self, label: str) -> int:
+        lo = await self.csr_read(f"{label}_LO", LOCKS_ADDR)
+        hi = await self.csr_read(f"{label}_HI", LOCKS_ADDR + 4)
+        return ((hi & WORD_MASK) << 32) | (lo & WORD_MASK)
+
+    async def _shadow_read(self, label: str, addr: int) -> SmcSysAxiItem:
+        """SEP_IN read that must complete within the agent bound; any RRESP is recorded."""
+        item = SmcSysAxiItem(f"rd_{label}")
+        item.op = SmcSysAxiOp.READ
+        item.addr = addr
+        item.length = 4
+        item.allow_error = True
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        bound = item.timeout_ns or self.cfg.axi_timeout_ns
+        cocotb.log.info(
+            "WAIT %s: bound=%d ns allow_timeout=%s timed_out=%s resp=%s",
+            label,
+            bound,
+            item.allow_timeout,
+            item.timed_out,
+            item.resp_code,
+        )
+        assert not item.timed_out and item.resp_code is not None, (
+            f"{label} @ 0x{addr:08x}: no response within {bound} ns "
+            f"(timed_out={item.timed_out}, resp={item.resp_code})"
+        )
+        return item
+
+    async def _range_legs(self) -> None:
+        # S1: the existing legs left both timeout registers at their RDL reset and
+        # every STATUS error bit clear.
+        await self.csr_read("S1_PROG_TMO", PROG_TMO, expected=TMO_CYC_RST_P)
+        await self.csr_read("S1_READ_TMO", READ_TMO, expected=TMO_CYC_RST_R)
+        st = await self._status("S1_STATUS")
+        assert st & STATUS_ERRORS == 0, f"S1: STATUS=0x{st:x} has an error bit in 6:4 set"
+        cocotb.log.info("STEP S1: STATUS=0x%x, bits 6:4 clear; timeout registers at reset", st)
+        self._stamp("EXISTING-TIMEOUT-LEGS")
+
+        # S2: out-of-range program at 0xFFFF.
+        ctrl, st = await self._prog_cmd("S2_OOR_PROG", OOR_ADDR, complete=False)
+        pctrl = await self.csr_read("S2_OOR_PROG_CTRL", PROGRAM_CTRL)
+        assert st & PROG_ADDR_ERR, (
+            f"S2: program at 0x{OOR_ADDR:x} left efuse_program_addr_error clear "
+            f"(STATUS=0x{st:x}, PROGRAM_CTRL=0x{pctrl:x})"
+        )
+        cocotb.log.info(
+            "STEP S2: program 0x%x -> STATUS=0x%x PROGRAM_CTRL=0x%x program_status=%d "
+            "program_done=%d (measured, SF-027)",
+            OOR_ADDR,
+            st,
+            pctrl,
+            int(bool(pctrl & PROG_ERR)),
+            int(bool(pctrl & PROG_DONE)),
+        )
+        self._stamp("OOR-PROG")
+
+        # S3: W1P clear, then an in-range program of bit 0.
+        await self.csr_write("S3_CLR", STATUS, PROG_ADDR_ERR_CLR)
+        st_clr = await self._status("S3_STATUS_CLR")
+        assert st_clr & PROG_ADDR_ERR == 0, (
+            f"S3: efuse_program_addr_error still set after the bit-9 W1P write (STATUS=0x{st_clr:x})"
+        )
+        await self.csr_write("S3_IDLE", PROGRAM_CTRL, 0)
+        ctrl0, st0 = await self._prog_cmd("S3_PROG0", _BIT, complete=True)
+        assert st0 & PROG_ADDR_ERR == 0, (
+            f"S3: in-range program of bit {_BIT} set efuse_program_addr_error "
+            f"(STATUS=0x{st0:x}, PROGRAM_CTRL=0x{ctrl0:x})"
+        )
+        await self.csr_write("S3_PROG0_IDLE", PROGRAM_CTRL, 0)
+        cocotb.log.info(
+            "STEP S3: after clear STATUS=0x%x; in-range program bit %d PROGRAM_CTRL=0x%x STATUS=0x%x",
+            st_clr,
+            _BIT,
+            ctrl0,
+            st0,
+        )
+        self._stamp("PROG-CLEAR")
+
+        extra_prog = []
+        for addr in OOR_EXTRA:
+            ctrl, st = await self._prog_cmd(f"S2_PROG_{addr:x}", addr, complete=False)
+            extra_prog.append((addr, int(bool(st & PROG_ADDR_ERR)), st, ctrl))
+            await self.csr_write(f"S2_PROG_{addr:x}_CLR", STATUS, PROG_ADDR_ERR_CLR)
+            await self.csr_write(f"S2_PROG_{addr:x}_IDLE", PROGRAM_CTRL, 0)
+        cocotb.log.info(
+            "CHK-EFUSE-OOR-PROG: addr 0x%04X err=1; clear -> 0; in-range -> 0; %s logged "
+            "(measured, LINKED-ISSUE SF-025/SF-027; 0xFFFF PROGRAM_CTRL=0x%x)",
+            OOR_ADDR,
+            " ".join(
+                f"0x{a:04X} err={e} (STATUS=0x{s:x} CTRL=0x{c:x})" for a, e, s, c in extra_prog
+            ),
+            pctrl,
+        )
+        self.chk_seen.add("CHK-EFUSE-OOR-PROG")
+
+        # S4: out-of-range read at 0xFFFF.
+        ctrl, st = await self._read_cmd("S4_OOR_READ", OOR_ADDR, complete=False)
+        rctrl = await self.csr_read("S4_OOR_READ_CTRL", READ_CTRL)
+        assert st & READ_ADDR_ERR and rctrl & READ_ERR, (
+            f"S4: read at 0x{OOR_ADDR:x} gave STATUS=0x{st:x} READ_CTRL=0x{rctrl:x}; "
+            f"efuse_read_addr_error and read_status must both read 1"
+        )
+        cocotb.log.info("STEP S4: read 0x%x -> STATUS=0x%x READ_CTRL=0x%x", OOR_ADDR, st, rctrl)
+        self._stamp("OOR-READ")
+
+        # S5: W1P clear, then an in-range read of bit 0.
+        await self.csr_write("S5_CLR", STATUS, READ_ADDR_ERR_CLR)
+        st_clr = await self._status("S5_STATUS_CLR")
+        assert st_clr & READ_ADDR_ERR == 0, (
+            f"S5: efuse_read_addr_error still set after the bit-10 W1P write (STATUS=0x{st_clr:x})"
+        )
+        await self.csr_write("S5_IDLE", READ_CTRL, 0)
+        ctrl0, st0 = await self._read_cmd("S5_READ0", _BIT, complete=True)
+        assert st0 & READ_ADDR_ERR == 0, (
+            f"S5: in-range read of bit {_BIT} set efuse_read_addr_error "
+            f"(STATUS=0x{st0:x}, READ_CTRL=0x{ctrl0:x})"
+        )
+        await self.csr_write("S5_READ0_IDLE", READ_CTRL, 0)
+        cocotb.log.info(
+            "STEP S5: after clear STATUS=0x%x; in-range read bit %d READ_CTRL=0x%x STATUS=0x%x",
+            st_clr,
+            _BIT,
+            ctrl0,
+            st0,
+        )
+        self._stamp("READ-CLEAR")
+
+        extra_read = []
+        for addr in OOR_EXTRA:
+            ctrl, st = await self._read_cmd(f"S4_READ_{addr:x}", addr, complete=False)
+            extra_read.append((addr, int(bool(st & READ_ADDR_ERR)), st, ctrl))
+            await self.csr_write(f"S4_READ_{addr:x}_CLR", STATUS, READ_ADDR_ERR_CLR)
+            await self.csr_write(f"S4_READ_{addr:x}_IDLE", READ_CTRL, 0)
+        cocotb.log.info(
+            "CHK-EFUSE-OOR-READ: addr 0x%04X err=1 read_status=1; clear -> 0; in-range -> 0; "
+            "%s logged (measured, LINKED-ISSUE SF-025)",
+            OOR_ADDR,
+            " ".join(
+                f"0x{a:04X} err={e} (STATUS=0x{s:x} CTRL=0x{c:x})" for a, e, s, c in extra_read
+            ),
+        )
+        self.chk_seen.add("CHK-EFUSE-OOR-READ")
+
+        # S6: last in-range bit address, program then read.
+        pctrl, pst = await self._prog_cmd("S6_PROG_LAST", LAST_IN_RANGE, complete=True)
+        await self.csr_write("S6_PROG_LAST_CLR", STATUS, PROG_ADDR_ERR_CLR)
+        await self.csr_write("S6_PROG_LAST_IDLE", PROGRAM_CTRL, 0)
+        rctrl, rst = await self._read_cmd("S6_READ_LAST", LAST_IN_RANGE, complete=True)
+        await self.csr_write("S6_READ_LAST_CLR", STATUS, READ_ADDR_ERR_CLR)
+        await self.csr_write("S6_READ_LAST_IDLE", READ_CTRL, 0)
+        cocotb.log.info(
+            "CHK-EFUSE-LAST-IN-RANGE: addr 0x%04X program err=%d read err=%d, both completed "
+            "(PROGRAM_CTRL=0x%x STATUS=0x%x; READ_CTRL=0x%x STATUS=0x%x; measured, "
+            "LINKED-ISSUE SF-025)",
+            LAST_IN_RANGE,
+            int(bool(pst & PROG_ADDR_ERR)),
+            int(bool(rst & READ_ADDR_ERR)),
+            pctrl,
+            pst,
+            rctrl,
+            rst,
+        )
+        self.chk_seen.add("CHK-EFUSE-LAST-IN-RANGE")
+        self._stamp("LAST-IN-RANGE")
+
+        # S7: burn bits 29..31 of word w, then read the word back twice.
+        for b in UPPER_ONES:
+            ctrl, st = await self._prog_cmd(f"S7_PROG_{b}", ONES_WORD_BIT + b, complete=True)
+            assert ctrl & PROG_ERR == 0 and st & STATUS_ERRORS == 0, (
+                f"S7: program of bit 0x{ONES_WORD_BIT + b:x} failed "
+                f"(PROGRAM_CTRL=0x{ctrl:x}, STATUS=0x{st:x})"
+            )
+            await self.csr_write(f"S7_PROG_{b}_IDLE", PROGRAM_CTRL, 0)
+        rctrl, _st = await self._read_cmd("S7_READ", ONES_WORD_BIT, complete=True)
+        assert rctrl & READ_ERR == 0, f"S7: read_status set (READ_CTRL=0x{rctrl:x})"
+        dout = await self.csr_read("S7_DOUT", READ_DATA)
+        for i in range(3):
+            await self._status(f"S7_STATUS_{i}")
+        dout2 = await self.csr_read("S7_DOUT_AGAIN", READ_DATA)
+        await self.csr_write("S7_READ_IDLE", READ_CTRL, 0)
+        assert dout & UPPER_ONES_MASK == UPPER_ONES_MASK, (
+            f"S7: READ_DATA=0x{dout:08x} for bit address 0x{ONES_WORD_BIT:x}; bits 31:29 not 0b111"
+        )
+        assert dout2 == dout, f"S7: READ_DATA re-read 0x{dout2:08x} differs from 0x{dout:08x}"
+        cocotb.log.info(
+            "CHK-EFUSE-RDATA-UPPER-ONES: dout=0x%08x [31:29]=0b%s, re-read identical "
+            "(word bit address 0x%x, READ_CTRL=0x%x; bits per read and alignment SF-031)",
+            dout,
+            format((dout >> UPPER_ONES[0]) & 0b111, "03b"),
+            ONES_WORD_BIT,
+            rctrl,
+        )
+        self.chk_seen.add("CHK-EFUSE-RDATA-UPPER-ONES")
+        self._stamp("UPPER-ONES")
+
+        # S8: write locks on slots 8 and 31; a write of 0 must not clear them.
+        wlocks = SPARE4_WLOCK | SPARE27_WLOCK
+        await self.csr_write("S8_LOCKS_SET", LOCKS_ADDR, wlocks, length=8)
+        set_rb = await self._read_locks("S8_LOCKS_SET_RB")
+        await self.csr_write("S8_LOCKS_ZERO", LOCKS_ADDR, 0, length=8)
+        zero_rb = await self._read_locks("S8_LOCKS_ZERO_RB")
+        assert set_rb & wlocks == wlocks, f"S8: LOCKS=0x{set_rb:016x} after setting 0x{wlocks:x}"
+        assert zero_rb & wlocks == wlocks, (
+            f"S8: LOCKS=0x{zero_rb:016x} after writing 0; RW1S bits 0x{wlocks:x} cleared"
+        )
+        ctrl, st = await self._prog_cmd("S8_PROG_SPARE4", SPARE4_BIT, complete=False)
+        await self.csr_write("S8_REQ_ERR_CLR", STATUS, REQ_ERR_CLR)
+        await self.csr_write("S8_PROG_IDLE", PROGRAM_CTRL, 0)
+        st_after = await self._status("S8_STATUS_AFTER_CLR")
+        cocotb.log.info(
+            "CHK-EFUSE-GUARD-HI-WRITE: lock bits %d/%d set=1, after write 0 still 1; "
+            "req_error after SPARE4 program=%d (bit address 0x%x, PROGRAM_CTRL=0x%x "
+            "STATUS=0x%x, after clear 0x%x; LOCKS 0x%016x / 0x%016x; measured, "
+            "LINKED-ISSUE SF-028)",
+            SPARE4_WLOCK.bit_length() - 1,
+            SPARE27_WLOCK.bit_length() - 1,
+            int(bool(st & REQ_ERR)),
+            SPARE4_BIT,
+            ctrl,
+            st,
+            st_after,
+            set_rb,
+            zero_rb,
+        )
+        self.chk_seen.add("CHK-EFUSE-GUARD-HI-WRITE")
+        self._stamp("WRITE-LOCKS")
+
+        # S9: read locks on slots 8 and 31, then read both shadow registers.
+        rlocks = SPARE4_RLOCK | SPARE27_RLOCK
+        await self.csr_write("S9_LOCKS_SET", LOCKS_ADDR, rlocks, length=8)
+        rd_rb = await self._read_locks("S9_LOCKS_SET_RB")
+        assert rd_rb & rlocks == rlocks, f"S9: LOCKS=0x{rd_rb:016x} after setting 0x{rlocks:x}"
+        sp4 = await self._shadow_read("S9_SPARE4", SPARE4_ADDR)
+        sp27 = await self._shadow_read("S9_SPARE27", SPARE27_ADDR)
+        cocotb.log.info(
+            "CHK-EFUSE-GUARD-HI-READ: read locks %d/%d = 1; SPARE4 resp=%d data=0x%08x; "
+            "SPARE27 resp=%d data=0x%08x (LOCKS 0x%016x; measured, LINKED-ISSUE SF-029/SF-028)",
+            SPARE4_RLOCK.bit_length() - 1,
+            SPARE27_RLOCK.bit_length() - 1,
+            sp4.resp_code,
+            sp4.rdata & WORD_MASK,
+            sp27.resp_code,
+            sp27.rdata & WORD_MASK,
+            rd_rb,
+        )
+        self.chk_seen.add("CHK-EFUSE-GUARD-HI-READ")
+        self._stamp("READ-LOCKS")
+
+        self._timeout_paths()
+        self._nonvac()
+
+    def _timeout_paths(self) -> None:
+        bounds = sorted({item.timeout_ns or self.cfg.axi_timeout_ns for item in self.axi_items})
+        axi_allow = sum(1 for item in self.axi_items if item.allow_timeout)
+        axi_expired = sum(1 for item in self.axi_items if item.timed_out)
+        expired = [w.name for w in self.waits if w.timed_out]
+        tolerant = [w.name for w in self.waits if w.allow_timeout]
+        assert self.waits, "no bounded waits recorded"
+        assert not expired and not tolerant and not axi_expired and not axi_allow, (
+            f"bounded waits expired {expired} / tolerating expiry {tolerant}; SEP_IN accesses "
+            f"expired {axi_expired} / tolerating expiry {axi_allow}"
+        )
+        cocotb.log.info(
+            "CHK-TIMEOUT-PATHS: %d bounded waits, bound/last-state per wait, %d expired: %s; "
+            "%d SEP_IN accesses bound %s ns allow_timeout=%d timed_out=%d; expiry raises "
+            "AssertionError with the last observed state",
+            len(self.waits),
+            len(expired),
+            "; ".join(
+                f"{w.name} bound={w.bound} {w.unit} allow_timeout={w.allow_timeout} "
+                f"timed_out={w.timed_out} used={w.used} last={w.last}"
+                for w in self.waits
+            ),
+            len(self.axi_items),
+            bounds,
+            axi_allow,
+            axi_expired,
+        )
+        self.chk_seen.add("CHK-TIMEOUT-PATHS")
+
+    def _nonvac(self) -> None:
+        terms = [t for t, _c, _ns in self.fence]
+        assert terms == list(FENCE), f"fence terms {terms}, want {list(FENCE)}"
+        zero = [t for t, c, _ns in self.fence if c <= 0]
+        assert not zero, f"fence terms with zero count {zero}"
+        times = [ns for _t, _c, ns in self.fence]
+        assert all(b > a for a, b in zip(times, times[1:])), f"fence times not increasing {times}"
+        cocotb.log.info(
+            "CHK-NONVAC: %s (%s)",
+            " < ".join(FENCE),
+            ", ".join(f"{t} count={c} t={ns}ns" for t, c, ns in self.fence),
+        )
+        self.chk_seen.add("CHK-NONVAC")

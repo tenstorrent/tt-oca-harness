@@ -13,6 +13,11 @@
 // smc_toggle_instance_exclusions.el. README.md states every class.
 //==================================================
 
+CHECKSUM: "2224752048 2147741075"
+INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap
+ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
+Condition 2 "2782505955" "(dfd_enables_i.dfd_cg_en & ((~dfd_enables_i.dfd_force_clk_en)) & ((~test_en_i))) 1 -1" (3 "110")
+
 CHECKSUM: "2884589361 570709842"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_clk_gate
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
@@ -314,30 +319,6 @@ Condition 14 "4154550413" "(NodeEapMmr.CustomAction1Enable || NodeEapMmr.CustomA
 Condition 14 "4154550413" "(NodeEapMmr.CustomAction1Enable || NodeEapMmr.CustomAction0Enable) 1 -1" (3 "10")
 Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1'b0)) 1 -1" (2 "10")
 
-CHECKSUM: "2078871858 2490058488"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].u_mux_sel.debug_bus_mux
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "1416939164" "((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == '0)) 1 -1" (2 "1-")
-Condition 7 "198242192" "((enable_mode_d2 != 2'b11) ? (((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[0]))) 1 -1" (1 "0")
-Condition 7 "198242192" "((enable_mode_d2 != 2'b11) ? (((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[0]))) 1 -1" (2 "1")
-Condition 8 "4276634619" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
-Condition 8 "4276634619" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
-Condition 12 "3089924225" "((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == '0)) 1 -1" (2 "1-")
-Condition 15 "2735224258" "((enable_mode_d2 != 2'b11) ? (((1 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[1]))) 1 -1" (1 "0")
-Condition 15 "2735224258" "((enable_mode_d2 != 2'b11) ? (((1 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[1]))) 1 -1" (2 "1")
-Condition 16 "1446025641" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
-Condition 16 "1446025641" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
-Condition 20 "2282051345" "((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == '0)) 1 -1" (2 "1-")
-Condition 23 "194475037" "((enable_mode_d2 != 2'b11) ? (((2 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[2]))) 1 -1" (1 "0")
-Condition 23 "194475037" "((enable_mode_d2 != 2'b11) ? (((2 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[2]))) 1 -1" (2 "1")
-Condition 24 "4272937078" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
-Condition 24 "4272937078" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
-Condition 28 "1683820812" "((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == '0)) 1 -1" (2 "1-")
-Condition 31 "2739908175" "((enable_mode_d2 != 2'b11) ? (((3 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[3]))) 1 -1" (1 "0")
-Condition 31 "2739908175" "((enable_mode_d2 != 2'b11) ? (((3 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[3]))) 1 -1" (2 "1")
-Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
-Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
-
 CHECKSUM: "2746040415 2271697718"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
@@ -529,7 +510,7 @@ Condition 5 "3193926140" "((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) 
 Condition 9 "4289729232" "(prev_gnt == tnifState_e'(DST_GNT)) 1 -1" (2 "1")
 Condition 18 "191604408" "((prev_gnt inside {NTR_GNT}) ? DST_GNT : NTR_GNT) 1 -1" (1 "0")
 
-CHECKSUM: "3354362860 3417673543"
+CHECKSUM: "1934166905 3417673543"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
@@ -1240,7 +1221,7 @@ ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is gr
 Condition 4 "1494341974" "(zero & nd_req_valid_i & nd_req_ready_o) 1 -1" (2 "101")
 Condition 6 "3950647113" "(last & nd_req_valid_i & burst_req_ready_i) 1 -1" (2 "101")
 
-CHECKSUM: "169117402 3938785771"
+CHECKSUM: "2313761690 3938785771"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap.u_idma_frontend_wrapper.gen_axi_to_iDMA_fe[0].u_iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
 ANNOTATION: "SMC-T8-DMA-ZEROER-PORTS-ONLY: the iDMA wrapper and the zeroer is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -1311,16 +1292,12 @@ Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i))
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[10].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[10].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1329,16 +1306,12 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[11].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[11].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1347,16 +1320,12 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[12].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[12].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1365,16 +1334,12 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[13].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[13].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1429,30 +1394,24 @@ Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "1
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[4].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[4].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[5].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[5].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1461,16 +1420,12 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[6].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[6].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1481,7 +1436,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_s
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[7].u_write_traffic_filter
@@ -1505,16 +1459,12 @@ Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[9].u_read_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
-Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
 CHECKSUM: "4268271618 2264062827"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric.u_smc_sys_inbound_filter.gen_filter_config[9].u_write_traffic_filter
 ANNOTATION: "SMC-T5-FILTER-PORTS-ONLY: the AXI traffic filters, their filter-control register blocks and the alias and output remap units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (1 "01")
 Condition 1 "2218692855" "((tx_addr_i[(ADDR_WIDTH - 1):12] >= cfg_start_addr_i[(ADDR_WIDTH - 1):12]) && (tx_addr_i[(ADDR_WIDTH - 1):12] <= cfg_end_addr_i[(ADDR_WIDTH - 1):12])) 1 -1" (2 "10")
 Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i)) 1 -1" (2 "01")
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
@@ -1688,10 +1638,11 @@ Condition 6 "3801715548" "(((!(|cfg_src_id_i))) | (tx_src_id_i == cfg_src_id_i))
 Condition 8 "2281747858" "(cfg_burst_en_i | (tx_len_i == len_t'(0))) 1 -1" (3 "10")
 Condition 10 "2802277482" "(cfg_allow_traffic_type_i && tx_valid_i) 1 -1" (3 "11")
 
-CHECKSUM: "46423763 3431996872"
+CHECKSUM: "1137264511 4214429258"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "1171358220" "(mem_init_reset_ni == 1'b0) 1 -1" (2 "1")
+Condition 7 "3550059789" "(l2_frontend_isolated & mmio_isolated) 1 -1" (2 "10")
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tlDM.dmInner.dmInner.hartIsInResetSync_0_debug_hartReset_0.output_chain.u_rstbypass.u_mux
@@ -1888,8 +1839,6 @@ Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (142 "00000000010001101")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (143 "00000000010001110")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (144 "00000000010001111")
-Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (145 "00000000010010000")
-Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (146 "00000000010010001")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (147 "00000000010010010")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (148 "00000000010010011")
 Condition 1 "3679146421" "(msg_i[30] ^ msg_i[27] ^ msg_i[26] ^ msg_i[25] ^ msg_i[23] ^ msg_i[20] ^ msg_i[19] ^ msg_i[18] ^ msg_i[16] ^ msg_i[13] ^ msg_i[12] ^ msg_i[11] ^ msg_i[9] ^ msg_i[6] ^ msg_i[5] ^ msg_i[4] ^ msg_i[2]) 1 -1" (149 "00000000010010100")
@@ -2909,8 +2858,6 @@ Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (142 "000000000010001101")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (143 "000000000010001110")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (144 "000000000010001111")
-Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (145 "000000000010010000")
-Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (146 "000000000010010001")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (147 "000000000010010010")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (148 "000000000010010011")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (149 "000000000010010100")
@@ -3277,8 +3224,6 @@ Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (510 "000000000111111101")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (511 "000000000111111110")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (512 "000000000111111111")
-Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (513 "000000001000000000")
-Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (514 "000000001000000001")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (515 "000000001000000010")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (516 "000000001000000011")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (517 "000000001000000100")
@@ -5784,7 +5729,6 @@ Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (915 "000000001110010010")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (917 "000000001110010100")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (919 "000000001110010110")
-Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (921 "000000001110011000")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (923 "000000001110011010")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (925 "000000001110011100")
 Condition 2 "1707924954" "(msg_i[31] ^ msg_i[29] ^ msg_i[26] ^ msg_i[25] ^ msg_i[24] ^ msg_i[22] ^ msg_i[19] ^ msg_i[18] ^ msg_i[17] ^ msg_i[15] ^ msg_i[12] ^ msg_i[11] ^ msg_i[10] ^ msg_i[8] ^ msg_i[5] ^ msg_i[4] ^ msg_i[3] ^ msg_i[1]) 1 -1" (927 "000000001110011110")
@@ -6265,7 +6209,6 @@ Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[
 Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (855 "000000001101010110")
 Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (857 "000000001101011000")
 Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (859 "000000001101011010")
-Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (861 "000000001101011100")
 Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (863 "000000001101011110")
 Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (865 "000000001101100000")
 Condition 3 "300967285" "(msg_i[31] ^ msg_i[28] ^ msg_i[27] ^ msg_i[26] ^ msg_i[24] ^ msg_i[21] ^ msg_i[20] ^ msg_i[19] ^ msg_i[17] ^ msg_i[14] ^ msg_i[13] ^ msg_i[12] ^ msg_i[10] ^ msg_i[7] ^ msg_i[6] ^ msg_i[5] ^ msg_i[3] ^ msg_i[0]) 1 -1" (867 "000000001101100010")
@@ -6360,12 +6303,12 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_avsbus_controller.u_readas
 ANNOTATION: "SMC-T10-CDC-SYNC-PORTS-ONLY: the peripheral clock-domain crossings and the synchronizer cells is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "1384930558" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
 
-CHECKSUM: "679458402 3045344841"
+CHECKSUM: "2147923145 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 14 "3557830633" "(monitor_enable && ((!monitor_enable_q))) 1 -1" (1 "01")
 
-CHECKSUM: "1252306351 3290552104"
+CHECKSUM: "3038696307 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
@@ -6376,7 +6319,7 @@ Condition 40 "1002741326" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "01
 Condition 87 "3163058696" "(((!host_enable_i)) && trans_started) 1 -1" (3 "11")
 Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 
-CHECKSUM: "679458402 3045344841"
+CHECKSUM: "2147923145 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
@@ -6385,28 +6328,21 @@ Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_cou
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "1252306351 3290552104"
+CHECKSUM: "3038696307 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
 Condition 7 "1774200601" "(((!host_enable_i)) || event_arbitration_lost_o || bus_timeout_i) 1 -1" (2 "001")
 Condition 8 "3296887397" "(pend_restart && ((!host_enable_i))) 1 -1" (3 "11")
-Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
 Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
 Condition 11 "4115405389" "(scl_i_q && ((!scl_i))) 1 -1" (1 "01")
 Condition 11 "4115405389" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
 Condition 12 "4080702731" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
 Condition 13 "2640524167" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
 Condition 13 "2640524167" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (4 "1110")
-Condition 16 "2324155780" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
 Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
 Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
 Condition 19 "2959126639" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
-Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
 Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
 Condition 27 "2321408698" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
 Condition 28 "3825484854" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
 Condition 28 "3825484854" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
@@ -6434,15 +6370,9 @@ Condition 48 "1398363877" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "11
 Condition 52 "1273831875" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
 Condition 56 "1955764385" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
 Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
-Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
 Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 58 "788030742" "(sda_i_q != sda_i) 1 -1" (2 "1")
-Condition 61 "1101197365" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
 Condition 64 "1316349258" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
 Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
-Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 66 "3851682301" "(sda_i_q != sda_i) 1 -1" (2 "1")
 Condition 69 "4001853600" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
 Condition 73 "1950922655" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
 Condition 73 "1950922655" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
@@ -6464,67 +6394,57 @@ Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || 
 Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || unhandled_unexp_nak_i || ((!trans_started))) 1 -1" (5 "1000")
 Condition 91 "1798458230" "(sda_interference_i || ctrl_symbol_failed || bus_timeout_i) 1 -1" (3 "010")
 Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_symbol_failed) 1 -1" (2 "001")
-Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_symbol_failed) 1 -1" (4 "100")
 Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (2 "10111")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (1 "011")
 
-CHECKSUM: "331326766 467777835"
+CHECKSUM: "646034759 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 10 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
-Condition 13 "3891145760" "(bus_timeout_i && rw_bit_q) 1 -1" (3 "11")
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
-Condition 26 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
-Condition 31 "2216297856" "(((!ack_ctrl_mode_i)) || (auto_ack_cnt_i > '0)) 1 -1" (2 "01")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (1 "01111")
-Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (2 "10111")
 
-CHECKSUM: "2125226454 2977940430"
+CHECKSUM: "2117159968 4067590397"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 7 "2635010072" "(fmt_fifo_depth == 7'(CONTROLLER_TX_FIFO_DEPTH)) 1 -1" (2 "1")
 Condition 9 "2160510923" "(tx_fifo_depth == 7'(TARGET_TX_FIFO_DEPTH)) 1 -1" (2 "1")
-Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
-Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (3 "0010")
-Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (4 "0100")
-Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
-Condition 16 "379368309" "(target_enable && line_loopback) 1 -1" (3 "11")
-Condition 21 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
-Condition 23 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
-Condition 24 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (2 "101")
-Condition 24 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (3 "110")
-Condition 36 "200185853" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
-Condition 37 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
-Condition 40 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
-Condition 41 "2596173179" "(target_loopback ? (acq_fifo_rvalid && valid_target_lb_wr) : (reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA)))) 1 -1" (2 "1")
-Condition 42 "1973098945" "(acq_fifo_rvalid && valid_target_lb_wr) 1 -1" (1 "01")
-Condition 42 "1973098945" "(acq_fifo_rvalid && valid_target_lb_wr) 1 -1" (2 "10")
-Condition 42 "1973098945" "(acq_fifo_rvalid && valid_target_lb_wr) 1 -1" (3 "11")
-Condition 43 "2145444778" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA))) 1 -1" (2 "101")
-Condition 43 "2145444778" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA))) 1 -1" (3 "110")
-Condition 44 "782129642" "(target_loopback ? acq_fifo_rdata[7:0] : reg_out_i.TXDATA.wr_data.DATA) 1 -1" (2 "1")
-Condition 45 "1859700326" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
-Condition 57 "964341593" "(target_transmitting && sda_released_but_low) 1 -1" (3 "11")
-Condition 88 "3428059823" "(event_rx_overflow || rx_overflow_intr_test) 1 -1" (3 "10")
-Condition 89 "2645157951" "(event_scl_interference || scl_interference_intr_test) 1 -1" (3 "10")
-Condition 91 "3743434164" "(event_stretch_timeout || stretch_timeout_intr_test) 1 -1" (3 "10")
-Condition 92 "2426469672" "(event_sda_unstable || sda_unstable_intr_test) 1 -1" (3 "10")
-Condition 94 "3804049594" "(event_unexp_stop || unexp_stop_intr_test) 1 -1" (3 "10")
-Condition 97 "715861344" "(controller_tx_fifo_error || controller_tx_fifo_error_intr_test) 1 -1" (3 "10")
-Condition 98 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error_intr_test) 1 -1" (3 "10")
-Condition 99 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
-Condition 100 "2062372808" "(target_rx_fifo_error || target_rx_fifo_error_intr_test) 1 -1" (3 "10")
-Condition 101 "1299123668" "(event_bus_active_timeout && ((!host_idle))) 1 -1" (3 "11")
-Condition 104 "1461493260" "(host_enable && ((!line_loopback))) 1 -1" (2 "10")
-Condition 106 "2208493021" "(target_enable && ((!target_loopback))) 1 -1" (2 "10")
-Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (2 "00000001")
-Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (3 "00000010")
-Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (5 "00001000")
-Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (6 "00010000")
-Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (7 "00100000")
-Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (8 "01000000")
+Condition 14 "379368309" "(target_enable && line_loopback) 1 -1" (3 "11")
+Condition 19 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
+Condition 21 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
+Condition 22 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (2 "101")
+Condition 22 "818086773" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|{reg_out_i.FDATA.wr_biten.NAKOK, reg_out_i.FDATA.wr_biten.RCONT, reg_out_i.FDATA.wr_biten.READB, reg_out_i.FDATA.wr_biten.STOP, reg_out_i.FDATA.wr_biten.START, reg_out_i.FDATA.wr_biten.FBYTE}))) 1 -1" (3 "110")
+Condition 34 "3530662444" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
+Condition 34 "3530662444" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (3 "0010")
+Condition 34 "3530662444" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (4 "0100")
+Condition 34 "3530662444" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
+Condition 35 "200185853" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 36 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 39 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
+Condition 40 "2596173179" "(target_loopback ? (acq_fifo_rvalid && valid_target_lb_wr) : (reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA)))) 1 -1" (2 "1")
+Condition 41 "1973098945" "(acq_fifo_rvalid && valid_target_lb_wr) 1 -1" (1 "01")
+Condition 41 "1973098945" "(acq_fifo_rvalid && valid_target_lb_wr) 1 -1" (2 "10")
+Condition 41 "1973098945" "(acq_fifo_rvalid && valid_target_lb_wr) 1 -1" (3 "11")
+Condition 42 "2145444778" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA))) 1 -1" (2 "101")
+Condition 42 "2145444778" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA))) 1 -1" (3 "110")
+Condition 43 "782129642" "(target_loopback ? acq_fifo_rdata[7:0] : reg_out_i.TXDATA.wr_data.DATA) 1 -1" (2 "1")
+Condition 44 "1859700326" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 87 "3428059823" "(event_rx_overflow || rx_overflow_intr_test) 1 -1" (3 "10")
+Condition 88 "2645157951" "(event_scl_interference || scl_interference_intr_test) 1 -1" (3 "10")
+Condition 90 "3743434164" "(event_stretch_timeout || stretch_timeout_intr_test) 1 -1" (3 "10")
+Condition 91 "2426469672" "(event_sda_unstable || sda_unstable_intr_test) 1 -1" (3 "10")
+Condition 93 "3804049594" "(event_unexp_stop || unexp_stop_intr_test) 1 -1" (3 "10")
+Condition 96 "715861344" "(controller_tx_fifo_error || controller_tx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 97 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 98 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 99 "2062372808" "(target_rx_fifo_error || target_rx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 100 "1299123668" "(event_bus_active_timeout && ((!host_idle))) 1 -1" (3 "11")
+Condition 107 "2208493021" "(target_enable && ((!target_loopback))) 1 -1" (2 "10")
+Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (3 "00000010")
+Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (5 "00001000")
+Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (7 "00100000")
+Condition 108 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (8 "01000000")
 
-CHECKSUM: "679458402 3045344841"
+CHECKSUM: "2147923145 3045344841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_bus_monitor
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 12 "3716218854" "(((!scl_i)) || ((!sda_i))) 1 -1" (3 "10")
@@ -6533,26 +6453,22 @@ Condition 22 "1286515773" "(monitor_enable && start_det_pending && (ctrl_det_cou
 Condition 27 "3393594469" "(monitor_enable && stop_det_pending && (ctrl_det_count >= 14'(thd_dat_i))) 1 -1" (1 "011")
 Condition 31 "2016545571" "(((!target_idle_i)) && bus_inactive_timeout_det) 1 -1" (1 "01")
 
-CHECKSUM: "1252306351 3290552104"
+CHECKSUM: "3038696307 3290552104"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "1875588218" "(stretch_idle_cnt == stretch_cnt_threshold) 1 -1" (2 "1")
 Condition 5 "1904410187" "(fmt_byte_i == '0) 1 -1" (2 "1")
 Condition 7 "1774200601" "(((!host_enable_i)) || event_arbitration_lost_o || bus_timeout_i) 1 -1" (2 "001")
 Condition 8 "3296887397" "(pend_restart && ((!host_enable_i))) 1 -1" (3 "11")
-Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (1 "011")
 Condition 9 "3224839733" "(trans_started && ((!scl_i)) && scl_i_q) 1 -1" (4 "111")
 Condition 11 "4115405389" "(scl_i_q && ((!scl_i))) 1 -1" (1 "01")
 Condition 11 "4115405389" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
 Condition 12 "4080702731" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
 Condition 13 "2640524167" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
 Condition 13 "2640524167" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 15 "423011453" "(((!scl_i_q)) && scl_i && sda_i && ((!fmt_flag_nak_ok_i))) 1 -1" (4 "1110")
 Condition 16 "2324155780" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
 Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
 Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
 Condition 17 "3839781640" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 18 "3355076762" "(sda_i_q != sda_i) 1 -1" (2 "1")
 Condition 19 "2959126639" "(scl_i_q && ((!scl_i))) 1 -1" (3 "11")
 Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
 Condition 20 "3728283363" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
@@ -6570,11 +6486,8 @@ Condition 33 "51920182" "(fmt_flag_start_before_i && ((!trans_started))) 1 -1" (
 Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (3 "010")
 Condition 34 "3377508725" "(unhandled_unexp_nak_i || unhandled_nak_timeout_i || halt_controller_i) 1 -1" (4 "100")
 Condition 35 "3882230772" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (1 "01")
-Condition 35 "3882230772" "(trans_started && unhandled_nak_cnt_expired) 1 -1" (3 "11")
-Condition 36 "4078688379" "(trans_started || bus_free_i) 1 -1" (1 "00")
 Condition 36 "4078688379" "(trans_started || bus_free_i) 1 -1" (3 "10")
 Condition 37 "3850361113" "(trans_started && ((!host_enable_i))) 1 -1" (2 "10")
-Condition 38 "3675486646" "(((!trans_started)) && ((!scl_i))) 1 -1" (3 "11")
 Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "0111")
 Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "1011")
 Condition 39 "3879430109" "(trans_started && ((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (3 "1101")
@@ -6588,17 +6501,12 @@ Condition 47 "221233198" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_exp
 Condition 48 "1398363877" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
 Condition 48 "1398363877" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
 Condition 52 "1273831875" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 56 "1955764385" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
 Condition 56 "1955764385" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 56 "1955764385" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
 Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
 Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
 Condition 57 "2656230352" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
-Condition 58 "788030742" "(sda_i_q != sda_i) 1 -1" (2 "1")
 Condition 61 "1101197365" "(((!scl_i)) && scl_i_q) 1 -1" (3 "11")
-Condition 64 "1316349258" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (1 "011")
 Condition 64 "1316349258" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (2 "101")
-Condition 64 "1316349258" "(((!scl_i)) && ((!scl_i_q)) && stretch_predict_cnt_expired) 1 -1" (4 "111")
 Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (1 "011")
 Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (2 "101")
 Condition 65 "2762408491" "(scl_i_q && scl_i && (sda_i_q != sda_i)) 1 -1" (4 "111")
@@ -6627,30 +6535,22 @@ Condition 88 "2998605995" "(((!host_enable_i)) || (fmt_fifo_depth_i == 7'b1) || 
 Condition 91 "1798458230" "(sda_interference_i || ctrl_symbol_failed || bus_timeout_i) 1 -1" (3 "010")
 Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_symbol_failed) 1 -1" (2 "001")
 Condition 92 "836924109" "(event_sda_unstable_o || sda_interference_i || ctrl_symbol_failed) 1 -1" (4 "100")
-Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (1 "01111")
 Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (2 "10111")
-Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (3 "11011")
-Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (5 "11110")
-Condition 93 "170447471" "(unhandled_unexp_nak_i && host_enable_i && (state_q == IDLE) && host_nack_handler_timeout_en_i && ((!unhandled_nak_timeout_i))) 1 -1" (6 "11111")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (1 "011")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (3 "110")
 Condition 95 "3363717873" "(stretch_en && timeout_enable_i && (stretch_idle_cnt > 31'(stretch_timeout_i))) 1 -1" (4 "111")
 
-CHECKSUM: "331326766 467777835"
+CHECKSUM: "646034759 467777835"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 10 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
-Condition 13 "3891145760" "(bus_timeout_i && rw_bit_q) 1 -1" (3 "11")
-Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (1 "011")
 Condition 14 "2035580751" "(acq_start_stop_en_i && xact_for_us_q && ((!acq_fifo_wvalid_o))) 1 -1" (3 "110")
-Condition 26 "3032809540" "(sw_nack_i && ((!can_auto_ack))) 1 -1" (3 "11")
-Condition 31 "2216297856" "(((!ack_ctrl_mode_i)) || (auto_ack_cnt_i > '0)) 1 -1" (2 "01")
+Condition 36 "4088634449" "(((input_byte[7:1] & target_mask1_i) == target_address1_i) && (target_mask1_i != '0)) 1 -1" (3 "11")
+Condition 39 "2261252917" "(address0_match || address1_match) 1 -1" (2 "01")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (1 "01111")
-Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (2 "10111")
 Condition 40 "2934249426" "(target_enable_i & xfer_for_us_q & rw_bit_q & stop_detect_i & ((!expect_stop))) 1 -1" (6 "11111")
 Condition 44 "2009201500" "(((!tx_fifo_rvalid_i)) || unhandled_tx_stretch_event_i || (acq_fifo_depth_i > 7'(1'b1))) 1 -1" (2 "001")
 
-CHECKSUM: "3995419794 2394443816"
+CHECKSUM: "1697517669 2394443816"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "4002909003" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NumGpioWraps)) 1 -1" (1 "01")
@@ -6664,18 +6564,11 @@ CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[0].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface
@@ -6683,186 +6576,85 @@ ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface,
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface
@@ -6871,11 +6663,6 @@ Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[28].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
@@ -6883,122 +6670,58 @@ Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[28].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[37].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[38].u_gpio_interface
@@ -7006,211 +6729,88 @@ ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface,
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[38].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
-CHECKSUM: "928544494 4261098035"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
-CHECKSUM: "928544494 4261098035"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[52].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[52].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface
@@ -7218,21 +6818,11 @@ ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface,
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[56].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[56].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[57].u_gpio_interface
@@ -7241,47 +6831,24 @@ Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 
 Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
 
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[57].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[58].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[58].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[59].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[59].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface
@@ -7290,130 +6857,64 @@ Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
 
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[61].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (3 "11")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (3 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[61].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (1 "01")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 Condition 5 "3537259692" "(lsio_pin || lsio_sw) 1 -1" (2 "01")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
-
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
 
 CHECKSUM: "928544494 4261098035"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1491152499" "(lsio_interface_select_i && ((~reg__lsio_disable))) 1 -1" (2 "10")
-Condition 4 "3297066420" "(reg__lsio_select && ((~reg__lsio_disable))) 1 -1" (2 "10")
 
-CHECKSUM: "1423007749 3020850096"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface.u_gpio_access_filter
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 7 "1723789683" "(write_req_valid & write_prot_check_pass) 1 -1" (2 "10")
-
-CHECKSUM: "3049458808 806399646"
+CHECKSUM: "3370008930 2574745303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver
 ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 5 "2232577481" "(atready_o && atvalid_i) 1 -1" (1 "01")
-Condition 6 "3642077493" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) && telemetry_beat_received) 1 -1" (2 "10")
 Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (2 "10")
-Condition 10 "3501675428" "((message_buffer_wr_ptr[(MessageBufferPtrWidth - 2):0] == message_buffer_rd_ptr[(MessageBufferPtrWidth - 2):0]) && (message_buffer_wr_ptr[(MessageBufferPtrWidth - 1)] != message_buffer_rd_ptr[(MessageBufferPtrWidth - 1)])) 1 -1" (1 "01")
-Condition 10 "3501675428" "((message_buffer_wr_ptr[(MessageBufferPtrWidth - 2):0] == message_buffer_rd_ptr[(MessageBufferPtrWidth - 2):0]) && (message_buffer_wr_ptr[(MessageBufferPtrWidth - 1)] != message_buffer_rd_ptr[(MessageBufferPtrWidth - 1)])) 1 -1" (3 "11")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (1 "01")
-Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (3 "11")
 
-CHECKSUM: "3049458808 806399646"
+CHECKSUM: "3370008930 2574745303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver
 ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 1 "1041394388" "(last_packet_received || assembly_buffer_full || telemetry_receiver_flush) 1 -1" (3 "010")
 Condition 5 "2232577481" "(atready_o && atvalid_i) 1 -1" (1 "01")
-Condition 6 "3642077493" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) && telemetry_beat_received) 1 -1" (2 "10")
-Condition 6 "3642077493" "((assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) && telemetry_beat_received) 1 -1" (3 "11")
-Condition 7 "3757629749" "(assembly_buffer_wr_ptr == assembly_buffer_ptr_t'((AssemblyBufferDepth - 1))) 1 -1" (2 "1")
 Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (2 "10")
-Condition 9 "1025567274" "(assembly_buffer_full_q && ((!last_packet_received))) 1 -1" (3 "11")
-Condition 10 "3501675428" "((message_buffer_wr_ptr[(MessageBufferPtrWidth - 2):0] == message_buffer_rd_ptr[(MessageBufferPtrWidth - 2):0]) && (message_buffer_wr_ptr[(MessageBufferPtrWidth - 1)] != message_buffer_rd_ptr[(MessageBufferPtrWidth - 1)])) 1 -1" (1 "01")
-Condition 10 "3501675428" "((message_buffer_wr_ptr[(MessageBufferPtrWidth - 2):0] == message_buffer_rd_ptr[(MessageBufferPtrWidth - 2):0]) && (message_buffer_wr_ptr[(MessageBufferPtrWidth - 1)] != message_buffer_rd_ptr[(MessageBufferPtrWidth - 1)])) 1 -1" (3 "11")
 Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (1 "01")
-Condition 19 "3024830023" "(afready_i && afvalid_o) 1 -1" (3 "11")
-Condition 20 "586682789" "(missing_last_event || missing_last_intr_test) 1 -1" (3 "10")
 
 CHECKSUM: "2393566253 4118206563"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.u_at_fifo_rd_rst_sync.u_sync_rst_n_bypass.u_mux
@@ -7427,14 +6928,14 @@ ANNOTATION: "SMC-T6-TELEMETRY-PORTS-ONLY: the telemetry receiver wrapper is grad
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (2 "001")
 Condition 1 "3202969680" "((a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i)) 1 -1" (3 "010")
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "1864467169 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
 
-CHECKSUM: "3897359831 656965095"
+CHECKSUM: "2042902213 3931477819"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
@@ -7442,17 +6943,19 @@ Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
-Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
-Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
-Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 51 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
+Condition 21 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
+Condition 28 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
+Condition 51 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 52 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 53 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
+Condition 61 "321101586" "(modem_status_synced_q && (dcd != dcd_last_rd_val)) 1 -1" (1 "01")
+Condition 63 "446727046" "(modem_status_synced_q && (dsr != dsr_last_rd_val)) 1 -1" (1 "01")
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "1864467169 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
@@ -7461,67 +6964,56 @@ Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
 
-CHECKSUM: "3897359831 656965095"
+CHECKSUM: "2042902213 3931477819"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
 Condition 4 "1186798219" "(thr_wready && thr_wvalid) 1 -1" (1 "01")
-Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (2 "001")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (2 "001")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (3 "010")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
 Condition 9 "3444096770" "(uart_fifo_en && rx_fifo_threshold_supported && (rx_fifo_threshold_t'(rx_fifo_depth) >= rx_fifo_threshold)) 1 -1" (2 "101")
-Condition 12 "579142211" "((intr_id == TRANSMITTER_HOLDING_REGISTER_EMPTY) && iir_read) 1 -1" (3 "11")
-Condition 15 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (2 "01")
-Condition 15 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (4 "11")
-Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
-Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
-Condition 28 "413551467" "(uart_fifo_en && (dma_mode == DMA_MODE_1)) 1 -1" (1 "01")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
-Condition 38 "2929272635" "(uart_rxto_en && (rx_timeout_count_q == uart_rxto_val)) 1 -1" (1 "01")
-Condition 40 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
-Condition 48 "2793382833" "((fifo_thr_rbr_err || fifo_error_intr_test) && fifo_error_intr_en) 1 -1" (3 "11")
-Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 51 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
-Condition 56 "3913595461" "(reg_out_i.main_wo.FCR.XMIT_FIFO_RESET.value || fifo_en_changed) 1 -1" (3 "10")
-Condition 57 "726277720" "((reg_out_i.main.LSR.intr || receiver_line_status_intr_test) && receiver_line_status_intr_en) 1 -1" (3 "11")
-Condition 64 "619033102" "((reg_out_i.main.MSR.intr || modem_status_intr_test) && modem_status_intr_en) 1 -1" (1 "01")
-Condition 65 "615111783" "(reg_out_i.main.MSR.intr || modem_status_intr_test) 1 -1" (2 "01")
+Condition 16 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (2 "01")
+Condition 21 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
+Condition 28 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
+Condition 29 "413551467" "(uart_fifo_en && (dma_mode == DMA_MODE_1)) 1 -1" (1 "01")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
+Condition 39 "2929272635" "(uart_rxto_en && (rx_timeout_count_q == uart_rxto_val)) 1 -1" (1 "01")
+Condition 41 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
+Condition 49 "2793382833" "((fifo_thr_rbr_err || fifo_error_intr_test) && fifo_error_intr_en) 1 -1" (3 "11")
+Condition 51 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 52 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 53 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
+Condition 61 "321101586" "(modem_status_synced_q && (dcd != dcd_last_rd_val)) 1 -1" (1 "01")
+Condition 63 "446727046" "(modem_status_synced_q && (dsr != dsr_last_rd_val)) 1 -1" (1 "01")
 
 CHECKSUM: "1695494083 1025963123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "2785094000" "((bit_cnt_q == frame_length) && (rx_i != 1'b0)) 1 -1" (3 "11")
 Condition 17 "3823956829" "(extra_stop_bit_i && (word_length_i != 4'd5)) 1 -1" (2 "10")
 Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (3 "110")
-Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (4 "111")
 
 CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "1864467169 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
 Condition 5 "1171761969" "(rdata_fifo_rd_valid && uart_tx_ready_i) 1 -1" (1 "01")
-Condition 10 "3500437531" "(log_fetch_mem_resp_valid && log_fetch_mem_resp_error) 1 -1" (3 "11")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
-Condition 12 "772440707" "(log_fetch_err || reg_out.INTR_TEST.LOG_FETCH_ERR.value) 1 -1" (3 "10")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
-Condition 15 "2434494202" "(reg_out.INTR_STATUS.LOG_FETCH_ERR.value && reg_out.INTR_ENABLE.LOG_FETCH_ERR.value) 1 -1" (3 "11")
-Condition 16 "3705290924" "(reg_out.INTR_STATUS.LOG_WRITE_ERR.value && reg_out.INTR_ENABLE.LOG_WRITE_ERR.value) 1 -1" (3 "11")
 
-CHECKSUM: "3897359831 656965095"
+CHECKSUM: "2042902213 3931477819"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
@@ -7529,63 +7021,50 @@ Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (1 "01")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
 Condition 4 "1186798219" "(thr_wready && thr_wvalid) 1 -1" (1 "01")
-Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (2 "001")
-Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (3 "010")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (2 "001")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (3 "010")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
 Condition 9 "3444096770" "(uart_fifo_en && rx_fifo_threshold_supported && (rx_fifo_threshold_t'(rx_fifo_depth) >= rx_fifo_threshold)) 1 -1" (2 "101")
-Condition 15 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (2 "01")
-Condition 19 "4235718597" "(tx_enable && tx_uart_idle && tx_fifo_thr_rvalid) 1 -1" (1 "011")
-Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
-Condition 25 "1117152160" "(event_rx_frame_err && (rx_fifo_rbr_wdata == 8'b0)) 1 -1" (2 "10")
-Condition 25 "1117152160" "(event_rx_frame_err && (rx_fifo_rbr_wdata == 8'b0)) 1 -1" (3 "11")
-Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
-Condition 28 "413551467" "(uart_fifo_en && (dma_mode == DMA_MODE_1)) 1 -1" (1 "01")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
-Condition 38 "2929272635" "(uart_rxto_en && (rx_timeout_count_q == uart_rxto_val)) 1 -1" (1 "01")
-Condition 40 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
-Condition 48 "2793382833" "((fifo_thr_rbr_err || fifo_error_intr_test) && fifo_error_intr_en) 1 -1" (3 "11")
-Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 51 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
-Condition 56 "3913595461" "(reg_out_i.main_wo.FCR.XMIT_FIFO_RESET.value || fifo_en_changed) 1 -1" (3 "10")
-Condition 57 "726277720" "((reg_out_i.main.LSR.intr || receiver_line_status_intr_test) && receiver_line_status_intr_en) 1 -1" (3 "11")
-Condition 64 "619033102" "((reg_out_i.main.MSR.intr || modem_status_intr_test) && modem_status_intr_en) 1 -1" (1 "01")
-Condition 65 "615111783" "(reg_out_i.main.MSR.intr || modem_status_intr_test) 1 -1" (2 "01")
+Condition 16 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (2 "01")
+Condition 20 "4235718597" "(tx_enable && tx_uart_idle && tx_fifo_thr_rvalid) 1 -1" (1 "011")
+Condition 21 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
+Condition 28 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
+Condition 29 "413551467" "(uart_fifo_en && (dma_mode == DMA_MODE_1)) 1 -1" (1 "01")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
+Condition 39 "2929272635" "(uart_rxto_en && (rx_timeout_count_q == uart_rxto_val)) 1 -1" (1 "01")
+Condition 41 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
+Condition 49 "2793382833" "((fifo_thr_rbr_err || fifo_error_intr_test) && fifo_error_intr_en) 1 -1" (3 "11")
+Condition 51 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 52 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 53 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
+Condition 61 "321101586" "(modem_status_synced_q && (dcd != dcd_last_rd_val)) 1 -1" (1 "01")
+Condition 63 "446727046" "(modem_status_synced_q && (dsr != dsr_last_rd_val)) 1 -1" (1 "01")
 
 CHECKSUM: "1695494083 1025963123"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "2785094000" "((bit_cnt_q == frame_length) && (rx_i != 1'b0)) 1 -1" (3 "11")
 Condition 17 "3823956829" "(extra_stop_bit_i && (word_length_i != 4'd5)) 1 -1" (2 "10")
-Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (2 "101")
 Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (3 "110")
-Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (4 "111")
 
 CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
 
-CHECKSUM: "3446341511 1051719324"
+CHECKSUM: "1864467169 1051719324"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) && ((!log_fetch_done_status))) 1 -1" (1 "011")
 Condition 5 "1171761969" "(rdata_fifo_rd_valid && uart_tx_ready_i) 1 -1" (1 "01")
-Condition 10 "3500437531" "(log_fetch_mem_resp_valid && log_fetch_mem_resp_error) 1 -1" (3 "11")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
-Condition 12 "772440707" "(log_fetch_err || reg_out.INTR_TEST.LOG_FETCH_ERR.value) 1 -1" (3 "10")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
-Condition 15 "2434494202" "(reg_out.INTR_STATUS.LOG_FETCH_ERR.value && reg_out.INTR_ENABLE.LOG_FETCH_ERR.value) 1 -1" (3 "11")
-Condition 16 "3705290924" "(reg_out.INTR_STATUS.LOG_WRITE_ERR.value && reg_out.INTR_ENABLE.LOG_WRITE_ERR.value) 1 -1" (3 "11")
 
-CHECKSUM: "3897359831 656965095"
+CHECKSUM: "2042902213 3931477819"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
@@ -7593,54 +7072,33 @@ Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (1 "01")
 Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
 Condition 4 "1186798219" "(thr_wready && thr_wvalid) 1 -1" (1 "01")
-Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (2 "001")
-Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (3 "010")
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (2 "001")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (3 "010")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
 Condition 9 "3444096770" "(uart_fifo_en && rx_fifo_threshold_supported && (rx_fifo_threshold_t'(rx_fifo_depth) >= rx_fifo_threshold)) 1 -1" (2 "101")
-Condition 15 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (2 "01")
-Condition 19 "4235718597" "(tx_enable && tx_uart_idle && tx_fifo_thr_rvalid) 1 -1" (1 "011")
-Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
-Condition 25 "1117152160" "(event_rx_frame_err && (rx_fifo_rbr_wdata == 8'b0)) 1 -1" (2 "10")
-Condition 25 "1117152160" "(event_rx_frame_err && (rx_fifo_rbr_wdata == 8'b0)) 1 -1" (3 "11")
-Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
-Condition 28 "413551467" "(uart_fifo_en && (dma_mode == DMA_MODE_1)) 1 -1" (1 "01")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
-Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
-Condition 38 "2929272635" "(uart_rxto_en && (rx_timeout_count_q == uart_rxto_val)) 1 -1" (1 "01")
-Condition 40 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
-Condition 48 "2793382833" "((fifo_thr_rbr_err || fifo_error_intr_test) && fifo_error_intr_en) 1 -1" (3 "11")
-Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 51 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
-Condition 56 "3913595461" "(reg_out_i.main_wo.FCR.XMIT_FIFO_RESET.value || fifo_en_changed) 1 -1" (3 "10")
-Condition 57 "726277720" "((reg_out_i.main.LSR.intr || receiver_line_status_intr_test) && receiver_line_status_intr_en) 1 -1" (3 "11")
-
-CHECKSUM: "1695494083 1025963123"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 4 "2785094000" "((bit_cnt_q == frame_length) && (rx_i != 1'b0)) 1 -1" (3 "11")
-Condition 17 "3823956829" "(extra_stop_bit_i && (word_length_i != 4'd5)) 1 -1" (2 "10")
-Condition 19 "2977631779" "(parity_enable_i && rx_valid_o && (parity_force_i ? ((^rx_data_o)) : (parity_odd_i ? ((~^{rx_parity, rx_data_o})) : ((^{rx_parity, rx_data_o}))))) 1 -1" (4 "111")
+Condition 16 "3079199151" "(((~^tx_data)) ^ even_parity) 1 -1" (2 "01")
+Condition 20 "4235718597" "(tx_enable && tx_uart_idle && tx_fifo_thr_rvalid) 1 -1" (1 "011")
+Condition 21 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
+Condition 28 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
+Condition 29 "413551467" "(uart_fifo_en && (dma_mode == DMA_MODE_1)) 1 -1" (1 "01")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
+Condition 31 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
+Condition 39 "2929272635" "(uart_rxto_en && (rx_timeout_count_q == uart_rxto_val)) 1 -1" (1 "01")
+Condition 41 "2493607134" "(rx_fifo_wvalid && ((!rx_fifo_wready))) 1 -1" (3 "11")
+Condition 49 "2793382833" "((fifo_thr_rbr_err || fifo_error_intr_test) && fifo_error_intr_en) 1 -1" (3 "11")
+Condition 51 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 52 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 53 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (3 "110")
+Condition 61 "321101586" "(modem_status_synced_q && (dcd != dcd_last_rd_val)) 1 -1" (1 "01")
+Condition 63 "446727046" "(modem_status_synced_q && (dsr != dsr_last_rd_val)) 1 -1" (1 "01")
 
 CHECKSUM: "802650105 1094008715"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_tx
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Condition 3 "1794617131" "(((!tx_enable_i)) || (bit_cnt_q == 4'b0)) 1 -1" (3 "10")
-
-CHECKSUM: "456422775 2321522201"
-INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration
-ANNOTATION: "SMC-T9-IP-INTEGRATION-PORTS-ONLY: the IP integration shell (memories, eFuse shim, I3C and PLL models it hosts) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Condition 6 "371092708" "(i3c_dct_mem_sink_i[0].req & ((~i3c_dct_mem_sink_i[0].write))) 1 -1" (2 "10")
-Condition 8 "1348474867" "(i3c_dct_mem_sink_i[1].req & ((~i3c_dct_mem_sink_i[1].write))) 1 -1" (2 "10")
-Condition 10 "3334913594" "(i3c_dct_mem_sink_i[2].req & ((~i3c_dct_mem_sink_i[2].write))) 1 -1" (2 "10")
-Condition 12 "2159592749" "(i3c_dct_mem_sink_i[3].req & ((~i3c_dct_mem_sink_i[3].write))) 1 -1" (2 "10")
-Condition 14 "702031098" "(i3c_dct_mem_sink_i[4].req & ((~i3c_dct_mem_sink_i[4].write))) 1 -1" (2 "10")
-Condition 16 "1873174509" "(i3c_dct_mem_sink_i[5].req & ((~i3c_dct_mem_sink_i[5].write))) 1 -1" (2 "10")
 
 CHECKSUM: "2585843499 1130749731"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim
@@ -7800,14 +7258,6 @@ Block 12 "517325933" "udf_result = NodeEapMmr.Udf[5];"
 Block 13 "4214774098" "udf_result = NodeEapMmr.Udf[6];"
 Block 14 "2567647880" "udf_result = NodeEapMmr.Udf[7];"
 
-CHECKSUM: "2078871858 4109940310"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.cla_wrapper.cla_gen_inst_blk[0].u_mux_sel.debug_bus_mux
-ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 9 "731552736" "debug_bus[0] = ((enable_mode_d2 != 2'b11) ? ((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0)) : (~debug_bus_q[0]));"
-Block 19 "2293129607" "debug_bus[1] = ((enable_mode_d2 != 2'b11) ? ((1 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0)) : (~debug_bus_q[1]));"
-Block 29 "2684599869" "debug_bus[2] = ((enable_mode_d2 != 2'b11) ? ((2 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0)) : (~debug_bus_q[2]));"
-Block 39 "53953626" "debug_bus[3] = ((enable_mode_d2 != 2'b11) ? ((3 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0)) : (~debug_bus_q[3]));"
-
 CHECKSUM: "3775597833 2919597303"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.dst_wrapper.dst_inst[0].debug_sig_trace_packetizer.accumulator_instance.gen_accumulator_bank_instance[0].accumulator_bank_instance
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
@@ -7946,7 +7396,7 @@ ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blo
 Block 4 "711496616" "VIdToPId[vid_map[i]].pid = 1'(i);"
 Block 8 "1451315343" "pid_vector[VIdToPId[k].pid] = vid_vector[k];"
 
-CHECKSUM: "3354362860 3494525935"
+CHECKSUM: "1934166905 2883822044"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfd_wrap.u_dfd_top.trace_wrapper.trace_inst.trace_funnel_inst.trace_sink0
 ANNOTATION: "SMC-T2-DFD-PORTS-ONLY: the DFD wrapper (CLA, DST, trace and MMR blocks of tt-hw-debug) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 37 "1254440351" "TrRamFreeWayMaskPend_ANY[TrRamPendPktRd_ANY[i].TrRamPendWayIdx_ANY] = 1'b0;"
@@ -8217,19 +7667,19 @@ Block 9 "379044390" "if (retire_i)"
 Block 10 "2836492767" "completed_d = 'h00000002;"
 Block 11 "2204045824" "completed_d = 'b1;"
 
-CHECKSUM: "46423763 3132404876"
+CHECKSUM: "1137264511 3132404876"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
 ANNOTATION: "SMC-T7-CPU-PORTS-ONLY: the CPU wrapper and its ROM bridge is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 23 "1626659636" "if (disable_sram_auto_init_i)"
 Block 24 "2390191028" "nxt_state = MEM_ZERO_DONE;"
 
-CHECKSUM: "1252306351 3676063925"
+CHECKSUM: "3038696307 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "331326766 3820941057"
+CHECKSUM: "646034759 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -8242,7 +7692,7 @@ Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
 Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "1252306351 3676063925"
+CHECKSUM: "3038696307 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 13 "623845184" "tcount_d = 14'b1;"
@@ -8251,15 +7701,10 @@ Block 94 "1374269747" "ctrl_symbol_failed = 1'b1;"
 Block 99 "3199049350" "event_scl_interference_o = 1'b1;"
 Block 107 "992915565" "event_scl_interference_o = 1'b1;"
 Block 110 "2330311181" "event_sda_unstable_o = 1'b1;"
-Block 118 "2599272762" "event_scl_interference_o = 1'b1;"
 Block 121 "723962714" "event_sda_unstable_o = 1'b1;"
 Block 126 "3835699400" "event_scl_interference_o = 1'b1;"
-Block 129 "1433086632" "event_sda_unstable_o = 1'b1;"
-Block 135 "3826837943" "sda_d = 1'b0;"
-Block 140 "3628149058" "sda_d = 1'b0;"
 Block 145 "1710657704" "event_scl_interference_o = 1'b1;"
 Block 148 "3560807112" "event_sda_unstable_o = 1'b1;"
-Block 151 "2288143627" "sda_d = 1'b0;"
 Block 158 "2863783432" "ctrl_symbol_failed = 1'b1;"
 Block 161 "284205290" "ctrl_symbol_failed = 1'b1;"
 Block 188 "457095188" "state_d = SETUP_START;"
@@ -8267,7 +7712,6 @@ Block 190 "3723682871" "state_d = IDLE;"
 Block 206 "2233879721" "load_tcount = 1'b1;"
 Block 208 "1973891363" "state_d = IDLE;"
 Block 223 "193084966" "state_d = IDLE;"
-Block 238 "3236846285" "state_d = IDLE;"
 Block 251 "2046430805" "load_tcount = 1'b1;"
 Block 253 "1239468812" "state_d = IDLE;"
 Block 261 "1159103748" "state_d = POP_FMT_FIFO;"
@@ -8276,7 +7720,7 @@ Block 270 "1789187456" "state_d = IDLE;"
 Block 275 "627521164" "state_d = IDLE;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "331326766 3820941057"
+CHECKSUM: "646034759 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -8291,7 +7735,7 @@ Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
 Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
 
-CHECKSUM: "2125226454 631037930"
+CHECKSUM: "2117159968 631037930"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 19 "2351103625" "controller_tx_ready_o = 1'b0;"
@@ -8303,14 +7747,10 @@ Block 43 "351329269" "if (tx_lt_threshold)"
 Block 44 "2869887708" "target_tx_ready_o = 1'b1;"
 Block 45 "1155078305" "target_tx_ready_o = 1'b0;"
 
-CHECKSUM: "1252306351 3676063925"
+CHECKSUM: "3038696307 3676063925"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_controller_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 8 "93300480" "tcount_d = 14'(thigh_i);"
 Block 13 "623845184" "tcount_d = 14'b1;"
-Block 28 "1460411861" "stretch_predict_cnt_expired <= 1'b1;"
-Block 35 "1289397273" "unhandled_nak_cnt <= (unhandled_nak_cnt + 1'b1);"
-Block 36 "3252250877" "unhandled_nak_cnt_expired <= 1'b1;"
 Block 80 "4247418309" "pend_restart <= '0;"
 Block 94 "1374269747" "ctrl_symbol_failed = 1'b1;"
 Block 99 "3199049350" "event_scl_interference_o = 1'b1;"
@@ -8320,22 +7760,15 @@ Block 118 "2599272762" "event_scl_interference_o = 1'b1;"
 Block 121 "723962714" "event_sda_unstable_o = 1'b1;"
 Block 126 "3835699400" "event_scl_interference_o = 1'b1;"
 Block 129 "1433086632" "event_sda_unstable_o = 1'b1;"
-Block 135 "3826837943" "sda_d = 1'b0;"
-Block 140 "3628149058" "sda_d = 1'b0;"
 Block 145 "1710657704" "event_scl_interference_o = 1'b1;"
 Block 148 "3560807112" "event_sda_unstable_o = 1'b1;"
-Block 151 "2288143627" "sda_d = 1'b0;"
 Block 158 "2863783432" "ctrl_symbol_failed = 1'b1;"
 Block 161 "284205290" "ctrl_symbol_failed = 1'b1;"
-Block 175 "2454778447" "auto_stop_d = 1'b1;"
-Block 186 "3104050706" "state_d = IDLE;"
 Block 188 "457095188" "state_d = SETUP_START;"
 Block 190 "3723682871" "state_d = IDLE;"
 Block 206 "2233879721" "load_tcount = 1'b1;"
 Block 208 "1973891363" "state_d = IDLE;"
-Block 221 "1210958236" "load_tcount = 1'b1;"
 Block 223 "193084966" "state_d = IDLE;"
-Block 236 "1926764647" "load_tcount = 1'b1;"
 Block 238 "3236846285" "state_d = IDLE;"
 Block 251 "2046430805" "load_tcount = 1'b1;"
 Block 253 "1239468812" "state_d = IDLE;"
@@ -8345,7 +7778,7 @@ Block 270 "1789187456" "state_d = IDLE;"
 Block 275 "627521164" "state_d = IDLE;"
 Block 287 "78779006" "auto_stop_d = 1'b1;"
 
-CHECKSUM: "331326766 3820941057"
+CHECKSUM: "646034759 3820941057"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.u_i2c_target_fsm
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 5 "2778305497" "tcount_d = 14'b1;"
@@ -8354,13 +7787,11 @@ Block 101 "3275852885" "nack_transaction_d = 1'b1;"
 Block 105 "1750805257" "nack_transaction_d = 1'b1;"
 Block 106 "2160090931" "acq_fifo_wvalid_o = (!acq_fifo_full_or_last_space);"
 Block 112 "2577368389" "acq_fifo_wdata_o = {ACQ_START, input_byte};"
-Block 133 "1067304823" "nack_transaction_d = 1'b1;"
 Block 150 "2816309024" "state_d = WAIT_FOR_STOP;"
 Block 163 "2381415490" "state_d = WAIT_FOR_STOP;"
 Block 200 "1986623432" "state_d = WAIT_FOR_STOP;"
 Block 215 "920463520" "state_d = WAIT_FOR_STOP;"
 Block 223 "3865376767" "state_d = WAIT_FOR_STOP;"
-Block 251 "248185479" "state_d = WAIT_FOR_STOP;"
 
 CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface
@@ -8427,27 +7858,6 @@ Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
 
 CHECKSUM: "928544494 3078307202"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
-Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
-Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-
-CHECKSUM: "928544494 3078307202"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
-Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
-Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-
-CHECKSUM: "928544494 3078307202"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface
-ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
-Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
-Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
-
-CHECKSUM: "928544494 3078307202"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface
 ANNOTATION: "SMC-T3-PADRING-PORTS-ONLY: the GPIO pad ring (every GPIO interface, access filter and register block) is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
@@ -8523,25 +7933,25 @@ Block 8 "2791740676" "core2pad = lsio_core2pad_data_i;"
 Block 15 "4081993439" "core2pad_en = (~lsio_core2pad_en_ni);"
 Block 22 "522507962" "pad2core_en = (~lsio_pad2core_en_ni);"
 
-CHECKSUM: "3446341511 1365442774"
+CHECKSUM: "1864467169 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
 Block 55 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "3897359831 3052798972"
+CHECKSUM: "2042902213 913290606"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 89 "2875201528" "rx_fifo_threshold = rx_fifo_threshold_t'(8);"
 Block 90 "1036727875" "rx_fifo_threshold = rx_fifo_threshold_t'(14);"
 
-CHECKSUM: "3446341511 1365442774"
+CHECKSUM: "1864467169 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
 Block 55 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "3897359831 3052798972"
+CHECKSUM: "2042902213 913290606"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
@@ -8558,22 +7968,16 @@ Block 96 "1834982481" "rx_fifo_threshold = rx_fifo_threshold_t'(1024);"
 Block 97 "2062889571" "rx_fifo_threshold = rx_fifo_threshold_t'(2048);"
 Block 98 "1709577418" "rx_fifo_threshold = rx_fifo_threshold_t'(4096);"
 Block 112 "3774925084" "intr_id = FIFO_ERROR;"
-Block 113 "2164394487" "intr_id = RECEIVER_LINE_STATUS;"
 Block 117 "1771405728" "intr_id = MODEM_STATUS;"
 Block 130 "3619336723" "cts = 1'b0;"
 
-CHECKSUM: "1695494083 3871428551"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 13 "2822615368" "idle_d = 1'b1;"
-
-CHECKSUM: "3446341511 1365442774"
+CHECKSUM: "1864467169 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
 Block 55 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "3897359831 3052798972"
+CHECKSUM: "2042902213 913290606"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
@@ -8591,21 +7995,15 @@ Block 96 "1834982481" "rx_fifo_threshold = rx_fifo_threshold_t'(1024);"
 Block 97 "2062889571" "rx_fifo_threshold = rx_fifo_threshold_t'(2048);"
 Block 98 "1709577418" "rx_fifo_threshold = rx_fifo_threshold_t'(4096);"
 Block 112 "3774925084" "intr_id = FIFO_ERROR;"
-Block 113 "2164394487" "intr_id = RECEIVER_LINE_STATUS;"
 Block 130 "3619336723" "cts = 1'b0;"
 
-CHECKSUM: "1695494083 3871428551"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 13 "2822615368" "idle_d = 1'b1;"
-
-CHECKSUM: "3446341511 1365442774"
+CHECKSUM: "1864467169 1365442774"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.gen_log_engine.u_log_engine
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 27 "3833313036" "log_fetch_done_status_next = 1'b0;"
 Block 55 "1882518305" "log_bytes_written_cnt_next = log_bytes_written_cnt_t'(0);"
 
-CHECKSUM: "3897359831 3052798972"
+CHECKSUM: "2042902213 913290606"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core
 ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
 Block 60 "2883360406" "dma_mode_1_txrdy = 1'b0;"
@@ -8617,18 +8015,11 @@ Block 90 "1036727875" "rx_fifo_threshold = rx_fifo_threshold_t'(14);"
 Block 92 "2940120817" "rx_fifo_threshold = rx_fifo_threshold_t'(64);"
 Block 93 "2027900998" "rx_fifo_threshold = rx_fifo_threshold_t'(128);"
 Block 94 "2008718133" "rx_fifo_threshold = rx_fifo_threshold_t'(256);"
-Block 95 "2687612903" "rx_fifo_threshold = rx_fifo_threshold_t'(512);"
 Block 96 "1834982481" "rx_fifo_threshold = rx_fifo_threshold_t'(1024);"
 Block 97 "2062889571" "rx_fifo_threshold = rx_fifo_threshold_t'(2048);"
 Block 98 "1709577418" "rx_fifo_threshold = rx_fifo_threshold_t'(4096);"
 Block 112 "3774925084" "intr_id = FIFO_ERROR;"
-Block 113 "2164394487" "intr_id = RECEIVER_LINE_STATUS;"
 Block 130 "3619336723" "cts = 1'b0;"
-
-CHECKSUM: "1695494083 3871428551"
-INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_core.u_uart_rx
-ANNOTATION: "SMC-T4-UART-I2C-PORTS-ONLY: the UART log-engine wrappers and the I2C controller, target FSM and bus monitor units is graded on its ports: design engineering reviewed excluding the instance whole, and here its own ports stay graded, so the SMC's connection to it is still measured, while every net inside it and every instance beneath it is excluded while uncovered: toggle, line blocks and condition rows alike. Retired by design engineering withdrawing the review of the unit, after which every net inside it is graded; a leaf that covers one of its points drops that point at the next regeneration."
-Block 13 "2822615368" "idle_d = 1'b1;"
 
 CHECKSUM: "2585843499 1719023781"
 INSTANCE: smc_uvm_top.u_dut.u_smc_ip_integration.u_efuse_interface_shim

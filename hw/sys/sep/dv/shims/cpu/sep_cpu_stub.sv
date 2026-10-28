@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // DV-only compile-time STUB of sep_cpu (no VeeR EL2) for the no_cpu
-// lsu_stub_* targets: cocotb on Verilator and SV-UVM on VCS. The cocotb VCS
-// coverage build (--target default) does not use this stub; it keeps the full
+// lsu_stub_* targets on Verilator, cocotb and SV-UVM. On VCS those tests run on
+// the full-CPU default build (run_on in sep_sim_cfg.toml), which keeps the full
 // sep_cpu and tb_top force-splices the LSU request instead.
 //
 // The real sep_cpu (hw/sys/sep/rtl/sep_cpu.sv) instantiates el2_veer_wrapper (the full

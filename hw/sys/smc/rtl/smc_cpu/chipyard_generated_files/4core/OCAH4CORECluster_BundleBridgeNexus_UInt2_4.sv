@@ -92,13 +92,13 @@ module OCAH4CORECluster_BundleBridgeNexus_UInt2_4(	// @[generators/diplomacy/dip
   output [1:0] auto_out_0	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
 );
 
-  wire [1:0] outputs_0 = 2'h0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:78:32]
-  wire [1:0] outputs_1 = 2'h1;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:78:32]
-  wire [1:0] outputs_2 = 2'h2;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:78:32]
-  wire [1:0] outputs_3 = 2'h3;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:78:32]
-  assign auto_out_3 = outputs_3;	// @[generators/diplomacy/diplomacy/src/diplomacy/bundlebridge/BundleBridgeNexus.scala:20:9, generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:78:32]
-  assign auto_out_2 = outputs_2;	// @[generators/diplomacy/diplomacy/src/diplomacy/bundlebridge/BundleBridgeNexus.scala:20:9, generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:78:32]
-  assign auto_out_1 = outputs_1;	// @[generators/diplomacy/diplomacy/src/diplomacy/bundlebridge/BundleBridgeNexus.scala:20:9, generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:78:32]
-  assign auto_out_0 = outputs_0;	// @[generators/diplomacy/diplomacy/src/diplomacy/bundlebridge/BundleBridgeNexus.scala:20:9, generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:78:32]
+  wire [1:0] outputs_0 = 2'h0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:84:32]
+  wire [1:0] outputs_1 = 2'h1;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:84:32]
+  wire [1:0] outputs_2 = 2'h2;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:84:32]
+  wire [1:0] outputs_3 = 2'h3;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:84:32]
+  assign auto_out_3 = outputs_3;	// @[generators/diplomacy/diplomacy/src/diplomacy/bundlebridge/BundleBridgeNexus.scala:20:9, generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:84:32]
+  assign auto_out_2 = outputs_2;	// @[generators/diplomacy/diplomacy/src/diplomacy/bundlebridge/BundleBridgeNexus.scala:20:9, generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:84:32]
+  assign auto_out_1 = outputs_1;	// @[generators/diplomacy/diplomacy/src/diplomacy/bundlebridge/BundleBridgeNexus.scala:20:9, generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:84:32]
+  assign auto_out_0 = outputs_0;	// @[generators/diplomacy/diplomacy/src/diplomacy/bundlebridge/BundleBridgeNexus.scala:20:9, generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:84:32]
 endmodule
 

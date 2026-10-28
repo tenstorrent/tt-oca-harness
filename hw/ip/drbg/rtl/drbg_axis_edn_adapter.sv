@@ -23,6 +23,9 @@
 // synchronously cancels only the corresponding endpoint and does not disturb another client's
 // in-flight response. It must assert before the client's reset asserts and hold until that
 // reset deasserts.
+//
+// err_o reports an illegal state in any endpoint's edn_ack_sm. The faulted endpoint stays in
+// its error state, acknowledging nothing, until reset.
 `include "ocah_registers.svh"
 
 module drbg_axis_edn_adapter
@@ -52,10 +55,12 @@ module drbg_axis_edn_adapter
                                                             // clear_i is low.
 
   input  wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i, // Native EDN requests from clients.
-  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o   // Native EDN responses to clients; ack,
+  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o,  // Native EDN responses to clients; ack,
                                                             // bus and fips are forced to zero
                                                             // during clear_i or that endpoint's
                                                             // reset.
+  output logic err_o                                        // Illegal edn_ack_sm state in any
+                                                            // endpoint; held until reset.
 );
 
   `include "prim_assert.sv"
@@ -235,17 +240,29 @@ module drbg_axis_edn_adapter
   assign unused_ep_wready = |ep_wready;
   assign unused_ep_err    = |ep_err;
 
+  assign err_o = |ack_sm_err;
+
   // -------------------------------------------------------------------------
   // Assertions
   // -------------------------------------------------------------------------
   `OCAH_OT_ASSERT(AxisEdnAllAckSmHealthy_A, !(|ack_sm_err))
 
-  `OCAH_OT_ASSERT(AxisEdnStableDataWhenStall_A,
-                  !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready |=> clear_i || $stable
-                  (axis_req_i.tdata))
-  `OCAH_OT_ASSERT(AxisEdnStableStrbWhenStall_A,
-                  !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready |=> clear_i || $stable
-                  (axis_req_i.tstrb))
+  for (genvar i = 0; i < NUM_ENDPOINTS; i++) begin : gen_ack_sm_sec_cm
+    `OCAH_OT_ASSERT_PRIM_FSM_ERROR_TRIGGER_ALERT_IN(AckSmErrTriggersErr_A,
+                                                    gen_ep[i].u_edn_ack_sm.u_state_regs, err_o)
+  end
+
+  // A stalled beat that is still offered keeps its data and strobe. A source reset may drop
+  // the beat (tvalid low) before clear_i covers it: an internal source resets ahead of the
+  // synchronized clear, and an external source reset never reaches clear_i.
+  `OCAH_OT_ASSERT(
+      AxisEdnStableDataWhenStall_A,
+      !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready |=> clear_i || !axis_req_i.tvalid || $stable
+      (axis_req_i.tdata))
+  `OCAH_OT_ASSERT(
+      AxisEdnStableStrbWhenStall_A,
+      !clear_i && axis_req_i.tvalid && !axis_rsp_o.tready |=> clear_i || !axis_req_i.tvalid || $stable
+      (axis_req_i.tstrb))
   `OCAH_OT_ASSERT_KNOWN(AxisEdnRspReadyKnown_A, axis_rsp_o.tready)
   `OCAH_OT_ASSERT(AxisEdnNoReadyDuringClear_A, clear_i |-> !axis_rsp_o.tready)
 

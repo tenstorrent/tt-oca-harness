@@ -23,10 +23,14 @@ the lock.
 
 from __future__ import annotations
 
+import math
+
+from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import esrc_fips_locked_fields
 from sep_reg_meta import ENTROPY_SOURCE, sym
 
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
     DECOR_CTRL_DIV8,
@@ -85,6 +89,14 @@ APT_LIMIT = ENTROPY_SOURCE.fields("RECOMMENDED_THRESHOLDS")["APT_LIMIT"]
 # cutoff can never exceed it. entropy_source.rdl states the window in the
 # APT_LIMIT description.
 APT_WINDOW = 1024
+# entropy_source.rdl RECOMMENDED_THRESHOLDS.RCT_LIMIT: "C = 1 + ceil(20 / H)".
+RCT_ENTROPY_BITS = 20
+# entropy_source.rdl MIN_ENTROPY_H: H is unsigned Q4.4, four fraction bits.
+MIN_ENTROPY_H_FRAC_BITS = 4
+# The advisory-threshold sweep holds one H in [1.0, 8.0) bits/sample (Q4.4
+# 0x10..0x7F) on every seed, between the reset value below 1.0 and the 0xFF top.
+H_MID_LO = 1 << MIN_ENTROPY_H_FRAC_BITS
+H_MID_HI = 8 << MIN_ENTROPY_H_FRAC_BITS
 # entropy_source.rdl marks both HEALTH_TEST_CTRL fields swwel, so the compare
 # window is both field bitmasks, taken from the generated export rather than a
 # hand-typed width.
@@ -424,9 +436,9 @@ class SepEsrcFipsLockCfg:
         self.lane_pre = rng.choice(tuple(v for v in range(NOISE_LANES) if v != lane_reset))
         self.lane_post = rng.choice(tuple(v for v in range(NOISE_LANES) if v != self.lane_pre))
         # Ascending MIN_ENTROPY_H points for the advisory-threshold sweep. The
-        # three anchors are the register reset and both ends of the Q4.4 range,
-        # where the closed form saturates; the rest come from the seed so the
-        # sweep is not pinned to one corner of the LUT.
+        # anchors are H = 0 (no stated cutoff, logged only), the register reset
+        # (below 1.0 bit/sample) and the Q4.4 maximum; the rest come from the
+        # seed so the sweep is not pinned to one corner of the table.
         h_anchors = {0x00, ENTROPY_SOURCE.reset("MIN_ENTROPY_H"), MIN_ENTROPY_H_MASK}
         while len(h_anchors) < 8:
             h_anchors.add(rng.randrange(1, MIN_ENTROPY_H_MASK))
@@ -435,6 +447,10 @@ class SepEsrcFipsLockCfg:
         # register reset. On a target where they agree, the reset value alone
         # satisfies the readback and a dropped post-unlock write still passes.
         self.release = next(t for t in self.targets if (t.poke & t.mask) != (t.reset & t.mask))
+        # One sweep point in [1.0, 8.0) bits/sample on every seed. Drawn last so
+        # every earlier draw keeps its seed-to-value mapping.
+        self.h_mid = rng.randrange(H_MID_LO, H_MID_HI)
+        self.rec_thresh_h = tuple(sorted(set(self.rec_thresh_h) | {self.h_mid}))
 
     def n_cells(self) -> int:
         return len(self.targets)
@@ -443,7 +459,7 @@ class SepEsrcFipsLockCfg:
         cells = " ".join(t.summary() for t in self.targets)
         return (
             f"seed={self.seed} cells={self.n_cells()} obs_held={self.obs_held} "
-            f"lane_pre={self.lane_pre} lane_post={self.lane_post} "
+            f"lane_pre={self.lane_pre} lane_post={self.lane_post} h_mid=0x{self.h_mid:02x} "
             f"rec_thresh_h={[f'0x{h:02x}' for h in self.rec_thresh_h]} {cells}"
         )
 
@@ -459,19 +475,38 @@ class SepEsrcFipsLock(SepAxiRegDriver):
     async def read(self, addr: int) -> int:
         return await self._rd(addr)
 
-    async def read_lock(self) -> int:
-        return (await self._rd(ESRC_FIPS_LOCK)) & LOCK_BIT
+    async def write_resp(self, addr: int, data: int) -> int:
+        """Write one word and return the B response code the DUT sent.
 
-    async def set_lock(self) -> None:
-        await self._wr(ESRC_FIPS_LOCK, LOCK_BIT)
+        The caller grades the code, so a write that never reached the DUT, or
+        came back non-OKAY, fails the check that relies on it.
+        """
+        seq = SepAxiAccessSeq(
+            f"{self._DRIVER_TAG.lower()}_wr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=4,
+            size=self._AXI_SIZE,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code
 
-    async def try_unlock(self) -> None:
-        await self._wr(ESRC_FIPS_LOCK, 0)
+    async def read_lock_word(self) -> int:
+        """The whole FIPS_LOCK word; LOCK is ``LOCK_BIT``, the rest is reserved."""
+        return await self._rd(ESRC_FIPS_LOCK)
 
-    async def poke_reserved_ctrl_bit(self) -> tuple[int, int]:
+    async def set_lock(self) -> int:
+        return await self.write_resp(ESRC_FIPS_LOCK, LOCK_BIT)
+
+    async def try_unlock(self) -> int:
+        return await self.write_resp(ESRC_FIPS_LOCK, 0)
+
+    async def poke_reserved_ctrl_bit(self) -> tuple[int, int, int]:
+        """CTRL before, B response of the RSVD0 write, CTRL after."""
         cur = await self._rd(ESRC_CTRL)
-        await self._wr(ESRC_CTRL, cur | CTRL_RSVD0_BIT)
-        return cur, await self._rd(ESRC_CTRL)
+        resp = await self.write_resp(ESRC_CTRL, cur | CTRL_RSVD0_BIT)
+        return cur, resp, await self._rd(ESRC_CTRL)
 
     async def write_obs(self, reg: str, enable: int, lane: int = 0) -> None:
         """Write RAW_ENABLE of one observe-tap register; LANE_SEL for NOISE_OBS_CTRL."""
@@ -501,13 +536,66 @@ class SepEsrcFipsLock(SepAxiRegDriver):
         return rct, apt
 
 
-def rct_limit_golden(h: int) -> int:
+def walked_locked_fields(targets) -> set[tuple[str, str]]:
+    """(register, field) pairs of the RDL lock inventory that ``targets`` cover.
+
+    A target covers a locked field when its bus address is the address of that
+    field's register and its compare mask holds every bit of the field. The
+    register is found from the address, not from the target name, so a target
+    that points at the wrong register covers nothing it claims.
+    """
+    covered: set[tuple[str, str]] = set()
+    for reg, fields in esrc_fips_locked_fields().items():
+        addr = sym(f"ENTROPY_SOURCE_{reg}_REG_ADDR")
+        meta = ENTROPY_SOURCE.fields(reg)
+        for t in targets:
+            if t.addr != addr:
+                continue
+            covered |= {(reg, f) for f in fields if meta[f]["bm"] & t.mask == meta[f]["bm"]}
+    return covered
+
+
+def walk_must_cover() -> set[tuple[str, str]]:
+    """Every field ``entropy_source.rdl`` marks swwel, less the declared exclusions."""
+    rdl = esrc_fips_locked_fields()
+    return {(r, f) for r, fields in rdl.items() for f in fields} - set(_WALK_EXCLUDED)
+
+
+def rct_limit_golden(h: int) -> int | None:
     """SP 800-90B 4.4.1 repetition cutoff C = 1 + ceil(20 / H), H in Q4.4.
 
-    Derived from the standard, not read from entropy_source_rec_thresh_lut.sv,
-    which is what makes the compare an oracle rather than a mirror. H = 0 carries
-    no entropy, so no finite cutoff applies and the field saturates.
+    Taken from the RCT_LIMIT field text in entropy_source.rdl, not from the
+    threshold table in the design. H = 0 divides by zero, so the spec states no
+    cutoff there and this returns None; the caller logs that read as OBS.
     """
     if h == 0:
-        return RCT_LIMIT["bm"]
-    return 1 + -(-320 // h)
+        return None
+    return 1 + -(-(RCT_ENTROPY_BITS << MIN_ENTROPY_H_FRAC_BITS) // h)
+
+
+def apt_limit_golden(h: int) -> int | None:
+    """SP 800-90B 4.4.2 adaptive-proportion cutoff for the 1024-sample window.
+
+    entropy_source.rdl derives RECOMMENDED_THRESHOLDS per SP 800-90B, and
+    APT_LIMIT is the cutoff "derived for a 1024-sample window". 4.4.2 defines C
+    as the smallest integer with Pr[X >= C] <= alpha, X ~ Binomial(W, 2^-H).
+    alpha = 2^-20 is the false-positive rate of the RCT_LIMIT field formula
+    C = 1 + ceil(20 / H) (4.4.1). H = h / 16 exactly (Q4.4), so no rounding
+    enters. The tail is summed from the top in log space. H = 0 gives p = 1 and
+    no stated cutoff, so this returns None; the caller logs that read as OBS.
+    """
+    if h == 0:
+        return None
+    p = 2.0 ** -(h / (1 << MIN_ENTROPY_H_FRAC_BITS))
+    log_p = math.log(p)
+    log_q = math.log1p(-p)
+    log_w = math.lgamma(APT_WINDOW + 1)
+    alpha = 2.0**-RCT_ENTROPY_BITS
+    tail = 0.0
+    for k in range(APT_WINDOW, -1, -1):
+        term = log_w - math.lgamma(k + 1) - math.lgamma(APT_WINDOW - k + 1)
+        nxt = tail + math.exp(term + k * log_p + (APT_WINDOW - k) * log_q)
+        if nxt > alpha:
+            return k + 1
+        tail = nxt
+    return 0

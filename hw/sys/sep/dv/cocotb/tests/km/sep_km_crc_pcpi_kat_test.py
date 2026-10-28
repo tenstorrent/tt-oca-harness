@@ -46,12 +46,18 @@ hardware behaviour, not a defect -- in CRC-8/ROHC one byte in 256 is a fixed
 point for any given state -- so it is screened out of the draw with the
 independent golden rather than tolerated by CHK-MOVE. CHK-XCHAIN and CHK-POLY
 need no golden at all, so they still hold if the golden itself is wrong.
+Each value KAT fails when its vector list is empty.
+
+FCOV owner window (``env/sep_fcov_gate.py``): open from the first KAT vector to
+CHK-UPPER, so ``sep_km_crc_accel_cg`` samples only the instructions these checks
+issue and grade. A FAIL closes it; the halt runs with it closed.
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.sep_crc_golden import MODE_8_ROHC, MODE_32C_BYTE, MODE_32C_WORD, update
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_crc_seq import (
     CRC_MODE_8_ROHC,
@@ -61,6 +67,8 @@ from seq_lib.sep_km_crc_seq import (
     SepKmCrcCfg,
 )
 from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
+
+TEST = "sep_km_crc_pcpi_kat_test"
 
 
 @pyuvm.test()
@@ -75,6 +83,16 @@ class sep_km_crc_pcpi_kat_test(sep_base_test):
         await self.start_seq(sep_km_release_seq("km_crc_release"))
         crc = SepKmCrc(self)
 
+        open_graded_window(TEST, self.logger)
+        try:
+            await self._graded_checks(cfg, crc)
+        finally:
+            close_graded_window(self.logger)
+
+        await crc.halt()
+
+    async def _graded_checks(self, cfg: SepKmCrcCfg, crc: SepKmCrc) -> None:
+        """CHK-WORD to CHK-UPPER."""
         # --- CHK-WORD / CHK-BYTE / CHK-ROHC: value KATs -----------------------
         results: list[tuple[str, int, int, int]] = []
         for tag, hw_mode, gold_mode, vectors in (
@@ -82,6 +100,7 @@ class sep_km_crc_pcpi_kat_test(sep_base_test):
             ("CHK-BYTE", CRC_MODE_32C_BYTE, MODE_32C_BYTE, cfg.byte_vectors),
             ("CHK-ROHC", CRC_MODE_8_ROHC, MODE_8_ROHC, cfg.rohc_vectors),
         ):
+            assert vectors, f"{tag} FAIL: no seeded vector to grade (mode={hw_mode})"
             for state, data in vectors:
                 got = await crc.update(hw_mode, state, data)
                 exp = update(gold_mode, state, data)
@@ -169,5 +188,3 @@ class sep_km_crc_pcpi_kat_test(sep_base_test):
                 f"0x{dirty:08x}"
             )
         self.logger.info("CHK-UPPER PASS: both byte modes ignore data[31:8] (low byte 0x%02x)", low)
-
-        await crc.halt()

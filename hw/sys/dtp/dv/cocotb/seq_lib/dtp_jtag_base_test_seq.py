@@ -380,6 +380,19 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         )
         return item
 
+    async def raw_shift_dr(self, value: int, width: int, *, capture_tdi: int) -> int:
+        """Shift raw DR data one TMS step at a time, keeping the attached TAP checker in sync."""
+        before = self._op_scan_mark(is_ir=False)
+        tdo = await super().raw_shift_dr(value, width, capture_tdi=capture_tdi)
+        if self.tap_checker is not None:
+            self.tap_checker.sync_state(OcahJtagState.RUN_TEST_IDLE)
+        if self.family_monitor is not None:
+            self._expected_dr_widths.append(width)
+        self.check_op_scan_length(
+            is_ir=False, width=width, before=before, context=f"raw pattern=0x{value:x}"
+        )
+        return tdo
+
     async def read_tdr(self, reg: str, shift_value: int = 0) -> int:
         """Read a named TDR, recording its IR and DR scans as scan intent."""
         value = await super().read_tdr(reg, shift_value)

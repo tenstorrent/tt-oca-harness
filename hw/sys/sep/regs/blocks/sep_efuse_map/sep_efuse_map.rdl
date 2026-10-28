@@ -574,7 +574,7 @@ addrmap sep_efuse_map {
             sw = r;
             hw = rw;
             desc = "Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}";
-        } lc_state [7:0] = 0xf0;
+        } lc_state [7:0] = 0x0f;
         field {
             sw = r;
             hw = rw;

@@ -13,7 +13,8 @@ runs the same plan shape in drawn orders:
                       drain stall, a later beat is held, the stall is released, the
                       1000-byte message completes
     2 fifo_empty legs a FIFO that was full, and a FIFO that never reaches full
-    1 wipe leg        ``WIPE_SECRET`` overwrites the digest and the secret key
+    1 wipe leg        ``WIPE_SECRET`` overwrites the digest and the secret key; the graded
+                      FCOV window is open from the ``WIPE_SECRET`` write to its check
 
 The drain stall is the bench input ``hmac_fifo_drain_stall_i``: it holds the read side of the
 message FIFO idle (``tb/tb_top.sv``, HMAC message-FIFO drain stall).
@@ -60,14 +61,17 @@ leg, ``BP_BEAT_BOUND`` beats (a bound that ends the leg, not a spec value), and 
 data. The measurement run issues up to ``PROBE_EXTRA_MAX`` more writes with the stall held
 and logs how many complete; that count is not graded.
 
-DIGEST byte order: the register text settles the register order (DIGEST_0 holds digest bytes
-0..3) and the ``digest_swap`` swap (``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117), not the byte order of a word at
-``digest_swap`` = 0. Every digest-to-golden compare of the leaf accepts the big-endian or the
-little-endian read of each word, with one order for every readback of the seed
-(``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order is logged as
-``OBS-HMAC-DIGEST-ORDER``. The wipe writes w into every digest word, so the all-w DIGEST read
-of CHK-HMAC-WIPE expects w in the order of the seed: w for the big-endian read, w with its
-four bytes reversed for the little-endian read (``digest_words`` of the bytes of w).
+DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
+gives digest[511:0] = {DIGEST0, DIGEST1, ...} for the SHA-2 hash value, which FIPS 180-4
+defines as H0 || H1 || ..., so at ``digest_swap`` = 0 DIGEST word n is the big-endian read
+of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in the final
+HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
+so each word is the little-endian read ("le").
+Every digest-to-golden compare of the leaf is at ``digest_swap`` = 0 and expects the
+big-endian read (``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order the first
+readback matches is logged as ``OBS-HMAC-DIGEST-ORDER``. The wipe writes w into every
+digest word, so the all-w DIGEST read of CHK-HMAC-WIPE expects the big-endian read of the
+bytes of w (``digest_words``).
 
 Controls: ``CTRL-HMAC-STALL-FULL`` (a stalled leg reads ``fifo_full`` = 1),
 ``CTRL-HMAC-BP-CLEAN`` (a beat into a FIFO that is not full completes), ``CTRL-HMAC-LENGTHS``
@@ -77,6 +81,13 @@ from w). Log-only: ``OBS-HMAC-IDLE`` (``STATUS.hmac_idle``; the register text gi
 reset value), ``OBS-HMAC-STALL-N`` (N and the count of writes that the measurement run
 completes with the stall held), ``OBS-HMAC-BP-HOLD-BEAT`` (index of the held beat, beats
 accepted after ``fifo_full`` reads 1, ``no_resp_clk``, ``hold_clk``).
+
+FCOV gate: a FAIL or a missing control closes the graded window for the rest of the leaf, and
+no later leg opens it again. The sampler holds each cell of this leaf (``x_len_class``,
+``x_fifo_state_mode``, ``cp_backpressure``, ``cp_hmac_fifo_empty_qual``, the
+``hmac_fifo_empty`` cell of ``cp_hw_raise``, ``cp_wipe_secret``) at its DUT event; the leaf
+writes the pass label ``hmac_fifo_pass`` for the cells a check graded only after that check
+passes (``set_hmac_fifo_pass``), so no cell samples before its check.
 """
 
 from __future__ import annotations
@@ -90,7 +101,19 @@ from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_crypto_kat_rows import RFC4231_KEYS
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    HMAC_FIFO_PASS_BACKPRESSURE,
+    HMAC_FIFO_PASS_EMPTY_AFTER_FULL,
+    HMAC_FIFO_PASS_EMPTY_NOT_FULL,
+    HMAC_FIFO_PASS_FIFO_STATE,
+    HMAC_FIFO_PASS_HW_RAISE,
+    HMAC_FIFO_PASS_LEN_CLASS,
+    HMAC_FIFO_PASS_WIPE_DIGEST,
+    HMAC_FIFO_PASS_WIPE_KEY,
+    close_graded_window,
+    open_graded_window,
+    set_hmac_fifo_pass,
+)
 from env.sep_hmac_golden import SepDigestOrder, digest_words, hmac_sha2_bytes, sha2_bytes
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import worst_resp
@@ -173,6 +196,13 @@ AXSIZE = {1: 0, 2: 1, 4: 2}
 # blocked spec question of CHK-HMAC-BACKPRESSURE. A DUT that holds no beat within the bound,
 # or that loses data, fails CHK-HMAC-BACKPRESSURE-HOLD. Logged as bound=.
 BP_BEAT_BOUND = 16
+# Clocks the cp_hmac_fifo_empty_qual sampler waits after a rise of STATUS.fifo_empty before
+# it holds empty_not_full (CySettle of cov/sv/sep_fcov.sv); the not-full leg waits this long
+# before its pass label. A testbench timing, not a spec value.
+FQ_SETTLE_CLK = 64
+# Pass-label bits of a hash whose digest a check graded: its length cell and the FIFO state
+# at each of its message writes.
+PASS_HASH = HMAC_FIFO_PASS_LEN_CLASS | HMAC_FIFO_PASS_FIFO_STATE
 
 
 def legal_key_bits(sha: int) -> list[int]:
@@ -344,6 +374,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         seed = self.random_seed()
         plan = draw_plan(seed)
         self.chk = SepChkLog(self, TEST, seed)
+        self._fcov_dead = False
         self.digest_order = SepDigestOrder()
         self.logger.info(
             "PLAN seed=%d cells=[%s] stalled=[%s] fe_full=%s fe_notfull=%s wipe=%s/w=0x%08x/"
@@ -397,11 +428,9 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         # with fifo_full = 1 (hmac.adoc:157-159).
         full_depths = [d for _, d, f, _ in self.samples if f]
         notfull_depths = [d for _, d, f, _ in self.samples if not f]
-        self.chk.ctrl(
-            "HMAC-STALL-FULL", bool(full_depths), phase="all", full_samples=len(full_depths)
-        )
+        self._ctrl("HMAC-STALL-FULL", bool(full_depths), phase="all", full_samples=len(full_depths))
         if full_depths:
-            self.chk.ok(
+            self._grade(
                 "HMAC-STATUS",
                 max(notfull_depths, default=0) <= min(full_depths),
                 phase="all",
@@ -409,7 +438,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
                 max_notfull_depth=max(notfull_depths, default=0),
                 min_full_depth=min(full_depths),
             )
-        self.chk.ctrl(
+        self._ctrl(
             "HMAC-LENGTHS",
             self.ran_lengths == set(LEN_CELLS),
             ran=len(self.ran_lengths),
@@ -466,7 +495,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             await ClockCycles(self.dut.clk_i, 10)
         got = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)] if done else []
         match = bool(got) and self.digest_order.match(got, golden)[0]
-        self.chk.ok(
+        self._grade(
             "HMAC-NARROW-WRITE",
             done and not refused and match,
             **tag,
@@ -485,14 +514,34 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
     def _now_clk(self) -> int:
         return int(get_sim_time("ps")) // self._period_ps
 
+    def _grade(self, name: str, cond: bool, **fields) -> bool:
+        """Grade one check; a FAIL closes the FCOV window for the rest of the leaf."""
+        cond = bool(cond)
+        if not cond:
+            close_graded_window(self.logger)
+            self._fcov_dead = True
+        return self.chk.ok(name, cond, **fields)
+
+    def _ctrl(self, name: str, cond: bool, **fields) -> bool:
+        """Log one control; a missing control closes the FCOV window like a FAIL."""
+        cond = bool(cond)
+        if not cond:
+            close_graded_window(self.logger)
+            self._fcov_dead = True
+        return self.chk.ctrl(name, cond, **fields)
+
     async def _trial(self, coro, **fields) -> None:
         try:
             await coro
         except _TrialTimeout as t:
             await self._timeout_fail(t, **fields)
+        except BaseException:
+            close_graded_window(self.logger)
+            self._fcov_dead = True
+            raise
 
     async def _timeout_fail(self, t: _TrialTimeout, **fields) -> None:
-        self.chk.ok(t.owner, False, reason="timeout", wait=t.what, bound=t.bound, **fields)
+        self._grade(t.owner, False, reason="timeout", wait=t.what, bound=t.bound, **fields)
         self.dut.hmac_fifo_drain_stall_i.value = 0
         await self._reset_hmac()
 
@@ -524,7 +573,26 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         raise AssertionError("HMAC STATUS read not OKAY within 200 tries after the reset")
 
     def _open(self) -> None:
+        """Open the FCOV window, unless a check of the leaf has failed."""
+        if self._fcov_dead:
+            self.logger.info("FCOV-GATE stays closed: a check of this leaf failed")
+            return
         open_graded_window(TEST, self.logger)
+
+    async def _pass(self, bits: int) -> None:
+        """Write ``hmac_fifo_pass`` for the cells a check graded, after that check passed.
+
+        The bits rise on a clk_i edge inside the open window, hold for two edges, and
+        return to 0 one edge before any later window close.
+        """
+        if self._fcov_dead:
+            return
+        clk = self.dut.clk_i
+        await RisingEdge(clk)
+        set_hmac_fifo_pass(bits, self.logger)
+        await ClockCycles(clk, 2)
+        set_hmac_fifo_pass(0, self.logger)
+        await RisingEdge(clk)
 
     async def _rd(self, addr: int) -> int:
         return await self.hmac._rd(addr)
@@ -574,7 +642,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         if expect_reset:
             cond = cond and st["empty"] == ST_RESET_EMPTY and st["idle"] == ST_RESET_IDLE
             extra = {"reset_empty": ST_RESET_EMPTY, "reset_idle": ST_RESET_IDLE}
-        self.chk.ok(
+        self._grade(
             "HMAC-STATUS",
             cond,
             phase=phase,
@@ -669,10 +737,10 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
         return digest
 
-    def _grade_msg(self, h: Hash, msg: bytes, mode: str, digest: list[int]) -> None:
+    def _grade_msg(self, h: Hash, msg: bytes, mode: str, digest: list[int]) -> bool:
         golden = golden_digest(h.sha, h.hmac_en, KEY_ROWS[h.key_row], h.key_bits, msg)
         ok, _ = self.digest_order.match(digest, golden)
-        self.chk.ok(
+        return self._grade(
             "HMAC-MSG",
             ok,
             len=len(msg),
@@ -718,7 +786,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._setup(c.h)
         await self._write_msg(chunks(c.msg, c.mode), c.mode, c.gap, c.rb, "run")
         digest = await self._finish(c.h.sha, "HMAC-MSG")
-        self._grade_msg(c.h, c.msg, c.mode, digest)
+        if self._grade_msg(c.h, c.msg, c.mode, digest):
+            await self._pass(PASS_HASH)
         self.ran_lengths.add((c.h.sha, c.length))
 
     async def _probe_n(self, leg: StallLeg) -> int | None:
@@ -739,7 +808,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             st = await self._status("stalled")
         n_full = count
         if not st["full"]:
-            self.chk.ctrl("HMAC-STALL-FULL", False, mode=leg.mode, writes=count, run="probe")
+            self._ctrl("HMAC-STALL-FULL", False, mode=leg.mode, writes=count, run="probe")
             dut.hmac_fifo_drain_stall_i.value = 0
             await self._reset_hmac()
             return None
@@ -806,7 +875,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         t_clean = (
             max(1, round((t_resp - t0) / self._period_ps)) if t_resp is not None else CLEAN_BOUND
         )
-        self.chk.ctrl(
+        self._ctrl(
             "HMAC-BP-CLEAN",
             clean_ok,
             mode=leg.mode,
@@ -832,7 +901,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             if leg.mode == "gap" and leg.gap:
                 await ClockCycles(dut.clk_i, leg.gap)
         st = await self._status("stalled")
-        self.chk.ctrl("HMAC-STALL-FULL", st["full"] == 1, mode=leg.mode, writes=n, run="leg")
+        self._ctrl("HMAC-STALL-FULL", st["full"] == 1, mode=leg.mode, writes=n, run="leg")
 
         # Hold window: with the stall held and fifo_full read 1, issue the next beats one at a
         # time. A beat with no write response for `hold` clocks is the held beat. The byte
@@ -878,7 +947,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             task, seq, cap, t0 = held
             bound = 64 * t_clean
             if not await self._wait_task(task, bound):
-                self.chk.ok(
+                self._grade(
                     "HMAC-BACKPRESSURE-HOLD",
                     False,
                     mode=leg.mode,
@@ -903,7 +972,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         )
         no_loss, _ = self.digest_order.match(digest, golden)
         accepted_ok = all(r == "OKAY" for r in accepted)
-        self.chk.ok(
+        bp_ok = self._grade(
             "HMAC-BACKPRESSURE-HOLD",
             held is not None and held_resp == "OKAY" and accepted_ok and no_loss,
             mode=leg.mode,
@@ -916,6 +985,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             held_resp_after_release=held_resp,
             **{"digest==golden": int(no_loss)},
         )
+        if bp_ok:
+            await self._pass(PASS_HASH | HMAC_FIFO_PASS_BACKPRESSURE)
 
     async def _fe_full_leg(self, leg: FeLeg) -> int | None:
         dut = self.dut
@@ -930,7 +1001,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             writes += 1
             st = await self._status("stalled")
         if not st["full"]:
-            self.chk.ctrl("HMAC-STALL-FULL", False, leg="full", writes=writes)
+            self._ctrl("HMAC-STALL-FULL", False, leg="full", writes=writes)
             dut.hmac_fifo_drain_stall_i.value = 0
             await self._reset_hmac()
             return None
@@ -940,7 +1011,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, 4 * t_drain)
         intr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
         state = int(bool(intr & INTR_FIFO_EMPTY))
-        self.chk.ok(
+        if self._grade(
             "HMAC-FIFOEMPTY",
             state == 1,
             leg="full",
@@ -949,7 +1020,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             t_drain=t_drain,
             depth_at_full=d_full,
             writes=writes,
-        )
+        ):
+            await self._pass(HMAC_FIFO_PASS_EMPTY_AFTER_FULL | HMAC_FIFO_PASS_HW_RAISE)
         self.t_drain = t_drain
         return d_full
 
@@ -959,7 +1031,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         self._open()
         await self._setup(leg.h)
         ch = chunks(leg.probe, "burst")[:2]
-        self.chk.ctrl("HMAC-FE-DEPTH", d_full > len(ch), writes=len(ch), depth_at_full=d_full)
+        self._ctrl("HMAC-FE-DEPTH", d_full > len(ch), writes=len(ch), depth_at_full=d_full)
         for n, v in ch:
             await self._wr_chunk(n, v)
             await self._status("run")
@@ -967,7 +1039,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await ClockCycles(dut.clk_i, 4 * self.t_drain)
         intr = await self._rd(HMAC_INTR_STATE) & INTR_FIELDS
         state = int(bool(intr & INTR_FIFO_EMPTY))
-        self.chk.ok(
+        if self._grade(
             "HMAC-FIFOEMPTY",
             state == 0,
             leg="notfull",
@@ -975,13 +1047,34 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             state=state,
             t_drain=self.t_drain,
             writes=len(ch),
+        ):
+            await ClockCycles(dut.clk_i, FQ_SETTLE_CLK)
+            await self._pass(HMAC_FIFO_PASS_EMPTY_NOT_FULL)
+        # Control: the writes reached the message. The hash of the written bytes
+        # equals its golden, so a dropped write cannot leave fifo_empty at 0 here.
+        h = leg.h
+        msg = b"".join(v.to_bytes(n, "little") for n, v in ch)
+        digest = await self._finish(h.sha, "HMAC-FE-MSG")
+        golden = golden_digest(h.sha, h.hmac_en, KEY_ROWS[h.key_row], h.key_bits, msg)
+        self._ctrl(
+            "HMAC-FE-MSG",
+            self.digest_order.match(digest, golden)[0],
+            writes=len(ch),
+            len=len(msg),
+            digest0=f"0x{digest[0]:08x}",
+            golden0=f"0x{self.digest_order.expected(golden)[0]:08x}",
         )
 
     async def _wipe_leg(self, leg: WipeLeg) -> None:
+        """CHK-HMAC-WIPE on the values of ``leg``.
+
+        The FCOV window opens right before the ``WIPE_SECRET`` write; after the check passes
+        the leaf writes the pass label of the wipe cells and of the next hash, then closes
+        the window.
+        """
         h = leg.h
         n_words = HMAC_DIGEST_WORDS[h.sha]
         await self._reset_hmac()
-        self._open()
         await self._setup(h)
         await self._write_msg(chunks(leg.msg1, "burst"), "burst", 0, 8, "run")
         d1 = await self._finish(h.sha, "HMAC-WIPE")
@@ -990,9 +1083,9 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         d1_ok, _ = self.digest_order.match(d1, g1)
         # hmac.hjson:420-425: the value overwrites the secret key and the digest; a 64-bit
         # word of SHA-384/512 holds the 32-bit value twice, so every digest word holds w.
-        # A DIGEST word reads it in the order of the seed, fixed by the d1 compare above.
+        # A DIGEST word reads the big-endian read of the bytes of w (digest_swap = 0).
         w_read = self.digest_order.expected(leg.w.to_bytes(4, "big") * n_words)
-        self.chk.ctrl(
+        self._ctrl(
             "HMAC-WIPE-PRE",
             d1_ok and self.digest_order.order is not None and w_read[0] not in d1,
             w=f"0x{leg.w:08x}",
@@ -1001,6 +1094,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             digest_eq_golden=int(d1_ok),
         )
 
+        self._open()
         await self._wr(HMAC_WIPE_SECRET, leg.w)
         after = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)]
         digest_all_w = self.digest_order.order is not None and after == w_read
@@ -1014,7 +1108,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         d2 = await self._finish(h.sha, "HMAC-WIPE")
         g2 = golden_digest(h.sha, True, [leg.w] * 32, h.key_bits, leg.msg2)
         key_ok, _ = self.digest_order.match(d2, g2)
-        self.chk.ok(
+        ok = self._grade(
             "HMAC-WIPE",
             digest_all_w and key_ok,
             sha=h.sha,
@@ -1026,4 +1120,8 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             digest_all_w=int(digest_all_w),
             **{"key_half_digest==golden_key_w": int(key_ok)},
             digest_after0=f"0x{after[0]:08x}",
+            digest_after=",".join(f"0x{v:08x}" for v in after),
         )
+        if ok:
+            await self._pass(PASS_HASH | HMAC_FIFO_PASS_WIPE_DIGEST | HMAC_FIFO_PASS_WIPE_KEY)
+        close_graded_window(self.logger)

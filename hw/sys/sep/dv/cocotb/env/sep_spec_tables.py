@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from sep_reg_meta import sym
+
 _REPO = Path(__file__).resolve().parents[6]
 _ABR_RDL = (
     _REPO
@@ -661,9 +663,9 @@ def aon_timer_regwen_gates(regwen: str) -> frozenset[str]:
         raise KeyError(f"{regwen!r} gates no register in aon_timer.hjson") from exc
 
 
-# AON timer wakeup prescaler. OpenTitan "AON Timer Technical Specification",
-# Wakeup timer section: "The number of cycles per tick is one more than the
-# 12-bit WKUP_CTRL.prescaler field."
+# AON timer wakeup prescaler. OpenTitan AON Timer, Wakeup timer section
+# (vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:32): "The number
+# of cycles per tick is one more than the 12-bit WKUP_CTRL.prescaler field."
 #
 # DV-owned transcription. The rate is stated in neither aon_timer.rdl nor
 # aon_timer.hjson -- both describe the field only as "Pre-scaler value for
@@ -707,8 +709,9 @@ def axi_lane_strobe(addr: int, access_bytes: int = 4, bus_bytes: int = AXI_BUS_B
 
 
 def _selftest() -> None:
-    assert window("ABR").base == 0x1094_0000
-    assert window("EPOOL").base == 0x1095_0000
+    # The register-block bases the transcribed windows carry are the RDL's.
+    assert window("ABR").base == sym("ABR_REG_MAP_BASE_ADDR")
+    assert window("EPOOL").base == sym("ENTROPY_POOL_REG_MAP_BASE_ADDR")
     assert pic("CSRNG command request done") == 24
     assert pic("KM mailbox IRQ") == 15
     assert agg_from_pic("KM mailbox IRQ") == 14

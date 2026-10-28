@@ -30,11 +30,9 @@ S6: shrinking SMC BASE_CONFIG.REGION_SIZE puts the adopter external window
     on ``smu_axi_out``. The bench responder's memory must hold the written
     word and the B response must come back OKAY through the chiplet.
 S7: REGION_SIZE written back to its reset value regrows the aperture, reaches
-    ``smc_region_size_o`` and reads back. REGION_SIZE at zero is not driven: the
-    crossbar rule it produces has ``start == end``, which the address decoder's
-    own map check rejects (``addr_decode_dync`` ``check_start`` accepts only
-    ``start < end`` or ``end == 0``), so whether a zero window is a legal state
-    is a design question the coverage policy carries.
+    ``smc_region_size_o`` and reads back. REGION_SIZE at zero is not driven here:
+    it closes the local window JTAG2AXI programs through, and
+    ``smu_xbar_zero_aperture_test`` drives it over the SEP debug bus.
 
 AxATOP is not driven: ``tb/tb_wrapper_top.sv`` ties ``smu_axi_in_req.aw.atop``
 to ``'0`` and the package has no ATOP driver, so this leaf makes no ATOP
@@ -733,11 +731,13 @@ class smu_axi_in_attribute_sweep_test_seq:
             "CHK-SMCMAP-SIZE the regrown REGION_SIZE reaches the SMC broadcast port",
             self._sample_int("smc_region_size_o"),
             REGION_SIZE_RESET,
+            evidence="CHK-SMCMAP-SIZE",
         )
         sb.expect_eq(
             "CHK-SMCMAP-SIZE REGION_SIZE reads back its reset value after the regrow",
             await self._j2a_rd32(jtag, REGION_SIZE_ADDR, "REGION_SIZE_REGROW_RB"),
             REGION_SIZE_RESET,
+            evidence="CHK-SMCMAP-SIZE",
         )
         self._log(
             f"CHK-SMCMAP-SIZE: shrunk 0x{REGION_SIZE_SHRUNK:x} -> reset 0x{REGION_SIZE_RESET:x} "

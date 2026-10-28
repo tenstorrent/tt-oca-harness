@@ -19,6 +19,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime
@@ -61,15 +62,19 @@ from .config import (
     selected_run_target,
     sim_global_args,
     target_flags,
+    validate_coverage_summary,
     validate_formal_argv_template,
 )
 from .coverage import (
     CANONICAL_METRICS,
     CoverageError,
+    CoverageInput,
     artifact_ready,
     coverage_artifact_path,
     discover_coverage_inputs,
+    inputs_by_target,
     load_manifest,
+    merge_warning_counts,
     new_manifest,
     render_tokens,
     write_json,
@@ -2466,7 +2471,7 @@ def cocotb_sim(
         _run_sim_prestage(
             root,
             cocotb_data,
-            item,
+            test.name,
             seed,
             item_dir,
             sim_args=_render_run_test_args(
@@ -3807,14 +3812,18 @@ def _coverage_design_db(
     else:
         build_info = _cocotb_build_info(flow, root, sim_cfg, args, "vcs")
         build_dir = Path(build_info["sim_build"])
-    target_name = _safe_build_component(_target_name(sim_cfg))
+    return _render_design_artifact(template, build_dir, _target_name(sim_cfg))
+
+
+def _render_design_artifact(template: str, build_dir: Path, target_name: str) -> Path:
+    """The design database `design_artifact` names for the model under ``build_dir``."""
     rendered = render_tokens(
         [template],
         {
             "build_dir": str(build_dir),
             "build_cov_dir": str(build_dir / "cov_build.vdb"),
             "tool": "vcs",
-            "target": target_name,
+            "target": _safe_build_component(target_name),
         },
     )[0]
     return Path(rendered)
@@ -3883,6 +3892,235 @@ def _legacy_coverage_policy_args(
     )
 
 
+def _target_scoped(path: Path, target: str) -> Path:
+    """``path`` with the target name before its suffix: `cov_merge.log` -> `cov_merge.T.log`."""
+    return path.with_name(f"{path.stem}.{_safe_build_component(target)}{path.suffix}")
+
+
+def _target_merged_path(cov_dir: Path, merged: Path, target: str) -> Path:
+    return cov_dir / "targets" / _safe_build_component(target) / merged.name
+
+
+def _union_fingerprint(groups: dict[str, list[CoverageInput]]) -> str:
+    """A digest of every target's name and build fingerprint.
+
+    It stands in for the build fingerprint of a merge of several targets, so the grade's
+    `comparison_key` changes whenever a target joins, leaves, or rebuilds.
+    """
+    pairs = [
+        [
+            target,
+            next((entry.build_fingerprint for entry in members if entry.build_fingerprint), None),
+        ]
+        for target, members in sorted(groups.items())
+    ]
+    return hashlib.sha256(json.dumps(pairs).encode("utf-8")).hexdigest()[:12]
+
+
+def _union_inputs(entries: list[dict[str, Any]], root: Path) -> list[str]:
+    """Design databases first, each once, then every target's merged database."""
+    paths: list[str] = []
+    for entry in entries:
+        if entry["design_db"] and str(repo_path(root, entry["design_db"])) not in paths:
+            paths.append(str(repo_path(root, entry["design_db"])))
+    paths.extend(str(repo_path(root, entry["merged"])) for entry in entries)
+    return paths
+
+
+def _combine_template(tool: str, tool_cov: dict[str, Any], targets: list[str]) -> list[str]:
+    template = as_str_list(tool_cov.get("combine_cmd"), f"coverage.{tool}.combine_cmd")
+    if not template:
+        raise ConfigError(
+            f"coverage.{tool}.combine_cmd is required to merge the coverage of several "
+            f"targets ({', '.join(targets)})"
+        )
+    if "{design_db}" in " ".join(template):
+        raise ConfigError(
+            f"coverage.{tool}.combine_cmd cannot use {{design_db}} to merge several targets "
+            f"({', '.join(targets)}): each target has its own, and {{inputs}} carries them all"
+        )
+    return template
+
+
+def _graded_summary(
+    parser: str, tool: str, tool_cov: dict[str, Any], args: argparse.Namespace
+) -> str:
+    """The report table a grade reads: `--cov-summary`, else `[coverage.<tool>] summary`,
+    else the hierarchy."""
+    requested = getattr(args, "cov_summary", None)
+    where = "--cov-summary" if requested else f"coverage.{tool}.summary"
+    summary = validate_coverage_summary(requested or tool_cov.get("summary") or "hierarchy", where)
+    if summary != "hierarchy" and parser != "urg":
+        raise ConfigError(
+            f"the `{summary}` summary is a URG report table; coverage.{tool}.parser is `{parser}`"
+        )
+    return summary
+
+
+def validate_coverage_plan(
+    sim_cfg: dict[str, Any], tool: str, args: argparse.Namespace, merge_targets: list[str]
+) -> None:
+    """Refuse, before any simulator runs, a graded summary the tool's parser cannot read and,
+    when ``merge_targets`` names several, a `combine_cmd` that cannot union them."""
+    tool_cov = coverage_cfg(sim_cfg).get(tool)
+    if not isinstance(tool_cov, dict) or not tool_cov:
+        return
+    _graded_summary(coverage_parser_name(tool_cov), tool, tool_cov, args)
+    if len(merge_targets) > 1:
+        _combine_template(tool, tool_cov, merge_targets)
+
+
+def _tree_bytes(path: Path | None) -> int:
+    if path is None:
+        return 0
+    if path.is_file():
+        return path.stat().st_size
+    return sum(entry.stat().st_size for entry in path.rglob("*") if entry.is_file())
+
+
+def _target_design_db(
+    root: Path,
+    tool: str,
+    tool_cov: dict[str, Any],
+    target: str,
+    members: list[CoverageInput],
+) -> Path:
+    """The design database of ``target``, in the model directory its leaves recorded."""
+    if tool_cov.get("design_db"):
+        raise ConfigError(
+            f"coverage.{tool}.design_db names one design database; a run on several targets "
+            f"needs coverage.{tool}.design_artifact, which each target's model renders"
+        )
+    template = tool_cov.get("design_artifact")
+    if not isinstance(template, str) or not template:
+        raise ConfigError(
+            f"coverage.{tool}.design_artifact is required to merge the coverage of several targets"
+        )
+    build_dirs = sorted({entry.build_dir for entry in members if entry.build_dir})
+    if len(build_dirs) != 1:
+        raise CoverageError(
+            f"the coverage inputs of target `{target}` record {len(build_dirs)} model "
+            f"directories ({', '.join(build_dirs) or 'none'}); its design database needs one"
+        )
+    design_db = _render_design_artifact(template, repo_path(root, build_dirs[0]), target)
+    if not artifact_ready(design_db):
+        raise CoverageError(
+            f"required design coverage database of target `{target}` is missing or empty: "
+            f"{design_db}"
+        )
+    return design_db
+
+
+# Runs one merge command in the coverage directory, with the named target's own log, script
+# and environment file (the stage's own for None), and in dry-run mode when asked.
+_MergeRunner = Callable[[list[str], str | None, bool], int]
+
+
+def _target_merge_argv(
+    template: list[str],
+    ctx: dict[str, str],
+    policy_args: list[str],
+    target_merged: Path,
+    design_db: str,
+    inputs: list[str],
+) -> list[str]:
+    context = {**ctx, "merged": str(target_merged), "design_db": design_db}
+    return [*render_tokens(template, context, inputs), *policy_args]
+
+
+def _merge_each_target(
+    *,
+    root: Path,
+    tool: str,
+    tool_cov: dict[str, Any],
+    template: list[str],
+    groups: dict[str, list[CoverageInput]],
+    ctx: dict[str, str],
+    cov_dir: Path,
+    merged: Path,
+    policy_args: list[str],
+    log_path: Path,
+    run: _MergeRunner,
+) -> tuple[list[dict[str, Any]], int, str | None]:
+    """Merge each target's leaves against its own design database, target by target.
+
+    Every target's design database is resolved before the first merge runs. The targets
+    merge, and their records list, largest design database first, the order the union reads
+    them: a URG `union` merge keeps the first design's code-coverage hierarchy. Returns the
+    manifest record of every merge run, then the return code and the error of the first
+    that failed (0 and None when every target produced a merged database). The merges stop
+    at the first failure.
+    """
+    needs_design_db = "{design_db}" in " ".join(template)
+    design_dbs = {
+        target: (
+            _target_design_db(root, tool, tool_cov, target, members) if needs_design_db else None
+        )
+        for target, members in groups.items()
+    }
+    order = sorted(groups, key=lambda target: (-_tree_bytes(design_dbs[target]), target))
+    entries: list[dict[str, Any]] = []
+    for target in order:
+        members = groups[target]
+        design_db = design_dbs[target]
+        target_merged = _target_merged_path(cov_dir, merged, target)
+        target_merged.parent.mkdir(parents=True, exist_ok=True)
+        inputs = [str(repo_path(root, entry.path)) for entry in members]
+        argv = _target_merge_argv(
+            template, ctx, policy_args, target_merged, str(design_db or ""), inputs
+        )
+        rc = run(argv, target, False)
+        fingerprints = sorted(
+            {entry.build_fingerprint for entry in members if entry.build_fingerprint}
+        )
+        entries.append(
+            {
+                "target": target,
+                "build_fingerprint": fingerprints[0] if fingerprints else None,
+                "design_db": repo_rel(root, design_db) if design_db else None,
+                "merged": repo_rel(root, target_merged),
+                "inputs": len(members),
+                "log": repo_rel(root, _target_scoped(log_path, target)),
+                "merge_return_code": rc,
+            }
+        )
+        if rc != 0:
+            return entries, rc, None
+        if not artifact_ready(target_merged):
+            return (
+                entries,
+                0,
+                f"merge of target `{target}` completed without a usable merged database",
+            )
+    return entries, 0, None
+
+
+def _dry_run_target_merges(
+    *,
+    tool: str,
+    tool_cov: dict[str, Any],
+    template: list[str],
+    targets: list[str],
+    ctx: dict[str, str],
+    cov_dir: Path,
+    merged: Path,
+    policy_args: list[str],
+    run: _MergeRunner,
+) -> int:
+    """Render the per-target merges and their union with placeholder inputs."""
+    combine = _combine_template(tool, tool_cov, targets)
+    design_dbs = [f"<design database of {target}>" for target in targets]
+    target_merged = [_target_merged_path(cov_dir, merged, target) for target in targets]
+    for target, design_db, path in zip(targets, design_dbs, target_merged, strict=True):
+        argv = _target_merge_argv(
+            template, ctx, policy_args, path, design_db, [f"<coverage inputs of {target}>"]
+        )
+        run(argv, target, True)
+    union_inputs = design_dbs if "{design_db}" in " ".join(template) else []
+    union_inputs = [*union_inputs, *(str(path) for path in target_merged)]
+    return run([*render_tokens(combine, ctx, union_inputs), *policy_args], None, True)
+
+
 def coverage_stage(
     flow: Flow,
     root: Path,
@@ -3932,11 +4170,25 @@ def coverage_stage(
         raise ConfigError(f"coverage.{tool}.{key} must not be empty")
     launch = stage_tool_launch(args, tool)
 
+    def run_merge(argv: list[str], target: str | None, dry_run: bool) -> int:
+        def scoped(path: Path) -> Path:
+            return _target_scoped(path, target) if target else path
+
+        return run_subprocess(
+            argv,
+            root,
+            scoped(log_path),
+            dry_run,
+            scoped(script_path),
+            scoped(env_path),
+            quiet,
+            cwd=cov_dir,
+            verbose=args.verbose,
+            timeout_sec=args.timeout,
+            launch=launch,
+        )
+
     if args.dry_run:
-        if run_plan is not None:
-            dry_inputs = run_plan.input_paths()
-        else:
-            dry_inputs = [str(run_dir / "<coverage-input>")] if phase == "merge" else []
         policy_args = [
             *native_policy_args(policy, tool=tool, phase=phase),
             *_legacy_coverage_policy_args(
@@ -3945,6 +4197,23 @@ def coverage_stage(
                 exclusions=exclusions,
             ),
         ]
+        planned_targets = list(getattr(args, "_planned_targets", None) or [])
+        if run_plan is None and phase == "merge" and len(planned_targets) > 1:
+            return _dry_run_target_merges(
+                tool=tool,
+                tool_cov=tool_cov,
+                template=template,
+                targets=planned_targets,
+                ctx=ctx,
+                cov_dir=cov_dir,
+                merged=merged,
+                policy_args=policy_args,
+                run=run_merge,
+            )
+        if run_plan is not None:
+            dry_inputs = run_plan.input_paths()
+        else:
+            dry_inputs = [str(run_dir / "<coverage-input>")] if phase == "merge" else []
         return run_subprocess(
             [*render_tokens(template, ctx, dry_inputs), *policy_args],
             root,
@@ -3977,7 +4246,19 @@ def coverage_stage(
                 f"coverage was requested but no usable inputs were found under "
                 f"{repo_rel(root, run_dir)}"
             )
-        if run_plan is None and "{design_db}" in " ".join(template):
+        # A run whose leaves span several targets merges each target against its own design
+        # database, then unions the merged databases as `--cov-combine` unions runs.
+        target_groups = inputs_by_target(discovery.inputs) if run_plan is None else {}
+        several_targets = len(target_groups) > 1
+        # The stage runs on the first planned target's config, so the inputs of another single
+        # target merge against the design database in their own model directory, unless
+        # `design_db` names it.
+        if len(target_groups) == 1 and "{design_db}" in " ".join(template):
+            [(only_target, members)] = target_groups.items()
+            if only_target != _target_name(sim_cfg) and not tool_cov.get("design_db"):
+                design_db = _target_design_db(root, tool, tool_cov, only_target, members)
+                ctx["design_db"] = str(design_db)
+        if run_plan is None and not several_targets and "{design_db}" in " ".join(template):
             if design_db is None or not artifact_ready(design_db):
                 raise CoverageError(
                     f"required design coverage database is missing or empty: {design_db}"
@@ -4010,18 +4291,10 @@ def coverage_stage(
             ],
             "legacy_waivers": [],
         }
-        if run_plan is not None:
-            manifest["target"] = run_plan.target
-            manifest["build_fingerprint"] = run_plan.build_fingerprint
-            manifest["combine"] = run_plan.manifest_payload(root)
-            input_paths = run_plan.input_paths()
-        else:
-            if design_db is not None:
-                manifest["artifacts"]["design_db"] = repo_rel(root, design_db)
-            input_paths = [str(repo_path(root, entry.path)) for entry in discovery.inputs]
-        write_json(manifest_path, manifest)
-        argv = [
-            *render_tokens(template, ctx, input_paths),
+        graded_summary = _graded_summary(parser, tool, tool_cov, args)
+        if graded_summary != "hierarchy":
+            manifest["graded_summary"] = graded_summary
+        merge_policy_args = [
             *native_policy_args(policy, tool=tool, phase="merge"),
             *_legacy_coverage_policy_args(
                 tool=tool,
@@ -4029,6 +4302,47 @@ def coverage_stage(
                 exclusions=exclusions,
             ),
         ]
+        if run_plan is not None:
+            manifest["target"] = run_plan.target
+            manifest["build_fingerprint"] = run_plan.build_fingerprint
+            manifest["combine"] = run_plan.manifest_payload(root)
+            input_paths = run_plan.input_paths()
+        elif several_targets:
+            combine = _combine_template(tool, tool_cov, list(target_groups))
+            manifest["target"] = None
+            manifest["build_fingerprint"] = _union_fingerprint(target_groups)
+            write_json(manifest_path, manifest)
+            entries, rc, error = _merge_each_target(
+                root=root,
+                tool=tool,
+                tool_cov=tool_cov,
+                template=template,
+                groups=target_groups,
+                ctx=ctx,
+                cov_dir=cov_dir,
+                merged=merged,
+                policy_args=merge_policy_args,
+                log_path=log_path,
+                run=run_merge,
+            )
+            manifest["targets"] = entries
+            if rc != 0 or error is not None:
+                manifest["status"] = "ERROR"
+                manifest["merge_return_code"] = rc
+                if error is not None:
+                    manifest["error"] = error
+                write_json(manifest_path, manifest)
+                if error is not None:
+                    raise CoverageError(error)
+                return rc
+            template = combine
+            input_paths = _union_inputs(entries, root)
+        else:
+            if design_db is not None:
+                manifest["artifacts"]["design_db"] = repo_rel(root, design_db)
+            input_paths = [str(repo_path(root, entry.path)) for entry in discovery.inputs]
+        write_json(manifest_path, manifest)
+        argv = [*render_tokens(template, ctx, input_paths), *merge_policy_args]
         rc = run_subprocess(
             argv,
             root,
@@ -4044,6 +4358,8 @@ def coverage_stage(
         )
         manifest["status"] = "ERROR" if rc else "PASS"
         manifest["merge_return_code"] = rc
+        if run_plan is not None or several_targets:
+            manifest["union_warnings"] = merge_warning_counts(log_path)
         write_json(manifest_path, manifest)
         if rc != 0:
             return rc
@@ -4059,6 +4375,12 @@ def coverage_stage(
         raise CoverageError("coverage manifest DUT/tool does not match the requested report stage")
     if not artifact_ready(merged):
         raise CoverageError(f"merged coverage database is missing or empty: {merged}")
+    if getattr(args, "cov_summary", None):
+        manifest.pop("graded_summary", None)
+        summary = _graded_summary(parser, tool, tool_cov, args)
+        if summary != "hierarchy":
+            manifest["graded_summary"] = summary
+        write_json(manifest_path, manifest)
     report_dir.mkdir(parents=True, exist_ok=True)
     report_policy_args = [
         *native_policy_args(policy, tool=tool, phase="report"),
@@ -4360,6 +4682,51 @@ def formal_run_stage(
         timeout_sec=args.timeout,
         launch=launch,
     )
+
+
+# The build adapters that place a target's model under the target's `work_dir`. `cocotb_build`
+# places it under the run target's `build_dir`, below a directory named for the target on VCS.
+_WORK_DIR_BUILD_KINDS = {
+    "vcs_uvm_build",
+    "vcs_compile",
+    "vcs_elaborate",
+    "verilator_uvm_build",
+    "xrun_compile",
+    "xrun_elaborate",
+}
+
+
+def shared_model_dirs(
+    flow: Flow,
+    root: Path,
+    tool: str,
+    target_cfgs: dict[str, dict[str, Any]],
+) -> dict[Path, list[str]]:
+    """The model directories that two or more of a run's targets would build into.
+
+    `[build.options] cache_enabled` partitions a model directory by build fingerprint, which
+    differs between targets. Without it, targets that share the directory overwrite each
+    other's model, and their parallel builds write it at once.
+    """
+    stages_cfg = flow_stages(flow)
+    stage = stages_cfg.get("hdl_compile") or stages_cfg.get("elaborate") or {}
+    kind = _resolve_stage_kind(str(stage.get("kind", "")), flow.framework, tool, flow.path)
+    if kind == "cocotb_build" and tool == "vcs":
+        return {}
+    owners: dict[Path, list[str]] = {}
+    for target, cfg in target_cfgs.items():
+        build = build_cfg(flow, cfg)
+        if build_options_cfg(build).get("cache_enabled", False):
+            continue
+        if kind == "cocotb_build":
+            value = selected_run_target(cfg).get("build_dir")
+        elif kind in _WORK_DIR_BUILD_KINDS:
+            value = build.get("work_dir")
+        else:
+            continue
+        if isinstance(value, str) and value:
+            owners.setdefault(repo_path(root, value).resolve(), []).append(target)
+    return {path: targets for path, targets in owners.items() if len(targets) > 1}
 
 
 def _resolve_stage_kind(kind: str, framework: str, tool: str, where: Any) -> str:
@@ -5162,6 +5529,7 @@ def run_stage(
             root=root,
             flow_name=flow.name,
             item=item,
+            target=target_name,
             seed=seed,
             tool=tool,
             wave_format=wave_format,

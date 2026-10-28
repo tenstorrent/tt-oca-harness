@@ -1114,9 +1114,7 @@ module tb_top
   );
 
   // ------------------------------------------------------------------
-  // Functional coverage (DTP_FCOV.adoc), shared by both frameworks. Each
-  // module carries cover-property points, compiled in every flow, and
-  // covergroups, compiled outside Verilator.
+  // Functional coverage (DTP_FCOV.adoc), shared by both frameworks.
   // ------------------------------------------------------------------
   // The TAP reset: jtag_ptap resets its JTAG logic on TRST AND power-on reset
   // and forwards that reset to the STAPs.

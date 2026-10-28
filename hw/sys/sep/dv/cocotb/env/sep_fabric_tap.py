@@ -21,6 +21,10 @@ PR-EXT-RSP ``pr_ext``       b: resp id; r: resp id last data (the PR-EXT
                             replies)
 PR-OUT-RSP ``pr_out``       b: resp id; r: resp id last data (the PR-OUT replies,
                             from the outbound responder)
+PR-TRNG    ``pr_trng``      aw, ar: addr prot; w: data strb (TRNG AXI-Lite
+                            passthrough port)
+PR-TRNG-   ``pr_trng``      b: resp; r: resp data (the PR-TRNG replies, after
+RSP                         the bench TRNG responder force)
 PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
 PR-CPU-LSU ``pr_cpu_lsu``   aw, ar: prot (raw CPU LSU request; graded)
 PR-CPU-IFU ``pr_cpu_ifu``   ar: prot (raw CPU IFU request; graded)
@@ -30,11 +34,14 @@ PR-ALIAS   ``pr_alias_in``, aw, ar: addr cache prot (input and output of the
            ``pr_alias_out`` local-master alias remap)
 PR-XEXT    ``xbar_ext_in``  aw, ar: addr (approved probe)
 PR-CSR     ``sys_csr_axil`` aw, ar: addr (approved probe)
-PR-SRAM    ``pr_sram``      req: addr we wdata strb (req and gnt high);
-                            rsp: rdata (rvalid high)
+PR-SRAM    ``pr_sram``      req: addr we wdata strb (req high); rsp: rdata
+                            (rvalid high)
 PR-ROM     ``pr_rom``       as PR-SRAM
-PR-ROM-    ``pr_rom_macro`` req: addr (macro req high, after the ROM interface
-MACRO                       shim); rsp: rdata (the clock after a req beat)
+PR-ROM-    ``pr_rom_macro`` req: addr (macro req high, out of the memory_interface);
+MACRO                       rsp: rdata (the clock after a req beat)
+PR-SRAM-   `pr_sram_macro`  req: addr we wmask (macro req high, out of the
+MACRO                       memory_interface; addr is the word index, wmask the
+                            bit write mask)
 PR-TCM     ``pr_tcm``       iccm, dccm: clken wren addr wdata wecc (any clken
                             bit high); iccm_rsp, dccm_rsp: rdata recc (the
                             clock after a beat with a read bank, clken & ~wren)
@@ -48,8 +55,9 @@ PR-LSU-    ``pr_lsu_xbar``  as PR-LSU-ROM (LSU demux local crossbar port)
 XBAR
 PR-XBAR-   ``pr_xbar_tcm``  as PR-LSU-ROM, 6-bit ID (crossbar cpu_tcm target,
 TCM                         net cpu_tcm_axi_req; contract name xbar_tcm_req)
-PR-DBG-SB  ``pr_dbg_sb``    as PR-LSU-ROM plus w data and r data (debug-module
-                            system-bus master after its alias remap)
+PR-DBG-SB  ``pr_dbg_sb``    as PR-LSU-ROM plus aw, ar prot, w data and r data
+                            (debug-module system-bus master after its alias
+                            remap)
 PR-DBG-IN  ``pr_dbg_in``    aw, ar: addr (debug-module system-bus master before
                             its local alias remap; 0 on the CPU-stub build)
 PR-DBG-OUT ``pr_dbg_out``   aw, ar: addr (the same master after the remap)
@@ -67,8 +75,10 @@ that counts no handshake cannot pass on an unknown handshake. Verilator is
 2-state; the X checks of the leaves therefore run on VCS.
 
 ``since``, ``count`` and ``addrs`` raise ``TapIdleError`` when the monitor took
-no sample after the mark (not started, or stopped before the stimulus), so a
-zero-count check cannot pass on a monitor that never ran. They raise
+no sample after the mark (not started, or stopped at the mark), so a zero-count
+check cannot pass on a monitor that never ran. The guard does not show that the
+record covers the whole stimulus: a stopped tap holds beats up to its ``stop``
+clock (``stop_clk``), so a caller stops a tap only after the stimulus it grades. They raise
 ``MonitorLifeError`` (env/sep_monitor_life.py) when the monitor task ended
 without ``stop``, or when the mark is from an earlier run of the tap, so a
 count or absence check cannot pass on a record that a dead task left partial.
@@ -120,6 +130,12 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
         {"b": ("resp", "id"), "r": ("resp", "id", "last", "data")},
         "axi",
     ),
+    "PR-TRNG": (
+        "pr_trng",
+        {"aw": ("addr", "prot"), "ar": ("addr", "prot"), "w": ("data", "strb")},
+        "axi",
+    ),
+    "PR-TRNG-RSP": ("pr_trng", {"b": ("resp",), "r": ("resp", "data")}, "axi"),
     "PR-DMACSR": ("pr_dmacsr", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
     "PR-CPU-LSU": ("pr_cpu_lsu", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
     "PR-CPU-IFU": ("pr_cpu_ifu", {"ar": ("prot",)}, "axi"),
@@ -140,6 +156,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-SRAM": ("pr_sram", {"req": ("addr", "we", "wdata", "strb"), "rsp": ("rdata",)}, "mem"),
     "PR-ROM": ("pr_rom", {"req": ("addr", "we", "wdata", "strb"), "rsp": ("rdata",)}, "mem"),
     "PR-ROM-MACRO": ("pr_rom_macro", {"req": ("addr",), "rsp": ("rdata",)}, "macro"),
+    "PR-SRAM-MACRO": ("pr_sram_macro", {"req": ("addr", "we", "wmask")}, "macro"),
     "PR-TCM": (
         "pr_tcm",
         {"iccm": _TCM_REQ, "iccm_rsp": _TCM_RSP, "dccm": _TCM_REQ, "dccm_rsp": _TCM_RSP},
@@ -152,7 +169,13 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-XBAR-TCM": ("pr_xbar_tcm", dict(_AXI_PORT), "axi"),
     "PR-DBG-SB": (
         "pr_dbg_sb",
-        {**_AXI_PORT, "w": ("data", "strb", "last"), "r": ("data", "resp", "id", "last")},
+        {
+            **_AXI_PORT,
+            "aw": (*_AXI_SHAPE, "prot"),
+            "ar": (*_AXI_SHAPE, "prot"),
+            "w": ("data", "strb", "last"),
+            "r": ("data", "resp", "id", "last"),
+        },
         "axi",
     ),
     "PR-DBG-IN": ("pr_dbg_in", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
@@ -208,6 +231,8 @@ class TapBeat:
 
     ch: str
     t_ps: int
+    """Time of the clk_i rising edge whose read-only phase shows the beat; the
+    handshake, or the macro latch of a request, happens on the next edge."""
     seq: int
     """Position of the beat in the record of the tap, all channels together."""
     fields: dict[str, int | None] = field(default_factory=dict)
@@ -260,6 +285,8 @@ class SepFabricTap:
         self.beats: list[TapBeat] = []
         # Sampled clock edges since construction.
         self.clk = 0
+        # Clock count at the last ``stop``; None while running or never stopped.
+        self.stop_clk: int | None = None
         self._task = None
         self.life = MonitorLife(f"TAP {name}", lambda: self.clk)
         self._sigs: dict[str, tuple[object, object, dict[str, object]]] = {}
@@ -295,7 +322,7 @@ class SepFabricTap:
                 flds = {n: getattr(self.dut, f"{prefix}_{ch}{n}_o") for n in names}
             elif ch == "req":
                 valid = getattr(self.dut, f"{prefix}_req_o")
-                ready = getattr(self.dut, f"{prefix}_gnt_o")
+                ready = None
                 flds = {n: getattr(self.dut, f"{prefix}_{n}_o") for n in names}
             else:
                 valid = getattr(self.dut, f"{prefix}_rvalid_o")
@@ -365,12 +392,14 @@ class SepFabricTap:
 
     def start(self) -> "SepFabricTap":
         if self._task is None:
+            self.stop_clk = None
             self._task = self.life.start(self._run())
         return self
 
     async def stop(self) -> None:
         """Close the run; raises ``MonitorLifeError`` if the task ended before."""
         self._task = None
+        self.stop_clk = self.clk
         await self.life.stop()
 
     def mark(self) -> "TapMark":
@@ -387,7 +416,8 @@ class SepFabricTap:
         if self.clk <= mark_clk:
             raise TapIdleError(
                 f"TAP FAIL: {self.name} took no sample after the mark "
-                f"(running={self._task is not None} clk={self.clk} mark_clk={mark_clk})"
+                f"(running={self._task is not None} clk={self.clk} mark_clk={mark_clk} "
+                f"stop_clk={self.stop_clk})"
             )
 
     def since(self, mark: int, ch: str | None = None) -> list[TapBeat]:

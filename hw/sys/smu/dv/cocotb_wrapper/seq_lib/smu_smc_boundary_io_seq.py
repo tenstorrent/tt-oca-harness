@@ -31,7 +31,8 @@ bench drove:
   a pure wire would follow the pin back to zero.
 * ``cfg_flr_pf_active_i``     -> ``ISOLATE_REQ_SMC_REG``, ``isolate_req_o`` via
   ``ISOLATE_REQ_SMCEN_REG`` and ``skip_mem_repair_o``. The latch is set by
-  hardware and cleared by software, which is what the clear leg checks.
+  hardware and cleared by a software write of 1 to bit 0, which is what the
+  clear leg checks.
 * ``ss_reset_complete_i``     -> ``RESET_UNIT.SS_RESET_COMPLETE``, lane for
   lane through the reset unit's synchroniser, and back to all-ones when the
   pins are released.
@@ -50,7 +51,7 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_addr_map import reset_unit_u32, smc_addr
 from seq_lib.smu_boundary_regs import cpu_ctrl_u32, dfx_ctrl_status_u32, ndm_reset_u32
 from seq_lib.smu_compose_helpers import hier, sample
 from seq_lib.smu_jtag_helpers import (
@@ -76,6 +77,7 @@ SS_CONFIG_LOCK = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_LOCK_BASE_ADDR")
 SYNC_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_SYNC_REG_BASE_ADDR")
 ISOLATE_REQ_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_REG_BASE_ADDR")
 ISOLATE_REQ_SMC_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR")
+ISOLATE_REQ_SMC_BM = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm")
 ISOLATE_REQ_SMCEN_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR")
 ISOLATE_REQ_FLR_RESET_COUNTER = smc_addr(
     "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR"
@@ -546,10 +548,10 @@ class smu_smc_boundary_io_seq:
             1,
             evidence="CHK-SMU-FLR-ISOLATE",
         )
-        await self._wr32(ISOLATE_REQ_SMC_REG, 0, "ISOLATE_REQ_SMC_REG")
+        await self._wr32(ISOLATE_REQ_SMC_REG, ISOLATE_REQ_SMC_BM, "ISOLATE_REQ_SMC_REG")
         await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
         self.sb.expect_eq(
-            "a software write clears the latch and releases isolate_req_o",
+            "a write of 1 to bit 0 clears the latch and releases isolate_req_o",
             self._sample("tb_isolate_req"),
             0,
             evidence="CHK-SMU-FLR-ISOLATE",

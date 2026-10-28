@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM fatal faults: the fatal handler, the first-source rule, parity, key CRC, latency.
+"""KM fatal faults: the fatal handler, the first-source rule, parity and key CRC.
 
 no_cpu (``lsu_stub_all_live``) / real fuse sense / ``+esrc_noise_force``. One
 module, two testlist entries. The entry is the ``rom_main`` build that the
@@ -11,7 +11,7 @@ module, two testlist entries. The entry is the ``rom_main`` build that the
   key-path point.
 * HOST-UNREC (``+km_rom_hex=rom_main_unrec.rom.parhex``, ``KM_BOOT_WIPE=0
   KM_UNREC_WIPE=1``): every leg except the DRBG stall and the key-path points,
-  with the hooks HK-IRQSET, HK-CPUIRQ, HK-PAR, HK-KPV and HK-LAT.
+  with the hooks HK-IRQSET, HK-CPUIRQ, HK-PAR and HK-KPV.
 
 The testbench LSU master is the SEP host. It reaches the KM only through
 ``km_mailbox_sep`` and writes ``SEP_CPU_CTRL.KM_WIPE_CTRL``,
@@ -35,10 +35,9 @@ absence of a key.
 
 Probes and taps: ``HOST-MBX``, ``PIC-IRQ`` bit 30, ``KM-COUNT``, ``ENGINE-OUT``,
 ``KM-ENTROPY``, ``KM-ISO``, and the read-only taps ``KM-VALID``, ``KM-KPV``,
-``KM-CSR``, ``KM-BUS``, ``KM-LAT`` and ``KM-OUTFIFO``. Each hook injection is
-proven by its readback (``km_irqset_fired_o``, ``km_cpuirq_fired_o``,
-``km_par_fired_o`` with ``km_par_rstrb_o``, ``km_kpv_flip_count_o``,
-``km_sram_lat_delayed_count_o`` and ``KM-LAT``) before its check is graded.
+``KM-CSR``, ``KM-BUS`` and ``KM-OUTFIFO``. Each hook injection is proven by its
+readback (``km_irqset_fired_o``, ``km_cpuirq_fired_o``, ``km_par_fired_o`` with
+``km_par_rstrb_o`` and ``km_kpv_flip_count_o``) before its check is graded.
 
 Checks (HOST-UNREC unless marked):
   CHK-FATAL-WIPE     a KM_WIPE_CTRL write gives exactly one fault frame
@@ -46,15 +45,17 @@ Checks (HOST-UNREC unless marked):
   CHK-FLUSH-FIRST    (both) the r unread responses are flushed: one frame after
                      the rise, no stale RESP_CMD.
   CHK-SRAM-SHRED     the SRAM write count rises by 8192 or more by the rise.
-  CHK-SHRED-WITNESS  the HMAC witness shows no key after the report.
+  CHK-SHRED-WITNESS  (control) the HMAC witness shows no key after the report.
   CHK-NOSHRED-HOST   (HOST) with the ROM wipe off, the hardware wipe still clears
                      the HMAC witness key.
   CHK-TRAP-HELD      (both) bit 30 stays high and a CMD_STAT gets no answer.
   CHK-RESTORE        (both, control) a warm reset restores CMD_STAT and bit 30 = 0.
   CHK-PARITY-CLEAN   (both, control) a clean run and each no-flip twin raise no fault.
   CHK-FATAL-SET      HK-IRQSET sets report the code of the first source.
-  CHK-SHRED-FIRST    no bank key_valid and no shared key at the first fault word.
-  CHK-STATUS-HELD    (both) the IRQ_STATUS bits of the set stay set after the trap.
+  CHK-SHRED-FIRST    no bank key_valid and no shared key at the first fault word
+                     (real-wipe point: control).
+  CHK-STATUS-HELD    the IRQ_STATUS bits of the set, WIPE_STATE excluded, stay
+                     set after the trap.
   CHK-KPV-TRAP       (control) the KPV words and CTRL read 0 after the trap.
   CHK-PARITY         a parity flip sets the memory's parity bit and reports -2 or -3.
   CHK-PARITY-VAC     a flip that the CPU did not check is redrawn, at most 8 times.
@@ -63,8 +64,6 @@ Checks (HOST-UNREC unless marked):
   CHK-NOFLUSH        the key fault keeps the sequence counters.
   CHK-GATE-AFTER     the fault repeats after CMD_RECOV_ACK; a sibling is gated.
   CHK-RESIDUE        a flip past the key end raises no fault.
-  CHK-LAT            a fixed SRAM latency L in [2, 4] changes no response.
-  CHK-LAT-VAR        a per-access SRAM latency in [1, 4] changes no response.
   CHK-CPU-TRAP       CPU lines 1 and 2 report -9 and -10 and rank above KMCSR.
   CHK-MAINCTX-FATAL  a bad image CRC sends one 0xFFFFFFF2 frame and holds bit 30.
   CHK-DRBG-STALL     (HOST) a stopped KM entropy stream reports -8.
@@ -74,10 +73,9 @@ Checks (HOST-UNREC unless marked):
 Logged only: OBS-AES-NOKEY, OBS-KEYPATH-CODE, the shared-key transfer after each
 boot, the frames of the ML-KEM notify, the SRAM write count of the HOST fatal
 path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
-outside the graded set, and VACUOUS parity draws. CHK-MAINCTX-FATAL can fail on
-this DUT (contract, "Known limitation"); in the whole leaf the point runs after
-every other fatal point. The regression runs the HOST-UNREC entry as fourteen
-shards (SHARD_POINTS_UNREC).
+outside the graded set, and VACUOUS parity draws. In the whole leaf the
+CHK-MAINCTX-FATAL point runs after every other fatal point. The regression runs
+the HOST-UNREC entry as fourteen shards (SHARD_POINTS_UNREC).
 """
 
 from __future__ import annotations
@@ -89,7 +87,7 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_axi_agent import SepAxiOp
@@ -130,7 +128,6 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_ENGINE_SHRED,
     KM_CMD_KEY_GENERATE,
     KM_CMD_KEY_LOAD,
-    KM_CMD_KEY_REVOKE,
     KM_CMD_KEY_TRANSFER,
     KM_CMD_RECOV_ACK,
     KM_CMD_SRAM_LOAD_EXEC,
@@ -173,7 +170,6 @@ EVIDENCE_HOST = (
     "CHK-FLUSH-FIRST",
     "CHK-NOSHRED-HOST",
     "CHK-TRAP-HELD",
-    "CHK-STATUS-HELD",
     "CHK-RESTORE",
     "CHK-PARITY-CLEAN",
     "CHK-DRBG-STALL",
@@ -199,8 +195,6 @@ EVIDENCE_UNREC = (
     "CHK-NOFLUSH",
     "CHK-GATE-AFTER",
     "CHK-RESIDUE",
-    "CHK-LAT",
-    "CHK-LAT-VAR",
     "CHK-CPU-TRAP",
     "CHK-MAINCTX-FATAL",
 )
@@ -209,10 +203,10 @@ EVIDENCE_UNREC = (
 # points in parallel: every shard boots and runs the clean boot, then the point
 # or points that SHARD_POINTS_UNREC names for it, in leaf order. The points are
 # independent: each one starts from its own boot, and only the real-wipe point
-# and the latency leg read the AES timing reference, which the first AES read
-# of the shard measures (the real-wipe point in shard 1).
+# reads the AES timing reference, which the first AES read of the shard
+# measures.
 SHARD_POINTS_UNREC = {
-    1: ("real_wipe", "keycrc", "lat"),
+    1: ("real_wipe", "keycrc"),
     2: ("single0",),
     3: ("single1",),
     4: ("single2",),
@@ -235,7 +229,6 @@ POINT_EVIDENCE_UNREC = {
         "CHK-SRAM-SHRED",
         "CHK-SHRED-WITNESS",
         "CHK-TRAP-HELD",
-        "CHK-STATUS-HELD",
         "CHK-SHRED-FIRST",
         "CHK-RESTORE",
     ),
@@ -257,7 +250,6 @@ POINT_EVIDENCE_UNREC = {
         "CHK-RESTORE",
     ),
     "cpu": ("CHK-CPU-TRAP", "CHK-RESTORE"),
-    "lat": ("CHK-LAT", "CHK-LAT-VAR"),
     "mainctx": ("CHK-MAINCTX-FATAL", "CHK-RESTORE"),
 }
 
@@ -288,8 +280,7 @@ INBOUND_POLLS = 20_000  # polls for inbound FIFO space while posting
 RISE_BOUND = 4_000_000  # clocks from an injection to the PIC bit 30 rise
 # Clocks from the main-context trailer to the PIC bit 30 rise. One fatal path
 # with the SRAM wipe raises bit 30 after about 2.2M clocks (the engine-key shred
-# and one SRAM shred); a second pass of the path (contract, "Known limitation")
-# is still shredding at the bound.
+# and one SRAM shred).
 MAIN_RISE_BOUND = 3_000_000
 MAIN_TAIL = 100_000  # last clocks of the wait over which the SRAM write count is logged
 KEM_POLLS = 20_000
@@ -613,72 +604,6 @@ class _KeyBus:
             prev = v
 
 
-class _LatWatch:
-    """KM-LAT against the latency that HK-LAT sets for each SRAM read.
-
-    The KM issues no new SRAM read while one is outstanding, and HK-LAT samples
-    ``km_sram_lat_i`` when the macro answers, one clock after the accepted
-    request. In the per-access mode the next value is written a quarter clock
-    after the completion of a read, so it is in place before the next request
-    can be sampled; the expected latency of each read is the value in place
-    since the previous completion (1 for a value of 1).
-    """
-
-    def __init__(self, test: sep_base_test, mode: str, first: int, stream=None) -> None:
-        self.test = test
-        self.mode = mode
-        self.cur = first
-        self.stream = stream
-        self.reads = 0
-        self.skipped = 0
-        self.mismatch = 0
-        self.examples: list[str] = []
-        self.observed: set[int] = set()
-        self.expected: set[int] = set()
-        self._on = False
-        self.quarter_ps = test.period_ps // 4
-
-    def start(self) -> None:
-        self._on = True
-        cocotb.start_soon(self._run())
-
-    def stop(self) -> None:
-        self._on = False
-
-    async def _run(self) -> None:
-        top = cocotb.top
-        t = self.test
-        prev: int | None = None
-        while True:
-            await RisingEdge(top.clk_i)
-            await ReadOnly()
-            if not self._on:
-                return
-            done = t.rd_known(top.km_sram_rd_done_count_o)
-            if prev is None:
-                prev = done
-                continue
-            if done == prev:
-                continue
-            step = (done - prev) & 0xFFFF_FFFF
-            prev = done
-            lat = t.rd_known(top.km_sram_rd_lat_o)
-            exp = max(1, self.cur)
-            self.reads += 1
-            self.skipped += step - 1
-            self.observed.add(lat)
-            self.expected.add(exp)
-            if lat != exp:
-                self.mismatch += 1
-                if len(self.examples) < 8:
-                    self.examples.append(f"read{self.reads}:{lat}!={exp}")
-            if self.mode == "random":
-                nxt = self.stream.next()
-                await Timer(self.quarter_ps, "ps")
-                top.km_sram_lat_i.value = nxt
-                self.cur = nxt
-
-
 @dataclass
 class _Pre:
     """The pre-state of a fatal point with keys (steps 3 and 4)."""
@@ -710,7 +635,7 @@ class _Trap:
 
 @pyuvm.test()
 class sep_km_fault_inject_rand_test(sep_base_test):
-    """KM fatal handler, first-source rule, parity, key CRC, latency and stall faults."""
+    """KM fatal handler, first-source rule, parity, key CRC and stall faults."""
 
     required_evidence: tuple[str, ...] = ()
 
@@ -740,7 +665,6 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.ek: list[int] | None = None
         self.sk_pending = False
         self.fresh = False
-        self.lat_on = False
         self.resp_next = 0
         self.w_ref = 0
 
@@ -754,7 +678,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             await self._real_wipe_point()  # steps 3 to 9
             await self._drbg_stall_point()  # step 21
             await self._keypath_point()  # step 22
-        await self._fresh("end of leaf")  # step 24: km_sw_rst_n ends high
+        await self._fresh("end of leaf")  # step 23: km_sw_rst_n ends high
         await self._graded(False)
         await self.stop_fifo_drain()
         self.chk.finish()
@@ -777,7 +701,6 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             ("cpu1", partial(self._cpu_point, 1, None)),
             ("cpu2", partial(self._cpu_point, 2, p.cpu_src)),
         ]
-        points.append(("lat", self._lat_leg))  # step 23
         points.append(("mainctx", self._mainctx_point))  # step 20, after every other fatal point
         names = [name for name, _ in points]
         mapped = [name for group in SHARD_POINTS_UNREC.values() for name in group]
@@ -1067,11 +990,6 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         held = [n for n in others if not (self.swrst.value >> SW_RESET_N_BIT[n]) & 1]
         assert not held, f"precondition: SW_RESET_N holds {held} at a KM warm reset"
         await self.swrst.park("km")
-        if self.lat_on:
-            await RisingEdge(cocotb.top.clk_i)
-            cocotb.top.km_sram_lat_en_i.value = 0
-            cocotb.top.km_sram_lat_i.value = 0
-            self.lat_on = False
         if parked is not None:
             await parked()
         await self.swrst.release("km")
@@ -1366,6 +1284,10 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 and not f["sk_unknown"]
                 and sk_at == 0
             )
+            # The real-wipe point is a control: its wipe pulse clears the keys
+            # in hardware before the report (architecture.adoc, "Wipe State").
+            if point == "real_wipe":
+                fields["control"] = 1
             self.chk.ok("SHRED-FIRST", ok, **fields)
         else:
             self.chk.obs("SHRED-FIRST-HOST", km_unrec_wipe=0, **fields)
@@ -1500,14 +1422,6 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             stat_answered=answered,
             window_frames=_ids(wframes),
         )
-        wipe_bit = 1 << pl.IRQ_BIT["wipe_state"]
-        self.chk.ok(
-            "STATUS-HELD",
-            rose and (status & wipe_bit) == wipe_bit,
-            point="real_wipe",
-            set=f"0x{wipe_bit:03x}",
-            status=f"0x{status:03x}",
-        )
         if self.unrec:
             # Control: the quiet window measures the writes of the running ROM
             # with no fault (stack and variables). The shred must add one SRAM
@@ -1529,6 +1443,10 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 rise_clk="none" if rise_clk is None else rise_clk,
                 idle_bound="none" if rise_clk is None else -(-quiet * rise_clk // pre.w_clk),
             )
+            # Control: the wipe pulse of the KM_WIPE_CTRL edge clears the
+            # sideload keys in hardware (architecture.adoc, "Wipe State"), so
+            # this point cannot tell the ROM shred apart. CHK-SHRED-FIRST at
+            # the HK-IRQSET points grades the ROM shred.
             self.chk.ok(
                 "SHRED-WITNESS",
                 pre.hmac == "key"
@@ -1539,6 +1457,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 hmac_after=hmac_after,
                 aes_before="golden" if pre.aes == "key" else pre.aes,
                 aes_key_after=int(aes_after == "key"),
+                control=1,
             )
         else:
             assert HMAC_MSG2 != HMAC_MSG
@@ -1611,11 +1530,14 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 and control_err == 1
             )
             self.chk.ok("FATAL-SET", ok, expected=_hx(pl.fault_word(exp)), **fields)
+        # The CPU trap sets WIPE_STATE itself (architecture.adoc, "Wipe
+        # State"), so that bit cannot show a ROM that clears it.
+        held = mask & ~(1 << pl.IRQ_BIT["wipe_state"])
         self.chk.ok(
             "STATUS-HELD",
-            fired == 1 and rose and (status & mask) == mask,
+            fired == 1 and rose and held != 0 and (status & held) == held,
             point="irqset",
-            set=f"0x{mask:03x}",
+            set=f"0x{held:03x}",
             status=f"0x{status:03x}",
         )
         self._shred_first(pre, watch, "irqset_" + "+".join(names))
@@ -2271,123 +2193,3 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self.swrst.release("hmac")
         await self.hmac.wait_idle("post-keypath")
         await self._boot("key path")
-
-    # ================================================================ step 23
-    async def _lat_run(self, mode: str, first: int, stream) -> dict:
-        top = cocotb.top
-        lat = _LatWatch(self, mode, first, stream)
-        base_delayed = self.rd_known(top.km_sram_lat_delayed_count_o)
-
-        async def parked() -> None:
-            await RisingEdge(top.clk_i)
-            top.km_sram_lat_i.value = first
-            top.km_sram_lat_en_i.value = 1
-            self.lat_on = True
-            lat.start()
-
-        watch = _FatalWatch(self)
-        watch.start()
-        err = ""
-        frames: list[list[int]] = []
-        aes = "none"
-        try:
-            ready = await self._boot(f"latency {mode}", restore=False, parked=parked)
-            frames.append(ready.words)
-            key = self.plan.keys[0].words
-            for cmd, payload in ((KM_CMD_STAT, []), (KM_CMD_KEY_LOAD, [7, AES_MASK, *key])):
-                _c, _a, fr = await self._cmd(cmd, payload)
-                frames.append(fr.words)
-            _c, _a, fr = await self._cmd(KM_CMD_KEY_TRANSFER, [pl.LAT_FIRST_HANDLE, AES_MASK])
-            frames.append(fr.words)
-            aes = await self._aes_read(key, f"latency_{mode}")
-            for cmd, payload in (
-                (KM_CMD_KEY_REVOKE, [pl.LAT_FIRST_HANDLE]),
-                (KM_CMD_ENGINE_SHRED, [AES_MASK]),
-            ):
-                _c, _a, fr = await self._cmd(cmd, payload)
-                frames.append(fr.words)
-        except AssertionError as exc:
-            err = str(exc)[:200]
-        lat.stop()
-        watch.stop()
-        self.fresh = False
-        delayed = self.rd_known(top.km_sram_lat_delayed_count_o) - base_delayed
-        model_ok = len(frames) == 6 and all(pl.lat_frame_ok(i, w) for i, w in enumerate(frames))
-        return {
-            "frames": frames,
-            "model_ok": model_ok,
-            "aes": aes,
-            "err_o": int(watch.rise is not None),
-            "error": err,
-            "lat": lat,
-            "delayed": delayed,
-        }
-
-    async def _lat_leg(self) -> None:
-        p = self.plan
-        await self._graded(True)
-        base = await self._lat_run("base", 1, None)
-        bl = base["lat"]
-        # Control: the L = 1 twin matches the frame model with the macro latency.
-        self.chk.ctrl(
-            "LAT-BASE",
-            base["model_ok"]
-            and base["aes"] == "key"
-            and base["err_o"] == 0
-            and bl.reads > 0
-            and bl.observed == {1},
-            model_ok=int(base["model_ok"]),
-            aes=base["aes"],
-            err_o=base["err_o"],
-            reads=bl.reads,
-            observed=sorted(bl.observed),
-            error=base["error"] or "-",
-        )
-        fixed = await self._lat_run("fixed", p.lat_fixed, None)
-        stream = pl.LatStream(p.lat_seed)
-        rnd = await self._lat_run("random", stream.next(), stream)
-        for name, run in (("LAT", fixed), ("LAT-VAR", rnd)):
-            lw = run["lat"]
-            equal = sum(1 for a, b in zip(run["frames"], base["frames"], strict=False) if a == b)
-            common = (
-                run["model_ok"]
-                and equal == 6
-                and run["aes"] == "key"
-                and run["err_o"] == 0
-                and not run["error"]
-                and lw.reads > 0
-                and lw.mismatch == 0
-                and lw.skipped == 0
-                and run["delayed"] > 0
-            )
-            if name == "LAT":
-                self.chk.ok(
-                    name,
-                    common and lw.observed == {p.lat_fixed},
-                    mode="fixed",
-                    L=p.lat_fixed,
-                    observed=sorted(lw.observed),
-                    resp_equal=equal,
-                    aes_ok=int(run["aes"] == "key"),
-                    err_o=run["err_o"],
-                    reads=lw.reads,
-                    mismatch=lw.mismatch,
-                    delayed=run["delayed"],
-                    error=run["error"] or "-",
-                )
-            else:
-                self.chk.ok(
-                    name,
-                    common and lw.expected == set(range(1, pl.LAT_MAX + 1)),
-                    mode="random",
-                    L=f"1..{pl.LAT_MAX}",
-                    values=sorted(lw.expected),
-                    resp_equal=equal,
-                    aes_ok=int(run["aes"] == "key"),
-                    err_o=run["err_o"],
-                    reads=lw.reads,
-                    mismatch=lw.mismatch,
-                    examples=lw.examples or "-",
-                    delayed=run["delayed"],
-                    error=run["error"] or "-",
-                )

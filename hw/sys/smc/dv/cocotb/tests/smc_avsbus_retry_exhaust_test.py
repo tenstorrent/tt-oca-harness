@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""AVSBus retry path against a target that never answers."""
+"""AVSBus retry path against an unanswering target and a slave that answers retry codes."""
 
 from __future__ import annotations
 
@@ -12,15 +12,22 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_avsbus_retry_exhaust_test(smc_base_test):
-    """Exhaust the AVSBus retry budget on two unanswered commands."""
+    """Exhaust the AVSBus retry budget, then count retries against shaped slave replies."""
 
     required_evidence = (
         "CHK-AVS-RETRY-BUDGET-EXHAUSTED",
+        "CHK-AVS-RETRY-EARLY-SUCCESS",
         "CHK-AVS-RETRY-FSM-PATH",
+        "CHK-AVS-RETRY-HELD-REPLY",
         "CHK-AVS-RETRY-IN-PROGRESS",
+        "CHK-AVS-RETRY-INT-LINE",
         "CHK-AVS-RETRY-INT-W1C",
+        "CHK-AVS-RETRY8-ACK1",
+        "CHK-AVS-RETRY8-ACK2",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 4
+    min_evidence = 11
 
     auto_protocol_vip = False
 

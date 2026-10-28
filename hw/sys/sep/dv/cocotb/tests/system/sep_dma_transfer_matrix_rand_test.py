@@ -25,6 +25,11 @@ over the CPU-LSU splice (no CPU) and runs four legs on SEP SRAM
   algorithm, an equal split of each message into 2 to 4 chunks of one
   transfer, and one long message. The digest golden comes from Python
   ``hashlib``; the leaf never takes an expected value from the DUT.
+* Leg D continuation: for each SHA-2 algorithm, one message of a drawn
+  boundary length in 2 to 4 equal chunks of one transfer. The first start
+  writes the algorithm and a drawn DIGEST_SWAP; each later start writes
+  CONTROL with GO=1, INITIAL_TRANSFER=0, an OPCODE drawn from the two other
+  SHA-2 opcodes and the inverted DIGEST_SWAP.
 
 DIGEST_SWAP: "If 1 the value in each digest output register is converted to
 big-endian byte order. This setting does not affect the order of the digest
@@ -81,7 +86,7 @@ Multi-chunk start contract (CHK-DMA-GO-CHUNKS): "A start is a write of
 `INITIAL_TRANSFER` set, or a later chunk, with `GO` alone" (``dma.adoc:79-81``);
 "For a transfer in several chunks without hardware handshake, wait for
 `STATUS.CHUNK_DONE` after each chunk and start the next one by writing
-`CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`" (``sep-programming.adoc:743-745``);
+`CONTROL` with `GO=1` and `INITIAL_TRANSFER=0`" (``sep-programming.adoc:768-770``);
 STATUS.CHUNK_DONE: "Transfer of a single chunk is complete. Only raised for
 multi-chunk memory-to-memory transfers" (``secure_dma.rdl:327-328``).
 DONE = 0 at those stops: "**Transfer Completion:** An interrupt is raised when
@@ -99,6 +104,12 @@ the encoding "True = 6; False = 9;"
 (``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:158-159``).
 The CONTROL read with GO=1 at BUSY=1 is the control of CHK-DMA-GEOM only; the
 GO value during a transfer is not graded.
+  CHK-DMA-RANGE-WR    per Leg C cell, before its copy: with RANGE_REGWEN read
+                      True (0x6, else CTRL-MISSING), RANGE_VALID reads 0 after
+                      a write of 0, and BASE, LIMIT and RANGE_VALID read back
+                      the values written next. Control: over Leg C at least
+                      one write changes BASE and one changes LIMIT (the guard
+                      edges), else CTRL-MISSING.
   CHK-DMA-RANGE-OK    per Leg C cell: the copy completes with ERROR=0 and the
                       data copied. Control: the same copy with the wide range.
   CHK-DMA-HASH        per graded Leg D run: digest words equal the hashlib
@@ -108,6 +119,30 @@ GO value during a transfer is not graded.
                       it reads 1 just before the GO of the second run.
   CHK-DMA-HASH-CHAIN  per message with a split form: single-chunk and split
                       digests are equal.
+  CHK-DMA-CONT-CFG    per Leg D continuation run: the digest words equal the
+                      hashlib golden of the first-start algorithm in the
+                      first-start byte order; DONE=1, STATUS.ERROR=0,
+                      ERROR_CODE=0, SHA2_DIGEST_VALID=1 after the chain, and
+                      the copy equals the source. Controls (else
+                      CTRL-MISSING): at least one later start; a CONTROL read
+                      after each later start shows the OPCODE and DIGEST_SWAP
+                      that start wrote, both other than the first start; the
+                      digest registers before the GO differ from the golden.
+
+Continuation contract (CHK-DMA-CONT-CFG): "The engine takes `OPCODE` and
+`DIGEST_SWAP` at the first start of a transfer and keeps them for its later
+chunks." (``hw/sys/sep/doc/dma.adoc:81-82``); "The opcode and `DIGEST_SWAP` of
+the first start hold for the whole transfer." (``sep-programming.adoc:770-771``).
+CONTROL.OPCODE and CONTROL.DIGEST_SWAP are ``sw = rw`` (``secure_dma.rdl:207-210``,
+``:224-230``), so a CONTROL read returns the value of the last write.
+
+Range write contract (CHK-DMA-RANGE-WR): ENABLED_MEMORY_RANGE_BASE, LIMIT and
+RANGE_VALID are ``sw = rw`` (``secure_dma.rdl:118-122``, ``:125-130``,
+``:133-137``) under ``regwen: "RANGE_REGWEN"`` (``dma.hjson:289``, ``:304``,
+``:318``); RANGE_REGWEN "Used by firmware to lock the DMA enabled memory range
+configuration registers from further modification" with True = 6 and
+"Unlocked at reset" (``secure_dma.rdl:142``, ``:148-151``). The leaf never
+writes RANGE_REGWEN.
 
 The Leg D cells that ``sep_dma_hash_test`` grades (SHA-256 at 56 bytes as one
 chunk at either swap value, SHA-256 at 56 bytes as two 28-byte chunks with
@@ -117,7 +152,14 @@ CHK-DMA-HASH-CHAIN line.
 
 Run mode: no_cpu, target ``lsu_stub_all_live``, ``+skip_fuse_sense``, never
 asserts ``rst_ni``; Verilator and VCS. Graded-window owner code from
-``tb/sep_fcov_owner_codes.svh``.
+``tb/sep_fcov_owner_codes.svh``. The graded window opens at the GO write of
+each graded transfer (at the range writes of a Leg C cell) and closes after
+the checks of that transfer; setup, memory fills, the stale-digest read, the
+scrub runs and the control runs run with it closed. A FAIL closes the window
+before it raises. The sampler holds every cell of this owner and samples the
+held cells only when the pass label ``dma_matrix_pass``
+(``env/sep_fcov_gate.set_dma_matrix_pass``) rises; the leaf writes 0 before
+setup and 1 after every check of the run passed.
 """
 
 from __future__ import annotations
@@ -127,6 +169,7 @@ from dataclasses import dataclass, field, replace
 
 import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import (
     DmaXfer,
@@ -136,7 +179,11 @@ from env.sep_dma_model import (
     words_to_bytes,
 )
 from env.sep_dma_tap import DmaTapEvents, SepDmaTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_dma_matrix_pass,
+)
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -153,6 +200,10 @@ from seq_lib.sep_dma_ops import (
     OP_SHA256,
     OP_SHA384,
     OP_SHA512,
+    RANGE_BASE,
+    RANGE_LIMIT,
+    RANGE_REGWEN,
+    RANGE_VALID,
     SECURE_DMA,
     SRC_ADDR_HI,
     ST_BUSY,
@@ -189,6 +240,23 @@ LONG_TOTAL = 1024
 CFG_REGWEN_BUSY = 0x9
 CFG_REGWEN_IDLE = 0x6
 CFG_REGWEN_MASK = SECURE_DMA.field_mask("CFG_REGWEN", "regwen")
+# CONTROL fields a later start writes (secure_dma.rdl:207-210, :224-230).
+CTRL_OPCODE_MASK = SECURE_DMA.field_mask("CONTROL", "opcode")
+CTRL_SWAP_MASK = SECURE_DMA.field_mask("CONTROL", "digest_swap")
+CTRL_CFG_MASK = CTRL_OPCODE_MASK | CTRL_SWAP_MASK
+# Clocks the pass label stays 1, and clocks after it for the replay of the
+# clocked FCOV cells (one bin per clock, at most eight).
+LABEL_CLKS = 2
+LABEL_REPLAY_CLKS = 16
+# Range registers (secure_dma.rdl:118-122 BASE, :125-130 LIMIT, :133-137
+# RANGE_VALID, all ``sw = rw``; :141-153 RANGE_REGWEN, True = 6 at :142,
+# "Unlocked at reset" at :151; dma.hjson:289, :304, :318 put the three under
+# RANGE_REGWEN).
+RANGE_BASE_MASK = SECURE_DMA.field_mask("ENABLED_MEMORY_RANGE_BASE", "base")
+RANGE_LIMIT_MASK = SECURE_DMA.field_mask("ENABLED_MEMORY_RANGE_LIMIT", "limit")
+RANGE_VALID_MASK = SECURE_DMA.field_mask("RANGE_VALID", "range_valid")
+RANGE_REGWEN_MASK = SECURE_DMA.field_mask("RANGE_REGWEN", "regwen")
+RANGE_REGWEN_UNLOCKED = 0x6
 
 # The order in which step 4 writes the transfer registers is drawn from these.
 XFER_ORDER_REGS = (
@@ -227,6 +295,7 @@ ALGS = {
     384: (OP_SHA384, hashlib.sha384, 12),
     512: (OP_SHA512, hashlib.sha512, 16),
 }
+OP_ALG = {op: alg for alg, (op, _, _) in ALGS.items()}
 
 
 def golden_words(alg: int, msg: bytes, swap: int) -> list[int]:
@@ -239,6 +308,10 @@ def golden_words(alg: int, msg: bytes, swap: int) -> list[int]:
 def split_ks(length: int) -> list[int]:
     """Chunk counts k in {2, 3, 4} that split ``length`` bytes into equal 4-byte multiples."""
     return [k for k in (2, 3, 4) if length % k == 0 and (length // k) % 4 == 0]
+
+
+# Boundary lengths with an equal split; the Leg D continuation draws from them.
+CONT_LENGTHS = tuple(n for n in BOUNDARY_LENGTHS if split_ks(n))
 
 
 def place(rng: SepSeededRng, sizes: list[int]) -> list[int]:
@@ -399,6 +472,20 @@ class HashMsg:
     dst: int = 0
 
 
+@dataclass
+class ContMsg:
+    """One Leg D continuation run: the first start and the CONTROL of each later start."""
+
+    alg: int
+    msg: bytes
+    sentinel: int
+    swap: int  # DIGEST_SWAP of the first start
+    split: int  # chunk count, 2 to 4
+    cont_ops: list[int]  # OPCODE of each later start, never the first-start opcode
+    src: int = 0
+    dst: int = 0
+
+
 class Plan:
     """Every value of the leaf, drawn from the seed before the first DUT access."""
 
@@ -410,6 +497,7 @@ class Plan:
         self._leg_b(rng)
         self._leg_c(rng)
         self._leg_d(rng)
+        self._leg_d_cont(rng)
 
     # Leg A ---------------------------------------------------------------
     def _copy(
@@ -551,6 +639,28 @@ class Plan:
                 f"sentinel=0x{m.sentinel:02x}"
             )
 
+    def _leg_d_cont(self, rng: SepSeededRng) -> None:
+        """One continuation run per algorithm; every draw comes after the Leg D draws."""
+        algs = [256, 384, 512]
+        rng.shuffle(algs)
+        self.conts: list[ContMsg] = []
+        for alg in algs:
+            length = rng.choice(CONT_LENGTHS)
+            s = rng.randrange(256)
+            msg = b"".join(w.to_bytes(4, "little") for w in draw_source_words(rng, length // 4, s))
+            split = rng.choice(split_ks(length))
+            swap = rng.randrange(2)
+            others = [op for a, (op, _, _) in ALGS.items() if a != alg]
+            cont_ops = [rng.choice(others) for _ in range(split - 1)]
+            src, dst = place(rng, [length, length])
+            c = ContMsg(alg, msg, s, swap, split, cont_ops, src, dst)
+            self.conts.append(c)
+            self.lines.append(
+                f"DRAW leg=D_cont alg={alg} len={length} split={split} swap={swap} "
+                f"cont_ops={','.join(map(str, cont_ops))} cont_swap={1 - swap} "
+                f"src=0x{src:08x} dst=0x{dst:08x} sentinel=0x{s:02x}"
+            )
+
 
 def is_hash_control(alg: int, length: int, split: int, swap: int) -> bool:
     """A Leg D cell that sep_dma_hash_test grades (a control here)."""
@@ -606,22 +716,27 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         "CHK-DMA-CHUNKRISE",
         "CHK-DMA-DONE-ORDER",
         "CHK-DMA-GO-CHUNKS",
+        "CHK-DMA-RANGE-WR",
         "CHK-DMA-RANGE-OK",
         "CHK-DMA-HASH",
         "CHK-DMA-HASH-VALID",
         "CHK-DMA-HASH-CHAIN",
+        "CHK-DMA-CONT-CFG",
     )
 
     # ---- log helpers ------------------------------------------------------
     def _pass(self, chk: str, ok: bool, values: str) -> None:
+        """Grade one check; a FAIL closes the graded window, then raises."""
         line = f"{chk} {'PASS' if ok else 'FAIL'} seed={self.seed} {values}"
         if not ok:
+            self._close()
             self.logger.error(line)
             raise AssertionError(line)
         self.logger.info(line)
         self.k += 1
 
     def _ctrl_missing(self, chk: str, why: str) -> None:
+        self._close()
         line = f"CTRL-MISSING {chk} seed={self.seed} {why}"
         self.logger.error(line)
         raise AssertionError(line)
@@ -632,19 +747,30 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
     def _close(self) -> None:
         close_graded_window(self.logger)
 
+    async def _release_matrix(self) -> None:
+        """Every check of the run passed: dma_matrix_pass 1 samples the held 412 cells."""
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_dma_matrix_pass(True, self.logger)
+        await ClockCycles(clk, LABEL_CLKS)
+        set_dma_matrix_pass(False, self.logger)
+        await ClockCycles(clk, LABEL_REPLAY_CLKS)
+
     # ---- scenario ---------------------------------------------------------
     async def run_scenario(self) -> None:
         self.seed = self.random_seed()
         self.k = 0
         plan = Plan(self.seed)
         self.logger.info(
-            "PLAN %s seed=%d legA_cells=%d legB_xfers=%d legC_cells=%d legD_msgs=%d",
+            "PLAN %s seed=%d legA_cells=%d legB_xfers=%d legC_cells=%d legD_msgs=%d "
+            "legD_cont_runs=%d",
             TEST,
             self.seed,
             len(plan.cells),
             len(plan.b_xfers),
             len(plan.edges),
             len(plan.msgs),
+            len(plan.conts),
         )
         for line in plan.lines:
             self.logger.info(line)
@@ -657,9 +783,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         self.ops = _LoggedDmaOps(self, self.tap)
         self.mem = SepMemWords(self)
         try:
-            # The window opens before the setup so that its RANGE_VALID 0 -> 1
-            # write is an owned unlocked write.
-            self._open()
+            await RisingEdge(dut.clk_i)
+            set_dma_matrix_pass(False, self.logger)
             await self._setup()
             self.irq = SepBitWatch(
                 dut.sep_internal_interrupts_probe_o, {"chunk": 9}, name="pic_src10"
@@ -668,7 +793,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await self._leg_b(plan)
             await self._leg_c(plan)
             await self._leg_d(plan)
+            await self._leg_d_cont(plan)
             self._close()
+            await self._release_matrix()
         finally:
             self._close()
             await self.tap.stop()
@@ -820,6 +947,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             await self._fill_copy(c)
             await self._program(c)
             m_tap, m_irq = self.tap.mark(), self.irq.mark()
+            self._open()
             await ops.go(opcode=OP_COPY, initial=1)
             # The poll bound scales with the transaction count of the cell.
             res = await ops.run_to_done(
@@ -866,6 +994,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self._check_chunkrise(rec, cd.n, tag)
             self._check_done_order(rec, x.total, tag)
             self._check_go_chunks(rec, x, tag)
+            self._close()
             await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
 
     def _check_beats(self, cd: CellDraw, rec: XferRecord) -> None:
@@ -1051,6 +1180,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 pre_go_done = pre.done
                 self.logger.info("LEGB %s pre-GO %s", tag, pre.fmt())
             m_tap, m_irq, m_busy = self.tap.mark(), self.irq.mark(), self.busy.mark()
+            self._open()
             await ops.go(opcode=OP_COPY, initial=1)
             st, go_writes, reads, ctrl_go, regwen_busy = await self._poll_b(
                 x.total, m_busy, x.total >= LONG_TOTAL, tag
@@ -1109,6 +1239,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self._check_chunkrise(rec, n, tag)
             self._check_done_order(rec, x.total, tag)
             stops = self._check_go_chunks(rec, x, tag)
+            self._close()
             if n == 1:
                 single_stops.append(stops)
         if not single_stops or any(single_stops):
@@ -1139,14 +1270,60 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             )
 
     # ---- Leg C ------------------------------------------------------------
-    async def _edge_copy(self, e: EdgeDraw, base: int, limit: int, tag: str):
+    async def _range_write(self, base: int, limit: int, tag: str) -> tuple[int, int]:
+        """CHK-DMA-RANGE-WR: unlocked range writes land; returns (base, limit) changed flags.
+
+        The leaf writes RANGE_VALID 0, then BASE, LIMIT and RANGE_VALID 1 while
+        RANGE_REGWEN reads True (0x6), and reads each register back. The
+        registers held the wide range before, so a guarded edge changes BASE
+        or LIMIT and every edge changes RANGE_VALID twice.
+        """
+        ops = self.ops
+        regwen = await ops.rd(RANGE_REGWEN) & RANGE_REGWEN_MASK
+        if regwen != RANGE_REGWEN_UNLOCKED:
+            self._ctrl_missing(
+                "CHK-DMA-RANGE-WR", f"{tag} RANGE_REGWEN=0x{regwen:x} before the range writes"
+            )
+        base0 = await ops.rd(RANGE_BASE) & RANGE_BASE_MASK
+        limit0 = await ops.rd(RANGE_LIMIT) & RANGE_LIMIT_MASK
+        valid0 = await ops.rd(RANGE_VALID) & RANGE_VALID_MASK
+        await ops.wr(RANGE_VALID, 0)
+        valid_mid = await ops.rd(RANGE_VALID) & RANGE_VALID_MASK
+        await ops.program_range(base, limit, valid=True)
+        got_base = await ops.rd(RANGE_BASE) & RANGE_BASE_MASK
+        got_limit = await ops.rd(RANGE_LIMIT) & RANGE_LIMIT_MASK
+        got_valid = await ops.rd(RANGE_VALID) & RANGE_VALID_MASK
+        ok = (
+            valid_mid == 0
+            and got_base == base & RANGE_BASE_MASK
+            and got_limit == limit & RANGE_LIMIT_MASK
+            and got_valid == RANGE_VALID_MASK
+        )
+        self._pass(
+            "CHK-DMA-RANGE-WR",
+            ok,
+            f"{tag} regwen=0x{regwen:x} base_before=0x{base0:08x} base=0x{got_base:08x} "
+            f"base_expect=0x{base & RANGE_BASE_MASK:08x} limit_before=0x{limit0:08x} "
+            f"limit=0x{got_limit:08x} limit_expect=0x{limit & RANGE_LIMIT_MASK:08x} "
+            f"valid_before={valid0} valid_after_0={valid_mid} valid={got_valid} "
+            f"valid_expect={RANGE_VALID_MASK}",
+        )
+        return int(base0 != base & RANGE_BASE_MASK), int(limit0 != limit & RANGE_LIMIT_MASK)
+
+    async def _edge_copy(self, e: EdgeDraw, base: int, limit: int, tag: str, graded: bool):
+        """One Leg C copy; a graded copy runs in the window from its range writes to its reads."""
         ops = self.ops
         sw = sentinel_word(e.sentinel)
         await self.mem.fill(e.src, e.src_words)
         await self.mem.fill(e.dst, [sw] * (e.size // 4))
         for g in e.guards():
             await self.mem.fill(g, [sw])
-        await ops.program_range(base, limit, valid=True)
+        changed = (0, 0)
+        if graded:
+            self._open()
+            changed = await self._range_write(base, limit, tag)
+        else:
+            await ops.program_range(base, limit, valid=True)
         await ops.program_transfer(
             src=e.src, dst=e.dst, total=e.size, chunk=e.size, width_enc=2, order=XFER_ORDER_REGS
         )
@@ -1163,23 +1340,27 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         for g in e.guards():
             (v,) = await self.mem.read(g, 1)
             guards_bad += int(v != sw)
+        self._close()
         await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
         fst = field_compare(st.raw, ST_DONE, ST_DONE | ST_BUSY | ST_ERROR)
         fer = field_compare(err, 0, ERROR_CODE_MASK)
-        return st, fst, fer, mism, guards_bad
+        return st, fst, fer, mism, guards_bad, changed
 
     async def _leg_c(self, plan: Plan) -> None:
         await self.ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
+        base_changed = limit_changed = 0
         for e in plan.edges:
             base, limit = e.base_limit()
             tag = f"edge={e.edge} order={e.order}"
-            st, fst, fer, mism, gbad = await self._edge_copy(e, base, limit, tag)
-            # Control: the same regions under the wide range of step 2.
-            self._close()
-            cst, cfst, cfer, cmism, cgbad = await self._edge_copy(
-                e, SRAM_BASE, SRAM_LIMIT, f"{tag} control_wide"
+            st, fst, fer, mism, gbad, (bc, lc) = await self._edge_copy(
+                e, base, limit, tag, graded=True
             )
-            self._open()
+            base_changed += bc
+            limit_changed += lc
+            # Control: the same regions under the wide range of step 2.
+            cst, cfst, cfer, cmism, cgbad, _ = await self._edge_copy(
+                e, SRAM_BASE, SRAM_LIMIT, f"{tag} control_wide", graded=False
+            )
             control_wide = int(cfst.ok and cfer.ok and cmism == 0 and cgbad == 0)
             if not control_wide:
                 self._ctrl_missing(
@@ -1196,12 +1377,23 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 f"done={st.done} error={st.error} mem_mismatch={mism} control_wide={control_wide} "
                 f"cell={e.edge} guards_bad={gbad} {ff('status', fst)} {ff('error_code', fer)}",
             )
+        # The guard edges place BASE above and LIMIT below the wide range, so
+        # every seed writes a changed BASE and a changed LIMIT.
+        if base_changed == 0 or limit_changed == 0:
+            self._ctrl_missing(
+                "CHK-DMA-RANGE-WR",
+                f"changed writes base={base_changed} limit={limit_changed}, expected >= 1 each",
+            )
 
     # ---- Leg D ------------------------------------------------------------
     async def _hash_run(
-        self, m: HashMsg, split: int, swap: int, run_idx: int, ctrl_state: dict
+        self, m: HashMsg, split: int, swap: int, run_idx: int, ctrl_state: dict, graded: bool
     ) -> tuple[list[int], dict]:
-        """Steps 17 to 22 for one form and swap value; returns the digest words read."""
+        """Steps 17 to 22 for one form and swap value; returns the digest words read.
+
+        A graded run opens the window at its GO; the caller closes it after
+        the checks of the run.
+        """
         ops = self.ops
         alg_op, _, n_words = ALGS[m.alg]
         length = len(m.msg)
@@ -1217,6 +1409,8 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self.logger.info("LEGD %s pre-GO %s", tag, pre.fmt())
             if run_idx == 1:
                 ctrl_state["before_second"] = pre.digest_valid
+        if graded:
+            self._open()
         await ops.go(opcode=alg_op, digest_swap=swap, initial=1)
         try:
             res = await ops.run_to_done(
@@ -1285,13 +1479,11 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             self._ctrl_missing("CHK-DMA-HASH", f"alg={m.alg} scrub digest equals the golden")
         length = len(m.msg)
         words_of = [int.from_bytes(scrub.msg[i : i + 4], "little") for i in range(0, length, 4)]
-        self._close()
         await self.mem.fill(m.src, words_of)
-        words, info = await self._hash_run(scrub, 0, swap, run_idx, ctrl_state)
+        words, info = await self._hash_run(scrub, 0, swap, run_idx, ctrl_state, graded=False)
         await self.mem.fill(
             m.src, [int.from_bytes(m.msg[i : i + 4], "little") for i in range(0, length, 4)]
         )
-        self._open()
         mism = sum(1 for g, e in zip(words, scrub_gold) if g != e) + abs(
             len(words) - len(scrub_gold)
         )
@@ -1329,9 +1521,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                     if split:
                         run_idx = await self._scrub_digest(m, swap, run_idx, ctrl_state)
                     control = is_hash_control(m.alg, length, split, swap)
-                    if control:
-                        self._close()
-                    words, info = await self._hash_run(m, split, swap, run_idx, ctrl_state)
+                    words, info = await self._hash_run(
+                        m, split, swap, run_idx, ctrl_state, graded=not control
+                    )
                     run_idx += 1
                     gold = golden_words(m.alg, m.msg, swap)
                     mism = sum(1 for g, e in zip(words, gold) if g != e) + abs(
@@ -1376,8 +1568,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                             f"go_writes={info['go_writes']} {ff('error_code', fer)}",
                         )
                     valid_lines.append((m, info))
-                    if control:
-                        self._open()
+                    self._close()
             for swap in m.swaps:
                 if not m.split:
                     continue
@@ -1413,3 +1604,139 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 f"after_last={info['valid_after']} control_before_second=1 "
                 f"kind={m.kind} split={info['split']} swap={info['swap']}",
             )
+
+    # ---- Leg D continuation -----------------------------------------------
+    def _cont_control(self, c: ContMsg, i: int) -> int:
+        """CONTROL of later start ``i``: GO=1, INITIAL_TRANSFER=0, drawn OPCODE, inverted swap."""
+        return control_word(opcode=c.cont_ops[i], digest_swap=1 - c.swap, initial=0, go=1)
+
+    def _cont_golden(self, c: ContMsg) -> list[int]:
+        """Digest words of the first-start algorithm in the first-start byte order."""
+        return golden_words(c.alg, c.msg, c.swap)
+
+    async def _cont_run(self, c: ContMsg) -> None:
+        ops = self.ops
+        alg_op, _, n_words = ALGS[c.alg]
+        length = len(c.msg)
+        k = c.split
+        tag = (
+            f"alg={c.alg} len={length} split={k} swap={c.swap} "
+            f"cont_ops={','.join(map(str, c.cont_ops))} cont_swap={1 - c.swap}"
+        )
+        gold = golden_words(c.alg, c.msg, c.swap)
+        # Housekeeping with the window closed: message fill, stale digest.
+        self._close()
+        await self.mem.fill(
+            c.src, [int.from_bytes(c.msg[i : i + 4], "little") for i in range(0, length, 4)]
+        )
+        await self.mem.fill(c.dst, [sentinel_word(c.sentinel)] * (length // 4))
+        stale = await ops.read_digest(n_words)
+        if stale == gold:
+            self._ctrl_missing("CHK-DMA-CONT-CFG", f"{tag} digest before the GO equals the golden")
+
+        await ops.program_transfer(
+            src=c.src,
+            dst=c.dst,
+            total=length,
+            chunk=length // k,
+            width_enc=2,
+            order=XFER_ORDER_REGS,
+        )
+        self._open()
+        first = await ops.go(opcode=alg_op, digest_swap=c.swap, initial=1)
+        bound = ops.done_bound(poll_size(length))
+        go_writes = 1
+        conts: list[tuple[int, int]] = []  # (CONTROL written, CONTROL read after it)
+        st = None
+        for _ in range(bound):
+            st = await ops.read_status()
+            if st.done or st.error or st.aborted:
+                break
+            if st.chunk_done and not st.busy:
+                if go_writes >= k:
+                    self._pass(
+                        "CHK-DMA-CONT-CFG",
+                        False,
+                        f"{tag} CHUNK_DONE=1 DONE=0 BUSY=0 after {go_writes} GO writes "
+                        f"(chunks={k}); {st.fmt()}",
+                    )
+                await ops.wr(STATUS, ST_CHUNK_DONE)
+                mark = self.busy.mark()
+                value = self._cont_control(c, go_writes - 1)
+                await ops.wr(CONTROL, value)
+                go_writes += 1
+                conts.append((value, await ops.rd(CONTROL)))
+                await self.busy.wait_rise(mark, BUSY_RISE_BOUND)
+        else:
+            self._close()
+            msg = (
+                f"FAIL-DMA-TIMEOUT {tag}: DONE not seen in {bound} STATUS reads "
+                f"(go_writes={go_writes}, last {st.fmt() if st else 'none'})"
+            )
+            self.logger.error(msg)
+            raise DmaTimeout(msg)
+        done = st.done
+        if done:
+            await self._wait_idle_done(tag)
+        await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE)
+        valid_after = 0
+        for _ in range(VALID_POLL_BOUND):
+            if (await ops.read_status()).digest_valid:
+                valid_after = 1
+                break
+        st2, err, _ = await self._read_regs()
+        words = await ops.read_digest(n_words)
+        dst = await self.mem.read(c.dst, length // 4)
+        copy_mm = sum(
+            1 for i, w in enumerate(dst) if w != int.from_bytes(c.msg[4 * i : 4 * i + 4], "little")
+        )
+
+        # Controls: the later starts reached CONTROL with values other than the first.
+        rb_bad = [
+            f"0x{w:08x}/0x{r:08x}"
+            for w, r in conts
+            if (r & CTRL_CFG_MASK) != (w & CTRL_CFG_MASK)
+            or (w & CTRL_OPCODE_MASK) == (first & CTRL_OPCODE_MASK)
+            or (w & CTRL_SWAP_MASK) == (first & CTRL_SWAP_MASK)
+        ]
+        rb_line = (
+            f"first_control=0x{first:08x} later_starts={len(conts)} "
+            f"control_written/read={','.join(f'0x{w:08x}/0x{r:08x}' for w, r in conts) or '-'}"
+        )
+        if not conts or rb_bad:
+            self._ctrl_missing(
+                "CHK-DMA-CONT-CFG",
+                f"{tag} later start not carrying a changed OPCODE and DIGEST_SWAP: "
+                f"bad={','.join(rb_bad) or '-'} {rb_line}",
+            )
+
+        exp = self._cont_golden(c)
+        mism = sum(1 for g, e in zip(words, exp) if g != e) + abs(len(words) - len(exp))
+        fer = field_compare(err, 0, ERROR_CODE_MASK)
+        if mism:
+            self.logger.error(
+                "LEGD_CONT %s digest got=%s exp=%s",
+                tag,
+                [f"{w:08x}" for w in words],
+                [f"{w:08x}" for w in exp],
+            )
+        ok = (
+            mism == 0
+            and done == 1
+            and st2.error == 0
+            and fer.ok
+            and valid_after == 1
+            and copy_mm == 0
+        )
+        self._pass(
+            "CHK-DMA-CONT-CFG",
+            ok,
+            f"{tag} words={len(exp)} mismatch={mism} done={done} error={st2.error} "
+            f"digest_valid_after={valid_after} copy_mismatch={copy_mm} go_writes={go_writes} "
+            f"stale_eq_golden=0 {rb_line} {ff('error_code', fer)}",
+        )
+        self._close()
+
+    async def _leg_d_cont(self, plan: Plan) -> None:
+        for c in plan.conts:
+            await self._cont_run(c)

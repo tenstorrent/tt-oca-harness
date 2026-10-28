@@ -609,10 +609,11 @@ that is not a DUT contract.
 [[coverage-strategy]]
 === Coverage Strategy
 
-Verilator does not support SystemVerilog covergroups. The SMC open-source path
-collects Python-side functional observations in `SmcScoreboard`
-(`FUNC_COV_VALUE` bins) and relies on commercial simulators for SV covergroups,
-assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
+Every simulator compiles the SV covergroups in `cov/sv/`, which use only the
+constructs Verilator supports. The SMC open-source path collects them, the
+Python-side functional observations in `SmcScoreboard` (`FUNC_COV_VALUE` bins)
+and line, branch and expression coverage, and relies on commercial simulators
+for condition, FSM, toggle and assertion coverage. See `SMC_FCOV.adoc`.
 
 [[canonical-rtl-selection]]
 === Canonical RTL Selection
@@ -697,9 +698,11 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 . `tb/smc_tb_if.sv` — the SMC-local TB interface: the wait-math clock periods,
   power-good and the cold/cool reset pins, the reset-unit outputs, the
   fuse-sense / warm-domain release observables, the cold-reset assertion
-  counter, the SVA enable, and CPU-cluster isolation. The watchdog core-awake
-  scenario reads the live cluster-boundary isolation tap through this interface
-  and waits with a bound for release before accessing the cluster again.
+  counter, the SVA enable, CPU-cluster isolation and per-core reset levels.
+  The watchdog core-awake scenario observes the core-reset tap, waits with a
+  bound for assertion and release, and checks every SMC-cycle sample in its
+  hold window. It also requires the cluster-boundary isolation tap low at
+  baseline.
 . `uvm/env/smc_env_pkg.sv` — `smc_types` (SEP_IN geometry, the scratch CSR
   windows from the generated `smc_top_addrmap_pkg`, 32-bit-CSR lane helpers
   for the 64-bit bus), `smc_test_cfg`, `smc_env_cfg`,
@@ -777,7 +780,8 @@ Non-reset CMP markers on all cores make post-warm default readbacks
 discriminating; CTRL and COUNT are additionally exercised on the rotating
 selected core. Sequence checks grade CTRL/COUNT/CMP defaults before explicit
 rebaseline; the model independently grades CTRL/CMP and access responses.
-CPU_CTRL timeout retention remains an observation rather than a verdict.
+The sequence grades CPU_CTRL WDT_TIMEOUT retention after each warm reset;
+the watchdog model does not cover CPU_CTRL.
 Explicit watchdog configuration and timeout programming establish the next baseline.
 
 The fabric-register gate scenario reads eight pairs of `smc_tb_if.cg_clk_active`
@@ -807,6 +811,19 @@ when its reset epoch changes. `start_pass()` only rearms the model-negative
 selection; it does not seed expected data from a DUT read. Unsupported access
 shapes stop a required feature. Other writers and reset with outstanding
 catalogued traffic are not supported.
+
+The external-register lane scenario reads `smc_tb_if.isolate_req`, which
+mirrors `tb_isolate_req_o`, and drives only the Isolate Request pad through
+`gpio_ext_drive_en` and `gpio_ext_drive_value`. These controls default to zero
+and are restored after the scenario. Pin synchronization is observed through
+the RDL-defined VIS register, not a new internal synchronizer tap.
+The sequence-owned SEP_IN AW/W/B sampler confirms the address, size, data,
+strobes and response shape for sequential matrix writes through `mon_cb`.
+An event watcher records nonzero or unknown isolation output across each
+idle-source write/restore leg. REG/PINEN traffic provides positive controls
+for the same output tap. Readback is compared against a shadow computed from
+the issued data and strobes, independently of DUT readback. No shared
+scoreboard feature is added.
 
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`

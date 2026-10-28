@@ -365,6 +365,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_sep_to_smc",
 ]
 
 # SEP AP/STEE output-remap programming. The firmware is a stimulus generator,
@@ -510,6 +512,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_xbar_sep_out",
 ]
 
 # SEP lifecycle flow: real eFuse sense, then firmware-driven demotes. The SEP
@@ -1164,6 +1168,11 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
   "+pll_sys_period_ns=10",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_smu_out",
+  "+axi_sva_need_xbar_smc_out",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_xbar_ext_out",
 ]
 
 [[tests]]
@@ -1660,6 +1669,7 @@ tests = [
   "smu_axi_out_addr_len_size_test",
   "smu_axi_out_outstanding_test",
   "smu_axi_in_sep_aperture_test",
+  "smu_xbar_zero_aperture_test",
   "smu_smc_inbound_window_sweep_test",
   "smu_sys_in_filter_src_id_rule_test",
   "smu_base_config_corners_test",
@@ -2499,6 +2509,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_dtp_dbg",
 ]
 
 [[tests]]
@@ -3885,6 +3897,33 @@ args = [
 ]
 
 [[tests]]
+# The aperture sizes are programmed through the SEP debug module's system
+# bus over JTAG DMI between the ext_in probes, so the span is set by the
+# JTAG period, the handshakes and one cold reset.
+name = "smu_xbar_zero_aperture_test"
+module = "smu_xbar_zero_aperture_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 5400
+tags = ["fabric", "sep", "sba", "axi"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
+  # STAP and the debug module's system bus is reachable.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+]
+
+[[tests]]
 name = "smu_clock_domain_composition_test"
 module = "smu_clock_domain_composition_test"
 target = "compile_smu_chiplet"
@@ -4174,6 +4213,7 @@ tests = [
   "smu_sep_lsu_fabric_test",
   "smu_efuse_command_test",
   "smu_axi_in_sep_aperture_test",
+  "smu_xbar_zero_aperture_test",
   "smu_smc_inbound_window_sweep_test",
   "smu_dtp_smc_stap_smoke_test",
   "smu_ext_boot_seq_gate_test",
@@ -4301,7 +4341,7 @@ tests = [
   "smu_sep_out_filter_rule_matrix_test",
   "smu_sep_output_remap_region_matrix_test",
 ]
-expected_count = 159
+expected_count = 160
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -4375,6 +4415,7 @@ tests = [
   "smu_sep_lsu_fabric_test",
   "smu_efuse_command_test",
   "smu_axi_in_sep_aperture_test",
+  "smu_xbar_zero_aperture_test",
   "smu_smc_inbound_window_sweep_test",
   "smu_dtp_smc_stap_smoke_test",
   "smu_ext_boot_seq_gate_test",
@@ -4507,7 +4548,7 @@ tests = [
   "smu_sep_out_filter_rule_matrix_test",
   "smu_sep_output_remap_region_matrix_test",
 ]
-expected_count = 195
+expected_count = 196
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -4614,6 +4655,10 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_xbar_smc_in",
 ]
 
 [[tests]]

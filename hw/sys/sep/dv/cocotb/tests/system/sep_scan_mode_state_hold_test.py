@@ -40,6 +40,11 @@ Contract:
   ``hw/sys/sep/doc/otp_fuse_controller.adoc``: while ``SECURE_TM`` = 1 the
   secret shadow outputs ``CHIPLET_UID``, ``SIP_UID``, ``SYS_UID`` and
   ``CLASS_KEY`` read zero downstream.
+* ``hw/sys/sep/doc/attack_countermeasures.adoc`` (a nested ``_n0_scan`` name
+  remains Class 1) and ``hw/sys/sep/doc/lifecycle_controller.adoc`` (scan
+  classes 1a and 1b): every word of the ``shadow_efuse_values_n0_scan`` storage
+  array is a Class-1 shadow word. The Class-1 shadow words are the fields of
+  rows 1a and 1b at their ``sep_efuse_map.rdl`` word indices (``CLASS1_FIELDS``).
 * ``hw/sys/sep/doc/token_processing.adoc`` (Token Submission) and
   ``hw/sys/sep/doc/security_disable.adoc`` (Reset Persistence): the computed
   digest and its valid bit survive reset and change only at a new start or a
@@ -61,11 +66,26 @@ Checkers:
                         the token whose digest tb_top binds.
   CHK-SCAN-SECDIS-HOLD  security_disable_o, the SEC_DIS digest and its valid
                         bit keep their values on every sample of the session.
+  CTL-SCAN-N0-STAGED    after the first sense, the two shadow storage arrays
+                        (shadow_efuse_values and shadow_efuse_values_n0_scan)
+                        together hold the 256 staged shadow words, as a
+                        multiset.
+  CHK-SCAN-N0-CLASS1    after the first sense, every entry of
+                        shadow_efuse_values_n0_scan holds the staged value of a
+                        Class-1 shadow word and none holds the value of another
+                        word; at least one entry holds a non-zero Class-1
+                        value. The storage is compacted, so each entry is
+                        identified by its value: the image stages every
+                        non-Class-1 word to a non-zero value that no Class-1
+                        word holds.
 
 Logged, not graded: OBS-SCAN-SENSE-HOLD (``sep_fuse_sense_done_o``),
 OBS-SCAN-FEAT-HOLD (``FEAT_CTRL``, the DEMOTE state and lock bits and the
 ``LC_STATE`` shadow word), OBS-SCAN-CLASS1-NAME (storage names that carry
-``_n0_scan``, ``demote`` or ``sense_done``), OBS-SCAN-SHADOW-WR (a ``SIP_DIS``
+``_n0_scan``, ``demote`` or ``sense_done``), OBS-SCAN-N0-COMPLETE (the Class-1
+shadow words whose value is not in ``shadow_efuse_values_n0_scan``; the
+specification does not state that every Class-1 word carries the name),
+OBS-SCAN-SHADOW-WR (a ``SIP_DIS``
 shadow write with ``test_en_i`` = 1 at strap 0) and OBS-SCAN-SECDIS-GO (a
 mismatch SEC_DIS go with ``test_en_i`` = 1, after the last session). The
 specification does not state these values under a scan reset.
@@ -87,9 +107,11 @@ from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
     DEFAULT_VECTOR,
+    FIELD_NAMES,
     FIELD_VECTORS,
     MATCH_ADDR,
     MATCH_STATUS_MASK,
+    NUM_FUSE_WORDS,
     SECRET_FIELDS,
     TOKEN_OTHER,
     TOKEN_ZERO,
@@ -165,6 +187,64 @@ SECRETS = {f: words_token(FIELD_VECTORS[DEFAULT_VECTOR[f]]) for f in SECRET_FIEL
 LC_WORD = field_word("LC_STATE")
 _CLASS1_NAME = re.compile(r"_n0_scan|demote|sense_done", re.I)
 
+# Class-1 shadow fields: rows 1a and 1b of the scan-class table in
+# hw/sys/sep/doc/lifecycle_controller.adoc. Each word index comes from the
+# generated hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl geometry.
+# The other 1a/1b items (the *_TOKEN_I registers, raw fuse read-back, the
+# token-hash digest and valid bit, the RMA match state) are not shadow words.
+CLASS1_FIELDS: tuple[str, ...] = (
+    "LOCKS",
+    "LOCKS_SPARE",
+    "LC_STATE",
+    "SIP_DIS",
+    "SYS_DIS",
+    "RMA_SIP_TOKEN_DIGEST",
+    "RMA_CHIPLET_TOKEN_DIGEST",
+    "CLASS_KEY",
+    "CHIPLET_UID",
+    "SIP_UID",
+    "SYS_UID",
+)
+CLASS1_WORDS: tuple[tuple[str, int], ...] = tuple(
+    (f, field_word(f) + k) for f in CLASS1_FIELDS for k in range(field_n_words(f))
+)
+CLASS1_IDX = frozenset(i for _f, i in CLASS1_WORDS)
+SHADOW_REGS = "u_dut.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller"
+SHADOW_REGS += ".u_efuse_shadow_regs"
+
+
+def _n0_distinct_fixed(base: Any) -> tuple[dict[str, int], int]:
+    """Pins for every non-Class-1 field: non-zero and disjoint from every Class-1 value.
+
+    A word keeps its value in ``base`` unless that value is 0, a Class-1 value or
+    the value of an earlier non-Class-1 word; then it steps by 1 until it is none
+    of these. The result is a pure function of ``base``. Returns the pins and
+    the number of words that stepped.
+    """
+    used = {base.shadow_word(i) for i in CLASS1_IDX} | {0}
+    out: dict[str, int] = {}
+    stepped = 0
+    for name in FIELD_NAMES:
+        w0, n = field_word(name), field_n_words(name)
+        idxs = set(range(w0, w0 + n))
+        if idxs <= CLASS1_IDX:
+            continue
+        assert not idxs & CLASS1_IDX, f"test bug: {name} is partly Class 1"
+        value = 0
+        for k in range(n):
+            v = base.words[w0 + k] & M32
+            for _ in range(2 * NUM_FUSE_WORDS + 1):
+                if v not in used:
+                    break
+                v = (v + 1) & M32
+            else:
+                raise AssertionError(f"test bug: no free value for {name} word {k}")
+            stepped += int(v != base.words[w0 + k] & M32)
+            used.add(v)
+            value |= v << (32 * k)
+        out[name] = value
+    return out, stepped
+
 
 class _Cfg:
     def __init__(self, seed: int) -> None:
@@ -206,6 +286,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         "CHK-SCAN-TM-HOLD",
         "CHK-SCAN-SECRET-ZERO",
         "CHK-SCAN-SECDIS-HOLD",
+        "CHK-SCAN-N0-CLASS1",
     )
 
     # -- sampler ---------------------------------------------------------------
@@ -492,11 +573,99 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             sum(1 for p in set(found) if "sense_done" in p.lower()),
         )
 
+    async def _n0_scan_check(self) -> None:
+        """CTL-SCAN-N0-STAGED, CHK-SCAN-N0-CLASS1 and OBS-SCAN-N0-COMPLETE after a sense."""
+        dut: Any = cocotb.top
+        img = self.n0_img
+        h: Any = dut
+        for part in SHADOW_REGS.split("."):
+            h = getattr(h, part, None)
+            assert h is not None, f"CHK-SCAN-N0-CLASS1 FAIL: no handle {SHADOW_REGS} ({part})"
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        n0_bits = sig_bits(h.shadow_efuse_values_n0_scan)
+        nm_bits = sig_bits(h.shadow_efuse_values)
+        await RisingEdge(dut.clk_i)
+        assert n0_bits and len(n0_bits) % 32 == 0 and nm_bits and len(nm_bits) % 32 == 0, (
+            f"CHK-SCAN-N0-CLASS1 FAIL: storage widths n0_scan={len(n0_bits)} "
+            f"normal={len(nm_bits)} bits"
+        )
+        n0 = [probe_word(n0_bits, k) for k in range(len(n0_bits) // 32)]
+        nm = [probe_word(nm_bits, k) for k in range(len(nm_bits) // 32)]
+        staged = [img.shadow_word(i) for i in range(NUM_FUSE_WORDS)]
+        owner: dict[int, list[str]] = {}
+        for i, v in enumerate(staged):
+            owner.setdefault(v, []).append(f"w{i}")
+        c1_vals = {staged[i] for i in CLASS1_IDX}
+        nc_vals = {v for i, v in enumerate(staged) if i not in CLASS1_IDX}
+
+        got = sorted(v if v is not None else -1 for v in n0 + nm)
+        assert got == sorted(staged), (
+            f"CTL-SCAN-N0-STAGED FAIL: the two storage arrays (n0_scan={len(n0)} "
+            f"normal={len(nm)} entries) do not hold the {NUM_FUSE_WORDS} staged words: "
+            f"extra={sorted(set(got) - set(staged))[:4]} "
+            f"missing={sorted(set(staged) - set(got))[:4]}"
+        )
+        self.logger.info(
+            "CTL-SCAN-N0-STAGED: n0_scan=%d normal=%d entries hold the %d staged words",
+            len(n0),
+            len(nm),
+            NUM_FUSE_WORDS,
+        )
+
+        bad = [
+            (k, _hex(v), owner.get(v, ["none"])[:3])
+            for k, v in enumerate(n0)
+            if v is None or v not in c1_vals or v in nc_vals
+        ]
+        anchor = [k for k, v in enumerate(n0) if v and v in c1_vals]
+        assert not bad and anchor, (
+            f"CHK-SCAN-N0-CLASS1 FAIL: shadow_efuse_values_n0_scan entries={len(n0)}: "
+            f"entries not a Class-1 value (entry, value, staged word): {bad[:6]}; "
+            f"non-zero Class-1 entries={len(anchor)}"
+        )
+        self.logger.info(
+            "CHK-SCAN-N0-CLASS1 PASS: shadow_efuse_values_n0_scan entries=%d all hold a "
+            "Class-1 value (golden words=%d values=%d, non-Class-1 values=%d disjoint); "
+            "non-zero Class-1 entries=%d",
+            len(n0),
+            len(CLASS1_WORDS),
+            len(c1_vals),
+            len(nc_vals),
+            len(anchor),
+        )
+
+        left = [v for v in n0 if v is not None]
+        missing: list[tuple[str, int, int]] = []
+        for f, i in CLASS1_WORDS:
+            if staged[i] in left:
+                left.remove(staged[i])
+            else:
+                missing.append((f, i - field_word(f), staged[i]))
+        for f, k, v in missing:
+            self.logger.info(
+                "OBS-SCAN-N0-COMPLETE: field=%s word=%d value=0x%08x not in "
+                "shadow_efuse_values_n0_scan; in shadow_efuse_values=%d",
+                f,
+                k,
+                v,
+                int(v in nm),
+            )
+        self.logger.info(
+            "OBS-SCAN-N0-COMPLETE: class1_words=%d n0_scan_entries=%d missing=%d fields=%s",
+            len(CLASS1_WORDS),
+            len(n0),
+            len(missing),
+            ",".join(sorted({f for f, _k, _v in missing})) or "-",
+        )
+
     # -- legs ------------------------------------------------------------------
 
     async def _strap_leg(self, strap: int, first: bool) -> None:
         leg = f"strap{strap}"
         await self._boot(strap, first)
+        if first:
+            await self._n0_scan_check()
         if strap == 0:
             await self._shadow_write_obs()
         await self._demote_and_lock()
@@ -653,9 +822,26 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         close_graded_window(self.logger)
         fixed = {"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS, "LOCKS": 0, **SECRETS}
-        img = self.select_efuse_image(lc_raw=LC_PROD, fixed=fixed)
+        base = self.select_efuse_image(lc_raw=LC_PROD, fixed=fixed)
+        n0_fixed, stepped = _n0_distinct_fixed(base)
+        img = self.select_efuse_image(lc_raw=LC_PROD, fixed={**fixed, **n0_fixed})
         for f in SECRET_FIELDS:
             assert img.field_int(f) == SECRETS[f], f"test bug: {f} not pinned"
+        c1_vals = {img.shadow_word(i) for i in CLASS1_IDX}
+        nc = [img.shadow_word(i) for i in range(NUM_FUSE_WORDS) if i not in CLASS1_IDX]
+        assert 0 not in nc and not c1_vals & set(nc), (
+            "test bug: a non-Class-1 word is 0 or holds a Class-1 value"
+        )
+        self.logger.info(
+            "N0-STAGE LOG: class1_words=%d class1_values=%d non_class1_words=%d distinct=%d "
+            "stepped=%d",
+            len(CLASS1_IDX),
+            len(c1_vals),
+            len(nc),
+            len(set(nc)),
+            stepped,
+        )
+        self.n0_img = img
         self.write_efuse_image(img)
         self.fd = SepEfuseFd(self)
         self.tm_pass: list[str] = []

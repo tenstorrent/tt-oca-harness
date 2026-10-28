@@ -26,6 +26,12 @@ response is reported, not asserted: the specification leaves the reset state
 of the sixteen inbound entries to the chiplet integration. No inbound port is
 tied off in this bench (SEP_IN, SYS_IN and JTAG all carry agents), so this
 bench produces no "unused port tied idle" evidence.
+
+Before the filter is restored, SYS_IN writes each read-only register of inbound
+mailbox 0 (``READ_DATA``, ``STATUS``, ``ERROR_FLAGS``, ``IRQP``; ``R`` in the
+``axil_mailbox`` register map). The mailbox interface specification answers
+such a write with ``SLVERR`` and ignores it, so each write must answer
+``SLVERR`` and SEP_IN must read ``STATUS`` and ``IRQP`` unchanged afterwards.
 """
 
 from __future__ import annotations
@@ -35,6 +41,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
+from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 from ocah_axi_vip import AxiTimingProfile
 
@@ -50,7 +57,13 @@ from .smc_jtag_axi_shape_test_seq import (
     GPIO0_FILTER,
     PROT_UNPRIV,
 )
-from .smc_mailbox_data_error_test_seq import CLOCK_GATE_CONTROL, INBOUND_READ_DATA, MAILBOX_CG_EN
+from .smc_mailbox_data_error_test_seq import (
+    CLOCK_GATE_CONTROL,
+    INBOUND_ERROR_FLAGS,
+    INBOUND_READ_DATA,
+    INBOUND_STATUS,
+    MAILBOX_CG_EN,
+)
 from .smc_output_fabric_vip_utils import (
     INBOUND0_END,
     INBOUND0_FILTER_CONFIG,
@@ -108,6 +121,21 @@ READY_HOLD_CYCLES = 64
 AXI_RESP_SLVERR = 2
 
 
+INBOUND_IRQP = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_IRQP_BASE_ADDR")
+# Read-only registers of inbound mailbox 0 that a write must leave untouched.
+MAILBOX_RO_REGS = (
+    ("READ_DATA", INBOUND_READ_DATA),
+    ("STATUS", INBOUND_STATUS),
+    ("ERROR_FLAGS", INBOUND_ERROR_FLAGS),
+    ("IRQP", INBOUND_IRQP),
+)
+MAILBOX_RO_WDATA = 0xA5A5_A5A5_A5A5_A5A5
+# Mailbox clock read, enable and readback, STATUS and IRQP before and after
+# the writes, clock restore and readback.
+SLVERR_RO_SEP_ACCESSES = 9
+SLVERR_RO_FENCE = ("EXISTING-LEGS", "PRE-READ", "SYSIN-RO-WRITES", "POST-READ", "FILTER-RESTORE")
+
+
 def backpressure_pattern(index: int, write_pass: int = BACKPRESSURE_PASSES - 1) -> int:
     return 0xBAC0_0000 | (write_pass << 16) | (index << 8) | (0xFF ^ index)
 
@@ -134,18 +162,20 @@ def duplex_pattern(index: int, pass_index: int = DUPLEX_PASSES - 1) -> int:
 # restore + readback, 2 duplex seeds, 2 duplex readbacks, 4 duplex restores,
 # 3 restore writes + config readback, filter arm, two filter readbacks and
 # its restore, mailbox clock read, enable and readback, restore and readback,
-# 8 scratch restores after the backpressure groups.
-EXPECTED_SEP_ACCESSES = 36
+# 8 scratch restores after the backpressure groups, and the read-only mailbox
+# leg.
+EXPECTED_SEP_ACCESSES = 36 + SLVERR_RO_SEP_ACCESSES
 # SYS_IN accesses the scoreboard must have completed: pre-admit read,
 # VERSION_LO read, scratch write, scratch read, the concurrent group, two
 # burst writes with their two burst reads, the unimplemented-region read and
-# write, the refused filter write and read, the empty-mailbox read, and the
-# backpressure groups.
+# write, the refused filter write and read, the empty-mailbox read, the
+# backpressure groups, and the read-only mailbox writes.
 EXPECTED_SYS_IN_ACCESSES = (
     4
     + DUPLEX_PASSES * (len(DUPLEX_WRITE_INDICES) + len(DUPLEX_READ_INDICES))
     + 9
     + 2 * BACKPRESSURE_PASSES * BACKPRESSURE_COUNT
+    + len(MAILBOX_RO_REGS)
 )
 
 
@@ -197,6 +227,103 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         self.denied_write_resp: int | None = None
         self.empty_mailbox_resp: int | None = None
         self.stalls: dict[str, int] | None = None
+        self.ro_write_resps: dict[str, int | None] = {}
+        self.fence: list[tuple[str, int, int]] = []
+
+    def _stamp(self, term: str, count: int) -> None:
+        self.fence.append((term, count, int(get_sim_time("ns"))))
+
+    def _sys_in_done(self) -> int:
+        return self.env.scoreboard.axi_accesses_by_bus.get("SYS_IN AXI", 0)
+
+    async def _mailbox_ro_slverr(self) -> None:
+        """SYS_IN writes to the read-only mailbox registers answer SLVERR and are ignored."""
+        clock_gate = await self.csr_read("RO_CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, length=8)
+        await self.csr_write(
+            "RO_CLOCK_GATE_CONTROL_ENABLE_MAILBOX",
+            CLOCK_GATE_CONTROL,
+            clock_gate | MAILBOX_CG_EN,
+            length=8,
+        )
+        await self.csr_read(
+            "RO_CLOCK_GATE_CONTROL_ENABLED",
+            CLOCK_GATE_CONTROL,
+            expected=clock_gate | MAILBOX_CG_EN,
+            length=8,
+        )
+
+        start = self.accesses
+        pre_status = await self.csr_read("RO_PRE_STATUS", INBOUND_STATUS, length=8)
+        pre_irqp = await self.csr_read("RO_PRE_IRQP", INBOUND_IRQP, length=8)
+        self._stamp("PRE-READ", self.accesses - start)
+
+        start = self._sys_in_done()
+        for name, addr in MAILBOX_RO_REGS:
+            item = await self._sys_in(
+                f"RO_WR_{name}",
+                SmcSysAxiOp.WRITE,
+                addr,
+                wdata=MAILBOX_RO_WDATA,
+                length=8,
+                allow_error=True,
+            )
+            self.ro_write_resps[name] = item.resp_code
+        self._stamp("SYSIN-RO-WRITES", self._sys_in_done() - start)
+        wrong = {
+            name: _RESP_NAME.get(resp, resp)
+            for name, resp in self.ro_write_resps.items()
+            if resp != AXI_RESP_SLVERR
+        }
+        assert not wrong, (
+            f"sys_axi_in writes to read-only inbound mailbox 0 registers answered {wrong}, "
+            f"expected SLVERR"
+        )
+
+        start = self.accesses
+        post_status = await self.csr_read(
+            "RO_POST_STATUS", INBOUND_STATUS, expected=pre_status, length=8
+        )
+        post_irqp = await self.csr_read("RO_POST_IRQP", INBOUND_IRQP, expected=pre_irqp, length=8)
+        self._stamp("POST-READ", self.accesses - start)
+        assert post_status == pre_status and post_irqp == pre_irqp, (
+            f"ignored sys_axi_in writes changed inbound mailbox 0: STATUS 0x{pre_status:x} -> "
+            f"0x{post_status:x}, IRQP 0x{pre_irqp:x} -> 0x{post_irqp:x}"
+        )
+
+        await self.csr_write(
+            "RO_CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, clock_gate, length=8
+        )
+        await self.csr_read(
+            "RO_CLOCK_GATE_CONTROL_RESTORED", CLOCK_GATE_CONTROL, expected=clock_gate, length=8
+        )
+        cocotb.log.info(
+            "CHK-SYS-AXI-IN-SLVERR-RO: READ_DATA/STATUS/ERROR_FLAGS/IRQP BRESP=SLVERR x%d "
+            "(%s, wdata 0x%016x); STATUS 0x%x -> 0x%x, IRQP 0x%x -> 0x%x unchanged",
+            len(self.ro_write_resps),
+            ", ".join(
+                f"{name}@0x{addr:08x}={_RESP_NAME.get(self.ro_write_resps[name])}"
+                for name, addr in MAILBOX_RO_REGS
+            ),
+            MAILBOX_RO_WDATA,
+            pre_status,
+            post_status,
+            pre_irqp,
+            post_irqp,
+        )
+
+    def _nonvac(self) -> None:
+        terms = [t for t, _c, _ns in self.fence]
+        assert terms == list(SLVERR_RO_FENCE), f"fence terms {terms}, want {SLVERR_RO_FENCE}"
+        zero = [t for t, c, _ns in self.fence if c <= 0]
+        assert not zero, f"fence terms with zero count {zero}"
+        times = [ns for _t, _c, ns in self.fence]
+        assert all(b > a for a, b in zip(times, times[1:])), f"fence times not increasing {times}"
+        cocotb.log.info(
+            "CHK-NONVAC: EXISTING-LEGS < PRE-READ < SYSIN-RO-WRITES < POST-READ < "
+            "FILTER-RESTORE (%d terms: %s)",
+            len(self.fence),
+            ", ".join(f"{t} count={c} t={ns}ns" for t, c, ns in self.fence),
+        )
 
     async def _sys_in(
         self,
@@ -474,7 +601,11 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         )
         for index in range(BACKPRESSURE_COUNT):
             await self.csr_write(f"BACKPRESSURE_RESTORE_{index}", scratch_cold(index), 0)
+        self._stamp("EXISTING-LEGS", self._sys_in_done())
 
+        await self._mailbox_ro_slverr()
+
+        restore_start = self.accesses
         await self.csr_write(
             "INBOUND0_CONFIG_RESTORE",
             INBOUND0_FILTER_CONFIG,
@@ -493,11 +624,12 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
             expected=FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT,
             length=8,
         )
+        self._stamp("FILTER-RESTORE", self.accesses - restore_start)
 
         assert self.accesses == EXPECTED_SEP_ACCESSES, (
             f"issued {self.accesses} SEP_IN accesses, expected {EXPECTED_SEP_ACCESSES}"
         )
-        sys_in_done = self.env.scoreboard.axi_accesses_by_bus.get("SYS_IN AXI", 0)
+        sys_in_done = self._sys_in_done()
         assert sys_in_done == EXPECTED_SYS_IN_ACCESSES, (
             f"scoreboard completed {sys_in_done} SYS_IN AXI accesses, expected {EXPECTED_SYS_IN_ACCESSES}"
         )
@@ -565,3 +697,4 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
             UNIMPLEMENTED_ADDR,
             _RESP_NAME.get(self.unimplemented_resp, str(self.unimplemented_resp)),
         )
+        self._nonvac()

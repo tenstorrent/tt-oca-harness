@@ -287,8 +287,7 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
             )
         # Last, because dma.adoc says a read of NEXT_ID_0 launches a transfer
         # built from the shared descriptor registers. The scoreboard enforces
-        # the OKAY response; the value is reported, since the chapter allows a
-        # rejected command to return 0 as well.
+        # the OKAY response; the value is reported.
         self.next_id_0 = await self.csr_read("DMA_NEXT_ID_0", DMA_NEXT_ID[0])
         self.close_cell(
             "all-16-banks-answer",

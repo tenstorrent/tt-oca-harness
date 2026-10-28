@@ -59,6 +59,12 @@ OTP_READ_LOCK holds the field's bit.
 
 Logged, not graded: OBS-KM-OTHER-TM1 (the KM port public-ID taps at strap 1,
 ``OTP_LIFE_CYCLE`` and ``OTP_DEMOTION_STATE`` at both straps).
+
+FCOV owner window (``env/sep_fcov_gate.py``): open in the strap-0 leg from the
+first CHK-KM-ID-PORT to its second run after the KM-side lock, so
+``cp_otp_efuse_lock_port`` samples the KM release that CHK-KM-ID-PORT and
+CHK-KM-ID-EFUSE-LOCK grade. A FAIL closes it; the strap-1 leg runs with it
+closed.
 """
 
 from __future__ import annotations
@@ -70,6 +76,7 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_efuse_image import LC_PROD, SepEfuseImage
 from env.sep_efuse_test_lib import rst_pulse, wait_bit
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_km_otp_id import (
     DEMOTION_WORD,
     DONE_MARKER,
@@ -107,6 +114,8 @@ from seq_lib.sep_locked_field_irq_seq import SepLockedFieldIrq
 _MAX_SENSE_CYCLES = 20_000
 _MAX_KM_CYCLES = 50_000
 _STM_BOUND = 16
+
+TEST = "sep_efuse_km_public_id_test"
 
 _PROBES = {
     "SEP_CHIPLET_ID": "km_otp_sep_chiplet_id_o",
@@ -254,6 +263,20 @@ class sep_efuse_km_public_id_test(sep_base_test):
         self.write_efuse_image(img)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
+        open_graded_window(TEST, self.logger)
+        try:
+            sram = await self._strap0_leg(cfg, img)
+        finally:
+            close_graded_window(self.logger)
+
+        ok0, line0 = self._secret_check(sram, 0)
+        assert ok0, f"CHK-KM-SECRET-TM0 FAIL: {line0}"
+        self.logger.info("CHK-KM-SECRET-TM0 PASS: %s", line0)
+        other0 = (sram[LIFE_CYCLE_WORD], sram[DEMOTION_WORD])
+        await self._strap1_leg(cfg, other0)
+
+    async def _strap0_leg(self, cfg: SepKmOtpIdCfg, img: SepEfuseImage) -> list[int]:
+        """Strap 0: CHK-KM-ID-PORT, -EFUSE-LOCK, -CSR, -KM-LOCK; returns the KM SRAM dump."""
         self._check_port(cfg, "after sense")
         await self._check_efuse_lock(cfg, img)
 
@@ -288,12 +311,10 @@ class sep_efuse_km_public_id_test(sep_base_test):
             locked_or,
         )
         self._check_port(cfg, "after KM OTP_READ_LOCK")
+        return sram
 
-        ok0, line0 = self._secret_check(sram, 0)
-        assert ok0, f"CHK-KM-SECRET-TM0 FAIL: {line0}"
-        self.logger.info("CHK-KM-SECRET-TM0 PASS: %s", line0)
-        other0 = (sram[LIFE_CYCLE_WORD], sram[DEMOTION_WORD])
-
+    async def _strap1_leg(self, cfg: SepKmOtpIdCfg, other0: tuple[int, int]) -> None:
+        """Strap 1: CHK-KM-SECRET-TM1, CHK-KM-PUBID-TM1 and OBS-KM-OTHER-TM1."""
         # Strap-1 leg: cold reset with the strap at 1, second real sense.
         dut: Any = cocotb.top
         await rst_pulse(self, strap=1)

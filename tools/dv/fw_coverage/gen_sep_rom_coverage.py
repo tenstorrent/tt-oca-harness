@@ -23,6 +23,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fw_coverage.renode_trace import TRACE_NAME
+from runlib.config import instance_test_name
 from runlib.results import run_is_complete
 
 ELF_NAME = "boot_rom.elf"
@@ -138,7 +139,7 @@ def discover_trace_inputs(
         except (OSError, json.JSONDecodeError) as exc:
             if path_identity is not None:
                 item, seed, attempt = path_identity
-                if item in firmware_modes:
+                if instance_test_name(item) in firmware_modes:
                     key = (item, seed)
                     previous = final_results.get(key)
                     if previous is None or attempt > previous[0]:
@@ -166,7 +167,7 @@ def discover_trace_inputs(
             identity = path_identity
 
         item, seed, attempt = identity
-        if item not in firmware_modes:
+        if instance_test_name(item) not in firmware_modes:
             continue
         key = (item, seed)
         previous = final_results.get(key)
@@ -204,7 +205,7 @@ def discover_trace_inputs(
             skipped.append(SkippedTrace(item, trace, str(result_error)))
             continue
         item = str(result["item"])
-        mode = firmware_modes[item]
+        mode = firmware_modes[instance_test_name(item)]
         if result.get("status") != "PASS":
             skipped.append(SkippedTrace(item, trace, f"leaf status is {result.get('status')}"))
             continue
@@ -248,7 +249,8 @@ def validate_variant_groups(
     selected = run_result.get("items")
     if not isinstance(selected, list):
         return
-    expected = {firmware_modes[item] for item in selected if item in firmware_modes}
+    tests = {instance_test_name(item) for item in selected if isinstance(item, str)}
+    expected = {firmware_modes[test] for test in tests if test in firmware_modes}
     missing = sorted(expected - grouped.keys())
     if missing:
         raise CoverageError(

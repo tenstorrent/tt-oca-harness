@@ -604,6 +604,7 @@ module smc_uvm_top
     logic [31:0]                           ss_config;
     logic [63:0]                           timer_count;
     logic                                  lc_sigint_err;
+    smc_pkg::smc_ras_t                     smc_ras;
     logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
     logic                                  ext_boot_seq_done;
 
@@ -1301,6 +1302,11 @@ module smc_uvm_top
     assign tb_wdt_second_timeout      = cpu_wdt_second_timeout;
     assign tb_wdt_second_timeout_seen = cpu_wdt_second_timeout_seen_q;
 
+    assign cpu_cluster_ded        = smc_ras.cluster_ded;
+    assign cpu_wdt_first_timeout  = smc_ras.wdt_first_timeout;
+    assign cpu_wdt_second_timeout = smc_ras.wdt_second_timeout;
+    assign lc_sigint_err          = smc_ras.lc_sigint_err;
+
     // ------------------------------------------------------------------
     // DTP CSR boundary (smc_wrapper only): NO TB err_slv (policy: no
     // placeholder); resp is idle. smu.sv connects SMC axil_dtp_csr to DTP.
@@ -1377,9 +1383,7 @@ module smc_uvm_top
         .telemetry_atvalid_i        (tb_telemetry_atvalid),
         .telemetry_afvalid_o        (tb_telemetry_afvalid),
         .telemetry_afready_i        (tb_telemetry_afready),
-        .smc_cluster_ded_o          (cpu_cluster_ded),
-        .smc_wdt_first_timeout_o    (cpu_wdt_first_timeout),
-        .smc_wdt_second_timeout_o   (cpu_wdt_second_timeout),
+        .smc_ras_o                  (smc_ras),
         .smc_global_base_o          (),
         .smc_region_size_o          (smc_region_size),
         .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NumExtInterrupts-17){1'b0}},
@@ -1396,7 +1400,6 @@ module smc_uvm_top
         // here; docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_drv),
-        .lc_sigint_err_o            (lc_sigint_err),
         .smc_ndmreset_request_i     (tb_ndmreset_request),
         .smc_ndmreset_process_o     (tb_ndmreset_process),
         .smc_ext_mailbox_interrupts_o (),
@@ -1942,11 +1945,10 @@ module smc_uvm_top
 
     // ------------------------------------------------------------------
     // Functional coverage (SMC_FCOV.adoc): shared by both tb shapes. Each
-    // module carries Verilator-safe cover-property points -- which land in
-    // the `user` metric family under --coverage-user -- plus commercial-only
-    // covergroups internally. Every port below is a smc_tb_signal_list.svh
-    // signal, so no hierarchical reference and no smc_public_scope.vlt
-    // change is needed.
+    // module carries cover-property points -- which land in the `user`
+    // metric family under --coverage-user -- and most also carry
+    // covergroups. Every port below is a smc_tb_signal_list.svh signal, so no
+    // hierarchical reference and no smc_public_scope.vlt change is needed.
     //
     // Single-instance body only: the SMC_DUAL port surface is narrower and
     // does not carry these observables.
@@ -3208,6 +3210,7 @@ module smc_uvm_top
     assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
     assign u_tb_if.rst_wdt_smc_clk_n         = rst_wdt_smc_clk_no;
     assign u_tb_if.cpu_cluster_isolate       = tb_cpu_cluster_isolate;
+    assign u_tb_if.cpu_core_resets_n         = tb_cpu_core_resets_n;
     assign u_tb_if.cg_clk_active = {
         u_dut.u_smc.u_smc_base.fabric_clk_active,
         u_dut.u_smc.u_smc_base.alias_remap_clk_active,
@@ -3573,14 +3576,15 @@ module smc_uvm_top
     assign tb_mbist_abort            = 1'b0;
 
     // Sideband: AVSBus sdata pull-up high, primary chiplet, OCTS secondary
-    // inject idle-low; SEP mailbox interrupts idle; no GPIO external drive.
+    // inject idle-low; SEP mailbox interrupts idle; GPIO drive owned by the sequence.
     assign tb_avs_sdata_ext          = 1'b1;
     assign tb_chiplet_is_primary     = 1'b1;
     assign tb_octs_sync_load_ext     = 1'b0;
     assign tb_octs_cnt_credit_ext    = 1'b0;
     assign tb_sep_mailbox_interrupts = '0;
-    assign tb_gpio_ext_drive_en      = '0;
-    assign tb_gpio_ext_drive_value   = '0;
+    assign tb_gpio_ext_drive_en      = u_tb_if.gpio_ext_drive_en;
+    assign tb_gpio_ext_drive_value   = u_tb_if.gpio_ext_drive_value;
+    assign u_tb_if.isolate_req       = tb_isolate_req_o;
 
     // CPU memory ECC injection and the DFD fault inject off.
     assign tb_cpu_ecc_inject_sbe   = 1'b0;
@@ -3683,10 +3687,14 @@ module smc_dual_inst
 
     // Fault outputs of this instance, latched sticky until cold reset. Read by
     // the dual leaves as dut_/bfm_*_seen_o on smc_uvm_top.
+    smc_pkg::smc_ras_t smc_ras;
     logic cluster_ded;
     logic wdt_first_timeout;
     logic wdt_second_timeout;
     logic cluster_ded_seen_q;
+    assign cluster_ded        = smc_ras.cluster_ded;
+    assign wdt_first_timeout  = smc_ras.wdt_first_timeout;
+    assign wdt_second_timeout = smc_ras.wdt_second_timeout;
     logic wdt_first_timeout_seen_q;
     logic wdt_second_timeout_seen_q;
     always_ff @(posedge clk_smc or negedge rst_cold_ni) begin
@@ -3760,9 +3768,7 @@ module smc_dual_inst
         .telemetry_atvalid_i        ('0),
         .telemetry_afvalid_o        (),
         .telemetry_afready_i        ('1),
-        .smc_cluster_ded_o          (cluster_ded),
-        .smc_wdt_first_timeout_o    (wdt_first_timeout),
-        .smc_wdt_second_timeout_o   (wdt_second_timeout),
+        .smc_ras_o                  (smc_ras),
         .smc_global_base_o          (),
         .smc_region_size_o          (),
         .smc_ext_interrupts_i       ('0),
@@ -3776,7 +3782,6 @@ module smc_dual_inst
         // docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_i),
-        .lc_sigint_err_o            (),
         .smc_ndmreset_request_i     ('0),
         .smc_ndmreset_process_o     (),
         .smc_ext_mailbox_interrupts_o (),

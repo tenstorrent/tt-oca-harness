@@ -86,7 +86,7 @@
 `endif // not def SYNTHESIS
 
 // VCS coverage exclude_file
-module OCAH4CORECluster_rf_31x64(	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
+module OCAH4CORECluster_rf_31x64(	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
   input  [4:0]  R0_addr,
   input         R0_en,
   input         R0_clk,
@@ -101,26 +101,26 @@ module OCAH4CORECluster_rf_31x64(	// @[generators/rocket-chip/src/main/scala/roc
   input  [63:0] W0_data
 );
 
-  reg [63:0] Memory[0:30];	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-  always @(posedge W0_clk) begin	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-    if (W0_en)	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-      Memory[W0_addr] <= W0_data;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
+  reg [63:0] Memory[0:30];	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+  always @(posedge W0_clk) begin	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+    if (W0_en)	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+      Memory[W0_addr] <= W0_data;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
   end // always @(posedge)
-  `ifdef ENABLE_INITIAL_MEM_	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-    reg [63:0] _RANDOM_MEM;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-    initial begin	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-      `INIT_RANDOM_PROLOG_	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-      `ifdef RANDOMIZE_MEM_INIT	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
+  `ifdef ENABLE_INITIAL_MEM_	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+    reg [63:0] _RANDOM_MEM;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+    initial begin	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+      `INIT_RANDOM_PROLOG_	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+      `ifdef RANDOMIZE_MEM_INIT	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
         for (logic [4:0] i = 5'h0; i < 5'h1F; i += 5'h1) begin
           for (logic [6:0] j = 7'h0; j < 7'h40; j += 7'h20) begin
-            _RANDOM_MEM[j +: 32] = `RANDOM;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-          end	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-          Memory[i] = _RANDOM_MEM;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-        end	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
+            _RANDOM_MEM[j +: 32] = `RANDOM;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+          end	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+          Memory[i] = _RANDOM_MEM;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+        end	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
       `endif // RANDOMIZE_MEM_INIT
     end // initial
   `endif // ENABLE_INITIAL_MEM_
-  assign R0_data = R0_en ? Memory[R0_addr] : 64'bx;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
-  assign R1_data = R1_en ? Memory[R1_addr] : 64'bx;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1320:15]
+  assign R0_data = R0_en ? Memory[R0_addr] : 64'bx;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
+  assign R1_data = R1_en ? Memory[R1_addr] : 64'bx;	// @[generators/rocket-chip/src/main/scala/rocket/RocketCore.scala:1386:15]
 endmodule
 

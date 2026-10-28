@@ -132,6 +132,13 @@
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block in tb_top.sv.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
+// Mailbox WRITE_DATA unstrobed-lane inject. Default 0. While the arm is 1, a
+// W beat with WSTRB 0x0F or 0xF0 to the outbound WRITE_DATA of a mailbox
+// selected in mbox_lane_inject_mbx_i carries mbox_lane_inject_data_i on its
+// unstrobed lanes at the mailbox unit port. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, mbox_lane_inject_arm_i)
+`SEP_TB_IN(logic [sep_pkg::NumMailboxes-1:0], mbox_lane_inject_mbx_i)
+`SEP_TB_IN(logic [63:0], mbox_lane_inject_data_i)
 // HMAC message-FIFO drain stall. Default 0. When 1, tb holds the FIFO's read
 // side idle and the core's message valid toward the SHA-2 engine low, so the
 // hash engine takes no word and the FIFO fills. A port rather
@@ -150,6 +157,19 @@
 `SEP_TB_IN(logic, crypto_alert_inject_i)
 `SEP_TB_IN(logic [3:0], crypto_alert_inject_idx_i)
 `SEP_TB_IN(logic, crypto_alert_inject_val_i)
+// OTBN memory integrity flip. Live only in a run with +sep_otbn_intg_flip.
+// While otbn_intg_flip_en_i is 1, every read response that the OTBN core takes
+// from the memory otbn_intg_flip_mem_i selects (0 IMEM, 1 DMEM) reaches the
+// integrity check with bit otbn_intg_flip_bit_i of the read word inverted: bit
+// 0 to 38 of the 39-bit IMEM word, bit 0 to 311 of the 312-bit DMEM word
+// (eight 39-bit words, word w in bits 39w to 39w+38). A bit index past the
+// word flips nothing. The stored word does not change. otbn_intg_flip_count_o
+// counts the corrupted responses since the enable rose. Error inject,
+// docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, otbn_intg_flip_en_i)
+`SEP_TB_IN(logic, otbn_intg_flip_mem_i)
+`SEP_TB_IN(logic [8:0], otbn_intg_flip_bit_i)
+`SEP_TB_OUT(logic [31:0], otbn_intg_flip_count_o)
 // ESRC main-FIFO integrity inject. Default 0. While esrc_fifo_parity_inject_i
 // is 1, the parity nibble that the FIFO reads with its head entry has bit
 // esrc_fifo_parity_bit_i inverted. While esrc_fifo_ptr_inject_i is 1, one copy
@@ -163,6 +183,13 @@
 `SEP_TB_IN(logic, esrc_fifo_ptr_inject_i)
 `SEP_TB_IN(logic [1:0], esrc_fifo_ptr_sel_i)
 `SEP_TB_IN(logic [2:0], esrc_fifo_ptr_bit_i)
+// ESRC health-test counter-copy inject. Default 0. At the rise of
+// esrc_cntr_inject_i the bench takes the secondary copy of the REPCNT_TOTAL_FAILS
+// counter with bit esrc_cntr_inject_bit_i (0 to 31) inverted, and holds that copy
+// at that value while the input stays 1, so the two copies disagree. Error
+// inject, docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, esrc_cntr_inject_i)
+`SEP_TB_IN(logic [4:0], esrc_cntr_inject_bit_i)
 // ESRC noise-source stuck-at inject. Default 0. While bit i of
 // esrc_noise_stuck_en_i is 1, the ring-oscillator output of lane i is forced to
 // bit i of esrc_noise_stuck_val_i, upstream of the sampling flop, and the
@@ -189,6 +216,15 @@
 // docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
 `SEP_TB_IN(logic, km_strm_wd_arm_i)
 `SEP_TB_IN(logic, km_strm_wd_mode_i)
+// Key Manager DRBG sampler partial beat and withdrawal (HK-STRM-PAT). Default
+// 0. While km_strm_pat_arm_i is 1 (and km_strm_wd_arm_i is 0) the bench drives
+// the sampler sink TVALID, TDATA and TSTRB once: one beat with TDATA
+// km_strm_pat_data_i and TSTRB 0x1 in the first clock with the sink TREADY
+// high, then TVALID low until a clock with the sink TREADY low, TVALID high in
+// that clock and low in the next. Error inject, docs/SEP_TB_ARCH.adoc. See the
+// force block in tb_top.sv.
+`SEP_TB_IN(logic, km_strm_pat_arm_i)
+`SEP_TB_IN(logic [31:0], km_strm_pat_data_i)
 // KM-SRAM read address: word index of the KM SRAM array word that
 // km_sram_peek_o shows. A select of the read-only tap; it drives nothing in
 // the DUT. Default 0.
@@ -226,14 +262,6 @@
 `SEP_TB_IN(logic, km_par_mem_i)
 `SEP_TB_IN(logic [1:0], km_par_lane_i)
 `SEP_TB_IN(logic [7:0], km_par_n_i)
-// Key Manager SRAM response latency (HK-LAT). Default 0. While
-// km_sram_lat_en_i is 1, a SRAM read response reaches the KM km_sram_lat_i
-// clocks after the accepted request, for a value of 2 or more sampled when the
-// macro answers; 0 and 1 keep the macro latency of 1. Top-port drive of the sep
-// input km_sram_mem_rsp_i, docs/SEP_TB_ARCH.adoc. See the force block in
-// tb_top.sv.
-`SEP_TB_IN(logic, km_sram_lat_en_i)
-`SEP_TB_IN(logic [3:0], km_sram_lat_i)
 // External TRNG stream driver (top-port drive of the sep input
 // ext_trng_axis_req_i[2:0], docs/SEP_TB_ARCH.adoc). Default 0. While bit i of
 // ext_trng_drive_en_i is 1, stream i carries tvalid ext_trng_tvalid_i[i], tdata
@@ -257,6 +285,22 @@
 `SEP_TB_IN(logic [15:0], ext_port_rsp_rresp_i)
 `SEP_TB_IN(logic [511:0], ext_port_rsp_rdata_i)
 `SEP_TB_OUT(logic, ext_port_rsp_on_o)
+// TRNG AXI-Lite passthrough responder (top-port drive of the sep input
+// ext_trng_axil_resp_i, docs/SEP_TB_ARCH.adoc). Live only in a run with
+// +sep_ext_trng_axil_responder, from the first clock with
+// ext_trng_axil_rsp_en_i at 1; then it stays on for the rest of the run and
+// ext_trng_axil_rsp_on_o reads 1. ext_trng_axil_rsp_bcnt_o and _rcnt_o count
+// the B and R handshakes at the port since the last rise of the enable. B
+// handshake k answers BRESP ext_trng_axil_rsp_bresp_i[2j +: 2] and R handshake k
+// answers RRESP ext_trng_axil_rsp_rresp_i[2j +: 2] and RDATA
+// ext_trng_axil_rsp_rdata_i[32j +: 32], with j = k modulo 8.
+`SEP_TB_IN(logic, ext_trng_axil_rsp_en_i)
+`SEP_TB_IN(logic [15:0], ext_trng_axil_rsp_bresp_i)
+`SEP_TB_IN(logic [15:0], ext_trng_axil_rsp_rresp_i)
+`SEP_TB_IN(logic [255:0], ext_trng_axil_rsp_rdata_i)
+`SEP_TB_OUT(logic, ext_trng_axil_rsp_on_o)
+`SEP_TB_OUT(logic [31:0], ext_trng_axil_rsp_bcnt_o)
+`SEP_TB_OUT(logic [31:0], ext_trng_axil_rsp_rcnt_o)
 // Boundary interrupt input of the PIC (sep_wrapper sep_ext_interrupts_i,
 // extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
@@ -489,6 +533,10 @@
 `SEP_TB_OUT(logic, dbg_sep_reset_n_o)  // SEP internal reset released
 // CPU warm reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni).
 `SEP_TB_OUT(logic, sep_cpu_reset_n_o)
+// Reset inputs (rst_ni) of the SEP SRAM and boot ROM memory interfaces
+// (u_sram_memory_interface, u_boot_rom_memory_interface). Monitor only.
+`SEP_TB_OUT(logic, pr_sram_memif_rst_n_o)
+`SEP_TB_OUT(logic, pr_rom_memif_rst_n_o)
 `SEP_TB_OUT(logic, dbg_cpu_trace_exc_o)  // retired-instruction exception flag
 `SEP_TB_OUT(logic, sep_fuse_sense_done_o)  // SEP fuse sense completed
 // Sensed eFuse shadow-register array, flattened to a top-level OUTPUT PORT
@@ -520,6 +568,11 @@
 // without Adams Bridge. Owners: sep_km_sideload_share_walk_test,
 // sep_km_abr_mlkem_sideload_test.
 `SEP_TB_OUT(logic [255:0], abr_mlkem_seed_z_probe_o)
+// Adams Bridge zeroize timing. Bit 0 is the engine's zeroize request (either
+// ZEROIZE field, or a debug-unlock or scan-mode switch); bit 1 is abr_ready, the
+// value STATUS.READY reports. Zero in a build without
+// Adams Bridge. Owner: sep_abr_zeroize_latency_test.
+`SEP_TB_OUT(logic [1:0], abr_zeroize_ready_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
 // design does not implement -- see the SMC address decode check in tb_top.
@@ -532,15 +585,14 @@
 `SEP_TB_OUT(logic [31:0], km_sram_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_write_count_o)
 `SEP_TB_OUT(logic [31:0], km_cpu_fetch_count_o)
+`SEP_TB_OUT(logic [31:0], km_kmcsr_irq_entry_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_word0_o)
 // KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
 // for km_rom_otp_id.S, which writes its results to those words.
 `SEP_TB_OUT(logic [98*32-1:0], km_sram_probe_o)
-// KM SRAM read-response timing counters at the wrapper port; see the monitor
-// in tb_top. Observation-only.
+// KM SRAM read counters at the wrapper port; see the monitor in tb_top.
+// Observation-only.
 `SEP_TB_OUT(logic [31:0], km_sram_rd_accept_count_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_lat1_count_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_lat_err_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_rd_b2b_diff_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_scr_rd_count_o)
 // KM SRAM writes accepted while the KM scrambler is enabled, at the wrapper
@@ -562,6 +614,11 @@
 // IRQ_STATUS.key_valid and IRQ_ENABLE.key_valid_en. The ABR bits read 0 in
 // the build without Adams Bridge.
 `SEP_TB_OUT(logic [7:0], km_engine_key_valid_o)
+// The Key Manager error outputs of the DUT (frontdoor, sep_wrapper
+// sep_ras_o.km_uncorrectable and sep_ras_o.km_correctable).
+// Monitor only; PIC vector bits 30 and 31 carry the same faults.
+`SEP_TB_OUT(logic, km_unrecoverable_err_o)
+`SEP_TB_OUT(logic, km_recoverable_err_o)
 `SEP_TB_OUT(logic, km_abr_sk_valid_o)
 `SEP_TB_OUT(logic [255:0], km_abr_sk_key_o)
 `SEP_TB_OUT(logic, km_abr_sk_irq_status_o)
@@ -614,11 +671,6 @@
 `SEP_TB_OUT(logic [8:0], km_outfifo_depth_o)
 // KM-INFIFO: head word of the inbound FIFO of the KM mailbox, {separator, data}.
 `SEP_TB_OUT(logic [32:0], km_infifo_head_o)
-// KM-LAT: the latency of the last completed KM SRAM read at the sep input
-// km_sram_mem_rsp_i, in clocks from the accepted request to rvalid, and the
-// count of completed reads since the bench reset.
-`SEP_TB_OUT(logic [7:0], km_sram_rd_lat_o)
-`SEP_TB_OUT(logic [31:0], km_sram_rd_done_count_o)
 // KM-WMAP: per SRAM write-lock region r (256 words) at [9*r +: 9], the count
 // of distinct logical words written with we at 1 on the sep output
 // km_sram_mem_req_o since the bench reset or the last clock with
@@ -632,9 +684,11 @@
 `SEP_TB_OUT(logic [32*9-1:0], km_sram_wmap_jump_o)
 `SEP_TB_OUT(logic [31:0], km_sram_wmap_jump_wr_o)
 `SEP_TB_OUT(logic, km_sram_wmap_jump_seen_o)
-// KM-AXIV: the KM CPU AXI4-Lite master valids {ar_valid, aw_valid, w_valid}
-// and the KM CPU warm reset rst_warm_sync_n.
+// KM-AXIV: the KM CPU AXI4-Lite master valids {ar_valid, aw_valid, w_valid},
+// the readies of the same channels {ar_ready, aw_ready, w_ready} and the KM CPU
+// warm reset rst_warm_sync_n.
 `SEP_TB_OUT(logic [2:0], km_cpu_axi_valid_o)
+`SEP_TB_OUT(logic [2:0], km_cpu_axi_ready_o)
 `SEP_TB_OUT(logic, km_cpu_rst_n_o)
 // HK-OTP and HK-STRM state: the OTP input is held by the inject; the KM OTP
 // input equals the live OTP word; the withdrawal pulse has been driven since
@@ -645,13 +699,16 @@
 `SEP_TB_OUT(logic, km_strm_wd_fired_o)
 `SEP_TB_OUT(logic, km_strm_wd_tready_o)
 `SEP_TB_OUT(logic, km_strm_sink_tvalid_o)
-// HK-IRQSET, HK-CPUIRQ, HK-KPV, HK-PAR and HK-LAT state: the IRQ_SET pulse has
-// been driven since the arm; the CPU IRQ line pulse has been driven since the
-// arm, and the PicoRV32 pending bits 2:1; the count of corrupted KPV reads
-// since the enable rose; the parity flip has been driven since the arm, the
-// read responses counted since the arm, and the byte lanes that the KM
-// interface parity-checks on the flipped response; the count of SRAM responses
-// that HK-LAT delayed since the bench reset.
+// HK-STRM-PAT state: the partial beat has been driven since the arm; the
+// withdrawal has been driven since the arm.
+`SEP_TB_OUT(logic, km_strm_pat_beat_o)
+`SEP_TB_OUT(logic, km_strm_pat_fired_o)
+// HK-IRQSET, HK-CPUIRQ, HK-KPV and HK-PAR state: the IRQ_SET pulse has been
+// driven since the arm; the CPU IRQ line pulse has been driven since the arm,
+// and the PicoRV32 pending bits 2:1; the count of corrupted KPV reads since the
+// enable rose; the parity flip has been driven since the arm, the read
+// responses counted since the arm, and the byte lanes that the KM interface
+// parity-checks on the flipped response.
 `SEP_TB_OUT(logic, km_irqset_fired_o)
 `SEP_TB_OUT(logic, km_cpuirq_fired_o)
 `SEP_TB_OUT(logic [1:0], km_cpuirq_pending_o)
@@ -659,7 +716,6 @@
 `SEP_TB_OUT(logic, km_par_fired_o)
 `SEP_TB_OUT(logic [7:0], km_par_resp_count_o)
 `SEP_TB_OUT(logic [3:0], km_par_rstrb_o)
-`SEP_TB_OUT(logic [31:0], km_sram_lat_delayed_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)
@@ -714,6 +770,20 @@
 `SEP_TB_OUT(logic [95:0], ext_trng_tdata_o)  // word i at [32*i +: 32]
 `SEP_TB_OUT(logic [11:0], ext_trng_tstrb_o)  // strobe i at [4*i +: 4]
 `SEP_TB_OUT(logic [2:0], ext_trng_tready_o)
+// EDN command request to CSRNG, the hardware application port that EDN drives
+// (u_drbg edn_csrng_req / edn_csrng_rsp): valid, ready and the command word. A
+// command transfers on a clk_i rising edge with valid and ready both high; bits
+// [2:0] of the word are the acmd. Read-only; no force.
+`SEP_TB_OUT(logic, edn_csrng_cmd_valid_o)
+`SEP_TB_OUT(logic, edn_csrng_cmd_ready_o)
+`SEP_TB_OUT(logic [31:0], edn_csrng_cmd_bus_o)
+// Write strobe of the endpoint FIFO of internal DRBG stream i: the EDN endpoint
+// acknowledge into drbg_edn_axis_adapter (u_drbg edn_axis_endpoint_rsp[i].edn_ack)
+// that pushes one word. Read-only; no force.
+`SEP_TB_OUT(logic [2:0], drbg_adapter_push_o)
+// Sample clock of ESRC lane 0 after the source mux and the ripple divider
+// (u_generator_complex.u_sampler_clocks.sample_clk_o[0]). Read-only; no force.
+`SEP_TB_OUT(logic, esrc_sample_clk_lane0_o)
 
 // drbg_axil64_lane_adapter channel-arbitration probes, one 6-bit vector per
 // lane, at the adapter's own AXI-Lite-64 port. The crossbar and
@@ -839,6 +909,11 @@
 // the reset it precedes.
 `SEP_TB_OUT(logic, aes_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, otbn_gated_rst_n_probe_o)
+// Key Manager path isolate-completion bits of the AES and OTBN domains
+// (isolated_o.km_aes, isolated_o.km_otbn): a Key Manager store into that
+// destination is terminated while the bit is 1.
+`SEP_TB_OUT(logic, aes_km_isolated_probe_o)
+`SEP_TB_OUT(logic, otbn_km_isolated_probe_o)
 // Key Manager warm reset (KM-RST, ip_rst_n[0] of the VPLAN bench index): bit km
 // of sep_crypto_gated_rst_no.
 `SEP_TB_OUT(logic, km_gated_rst_n_probe_o)
@@ -861,9 +936,21 @@
 `SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_rresp_probe_o)
-// Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_n, rst_aon_ni of the AON
+// Watchdog timer-domain reset (u_sep_wdt_wrap.rst_wdt_aon_clk_n, rst_aon_ni of the AON
 // timer).
 `SEP_TB_OUT(logic, aon_rst_n_probe_o)
+// Watchdog reset at the output of the reset controller scan bypass
+// (sep_wdt_reset_n, u_sep_reset_ctrl.sep_wdt_reset_no): scan_rst_ni when test_en_i is
+// high, else the two-flop capture of wdt_rst_ni. Read-only.
+`SEP_TB_OUT(logic, sep_wdt_reset_n_probe_o)
+// Watchdog alert (wdt_alert, u_sep_wdt_wrap.wdt_alert_o) and bark interrupt
+// (intr_wdog_timer_bark, u_sep_wdt_wrap.intr_wdog_timer_bark_o). Read-only.
+`SEP_TB_OUT(logic, wdt_alert_probe_o)
+`SEP_TB_OUT(logic, wdt_bark_probe_o)
+// Watchdog count register WDOG_COUNT of the AON timer
+// (u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q, clocked by clk_wdt_i).
+// Read-only.
+`SEP_TB_OUT(logic [31:0], wdt_wdog_count_o)
 // sep_reset_n override select at the SEP boundary
 // (u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd): the value SEP receives
 // after the pin-or-TDR mux.
@@ -874,6 +961,10 @@
 // Debug reset input of the VeeR EL2 wrapper (u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l).
 // Tied to 1 on the CPU stub build.
 `SEP_TB_OUT(logic, dbg_rst_l_probe_o)
+// DMI request of the core debug transport module before the core and uncore
+// mux (u_sep_cpu.u_el2_veer_wrapper): bit 8 dmi_en, bit 7 dmi_wr_en, bits 6:0
+// dmi_addr. Read-only. Tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic [8:0], dmi_req_probe_o)
 // Read source of SEP_CPU_CTRL.TIMEOUT_INTERRUPT.reserved (sw=r, hw=w, no storage):
 // the hwif_in value that the register block returns on a read, on each clock.
 `SEP_TB_OUT(logic, timeout_interrupt_probe_o)
@@ -922,6 +1013,10 @@
 // the read data of a PIC register read on a clock with bit 47 high. 4-state on
 // VCS. Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic [47:0], pic_rd_data_probe_o)
+// PIC register write strobe, observation-only (VeeR EL2 el2_pic_ctrl): [14:0]
+// picm_waddr_ff[14:0], [15] picm_wren_ff. A clock with bit 15 high is one PIC
+// register write at that offset. Tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic [15:0], pic_wr_probe_o)
 // Fault and clear pulses of the bridge-fault latches, observation-only. Bit
 // order of each half: [0] aes, [1] hmac, [2] kmac, [3] otbn, [4] csrng,
 // [5] edn, [6] wdt (sep_pkg::periph_bus_err_e), [7] DMA reg_path_err,
@@ -1070,6 +1165,30 @@
 `SEP_TB_OUT(logic [5:0], pr_ext_rid_o)
 `SEP_TB_OUT(logic, pr_ext_rlast_o)
 `SEP_TB_OUT(logic [63:0], pr_ext_rdata_o)
+// PR-TRNG: the TRNG AXI-Lite passthrough port, wrapper net
+// u_dut.ext_trng_axil_req (sep output ext_trng_axil_req_o).
+`SEP_TB_OUT(logic, pr_trng_awvalid_o)
+`SEP_TB_OUT(logic, pr_trng_awready_o)
+`SEP_TB_OUT(logic [31:0], pr_trng_awaddr_o)
+`SEP_TB_OUT(logic [2:0], pr_trng_awprot_o)
+`SEP_TB_OUT(logic, pr_trng_wvalid_o)
+`SEP_TB_OUT(logic, pr_trng_wready_o)
+`SEP_TB_OUT(logic [31:0], pr_trng_wdata_o)
+`SEP_TB_OUT(logic [3:0], pr_trng_wstrb_o)
+`SEP_TB_OUT(logic, pr_trng_arvalid_o)
+`SEP_TB_OUT(logic, pr_trng_arready_o)
+`SEP_TB_OUT(logic [31:0], pr_trng_araddr_o)
+`SEP_TB_OUT(logic [2:0], pr_trng_arprot_o)
+// PR-TRNG reply: the B and R channels of the same port, wrapper net
+// u_dut.ext_trng_axil_resp (sep input ext_trng_axil_resp_i, READY from
+// u_dut.ext_trng_axil_req), read after the responder force.
+`SEP_TB_OUT(logic, pr_trng_bvalid_o)
+`SEP_TB_OUT(logic, pr_trng_bready_o)
+`SEP_TB_OUT(logic [1:0], pr_trng_bresp_o)
+`SEP_TB_OUT(logic, pr_trng_rvalid_o)
+`SEP_TB_OUT(logic, pr_trng_rready_o)
+`SEP_TB_OUT(logic [1:0], pr_trng_rresp_o)
+`SEP_TB_OUT(logic [31:0], pr_trng_rdata_o)
 // PR-DMACSR: the request at the DMA CSR target port (sep.sv dma_csr_req).
 `SEP_TB_OUT(logic, pr_dmacsr_awvalid_o)
 `SEP_TB_OUT(logic, pr_dmacsr_awready_o)
@@ -1126,30 +1245,35 @@
 `SEP_TB_OUT(logic [55:0], pr_alias_out_araddr_o)
 `SEP_TB_OUT(logic [3:0], pr_alias_out_arcache_o)
 `SEP_TB_OUT(logic [2:0], pr_alias_out_arprot_o)
-// PR-SRAM: the SRAM macro request (wrapper net u_dut.sep_sram_req) and response.
+// PR-SRAM and PR-ROM: the byte-addressed request stream inside each
+// memory_interface, ahead of the macro port, and its response.
 `SEP_TB_OUT(logic, pr_sram_req_o)
-`SEP_TB_OUT(logic, pr_sram_gnt_o)
 `SEP_TB_OUT(logic [31:0], pr_sram_addr_o)
 `SEP_TB_OUT(logic, pr_sram_we_o)
 `SEP_TB_OUT(logic [63:0], pr_sram_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_sram_strb_o)
 `SEP_TB_OUT(logic, pr_sram_rvalid_o)
 `SEP_TB_OUT(logic [63:0], pr_sram_rdata_o)
-// PR-ROM: the boot ROM macro request (wrapper net u_dut.sep_boot_rom_req) and response.
 `SEP_TB_OUT(logic, pr_rom_req_o)
-`SEP_TB_OUT(logic, pr_rom_gnt_o)
 `SEP_TB_OUT(logic [31:0], pr_rom_addr_o)
 `SEP_TB_OUT(logic, pr_rom_we_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_wdata_o)
 `SEP_TB_OUT(logic [7:0], pr_rom_strb_o)
 `SEP_TB_OUT(logic, pr_rom_rvalid_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_rdata_o)
-// PR-ROM macro side: the request after the ROM interface shim
-// (sep_ip_integration rom_macro_req, rom_macro_addr: the 64-bit word index)
-// and the macro read data.
+// PR-ROM macro side: the boot ROM macro request out of the memory_interface
+// (wrapper net u_dut.sep_boot_rom_req; addr is the 64-bit word index) and the
+// macro read data.
 `SEP_TB_OUT(logic, pr_rom_macro_req_o)
 `SEP_TB_OUT(logic [12:0], pr_rom_macro_addr_o)
 `SEP_TB_OUT(logic [63:0], pr_rom_macro_rdata_o)
+// PR-SRAM macro side: the SRAM macro request out of the memory_interface
+// (wrapper net u_dut.sep_sram_req; addr is the 64-bit word index, wmask the bit
+// write mask with each byte strobe widened to eight bits).
+`SEP_TB_OUT(logic, pr_sram_macro_req_o)
+`SEP_TB_OUT(logic, pr_sram_macro_we_o)
+`SEP_TB_OUT(logic [sep_pkg::SEP_SRAM_ADDR_WIDTH-1:0], pr_sram_macro_addr_o)
+`SEP_TB_OUT(logic [sep_pkg::SEP_MEM_DATA_WIDTH-1:0], pr_sram_macro_wmask_o)
 // PR-TCM: the ICCM and DCCM macro request (wrapper net u_dut.sep_cpu_tcm_req)
 // and response (u_dut.sep_cpu_tcm_rsp). Per-bank fields are packed with bank 0
 // in the low bits: ICCM 4 banks of row address [17:4], DCCM 2 banks of row
@@ -1286,12 +1410,15 @@
 `SEP_TB_OUT(logic [2:0], pr_dbg_sb_awid_o)
 `SEP_TB_OUT(logic [7:0], pr_dbg_sb_awlen_o)
 `SEP_TB_OUT(logic [2:0], pr_dbg_sb_awsize_o)
+// AxPROT of the debug-module system-bus master on PR-DBG-SB. Monitor-only.
+`SEP_TB_OUT(logic [2:0], pr_dbg_sb_awprot_o)
 `SEP_TB_OUT(logic, pr_dbg_sb_arvalid_o)
 `SEP_TB_OUT(logic, pr_dbg_sb_arready_o)
 `SEP_TB_OUT(logic [31:0], pr_dbg_sb_araddr_o)
 `SEP_TB_OUT(logic [2:0], pr_dbg_sb_arid_o)
 `SEP_TB_OUT(logic [7:0], pr_dbg_sb_arlen_o)
 `SEP_TB_OUT(logic [2:0], pr_dbg_sb_arsize_o)
+`SEP_TB_OUT(logic [2:0], pr_dbg_sb_arprot_o)
 `SEP_TB_OUT(logic, pr_dbg_sb_wvalid_o)
 `SEP_TB_OUT(logic, pr_dbg_sb_wready_o)
 `SEP_TB_OUT(logic [63:0], pr_dbg_sb_wdata_o)
@@ -1383,6 +1510,10 @@
 `SEP_TB_OUT(logic, efuse_shim_resp_valid_o)
 `SEP_TB_OUT(logic, efuse_shim_resp_status_o)
 `SEP_TB_OUT(sep_efuse_pkg::efuse_data_t, efuse_shim_resp_data_o)
+// Response valid at the input and fuse_sense_done_o at the output of the
+// sensing FSM (efuse_shadow_regs). Read-only taps.
+`SEP_TB_OUT(logic, efuse_shadow_resp_valid_o)
+`SEP_TB_OUT(logic, efuse_shadow_sense_done_o)
 // APB select of the shim request to the OTP bank model. Read-only tap.
 `SEP_TB_OUT(logic, efuse_bank_psel_o)
 // The 256 OTP bank words that SEP reaches (words 0..255 of the bank model).
@@ -1463,6 +1594,14 @@
 // PIC source and leaves this line low; a push at the outbound aperture raises
 // this line and no PIC source. One bit per mailbox channel.
 `SEP_TB_OUT(logic [sep_pkg::NumMailboxes-1:0], smc_mailbox_interrupt_o)
+// Mailbox unit port tap (u_sep_system_peripherals.mailbox_axil_req/resp),
+// read-only: the AW and W handshakes, the AW address, and the W strobe and
+// data the mailbox unit takes (after the mailbox lane inject).
+`SEP_TB_OUT(logic, mbox_axil_aw_hs_o)
+`SEP_TB_OUT(logic [31:0], mbox_axil_aw_addr_o)
+`SEP_TB_OUT(logic, mbox_axil_w_hs_o)
+`SEP_TB_OUT(logic [7:0], mbox_axil_w_strb_o)
+`SEP_TB_OUT(logic [63:0], mbox_axil_w_data_o)
 `SEP_TB_OUT(logic, spi_cs_n_o)
 `SEP_TB_OUT(logic, spi_sck_o)
 `SEP_TB_OUT(logic, spi_mosi_o)

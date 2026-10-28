@@ -171,9 +171,10 @@ __attribute__((cold)) void rom_isr_kmcsr(void) {
         rom_trigger_unrecoverable(ROM_KM_UFAULT_ROM_ACCESS);
 
     if (status.f.otp_change && enable.f.otp_change_en) {
+        rom_kmcsr_irq_status_clear(ROM_KM_IRQ_STATUS_OTP_CHANGE_MASK);
         uint32_t changed = rom_otp_get_change_status();
-        rom_otp_on_change(changed);
         rom_otp_clear_change_status(changed);
+        rom_otp_on_change(changed);
     }
 }
 
@@ -388,6 +389,8 @@ void rom_isr_abr_sharedkey(void) {
  * @param[in] fault_code Fault identifier (ROM_KM_UFAULT_*).
  */
 __attribute__((noreturn, cold)) void rom_trigger_unrecoverable(int8_t fault_code) {
+    /* Mask IRQs to trap on ebreak. */
+    rom_picorv32_maskirq(0xFFFFFFFFu);
     int do_shred = rom_unrec_wipe_enabled();
 
     if (do_shred) {

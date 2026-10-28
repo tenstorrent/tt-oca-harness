@@ -23,7 +23,7 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "1642113637 1735571216"
+CHECKSUM: "294228992 1735571216"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: avsbus_controller
 Condition 81 "3153649340" "(hwif_out.AVS_CMD.req && hwif_out.AVS_CMD.req_is_wr) 1 -1" (2 "10")
@@ -273,16 +273,16 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
-CHECKSUM: "2125226454 2977940430"
+CHECKSUM: "2117159968 4067590397"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: i2c_core
-Condition 23 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
-Condition 36 "200185853" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
-Condition 37 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
-Condition 40 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
-Condition 43 "2145444778" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA))) 1 -1" (2 "101")
-Condition 45 "1859700326" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
-Condition 47 "1505661065" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 21 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
+Condition 35 "200185853" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 36 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 39 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
+Condition 42 "2145444778" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten.DATA))) 1 -1" (2 "101")
+Condition 44 "1859700326" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 46 "1505661065" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
 
 CHECKSUM: "3929405118 2927016927"
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
@@ -295,19 +295,11 @@ Condition 23 "3333435659" "(field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.val
 Condition 24 "4098809404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 27 "1824308135" "(field_storage.I2C_CTRL[0].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
 Condition 28 "434978298" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 30 "2133510649" "((field_storage.I2C_CTRL[1].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 31 "3006557120" "(field_storage.I2C_CTRL[1].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
 Condition 32 "2343050358" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 34 "2494526992" "((field_storage.I2C_CTRL[1].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 35 "2711602547" "(field_storage.I2C_CTRL[1].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
 Condition 36 "3387182562" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 39 "3947382242" "(field_storage.I2C_CTRL[1].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
 Condition 40 "954291887" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 42 "3422574206" "((field_storage.I2C_CTRL[2].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
-Condition 43 "3357802485" "(field_storage.I2C_CTRL[2].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
 Condition 44 "1052023753" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 46 "2417295500" "((field_storage.I2C_CTRL[2].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
-Condition 47 "1532807786" "(field_storage.I2C_CTRL[2].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
 Condition 48 "4141873636" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 51 "1014715315" "(field_storage.I2C_CTRL[2].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
 Condition 52 "1656240774" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
@@ -493,7 +485,7 @@ Branch 142 "4143980261" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 144 "3094198831" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 206 "163551211" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "169117402 3938785771"
+CHECKSUM: "2313761690 3938785771"
 ANNOTATION: "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually exclusive, wr_err is gated on reg_we and addrmiss requires that no address hit, so a read that hits an address always sees reg_error low and the crossed term cannot occur."
 MODULE: idma_reg64_2d_reg_top
 Condition 138 "250880070" "(addr_hit[1] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -873,13 +865,13 @@ Branch 4 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 Branch 11 "1764768895" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 13 "2429376722" "(~arst_n)" (2) "(~arst_n) 0,0"
 
-CHECKSUM: "3897359831 656965095"
+CHECKSUM: "2042902213 3931477819"
 ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: uart_core
-Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 51 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
-Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
-Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
+Condition 51 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 52 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 53 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
+Condition 54 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
 
 CHECKSUM: "2439670790 1423410759"
 ANNOTATION: "SMC-REGBLOCK-A9-ADDRESS-FIXED: the integration presents this single-register block only address zero at the bit its cpuif decodes (output_remap_reg is fed {1'b0, addr[2:0]}, and uart_log_engine_ctrl_reg is selected only inside a four-byte window at an eight-byte aligned base), so cpuif_addr and rd_mux_addr hold zero and a row that needs either nonzero cannot occur."
@@ -926,77 +918,49 @@ CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[1].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[2].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[3].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[4].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[5].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[6].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "254295559 3808596618"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[7].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "1147255362 2271730998"
@@ -1005,12 +969,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[10].u_inbound_filter_ctrl_reg
@@ -1018,12 +977,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[11].u_inbound_filter_ctrl_reg
@@ -1031,12 +985,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[12].u_inbound_filter_ctrl_reg
@@ -1044,12 +993,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[13].u_inbound_filter_ctrl_reg
@@ -1057,12 +1001,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[14].u_inbound_filter_ctrl_reg
@@ -1070,12 +1009,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[15].u_inbound_filter_ctrl_reg
@@ -1083,12 +1017,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[1].u_inbound_filter_ctrl_reg
@@ -1096,12 +1025,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[2].u_inbound_filter_ctrl_reg
@@ -1109,12 +1033,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[3].u_inbound_filter_ctrl_reg
@@ -1122,12 +1041,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[4].u_inbound_filter_ctrl_reg
@@ -1135,12 +1049,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[5].u_inbound_filter_ctrl_reg
@@ -1148,12 +1057,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[6].u_inbound_filter_ctrl_reg
@@ -1161,12 +1065,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[7].u_inbound_filter_ctrl_reg
@@ -1174,12 +1073,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[8].u_inbound_filter_ctrl_reg
@@ -1187,12 +1081,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[9].u_inbound_filter_ctrl_reg
@@ -1200,12 +1089,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
@@ -1221,12 +1105,7 @@ CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
@@ -1236,32 +1115,17 @@ CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
@@ -1271,71 +1135,37 @@ CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
@@ -1348,8 +1178,6 @@ Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[10].u_outbound_filter_ctrl_reg
@@ -1357,12 +1185,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[11].u_outbound_filter_ctrl_reg
@@ -1370,12 +1193,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[12].u_outbound_filter_ctrl_reg
@@ -1383,12 +1201,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[13].u_outbound_filter_ctrl_reg
@@ -1396,12 +1209,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[14].u_outbound_filter_ctrl_reg
@@ -1409,9 +1217,6 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "1147255362 2271730998"
@@ -1420,12 +1225,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[1].u_outbound_filter_ctrl_reg
@@ -1433,12 +1233,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[2].u_outbound_filter_ctrl_reg
@@ -1446,12 +1241,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[3].u_outbound_filter_ctrl_reg
@@ -1459,12 +1249,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[4].u_outbound_filter_ctrl_reg
@@ -1472,12 +1257,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[5].u_outbound_filter_ctrl_reg
@@ -1485,12 +1265,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[6].u_outbound_filter_ctrl_reg
@@ -1498,12 +1273,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[7].u_outbound_filter_ctrl_reg
@@ -1511,12 +1281,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[8].u_outbound_filter_ctrl_reg
@@ -1524,12 +1289,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[9].u_outbound_filter_ctrl_reg
@@ -1537,22 +1297,13 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 45 "1061899655" "(field_storage.FILTER_CONFIG.locked.value | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 46 "999360247" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
@@ -1562,12 +1313,7 @@ CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
@@ -1577,32 +1323,17 @@ CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
@@ -1612,32 +1343,17 @@ CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
@@ -1647,31 +1363,17 @@ CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
-Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
-Condition 20 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (2 "10")
-Condition 21 "445178027" "(field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) 1 -1" (3 "11")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (2 "10")
-Condition 22 "1169346798" "(decoded_wr_data[63] & decoded_wr_biten[63]) 1 -1" (3 "11")
 Condition 23 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "1675336020 2525155830"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
 Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
@@ -1712,11 +1414,7 @@ CHECKSUM: "3452964890 3380696541"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 26 "3525563981" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
 Condition 28 "854828432" "(cpuif_req_masked & (cpuif_addr == 8'h18) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
@@ -1787,27 +1485,12 @@ Condition 359 "1821251107" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 
 Condition 405 "1237604905" "(decoded_reg_strb.TARGET_NACK_COUNT && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 406 "3096888878" "(decoded_reg_strb.TARGET_NACK_COUNT && decoded_req_is_wr) 1 -1" (2 "10")
 Condition 406 "3096888878" "(decoded_reg_strb.TARGET_NACK_COUNT && decoded_req_is_wr) 1 -1" (3 "11")
-Condition 407 "3989326225" "(decoded_reg_strb.TARGET_ACK_CTRL && decoded_req_is_wr && hwif_in.TARGET_ACK_CTRL.NBYTES.swwe) 1 -1" (2 "101")
 Condition 407 "3989326225" "(decoded_reg_strb.TARGET_ACK_CTRL && decoded_req_is_wr && hwif_in.TARGET_ACK_CTRL.NBYTES.swwe) 1 -1" (3 "110")
-Condition 407 "3989326225" "(decoded_reg_strb.TARGET_ACK_CTRL && decoded_req_is_wr && hwif_in.TARGET_ACK_CTRL.NBYTES.swwe) 1 -1" (4 "111")
-Condition 408 "1490750529" "(decoded_reg_strb.TARGET_ACK_CTRL && decoded_req_is_wr) 1 -1" (3 "11")
-Condition 409 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (1 "00")
-Condition 409 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (2 "01")
 Condition 409 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (3 "10")
-Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (1 "01")
 Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (2 "10")
-Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (3 "11")
-Condition 411 "1588250491" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (1 "01")
 Condition 411 "1588250491" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
-Condition 411 "1588250491" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (3 "11")
-Condition 418 "2462359391" "(field_storage.CONTROLLER_EVENTS.NACK.value & ( ~ (decoded_wr_data[0] & decoded_wr_biten[0]) )) 1 -1" (1 "01")
-Condition 420 "3491568449" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (1 "01")
-Condition 422 "3472424962" "(field_storage.CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT.value & ( ~ (decoded_wr_data[1] & decoded_wr_biten[1]) )) 1 -1" (2 "10")
-Condition 424 "3725185032" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
 Condition 426 "3179526460" "(field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value & ( ~ (decoded_wr_data[2] & decoded_wr_biten[2]) )) 1 -1" (2 "10")
 Condition 428 "1340228895" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 430 "1064505780" "(field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value & ( ~ (decoded_wr_data[3] & decoded_wr_biten[3]) )) 1 -1" (2 "10")
-Condition 432 "1802705221" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
 Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 485 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -1816,20 +1499,7 @@ Condition 486 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3
 Condition 487 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
 Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (2 "0000000000001")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (3 "0000000000010")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (4 "0000000000100")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (5 "0000000001000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (7 "0000000100000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (8 "0000001000000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (10 "0000100000000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (11 "0001000000000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (12 "0010000000000")
-Condition 489 "1041723873" "(((|field_storage.INTR_STATE.RX_OVERFLOW.value)) || ((|field_storage.INTR_STATE.SCL_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.SDA_INTERFERENCE.value)) || ((|field_storage.INTR_STATE.STRETCH_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SDA_UNSTABLE.value)) || ((|field_storage.INTR_STATE.CMD_COMPLETE.value)) || ((|field_storage.INTR_STATE.UNEXP_STOP.value)) || ((|field_storage.INTR_STATE.HOST_TIMEOUT.value)) || ((|field_storage.INTR_STATE.SMBALERT.value)) || ((|field_storage.INTR_STATE.CONTROLLER_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.CONTROLLER_RX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_TX_FIFO_ERROR.value)) || ((|field_storage.INTR_STATE.TARGET_RX_FIFO_ERROR.value))) 1 -1" (13 "0100000000000")
 Condition 494 "2985070047" "(((|field_storage.CONTROLLER_EVENTS.NACK.value)) || ((|field_storage.CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value))) 1 -1" (3 "0010")
-Condition 494 "2985070047" "(((|field_storage.CONTROLLER_EVENTS.NACK.value)) || ((|field_storage.CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.CONTROLLER_EVENTS.ARBITRATION_LOST.value))) 1 -1" (4 "0100")
-Condition 495 "2778477252" "(((|field_storage.TARGET_EVENTS.TX_PENDING.value)) || ((|field_storage.TARGET_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.TARGET_EVENTS.ARBITRATION_LOST.value))) 1 -1" (2 "001")
-Condition 495 "2778477252" "(((|field_storage.TARGET_EVENTS.TX_PENDING.value)) || ((|field_storage.TARGET_EVENTS.BUS_TIMEOUT.value)) || ((|field_storage.TARGET_EVENTS.ARBITRATION_LOST.value))) 1 -1" (3 "010")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[0].u_gpio_interface.u_gpio_intf_reg
@@ -1842,704 +1512,448 @@ CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[10].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[11].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[12].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[13].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[14].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[15].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[16].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[17].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[18].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[19].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[1].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[20].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[21].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[22].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[23].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[24].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[25].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[26].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[27].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[28].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[29].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[2].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[30].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[31].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[32].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[33].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[34].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[35].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[36].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[37].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[38].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[39].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[3].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[40].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[41].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[42].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[43].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[44].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[45].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[46].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[47].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[48].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[49].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[4].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[50].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[51].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[52].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[53].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[54].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[55].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[56].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[57].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[58].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[59].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[5].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[60].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[61].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[62].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[63].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[64].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[6].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[7].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[8].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "274773119 2913940277"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_padring.gen_gpio_intf[9].u_gpio_interface.u_gpio_intf_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "2231104132 1067758899"
@@ -2562,11 +1976,7 @@ CHECKSUM: "2231104132 1067758899"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 18 "888746651" "(cpuif_req_masked & (cpuif_addr == 8'h04) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
 Condition 26 "1809936168" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
@@ -2579,9 +1989,7 @@ Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~dec
 Condition 37 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 39 "2746173117" "((field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
 Condition 40 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
-Condition 40 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
 Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (3 "11")
 Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
@@ -2590,11 +1998,7 @@ CHECKSUM: "2231104132 1067758899"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 18 "888746651" "(cpuif_req_masked & (cpuif_addr == 8'h04) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
 Condition 26 "1809936168" "(cpuif_req_masked & (cpuif_addr == 8'h14) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
@@ -2607,9 +2011,7 @@ Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~dec
 Condition 37 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 39 "2746173117" "((field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
 Condition 40 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
-Condition 40 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
 Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (3 "11")
 Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
@@ -2723,15 +2125,10 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (1 "00")
 Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (1 "00")
 Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
 Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
 Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
@@ -2742,9 +2139,6 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "8204497 4290674178"
@@ -2778,7 +2172,6 @@ Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01"
 Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (4 "0100")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
 Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
@@ -2812,12 +2205,9 @@ Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
 Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
 Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
 Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 32 "22249568" "(decoded_reg_strb.FCR && decoded_req_is_wr) 1 -1" (2 "10")
 Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
 Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
 Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (3 "11")
 Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -2834,9 +2224,6 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
@@ -2848,19 +2235,13 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (1 "00")
 Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (1 "00")
 Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
 Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
 Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 93 "2166278152" "(((|field_storage.INTR_STATUS.LOG_FETCH_ERR.value)) || ((|field_storage.INTR_STATUS.LOG_WRITE_ERR.value))) 1 -1" (3 "10")
 
 CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
@@ -2868,9 +2249,6 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "8204497 4290674178"
@@ -2904,8 +2282,6 @@ Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01"
 Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (3 "0010")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (4 "0100")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
 Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
@@ -2939,12 +2315,9 @@ Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
 Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
 Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
 Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 32 "22249568" "(decoded_reg_strb.FCR && decoded_req_is_wr) 1 -1" (2 "10")
 Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
 Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
 Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (3 "11")
 Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -2961,9 +2334,6 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
@@ -2975,19 +2345,13 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
-Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (1 "00")
 Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
-Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (1 "00")
 Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
 Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
 Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 93 "2166278152" "(((|field_storage.INTR_STATUS.LOG_FETCH_ERR.value)) || ((|field_storage.INTR_STATUS.LOG_WRITE_ERR.value))) 1 -1" (3 "10")
 
 CHECKSUM: "902851981 1889139731"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_dl_reg
@@ -2995,9 +2359,6 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "8204497 4290674178"
@@ -3006,9 +2367,6 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "3054181944" "(cpuif_req_masked & (cpuif_addr == 6'b0) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
 Condition 18 "1218320177" "(cpuif_req_masked & (cpuif_addr == 6'b0) & ((!cpuif_req_is_wr))) 1 -1" (3 "110")
@@ -3034,8 +2392,6 @@ Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01"
 Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (3 "0010")
-Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (4 "0100")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (5 "1000")
 Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
 Condition 163 "841484986" "(((|field_storage.MSR.DCTS.value)) || ((|field_storage.MSR.DDSR.value)) || ((|field_storage.MSR.TERI.value)) || ((|field_storage.MSR.DDCD.value))) 1 -1" (2 "0001")
@@ -3069,12 +2425,9 @@ Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
 Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
 Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
 Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
-Condition 32 "22249568" "(decoded_reg_strb.FCR && decoded_req_is_wr) 1 -1" (2 "10")
 Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
 Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
-Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
 Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
-Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (3 "11")
 Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -3091,9 +2444,6 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
-Condition 7 "2066406421" "( ! (axil_ar_accept || axil_aw_accept) ) 1 -1" (2 "1")
-Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (2 "01")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
 Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
@@ -3234,43 +2584,31 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
@@ -3366,43 +2704,31 @@ Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
-Block 37 "2871174096" "cpuif_req = '1;"
-Block 38 "3369338776" "axil_ar_accept = '1;"
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 
 CHECKSUM: "1675336020 4029109273"
@@ -3421,13 +2747,7 @@ ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block si
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 954 "2554105993" "next_c = ((field_storage.TARGET_NACK_COUNT.TARGET_NACK_COUNT.value & (~decoded_wr_biten[7:0])) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]));"
 Block 958 "3245580573" "next_c = 8'hff;"
-Block 969 "1425087504" "next_c = ((field_storage.TARGET_ACK_CTRL.NBYTES.value & (~decoded_wr_biten[8:0])) | (decoded_wr_data[8:0] & decoded_wr_biten[8:0]));"
-Block 976 "626315126" "next_c = (next_c - 9'b1);"
-Block 986 "4214106454" "next_c = ((field_storage.TARGET_ACK_CTRL.NACK.value & (~decoded_wr_biten[31])) | (decoded_wr_data[31] & decoded_wr_biten[31]));"
-Block 1026 "3626751417" "next_c = '1;"
 Block 1037 "2602817404" "next_c = '1;"
-Block 1070 "2929782776" "next_c = '1;"
-Block 1081 "3319162503" "next_c = '1;"
 
 CHECKSUM: "3929405118 707642691"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.u_i2c_ctrl_reg
@@ -3768,13 +3088,11 @@ CHECKSUM: "2231104132 1355226369"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[1].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
-Block 94 "935732731" "next_c = '0;"
 
 CHECKSUM: "2231104132 1355226369"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_telemetry_receiver_wrap.gen_telemetry_receivers[2].u_telemetry_receiver.u_telemetry_receiver_reg
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
-Block 94 "935732731" "next_c = '0;"
 
 CHECKSUM: "2278098036 1267560476"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.u_log_engine_reg
@@ -3825,8 +3143,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
-Block 253 "1373107836" "next_c = '1;"
-Block 275 "1279213479" "next_c = '1;"
 
 CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[1].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
@@ -3862,9 +3178,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
-Block 253 "1373107836" "next_c = '1;"
-Block 264 "2751141056" "next_c = '1;"
-Block 275 "1279213479" "next_c = '1;"
 
 CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[2].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
@@ -3900,9 +3213,6 @@ INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_eng
 ANNOTATION: "SMC-A13-REGBLOCK-IN-PORTS-ONLY-UNIT: this PeakRDL register block sits inside a unit graded on its ports (a T-series class), which design engineering reviewed excluding whole; its line blocks and condition rows are excluded while uncovered, and its toggle nets go with the unit's. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review of the enclosing unit."
 Block 67 "3040295231" "s_axil_bresp = 2'b10;"
 Block 242 "236095624" "next_c = '1;"
-Block 253 "1373107836" "next_c = '1;"
-Block 264 "2751141056" "next_c = '1;"
-Block 275 "1279213479" "next_c = '1;"
 
 CHECKSUM: "1638888483 2986629353"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_uart_wrap.gen_uart_log_engine_wraps[3].u_uart_log_engine_wrap.u_uart_16550.u_uart_16550_main_wo_reg
@@ -3932,215 +3242,114 @@ CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[0].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:60] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [43:20] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[1].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:58] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:60] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.cacheable.value [3:2] "logic hwif_out.REGION.region_attrs.cacheable.value[3:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [43:11] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [7:1] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[2].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:60] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [43:20] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [18] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [12:11] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [7:2] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [0] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[3].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:58] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:60] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.cacheable.value [3:2] "logic hwif_out.REGION.region_attrs.cacheable.value[3:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [43:10] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [7:2] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[4].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:60] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [58] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.cacheable.value [2] "logic hwif_out.REGION.region_attrs.cacheable.value[3:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [43:11] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [7:3] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [1:0] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[5].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:58] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:60] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.cacheable.value [3:2] "logic hwif_out.REGION.region_attrs.cacheable.value[3:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [43:11] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [7:3] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [1] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[6].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:58] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:60] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.cacheable.value [3:2] "logic hwif_out.REGION.region_attrs.cacheable.value[3:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [43:11] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [7:3] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [0] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
 
 CHECKSUM: "254295559 3930243755"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_alias_remap_reg[7].u_smc_alias_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:60] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [43:10] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [7:3] "logic hwif_out.REGION.region_attrs.offset.value[43:0]"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[0].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[10].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[11].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[12].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
@@ -4149,510 +3358,221 @@ CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[13].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[14].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[15].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[1].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[2].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[3].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[4].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[5].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[6].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[7].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[8].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_inbound_filter_config[9].u_inbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:56] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[0].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wdata [62:40] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [37:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [27:26] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:15] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:40] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37:34] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [29:26] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [21:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:40] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [37:34] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [29:26] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [21:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[1].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:40] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [37:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [27:26] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:15] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:40] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37:34] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [29] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [27:26] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [21] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:13] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:40] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [37:34] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [29] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [27:26] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [21] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:13] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[2].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:40] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [37:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [27:26] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:15] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [63:40] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37:34] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [28:26] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:14] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [12:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:40] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [37:34] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [28:26] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:14] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [12:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[3].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:40] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [37:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [27:26] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:15] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:40] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37:34] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [27:26] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:14] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:40] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [37:34] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [27:26] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:14] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[4].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:40] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [37:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [27:26] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:15] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [63:40] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [33:26] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:15] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [13:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:40] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [37:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [33:26] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:15] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [13:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[5].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:40] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [37:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [27:26] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:15] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [63:40] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [33:29] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [27:26] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [21] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:15] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [13] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:40] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [37:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [33:29] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [27:26] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [21] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:15] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [13] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[6].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:40] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [37:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [27:26] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:15] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [63:40] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [33:30] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [28:26] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [20:15] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [12:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:40] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [37:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [33:30] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [28:26] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [20:15] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [12:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_mmode_remap_reg[7].u_smc_mmode_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:40] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [37:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [27:26] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:15] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:40] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [33:30] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [27:26] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:15] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:40] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [37:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [33:30] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [27:26] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:15] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[0].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[10].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[11].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[12].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
@@ -4661,601 +3581,209 @@ CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[13].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[14].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[15].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[1].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[2].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[3].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[4].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[5].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[6].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[7].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[8].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1147255362 534567824"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_outbound_filter_config[9].u_outbound_filter_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:57] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [2:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.FILTER_CONFIG.data_bus_width.next "logic hwif_in.FILTER_CONFIG.data_bus_width.next[2:0]"
-Toggle 1to0 hwif_out.FILTER_CONFIG.locked.value "logic hwif_out.FILTER_CONFIG.locked.value"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[0].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:51] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [49] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [46] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [44:43] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [41] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [36:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [28:27] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:16] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:51] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [49] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [46] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [44:43] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [41] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [36:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [33] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [28:27] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:13] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:51] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [49] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [46] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [44:43] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [41] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [36:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [33] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [28:27] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:13] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[1].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:51] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [49] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [46] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [44:43] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [41] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [36:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [28:27] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:16] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:51] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [49] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [46] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [44:43] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [41] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [36:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [32:27] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:14] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:51] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [49] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [46] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [44:43] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [41] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [36:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [32:27] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:14] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[2].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:51] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [49] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [46] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [44:43] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [41] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [36:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [28:27] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:16] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [63:51] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [49] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [46] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [44:43] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [41] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [36:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [32:30] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [28:27] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [25] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:14] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:51] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [49] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [46] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [44:43] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [41] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [36:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [32:30] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [28:27] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [25] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:14] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[3].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:51] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [49] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [46] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [44:43] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [41] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [36:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [28:27] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:16] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:51] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [49] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [46] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [44:43] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [41] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [36:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [32:31] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [29:27] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [21] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:15] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:51] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [49] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [46] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [44:43] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [41] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [36:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [32:31] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [29:27] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [21] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:15] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[4].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:51] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [49] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [46] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [44:43] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [41] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [36:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [28:27] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:16] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [63:51] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [49] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [46] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [44:43] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [41] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [36:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [32:31] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [28:27] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [25] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [21] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:15] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [13] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:51] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [49] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [46] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [44:43] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [41] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [36:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [32:31] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [28:27] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [25] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [21] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:15] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [13] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[5].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:51] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [49] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [46] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [44:43] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [41] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [36:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [28:27] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:16] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:51] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [49] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [46] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [44:43] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [41] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [36:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [32] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [30:27] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:15] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:51] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [49] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [46] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [44:43] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [41] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [36:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [32] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [30:27] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:15] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[6].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:51] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [49] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [46] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [44:43] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [41] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [36:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [28:27] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:16] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [63:51] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [49] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [46] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [44:43] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [41] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [36:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [32] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [30] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [28:27] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [24:23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:15] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:51] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [49] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [46] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [44:43] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [41] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [36:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [32] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [30] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [28:27] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [24:23] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:15] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "1675336020 3790533153"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.gen_xvisor_remap_reg[7].u_smc_xvisor_remap_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [1:0] "net s_axil_awaddr[3:0]"
 Toggle 1to0 s_axil_awaddr [2] "net s_axil_awaddr[3:0]"
-Toggle s_axil_awprot "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
-Toggle s_axil_wdata [62:51] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [49] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [46] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [44:43] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [41] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [36:35] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [28:27] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [19:16] "net s_axil_wdata[63:0]"
-Toggle s_axil_wdata [11:0] "net s_axil_wdata[63:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle 1to0 s_axil_araddr [2] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [62:51] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [49] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [46] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [44:43] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [41] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [36:35] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [32] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [29:27] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [24] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [21] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [19:16] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [11:0] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [62:56] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [55:51] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [49] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [46] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [44:43] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [41] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [36:35] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [32] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [29:27] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [24] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [21] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [19:16] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
-Toggle hwif_out.REGION.region_attrs.offset.value [11:0] "logic hwif_out.REGION.region_attrs.offset.value[55:0]"
 
 CHECKSUM: "62697152 4010233410"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_base_config_wrap.u_smc_base_config_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[6:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[6:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
-Toggle s_axil_rdata [63:39] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [37] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [35:32] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [23] "logic s_axil_rdata[63:0]"
-Toggle s_axil_rdata [20] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [63:40] "logic s_axil_rdata[63:0]"
+Toggle s_axil_rdata [34] "logic s_axil_rdata[63:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_out.REGION_SIZE.size.value [31:29] "logic hwif_out.REGION_SIZE.size.value[31:0]"
-Toggle hwif_out.REGION_SIZE.size.value [27:26] "logic hwif_out.REGION_SIZE.size.value[31:0]"
-Toggle hwif_out.REGION_SIZE.size.value [23] "logic hwif_out.REGION_SIZE.size.value[31:0]"
-Toggle hwif_out.REGION_SIZE.size.value [19:18] "logic hwif_out.REGION_SIZE.size.value[31:0]"
-Toggle hwif_out.REGION_SIZE.size.value [16:0] "logic hwif_out.REGION_SIZE.size.value[31:0]"
 Toggle hwif_out.LOCAL_BASE.base.value "logic hwif_out.LOCAL_BASE.base.value[55:0]"
-Toggle hwif_out.GLOBAL_BASE.base.value [55:39] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
-Toggle hwif_out.GLOBAL_BASE.base.value [37] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
-Toggle hwif_out.GLOBAL_BASE.base.value [35:32] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
-Toggle hwif_out.GLOBAL_BASE.base.value [29:0] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
+Toggle hwif_out.GLOBAL_BASE.base.value [55:40] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
+Toggle hwif_out.GLOBAL_BASE.base.value [34] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
+Toggle hwif_out.GLOBAL_BASE.base.value [28:0] "logic hwif_out.GLOBAL_BASE.base.value[55:0]"
 
 CHECKSUM: "3363015095 11353493"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_dfx_ctrl_status_wrap.u_dfx_ctrl_status_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
 Toggle s_axil_awaddr [0] "net s_axil_awaddr[4:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[4:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.STATUS_SMU.mbist_pass.next "logic hwif_in.STATUS_SMU.mbist_pass.next"
 Toggle hwif_in.STATUS_SMU.mbist_done.next "logic hwif_in.STATUS_SMU.mbist_done.next"
@@ -5265,13 +3793,7 @@ Toggle hwif_in.STATUS_SMU.mem_repair_done.next "logic hwif_in.STATUS_SMU.mem_rep
 CHECKSUM: "2949011289 1417411540"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.u_cpu_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_awaddr [0] "net s_axil_awaddr[9:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle s_axil_araddr [1:0] "net s_axil_araddr[9:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.SEMA[0].rd_data._reserved_63_16 "logic hwif_in.SEMA[0].rd_data._reserved_63_16[47:0]"
 Toggle hwif_in.SEMA[1].rd_data.sema [15:4] "logic hwif_in.SEMA[1].rd_data.sema[15:0]"
@@ -5292,154 +3814,157 @@ Toggle hwif_in.WB_PC_CORE3[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[0].pc.n
 Toggle hwif_in.WB_PC_CORE3[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[0].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[0].pc.next [0] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE3[0].pc.next [13] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[0].pc.next [11] "logic hwif_in.WB_PC_CORE3[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[1].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[1].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[1].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[1].pc.next [0] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[1].pc.next [17] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE3[1].pc.next [13] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[1].pc.next [11] "logic hwif_in.WB_PC_CORE3[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[2].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[2].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[2].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[2].pc.next [0] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[2].pc.next [17] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE3[2].pc.next [13] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[2].pc.next [11] "logic hwif_in.WB_PC_CORE3[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[3].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[3].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[3].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[3].pc.next [0] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[3].pc.next [17] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE3[3].pc.next [13] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[3].pc.next [11] "logic hwif_in.WB_PC_CORE3[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[4].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[4].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE3[4].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE3[4].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[4].pc.next [0] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[4].pc.next [17] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[4].pc.next [11] "logic hwif_in.WB_PC_CORE3[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[5].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[5].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE3[5].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE3[5].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[5].pc.next [0] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[5].pc.next [17] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[5].pc.next [13] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[5].pc.next [11] "logic hwif_in.WB_PC_CORE3[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[6].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[6].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE3[6].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE3[6].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[6].pc.next [0] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[6].pc.next [17] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[6].pc.next [13] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[6].pc.next [11] "logic hwif_in.WB_PC_CORE3[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE3[7].pc.next [16:14] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE3[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE3[7].pc.next [0] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [13] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE3[7].pc.next [11] "logic hwif_in.WB_PC_CORE3[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[0].pc.next [0] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE2[0].pc.next [13] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[0].pc.next [11] "logic hwif_in.WB_PC_CORE2[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[1].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[1].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[1].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[1].pc.next [0] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[1].pc.next [17] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE2[1].pc.next [13] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[1].pc.next [11] "logic hwif_in.WB_PC_CORE2[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[2].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[2].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[2].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[2].pc.next [0] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[2].pc.next [17] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE2[2].pc.next [13] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[2].pc.next [11] "logic hwif_in.WB_PC_CORE2[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[3].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[3].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[3].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[3].pc.next [0] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[3].pc.next [17] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE2[3].pc.next [13] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[3].pc.next [11] "logic hwif_in.WB_PC_CORE2[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[4].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[4].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE2[4].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE2[4].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[4].pc.next [0] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[4].pc.next [17] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[4].pc.next [11] "logic hwif_in.WB_PC_CORE2[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[5].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[5].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE2[5].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE2[5].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[5].pc.next [0] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[5].pc.next [17] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[5].pc.next [13] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[5].pc.next [11] "logic hwif_in.WB_PC_CORE2[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[6].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[6].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE2[6].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE2[6].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[6].pc.next [0] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[6].pc.next [17] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[6].pc.next [13] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[6].pc.next [11] "logic hwif_in.WB_PC_CORE2[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE2[7].pc.next [16:14] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE2[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE2[7].pc.next [0] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [13] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE2[7].pc.next [11] "logic hwif_in.WB_PC_CORE2[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[0].pc.next [0] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE1[0].pc.next [13] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[0].pc.next [11] "logic hwif_in.WB_PC_CORE1[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[1].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[1].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[1].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[1].pc.next [0] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[1].pc.next [17] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE1[1].pc.next [13] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[1].pc.next [11] "logic hwif_in.WB_PC_CORE1[1].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[2].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[2].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[2].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[2].pc.next [0] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[2].pc.next [17] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE1[2].pc.next [13] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[2].pc.next [11] "logic hwif_in.WB_PC_CORE1[2].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[3].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[3].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[3].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[3].pc.next [0] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[3].pc.next [17] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
+Toggle 1to0 hwif_in.WB_PC_CORE1[3].pc.next [13] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[3].pc.next [11] "logic hwif_in.WB_PC_CORE1[3].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[4].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[4].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE1[4].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE1[4].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[4].pc.next [0] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[4].pc.next [17] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[4].pc.next [11] "logic hwif_in.WB_PC_CORE1[4].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[5].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[5].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE1[5].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE1[5].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[5].pc.next [0] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[5].pc.next [17] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[5].pc.next [13] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[5].pc.next [11] "logic hwif_in.WB_PC_CORE1[5].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[6].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[6].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE1[6].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE1[6].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[6].pc.next [0] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[6].pc.next [17] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[6].pc.next [13] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[6].pc.next [11] "logic hwif_in.WB_PC_CORE1[6].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [57:32] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [29:19] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
-Toggle hwif_in.WB_PC_CORE1[7].pc.next [16:14] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
+Toggle hwif_in.WB_PC_CORE1[7].pc.next [16:13] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE1[7].pc.next [0] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [31:30] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [18:17] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
-Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [13] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE1[7].pc.next [11] "logic hwif_in.WB_PC_CORE1[7].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[0].pc.next [57:32] "logic hwif_in.WB_PC_CORE0[0].pc.next[57:0]"
 Toggle hwif_in.WB_PC_CORE0[0].pc.next [29:19] "logic hwif_in.WB_PC_CORE0[0].pc.next[57:0]"
@@ -5481,104 +4006,22 @@ Toggle hwif_in.WB_PC_CORE0[7].pc.next [16:15] "logic hwif_in.WB_PC_CORE0[7].pc.n
 Toggle hwif_in.WB_PC_CORE0[7].pc.next [0] "logic hwif_in.WB_PC_CORE0[7].pc.next[57:0]"
 Toggle 1to0 hwif_in.WB_PC_CORE0[7].pc.next [17] "logic hwif_in.WB_PC_CORE0[7].pc.next[57:0]"
 Toggle hwif_in.TEST_CTRL.data.next "logic hwif_in.TEST_CTRL.data.next[31:0]"
-Toggle hwif_in.REFERENCE_COUNTER.rc.next [63:20] "logic hwif_in.REFERENCE_COUNTER.rc.next[63:0]"
-Toggle 1to0 hwif_in.REFERENCE_COUNTER.rc.next [19] "logic hwif_in.REFERENCE_COUNTER.rc.next[63:0]"
-Toggle hwif_in.CORE_RESET_PULSE_COUNT.core_resets_done.next [3:2] "logic hwif_in.CORE_RESET_PULSE_COUNT.core_resets_done.next[3:0]"
-Toggle hwif_in.CORE_RESET_PULSE_COUNT.core_resets_done.next [0] "logic hwif_in.CORE_RESET_PULSE_COUNT.core_resets_done.next[3:0]"
-Toggle hwif_in.RESET_CTRL.rd_data.core2_reset_n_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core2_reset_n_n0_scan"
-Toggle hwif_in.RESET_CTRL.rd_data.core3_reset_n_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core3_reset_n_n0_scan"
+Toggle hwif_in.REFERENCE_COUNTER.rc.next [30] "logic hwif_in.REFERENCE_COUNTER.rc.next[63:0]"
+Toggle hwif_in.REFERENCE_COUNTER.rc.next [28] "logic hwif_in.REFERENCE_COUNTER.rc.next[63:0]"
+Toggle hwif_in.REFERENCE_COUNTER.rc.next [22] "logic hwif_in.REFERENCE_COUNTER.rc.next[63:0]"
 Toggle hwif_in.RESET_CTRL.rd_data.core0_reset_pulse_start_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core0_reset_pulse_start_n0_scan"
 Toggle hwif_in.RESET_CTRL.rd_data.core1_reset_pulse_start_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core1_reset_pulse_start_n0_scan"
 Toggle hwif_in.RESET_CTRL.rd_data.core2_reset_pulse_start_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core2_reset_pulse_start_n0_scan"
 Toggle hwif_in.RESET_CTRL.rd_data.core3_reset_pulse_start_n0_scan "logic hwif_in.RESET_CTRL.rd_data.core3_reset_pulse_start_n0_scan"
-Toggle 1to0 hwif_in.RESET_CTRL.rd_data.debug_reset_n_n0_scan "logic hwif_in.RESET_CTRL.rd_data.debug_reset_n_n0_scan"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [63] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [61] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [58] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [56:55] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [53] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [50] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [48:35] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [33] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [31] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [29] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [17] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [15:13] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [11:9] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [6] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [3] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value [1] "logic hwif_out.DUMMY_ROM_NULL[1].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [63] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [61] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [58] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [56:55] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [53] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [50] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [48:35] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [32:31] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [29] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [17] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [15:13] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [11:10] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [6] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value [3] "logic hwif_out.DUMMY_ROM_NULL[2].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [63] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [61] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [58] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [56:55] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [53] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [50] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [48:35] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [31] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [29] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [17] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [15:13] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [11:10] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [6] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value [3] "logic hwif_out.DUMMY_ROM_NULL[3].dummy_rom_null.value[63:0]"
-Toggle hwif_out.REFERENCE_COUNTER.rc.value [63:20] "logic hwif_out.REFERENCE_COUNTER.rc.value[63:0]"
-Toggle 1to0 hwif_out.REFERENCE_COUNTER.rc.value [19] "logic hwif_out.REFERENCE_COUNTER.rc.value[63:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [55:32] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [30:29] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [24] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [20] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [18] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [15:9] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [6] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [4:3] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[1].vector.value [1:0] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle 1to0 hwif_out.RESET_VECTOR[1].vector.value [17] "logic hwif_out.RESET_VECTOR[1].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [55:32] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [30:29] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [24] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [20] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [18] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [15:10] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [8] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [6] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[2].vector.value [4:3] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle 1to0 hwif_out.RESET_VECTOR[2].vector.value [17] "logic hwif_out.RESET_VECTOR[2].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [55:32] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [30:29] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [24] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [20] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [18] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [15:10] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [6] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [4:3] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle hwif_out.RESET_VECTOR[3].vector.value [0] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
-Toggle 1to0 hwif_out.RESET_VECTOR[3].vector.value [17] "logic hwif_out.RESET_VECTOR[3].vector.value[55:0]"
+Toggle hwif_out.REFERENCE_COUNTER.rc.value [30] "logic hwif_out.REFERENCE_COUNTER.rc.value[63:0]"
+Toggle hwif_out.REFERENCE_COUNTER.rc.value [28] "logic hwif_out.REFERENCE_COUNTER.rc.value[63:0]"
+Toggle hwif_out.REFERENCE_COUNTER.rc.value [22] "logic hwif_out.REFERENCE_COUNTER.rc.value[63:0]"
 
 CHECKSUM: "3452964890 1419707144"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.ACQDATA.rd_data._reserved_31_11 "logic hwif_in.ACQDATA.rd_data._reserved_31_11[20:0]"
 Toggle hwif_in.TARGET_FIFO_STATUS.ACQLVL.next [11:6] "logic hwif_in.TARGET_FIFO_STATUS.ACQLVL.next[11:0]"
@@ -5591,38 +4034,25 @@ Toggle hwif_out.TARGET_ACK_CTRL.NBYTES.value [8:2] "logic hwif_out.TARGET_ACK_CT
 CHECKSUM: "3452964890 1419707144"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
-Toggle 1to0 s_axil_awprot [1] "net s_axil_awprot[2:0]"
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
-Toggle hwif_in.TARGET_EVENTS.BUS_TIMEOUT.next "logic hwif_in.TARGET_EVENTS.BUS_TIMEOUT.next"
 Toggle hwif_in.CONTROLLER_EVENTS.BUS_TIMEOUT.next "logic hwif_in.CONTROLLER_EVENTS.BUS_TIMEOUT.next"
 Toggle hwif_in.ACQDATA.rd_data._reserved_31_11 "logic hwif_in.ACQDATA.rd_data._reserved_31_11[20:0]"
 Toggle hwif_in.TARGET_FIFO_STATUS.ACQLVL.next [11:6] "logic hwif_in.TARGET_FIFO_STATUS.ACQLVL.next[11:0]"
 Toggle hwif_in.TARGET_FIFO_STATUS.TXLVL.next [11:7] "logic hwif_in.TARGET_FIFO_STATUS.TXLVL.next[11:0]"
-Toggle hwif_in.HOST_FIFO_STATUS.RXLVL.next [11:2] "logic hwif_in.HOST_FIFO_STATUS.RXLVL.next[11:0]"
+Toggle hwif_in.HOST_FIFO_STATUS.RXLVL.next [11:7] "logic hwif_in.HOST_FIFO_STATUS.RXLVL.next[11:0]"
 Toggle hwif_in.HOST_FIFO_STATUS.FMTLVL.next [11:7] "logic hwif_in.HOST_FIFO_STATUS.FMTLVL.next[11:0]"
 Toggle hwif_in.RDATA.rd_data._reserved_31_8 "logic hwif_in.RDATA.rd_data._reserved_31_8[23:0]"
-Toggle hwif_out.TARGET_EVENTS.BUS_TIMEOUT.value "logic hwif_out.TARGET_EVENTS.BUS_TIMEOUT.value"
-Toggle 1to0 hwif_out.CONTROLLER_EVENTS.ARBITRATION_LOST.value "logic hwif_out.CONTROLLER_EVENTS.ARBITRATION_LOST.value"
 Toggle hwif_out.CONTROLLER_EVENTS.BUS_TIMEOUT.value "logic hwif_out.CONTROLLER_EVENTS.BUS_TIMEOUT.value"
-Toggle hwif_out.TARGET_ACK_CTRL.NBYTES.value "logic hwif_out.TARGET_ACK_CTRL.NBYTES.value[8:0]"
-Toggle hwif_out.SMBUS_CTRL.SMBALERT.value "logic hwif_out.SMBUS_CTRL.SMBALERT.value"
 
 CHECKSUM: "3929405118 973666922"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_i2c_wrap.u_i2c_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[3:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
 Toggle s_axil_rdata [31:9] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rdata [7:5] "logic s_axil_rdata[31:0]"
 Toggle s_axil_rdata [3:1] "logic s_axil_rdata[31:0]"
@@ -5631,11 +4061,7 @@ Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 CHECKSUM: "3705669176 786261837"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller.u_efuse_interface_ctrl_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_apb_pprot [2] "net s_apb_pprot[2:0]"
-Toggle s_apb_pprot [0] "net s_apb_pprot[2:0]"
 Toggle s_apb_paddr [1:0] "net s_apb_paddr[4:0]"
-Toggle s_apb_prdata [31:29] "logic s_apb_prdata[31:0]"
-Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [30] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [26] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [24] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [21] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
@@ -5643,7 +4069,8 @@ Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [17:16] "logic hwif_in.E
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [14] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [12] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [10] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
-Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [7:5] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
+Toggle hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [7:6] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
+Toggle 1to0 hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next [30] "logic hwif_in.EFUSE_READ_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [30] "logic hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [26] "logic hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [24] "logic hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next[31:0]"
@@ -5653,8 +4080,6 @@ Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [14] "logic hwif_in.E
 Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [12] "logic hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [10] "logic hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next[31:0]"
 Toggle hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next [7:5] "logic hwif_in.EFUSE_PROGRAM_INTERFACE_READ_DATA.dout.next[31:0]"
-Toggle hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error.next "logic hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error.next"
-Toggle hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error.next "logic hwif_in.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error.next"
 
 CHECKSUM: "3619095557 4264359562"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_chip_config_reg
@@ -5685,7 +4110,6 @@ Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 CHECKSUM: "3502264770 1350281502"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_misc_wrap.u_smc_scratch_reg_cold_warm
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_wready "logic s_axil_wready"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_arready "logic s_axil_arready"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
@@ -5693,101 +4117,15 @@ Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 CHECKSUM: "1251971546 306831124"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_reset_unit_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle s_axil_awaddr [0] "net s_axil_awaddr[7:0]"
-Toggle s_axil_awprot [2] "net s_axil_awprot[2:0]"
-Toggle s_axil_awprot [0] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
 Toggle s_axil_araddr [1:0] "net s_axil_araddr[7:0]"
-Toggle s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.ISOLATE_REQ_SMC_REG.rd_data._reserved_31_1 "logic hwif_in.ISOLATE_REQ_SMC_REG.rd_data._reserved_31_1[30:0]"
-Toggle hwif_in.SS_RESET_COMPLETE.reset_complete.next [30:1] "logic hwif_in.SS_RESET_COMPLETE.reset_complete.next[31:0]"
-Toggle hwif_in.SS_CONFIG.rd_data.ss_config [14] "logic hwif_in.SS_CONFIG.rd_data.ss_config[31:0]"
-Toggle hwif_in.SS_CONFIG.rd_data.ss_config [12:11] "logic hwif_in.SS_CONFIG.rd_data.ss_config[31:0]"
-Toggle hwif_in.SS_CONFIG.rd_data.ss_config [9] "logic hwif_in.SS_CONFIG.rd_data.ss_config[31:0]"
-Toggle hwif_in.SS_CONFIG.rd_data.ss_config [6] "logic hwif_in.SS_CONFIG.rd_data.ss_config[31:0]"
-Toggle hwif_in.SS_CONFIG.rd_data.ss_config [4:3] "logic hwif_in.SS_CONFIG.rd_data.ss_config[31:0]"
-Toggle hwif_in.SS_CONFIG.rd_data.ss_config [1] "logic hwif_in.SS_CONFIG.rd_data.ss_config[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [31] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [29] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [26] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [24:23] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [21] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [18] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [16] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [14] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [12:11] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [9] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [6] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [4:3] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value [1] "logic hwif_out.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value[31:0]"
-Toggle hwif_out.SS_COLD_RESET_LOCK.cold_reset_lock.value [31:2] "logic hwif_out.SS_COLD_RESET_LOCK.cold_reset_lock.value[31:0]"
-Toggle hwif_out.SS_COLD_RESET_LOCK.cold_reset_lock.value [0] "logic hwif_out.SS_COLD_RESET_LOCK.cold_reset_lock.value[31:0]"
-Toggle 1to0 hwif_out.SS_COLD_RESET_LOCK.cold_reset_lock.value [1] "logic hwif_out.SS_COLD_RESET_LOCK.cold_reset_lock.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [31] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [29] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [26] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [24:23] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [21] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [18] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [16] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [14] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [12:11] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [9] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [6] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [4:3] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_DEBUG_HOLD.debug_hold.value [1] "logic hwif_out.SS_DEBUG_HOLD.debug_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [31] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [29] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [26] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [24:23] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [21] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [18] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [16] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [14] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [12:11] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [9] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [6] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [4:3] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value [1] "logic hwif_out.SS_CRITICAL_HOLD.critical_signal_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [31] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [29] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [26] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [24:23] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [21] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [18] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [16] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [14] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [12:11] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [9] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [6] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [4:3] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_SRAM_HOLD.sram_hold.value [1] "logic hwif_out.SS_SRAM_HOLD.sram_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [31] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [29] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [26] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [24:23] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [21] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [18] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [16] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [14] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [12:11] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [9] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [6] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [4:3] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value [1] "logic hwif_out.SS_CONFIG_HOLD.configuration_state_hold.value[31:0]"
-Toggle hwif_out.SS_CONFIG_LOCK.config_lock.value [31:2] "logic hwif_out.SS_CONFIG_LOCK.config_lock.value[31:0]"
-Toggle hwif_out.SS_CONFIG_LOCK.config_lock.value [0] "logic hwif_out.SS_CONFIG_LOCK.config_lock.value[31:0]"
-Toggle 1to0 hwif_out.SS_CONFIG_LOCK.config_lock.value [1] "logic hwif_out.SS_CONFIG_LOCK.config_lock.value[31:0]"
 
 CHECKSUM: "3416439943 1716376841"
 INSTANCE: smc_uvm_top.u_dut.u_smc.u_smc_peripherals.u_system_timer_octs.u_reg
 ANNOTATION: "SMC-A12-REGBLOCK-FIELDS-REVIEWED: design engineering reviewed these PeakRDL register-block fields and interface bits as not exercised by the SMC bench. Retired by an enrolled leaf that covers the point, or design engineering withdrawing the review."
-Toggle 1to0 s_axil_awprot [2] "net s_axil_awprot[2:0]"
 Toggle s_axil_bresp [1] "logic s_axil_bresp[1:0]"
-Toggle 1to0 s_axil_arprot [2] "net s_axil_arprot[2:0]"
-Toggle 1to0 s_axil_arprot [0] "net s_axil_arprot[2:0]"
 Toggle s_axil_rresp [1] "logic s_axil_rresp[1:0]"
 Toggle hwif_in.CREDIT_EXPIRED.rd_data.MAX_CYCLES_EXPIRED [31:18] "logic hwif_in.CREDIT_EXPIRED.rd_data.MAX_CYCLES_EXPIRED[31:0]"
 Toggle 1to0 hwif_in.CREDIT_EXPIRED.rd_data.MAX_CYCLES_EXPIRED [17] "logic hwif_in.CREDIT_EXPIRED.rd_data.MAX_CYCLES_EXPIRED[31:0]"

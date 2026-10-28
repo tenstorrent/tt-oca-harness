@@ -50,3 +50,9 @@ coverage_off -file "*vendor/*"
 coverage_off -file "*chipyard_generated_files/*"
 coverage_off -file "*hw/ip/*"
 coverage_off -file "*hw/common/*"
+
+// ---------------------------------------------------------------------------
+// Simulator library.
+// ---------------------------------------------------------------------------
+// The std package Verilator ships, which a covergroup brings into the build.
+coverage_off -file "*verilated_std.sv"

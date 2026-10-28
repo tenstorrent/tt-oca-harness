@@ -25,6 +25,7 @@ run_modes = ["smoke"]
 name = "smc_register_boundary_depth_test"
 module = "smc_register_boundary_depth_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "axil"]
 run_modes = ["smoke"]
@@ -33,6 +34,7 @@ run_modes = ["smoke"]
 name = "smc_reg_island_boundary_sweep_test"
 module = "smc_reg_island_boundary_sweep_test"
 seed = 1
+reseed = 1
 timeout_sec = 1800
 tags = ["ci", "axil"]
 run_modes = ["smoke"]
@@ -40,6 +42,15 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_rdl_field_sweep_test"
 module = "smc_rdl_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil"]
+run_modes = ["smoke"]
+
+[[tests]]
+# Sub-word reads of 133 register-block instances, strobed FILTER_CONFIG writes, window sweeps.
+name = "smc_regblock_subword_strobe_sweep_test"
+module = "smc_regblock_subword_strobe_sweep_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "axil"]

@@ -16086,7 +16086,7 @@ class SEP_EFUSE_MAP_LOCKS_SPARE_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT = 0x000000F0
+SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT = 0x0000000F
 SEP_EFUSE_MAP_LC_STATE_REG_FIELD_ACCESS = (
     ('lc_state', 'r', '', '', False),
     ('rsvd', 'r', '', '', False),
@@ -16094,7 +16094,7 @@ SEP_EFUSE_MAP_LC_STATE_REG_FIELD_ACCESS = (
 
 SEP_EFUSE_MAP_LC_STATE_REG_WIDTH = 32
 SEP_EFUSE_MAP_LC_STATE_REG_FIELDS = (
-    ('lc_state', 0, 7, 'r', 'rw', '', '', False, True, 240),
+    ('lc_state', 0, 7, 'r', 'rw', '', '', False, True, 15),
     ('rsvd', 8, 31, 'r', 'rw', '', '', False, True, 0),
 )
 
@@ -16104,7 +16104,7 @@ class SEP_EFUSE_MAP_LC_STATE_reg_t(Structure):
         ('rsvd', c_uint32, 24),
     ]
 
-SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT = 0x000000F0
+SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT = 0x0000000F
 
 class SEP_EFUSE_MAP_LC_STATE_reg_u(Union):
     _fields_ = [

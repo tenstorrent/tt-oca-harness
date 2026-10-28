@@ -128,6 +128,7 @@ module OCAH4CORECluster_TilePRCIDomain (	// @[generators/rocket-chip/src/main/sc
   output        auto_tl_slave_clock_xing_in_d_bits_denied,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output [63:0] auto_tl_slave_clock_xing_in_d_bits_data,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output        auto_tl_slave_clock_xing_in_d_bits_corrupt,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
+  output        auto_tile_reset_out_1,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_tl_master_clock_xing_out_a_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output        auto_tl_master_clock_xing_out_a_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output [2:0]  auto_tl_master_clock_xing_out_a_bits_opcode,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
@@ -164,6 +165,7 @@ module OCAH4CORECluster_TilePRCIDomain (	// @[generators/rocket-chip/src/main/sc
   input         auto_tl_master_clock_xing_out_e_ready,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output        auto_tl_master_clock_xing_out_e_valid,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   output [1:0]  auto_tl_master_clock_xing_out_e_bits_sink,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
+  output        auto_tile_reset_out_0,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_tap_clock_in_clock,	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
   input         auto_tap_clock_in_reset	// @[generators/diplomacy/diplomacy/src/diplomacy/lazymodule/LazyModuleImp.scala:107:25]
 );
@@ -173,11 +175,11 @@ module OCAH4CORECluster_TilePRCIDomain (	// @[generators/rocket-chip/src/main/sc
   wire _intsink_1_auto_out_0;	// @[generators/rocket-chip/src/main/scala/interrupts/Crossing.scala:109:29]
   wire _intsink_1_auto_out_1;	// @[generators/rocket-chip/src/main/scala/interrupts/Crossing.scala:109:29]
   wire _intsink_auto_out_0;	// @[generators/rocket-chip/src/main/scala/interrupts/Crossing.scala:86:29]
-  wire _element_reset_domain_rockettile_auto_int_outward_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
-  wire _element_reset_domain_rockettile_auto_wfi_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
-  wire _element_reset_domain_rockettile_auto_cease_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
-  wire _element_reset_domain_rockettile_auto_halt_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
-  OCAH4CORECluster_RocketTile element_reset_domain_rockettile (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
+  wire _element_reset_domain_rockettile_auto_int_outward_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
+  wire _element_reset_domain_rockettile_auto_wfi_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
+  wire _element_reset_domain_rockettile_auto_cease_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
+  wire _element_reset_domain_rockettile_auto_halt_out_0;	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
+  OCAH4CORECluster_RocketTile element_reset_domain_rockettile (	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
     .l1_icache_tag_array_req(l1_icache_tag_array_req),
     .l1_icache_tag_array_rsp(l1_icache_tag_array_rsp),
     .l1_icache_data_arrays_1_req(l1_icache_data_arrays_1_req),
@@ -283,26 +285,28 @@ module OCAH4CORECluster_TilePRCIDomain (	// @[generators/rocket-chip/src/main/sc
   OCAH4CORECluster_IntSyncCrossingSource_n1x1 intsource (	// @[generators/rocket-chip/src/main/scala/interrupts/Crossing.scala:29:31]
     .clock           (auto_tap_clock_in_clock),
     .reset           (auto_tap_clock_in_reset),
-    .auto_in_0       (_element_reset_domain_rockettile_auto_int_outward_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
+    .auto_in_0       (_element_reset_domain_rockettile_auto_int_outward_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
     .auto_out_sync_0 (auto_int_out_clock_xing_out_sync_0)
   );
   OCAH4CORECluster_IntSyncCrossingSource_n1x1 intsource_1 (	// @[generators/rocket-chip/src/main/scala/interrupts/Crossing.scala:29:31]
     .clock           (auto_tap_clock_in_clock),
     .reset           (auto_tap_clock_in_reset),
-    .auto_in_0       (_element_reset_domain_rockettile_auto_halt_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
+    .auto_in_0       (_element_reset_domain_rockettile_auto_halt_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
     .auto_out_sync_0 (/* unused */)
   );
   OCAH4CORECluster_IntSyncCrossingSource_n1x1 intsource_2 (	// @[generators/rocket-chip/src/main/scala/interrupts/Crossing.scala:29:31]
     .clock           (auto_tap_clock_in_clock),
     .reset           (auto_tap_clock_in_reset),
-    .auto_in_0       (_element_reset_domain_rockettile_auto_wfi_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
+    .auto_in_0       (_element_reset_domain_rockettile_auto_wfi_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
     .auto_out_sync_0 (/* unused */)
   );
   OCAH4CORECluster_IntSyncCrossingSource_n1x1 intsource_3 (	// @[generators/rocket-chip/src/main/scala/interrupts/Crossing.scala:29:31]
     .clock           (auto_tap_clock_in_clock),
     .reset           (auto_tap_clock_in_reset),
-    .auto_in_0       (_element_reset_domain_rockettile_auto_cease_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:164:59]
+    .auto_in_0       (_element_reset_domain_rockettile_auto_cease_out_0),	// @[generators/rocket-chip/src/main/scala/subsystem/HasTiles.scala:170:59]
     .auto_out_sync_0 (/* unused */)
   );
+  assign auto_tile_reset_out_1 = auto_tap_clock_in_reset;	// @[generators/rocket-chip/src/main/scala/prci/ClockDomain.scala:14:9]
+  assign auto_tile_reset_out_0 = auto_tap_clock_in_reset;	// @[generators/rocket-chip/src/main/scala/prci/ClockDomain.scala:14:9]
 endmodule
 

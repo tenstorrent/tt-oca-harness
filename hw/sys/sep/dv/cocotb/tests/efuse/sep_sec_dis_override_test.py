@@ -43,17 +43,18 @@ In that retained window (SEC_DIS=1, sense stopped, every shadow at its reset
 value) the JTAG AXI-Lite port writes the shadow map. The lifecycle filter
 restricts JTAG only in PROD and RMA_SIP, and the held ``LC_STATE`` is
 neither, so the port reaches the map. A writable shadow takes the write. The
-``LC_STATE`` write is logged (OBS-SECDIS-LC-WR): the specification gives the
-pre-sense shadow word two values (adoc INVALID, RDL reset), so the
-terminal-rule outcome has no single golden. The external debug bus
-must change around those writes and hold still in the quiet windows on each
-side of them; no lane position is assumed.
+``LC_STATE`` write is logged (OBS-SECDIS-LC-WR): the held word is the INVALID
+encoding, and the specification does not state the effect of a write to that
+terminal word, so the outcome has no golden. The external debug bus is
+watched around those writes and in a quiet window on each side of them and
+logged (OBS-SECDIS-DBG-BUS): no specification puts eFuse state on that bus.
 
 After a later full sense, a fresh match on the PROD image opens
 ``FEAT_CTRL`` with the ``TEST_EN`` strap at 0: the register and the
 feature-control probe are all ones and ``secure_tm_o`` is 0.
 
-Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR is a log line):
+Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR and
+OBS-SECDIS-DBG-BUS are log lines):
 
   CHK-OVR-ALONE          the IC_RESET override alone releases the reset, FEAT_CTRL closed
   CHK-SENSE-GATED-RESET  a match does not release the sense-gated reset
@@ -62,9 +63,9 @@ Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR is a log
   CHK-MAP-OPEN           LC_STATE shadow read answers OKAY under SEC_DIS
   CHK-SENSE-STUCK        sense stays stopped and the reset held under SEC_DIS
   CHK-RETAIN-*           the same five contracts after rst_ni with the token kept
+  CHK-RETAIN-LC-RESET    after that rst_ni the LC_STATE word reads its reset value
+                         0x0F (control: the word read a sensed value before it)
   CHK-SECDIS-SHADOW-WR   JTAG write of a 0 bit of REQUIRED_SIGNERS lands (frontdoor)
-  CHK-SECDIS-DBG-BUS     ext_debug_bus_o changes around the JTAG writes and not
-                         in the quiet windows (control: CHK-HOOK)
   CHK-DROP               a mismatch drops SEC_DIS
   CHK-SENSE-CONTROL      a healthy sense finishes inside each stuck window
   CHK-MISMATCH, CHK-NO-OVERRIDE  mismatch code and the fail-closed PROD FEAT_CTRL
@@ -72,15 +73,40 @@ Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR is a log
   CHK-OVERRIDE-TM0       at CHK-OVERRIDE with the strap at 0 (control: CHK-HOOK):
                          FEAT_CTRL == lcc_feat_ctrl_probe_o == all ones, secure_tm_o == 0
   CHK-DEACTIVATE, CHK-RESTORE    mismatch code and the PROD FEAT_CTRL again
+
+FCOV owner windows (``env/sep_fcov_gate.py``). The sampler holds each owned
+event as pending and samples it only on the rise of its bit of the pass label
+``ovr_pass``, which the leaf writes after the check of that event passes. A
+FAIL closes the window before the label, which drops the pending event.
+
+* CHK-OVR-AFTER in the first stopped-sense window: the override release with
+  SEC_DIS on (``sep_sec_dis_boot_cg.cp_alone`` ``override_open``), released by
+  bit 0 after CHK-OVR-AFTER passes.
+* After the full sense with the strap at 0, from the match to CHK-OVERRIDE-TM0:
+  the entry into SEC_DIS with the feature-control probe all ones
+  (``x_secdis_stm_feat`` ``secure_tm_0``), released by bit 1 after
+  CHK-OVERRIDE-TM0 passes.
+
+The stuck-sense match and CHK-RETAIN-OVR run with no window open: there
+``secure_tm_o`` holds its reset value, not a strap sample.
 """
 
 from __future__ import annotations
+
+from collections.abc import Awaitable
 
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import LC_FIELD_MASK, SepEfuseImage, lc_encode
+from env.sep_fcov_gate import (
+    OVR_PASS_ALONE_OPEN,
+    OVR_PASS_STM0,
+    close_graded_window,
+    open_graded_window,
+    set_override_pass,
+)
 from env.sep_lcc_golden import (
     LC_PROD,
     M64,
@@ -90,8 +116,10 @@ from env.sep_lcc_golden import (
 )
 from env.sep_rma_token import token_digest
 from sep_base_test import sep_base_test
-from sep_reg_meta import register_fields
+from sep_reg_meta import register_fields, word_reset
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_efuse_rma_token_seq import _MATCH_STATUS_LSB as _STATUS_LSB
+from seq_lib.sep_efuse_rma_token_seq import _MATCH_STATUS_MASK as _STATUS_MASK
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_MATCH,
     TOKEN_MISMATCH,
@@ -100,6 +128,7 @@ from seq_lib.sep_efuse_rma_token_seq import (
 )
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
+_TEST = "sep_sec_dis_override_test"
 _MAX_SENSE_CYCLES = 20_000
 # Cycles a stopped sense is watched. CHK-SENSE-CONTROL requires a healthy
 # sense after rst_ni release to finish in fewer cycles than this.
@@ -173,12 +202,32 @@ class _BusChangeWatch:
         await ClockCycles(self._clk, 2)
 
 
+class _CountedTokenSeq(SepRmaTokenMatchSeq):
+    """Token presentation that counts the Idle (0x00) status reads after its go.
+
+    token_processing.adoc, Token Submission: a go clears digest validity, so the
+    comparison reads Idle until the new digest is available. A poll that reads
+    Idle at least once shows that this go, and not a result kept from an earlier
+    one, gave the code it returns.
+    """
+
+    def __init__(self, kind: int, token: int) -> None:
+        super().__init__(kind, token)
+        self.idle_reads = 0
+
+    async def _read(self, addr: int, label: str) -> int:
+        raw = await super()._read(addr, label)
+        if label == "token_match" and (raw & _STATUS_MASK) >> _STATUS_LSB == 0:
+            self.idle_reads += 1
+        return raw
+
+
 @pyuvm.test()
 class sep_sec_dis_override_test(sep_base_test):
     """Match opens FEAT_CTRL but does not release the sense-gated reset."""
 
-    async def _present(self, token: int) -> SepRmaTokenMatchSeq:
-        seq = SepRmaTokenMatchSeq(TOKEN_SEC_DISABLE, token)
+    async def _present(self, token: int) -> _CountedTokenSeq:
+        seq = _CountedTokenSeq(TOKEN_SEC_DISABLE, token)
         await self.start_seq(seq)
         return seq
 
@@ -351,10 +400,11 @@ class sep_sec_dis_override_test(sep_base_test):
             label,
         )
 
-    async def _read_shadow_map(self, label: str) -> None:
+    async def _read_shadow_map(self, label: str) -> int:
         """Require an OKAY read of the LC_STATE shadow word while sense is open.
 
         The scoreboard does not also grade this response: this checker owns it.
+        Returns the read data.
         """
         self._require_sense_open(label, sec_dis=1)
         addr = SepEfuseImage.field("LC_STATE").shadow_addr
@@ -378,6 +428,39 @@ class sep_sec_dis_override_test(sep_base_test):
             label,
             addr,
             seq.rdata & 0xFFFF_FFFF,
+        )
+        return seq.rdata & 0xFFFF_FFFF
+
+    def _check_lc_reset_after_pulse(self, pre: int, post: int) -> None:
+        """CHK-RETAIN-LC-RESET: the rst_ni pulse under SEC_DIS returns LC_STATE to reset.
+
+        security_disable.adoc, Reset Persistence: after a cold reset with the match
+        kept, "Fuse sensing then does not start, every shadow register keeps its
+        reset value". The reset value is the RDL ``lc_state`` reset 0x0F, the
+        INVALID hold that otp_fuse_controller.adoc (Fuse Sensing and Boot
+        Sequencing) gives before sensing completes. The control is the read
+        before the pulse: the sense that the match stopped had loaded the LC_STATE
+        word, so it differs from the reset value, and a DUT that ignores the pulse
+        keeps it.
+        """
+        addr = SepEfuseImage.field("LC_STATE").shadow_addr
+        want = word_reset(addr) & 0xFFFF_FFFF
+        assert pre != want, (
+            f"CHK-RETAIN-LC-RESET FAIL: control: LC_STATE read 0x{pre:08x} before the "
+            f"rst_ni pulse, equal to its reset value 0x{want:08x}, so the readback after "
+            "the pulse cannot show the reset"
+        )
+        assert post == want, (
+            f"CHK-RETAIN-LC-RESET FAIL: LC_STATE @0x{addr:08x} read 0x{post:08x} after "
+            f"rst_ni under SEC_DIS, want its reset value 0x{want:08x} "
+            f"(before the pulse 0x{pre:08x})"
+        )
+        self.logger.info(
+            "CHK-RETAIN-LC-RESET PASS: LC_STATE @0x%08x pre=0x%08x post=0x%08x want=0x%08x",
+            addr,
+            pre,
+            post,
+            want,
         )
 
     async def _check_sense_stuck(self, label: str) -> None:
@@ -494,21 +577,14 @@ class sep_sec_dis_override_test(sep_base_test):
         )
         return seq.rdata & _M32
 
-    async def _watch_quiet(self, cycles: int, which: str) -> _BusChangeWatch:
-        """Watch the debug bus for ``cycles`` with no access; any change fails the control."""
-        self._require_sense_open("CHK-SECDIS-DBG-BUS", sec_dis=1)
+    async def _watch_quiet(self, cycles: int) -> _BusChangeWatch:
+        """Watch the debug bus for ``cycles`` with no eFuse access; the result is logged."""
+        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
         dut = cocotb.top
         watch = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
         await ClockCycles(dut.clk_i, cycles)
         await watch.stop()
-        self._require_sense_open("CHK-SECDIS-DBG-BUS", sec_dis=1)
-        if watch.changed:
-            raise AssertionError(
-                f"CHK-HOOK FAIL: CHK-SECDIS-DBG-BUS {which} quiet window: "
-                f"ext_debug_bus_o changed with no eFuse access over {watch.edges} edges "
-                f"(changed bits mask=0x{watch.changed:x}). A lane outside the eFuse "
-                "state toggles, so a whole-bus change cannot grade the eFuse lane"
-            )
+        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
         return watch
 
     async def _check_jtag_writes_under_sec_dis(self) -> None:
@@ -523,9 +599,9 @@ class sep_sec_dis_override_test(sep_base_test):
           "In addition to the shadow-register access control defined by
           <<sep-fuse-fields-table>>, the JTAG port shall be further restricted:
           in the PROD and RMA_SIP states it may reach only the eFuse MMR token
-          block." The held ``LC_STATE`` reset value is neither state under
-          either reading (adoc INVALID 4'b1111, RDL reset raw 4'b0000), so JTAG
-          has the table's access.
+          block." The held ``LC_STATE`` reset value, INVALID 4'b1111 in both
+          the adoc and the RDL, is neither state, so JTAG has the table's
+          access.
         * otp_fuse_controller.adoc, controller overview: the
           ``security_disable_i`` input "skips fuse sensing and opens the shadow
           registers to software". Fuse field table: REQUIRED_SIGNERS is "SW
@@ -535,19 +611,21 @@ class sep_sec_dis_override_test(sep_base_test):
         * LC_STATE: lifecycle_controller.adoc says the shadow output holds the
           INVALID encoding 4'b1111 before sensing, and "Invalid lifecycle
           encodings are terminal" (otp_fuse_controller.adoc, LC_STATE row);
-          sep_efuse_map.rdl gives the ``lc_state`` reset 0xf0 (raw 4'b0000).
-          The two disagree on the held word, so OBS-SECDIS-LC-WR logs the write
-          and readback without a verdict.
+          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. The
+          specification does not state the effect of a write to that terminal
+          word, so OBS-SECDIS-LC-WR logs the write and readback without a
+          verdict.
 
         The REQUIRED_SIGNERS write is graded by a frontdoor readback ("A read of the eFuse
         shadow map over the SEP bus completes with OKAY", security_disable.adoc).
         The JTAG write response is logged, not graded: the specification does
         not state it.
 
-        The debug bus has no lane layout in the specification, so it is graded
-        layout-free: it must change while the two JTAG writes run, and hold
-        still in a quiet window before them and in one after them, each at
-        least twice the event window. The writable shadow keeps its new bit
+        No specification puts eFuse state on ``ext_debug_bus_o``
+        (port_table.adoc names the port only), so OBS-SECDIS-DBG-BUS logs the
+        bits that change while the two JTAG writes run and in a quiet window
+        before them and one after them, without a verdict. The writable shadow
+        keeps its new bit
         until the rst_ni pulse ahead of the next full sense, which reloads every
         shadow from the staged image before any later check reads it.
         """
@@ -573,12 +651,12 @@ class sep_sec_dis_override_test(sep_base_test):
             f"pre=0x{rs_pre:08x} want RDL reset 0x{rs_reset:08x} -- the shadow did "
             "not keep its reset value after the reset with the match kept"
         )
-        lc_pre = await self._fd_read_word("CHK-SECDIS-DBG-BUS", lc_addr, "lc_state")
+        lc_pre = await self._fd_read_word("CHK-RETAIN-MAP-OPEN", lc_addr, "lc_state")
 
         # The frontdoor reads above are the last eFuse accesses before the
         # first quiet window.
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
-        pre_quiet = await self._watch_quiet(_DBG_QUIET_CYCLES, "pre")
+        pre_quiet = await self._watch_quiet(_DBG_QUIET_CYCLES)
 
         self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
         event = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
@@ -587,13 +665,9 @@ class sep_sec_dis_override_test(sep_base_test):
         lc_resp, _ = await self.jtag_axil_op(write=True, addr=lc_addr, wdata=lc_wdata)
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
         await event.stop()
-        self._require_sense_open("CHK-SECDIS-DBG-BUS", sec_dis=1)
+        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
 
-        post_quiet = await self._watch_quiet(max(_DBG_QUIET_CYCLES, 2 * event.edges), "post")
-        assert pre_quiet.edges >= 2 * event.edges, (
-            f"CHK-HOOK FAIL: CHK-SECDIS-DBG-BUS pre quiet window {pre_quiet.edges} edges "
-            f"is shorter than twice the {event.edges}-edge event window"
-        )
+        post_quiet = await self._watch_quiet(max(_DBG_QUIET_CYCLES, 2 * event.edges))
 
         rs_post = await self._fd_read_word("CHK-SECDIS-SHADOW-WR", rs_addr, "required_signers")
         rs_want = rs_pre | (1 << rs_bit)
@@ -613,10 +687,10 @@ class sep_sec_dis_override_test(sep_base_test):
             rs_want,
         )
 
-        # The LC_STATE shadow word before sense has no single spec value: the
-        # adoc INVALID encoding gives [7:0] = 0x0f, the RDL reset gives 0xf0. The
-        # terminal-rule outcome is logged until the spec settles the reset value.
-        lc_post = await self._fd_read_word("CHK-SECDIS-DBG-BUS", lc_addr, "lc_state")
+        # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f. The
+        # specification does not state the effect of a write to it, so the
+        # outcome is logged without a verdict.
+        lc_post = await self._fd_read_word("CHK-RETAIN-MAP-OPEN", lc_addr, "lc_state")
         self.logger.info(
             "OBS-SECDIS-LC-WR: sec_dis=1 sense_done=0 JTAG wr LC_STATE @0x%08x "
             "wdata=0x%08x resp=%d pre=0x%08x post=0x%08x unchanged=%d "
@@ -630,19 +704,16 @@ class sep_sec_dis_override_test(sep_base_test):
             lc_invalid,
         )
 
-        assert event.changed, (
-            f"CHK-SECDIS-DBG-BUS FAIL: ext_debug_bus_o did not change over the "
-            f"{event.edges}-edge window of the JTAG REQUIRED_SIGNERS and LC_STATE writes "
-            f"(value={event.last or '-'}) -- the eFuse debug state does not reach the bus"
-        )
         self.logger.info(
-            "CHK-SECDIS-DBG-BUS PASS: event edges=%d changed_bits=%d mask=0x%x; "
-            "quiet pre edges=%d changed=0, post edges=%d changed=0",
+            "OBS-SECDIS-DBG-BUS: event edges=%d changed_bits=%d mask=0x%x; "
+            "quiet pre edges=%d mask=0x%x, post edges=%d mask=0x%x",
             event.edges,
             bin(event.changed).count("1"),
             event.changed,
             pre_quiet.edges,
+            pre_quiet.changed,
             post_quiet.edges,
+            post_quiet.changed,
         )
 
     async def run_scenario(self) -> None:
@@ -678,8 +749,8 @@ class sep_sec_dis_override_test(sep_base_test):
             f"CHK-FEAT-PRESENSE FAIL: feature control opened but the reset moved "
             f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 0/0"
         )
-        await self._check_override_after_match("CHK-OVR-AFTER")
-        await self._read_shadow_map("CHK-MAP-OPEN")
+        await self._graded(self._check_override_after_match("CHK-OVR-AFTER"), OVR_PASS_ALONE_OPEN)
+        lc_pre_reset = await self._read_shadow_map("CHK-MAP-OPEN")
         await self._check_sense_stuck("CHK-SENSE-STUCK")
 
         # Recovery flow: reset with the token kept.
@@ -687,7 +758,8 @@ class sep_sec_dis_override_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         await self._check_window_feat(1, "CHK-RETAIN-FEAT")
         self._check_reset_stays_sense_gated("CHK-RETAIN-RESET")
-        await self._read_shadow_map("CHK-RETAIN-MAP-OPEN")
+        lc_post_reset = await self._read_shadow_map("CHK-RETAIN-MAP-OPEN")
+        self._check_lc_reset_after_pulse(lc_pre_reset, lc_post_reset)
         await self._check_jtag_writes_under_sec_dis()
         await self._check_override_after_match("CHK-RETAIN-OVR")
         await self._check_sense_stuck("CHK-RETAIN-STUCK")
@@ -709,30 +781,62 @@ class sep_sec_dis_override_test(sep_base_test):
             f"CHK-SENSE-CONTROL FAIL: a healthy sense took {healthy} cycles, not fewer "
             f"than the {_STUCK_CYCLES}-cycle stuck windows, so those windows prove nothing"
         )
-        self.logger.info(
-            "CHK-SENSE-CONTROL PASS: healthy sense done %d cycles after rst_ni release "
-            "(< %d-cycle stuck windows)",
-            healthy,
-            _STUCK_CYCLES,
-        )
         cpu_rst = self.rd_known(cocotb.top.sep_cpu_reset_n_o)
         fabric_rst = self.rd_known(cocotb.top.dbg_sep_reset_n_o)
         assert cpu_rst == 1 and fabric_rst == 1, (
-            f"CHK-SENSE-GATED-RESET FAIL: after sense-done "
+            f"CHK-SENSE-CONTROL FAIL: after sense-done "
             f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 1/1 "
             "-- the pre-sense low check has no live high control without this"
         )
+        # _healthy_sense_cycles raises unless the backdoor compare of every staged
+        # word against the sensed shadow finds no mismatch.
+        self.logger.info(
+            "CHK-SENSE-CONTROL PASS: healthy sense done %d cycles after rst_ni release "
+            "(< %d-cycle stuck windows); shadow_vs_staged words=%d mismatches=0; "
+            "sep_cpu_reset_n_o=%d dbg_sep_reset_n_o=%d",
+            healthy,
+            _STUCK_CYCLES,
+            len(self._efuse_compare_image.words),
+            cpu_rst,
+            fabric_rst,
+        )
 
+        # CHK-DROP left a Mismatch result, which a retained digest gives again after
+        # the reset, so the code alone does not show that this go ran.
         mm = await self._present(_MISMATCH_TOKEN)
-        assert mm.match_code == TOKEN_MISMATCH, (
+        assert mm.match_code == TOKEN_MISMATCH and mm.idle_reads >= 1, (
             f"CHK-MISMATCH FAIL: token=1 code=0x{(mm.match_code or 0):02x} "
-            f"want MISMATCH 0x{TOKEN_MISMATCH:02x}"
+            f"want MISMATCH 0x{TOKEN_MISMATCH:02x}, idle_reads={mm.idle_reads} want >= 1 "
+            "(no Idle read after the go: the code can be the result of the earlier go)"
         )
         self.logger.info(
-            "CHK-MISMATCH PASS: SEC_DISABLE_TOKEN_MATCH=0x%02x after token=1", mm.match_code
+            "CHK-MISMATCH PASS: SEC_DISABLE_TOKEN_MATCH=0x%02x after token=1, idle_reads=%d",
+            mm.match_code,
+            mm.idle_reads,
         )
         await self._check_feat(0, "CHK-NO-OVERRIDE")
 
+        await self._graded(self._match_override_tm0(), OVR_PASS_STM0)
+        await self._deactivate_restore()
+
+    async def _graded(self, step: Awaitable[None], bit: int) -> None:
+        """Run ``step`` inside the owner window; raise pass label ``bit`` only after it passes.
+
+        A FAIL raises before the label, and the finally clause closes the
+        window, which drops the pending event.
+        """
+        set_override_pass(0, self.logger)
+        open_graded_window(_TEST, self.logger)
+        try:
+            await step
+            set_override_pass(bit, self.logger)
+            await ClockCycles(cocotb.top.clk_i, 2)
+            set_override_pass(0, self.logger)
+        finally:
+            close_graded_window(self.logger)
+
+    async def _match_override_tm0(self) -> None:
+        """CHK-MATCH, CHK-OVERRIDE and CHK-OVERRIDE-TM0 on the sensed PROD image."""
         hit = await self._present(_MATCH_TOKEN)
         assert hit.match_code == TOKEN_MATCH, (
             f"CHK-MATCH FAIL: zero token code=0x{(hit.match_code or 0):02x} "
@@ -744,6 +848,8 @@ class sep_sec_dis_override_test(sep_base_test):
         feat_open = await self._check_feat(1, "CHK-OVERRIDE")
         self._check_override_tm0(feat_open)
 
+    async def _deactivate_restore(self) -> None:
+        """CHK-DEACTIVATE and CHK-RESTORE: a mismatch closes FEAT_CTRL again."""
         deact = await self._present(_MISMATCH_TOKEN)
         assert deact.match_code == TOKEN_MISMATCH, (
             f"CHK-DEACTIVATE FAIL: token=1 code=0x{(deact.match_code or 0):02x} "

@@ -42,6 +42,13 @@ Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366``.
 Expected values come from the cited interrupt chapter, the draws and the image
 layout (the firmware symbol listing), never from a DUT read. cpu run mode,
 ``+skip_fuse_sense``, Verilator and VCS.
+
+FCOV (owner ``sep_tcm_ecc_cpu_trap_test``): the sampler counts each legal
+outcome of this owner on ``sep_cpu_ecc_irq_cg`` and ``cp_traced_event`` inside
+the ``M G`` windows as pending; the pending counts sample only when
+``tcm_trap_pass`` (``env/sep_fcov_gate.set_tcm_trap_pass``) rises. The leaf
+writes 0 before the boot and 1 after every check of the run passed, so a run
+whose check fails leaves those cells at 0. An illegal outcome samples at once.
 """
 
 from __future__ import annotations
@@ -53,10 +60,10 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import parse_hex_cells, patch_param_block, place_words
-from env.sep_fcov_gate import close_graded_window
+from env.sep_fcov_gate import close_graded_window, set_tcm_trap_pass
 from env.sep_fw_console import ConsoleRec, SepFwConsole, parse_kv
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_tcm_flip import DCCM_BASE, DCCM_BYTES, ICCM_BASE, WORD_BITS, bit_mask, write_flip_list
@@ -107,6 +114,7 @@ PIC_SRC = 2  # mailbox interrupt 1; vector bit PIC_SRC - 1
 BIT_I_SB, BIT_I_DB, BIT_D_SB, BIT_D_DB = 367, 366, 365, 364
 DBG_BITS = (BIT_I_SB, BIT_I_DB, BIT_D_SB, BIT_D_DB)
 VEC_WINDOW = 4  # clocks around a correctable pulse (environment choice)
+_LABEL_CLK = 2  # clocks the leaf holds tcm_trap_pass at 1 before it writes 0
 
 
 def load_symbols(fw_dir: str) -> dict[str, int]:
@@ -939,6 +947,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         self.con = SepFwConsole(self, graded_test=TEST).start()
         smp = cocotb.start_soon(self._sample())
         close_graded_window(self.logger)
+        set_tcm_trap_pass(False, self.logger)
         try:
             await self.boot_firmware(
                 self.sb,
@@ -970,4 +979,14 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         n += self._chk_nmi(sy)
         n += self._chk_dbg()
         n += self._chk_no_pic()
+        await self._release()
         self.result_pass(TEST, seed, n)
+
+    async def _release(self) -> None:
+        """Every check of the run passed: tcm_trap_pass 1 samples the pending counts."""
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_tcm_trap_pass(True, self.logger)
+        await ClockCycles(clk, _LABEL_CLK)
+        set_tcm_trap_pass(False, self.logger)
+        await RisingEdge(clk)

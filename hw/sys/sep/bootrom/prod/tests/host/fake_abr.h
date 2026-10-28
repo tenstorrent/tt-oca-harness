@@ -4,10 +4,11 @@
 // Scriptable stand-in for the Adams Bridge register file, for driver host tests.
 //
 // By default it behaves like the RTL on a streamed ML-DSA verify: zeroize returns
-// STATUS to READY, VERIFY preloads VERIFY_RES with ~c~, MSG_STREAM_READY rises, the
-// final strobe ends the stream, then VALID rises with one command-done event and
-// VERIFY_RES set to c~. Each field below bends one step; the record fields say what
-// the driver did.
+// STATUS to READY and MSG_STROBE to 0, VERIFY preloads VERIFY_RES with ~c~,
+// MSG_STREAM_READY rises, the first strobe other than 0xF ends the stream, then VALID
+// rises with one command-done event. VERIFY_RES is c~ only if the stream was exactly
+// the signed message, as a real signature over it would give. Each field below bends
+// one step; the record fields say what the driver did.
 
 #ifndef FAKE_ABR_H
 #define FAKE_ABR_H
@@ -17,7 +18,7 @@
 #define FAKE_ABR_MAX_STREAM 70000u
 
 typedef enum {
-    FAKE_RES_MATCH,    // VERIFY_RES = c~ at VALID
+    FAKE_RES_MATCH,    // VERIFY_RES = c~ at VALID if the stream was signed, else c~ changed
     FAKE_RES_MISMATCH, // VERIFY_RES = c~ with one word changed
     FAKE_RES_INVERSE,  // VERIFY_RES keeps the ~c~ preload
     FAKE_RES_ZERO      // VERIFY_RES = 0
@@ -52,6 +53,15 @@ typedef struct {
     int done_count_sticks;    // writes to the done counter are ignored
     int identity_bad;         // MLDSA_VERSION reads a different value
 
+    int err_sts_sticks;        // writes clearing error_internal_sts are ignored
+    int err_count_sticks;      // writes to the error counter are ignored
+    const uint8_t *signed_msg; // the message the signature is over
+    uint32_t signed_len;       // and its length
+    int signed_prefixes;       // every prefix of signed_msg is signed too
+    uint32_t drop_write;       // if non-zero, the drop_write-th register write is lost
+    uint32_t corrupt_strobe;   // if non-zero, the corrupt_strobe-th MSG_STROBE write ...
+    uint32_t corrupt_value;    // ... stores this value instead
+
     // --- record --------------------------------------------------------------
     int zeroize_count;
     int verify_commands;
@@ -60,6 +70,8 @@ typedef struct {
     int msg_outside_stream;
     int strobe_outside_stream;
     int fence_count;
+    uint32_t write_count;
+    uint32_t strobe_writes;
     uint32_t stream_len;
     uint8_t stream[FAKE_ABR_MAX_STREAM];
     uint32_t strobes[FAKE_ABR_MAX_STREAM / 4u + 2u];
@@ -67,6 +79,8 @@ typedef struct {
     uint32_t ctx_config;
     uint32_t pubkey[648];
     uint32_t signature[1157];
+    uint32_t verified_pubkey[648]; // PUBKEY and c~ when VALID last rose
+    uint32_t verified_ctilde[16];
 } fake_abr_t;
 
 extern fake_abr_t g_fake;

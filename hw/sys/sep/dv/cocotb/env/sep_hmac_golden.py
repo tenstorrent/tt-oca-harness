@@ -15,9 +15,9 @@ msg_be=0):
     big-endian on the byte lane.
   * MSG: pushed to MSG_FIFO as 32-bit words, consumed little-endian per word
     (msg_be=0).
-  * DIGEST: CFG.digest_swap=0 -> {DIGEST_0..DIGEST_7} with DIGEST_0 as the most-
-    significant word equals the standard big-endian SHA-256 digest; so digest
-    word i == big-endian word i of the HMAC-SHA256 output.
+  * DIGEST: at digest_swap=0 DIGEST word n is the big-endian read of digest
+    bytes 4n..4n+3; digest_swap=1 reverses the bytes of each word (DSWAP_ORDER
+    below).
 """
 
 from __future__ import annotations
@@ -107,11 +107,11 @@ def hmac_or_sha_words(
     * ``digest[511:0] = {DIGEST0, DIGEST1, ...}``
       (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:468-469): DIGEST_0
       holds the most-significant 32 bits, so word n holds digest bytes 4n..4n+3.
-      This function returns the big-endian read at ``digest_swap=0`` (reset value);
-      the register text does not state that byte order, so a test grades a
-      readback with ``SepDigestOrder``.
-    * ``CFG.digest_swap`` = 1 converts each DIGEST word to big-endian byte order and
-      keeps DIGEST_0 as the first four bytes
+      With the FIPS 180-4 hash value H0 || H1 || ..., DIGEST word n at
+      ``digest_swap=0`` (reset value) is the big-endian read of those bytes, which
+      this function returns; a test grades a readback with ``SepDigestOrder``.
+    * ``CFG.digest_swap`` = 1 reverses the bytes of each DIGEST word and keeps
+      DIGEST_0 as the first four bytes
       (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc:114-117):
       the same bytes read little-endian as a bus word.
     * ``CFG.endian_swap`` = 0 adds each MSG_FIFO value in little-endian byte order
@@ -136,14 +136,15 @@ def hmac_or_sha_words(
     ]
 
 
-# --- DIGEST byte order at digest_swap = 0 ------------------------------------
-# ``vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc``:116-117 (``CFG.digest_swap``) and ``hmac.hjson``:468-469 settle the
-# register order (DIGEST_0 holds digest bytes 0..3) and that ``digest_swap`` = 1
-# converts the byte order of each word. The text does not state the byte order of a
-# DIGEST word at ``digest_swap`` = 0. A readback therefore equals its golden when every
-# word is the big-endian read ("be") or every word is the little-endian read ("le") of
-# digest bytes 4n..4n+3, and every readback of one seed uses the same order.
+# --- DIGEST byte order -------------------------------------------------------
+# ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
+# gives digest[511:0] = {DIGEST0, DIGEST1, ...} for the SHA-2 hash value, which FIPS 180-4
+# defines as H0 || H1 || ..., so at ``digest_swap`` = 0 DIGEST word n is the big-endian read
+# of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in the final
+# HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
+# so each word is the little-endian read ("le").
 DIGEST_ORDERS = ("be", "le")
+DSWAP_ORDER = {0: "be", 1: "le"}
 
 
 def digest_words(digest: bytes, order: str) -> list[int]:
@@ -164,11 +165,12 @@ def digest_order(words, digest: bytes) -> str | None:
 
 
 class SepDigestOrder:
-    """One DIGEST byte order per seed at ``digest_swap`` = 0.
+    """DIGEST readbacks at ``digest_swap`` = 0, graded in the big-endian read.
 
-    The first readback that equals its golden in either order fixes the order of the
-    seed; every later readback must equal its golden in that order. Log the result with
-    ``chk.obs("HMAC-DIGEST-ORDER", **order.fields())``; the order earns no credit.
+    ``match`` is true only when a readback equals its golden in ``DSWAP_ORDER[0]``. The
+    order of the first readback that equals its golden in either order is kept for
+    ``chk.obs("HMAC-DIGEST-ORDER", **order.fields())``, and ``other_order_reads`` counts
+    readbacks that equal their golden only in the little-endian order.
     """
 
     def __init__(self) -> None:
@@ -176,19 +178,19 @@ class SepDigestOrder:
         self.mismatched = 0
 
     def match(self, words, digest: bytes) -> tuple[bool, str | None]:
-        """Return (equal in the order of the seed, order this readback matches)."""
+        """Return (equal in the big-endian read, order this readback matches)."""
         order = digest_order(words, digest)
         if order is None:
             return False, None
         if self.order is None:
             self.order = order
-        if order != self.order:
+        if order != DSWAP_ORDER[0]:
             self.mismatched += 1
-        return order == self.order, order
+        return order == DSWAP_ORDER[0], order
 
     def expected(self, digest: bytes) -> list[int]:
-        """The DIGEST words of ``digest`` in the order of the seed ("be" before it is fixed)."""
-        return digest_words(digest, self.order or "be")
+        """The DIGEST words of ``digest`` at ``digest_swap`` = 0."""
+        return digest_words(digest, DSWAP_ORDER[0])
 
     def fields(self) -> dict[str, object]:
         return {"dswap0": self.order or "-", "other_order_reads": self.mismatched}

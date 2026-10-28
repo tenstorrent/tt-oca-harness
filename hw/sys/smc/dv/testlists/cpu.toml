@@ -111,6 +111,7 @@ run_modes = ["smoke"]
 name = "smc_cpu_ctrl_scratch_all_test"
 module = "smc_cpu_ctrl_scratch_all_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
@@ -174,6 +175,14 @@ name = "smc_spm_mem_boundary_test"
 module = { cocotb = "smc_spm_mem_boundary_test", uvm = "smc_spm_mem_boundary_test" }
 seed = 1
 timeout_sec = 1800
+tags = ["ci", "mem"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_spm_bank_walk_test"
+module = "smc_spm_bank_walk_test"
+seed = 1
+timeout_sec = 900
 tags = ["ci", "mem"]
 run_modes = ["smoke"]
 
@@ -413,6 +422,7 @@ args = [
 name = "smc_ecc_fault_inject_test"
 module = "smc_ecc_fault_inject_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]

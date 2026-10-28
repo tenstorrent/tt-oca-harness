@@ -168,7 +168,9 @@ class smu_fabric_reg_bar_wr_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != 0x1:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
-        sb.expect_eq("CHK-SUB-AXIL-LOCAL-J2A-READY", idcode, 0x1)
+        sb.expect_eq(
+            "CHK-SUB-AXIL-LOCAL-J2A-READY", idcode, 0x1, evidence="CHK-SUB-AXIL-LOCAL-J2A-READY"
+        )
 
         for dest, addr, width in FABCFG_DESTS:
             await self._wr_rd_prove(jtag, dest, addr, width)

@@ -2,11 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Every SRAM byte lane, data pattern, boundary word and address bit reads back exactly.
 
-OCAH provenance: ``sep_sram_uvm_byte_strobe``, ``sep_sram_uvm_byte_pattern``,
-``sep_sram_uvm_data_pattern``, ``sep_sram_uvm_addr_boundary``,
-``sep_sram_uvm_write_read`` and ``sep_sram_uvm_sequential_access`` check SRAM
-lane, pattern, boundary and sequential access.
-
 Exercises the external scratch SRAM (0x1000_0000, 256 KiB) over the CPU-LSU AXI splice
 (no_cpu) beyond the smoke (a single 64-bit R/W + one 32-bit partial).
 
@@ -29,8 +24,8 @@ WSTRB masks (e.g. 0x05) are not walked: cocotbext-axi derives the
 strobe from addr+length (contiguous only), and this master has no explicit-strobe
 write.
 
-Checks (each value-compares an exact read-back against the cfg golden + logs a
-positive PASS line):
+Checks (each logs a positive PASS line; CHK-SRAM-MACRO-MAP grades the SRAM macro
+request tap, the others value-compare an exact read-back against the cfg golden):
   CHK-WSTRB    : every contiguous WSTRB mask changes only its byte lanes; all
                  neighbor lanes preserved (independent ``apply_wstrb`` golden).
   CHK-PATTERN  : each cfg data pattern reads back exactly: 0xAAAA/0x5555, a
@@ -45,20 +40,121 @@ positive PASS line):
                  own value after all are written, so every SRAM address bit
                  selects distinct storage; the offsets at or above 0x1_0000
                  are the upper 192 KiB of the 256 KiB SRAM.
+  CHK-SRAM-MACRO-MAP: every SRAM access of the checks above makes exactly one
+                 SRAM macro request (PR-SRAM-MACRO tap, sampled after ReadOnly):
+                 ``we`` is 1 for a write and 0 for a read, ``addr`` is the AXI byte
+                 offset from the SRAM base divided by the word size and truncated
+                 to the word count, and a write's ``wmask`` is its AXI byte strobe
+                 with each bit widened to eight bits. The leaf grades each request
+                 as soon as its access completes, before the read-back checks of
+                 that access.
 
 Run mode: no_cpu with +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
 """
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
+from cocotb.triggers import RisingEdge
+from env.sep_fabric_tap import SepFabricTap
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 from seq_lib.sep_sram_breadth_seq import (
+    SEP_SRAM_BASE,
+    SEP_SRAM_SIZE,
     WALKING_ONE_PATTERNS,
     WALKING_ZERO_PATTERNS,
     SepSramBreadth,
     SepSramBreadthCfg,
 )
+
+# SRAM macro geometry from the generated memory map: one macro word per SRAM
+# memory word, and one macro address per word of the aperture.
+SRAM_WORD_BYTES = sym("SEP_SRAM_MEM_WORD_REG_WIDTH") // 8
+SRAM_WORDS = SEP_SRAM_SIZE // SRAM_WORD_BYTES
+
+
+# The macro request fields: ``we`` qualifies ``req`` as a write, ``addr`` is the
+# word address (the byte address shifted right by the word size, truncated to
+# the field) and ``wmask`` widens each AXI byte strobe to eight bits
+# (hw/ip/memory_interface/README.adoc, "Macro port").
+
+
+def macro_word(addr: int) -> int:
+    """Golden macro ``addr``: the byte offset from the SRAM base over the word size,
+    truncated to the word count."""
+    return ((addr - SEP_SRAM_BASE) // SRAM_WORD_BYTES) % SRAM_WORDS
+
+
+def macro_wmask(strb: int) -> int:
+    """Golden macro ``wmask``: each AXI byte strobe bit widened to eight bits."""
+    return sum(0xFF << (8 * i) for i in range(SRAM_WORD_BYTES) if (strb >> i) & 1)
+
+
+class SepSramMacroMapped(SepSramBreadth):
+    """SepSramBreadth that grades the SRAM macro request of every access.
+
+    Each access must make exactly one request on the PR-SRAM-MACRO tap, with the
+    golden ``we``, ``addr`` and, for a write, ``wmask``. A mismatch raises
+    CHK-SRAM-MACRO-MAP FAIL as soon as the access completes.
+    """
+
+    def __init__(self, test, cfg: SepSramBreadthCfg, tap: SepFabricTap) -> None:
+        super().__init__(test, cfg)
+        self.tap = tap
+        self.writes = 0
+        self.reads = 0
+        self.words: set[int] = set()
+        self.wmasks: set[int] = set()
+
+    async def _graded(self, what: str, access, we: int, word: int, wmask: int | None):
+        mark = self.tap.mark()
+        result = await access
+        # The request precedes the AXI response; one more edge lets the tap
+        # sample the edge on which the response completed.
+        await RisingEdge(cocotb.top.clk_i)
+        reqs = self.tap.since(mark, "req")
+        want = f"we={we} addr=0x{word:x}" + ("" if wmask is None else f" wmask=0x{wmask:016x}")
+        if len(reqs) != 1:
+            got = ", ".join(b.fmt() for b in reqs) or "none"
+            raise AssertionError(
+                f"CHK-SRAM-MACRO-MAP FAIL: {what} made {len(reqs)} macro requests "
+                f"({got}); want exactly one with {want}"
+            )
+        b = reqs[0]
+        if b.we != we or b.addr != word or (wmask is not None and b.wmask != wmask):
+            raise AssertionError(f"CHK-SRAM-MACRO-MAP FAIL: {what} macro {b.fmt()} want {want}")
+        self.words.add(word)
+        if wmask is None:
+            self.reads += 1
+        else:
+            self.writes += 1
+            self.wmasks.add(wmask)
+        return result
+
+    async def write(self, addr: int, data: int, length: int = 8) -> None:
+        lane = (addr - SEP_SRAM_BASE) % SRAM_WORD_BYTES
+        assert lane + length <= SRAM_WORD_BYTES, (
+            f"CHK-SRAM-MACRO-MAP FAIL: write @0x{addr:08x} len{length} is not one beat"
+        )
+        strb = ((1 << length) - 1) << lane
+        await self._graded(
+            f"write @0x{addr:08x} len{length} strb=0x{strb:02x}",
+            super().write(addr, data, length),
+            1,
+            macro_word(addr),
+            macro_wmask(strb),
+        )
+
+    async def read(self, addr: int, length: int = 8) -> int:
+        return await self._graded(
+            f"read @0x{addr:08x} len{length}",
+            super().read(addr, length),
+            0,
+            macro_word(addr),
+            None,
+        )
 
 
 @pyuvm.test()
@@ -69,16 +165,41 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         self.scfg = SepSramBreadthCfg(self.random_seed())
         self.logger.info("SRAM-breadth config: %s", self.scfg.summary())
         await self.bring_up_no_cpu()
-        self.sram = SepSramBreadth(self, self.scfg)
+        self.macro_tap = SepFabricTap("PR-SRAM-MACRO").start()
+        self.sram = SepSramMacroMapped(self, self.scfg, self.macro_tap)
         await self._chk_wstrb()
         await self._chk_pattern()
         await self._chk_boundary()
         await self._chk_seq()
         await self._chk_nonvac()
         await self._chk_addr_lines()
+        await self._chk_sram_macro_map()
         self.logger.info(
             "SRAM datapath breadth PASS: SRAM datapath breadth verified "
             "(wstrb / pattern / boundary / seq / nonvac / addr lines)"
+        )
+
+    async def _chk_sram_macro_map(self) -> None:
+        sram = self.sram
+        await self.macro_tap.stop()
+        full = macro_wmask((1 << SRAM_WORD_BYTES) - 1)
+        partial = len(sram.wmasks - {full})
+        if sram.writes == 0 or sram.reads == 0 or partial == 0:
+            raise AssertionError(
+                f"CHK-SRAM-MACRO-MAP FAIL: graded writes={sram.writes} reads={sram.reads} "
+                f"partial_wmasks={partial}; each must be non-zero"
+            )
+        self.logger.info(
+            "CHK-SRAM-MACRO-MAP PASS: macro_reqs=%d writes=%d reads=%d distinct_words=%d "
+            "distinct_wmasks=%d partial_wmasks=%d (addr = byte offset / %d, wmask = strobe "
+            "bits widened to 8)",
+            sram.writes + sram.reads,
+            sram.writes,
+            sram.reads,
+            len(sram.words),
+            len(sram.wmasks),
+            partial,
+            SRAM_WORD_BYTES,
         )
 
     async def _chk_wstrb(self) -> None:

@@ -317,6 +317,11 @@ class ResultRecording(unittest.TestCase):
             {"skipped_unimplemented": [], "skipped_excluded": ["excluded_test"]},
         )
 
+    def test_tests_no_listed_target_runs_are_recorded_with_their_own_targets(self):
+        skipped = [{"name": "stub_test", "target": "stub"}]
+        payload = self.payload(Namespace(_skipped_target=skipped))
+        self.assertEqual(payload["selection"]["skipped_target"], skipped)
+
     def test_nothing_skipped_means_no_selection_block(self):
         self.assertNotIn("selection", self.payload(Namespace()))
         self.assertNotIn("selection", self.payload(None))
