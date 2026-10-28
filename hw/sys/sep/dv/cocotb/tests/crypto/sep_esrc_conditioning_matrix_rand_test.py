@@ -745,12 +745,21 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         }
         if trace["reason"]:
             fields["reason"] = trace["reason"]
+        ctrl_rb = await self._rd(ESRC_CTRL)
+        bypass_rb = _get(ctrl_rb, "CTRL", "BYPASS_ENTROPY_COMPRESSOR")
+        rate_rb = _get(ctrl_rb, "CTRL", "DOWNSAMPLE_RATE")
         self.chk.ctrl(
             "COND-FIRST-PUSH",
-            trace["gated_at_ctrl"] == 0 and trace["pre_push"] == 0 and plan.n_r >= 1,
+            trace["gated_at_ctrl"] == 0
+            and trace["pre_push"] == 0
+            and plan.n_r >= 1
+            and bypass_rb == 1
+            and rate_rb == plan.n_r,
             gated_at_ctrl=trace["gated_at_ctrl"],
             pre_push=trace["pre_push"],
             n=plan.n_r,
+            bypass_rb=bypass_rb,
+            rate_rb=rate_rb,
         )
         if self.chk.ok("COND-FIRST-PUSH", k == expect, **fields):
             await self._cnt_pass(ESRC_CNT_PASS_FIRST_PUSH)
