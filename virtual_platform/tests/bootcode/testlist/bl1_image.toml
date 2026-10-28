@@ -315,3 +315,57 @@ markers = [
   "0x00030103 is a ROM code, not an oca_result_t, so rom_manifest_boot adds no status_for_result ERROR before ERROR 0x0213; the per-slot ERROR 0x012b comes from bl1_locate.",
   "BL1_ADDR_RANGE and BL1_SIZE are forbidden: they share the error code and run before the entry-point comparison.",
 ]
+
+[[testcase]]
+name = "sep_bl1_span_at_sram_end_test"
+family = "bl1_image"
+classification = "partial"
+image = "bl1_load_ends_at_sram_end"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_SRC=0x00001000",
+  "MANIFEST_OK",
+  "PAYLOAD_OK",
+  "BL1_DST=SRAM",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = ["BL1_ADDR_RANGE", "MANIFEST_BACKUP", "MANIFEST_ERR=", "MANIFEST_BOOT_FAIL="]
+expect_counts = { "BL1_COPIED" = 1, "GO!" = 1 }
+markers = [
+  "BL1 is re-sealed into SEP SRAM so that its last byte is the last byte of SEP SRAM, 0x1003ffff; the span check admits it, the copy runs, and BL1 boots from SRAM (BL1_SRAM_EXEC_ENABLE is on by default).",
+]
+
+[[testcase]]
+name = "sep_bl1_span_past_sram_end_test"
+family = "bl1_image"
+classification = "partial"
+image = "bl1_load_ends_past_sram_end"
+base_ini = "secure"
+boot = "primary"
+observation = "complete"
+timeout = 180
+expect_verdict = "PASSED"
+pytest_markers = ["needs_debug"]
+expect = [
+  "MANIFEST_PRIMARY",
+  "MANIFEST_OK",
+  "BL1_ADDR_RANGE",
+  "MANIFEST_ERR=0x00030103",
+  "MANIFEST_BACKUP",
+  "MANIFEST_SRC=0x00041000",
+  "PAYLOAD_OK",
+  "BL1_COPIED",
+  "GO!",
+]
+forbid = ["MANIFEST_ALL_FAILED", "MANIFEST_BOOT_FAIL=", "BL1_DST=SRAM"]
+expect_counts = { "BL1_ADDR_RANGE" = 1, "MANIFEST_BACKUP" = 1, "GO!" = 1 }
+markers = [
+  "The same move one word further puts BL1's last word past SEP SRAM: the primary is refused with BL1_ADDR_RANGE and the unchanged backup boots.",
+]
