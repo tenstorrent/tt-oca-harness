@@ -3486,3 +3486,35 @@ args = [
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
   "+sep_sram_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_sram_residue.hex",
 ]
+
+[[tests]]
+# FUSE-010 in part: with fuse sense done before CPU release, the ROM polls SMC_FUSE_SENSE_STATUS
+# and reads eFuse only after a poll that saw sense done.
+name = "sep_rom_fuse_sense_wait_test"
+module = "rom_fw.sep_rom_fuse_sense_wait_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
+
+[[tests]]
+# With fuse sense held not-done the ROM keeps polling and reads no eFuse register.
+name = "sep_rom_fuse_sense_wait_test_hold"
+module = "rom_fw.sep_rom_fuse_sense_wait_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "efuse", "negative", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_fuse_sense_hold",
+]
