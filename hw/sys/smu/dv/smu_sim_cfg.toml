@@ -160,6 +160,10 @@ sources = [
   # binds and the bridge that places the cut's struct port on it.
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
+  # Clean-room AXI4 protocol checker, instantiated on the SMU crossbar and
+  # boundary links in tb_wrapper_top.sv. Both Verilator targets define
+  # ASSERTS_OFF and pass no --assert, so the rules grade on VCS.
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
   "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",
