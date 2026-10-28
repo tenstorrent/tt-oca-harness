@@ -13313,7 +13313,11 @@ for the spare wrapper, and GPIO `DATA_CTRL_ENABLE`, AVSBus `AVS_CFG_0`, I2C `INT
 telemetry receiver `INTR_ENABLE`, and `LOG_REGION_SIZE` of each of the four UART/log-engine
 wrappers; for the UART and I3C aperture-end reads, the AR beat issued on the SEP_IN manager's AR
 channel and the R beat taken before any read data conversion, with `env.axi_monitor` counting the
-R beat; `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`
+R beat; `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`; for the
+unimplemented-offset probes, `CLOCK_GATE_CONTROL` read once at setup, 4-byte reads and writes
+(8-byte for the zeroer `CTRL_STATUS` and `DEST_ADDR`) at the contract's offsets inside the CLA,
+DMA-control, zeroer-control, UART, log-engine, eFuse control, eFuse shadow, I3C, telemetry,
+AVSBus and external windows, and the monitor's R-beat and B-response tallies
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`, `decode`; seed 1; tool Verilator (cocotb).
@@ -13325,7 +13329,10 @@ draws nothing from the seed.
 SLVERR, the spare-block gaps, the peripheral windows and the CLA window, a read past the decoded
 extent answers DECERR with 0xBADCAB1E and the live registers are unchanged by the writes; inside
 the four UART/log-engine wrappers, a read at a hole or gap answers one of the two documented
-pairs and the wrappers' `LOG_REGION_SIZE` registers are unchanged by the writes.
+pairs and the wrappers' `LOG_REGION_SIZE` registers are unchanged by the writes. Inside the CLA,
+DMA-control, zeroer-control, UART, log-engine, eFuse control, eFuse shadow, I3C, telemetry,
+AVSBus and external windows, a read and a write at an unimplemented offset answer the response
+the component map documents for that window, and an OKAY access on the same path follows each.
 
 *Test Coverage*:
 
@@ -13358,12 +13365,46 @@ pairs and the wrappers' `LOG_REGION_SIZE` registers are unchanged by the writes.
   value, so a write past the extent did not land in a neighbouring register.
 * The CLA window's last word reads OKAY and the first address past the window reads DECERR with
   0xBADCAB1E; the write response there is printed, not compared (`smc.rdl`, `smc_cla` placement).
+* CLA gaps at window offsets 0x800, 0x1800 and 0x3800 read OKAY with 0x0, take a write of
+  0xA5A5_5A5A with OKAY and re-read 0x0; `Trdstramimpl` (offset 0x4) then reads 0x0100_3901
+  (`memory_map.adoc` CLA row, hole OKAY 0x0 / OKAY; `smc_cla.adoc`).
+* BASE + 0x38180 (past the 312-byte iDMA extent) and BASE + 0x38280 (past the 24-byte zeroer
+  extent) read DECERR with 0xBADCAB1E and their writes answer DECERR; BASE + 0x38000 reads OKAY,
+  zeroer `CTRL_STATUS.STATUS` reads 0 before and after the write and `DEST_ADDR` reads 0x0
+  (`memory_map.adoc` iDMA and zeroer rows; `zeroer_ctrl.adoc`).
+* In UART/log-engine wrapper 0, the UART-window offsets +0x1C0 and +0x3F0 and the log-engine bank
+  offsets 0x20 (+0x220) and 0xC0 (+0x2C0) each read one of (OKAY, 0x0) or (DECERR, 0xBADCAB1E)
+  and each write answers OKAY or DECERR; which pair is printed, not compared (LINKED-ISSUE
+  SF-015). `SCR` (+0x11C) then reads back 0x5A and `LOG_WRITE_ADDR` (+0x210) reads back
+  0x1357_9BDF and 0x0 after its restore.
+* BASE + 0x8800 (past the 28-byte eFuse interface control extent) and BASE + 0x7800 (past the
+  1 KiB shadow extent) read DECERR with 0xBADCAB1E and their writes answer DECERR;
+  `EFUSE_INTERFACE_CTRL_STATUS` and BASE + 0x7000 then read OKAY (`memory_map.adoc` eFuse rows).
+* I3C window offset 0x3F0 (an offset the component map leaves unimplemented) reads OKAY with
+  0x0, takes a write of 0xA5A5_5A5A with OKAY and re-reads OKAY with 0x0 (`memory_map.adoc` I3C
+  row, hole OKAY 0x0 / OKAY). No DAT or DCT entry is read or written: their storage has no
+  architected reset value (SF-029).
+* Telemetry BASE + 0x9040 (receiver 0 hole) reads OKAY 0x0 and its write answers OKAY;
+  BASE + 0x9800 (past the 768-byte extent) reads DECERR with 0xBADCAB1E and its write answers
+  DECERR; `CTRL` then reads OKAY. AVSBus BASE + 0x4800 (past the 92-byte extent) reads DECERR
+  with 0xBADCAB1E and its write answers DECERR; BASE + 0x4000 then reads OKAY.
+* External BASE + 0x406548 (first address past the window) reads DECERR with 0xBADCAB1E and its
+  write answers DECERR; the read and write at BASE + 0x406000 complete and their codes and data
+  are printed, not compared (LINKED-ISSUE SF-016; `memmap.adoc`, AXI-Lite External Window).
+* A UART, I3C, telemetry or AVSBus window whose `CLOCK_GATE_CONTROL` enable reads set at setup
+  is expected to answer SLVERR with 0xBADCAB1E on every access instead (`memmap.adoc`; SF-019).
+* Stimulus only, never an expected value: these probes drive the response-code bits of the
+  local-crossbar masters toward the DFD, DMA-control and zeroer-control windows, of the
+  peripheral endpoints (eFuse, I3C, telemetry, AVSBus, log engine) and the eFuse controller's
+  forward route toward the fuse bank.
 
 *Test Procedure*:
 
 [arabic]
-. Wait for `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`, each within 200000
-`clk_smc_i` rises, and record their values.
+. Setup (S1). Wait for `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n`, each
+within 200000 `clk_smc_i` rises, and record their values; read `CLOCK_GATE_CONTROL` and add every
+window probe whose documented answer is an error, or one of a pair that includes DECERR, to the
+monitor's expected-DECERR addresses. Steps 2 to 10 below are the existing legs (S2).
 . Error injection. Point: SEP_IN, the reset unit's first address past its extent and the last word
 of its aperture, added to the monitor's expected-DECERR addresses. Kind: a read and then a 4-byte
 write of 0xA5A5_5A5A at each address. Expected response: the read answers DECERR with 0xBADCAB1E,
@@ -13403,8 +13444,23 @@ addresses; for N = 0..3 write `LOG_REGION_SIZE` with 0x1000 + N and read it back
 +0x140, +0x280 and the generated-map gap word of each wrapper, requiring one of the two documented
 pairs; re-read all four `LOG_REGION_SIZE`; print `CHK-PAST-EXTENT-UARTWRAP` and
 `CHK-PAST-EXTENT-UARTWRAP-LIVE`.
-. Require 169 accesses: 167 against the sequence's own count and the scoreboard's checked count
-and the two unconverted reads, print `CHK-TIMEOUT-PATHS`, then run the fence that prints
+. CLA (S3). Read, write 0xA5A5_5A5A and re-read window offsets 0x800, 0x1800 and 0x3800, then
+read `Trdstramimpl`; print `CHK-ERR-CLA`.
+. DMA and zeroer (S4). Read and write BASE + 0x38180, read BASE + 0x38000; 8-byte read of
+`CTRL_STATUS`, read and write BASE + 0x38280, 8-byte reads of `CTRL_STATUS` and `DEST_ADDR`;
+print `CHK-ERR-DMA` and `CHK-ERR-ZEROER`.
+. UART and log engine (S5). In wrapper 0 read and write +0x1C0 and +0x3F0, write `SCR` 0x5A and
+read it back; read and write +0x220 and +0x2C0, write `LOG_WRITE_ADDR` 0x1357_9BDF, read it back,
+write 0 and read it back; print `CHK-ERR-UART` and `CHK-ERR-LOGENG`.
+. eFuse (S6). Read and write BASE + 0x8800, read `EFUSE_INTERFACE_CTRL_STATUS`; read and write
+BASE + 0x7800, read BASE + 0x7000; print `CHK-ERR-EFUSE`.
+. I3C (S7). Read, write 0xA5A5_5A5A and re-read window offset 0x3F0; no DAT or DCT entry is
+accessed; print `CHK-ERR-I3C`.
+. Telemetry and AVSBus (S8). Read and write BASE + 0x9040 and BASE + 0x9800, read `CTRL`; read and
+write BASE + 0x4800, read BASE + 0x4000; print `CHK-ERR-TELEMETRY` and `CHK-ERR-AVS`.
+. External (S9). Read and write BASE + 0x406548, then BASE + 0x406000; print `CHK-ERR-EXTERNAL`.
+. Require 223 accesses: 221 against the sequence's own count and the scoreboard's checked count
+and the two unconverted reads, print `CHK-TIMEOUT-PATHS` (S10), then run the fence that prints
 `CHK-NONVAC`.
 
 *Checkers*:
@@ -13449,27 +13505,62 @@ compare; which pair each offset returns and the twelve write responses are measu
 not compared.
 |`CHK-PAST-EXTENT-UARTWRAP-LIVE` |Each wrapper's `LOG_REGION_SIZE` reads back 0x1000 + N with OKAY
 right after its write and still reads 0x1000 + N after all twelve hole and gap writes.
-|`CHK-NONVAC` |The step stamps S1 to S10 are in increasing time order, each fence term from SETUP
-to UARTWRAP has a non-zero count, the ten checker lines above were printed in step order each
-after its own step, and at least 169 accesses were issued.
-|`CHK-TIMEOUT-PATHS` |Reports each bounded wait with its bound and last observed value (the three
-fuse-sense waits of 200000 `clk_smc_i` rises and the 50 us guard of every SEP_IN access); it is a
-printed report with no compare, each wait raising its own failure when its bound expires.
+|`CHK-ERR-CLA` |The three CLA gap reads answer OKAY with 0x0, the three gap writes answer OKAY,
+each re-read answers OKAY 0x0, and `Trdstramimpl` then reads 0x0100_3901 with OKAY, exact
+compares.
+|`CHK-ERR-DMA` |The read at BASE + 0x38180 answers DECERR with 0xBADCAB1E and the write there
+DECERR; the read at BASE + 0x38000 answers OKAY and its data is printed (SF-018).
+|`CHK-ERR-ZEROER` |The read at BASE + 0x38280 answers DECERR with 0xBADCAB1E and the write there
+DECERR; `CTRL_STATUS.STATUS` reads 0 before and after the write and `DEST_ADDR` reads 0x0 with
+OKAY.
+|`CHK-ERR-UART` |Each read at wrapper 0 +0x1C0 and +0x3F0 answers (OKAY, 0x0) or (DECERR,
+0xBADCAB1E) and each write OKAY or DECERR, the pair printed per offset (LINKED-ISSUE SF-015);
+`SCR` reads back 0x5A with OKAY.
+|`CHK-ERR-LOGENG` |Each read at log-engine bank offsets 0x20 and 0xC0 answers (OKAY, 0x0) or
+(DECERR, 0xBADCAB1E) and each write OKAY or DECERR (LINKED-ISSUE SF-015); `LOG_WRITE_ADDR` reads
+back 0x1357_9BDF with OKAY and 0x0 after the restore.
+|`CHK-ERR-EFUSE` |The reads at BASE + 0x8800 and BASE + 0x7800 answer DECERR with 0xBADCAB1E and
+the writes there DECERR; `EFUSE_INTERFACE_CTRL_STATUS` and BASE + 0x7000 then read OKAY, data
+printed.
+|`CHK-ERR-I3C` |The read at window offset 0x3F0 answers OKAY with 0x0, the write there answers
+OKAY and the re-read answers OKAY with 0x0 (SLVERR with 0xBADCAB1E if the I3C clock gate reads
+set, SF-019); fails on a non-OKAY response with the gate clear, non-zero data, a wedged access
+or X. DAT and DCT are not accessed (SF-029).
+|`CHK-ERR-TELEMETRY` |The read at BASE + 0x9040 answers OKAY 0x0 and its write OKAY; the read at
+BASE + 0x9800 answers DECERR with 0xBADCAB1E and its write DECERR; `CTRL` then reads OKAY.
+|`CHK-ERR-AVS` |The read at BASE + 0x4800 answers DECERR with 0xBADCAB1E and its write DECERR; the
+read at BASE + 0x4000 answers OKAY, data printed.
+|`CHK-ERR-EXTERNAL` |The read at BASE + 0x406548 answers DECERR with 0xBADCAB1E and its write
+DECERR; the read and write at BASE + 0x406000 complete and their codes and data are printed
+(LINKED-ISSUE SF-016).
+|`CHK-NONVAC` |Ordered fence SETUP < EXISTING < CLA < DMA-ZEROER < UART-LOGENG < EFUSE < I3C <
+TELEMETRY-AVS < EXTERNAL: the step stamps S1 to S9 are in increasing time order and every term
+has a non-zero access count; the nine existing legs inside EXISTING are stamped in order with
+non-zero counts; the twenty checker lines above were printed in order each after its own stamp;
+and at least 223 accesses were issued.
+|`CHK-TIMEOUT-PATHS` |Reports each bounded wait with its bound and last observed state (the three
+fuse-sense waits of 200000 `clk_smc_i` rises and the 50 us guard of every SEP_IN access, with the
+monitor's R-beat and B-response tallies); it is a printed report with no compare, each wait
+raising its own failure when its bound expires.
 |===
 
 *Pass Criteria*: `CHK-PAST-EXTENT-RESET-UNIT`, `CHK-PAST-EXTENT-EFUSE`, `CHK-PAST-EXTENT-TIMER`,
 `CHK-PAST-EXTENT-BASE-CONFIG`, `CHK-PAST-EXTENT-FABRIC-CTRL`, `CHK-PAST-EXTENT-SPARE`,
 `CHK-PAST-EXTENT-PERIPH`, `CHK-PAST-EXTENT-CLA`, `CHK-PAST-EXTENT-UARTWRAP`,
-`CHK-PAST-EXTENT-UARTWRAP-LIVE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every
-past-extent, gap and last-word read of a unit with a declared response answers DECERR with
-0xBADCAB1E, every UART wrapper hole or gap read answers one of the two documented pairs, every live
-register holds its value across the writes, the CLA last word reads OKAY, and exactly 169 accesses
-are issued. Enrolled in: `all`, `hosted`.
+`CHK-PAST-EXTENT-UARTWRAP-LIVE`, `CHK-ERR-CLA`, `CHK-ERR-DMA`, `CHK-ERR-ZEROER`, `CHK-ERR-UART`,
+`CHK-ERR-LOGENG`, `CHK-ERR-EFUSE`, `CHK-ERR-I3C`, `CHK-ERR-TELEMETRY`, `CHK-ERR-AVS`,
+`CHK-ERR-EXTERNAL`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every past-extent, gap
+and last-word read of a unit with a declared response answers DECERR with 0xBADCAB1E, every UART
+wrapper hole or gap read answers one of the two documented pairs, every live register holds its
+value across the writes, the CLA last word reads OKAY, every window probe answers the response the
+component map documents for it, and exactly 223 accesses are issued. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The write responses at every probed address are printed beside the SLVERR the
 register description declares and not compared. The UART and I3C windows declare no past-extent
 response, so only their aperture-end word is read and written and the answers are printed, not
-compared. The write response past the CLA window is printed, not compared.
+compared. The write response past the CLA window is printed, not compared. The UART and
+log-engine probe pairs (SF-015), the I3C hole read data (SF-014) and the external unclaimed-offset
+response (SF-016) are printed, not compared.
 
 '''''
 
@@ -14192,7 +14283,12 @@ draws nothing from the seed.
 * **Outstanding IDs.** Per endpoint class, four reads with AxID 0x01..0x04 are outstanding at once; the RIDs the recorder sees must be exactly that set, and on a compared class each read must answer OKAY with the reference. The number of ARs accepted up to the first R beat is logged per class (acceptance depth is open, SF-010).
 * **Not reachable at this level.** The DTP CSR target (BASE + 0xB000) is a forwarded port with no responder on the subsystem bench, so it is outside the check set (SF-040).
 * **Measure-and-log legs (LINKED-ISSUE).** Every access to the zeroer and iDMA control windows (SF-008) and the DFD/CLA window (SF-038); the two eFuse windows on the AxPROT leg (SF-012); and the response code of every AxLOCK = 1 access (SF-002). These log the response and word as `MEASURE` lines and compare nothing on that leg; the AxLOCK = 1 read word is still compared.
-* The SEP_IN monitor's DECERR excuse covers the measure-and-log endpoints for the whole run, the two eFuse windows only during the AxPROT leg, and the burst start addresses only during the burst legs.
+* **eFuse SHIM word.** With every attribute zero, the first word of the eFuse SHIM control block (BASE + 0x040_0000, `memmap.adoc`) takes an 8-byte read, a write-back of the word read and a second read. The SHIM registers are adopter-defined, so the word is logged and compared only between the two reads: both reads must answer the same response code, and when both answer OKAY the second word must equal the first. A non-OKAY code is logged with both words (SF-041).
+* **External window.** The supplementary region of the external window (BASE + 0x040_4000) takes an 8-byte read and an 8-byte write of data 0 with AxPROT 0x7, then the same pair with AxPROT 0x0. Each must answer DECERR, the response `memmap.adoc` documents for an unclaimed access in that region on the reference integration; the read data is logged.
+* **WUSER.** Every endpoint the AxUSER leg writes back takes a zero-attribute read, a full-strobe write-back of the word read with WUSER 0xFFF and a zero-attribute read, then the same write-back with WUSER 0x000 and a read. On a compared endpoint each write must answer OKAY and each read OKAY with the reference; on a measure-and-log endpoint every response and word is logged.
+* **AxLEN 15.** CPU_CTRL `SCRATCH[0..15]` (BASE + 0x39080, sixteen contiguous 8-byte read-write registers, `cpu_ctrl.adoc`) takes one INCR read burst of sixteen 8-byte beats and one INCR write-back burst of the sixteen words read, then an AxLEN 0 read of each register. Every beat's response and data, the B response and whether each register reads back the word the burst returned are logged, not compared (SF-003). The M-mode and Xvisor output remaps, the alias remap and the reset unit hold no pinned 128-byte read-write footprint and are reported as such on the checker line.
+* The SEP_IN monitor's DECERR excuse covers the measure-and-log endpoints for the whole run, the two eFuse windows only during the AxPROT leg, the burst start addresses only during the burst legs, the SHIM word only during its leg and the external window only during its leg.
+* **Coverage intent.** The SHIM leg targets the `efuse_bank_ctrl` request and response handshake and the eFuse controller's route to the bank; the external-window leg targets the AxPROT bits of the external request port and of the peripheral crossbar's external output; the WUSER leg targets every `w.user[11:0]` net of the input fabric, local crossbar, filters and data-accelerator control demux; the AxLEN 15 leg targets AxLEN[7:3] on the CPU front port output. These are stimulus criteria, not expected values.
 * Every response wait is bounded at 20 us and fails with the outstanding request list; recorder beat waits are bounded at 16 clocks.
 
 *Test Procedure*:
@@ -14214,14 +14310,18 @@ Drive `smc_axil_endpoint_prot_sweep_test_seq`. Each checker below is a named com
 |`CHK-ATTR-LEN` |As `CHK-ATTR-PROT` for AxLEN 0 on every endpoint; the burst set's beats and footprint logged
 |`CHK-ATTR-ID` |As `CHK-ATTR-PROT` for AxID 0x01, 0x15, 0x2A, 0x3F, 0x00, with RID and BID equal to AxID
 |`CHK-ATTR-ID-OUTSTANDING` |Per endpoint class, four outstanding reads with AxID 0x01..0x04 returned exactly that RID set, and on a compared class each OKAY with the reference; AR acceptance depth logged
-|`CHK-NONVAC` |Ordered fence REFERENCE < PROT < DEBUG-MGR < USER < REGION < QOS < LOCK < CACHE < LEN < ID < OUTSTANDING, every term with a non-zero count and its own sim time
+|`CHK-ATTR-SHIM-WINDOW` |The read, write-back and second read of the first eFuse SHIM word completed; both reads answered the same code and, answering OKAY, the same word; the word and a non-OKAY code are logged
+|`CHK-ATTR-EXTERNAL-PROT` |The read and zero-data write at the external window's supplementary region answered DECERR with AxPROT 0x7 and with 0x0
+|`CHK-ATTR-WUSER` |Every compared endpoint answered each write-back with WUSER 0xFFF and 0x000 with OKAY, and the read after each with OKAY and the reference
+|`CHK-ATTR-LEN15` |The AxLEN 15 read and write-back bursts over CPU_CTRL `SCRATCH[0..15]` completed with sixteen read beats and one write response; beats, B response and read-back logged; the windows with no 128-byte footprint named
+|`CHK-NONVAC` |Ordered fence REFERENCE < PROT < DEBUG-MGR < USER < REGION < QOS < LOCK < CACHE < LEN < ID < OUTSTANDING < SHIM < EXTERNAL < WUSER < LEN15, every term with a non-zero count and its own sim time
 |`CHK-TIMEOUT-PATHS` |Every response and recorder wait was bounded, with its bound and last state reported, and none expired
 |===
 
-*Pass Criteria*: all twelve checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all sixteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
-*Scope limit*: The DTP CSR target (`BASE + 0xB000`) is a forwarded port with no responder on the subsystem bench and is outside the check set; the zeroer, iDMA, DFD/CLA and eFuse windows and the AxLOCK = 1 and burst-start response codes are measured and logged, not compared.
+*Scope limit*: The DTP CSR target (`BASE + 0xB000`) is a forwarded port with no responder on the subsystem bench and is outside the check set; the zeroer, iDMA, DFD/CLA and eFuse windows, the eFuse SHIM word's response and data, and the AxLOCK = 1, burst and AxLEN 15 response codes are measured and logged, not compared.
 '''''
 
 [[sec-542-smc_cpuif_handshake_instances_test]]
@@ -41002,15 +41102,16 @@ is read once and held against the write, not predicted from the integration.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the contract and the sequence
 draws nothing from the seed.
 
-*Objective*: One reference register of each of the 133 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
+*Objective*: One reference register of each of the 133 generated register-block instances takes 1- and 2-byte reads between two equal full-width reads; five registers take 1-byte writes and restore exactly; three remap entries hold all ones; all 24 remap regions take lane-7-only and lane-7-unstrobed writes and restore exactly; the system-timer and telemetry windows answer their documented resets and DECERR 0xBADCAB1E past their extents; FILTER_CONFIG of all 32 filter entries takes single-lane strobed writes, locks, and refuses every later write with DECERR.
 
 *Test Coverage*:
 
-* Contract `SMC_COV_W2T_008` revision 2 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
+* Contract `SMC_COV_W2T_008` revision 4 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
 * The instance list comes from the generated map (`seq_lib/smc_rdl_regmap.py`): alias 8, M-mode 8, Xvisor 8, inbound filter 16, outbound filter 16, GPIO 65, CPU_CTRL 1, telemetry 3, timer 1, zeroer 1, UART 4, eFuse control 1, CLA 1 (133). The reference registers are alias `region_start`, output remap `region_attrs`, filter `END_ADDR`, GPIO `ACCESS_FILTER`, CPU_CTRL `RESET_VECTOR[0]`, timer `CTRL`, telemetry `STATUS`, zeroer `SIZE`, UART `LSR`, eFuse `EFUSE_READ_REQ_TIMEOUT` and CLA `Trdstcontrol`.
 * Each reference register takes a full-width read, 1-byte reads at every byte offset, 2-byte reads at offsets 0..6 (64-bit) or 0..2 (32-bit), and a second full-width read that must equal the first; outside the inbound filter (SF-006) it must equal the documented reset over the declared fields. Sub-word data and RRESP are logged against the reference read (SF-009).
 * CPU_CTRL `SCRATCH[0]` (preloaded 0) takes 0xA5 at offsets 1 and 3; `START_ADDR` of inbound and outbound entry 15 takes 0x5A at lanes 1, 3 and 5; timer `CTRL` takes 0x05 at offset 1 and telemetry 0 `CTRL` 0x30 at offset 1. `SCRATCH[1]`, the entry's `END_ADDR`, `TIMER_PRESET_LO` and `INTR_ENABLE` must not change, and a full-width restore must read back the pre-leg value.
 * Alias, M-mode and Xvisor `REGION[7].region_attrs` take all ones, then 0; every documented field must read all ones, then 0 (`alias_remap.adoc`, `output_remap.adoc`). Reserved bits are logged (SF-001).
+* Each of the 24 remap regions (alias, M-mode and Xvisor `REGION[0..7].region_attrs`) is read and saved, then takes an 8-byte WSTRB 0x80 write with bit 63 set and lanes 0..6 the complement of the saved bytes, a WSTRB 0x7F write of the saved word with bit 63 clear, and a WSTRB 0xFF write of the saved word, each read back. Every access must answer OKAY, the alias regions must save valid 0 (`alias_remap.adoc` reset) and the restore must read back the saved word; the valid bit and lane fields after the two strobed writes are logged (SF-009).
 * The system timer answers its 9 registers OKAY with their documented resets (`STATUS.MODE` = NOT(`tb_chiplet_is_primary`)) and the 1015 words BASE + 0xA024 .. 0xAFFC DECERR with 0xBADCAB1E. The 192 telemetry words BASE + 0x9000 .. 0x92FC answer OKAY with exactly three reading 0x1, and the 832 words past them DECERR with 0xBADCAB1E (`memory_map.adoc`).
 * On each of the 32 filter entries, 8-byte writes strobe lane 0 (read_allowed, write_allowed, entry_enabled alone and cleared), lane 1 (allow_ns), lane 2 (src_id / group_id 0xFF and 0x00) and lane 3 (allow_burst) with the complement of the saved byte on every other lane. `data_bus_width` must read 0x3 after every write. `START_ADDR` / `END_ADDR` are read after every lane write: before the allow_burst leg they must equal the saved words; after allow_burst = 1 they must equal the saved words rounded to the 4 KB granule (start & ~0xFFF, end \| 0xFFF) when both saved words share a 4 KB granule, else the saved words (`filter_ctrl.adoc` granule write-back); after allow_burst = 0 they are logged. Full-width restores of FILTER_CONFIG, `START_ADDR`, `END_ADDR` and `START_ADDR` again must read back the saved words, and those readbacks are the reference words of the later legs; the per-lane FILTER_CONFIG readbacks are logged (SF-009, SF-029). A WSTRB 0x7F write with bit 63 set follows; the lock outcome is logged and an unlocked entry is restored.
 * Outbound entry 15 takes FILTER_CONFIG all ones and must read every documented field set and `data_bus_width` 0x3, and the next write must answer DECERR. The other 31 entries are locked by a WSTRB 0x80 write (full-width fallback if that does not lock) and must keep their S7 post-restore configuration. Every entry then takes five writes (lane 7 clearing and setting `locked`, lane 0 complement, full-width complement of `START_ADDR` and `END_ADDR`) that must answer DECERR and leave the three registers unchanged (`filter_ctrl.adoc`: `locked` is RW1S).
@@ -41027,6 +41128,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |`CHK-SWEEP-SUBWORD` |All 133 instances are visited with the family counts of the map, every planned sub-word read completes, the second full-width read equals the first on 133/133, and 117/117 outside the inbound filter equal the documented reset; sub-word lanes and RRESP are logged (LINKED-ISSUE SF-009)
 |`CHK-SWEEP-BYTE-LANE` |The five full-width restores read back the pre-leg value and the neighbour registers never change; the byte-lane readbacks are logged (LINKED-ISSUE SF-009, SF-031)
 |`CHK-SWEEP-FULLWIDTH-REMAP` |Alias `region_attrs` reads valid 1, cacheable 0xF, offset [55:12] all ones; M-mode and Xvisor read valid 1 and offset [55:0] all ones; all three read their documented fields 0 after the zero write; reserved bits logged (LINKED-ISSUE SF-001)
+|`CHK-SWEEP-VALID-LANE` |All 24 remap regions are visited (8 alias, 8 M-mode, 8 Xvisor) and every access answers OKAY; the 8 alias regions save valid 0; the WSTRB 0xFF restore reads back the saved word on 24/24; the counts of regions reading valid 1 after the WSTRB 0x80 write and still reading valid 1 after the WSTRB 0x7F write, and the lane fields, are logged (LINKED-ISSUE SF-009)
 |`CHK-SWEEP-TIMER-WINDOW` |The 9 timer registers answer OKAY at their documented resets and all 1015 past-extent reads answer DECERR with 0xBADCAB1E
 |`CHK-SWEEP-TELEM-WINDOW` |All 192 in-extent telemetry reads answer OKAY with exactly three reading 0x1 and the rest 0x0 (positions logged, LINKED-ISSUE SF-014); all 832 past-extent reads answer DECERR with 0xBADCAB1E
 |`CHK-SWEEP-FCFG-LANES` |All 32 entries visited; `data_bus_width` reads 0x3 after every write; `START_ADDR` / `END_ADDR` equal the saved words before the allow_burst leg and, after allow_burst = 1, the 4 KB-rounded saved words when both share a granule, else the saved words; their values after allow_burst = 0 are logged; every full-width restore reads back the saved words; per-lane readbacks and the unstrobed-lock outcome logged (LINKED-ISSUE SF-009, SF-029)
@@ -41034,10 +41136,10 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |`CHK-SWEEP-LOCK-SET` |The other 31 entries read `locked` 1 with FILTER_CONFIG [62:0], `START_ADDR` and `END_ADDR` equal to their S7 post-restore readbacks; the locking path per entry is logged (LINKED-ISSUE SF-009)
 |`CHK-SWEEP-LOCKED-DECERR` |On all 32 locked entries each of the 5 writes answers DECERR (160/160), `locked` still reads 1 and the three registers read their locked values, the S7 post-restore readbacks with `locked` set (96/96)
 |`CHK-TIMEOUT-PATHS` |Every SEP_IN access and the fuse-sense wait is bounded; the line logs each bound and the last observed access, and no wait expires
-|`CHK-NONVAC` |Ordered fence SETUP < SUBWORD < BYTE-LANE < FULLWIDTH-REMAP < TIMER-WINDOW < TELEM-WINDOW < FILTER-LANES < LOCK-UNSTROBED < FULLWIDTH-FILTER < LOCK-SET < LOCKED-WRITES, each term with a non-zero count and a later sim time than the one before
+|`CHK-NONVAC` |Ordered fence SETUP < SUBWORD < BYTE-LANE < FULLWIDTH-REMAP < VALID-LANE < TIMER-WINDOW < TELEM-WINDOW < FILTER-LANES < LOCK-UNSTROBED < FULLWIDTH-FILTER < LOCK-SET < LOCKED-WRITES, each term with a non-zero count and a later sim time than the one before
 |===
 
-*Pass Criteria*: all eleven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all twelve checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Sub-word read data, partial-strobe outcomes and reserved bits are logged only (SF-009, SF-001). The inbound filter's reset content is not compared (SF-006). All 32 filter entries end the run locked.
 
@@ -41550,7 +41652,7 @@ Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named 
 
 *Source Module*: `smc_log_engine_transfer_test`
 
-*BFM / Model*: ocah_axi_vip (AXI); the wrapper's own UART in `MCR.LOOP`
+*BFM / Model*: ocah_axi_vip (AXI); the wrapper's own UART in `MCR.LOOP`; the TB SYS_OUT output-fabric responder memory and a passive per-clock capture of its AR and R channels
 
 *Run mode*: one testlist entry in `testlists/uart.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 3600; tags `ci`, `uart`; seed 1; tool Verilator (cocotb).
@@ -41558,16 +41660,22 @@ Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Run a real log-engine transfer on all four uart_log_engine_wrap instances.
+*Objective*: Read and write the log-engine register surface, run all-16-slot log transfers, gate them with `CTRL.EN` and fetch from SYS_OUT memory on all four uart_log_engine_wrap instances (contract SMC_COV_R4_001 revision 2).
 
 *Test Coverage*:
 
-* The Log Engine software flow of the Programmer's Guide (`doc/programmer/src/smc-programming.adoc`), driven over SEP_IN AXI rather than from firmware: four logs are written into the SPM log region of each wrapper, LOG_REGION_ADDR and LOG_REGION_SIZE are pointed at them, LOG_WRITE_ADDR at the wrapper's own transmit holding register, the UART is put in `MCR.LOOP`, the engine is enabled, and all four LOG_CTRL elements are triggered at once so the round-robin arbiter has to grant more than one requester.
-* Each log fills its whole slot, which `log_engine.rdl` sizes as the region size over the sixteen LOG_CTRL elements rounded down to complete 8-byte fetch beats, so every element's fetch has to come back for a second beat before it is done.
-* Every byte names the wrapper, the element and the slot offset it came from, so a stream that carried a neighbour's slot, repeated a byte or dropped one fails.
-* The order the arbiter interleaves the four elements in is not predicted; each element's own bytes are required to arrive in slot order, exactly once.
-* Nothing writes a pending LOG_CTRL length back to 0. The only clearing this leaf takes is the hardware one it waits for.
-* The UART divisor latches, line and modem control, FIFO control and the wrapper pad-mux enable are all restored, and the engine is disabled with its region and write addresses cleared.
+* **Reset reads.** Before anything writes to a wrapper, its 23 log-engine words (CTRL, LOG_REGION_SIZE, both LOG_REGION_ADDR halves, LOG_WRITE_ADDR, INTR_STATUS, INTR_ENABLE, LOG_CTRL[0..15]) must read 0 with OKAY, and the wrapper control register `CTRL.UART_EN` must read 0. INTR_TEST is read once per wrapper and its value and response are logged only (SF-005). Every other register the generated `uart_log_engine_wrap` map lists outside the log-engine bank (the ten UART registers) is read once and must answer OKAY; the membership and offsets are logged (SF-004).
+* **Register readback.** With `CTRL.EN` = 0, 0xA5A5A5A5, its complement and 0 are written to LOG_REGION_SIZE, both LOG_REGION_ADDR halves, LOG_WRITE_ADDR and INTR_ENABLE, each read back and compared on its documented RW bits (60 compares); LOG_REGION_ADDR [63:56] must read 0, and the other reserved-bit readbacks are logged only (SF-005). `CTRL.UART_EN` takes 1 then 0. No LOG_CTRL element is written here: a non-zero LOG_LEN starts a transfer that software may not withdraw, so the stored lengths are read back by the transfers instead.
+* **Loopback.** Each UART is armed with the bench's arm sequence (`MCR.LOOP`, 8-bit characters) and 0x55 then 0xAA written to THR must come back through RBR with `LSR.DR` rising and then clearing.
+* **All-16 transfer.** One wrapper at a time, a 0x80-byte SPM region holds 8-byte slots, one fetch word each, of 8, 1, 7, 2, 3, 4, 5, 6, 8, 1, 7, 2, 3, 4, 5 and 6 bytes (72 per wrapper, more than the 32-entry FIFOs). Byte 0 of slot i of wrapper N is N * 16 + i and every later byte lies in 0x40..0xFF, so the received stream must split into 16 whole messages, each equal to its slot. The message order is logged and not compared (SF-003). While the receiver is empty the drain reads the other three wrappers' LSR (DR must read 0) and samples the wrapper's LOG_CTRL elements round robin.
+* **Completion.** All 64 elements must read 0 within 64 reads after the last byte without any software write of 0, LSR must show no further data and INTR_STATUS must read 0.
+* **Length pending.** Every LOG_CTRL sample reads the submitted length or 0 and never rises again after 0, and every wrapper has a sample equal to the length on an element whose header had already arrived.
+* **Hold then enable.** Over the same one-word slots, with `CTRL.EN` = 0 a length of 1 is written into all 16 elements; for 256 LSR reads no character may arrive and all 16 must still read 1. After `CTRL.EN` = 1 the 16 headers must arrive once each and all 16 elements clear; the LSR reads the enabled transfer took are logged beside the hold.
+* **Outbound fetch.** Wrapper 0's 0x400-byte region of 64-byte slots is placed at 0x02004000, outside the SMC window, with four logs of 8, 9, 16 and 1 bytes seeded in the SYS_OUT responder memory. Exactly six ARs (one per slot word) must appear on the output AXI port, each with ARLEN 0, ARSIZE 3 and ARPROT 0b010, none while another fetch is outstanding, and the 34 bytes must arrive exact. The outbound filter entry 0 is opened for the leg and restored.
+* **INTR_TEST.** With INTR_ENABLE 0, INTR_TEST 0x01 and 0x10 must set INTR_STATUS bit 0 and bit 4 alone, a write of 0 must leave the bit set and a write of 1 must clear it.
+* **Restore.** `CTRL.EN`, LOG_REGION_SIZE, LOG_REGION_ADDR and LOG_WRITE_ADDR are cleared and read back 0, the UART is restored by the bench's restore sequence and `CTRL.UART_EN` reads 0.
+* **Coverage intent.** The all-16 transfer and the hold leg give every LOG_CTRL element of wrappers 1..3 a hardware length clear; the reset reads visit registers of the wrapper map other than the first.
+* Every SEP_IN access is bounded by the agent's AXI timeout; every LSR poll by 400 reads per expected byte, every LOG_CTRL clear poll by 64 reads and the first-character poll after enable by 400 reads, each failing with the last value read.
 
 *Test Procedure*:
 
@@ -41578,15 +41686,26 @@ Drive `smc_log_engine_transfer_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-LOG-ENGINE-TRANSFER-BYTES` |All 128 log bytes of the run reached the receiver of their own wrapper, every element's bytes arrived in slot order and exactly once, and no byte named another element or another wrapper; a transfer that never started fails on the byte count before the compare is reached
-|`CHK-LOG-ENGINE-TRANSFER-HWCLR` |Every driven LOG_CTRL element read a length of 0 after its log arrived, and nothing in the leaf wrote a pending length back, so the clear is the hardware completion the RDL declares
-|`CHK-LOG-ENGINE-TRANSFER-CLEAN` |Every LSR read during the transfer showed no overrun, parity, framing or break error, the receiver went quiet after the last expected byte, and INTR_STATUS read clear before and after, so the engine hit neither a fetch nor a write error and sent nothing it was not asked to
+|`CHK-LE-REG-RESET` |On each of the four wrappers the 23 log-engine words read 0x00000000 with OKAY before any write (92 reads); the INTR_TEST read value and response are logged per wrapper (SF-005)
+|`CHK-LE-REG-RW` |Every readback of 0xA5A5A5A5, its complement and 0 equals the written value on the documented RW bits of the five writable registers other than LOG_CTRL of every wrapper (60 compares), no LOG_CTRL element is written, LOG_REGION_ADDR [63:56] reads 0, `CTRL.UART_EN` reads 0, 1, 0, and every other register of the generated wrapper map outside the log-engine bank answers OKAY (membership and offsets logged, SF-004)
+|`CHK-LE-UART-LOOP` |On each wrapper 0x55 and 0xAA written to THR in `MCR.LOOP` are returned exactly by RBR within the poll bound, with `LSR.DR` clearing after each read
+|`CHK-LOG-ENGINE-TRANSFER-BYTES` |On each wrapper the 72 bytes read from RBR split into 16 whole one-word messages, each equal byte for byte to its slot with no byte beyond its length and every slot delivered once (288 bytes over four wrappers), while the other three receivers read `LSR.DR` 0 on every sample; the message order is logged (SF-003)
+|`CHK-LE-FIFO-DRAIN` |Every wrapper's 72-byte transfer, more than the 32-entry FIFOs hold, completes within the per-byte poll bound and every LSR sample shows OE, PE, FE and BI clear; the LSR-read count of each transfer is logged
+|`CHK-LOG-ENGINE-TRANSFER-HWCLR` |All 64 LOG_CTRL elements (16 one-word slots on each of four wrappers), each written non-zero, read 0x00000000 within the poll bound after the wrapper's last byte, with no software write of 0 to a pending element
+|`CHK-LE-LEN-PENDING` |Every LOG_CTRL sample during the transfers reads the submitted length or 0 and never non-zero again after 0, every wrapper has an in-flight sample equal to the length, and all 64 elements read 1 after the `CTRL.EN` = 0 hold
+|`CHK-LE-ENABLE-GATE` |With `CTRL.EN` = 0 no character arrives over the 256-read hold and all 16 lengths are kept on every wrapper; after `CTRL.EN` = 1 the first character arrives within the bound and the 16 headers arrive once each and clear; the enabled transfer's LSR-read count is logged
+|`CHK-LE-FETCH-OUTBOUND` |Wrapper 0's fetch from SYS_OUT memory issues exactly six ARs on the output AXI port, one per slot word, each with ARLEN 0, ARSIZE 3 and ARPROT 0b010 and none while another is outstanding, and the 34 bytes arrive exact
+|`CHK-LOG-ENGINE-TRANSFER-CLEAN` |INTR_STATUS reads 0 after every clean transfer, and on each wrapper INTR_TEST 0x01 and 0x10 set bit 0 and bit 4 alone, a write of 0 keeps the bit and a write of 1 clears it (8 of 8)
+|`CHK-NONVAC` |Ordered fence SETUP < RESET-READ < REG-RW < LOOPBACK < ALL16 < CLEARED < HOLD-ENABLE < OUTBOUND-FETCH < INTR-TEST < RESTORED, every term with its own sim time and a non-zero access count
+|`CHK-TIMEOUT-PATHS` |Every bounded wait (SEP_IN access, LSR poll, LOG_CTRL clear poll, the hold window and the first-character poll) reports its bound and last state, and none expired
 |===
 
-*Pass Criteria*: `CHK-LOG-ENGINE-TRANSFER-BYTES`, `CHK-LOG-ENGINE-TRANSFER-CLEAN`, `CHK-LOG-ENGINE-TRANSFER-HWCLR` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all twelve checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The order in which the arbiter interleaves the four elements is not predicted; only
-each element's own bytes are required to arrive in slot order, exactly once.
+*Scope limit*: The order in which the arbiter delivers the 16 messages is logged and not compared
+(SF-003); the INTR_TEST read value and reserved-bit readbacks are logged and not compared (SF-005);
+which registers form the wrapper's control registers is open (SF-004), so the leaf reads the
+registers the generated wrapper map lists.
 
 '''''
 
@@ -44785,7 +44904,7 @@ with each of the eight CRC codes and exactly one of them must be accepted.
 
 *Source Module*: `smc_output_remap_window_test`
 
-*BFM / Model*: ocah_axi_vip (AXI, SEP_IN for the remap registers and JTAG ingress for the traffic); the SYS_OUT responder's memory
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN for the remap registers and JTAG ingress for the traffic); the SYS_OUT responder's memory; a passive sampler of the `u_output_axi_if` AW / AR / W / B / R handshakes and the JTAG B / R handshakes
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
@@ -44793,7 +44912,7 @@ with each of the eight CRC codes and exactly one of them must be accepted.
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Outbound words through the M-mode and hypervisor remap windows, at both their LOCAL_BASE and GLOBAL_BASE copies, land in SYS_OUT memory where the programmed entry puts them.
+*Objective*: Outbound words through the M-mode and hypervisor remap windows, at both their LOCAL_BASE and GLOBAL_BASE copies, land in SYS_OUT memory where the programmed entry puts them, and outbound JTAG requests carry their address, data, burst and AxPROT / AxCACHE through the output fabric with every response OKAY.
 
 *Test Coverage*:
 
@@ -44809,6 +44928,15 @@ draws nothing from the seed.
 * **Every region's valid bit.** Each of the eight M-mode and eight Xvisor `region_attrs` registers is read at its reset (`valid` 0), written with `valid` set and a distinct 1 MB-aligned offset, and read back. With the region valid, a word through slot r of the window's local copy must land at the offset's bits [55:20] (`output_remap.adoc`: 36 MSBs for 8 x 1 MB regions) with the request's low 20 bits and leave the request address alone. The region is rewritten with the same offset and `valid` clear and read back; a second word at the same window address must land at the request address and leave the first word at the remapped address. Every word reads back through the window.
 * **Partial-lane writes.** Each region is written with WSTRB=0x0F (offset [31:0] on the enabled lanes, `valid` set on the disabled top lane), then with WSTRB=0x80 (`valid` set, another offset on the disabled lanes), and read back after each write. Whether a write honours its strobes is not stated (SF-027): both readbacks are logged, not compared. One word through slot r must then land where the second readback's `valid` and offset put it, and nowhere else.
 * **Alias cacheable field.** Each of the eight alias remap regions (`alias_remap.adoc`: `cacheable` 59:56, `offset` 55:12, `valid` 63) is read at its reset, written with `cacheable` 0xF and a distinct offset, then with `cacheable` 0x0 and the same offset, `valid` clear, and read back exactly after each write.
+* **Region addresses and source ID on output_axi.** During the valid-bit leg the AW and AR of every word are captured on `output_axi`: with the region valid both must carry `{offset[55:20], request[19:0]}`, and with it clear the request address (`fabric.adoc`: eight 1 MiB regions, valid clear passes the address unchanged). The AWUSER and ARUSER of all 32 words are logged per window and valid state, since `MMODE_ID`, `OTHER_ID` and their AxUSER bit positions are not pinned (SF-006).
+* **Outbound attributes over JTAG.** `LOCAL_BASE`, `GLOBAL_BASE` and `REGION_SIZE` are read at their reset, and `D` = 0x0280_0000 is asserted outside both apertures and both remap windows, so `fabric.adoc` sends it down the direct path untranslated. The alias regions are put back to their reset and M-mode region 0 is set valid at offset `T0` = 0x0600_0000, so `W0`, slot 0 of the M-mode window's local copy, lands at `T0`. Each write-then-read pair below must answer OKAY, read back its word, and show one AW and one AR on `output_axi` at the predicted address:
+** an 8-byte single beat at `D`, with AW and AR address `D`;
+** INCR bursts of 1, 2, 4, 8 and 16 beats at `D` + 0x100k, each with one OKAY BRESP and every beat read back with RRESP OKAY and RLAST on the last beat only (31 beats). The output AxLEN and beat counts are logged (SF-010);
+** AxPROT 0..7 at `D` and `W0`: AWPROT and ARPROT on `output_axi` must equal the value issued (`fabric.adoc`: AxPROT passes unchanged);
+** AxCACHE 0xF down to 0x0 at `D` and `W0`, with no alias region valid: AWCACHE and ARCACHE must equal the value issued (`fabric.adoc`: a transaction that hits no alias region keeps its initiator's AxCACHE);
+** AxQOS 0xF then 0, AxREGION 0xF then 0 and AxLOCK 0 at `D` and `W0`, plus an exclusive read then exclusive write of one word. The output AxQOS, AxREGION and AxLOCK and the exclusive responses and readback are logged (SF-008);
+** AWUSER / ARUSER 0xFFF then 0, and WUSER 0xFFF then 0, at `D` and `W0`. The output AxUSER and WUSER are logged (SF-006, SF-007);
+** AWID / ARID 0..3 at `D`, each answered with its own BID / RID, then four writes and four reads with IDs 0..3 outstanding at once, each completing with its own ID and word. The output AWID / ARID are logged with bits 3 and 7 (SF-009).
 * Every M-mode, Xvisor and alias region is restored to its reset and read back, and both filter entries are read at their reset.
 
 *Test Procedure*:
@@ -44823,15 +44951,24 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 |`CHK-OUTPUT-REMAP-WINDOWS` |All seven words landed in SYS_OUT memory at the predicted address and nowhere else, each read back through the window it was written through, and the M-mode word written once entry 0 denied source `MMODE_ID` was refused with DECERR and left its target untouched
 |`CHK-ORMP-VALID-MMODE` |Each of the eight M-mode regions read `valid` 0 at reset, `valid` 1 with its offset after the set, and `valid` 0 with the same offset after the clear (exact)
 |`CHK-ORMP-VALID-XVISOR` |The same for the eight Xvisor regions
-|`CHK-ORMP-VALID-ROUTE` |For all sixteen regions, the word sent while valid landed at the remapped address with the request address untouched, the word sent once cleared landed at the request address with the first word kept at the remapped address, and both read back through the window
+|`CHK-ORMP-VALID-ROUTE` |For all sixteen regions, the word sent while valid landed at the remapped address with the request address untouched and AW and AR on `output_axi` at `{offset[55:20], request[19:0]}`, the word sent once cleared landed at the request address with AW and AR at the request address and the first word kept at the remapped address, and both read back through the window
+|`CHK-OUT-SRCID` |The AWUSER and ARUSER of all 32 region words were captured without X and logged per window and valid state (64 values; LINKED-ISSUE SF-006)
 |`CHK-ORMP-WSTRB` |For all sixteen regions, the readbacks after the WSTRB=0x0F and WSTRB=0x80 writes are logged (LINKED-ISSUE SF-027), and the word through slot r landed where the second readback's `valid` and offset put it and nowhere else
 |`CHK-ALIAS-CACHEABLE` |Each of the eight alias regions read `cacheable` 0xF after the first write and 0x0 after the second, with offset and `valid` as written (exact)
-|`CHK-NONVAC` |Ordered fence SETUP < EXISTING < MMODE_VALID < XVISOR_VALID < ROUTE < MMODE_WSTRB < XVISOR_WSTRB < ALIAS_CACHEABLE < RESTORE, each term with a non-zero count and a later sim time than the one before
+|`CHK-OUT-DIRECT-RW` |The 8-byte write and read at `D` answered OKAY, AW and AR on `output_axi` carried `D`, and the read returned the word written
+|`CHK-OUT-BURST` |Each of the five write bursts answered one OKAY BRESP and each read burst returned every beat as written with RRESP OKAY and RLAST on the last beat only (31 beats); output AxLEN and beat counts logged (LINKED-ISSUE SF-010)
+|`CHK-OUT-PROT` |For AxPROT 0..7 at `D` and `W0`, AWPROT and ARPROT on `output_axi` equalled the value issued (32 compares), and every pair read back its word with OKAY
+|`CHK-OUT-CACHE` |For AxCACHE 0xF..0x0 at `D` and `W0` with no alias region valid, AWCACHE and ARCACHE on `output_axi` equalled the value issued (64 compares), and every pair read back its word with OKAY
+|`CHK-OUT-QRL` |The ten AxQOS, AxREGION and AxLOCK = 0 pairs read back their words with OKAY; output AxQOS / AxREGION / AxLOCK and the exclusive pair's responses and readback logged (LINKED-ISSUE SF-008)
+|`CHK-OUT-USER` |The eight AxUSER and WUSER pairs read back their words with OKAY; output AWUSER / ARUSER / WUSER logged per path (LINKED-ISSUE SF-006, SF-007)
+|`CHK-OUT-ID` |Each of IDs 0..3 was answered with its own BID and RID and read back its word; four outstanding writes and four outstanding reads completed with one OKAY response per ID and each read returned its own word; output AWID / ARID logged (LINKED-ISSUE SF-009)
+|`CHK-NONVAC` |Ordered fence SETUP < EXISTING < MMODE_VALID < XVISOR_VALID < EVERY-REGION < MMODE_WSTRB < XVISOR_WSTRB < ALIAS_CACHEABLE < ATTR-SETUP < DIRECT < BURST < PROT < CACHE < QRL < USER < ID < RESTORED, each term with a non-zero count and a later sim time than the one before
+|`CHK-TIMEOUT-PATHS` |Every SEP_IN and JTAG access and each outstanding group is bounded by the cfg AXI bound, whose expiry fails the run with the access; the counts and last state are logged and none expired
 |===
 
 *Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: None stated.
+*Scope limit*: The output AxUSER, WUSER, AxQOS, AxREGION, AxLOCK, AxID, burst shape and the exclusive response are logged, not compared, while SF-006, SF-007, SF-008, SF-009 and SF-010 are open.
 
 '''''
 
