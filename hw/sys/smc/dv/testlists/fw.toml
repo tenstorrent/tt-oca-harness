@@ -50,6 +50,8 @@ firmware = "hello_world"
 args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex=hello_world.ecc.hex",
+    "+axi_sva_need_cpu_front",
+    "+axi_sva_need_cpu_mmio",
 ]
 
 [[tests]]
@@ -220,6 +222,7 @@ firmware = "uart_log_engine_single_entry"
 args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex=uart_log_engine_single_entry.ecc.hex",
+    "+axi_sva_need_log_engine",
 ]
 
 [[tests]]
@@ -306,6 +309,7 @@ tests = [
     "smc_fw_i2c_sanity_test",
     "smc_fw_i2c_target_sanity_test",
     "smc_fw_i2c_tx_stretch_timeout_recovery_test",
+    "smc_fw_i3c5_csr_access_test",
     "smc_fw_narrow_store_lane_test",
     "smc_fw_octs_p0_primary_test",
     "smc_fw_plic_claim_test",
@@ -314,4 +318,4 @@ tests = [
     "smc_fw_uart_log_engine_fetch_err_test",
     "smc_fw_uart_log_engine_single_entry_test",
 ]
-expected_count = 15
+expected_count = 16

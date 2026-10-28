@@ -19,17 +19,35 @@ which is why only a data compare catches it.
 
 A window that will not accept the write at all is reported as skipped with the
 response code, not counted as a pass.
+
+FCOV: the owner window of this leaf (``sep_axi_decode_cg.cp_strobe_merge``)
+is open for one narrow write and its read-back at a time. It opens after the
+prime word read back as written and closes after the CHK-STROBE compare of
+that write, so the prime write and prime read are outside it. The sampler
+compares the read-back with the prime read-back merged with the driven write
+under its strobes, the same compare as CHK-STROBE, so it samples only a merge
+that CHK-STROBE passes. After the first CHK-STROBE FAIL no window opens again.
+The memory-window probes run with the window closed.
 """
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles
+from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_strobe_window_seq import (
     SIZE_BYTES,
     SepAxiStrobeWindow,
     SepAxiStrobeWindowCfg,
 )
+
+TEST = "sep_axi_strobe_window_test"
+
+# clk_i edges the window stays open after a passing compare, so the close
+# never falls in the clock of the read-back beat that the sampler counts.
+WINDOW_HOLD_CYCLES = 2
 
 
 @pyuvm.test()
@@ -43,18 +61,28 @@ class sep_axi_strobe_window_test(sep_base_test):
         sw = SepAxiStrobeWindow(self)
 
         fails: list[str] = []
-        for w in cfg.writes:
-            miss = await sw.probe_narrow(w)
-            if miss is None:
-                self.logger.info(
-                    "CHK-STROBE PASS: 0x%08x %dB at byte %d masked correctly",
-                    w.addr,
-                    SIZE_BYTES[w.size],
-                    w.byte_off,
-                )
-            else:
-                fails.append(miss)
-                self.logger.error("CHK-STROBE FAIL: %s", miss)
+        try:
+            for w in cfg.writes:
+                miss = await sw.stage(w)
+                if miss is None:
+                    if not fails:
+                        open_graded_window(TEST, self.logger)
+                    miss = await sw.narrow(w)
+                if miss is None:
+                    await ClockCycles(cocotb.top.clk_i, WINDOW_HOLD_CYCLES)
+                    close_graded_window(self.logger)
+                    self.logger.info(
+                        "CHK-STROBE PASS: 0x%08x %dB at byte %d masked correctly",
+                        w.addr,
+                        SIZE_BYTES[w.size],
+                        w.byte_off,
+                    )
+                else:
+                    close_graded_window(self.logger)
+                    fails.append(miss)
+                    self.logger.error("CHK-STROBE FAIL: %s", miss)
+        finally:
+            close_graded_window(self.logger)
 
         for p in cfg.windows:
             miss = await sw.probe_window(p)

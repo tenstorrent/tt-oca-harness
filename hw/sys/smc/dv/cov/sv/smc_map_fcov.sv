@@ -934,14 +934,21 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_jtag_axi_in_read, jtag_r_last_acc, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_jtag_axi_in_write, jtag_b_acc, clk_smc_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the attributed completion against the
-  // layout region and response code, which the flat list cannot cross.
+  // Covergroup: the attributed completion against the layout region and
+  // response code, which the flat list cannot cross.
   // ------------------------------------------------------------------
   localparam logic [NumRegions-1:0] RegionMemory = NumRegions'(1) << 9;
   localparam logic [NumRegions-1:0] RegionCla = NumRegions'(1) << 10;
   localparam logic [NumRegions-1:0] RegionRemap = NumRegions'(1) << 12;
+
+  // The four {region, is_write, resp} bins of one region; an error bin holds
+  // both refusal codes.
+  `define SMC_MAP_REGION_BINS(name, region) \
+      bins name``_read_okay = {{region, 1'b0, 2'b00}}; \
+      bins name``_read_error = {{region, 1'b0, 2'b10}, {region, 1'b0, 2'b11}}; \
+      bins name``_write_okay = {{region, 1'b1, 2'b00}}; \
+      bins name``_write_error = {{region, 1'b1, 2'b10}, {region, 1'b1, 2'b11}};
 
   covergroup cg_map_access with function sample (
       logic [NumRegions-1:0] region, logic is_write, logic [1:0] resp
@@ -976,15 +983,30 @@ module smc_map_fcov (
     // * Local memories: the ROM and scratchpad fill the region, so a read is
     //   refused only for an uncorrectable ECC error, which needs fault
     //   injection and is in the Phase 2 set (SMC_FCOV.adoc).
-    x_region_resp: cross cp_region, cp_dir, cp_resp{
-      ignore_bins cla_fills_region = binsof (cp_region) intersect {RegionCla} &&
-          binsof (cp_resp.error);
-      ignore_bins sep_in_not_remapped = binsof (cp_region) intersect {RegionRemap} &&
-          binsof (cp_resp.okay);
-      ignore_bins memory_read_refused = binsof (cp_region) intersect {RegionMemory} &&
-          binsof (cp_dir) intersect {1'b0} && binsof (cp_resp.error);
+    cp_region_resp: coverpoint {
+      region, is_write, resp
+    } {
+      `SMC_MAP_REGION_BINS(wdt, NumRegions'(1) << 0)
+      `SMC_MAP_REGION_BINS(system_control, NumRegions'(1) << 1)
+      `SMC_MAP_REGION_BINS(gpio, NumRegions'(1) << 2)
+      `SMC_MAP_REGION_BINS(peripheral, NumRegions'(1) << 3)
+      `SMC_MAP_REGION_BINS(security_timing_dft, NumRegions'(1) << 4)
+      `SMC_MAP_REGION_BINS(fabric_control, NumRegions'(1) << 5)
+      `SMC_MAP_REGION_BINS(mailbox, NumRegions'(1) << 6)
+      `SMC_MAP_REGION_BINS(data_processing, NumRegions'(1) << 7)
+      `SMC_MAP_REGION_BINS(cpu_io_control, NumRegions'(1) << 8)
+      bins memory_read_okay = {{RegionMemory, 1'b0, 2'b00}};
+      bins memory_write_okay = {{RegionMemory, 1'b1, 2'b00}};
+      bins memory_write_error = {{RegionMemory, 1'b1, 2'b10}, {RegionMemory, 1'b1, 2'b11}};
+      bins cla_read_okay = {{RegionCla, 1'b0, 2'b00}};
+      bins cla_write_okay = {{RegionCla, 1'b1, 2'b00}};
+      `SMC_MAP_REGION_BINS(axil_external, NumRegions'(1) << 11)
+      bins remap_read_error = {{RegionRemap, 1'b0, 2'b10}, {RegionRemap, 1'b0, 2'b11}};
+      bins remap_write_error = {{RegionRemap, 1'b1, 2'b10}, {RegionRemap, 1'b1, 2'b11}};
+      `SMC_MAP_REGION_BINS(unmapped, NumRegions'(0))
     }
   endgroup
+  `undef SMC_MAP_REGION_BINS
 
   cg_map_access u_cg_map_access = new();
 
@@ -1002,7 +1024,6 @@ module smc_map_fcov (
       if (wr_done) u_cg_map_access.sample(wr_region_hit, 1'b1, sep_bresp_i);
     end
   end
-`endif
 
   `undef SMC_MAP_OK
   `undef SMC_MAP_EXT

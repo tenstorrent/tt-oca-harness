@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Debug-disable functional coverage.
 
-The SV covergroups compile only on the commercial simulators, under the
-bench's ``ifndef VERILATOR`` guard, so this Python-side ledger records the
-per-field gating contract on every simulator: one cell per
+This Python-side ledger records the per-field gating contract within one
+test, beside the SV covergroups that grade it across a run: one cell per
 ``(field, disable_value, outcome)`` tuple, sampled only after the associated
 functional checker has passed, so the outcome follows from the disable value:
 ``(field, 0, allowed)`` and ``(field, 1, blocked)``. Auxiliary bins record mask

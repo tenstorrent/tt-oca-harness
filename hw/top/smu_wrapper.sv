@@ -161,10 +161,8 @@ module smu_wrapper #(
   output logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afvalid_o,
   input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afready_i,
 
-  // DED/WDT
-  output logic  smc_cluster_ded_o,
-  output logic  smc_wdt_first_timeout_o,
-  output logic  smc_wdt_second_timeout_o,
+  output smc_pkg::smc_ras_t  smc_ras_o,
+  output sep_pkg::sep_ras_t  sep_ras_o,
 
   output smc_pkg::smc_axi_addr_t                                   smc_global_base_o,
   output logic [31:0]                                              smc_region_size_o,
@@ -250,8 +248,8 @@ module smu_wrapper #(
   // SEP straps
   input  logic                  secure_tm_req_i,
 
-  // Gated I3C peripheral clock. The table memories it drives are absorbed by
-  // smc_ip_integration, so this leaves the wrapper for observation only.
+  // Gated I3C peripheral clock, for observation; the table memories take their
+  // clock from their requests.
   output logic                                                  gated_clk_periph_i3c_o,
 
   // Debug bus
@@ -345,8 +343,8 @@ module smu_wrapper #(
 
   sep_pkg::sep_sram_req_t    sep_sram_req;
   sep_pkg::sep_sram_rsp_t    sep_sram_rsp;
-  sep_pkg::sep_sram_req_t    sep_boot_rom_req;
-  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp;
+  sep_pkg::sep_boot_rom_req_t sep_boot_rom_req;
+  sep_pkg::sep_boot_rom_rsp_t sep_boot_rom_rsp;
   sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req;
   sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp;
 
@@ -446,9 +444,8 @@ module smu_wrapper #(
     .telemetry_atvalid_i,
     .telemetry_afvalid_o,
     .telemetry_afready_i,
-    .smc_cluster_ded_o,
-    .smc_wdt_first_timeout_o,
-    .smc_wdt_second_timeout_o,
+    .smc_ras_o,
+    .sep_ras_o,
     .smc_global_base_o,
     .smc_region_size_o,
     .sep_global_base_o,
@@ -581,7 +578,6 @@ module smu_wrapper #(
     .clk_periph_o (clk_periph),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
-    .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
     .rst_primary_periph_clk_ni (rst_primary_periph_clk_no),
 
     .smc_external_req_i  (smc_external_req),

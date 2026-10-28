@@ -42,6 +42,28 @@ Checks:
 * CHK-EXT-SHIM: the first and last byte of the shim window give no PR-EXT
   capture for either initiator and direction. Control: the first word above the
   shim gives a capture in the same leaf. The shim responses are logged only.
+* CHK-EXT-SHIM-BYTE: after fuse sense, the LSU and then the SI write one byte
+  to a seeded lane of the shim word, each between two LSU word reads of that
+  word. The read after equals the read before with only that lane replaced by
+  the written byte, and no access of the leg leaves on PR-EXT
+  (``hw/sys/sep/doc/memory_map.adoc:154-157``: the shim window is forwarded
+  unchanged to the SHIM). The written byte always differs from the byte it
+  replaces, so the change is the positive probe. The two lanes differ, so the
+  word after both legs is not the SHIM reset value. The response codes are
+  logged only (``OBS-EXT-SHIM-BYTE-RESP``).
+* CHK-EXT-SHIM-BURST: an SI INCR read burst and then an SI INCR write burst,
+  AxSIZE 3 and seeded AxLEN 1 to 3, at the shim window base through the
+  ``allow_burst`` entry (``doc/integrator/src/smu-sep.adoc:142-144``: SEP
+  routes a burst on its first address, so its later beats go to the SHIM).
+  Each burst shows one PR-XEXT handshake at the issued address (it passed the
+  filter into the local crossbar) and no PR-EXT request or reply beat. The
+  read returns AxLEN + 1 R beats, and the low word of beat 0 equals the shim
+  word of the last LSU read. Every beat of the write carries the SHIM reset
+  value (RDL ``EFUSE_BANK_INIT_TIME.init_time`` reset) in its low word, and the
+  LSU read after it returns that reset value while the read before did not.
+  The response codes and the later read beats are logged only
+  (``OBS-EXT-SHIM-BURST-RESP``): a burst to a register region may answer its
+  later beats with errors or alias (``hw/sys/sep/doc/memory_map.adoc:90-93``).
 * CHK-EXT-BURST: an SI INCR write burst (AxLEN 3) and read burst (AxLEN 7)
   through an entry with ``allow_burst`` 1 reach PR-XEXT and PR-EXT with the
   issued AxLEN, AxSIZE and write beats, and the port returns one B, or eight R
@@ -49,14 +71,20 @@ Checks:
   every beat with PR-XEXT and PR-EXT silent: the fabric DECERR, which the port
   never gives.
 
+Order: the leaf runs every leg twice with the same draws. Pass 1 runs with
+the FCOV window closed, and every check grades it. Pass 2 runs the same legs
+inside the owner window and is graded again. So each owned bin samples only
+after the same leg already passed its checks in this run.
+
 Run mode: no_cpu, ``lsu_stub_all_live``, real PROD fuse sense (the inbound filter
 is active), ``+sep_ext_port_responder``. RAND-REP: the seed draws the middle
 word, the AxSIZE of each single beat, the write data, the burst page offsets
 and the port replies. For each initiator and direction the three single beats
 carry OKAY, SLVERR and one seeded code, in seeded order, so each seed gives
 both codes in both directions. The burst B code and the code and word of each
-burst R beat are seeded. The initiators, directions and address classes are
-fixed loops.
+burst R beat are seeded. The seed also draws the lane and the byte change of
+each shim byte write and the AxLEN of each shim burst. The initiators,
+directions, address classes and both shim legs are fixed loops.
 """
 
 from __future__ import annotations
@@ -90,6 +118,9 @@ MID_LO, MID_HI = EXT_BASE + 8, EXT_END - 8
 # Reset bytes of the shim register (EFUSE_BANK_INIT_TIME): byte 0 and byte 3.
 _SHIM_RESET = sym("EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT")
 SHIM_RESET_BYTE = {EXT_BASE: _SHIM_RESET & 0xFF, SHIM_LAST: (_SHIM_RESET >> 24) & 0xFF}
+# One write beat of a shim burst: the SHIM reset value in the low word.
+SHIM_RESET_BEAT = _SHIM_RESET & 0xFFFF_FFFF
+WORD32 = 0xFFFF_FFFF
 BURST_PAGE = EXT_BASE + 0x1000
 PAGE = 0x1000
 # SI requests are non-secure data accesses; the entry takes allow_ns = AxPROT[1].
@@ -148,6 +179,8 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         "CHK-EXT-PORT",
         "CHK-EXT-SHIM",
         "CHK-EXT-BURST",
+        "CHK-EXT-SHIM-BYTE",
+        "CHK-EXT-SHIM-BURST",
     )
 
     async def _access(
@@ -384,33 +417,191 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             "leaf runs with +sep_ext_port_responder"
         )
 
-    async def run_scenario(self) -> None:
-        rng = SepSeededRng(self.random_seed())
-        close_graded_window()
-        self.csr = _Csr(self)
-        _program(SepAxiOp.WRITE, (RESP_OKAY,))
-        _program(SepAxiOp.READ, (RESP_OKAY,), (0,))
-        await self._bring_up()
-        self._check_responder()
-        self.inf = SepFilterBank(self, "in")
-        self.taps = start_taps("PR-EXT", "PR-EXT-RSP", "PR-XEXT")
+    async def _bounded(self, chk: str, what: str, coro):
+        """Await one access of a shim leg; a missing response is a FAIL of ``chk``."""
+        try:
+            return await coro
+        except AssertionError:
+            raise
+        except Exception as exc:
+            raise AssertionError(
+                f"{chk} FAIL: {what}: no response within the bound ({exc})"
+            ) from exc
 
-        # Step 2: inbound entry 0 over the whole window, bursts allowed.
-        await self.inf.program(
-            0,
-            FilterEntry(
-                start=EXT_BASE,
-                end=EXT_END,
-                enabled=True,
-                read_allowed=True,
-                write_allowed=True,
-                allow_ns=bool((SI_PROT >> 1) & 1),
-                allow_burst=True,
-                src_id=0,
-            ),
+    def _ext_silent_since(self, m: dict[str, int]) -> tuple[list, list]:
+        return self._since(m, "PR-EXT"), self._since(m, "PR-EXT-RSP")
+
+    async def _shim_byte_leg(self, init: str, lane: int, delta: int) -> dict:
+        """LSU word read, one-byte write by ``init`` at ``lane``, LSU word read."""
+        tag = f"init={init} lane={lane}"
+        m = self._mark()
+        pre = await self._bounded(
+            "CHK-EXT-SHIM-BYTE",
+            f"{tag} read before",
+            self._access("LSU", SepAxiOp.READ, EXT_BASE, 2),
+        )
+        pre_word = pre.rdata & WORD32
+        byte = ((pre_word >> (8 * lane)) & 0xFF) ^ delta
+        wr = await self._bounded(
+            "CHK-EXT-SHIM-BYTE",
+            f"{tag} byte write",
+            self._access(init, SepAxiOp.WRITE, EXT_BASE + lane, 0, data=byte),
+        )
+        post = await self._bounded(
+            "CHK-EXT-SHIM-BYTE",
+            f"{tag} read after",
+            self._access("LSU", SepAxiOp.READ, EXT_BASE, 2),
+        )
+        ext, ext_rsp = self._ext_silent_since(m)
+        c = {
+            "init": init,
+            "lane": lane,
+            "byte": byte,
+            "pre": pre_word,
+            "post": post.rdata & WORD32,
+            "ext": ext,
+            "ext_rsp": ext_rsp,
+        }
+        # No spec states the SHIM response code of an owned register.
+        self.logger.info(
+            "OBS-EXT-SHIM-BYTE-RESP: init=%s lane=%d pre_resp=%s wr_resp=%s post_resp=%s",
+            init,
+            lane,
+            RESP_NAME.get(pre.resp_code, pre.resp_code),
+            RESP_NAME.get(wr.resp_code, wr.resp_code),
+            RESP_NAME.get(post.resp_code, post.resp_code),
+        )
+        return c
+
+    def _check_shim_byte(self, c: dict) -> None:
+        lane = c["lane"]
+        tag = f"init={c['init']} lane={lane}"
+        old_byte = (c["pre"] >> (8 * lane)) & 0xFF
+        assert not c["ext"] and not c["ext_rsp"], (
+            f"CHK-EXT-SHIM-BYTE FAIL: {tag} shim leg left on PR-EXT: "
+            + "; ".join(b.fmt() for b in c["ext"] + c["ext_rsp"])
+        )
+        # memory_map.adoc:154-157: the shim window is forwarded unchanged, so
+        # only the written lane changes and it takes the written byte.
+        want = (c["pre"] & ~(0xFF << (8 * lane)) & WORD32) | (c["byte"] << (8 * lane))
+        assert c["byte"] != old_byte and c["post"] == want, (
+            f"CHK-EXT-SHIM-BYTE FAIL: {tag} before=0x{c['pre']:08x} wrote=0x{c['byte']:02x} "
+            f"after=0x{c['post']:08x}, expected 0x{want:08x} (only lane {lane} changed)"
+        )
+        self.logger.info(
+            "CHK-EXT-SHIM-BYTE PASS: init=%s lane=%d before=0x%08x old_byte=0x%02x "
+            "wrote=0x%02x want=0x%08x after=0x%08x ext_seen=%d",
+            c["init"],
+            lane,
+            c["pre"],
+            old_byte,
+            c["byte"],
+            want,
+            c["post"],
+            len(c["ext"]) + len(c["ext_rsp"]),
         )
 
-        # Step 3: draws. Every single-beat address is aligned to its AxSIZE.
+    async def _shim_burst(self, op: SepAxiOp, addr: int, axlen: int, data: int = 0) -> dict:
+        """One SI INCR burst of AxSIZE 3 at ``addr``; the write adds the LSU read after."""
+        d = "W" if op is SepAxiOp.WRITE else "R"
+        m = self._mark()
+        if op is SepAxiOp.READ:
+            self.env.ext_axi_monitor.start_beat_capture()
+        seq = await self._bounded(
+            "CHK-EXT-SHIM-BURST",
+            f"dir={d} len={axlen}",
+            self._access("SI", op, addr, 3, data=data, nbeats=axlen + 1),
+        )
+        beats = self.env.ext_axi_monitor.take_beat_capture() if op is SepAxiOp.READ else []
+        ext, ext_rsp = self._ext_silent_since(m)
+        c = {
+            "op": op,
+            "addr": addr,
+            "len": axlen,
+            "resp": seq.resp_code,
+            "rdata": seq.rdata,
+            "beats": beats,
+            "xext": [b.addr for b in self._since(m, "PR-XEXT", "aw" if d == "W" else "ar")],
+            "xext_all": self._since(m, "PR-XEXT"),
+            "ext": ext,
+            "ext_rsp": ext_rsp,
+        }
+        if op is SepAxiOp.WRITE:
+            after = await self._bounded(
+                "CHK-EXT-SHIM-BURST",
+                "dir=W read after",
+                self._access("LSU", SepAxiOp.READ, EXT_BASE, 2),
+            )
+            c["after"] = after.rdata & WORD32
+        # The later beats of a burst to a register region are not stated
+        # (memory_map.adoc:90-93); the SHIM codes are adopter-owned.
+        later = []
+        if op is SepAxiOp.READ:
+            later = [(seq.rdata >> (64 * k)) & WORD_MASK for k in range(1, axlen + 1)]
+        self.logger.info(
+            "OBS-EXT-SHIM-BURST-RESP: dir=%s len=%d init_resp=%s beats=%s later_words=%s",
+            d,
+            axlen,
+            RESP_NAME.get(seq.resp_code, seq.resp_code),
+            ",".join(RESP_NAME.get(r, str(r)) for r in beats) if beats else "na",
+            ",".join(f"0x{w:016x}" for w in later) if later else "na",
+        )
+        return c
+
+    def _check_shim_burst_common(self, c: dict) -> str:
+        d = "W" if c["op"] is SepAxiOp.WRITE else "R"
+        tag = f"dir={d} len={c['len']} issued=0x{c['addr']:08x}"
+        assert not c["ext"] and not c["ext_rsp"], (
+            f"CHK-EXT-SHIM-BURST FAIL: {tag} burst left on PR-EXT: "
+            + "; ".join(b.fmt() for b in c["ext"] + c["ext_rsp"])
+        )
+        assert c["xext"] == [c["addr"]] and len(c["xext_all"]) == 1, (
+            f"CHK-EXT-SHIM-BURST FAIL: {tag} PR-XEXT "
+            f"{[('X' if a is None else hex(a)) for a in c['xext']]} "
+            f"(all channels {len(c['xext_all'])}), expected exactly [0x{c['addr']:x}]"
+        )
+        return tag
+
+    def _check_shim_burst_rd(self, c: dict, word: int) -> None:
+        tag = self._check_shim_burst_common(c)
+        # An AXI4 read burst returns AxLEN + 1 R beats (hw/sys/sep/doc/fabric.adoc:20,
+        # AXI4 fabric). Beat 0 is the first address, the shim register itself.
+        got = c["rdata"] & WORD32
+        assert len(c["beats"]) == c["len"] + 1 and got == word, (
+            f"CHK-EXT-SHIM-BURST FAIL: {tag} R beats={len(c['beats'])} beat0_lo=0x{got:08x}; "
+            f"expected {c['len'] + 1} beats and beat0_lo=0x{word:08x}, the shim word of the "
+            "last LSU read"
+        )
+        self.logger.info(
+            "CHK-EXT-SHIM-BURST PASS: dir=R len=%d xbar_seen=0x%08X ext_seen=0 beats=%d "
+            "want_beat0_lo=0x%08x beat0_lo=0x%08x",
+            c["len"],
+            c["xext"][0],
+            len(c["beats"]),
+            word,
+            got,
+        )
+
+    def _check_shim_burst_wr(self, c: dict, before: int) -> None:
+        tag = self._check_shim_burst_common(c)
+        # Every beat carries the RDL reset of init_time in its low word.
+        assert before != SHIM_RESET_BEAT and c["after"] == SHIM_RESET_BEAT, (
+            f"CHK-EXT-SHIM-BURST FAIL: {tag} shim word before=0x{before:08x} "
+            f"after=0x{c['after']:08x}; expected after=0x{SHIM_RESET_BEAT:08x} (the written "
+            "SHIM reset value) and before != it"
+        )
+        self.logger.info(
+            "CHK-EXT-SHIM-BURST PASS: dir=W len=%d xbar_seen=0x%08X ext_seen=0 "
+            "before=0x%08x wrote_lo=0x%08x after=0x%08x",
+            c["len"],
+            c["xext"][0],
+            before,
+            SHIM_RESET_BEAT,
+            c["after"],
+        )
+
+    def _draw(self, rng: SepSeededRng) -> dict:
+        """Every draw of the leaf, in a fixed order; later draws are appended."""
         mid_raw = rng.randrange(MID_LO, MID_HI + 1)
         probes: list[tuple[str, SepAxiOp, int, int, int]] = []
         for cls in ("first", "mid", "last"):
@@ -443,6 +634,14 @@ class sep_fabric_extension_port_window_test(sep_base_test):
         wb_code = rng.choice(PORT_CODES)
         rb_codes = tuple(rng.choice(PORT_CODES) for _ in range(8))
         rb_words = tuple(rng.getrandbits(64) for _ in range(8))
+        # Shim legs: the SI lane differs from the LSU lane, and each byte
+        # change is non-zero, so the word after both legs is not the reset.
+        lane_lsu = rng.randrange(0, 4)
+        lane_si = (lane_lsu + 1 + rng.randrange(0, 3)) % 4
+        delta_lsu = rng.randrange(1, 256)
+        delta_si = rng.randrange(1, 256)
+        shim_rd_len = rng.randrange(1, 4)
+        shim_wr_len = rng.randrange(1, 4)
         self.logger.info(
             "DRAW LOG: mid_raw=0x%08x probes=%s wr_burst=0x%08x rd_burst=0x%08x",
             mid_raw,
@@ -459,15 +658,62 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             RESP_NAME[wb_code],
             [f"{RESP_NAME[r]}/0x{w:016x}" for r, w in zip(rb_codes, rb_words)],
         )
+        self.logger.info(
+            "DRAW LOG: shim lane_lsu=%d delta_lsu=0x%02x lane_si=%d delta_si=0x%02x "
+            "rd_len=%d wr_len=%d",
+            lane_lsu,
+            delta_lsu,
+            lane_si,
+            delta_si,
+            shim_rd_len,
+            shim_wr_len,
+        )
+        return {
+            "probes": probes,
+            "wr_burst_addr": wr_burst_addr,
+            "rd_burst_addr": rd_burst_addr,
+            "wr_burst_data": wr_burst_data,
+            "replies": replies,
+            "wb_code": wb_code,
+            "rb_codes": rb_codes,
+            "rb_words": rb_words,
+            "shim_byte": (("LSU", lane_lsu, delta_lsu), ("SI", lane_si, delta_si)),
+            "shim_rd_len": shim_rd_len,
+            "shim_wr_len": shim_wr_len,
+        }
 
-        open_graded_window(TEST, self.logger)
+    def _open(self, graded: bool) -> None:
+        if graded:
+            open_graded_window(TEST, self.logger)
+
+    async def _legs(self, p: dict, graded: bool) -> dict:
+        """Steps 2 to 11 of one pass; ``graded`` opens the owner window."""
+        r: dict = {}
+        # Step 2: inbound entry 0 over the whole window, bursts allowed.
+        await self.inf.program(
+            0,
+            FilterEntry(
+                start=EXT_BASE,
+                end=EXT_END,
+                enabled=True,
+                read_allowed=True,
+                write_allowed=True,
+                allow_ns=bool((SI_PROT >> 1) & 1),
+                allow_burst=True,
+                src_id=0,
+            ),
+        )
+        probes, replies = p["probes"], p["replies"]
+        wr_burst_addr, rd_burst_addr = p["wr_burst_addr"], p["rd_burst_addr"]
+
+        self._open(graded)
         # Step 4: SI single beats.
-        si_cells = [
+        r["si_cells"] = [
             await self._single("SI", op, cls, a, s, d, *replies[("SI", op, cls)])
             for cls, op, a, s, d in probes
         ]
         # Step 5: LSU single beats to the same classes.
-        lsu_cells = [
+        r["lsu_cells"] = [
             await self._single("LSU", op, cls, a, s, d, *replies[("LSU", op, cls)])
             for cls, op, a, s, d in probes
         ]
@@ -478,13 +724,11 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             for addr in (EXT_BASE, SHIM_LAST):
                 for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                     m = self._mark()
-                    try:
-                        seq = await self._access(init, op, addr, 0, data=SHIM_RESET_BYTE[addr])
-                    except Exception as exc:
-                        raise AssertionError(
-                            f"CHK-EXT-SHIM FAIL: init={init} addr=0x{addr:08x} op={op.value}: no "
-                            f"response within the bound ({exc})"
-                        ) from exc
+                    seq = await self._bounded(
+                        "CHK-EXT-SHIM",
+                        f"init={init} addr=0x{addr:08x} op={op.value}",
+                        self._access(init, op, addr, 0, data=SHIM_RESET_BYTE[addr]),
+                    )
                     ext = self._since(m, "PR-EXT")
                     self.logger.info(
                         "SHIM LOG: init=%s dir=%s addr=0x%08x resp=%s rdata=0x%x ext_seen=%d",
@@ -496,48 +740,87 @@ class sep_fabric_extension_port_window_test(sep_base_test):
                         len(ext),
                     )
                     shim.append((init, op, addr, len(ext)))
+        r["shim"] = shim
+
+        # Step 6a: one-byte shim writes, LSU then SI.
+        r["shim_byte"] = [await self._shim_byte_leg(*leg) for leg in p["shim_byte"]]
+        # Step 6b: SI read burst, then SI write burst, at the shim window base.
+        # The write carries the SHIM reset value in every beat, so it also
+        # returns the shim word to its reset value.
+        r["shim_rd"] = await self._shim_burst(SepAxiOp.READ, EXT_BASE, p["shim_rd_len"])
+        r["shim_wr"] = await self._shim_burst(
+            SepAxiOp.WRITE,
+            EXT_BASE,
+            p["shim_wr_len"],
+            data=sum(SHIM_RESET_BEAT << (64 * k) for k in range(p["shim_wr_len"] + 1)),
+        )
 
         # Steps 7 and 8: admitted SI bursts.
-        _program(SepAxiOp.WRITE, (wb_code,))
+        _program(SepAxiOp.WRITE, (p["wb_code"],))
         m = self._mark()
-        wb, wb_t = await self._timed(
-            "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4
+        r["wb"], r["wb_t"] = await self._timed(
+            "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=p["wr_burst_data"], nbeats=4
         )
-        wb_rep = self._since(m, "PR-EXT-RSP", "b")
-        wb_x = [b.addr for b in self._since(m, "PR-XEXT", "aw")]
-        wb_aw = self._since(m, "PR-EXT", "aw")
-        wb_w = self._since(m, "PR-EXT", "w")
-        _program(SepAxiOp.READ, rb_codes, rb_words)
+        r["wb_rep"] = self._since(m, "PR-EXT-RSP", "b")
+        r["wb_x"] = [b.addr for b in self._since(m, "PR-XEXT", "aw")]
+        r["wb_aw"] = self._since(m, "PR-EXT", "aw")
+        r["wb_w"] = self._since(m, "PR-EXT", "w")
+        _program(SepAxiOp.READ, p["rb_codes"], p["rb_words"])
         m = self._mark()
         self.env.ext_axi_monitor.start_beat_capture()
-        rb, rb_t = await self._timed("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
-        rb_beats = self.env.ext_axi_monitor.take_beat_capture()
-        rb_rep = self._since(m, "PR-EXT-RSP", "r")
-        rb_x = [b.addr for b in self._since(m, "PR-XEXT", "ar")]
-        rb_ar = self._since(m, "PR-EXT", "ar")
+        r["rb"], r["rb_t"] = await self._timed("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
+        r["rb_beats"] = self.env.ext_axi_monitor.take_beat_capture()
+        r["rb_rep"] = self._since(m, "PR-EXT-RSP", "r")
+        r["rb_x"] = [b.addr for b in self._since(m, "PR-XEXT", "ar")]
+        r["rb_ar"] = self._since(m, "PR-EXT", "ar")
         close_graded_window(self.logger)
 
         # Step 9: disable the covering entry.
         await self.inf.set_enabled(0, False)
 
         # Steps 10 and 11: the same bursts, refused by the filter.
-        open_graded_window(TEST, self.logger)
+        self._open(graded)
         m = self._mark()
-        wd = await self._access(
-            "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=wr_burst_data, nbeats=4
+        r["wd"] = await self._access(
+            "SI", SepAxiOp.WRITE, wr_burst_addr, 3, data=p["wr_burst_data"], nbeats=4
         )
-        wd_x = self._since(m, "PR-XEXT")
-        wd_ext = self._since(m, "PR-EXT")
+        r["wd_x"] = self._since(m, "PR-XEXT")
+        r["wd_ext"] = self._since(m, "PR-EXT")
         m = self._mark()
         # The AXI master collapses a burst to one response; the ordered RRESP
         # of every beat comes from the m_axi bus monitor.
         self.env.ext_axi_monitor.start_beat_capture()
         await self._access("SI", SepAxiOp.READ, rd_burst_addr, 3, nbeats=8)
-        rd_beats = self.env.ext_axi_monitor.take_beat_capture()
-        rd_x = self._since(m, "PR-XEXT")
-        rd_ext = self._since(m, "PR-EXT")
+        r["rd_beats"] = self.env.ext_axi_monitor.take_beat_capture()
+        r["rd_x"] = self._since(m, "PR-XEXT")
+        r["rd_ext"] = self._since(m, "PR-EXT")
         close_graded_window(self.logger)
-        await stop_taps(self.taps)
+        return r
+
+    def _grade(self, p: dict, r: dict) -> None:
+        """Every check of one pass. The owner window is closed when it runs."""
+        si_cells, lsu_cells = r["si_cells"], r["lsu_cells"]
+        wr_burst_addr, rd_burst_addr = p["wr_burst_addr"], p["rd_burst_addr"]
+        wr_burst_data, wb_code = p["wr_burst_data"], p["wb_code"]
+        rb_codes, rb_words = p["rb_codes"], p["rb_words"]
+        wb, wb_t, wb_rep, wb_x, wb_aw, wb_w = (
+            r["wb"],
+            r["wb_t"],
+            r["wb_rep"],
+            r["wb_x"],
+            r["wb_aw"],
+            r["wb_w"],
+        )
+        rb, rb_t, rb_beats, rb_rep, rb_x, rb_ar = (
+            r["rb"],
+            r["rb_t"],
+            r["rb_beats"],
+            r["rb_rep"],
+            r["rb_x"],
+            r["rb_ar"],
+        )
+        wd, wd_x, wd_ext = r["wd"], r["wd_x"], r["wd_ext"]
+        rd_beats, rd_x, rd_ext = r["rd_beats"], r["rd_x"], r["rd_ext"]
 
         # CHK-EXT-REACH and CHK-EXT-PORT.
         for c in si_cells:
@@ -546,6 +829,7 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             self._check_port(c)
 
         # CHK-EXT-SHIM.
+        shim = r["shim"]
         next_word_seen = sum(len(c["ext"]) for c in si_cells + lsu_cells if c["cls"] == "first")
         leaks = [(i, o.value, hex(a), n) for i, o, a, n in shim if n != 0]
         assert not leaks, f"CHK-EXT-SHIM FAIL: shim window requests left on PR-EXT: {leaks}"
@@ -561,6 +845,13 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             next_word_seen,
             len(shim),
         )
+
+        # CHK-EXT-SHIM-BYTE, then CHK-EXT-SHIM-BURST on the word the SI leg left.
+        for c in r["shim_byte"]:
+            self._check_shim_byte(c)
+        last_word = r["shim_byte"][-1]["post"]
+        self._check_shim_burst_rd(r["shim_rd"], last_word)
+        self._check_shim_burst_wr(r["shim_wr"], last_word)
 
         # CHK-EXT-BURST, write.
         want_beats = [(wr_burst_data >> (64 * i)) & WORD_MASK for i in range(4)]
@@ -715,3 +1006,30 @@ class sep_fabric_extension_port_window_test(sep_base_test):
             ",".join(RESP_NAME[r] for r in rb_codes),
             ",".join(RESP_NAME.get(r, str(r)) for r in rb_beats),
         )
+
+    async def run_scenario(self) -> None:
+        rng = SepSeededRng(self.random_seed())
+        close_graded_window()
+        self.csr = _Csr(self)
+        _program(SepAxiOp.WRITE, (RESP_OKAY,))
+        _program(SepAxiOp.READ, (RESP_OKAY,), (0,))
+        await self._bring_up()
+        self._check_responder()
+        self.inf = SepFilterBank(self, "in")
+        self.taps = start_taps("PR-EXT", "PR-EXT-RSP", "PR-XEXT")
+
+        # Step 3: draws. Every single-beat address is aligned to its AxSIZE.
+        plan = self._draw(rng)
+
+        # Pass 1 with the window closed, graded; pass 2 repeats the same legs
+        # inside the owner window and is graded again. A FAIL anywhere closes
+        # the window before it propagates.
+        for graded in (False, True):
+            self.logger.info("INFO-EXT-PASS: pass=%d window=%s", 1 + graded, graded)
+            try:
+                res = await self._legs(plan, graded)
+                self._grade(plan, res)
+            except BaseException:
+                close_graded_window(self.logger)
+                raise
+        await stop_taps(self.taps)

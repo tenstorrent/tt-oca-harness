@@ -27,6 +27,9 @@ interface smc_tb_if;
   logic powergood  = 1'b0;
   logic rst_cold_n = 1'b0;
   logic rst_cool_n = 1'b1;
+  logic [31:0] isolate_req;
+  logic [smc_pkg::NumGpioWraps-1:0] gpio_ext_drive_en = '0;
+  logic [smc_pkg::NumGpioWraps-1:0] gpio_ext_drive_value = '0;
 
   // Reset-unit outputs (driven by the DUT top).
   logic powergood_stable;
@@ -37,6 +40,8 @@ interface smc_tb_if;
 
   // CPU-cluster boundary state; cluster accesses wait for isolation to clear.
   logic cpu_cluster_isolate;
+  // Per-core reset levels at the CPU-wrapper output.
+  logic [smc_4core_cpu_pkg::NumCpuCores-1:0] cpu_core_resets_n;
   logic wdt_first_timeout;
   logic wdt_second_timeout;
   logic [smc_4core_cpu_pkg::NumCpuCores-1:0] wdt_timeout_core;
@@ -59,7 +64,8 @@ interface smc_tb_if;
   logic [31:0] cold_rst_assert_count;
   logic [31:0] cool_rst_assert_count;
 
-  // Runtime enable for the shared AXI protocol SVA checker.
+  // Runtime enable for the shared AXI protocol SVA checkers; tb_top ANDs it
+  // into the enable of every ocah_axi_sva instance.
   logic axi_sva_en = 1'b1;
 
   // Runtime enable for the shared JTAG protocol SVA checker on the CPU TAP.

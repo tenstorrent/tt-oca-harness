@@ -233,10 +233,9 @@ module smc_cpu_fcov #(
   `OCAH_FCOV_COVER(c_internal_range_323_320, internal_range_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_custom_action_output_driven, custom_action_driven_e, clk_smc_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: which harts were seen retiring
-  // together, which the flat per-hart list cannot cross.
+  // Covergroup: which harts were seen retiring together, which the flat
+  // per-hart list cannot cross.
   // ------------------------------------------------------------------
   covergroup cg_hart_retire with function sample (logic [3:0] harts);
     option.per_instance = 1;
@@ -254,6 +253,5 @@ module smc_cpu_fcov #(
       u_cg_hart_retire.sample({core3_retire_e, core2_retire_e, core1_retire_e, core0_retire_e});
     end
   end
-`endif
 
 endmodule : smc_cpu_fcov

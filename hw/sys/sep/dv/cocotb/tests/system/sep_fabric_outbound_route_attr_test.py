@@ -12,8 +12,12 @@ non-zero, ``[3:0]`` non-zero and distinct), which the LSU alternates. Offset
 bit 55 is fixed: 1 for AP, 0 for STEE; a second pass of each class flips it in
 the same region. Alias region 0 maps one SMU page to the same page with address
 bit 55 set, then to a page at or above 4 GiB with bit 55 clear. A third STEE
-pass clears the region valid bit. The SMU aperture stays at its reset pair
-(``0x8000_0000``, size ``0x4000_0000``); the test never writes it.
+pass clears the region valid bit. The SMU aperture holds its reset pair
+(``0x8000_0000``, size ``0x4000_0000``) until the last two legs. They move the
+pair, first to ``0x4100_0000``, size ``0x0100_0000`` (clear of the bench SMC
+aperture), then over AP region 0, and restore the reset pair after each. The
+seed also draws a word inside the moved window and the AP region 0 offset
+(bits 54:19, bit 55 set).
 
 Contract (``hw/sys/sep/doc/fabric.adoc``, "Fabric Topology", "Transaction
 Routing" and its ``sep-outbound-attributes-table``, "Filtering and Protection";
@@ -34,7 +38,12 @@ Routing" and its ``sep-outbound-attributes-table``, "Filtering and Protection";
   outgoing address on the SMU and STEE paths; AxPROT bits 0 and 2 and address
   bit 55 pass unchanged;
 * the outbound filter checks the address after remapping, matches ``src_id``
-  against AxUSER[3:0] and has no bypass.
+  against AxUSER[3:0] and has no bypass;
+* the SMU aperture follows ``SMU_GLOBAL_BASE_ADDR`` and ``SMU_REGION_SIZE``,
+  and the route demux takes the first match in the order SMC, SMU, AP and
+  STEE, so an SMU window over an AP region sends the AP word out untranslated
+  with SEP's ID; an address that no path matches at or above ``0x4000_0000``
+  answers DECERR.
 
 Verdict anchor: the LSU response. An admitted request reaches the always-ready
 outbound responder (``tb/sep_outbound_mbx.sv``), which answers OKAY; the
@@ -67,7 +76,9 @@ Checkers:
                     AxUSER[3:0] is not OTHERS (0) and is the same on every
                     capture of the leaf, over two distinct issued values: SEP's
                     ID replaces the initiator's. X or Z on any captured field,
-                    W user included, fails (VCS).
+                    W user included, fails (VCS). The captures of the two
+                    moved-SMU legs take the same compare, logged under
+                    CHK-OUT-SMU-MOVED and CHK-OUT-SMU-FIRST.
                     Logged, not graded (no stated value): the SMU-path number
                     (OBS-OUT-SRC-ID), AxUSER[11:4] of every capture (graded
                     as zero on the AP and STEE paths) and the W user of
@@ -79,6 +90,21 @@ Checkers:
                     bit 55 clear (NS 1) and set (NS 0), and the STEE region
                     with its valid bit clear at the pass-through address (bit
                     55 clear, NS 1).
+  CHK-OUT-SMU-MOVED with the SMU pair moved, LSU reads and writes of its first,
+                    last and a drawn word answer OKAY and each leaves once on
+                    PR-OUT at the issued address with SEP's ID and NS 1; the
+                    reset base answers DECERR with no PR-OUT capture while an
+                    enabled outbound pair covers it. With the reset pair
+                    restored, the moved first and last words answer DECERR
+                    with no PR-OUT capture while an enabled pair covers them.
+  CHK-OUT-SMU-FIRST with the SMU window over AP region 0 (valid, offset not
+                    the identity), LSU reads and writes of an AP region 0 word
+                    leave once on PR-OUT untranslated, with SEP's ID and NS 1.
+                    Positive control: with the reset SMU pair restored, the
+                    same accesses leave translated with AxUSER 0 (OTHERS).
+
+Every access that a graded window covers is first issued and graded with the
+window closed; the window then covers one more identical access, graded again.
 """
 
 from __future__ import annotations
@@ -189,8 +215,33 @@ PAIR_STEE_HI = (14, 15)
 PAIR_GE4G_LO = (16, 17)
 PAIR_AP_LO = (18, 19)
 PAIR_STEE_INV = (20, 21)
+PAIR_SMU_MOVED = (22, 23)
+PAIR_OVL_LOCAL = (24, 25)
+PAIR_OVL_TRANSLATED = (26, 27)
+SMU_BASE_FIELD = SEP_CPU_CTRL.field_mask("SMU_GLOBAL_BASE_ADDR", "addr")
+SMU_SIZE_FIELD = SEP_CPU_CTRL.field_mask("SMU_REGION_SIZE", "size")
+# The moved SMU pair: base and size are software fields (sw = rw,
+# hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:202-218). The window
+# sits above the SMC aperture of the SMC memory-model bench, 0x4000_0000 +
+# 16 MiB (hw/sys/sep/dv/tb/tb_top.sv:660-661), and below the reset SMU pair.
+SMU_MOVED_BASE = 0x4100_0000
+SMU_MOVED_SIZE = 0x0100_0000
+BENCH_SMC_BASE = 0x4000_0000
+BENCH_SMC_SIZE = 0x0100_0000
+# The SMU window over AP region 0: exactly that region.
+SMU_OVL_BASE = AP_REGION_BASE
+SMU_OVL_SIZE = 1 << IDX_START
 # Route class of a capture -> the outbound path whose rule it follows.
-PATH = {"smu": "smu", "ge4g": "smu", "ap": "ap", "stee": "stee", "stee_inv": "stee"}
+PATH = {
+    "smu": "smu",
+    "ge4g": "smu",
+    "ap": "ap",
+    "stee": "stee",
+    "stee_inv": "stee",
+    "smu_moved": "smu",
+    "smu_over_ap": "smu",
+    "ap_region0": "ap",
+}
 # CHK-OUT-HIBIT: the output address bit 55 values each route class reaches.
 # The SMU aperture sits below 4 GiB at reset, so bit 55 set is the >= 4 GiB
 # class; the STEE pass-through address is a local address (bit 55 clear).
@@ -324,6 +375,36 @@ class _Alias(SepAxiRegDriver):
             self.log.info("CTRL-ALIAS-READBACK LOG: %s", line)
 
 
+class _SmuAperture(SepAxiRegDriver):
+    """Program the SMU pair (base, size); RDL-field read-back."""
+
+    _DRIVER_TAG = "SMUAP"
+
+    async def program(self, base: int, size: int, *, size_first: bool) -> None:
+        regs = [(SMU_SIZE_REG, size, SMU_SIZE_FIELD), (SMU_BASE_REG, base, SMU_BASE_FIELD)]
+        if not size_first:
+            regs.reverse()
+        for addr, word, _mask in regs:
+            await self._wr(addr, word & 0xFFFF_FFFF)
+            await self._wr(addr + 4, word >> 32)
+        for addr, word, mask in regs:
+            got = await self._rd(addr) | (await self._rd(addr + 4) << 32)
+            fc = field_compare(got, word, mask)
+            line = f"reg=0x{addr:x} {fc.fields()}"
+            assert fc.ok, f"SMU-READBACK FAIL: {line}"
+            self.log.info("SMU-READBACK LOG: %s", line)
+
+
+def _smc_apertures() -> list[tuple[int, int]]:
+    """The bench SMC apertures the moved SMU window must stay clear of."""
+    aps = [(BENCH_SMC_BASE, BENCH_SMC_SIZE)]
+    base = cocotb.plusargs.get("sep_smc_aperture_base")
+    size = cocotb.plusargs.get("sep_smc_aperture_size")
+    if isinstance(base, str) and isinstance(size, str):
+        aps.append((int(base, 16) & ADDR_MASK, int(size, 16) & ADDR_MASK))
+    return aps
+
+
 @pyuvm.test()
 class sep_fabric_outbound_route_attr_test(sep_base_test):
     """SMU, AP and STEE outbound route, AxPROT and AxUSER, source-ID forcing, no bypass."""
@@ -336,6 +417,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         "CHK-OUT-LOCAL-DATA",
         "CHK-OUT-CAPTURE",
         "CHK-OUT-HIBIT",
+        "CHK-OUT-SMU-MOVED",
+        "CHK-OUT-SMU-FIRST",
     )
 
     # ------------------------------------------------------------------ access
@@ -380,23 +463,56 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         graded: bool,
         chk: str = "CHK-OUT-ROUTE",
         user: int | None = None,
+        cap_chk: str = "CHK-OUT-CAPTURE",
     ) -> tuple[int, list]:
         """One LSU access; returns (resp, PR-OUT beats of the access).
 
-        A response other than the expected one fails ``chk`` at once. Without
-        ``user``, the access takes the next of the two drawn AxUSER values.
+        A response other than the expected one fails ``chk`` at once; a capture
+        that differs from the prediction fails ``cap_chk``. Without ``user``,
+        the access takes the next of the two drawn AxUSER values.
+
+        A graded access is issued twice with the same attributes and data. The
+        first is graded with the window closed (a refused one also with no
+        PR-OUT beat); the window then covers the second, graded again. So every
+        sample the window takes comes from an access whose check already passed.
         """
         if user is None:
             user = self.tcfg.users[self.n_cell % 2]
             self.n_cell += 1
         wdata = self.tcfg.wdata() if write else 0
-        mark = self.out.mark()
+        args = dict(write=write, prot=prot, user=user, wdata=wdata, expect_okay=expect_okay)
         if graded:
+            _, beats = await self._access(
+                cls, addr, pred, chk=chk, cap_chk=cap_chk, window=False, **args
+            )
+            assert expect_okay or not beats, (
+                f"{chk} FAIL: class={cls} dir={'W' if write else 'R'} addr=0x{addr:x} "
+                f"prot=0x{prot:x} user=0x{user:03x} refused, PR-OUT captured out_seen={len(beats)}"
+            )
+        return await self._access(cls, addr, pred, chk=chk, cap_chk=cap_chk, window=graded, **args)
+
+    async def _access(
+        self,
+        cls: str,
+        addr: int,
+        pred: int,
+        *,
+        write: bool,
+        prot: int,
+        user: int,
+        wdata: int,
+        expect_okay: bool,
+        chk: str,
+        cap_chk: str,
+        window: bool,
+    ) -> tuple[int, list]:
+        mark = self.out.mark()
+        if window:
             open_graded_window(TEST, self.logger)
         seq = await self._lsu(
             addr, write=write, expect_okay=expect_okay, prot=prot, user=user, wdata=wdata
         )
-        if graded:
+        if window:
             close_graded_window(self.logger)
         beats = self.out.since(mark)
         want = RESP_OKAY if expect_okay else RESP_DECERR
@@ -407,15 +523,25 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         )
         if seq.resp_code == RESP_OKAY:
             # An admitted outbound access must show on PR-OUT; _capture fails
-            # CHK-OUT-CAPTURE when its address beat is missing.
+            # cap_chk when its address beat is missing.
             self.n_expect += 1
             self._capture(
-                cls, addr, pred, write=write, prot=prot, user=user, wdata=wdata, beats=beats
+                cls,
+                addr,
+                pred,
+                write=write,
+                prot=prot,
+                user=user,
+                wdata=wdata,
+                beats=beats,
+                tag=cap_chk,
             )
         return seq.resp_code, beats
 
-    def _capture(self, cls, addr, pred, *, write, prot, user, wdata, beats) -> None:
-        """CHK-OUT-CAPTURE of one admitted access."""
+    def _capture(
+        self, cls, addr, pred, *, write, prot, user, wdata, beats, tag="CHK-OUT-CAPTURE"
+    ) -> None:
+        """CHK-OUT-CAPTURE (or ``tag``) of one admitted access."""
         ch = "aw" if write else "ar"
         addr_beats = [b for b in beats if b.ch == ch]
         w_beats = [b for b in beats if b.ch == "w"]
@@ -424,7 +550,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         want_prot = (prot & 0b101) | (outbound_ns(path, pred) << 1)
         d = "W" if write else "R"
         assert len(addr_beats) == 1 and not other and (len(w_beats) == (1 if write else 0)), (
-            f"CHK-OUT-CAPTURE FAIL: class={cls} dir={d} issued=0x{addr:x} beats="
+            f"{tag} FAIL: class={cls} dir={d} issued=0x{addr:x} beats="
             + " ".join(b.fmt() for b in beats)
         )
         b = addr_beats[0]
@@ -454,11 +580,11 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             and (not write or (seen_w.data == wdata and seen_w.strb == 0xFF))
         )
         assert ok, (
-            f"CHK-OUT-CAPTURE FAIL: {line} predicted=0x{pred:x} prot_issued=0x{prot:x} "
+            f"{tag} FAIL: {line} predicted=0x{pred:x} prot_issued=0x{prot:x} "
             f"prot_expect=0x{want_prot:x} user_expect={user_expect} wdata_issued=0x{wdata:x}"
             + (" X/Z" if unknown else "")
         )
-        self.logger.info("CHK-OUT-CAPTURE PASS: %s prot_issued=0x%x", line, prot)
+        self.logger.info("%s PASS: %s prot_issued=0x%x", tag, line, prot)
         # AxUSER[11:4] has a stated value only on the AP and STEE paths (OTHERS,
         # graded above); the upper bits of every capture and the W user are
         # logged.
@@ -757,31 +883,39 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             assert seq.resp_ok, f"stage write 0x{addr:x} not OKAY"
         local_seen = 0
         n_local = 0
+        # Each local read runs twice: graded with the window closed, then once
+        # more inside the window, graded again.
         for name, addr in (("cold_scratch", COLD_SCRATCH), ("sep_sw_debug", SW_DEBUG)):
-            mark = self.out.mark()
-            open_graded_window(TEST, self.logger)
-            seq = SepAxiAccessSeq("local_rd", op=SepAxiOp.READ, addr=addr, length=8, size=3)
-            await self.start_seq(seq)
-            close_graded_window(self.logger)
-            seen = self.out.count(mark)
-            local_seen += seen
-            n_local += 1
-            self.logger.info(
-                "local read LOG: %s addr=0x%x resp=%s data[31:0]=0x%08x data[63:32]=0x%08x out_seen=%d",
-                name,
-                addr,
-                _rname(seq.resp_code),
-                seq.rdata & 0xFFFF_FFFF,
-                (seq.rdata >> 32) & 0xFFFF_FFFF,
-                seen,
-            )
-            m, mask = staged[addr]
-            got = seq.rdata & mask
-            rline = (
-                f"{name} addr=0x{addr:x} resp={_rname(seq.resp_code)} got=0x{got:x} want=0x{m:x}"
-            )
-            assert seq.resp_code == RESP_OKAY and got == m, f"CHK-OUT-LOCAL-DATA FAIL: {rline}"
-            self.logger.info("CHK-OUT-LOCAL-DATA PASS: %s", rline)
+            for window in (False, True):
+                mark = self.out.mark()
+                if window:
+                    open_graded_window(TEST, self.logger)
+                seq = SepAxiAccessSeq("local_rd", op=SepAxiOp.READ, addr=addr, length=8, size=3)
+                await self.start_seq(seq)
+                if window:
+                    close_graded_window(self.logger)
+                seen = self.out.count(mark)
+                local_seen += seen
+                n_local += 1
+                self.logger.info(
+                    "local read LOG: %s addr=0x%x resp=%s data[31:0]=0x%08x data[63:32]=0x%08x "
+                    "out_seen=%d",
+                    name,
+                    addr,
+                    _rname(seq.resp_code),
+                    seq.rdata & 0xFFFF_FFFF,
+                    (seq.rdata >> 32) & 0xFFFF_FFFF,
+                    seen,
+                )
+                m, mask = staged[addr]
+                got = seq.rdata & mask
+                rline = (
+                    f"{name} addr=0x{addr:x} resp={_rname(seq.resp_code)} got=0x{got:x} "
+                    f"want=0x{m:x}"
+                )
+                assert seq.resp_code == RESP_OKAY and got == m, f"CHK-OUT-LOCAL-DATA FAIL: {rline}"
+                self.logger.info("CHK-OUT-LOCAL-DATA PASS: %s", rline)
+                assert seen == 0, f"CHK-OUT-NOEXTRA FAIL: {name} addr=0x{addr:x} out_seen={seen}"
         # Capture control: the SMU pair is enabled.
         _, beats = await self._cell(
             "smu",
@@ -861,6 +995,171 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         )
         self.logger.info("CHK-OUT-NOBYPASS PASS: %s", line)
 
+    async def _smu_moved_leg(self) -> None:
+        """The SMU pair moved away from its reset value, then restored."""
+        rng = self.tcfg.rng
+        base, size = SMU_MOVED_BASE, SMU_MOVED_SIZE
+        for sb, ss in _smc_apertures():
+            assert base + size <= sb or sb + ss <= base, (
+                f"stimulus: moved SMU window 0x{base:x}+0x{size:x} overlaps the SMC aperture "
+                f"0x{sb:x}+0x{ss:x}"
+            )
+        last = base + size - 8
+        words = (
+            ("first", base),
+            ("last", last),
+            ("drawn", base + 8 * rng.randrange(1, size // 8 - 1)),
+        )
+        self.logger.info(
+            "SMU moved LOG: base=0x%x size=0x%x words=%s",
+            base,
+            size,
+            ",".join(f"{n}:0x{a:x}" for n, a in words),
+        )
+        await self._program_pair(PAIR_SMU_MOVED, base, base + size - 1)
+        await self._pair_enable(PAIR_SMU, True)
+        await self.smu_ap.program(base, size, size_first=False)
+        on_seen = {}
+        n_on = 0
+        for word, addr in words:
+            for write in self.tcfg.dirs():
+                for p1 in (0, 1):
+                    _, beats = await self._cell(
+                        "smu_moved",
+                        addr,
+                        addr,
+                        write=write,
+                        prot=self.tcfg.prot(p1),
+                        expect_okay=True,
+                        graded=True,
+                        chk="CHK-OUT-SMU-MOVED",
+                        cap_chk="CHK-OUT-SMU-MOVED",
+                    )
+                    n_on += 1
+                    if word != "drawn":
+                        on_seen[(addr, write)] = len([b for b in beats if b.ch in ("aw", "ar")])
+        # With the pair moved, the reset base is outside every window; the
+        # enabled reset-window pair would admit it.
+        old = {}
+        for write in self.tcfg.dirs():
+            r, beats = await self._cell(
+                "smu",
+                SMU_BASE,
+                SMU_BASE,
+                write=write,
+                prot=self.tcfg.prot(1),
+                expect_okay=False,
+                graded=False,
+                chk="CHK-OUT-SMU-MOVED",
+            )
+            old[write] = (r, len(beats))
+        # Size first: the sampler keeps the moved base while the size returns.
+        await self.smu_ap.program(SMU_BASE, SMU_SIZE, size_first=True)
+        back = {}
+        for addr in (base, last):
+            for write in self.tcfg.dirs():
+                r, beats = await self._cell(
+                    "smu_moved",
+                    addr,
+                    addr,
+                    write=write,
+                    prot=self.tcfg.prot(1),
+                    expect_okay=False,
+                    graded=True,
+                    chk="CHK-OUT-SMU-MOVED",
+                )
+                back[(addr, write)] = (r, len(beats))
+        await self._pair_enable(PAIR_SMU_MOVED, False)
+        parts = [f"moved_ok={n_on}"]
+        for write, (r, n) in old.items():
+            parts.append(f"reset_base_{'W' if write else 'R'}={_rname(r)}/out{n}")
+        for (addr, write), (r, n) in back.items():
+            parts.append(
+                f"restored_0x{addr:x}_{'W' if write else 'R'}={_rname(r)}/out{n}"
+                f"/moved_out{on_seen[(addr, write)]}"
+            )
+        line = f"base=0x{base:x} size=0x{size:x} " + " ".join(parts)
+        ok = (
+            n_on == len(words) * 4
+            and all(r == RESP_DECERR and n == 0 for r, n in old.values())
+            and all(r == RESP_DECERR and n == 0 for r, n in back.values())
+            and all(on_seen[k] == 1 for k in back)
+        )
+        assert ok, f"CHK-OUT-SMU-MOVED FAIL: {line}"
+        self.logger.info("CHK-OUT-SMU-MOVED PASS: %s", line)
+
+    async def _smu_over_ap_leg(self) -> None:
+        """The SMU window over AP region 0, then the reset pair restored."""
+        c = self._draw_region0()
+        self.logger.info(
+            "SMU over AP LOG: smu_base=0x%x smu_size=0x%x ap_region=0 O_ap=0x%014x "
+            "ap_local=0x%x ap_pred=0x%014x",
+            SMU_OVL_BASE,
+            SMU_OVL_SIZE,
+            c.offset,
+            c.local,
+            c.translated,
+        )
+        assert SMU_OVL_BASE <= c.local < SMU_OVL_BASE + SMU_OVL_SIZE
+        await self.remap.program(c, True)
+        lo, hi = granule8(c.local)
+        await self._program_pair(PAIR_OVL_LOCAL, lo, hi)
+        lo, hi = granule8(c.translated)
+        await self._program_pair(PAIR_OVL_TRANSLATED, lo, hi)
+        await self.smu_ap.program(SMU_OVL_BASE, SMU_OVL_SIZE, size_first=False)
+        n_smu = 0
+        for write in self.tcfg.dirs():
+            for p1 in (0, 1):
+                await self._cell(
+                    "smu_over_ap",
+                    c.local,
+                    c.local,
+                    write=write,
+                    prot=self.tcfg.prot(p1),
+                    expect_okay=True,
+                    graded=True,
+                    chk="CHK-OUT-SMU-FIRST",
+                    cap_chk="CHK-OUT-SMU-FIRST",
+                )
+                n_smu += 1
+        await self.smu_ap.program(SMU_BASE, SMU_SIZE, size_first=True)
+        n_ap = 0
+        for write in self.tcfg.dirs():
+            for p1 in (0, 1):
+                await self._cell(
+                    "ap_region0",
+                    c.local,
+                    c.translated,
+                    write=write,
+                    prot=self.tcfg.prot(p1),
+                    expect_okay=True,
+                    graded=False,
+                    chk="CHK-OUT-SMU-FIRST",
+                    cap_chk="CHK-OUT-SMU-FIRST",
+                )
+                n_ap += 1
+        await self._pair_enable(PAIR_OVL_LOCAL, False)
+        await self._pair_enable(PAIR_OVL_TRANSLATED, False)
+        line = (
+            f"ap_local=0x{c.local:x} ap_pred=0x{c.translated:x} smu_over_ap_untranslated={n_smu} "
+            f"reset_pair_translated_user0={n_ap}"
+        )
+        assert n_smu == 4 and n_ap == 4, f"CHK-OUT-SMU-FIRST FAIL: {line}"
+        self.logger.info("CHK-OUT-SMU-FIRST PASS: %s", line)
+
+    def _draw_region0(self) -> _Cls:
+        """AP region 0 with a drawn offset: bit 55 set, bits 54:19 drawn."""
+        rng = self.tcfg.rng
+        identity = AP_REGION_BASE >> IDX_START
+        while True:
+            hi = rng.getrandbits(55 - IDX_START) | (1 << (55 - IDX_START))
+            if hi == identity:
+                continue
+            c = _Cls("ap", AP_REGION_BASE, AP_BASE, 0, hi << IDX_START)
+            if _Cfg._bad_target(c.translated):
+                continue
+            return c
+
     # ---------------------------------------------------------------- scenario
 
     async def run_scenario(self) -> None:
@@ -876,7 +1175,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._bring_up()
         self.out = SepFabricTap("PR-OUT").start()
         self.filt = SepFilterBank(self, "out")
-        remap = _Remap(self)
+        self.remap = remap = _Remap(self)
+        self.smu_ap = _SmuAperture(self)
         await remap.program(cfg.ap, True)
         await remap.program(cfg.stee, True)
 
@@ -902,6 +1202,8 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._stack_leg(cfg.stee)
         await self._local_leg()
         await self._nobypass_leg()
+        await self._smu_moved_leg()
+        await self._smu_over_ap_leg()
         close_graded_window(self.logger)
         await self.out.stop()
         line = f"captures={self.n_capture} admitted={self.n_expect}"

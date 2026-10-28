@@ -439,12 +439,3 @@ class SepFabricCsrBank(SepAxiRegDriver):
         )
         after_clear = (await self._rd(hi_addr) >> bit) & 1
         return after_set, after_clear, clear_resp
-
-    async def ro_probe(self, addr: int, lsb: int, width: int) -> tuple[int, int]:
-        """Prove a RO field ignores writes. Returns (orig_field, after_write_field)."""
-        field_mask = (1 << width) - 1
-        orig = (await self._rd(addr) >> lsb) & field_mask
-        cur = await self._rd(addr)
-        await self._wr(addr, cur ^ (field_mask << lsb))
-        after = (await self._rd(addr) >> lsb) & field_mask
-        return orig, after

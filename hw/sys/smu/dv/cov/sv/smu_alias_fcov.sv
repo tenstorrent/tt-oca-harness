@@ -131,14 +131,9 @@ module smu_alias_fcov #(
     `OCAH_FCOV_COVER(c_sep_access_outside_window_observed_at_xbar,
                      sep_access_outside_window_observed_at_xbar_e, clk_smu_i, in_reset)
 
-`ifndef VERILATOR
     // ------------------------------------------------------------------
-    // Commercial-simulator covergroup: which of the two SEP egress paths
-    // carried the transfer, against the window membership of its address.
-    // The SEP routes SMC-aperture traffic to the dedicated port and every
-    // other non-local transfer to the SMN fabric (sep fabric.adoc), so the
-    // dedicated port never carries an out-of-window address and the crossbar
-    // port never carries an in-window one.
+    // Covergroup: which of the two SEP egress paths carried the transfer,
+    // against the window membership of its address.
     // ------------------------------------------------------------------
     covergroup cg_alias_path with function sample (
         logic on_remap_port, logic in_window, logic is_read
@@ -147,9 +142,18 @@ module smu_alias_fcov #(
       cp_port: coverpoint on_remap_port {bins xbar = {1'b0}; bins dedicated = {1'b1};}
       cp_window: coverpoint in_window {bins other = {1'b0}; bins smc_window = {1'b1};}
       cp_is_read: coverpoint is_read;
-      x_path: cross cp_port, cp_window, cp_is_read{
-        ignore_bins dedicated_other = binsof (cp_port.dedicated) && binsof (cp_window.other);
-        ignore_bins xbar_smc_window = binsof (cp_port.xbar) && binsof (cp_window.smc_window);
+      // {on_remap_port, in_window, is_read}: the SEP routes SMC-aperture
+      // traffic to the dedicated port and every other non-local transfer to
+      // the SMN fabric (sep fabric.adoc), so the dedicated port never carries
+      // an out-of-window address and the crossbar port never carries an
+      // in-window one.
+      cp_path: coverpoint {
+        on_remap_port, in_window, is_read
+      } {
+        bins xbar_other_write = {3'b000};
+        bins xbar_other_read = {3'b001};
+        bins dedicated_smc_window_write = {3'b110};
+        bins dedicated_smc_window_read = {3'b111};
       }
     endgroup
 
@@ -163,7 +167,6 @@ module smu_alias_fcov #(
         if (xbar_ar_hs) u_cg_alias_path.sample(1'b0, xbar_ar_in_window, 1'b1);
       end
     end
-`endif
   end
 
 endmodule : smu_alias_fcov

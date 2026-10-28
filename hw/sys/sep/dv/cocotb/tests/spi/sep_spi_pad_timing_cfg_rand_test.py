@@ -52,7 +52,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:222-224``
   (CONTROL.OUTPUT_EN): "Enable the SPI host output buffers for the sck, csb,
   and sd lines." Control: before the bring-up CONTROL write sets OUTPUT_EN,
-  both enables read 0 (``doc/integrator/src/smu-sep.adoc:275-276``: the host
+  both enables read 0 (``doc/integrator/src/smu-sep.adoc:291-292``: the host
   "drives no pad until software sets its ``CONTROL.OUTPUT_EN``"), else
   CTRL-MISSING.
 * CHK-SPI-PERIOD: every sck period of the graded pair is 2*(CLKDIV+1) clocks.

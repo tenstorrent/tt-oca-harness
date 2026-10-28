@@ -19,6 +19,7 @@ from env.sep_spec_tables import (
     abr_ctrl_cmd,
     abr_field_mask,
     abr_off,
+    abr_words,
     agg_from_pic,
     kv_field_mask,
     window,
@@ -59,12 +60,12 @@ ST_READY = abr_field_mask("MLDSA_STATUS", "READY")
 ST_VALID = abr_field_mask("MLDSA_STATUS", "VALID")
 ST_ERROR = abr_field_mask("MLDSA_STATUS", "ERROR")
 
-SEED_WORDS = 8
-ENTROPY_WORDS = 16
-PK_WORDS = 648
-SK_WORDS = 1224
-MU_WORDS = 16
-SIG_WORDS = 1157
+SEED_WORDS = abr_words("MLDSA_SEED")
+ENTROPY_WORDS = abr_words("ABR_ENTROPY")
+PK_WORDS = abr_words("MLDSA_PUBKEY")
+SK_WORDS = abr_words("MLDSA_PRIVKEY_IN")
+MU_WORDS = abr_words("MLDSA_EXTERNAL_MU")
+SIG_WORDS = abr_words("MLDSA_SIGNATURE")
 # MLDSA_VERIFY_RES[N] in abr_reg.rdl; c~ is those leading signature words.
 VERIFY_RES_WORDS = (abr_off("MLDSA_EXTERNAL_MU") - abr_off("MLDSA_VERIFY_RES")) // 4
 

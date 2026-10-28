@@ -39,9 +39,25 @@ host grades the printed values against the seeded values and the RDL:
   direct address; ``SEP_LOCAL_BASE_ADDR`` reads back its reset value after the
   restore.
 
+* CHK-CPU-AXPROT: every PR-CPU-LSU read and write carries AxPROT ``0b001``
+  (``hw/sys/sep/doc/cpu.adoc``, table ``sep-cpu-axprot-table``).
+* CHK-CPU-SINGLE-BEAT: every LSU read and write handshake on PR-LSU-XBAR and
+  PR-LSU-ROM inside the graded window carries AxLEN 0, with at least one read
+  and one write (``hw/sys/sep/doc/fabric.adoc:38-39``, "The CPU masters and the
+  DMA issue single-beat transactions only"). An X or Z AxLEN fails.
+
 An X in a read value makes the console byte unknown, and the console sampler
 of ``sep_base_test`` raises on it, so the leaf fails on VCS. PR-SRAM records an
 unknown field as None, which the SRAM part of CHK-TWIN fails.
+
+Functional coverage: the graded window opens after the CPU is released and
+stays open until every check of the run has passed. The ``cp_local_alias_twin``
+and ``cp_local_alias_moved`` cells of each LSU request in the window, the LSU
+cells of ``cp_cpu_single_beat`` and ``cp_master_ch`` and the ``cp_component_id``
+reset-value read are held and sample only when ``twin_pass``
+(``env/sep_fcov_gate.set_twin_pass``) rises after the last check; a FAIL closes
+the window, which drops them. An LSU AxPROT other than ``0b001`` samples an
+illegal bin of ``cp_master_ch`` at once.
 
 The leaf drives no LSU access to the extension window, and no access to the
 reset-base alias while the window is at B: the extension tie-off answers DECERR,
@@ -58,11 +74,13 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_fabric_tap import AXPROT_LSU, SepFabricTap, check_axprot, log_axprot
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_twin_pass
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -79,6 +97,13 @@ _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
 _BANNER = "SEP CPU LSU alias twin test"
+# AxLEN of a single-beat transaction: the AXI beat count minus one (AMBA AXI,
+# AxLEN). hw/sys/sep/doc/fabric.adoc:38-39 states single-beat CPU transactions.
+_SINGLE_BEAT_LEN = 0
+# The LSU AXI ports after the core's ROM / crossbar split.
+_LSU_SPLIT_TAPS = ("PR-LSU-XBAR", "PR-LSU-ROM")
+# Clocks the pass label stays high before it returns to 0.
+_LABEL_CLK = 2
 
 # Must equal TWIN_PARAM_MAGIC of fw/tests/alias_twin_test/alias_twin_test.c.
 _PARAM_MAGIC = 0xA7C1D3E5
@@ -208,7 +233,13 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
     """An alias read of each local unit class and SRAM edge word equals its direct twin."""
 
     build_env = False
-    required_evidence = ("CHK-TWIN", "CHK-TWIN-WR", "CHK-TWIN-MOVED", "CHK-CPU-AXPROT")
+    required_evidence = (
+        "CHK-TWIN",
+        "CHK-TWIN-WR",
+        "CHK-TWIN-MOVED",
+        "CHK-CPU-AXPROT",
+        "CHK-CPU-SINGLE-BEAT",
+    )
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -237,8 +268,20 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
 
     async def _open_window(self) -> None:
         # The CPU is released; everything the firmware does from here is the
-        # graded stimulus of this entry.
+        # graded stimulus of this entry. twin_pass 0 starts the instance.
         open_graded_window(_TEST, self.logger)
+        set_twin_pass(False, self.logger)
+        for tap in self._lsu_split.values():
+            tap.start()
+
+    async def _release(self) -> None:
+        """Every check of the run passed: twin_pass 1 samples the held cells."""
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_twin_pass(True, self.logger)
+        await ClockCycles(clk, _LABEL_CLK)
+        set_twin_pass(False, self.logger)
+        close_graded_window(self.logger)
 
     async def run_scenario(self) -> None:
         self.sb.expected_line = _BANNER
@@ -247,42 +290,76 @@ class sep_cpu_lsu_alias_window_twin_test(sep_base_test):
         # CHK-CPU-AXPROT grades the LSU AxPROT; the IFU AxPROT is logged only here.
         cpu_lsu = SepFabricTap("PR-CPU-LSU").start()
         cpu_ifu = SepFabricTap("PR-CPU-IFU", xz_fail=False).start()
+        # CHK-CPU-SINGLE-BEAT: the LSU AxLEN after the split, over the window.
+        self._lsu_split = {n: SepFabricTap(n) for n in _LSU_SPLIT_TAPS}
         try:
-            await self.boot_firmware(
-                self.sb,
-                _ITCM_HEX,
-                dtcm,
-                rst_vec=_ICCM_BASE >> 1,
-                max_run_cycles=_MAX_RUN_CYCLES,
-                no_boot_cycles=_NO_BOOT_CYCLES,
-                progress_every=_PROGRESS_EVERY,
-                after_bring_up_hook=self._open_window,
+            try:
+                await self.boot_firmware(
+                    self.sb,
+                    _ITCM_HEX,
+                    dtcm,
+                    rst_vec=_ICCM_BASE >> 1,
+                    max_run_cycles=_MAX_RUN_CYCLES,
+                    no_boot_cycles=_NO_BOOT_CYCLES,
+                    progress_every=_PROGRESS_EVERY,
+                    after_bring_up_hook=self._open_window,
+                )
+            finally:
+                await sram.stop()
+                await cpu_lsu.stop()
+                await cpu_ifu.stop()
+                for tap in self._lsu_split.values():
+                    await tap.stop()
+                log_axprot(self.logger, cpu_lsu, "lsu", "ar", "M")
+                log_axprot(self.logger, cpu_lsu, "lsu", "aw", "M")
+                log_axprot(self.logger, cpu_ifu, "ifu", "ar", "M")
+
+            # CHK-CPU-AXPROT: every LSU read and write carries the stated AxPROT.
+            for ch in ("ar", "aw"):
+                check_axprot(self.logger, "CHK-CPU-AXPROT", cpu_lsu, "lsu", ch, AXPROT_LSU)
+            self._check_single_beat()
+
+            # Grade the printed values first: a firmware that trapped part way
+            # still names the first word whose alias read went wrong.
+            console = self.sb.console_text()
+            self._check_params(console)
+            self._check_twin(console, sram)
+            self._check_twin_wr(console)
+            self._check_twin_moved(console)
+            assert "TWIN-DONE" in console, "CHK-TWIN FAIL: firmware console has no TWIN-DONE line"
+            assert self.sb.fw_done and self.sb.fw_pass, (
+                "CHK-TWIN FAIL: the alias_twin_test firmware did not complete with PASS "
+                f"(done={self.sb.fw_done} pass={self.sb.fw_pass})"
             )
-        finally:
+        except BaseException:
+            # A FAIL closes the window first, which drops the held cells.
             close_graded_window(self.logger)
-            await sram.stop()
-            await cpu_lsu.stop()
-            await cpu_ifu.stop()
-            log_axprot(self.logger, cpu_lsu, "lsu", "ar", "M")
-            log_axprot(self.logger, cpu_lsu, "lsu", "aw", "M")
-            log_axprot(self.logger, cpu_ifu, "ifu", "ar", "M")
+            raise
+        await self._release()
 
-        # CHK-CPU-AXPROT: every LSU read and write carries the stated AxPROT.
+    def _check_single_beat(self) -> None:
+        """CHK-CPU-SINGLE-BEAT: AxLEN 0 on every LSU AR and AW after the split."""
+        expect = _SINGLE_BEAT_LEN
         for ch in ("ar", "aw"):
-            check_axprot(self.logger, "CHK-CPU-AXPROT", cpu_lsu, "lsu", ch, AXPROT_LSU)
-
-        # Grade the printed values first: a firmware that trapped part way still
-        # names the first word whose alias read went wrong.
-        console = self.sb.console_text()
-        self._check_params(console)
-        self._check_twin(console, sram)
-        self._check_twin_wr(console)
-        self._check_twin_moved(console)
-        assert "TWIN-DONE" in console, "CHK-TWIN FAIL: firmware console has no TWIN-DONE line"
-        assert self.sb.fw_done and self.sb.fw_pass, (
-            "CHK-TWIN FAIL: the alias_twin_test firmware did not complete with PASS "
-            f"(done={self.sb.fw_done} pass={self.sb.fw_pass})"
-        )
+            per_tap = {n: t.since(0, ch) for n, t in self._lsu_split.items()}
+            beats = [b for bs in per_tap.values() for b in bs]
+            bad = [b for b in beats if b.len != expect]
+            lens = (
+                "{" + ",".join(sorted({"X" if b.len is None else str(b.len) for b in beats})) + "}"
+            )
+            counts = " ".join(f"{n}={len(bs)}" for n, bs in per_tap.items())
+            line = (
+                f"master=lsu ch={ch} count={len(beats)} {counts} len={lens} "
+                f"mismatches={len(bad)} expect={expect}"
+            )
+            if not beats or bad:
+                first = "; ".join(b.fmt() for b in bad[:4])
+                msg = (
+                    f"CHK-CPU-SINGLE-BEAT FAIL: {line} first_mismatch=[{first}] (fabric.adoc:38-39)"
+                )
+                self.logger.error(msg)
+                raise AssertionError(msg)
+            self.logger.info("CHK-CPU-SINGLE-BEAT PASS: %s", line)
 
     def _check_params(self, console: str) -> None:
         cfg = self._cfg

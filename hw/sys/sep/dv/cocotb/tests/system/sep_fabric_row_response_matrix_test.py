@@ -24,16 +24,20 @@ from the filter.
 CHK-ROW: response code and addressed data lane of every cell (Reserved, Past
 Extent, Hole in Extent, live word), with X or Z in an error payload failing on
 VCS. A hole write leaves its neighbour register unchanged; the in-extent write
-of the same data to the neighbour changes it (control).
+of the same data to the neighbour changes it (control, run before the hole
+writes of the unit).
 
 CTRL-ROW-RAND: stimulus completeness. Every inventory cell was walked.
 
 CHK-ROW-NOALIAS: a reset-control gap or tail write and an HMAC or KMAC hole
 write leave the live reference register (``SW_RESET_N``, HMAC ``CFG``, a KMAC
-``PREFIX`` word) unchanged; an in-extent write to the same register changes it.
+``PREFIX`` word) unchanged; an in-extent write to the same register changes it
+(control, run before the draws of that register).
 
 CHK-ROW-CACHE: an OTBN register access answers OKAY with AxCACHE[1] = 0 and 1 on
-both channels (``hw/sys/sep/doc/otbn.adoc``, OCAH Modifications).
+both channels (``hw/sys/sep/doc/otbn.adoc``, OCAH Modifications). The AxCACHE of
+each address handshake is captured on the LSU port and must equal the value of
+the instance, so a request that does not carry the value fails the check.
 
 CHK-ROW-KM: every Key Manager mailbox offset past its seven registers, and the
 reserved span after it, answers DECERR with 0xBADCAB1E, and no baseline register
@@ -46,9 +50,35 @@ from the SI bus monitor in order), and lands no beat (``hw/sys/sep/doc/crypto.ad
 Single-Beat Access Only); a single beat at the same address answers its 32-bit
 cell.
 
+CHK-ROW-POOL-W / CHK-ROW-POOL-UNMAPPED: an SI 32-bit write to the entropy pool,
+at a register word and at an unmapped offset, answers SLVERR; an SI 32-bit read
+of an unmapped pool offset answers SLVERR with zero data on the addressed lane
+(``hw/sys/sep/doc/entropy_pool.adoc``). Each line carries a positive probe: a
+64-bit SI read of the pool ``STATUS`` answers OKAY just before the graded access.
+
+CHK-ROW-SPI-BURST: an SI INCR burst of 32-bit beats that starts one or two beats
+below the end of the 56-byte SPI host extent and crosses it in one 4 KB page.
+The in-extent beats answer OKAY with the register values (staged values, or the
+RDL reset of ``ERROR_STATUS``); every beat past the extent answers an error and
+carries none of the staged non-zero register values. A write burst lands its
+in-extent beats, answers a B response other than OKAY, and changes no other
+stable SPI host register (``hw/sys/sep/doc/peripheral_subsystem.adoc``: the
+error responder of ``sep_io`` answers only the beats past the extent). The
+exact past-beat code and data are logged as ``OBS-ROW-SPI-BURST-CODE``.
+CHK-ROW-SPI-BURST-CONTROL: the same burst shape wholly inside the extent answers
+OKAY on every beat and lands every beat.
+
+FCOV gate: the leaf opens its window (owner code 231) only around graded
+accesses, and closes it on the first FAIL. The sampler holds each owned sample
+and samples it only when the pass label ``row_pass`` rises after every check of
+the instance passed; the leaf drops the held samples at the start of each graded
+instance, so a logged or ungraded access fills no bin. The OTBN AxCACHE cells
+sample only on the release of an OTBN cache instance, after CHK-ROW-CACHE.
+
 Not graded: the Forwarded and adopter-defined rows; the response of a burst to
-a register region outside the crypto region (the specification states none);
-any AxSIZE 3 access.
+a register region outside the crypto region and the SPI host extent (the
+specification states none); any AxSIZE 3 access except the pool ``STATUS``
+probe.
 """
 
 from __future__ import annotations
@@ -57,17 +87,17 @@ from collections import Counter
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_decode_resp import logical_region
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, RESP_SLVERR
 from env.sep_fabric_common import RESP_NAME as _RN
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import KMAC, OTBN
+from sep_reg_meta import KMAC, OTBN, sep_reg
 from seq_lib import sep_row_response_seq as rr
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
 from seq_lib.sep_fabric_deadspace_seq import in_crypto_region
@@ -76,13 +106,55 @@ from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
 _TEST = "sep_fabric_row_response_matrix_test"
 _MAX_SENSE_CYCLES = 20_000
+# Pass label u_sep_fcov.row_pass: 1 releases the held samples of an instance
+# whose checks passed, 2 drops them, 3 releases them with the OTBN AxCACHE
+# cells (written only by the OTBN cache leg after CHK-ROW-CACHE passed). The
+# leaf holds each value this many clk_i edges so the sampler sees it.
+ROW_PASS_RELEASE = 1
+ROW_PASS_DROP = 2
+ROW_PASS_RELEASE_CACHE = 3
+_LABEL_CLOCKS = 2
+
+# Entropy pool (hw/sys/sep/doc/entropy_pool.adoc). :38-39 "A write to any offset
+# terminates with BRESP=SLVERR"; :47-48 "An access to an unmapped offset within
+# the aperture likewise returns SLVERR with zero data"; :34 and :40-41 STATUS is a
+# non-destructive read taken with a single 64-bit access.
+POOL_BASE = sep_reg.ENTROPY_POOL_REG_MAP_BASE_ADDR
+POOL_EXTENT = sep_reg.ENTROPY_POOL_REG_MAP_SIZE
+POOL_STATUS = sep_reg.ENTROPY_POOL_STATUS_REG_ADDR
+POOL_REGS = (
+    sep_reg.ENTROPY_POOL_STATUS_REG_ADDR,
+    sep_reg.ENTROPY_POOL_IRQ_CAUSE_REG_ADDR,
+    sep_reg.ENTROPY_POOL_DATA_REG_ADDR,
+)
+POOL_WRITE_RESP = RESP_SLVERR
+POOL_UNMAPPED_RESP = RESP_SLVERR
+POOL_UNMAPPED_RDATA = 0x0
+
+# SPI host (hw/sys/sep/doc/peripheral_subsystem.adoc:43-46): the local crossbar
+# sends only the SPI host register extent to sep_io, and the error responder of
+# sep_io answers only the beats of a burst that run past the extent. The extent
+# is the generated register map size (56 B, regs/gen/adoc/memory_map.adoc:81).
+SPI_BASE = sep_reg.SPI_CONTROLLER_REG_MAP_BASE_ADDR
+SPI_END = SPI_BASE + sep_reg.SPI_CONTROLLER_REG_MAP_SIZE
+SPI_CSID = sep_reg.SPI_CONTROLLER_CSID_REG_ADDR
+SPI_ERROR_ENABLE = sep_reg.SPI_CONTROLLER_ERROR_ENABLE_REG_ADDR
+SPI_ERROR_STATUS = sep_reg.SPI_CONTROLLER_ERROR_STATUS_REG_ADDR
+SPI_EVENT_ENABLE = sep_reg.SPI_CONTROLLER_EVENT_ENABLE_REG_ADDR
+# The crossing bursts start two beats and one beat below the extent end; the
+# control burst starts at ERROR_ENABLE and ends on the last byte of the extent.
+# No register these bursts touch has a read side effect (checked at run time).
+SPI_CROSS_STARTS = (SPI_ERROR_STATUS, SPI_EVENT_ENABLE)
+SPI_INSIDE_START = SPI_ERROR_ENABLE
+SPI_MAX_PAST_BEATS = 8
+AXI_SIZE_32 = 2
 # A pinned PROD image whose SIP_DIS and SYS_DIS keep the inbound filter active.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 # AxPROT of every SI request: data, non-secure, unprivileged. Entry 0 sets
 # allow_ns to AxPROT[1].
 SI_PROT = 0b010
-OKAY, DECERR = RESP_OKAY, RESP_DECERR
+OKAY, DECERR, SLVERR = RESP_OKAY, RESP_DECERR, RESP_SLVERR
 AXI_INCR = 1
 # The inbound entry admits the whole SEP Local region of the CPU logical map.
 _SEP_LOCAL = logical_region("logical:sep_local")
@@ -109,6 +181,26 @@ HOLE_NEIGHBOUR_NAME = {
 }
 
 
+def _hex(v: int | None) -> str:
+    return "none" if v is None else f"0x{v:x}"
+
+
+async def _capture_axcache(channel: str) -> int:
+    """AxCACHE of the next ``channel`` (``ar`` or ``aw``) handshake on the LSU port.
+
+    ``s_axi_*`` is the bus that drives the DUT LSU request, so the value is the
+    AxCACHE the DUT receives, not the value the leaf asked for.
+    """
+    dut = cocotb.top
+    valid = getattr(dut, f"s_axi_{channel}valid")
+    ready = getattr(dut, f"s_axi_{channel}ready")
+    cache = getattr(dut, f"s_axi_{channel}cache")
+    while True:
+        await RisingEdge(dut.clk_i)
+        if valid.value == 1 and ready.value == 1:
+            return int(cache.value)
+
+
 def _reg_named(key: str, name: str) -> rr.Reg:
     return next(r for r in rr.row_regs(key) if r.name == name)
 
@@ -124,6 +216,10 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-ROW-KM",
         "CHK-ROW-BURST",
         "CHK-ROW-BURST-CONTROL",
+        "CHK-ROW-POOL-W",
+        "CHK-ROW-POOL-UNMAPPED",
+        "CHK-ROW-SPI-BURST",
+        "CHK-ROW-SPI-BURST-CONTROL",
     )
 
     # ------------------------------------------------------------------ access
@@ -215,8 +311,45 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         self.walked.add((row, kind, d, init))
 
     def _fail(self, chk: str, line: str) -> None:
+        """Record a FAIL: close the window and drop every held sample first."""
+        close_graded_window(self.logger)
+        set_row_pass(ROW_PASS_DROP, self.logger)
         self.logger.error("%s FAIL: %s", chk, line)
         self.fails.append(f"{chk}: {line}")
+
+    def _abort(self, chk: str, line: str) -> None:
+        """A FAIL that ends the leaf."""
+        self._fail(chk, line)
+        raise AssertionError(f"{chk} FAIL: {line}")
+
+    # --------------------------------------------------------------- FCOV gate
+    def _open(self) -> None:
+        """Open the window of this leaf; never again after a FAIL."""
+        if not self.fails:
+            open_graded_window(_TEST, self.logger)
+
+    def _close(self) -> None:
+        close_graded_window(self.logger)
+
+    async def _label(self, value: int) -> None:
+        set_row_pass(value)
+        await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+        set_row_pass(0)
+        await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+
+    async def _begin(self) -> None:
+        """Start a graded instance: drop every sample held since the last release."""
+        if not self.fails:
+            await self._label(ROW_PASS_DROP)
+
+    async def _release(self, *, cache: bool = False) -> None:
+        """Release the held samples of an instance after all its checks passed.
+
+        ``cache``: the instance is one of the OTBN cache leg, so its OTBN
+        AxCACHE cells sample too; every other release drops them."""
+        if not self.fails:
+            await self._label(ROW_PASS_RELEASE_CACHE if cache else ROW_PASS_RELEASE)
+            self.released += 1
 
     def _row_line(self, ok: bool, line: str) -> None:
         if ok:
@@ -320,11 +453,16 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         inv.add(("reset_ctrl", "live", "R", "LSU"))
         for k in rr.LIVE_SI_ROWS:
             inv.add((k, "live", "R", "SI"))
+        inv.add(("pool", "write", "W", "SI"))
+        inv.add(("pool", "past", "R", "SI"))
+        for d in ("R", "W"):
+            inv.add(("spi_host", "burst_cross", d, "SI"))
         return inv
 
     # -------------------------------------------------------------------- legs
     async def _reset_ctrl_leg(self) -> None:
-        """Steps 4 to 6: reset-control cells, no-alias draws and the control."""
+        """Steps 4 to 6: reset-control cells, the control and the no-alias draws."""
+        await self._begin()
         resp, ref = await self._lsu(SepAxiOp.READ, rr.SW_RESET_N)
         got = ref & rr.SW_RESET_N_FIELDS
         self._row_line(
@@ -335,6 +473,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             f"rsvd=0x{ref & ~rr.SW_RESET_N_FIELDS & 0xFFFF_FFFF:08x}",
         )
         self._walk("reset_ctrl", "live", "R", "LSU")
+        await self._release()
         first, last, nxt = rr.past_bounds("reset_ctrl")
         rr.reserved_row(nxt)
         drawn = (first + 8) + 8 * self.rng.randrange(0, ((last - 8) - (first + 8)) // 8 + 1)
@@ -347,13 +486,36 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 kind = "past" if word < nxt else "reserved"
                 for a in (word, word + 4):
                     wd = ((self.rng.getrandbits(25) << 7) | 0x01) if op is SepAxiOp.WRITE else None
+                    await self._begin()
                     resp, rdata = await self._lsu(op, a, wdata=wd or 0, expect="err")
                     self._grade_cell(row, kind, "LSU", op, a, resp, rdata, wd)
+                    await self._release()
+                # Logged only: the next _begin() drops its samples.
                 resp, rdata = await self._lsu(
                     op, word, size=3, wdata=self.rng.getrandbits(64), expect="any"
                 )
                 self._log_size3(row, kind, resp, rdata, d)
-        # Step 5: no-alias draws in the gap at AxSIZE 0, 1, 2 and 3.
+        # Step 5: the reset-control control, before the no-alias draws, so a
+        # reference that cannot change fails before any no-alias sample is held.
+        # In-extent writes change the read.
+        for value in (0x76, rr.SW_RESET_N_REF):
+            await self._begin()
+            await self._lsu(SepAxiOp.WRITE, rr.SW_RESET_N, wdata=value)
+            _r, back = await self._lsu(SepAxiOp.READ, rr.SW_RESET_N)
+            if back & rr.SW_RESET_N_FIELDS != value:
+                self._abort(
+                    "CHK-ROW-NOALIAS",
+                    f"control write of SW_RESET_N=0x{value:02x} read back "
+                    f"0x{back & rr.SW_RESET_N_FIELDS:02x}; the reference cannot show an alias",
+                )
+            self.logger.info(
+                "CTRL-ROW-NOALIAS LOG: unit=reset_ctrl wrote=0x%02x read=0x%02x",
+                value,
+                back & rr.SW_RESET_N_FIELDS,
+            )
+            await self._release()
+        self.noalias_ctl.add("reset_ctrl")
+        # Step 6: no-alias draws in the gap at AxSIZE 0, 1, 2 and 3.
         for size in (0, 1, 2, 3):
             for _ in range(2):
                 n = 1 << size
@@ -364,6 +526,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 a = lo + step * self.rng.randrange(0, (nxt - lo) // step)
                 wd = (self.rng.getrandbits(8 * n - 7) << 7) | 0x01
                 expect = "err" if size == 2 else "any"
+                await self._begin()
                 resp, rdata = await self._lsu(SepAxiOp.WRITE, a, size=size, wdata=wd, expect=expect)
                 if size == 2:
                     self._grade_cell("reset_ctrl", "past", "LSU", SepAxiOp.WRITE, a, resp, 0, wd)
@@ -383,21 +546,10 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     after & rr.SW_RESET_N_FIELDS,
                     wd,
                 )
-        # Step 6: the reset-control control. In-extent writes change the read.
-        for value in (0x76, rr.SW_RESET_N_REF):
-            await self._lsu(SepAxiOp.WRITE, rr.SW_RESET_N, wdata=value)
-            _r, back = await self._lsu(SepAxiOp.READ, rr.SW_RESET_N)
-            if back & rr.SW_RESET_N_FIELDS != value:
-                raise AssertionError(
-                    f"CHK-ROW-NOALIAS FAIL: control write of SW_RESET_N=0x{value:02x} read back "
-                    f"0x{back & rr.SW_RESET_N_FIELDS:02x}; the reference cannot show an alias"
-                )
-            self.logger.info(
-                "CTRL-ROW-NOALIAS LOG: unit=reset_ctrl wrote=0x%02x read=0x%02x",
-                value,
-                back & rr.SW_RESET_N_FIELDS,
-            )
-        self.noalias_ctl.add("reset_ctrl")
+                # Only an AxSIZE 2 draw has its write response graded, so only
+                # it releases its samples; the next _begin() drops the others.
+                if size == 2:
+                    await self._release()
 
     def _noalias(self, unit: str, off: int, live: int, before: int, after: int, wd: int) -> None:
         line = (
@@ -438,24 +590,39 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             self.regval[self.kmac_ref],
         )
 
+    async def _lsu_cache(
+        self, op: SepAxiOp, addr: int, cache: int, *, wdata: int = 0
+    ) -> tuple[int, int, int | None]:
+        """One OKAY LSU access with AxCACHE ``cache``; also returns the AxCACHE
+        of its address handshake on the LSU port (None when none was seen)."""
+        hs = cocotb.start_soon(_capture_axcache("aw" if op is SepAxiOp.WRITE else "ar"))
+        resp, data = await self._lsu(op, addr, wdata=wdata, cache=cache)
+        return resp, data, take_handshake(hs)
+
     async def _otbn_cache_leg(self) -> None:
         """Step 9: OTBN register access with AxCACHE 0x0, 0x2, 0x3 and 0xF."""
         ie = OTBN.addr("INTR_ENABLE")
         done = OTBN.field_mask("INTR_ENABLE", "done")
         st = OTBN.addr("STATUS")
         for c in (0x0, 0x2, 0x3, 0xF):
-            rresp, v = await self._lsu(SepAxiOp.READ, ie, cache=c)
+            # Every access below answers OKAY or _lsu raises; the read-back
+            # check and the AxCACHE seen on the bus release the instance.
+            await self._begin()
+            rresp, v, ar0 = await self._lsu_cache(SepAxiOp.READ, ie, c)
             w = (~v) & done
-            bresp, _ = await self._lsu(SepAxiOp.WRITE, ie, wdata=w, cache=c)
-            _r, back = await self._lsu(SepAxiOp.READ, ie, cache=c)
-            await self._lsu(SepAxiOp.READ, st, cache=c)
+            bresp, _, aw = await self._lsu_cache(SepAxiOp.WRITE, ie, c, wdata=w)
+            _r, back, ar1 = await self._lsu_cache(SepAxiOp.READ, ie, c)
+            _s, _sv, ar2 = await self._lsu_cache(SepAxiOp.READ, st, c)
             self.regval[ie] = w
+            bus = (ar0, aw, ar1, ar2)
             line = (
-                f"init=LSU arcache=0x{c:x} awcache=0x{c:x} rresp={_RN[rresp]} "
-                f"bresp={_RN[bresp]} readback=0x{back & done:x}"
+                f"init=LSU cache=0x{c:x} bus arcache={[_hex(x) for x in (ar0, ar1, ar2)]} "
+                f"awcache={_hex(aw)} rresp={_RN[rresp]} bresp={_RN[bresp]} "
+                f"readback=0x{back & done:x}"
             )
-            if (back & done) == w:
+            if (back & done) == w and all(x == c for x in bus):
                 self.logger.info("CHK-ROW-CACHE PASS: %s", line)
+                await self._release(cache=True)
             else:
                 self._fail("CHK-ROW-CACHE", line + f" written=0x{w:x}")
 
@@ -473,15 +640,17 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 for word in words:
                     for a in (word, word + 4):
                         wd = self.rng.getrandbits(32) if op is SepAxiOp.WRITE else None
+                        await self._begin()
                         s = await self._si(op, a, wdata=wd or 0)
                         self._grade_cell(
                             f"rsvd_{base:08x}", "reserved", "SI", op, a, s.resp_code, s.rdata, wd
                         )
+                        await self._release()
                     s = await self._si(op, word, size=3, wdata=self.rng.getrandbits(64))
                     self._log_size3(f"rsvd_{base:08x}", "reserved", s.resp_code, s.rdata, d)
 
     async def _hole_leg(self) -> None:
-        """Steps 11 and 12: hole cells from SI, with the neighbour compare and control."""
+        """Steps 11 and 12: the hole-write control, then the hole cells from SI with the neighbour compare."""
         units = list(rr.HOLE_ROWS)
         self.rng.shuffle(units)
         for unit in units:
@@ -492,22 +661,50 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 nb = self.kmac_ref
             else:
                 nb = _reg_named(unit, HOLE_NEIGHBOUR_NAME[unit]).addr
+            # Entry read of the neighbour, outside the window.
+            self._close()
             _r, before = await self._lsu(SepAxiOp.READ, nb)
             reg = rr.reg_by_word()[nb]
             mask = reg.word_mask(nb)
             exp_nb = self._expect_reg(nb)
             if (before & mask) != (exp_nb & mask):
-                raise AssertionError(
-                    f"CHK-ROW FAIL: {unit} neighbour 0x{nb:08x} read 0x{before & mask:x} before "
-                    f"the hole access, model 0x{exp_nb & mask:x}"
+                self._abort(
+                    "CHK-ROW",
+                    f"{unit} neighbour 0x{nb:08x} read 0x{before & mask:x} before "
+                    f"the hole access, model 0x{exp_nb & mask:x}",
                 )
             comp = (~before) & 0xFFFF_FFFF
             self.logger.info(
                 "INFO-ROW-RAND LOG: %s hole word 0x%08x neighbour 0x%08x", unit, word, nb
             )
+            # Step 11: the hole-write control on the same neighbour, window
+            # closed, before the hole writes: a neighbour whose read cannot
+            # change fails before any hole sample is held. The restore puts
+            # the entry value back for the compare of step 12.
+            got, exp, _m = await self._lsu_write_reg(nb, comp, f"{unit} hole-write control")
+            if (got & mask) == (before & mask):
+                self._abort(
+                    "CHK-ROW",
+                    f"{unit} control write of 0x{comp:08x} to 0x{nb:08x} did not "
+                    f"change its read (0x{got & mask:x}); a landed hole write would not show",
+                )
+            self.logger.info(
+                "CTRL-ROW-HOLE LOG: unit=%s neighbour=0x%08x wrote=0x%08x read=0x%x before=0x%x",
+                unit,
+                nb,
+                comp,
+                got & mask,
+                before & mask,
+            )
+            if unit in ("hmac", "kmac"):
+                self.noalias_ctl.add(unit)
+            await self._lsu_write_reg(nb, before, f"{unit} neighbour restore")
+            # Step 12: the hole cells, with the neighbour compare after each write.
+            self._open()
             for op in (SepAxiOp.READ, SepAxiOp.WRITE):
                 d = "R" if op is SepAxiOp.READ else "W"
                 for a in (word, word + 4):
+                    await self._begin()
                     s = await self._si(op, a, wdata=comp)
                     self._grade_cell(
                         unit,
@@ -530,34 +727,21 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         self._row_line(same, line)
                         if unit in ("hmac", "kmac"):
                             self._noalias(unit, a - nb, nb, before & mask, after & mask, comp)
+                    await self._release()
                 s = await self._si(op, word, size=3, wdata=(comp << 32) | comp)
                 self._log_size3(unit, "hole", s.resp_code, s.rdata, d)
-            # Step 12: the hole-write control on the same neighbour (window closed).
-            close_graded_window(self.logger)
-            got, exp, _m = await self._lsu_write_reg(nb, comp, f"{unit} hole-write control")
-            if (got & mask) == (before & mask):
-                raise AssertionError(
-                    f"CHK-ROW FAIL: {unit} control write of 0x{comp:08x} to 0x{nb:08x} did not "
-                    f"change its read (0x{got & mask:x}); a landed hole write would not show"
-                )
-            self.logger.info(
-                "CTRL-ROW-HOLE LOG: unit=%s neighbour=0x%08x wrote=0x%08x read=0x%x before=0x%x",
-                unit,
-                nb,
-                comp,
-                got & mask,
-                before & mask,
-            )
-            if unit in ("hmac", "kmac"):
-                self.noalias_ctl.add(unit)
+            self._close()
             if unit == "abr":
                 # ABR has no stable register with a non-zero reset, so its live
-                # word is graded at the value this control leaves in it.
-                open_graded_window(_TEST, self.logger)
-                await self._live_word("abr", _reg_named("abr", HOLE_NEIGHBOUR_NAME["abr"]))
-                close_graded_window(self.logger)
-            await self._lsu_write_reg(nb, before, f"{unit} neighbour restore")
-            open_graded_window(_TEST, self.logger)
+                # word is graded at the control value, written again here with
+                # the window closed and restored after the read.
+                await self._lsu_write_reg(nb, comp, "abr live-word value")
+                self._open()
+                await self._begin()
+                if await self._live_word("abr", _reg_named("abr", HOLE_NEIGHBOUR_NAME["abr"])):
+                    await self._release()
+                self._close()
+                await self._lsu_write_reg(nb, before, "abr neighbour restore")
 
     async def _past_leg(self) -> None:
         """Step 13: past-extent cells from SI."""
@@ -573,13 +757,16 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 d = "R" if op is SepAxiOp.READ else "W"
                 for a in (e, e + 4, drawn, drawn + 4):
                     wd = self.rng.getrandbits(32) if op is SepAxiOp.WRITE else None
+                    await self._begin()
                     s = await self._si(op, a, wdata=wd or 0)
                     self._grade_cell(key, "past", "SI", op, a, s.resp_code, s.rdata, wd)
+                    await self._release()
                 for w8 in ((e + 7) & ~7, drawn):
                     s = await self._si(op, w8, size=3, wdata=self.rng.getrandbits(64))
                     self._log_size3(key, "past", s.resp_code, s.rdata, d)
 
-    async def _live_word(self, key: str, reg: rr.Reg) -> None:
+    async def _live_word(self, key: str, reg: rr.Reg) -> bool:
+        """SI read of a live word between two LSU reads; True when CHK-ROW passed."""
         a = reg.addr
         mask = reg.word_mask(a)
         exp = self._expect_reg(a)
@@ -598,25 +785,33 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             f"lsu_after=0x{lsu_a & mask:08x} rsvd=0x{got & ~mask & 0xFFFF_FFFF:08x} reg={reg.name}",
         )
         self._walk(key, "live", "R", "SI")
+        return ok
 
     async def _live_leg(self) -> None:
         """Step 14: the live word of each row except reset control and ABR."""
         rows = [k for k in rr.LIVE_SI_ROWS if k != "abr"]
         self.rng.shuffle(rows)
         for key in rows:
-            await self._live_word(key, rr.live_word(key))
+            await self._begin()
+            if await self._live_word(key, rr.live_word(key)):
+                await self._release()
 
     async def _km_leg(self) -> None:
         """Step 15: Key Manager mailbox window from SI with KM held in reset."""
         base = rr.ROW_BASE["km_mbox"]
         names = ("SEP_STATUS", "SEP_IRQ_STATUS", "SEP_CTRL", "SEP_IRQ_ENABLE")
+        # One instance: the CHK-ROW-KM lines pass only after the baseline
+        # control, so the release follows that control.
+        await self._begin()
         baseline = {}
         for a in rr.KM_BASELINE:
             s = await self._si(SepAxiOp.READ, a)
-            assert s.resp_code == OKAY, f"KM baseline 0x{a:08x} answered {_RN.get(s.resp_code)}"
+            if s.resp_code != OKAY:
+                self._abort("CHK-ROW-KM", f"baseline 0x{a:08x} answered {_RN.get(s.resp_code)}")
             baseline[a] = s.rdata & rr.reg_by_word()[a].word_mask(a)
         s = await self._si(SepAxiOp.READ, rr.KM_SEPARATOR)
-        assert s.resp_code == OKAY, f"KM separator answered {_RN.get(s.resp_code)}"
+        if s.resp_code != OKAY:
+            self._abort("CHK-ROW-KM", f"separator answered {_RN.get(s.resp_code)}")
         self.logger.info(
             "INFO-ROW-KM LOG: baseline %s separator=0x%08x",
             " ".join(f"{n}=0x{baseline[a]:x}" for n, a in zip(names, rr.KM_BASELINE)),
@@ -661,19 +856,21 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                         lines.append(line)
                     else:
                         self._fail("CHK-ROW-KM", line)
-        close_graded_window(self.logger)
+        self._close()
         for v in (rr.KM_IRQ_ENABLE_CTL, 0):
             s = await self._si(SepAxiOp.WRITE, rr.KM_IRQ_ENABLE, wdata=v)
             r = await self._si(SepAxiOp.READ, rr.KM_IRQ_ENABLE)
             if s.resp_code != OKAY or r.resp_code != OKAY or (r.rdata & 0xFFFF_FFFF) != v:
-                raise AssertionError(
-                    f"CHK-ROW-KM FAIL: baseline control SEP_IRQ_ENABLE write 0x{v:x} answered "
+                self._abort(
+                    "CHK-ROW-KM",
+                    f"baseline control SEP_IRQ_ENABLE write 0x{v:x} answered "
                     f"{_RN.get(s.resp_code)}, read back 0x{r.rdata & 0xFFFF_FFFF:x} "
-                    f"({_RN.get(r.resp_code)})"
+                    f"({_RN.get(r.resp_code)})",
                 )
         self.regval[rr.KM_IRQ_ENABLE] = 0
         for line in lines:
             self.logger.info("CHK-ROW-KM PASS: %s baseline_ctl=0x%x", line, rr.KM_IRQ_ENABLE_CTL)
+        await self._release()
 
     async def _snapshot(self, key: str) -> dict[int, tuple[int, int]]:
         snap = {}
@@ -703,14 +900,14 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     axlen = self.rng.randrange(1, max_len + 1)
                     nbeats = axlen + 1
                     assert in_crypto_region(start) and row.base <= start <= row.end
-                    close_graded_window(self.logger)
                     snap = await self._snapshot(key)
                     wdata = 0
                     for i in range(2 * nbeats):
                         a = start + 4 * i
                         w = (~snap[a][0]) & 0xFFFF_FFFF if a in snap else self.rng.getrandbits(32)
                         wdata |= w << (32 * i)
-                    open_graded_window(_TEST, self.logger)
+                    self._open()
+                    await self._begin()
                     ch = "ar" if op is SepAxiOp.READ else "aw"
                     hs = cocotb.start_soon(capture_addr_handshake(ch, prefix="m_axi"))
                     if op is SepAxiOp.READ:
@@ -720,7 +917,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     )
                     beats = mon.take_beat_capture() if op is SepAxiOp.READ else []
                     ax = take_handshake(hs)
-                    close_graded_window(self.logger)
+                    self._close()
                     changed = []
                     if op is SepAxiOp.WRITE:
                         after = await self._snapshot(key)
@@ -749,10 +946,12 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     else:
                         self._fail("CHK-ROW-BURST", f"{line} beats={beats} changed={changed[:4]}")
                     self._walk(key, f"burst_{kind}", d, "SI")
-                    await self._burst_control(key, kind, start, snap)
-                    open_graded_window(_TEST, self.logger)
+                    # The single-beat control runs with the window closed; the
+                    # burst cell is released only after it passes too.
+                    if await self._burst_control(key, kind, start, snap):
+                        await self._release()
 
-    async def _burst_control(self, key, kind, start, snap) -> None:
+    async def _burst_control(self, key, kind, start, snap) -> bool:
         """Step 19: the single beat at the burst start through the same entry."""
         if kind == "reg":
             cur, m = snap[start]
@@ -797,12 +996,315 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             self.logger.info("CHK-ROW-BURST-CONTROL PASS: %s", line)
         else:
             self._fail("CHK-ROW-BURST-CONTROL", line)
+        return ok
+
+    # ------------------------------------------------------------ entropy pool
+    async def _pool_probe(self) -> tuple[bool, str]:
+        """Positive probe: the pool STATUS answers OKAY to one 64-bit SI read."""
+        s = await self._si(SepAxiOp.READ, POOL_STATUS, size=3)
+        ok = s.resp_code == OKAY
+        return ok, f"probe_status_resp={_RN.get(s.resp_code)} probe_status=0x{s.rdata:016x}"
+
+    async def _pool_leg(self) -> None:
+        """SI write to the pool (register word and unmapped word) and SI read of an unmapped word."""
+        row = rr.map_row(POOL_BASE)
+        lo = POOL_BASE + POOL_EXTENT
+        um = lo + 8 * self.rng.randrange(0, (row.end + 1 - 8 - lo) // 8 + 1)
+        reg_word = self.rng.choice(POOL_REGS) + 4 * self.rng.randrange(0, 2)
+        self.logger.info(
+            "INFO-ROW-RAND LOG: pool extent=0x%x register word 0x%08x unmapped word 0x%08x",
+            POOL_EXTENT,
+            reg_word,
+            um,
+        )
+        self._open()
+        for a, kind in ((reg_word, "register"), (um, "unmapped")):
+            wd = self.rng.getrandbits(32)
+            await self._begin()
+            pok, probe = await self._pool_probe()
+            s = await self._si(SepAxiOp.WRITE, a, wdata=wd) if pok else None
+            resp = s.resp_code if s is not None else -1
+            line = (
+                f"init=SI dir=W size=2 addr=0x{a:08x} off=0x{a - POOL_BASE:x} kind={kind} "
+                f"wdata=0x{wd:08x} bresp={_RN.get(resp)} expect={_RN[POOL_WRITE_RESP]} {probe}"
+            )
+            if pok and resp == POOL_WRITE_RESP:
+                self.logger.info("CHK-ROW-POOL-W PASS: %s", line)
+                await self._release()
+            else:
+                self._fail("CHK-ROW-POOL-W", line)
+        self._walk("pool", "write", "W", "SI")
+        for a in (um, um + 4):
+            await self._begin()
+            pok, probe = await self._pool_probe()
+            s = await self._si(SepAxiOp.READ, a) if pok else None
+            resp = s.resp_code if s is not None else -1
+            lane = (s.rdata & 0xFFFF_FFFF) if s is not None else 0
+            line = (
+                f"init=SI dir=R size=2 addr=0x{a:08x} off=0x{a - POOL_BASE:x} "
+                f"rresp={_RN.get(resp)} rdata=0x{lane:08x} "
+                f"expect={_RN[POOL_UNMAPPED_RESP]}/0x{POOL_UNMAPPED_RDATA:08x} {probe}"
+            )
+            if pok and resp == POOL_UNMAPPED_RESP and lane == POOL_UNMAPPED_RDATA:
+                self.logger.info("CHK-ROW-POOL-UNMAPPED PASS: %s", line)
+                await self._release()
+            else:
+                self._fail("CHK-ROW-POOL-UNMAPPED", line)
+        self._walk("pool", "past", "R", "SI")
+        self._close()
+
+    # ---------------------------------------------------------- SPI host burst
+    def _spi_regs(self) -> list[rr.Reg]:
+        """Stable SPI host registers of the extent (the no-change compare set)."""
+        return [r for r in rr.all_regs() if SPI_BASE <= r.addr < SPI_END and r.stable]
+
+    def _spi_live_set(self) -> dict[int, int]:
+        """The staged non-zero words a past beat must not carry."""
+        return {a: self._expect_reg(a) for a in (SPI_CSID, SPI_ERROR_ENABLE, SPI_EVENT_ENABLE)}
+
+    async def _spi_stage(self) -> None:
+        """Window closed: stage non-zero values in CSID, ERROR_ENABLE and EVENT_ENABLE."""
+        for a in (SPI_ERROR_STATUS, SPI_EVENT_ENABLE, SPI_ERROR_ENABLE, SPI_CSID):
+            reg = rr.reg_by_word()[a]
+            if not reg.readable or reg.width != 32:
+                raise AssertionError(f"SPI host 0x{a:08x} ({reg.name}) is not a plain 32-bit read")
+        assert SPI_EVENT_ENABLE + 4 == SPI_END, "EVENT_ENABLE is not the last word of the extent"
+        # CSID odd and non-zero, so it is neither 0 nor 0xBADCAB1E.
+        csid = (self.rng.getrandbits(31) << 1) | 1
+        erren = self.rng.randrange(1, 0x1F)
+        evten = self.rng.randrange(1, 0x40)
+        for a, v, tag in (
+            (SPI_CSID, csid, "CSID"),
+            (SPI_ERROR_ENABLE, erren, "ERROR_ENABLE"),
+            (SPI_EVENT_ENABLE, evten, "EVENT_ENABLE"),
+        ):
+            await self._lsu_write_reg(a, v, f"SPI {tag} stage")
+        self.logger.info(
+            "ROW-SPI-STAGE LOG: csid=0x%08x error_enable=0x%02x event_enable=0x%02x",
+            self.regval[SPI_CSID],
+            self.regval[SPI_ERROR_ENABLE],
+            self.regval[SPI_EVENT_ENABLE],
+        )
+
+    def _new_value(self, addr: int) -> int:
+        """A non-zero field value of an enable register that differs from its model."""
+        mask = rr.reg_by_word()[addr].word_mask(addr)
+        width = mask.bit_length()
+        top = (1 << width) - 1
+        assert mask == top and width > 1, (
+            f"0x{addr:08x}: field mask 0x{mask:x} is not 0..{width - 1}"
+        )
+        cur = self._expect_reg(addr) & top
+        # Values 1..top other than cur, drawn without rejection.
+        v = self.rng.randrange(1, top)
+        return v + 1 if v >= cur and cur != 0 else v
+
+    async def _spi_burst(
+        self, op: SepAxiOp, start: int, nbeats: int, words: list[int]
+    ) -> tuple[SepAxiAccessSeq, list, dict | None]:
+        mon = self.env.ext_axi_monitor
+        ch = "ar" if op is SepAxiOp.READ else "aw"
+        hs = cocotb.start_soon(capture_addr_handshake(ch, prefix="m_axi"))
+        if op is SepAxiOp.READ:
+            mon.start_beat_capture()
+        wdata = 0
+        for i, w in enumerate(words):
+            wdata |= (w & 0xFFFF_FFFF) << (32 * i)
+        s = await self._si(
+            op, start, size=AXI_SIZE_32, wdata=wdata, length=4 * nbeats, burst=AXI_INCR
+        )
+        beats = mon.take_beat_capture() if op is SepAxiOp.READ else []
+        return s, beats, take_handshake(hs)
+
+    @staticmethod
+    def _shape_ok(ax, start: int, nbeats: int) -> bool:
+        return ax is not None and (ax["addr"], ax["len"], ax["size"], ax["burst"]) == (
+            start,
+            nbeats - 1,
+            AXI_SIZE_32,
+            AXI_INCR,
+        )
+
+    async def _spi_after(self) -> tuple[bool, list[str]]:
+        """LSU read of every stable register and ERROR_STATUS against the model."""
+        diff = []
+        for a in [r.addr for r in self._spi_regs()] + [SPI_ERROR_STATUS]:
+            m = rr.reg_by_word()[a].word_mask(a)
+            _r, v = await self._lsu(SepAxiOp.READ, a)
+            if (v & m) != (self._expect_reg(a) & m):
+                diff.append(f"0x{a:08x}:0x{v & m:x}!=0x{self._expect_reg(a) & m:x}")
+        return not diff, diff
+
+    async def _spi_control(self) -> None:
+        """CHK-ROW-SPI-BURST-CONTROL: the burst wholly inside the extent (window closed)."""
+        start = SPI_INSIDE_START
+        nbeats = (SPI_END - start) // 4
+        addrs = [start + 4 * i for i in range(nbeats)]
+        s, beats, ax = await self._spi_burst(SepAxiOp.READ, start, nbeats, [0] * nbeats)
+        got = [(s.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(nbeats)]
+        masks = [rr.reg_by_word()[a].word_mask(a) for a in addrs]
+        exp = [self._expect_reg(a) for a in addrs]
+        ok = (
+            self._shape_ok(ax, start, nbeats)
+            and beats == [OKAY] * nbeats
+            and all((g & m) == (e & m) for g, e, m in zip(got, exp, masks))
+        )
+        line = (
+            f"init=SI dir=R start=0x{start:08x} size=2 len={nbeats - 1} beats={beats} "
+            f"rdata={[hex(g & m) for g, m in zip(got, masks)]} "
+            f"rsvd={[hex(g & ~m & 0xFFFF_FFFF) for g, m in zip(got, masks)]} "
+            f"expect={[hex(e & m) for e, m in zip(exp, masks)]} ax={ax}"
+        )
+        if ok:
+            self.logger.info("CHK-ROW-SPI-BURST-CONTROL PASS: %s", line)
+        else:
+            self._fail("CHK-ROW-SPI-BURST-CONTROL", line)
+        # Write burst: new values in both enables, 0 to ERROR_STATUS (W1C).
+        words = []
+        for a in addrs:
+            words.append(0 if a == SPI_ERROR_STATUS else self._new_value(a))
+        s, _b, ax = await self._spi_burst(SepAxiOp.WRITE, start, nbeats, words)
+        for a, w in zip(addrs, words):
+            self.regval[a] = rr.write_readback(a, self._expect_reg(a), w)[0]
+        same, diff = await self._spi_after()
+        ok = self._shape_ok(ax, start, nbeats) and s.resp_code == OKAY and same
+        line = (
+            f"init=SI dir=W start=0x{start:08x} size=2 len={nbeats - 1} "
+            f"bresp={_RN.get(s.resp_code)} wdata={[hex(w) for w in words]} "
+            f"landed={int(same)} diff={diff} ax={ax}"
+        )
+        if ok:
+            self.logger.info("CHK-ROW-SPI-BURST-CONTROL PASS: %s", line)
+        else:
+            self._fail("CHK-ROW-SPI-BURST-CONTROL", line)
+
+    async def _spi_cross(self, op: SepAxiOp, start: int) -> None:
+        """CHK-ROW-SPI-BURST: one INCR burst of 32-bit beats across the extent end."""
+        d = "R" if op is SepAxiOp.READ else "W"
+        n_in = (SPI_END - start) // 4
+        nbeats = n_in + self.rng.randrange(1, SPI_MAX_PAST_BEATS + 1)
+        addrs = [start + 4 * i for i in range(nbeats)]
+        assert (start & ~0xFFF) == ((addrs[-1] + 3) & ~0xFFF), "burst crosses a 4 KB page"
+        live = self._spi_live_set()
+        live_words = [live[a] for a in sorted(live)]
+        words = []
+        if op is SepAxiOp.WRITE:
+            for i, a in enumerate(addrs):
+                if i >= n_in:
+                    words.append((~live_words[(i - n_in) % len(live_words)]) & 0xFFFF_FFFF)
+                elif a == SPI_ERROR_STATUS:
+                    words.append(0)
+                else:
+                    words.append(self._new_value(a))
+        else:
+            words = [0] * nbeats
+        self.logger.info(
+            "INFO-ROW-RAND LOG: spi cross dir=%s start=0x%08x in_beats=%d len=%d",
+            d,
+            start,
+            n_in,
+            nbeats - 1,
+        )
+        self._open()
+        await self._begin()
+        s, beats, ax = await self._spi_burst(op, start, nbeats, words)
+        self._close()
+        shape = self._shape_ok(ax, start, nbeats)
+        if op is SepAxiOp.READ:
+            got = [(s.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(nbeats)]
+            in_ok = len(beats) == nbeats
+            in_cells = []
+            for i in range(n_in):
+                a = addrs[i]
+                m = rr.reg_by_word()[a].word_mask(a)
+                e = self._expect_reg(a)
+                in_ok = in_ok and beats[i] == OKAY and (got[i] & m) == (e & m)
+                in_cells.append(
+                    f"0x{a:08x}:{_RN.get(beats[i]) if i < len(beats) else 'none'}/"
+                    f"0x{got[i] & m:x}/exp=0x{e & m:x}/rsvd=0x{got[i] & ~m & 0xFFFF_FFFF:x}"
+                )
+            past_resp = beats[n_in:]
+            past_data = got[n_in:]
+            live_vals = set(live.values())
+            past_ok = (
+                len(past_resp) == nbeats - n_in
+                and all(r is not None and r != OKAY for r in past_resp)
+                and not (set(past_data) & live_vals)
+            )
+            ok = shape and in_ok and past_ok
+            line = (
+                f"init=SI dir=R start=0x{start:08x} size=2 len={nbeats - 1} beats={len(beats)} "
+                f"in={in_cells} past_not_okay={int(all(r is not None and r != OKAY for r in past_resp))} "
+                f"past_live_hit={sorted(hex(v) for v in set(past_data) & live_vals)} "
+                f"live_set={[hex(v) for v in live_words]} ax={ax}"
+            )
+            self.logger.info(
+                "OBS-ROW-SPI-BURST-CODE: dir=R start=0x%08x past_resp=%s past_data=%s",
+                start,
+                [_RN.get(r, r) for r in past_resp],
+                [hex(v) for v in past_data],
+            )
+        else:
+            for i in range(n_in):
+                a = addrs[i]
+                self.regval[a] = rr.write_readback(a, self._expect_reg(a), words[i])[0]
+            same, diff = await self._spi_after()
+            not_okay = s.resp_code in (SLVERR, DECERR)
+            ok = shape and not_okay and same
+            line = (
+                f"init=SI dir=W start=0x{start:08x} size=2 len={nbeats - 1} "
+                f"b_not_okay={int(not_okay)} in_wdata={[hex(w) for w in words[:n_in]]} "
+                f"past_wdata={[hex(w) for w in words[n_in:]]} landed_and_unchanged={int(same)} "
+                f"diff={diff} ax={ax}"
+            )
+            self.logger.info(
+                "OBS-ROW-SPI-BURST-CODE: dir=W start=0x%08x bresp=%s",
+                start,
+                _RN.get(s.resp_code, s.resp_code),
+            )
+        self._walk("spi_host", "burst_cross", d, "SI")
+        if ok:
+            self.logger.info("CHK-ROW-SPI-BURST PASS: %s", line)
+            await self._release()
+        else:
+            self._fail("CHK-ROW-SPI-BURST", line)
+
+    async def _spi_leg(self) -> None:
+        """SPI host extent: staging and control with the window closed, then the crossing bursts."""
+        await self._spi_stage()
+        await self._spi_control()
+        starts = list(SPI_CROSS_STARTS)
+        self.rng.shuffle(starts)
+        for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+            for start in starts:
+                await self._spi_cross(op, start)
 
     # ---------------------------------------------------------------- scenario
+    async def _graded_legs(self) -> None:
+        """Every graded leg; each opens the window only around its graded accesses."""
+        self._open()
+        await self._reset_ctrl_leg()
+        self._close()
+        await self._wait_hmac()
+        await self._program_refs()
+        self._open()
+        await self._otbn_cache_leg()
+        await self._reserved_leg()
+        await self._hole_leg()
+        self._open()
+        await self._past_leg()
+        await self._live_leg()
+        await self._km_leg()
+        await self._burst_leg()
+        await self._pool_leg()
+        await self._spi_leg()
+        self._close()
+
     async def run_scenario(self) -> None:
         self.rng = SepSeededRng(self.random_seed())
         self.walked: set[tuple[str, str, str, str]] = set()
         self.fails: list[str] = []
+        self.released = 0
         self.regval: dict[int, int] = {}
         self.noalias_draws: Counter = Counter()
         self.noalias_ctl: set[str] = set()
@@ -824,21 +1326,14 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         await self._bring_up()
         await self._program_entry()
 
-        open_graded_window(_TEST, self.logger)
-        await self._reset_ctrl_leg()
-        close_graded_window(self.logger)
-        await self._wait_hmac()
-        await self._program_refs()
-        open_graded_window(_TEST, self.logger)
-        await self._otbn_cache_leg()
-        await self._reserved_leg()
-        await self._hole_leg()
-        await self._past_leg()
-        await self._live_leg()
-        await self._km_leg()
-        open_graded_window(_TEST, self.logger)
-        await self._burst_leg()
-        close_graded_window(self.logger)
+        try:
+            await self._graded_legs()
+        except BaseException:
+            # Any raise ends the leaf: close the window and drop the held samples.
+            close_graded_window(self.logger)
+            set_row_pass(ROW_PASS_DROP, self.logger)
+            raise
+        self.logger.info("ROW-PASS LOG: releases=%d fails=%d", self.released, len(self.fails))
 
         # The no-alias control must have changed each reference.
         missing_ctl = {"reset_ctrl", "hmac", "kmac"} - self.noalias_ctl

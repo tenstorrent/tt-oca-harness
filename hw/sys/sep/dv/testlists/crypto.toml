@@ -16,12 +16,14 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# OTBN EXECUTE of ADD/XOR/AND against an independent golden. +esrc_noise_force
-# feeds the post-reset URND wipe.
+# OTBN EXECUTE of ADD/XOR/AND and of the loop, branch, call/return, bn.addc
+# carry and bn.addm reduction programs against independent ISA goldens.
+# +esrc_noise_force feeds the post-reset URND wipe.
 name = "sep_otbn_compute_rand_test"
 module = "otbn.sep_otbn_compute_rand_test"
 seed = 1
-# No reseed: every run walks ADD, XOR and AND; the seed selects only the operands.
+# No reseed: every run walks ADD, XOR, AND and all five capability programs;
+# the seed selects only the operands.
 timeout_sec = 1800
 tags = ["otbn", "crypto", "subsystem"]
 run_modes = ["no_cpu"]
@@ -479,6 +481,33 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_otbn_intg_flip"]
 
 [[tests]]
+# The RND-clean and software-error-kind legs of sep_otbn_cmd_status_rand_test only:
+# no SEC_WIPE command and no LOCKED state.
+name = "sep_otbn_cmd_status_rand_test_shard2"
+module = "crypto.sep_otbn_cmd_status_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "otbn", "rand_rep", "subsystem", "harness_dv_holes"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_otbn_intg_flip", "+sep_shard=2"]
+
+[[tests]]
+# The EXECUTE-only legs of sep_otbn_cmd_status_rand_test: the command leg with EXECUTE
+# only, INSN_CNT, the done line, the busy write, the recoverable software error and the
+# ignored commands; no SEC_WIPE command at IDLE and no LOCKED state.
+name = "sep_otbn_cmd_status_rand_test_shard3"
+module = "crypto.sep_otbn_cmd_status_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 1800
+tags = ["crypto", "otbn", "rand_rep", "subsystem", "harness_dv_holes"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_otbn_intg_flip", "+sep_shard=3"]
+
+[[tests]]
 # ABR combined commands park and re-arm, single-step results do not depend on order, and
 # ACVP sigVer rejects hold.
 name = "sep_abr_command_matrix_rand_test"
@@ -581,6 +610,35 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# Shard 2 of sep_esrc_persistent_alert_rand_test: the ALERT_THRESHOLD reset leg and the
+# MAIN_SM_STATUS.ERR leg. It runs no threshold block, so no ANY_FAIL_COUNT grade
+# runs in it. The entry without the plusarg runs every leg (env/sep_shard.py).
+name = "sep_esrc_persistent_alert_rand_test_shard2"
+module = "crypto.sep_esrc_persistent_alert_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 7200
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=2"]
+
+[[tests]]
+# Shard 3 of sep_esrc_persistent_alert_rand_test: the ALERT_THRESHOLD reset leg and the
+# threshold blocks 0, 5 and 7 on every seed, with no no-trip leg. It grades every check
+# of those legs except CHK-PF-TRIP-HOLD, which shard 1 and the entry without the
+# plusarg grade (env/sep_shard.py).
+name = "sep_esrc_persistent_alert_rand_test_shard3"
+module = "crypto.sep_esrc_persistent_alert_rand_test"
+seed = 1
+reseed = 4
+timeout_sec = 10800
+tags = ["crypto", "esrc", "entropy", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=3"]
+
+[[tests]]
 # ESRC lane detune: the manual DETUNE mask, the auto-tune toggle and AUTOTUNE_FAIL.
 name = "sep_esrc_autotune_detune_test"
 module = "crypto.sep_esrc_autotune_detune_test"
@@ -593,8 +651,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
-# Shard 1 of 2 of sep_esrc_autotune_detune_test: the manual, off and ignored legs and the first burst. The regression runs the shards; the
-# shards together grade every check of the whole leaf (env/sep_shard.py).
+# Shard 1 of 2 of sep_esrc_autotune_detune_test: the manual, off and ignored legs, the first burst and the sample-clock divide leg.
+# The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_autotune_detune_test_shard1"
 module = "crypto.sep_esrc_autotune_detune_test"
 seed = 1
@@ -606,8 +664,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_shard=1"]
 
 [[tests]]
-# Shard 2 of 2 of sep_esrc_autotune_detune_test: the second and third bursts after the same manual and ignored set-up. The regression runs the shards; the
-# shards together grade every check of the whole leaf (env/sep_shard.py).
+# Shard 2 of 2 of sep_esrc_autotune_detune_test: the first, second and third bursts after the same manual and ignored set-up.
+# The regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_esrc_autotune_detune_test_shard2"
 module = "crypto.sep_esrc_autotune_detune_test"
 seed = 1

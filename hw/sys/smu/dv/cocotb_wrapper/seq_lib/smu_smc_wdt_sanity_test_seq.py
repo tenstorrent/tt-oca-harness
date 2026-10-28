@@ -92,7 +92,7 @@ class smu_smc_wdt_sanity_test_seq:
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
-        sb.expect_eq("CHK-WDT-SANITY-GATE-OPEN", gate, 0)
+        sb.expect_eq("CHK-WDT-SANITY-GATE-OPEN", gate, 0, evidence="CHK-WDT-SANITY-GATE-OPEN")
 
         st_c, cmp0 = await self._rd32(jtag, WDT_CMP)
         if st_c != J2A_STATUS_SUCCESS:
@@ -100,7 +100,9 @@ class smu_smc_wdt_sanity_test_seq:
         if (cmp0 & CMP_MASK) != CMP_DEFAULT:
             raise AssertionError(f"WDT_CMP default=0x{cmp0 & CMP_MASK:x} want 0x{CMP_DEFAULT:x}")
         self.s2_ok = True
-        sb.expect_eq("CHK-WDT-CMP-DEFAULT", cmp0 & CMP_MASK, CMP_DEFAULT)
+        sb.expect_eq(
+            "CHK-WDT-CMP-DEFAULT", cmp0 & CMP_MASK, CMP_DEFAULT, evidence="CHK-WDT-CMP-DEFAULT"
+        )
 
         st_w = await self._wr32(jtag, WDT_CTRL, SCALE_PROGRAM)
         if st_w != J2A_STATUS_SUCCESS:
@@ -111,7 +113,7 @@ class smu_smc_wdt_sanity_test_seq:
         if (ctrl_l & SCALE_MASK) != 0:
             raise AssertionError(f"WDT_CTRL stuck unlocked: 0x{ctrl_l:08x}")
         self.s3_ok = True
-        sb.expect_eq("CHK-WDT-CTRL-LOCKED", ctrl_l & SCALE_MASK, 0)
+        sb.expect_eq("CHK-WDT-CTRL-LOCKED", ctrl_l & SCALE_MASK, 0, evidence="CHK-WDT-CTRL-LOCKED")
 
         st_k = await wdt_unlock(jtag)
         if st_k != J2A_STATUS_SUCCESS:
@@ -122,7 +124,9 @@ class smu_smc_wdt_sanity_test_seq:
                 f"WDT_KEY unlocked indicator st={st_key} val=0x{key_rd:x} "
                 f"want {WDT_KEY_UNLOCKED_RD}"
             )
-        sb.expect_eq("CHK-WDT-KEY-UNLOCKED", key_rd, WDT_KEY_UNLOCKED_RD)
+        sb.expect_eq(
+            "CHK-WDT-KEY-UNLOCKED", key_rd, WDT_KEY_UNLOCKED_RD, evidence="CHK-WDT-KEY-UNLOCKED"
+        )
 
         st_cu = await self._wr32(jtag, WDT_CTRL, SCALE_PROGRAM)
         if st_cu != J2A_STATUS_SUCCESS:
@@ -135,7 +139,12 @@ class smu_smc_wdt_sanity_test_seq:
                 f"post-unlock CTRL scale=0x{ctrl_u & SCALE_MASK:x} "
                 f"want 0x{SCALE_PROGRAM:x} (CTRL=0x{ctrl_u:08x})"
             )
-        sb.expect_eq("CHK-WDT-CTRL-UNLOCKED", ctrl_u & SCALE_MASK, SCALE_PROGRAM)
+        sb.expect_eq(
+            "CHK-WDT-CTRL-UNLOCKED",
+            ctrl_u & SCALE_MASK,
+            SCALE_PROGRAM,
+            evidence="CHK-WDT-CTRL-UNLOCKED",
+        )
 
         st_k2 = await wdt_unlock(jtag)
         if st_k2 != J2A_STATUS_SUCCESS:

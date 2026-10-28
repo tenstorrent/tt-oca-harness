@@ -25,6 +25,7 @@ run_modes = ["smoke"]
 name = "smc_i3c_csr_sweep_core_test"
 module = "smc_i3c_csr_sweep_core_test"
 seed = 1
+reseed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
@@ -116,6 +117,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["diag"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sys_out"]
 
 [[tests]]
 name = "smc_filter_lock_window_test"
@@ -310,6 +312,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sys_in"]
 
 [[tests]]
 name = "smc_sep_in_axi_flow_control_test"
@@ -318,11 +321,13 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sep_in"]
 
 [[tests]]
 name = "smc_sep_in_axi_shape_test"
 module = "smc_sep_in_axi_shape_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
@@ -334,6 +339,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_jtag_in"]
 
 [[tests]]
 name = "smc_dual_base_addressing_test"
@@ -659,6 +665,7 @@ run_modes = ["smoke"]
 name = "smc_axi_channel_timing_ports_test"
 module = "smc_axi_channel_timing_ports_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]

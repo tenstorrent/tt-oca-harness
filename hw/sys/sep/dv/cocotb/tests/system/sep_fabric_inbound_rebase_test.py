@@ -43,12 +43,13 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_fabric_common import RESP_DECERR, RESP_OKAY
 from env.sep_fabric_common import RESP_NAME as _RESP
 from env.sep_fabric_tap import SepFabricTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_rebase_pass
 from env.sep_field_compare import field_compare, lane32
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
@@ -68,6 +69,8 @@ _IMAGE_SEED = 0x2025_0225
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0E
 _SYS_DIS = 0x00FF_00FF_00FF_00FE
 _MAX_SENSE_CYCLES = 20_000
+# A pass label is held this many clk_i edges so the sampler sees it.
+_LABEL_CLOCKS = 2
 
 # SI attributes. AxPROT 0b010: data, non-secure, unprivileged. Every entry
 # programs allow_ns equal to prot[1], and every probe carries AxUSER 0.
@@ -307,6 +310,13 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
     def _close(self) -> None:
         close_graded_window(self.logger)
 
+    async def _label(self, setter) -> None:
+        """Raise a pass label for two clk_i edges, then drop it."""
+        setter(True, self.logger)
+        await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+        setter(False)
+        await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+
     async def _sram_control_read(self, cfg: str) -> tuple[int, int]:
         """The live-path control of the unit cells: SI read of M1 through entry 3."""
         g = self.ap_base + SRAM_BASE + self.d.o
@@ -534,7 +544,6 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         mx = self.xext.mark()
         seq_p = await self._si(SepAxiOp.READ, pa, length=8)
         xp = self.xext.count(mx, "ar")
-        self._close()
         line = (
             f"global_resp={_RESP.get(seq_g.resp_code)} plain_resp={_RESP.get(seq_p.resp_code)} "
             f"plain_rdata=0x{seq_p.rdata:x} staged=0x{d.m1:x} xext_global={xg} xext_plain={xp}"
@@ -546,8 +555,13 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             or seq_p.rdata != d.m1
             or xp != 1
         ):
+            self._close()
             raise AssertionError(f"CHK-REBASE-FILTER-FIRST FAIL: {line}")
         self.logger.info("CHK-REBASE-FILTER-FIRST PASS: %s", line)
+        # The cp_filter_order codes of the two reads sample only on this
+        # release, inside the window, after the check passed.
+        await self._label(set_rebase_pass)
+        self._close()
         await self.infilt.set_enabled(2, False)
 
         # Steps 18 to 23: configuration B, window edges.

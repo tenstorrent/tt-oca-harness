@@ -71,4 +71,8 @@ interface smu_tb_if;
   // Runtime enable for the shared JTAG protocol SVA checker.
   logic jtag_sva_en = 1'b1;
 
+  // Runtime enable for the shared AXI protocol SVA checkers on the crossbar and
+  // boundary links; tb_wrapper_top ANDs it into the enable of each of them.
+  logic axi_sva_en = 1'b1;
+
 endinterface : smu_tb_if

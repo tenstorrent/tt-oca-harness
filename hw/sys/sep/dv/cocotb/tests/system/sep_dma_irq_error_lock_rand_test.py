@@ -99,7 +99,7 @@ destination equals the source.
 
 Leg L5, tied-off address spaces: "Selecting the tied-off CTN or SYS address
 space does not complete." (``hw/sys/sep/doc/dma.adoc:70``); "the other address
-spaces are tied off and never complete" (``doc/programmer/src/sep-programming.adoc:716-717``).
+spaces are tied off and never complete" (``doc/programmer/src/sep-programming.adoc:741-742``).
 The ASID encodings are SOC_ADDR 0xa and SYS_ADDR 0x9 (ADDR_SPACE_ID enums,
 ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:253-259,272-278``).
 Four trials, each from a cold reset: the L4 copy (SRAM source to SRAM

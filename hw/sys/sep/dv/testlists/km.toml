@@ -454,9 +454,23 @@ timeout_sec = 5400
 tags = ["km", "key_bank", "abr", "mlkem", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+
+[[tests]]
+# Shard 2 of sep_km_key_bank_register_rand_test: steps 2 to 7 and the AES single-share leg; step 6
+# grades the consume on key_valid and logs the key words. The whole leaf runs in the entry above (env/sep_shard.py).
+name = "sep_km_key_bank_register_rand_test_shard2"
+module = "km.sep_km_key_bank_register_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 1
+timeout_sec = 5400
+tags = ["km", "key_bank", "abr", "mlkem", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]
 
 [[tests]]
 # IMG-SCR with the block of the leaf seed: dv_sim_prestage.py stages km_rom_scr.param.parhex in the sim
@@ -589,8 +603,20 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
 
 [[tests]]
+# Armed OTP-change IRQ: the KM CPU enters the handler, PIC bit 30 stays 0 and a following CMD_STAT completes.
+name = "sep_km_otp_change_irq_test"
+module = "km.sep_km_otp_change_irq_test"
+firmware = { name = "rom_main", mode = "km_rom_main_otp_change" }
+seed = 1
+timeout_sec = 7200
+tags = ["km", "irq", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main_otp_change.rom.parhex", "+verilator+error+limit+10000"]
+
+[[tests]]
 # KM fatal faults on the HOST-UNREC build: fatal-handler shreds, first-source rule, CPU lines, parity, key CRC,
-# SRAM latency, main-context fault. The leaf resets the KM while its CPU runs; the raised Verilator error limit
+# main-context fault. The leaf resets the KM while its CPU runs; the raised Verilator error limit
 # keeps it running.
 name = "sep_km_fault_inject_rand_test_unrec"
 module = "km.sep_km_fault_inject_rand_test"
@@ -604,7 +630,7 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000"]
 
 [[tests]]
-# Shard 1 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point, the key CRC leg and the SRAM latency leg. The
+# Shard 1 of 14 of sep_km_fault_inject_rand_test_unrec: the clean boot, the real-wipe point and the key CRC leg. The
 # regression runs the shards; the shards together grade every check of the whole leaf (env/sep_shard.py).
 name = "sep_km_fault_inject_rand_test_unrec_shard1"
 module = "km.sep_km_fault_inject_rand_test"

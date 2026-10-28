@@ -594,6 +594,11 @@
 `SMC_TB_OUT(logic [31:0], tb_efuse_readback)
 `SMC_TB_OUT(logic [15:0], tb_efuse_read_addr)
 `SMC_TB_OUT(logic [15:0], tb_efuse_program_addr)
+// eFuse bank-model response stall knob (efuse_bank_reg.sv): while the enable reads 1 the bank
+// holds a read or write request back for the given number of clock cycles before it answers.
+`SMC_TB_IN(logic, tb_efuse_bank_stall_en)
+`SMC_TB_IN(logic [15:0], tb_efuse_bank_stall_rd)
+`SMC_TB_IN(logic [15:0], tb_efuse_bank_stall_wr)
 `SMC_TB_OUT(logic [smc_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
 
 // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /

@@ -19,6 +19,10 @@ Layout
   addresses, field layouts and reset values come from the generated RDL
   headers in `../regs/gen/py/`.
 * `testlists/all.toml` — testlist and groups (`smoke`, `all`).
+* `testlists/holdout.toml` — leaves outside `all`: reproducers for filed RTL
+  defects (group `rtl_issue`), each carrying the `expect_fail` /
+  `expect_fail_match` pair the runner grades as an expected failure until the
+  fix lands; run on demand, never tagged `ci`.
 * `lint/` — Verilator and lint waivers for the UART RTL.
 
 The RTL closure comes from the `uart` Bender target plus the shared
@@ -54,6 +58,14 @@ Tests
 * `uart_16550_interrupt_test` — layered interrupt priority with the RX
   trigger level and reception timeout, and receiver line errors (stick parity,
   break).
+* `uart_16550_stick_parity_rx_test` — stick parity on receive from the
+  external line: LSR.PE against the sampled parity bit for both EPS levels.
+  Held out in `testlists/holdout.toml`. When the receive fix lands, the
+  loopback stick-parity assertion in `uart_16550_interrupt_test` moves to
+  the external-line form and this leaf moves into `testlists/all.toml`.
+* `uart_16550_timeout_latch_release_test` — release of a latched reception
+  timeout by FIFO_ENABLE=0; the receiver FIFO reset and IER=0 legs are
+  observed only. Held out in `testlists/holdout.toml`.
 
 Expected behavior is taken from `../doc/architecture.adoc` and the three
 register maps under `../regs/`. The UART is also exercised inside the SMC

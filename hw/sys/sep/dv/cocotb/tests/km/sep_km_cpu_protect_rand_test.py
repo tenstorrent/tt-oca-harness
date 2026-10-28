@@ -14,11 +14,20 @@ Processing") and the generated register descriptions (``km_csr.adoc``,
 ``km_kpv.adoc``, ``hmac_wrapper_key.adoc``, ``memory_map.adoc``), never from the
 RTL. The ROM word golden is the committed POKE image file (the stimulus).
 
-Probes: ``KM-RESULT``, ``HOST-MBX`` (``SEP_STATUS``), ``PIC-IRQ`` bit 30
-(``km_unrecoverable_err_o``), ``KM-COUNT`` (``km_rom_req_count_o``,
+Probes: ``KM-RESULT``, ``HOST-MBX`` (``SEP_STATUS``), ``PIC-IRQ``
+(``sep_internal_interrupts_probe_o``: bit 30 is PIC source 31, "KM unrecoverable
+error", and the whole vector for CHK-SRC31-EXCL), the SEP output field
+``sep_ras_o.km_uncorrectable``, ``KM-COUNT`` (``km_rom_req_count_o``,
 ``km_cpu_fetch_count_o``), ``dbg_sep_reset_n_o``, and the read-only taps ``KM-VALID``
 (``km_engine_key_valid_o``), ``KM-KPV`` (``km_kpv_words_o``, the plain-reset
 control of CHK-TRAP-WIPE) and ``KM-CSR`` (``km_csr_irq_status_o``). No inject.
+
+Port golden: ``hw/sys/sep/doc/interrupts.adoc:169-171`` (source 31, "KM
+unrecoverable error", "also exported as a SEP output port") and
+``hw/sys/sep/doc/port_table.adoc:130`` (``sep_ras_o.km_uncorrectable``, output field, 1 bit).
+So the port equals PIC-IRQ bit 30 on every clock. A watcher compares the two on
+every clock of the run; a clock with a difference, or with X or Z on either, is
+a mismatch.
 
 Plan (RAND-REP, ``SepSeededRng`` from the run seed). Every seed runs the six trap
 kinds (a) to (f) in a drawn order, each in its own boot, and the cases C0 to C6.
@@ -29,11 +38,18 @@ the C5 window and the C5 and C6 enables.
 
 Checks:
   CHK-TRAP           after each trap kind PIC bit 30 is 1, stays 1 over the
-                     window, and km_rom_req_count_o stops moving.
+                     window, and km_rom_req_count_o stops moving; the port
+                     sep_ras_o.km_uncorrectable equals bit 30 on every clock from
+                     the trap list to the end of the window and rose with it.
+                     A last line grades the port over the whole run.
+  CHK-SRC31-EXCL     at each rise of bit 30 (trap kinds and C4) every other
+                     vector bit keeps its value of one clock before.
   CHK-TRAP-WIPE      after the recovery reset all 1024 KPV words read 0; the
                      witnesses read non-zero before the trap.
   CHK-TRAP-SCOPE     the SRAM witness word and the mailbox witness word stay.
-  CHK-TRAP-CLR       PIC bit 30 reads 0 after the warm or cold reset.
+  CHK-TRAP-CLR       PIC bit 30 and the port read 0 after the warm or cold
+                     reset, fell with no mismatch, and stay 0 to the end of
+                     the leg.
   CHK-TRAP-CTRL      control: one handler entry for a normal interrupt and the
                      three legal CRC encodings run with no trap.
   CHK-TRAP-ENGINE    a trap clears the HMAC key_valid (the trap is a wipe event);
@@ -45,7 +61,8 @@ Checks:
                      violation; the ROM data read returns the image word.
   CHK-LOCKOUT        C2 after the lockout: ROM read 0 with ROM_ACCESS_VIOLATION;
                      ROM store clean with ROM_WRITE_ERR only; enable stays 1.
-  CHK-LOCKOUT-FETCH  C4: a ROM fetch after the lockout traps and halts the CPU.
+  CHK-LOCKOUT-FETCH  C4: a ROM fetch after the lockout traps and halts the CPU;
+                     the port equals bit 30 from the jump to the window end.
   CHK-LOCKOUT-ORDER  C4: ROM_ACCESS_VIOLATION rises in an earlier cycle than
                      PIC bit 30.
   CHK-REGION         region r locked runs (C2); region r + 1 is refused (C3).
@@ -59,6 +76,17 @@ set: the KM CPU ISA is not stated, so its outcome is not graded), the handler
 result words of the refused fetches, the snippet marker of a refused fetch, the
 CRC results of the legal encodings, the CTRL reads after the reset, and the
 ROM store controls before the lockout.
+
+FCOV: each graded case (one trap kind, C0, C1 locked, C1 unlocked, C2 with its
+CHK-EXEC-RST reset, C3, C4, C5, C6) runs in its own owner window. The window
+opens right before the op list of the case is posted, after the witness,
+snippet and lock set-up, and closes after the last check of the case; an
+exception closes it before it propagates. Every cell of this owner except the
+two below samples only when the ``km_cpu_pass`` bit of the check that grades
+it rises (``set_km_cpu_pass``, written after that check passes). The
+``port_equals_pic`` cell and the source 31 cell of ``cp_src_exclusive_other``
+are not held: their sample condition is the compare of the port watcher and of
+CHK-SRC31-EXCL at the same clock.
 """
 
 from __future__ import annotations
@@ -70,12 +98,25 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_bit_watch import SepVecWatch, VecMark, VecWatchNoRiseError, pic_vector_watch
+from env.sep_fcov_gate import (
+    KCP_EXEC,
+    KCP_EXEC_OK,
+    KCP_EXEC_RST,
+    KCP_LOCK_FETCH,
+    KCP_LOCKOUT,
+    KCP_TRAP,
+    close_graded_window,
+    open_graded_window,
+    set_km_cpu_pass,
+)
+from env.sep_monitor_life import MonitorLife
+from env.sep_pic_map import vec_mask
 from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
 from env.sep_rv32_asm import Asm, jalr, li, lui, sw
 from env.sep_rv32_asm import lw as rv_lw
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spec_tables import agg_from_pic
+from env.sep_spec_tables import agg_from_pic, pic
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mailbox_seq import (
     KM_STATUS_INBOUND_DEPTH_LSB,
@@ -181,6 +222,11 @@ KM_VALID_HMAC_BIT = 0
 
 # PIC-IRQ: aggregator bit of PIC source "KM unrecoverable error" (bit 30).
 KM_UNREC_BIT = agg_from_pic("KM unrecoverable error")
+# CHK-SRC31-EXCL: bits not compared at the bit 30 rise besides the six idle
+# bits of pic_vector_watch: source 33 ("Crypto alert", interrupts.adoc:177-181,
+# the combined crypto alert and integrity fails), which a Key Manager fault may
+# raise in the same clock. Not graded: the leaf states no golden for it.
+SRC31_SAME_CLOCK = vec_mask([pic("Crypto alert")])
 
 # --- test parameters ----------------------------------------------------------
 WINDOW_CLKS = 5000  # observation window (contract test parameter)
@@ -191,6 +237,8 @@ MARKER_BOUND = 200_000  # bounded wait for a snippet or spin-loop result word
 SEP_RESET_BOUND = 20_000  # bounded wait for dbg_sep_reset_n_o
 WITNESS_DELAY = 1000  # idle POKE iterations between the witness push and the trap
 RDLOOP_TIMEOUT = 4_000_000  # the 1024-word KPV read loop
+REL_HOLD_CLKS = 2  # clocks a km_cpu_pass bit is held before it is written 0
+PORT_BAD_KEEP = 64  # mismatch clocks the port watcher keeps for the FAIL text
 
 # Result words of the snippets (region 0, inside the KM-RESULT probe). The
 # lists of a snippet boot use fewer than 72 slots, so no slot reaches them.
@@ -460,12 +508,137 @@ class JumpWindow:
     irq_or: int
 
 
+def _bit_char(sig, idx: int) -> str:
+    """Character of bit ``idx`` (LSB 0) of ``sig``: '0', '1', or an X/Z letter."""
+    v = sig.value
+    s = getattr(v, "binstr", None)
+    bits = (s if s is not None else str(v)).strip()
+    return bits[len(bits) - 1 - idx]
+
+
+@dataclass(frozen=True)
+class PortMark:
+    clk: int
+    bad: int
+    port_high: int
+    bit_high: int
+    port_rises: int
+    port_falls: int
+    epoch: int
+
+
+@dataclass(frozen=True)
+class PortSpan:
+    """The port watcher record from a mark to the query."""
+
+    clocks: int
+    mismatch: int
+    first_bad: tuple[int, str, str] | None
+    port_high: int
+    bit_high: int
+    port_rises: int
+    port_falls: int
+
+    def text(self) -> str:
+        if self.first_bad is not None:
+            bad = "clk=%d port=%s bit30=%s" % self.first_bad
+        else:
+            bad = "not_kept" if self.mismatch else "none"
+        return (
+            f"clocks={self.clocks} port_mismatch={self.mismatch} first_mismatch={bad} "
+            f"port_high={self.port_high} bit30_high={self.bit_high} "
+            f"port_rises={self.port_rises} port_falls={self.port_falls}"
+        )
+
+
+class PortWatch:
+    """Per-clock compare of ``sep_ras_o.km_uncorrectable`` with PIC-IRQ bit 30.
+
+    Reads both on every rising edge of ``clk_i`` in the read-only phase and
+    drives nothing. A clock where the two differ, or where either is not 0 or
+    1, is a mismatch. ``since`` raises ``MonitorLifeError`` when the task ended
+    or restarted after the mark, and ``AssertionError`` when no clock was
+    sampled after it, so a span cannot pass on an empty record.
+    """
+
+    def __init__(self) -> None:
+        self.clk = 0
+        self.bad = 0
+        self.bad_log: list[tuple[int, str, str]] = []
+        self.port_high = 0
+        self.bit_high = 0
+        self.port_rises = 0
+        self.port_falls = 0
+        self.prev: str | None = None
+        self.life = MonitorLife("PORT-WATCH sep_ras_o.km_uncorrectable", lambda: self.clk)
+        self._task = None
+
+    def start(self) -> PortWatch:
+        if self._task is None:
+            self._task = self.life.start(self._run())
+        return self
+
+    async def stop(self) -> None:
+        self._task = None
+        await self.life.stop()
+
+    def mark(self) -> PortMark:
+        return PortMark(
+            self.clk,
+            self.bad,
+            self.port_high,
+            self.bit_high,
+            self.port_rises,
+            self.port_falls,
+            self.life.mark_epoch(),
+        )
+
+    def since(self, m: PortMark) -> PortSpan:
+        self.life.check(m.epoch)
+        if self.clk <= m.clk:
+            raise AssertionError(
+                f"PORT-WATCH FAIL: no clock sampled after the mark (clk={self.clk} "
+                f"mark_clk={m.clk})"
+            )
+        first = next((b for b in self.bad_log if b[0] > m.clk), None)
+        return PortSpan(
+            self.clk - m.clk,
+            self.bad - m.bad,
+            first,
+            self.port_high - m.port_high,
+            self.bit_high - m.bit_high,
+            self.port_rises - m.port_rises,
+            self.port_falls - m.port_falls,
+        )
+
+    async def _run(self) -> None:
+        top = cocotb.top
+        while True:
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            self.clk += 1
+            p = _bit_char(top.km_unrecoverable_err_o, 0)
+            b = _bit_char(top.sep_internal_interrupts_probe_o, KM_UNREC_BIT)
+            if p not in "01" or b not in "01" or p != b:
+                self.bad += 1
+                if len(self.bad_log) < PORT_BAD_KEEP:
+                    self.bad_log.append((self.clk, p, b))
+            self.port_high += p == "1"
+            self.bit_high += b == "1"
+            if self.prev == "0" and p == "1":
+                self.port_rises += 1
+            if self.prev == "1" and p == "0":
+                self.port_falls += 1
+            self.prev = p
+
+
 @pyuvm.test()
 class sep_km_cpu_protect_rand_test(sep_base_test):
     """KM CPU traps, KPV wipe on a trap, execute whitelist and ROM lockout (POKE)."""
 
     required_evidence = (
         "CHK-TRAP",
+        "CHK-SRC31-EXCL",
         "CHK-TRAP-WIPE",
         "CHK-TRAP-SCOPE",
         "CHK-TRAP-CLR",
@@ -504,6 +677,9 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         status = await self.poke.mbox.read_status()
         return (status >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK
 
+    def _port(self) -> int:
+        return self.rd_known(cocotb.top.km_unrecoverable_err_o)
+
     async def _graded(self, on: bool) -> None:
         # The gate is a signal write, which cocotb refuses in the ReadOnly phase.
         await RisingEdge(cocotb.top.clk_i)
@@ -511,6 +687,56 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             open_graded_window(TEST_NAME, self.logger)
         else:
             close_graded_window(self.logger)
+
+    async def _instance(self, body) -> None:
+        """Run one graded case in the owner window; any exception closes it first."""
+        await self._graded(True)
+        set_km_cpu_pass(0, self.logger)
+        try:
+            await body
+        except BaseException:
+            await self._graded(False)
+            raise
+        await self._graded(False)
+
+    async def _release(self, bit: int) -> None:
+        """Pulse ``km_cpu_pass`` bit ``bit`` after its check passed; the window stays open."""
+        await RisingEdge(cocotb.top.clk_i)
+        if set_km_cpu_pass(bit, self.logger):
+            await ClockCycles(cocotb.top.clk_i, REL_HOLD_CLKS)
+            set_km_cpu_pass(0, self.logger)
+            await RisingEdge(cocotb.top.clk_i)
+
+    def _check_s31(self, vec: SepVecWatch, mark: VecMark, case: str) -> None:
+        """CHK-SRC31-EXCL: at each rise of bit 30 every other bit keeps its value.
+
+        interrupts.adoc:22-23 states bit i of the vector is PIC source i + 1, and
+        :33-34 that slots 1 to 43 are individually assigned; :169-171 assigns
+        source 31 (bit 30) to the Key Manager unrecoverable error. So no other
+        bit moves at its rise. The six bits with an unstated idle level
+        (pic_vector_watch) and source 33 (SRC31_SAME_CLOCK) are not compared. A
+        case with no rise after the mark fails.
+        """
+        try:
+            rises = vec.rises_since(mark, "s31")
+            smears = vec.smears_since(mark, "s31", same_clock=SRC31_SAME_CLOCK)
+        except VecWatchNoRiseError as exc:
+            raise AssertionError(f"CHK-SRC31-EXCL FAIL: {case}: {exc}") from exc
+        first = rises[0]
+        assert not smears, (
+            f"CHK-SRC31-EXCL FAIL: {case}: rises={len(rises)} "
+            f"moved={[(c, hex(m)) for c, m in smears]} before=0x{first.before:011x} "
+            f"after=0x{first.after:011x}"
+        )
+        self.logger.info(
+            "CHK-SRC31-EXCL PASS: %s rises=%d rise_clk=%s before=0x%011x after=0x%011x "
+            "moved=0x0 (idle bits and source 33 not compared)",
+            case,
+            len(rises),
+            [r.clk for r in rises],
+            first.before,
+            first.after,
+        )
 
     @staticmethod
     def _field(value: int, mask: int, what: str, log) -> int:
@@ -614,7 +840,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             if self._err():
                 return cycle
         raise AssertionError(
-            f"CHK-TRAP FAIL: {what}: PIC bit 30 (km_unrecoverable_err_o) did not rise within "
+            f"CHK-TRAP FAIL: {what}: PIC bit 30 (KM unrecoverable error) did not rise within "
             f"{TRAP_RISE_BOUND} clocks"
         )
 
@@ -748,15 +974,23 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             w.sram,
             w.mbox,
         )
-        await self._graded(True)
+        # Set-up and the control of CHK-TRAP run with the window closed.
         ctl = await self._write_witnesses(w)
 
         # Quiet window before the trap: the control of CHK-TRAP.
         q_high, _, _ = await self._quiet_window()
         wipe_before = self._irq() & IRQ_WIPE_STATE
+        await self._instance(self._trap_graded(kind, reset, w, ctl, q_high, wipe_before))
 
+    async def _trap_graded(
+        self, kind: str, reset: str, w: Witness, ctl: dict[str, int], q_high: int, wipe_before: int
+    ) -> None:
+        """The trap list, the checks of the trap and the recovery reset (owner window)."""
         trap_ops, detail = self._trap_ops(kind)
         ops = [kp.mark(w.sram), kp.delay(WITNESS_DELAY), *trap_ops]
+        vec = pic_vector_watch({"s31": KM_UNREC_BIT}).start()
+        vmark = vec.mark()
+        pmark = self.portw.mark()
         handle = await self.poke.post(ops)
         await self.poke.wait(handle, (kp.ST_RUN,))
         # STATE reads RUN before the first op runs; wait until the mark op
@@ -777,6 +1011,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
 
         rise = await self._wait_err_rise(f"trap {kind} ({TRAP_TEXT[kind]})")
         high, rom0, rom1 = await self._hold_window()
+        span = self.portw.since(pmark)
         sram_after = self.poke.word(kp.W_DATA)
         depth_after = await self._mbox_depth()
         await ReadOnly()
@@ -796,14 +1031,22 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             f"CHK-TRAP FAIL: kind={kind} detail={detail}: km_rom_req_count_o moved "
             f"{rom0} -> {rom1} over the window after the trap; the KM CPU kept fetching"
         )
+        assert span.mismatch == 0 and span.port_rises == 1 and span.port_high >= WINDOW_CLKS, (
+            f"CHK-TRAP FAIL: kind={kind} detail={detail}: sep_ras_o.km_uncorrectable against PIC "
+            f"bit 30 from the trap list to the window end: {span.text()}; expected no mismatch, "
+            f"one port rise and the port high on the {WINDOW_CLKS} window clocks"
+        )
         self.logger.info(
             "CHK-TRAP PASS: kind=%s detail=%s err_o=1 halted=1 held=1 quiet_high=0 "
-            "rise_clks=%d rom_req=%d",
+            "rise_clks=%d rom_req=%d port_eq_bit30=1 %s",
             kind,
             detail,
             rise,
             rom1,
+            span.text(),
         )
+        self._check_s31(vec, vmark, f"kind={kind}")
+        await vec.stop()
 
         assert wipe_before == 0, (
             f"CHK-TRAP-STATUS FAIL: kind={kind}: IRQ_STATUS.WIPE_STATE read 1 before the trap "
@@ -858,13 +1101,27 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         # Conditioning"), so flush it before the next boot reads a list.
         await self.poke.mbox.flush()
 
+        rmark = self.portw.mark()
         await self._reset(reset)
         await ReadOnly()
         err_after_reset = self._err()
+        port_after_reset = self._port()
+        fall = self.portw.since(rmark)
         assert err_after_reset == 0, (
             f"CHK-TRAP-CLR FAIL: kind={kind} reset={reset}: PIC bit 30 reads 1 after the reset"
         )
-        self.logger.info("CHK-TRAP-CLR PASS: kind=%s reset=%s err_o=0 err_o_before=1", kind, reset)
+        assert port_after_reset == 0 and fall.mismatch == 0 and fall.port_falls >= 1, (
+            f"CHK-TRAP-CLR FAIL: kind={kind} reset={reset}: sep_ras_o.km_uncorrectable reads "
+            f"{port_after_reset} after the reset; over the reset {fall.text()}; expected 0, "
+            "no mismatch and a port fall"
+        )
+        self.logger.info(
+            "CHK-TRAP-CLR PASS: kind=%s reset=%s err_o=0 err_o_before=1 port=0 %s",
+            kind,
+            reset,
+            fall.text(),
+        )
+        lmark = self.portw.mark()
 
         res = await self.poke.run([kp.rdloop(KPV_BASE, KPV_WORDS)], timeout_cycles=RDLOOP_TIMEOUT)
         kpv_nonzero, kpv_or = res[0].data
@@ -902,8 +1159,22 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             kind,
             reset,
         )
+        await ReadOnly()
+        low = self.portw.since(lmark)
+        rom_ran = self._rom_count()
+        assert low.bit_high == 0 and low.mismatch == 0, (
+            f"CHK-TRAP-CLR FAIL: kind={kind} reset={reset}: after the reset, while the KM ran "
+            f"the KPV read loop, {low.text()}; expected PIC bit 30 and the port 0 on every clock"
+        )
+        self.logger.info(
+            "CHK-TRAP-CLR PASS: kind=%s reset=%s span=after_reset err_o=0 port=0 rom_req=%d %s",
+            kind,
+            reset,
+            rom_ran,
+            low.text(),
+        )
         self.err_hits += 1
-        await self._graded(False)
+        await self._release(1 << KCP_TRAP)
 
     def _kpv_tap_words(self, slot: int) -> tuple[int, ...]:
         """KM-KPV: the 16 stored words of ``slot``. The KPV scrambler stays off
@@ -1092,12 +1363,18 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         )
 
     async def _plain_reset(self) -> None:
-        """A warm reset between two case boots; not a graded stimulus."""
-        await self._graded(False)
+        """A warm reset between two case boots, with the window closed; not graded."""
         await self._reset("warm")
-        await self._graded(True)
 
     async def _refused_case(
+        self, case: str, target: int, *, enable: int, region: str, locked: int
+    ) -> None:
+        await self._instance(
+            self._refused_graded(case, target, enable=enable, region=region, locked=locked)
+        )
+        await self._plain_reset()
+
+    async def _refused_graded(
         self, case: str, target: int, *, enable: int, region: str, locked: int
     ) -> None:
         """Arm the exec_violation handler, write the enable, jump to ``target``."""
@@ -1151,9 +1428,13 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             hword,
             exec_rise,
         )
-        await self._plain_reset()
+        await self._release(1 << KCP_EXEC)
 
     async def _case_c0(self) -> None:
+        await self._instance(self._c0_graded())
+        await self._plain_reset()
+
+    async def _c0_graded(self) -> None:
         p = self.plan
         sentinel = p.sentinel()
         self.logger.info("DRAW C0 sentinel=0x%08x", sentinel)
@@ -1204,10 +1485,10 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             "rom_rd_ok=1 spin_irq=0x%03x",
             spin_f,
         )
-        await self._plain_reset()
+        await self._release(1 << KCP_EXEC_OK)
 
     async def _case_c2(self, leg: str) -> None:
-        """C2 in its own boot; ``leg`` names the reset that follows it."""
+        """C2 in its own boot, then the ``leg`` reset of CHK-EXEC-RST, in one window."""
         p = self.plan
         r = p.c2_region
         base = region_base(r)
@@ -1215,6 +1496,12 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         self.logger.info("DRAW C2 leg=%s sentinel=0x%08x", leg, sentinel)
         words = snippet_p(base, p.rom_addr, p.rom_store)
         await self._copy_snippet(base, words, "C2 snippet P")
+        await self._instance(self._c2_graded(leg, sentinel))
+
+    async def _c2_graded(self, leg: str, sentinel: int) -> None:
+        p = self.plan
+        r = p.c2_region
+        base = region_base(r)
         ops = [
             kp.wr(SRAM_LOCK_A, 1 << r),
             kp.wr(IRQ_STATUS_A, IRQ_DEFINED),
@@ -1282,6 +1569,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             r,
             leg,
         )
+        await self._release(1 << KCP_EXEC_OK)
 
         # CHK-LOCKOUT: P's accesses after the first locked-SRAM fetch.
         rom_post = pw[2]
@@ -1313,6 +1601,8 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         )
         self.c2_rom_pre = rom_pre
         self.c2_ok = True
+        await self._release(1 << KCP_LOCKOUT)
+        await self._exec_rst(leg)
 
     async def _exec_rst(self, kind: str) -> None:
         p = self.plan
@@ -1332,6 +1622,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             kind,
             self.c2_rom_pre,
         )
+        await self._release(1 << KCP_EXEC_RST)
 
     async def _case_c4(self) -> None:
         r = self.plan.c4_region
@@ -1339,6 +1630,10 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         sentinel = self.plan.sentinel()
         self.logger.info("DRAW C4 sentinel=0x%08x", sentinel)
         await self._copy_snippet(base, snippet_s(MARK_S), "C4 snippet")
+        await self._instance(self._c4_graded(r, base, sentinel))
+        await self._plain_reset()
+
+    async def _c4_graded(self, r: int, base: int, sentinel: int) -> None:
         ops = [
             kp.wr(SRAM_LOCK_A, 1 << r),
             kp.wr(IRQ_STATUS_A, IRQ_DEFINED),
@@ -1348,8 +1643,12 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             kp.jump(base),
         ]
         f_pre = self._fetch_count()
+        vec = pic_vector_watch({"s31": KM_UNREC_BIT}).start()
+        vmark = vec.mark()
+        pmark = self.portw.mark()
         _, jw = await self._post_jump(ops)
         high, f_start, f_settle, f_end = await self._fetch_hold_window()
+        span = self.portw.since(pmark)
         acc = self._rise(jw, IRQ_ROM_ACC_VIOL)
         self.logger.info(
             "LOG C4 region=%d snippet_marker=0x%08x rom_acc_viol_rise=%s err_rise=%s",
@@ -1371,13 +1670,19 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             f"CHK-LOCKOUT-FETCH FAIL: C4: after the trap bit 30 high on {high} of {WINDOW_CLKS} "
             f"clocks, km_cpu_fetch_count_o {f_settle} -> {f_end}; the KM CPU kept fetching"
         )
+        assert span.mismatch == 0 and span.port_rises == 1 and span.port_high >= WINDOW_CLKS, (
+            f"CHK-LOCKOUT-FETCH FAIL: C4: sep_ras_o.km_uncorrectable against PIC bit 30 from the "
+            f"op list to the window end: {span.text()}; expected no mismatch, one port rise and "
+            f"the port high on the {WINDOW_CLKS} window clocks"
+        )
         self.logger.info(
             "CHK-LOCKOUT-FETCH PASS: trap=1 halted=1 region=%d fetch_pre=%d fetch_start=%d "
-            "fetch_end=%d",
+            "fetch_end=%d port_eq_bit30=1 %s",
             r,
             f_pre,
             f_start,
             f_end,
+            span.text(),
         )
         assert jw.irq_at_jump & IRQ_ROM_ACC_VIOL == 0 and acc is not None, (
             f"CHK-LOCKOUT-ORDER FAIL: C4: ROM_ACCESS_VIOLATION at jump "
@@ -1392,9 +1697,11 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             acc,
             jw.err_rise,
         )
+        self._check_s31(vec, vmark, "case=C4")
+        await vec.stop()
         self.acc_hits += 1
         self.err_hits += 1
-        await self._plain_reset()
+        await self._release(1 << KCP_LOCK_FETCH)
 
     # --- scenario ------------------------------------------------------------------------
     async def run_scenario(self) -> None:
@@ -1415,6 +1722,8 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await self._wait_sep_reset_release()
         await self.swrst.release("km")
         await self.poke.wait_boot()
+        self.portw = PortWatch().start()
+        run_mark = self.portw.mark()
 
         # Normal interrupt and legal CRC encodings: the control of the trap kinds.
         await self._graded(False)
@@ -1426,10 +1735,8 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         for kind in self.plan.kind_order:
             await self._trap_leg(kind)
 
-        await self._graded(False)
         await self._obs_opcode()
 
-        await self._graded(True)
         await self._case_c0()
 
         for region_kind, locked, marker in (
@@ -1452,9 +1759,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             await self._refused_case("C1", base, enable=0, region=str(r), locked=locked)
 
         await self._case_c2("warm")
-        await self._exec_rst("warm")
         await self._case_c2("cold")
-        await self._exec_rst("cold")
 
         r = self.plan.c2_region
         base3 = region_base(r + 1)
@@ -1473,7 +1778,18 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         await self._refused_case(
             "C6", VROM_BASE, enable=p.c6_enable, region=f"0x{VROM_BASE:08x}", locked=0
         )
-        await self._graded(False)
+
+        await ReadOnly()
+        run = self.portw.since(run_mark)
+        await self.portw.stop()
+        assert run.mismatch == 0 and run.port_rises >= self.err_hits, (
+            f"CHK-TRAP FAIL: scope=run: sep_ras_o.km_uncorrectable against PIC bit 30 over the "
+            f"run: {run.text()}; expected no mismatch and at least {self.err_hits} port rises "
+            "(one per trap kind and C4)"
+        )
+        self.logger.info(
+            "CHK-TRAP PASS: scope=run port_eq_bit30=1 traps=%d %s", self.err_hits, run.text()
+        )
 
         # Each "stays 0" check above has a hit of the same signal in this leaf:
         # EXEC_VIOLATION (CHK-EXEC-OK) rose in C1, C3, C5, C6; ROM_ACCESS_VIOLATION

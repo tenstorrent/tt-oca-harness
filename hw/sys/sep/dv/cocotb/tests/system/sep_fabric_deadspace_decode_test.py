@@ -39,7 +39,24 @@ offset owns a register and every access must be refused: never OKAY, never
 the value of a neighbouring ESRC register, and no ESRC register moved.
 ``memory_map.adoc`` also states the code for that case: the window ends in a
 DECERR slave, so a single-beat read or write answers DECERR. Each TRNG probe is
-graded against that code.
+graded against that code, and each TRNG read against the read word
+``0xBADCAB1E``. Only the generated memory map states that word (note 2 of the
+External TRNG row, ``hw/sys/sep/regs/gen/adoc/memory_map.adoc:94``: "DECERR,
+0xBADCAB1E / DECERR"); the leaf reads code and word from the same note in
+``regs/gen/py/sep_memory_map.py`` and grades them as the golden.
+
+Row cells (FCOV window). The probe walk and its checks above run with the FCOV
+window closed. After they pass, the leaf issues one cell probe per block
+window (a read of the first word past the extent, and a write there in the SPI
+controller and TRNG windows) twice: first with the window closed, then once
+more inside the graded window of this test. Each instance is graded at once
+under CHK-DEADSPACE-REFUSE (code and read word of the sep.rdl past-extent
+response, no live register moved) or, in the TRNG window, CHK-TRNG-UNOWNED
+(the code and word of the memory-map note); the window closes on the first
+FAIL. The sampler holds the row cells of each probe in the window and samples
+them only on the pass label ``row_pass`` (1), which the leaf writes after the
+check of that probe passed; it drops them (2) before each probe and on a FAIL.
+CTRL-TRNG-RSP-OFF: the bench TRNG responder is off for these probes.
 
 CHK-DEADSPACE-BEAT and CHK-DEADSPACE-BURST grade bursts in the crypto region
 only. ``memory_map.adoc`` ("Single-Beat Register Access") limits register
@@ -79,7 +96,16 @@ the initiator code with the code seen at the port.
 CHK-TRNG-REPLY: a single-beat (AxSIZE 2) read and a single-beat write, each
 answered OKAY, SLVERR and DECERR at the port, reach the port as exactly one
 AXI-Lite access with exactly one reply beat, and the initiator receives the
-port code.
+port code. SEP does not decode offsets inside the window
+(``doc/integrator/src/smu-sep.adoc:117-119``), so the address of that port
+access carries the issued window offset in its low 12 bits (the 4 KiB
+aperture). Besides the drawn offsets, every run issues a read and a write at
+the first word (offset 0x000), the last word (0xFFC) and one drawn interior
+word, each code once per direction.
+
+OBS-TRNG-PORT-ADDR (logged only): the port address bits above the window
+offset of each single-beat access. The specification states forwarding, not
+those bits.
 
 CHK-TRNG-SPLIT-WR: a 64-bit single-beat write reaches the port as two AXI-Lite
 writes. With the first answered SLVERR and the last OKAY, the initiator
@@ -92,18 +118,36 @@ any channel occurs on the port.
 OBS-TRNG-SPLIT-PREC (logged only): the code the initiator receives for a 64-bit
 write whose last fragment errs and for a 64-bit read whose two halves answer
 different codes. The specification does not state that code.
+
+FCOV window. The passthrough checks above run with the window closed. After
+they pass, the leaf issues the first-word, last-word and interior singles, the
+split write and the two bursts once more inside the graded window of this test,
+grades each access as it completes, and closes the window on the first FAIL.
+The sampler holds the legal ``cp_trng_port_reply`` and ``cp_trng_forward``
+sample of each repeated access and samples it only on the pass label
+``row_pass`` (4), which the leaf writes after CTRL-TRNG-RSP-DRIVE and the
+CHK-TRNG-REPLY, CHK-TRNG-SPLIT-WR or CHK-TRNG-BURST compare of that access
+passed: those checks grade the W-beat count, the beats on the other channels,
+X on the port reply and the code the responder drove, which the sampler does
+not compare. The leaf drops held samples (2) before each access and on a FAIL;
+a rise to 4 samples no row cell, so the TRNG accesses fill no ``cp_row_cell``
+bin. An illegal reply value samples at once.
 """
 
 from __future__ import annotations
+
+import re
 
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import RESP_CODE, expected_unbacked, sep_map_row
 from env.sep_fabric_tap import start_taps, stop_taps
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_deadspace_seq import (
     CRYPTO_HI,
@@ -111,6 +155,7 @@ from seq_lib.sep_fabric_deadspace_seq import (
     DEADSPACE_ANCHORS,
     RESP_DECERR,
     RESP_OKAY,
+    DeadProbe,
     SepDeadspace,
     SepDeadspaceCfg,
     in_crypto_region,
@@ -125,11 +170,52 @@ _RESP_NAME = {
     RESP_DECERR: "DECERR",
 }
 
-# Response to an unowned TRNG-window offset with no external TRNG connected,
-# per channel (hw/sys/sep/doc/memory_map.adoc, TRNG aperture).
-TRNG_UNOWNED_RESP = {"r": RESP_DECERR, "w": RESP_DECERR}
+_TRNG_BASE = sym("TRNG_REG_MAP_BASE_ADDR")
+# Size of the TRNG aperture (4 KiB, doc/integrator/src/smu-sep.adoc:117); the
+# port address carries the window offset in these low bits.
+_TRNG_SIZE = sym("TRNG_REG_MAP_SIZE")
+_TRNG_OFF_MASK = _TRNG_SIZE - 1
+# Response with no TRNG fitted: note 2 of the External TRNG row of the
+# generated memory map (hw/sys/sep/regs/gen/adoc/memory_map.adoc:94, "DECERR,
+# 0xBADCAB1E / DECERR"), read from the same note in sep_memory_map.py.
+_TRNG_NOTE_RE = re.compile(
+    r"answers (OKAY|SLVERR|DECERR), 0x([0-9A-Fa-f]{8}) / (OKAY|SLVERR|DECERR)\."
+)
+
+
+def _trng_unowned_expect() -> tuple[dict[str, int], int]:
+    hole = sep_map_row(_TRNG_BASE).hole
+    m = _TRNG_NOTE_RE.search(hole.text if hole is not None else "")
+    if m is None:
+        raise RuntimeError(
+            f"sep_memory_map.py: the TRNG row at 0x{_TRNG_BASE:08x} carries no no-TRNG "
+            "response note"
+        )
+    return {"r": RESP_CODE[m[1]], "w": RESP_CODE[m[3]]}, int(m[2], 16)
+
+
+# Code per channel and read word of an unowned TRNG-window offset with no
+# external TRNG connected. hw/sys/sep/doc/memory_map.adoc:82-84 states the
+# DECERR code in prose; the leaf checks that the note agrees.
+TRNG_UNOWNED_RESP, TRNG_UNOWNED_RDATA = _trng_unowned_expect()
+if TRNG_UNOWNED_RESP != {"r": RESP_DECERR, "w": RESP_DECERR}:
+    raise RuntimeError(
+        f"sep_memory_map.py TRNG note codes {TRNG_UNOWNED_RESP} disagree with the DECERR "
+        "of hw/sys/sep/doc/memory_map.adoc:82-84"
+    )
+# Windows where the row-cell sampler also takes an LSU write cell (the SPI
+# controller past extent and the TRNG window); elsewhere the cell is a read.
+_CELL_WRITE_WINDOWS = ("spi_controller", "trng")
 
 TEST = "sep_fabric_deadspace_decode_test"
+# Pass label u_sep_fcov.row_pass: 1 releases the held row cells of a cell probe
+# whose check passed, 4 the held TRNG reply sample of a repeated TRNG access
+# whose check passed, 2 drops every held sample. Each value is held this many
+# clk_i edges.
+ROW_PASS_RELEASE = 1
+ROW_PASS_DROP = 2
+ROW_PASS_RELEASE_TRNG = 4
+_LABEL_CLOCKS = 2
 
 # Codes the bench TRNG responder answers in the passthrough legs.
 _TRNG_CODES = (RESP_OKAY, RESP_SLVERR, RESP_DECERR)
@@ -151,6 +237,8 @@ _TRNG_SETTLE_CYCLES = 32
 _TRNG_EN_CYCLES = 4
 # Separates the passthrough stream from the probe-set stream of the same seed.
 _TRNG_RNG_SALT = 0x5452_4E47
+# Separates the forwarded-offset stream from the two streams above.
+_TRNG_FWD_SALT = 0x4657_4430
 
 
 def _rname(code) -> str:
@@ -227,14 +315,16 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # Past Extent response (SepDeadspace.probe(), "answered code").
         wrong_code = 0
         fails: list[str] = []
-        # (op, addr, resp, refused) of every probe of an adopter window.
-        adopter_probes: list[tuple[str, int, int, bool]] = []
+        # (op, addr, resp, refused, rdata) of every probe of an adopter window.
+        adopter_probes: list[tuple[str, int, int, bool, int | None]] = []
         for item in cfg.probes:
             win = cfg.windows[item.window]
             hit = await dead.probe(win, item, snaps[win.name])
             tag = "anchor" if item.anchor else "rand"
             if win.adopter:
-                adopter_probes.append((item.op, item.addr, dead.last_resp, not hit))
+                adopter_probes.append(
+                    (item.op, item.addr, dead.last_resp, not hit, dead.last_rdata)
+                )
                 self.logger.info(
                     "INFO-TRNG-UNOWNED-RESP: %s %s 0x%08x resp=%s (%s)",
                     item.window,
@@ -375,34 +465,37 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
 
         # Refusal and no-alias of the TRNG probes are part of CHK-DEADSPACE-REFUSE
         # / -NO-ALIAS above, which already raised on any OKAY, timeout or alias.
-        # This checker grades the code of each probe and requires a read and a
-        # write in the window.
-        trng_rd = sorted({r for op, _a, r, ok in adopter_probes if op == "r" and ok})
-        trng_wr = sorted({r for op, _a, r, ok in adopter_probes if op == "w" and ok})
+        # This checker grades the code of each probe and the word of each read,
+        # and requires a read and a write in the window.
+        trng_rd = sorted({r for op, _a, r, ok, _d in adopter_probes if op == "r" and ok})
+        trng_wr = sorted({r for op, _a, r, ok, _d in adopter_probes if op == "w" and ok})
         assert trng_rd and trng_wr, (
             f"CHK-TRNG-UNOWNED FAIL: need a refused read and a refused write in the "
             f"TRNG window, got {len(adopter_probes)} probe(s): {adopter_probes}"
         )
         trng_bad = [
-            f"{op} 0x{addr:08x} answered {_RESP_NAME.get(r, r)}, "
-            f"memory_map.adoc states {_RESP_NAME[TRNG_UNOWNED_RESP[op]]}"
-            for op, addr, r, _ok in adopter_probes
-            if r != TRNG_UNOWNED_RESP[op]
+            line
+            for op, addr, r, _ok, rdata in adopter_probes
+            if (line := self._trng_unowned_fail(op, addr, r, rdata))
         ]
         for line in trng_bad:
             self.logger.error("CHK-TRNG-UNOWNED FAIL: %s", line)
         assert not trng_bad, (
             f"CHK-TRNG-UNOWNED FAIL: {len(trng_bad)} of {len(adopter_probes)} TRNG-window "
-            "probe(s) answered a code other than the one memory_map.adoc states"
+            "probe(s) answered a code or read word other than the memory-map one"
         )
         self.logger.info(
             "CHK-TRNG-UNOWNED PASS: %d TRNG-window probes refused, none OKAY, no ESRC "
-            "register aliased or moved; every read answered %s and every write %s, "
-            "as memory_map.adoc states with no external TRNG connected",
+            "register aliased or moved; every read answered %s with rdata 0x%08x and every "
+            "write %s, as the memory map states with no external TRNG connected",
             len(adopter_probes),
             "/".join(_RESP_NAME[r] for r in trng_rd),
+            TRNG_UNOWNED_RDATA,
             "/".join(_RESP_NAME[r] for r in trng_wr),
         )
+
+        # Row cells: one more graded instance of each cell the FCOV window counts.
+        await self._cell_pass(cfg, dead, snaps)
 
         # Log both checkers' failures before either asserts, so a beat failure
         # cannot hide what the write burst did.
@@ -442,6 +535,105 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         )
 
         await self._trng_passthrough(cfg)
+
+    @staticmethod
+    def _trng_unowned_fail(op: str, addr: int, resp: int, rdata: int | None) -> str:
+        """CHK-TRNG-UNOWNED compare of one probe; empty when it matches."""
+        want = TRNG_UNOWNED_RESP[op]
+        want_d = TRNG_UNOWNED_RDATA if op == "r" else None
+        if resp == want and (want_d is None or rdata == want_d):
+            return ""
+        got_d = "" if op == "w" else (" rdata=X" if rdata is None else f" rdata=0x{rdata:08x}")
+        exp_d = "" if want_d is None else f" rdata=0x{want_d:08x}"
+        return (
+            f"{op} 0x{addr:08x} answered {_rname(resp)}{got_d}, the memory map states "
+            f"{_rname(want)}{exp_d} (regs/gen/adoc/memory_map.adoc:94)"
+        )
+
+    def _grade(self, ok: bool, chk: str, line: str, graded: bool) -> None:
+        """Log one check line; on FAIL close the FCOV window and drop the held
+        samples first, then raise."""
+        if ok:
+            self.logger.info("%s PASS: %s", chk, line)
+            return
+        if graded:
+            close_graded_window(self.logger)
+            set_row_pass(ROW_PASS_DROP, self.logger)
+        self.logger.error("%s FAIL: %s", chk, line)
+        raise AssertionError(f"{chk} FAIL: {line}")
+
+    @staticmethod
+    async def _label(value: int) -> None:
+        """Write the pass label ``row_pass`` for two clk_i edges, then 0."""
+        set_row_pass(value)
+        await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+        set_row_pass(0)
+        await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
+
+    async def _cell_pass(self, cfg: SepDeadspaceCfg, dead: SepDeadspace, snaps: dict) -> None:
+        """Cell probes: once with the FCOV window closed, then once inside it."""
+        on = self.rd_known(cocotb.top.ext_trng_axil_rsp_on_o)
+        self._grade(
+            on == 0,
+            "CTRL-TRNG-RSP-OFF",
+            f"responder on={on} before the cell probes, expected 0 (no TRNG fitted)",
+            False,
+        )
+        items = []
+        for win in cfg.windows.values():
+            items.append(DeadProbe(win.name, win.dead_lo, "r", True))
+            if win.write_ok and win.name in _CELL_WRITE_WINDOWS:
+                items.append(DeadProbe(win.name, win.dead_lo, "w", True))
+        for graded in (False, True):
+            if graded:
+                open_graded_window(TEST, self.logger)
+            for item in items:
+                win = cfg.windows[item.window]
+                if graded:
+                    await self._label(ROW_PASS_DROP)
+                hit = await dead.probe(win, item, snaps[win.name])
+                resp, rdata = dead.last_resp, dead.last_rdata
+                tag = (
+                    f"{item.window} {item.op} 0x{item.addr:08x} resp={_rname(resp)} rdata="
+                    + ("n/a" if rdata is None else f"0x{rdata:08x}")
+                    + f" ({'graded window' if graded else 'cell'})"
+                )
+                if win.adopter:
+                    bad = self._trng_unowned_fail(item.op, item.addr, resp, rdata)
+                    self._grade(
+                        not hit and not bad,
+                        "CHK-TRNG-UNOWNED",
+                        f"{tag} expected {_rname(TRNG_UNOWNED_RESP[item.op])}"
+                        + ("" if item.op == "w" else f" rdata=0x{TRNG_UNOWNED_RDATA:08x}")
+                        + (f"; {bad}" if bad else "")
+                        + ("; " + "; ".join(hit) if hit else ""),
+                        graded,
+                    )
+                    if graded:
+                        await self._label(ROW_PASS_RELEASE)
+                    continue
+                exp = expected_unbacked(item.addr, item.op)
+                want_rdata = exp.rdata
+                match = resp == exp.resp and (want_rdata is None or rdata == want_rdata)
+                self._grade(
+                    not hit and match,
+                    "CHK-DEADSPACE-REFUSE",
+                    f"{tag} expected {_rname(exp.resp)}"
+                    + ("" if want_rdata is None else f" rdata=0x{want_rdata:08x}")
+                    + f" ({exp.row} Past Extent), no live register moved"
+                    + ("; " + "; ".join(hit) if hit else ""),
+                    graded,
+                )
+                if graded:
+                    await self._label(ROW_PASS_RELEASE)
+            if graded:
+                close_graded_window(self.logger)
+        self.logger.info(
+            "CHK-DEADSPACE-REFUSE PASS: %d cell probe(s) in %d window(s) answered the "
+            "past-extent or memory-map response twice, the second time in the graded window",
+            len(items),
+            len(cfg.windows),
+        )
 
     # ------------------------------------------------------------------
     # TRNG window passthrough (bench TRNG responder on the AXI-Lite port).
@@ -609,12 +801,176 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         if fails:
             raise AssertionError(f"{chk} FAIL: {len(fails)} {what}")
 
+    def _chk_reply(self, c: dict, port_codes: dict[str, set[int]]) -> list[str]:
+        """CHK-TRNG-REPLY of one single-beat access; logs its PASS line."""
+        tag = self._trng_tag(c)
+        n_addr, n_w, n_rep = len(c["addr_beats"]), len(c["w_beats"]), len(c["rep"])
+        want_w = 0 if c["d"] == "r" else 1
+        own = ("ar", "r") if c["d"] == "r" else ("aw", "w", "b")
+        other = [b for b in c["req"] + c["rsp"] if b.ch not in own]
+        if c["timed_out"]:
+            return [f"{tag} timed out; port: {self._trng_port_fmt(c)}"]
+        if n_addr != 1 or n_w != want_w or n_rep != 1 or other:
+            return [
+                f"{tag} port addr_beats={n_addr} w_beats={n_w} reply_beats={n_rep} "
+                f"other_beats={len(other)}, expected 1/{want_w}/1/0: {self._trng_port_fmt(c)}"
+            ]
+        rep = c["rep"][0]
+        if rep.resp is None:
+            return [f"{tag} port reply carries X/Z: {rep.fmt()}"]
+        port_addr = c["addr_beats"][0].addr
+        self.logger.info(
+            "OBS-TRNG-PORT-ADDR: %s port address bits above the window offset=%s",
+            tag,
+            "X" if port_addr is None else f"0x{port_addr & ~_TRNG_OFF_MASK:08x}",
+        )
+        want_off = c["addr"] & _TRNG_OFF_MASK
+        port_off = None if port_addr is None else port_addr & _TRNG_OFF_MASK
+        if port_off != want_off:
+            return [
+                f"{tag} port offset="
+                + ("X" if port_off is None else f"0x{port_off:03x}")
+                + f" issued offset=0x{want_off:03x}; smu-sep.adoc: SEP forwards every access "
+                "and does not decode offsets inside the window"
+            ]
+        port_codes[c["d"]].add(rep.resp)
+        if c["resp"] != rep.resp:
+            return [
+                f"{tag} driven={_rname(c['codes'][0])} port={_rname(rep.resp)} "
+                f"init={_rname(c['resp'])}; smu-sep.adoc: the initiator receives the "
+                "endpoint code verbatim"
+            ]
+        self.logger.info(
+            "CHK-TRNG-REPLY PASS: %s driven=%s port=%s init=%s port_off=0x%03x issued_off=0x%03x "
+            "port_addr_beats=%d port_beats=%d port_rdata=%s init_rdata=0x%016x",
+            tag,
+            _rname(c["codes"][0]),
+            _rname(rep.resp),
+            _rname(c["resp"]),
+            port_off,
+            want_off,
+            n_addr,
+            n_rep,
+            self._trng_rdata(rep) if c["d"] == "r" else "na",
+            c["rdata"],
+        )
+        return []
+
+    @staticmethod
+    def _reply_cover(port_codes: dict[str, set[int]]) -> list[str]:
+        """Each direction answered OKAY, SLVERR and DECERR at the port."""
+        return [
+            f"op={d} port codes {sorted(_rname(x) for x in port_codes[d])} do not cover "
+            "OKAY, SLVERR and DECERR"
+            for d in ("r", "w")
+            if port_codes[d] != set(_TRNG_CODES)
+        ]
+
+    def _chk_split(self, c: dict) -> list[str]:
+        """CHK-TRNG-SPLIT-WR: two port writes, SLVERR then OKAY -> SLVERR."""
+        tag = self._trng_tag(c)
+        split_port = [b.resp for b in c["rep"]]
+        if c["timed_out"]:
+            return [f"{tag} timed out; port: {self._trng_port_fmt(c)}"]
+        if (
+            len(c["addr_beats"]) != 2
+            or len(c["w_beats"]) != 2
+            or split_port
+            != [
+                RESP_SLVERR,
+                RESP_OKAY,
+            ]
+        ):
+            return [
+                f"{tag} port aw={len(c['addr_beats'])} w={len(c['w_beats'])} "
+                f"b={[_rname(x) for x in split_port]}, expected two writes answered "
+                f"SLVERR then OKAY: {self._trng_port_fmt(c)}"
+            ]
+        want_init = RESP_SLVERR
+        if c["resp"] != want_init:
+            return [
+                f"{tag} port=[SLVERR,OKAY] init={_rname(c['resp'])} expected "
+                f"{_rname(want_init)}; smu-sep.adoc: an "
+                "earlier fragment erred and the last is OKAY, so the initiator receives SLVERR"
+            ]
+        self.logger.info(
+            "CHK-TRNG-SPLIT-WR PASS: %s port_aw=%s port=[%s] init=%s",
+            tag,
+            ",".join("X" if b.addr is None else f"0x{b.addr:08x}" for b in c["addr_beats"]),
+            ",".join(_rname(x) for x in split_port),
+            _rname(c["resp"]),
+        )
+        return []
+
+    def _chk_burst(self, c: dict) -> list[str]:
+        """CHK-TRNG-BURST: DECERR on every beat, no handshake on the port."""
+        tag = self._trng_tag(c)
+        if c["timed_out"]:
+            return [f"{tag} timed out; port: {self._trng_port_fmt(c)}"]
+        fails: list[str] = []
+        if c["req"] or c["rsp"]:
+            fails.append(
+                f"{tag} {len(c['req'])} request and {len(c['rsp'])} reply handshake(s) "
+                f"reached the port, expected 0: {self._trng_port_fmt(c)}"
+            )
+        if c["d"] == "r":
+            br = c["beat_resps"] or []
+            if len(br) != c["beats"] or any(r != RESP_DECERR for r in br):
+                fails.append(
+                    f"{tag} per-beat RRESP {[_rname(r) for r in br]} (monitor), expected "
+                    f"DECERR on all {c['beats']} beats"
+                )
+        elif c["resp"] != RESP_DECERR:
+            fails.append(f"{tag} BRESP={_rname(c['resp'])}, expected DECERR")
+        if not fails:
+            self.logger.info(
+                "CHK-TRNG-BURST PASS: %s answered %s with the port set to OKAY; port handshakes=%d",
+                tag,
+                "[" + ",".join(_rname(r) for r in c["beat_resps"] or []) + "]"
+                if c["d"] == "r"
+                else _rname(c["resp"]),
+                len(c["req"]) + len(c["rsp"]),
+            )
+        return fails
+
+    @staticmethod
+    def _trng_edge_plan(rng: SepSeededRng, base: int) -> list[dict]:
+        """First word, last word and one interior word, read and write.
+
+        Each code answers once per direction, in a seeded order.
+        """
+        plan: list[dict] = []
+        for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+            codes = list(_TRNG_CODES)
+            rng.shuffle(codes)
+            offs = (
+                ("first", 0),
+                ("last", _TRNG_SIZE - 4),
+                ("interior", 4 * rng.randrange(1, _TRNG_SIZE // 4 - 1)),
+            )
+            for (pos, off), code in zip(offs, codes):
+                plan.append(
+                    {
+                        "leg": f"fwd_{pos}_{_rname(code).lower()}",
+                        "op": op,
+                        "addr": base + off,
+                        "size": 2,
+                        "codes": (code,),
+                        "words": (rng.getrandbits(32),),
+                        "wdata": rng.getrandbits(32),
+                    }
+                )
+        return plan
+
     async def _trng_passthrough(self, cfg: SepDeadspaceCfg) -> None:
         """Turn the bench TRNG responder on and grade the passthrough contract."""
         top = cocotb.top
         win = cfg.windows["trng"]
         span = win.window_end - win.base
-        assert span >= 0x40, f"TRNG window 0x{win.base:08x} spans only 0x{span:x} bytes"
+        assert span == _TRNG_SIZE and win.base == _TRNG_BASE, (
+            f"TRNG window 0x{win.base:08x} spans 0x{span:x} bytes, expected the "
+            f"0x{_TRNG_SIZE:x}-byte aperture at 0x{_TRNG_BASE:08x}"
+        )
         rng = SepSeededRng(cfg.seed ^ _TRNG_RNG_SALT)
         self.trng_taps = start_taps("PR-TRNG", "PR-TRNG-RSP")
 
@@ -629,7 +985,6 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             f"CTRL-TRNG-RSP-DRIVE FAIL: responder on={on} bcnt={bcnt} rcnt={rcnt}; expected on=1 "
             "with both counts at 0 (the leaf runs with +sep_ext_trng_axil_responder)"
         )
-        open_graded_window(TEST, self.logger)
 
         def word_addr() -> int:
             return win.base + 4 * rng.randrange(0, span // 4)
@@ -656,39 +1011,45 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 )
             )
         # Split write: the first fragment SLVERR, the last OKAY.
-        split = await self._trng_access(
-            "split_wr",
-            SepAxiOp.WRITE,
-            dword_addr(),
-            size=3,
-            codes=(RESP_SLVERR, RESP_OKAY),
-            wdata=rng.getrandbits(64),
-        )
+        split_spec = {
+            "leg": "split_wr",
+            "op": SepAxiOp.WRITE,
+            "addr": dword_addr(),
+            "size": 3,
+            "codes": (RESP_SLVERR, RESP_OKAY),
+            "wdata": rng.getrandbits(64),
+        }
+        split = await self._trng_access(**split_spec)
         # Bursts with the port set to answer OKAY, so a beat that reaches the
         # port answers OKAY and shows.
         n_beats = rng.choice((2, 4, 8))
         b_start = win.base + 4 * rng.randrange(0, (span - 4 * n_beats) // 4 + 1)
-        burst_rd = await self._trng_access(
-            "burst_rd",
-            SepAxiOp.READ,
-            b_start,
-            size=2,
-            codes=(RESP_OKAY,) * n_beats,
-            words=tuple(rng.getrandbits(32) for _ in range(n_beats)),
-            beats=n_beats,
-        )
-        burst_wr = await self._trng_access(
-            "burst_wr",
-            SepAxiOp.WRITE,
-            b_start,
-            size=2,
-            codes=(RESP_OKAY,),
-            wdata=(1 << (32 * n_beats)) - 1,
-            beats=n_beats,
-        )
-        close_graded_window(self.logger)
+        burst_rd_spec = {
+            "leg": "burst_rd",
+            "op": SepAxiOp.READ,
+            "addr": b_start,
+            "size": 2,
+            "codes": (RESP_OKAY,) * n_beats,
+            "words": tuple(rng.getrandbits(32) for _ in range(n_beats)),
+            "beats": n_beats,
+        }
+        burst_rd = await self._trng_access(**burst_rd_spec)
+        burst_wr_spec = {
+            "leg": "burst_wr",
+            "op": SepAxiOp.WRITE,
+            "addr": b_start,
+            "size": 2,
+            "codes": (RESP_OKAY,),
+            "wdata": (1 << (32 * n_beats)) - 1,
+            "beats": n_beats,
+        }
+        burst_wr = await self._trng_access(**burst_wr_spec)
+        # Forwarded offsets: first word, last word and one interior word, from
+        # their own stream so the draws above keep their values.
+        edge_plan = self._trng_edge_plan(SepSeededRng(cfg.seed ^ _TRNG_FWD_SALT), win.base)
+        edges = [await self._trng_access(**spec) for spec in edge_plan]
 
-        graded = singles + [split, burst_rd, burst_wr]
+        graded = singles + edges + [split, burst_rd, burst_wr]
         ctl_fails: list[str] = []
         for c in graded:
             self._trng_ctl(c, ctl_fails)
@@ -700,124 +1061,29 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             len(graded),
         )
 
-        # CHK-TRNG-REPLY: one port access, one reply beat, initiator code = port code.
+        # CHK-TRNG-REPLY: one port access at the issued offset, one reply beat,
+        # initiator code = port code.
         reply_fails: list[str] = []
         port_codes: dict[str, set[int]] = {"r": set(), "w": set()}
-        for c in singles:
-            tag = self._trng_tag(c)
-            n_addr, n_w, n_rep = len(c["addr_beats"]), len(c["w_beats"]), len(c["rep"])
-            want_w = 0 if c["d"] == "r" else 1
-            own = ("ar", "r") if c["d"] == "r" else ("aw", "w", "b")
-            other = [b for b in c["req"] + c["rsp"] if b.ch not in own]
-            if c["timed_out"]:
-                reply_fails.append(f"{tag} timed out; port: {self._trng_port_fmt(c)}")
-                continue
-            if n_addr != 1 or n_w != want_w or n_rep != 1 or other:
-                reply_fails.append(
-                    f"{tag} port addr_beats={n_addr} w_beats={n_w} reply_beats={n_rep} "
-                    f"other_beats={len(other)}, expected 1/{want_w}/1/0: {self._trng_port_fmt(c)}"
-                )
-                continue
-            rep = c["rep"][0]
-            if rep.resp is None:
-                reply_fails.append(f"{tag} port reply carries X/Z: {rep.fmt()}")
-                continue
-            port_codes[c["d"]].add(rep.resp)
-            if c["resp"] != rep.resp:
-                reply_fails.append(
-                    f"{tag} driven={_rname(c['codes'][0])} port={_rname(rep.resp)} "
-                    f"init={_rname(c['resp'])}; smu-sep.adoc: the initiator receives the "
-                    "endpoint code verbatim"
-                )
-                continue
-            self.logger.info(
-                "CHK-TRNG-REPLY PASS: %s driven=%s port=%s init=%s port_addr=0x%s port_beats=%d "
-                "port_rdata=%s init_rdata=0x%016x",
-                tag,
-                _rname(c["codes"][0]),
-                _rname(rep.resp),
-                _rname(c["resp"]),
-                "X" if c["addr_beats"][0].addr is None else f"{c['addr_beats'][0].addr:08x}",
-                n_rep,
-                self._trng_rdata(rep) if c["d"] == "r" else "na",
-                c["rdata"],
-            )
-        for d in ("r", "w"):
-            if port_codes[d] != set(_TRNG_CODES):
-                reply_fails.append(
-                    f"op={d} port codes {sorted(_rname(x) for x in port_codes[d])} do not cover "
-                    "OKAY, SLVERR and DECERR"
-                )
+        for c in singles + edges:
+            reply_fails.extend(self._chk_reply(c, port_codes))
+        reply_fails.extend(self._reply_cover(port_codes))
         self._trng_raise("CHK-TRNG-REPLY", reply_fails, "single-beat TRNG finding(s)")
         self.logger.info(
-            "CHK-TRNG-REPLY PASS: %d single-beat accesses; read and write each answered OKAY, "
-            "SLVERR and DECERR at the port with one port access each, and the initiator "
+            "CHK-TRNG-REPLY PASS: %d single-beat accesses, %d of them at the first word, last "
+            "word and an interior word; read and write each answered OKAY, SLVERR and DECERR "
+            "at the port with one port access at the issued offset each, and the initiator "
             "received the port code every time",
-            len(singles),
+            len(singles) + len(edges),
+            len(edges),
         )
 
-        # CHK-TRNG-SPLIT-WR: two port writes, SLVERR then OKAY -> SLVERR.
-        tag = self._trng_tag(split)
-        split_port = [b.resp for b in split["rep"]]
-        split_fails: list[str] = []
-        if split["timed_out"]:
-            split_fails.append(f"{tag} timed out; port: {self._trng_port_fmt(split)}")
-        elif (
-            len(split["addr_beats"]) != 2
-            or len(split["w_beats"]) != 2
-            or split_port != [RESP_SLVERR, RESP_OKAY]
-        ):
-            split_fails.append(
-                f"{tag} port aw={len(split['addr_beats'])} w={len(split['w_beats'])} "
-                f"b={[_rname(x) for x in split_port]}, expected two writes answered "
-                f"SLVERR then OKAY: {self._trng_port_fmt(split)}"
-            )
-        elif split["resp"] != RESP_SLVERR:
-            split_fails.append(
-                f"{tag} port=[SLVERR,OKAY] init={_rname(split['resp'])}; smu-sep.adoc: an "
-                "earlier fragment erred and the last is OKAY, so the initiator receives SLVERR"
-            )
-        self._trng_raise("CHK-TRNG-SPLIT-WR", split_fails, "split-write finding(s)")
-        self.logger.info(
-            "CHK-TRNG-SPLIT-WR PASS: %s port_aw=%s port=[%s] init=%s",
-            tag,
-            ",".join("X" if b.addr is None else f"0x{b.addr:08x}" for b in split["addr_beats"]),
-            ",".join(_rname(x) for x in split_port),
-            _rname(split["resp"]),
-        )
-
-        # CHK-TRNG-BURST: DECERR on every beat, no handshake on the port.
-        burst_fails: list[str] = []
-        for c in (burst_rd, burst_wr):
-            tag = self._trng_tag(c)
-            if c["timed_out"]:
-                burst_fails.append(f"{tag} timed out; port: {self._trng_port_fmt(c)}")
-                continue
-            if c["req"] or c["rsp"]:
-                burst_fails.append(
-                    f"{tag} {len(c['req'])} request and {len(c['rsp'])} reply handshake(s) "
-                    f"reached the port, expected 0: {self._trng_port_fmt(c)}"
-                )
-            if c["d"] == "r":
-                br = c["beat_resps"] or []
-                if len(br) != c["beats"] or any(r != RESP_DECERR for r in br):
-                    burst_fails.append(
-                        f"{tag} per-beat RRESP {[_rname(r) for r in br]} (monitor), expected "
-                        f"DECERR on all {c['beats']} beats"
-                    )
-            elif c["resp"] != RESP_DECERR:
-                burst_fails.append(f"{tag} BRESP={_rname(c['resp'])}, expected DECERR")
+        self._trng_raise("CHK-TRNG-SPLIT-WR", self._chk_split(split), "split-write finding(s)")
+        burst_fails = self._chk_burst(burst_rd) + self._chk_burst(burst_wr)
         self._trng_raise("CHK-TRNG-BURST", burst_fails, "TRNG burst finding(s)")
-        self.logger.info(
-            "CHK-TRNG-BURST PASS: read burst at 0x%08x answered [%s], write burst answered %s, "
-            "%d beats each with the port set to OKAY; port handshakes read=%d write=%d",
-            b_start,
-            ",".join(_rname(r) for r in burst_rd["beat_resps"] or []),
-            _rname(burst_wr["resp"]),
-            n_beats,
-            len(burst_rd["req"]) + len(burst_rd["rsp"]),
-            len(burst_wr["req"]) + len(burst_wr["rsp"]),
-        )
+
+        # One more graded instance of each sampled shape inside the FCOV window.
+        await self._trng_window_pass(edge_plan + [split_spec, burst_rd_spec, burst_wr_spec])
 
         # OBS-TRNG-SPLIT-PREC: halves that differ in a way the spec does not resolve.
         wr_pair = rng.choice(_SPLIT_PREC_WR)
@@ -854,3 +1120,40 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             self._trng_ctl(c, obs_ctl)
         self._trng_raise("CTRL-TRNG-RSP-DRIVE", obs_ctl, "port reply beat(s) off the set code")
         await stop_taps(self.trng_taps)
+
+    async def _trng_window_pass(self, specs: list[dict]) -> None:
+        """Repeat ``specs`` inside the FCOV window; grade each access as it completes.
+
+        Every spec already passed its check with the window closed. The window
+        closes on the first FAIL, so no later access samples.
+        """
+        port_codes: dict[str, set[int]] = {"r": set(), "w": set()}
+        open_graded_window(TEST, self.logger)
+        for spec in specs:
+            await self._label(ROW_PASS_DROP)
+            c = await self._trng_access(**{**spec, "leg": "win_" + spec["leg"]})
+            fails: list[str] = []
+            self._trng_ctl(c, fails)
+            chk = "CTRL-TRNG-RSP-DRIVE"
+            if not fails:
+                if c["beats"] > 1:
+                    chk, fails = "CHK-TRNG-BURST", self._chk_burst(c)
+                elif c["size"] == 3:
+                    chk, fails = "CHK-TRNG-SPLIT-WR", self._chk_split(c)
+                else:
+                    chk, fails = "CHK-TRNG-REPLY", self._chk_reply(c, port_codes)
+            if fails:
+                close_graded_window(self.logger)
+                set_row_pass(ROW_PASS_DROP, self.logger)
+                self._trng_raise(chk, fails, "finding(s) in the graded window")
+            await self._label(ROW_PASS_RELEASE_TRNG)
+        cover = self._reply_cover(port_codes)
+        if cover:
+            close_graded_window(self.logger)
+            self._trng_raise("CHK-TRNG-REPLY", cover, "finding(s) in the graded window")
+        close_graded_window(self.logger)
+        self.logger.info(
+            "CHK-TRNG-REPLY PASS: %d access(es) repeated in the graded window, each graded "
+            "as it completed",
+            len(specs),
+        )

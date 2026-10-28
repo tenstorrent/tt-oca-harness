@@ -48,6 +48,7 @@ module entropy_decorrelator #(
   /////////////
 
   logic [CLKDIV_WIDTH-1:0] clk_divider;
+  logic                    sample_due;
   logic [LENGTH-1:0]       ff_stage;
   logic                    feedback;
 
@@ -70,28 +71,28 @@ module entropy_decorrelator #(
     end
   end
 
-  // Downsampler — output one masked byte every sample_clk_div_i+1 cycles
+  // Downsampler — output one masked byte every sample_clk_div_i+1 cycles. The divider
+  // counts enabled cycles up from 0 and samples on reaching sample_clk_div_i, so the
+  // first sample fires only after the feedback chain has been filled with fresh noise --
+  // firing at once would emit a byte from the reset-state shift register.
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       entropy_byte_valid_o  <= 1'b0;
       entropy_byte_sample_o <= '0;
-      // Preload the full division count so the first sample fires only
-      // after the feedback chain has been filled with fresh noise —
-      // firing at 0 would emit a byte from the reset-state shift register.
-      clk_divider           <= sample_clk_div_i;
+      clk_divider           <= '0;
     end else if (enable_i) begin
-      if (clk_divider == CLKDIV_WIDTH'(0)) begin
-        clk_divider           <= sample_clk_div_i;
+      if (sample_due) begin
+        clk_divider           <= '0;
         entropy_byte_sample_o <= ff_stage[LENGTH-1:LENGTH-8] & byte_mask_i;
         entropy_byte_valid_o  <= 1'b1;
       end else begin
-        clk_divider           <= clk_divider - CLKDIV_WIDTH'(1);
+        clk_divider           <= clk_divider + CLKDIV_WIDTH'(1);
         entropy_byte_valid_o  <= 1'b0;
       end
     end else begin
-      // Keep the divider primed from the programmed value while idle so
-      // configuration writes made before enable govern the first sample.
-      clk_divider          <= sample_clk_div_i;
+      // Hold the divider at the start while idle so configuration writes made
+      // before enable govern the first sample.
+      clk_divider          <= '0;
       entropy_byte_valid_o <= 1'b0;
     end
   end
@@ -100,6 +101,7 @@ module entropy_decorrelator #(
   // Combinational
   /////////////////
 
-  assign feedback = bypass_i ? 1'b0 : ff_stage[LENGTH-1];
+  assign feedback   = bypass_i ? 1'b0 : ff_stage[LENGTH-1];
+  assign sample_due = (clk_divider >= sample_clk_div_i);
 
 endmodule

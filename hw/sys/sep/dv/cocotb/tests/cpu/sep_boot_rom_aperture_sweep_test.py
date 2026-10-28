@@ -855,7 +855,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         while self._label_run:
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            if not (self.rd(dut.pr_rom_req_o) and self.rd(dut.pr_rom_gnt_o)):
+            if not self.rd(dut.pr_rom_req_o):
                 continue
             word = self.rd(dut.pr_rom_addr_o) >> 3
             n = bits.get(word, 0)
@@ -1226,22 +1226,34 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         for _ in range(ANCHOR_BOUND):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            if (
-                self.rd(dut.pr_rom_req_o)
-                and self.rd(dut.pr_rom_gnt_o)
-                and self.rd(dut.pr_rom_addr_o) >> 3 == 1
-            ):
+            if self.rd(dut.pr_rom_req_o) and self.rd(dut.pr_rom_addr_o) >> 3 == 1:
                 break
         else:
             await Timer(1, units="ps")
             close_graded_window(self.logger)
             raise AssertionError(f"CHK-ROM-OTF: no anchor fetch within {ANCHOR_BOUND} cycles")
         t_hs = get_sim_time("ps")
+        # The word-1 request at the ROM macro ports with the memory interface out
+        # of reset, on the edge before the fall.
+        at_hs = (
+            self.rd(dut.pr_rom_macro_req_o, allow_unknown=True),
+            self.rd(dut.pr_rom_macro_addr_o, allow_unknown=True),
+            self.rd(dut.pr_rom_memif_rst_n_o, allow_unknown=True),
+        )
         for _ in range(self.o):
             await RisingEdge(dut.clk_i)
         await Timer(1, units="ps")
         dut.rst_ni.value = 0
         t_fall = get_sim_time("ps")
+        # The fall can land only between the request edge and the macro latch edge:
+        # with W=1 the response beat comes on the latch edge itself. The settled
+        # state after the fall is logged, not graded.
+        await ReadOnly()
+        at_fall = (
+            self.rd(dut.pr_rom_macro_req_o, allow_unknown=True),
+            self.rd(dut.pr_rom_macro_addr_o, allow_unknown=True),
+            self.rd(dut.pr_rom_memif_rst_n_o, allow_unknown=True),
+        )
         cpu_low = await self._wait_level(dut.sep_cpu_reset_n_o, 0, CPU_LOW_BOUND, "OTF reset")
         await ClockCycles(dut.clk_i, RST_HOLD)
         dut.rst_ni.value = 1
@@ -1274,7 +1286,10 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             for b in self.macro.beats
             if b.ch == "req" and t_hs <= b.t_ps <= t_fall and b.addr == 1
         )
-        midflight = int(t_fall < t_hs + self.W * period and not early_rsp and macro_w1 >= 1)
+        latched = int(at_hs == (1, 1, 1))
+        midflight = int(
+            t_fall < t_hs + self.W * period and not early_rsp and macro_w1 >= 1 and latched
+        )
         t_first = first.t_ps if first is not None else None
         # A word-1 request from the clock the CPU reset is seen low up to the first
         # request after the release is a replay of the abandoned fetch: the core
@@ -1318,6 +1333,8 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             "CHK-ROM-OTF",
             ok,
             f"offset={self.o}/{self.W} midflight={midflight} macro_req_word1={macro_w1} "
+            f"macro_at_req=req{at_hs[0]}/addr{at_hs[1]}/memif_rst_n{at_hs[2]} "
+            f"macro_after_fall=req{at_fall[0]}/addr{at_fall[1]}/memif_rst_n{at_fall[2]} "
             f"first_req_word={first_word} "
             f"replay_word1={replay} beats_before_req={before} "
             f"first_rsp=0x{(rsp.rdata if rsp is not None and rsp.rdata is not None else 0):016x} "

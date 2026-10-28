@@ -125,6 +125,7 @@ module entropy_source
     logic [entropy_src_main_sm_pkg::StateWidth-1:0] main_sm_state;
 
     logic [9:0]  downsample_count;
+    logic        downsample_done;
     logic        fifo_stream_push;
 
     typedef enum logic {
@@ -617,16 +618,14 @@ module entropy_source
     // Sequential
     ///////////////
 
-    // The SEP TRNG reset reloads the downsample cadence with the rest of ESRC.
+    // One FIFO push every DOWNSAMPLE_RATE+1 gated samples: the count runs up from 0 to the
+    // rate, so the SEP TRNG reset restarts the cadence with the rest of ESRC, and a rate
+    // written while unlocked takes effect at once.
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
-            downsample_count <= reg_out.CTRL.DOWNSAMPLE_RATE.value;
+            downsample_count <= 10'd0;
         end else if (entropy_stream_valid_gated) begin
-            if (downsample_count == 10'd0) begin
-                downsample_count <= reg_out.CTRL.DOWNSAMPLE_RATE.value;
-            end else begin
-                downsample_count <= downsample_count - 10'd1;
-            end
+            downsample_count <= downsample_done ? 10'd0 : downsample_count + 10'd1;
         end
     end
 
@@ -634,7 +633,8 @@ module entropy_source
     // Combinational (FIFO push FSM)
     /////////////////
 
-    assign fifo_stream_push = entropy_stream_valid_gated && (downsample_count == 10'd0);
+    assign downsample_done  = (downsample_count >= reg_out.CTRL.DOWNSAMPLE_RATE.value);
+    assign fifo_stream_push = entropy_stream_valid_gated && downsample_done;
 
     always_comb begin
         fifo_push = 1'b0;

@@ -101,11 +101,22 @@ class _EvidenceFilter(logging.Filter):
 
     # IDs excluded from `own`, which is what a floor grades; `observed` counts
     # them. These are the records the base class emits for every firmware boot
-    # (image identity and the firmware completion verdict), so a leaf whose own
-    # checks stopped running cannot pass on the boot alone. A leaf whose graded
+    # (image identity and the firmware completion verdict) and for its shared
+    # entropy and fuse-sense helpers, so a leaf whose own checks stopped running
+    # cannot pass on the boot or a shared helper alone. A leaf whose graded
     # contract is the firmware self-check names that ID in `required_evidence`;
     # a base ID named there counts as the leaf's own.
-    BASE_IDS: frozenset[str] = frozenset({"CHK-FW-IDENTITY", "CHK-FW-CONSOLE", "CHK-VERDICT"})
+    BASE_IDS: frozenset[str] = frozenset(
+        {
+            "CHK-FW-IDENTITY",
+            "CHK-FW-CONSOLE",
+            "CHK-VERDICT",
+            "CHK-ALERTS-ZERO",
+            "CHK-KM-SRAM",
+            "CHK-NOISE-FORCE",
+            "CHK-PRE-SENSE-FAIL-CLOSED",
+        }
+    )
 
     # Leaves allowed to pass with no own CHK record. A new entry hides a logging gap.
     NO_OWN_EVIDENCE: dict[str, str] = {}
@@ -498,8 +509,6 @@ class sep_base_test(uvm_test):
             "km_par_mem_i",
             "km_par_lane_i",
             "km_par_n_i",
-            "km_sram_lat_en_i",
-            "km_sram_lat_i",
             "km_sram_wmap_clr_i",
         ):
             self._set_if_exists(dut, pin, 0)
@@ -510,6 +519,9 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "smn_outbound_rd_slverr_i", 0)
         self._set_if_exists(dut, "smn_outbound_ready_stall_i", 0)
         self._set_if_exists(dut, "smn_outbound_rd_addr_data_i", 0)
+        # Mailbox lane inject off (docs/SEP_TB_ARCH.adoc).
+        for pin in ("mbox_lane_inject_arm_i", "mbox_lane_inject_mbx_i", "mbox_lane_inject_data_i"):
+            self._set_if_exists(dut, pin, 0)
         # DFT pins in functional mode, DMI enables off, the core TAP pins on the
         # tb_top registers, and the TCM and ROM bit-flip injects idle
         # (docs/SEP_TB_ARCH.adoc).
@@ -562,13 +574,17 @@ class sep_base_test(uvm_test):
             )
         from seq_lib.sep_efuse_backdoor_check import check_efuse_shadow_backdoor
 
-        # The strap the DUT latched, not what the test intended: reading secure_tm_o
-        # keeps the golden's secret-blanking tied to the DUT rather than to a flag the
-        # test could set wrongly.
-        secure_tm = 0
+        # secure_tm is the TEST_EN strap latched when fuse sensing completes
+        # (hw/sys/sep/doc/lifecycle_controller.adoc, "secure_tm and the Secure Scan
+        # Chain"). The golden takes the strap the bench drives, and secure_tm_o must
+        # equal it, so a DUT that raises secure_tm cannot blank its own secret fields.
+        strap = getattr(cocotb.top, "test_en_strap_i", None)
+        secure_tm = 0 if strap is None else int(strap.value) & 0x1
         probe = getattr(cocotb.top, "secure_tm_o", None)
-        if probe is not None:
-            secure_tm = int(probe.value) & 0x1
+        if probe is not None and (not probe.value.is_resolvable or int(probe.value) != secure_tm):
+            raise AssertionError(
+                f"secure_tm_o={probe.value} at fuse-sense done, want the TEST_EN strap {secure_tm}"
+            )
         check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
@@ -768,9 +784,26 @@ class sep_base_test(uvm_test):
         self.logger.info("Re-sensing: pulsing rst_ni")
         dut.rst_ni.value = 0
         await ClockCycles(dut.clk_i, hold_cycles)
+        await ReadOnly()
+        self._require_sense_restart()
+        await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 1
         await self._wait_fuse_sense(max_cycles)
         self.cfg.reset_done.set()
+
+    def _require_sense_restart(self) -> None:
+        """Raise unless fuse-sense done reads 0 on the last clock of an ``rst_ni`` hold.
+
+        The bank is sensed again at each cold reset (hw/sys/sep/doc/otp_fuse_controller.adoc,
+        "At cold reset it senses the fuse bank"), so the next done must be a new 0 to 1 edge,
+        not a flag kept from the previous sense.
+        """
+        done = cocotb.top.sep_fuse_sense_done_o.value
+        if not done.is_resolvable or int(done) != 0:
+            raise AssertionError(
+                f"sep_fuse_sense_done_o={done} at the end of the rst_ni hold; a cold reset "
+                "restarts fuse sense, so done must read 0"
+            )
 
     async def pulse_rst_ni(
         self,
@@ -799,6 +832,7 @@ class sep_base_test(uvm_test):
         await ClockCycles(dut.clk_i, hold_cycles)
         await ReadOnly()
         held = self.rd(dut.dbg_sep_reset_n_o)
+        self._require_sense_restart()
         await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 1
         release = None

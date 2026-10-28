@@ -12,8 +12,13 @@ Contract (``hw/ip/entropy_source/doc/architecture.adoc:136`` and ``:138``;
   * A threshold of 0 disables the comparator; the counter keeps counting.
   * AlertHang lasts until a reset or until ``CTRL.MODULE_ENABLE`` is cleared.
     A write of one clears the sticky bits and does not resume the output.
-  * The TRNG reset is a full-IP reset (``architecture.adoc:223``), so
+  * The TRNG reset is a full-IP reset (``architecture.adoc:227``), so
     ``ALERT_THRESHOLD`` reads its reset value after it.
+  * ``MAIN_SM_STATUS.ERR`` (``entropy_source.adoc:410``, RW1C, reset 0x0)
+    latches a health-test counter integrity error and clears on a reset of the
+    block (``architecture.adoc:136``).
+    ``INTR_STATUS.PERSISTENT_FAILURE`` (``entropy_source.adoc:140``, reset 0x0)
+    also indicates a health-test counter error.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20: the TRNG is released, the
@@ -24,10 +29,21 @@ drives ``stuck0`` on all lanes for whole windows (W strobes of
 ``balanced`` again. Every ESRC start is a clean start of the window W.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
-stimulus): the drawn threshold T_d (4, 5 or 7), the order of the thresholds 0, 3
-and T_d, the window of each threshold (256 or 512), the clean gap of the
+stimulus): the trip thresholds, 3 and a drawn T_d (4, 5 or 7), or in shard 3
+both 5 and 7 (drawn without replacement, so every shard-3 seed trips at 5 and at
+7); the order of the blocks, with the threshold 0 after at least one trip block;
+the window of each threshold (256 or 512), the clean gap of the
 consecutive leg (2, 3 or 4 windows), the order of the two trips of each
-threshold, and the masks and the permutation of ``balanced``.
+threshold, the masks and the permutation of ``balanced``, and the two counter
+bits of the ERR leg (two different bits of the 32-bit counter copy).
+
+Shards (``env/sep_shard.py``): shard 1 is the reset leg and the threshold
+blocks; shard 2 is the reset leg and the ERR leg; shard 3 is the reset leg and
+the threshold blocks 0, 5 and 7, with no no-trip leg, and it does not grade
+CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD: it logs the CHK-PF-TRIP-HOLD values as
+``INFO-PF-TRIP-HOLD`` and releases no cell by them. Shard 1 and the entry
+without ``+sep_shard`` grade both. The entry without
+``+sep_shard`` runs every leg, the ERR leg last.
 
 Checkers:
   CHK-PF-RESET    ALERT_THRESHOLD reads 0x4 after a TRNG reset that follows a
@@ -60,15 +76,40 @@ Checkers:
                   the break words (below). A burst of n x W stuck words holds a
                   zero run above REPETITION_LIMIT = 200 for its last
                   n x W - 200 > (n - 1) x W words, so at least n windows fail
-                  in it, whatever its offset to the window wraps. Control: T + 1 trips.
+                  in it, whatever its offset to the window wraps. Control: the
+                  trips of the same threshold reach the alert.
   CHK-PF-DISABLE  T = 0, ten stuck windows: no alert at any poll up to
                   LAT_WINDOWS windows of words after the burst, ANY_FAIL_COUNT
                   peak > 8, and after the burst the count clears by the wrap 2W
                   words after the break words (below).
-                  Control: T = 3 trips with the same pattern.
+                  Control: every trip of the blocks that ran before it reaches
+                  the alert.
   CHK-PF-HALT     after a trip, BUSY = 0 and a drain: LEVEL stays 0 and
                   ``esrc_compress_vld_o`` is silent for H = t_ref. Control: the
                   clean run shows 24 stream strobes in t_ref.
+  CHK-SM-ERR      the last leg, after a TRNG reset. ``leg=set``: ERR reads 0,
+                  then the counter-copy inject (``esrc_cntr_inject_i``: one
+                  copy of the ``REPCNT_TOTAL_FAILS`` counter differs from the
+                  other in one drawn bit, ``docs/SEP_TB_ARCH.adoc``), a wait of
+                  SM_ERR_WAIT_CLKS clocks, and ONE read: ERR reads 1. With
+                  INTR_ENABLE written to all ones before the leg,
+                  PERSISTENT_FAILURE reads 0 before the inject and 1 after it.
+                  ``leg=reset_clears``: a second inject in the other drawn
+                  bit, ERR reads 1, a TRNG reset (the inject drops before the
+                  release), and ERR reads 0 and PERSISTENT_FAILURE reads 0.
+                  Each line grades the whole ERR field (and the
+                  PERSISTENT_FAILURE field where named); the read words are
+                  logged.
+  OBS-SM-ERR-W0   the inject is dropped (the copies stay apart), a write of 0
+                  to MAIN_SM_STATUS, then ERR at the next read. Logged, not
+                  graded: the integrity error persists, so ERR latches again
+                  whatever the write did, and only a reset ends the error (which
+                  also clears ERR). No state with ERR 1 and the cause gone
+                  exists in which a write of 0 could fail.
+  OBS-SM-ERR-W1C  a write of 1 to ERR while the integrity error persists, then
+                  ERR at the next read. Logged, not graded: no text states
+                  whether a write of 1 clears ERR while its cause persists.
+                  Both OBS writes run with the coverage window closed.
   CHK-PF-RECOVER  W1C: both bits 0 and the output stays halted for H; a
                   MODULE_ENABLE cycle or a TRNG reset restarts the output
                   (BOOT_PHASE_DONE = 1, LEVEL rises); the reset clears both bits.
@@ -121,6 +162,20 @@ followed by a restart (``INFO-PF-LEG-RESTART``). CHK-PF-TRIP-HOLD and
 CHK-PF-NOTRIP grade the peak of ANY_FAIL_COUNT as exactly n, so a misplaced
 switch fails a check and never passes one. Vector bit 15 of
 ``sep_internal_interrupts_probe_o`` is logged as ``OBS-PIC16``.
+
+Coverage: each leg runs in its own graded window. Every cell that this leaf
+fills from a DUT event is held by the sampler and released by the pass label
+``esrc_pa_pass`` (``set_esrc_pa_pass``), which the leaf writes only after the
+check that grades that leg passes; a FAIL closes the window. A check releases
+nothing when a control was logged absent since the previous grade, or when its
+own control (``CTRL-<check>``) is not logged as seen just before it. The trips
+of a block run before its no-trip and consecutive legs, and the threshold 0 runs
+after a trip block, so the controls of CHK-PF-NOTRIP, CHK-PF-CONSEC and
+CHK-PF-DISABLE are logged before those checks are graded. CHK-PF-TRIP-HOLD
+is graded at the end of its trip: its values are taken before the halt and exit
+legs, which it does not grade. The ``cp_sm_err`` cells set and reset_clears are
+held and released by ``ESRC_PA_SM_ERR`` after the CHK-SM-ERR line of that leg
+passes; the two OBS writes of the ERR leg run with the window closed.
 """
 
 from __future__ import annotations
@@ -142,11 +197,22 @@ from env.sep_esrc_pattern_noise import (
     describe,
 )
 from env.sep_fcov_gate import (
+    ESRC_PA_CONSEC,
+    ESRC_PA_DISABLE,
+    ESRC_PA_HALT,
+    ESRC_PA_NOTRIP,
+    ESRC_PA_RECOVER_E,
+    ESRC_PA_RECOVER_R,
+    ESRC_PA_RESET,
+    ESRC_PA_SM_ERR,
+    ESRC_PA_TRIP_COUNT,
     close_graded_window,
     open_graded_window,
     set_esrc_af_clear_bound,
+    set_esrc_pa_pass,
 )
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_shard import sep_shard
 from env.sep_trial_wait import TrialTimeout, poll_until
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, sym
@@ -179,6 +245,10 @@ TOTAL_ADDRS = tuple(
 
 BASELINE_PARK = ("otbn", "aes", "hmac", "kmac", "abr")
 T_DRAWN = (4, 5, 7)
+# Shard 3 runs both of these trip thresholds, in a drawn order, in place of 3 and
+# T_d: the green shard then trips at 5 and at 7 on every seed. The reset leg reads
+# the 4 on every seed, and the alert test grades the trip at 3.
+T_SHARD3 = (5, 7)
 WINDOWS = (256, 512)
 GAPS = (2, 3, 4)
 DISABLE_WINDOWS = 10
@@ -197,6 +267,12 @@ M_LEVEL, _ = _fm("FIFO_STATUS", "LEVEL")
 M_BUSY, _ = _fm("SHA256_STATUS", "BUSY")
 M_ANY, _ = _fm("ALERT_SUMMARY_FAIL_COUNTS", "ANY_FAIL_COUNT")
 M_THR, _ = _fm("ALERT_THRESHOLD", "THRESHOLD")
+M_ERR, ERR_BP = _fm("MAIN_SM_STATUS", "ERR")
+# Bits of the counter copy that the inject can flip: REPCNT_TOTAL_FAILS.FAIL_COUNT
+# is 32 bits (entropy_source.adoc:682).
+CNTR_BITS = ENTROPY_SOURCE.mask("REPCNT_TOTAL_FAILS").bit_length()
+# A write with no bit set: a write of 0 to ERR (and to ALERT).
+SM_W0 = 0
 THR_FIELDS = ENTROPY_SOURCE.mask("ALERT_THRESHOLD")
 THR_RESET = ENTROPY_SOURCE.reset("ALERT_THRESHOLD")  # 0x4 (entropy_source.adoc:762)
 INTR_ENABLE_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
@@ -217,6 +293,43 @@ LAT_WINDOWS = 4
 # after the last failing word: the rest of the window that holds it, then one
 # clean window (entropy_source.adoc:71: it clears after an accepted passing window).
 CLEAR_WINDOWS = 2
+# Clocks from the inject rise to the one graded ERR read. A wait bound: no text
+# states the latch latency, and a later latch fails CHK-SM-ERR leg=set.
+SM_ERR_WAIT_CLKS = 64
+# Clocks the leaf holds a bit of esrc_pa_pass before it writes 0.
+PA_HOLD_CLKS = 2
+
+# Shards (env/sep_shard.py). Shard 1: the reset leg and the threshold blocks.
+# Shard 2: the reset leg and the ERR leg, which no ANY_FAIL_COUNT grade touches.
+# Shard 3: the reset leg and the blocks 0, 5 and 7, without the no-trip leg and
+# without the CHK-PF-TRIP-HOLD grade.
+SHARD_EVIDENCE = {
+    1: (
+        "CHK-PF-RESET",
+        "CHK-PF-TRIP-COUNT",
+        "CHK-PF-TRIP-HOLD",
+        "CHK-PF-NOTRIP",
+        "CHK-PF-CONSEC",
+        "CHK-PF-DISABLE",
+        "CHK-PF-HALT",
+        "CHK-PF-RECOVER",
+    ),
+    2: ("CHK-PF-RESET", "CHK-SM-ERR"),
+    3: (
+        "CHK-PF-RESET",
+        "CHK-PF-TRIP-COUNT",
+        "CHK-PF-CONSEC",
+        "CHK-PF-DISABLE",
+        "CHK-PF-HALT",
+        "CHK-PF-RECOVER",
+    ),
+}
+# Checks that shard 3 does not grade: it runs no no-trip leg, and it logs the
+# CHK-PF-TRIP-HOLD values as an INFO line.
+SHARD3_UNGRADED = ("PF-NOTRIP", "PF-TRIP-HOLD")
+# Checks whose pass bit releases cells only when the control of the same check
+# was logged as seen just before the grade (``_grade``).
+CTRL_GATED = ("PF-RESET", "PF-TRIP-COUNT", "PF-NOTRIP", "PF-CONSEC", "PF-DISABLE", "PF-RECOVER")
 
 STUCK0 = [Stuck(0)] * NUM_LANES
 STUCK1 = [Stuck(1)] * NUM_LANES
@@ -237,12 +350,13 @@ BREAK = [STUCK1] + [
 @dataclass(frozen=True)
 class Plan:
     seed: int
-    t_d: int
+    trip_thr: tuple[int, ...]
     order: tuple[int, ...]
     window: dict[int, int]
     gap: dict[int, int]
     trips: dict[int, tuple[str, str]]
     balanced: tuple[Balanced, ...]
+    inj_bits: tuple[int, int]
 
     def describe(self) -> str:
         blocks = " ".join(
@@ -251,21 +365,31 @@ class Plan:
             for t in self.order
         )
         return (
-            f"t_d={self.t_d} order={','.join(str(t) for t in self.order)} {blocks} "
-            f"{describe(self.balanced)}"
+            f"trip_thr={','.join(str(t) for t in self.trip_thr)} order={','.join(str(t) for t in self.order)} {blocks} "
+            f"{describe(self.balanced)} inj_bits={self.inj_bits[0]},{self.inj_bits[1]}"
         )
 
 
-def draw_plan(seed: int) -> Plan:
-    """Every draw of the leaf, in a fixed order, with no simulator access."""
+def draw_plan(seed: int, shard: int | None = None) -> Plan:
+    """Every draw of the leaf, in a fixed order, with no simulator access.
+
+    The trip thresholds are 3 and T_d (drawn from T_DRAWN), or in shard 3 the two
+    values of T_SHARD3 (drawn without replacement, so only their order is drawn).
+    The threshold 0 runs after at least one trip block: the trips of the blocks
+    before it are the control of CHK-PF-DISABLE.
+    """
     rng = SepSeededRng(seed)
-    t_d = rng.choice(T_DRAWN)
-    order = [0, 3, t_d]
-    rng.shuffle(order)
+    if shard == 3:
+        trip_thr = list(T_SHARD3)
+    else:
+        trip_thr = [3, rng.choice(T_DRAWN)]
+    rng.shuffle(trip_thr)
+    pos = rng.choice(range(1, len(trip_thr) + 1))
+    order = trip_thr[:pos] + [0] + trip_thr[pos:]
     window: dict[int, int] = {}
     gap: dict[int, int] = {}
     trips: dict[int, tuple[str, str]] = {}
-    for t in (0, 3, t_d):
+    for t in (0, *sorted(trip_thr)):
         window[t] = rng.choice(WINDOWS)
         if t:
             gap[t] = rng.choice(GAPS)
@@ -273,7 +397,9 @@ def draw_plan(seed: int) -> Plan:
             rng.shuffle(tr)
             trips[t] = (tr[0], tr[1])
     balanced = tuple(balanced_lanes(rng))
-    return Plan(seed, t_d, tuple(order), window, gap, trips, balanced)
+    bit_a = rng.choice(range(CNTR_BITS))
+    bit_b = rng.choice([b for b in range(CNTR_BITS) if b != bit_a])
+    return Plan(seed, tuple(trip_thr), tuple(order), window, gap, trips, balanced, (bit_a, bit_b))
 
 
 class _Esrc(SepAxiRegDriver):
@@ -306,13 +432,15 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         "CHK-PF-DISABLE",
         "CHK-PF-HALT",
         "CHK-PF-RECOVER",
+        "CHK-SM-ERR",
     )
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
+        shard = sep_shard(self, SHARD_EVIDENCE)
         await self.bring_up_no_cpu(park=BASELINE_PARK)
         seed = self.random_seed()
-        plan = draw_plan(seed)
+        plan = draw_plan(seed, shard)
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
@@ -325,19 +453,31 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.p: int | None = None
         self.setup = SepEsrcLeafSetup(self, self.swrst, self.noise)
         self.stream_clean: int | None = None
-        self.trip_results: dict[int, dict] = {}
+        # Per trip block that has run: the alert of each of its trips (control of
+        # CHK-PF-DISABLE).
+        self.block_trips: dict[int, list[int]] = {}
+        # Control of each check, logged just before its grade; popped by _grade.
+        self.ctrl_seen: dict[str, bool] = {}
+        # A control that was logged absent since the last grade.
+        self.ctrl_absent = False
         self.disable_result: dict | None = None
         self.started = False
         self.trip_graded = False
+        self.trip_hold: dict | None = None
+        self.ungraded = SHARD3_UNGRADED if shard == 3 else ()
+        self.run_notrip = shard != 3
 
         await self._reset_value_leg()
-        for thr in plan.order:
-            if thr == 0:
-                await self._block_disable()
-            else:
-                await self._block_trip(thr)
+        if shard != 2:
+            for thr in plan.order:
+                if thr == 0:
+                    await self._block_disable()
+                else:
+                    await self._block_trip(thr)
+            close_graded_window(self.logger)
+        if shard not in (1, 3):
+            await self._sm_err_leg()
         close_graded_window(self.logger)
-        self._grade_disable()
 
         await self.noise.stop()
         if self.vld is not None:
@@ -369,6 +509,49 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
     def _latency_bound(self) -> int:
         assert self.stream_clean is not None
         return LATENCY_FACTOR * self.stream_clean
+
+    async def _release(self, bits: int) -> None:
+        """Pulse the pass bits of a check that passed (esrc_pa_pass, PA_HOLD_CLKS)."""
+        if set_esrc_pa_pass(bits, self.logger):
+            for _ in range(PA_HOLD_CLKS):
+                await RisingEdge(cocotb.top.clk_i)
+            set_esrc_pa_pass(0, self.logger)
+            await RisingEdge(cocotb.top.clk_i)
+
+    def _ctrl(self, name: str, cond: bool, **fields) -> bool:
+        """Log one control; ``_grade`` of the same check reads the result."""
+        seen = self.chk.ctrl(name, cond, **fields)
+        self.ctrl_seen[name] = seen
+        if not seen:
+            self.ctrl_absent = True
+        return seen
+
+    async def _grade(self, name: str, cond: bool, bits: int, **fields) -> bool:
+        """Grade one check; a FAIL closes the window first, a PASS releases ``bits``.
+
+        A PASS releases nothing, and closes the window, when a control was logged
+        absent since the last grade, or when the check is in CTRL_GATED and its own
+        control was not logged as seen just before this grade.
+        """
+        ctrl = self.ctrl_seen.pop(name, None)
+        held = self.ctrl_absent or (name in CTRL_GATED and ctrl is not True)
+        self.ctrl_absent = False
+        if not cond:
+            close_graded_window(self.logger)
+            return self.chk.ok(name, False, **fields)
+        self.chk.ok(name, True, **fields)
+        if held:
+            close_graded_window(self.logger)
+            self.logger.info("FCOV-ESRC-PA-HOLD %s: a control is absent, no cell released", name)
+            return True
+        if bits:
+            await self._release(bits)
+        return True
+
+    def _fail(self, name: str, **fields) -> None:
+        """A check that cannot be graded (a timeout): the check fails, then the window closes."""
+        self.chk.ok(name, False, **fields)
+        close_graded_window(self.logger)
 
     def _pic16(self) -> int:
         v = self.rd(cocotb.top.sep_internal_interrupts_probe_o, allow_unknown=True)
@@ -487,7 +670,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 await self._rd(ESRC_FIFO_RDATA)
         await task
         if not box:
-            self.chk.ctrl(
+            self._ctrl(
                 "PF-STREAM", False, strobes_lt=STREAM_STROBES, reason="timeout:stream", bound=bound
             )
             return None
@@ -638,7 +821,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             timeout = f"timeout:strobes bound={look_bound}"
         c1, mm1 = self.noise.byte_control()
         self.noise.byte_check(False)
-        self.chk.ctrl("NOISE-BYTES", mm1 == mm0 and c1 > c0, compared=c1 - c0, mismatched=mm1 - mm0)
+        self._ctrl("NOISE-BYTES", mm1 == mm0 and c1 > c0, compared=c1 - c0, mismatched=mm1 - mm0)
         return {
             "alert": int(alert),
             "pf": int(pf),
@@ -774,7 +957,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         )
         c1, mm1 = self.noise.byte_control()
         self.noise.byte_check(False)
-        self.chk.ctrl("NOISE-BYTES", mm1 == mm0 and c1 > c0, compared=c1 - c0, mismatched=mm1 - mm0)
+        self._ctrl("NOISE-BYTES", mm1 == mm0 and c1 > c0, compared=c1 - c0, mismatched=mm1 - mm0)
         return res
 
     async def _trip(self, thr: int, win: int) -> dict:
@@ -782,7 +965,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.trip_graded = True
         r = await self._exact_burst(win, thr, trip=True)
         reason = {"reason": r["reason"]} if r["reason"] else {}
-        self.chk.ctrl(
+        self._ctrl(
             "PF-TRIP-COUNT",
             r["alert_before"] == 0 and r["pf_before"] == 0 and r["count_before"] == 0,
             thr=thr,
@@ -790,9 +973,10 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             pf_before=r["pf_before"],
             count_before=r["count_before"],
         )
-        self.chk.ok(
+        await self._grade(
             "PF-TRIP-COUNT",
             r["reason"] is None and r["peak"] >= thr and r["alert_any"] and r["pf_final"],
+            ESRC_PA_TRIP_COUNT,
             **reason,
             thr=thr,
             win=win,
@@ -810,27 +994,29 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         o = r["o"]
         rel_final = None if o is None else r["final_word"] - (o + win)
         hold_min = win + win // TAIL_DIV
-        self.chk.ctrl(
-            "PF-TRIP-HOLD",
-            r["clean_words"] >= hold_min,
-            thr=thr,
-            clean_words=r["clean_words"],
-            expect_clean_words_min=hold_min,
-        )
-        self.chk.ok(
-            "PF-TRIP-HOLD",
-            r["reason"] is None and r["alert_final"] and r["pf_final"] and r["peak"] == thr,
-            **reason,
-            thr=thr,
-            win=win,
-            read_word_after_window_t=rel_final,
-            alert_after_clean=r["alert_final"],
-            pf_after_clean=r["pf_final"],
-            any_fail_peak=r["peak"],
-            expect_any_fail_peak=thr,
-            any_fail_final=r["count_final"],
-            test_fails_after_window_t=r.get("test_fails_after_window_n"),
-        )
+        # Graded at the end of the trip (_flush_trip_hold): the values are taken
+        # here, before the halt and exit legs, which this check does not grade.
+        self.trip_hold = {
+            "ctrl": r["clean_words"] >= hold_min,
+            "ctrl_fields": {
+                "thr": thr,
+                "clean_words": r["clean_words"],
+                "expect_clean_words_min": hold_min,
+            },
+            "cond": r["reason"] is None and r["alert_final"] and r["pf_final"] and r["peak"] == thr,
+            "fields": {
+                **reason,
+                "thr": thr,
+                "win": win,
+                "read_word_after_window_t": rel_final,
+                "alert_after_clean": r["alert_final"],
+                "pf_after_clean": r["pf_final"],
+                "any_fail_peak": r["peak"],
+                "expect_any_fail_peak": thr,
+                "any_fail_final": r["count_final"],
+                "test_fails_after_window_t": r.get("test_fails_after_window_n"),
+            },
+        }
         lat = {}
         if o is not None and "alert_word" in r:
             rel = r["alert_word"] - (o + win)
@@ -856,26 +1042,51 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             **reason,
         }
 
+    def _not_graded(self, name: str, **fields) -> bool:
+        """In shard 3, log the values of an ungraded check as INFO and return True."""
+        if name not in self.ungraded:
+            return False
+        self.logger.info(
+            "INFO-%s not graded in shard 3 (shard 1 and the entry without +sep_shard grade it): %s",
+            name,
+            " ".join(f"{k}={v}" for k, v in fields.items()),
+        )
+        return True
+
+    def _flush_trip_hold(self) -> None:
+        """Grade the CHK-PF-TRIP-HOLD values that the last trip took."""
+        th = self.trip_hold
+        self.trip_hold = None
+        if th is None:
+            return
+        if self._not_graded("PF-TRIP-HOLD", cond=int(th["cond"]), **th["fields"]):
+            return
+        self.chk.ctrl("PF-TRIP-HOLD", th["ctrl"], **th["ctrl_fields"])
+        self.chk.ok("PF-TRIP-HOLD", th["cond"], **th["fields"])
+        if not th["cond"]:
+            close_graded_window(self.logger)
+
     # --- legs --------------------------------------------------------------------------
     async def _reset_value_leg(self) -> None:
         close_graded_window(self.logger)
         await self._trng_reset()
         await self._wr(ESRC_ALERT_THRESHOLD, ENTROPY_SOURCE.value("ALERT_THRESHOLD", THRESHOLD=7))
         before = await self._rd(ESRC_ALERT_THRESHOLD)
-        self.chk.ctrl("PF-RESET", before & THR_FIELDS == 7, before=f"0x{before & THR_FIELDS:x}")
+        self._ctrl("PF-RESET", before & THR_FIELDS == 7, before=f"0x{before & THR_FIELDS:x}")
         try:
             await self._trng_reset()
         except TrialTimeout as exc:
-            self.chk.ok("PF-RESET", False, reason=f"timeout:{exc.what}", bound=exc.bound)
+            self._fail("PF-RESET", reason=f"timeout:{exc.what}", bound=exc.bound)
             return
         # The graded window opens after the reset: the stored 7 of the control write
         # is never sampled; the stored-value sample and this read see the reset value.
         open_graded_window(TEST, self.logger)
         after = await self._rd(ESRC_ALERT_THRESHOLD)
         close_graded_window(self.logger)
-        self.chk.ok(
+        await self._grade(
             "PF-RESET",
             after & THR_FIELDS == THR_RESET,
+            ESRC_PA_RESET,
             alert_threshold=f"0x{after & THR_FIELDS:x}",
             expect=f"0x{THR_RESET:x}",
             rsvd=f"0x{after & ~THR_FIELDS & 0xFFFF_FFFF:x}",
@@ -883,6 +1094,12 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         )
 
     async def _block_trip(self, thr: int) -> None:
+        """Trips first, then the no-trip and consecutive legs.
+
+        The trips are the controls of CHK-PF-NOTRIP and CHK-PF-CONSEC, so each of
+        those controls is logged before its check is graded, and a check releases
+        its cells only after its control is seen (``_grade``).
+        """
         plan = self.plan
         win = plan.window[thr]
         blk = _Block(thr, win)
@@ -890,28 +1107,13 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             await self._start_seq(thr, win)
         except TrialTimeout as exc:
             blk.start_timeout = f"timeout:{exc.what} bound={exc.bound}"
-            self.trip_results.setdefault(
-                thr, {"alert": 0, "bound": exc.bound, "reason": blk.start_timeout}
-            )
+            self.block_trips[thr] = [0]
             for name in ("PF-TRIP-COUNT", "PF-TRIP-HOLD"):
-                self.chk.ok(name, False, thr=thr, reason=blk.start_timeout)
-            self._grade_block(blk)
+                self._fail(name, thr=thr, reason=blk.start_timeout)
+            await self._deny_legs(blk)
             return
         blk.t_ref = await self._measure_t_ref()
         hold = blk.t_ref
-
-        open_graded_window(TEST, self.logger)
-        blk.notrip = await self._exact_burst(win, thr - 1, trip=False)
-        n = thr - 2
-        g = plan.gap[thr]
-        first_burst = self._burst_segs(n, win, tail_words=g * win - len(BREAK))
-        segs = first_burst + self._burst_segs(n, win)
-        try:
-            await self._ensure_clean(thr, win, "consec")
-            blk.consec = await self._burst_and_settle(segs, win, split=len(first_burst))
-        except TrialTimeout as exc:
-            blk.consec = {"timeout": f"timeout:{exc.what} bound={exc.bound}"}
-        close_graded_window(self.logger)
 
         alerts: list[int] = []
         first = True
@@ -928,7 +1130,6 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 self.trip_graded = False
                 res = self._trip_start_timeout(thr, kind, exc)
                 alerts.append(res["alert"])
-                self.trip_results.setdefault(thr, res)
                 first = False
                 continue
             self.trip_graded = False
@@ -940,15 +1141,51 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             except TrialTimeout as exc:
                 close_graded_window(self.logger)
                 res = self._trip_start_timeout(thr, kind, exc)
+            self._flush_trip_hold()
             alerts.append(res["alert"])
-            self.trip_results.setdefault(thr, res)
             first = False
         blk.trip_alert = alerts
-        self._grade_block(blk)
+        self.block_trips[thr] = alerts
+
+        # The trips leave the module halted, or at the reset configuration after a
+        # TRNG reset: the start sequence for T and W runs again before the legs
+        # that must not trip.
+        try:
+            await self._start_seq(thr, win)
+            await self._drain()
+        except TrialTimeout as exc:
+            blk.start_timeout = f"timeout:{exc.what} bound={exc.bound}"
+        await self._deny_legs(blk)
+
+    async def _deny_legs(self, blk: _Block) -> None:
+        """No-trip leg (not in shard 3) and consecutive leg, each control before its grade."""
+        thr, win = blk.thr, blk.win
+        if self.run_notrip:
+            if not blk.start_timeout:
+                open_graded_window(TEST, self.logger)
+                blk.notrip = await self._exact_burst(win, thr - 1, trip=False)
+                close_graded_window(self.logger)
+            self._ctrl_notrip(blk)
+            await self._grade_notrip(blk)
+        if not blk.start_timeout:
+            n = thr - 2
+            g = self.plan.gap[thr]
+            first_burst = self._burst_segs(n, win, tail_words=g * win - len(BREAK))
+            segs = first_burst + self._burst_segs(n, win)
+            open_graded_window(TEST, self.logger)
+            try:
+                await self._ensure_clean(thr, win, "consec")
+                blk.consec = await self._burst_and_settle(segs, win, split=len(first_burst))
+            except TrialTimeout as exc:
+                blk.consec = {"timeout": f"timeout:{exc.what} bound={exc.bound}"}
+            close_graded_window(self.logger)
+        self._ctrl_consec(blk)
+        await self._grade_consec(blk)
 
     def _trip_start_timeout(self, thr: int, kind: str, exc: TrialTimeout) -> dict:
         """A trip whose set-up or wait timed out: its exit check fails with the reason."""
         reason = f"timeout:{exc.what}"
+        close_graded_window(self.logger)
         if not self.trip_graded:
             for name in ("PF-TRIP-COUNT", "PF-TRIP-HOLD"):
                 self.chk.ok(name, False, thr=thr, reason=reason, bound=exc.bound)
@@ -996,9 +1233,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                     await self._rd(ESRC_FIFO_RDATA)
         drained = await self._drain()
         if hold is None or not busy_clear or not drained:
-            self.chk.ok(
+            self._fail(
                 "PF-HALT",
-                False,
                 thr=thr,
                 sha_busy_clear=int(busy_clear),
                 drained=int(drained),
@@ -1007,9 +1243,10 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             level_max, vld = None, None
         else:
             level_max, vld = await self._hold(hold)
-            self.chk.ok(
+            await self._grade(
                 "PF-HALT",
                 level_max == 0 and vld == 0,
+                ESRC_PA_HALT,
                 thr=thr,
                 sha_busy_clear=1,
                 level_max=level_max,
@@ -1021,7 +1258,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         sm_before = await self._rd(ESRC_MAIN_SM_STATUS)
         st_before = await self._rd(ESRC_INTR_STATUS)
         bits_before = (sm_before & M_ALERT != 0) and (st_before & M_PF != 0)
-        self.chk.ctrl(
+        self._ctrl(
             "PF-RECOVER",
             bits_before,
             exit="enable_cycle",
@@ -1041,9 +1278,10 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         boot, level = await self._boot_and_level(win, "enable_cycle")
         close_graded_window(self.logger)
         halted = lvl_w1c == 0 and vld_w1c == 0
-        self.chk.ok(
+        await self._grade(
             "PF-RECOVER",
             (not alert_c) and (not pf_c) and halted and boot and level,
+            ESRC_PA_RECOVER_E,
             thr=thr,
             exit="enable_cycle",
             after_w1c_alert=int(alert_c),
@@ -1070,7 +1308,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 bound=res["bound"],
             )
             return res
-        self.chk.ctrl(
+        self._ctrl(
             "PF-RECOVER",
             res["alert_after"] and res["pf"],
             exit="trng_reset",
@@ -1088,9 +1326,10 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         ).run_live(release_mark=mark)
         boot, level = await self._boot_and_level(RESET_WINDOW, "trng_reset")
         close_graded_window(self.logger)
-        self.chk.ok(
+        await self._grade(
             "PF-RECOVER",
             (not alert_r) and (not pf_r) and boot and level,
+            ESRC_PA_RECOVER_R,
             thr=thr,
             exit="trng_reset",
             window=RESET_WINDOW,
@@ -1108,6 +1347,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             await self._start_seq(0, win)
         except TrialTimeout as exc:
             self.disable_result = {"win": win, "reason": f"timeout:{exc.what} bound={exc.bound}"}
+            await self._grade_disable()
             return
         # The burst, then clean noise until ANY_FAIL_COUNT reads 0 (two windows), all in
         # the graded window, so the count falls to 0 with the module enabled.
@@ -1127,6 +1367,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         }
         if r["timeout"]:
             self.disable_result["reason"] = r["timeout"]
+        await self._grade_disable()
 
     # --- grading -----------------------------------------------------------------------
     @staticmethod
@@ -1142,16 +1383,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         fields["reason"] = "timeout:count_zero" if r.get("zero_word") is None else "late:count_zero"
         return fields
 
-    def _grade_block(self, blk: _Block) -> None:
-        tripped = bool(blk.trip_alert) and all(blk.trip_alert)
+    async def _grade_notrip(self, blk: _Block) -> None:
+        """CHK-PF-NOTRIP at the end of the no-trip leg (its control follows the trips)."""
         nt = blk.notrip or {}
-        self.chk.ctrl(
-            "PF-NOTRIP",
-            tripped and nt.get("peak", 0) > 0,
-            thr=blk.thr,
-            ctrl_trip=int(tripped),
-            any_fail_peak=nt.get("peak"),
-        )
         fields = {
             "thr": blk.thr,
             "win": blk.win,
@@ -1175,7 +1409,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             fields["reason"] = nt["reason"]
             if nt.get("bound") is not None:
                 fields["bound"] = nt["bound"]
-        self.chk.ok(
+        if self._not_graded("PF-NOTRIP", **fields):
+            return
+        await self._grade(
             "PF-NOTRIP",
             not blk.start_timeout
             and nt.get("reason") is None
@@ -1183,10 +1419,13 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             and nt.get("alert_any") == 0
             and nt.get("pf_any") == 0
             and nt.get("count_final") == 0,
+            ESRC_PA_NOTRIP,
             **fields,
         )
+
+    async def _grade_consec(self, blk: _Block) -> None:
+        """CHK-PF-CONSEC at the end of the consecutive leg (its control follows the trips)."""
         cs = blk.consec or {}
-        self.chk.ctrl("PF-CONSEC", tripped, thr=blk.thr, ctrl_single_burst_alert=int(tripped))
         peaks = cs.get("peaks")
         fields = {
             "thr": blk.thr,
@@ -1199,7 +1438,6 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             "any_fail_after": cs.get("after"),
             "watch_words": cs.get("watch_words"),
             "expect_watch_words_min": LAT_WINDOWS * blk.win,
-            "ctrl_single_burst_alert": int(tripped),
         }
         clear = self._clear_fields(cs, blk.win)
         fields.update({k: v for k, v in clear.items() if k != "reason"})
@@ -1212,25 +1450,48 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         counted = peaks is not None and all(pk >= blk.thr - 2 for pk in peaks)
         if not fields.get("reason") and not counted:
             fields["reason"] = "burst_not_counted"
-        self.chk.ok(
+        await self._grade(
             "PF-CONSEC",
             cs.get("alert") == 0 and cs.get("pf") == 0 and cs.get("zero") and counted,
+            ESRC_PA_CONSEC,
             **fields,
         )
 
-    def _grade_disable(self) -> None:
-        ctrl = self.trip_results.get(3, {})
-        ctrl_ok = bool(ctrl.get("alert"))
+    @staticmethod
+    def _tripped(alerts: list[int] | None) -> bool:
+        """Every trip of a block reached the alert."""
+        return bool(alerts) and all(alerts)
+
+    def _ctrl_notrip(self, blk: _Block) -> None:
+        """Control of CHK-PF-NOTRIP: the trips of the block reach the alert."""
+        tripped = self._tripped(blk.trip_alert)
+        nt = blk.notrip or {}
+        self._ctrl(
+            "PF-NOTRIP",
+            tripped and nt.get("peak", 0) > 0,
+            thr=blk.thr,
+            ctrl_trip=int(tripped),
+            any_fail_peak=nt.get("peak"),
+        )
+
+    def _ctrl_consec(self, blk: _Block) -> None:
+        """Control of CHK-PF-CONSEC: the trips of the block reach the alert."""
+        tripped = self._tripped(blk.trip_alert)
+        self._ctrl("PF-CONSEC", tripped, thr=blk.thr, ctrl_single_burst_alert=int(tripped))
+
+    async def _grade_disable(self) -> None:
+        """CHK-PF-DISABLE at the end of the disable leg (its control follows the trips)."""
+        self._ctrl_disable()
         d = self.disable_result or {}
-        self.chk.ctrl("PF-DISABLE", ctrl_ok, ctrl_thr3_alert=int(ctrl_ok))
         extra = {"reason": d["reason"]} if d.get("reason") else {}
-        self.chk.ok(
+        await self._grade(
             "PF-DISABLE",
             not d.get("reason")
             and d.get("alert") == 0
             and d.get("pf") == 0
             and d.get("peak", 0) > DISABLE_WINDOWS - 2
             and d.get("zero") is True,
+            ESRC_PA_DISABLE,
             **extra,
             thr=0,
             win=d.get("win"),
@@ -1244,5 +1505,135 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             expect_last_nonzero_word_max=d.get("expect_last_nonzero_word_max"),
             watch_words=d.get("watch_words"),
             expect_watch_words_min=LAT_WINDOWS * d["win"] if d.get("win") else None,
-            ctrl_thr3_alert=int(ctrl_ok),
         )
+
+    def _ctrl_disable(self) -> None:
+        """Control of CHK-PF-DISABLE: every trip of the blocks that ran before it reaches the alert."""
+        before = sorted(self.block_trips)
+        ctrl_ok = bool(before) and all(self._tripped(self.block_trips[t]) for t in before)
+        self._ctrl("PF-DISABLE", ctrl_ok, ctrl_trip_thr=before, ctrl_trip_alert=int(ctrl_ok))
+
+    # --- MAIN_SM_STATUS.ERR leg ------------------------------------------------------
+    async def _err_read(self) -> tuple[int, int]:
+        """One MAIN_SM_STATUS read: (the ERR field, the whole word)."""
+        word = await self._rd(ESRC_MAIN_SM_STATUS)
+        return (word & M_ERR) >> ERR_BP, word
+
+    async def _pf_read(self) -> int:
+        """One INTR_STATUS read: the PERSISTENT_FAILURE field."""
+        return int((await self._rd(ESRC_INTR_STATUS)) & M_PF != 0)
+
+    def _inject(self, on: bool, bit: int) -> None:
+        dut = cocotb.top
+        dut.esrc_cntr_inject_bit_i.value = bit
+        dut.esrc_cntr_inject_i.value = 1 if on else 0
+
+    async def _clocks_wait(self, n: int) -> None:
+        for _ in range(n):
+            await RisingEdge(cocotb.top.clk_i)
+
+    async def _sm_err_leg(self) -> None:
+        """CHK-SM-ERR (set, reset_clears), OBS-SM-ERR-W0 and OBS-SM-ERR-W1C, the last leg.
+
+        Golden: entropy_source.adoc:410 (ERR, RW1C, reset 0x0: it latches a
+        health-test counter integrity error; a reset of the block clears it) and
+        architecture.adoc:136 (the full entropy-source reset clears it). The main
+        state machine stays in its error state until the reset, so the leg is last.
+        """
+        bit_a, bit_b = self.plan.inj_bits
+        close_graded_window(self.logger)
+        try:
+            await self._trng_reset()
+        except TrialTimeout as exc:
+            for leg in ("set", "reset_clears"):
+                self._fail("SM-ERR", leg=leg, reason=f"timeout:{exc.what}", bound=exc.bound)
+            return
+        # Leg set: ERR 0 and PERSISTENT_FAILURE 0 (the probes), the inject, a wait,
+        # then one read of each. A poll would pair two reads after the inject and is
+        # not used. The interrupt enables are written before the window opens: no
+        # text states whether a status bit latches while its enable is clear.
+        await self._wr(ESRC_INTR_ENABLE, INTR_ENABLE_ALL)
+        open_graded_window(TEST, self.logger)
+        err0, w0 = await self._err_read()
+        pf0 = await self._pf_read()
+        self._inject(True, bit_a)
+        await self._clocks_wait(SM_ERR_WAIT_CLKS)
+        err1, w1 = await self._err_read()
+        pf1 = await self._pf_read()
+        await self._grade(
+            "SM-ERR",
+            err0 == 0 and pf0 == 0 and err1 == 1 and pf1 == 1,
+            ESRC_PA_SM_ERR,
+            leg="set",
+            inj_bit=bit_a,
+            err_before=err0,
+            expect_err_before=0,
+            pf_before=pf0,
+            expect_pf_before=0,
+            err=err1,
+            expect_err=1,
+            pf=pf1,
+            expect_pf=1,
+            wait_clk=SM_ERR_WAIT_CLKS,
+            word_before=f"0x{w0:08x}",
+            word=f"0x{w1:08x}",
+        )
+        # Write of 0, then write of 1, while the cause persists: the copies stay
+        # apart after the drop, so ERR latches again whatever a write does. Both
+        # are logged only, with the window closed, so no cell takes these reads.
+        close_graded_window(self.logger)
+        self._inject(False, bit_a)
+        await self._wr(ESRC_MAIN_SM_STATUS, SM_W0)
+        err2, w2 = await self._err_read()
+        self.chk.obs(
+            "SM-ERR-W0",
+            err_before=err1,
+            wr=f"0x{SM_W0:08x}",
+            err=err2,
+            word=f"0x{w2:08x}",
+            cause="counter_copies_apart",
+        )
+        await self._wr(ESRC_MAIN_SM_STATUS, M_ERR)
+        err3, w3 = await self._err_read()
+        self.chk.obs(
+            "SM-ERR-W1C",
+            err_before=err2,
+            wr=f"0x{M_ERR:08x}",
+            err=err3,
+            word=f"0x{w3:08x}",
+            cause="counter_copies_apart",
+        )
+        # Leg reset_clears: a second inject in the other bit sets ERR again whatever
+        # the write of 1 did; then the TRNG reset (the inject drops before the
+        # release) and one read.
+        self._inject(True, bit_b)
+        await self._clocks_wait(SM_ERR_WAIT_CLKS)
+        open_graded_window(TEST, self.logger)
+        err4, w4 = await self._err_read()
+        reset_seen = 0
+        try:
+            await self.setup.trng_reset(before_release=lambda: self._inject(False, bit_b))
+            reset_seen = 1
+        except TrialTimeout as exc:
+            self._inject(False, bit_b)
+            self._fail("SM-ERR", leg="reset_clears", reason=f"timeout:{exc.what}", bound=exc.bound)
+            return
+        err5, w5 = await self._err_read()
+        pf5 = await self._pf_read()
+        await self._grade(
+            "SM-ERR",
+            err4 == 1 and reset_seen == 1 and err5 == 0 and pf5 == 0,
+            ESRC_PA_SM_ERR,
+            leg="reset_clears",
+            inj_bit=bit_b,
+            err_before_reset=err4,
+            expect_err_before_reset=1,
+            trng_reset_seen=reset_seen,
+            err=err5,
+            expect_err=0,
+            pf=pf5,
+            expect_pf=0,
+            word_before_reset=f"0x{w4:08x}",
+            word=f"0x{w5:08x}",
+        )
+        close_graded_window(self.logger)

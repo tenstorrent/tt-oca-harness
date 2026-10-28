@@ -20,13 +20,13 @@ sections Token Activation, Implementation Requirements):
                     bench binds, read through the simulator handle of
                     ``SecDisTbDigest`` (``tb/tb_top.sv``).
   CHK-SIGINT        with ``lc_sigint_inject_i`` raised (both rails of the byte at
-                    the lifecycle decoder input at 0), ``lc_sigint_err_o`` = 1 and
+                    the lifecycle decoder input at 0), ``sep_ras_o.lc_sigint_err`` = 1 and
                     ``FEAT_CTRL`` = 0 at the register and at ``lcc_feat_ctrl_probe_o``.
                     Control: the epoch before the inject reads the non-zero profile
-                    row with ``lc_sigint_err_o`` = 0. Nibble 0111 is logged
+                    row with ``sep_ras_o.lc_sigint_err`` = 0. Nibble 0111 is logged
                     ``role=control``.
   CHK-SIGINT-SECDIS with the inject still raised, a ``TOKEN_ZERO`` SEC_DIS match
-                    gives an all-ones ``FEAT_CTRL`` with ``lc_sigint_err_o`` = 1, and
+                    gives an all-ones ``FEAT_CTRL`` with ``sep_ras_o.lc_sigint_err`` = 1, and
                     a ``TOKEN_OTHER`` mismatch returns it to 0. Control:
                     ``security_disable_o`` rises on the match (else ``CHK-HOOK FAIL``).
   CHK-JTAG-SIGINT   leg C (n = 0000): while ``jtag_filter_lc_sigint_err_probe_o`` = 1
@@ -42,7 +42,7 @@ sections Token Activation, Implementation Requirements):
                     nibble logs ``CHK-JTAG-SIGINT N/A``.
 
 Nothing is graded after an inject input falls: the specification states no release
-of ``lc_sigint_err_o``. ``lc_sigint_err_o`` under the filter-side inject is logged
+of ``sep_ras_o.lc_sigint_err``. ``sep_ras_o.lc_sigint_err`` under the filter-side inject is logged
 (``OBS-LC-SIGINT-FILTER``) and not graded.
 """
 

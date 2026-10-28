@@ -18,10 +18,12 @@ Contract (``vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc
     22) pulse the Crypto alert, vector bit 32 (csrng.adoc:381-396; edn.adoc:309-315;
     crypto.adoc:151; interrupts.adoc:177-178).
   * A TRNG reset clears ``ERR_CODE`` (hw/ip/entropy_source/doc/architecture.adoc:219-223).
+  * ``CTRL.CMD_FIFO_RST`` True clears both command FIFOs (edn.adoc:98-101).
   * ``RESEED_CMD`` and ``GENERATE_CMD`` take up to 13 words; a 14th sets
     ``SFIFO_RESCMD_ERR`` or ``SFIFO_GENCMD_ERR``, ``edn_fatal_err`` and a fatal
-    alert (edn.adoc:225, :232, :241, :249, :318, :323). The drop of the 14th word
-    is not graded: no register reads the FIFO level or contents.
+    alert (edn.adoc:225, :232, :241, :249, :318, :323), and ``FIFO_WRITE_ERR``,
+    the type bit of a write to a full FIFO (edn.adoc:305). The drop of the 14th
+    word is not graded: no register reads the FIFO level or contents.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20. Each trial pulses the TRNG
@@ -32,7 +34,8 @@ every ``clk_i``.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the order of the 12 source-bit cells, the order of the two FIFO
-trials, the extra word count e (2 to 12) of each FIFO and the test data words.
+trials, the extra word count e (2 to 12) of each FIFO, the test data words, the
+count k (1 to 12) of words each FIFO holds before the clear and those words.
 
 Checkers:
   CHK-DRBG-ERRCODE  the forced bit sets; the fatal state is 1 (CSRNG all, EDN 0 and 1)
@@ -43,12 +46,22 @@ Checkers:
   CHK-DRBG-STICKY   after a write-one clear of the state the source bit stays (all but
                     EDN 0); the FIFO-error cells read the state 0 after the clear.
   CHK-DRBG-RESET    ERR_CODE reads 0 after a TRNG reset. Control: non-zero before.
-  CHK-EDN-FIFO13    after a CTRL.CMD_FIFO_RST pulse (edn.adoc:98-101),
-                    1, e and 13 words: ERR_CODE 0, INTR_STATE 0, vector bits 28 and 32 low.
-  CHK-EDN-FIFO14    the 14th word: the FIFO error bit, edn_fatal_err, vector bit 28 and
-                    at least one clock of vector bit 32.
+  CHK-EDN-FIFO13    the FIFO holds k words, then a CTRL.CMD_FIFO_RST pulse
+                    (edn.adoc:98-101), then 1, e and 13 words: ERR_CODE 0, INTR_STATE 0,
+                    vector bits 28 and 32 low. A clear that keeps the k words errs at
+                    word 14 - k, at or before the 13-word read. Control: ERR_CODE 0
+                    with the k words held, before the clear.
+  CHK-EDN-FIFO14    the 14th word: ERR_CODE equals the FIFO error bit plus
+                    FIFO_WRITE_ERR, INTR_STATE equals edn_fatal_err, vector bit 28 high
+                    and at least one clock of vector bit 32.
 Every ERR_CODE compare uses the field bits of the register text; the Reserved
 bits are logged as ``rsvd``.
+
+FCOV (owner of the graded window, ``env/sep_fcov_gate.py``): each source-bit
+cell and each FIFO trial opens the window after its set-up and sets the pass
+label ``drbg_fatal_pass`` only after every check of that step passed; the
+sampler holds the cells of the step until then. The first FAIL closes the
+window, and no later step opens it.
 """
 
 from __future__ import annotations
@@ -57,10 +70,10 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_drbg_fatal_pass
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import CSRNG, EDN, sym
@@ -170,6 +183,9 @@ UNITS = {
         EDN_FIFO_BITS,
     ),
 }
+# ERR_CODE after the 14th word: the FIFO source bit and the full-FIFO write type
+# bit (edn.adoc:305, :318-326).
+EDN_FIFO_WRITE_ERR = EDN.fields("ERR_CODE")["FIFO_WRITE_ERR"]["bm"]
 EDN_CMD_FIFO = {
     "reseed": (sym("EDN_RESEED_CMD_REG_ADDR"), EDN.fields("ERR_CODE")["SFIFO_RESCMD_ERR"]),
     "generate": (sym("EDN_GENERATE_CMD_REG_ADDR"), EDN.fields("ERR_CODE")["SFIFO_GENCMD_ERR"]),
@@ -186,16 +202,22 @@ class Plan:
     fifo_order: tuple[str, ...]
     extra: dict
     words: dict
+    pre: dict
+    pre_words: dict
 
     def describe(self) -> str:
         cells = ",".join(f"{u}:{b}" for u, b in self.cells)
         words = " ".join(
             f"{f}_words={[f'0x{w:08x}' for w in self.words[f]]}" for f in self.fifo_order
         )
+        pre = " ".join(
+            f"{f}_held={[f'0x{w:08x}' for w in self.pre_words[f]]}" for f in self.fifo_order
+        )
         return (
             f"cells={cells} fifo_order={','.join(self.fifo_order)} "
             f"e_reseed={self.extra['reseed']} e_generate={self.extra['generate']} "
-            f"fatal_enable=1 {words}"
+            f"fatal_enable=1 {words} k_reseed={self.pre['reseed']} "
+            f"k_generate={self.pre['generate']} {pre}"
         )
 
 
@@ -217,7 +239,17 @@ def draw_plan(seed: int) -> Plan:
                 used.add(w)
                 out.append(w)
         words[f] = tuple(out)
-    return Plan(seed, tuple(cells), tuple(fifo_order), extra, words)
+    pre = {f: rng.randrange(1, FIFO_WORDS) for f in FIFO_TRIALS}
+    pre_words: dict[str, tuple[int, ...]] = {}
+    for f in FIFO_TRIALS:
+        held: list[int] = []
+        while len(held) < pre[f]:
+            w = rng.getrandbits(32)
+            if w not in used:
+                used.add(w)
+                held.append(w)
+        pre_words[f] = tuple(held)
+    return Plan(seed, tuple(cells), tuple(fifo_order), extra, words, pre, pre_words)
 
 
 class _DrbgRegs(SepAxiRegDriver):
@@ -257,9 +289,38 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         for fifo in plan.fifo_order:
             await self._fifo_trial(fifo)
         close_graded_window(self.logger)
+        set_drbg_fatal_pass(False, self.logger)
         self._stop_sb()
         await self.vec.stop()
         self.chk.finish()
+
+    # --- graded window and pass label ---------------------------------------------
+    def _open_window(self) -> None:
+        """Open the window of the leaf unless a check or control already failed."""
+        if self.chk.failures == 0:
+            open_graded_window(TEST, self.logger)
+
+    def _ok(self, name: str, cond: bool, **fields) -> bool:
+        """Grade one check; a FAIL is recorded, then the window closes."""
+        res = self.chk.ok(name, cond, **fields)
+        if not cond:
+            close_graded_window(self.logger)
+        return res
+
+    def _ctrl(self, name: str, cond: bool, **fields) -> bool:
+        """Log one control; an absent control is recorded, then the window closes."""
+        res = self.chk.ctrl(name, cond, **fields)
+        if not cond:
+            close_graded_window(self.logger)
+        return res
+
+    async def _release(self) -> None:
+        """Pulse the pass label after every check of the step passed, then close."""
+        if self.chk.failures == 0:
+            set_drbg_fatal_pass(True, self.logger)
+            await ClockCycles(cocotb.top.clk_i, 2)
+            set_drbg_fatal_pass(False, self.logger)
+        close_graded_window(self.logger)
 
     # --- bus, clocks and set-up ---------------------------------------------------
     async def _wr(self, addr: int, data: int) -> None:
@@ -336,7 +397,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
 
     async def _reset_leg(self, unit: Unit, **key) -> None:
         before = await self._rd(unit.err_code)
-        self.chk.ctrl(
+        self._ctrl(
             "DRBG-RESET",
             (before & unit.err_mask) != 0,
             unit=unit.name,
@@ -345,7 +406,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         )
         await self._trng_reset()
         after = await self._rd(unit.err_code)
-        self.chk.ok(
+        self._ok(
             "DRBG-RESET",
             (after & unit.err_mask) == 0,
             unit=unit.name,
@@ -357,7 +418,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
     # --- source-bit cells (steps 3-8) -------------------------------------------------
     async def _cell(self, unit: Unit, bit: int) -> None:
         await self._setup()
-        open_graded_window(TEST, self.logger)
+        self._open_window()
         vec_key = unit.vec_key
         fifo_bit = bit in unit.fifo_bits
         alert_src = bit in unit.alert_bits
@@ -379,13 +440,14 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         st = await self._rd(unit.intr_state)
         en = await self._rd(unit.intr_enable)
         fatal_state = int(bool(st & unit.fatal_bm))
+        enabled = int(bool(en & unit.fatal_bm))
         vec_level = self.vec.level(vec_key)
         vec_rose = int(self.vec.rises_since(m_err, vec_key) >= 1)
         other = err & unit.err_mask & SOURCE_BITS & ~src
         typ = err & unit.err_mask & TYPE_BITS
 
         pre_ok = (err0 & unit.err_mask) == 0 and (st0 & unit.fatal_bm) == 0
-        self.chk.ctrl(
+        self._ctrl(
             "DRBG-ERRCODE",
             pre_ok,
             unit=unit.name,
@@ -401,7 +463,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             "OBS-other-src": f"0x{other:08x}",
             "OBS-type": f"0x{typ:08x}",
             "fatal_state": fatal_state,
-            "enable": int(bool(en & unit.fatal_bm)),
+            "enable": enabled,
             "vec": vec_level,
             "vec_pre": vec_pre,
             "vec_rose": vec_rose,
@@ -409,11 +471,15 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         }
         if not set_ok:
             fields["reason"] = f"timeout:err_code bound={bound}"
-        graded = set_ok and (
-            not state_graded
-            or (fatal_state == 1 and vec_pre == 0 and vec_rose == 1 and vec_level == 1)
+        graded = (
+            set_ok
+            and enabled == 1
+            and (
+                not state_graded
+                or (fatal_state == 1 and vec_pre == 0 and vec_rose == 1 and vec_level == 1)
+            )
         )
-        self.chk.ok("DRBG-ERRCODE", graded, **fields)
+        self._ok("DRBG-ERRCODE", graded, **fields)
 
         # Sticky leg (step 8).
         s_before = int(bool(await self._rd(unit.intr_state) & unit.fatal_bm))
@@ -425,8 +491,8 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
 
         if alert_src:
             pre = pre_alert_clocks + (pre_level or 0)
-            self.chk.ctrl("DRBG-ALERT", pre == 0, unit=unit.name, bit=bit, pre=pre)
-            self.chk.ok(
+            self._ctrl("DRBG-ALERT", pre == 0, unit=unit.name, bit=bit, pre=pre)
+            self._ok(
                 "DRBG-ALERT",
                 pre == 0 and alert_cycles >= 1,
                 unit=unit.name,
@@ -439,7 +505,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             self.chk.obs("DRBG-ALERT", unit=unit.name, bit=bit, pic33_high_cycles=alert_cycles)
 
         if fifo_bit:
-            self.chk.ctrl("DRBG-STICKY", s_before == 1, unit=unit.name, bit=bit, state_before=1)
+            self._ctrl("DRBG-STICKY", s_before == 1, unit=unit.name, bit=bit, state_before=s_before)
         else:
             self.chk.obs(
                 "DRBG-STATE-AFTER-W1C", unit=unit.name, bit=bit, before=s_before, after=s_after
@@ -448,7 +514,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         if edn0:
             self.chk.obs("EDN-STICKY0", **self._err_fields(unit, err2))
         sticky = (edn0 or kept == 1) and (not fifo_bit or s_after == 0)
-        self.chk.ok(
+        self._ok(
             "DRBG-STICKY",
             set_ok and sticky,
             unit=unit.name,
@@ -462,7 +528,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
 
         # Reset leg (step 9).
         await self._reset_leg(unit, bit=bit)
-        close_graded_window(self.logger)
+        await self._release()
 
     # --- EDN command FIFO trials (steps 10-13) -----------------------------------------
     async def _fifo_trial(self, fifo: str) -> None:
@@ -471,13 +537,25 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         addr, err_meta = EDN_CMD_FIFO[fifo]
         words = plan.words[fifo]
         e = plan.extra[fifo]
+        k = plan.pre[fifo]
         await self._setup()
-        # CMD_FIFO_RST True clears both command FIFOs, and software returns it to its
-        # reset state before the next command word (edn.adoc:98-101), so the count
-        # below starts from an empty FIFO.
+        # The FIFO holds k words (1 to 12) before the clear. CMD_FIFO_RST True clears
+        # both command FIFOs, and software returns it to its reset state before the
+        # next command word (edn.adoc:98-101), so the FIFO takes 13 words after the
+        # clear and errs on the 14th. A FIFO that keeps the k words errs at word 14 - k.
+        for w in plan.pre_words[fifo]:
+            await self._wr(addr, w)
+        held = await self._rd(unit.err_code)
+        self._ctrl(
+            "EDN-FIFO-HELD",
+            (held & unit.err_mask) == 0,
+            fifo=fifo,
+            held_before_clear=k,
+            **self._err_fields(unit, held),
+        )
+        self._open_window()
         await self._wr(EDN_CTRL_ADDR, EDN_CTRL_FIFO_RST)
         await self._wr(EDN_CTRL_ADDR, EDN_CTRL_SW_PORT)
-        open_graded_window(TEST, self.logger)
         await self._wr(unit.intr_enable, unit.fatal_bm)
         m = self.vec.mark()
         n = 0
@@ -492,10 +570,11 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             hi32 = self.vec.high_clocks_since(m, "alert")
             ok = (err & unit.err_mask) == 0 and (st & unit.state_mask) == 0 and hi28 == hi32 == 0
             ok13 = ok13 and ok
-            self.chk.ok(
+            self._ok(
                 "EDN-FIFO13",
                 ok,
                 fifo=fifo,
+                held_before_clear=k,
                 words=n,
                 **self._err_fields(unit, err),
                 intr_state=f"0x{st & unit.state_mask:x}",
@@ -504,23 +583,34 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             )
         m14 = self.vec.mark()
         await self._wr(addr, words[FIFO_WORDS])
+        # The graded ERR_CODE value is the first read that shows the FIFO source bit.
         set_ok, err, bound = await self._wait_err_bit(unit, err_meta["bm"])
         st = await self._rd(unit.intr_state)
-        fatal = int(bool(st & unit.fatal_bm))
         vec28 = self.vec.level("edn_fatal")
         alert = self.vec.high_clocks_since(m14, "alert")
-        self.chk.ctrl("EDN-FIFO14", ok13, fifo=fifo, ctrl_fifo13_ok=ok13)
+        want_err = err_meta["bm"] | EDN_FIFO_WRITE_ERR
+        self._ctrl("EDN-FIFO14", ok13, fifo=fifo, ctrl_fifo13_ok=ok13)
         fields = {
             "fifo": fifo,
+            "held_before_clear": k,
             "words": FIFO_WORDS + 1,
             **self._err_fields(unit, err),
-            "fifo_err_bit": err_meta["bp"],
-            "fatal_intr": fatal,
+            "err_code_expected": f"0x{want_err:08x}",
+            "intr_state": f"0x{st & unit.state_mask:x}",
+            "intr_state_expected": f"0x{unit.fatal_bm:x}",
             "vec28": vec28,
             "alert_cycles": alert,
         }
         if not set_ok:
             fields["reason"] = f"timeout:err_code bound={bound}"
-        self.chk.ok("EDN-FIFO14", set_ok and fatal == 1 and vec28 == 1 and alert >= 1, **fields)
+        self._ok(
+            "EDN-FIFO14",
+            set_ok
+            and (err & unit.err_mask) == want_err
+            and (st & unit.state_mask) == unit.fatal_bm
+            and vec28 == 1
+            and alert >= 1,
+            **fields,
+        )
         await self._reset_leg(unit, trial=f"fifo_{fifo}")
-        close_graded_window(self.logger)
+        await self._release()

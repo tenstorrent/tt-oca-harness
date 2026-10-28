@@ -2,20 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unsupported-access refusal on drbg_axil64_lane_adapter.
 
-Graded contract (hw/ip/drbg/doc/architecture.adoc "Bus Protocol Adaptation"):
-the adapter forwards only aligned single-lane accesses with WSTRB 0x0F or 0xF0,
-selects the 32-bit data lane by address bit 2, and answers every other access
-AXI SLVERR with no downstream request. The graded refused cells are therefore
-the writes whose strobe is not 0x0F or 0xF0 and the writes whose address is not
-4-byte aligned (``VEHICLE_REFUSED``, and the DUT narrow write).
+Graded contract (hw/ip/drbg/doc/architecture.adoc:81-84, table "DRBG lane
+adapter forwarded accesses", and :87): the adapter forwards a write only when
+its address is 4-byte aligned and its WSTRB is 0x0F at address bit 2 = 0 or
+0xF0 at bit 2 = 1, and a read only when its address is 4-byte aligned. A
+forwarded read carries the addressed word in the lane address bit 2 selects
+and zero in the other lane. Any other access returns SLVERR and sends no
+downstream request, and a rejected read returns zero data.
 
-Driven only (``VEHICLE_HEADER_ONLY``, and the DUT misaligned read): the
-architecture document does not state that a read must be 4-byte aligned, that
-a legal strobe must match address bit 2, or that a read returns zero in the
-other lane. Those rules are stated only in the adapter RTL header, not in
-``hw/ip/drbg/doc/architecture.adoc``. Their cells
-run on every seed and their response, data and forward probe are logged at
-info level as ``NOT_GRADED_NOTE``, outside the verdict.
+The refused cells are therefore the writes whose strobe is not the one of
+their lane (a byte, a halfword, a full 64-bit beat, a zero strobe, the strobe
+of the other lane), the writes and reads whose address is not 4-byte aligned
+(``VEHICLE_REFUSED``, and the DUT narrow write and misaligned read), and the
+zero lane of a forwarded read (``lane_word``, and the DUT lane read).
 
 Two drivers:
 
@@ -34,8 +33,9 @@ Two drivers:
   clear. ``PortWatch`` samples the lane adapter's AXI-Lite-64 input
   (``drbg_csrng_axil_chan_o`` / ``drbg_edn_axil_chan_o``) over the same
   window, so the SLVERR is shown to answer a beat the adapter accepted and
-  not a refusal upstream of it. The misaligned read records the same
-  observations for the log only.
+  not a refusal upstream of it. ``raw_read`` records the whole 64-bit s_axi
+  R beat of a read (``AbrBusWatch``), so the zero lane and the zero data of a
+  rejected read are graded on the bus, not on the bytes the master extracts.
 
 A probe value that is X or Z is counted, never read as "nothing forwarded".
 """
@@ -51,6 +51,7 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import AXI_BUS_BYTES, axi_lane_strobe
 from sep_reg_meta import CSRNG, EDN, SEP_CPU_CTRL, sym
 
+from seq_lib.sep_abr_bus_seq import AbrBusWatch
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
 from seq_lib.sep_drbg_adapter_port_seq import (
     AR_READY,
@@ -82,18 +83,16 @@ POST_RESP_CYCLES = 4
 LANE_BYTES = 4
 LOWER_LANE = 0x0
 UPPER_LANE = LANE_BYTES
-
-# Logged with every observation the verdict does not use: the architecture
-# document does not state the rule.
-NOT_GRADED_NOTE = "not graded: no specification states the rule"
+LANE_WORD_MASK = (1 << (8 * LANE_BYTES)) - 1
 
 # Vehicle cells: (name, op, addr, strobe). Strobes are AMBA's
 # (sep_spec_tables.axi_lane_strobe), not the adapter's own predicate, so each
-# cell states the protocol meaning of what it presents.
-#
-# Driven only: a misaligned read, and a legal strobe on the lane address bit 2
-# does not select. The spec does not say whether the adapter refuses them.
-VEHICLE_HEADER_ONLY: tuple[tuple[str, SepAxiOp, int, int], ...] = (
+# cell states the protocol meaning of what it presents. Every cell is an access
+# architecture.adoc:81-84 does not list, so :87 refuses it with SLVERR and no
+# downstream request, and a refused read returns zero data. Run order: the
+# misaligned reads, the strobes of the other lane, then the other strobes and
+# the misaligned writes.
+VEHICLE_REFUSED: tuple[tuple[str, SepAxiOp, int, int], ...] = (
     *(
         (f"rd-misaligned-{base:x}+{off}", SepAxiOp.READ, base + off, 0)
         for base in (LOWER_LANE, UPPER_LANE)
@@ -101,23 +100,12 @@ VEHICLE_HEADER_ONLY: tuple[tuple[str, SepAxiOp, int, int], ...] = (
     ),
     ("wr-lower-addr-upper-strb", SepAxiOp.WRITE, LOWER_LANE, axi_lane_strobe(UPPER_LANE)),
     ("wr-upper-addr-lower-strb", SepAxiOp.WRITE, UPPER_LANE, axi_lane_strobe(LOWER_LANE)),
-)
-
-# Graded: a strobe that is not 0x0F or 0xF0, or a write address that is not
-# aligned. The spec refuses both with SLVERR.
-VEHICLE_REFUSED: tuple[tuple[str, SepAxiOp, int, int], ...] = (
     ("wr-full-beat", SepAxiOp.WRITE, LOWER_LANE, axi_lane_strobe(LOWER_LANE, AXI_BUS_BYTES)),
     ("wr-lower-byte", SepAxiOp.WRITE, LOWER_LANE, axi_lane_strobe(LOWER_LANE, 1)),
     ("wr-upper-halfword", SepAxiOp.WRITE, UPPER_LANE, axi_lane_strobe(UPPER_LANE, 2)),
     ("wr-zero-strb", SepAxiOp.WRITE, LOWER_LANE, 0),
     ("wr-misaligned-lower", SepAxiOp.WRITE, LOWER_LANE + 1, axi_lane_strobe(LOWER_LANE)),
     ("wr-misaligned-upper", SepAxiOp.WRITE, UPPER_LANE + 1, axi_lane_strobe(UPPER_LANE)),
-)
-
-# Every vehicle cell in run order, with whether its refusal is graded.
-VEHICLE_CELLS: tuple[tuple[tuple[str, SepAxiOp, int, int], bool], ...] = (
-    *((cell, False) for cell in VEHICLE_HEADER_ONLY),
-    *((cell, True) for cell in VEHICLE_REFUSED),
 )
 
 VEHICLE_WDATA = 0x0123_4567_89AB_CDEF
@@ -282,11 +270,21 @@ def legal_partner(op: SepAxiOp, addr: int) -> tuple[SepAxiOp, int, int]:
 def lane_word(rdata: int, addr: int) -> tuple[int, int]:
     """(addressed 32-bit lane, other lane) of a 64-bit read beat.
 
-    The spec grades the addressed lane only; the other lane is logged with
-    ``NOT_GRADED_NOTE``.
+    A forwarded read carries the addressed word in the lane address bit 2
+    selects and zero in the other lane (architecture.adoc:83-84).
     """
-    lo, hi = rdata & 0xFFFF_FFFF, rdata >> 32
+    lo, hi = rdata & LANE_WORD_MASK, rdata >> (8 * LANE_BYTES)
     return (hi, lo) if addr & LANE_BYTES else (lo, hi)
+
+
+def lane_beat(word: int, addr: int) -> int:
+    """The whole 64-bit R beat a forwarded read of ``word`` at ``addr`` returns.
+
+    architecture.adoc:83-84: the word in the lane address bit 2 selects, zero
+    in the other lane.
+    """
+    word &= LANE_WORD_MASK
+    return word << (8 * LANE_BYTES) if addr & LANE_BYTES else word
 
 
 @dataclass(frozen=True)
@@ -324,6 +322,40 @@ DUT_LANES: tuple[DutLane, ...] = (
     DutLane("csrng", CSRNG, "csrng"),
     DutLane("edn", EDN, "edn"),
 )
+
+# Lane-read granules per DUT lane: (word at address bit 2 = 0, word at bit 2 =
+# 1) of one 8-byte granule. Each word is a control or command register with no
+# read side effect and a non-zero reset value in the generated register map, so
+# the neighbour of each graded read carries data a lane leak would show.
+LANE_GRANULES: dict[str, tuple[tuple[str, str], ...]] = {
+    "csrng": (("REGWEN", "CTRL"), ("INT_STATE_READ_ENABLE", "INT_STATE_READ_ENABLE_REGWEN")),
+    "edn": (("REGWEN", "CTRL"), ("BOOT_INS_CMD", "BOOT_GEN_CMD")),
+}
+
+
+@dataclass(frozen=True)
+class LaneGranule:
+    """One 8-byte granule of a DUT lane: the bit 2 = 0 word and the bit 2 = 1 word."""
+
+    lo_name: str
+    hi_name: str
+    lo_addr: int
+    hi_addr: int
+
+
+def granule_for(lane: DutLane, rng: SepSeededRng) -> LaneGranule:
+    """The seeded lane-read granule of ``lane``, from ``LANE_GRANULES``."""
+    lo_name, hi_name = rng.choice(LANE_GRANULES[lane.name])
+    lo_addr = sym(f"{lane.block.block}_{lo_name}_REG_ADDR")
+    hi_addr = sym(f"{lane.block.block}_{hi_name}_REG_ADDR")
+    if lo_addr % AXI_BUS_BYTES or hi_addr != lo_addr + LANE_BYTES:
+        raise ValueError(
+            f"{lane.name} granule {lo_name}@0x{lo_addr:08x} / {hi_name}@0x{hi_addr:08x} "
+            f"is not one {AXI_BUS_BYTES}-byte granule with the bit 2 = 1 word above it"
+        )
+    return LaneGranule(lo_name, hi_name, lo_addr, hi_addr)
+
+
 PERIPH_STATUS_ADDR = SEP_CPU_CTRL.addr("PERIPH_BUS_ERR_STATUS")
 
 # AxSIZE for a 1- or 2-byte transfer.
@@ -349,6 +381,26 @@ def plan_for(lane: DutLane, rng: SepSeededRng, baseline: int) -> DutLanePlan:
         wr_bytes=rng.choice((1, 2)),
         pattern=(baseline ^ flip) & lane.mask,
     )
+
+
+@dataclass
+class RawRead:
+    """One s_axi read: response, every AR and R handshake seen, forward probe."""
+
+    resp: int
+    ar: list[tuple[int, int, int]]  # (cycle, id, addr)
+    r: list[tuple[int, int, int, int]]  # (cycle, id, resp, data)
+    fwd: FwdWatch
+
+    @property
+    def beat(self) -> int | None:
+        """The R beat data when exactly one R handshake was seen, else None."""
+        return self.r[0][3] if len(self.r) == 1 else None
+
+    def describe(self) -> str:
+        ars = ", ".join(f"0x{a:08x}" for _c, _i, a in self.ar) or "none"
+        rs = ", ".join(f"resp={rr} data=0x{d:016x}" for _c, _i, rr, d in self.r) or "none"
+        return f"resp={self.resp}; s_axi AR [{ars}]; R [{rs}]; {self.fwd.describe()}"
 
 
 async def _capture_w(prefix: str = "s_axi") -> int:
@@ -399,19 +451,39 @@ class SepDrbgLaneRefusal:
         resp = await self.write32(name, lane.reg_addr, data)
         return resp, await watch.stop()
 
+    async def raw_read(self, name: str, lane: DutLane, addr: int) -> RawRead:
+        """One AxSIZE 2 read at ``addr`` with the whole s_axi R beat recorded.
+
+        Returns the response, every s_axi AR and R handshake over the access
+        and the lane adapter's forward probe over it. The caller grades the R
+        beat; a read that does not complete still fails.
+        """
+        watch = FwdWatch(lane.fwd_signal).start()
+        bus = AbrBusWatch(("s_axi",))
+        bus.start()
+        seq = await self._seq(
+            name, op=SepAxiOp.READ, addr=addr, length=LANE_BYTES, size=SIZE_OF_BYTES[LANE_BYTES]
+        )
+        fwd = await watch.stop()
+        bus.stop()
+        return RawRead(seq.resp_code, bus.rec["s_axi"].ar, bus.rec["s_axi"].r, fwd)
+
     async def misaligned_read(
         self, lane: DutLane, offset: int
-    ) -> tuple[int, dict | None, FwdWatch, PortWatch]:
-        """One single-byte read at ``offset`` into the word, driven only.
+    ) -> tuple[RawRead, dict | None, PortWatch]:
+        """One single-byte read at ``offset`` into the word.
 
-        The spec does not state the read alignment rule, so the response is not
-        graded here or by the scoreboard (a read that does not complete still
-        fails). Returns (RRESP, presented AR, forward probe over the access,
-        adapter input handshakes over the access) for the caller to log.
+        architecture.adoc:87 refuses it: SLVERR, no downstream request, zero
+        data. The scoreboard tolerates the non-OKAY response; the caller grades
+        the code, the whole R beat and the probes. Returns (the read with its
+        R beat and forward probe, presented AR, adapter input handshakes over
+        the access).
         """
         addr = lane.reg_addr + offset
         watch = FwdWatch(lane.fwd_signal).start()
         port = PortWatch(lane.port_signal).start()
+        bus = AbrBusWatch(("s_axi",))
+        bus.start()
         ar = cocotb.start_soon(capture_addr_handshake("ar"))
         seq = await self._seq(
             f"{lane.name}_rd_misaligned",
@@ -422,10 +494,12 @@ class SepDrbgLaneRefusal:
             allow_ungraded_read_resp=True,
         )
         await ClockCycles(cocotb.top.clk_i, 1)
-        # Both watches started together; stopping the port watch when the
-        # forward watch stops gives it the same window.
+        # The watches started together; stopping the port and bus watches when
+        # the forward watch stops gives them the same window.
         fwd = await watch.stop()
-        return seq.resp_code, take_handshake(ar), fwd, port.halt()
+        bus.stop()
+        read = RawRead(seq.resp_code, bus.rec["s_axi"].ar, bus.rec["s_axi"].r, fwd)
+        return read, take_handshake(ar), port.halt()
 
     async def narrow_write(
         self, lane: DutLane, nbytes: int, data: int

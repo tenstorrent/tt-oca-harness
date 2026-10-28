@@ -19,7 +19,14 @@
 // CHUNK_DONE and the DMA bus-error latch, and records the three bits as `pre`.
 // The not-connected legs wait for the DMA interrupt in a bounded loop that
 // reads only a DTCM flag, so no CPU access reaches the DMA CSR between GO and
-// the interrupt.
+// the interrupt. Before them the CPU resets and brings up the entropy stack
+// with the internal DRBG on streams 0 and 1 and the external source on stream
+// 2, the pool fill, so no internal word reaches the pool. In the pool leg the
+// test sends a drawn number of word pairs, fewer than the pool depth, on the
+// external stream 2, and the CPU reads the level until it is stable, so the
+// pool holds entropy below its depth and its level stays fixed. Every CPU access that
+// only stages, sets up or restores a leg runs in an M C leg; the accesses
+// that a leg grades (the read-back of the DMA effect) run inside its M G leg.
 
 #include <stdint.h>
 
@@ -32,6 +39,8 @@
 #include "aes.h"
 #include "aon_timer.h"
 #include "sep_scratch.h"
+#include "sep_entropy.h"
+#include "sep_entropy_pool.h"
 
 // ---- Parameter block (the host patches it; keep in step with the test) ----
 #define P_MAGIC_WORD 0xDAE9D0A3u
@@ -71,19 +80,40 @@ enum {
     PFILT_GRP,
     PSMC_OFF,
     PSMC_LEN,
-    PSMC_BASE, // SMC aperture base: the testlist plusarg
-    PIRQ_DONE, // PIC source of the DMA done interrupt
-    PIRQ_ERR,  // PIC source of the DMA error interrupt
+    PSMC_BASE,   // SMC aperture base: the testlist plusarg
+    PIRQ_DONE,   // PIC source of the DMA done interrupt
+    PIRQ_ERR,    // PIC source of the DMA error interrupt
+    PPOOL_SRC,   // DMA source of the entropy-pool leg (the pool DATA word)
+    PSTEE_IDX,   // STEE region of the write leg (nibble 0) and of the read leg (nibble 1)
+    PSTEE_INTRA, // STEE word offset inside its region
+    PSTEE_W_LO,  // REGION_ATTRS of the STEE write region
+    PSTEE_W_HI,
+    PSTEE_R_LO, // REGION_ATTRS of the STEE read region
+    PSTEE_R_HI,
+    PFILT_IDX,  // inbound filter entry of the START_ADDR legs
+    PFILT_E_LO, // END_ADDR of that entry
+    PFILT_E_HI,
+    PFILT_V_LO, // the low and the high word the DMA writes to START_ADDR
+    PFILT_V_HI,
+    PFILT_W,    // the low word the DMA writes to the locked START_ADDR
+    PFILT_LOCK, // the high word of FILTER_CONFIG that sets locked
+    PSMC_CPU_W, // the CPU store to the SMC word
     P_COUNT
 };
 
 // Committed defaults: a directed image that runs stand-alone.
+#define D_POOL SEP_TOP_ENTROPY_POOL_DATA_BASE_ADDR
+#define D_FIDX (SEP_TOP_INBOUND_FILTER_CTRL_NUM - 1u)
+#define D_LOCK ((uint32_t)(FILTER_CTRL__FILTER_CONFIG__LOCKED_bm >> 32))
 volatile uint32_t g_p[P_COUNT] = {
-    P_MAGIC_WORD, 0x3210u, 0x0u,    0x1234567u,  32u,         0x0000u, 0x0u,        32u,
-    0x0u,         0x1000u, 16u,     0x2000u,     16u,         0x3000u, 32u,         0x4000u,
-    0x5000u,      32u,     0x6000u, 0x7000u,     0x0u,        0xC0u,   0x100u,      0x80004000u,
-    0x210u,       8u,      8u,      8u,          0x11111111u, 0x2u,    0x33333333u, 0x5u,
-    0xAu,         0x1000u, 64u,     0x40000000u, 9u,          11u,
+    P_MAGIC_WORD, 0x3210u,     0x0u,        0x1234567u,  32u,     0x0000u, 0x0u,
+    32u,          0x0u,        0x1000u,     16u,         0x2000u, 16u,     0x3000u,
+    32u,          0x4000u,     0x5000u,     32u,         0x6000u, 0x7000u, 0x0u,
+    0xC0u,        0x100u,      0x80004000u, 0x210u,      8u,      8u,      8u,
+    0x11111111u,  0x2u,        0x33333333u, 0x5u,        0xAu,    0x1000u, 64u,
+    0x40000000u,  9u,          11u,         D_POOL,      0x21u,   0x200u,  0x00080000u,
+    0x80000001u,  0x00080000u, 0x80800001u, D_FIDX,      0x3000u, 0x2u,    0x5008u,
+    0x1u,         0xA5A50000u, D_LOCK,      0x5EC0C0DEu,
 };
 
 // ---- Address map ----
@@ -112,6 +142,20 @@ volatile uint32_t g_p[P_COUNT] = {
 #define DMA_CSR_WORD SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR
 #define FILT_IN0_CFG SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
 #define N_OUT_ENTRIES SEP_TOP_OUTBOUND_FILTER_CTRL_NUM
+#define STEE_REGION SEP_TOP_STEE_REGION_BASE_ADDR
+// Byte span of one STEE output-remap region: the STEE window over its regions.
+#define STEE_SPAN (SEP_TOP_STEE_REGION_SIZE / SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_NUM)
+#define STEE_ATTRS(i) SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i)
+#define POOL_STATUS SEP_TOP_ENTROPY_POOL_STATUS_BASE_ADDR
+#define POOL_LEVEL(st) \
+    (((st)&SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bm) >> SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bp)
+// EXT_TRNG_SRC_SEL bit 2 selects the source of stream 2, the entropy pool fill
+// (integration/rdl/sep/sep_cpu_ctrl.rdl:308-310; hw/sys/sep/doc/trng.adoc:94-95).
+// With bit 2 at 1 the internal endpoint is backpressured (trng.adoc:104-105), so
+// only the words the test sends on the external stream 2 reach the pool.
+#define EXT_SEL SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_BASE_ADDR
+#define EXT_SEL_MASK SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_SEL_C607E53D__SEL_bm
+#define EXT_SEL_POOL (1u << 2)
 
 // SRAM bands (offsets from SRAM) of the legs whose offsets are not seeded.
 #define B_EXT 0x8000u
@@ -123,6 +167,7 @@ volatile uint32_t g_p[P_COUNT] = {
 #define B_NC 0xC000u
 #define B_REC_SRC 0xD000u
 #define B_REC_DST 0xE000u
+#define B_FW 0xF000u
 #define REC_LEN 32u
 
 #define ST3 \
@@ -131,6 +176,10 @@ volatile uint32_t g_p[P_COUNT] = {
 #define POLL_ITERS 20000
 #define IRQ_WAIT_ITERS 100000
 #define MARK_SPIN 300
+// Bound of the pool-level poll after the entropy bring-up (LSU reads).
+#define POOL_POLL_ITERS 20000u
+// Equal pool-level reads in a row that end the settle poll after the fill stops.
+#define POOL_SETTLE_READS 64u
 
 static inline uint32_t rd(uint32_t a) {
     return *(volatile uint32_t *)a;
@@ -284,6 +333,7 @@ static uint32_t sram_side(int pair, uint32_t off) {
 }
 
 static void pair_sram_to_scratch(void) {
+    mark('C', "stage");
     uint32_t len = g_p[P0_LEN], n = len / 4u;
     uint32_t src = sram_side(0, g_p[P0_SRAM]), src_d = SRAM + g_p[P0_SRAM];
     uint32_t dst = SCRATCH + g_p[P0_SCR];
@@ -324,6 +374,7 @@ static void pair_sram_to_scratch(void) {
 }
 
 static void pair_scratch_to_sram(void) {
+    mark('C', "stage");
     uint32_t len = g_p[P1_LEN], n = len / 4u;
     uint32_t src = SCRATCH + g_p[P1_SCR];
     uint32_t dst = sram_side(1, g_p[P1_SRAM]), dst_d = SRAM + g_p[P1_SRAM];
@@ -367,6 +418,7 @@ static void pair_scratch_to_sram(void) {
 // staged with that field clear.
 static void pair_reg_to_sram(int id, uint32_t reg, uint32_t set, uint32_t len, uint32_t off,
                              const char *leg) {
+    mark('C', "stage");
     uint32_t n = len / 4u;
     uint32_t dst = sram_side(id, off), dst_d = SRAM + off;
     uint32_t x = seed_of(0x10u + (uint32_t)id);
@@ -400,6 +452,7 @@ static void pair_reg_to_sram(int id, uint32_t reg, uint32_t set, uint32_t len, u
 }
 
 static void direct_copy(void) {
+    mark('C', "stage");
     uint32_t len = g_p[PD_LEN], n = len / 4u;
     uint32_t src = SRAM + g_p[PD_SRC], dst = SRAM + g_p[PD_DST];
     stage_src(src, n, 0x20u);
@@ -427,6 +480,7 @@ static void direct_copy(void) {
 // ---- Step 4: extension port, one beat each way ----
 static void ext_legs(void) {
     uint32_t d = SRAM + B_EXT;
+    mark('C', "stage");
     wr(d, 0x5A5A5A5Au);
     mark('G', "ext_r");
     uint32_t st = dma_run(EXT_WORD, d, 4u, 1, 1);
@@ -480,6 +534,7 @@ static void alias_legs(void) {
     end();
     dma_clear();
 
+    mark('C', "stage");
     stage_src(SRAM + B_ALX, 2u, 0x41u);
     mark('G', "alias_ext_top");
     st = dma_run(SRAM + B_ALX, EXT_TOP_ALIAS, 8u, 1, 1);
@@ -541,6 +596,18 @@ static uint64_t ap_out_addr(void) {
     uint64_t off = ((uint64_t)g_p[PAP_OFF_HI] << 32) | g_p[PAP_OFF_LO];
     return (off & ~(uint64_t)(AP_SPAN - 1u)) | (g_p[PAP_INTRA] & (AP_SPAN - 1u));
 }
+// The output address of the STEE word: the region offset of the attributes
+// over the word offset inside the region.
+static uint64_t stee_out_addr(uint64_t attrs) {
+    uint64_t off = attrs & OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_bm;
+    return (off & ~(uint64_t)(STEE_SPAN - 1u)) | (g_p[PSTEE_INTRA] & (STEE_SPAN - 1u));
+}
+static uint64_t p64(int lo) {
+    return ((uint64_t)g_p[lo + 1] << 32) | g_p[lo];
+}
+#define STEE_W_IDX (g_p[PSTEE_IDX] & 0xFu)
+#define STEE_R_IDX ((g_p[PSTEE_IDX] >> 4) & 0xFu)
+#define STEE_WORD(i) (STEE_REGION + (i)*STEE_SPAN + (g_p[PSTEE_INTRA] & (STEE_SPAN - 1u)))
 
 // ---- Step 6: outbound legs ----
 static void outbound_legs(void) {
@@ -550,9 +617,15 @@ static void outbound_legs(void) {
     uint64_t want = (((uint64_t)g_p[PAP_OFF_HI] << 32) | g_p[PAP_OFF_LO]) &
                     OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_bm;
     want |= OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm;
+    uint64_t stw = p64(PSTEE_W_LO), str_ = p64(PSTEE_R_LO);
+    uint64_t so_w = stee_out_addr(stw), so_r = stee_out_addr(str_);
     mark('C', "out_setup");
     WRITE_REG64(attrs, want);
     uint64_t got = READ_REG64(attrs);
+    WRITE_REG64(STEE_ATTRS(STEE_W_IDX), stw);
+    WRITE_REG64(STEE_ATTRS(STEE_R_IDX), str_);
+    uint64_t got_sw = READ_REG64(STEE_ATTRS(STEE_W_IDX));
+    uint64_t got_sr = READ_REG64(STEE_ATTRS(STEE_R_IDX));
     g_frb_bad = 0;
     g_frb_rng = 0;
     g_frb_sum = FNV0;
@@ -560,13 +633,25 @@ static void outbound_legs(void) {
     out_entry(2, ap_o, ap_o + 7u, CFG_RW_EN | CFG_NS);
     out_entry(3, smu, smu + 7u, CFG_RW_EN);
     out_entry(4, smu, smu + 7u, CFG_RW_EN | CFG_NS);
+    out_entry(5, so_w, so_w + 7u, CFG_RW_EN);
+    out_entry(6, so_w, so_w + 7u, CFG_RW_EN | CFG_NS);
+    out_entry(7, so_r, so_r + 7u, CFG_RW_EN);
+    out_entry(8, so_r, so_r + 7u, CFG_RW_EN | CFG_NS);
     out_entry_check(1, ap_o, ap_o + 7u, CFG_RW_EN);
     out_entry_check(2, ap_o, ap_o + 7u, CFG_RW_EN | CFG_NS);
     out_entry_check(3, smu, smu + 7u, CFG_RW_EN);
     out_entry_check(4, smu, smu + 7u, CFG_RW_EN | CFG_NS);
+    out_entry_check(5, so_w, so_w + 7u, CFG_RW_EN);
+    out_entry_check(6, so_w, so_w + 7u, CFG_RW_EN | CFG_NS);
+    out_entry_check(7, so_r, so_r + 7u, CFG_RW_EN);
+    out_entry_check(8, so_r, so_r + 7u, CFG_RW_EN | CFG_NS);
     rec("OUTSET");
     kv("attrs_lo", (uint32_t)got);
     kv("attrs_hi", (uint32_t)(got >> 32));
+    kv("stee_w_lo", (uint32_t)got_sw);
+    kv("stee_w_hi", (uint32_t)(got_sw >> 32));
+    kv("stee_r_lo", (uint32_t)got_sr);
+    kv("stee_r_hi", (uint32_t)(got_sr >> 32));
     kv("rb_bad", g_frb_bad);
     kv("rng_diff", g_frb_rng);
     kv("rb_sum", g_frb_sum);
@@ -581,6 +666,44 @@ static void outbound_legs(void) {
     end();
     dma_clear();
 
+    // AP region 0 as the source.
+    mark('C', "stage");
+    stage_dst_not(SRAM + B_OUT + 0x30u, 2u, 0x53u);
+    mark('G', "ap_r");
+    st = dma_run(AP_REGION + (g_p[PAP_INTRA] & (AP_SPAN - 1u)), SRAM + B_OUT + 0x30u, 8u, 1, 1);
+    rec("REMAP");
+    sep_mbx_puts(" leg=ap_r");
+    rec_run(st);
+    kv("d0", rd(SRAM + B_OUT + 0x30u));
+    kv("d1", rd(SRAM + B_OUT + 0x34u));
+    end();
+    dma_clear();
+
+    // STEE: the write region and the read region differ in bit 55 of their
+    // offset, so the two legs leave with the two NS values.
+    mark('C', "stage");
+    stage_src(SRAM + B_OUT + 0x40u, 2u, 0x54u);
+    mark('G', "stee_w");
+    st = dma_run(SRAM + B_OUT + 0x40u, STEE_WORD(STEE_W_IDX), 8u, 1, 1);
+    rec("REMAP");
+    sep_mbx_puts(" leg=stee_w");
+    rec_run(st);
+    end();
+    dma_clear();
+
+    mark('C', "stage");
+    stage_dst_not(SRAM + B_OUT + 0x50u, 2u, 0x55u);
+    mark('G', "stee_r");
+    st = dma_run(STEE_WORD(STEE_R_IDX), SRAM + B_OUT + 0x50u, 8u, 1, 1);
+    rec("REMAP");
+    sep_mbx_puts(" leg=stee_r");
+    rec_run(st);
+    kv("d0", rd(SRAM + B_OUT + 0x50u));
+    kv("d1", rd(SRAM + B_OUT + 0x54u));
+    end();
+    dma_clear();
+
+    mark('C', "stage");
     stage_src(SRAM + B_OUT + 0x10u, 2u, 0x51u);
     mark('G', "out_smu");
     st = dma_run(SRAM + B_OUT + 0x10u, (uint32_t)smu, 8u, 1, 1);
@@ -696,8 +819,10 @@ static void stack_leg(void) {
     kv("dsum", rh);
     end();
 
-    // AP region 0 back to reset.
+    // AP region 0 and the two STEE regions back to reset.
     WRITE_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0ull);
+    WRITE_REG64(STEE_ATTRS(STEE_W_IDX), 0ull);
+    WRITE_REG64(STEE_ATTRS(STEE_R_IDX), 0ull);
 }
 
 // ---- Step 8: register endpoints ----
@@ -737,7 +862,6 @@ static void reg_leg(uint32_t id, uint32_t pre) {
         if (v != last) bad++;
     }
     dma_clear();
-    wr(reg, pre);
     rec("REG");
     sep_mbx_puts(" name=");
     sep_mbx_puts(k_reg_name[id]);
@@ -758,6 +882,12 @@ static void reg_leg(uint32_t id, uint32_t pre) {
     kv("nbad", bad);
     kv("dor", dor);
     kv("dand", dand);
+    end();
+    mark('C', "reg_restore");
+    wr(reg, pre);
+    rec("REGRST");
+    sep_mbx_puts(" name=");
+    sep_mbx_puts(k_reg_name[id]);
     kv("restored", rd(reg));
     end();
 }
@@ -781,14 +911,17 @@ static void reg_legs(void) {
         reg_leg(id, pre[id]);
     }
 
-    // SW_RESET_N read.
+    // SW_RESET_N read. The destination holds the inverse of the RDL reset
+    // value, so it differs from the expected word in every bit.
     uint32_t d = SRAM + B_REG + 0x400u;
-    wr(d, 0xFFFFFF00u);
+    uint32_t rst_stage = ~(uint32_t)SEP_RESET_CTRL__SW_RESET_N_reset;
+    wr(d, rst_stage);
     uint32_t lsu = rd(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     mark('G', "rst_r");
     uint32_t st = dma_run(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, d, 4u, 0, 1);
     rec("RST");
     kv("lsu", lsu);
+    kv("stage", rst_stage);
     rec_run(st);
     kv("dma", rd(d));
     end();
@@ -806,17 +939,21 @@ static void reg_legs(void) {
     wr(FILT_IN0_CFG, fw);
     uint32_t flsu = rd(FILT_IN0_CFG);
     d = SRAM + B_REG + 0x410u;
-    wr(d, 0x0u);
+    wr(d, ~fw);
     mark('G', "filt_r");
     st = dma_run(FILT_IN0_CFG, d, 4u, 0, 1);
     rec("FILT");
     kv("written", fw);
+    kv("stage", ~fw);
     kv("lsu", flsu);
     rec_run(st);
     kv("dma", rd(d));
+    end();
     dma_clear();
+    mark('C', "filt_restore");
     wr(FILT_IN0_CFG, (uint32_t)FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_reset
                          << FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp);
+    rec("FILTRST");
     kv("restored", rd(FILT_IN0_CFG));
     end();
 }
@@ -855,8 +992,11 @@ static void smc_legs(void) {
         h = fnv(h, v);
         if (v != lcg(&x)) bad++;
     }
-    mark('C', "smc_cpu");
+    mark('G', "smc_cpu");
     uint32_t cpu = rd(smc);
+    wr(smc, g_p[PSMC_CPU_W]);
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+    uint32_t cpu2 = rd(smc);
     rec("SMC");
     kv("fuse", fs);
     kv("polls", polls);
@@ -871,6 +1011,8 @@ static void smc_legs(void) {
     kv("nbad", bad);
     kv("dsum", h);
     kv("cpu", cpu);
+    kv("cpu_w", g_p[PSMC_CPU_W]);
+    kv("cpu2", cpu2);
     end();
 }
 
@@ -980,6 +1122,52 @@ static void nc_legs(void) {
             recovery("nc_csr_src");
     }
 
+    // The entropy pool DATA word as the source, while the pool holds entropy
+    // below its depth. Stream 2 selects the external source since the entropy
+    // bring-up; after the M C pool_pre line the test sends a drawn number of
+    // word pairs, fewer than the pool depth, on it. When the pool holds a word,
+    // the CPU writes the select again (stream 2 external) and reads the level
+    // until it reads the same value POOL_SETTLE_READS times in a row. No agent
+    // fills or pops the pool after that, so the level before GO and the level
+    // after the run are equal.
+    if (!timed_out) {
+        mark('C', "pool_pre");
+        uint32_t lvl0 = 0, polls = 0, settle = 0, same = 0;
+        for (; polls < POOL_POLL_ITERS; polls++) {
+            lvl0 = POOL_LEVEL(rd(POOL_STATUS));
+            if (lvl0 != 0u) break;
+        }
+        wr(EXT_SEL, EXT_SEL_POOL);
+        uint32_t sel = rd(EXT_SEL) & EXT_SEL_MASK;
+        for (; settle < POOL_POLL_ITERS && same < POOL_SETTLE_READS; settle++) {
+            uint32_t l = POOL_LEVEL(rd(POOL_STATUS));
+            same = (l == lvl0) ? same + 1u : 0u;
+            lvl0 = l;
+        }
+        uint32_t pd = SRAM + B_NC + 0x20u;
+        uint32_t x = seed_of(0x81u);
+        uint32_t pstage = lcg(&x) | 1u;
+        wr(pd, pstage);
+        mark('G', "nc_pool_src");
+        e = nc_run(g_p[PPOOL_SRC], pd);
+        nc_rec("pool_src", e, 0, 0, rd(pd));
+        mark('C', "pool_post");
+        rec("POOL");
+        kv("lvl_pre", lvl0);
+        kv("polls", polls);
+        kv("lvl_post", POOL_LEVEL(rd(POOL_STATUS)));
+        kv("stage", pstage);
+        kv("sel", sel);
+        kv("settle", settle);
+        kv("same", same);
+        end();
+        wr(EXT_SEL, 0u);
+        if (e == 2u)
+            timed_out = 1;
+        else
+            recovery("nc_pool_src");
+    }
+
     pic_disable_interrupts();
     pic_disable_source(g_p[PIRQ_DONE]);
     pic_disable_source(g_p[PIRQ_ERR]);
@@ -990,6 +1178,99 @@ static void nc_legs(void) {
     kv("csr", rd(DMA_CSR_WORD));
     kv("timed_out", (uint32_t)timed_out);
     end();
+}
+
+// ---- Step 11: entropy stack, so the internal stream 2 endpoint holds words ----
+// The ring oscillators and the entropy source are enabled out of reset
+// (hw/ip/entropy_source/regs/entropy_source.rdl:46 CTRL.MODULE_ENABLE reset 1,
+// :565 and :571 RING_OSC_ENABLE reset all ones), and the test drives their noise from the
+// start, so the boot phase of the source can end before this step. The CPU
+// therefore always resets and programs the entropy domain: that write selects
+// the internal DRBG for every stream (EXT_TRNG_SRC_SEL resets to all external,
+// hw/sys/sep/doc/trng.adoc:98-100), enables CSRNG and stages the EDN commands.
+// Before EDN starts, the CPU selects the external source for stream 2 again, so
+// the internal pool endpoint is backpressured and keeps its words
+// (trng.adoc:104-105) and the pool level is set by the test alone. The record
+// logs the source select that the CPU reads back after it.
+static int entropy_bringup_fresh(void) {
+    sep_entropy_configure();
+    wr(EXT_SEL, EXT_SEL_POOL);
+    sep_entropy_start_generators();
+    int rc = sep_entropy_wait_boot_phase();
+    if (rc == SEP_ENTROPY_OK) {
+        sep_entropy_enable_edn();
+    }
+    return rc;
+}
+
+static void entropy_legs(void) {
+    mark('C', "entropy");
+    int erc = entropy_bringup_fresh();
+    rec("ENTROPY");
+    kv("rc", (uint32_t)erc);
+    kv("sel", rd(EXT_SEL) & EXT_SEL_MASK);
+    end();
+    if (erc != SEP_ENTROPY_OK) {
+        sep_mbx_puts("FAIL: entropy bring-up\n");
+        g_err++;
+    }
+}
+
+// ---- Step 12: DMA writes of an inbound filter START_ADDR ----
+#define IN_CFG(i) SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)
+#define IN_START(i) SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i)
+#define IN_END(i) SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i)
+
+// One 4-byte DMA write of `v` to the START_ADDR word `dst`; the LSU reads the
+// word back inside the leg.
+static void filt_wr_leg(const char *leg, uint32_t dst, uint32_t v) {
+    uint32_t s = SRAM + B_FW;
+    mark('C', "filt_pre");
+    wr(s, v);
+    uint32_t pre_v = rd(dst);
+    mark('G', leg);
+    uint32_t st = dma_run(s, dst, 4u, 1, 1);
+    uint32_t pre = g_pre, ec = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t rb = rd(dst);
+    rec("FILTWR");
+    sep_mbx_puts(" leg=");
+    sep_mbx_puts(leg);
+    kv("addr", dst);
+    kv("v", v);
+    kv("pre_v", pre_v);
+    kv("pre", pre);
+    kv("st", st);
+    kv("ec", ec);
+    kv("rb", rb);
+    end();
+    dma_clear();
+}
+
+// The entry stays disabled. END_ADDR is in another granule than START_ADDR
+// at every step, so the granule write-back never fires and START_ADDR reads
+// back as written. The locked leg runs last: `locked` is write-once.
+static void filt_legs(void) {
+    uint32_t i = g_p[PFILT_IDX];
+    mark('C', "filt_wr_set");
+    WRITE_REG64(IN_END(i), p64(PFILT_E_LO));
+    WRITE_REG64(IN_START(i), (uint64_t)(uint32_t)~g_p[PFILT_V_LO]);
+    rec("FILTSET");
+    kv("cfg_lo", rd(IN_CFG(i)));
+    kv("cfg_hi", rd(IN_CFG(i) + 4u));
+    kv("start_lo", rd(IN_START(i)));
+    kv("start_hi", rd(IN_START(i) + 4u));
+    kv("end_lo", rd(IN_END(i)));
+    kv("end_hi", rd(IN_END(i) + 4u));
+    end();
+    filt_wr_leg("filt_wr_low", IN_START(i), g_p[PFILT_V_LO]);
+    filt_wr_leg("filt_wr_high", IN_START(i) + 4u, g_p[PFILT_V_HI]);
+    mark('C', "filt_lock");
+    wr(IN_CFG(i) + 4u, g_p[PFILT_LOCK]);
+    rec("FILTLOCK");
+    kv("cfg_hi", rd(IN_CFG(i) + 4u));
+    end();
+    filt_wr_leg("filt_wr_lock", IN_START(i), g_p[PFILT_W]);
+    recovery("filt_wr_lock");
 }
 
 int main(void) {
@@ -1008,6 +1289,8 @@ int main(void) {
     kv("smc_base", g_p[PSMC_BASE]);
     kv("irq_done", g_p[PIRQ_DONE]);
     kv("irq_err", g_p[PIRQ_ERR]);
+    kv("stee_idx", g_p[PSTEE_IDX]);
+    kv("filt_idx", g_p[PFILT_IDX]);
     end();
 
     dma_init();
@@ -1040,7 +1323,9 @@ int main(void) {
     stack_leg();
     reg_legs();
     smc_legs();
+    entropy_legs();
     nc_legs();
+    filt_legs();
     mark('C', "end");
     sep_mbx_puts("DONE\n");
     return g_err;

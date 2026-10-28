@@ -22,8 +22,8 @@ endif::backend-html5[]
 |`clk_wdt_i` |`logic` |Input |1 |200 kHz clock for watchdog timer. |Low-frequency clock source |N/A
 |`rst_ni` |`logic` |Input |1 |Primary reset (active low). Asynchronous assertion, synchronous deassertion. |System reset |N/A
 |`dbg_rstb_i` |`logic` |Input |1 |EL2 debugger reset (active low). |JTAG debug infrastructure |N/A
-|`wdt_rst_ni` |`logic` |Input |1 |Watchdog timer reset from SMC (active low). |SMC reset unit |N/A
-|`wdt_timer_rst_req_o` |`logic` |Output |1 |WDT reset request output. Triggers memory interface reset in `sep_wrapper`. |SEP wrapper |N/A
+|`wdt_rst_ni` |`logic` |Input |1 |Aggregated SMC and SEP watchdog reset (active low). Resets the SEP CPU and the SEP watchdog. |SMC reset unit |N/A
+|`wdt_timer_rst_req_o` |`logic` |Output |1 |Watchdog bite reset request (active high). Holds until `wdt_rst_ni` resets the watchdog. |SMC reset unit |N/A
 
 |`jtag_tck_i` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
 |`jtag_tms_i` |`logic` |Input |1 |JTAG test mode select. |JTAG pads (via DTP STAP) |N/A
@@ -66,10 +66,10 @@ endif::backend-html5[]
 
 |`sep_cpu_tcm_req_o` |`sep_cpu_tcm_req_t` |Output |- |CPU tightly-coupled memory (TCM) request (ICCM + DCCM). |SRAM macros |N/A
 |`sep_cpu_tcm_rsp_i` |`sep_cpu_tcm_rsp_t` |Input |- |CPU TCM response. |SRAM macros |N/A
-|`sep_sram_req_o` |`sep_sram_req_t` |Output |- |Scratch SRAM request. |SRAM macros |N/A
-|`sep_sram_rsp_i` |`sep_sram_rsp_t` |Input |- |Scratch SRAM response. |SRAM macros |N/A
-|`sep_boot_rom_req_o` |`sep_sram_req_t` |Output |- |Boot ROM (BL0) request. |ROM macro |N/A
-|`sep_boot_rom_rsp_i` |`sep_sram_rsp_t` |Input |- |Boot ROM (BL0) response. |ROM macro |N/A
+|`sep_sram_req_o` |`sep_sram_req_t` |Output |- |Scratch SRAM read or write request with the macro clock. |SRAM macros |N/A
+|`sep_sram_rsp_i` |`sep_sram_rsp_t` |Input |- |Scratch SRAM read data, one clock after the request. |SRAM macros |N/A
+|`sep_boot_rom_req_o` |`sep_boot_rom_req_t` |Output |- |Boot ROM (BL0) read request with the macro clock. |ROM macro |N/A
+|`sep_boot_rom_rsp_i` |`sep_boot_rom_rsp_t` |Input |- |Boot ROM (BL0) read data, one clock after the request. |ROM macro |N/A
 
 |`smn_outbound_axi_req_o` |`sep_system_peripherals_outbound_axi_req_t` |Output |- |SMN outbound AXI request (system bus master). |SMN fabric |N/A
 |`smn_outbound_axi_resp_i` |`sep_system_peripherals_outbound_axi_resp_t` |Input |- |SMN outbound AXI response. |SMN fabric |N/A
@@ -83,6 +83,8 @@ endif::backend-html5[]
 |`sep_crypto_pka_imem_sram_rsp_i` |`sep_crypto_pka_imem_sram_rsp_t` |Input |- |OTBN PKA instruction memory SRAM response. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_req_o` |`sep_crypto_pka_dmem_sram_req_t` |Output |- |OTBN PKA data memory SRAM request. |SRAM macro |N/A
 |`sep_crypto_pka_dmem_sram_rsp_i` |`sep_crypto_pka_dmem_sram_rsp_t` |Input |- |OTBN PKA data memory SRAM response. |SRAM macro |N/A
+|`abr_mem_req_o` |`sep_crypto_pkg::abr_mem_req_t` |Output |- |Adams Bridge working SRAM requests for every channel, with the macro clock. |SRAM macros |N/A
+|`abr_mem_rsp_i` |`sep_crypto_pkg::abr_mem_rsp_t` |Input |- |Adams Bridge working SRAM read data. Each channel's data must arrive exactly `ABR_SRAM_LATENCY` clocks after its `re`. |SRAM macros |N/A
 |`ext_trng_axil_req_o` |`sep_32_32_axil_req_t` |Output |- |External TRNG AXI-Lite passthrough request (to `sep_ip_integration`). |External TRNG shim |N/A
 |`ext_trng_axil_resp_i` |`sep_32_32_axil_resp_t` |Input |- |External TRNG AXI-Lite passthrough response. |External TRNG shim |N/A
 |`ext_trng_axis_req_i` |`ext_trng_axis_req_t` |Input |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream request array (from `sep_ip_integration`). |External TRNG shim |N/A
@@ -109,7 +111,6 @@ endif::backend-html5[]
 |`dbg_disable_o` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |Output |- |Typed debug-disable struct routed by SMU to DTP debug-disable control. |SMU → DTP |N/A
 |`sep_fuse_dft_disable_o` |`logic` |Output |1 |Gate for the DFT-inserted access path into the SEP OTP, composed as Case 3 AND `SEP_FUSE_DBG`. Unconnected in the functional design; an adopter's DFT insertion connects it. |Adopter DFT insertion |Leave open if no path is inserted
 |`smc_fuse_dft_disable_o` |`logic` |Output |1 |Gate for the DFT-inserted access path into the SMC OTP, composed as Case 2 AND `SMC_FUSE_DBG`. Unconnected in the functional design; an adopter's DFT insertion connects it. |Adopter DFT insertion |Leave open if no path is inserted
-|`lc_sigint_err_o` |`logic` |Output |1 |Lifecycle signal integrity error. |SMU |N/A
 |`security_disable_o` |`logic` |Output |1 |Security disable output. |SMU |N/A
 |`secure_tm_o` |`logic` |Output |1 |Secure test mode output. |SMU |N/A
 
@@ -126,8 +127,7 @@ endif::backend-html5[]
 |`smc_global_base_addr_i` |`logic` |Input |`[55:0]` |SMC global base address for outbound address translation. |System configuration |N/A
 |`smc_region_size_i` |`logic` |Input |`[55:0]` |SMC region size for outbound address translation. |SMC `smc_region_size_o` |N/A
 
-|`km_unrecoverable_err_o` |`logic` |Output |1 |Key Manager unrecoverable error. |RAS / error handling |N/A
-|`km_recoverable_err_o` |`logic` |Output |1 |Key Manager recoverable error. |RAS / error handling |N/A
+|`sep_ras_o` |`sep_pkg::sep_ras_t` |Output |- |SEP RAS indications on the SEP clock: eFuse lifecycle differential-encoding error, CPU lockstep corruption, watchdog bark and bite (the bite synchronized from `clk_wdt_i`), ICCM and DCCM single- and double-bit ECC, Key Manager trap and recoverable faults, DMA alert and sticky register-bridge and host-integrity faults, the per-block sticky register-bridge faults (`periph_bus_err`, indexed by `periph_bus_err_e`), CSRNG and EDN fatal alerts, the aggregated crypto alert, entropy-pool fill stall and integrity error, and the token comparator redundancy fault. `iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue`, `dma_alert`, `csrng_fatal`, `edn_fatal` and `crypto_alert` are one-cycle pulses, which a consumer on another clock must stretch or pulse-synchronize; the other fields are levels. The `sep_pkg::sep_ras_t` field comments state how each one is held and cleared. |Chip-level RAS aggregation; SMU `lc_sigint_err_o` |N/A
 
 |`ext_debug_bus_o` |`logic` |Output |`[511:0]` |External debug observation bus. |Debug infrastructure |N/A
 |===

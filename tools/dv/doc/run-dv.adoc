@@ -671,14 +671,15 @@ so the flip is visible as that group going red.
 
 === Targets and run modes
 
-Each selected test resolves a build target from its `target` field or the DUT
-default. A target's `[targets.<name>.tools.<tool>]` table can send its tests
-to another target on that tool with `run_on`:
+Each selected test resolves its build targets from its `target` field, which
+names one target or a list of them, or else the DUT default. A target's
+`[targets.<name>.tools.<tool>]` table can send its tests to another target on
+that tool with `run_on`:
 
 [source,text]
 ----
 [targets.<t>.tools.<tool>].run_on
-  > <t>: the test's target, else [defaults].target
+  > <t>: each of the test's targets, else [defaults].target
 ----
 
 The redirect keeps a tool-specific choice with the target that needs it. A
@@ -699,23 +700,51 @@ must name another defined target that does not redirect on the same tool. A
 tests, such as a coverage-only replay, plans the default target after its
 redirect.
 
+A test that lists several targets runs on each of them in one run, in list
+order:
+
+[source,toml]
+----
+[[tests]]
+name = "jtag_idcode_test"
+target = ["default", "bsr_disabled"]
+----
+
+A build variant with a feature turned off can then regress the tests the
+feature does not touch, and a group's `expected_count` counts the test once.
+Each listed target is redirected on its own, and two that reach one target on
+a tool run the test there once. The list must not be empty or name a target
+twice.
+
+A run of a test on more than one target is a scheduler run
+(<<runner-seed-count>>). Its targets build into separate model directories,
+as in any run on several targets (<<runner-build-reuse>>), and `--cov` needs a
+`combine_cmd` that merges several targets (<<runner-coverage-inputs>>).
+`--target NAME` runs the test on that target only, as one leaf, which `--seed`
+seeds unless another option makes the run a scheduler run. When `--items`
+names a test itself, not through a group, no `--target` names a target, and
+the test runs on more than one target, a `selection` line names the test and
+its targets and notes that `--target NAME` runs one of them.
+
 `--target A[,B...]` runs the selected tests on the listed targets they can run
-on. A test that names a target runs on it when it is listed, or on the target
-its `run_on` names for the tool when that one is listed, and is skipped
-otherwise. A test that names no target runs on every listed target except one
-that sets `pinned_only = true` in its `[targets.<name>]` table: such a target
-runs only the tests that name it or reach it through `run_on`, as a CPU-stub
-model that cannot run the full CPU's tests does. The default target, which
-runs the tests that name no target, cannot set it. One name means the same, so
-`--target default` runs the tests that run on `default` and skips the rest.
+on. A test that names targets runs on each of them that is listed and, for
+each that is not, on the target that one's `run_on` names for the tool when
+that one is listed; it is skipped when none of them runs. A test that names no
+target runs on every listed target except one that sets `pinned_only = true`
+in its `[targets.<name>]` table: such a target runs only the tests that name
+it or reach it through `run_on`, as a CPU-stub model that cannot run the full
+CPU's tests does. The default target, which runs the tests that name no
+target, cannot set it. One name means the same, so `--target default` runs the
+tests that run on `default` and skips the rest.
 
 The skipped tests are printed on the `selection` line and in a warning, and
 recorded in `result.json` under `selection.skipped_target`, each with the
-target it would run on otherwise; a listed target that runs none of the
-selected tests is named in a warning. A list that runs none of them is refused
-before any stage runs. `--force-target NAME` instead runs every selected test
-on `NAME`, whatever target it names or `pinned_only` sets, and cannot be
-combined with `--target`.
+target it would run on otherwise, or those targets joined with `,` when it
+would run on several; a listed target that runs none of the selected tests is
+named in a warning. A list that runs none of them is refused before any stage
+runs. `--force-target NAME` instead runs every selected test on `NAME`,
+whatever target it names or `pinned_only` sets, and cannot be combined with
+`--target`.
 
 A simulation leaf is named `<test>@<target>` after the target it runs on,
 whether or not the run names targets: its directory is
@@ -730,12 +759,12 @@ target replays on the others. A test or target name therefore cannot contain
 Shared build stages run once per unique target, serially, before the
 test leaves execute. This permits one group to contain tests that consume
 different build images. A test `target`, a `--target` entry or a
-`--force-target` that names no `[targets.<name>]` entry is rejected when the
-run plans its builds, before any stage executes, and `--validate-configs` does
-not check test targets. Every `run_on`, and that the default target is not
-`pinned_only`, is checked on each of the DUT's tools wherever its
-configuration is validated, by `--validate-configs` and before every run
-(<<runner-validation>>).
+`--force-target` that names a target with no `[targets.<name>]` entry is
+rejected when the run plans its builds, before any stage executes, and
+`--validate-configs` does not check that a test's targets are defined. Every
+`run_on`, and that the default target is not `pinned_only`, is checked on each
+of the DUT's tools wherever its configuration is validated, by
+`--validate-configs` and before every run (<<runner-validation>>).
 
 Run-mode selection uses:
 
@@ -904,10 +933,10 @@ the file and the table or entry:
 . No key from the rejected-key table is present (<<runner-rejected-keys>>).
 . The test catalog loads after include expansion: each test's `run_modes`
   and `tools` name declared entries, each scenario binds or excludes every
-  framework the DUT implements, `firmware` is a string or a table,
-  `expect_fail` carries a reason and any `expect_fail_match` beside it
-  compiles as a regex, every group member names a test, and each
-  `expected_count` matches its list.
+  framework the DUT implements, `target` is a name or a list of distinct
+  names, `firmware` is a string or a table, `expect_fail` carries a reason
+  and any `expect_fail_match` beside it compiles as a regex, every group
+  member names a test, and each `expected_count` matches its list.
 . The flow's parser policy extensions are registered.
 
 Validation proves configuration consistency. It does not probe a tool or a
@@ -2019,8 +2048,8 @@ Important stage rules:
 * `--run-only` omits planned `flist`, `hdl_compile`, and `elaborate` stages.
   Firmware `c_compile` can still be inserted, and a cocotb simulation can build
   its model when no prebuilt model is available.
-* `--regress`, a group, multiple tests, `--reseed`, `--retry`, or
-  `--max-failures` enables scheduler behavior.
+* `--regress`, a group, more than one test, a test on more than one target,
+  `--reseed`, `--retry`, or `--max-failures` enables scheduler behavior.
 * If `--stage regress` is requested but the flow provides only `sim`, the
   scheduler dispatches the `sim` stage.
 * Explicit stages do not generally gain implicit prerequisites. For example,
@@ -2423,11 +2452,12 @@ grades the result. Two kinds of threshold apply, and both must be met:
 |Compatibility threshold
 |`--fail-under`, then `[coverage.<tool>].fail_under`, then `0.0`, compared
 with the tool's own overall percentage (`overall_percent` in
-`summary.json`): Verilator's count of hit points over all points, or the
-urg / imc dashboard total. Accepted waivers do not move that figure, so a DUT
-gated by `--fail-under` alone sees no effect from its policy. On a `--waive`
-re-grade the run's recorded `threshold` stands unless `--fail-under` is
-given.
+`summary.json`): Verilator's count of hit points over all points, leaving out
+the covergroup ignore, illegal and default bins, which are not coverage
+goals, or the urg / imc dashboard total. Accepted waivers do not move that
+figure, so a DUT gated by `--fail-under` alone sees no effect from its policy.
+On a `--waive` re-grade the run's recorded `threshold` stands unless
+`--fail-under` is given.
 
 |Policy thresholds
 |Each `pass:[[[thresholds]]]` rule of `coverage_policy.toml` names a metric
@@ -2490,16 +2520,16 @@ a function of the design build and the policy file alone: an accepted waiver
 stays accepted until the policy changes, and the checks above refuse it as
 soon as the RTL, the bench or a test moves the points it names.
 
-In scheduler mode (a group, `--regress`, `--reseed`, `--retry`,
-`--max-failures`, or more than one item), the leaf stage never stops the
-plan: `cov_merge` and `cov_report` run after the leaves whatever their
-statuses, so a red regression still carries its coverage record and the
-databases of its failing and timed-out leaves are inputs like any other. A
-flat single-test run stops at its first failing stage and reaches the
-coverage stages only when the test passed. A run that did not finish
-(`tests.completed` is `false`, or the record carries an `interruption`) is
-refused by coverage-only replay and by `--waive` with exit code `2`:
-coverage is graded over a complete regression only.
+In scheduler mode (a group, `--regress`, `--stage regress`, `--reseed`,
+`--retry`, `--max-failures`, more than one test, or a test on more than one
+target), the leaf stage never stops the plan: `cov_merge` and `cov_report` run
+after the leaves whatever their statuses, so a red regression still carries
+its coverage record and the databases of its failing and timed-out leaves are
+inputs like any other. A flat run of one test on one target stops at its first failing
+stage and reaches the coverage stages only when the test passed. A run that
+did not finish (`tests.completed` is `false`, or the record carries an
+`interruption`) is refused by coverage-only replay and by `--waive` with exit
+code `2`: coverage is graded over a complete regression only.
 
 [[runner-waive]]
 ==== Waive coverage bins after a regression
@@ -2637,10 +2667,10 @@ A leaf that passes after a failed attempt is recorded as flaky.
 [[runner-seed-count]]
 === Seeds per test
 
-In scheduler mode each selected test becomes one leaf per seed. The number of
-seeds a test gets is `--reseed N` when the command line gives one, otherwise
-its testlist entry's `reseed`, otherwise `1`. An entry sets its own count
-like this:
+In scheduler mode each selected test becomes one leaf per seed on each target
+it runs on. The number of seeds a test gets is `--reseed N` when the command
+line gives one, otherwise its testlist entry's `reseed`, otherwise `1`. An
+entry sets its own count like this:
 
 [source,toml]
 ----
@@ -2679,16 +2709,18 @@ configuration error.
 
 The count applies where seeds are drawn: the `sim` and `regress` stages of a
 scheduler-mode run, which a group, `--regress`, `--stage regress`,
-`--reseed`, `--retry`, `--max-failures`, or more than one selected test
-starts. A flat run of a single test ignores `reseed` and simulates once with
-the single-test seed (`--seed`, then the test's `seed`, then
-`[defaults].seed`, then `1`), and a `formal` item runs once.
+`--reseed`, `--retry`, `--max-failures`, more than one test, or a test on
+more than one target starts. A flat run of one test on one target ignores
+`reseed` and simulates once with the single-test seed (`--seed`, then the
+test's `seed`, then `[defaults].seed`, then `1`), and a `formal` item runs
+once.
 
-Each scheduler leaf draws its seed at random from 1 to 2147483647, and no two
-leaves of one run share a seed. A test's `seed` and `[defaults].seed` do not
-apply there. Seeds differ from run to run, so a seed to replay comes from the
-run's own record: the console's `regression done` line, the leaf directory
-name, or `regression.json`.
+A scheduler run draws each test's seeds at random from 1 to 2147483647: no two
+tests of one run share a seed, and a test uses the same seeds on each of its
+targets. A test's `seed` and `[defaults].seed` do not apply there. Seeds
+differ from run to run, so a seed to replay comes from the run's own record:
+the console's `regression done` line, the leaf directory name, or
+`regression.json`.
 
 Seeds and retries are separate knobs. `reseed` and `--reseed` add leaves,
 each with new stimulus. `--retry` adds attempts to a failing leaf
@@ -2850,11 +2882,11 @@ warning and records it in the run's wave metadata.
 
 |`--target NAME[,NAME...]`
 |Run each selected test on every listed target it can run on, and skip the
-rest (<<Targets and run modes>>). Omitted, each test keeps its own target or
-the one its target's `run_on` names for the tool. A run on several targets
-merges its coverage target by target (<<runner-coverage-inputs>>), and is
-refused before compile when two of its targets would build into one model
-directory.
+rest (<<Targets and run modes>>). Omitted, each test runs on each target it
+names, or the default, after that target's `run_on` for the tool. A run on
+several targets merges its coverage target by target
+(<<runner-coverage-inputs>>), and is refused before compile when two of its
+targets would build into one model directory.
 
 |`--force-target NAME`
 |Run every selected test on `NAME`, whatever target it names or redirects to
@@ -3101,7 +3133,7 @@ leaf output:
 │   ├── hdl_compile/{scripts,env,logs}/
 │   ├── formal/{scripts,env,logs}/  # formal mode; sby tasks in <item>_<task>/
 │   └── regress/regression.json
-├── <test>@<target>/                # flat single-test invocation
+├── <test>@<target>/                # flat run of one test on one target
 │   ├── result.json
 │   ├── scripts/
 │   ├── env/
@@ -3531,7 +3563,8 @@ change can never alter the pull-request gate:
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
 |`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, once
 under cocotb and once under `--framework uvm`, and for the UVM-only `aou`
-under `--framework uvm`; 60-minute budget per job.
+under `--framework uvm`; 60-minute budget per job. The DTP rows add
+`--target default`, so they build only DTP's default model.
 The job names `verilator-smoke (<dut>)` and `verilator-smoke (<dut> uvm)`
 are the stable check contexts. Every job runs for every change, so the
 contexts report; on a pull request a job prints one line and skips the
@@ -3552,7 +3585,7 @@ so it is not a tier and no pull request runs it.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, AoU `smoke`, and the
+DTP `all` under `--target default`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, AoU `smoke`, and the
 IP-level benches' `all` groups (the three `cross_trigger` benches, the four
 UART-family benches, `system_timer_octs`, `scrambler` and `axi_lite_to_ahb`).
 No coverage. Nightly is not a merge gate; a red nightly run is a triage signal.
@@ -3561,7 +3594,7 @@ No coverage. Nightly is not a merge gate; a red nightly run is a triage signal.
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The regression the dashboard publishes, one random seed per test on every
-row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
+row and no coverage: DTP `all` under `--target default`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
 AoU `smoke`, and the IP-level benches' `all` groups. A second SMC row
 (`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
 `expect_fail` (<<runner-expected-failures>>), so the row is green while the
