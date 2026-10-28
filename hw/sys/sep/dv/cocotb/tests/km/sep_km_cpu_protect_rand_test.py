@@ -16,15 +16,15 @@ RTL. The ROM word golden is the committed POKE image file (the stimulus).
 
 Probes: ``KM-RESULT``, ``HOST-MBX`` (``SEP_STATUS``), ``PIC-IRQ``
 (``sep_internal_interrupts_probe_o``: bit 30 is PIC source 31, "KM unrecoverable
-error", and the whole vector for CHK-SRC31-EXCL), the SEP output port
-``km_unrecoverable_err_o``, ``KM-COUNT`` (``km_rom_req_count_o``,
+error", and the whole vector for CHK-SRC31-EXCL), the SEP output field
+``sep_ras_o.km_uncorrectable``, ``KM-COUNT`` (``km_rom_req_count_o``,
 ``km_cpu_fetch_count_o``), ``dbg_sep_reset_n_o``, and the read-only taps ``KM-VALID``
 (``km_engine_key_valid_o``), ``KM-KPV`` (``km_kpv_words_o``, the plain-reset
 control of CHK-TRAP-WIPE) and ``KM-CSR`` (``km_csr_irq_status_o``). No inject.
 
 Port golden: ``hw/sys/sep/doc/interrupts.adoc:169-171`` (source 31, "KM
 unrecoverable error", "also exported as a SEP output port") and
-``hw/sys/sep/doc/port_table.adoc:129`` (``km_unrecoverable_err_o``, output, 1 bit).
+``hw/sys/sep/doc/port_table.adoc:130`` (``sep_ras_o.km_uncorrectable``, output field, 1 bit).
 So the port equals PIC-IRQ bit 30 on every clock. A watcher compares the two on
 every clock of the run; a clock with a difference, or with X or Z on either, is
 a mismatch.
@@ -39,7 +39,7 @@ the C5 window and the C5 and C6 enables.
 Checks:
   CHK-TRAP           after each trap kind PIC bit 30 is 1, stays 1 over the
                      window, and km_rom_req_count_o stops moving; the port
-                     km_unrecoverable_err_o equals bit 30 on every clock from
+                     sep_ras_o.km_uncorrectable equals bit 30 on every clock from
                      the trap list to the end of the window and rose with it.
                      A last line grades the port over the whole run.
   CHK-SRC31-EXCL     at each rise of bit 30 (trap kinds and C4) every other
@@ -552,7 +552,7 @@ class PortSpan:
 
 
 class PortWatch:
-    """Per-clock compare of ``km_unrecoverable_err_o`` with PIC-IRQ bit 30.
+    """Per-clock compare of ``sep_ras_o.km_uncorrectable`` with PIC-IRQ bit 30.
 
     Reads both on every rising edge of ``clk_i`` in the read-only phase and
     drives nothing. A clock where the two differ, or where either is not 0 or
@@ -570,7 +570,7 @@ class PortWatch:
         self.port_rises = 0
         self.port_falls = 0
         self.prev: str | None = None
-        self.life = MonitorLife("PORT-WATCH km_unrecoverable_err_o", lambda: self.clk)
+        self.life = MonitorLife("PORT-WATCH sep_ras_o.km_uncorrectable", lambda: self.clk)
         self._task = None
 
     def start(self) -> PortWatch:
@@ -1032,7 +1032,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             f"{rom0} -> {rom1} over the window after the trap; the KM CPU kept fetching"
         )
         assert span.mismatch == 0 and span.port_rises == 1 and span.port_high >= WINDOW_CLKS, (
-            f"CHK-TRAP FAIL: kind={kind} detail={detail}: km_unrecoverable_err_o against PIC "
+            f"CHK-TRAP FAIL: kind={kind} detail={detail}: sep_ras_o.km_uncorrectable against PIC "
             f"bit 30 from the trap list to the window end: {span.text()}; expected no mismatch, "
             f"one port rise and the port high on the {WINDOW_CLKS} window clocks"
         )
@@ -1111,7 +1111,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             f"CHK-TRAP-CLR FAIL: kind={kind} reset={reset}: PIC bit 30 reads 1 after the reset"
         )
         assert port_after_reset == 0 and fall.mismatch == 0 and fall.port_falls >= 1, (
-            f"CHK-TRAP-CLR FAIL: kind={kind} reset={reset}: km_unrecoverable_err_o reads "
+            f"CHK-TRAP-CLR FAIL: kind={kind} reset={reset}: sep_ras_o.km_uncorrectable reads "
             f"{port_after_reset} after the reset; over the reset {fall.text()}; expected 0, "
             "no mismatch and a port fall"
         )
@@ -1671,7 +1671,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
             f"clocks, km_cpu_fetch_count_o {f_settle} -> {f_end}; the KM CPU kept fetching"
         )
         assert span.mismatch == 0 and span.port_rises == 1 and span.port_high >= WINDOW_CLKS, (
-            f"CHK-LOCKOUT-FETCH FAIL: C4: km_unrecoverable_err_o against PIC bit 30 from the "
+            f"CHK-LOCKOUT-FETCH FAIL: C4: sep_ras_o.km_uncorrectable against PIC bit 30 from the "
             f"op list to the window end: {span.text()}; expected no mismatch, one port rise and "
             f"the port high on the {WINDOW_CLKS} window clocks"
         )
@@ -1783,7 +1783,7 @@ class sep_km_cpu_protect_rand_test(sep_base_test):
         run = self.portw.since(run_mark)
         await self.portw.stop()
         assert run.mismatch == 0 and run.port_rises >= self.err_hits, (
-            f"CHK-TRAP FAIL: scope=run: km_unrecoverable_err_o against PIC bit 30 over the "
+            f"CHK-TRAP FAIL: scope=run: sep_ras_o.km_uncorrectable against PIC bit 30 over the "
             f"run: {run.text()}; expected no mismatch and at least {self.err_hits} port rises "
             "(one per trap kind and C4)"
         )

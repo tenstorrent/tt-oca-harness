@@ -22,6 +22,7 @@ async def ahd_config_corners_test(dut) -> None:
     await issue_read(dut)
     res = await wait_for_irq(dut, 64)
     assert res is None and dut.irq_o.value == 0, "threshold=0 unexpectedly fired"
+    assert dut.timeout_o.value == 0, "threshold=0 should keep timeout_o low"
 
     # threshold = 1: smallest useful value -> a single stalled cycle fires.
     await reset_dut(dut)
@@ -29,9 +30,10 @@ async def ahd_config_corners_test(dut) -> None:
     await issue_read(dut)
     assert await wait_for_irq(dut, 16) is not None, "threshold=1 should fire after ~1 stalled cycle"
 
-    # irq_en = 0: a real hang runs the counter but irq_o stays gated low.
+    # irq_en = 0: a real hang runs the counter to timeout_o but irq_o stays gated low.
     await reset_dut(dut)
     await configure(dut, 8, enable=True, irq_en=False)
     await issue_read(dut)
     res = await wait_for_irq(dut, 32)
     assert res is None and dut.irq_o.value == 0, "irq_en=0 should keep irq_o low"
+    assert dut.timeout_o.value == 1, "irq_en=0 should still raise timeout_o on a hang"

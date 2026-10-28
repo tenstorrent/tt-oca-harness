@@ -564,6 +564,11 @@ module sep_uvm_top
     logic [31:1] jtag_id_drive;
     assign jtag_id_drive = $isunknown(jtag_id_i) ? 31'h0 : jtag_id_i;
 
+    sep_pkg::sep_ras_t sep_ras_w;
+    assign lcc_sigint_err_probe_o = sep_ras_w.lc_sigint_err;
+    assign km_unrecoverable_err_o = sep_ras_w.km_uncorrectable;
+    assign km_recoverable_err_o   = sep_ras_w.km_correctable;
+
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
         .SEP_SEC_DISABLE_TOKEN (SecDisTbDigest)
@@ -659,11 +664,9 @@ module sep_uvm_top
         .dbg_disable_o                (dbg_disable_w),
         .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
         .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
-        .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
-        .km_unrecoverable_err_o       (km_unrecoverable_err_o),
-        .km_recoverable_err_o         (km_recoverable_err_o),
+        .sep_ras_o                    (sep_ras_w),
         .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
@@ -5597,9 +5600,7 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // Functional-coverage sampler (docs/SEP_FCOV.adoc).
     //
-    // Passive: it drives nothing and has no output. VCS only -- Verilator does
-    // not compile `covergroup`, and cov/sv/sep_fcov.sv is `ifndef VERILATOR`,
-    // so there is no module to bind on the Verilator targets.
+    // Passive: it drives nothing and has no output.
     //
     // The response side (`lsu_axi_resp`) is mirrored to the flat s_axi_* outputs
     // above; the REQUEST side (`lsu_axi_req` AW/W/AR and B/R ready) is read only
@@ -5612,7 +5613,6 @@ module sep_uvm_top
     // force-splice (see the CPU-LSU AXI splice above), read-only, with no force
     // and no new hierarchy depth.
     // ------------------------------------------------------------------
-`ifndef VERILATOR
     // Fabric sampler taps (docs/SEP_FCOV.adoc, fabric and remap groups, Sampler
     // taps): read-only copies of the filter, alias and output remap register
     // fields, one explicit assign per index.
@@ -7100,7 +7100,6 @@ module sep_uvm_top
 `undef FC_AES
 `undef FC_KMAC
 `undef FC_OTBN
-`endif
 
 `undef SEP_ESRC
 `undef SEP_DRBG

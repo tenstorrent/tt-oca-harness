@@ -160,6 +160,10 @@ sources = [
   # binds and the bridge that places the cut's struct port on it.
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
+  # Clean-room AXI4 protocol checker, instantiated on the SMU crossbar and
+  # boundary links in tb_wrapper_top.sv. Both Verilator targets define
+  # ASSERTS_OFF and pass no --assert, so the rules grade on VCS.
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
   "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",
@@ -213,6 +217,9 @@ ccache = true
 # --output-groups 0 compiles the generated .cpp files one by one, as the other
 # DUTs do: grouped, one unit of the coverage-instrumented model grows past
 # what the CI compiler finishes in time.
+#
+# smu_fcov.vlt keeps the covergroup bin counters of the cov/sv collectors
+# valid in the coverage database.
 build_args = [
   "--coverage-line",
   "--coverage-expr",
@@ -220,6 +227,7 @@ build_args = [
   "--output-groups",
   "0",
   "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
+  "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_fcov.vlt",
 ]
 # The policy file is named explicitly rather than discovered at
 # cov/config/verilator/coverage_policy.toml.

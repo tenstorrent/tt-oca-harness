@@ -2,7 +2,20 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP OSS functional-coverage sampler (docs/SEP_FCOV.adoc). SystemVerilog
-// covergroups only, compiled where VERILATOR is not defined.
+// covergroups only.
+//
+// A covergroup construct that Verilator does not support builds other bins
+// there than on the commercial simulators, with only a COVERIGN warning,
+// which sep_sim_cfg.toml makes an error. A cross therefore has no select
+// expression: a cross with excluded cells is a coverpoint over the
+// concatenation of its terms, one bin per cell. No bin uses a `with` filter.
+// The weight options change a score and no bin; Verilator ignores them, so
+// a coverpoint that sets option.weight or type_option.weight sits in a
+// `lint_off COVERIGN` region. Two divergences carry no warning. On Verilator
+// an explicit bin also counts a value that an ignore_bins of the same
+// coverpoint lists, so an explicit bin lists only the values the ignore_bins
+// leave. A wildcard array bin is one bin there, so no array bin is a
+// wildcard bin.
 //
 // One passive instance in tb_top (`u_sep_fcov`). It drives nothing.
 //
@@ -33,8 +46,6 @@
 // memory-window package (`sep_top_addrmap_pkg`). Where a vendored block exports no
 // field symbol, the bit position is named in a comment against the driver that
 // programs it.
-
-`ifndef VERILATOR
 
 `timescale 1ps / 1fs
 
@@ -3816,9 +3827,9 @@ module sep_fcov (
     cp_sideload: coverpoint sideload {
       bins sw_key = {1'b0}; bins km_key = {1'b1};
     }
-    // Each cross cell is one configured mode/key size/operation that reached
-    // OUTPUT_VALID and returned a data word. The suite walks nine ENC cells
-    // plus the ECB/CBC decrypt legs of the round-trip.
+    // {mode, key, op}: each cell is one configured mode/key size/operation
+    // that reached OUTPUT_VALID and returned a data word. The suite walks nine
+    // ENC cells plus the ECB/CBC decrypt legs of the round-trip.
     //
     // CTR x DECRYPT has nothing to score. CTR is a stream mode: the engine
     // runs the forward cipher whichever way OPERATION is programmed, so
@@ -3830,8 +3841,24 @@ module sep_fcov (
     // The scoreable neighbour is OPERATION's shadowed-register behaviour --
     // one-hot readback and the update/storage-error alerts -- which is
     // mode-independent and belongs on a CSR vehicle, not on a CTR cipher cell.
-    x_mode_key_op: cross cp_mode, cp_key, cp_op{
-      ignore_bins ctr_decrypt = binsof (cp_mode.ctr) && binsof (cp_op.dec);
+    x_mode_key_op: coverpoint {
+      mode, key, op
+    } {
+      bins ecb_k128_enc = {{AesModeEcb, AesKey128, AesOpEnc}};
+      bins ecb_k128_dec = {{AesModeEcb, AesKey128, AesOpDec}};
+      bins ecb_k192_enc = {{AesModeEcb, AesKey192, AesOpEnc}};
+      bins ecb_k192_dec = {{AesModeEcb, AesKey192, AesOpDec}};
+      bins ecb_k256_enc = {{AesModeEcb, AesKey256, AesOpEnc}};
+      bins ecb_k256_dec = {{AesModeEcb, AesKey256, AesOpDec}};
+      bins cbc_k128_enc = {{AesModeCbc, AesKey128, AesOpEnc}};
+      bins cbc_k128_dec = {{AesModeCbc, AesKey128, AesOpDec}};
+      bins cbc_k192_enc = {{AesModeCbc, AesKey192, AesOpEnc}};
+      bins cbc_k192_dec = {{AesModeCbc, AesKey192, AesOpDec}};
+      bins cbc_k256_enc = {{AesModeCbc, AesKey256, AesOpEnc}};
+      bins cbc_k256_dec = {{AesModeCbc, AesKey256, AesOpDec}};
+      bins ctr_k128_enc = {{AesModeCtr, AesKey128, AesOpEnc}};
+      bins ctr_k192_enc = {{AesModeCtr, AesKey192, AesOpEnc}};
+      bins ctr_k256_enc = {{AesModeCtr, AesKey256, AesOpEnc}};
     }
   endgroup
 
@@ -3853,11 +3880,27 @@ module sep_fcov (
     cp_plain: coverpoint digest iff (!keyed) {
       bins sha2_256 = {HmacSha256}; bins sha2_384 = {HmacSha384}; bins sha2_512 = {HmacSha512};
     }
-    // SHA-256 with a 1024-bit key is illegal (hmac.sv), so the suite walks
-    // fourteen of the fifteen keyed cells; the excluded one is named in
-    // docs/SEP_FCOV.adoc rather than binned here.
-    x_digest_key: cross cp_digest, cp_key_length{
-      ignore_bins illegal_256_1024 = binsof (cp_digest.sha2_256) && binsof (cp_key_length.k1024);
+    // {digest, key_length} of a keyed run. SHA-256 with a 1024-bit key is
+    // illegal (hmac.sv), so the suite walks fourteen of the fifteen keyed
+    // cells; the excluded one is named in docs/SEP_FCOV.adoc rather than
+    // binned here.
+    x_digest_key: coverpoint {
+      digest, key_length
+    } iff (keyed) {
+      bins sha2_256_k128 = {{HmacSha256, HmacKey128}};
+      bins sha2_256_k256 = {{HmacSha256, HmacKey256}};
+      bins sha2_256_k384 = {{HmacSha256, HmacKey384}};
+      bins sha2_256_k512 = {{HmacSha256, HmacKey512}};
+      bins sha2_384_k128 = {{HmacSha384, HmacKey128}};
+      bins sha2_384_k256 = {{HmacSha384, HmacKey256}};
+      bins sha2_384_k384 = {{HmacSha384, HmacKey384}};
+      bins sha2_384_k512 = {{HmacSha384, HmacKey512}};
+      bins sha2_384_k1024 = {{HmacSha384, HmacKey1024}};
+      bins sha2_512_k128 = {{HmacSha512, HmacKey128}};
+      bins sha2_512_k256 = {{HmacSha512, HmacKey256}};
+      bins sha2_512_k384 = {{HmacSha512, HmacKey384}};
+      bins sha2_512_k512 = {{HmacSha512, HmacKey512}};
+      bins sha2_512_k1024 = {{HmacSha512, HmacKey1024}};
     }
   endgroup
 
@@ -4218,11 +4261,15 @@ module sep_fcov (
       bins status_poll = {1'b0}; bins interrupt = {1'b1};
     }
     cp_mode: coverpoint handshake {bins normal = {1'b0}; bins handshake = {1'b1};}
-    // The handshake leaves (SPI DMA firmware) do not complete through the
-    // DMA-done ISR, so that cell has no producer and is ignored rather than
-    // left as a permanent hole.
-    x_route_mode: cross cp_route, cp_mode{
-      ignore_bins irq_handshake = binsof (cp_route.interrupt) && binsof (cp_mode.handshake);
+    // {irq_route, handshake}: the handshake leaves (SPI DMA firmware) do not
+    // complete through the DMA-done ISR, so that cell has no producer and is
+    // not a bin rather than a permanent hole.
+    x_route_mode: coverpoint {
+      irq_route, handshake
+    } {
+      bins status_poll_normal = {2'b00};
+      bins status_poll_handshake = {2'b01};
+      bins interrupt_normal = {2'b10};
     }
   endgroup
 
@@ -4387,11 +4434,15 @@ module sep_fcov (
     cp_sec_dis: coverpoint sec_dis {
       bins off = {1'b0}; bins on = {1'b1};
     }
-    // SEC_DIS forces FEAT_CTRL to all-ones, so `on` can only ever pair with
-    // `full`; the other two products are illegal.
-    x_sec_dis_debug: cross cp_sec_dis, cp_debug{
-      ignore_bins sec_dis_not_full = binsof(cp_sec_dis.on) &&
-          (binsof(cp_debug.none) || binsof(cp_debug.partial));
+    // {sec_dis, dbg}: SEC_DIS forces FEAT_CTRL to all-ones, so `on` can only
+    // ever pair with `full`; the other two products are illegal.
+    x_sec_dis_debug: coverpoint {
+      sec_dis, dbg
+    } {
+      bins off_none = {3'b0_00};
+      bins off_partial = {3'b0_01};
+      bins off_full = {3'b0_10};
+      bins on_full = {3'b1_10};
     }
     // SECURE_TM does NOT qualify feature control in this layout
     // (cocotb/env/sep_lcc_golden.py), so it is recorded on its own rather than
@@ -4542,7 +4593,9 @@ module sep_fcov (
       bins b16384 = {32'd16384};
     }
     cp_irq_x_enable: coverpoint dma_irq_cell_q iff (dma_irq_cell_ev_q) {
-      bins en_event[] = {[5'd0 : 5'd31]}; wildcard ignore_bins no_event = {5'b???11};
+      bins en_event[] = {[5'd0 : 5'd2], [5'd4 : 5'd6], [5'd8 : 5'd10], [5'd12 : 5'd14],
+        [5'd16 : 5'd18], [5'd20 : 5'd22], [5'd24 : 5'd26], [5'd28 : 5'd30]};
+      wildcard ignore_bins no_event = {5'b???11};
     }
   endgroup
 
@@ -4724,7 +4777,6 @@ module sep_fcov (
 
   // =====================================================================
   // Fabric and remap groups (docs/SEP_FCOV.adoc, fabric and remap groups).
-  // VCS only, like the rest of this module.
   //
   // GATE. Every bin of this section samples only inside the graded window
   // of an owning test: `graded_owner` holds that test's code from
@@ -5760,9 +5812,11 @@ module sep_fcov (
     }
     // Check only: a crypto-region burst that is not refused is illegal. The
     // point carries no bin of its own, so it adds nothing to the group score.
+    // verilator lint_off COVERIGN
     cp_burst_region_bad: coverpoint burst_bad iff (own_bu) {
       option.weight = 0; type_option.weight = 0; illegal_bins not_decerr = {1'b1};
     }
+    // verilator lint_on COVERIGN
     // System Interface access of the entropy pool (owner
     // sep_fabric_row_response_matrix_test): a write answers SLVERR; a read of
     // an offset past the pool registers answers SLVERR with read data 0.
@@ -6007,14 +6061,14 @@ module sep_fcov (
   );
     option.per_instance = 1;
     option.name = "sep_filter_match_cg";
-    // Cross axes only: weight 0, gated like the crosses.
+    // The axes of the tuple coverpoints below.
+    // verilator lint_off COVERIGN
     cp_inst: coverpoint inst_out iff (own_m || own_ftr_out) {
       option.weight = 0; bins in = {1'b0}; bins out = {1'b1};
     }
     cp_dir: coverpoint dir_w iff (own_m || own_ftr_out) {
       option.weight = 0; bins r = {1'b0}; bins w = {1'b1};
     }
-    // 1 entry_disabled, 2 ns_mismatch, 3 src_mismatch, 4 burst_mismatch.
     cp_fail: coverpoint fail_cond iff (own_m || own_ftr_out) {
       option.weight = 0;
       bins entry_disabled = {3'd1};
@@ -6022,24 +6076,10 @@ module sep_fcov (
       bins src_mismatch = {3'd3};
       bins burst_mismatch = {3'd4};
     }
-    cp_fail_cond_fallthrough: cross cp_inst, cp_dir, cp_fail iff (
-        (own_m && !(inst_out && (fail_cond == 3'd3))) ||
-        (own_ftr_out && inst_out && (fail_cond == 3'd3))) {
-      ignore_bins out_burst = binsof (cp_inst.out) && binsof (cp_fail.burst_mismatch);
-    }
-    // 1 wildcard, 2 exact, 3 mismatch.
     cp_src: coverpoint src_cls iff (own_m) {
       option.weight = 0; bins wildcard_src = {2'd1}; bins exact = {2'd2}; bins mismatch = {2'd3};
     }
-    cp_src_id_class: cross cp_inst, cp_src iff (own_m);
     cp_ar_aw: coverpoint ar_aw_div iff (own_m) {option.weight = 0; bins winner_differs = {1'b1};}
-    cp_ar_aw_independent: cross cp_inst, cp_ar_aw iff (own_m) {
-      // An outbound path sets NS from the address, so the read and the write of
-      // one address reach the outbound filter with the same NS.
-      ignore_bins out_same_ns = binsof (cp_inst.out);
-    }
-    // 1 lowest_allow, 2 perm_block, 3 perm_block_hides_allow,
-    // 4 fallthrough_allow, 5 no_match.
     cp_win: coverpoint winner iff (own_m) {
       option.weight = 0;
       bins lowest_allow = {3'd1};
@@ -6048,8 +6088,64 @@ module sep_fcov (
       bins fallthrough_allow = {3'd4};
       bins no_match = {3'd5};
     }
-    cp_winner_class: cross cp_inst, cp_win iff (own_m) {
-      ignore_bins in_perm_block = binsof (cp_inst.in) && binsof (cp_win.perm_block);
+    // verilator lint_on COVERIGN
+    // {inst_out, dir_w, fail_cond (1 entry_disabled, 2 ns_mismatch,
+    // 3 src_mismatch, 4 burst_mismatch)}. No local master issues a multi-beat
+    // burst, so outbound burst_mismatch is not a cell.
+    cp_fail_cond_fallthrough: coverpoint {
+      inst_out, dir_w, fail_cond
+    } iff ((own_m && !(inst_out && (fail_cond == 3'd3))) ||
+           (own_ftr_out && inst_out && (fail_cond == 3'd3))) {
+      bins in_r_entry_disabled = {5'b0_0_001};
+      bins in_r_ns_mismatch = {5'b0_0_010};
+      bins in_r_src_mismatch = {5'b0_0_011};
+      bins in_r_burst_mismatch = {5'b0_0_100};
+      bins in_w_entry_disabled = {5'b0_1_001};
+      bins in_w_ns_mismatch = {5'b0_1_010};
+      bins in_w_src_mismatch = {5'b0_1_011};
+      bins in_w_burst_mismatch = {5'b0_1_100};
+      bins out_r_entry_disabled = {5'b1_0_001};
+      bins out_r_ns_mismatch = {5'b1_0_010};
+      bins out_r_src_mismatch = {5'b1_0_011};
+      bins out_w_entry_disabled = {5'b1_1_001};
+      bins out_w_ns_mismatch = {5'b1_1_010};
+      bins out_w_src_mismatch = {5'b1_1_011};
+    }
+    // {inst_out, src_cls (1 wildcard, 2 exact, 3 mismatch)}.
+    cp_src_id_class: coverpoint {
+      inst_out, src_cls
+    } iff (own_m) {
+      bins in_wildcard_src = {3'b0_01};
+      bins in_exact = {3'b0_10};
+      bins in_mismatch = {3'b0_11};
+      bins out_wildcard_src = {3'b1_01};
+      bins out_exact = {3'b1_10};
+      bins out_mismatch = {3'b1_11};
+    }
+    // {inst_out, ar_aw_div}: an outbound path sets NS from the address, so the
+    // read and the write of one address reach the outbound filter with the
+    // same NS.
+    cp_ar_aw_independent: coverpoint {
+      inst_out, ar_aw_div
+    } iff (own_m) {
+      bins in_winner_differs = {2'b0_1};
+    }
+    // {inst_out, winner (1 lowest_allow, 2 perm_block, 3 perm_block_hides_allow,
+    // 4 fallthrough_allow, 5 no_match)}. The inbound perm_block cell is not a
+    // bin: sep_fabric_inbound_filter_rule_matrix_test grades the inbound
+    // permission bits.
+    cp_winner_class: coverpoint {
+      inst_out, winner
+    } iff (own_m) {
+      bins in_lowest_allow = {4'b0_001};
+      bins in_perm_block_hides_allow = {4'b0_011};
+      bins in_fallthrough_allow = {4'b0_100};
+      bins in_no_match = {4'b0_101};
+      bins out_lowest_allow = {4'b1_001};
+      bins out_perm_block = {4'b1_010};
+      bins out_perm_block_hides_allow = {4'b1_011};
+      bins out_fallthrough_allow = {4'b1_100};
+      bins out_no_match = {4'b1_101};
     }
     // A DECERR write to FILTER_CONFIG of a locked inbound entry, then a read
     // that equals the value read before the write (owner
@@ -6077,21 +6173,15 @@ module sep_fcov (
   );
     option.per_instance = 1;
     option.name = "sep_filter_range_granule_cg";
-    // Cross axes only: weight 0, gated like the crosses.
+    // The axes of the tuple coverpoints below.
+    // verilator lint_off COVERIGN
     cp_inst: coverpoint inst_out iff (own) {
       option.weight = 0; bins in = {1'b0}; bins out = {1'b1};
     }
     cp_gran: coverpoint gran_4k iff (own) {option.weight = 0; bins g8b = {1'b0}; bins g4k = {1'b1};}
-    // 1 one, 2 equal, 3 straddle.
     cp_shape: coverpoint shape iff (own) {
       option.weight = 0; bins one = {2'd1}; bins equal = {2'd2}; bins straddle = {2'd3};
     }
-    cp_granule_shape_inst: cross cp_gran, cp_shape, cp_inst iff (own) {
-      ignore_bins g8b_one_equal = binsof (cp_gran.g8b) && binsof (cp_shape) intersect {2'd1, 2'd2};
-      ignore_bins in_4k_one = binsof (cp_gran.g4k) && binsof (cp_shape.one) && binsof (cp_inst.in);
-    }
-    // 1 below_widened_base, 2 at_widened_base, 3 at_widened_top_word,
-    // 4 above_widened_top.
     cp_point: coverpoint point iff (own) {
       option.weight = 0;
       bins below_widened_base = {3'd1};
@@ -6099,7 +6189,35 @@ module sep_fcov (
       bins at_widened_top_word = {3'd3};
       bins above_widened_top = {3'd4};
     }
-    cp_probe_point_verdict: cross cp_point, cp_inst iff (own);
+    // verilator lint_on COVERIGN
+    // {gran_4k (0 g8b, 1 g4k), shape (1 one, 2 equal, 3 straddle), inst_out}.
+    // The cells 8B x one, 8B x equal and inbound 4K x one are not bins: open
+    // tests grade them.
+    cp_granule_shape_inst: coverpoint {
+      gran_4k, shape, inst_out
+    } iff (own) {
+      bins g8b_straddle_in = {4'b0_11_0};
+      bins g8b_straddle_out = {4'b0_11_1};
+      bins g4k_one_out = {4'b1_01_1};
+      bins g4k_equal_in = {4'b1_10_0};
+      bins g4k_equal_out = {4'b1_10_1};
+      bins g4k_straddle_in = {4'b1_11_0};
+      bins g4k_straddle_out = {4'b1_11_1};
+    }
+    // {point (1 below_widened_base, 2 at_widened_base, 3 at_widened_top_word,
+    // 4 above_widened_top), inst_out}.
+    cp_probe_point_verdict: coverpoint {
+      point, inst_out
+    } iff (own) {
+      bins below_widened_base_in = {4'b001_0};
+      bins below_widened_base_out = {4'b001_1};
+      bins at_widened_base_in = {4'b010_0};
+      bins at_widened_base_out = {4'b010_1};
+      bins at_widened_top_word_in = {4'b011_0};
+      bins at_widened_top_word_out = {4'b011_1};
+      bins above_widened_top_in = {4'b100_0};
+      bins above_widened_top_out = {4'b100_1};
+    }
     cp_subgranule_off: coverpoint subg iff (own) {
       bins first_word = {2'd1}; bins second_word = {2'd2}; bins last_word_4k = {2'd3};
     }
@@ -6130,16 +6248,23 @@ module sep_fcov (
   );
     option.per_instance = 1;
     option.name = "sep_filter_default_policy_cg";
-    // Cross axes only: weight 0, gated like the cross.
+    // The axes of the tuple coverpoint below.
+    // verilator lint_off COVERIGN
     cp_inst: coverpoint inst_out iff (own_m) {
       option.weight = 0; bins in = {1'b0}; bins out = {1'b1};
     }
-    // 1 reset_state, 2 armed_disabled.
     cp_basis: coverpoint basis iff (own_m) {
       option.weight = 0; bins reset_state = {2'd1}; bins armed_disabled = {2'd2};
     }
-    cp_deny_basis: cross cp_basis, cp_inst iff (own_m) {
-      ignore_bins reset_in = binsof (cp_basis.reset_state) && binsof (cp_inst.in);
+    // verilator lint_on COVERIGN
+    // {basis (1 reset_state, 2 armed_disabled), inst_out}. The inbound
+    // reset-state cell is not a bin: open tests grade it.
+    cp_deny_basis: coverpoint {
+      basis, inst_out
+    } iff (own_m) {
+      bins reset_state_out = {3'b01_1};
+      bins armed_disabled_in = {3'b10_0};
+      bins armed_disabled_out = {3'b10_1};
     }
     // {kind (0 unmatched, 1 perm_clear_on_match), dir} + 1, with sep_debug 0.
     cp_filter_active_block: coverpoint active_blk iff (own_m) {
@@ -6560,6 +6685,13 @@ module sep_fcov (
     return ((c <= 8'd51) && (c[1:0] == 2'd3)) ? 8'hFF : c;
   endfunction
 
+  // The x_row_cell_init bins of one cp_row_cell code: SI read and write, or
+  // for a live word LSU read and SI read.
+  `define SEP_FCOV_ROW_SI(cell, c) \
+      bins cell``_si_r = {{c, 2'b10}}; bins cell``_si_w = {{c, 2'b11}};
+  `define SEP_FCOV_ROW_LIVE(cell, c) \
+      bins cell``_lsu_r = {{c, 2'b00}}; bins cell``_si_r = {{c, 2'b10}};
+
   covergroup sep_aperture_reserved_access_cg with function sample (
       logic [7:0] row_c,
       logic [1:0] init_dir,
@@ -6631,8 +6763,9 @@ module sep_fcov (
     cp_row_init_dir: coverpoint init_dir iff (own && fr_row_pts) {
       bins lsu_r = {2'b00}; bins lsu_w = {2'b01}; bins si_r = {2'b10}; bins si_w = {2'b11};
     }
-    // {init, dir} of every row-cell sample of any owner; it only feeds
-    // x_row_cell_init and carries no weight of its own.
+    // {init, dir} of every row-cell sample of any owner, the second term of
+    // x_row_cell_init.
+    // verilator lint_off COVERIGN
     cp_row_cell_dir: coverpoint init_dir iff (own) {
       option.weight = 0;
       bins lsu_r = {2'b00};
@@ -6640,26 +6773,50 @@ module sep_fcov (
       bins si_r = {2'b10};
       bins si_w = {2'b11};
     }
-    // The LSU crosses only the reset-control and live-word cells; a
-    // live-word cell is a read; reset control is graded from the LSU only.
-    x_row_cell_init: cross cp_row_cell, cp_row_cell_dir iff (own) {
-      ignore_bins live_write = binsof(cp_row_cell) intersect {8'd3, 8'd7, 8'd11, 8'd15, 8'd19, 8'd23, 8'd27, 8'd31, 8'd35, 8'd39, 8'd43, 8'd47, 8'd51} &&
-                               binsof(cp_row_cell_dir) intersect {
-        2'b01, 2'b11
-      };
-      ignore_bins si_reset_ctrl = binsof(cp_row_cell) intersect {8'd10, 8'd11} &&
-                                  binsof(cp_row_cell_dir) intersect {
-        2'b10, 2'b11
-      };
-      ignore_bins lsu_other = !binsof(cp_row_cell) intersect {8'd10, 8'd3, 8'd7, 8'd11, 8'd15, 8'd19, 8'd23, 8'd27, 8'd31, 8'd35, 8'd39, 8'd43, 8'd47, 8'd51} &&
-                              binsof(cp_row_cell_dir) intersect {
-        2'b00, 2'b01
-      };
-      // The cells of the rows 21 and up are graded from the LSU only.
-      ignore_bins si_rows_21_up = binsof(cp_row_cell) intersect {[8'd84 : 8'd148]} &&
-                                  binsof(cp_row_cell_dir) intersect {
-        2'b10, 2'b11
-      };
+    // verilator lint_on COVERIGN
+    // {row_c, init_dir} of every row-cell sample of any owner. The SI takes
+    // every row below row 21 (code 84) except reset control; the LSU takes
+    // the reset-control cells and the live words; a live word is a read.
+    x_row_cell_init: coverpoint {
+      row_c, init_dir
+    } iff (own) {
+      `SEP_FCOV_ROW_SI(rsvd_10050000, 8'd52)
+      `SEP_FCOV_ROW_SI(rsvd_10804000, 8'd56)
+      `SEP_FCOV_ROW_SI(rsvd_10914000, 8'd60)
+      `SEP_FCOV_ROW_SI(rsvd_10921000, 8'd64)
+      `SEP_FCOV_ROW_SI(rsvd_10930600, 8'd68)
+      `SEP_FCOV_ROW_SI(rsvd_10960000, 8'd72)
+      `SEP_FCOV_ROW_SI(rsvd_10c00000, 8'd76)
+      `SEP_FCOV_ROW_SI(rsvd_12000000, 8'd80)
+      `SEP_FCOV_ROW_SI(hole_otbn, 8'd13)
+      `SEP_FCOV_ROW_SI(hole_hmac, 8'd21)
+      `SEP_FCOV_ROW_SI(hole_kmac, 8'd25)
+      `SEP_FCOV_ROW_SI(hole_esrc, 8'd37)
+      `SEP_FCOV_ROW_SI(hole_abr, 8'd49)
+      `SEP_FCOV_ROW_SI(past_dma, 8'd2)
+      `SEP_FCOV_ROW_SI(past_wdt, 8'd6)
+      bins past_reset_ctrl_lsu_r = {{8'd10, 2'b00}};
+      bins past_reset_ctrl_lsu_w = {{8'd10, 2'b01}};
+      `SEP_FCOV_ROW_SI(past_otbn, 8'd14)
+      `SEP_FCOV_ROW_SI(past_aes, 8'd18)
+      `SEP_FCOV_ROW_SI(past_csrng, 8'd30)
+      `SEP_FCOV_ROW_SI(past_edn, 8'd34)
+      `SEP_FCOV_ROW_SI(past_esrc, 8'd38)
+      `SEP_FCOV_ROW_SI(past_lc, 8'd42)
+      `SEP_FCOV_ROW_SI(past_km_mbox, 8'd46)
+      `SEP_FCOV_ROW_LIVE(live_dma, 8'd3)
+      `SEP_FCOV_ROW_LIVE(live_wdt, 8'd7)
+      bins live_reset_ctrl_lsu_r = {{8'd11, 2'b00}};
+      `SEP_FCOV_ROW_LIVE(live_otbn, 8'd15)
+      `SEP_FCOV_ROW_LIVE(live_aes, 8'd19)
+      `SEP_FCOV_ROW_LIVE(live_hmac, 8'd23)
+      `SEP_FCOV_ROW_LIVE(live_kmac, 8'd27)
+      `SEP_FCOV_ROW_LIVE(live_csrng, 8'd31)
+      `SEP_FCOV_ROW_LIVE(live_edn, 8'd35)
+      `SEP_FCOV_ROW_LIVE(live_esrc, 8'd39)
+      `SEP_FCOV_ROW_LIVE(live_lc, 8'd43)
+      `SEP_FCOV_ROW_LIVE(live_km_mbox, 8'd47)
+      `SEP_FCOV_ROW_LIVE(live_abr, 8'd51)
     }
     // {class 1 in_extent, 2 immediately_above, 3 far_inside_reserved, dir}.
     cp_aperture_offset_dir: coverpoint rst_off iff (own && fr_row_pts) {
@@ -6698,6 +6855,8 @@ module sep_fcov (
       bins stee_tail = {3'd5};
     }
   endgroup
+  `undef SEP_FCOV_ROW_SI
+  `undef SEP_FCOV_ROW_LIVE
 
   // ---------------------------------------------------------------------
   // sep_crypto_bus_access_cg: the OTBN register cache cells and the engine
@@ -8745,8 +8904,8 @@ module sep_fcov (
 
   // =====================================================================
   // Phase 2: SPI and DMA groups (docs/SEP_FCOV.adoc, SPI and DMA groups).
-  // VCS only. The decode and the owner gate are in the SPI and DMA decode
-  // section above. Each `*_v` argument is the gated sample strobe of one
+  // The decode and the owner gate are in the SPI and DMA decode section
+  // above. Each `*_v` argument is the gated sample strobe of one
   // coverpoint: the event of the coverpoint AND an owning test's window.
   // The encodings of the packed arguments are in the comment of each
   // coverpoint.
@@ -8813,7 +8972,7 @@ module sep_fcov (
     }
     // {CLKDIV class (0 zero, 1 small, 2 mid), SPEED}.
     cp_clkdiv_x_speed: coverpoint cs iff (cs_v) {
-      bins clk_speed[] = {[4'd0 : 4'd15]};
+      bins clk_speed[] = {[4'd0 : 4'd2], [4'd4 : 4'd6], [4'd8 : 4'd10]};
       wildcard ignore_bins speed3 = {4'b??11};
       wildcard ignore_bins clk_other = {4'b11??};
     }
@@ -8878,7 +9037,8 @@ module sep_fcov (
     // {CPOL, CPHA, FULLCYC, DIRECTION}; the bidirectional cells of the
     // modes other than 000 are not driven.
     cp_mode_x_dir: coverpoint md iff (md_v) {
-      bins mode_dir[] = {[5'd0 : 5'd31]};
+      bins mode_dir[] = {[5'd1 : 5'd3], [5'd5 : 5'd6], [5'd9 : 5'd10], [5'd13 : 5'd14],
+        [5'd17 : 5'd18], [5'd21 : 5'd22], [5'd25 : 5'd26], [5'd29 : 5'd30]};
       wildcard ignore_bins dummy = {5'b???00};
       ignore_bins bidir_not_mode0 = {5'd7, 5'd11, 5'd15, 5'd19, 5'd23, 5'd27, 5'd31};
     }
@@ -8966,7 +9126,7 @@ module sep_fcov (
     // 2 mid, 3 max)}; TXQD and RXQD with ACTIVE = 1 at one and mid are not
     // graded.
     cp_depth_counter: coverpoint dc iff (dc_v) {
-      bins ctr_act_occ[] = {[5'd0 : 5'd23]};
+      bins ctr_act_occ[] = {[5'd0 : 5'd12], [5'd15 : 5'd20], 5'd23};
       ignore_bins qd_active_one_mid = {5'b01_1_01, 5'b01_1_10, 5'b10_1_01, 5'b10_1_10};
     }
   endgroup
@@ -9036,7 +9196,7 @@ module sep_fcov (
     // where PIC source 14 equals (INTR_STATE AND INTR_ENABLE) != 0. The five
     // cells the open test grades are not bins.
     cp_intr_en_x_state: coverpoint ies iff (ies_v) {
-      bins en_state[] = {[4'd0 : 4'd15]};
+      bins en_state[] = {[4'd2 : 4'd3], [4'd6 : 4'd7], [4'd9 : 4'd15]};
       ignore_bins open_test_cells = {4'b00_00, 4'b01_00, 4'b10_00, 4'b00_01, 4'b01_01};
     }
     // {class (0 CSIDINVAL, 1 CMDINVAL, 2 UNDERFLOW, 3 OVERFLOW, 4 CMDBUSY,
@@ -9252,12 +9412,17 @@ module sep_fcov (
     option.name = "sep_dma_xfer_rand_cg";
     // {address mode (4 bits as cp_src_x_dst_mode), width encoding}.
     cp_mode_x_width: coverpoint mw iff (mw_v) {
-      bins mode_width[] = {[6'd0 : 6'd63]}; wildcard ignore_bins enc3 = {6'b????11};
+      bins mode_width[] = {[6'd0 : 6'd2], [6'd4 : 6'd6], [6'd8 : 6'd10], [6'd12 : 6'd14],
+        [6'd16 : 6'd18], [6'd20 : 6'd22], [6'd24 : 6'd26], [6'd28 : 6'd30], [6'd32 : 6'd34],
+        [6'd36 : 6'd38], [6'd40 : 6'd42], [6'd44 : 6'd46], [6'd48 : 6'd50], [6'd52 : 6'd54],
+        [6'd56 : 6'd58], [6'd60 : 6'd62]};
+      wildcard ignore_bins enc3 = {6'b????11};
     }
     // {address mode, n > 1}; n > 1 on a side with INCREMENT = 0 and
     // WRAP = 0 is not graded.
     cp_mode_x_chunkcount: coverpoint mc iff (mc_v) {
-      bins mode_multi[] = {[5'd0 : 5'd31]};
+      bins mode_multi[] = {5'd0, 5'd2, 5'd4, 5'd6, 5'd8, [5'd10 : 5'd16], [5'd18 : 5'd24],
+        [5'd26 : 5'd31]};
       wildcard ignore_bins src_fixed_multi = {5'b00??1};
       wildcard ignore_bins dst_fixed_multi = {5'b??001};
     }
@@ -9423,12 +9588,14 @@ module sep_fcov (
     // The owner leg logs this cell only (no document states the outcome) and
     // keeps the graded window closed, so the sampler never scores it and
     // every value is an ignore bin.
+    // verilator lint_off COVERIGN
     cp_addr_hi_nonzero: coverpoint ah iff (ah_v) {
       option.weight = 0;
       ignore_bins src_hi_no_lo_write = {2'b0_0};
       ignore_bins dst_hi_no_lo_write = {2'b1_0};
       ignore_bins lo_write = {2'b0_1, 2'b1_1};
     }
+    // verilator lint_on COVERIGN
     // The ERROR_CODE read after the STATUS.ERROR rise of an initial GO, when
     // it holds one error class alone and the registers at that GO hold that
     // fault only: 0 SIZE_ERROR with TRANSFER_WIDTH 3, 1 SRC_ADDR_ERROR with
@@ -9535,15 +9702,17 @@ module sep_fcov (
     cp_last_beat_width: coverpoint lb_w iff (lb_v) {
       bins w1 = {2'd0}; bins w2 = {2'd1}; bins w4 = {2'd2};
     }
-    x_last_beat_width: cross cp_last_beat, cp_last_beat_width{
-      ignore_bins w1_rem = binsof (cp_last_beat) intersect {[2'd1 : 2'd3]} &&
-          binsof (cp_last_beat_width) intersect {
-        2'd0
-      };
-      ignore_bins w2_rem23 = binsof (cp_last_beat) intersect {[2'd2 : 2'd3]} &&
-          binsof (cp_last_beat_width) intersect {
-        2'd1
-      };
+    // {lb, lb_w}: the remaining bytes are fewer than the width.
+    x_last_beat_width: coverpoint {
+      lb, lb_w
+    } iff (lb_v) {
+      bins full_w1 = {4'b00_00};
+      bins full_w2 = {4'b00_01};
+      bins full_w4 = {4'b00_10};
+      bins rem1_w2 = {4'b01_01};
+      bins rem1_w4 = {4'b01_10};
+      bins rem2_w4 = {4'b10_10};
+      bins rem3_w4 = {4'b11_10};
     }
     // A zero fill with SRC_ADDR_SPACE_ID outside {0x7, 0x9, 0xA} and
     // DST_ADDR_SPACE_ID 0x7, at its ERROR rise with ERROR_CODE ASID_ERROR
@@ -10522,7 +10691,7 @@ module sep_fcov (
 
   // =====================================================================
   // SPI lane and output-enable groups (docs/SEP_FCOV.adoc, SPI lane and
-  // output-enable groups). VCS only.
+  // output-enable groups).
   //
   // SOURCE. A leaf writes one record into the spi_ln_* variables through
   // the u_sep_fcov handle after a graded data, OE, trigger, abort, chain,
@@ -10590,16 +10759,44 @@ module sep_fcov (
     }
     cp_width: coverpoint width iff (v) {bins x1 = {2'd0}; bins x2 = {2'd1}; bins x4 = {2'd2};}
     cp_dir: coverpoint dir iff (v) {bins tx = {1'b0}; bins rx = {1'b1};}
-    // The DMA handshake and OT DMA RX legs grade read data only. The OT DMA
-    // TX leg programs at x1 and x4 (no dual program command) and grades no
-    // read data. The OT flash command leg has no dual program command either.
-    x_width_dir_test: cross cp_width, cp_dir, cp_test iff (v) {
-      ignore_bins dma_handshake_tx = binsof (cp_test.dma_handshake) && binsof (cp_dir.tx);
-      ignore_bins ot_dma_rx_tx = binsof (cp_test.ot_dma_rx) && binsof (cp_dir.tx);
-      ignore_bins ot_dma_tx_x2 = binsof (cp_test.ot_dma_tx) && binsof (cp_width.x2);
-      ignore_bins ot_dma_tx_rx = binsof (cp_test.ot_dma_tx) && binsof (cp_dir.rx);
-      ignore_bins ot_flash_cmd_x2_tx =
-          binsof (cp_test.ot_flash_cmd) && binsof (cp_width.x2) && binsof (cp_dir.tx);
+    // {width, dir, test}. The DMA handshake and OT DMA RX legs grade read data
+    // only. The OT DMA TX leg programs at x1 and x4 (no dual program command)
+    // and grades no read data. The OT flash command leg has no dual program
+    // command either.
+    x_width_dir_test: coverpoint {
+      width, dir, test
+    } iff (v) {
+      bins x1_tx_pad_speed_dir_matrix = {6'b00_0_000};
+      bins x1_tx_pad_timing_cfg = {6'b00_0_001};
+      bins x1_tx_fifo_stall_watermark = {6'b00_0_010};
+      bins x1_tx_ot_flash_cmd = {6'b00_0_101};
+      bins x1_tx_ot_dma_tx = {6'b00_0_110};
+      bins x1_rx_pad_speed_dir_matrix = {6'b00_1_000};
+      bins x1_rx_pad_timing_cfg = {6'b00_1_001};
+      bins x1_rx_fifo_stall_watermark = {6'b00_1_010};
+      bins x1_rx_dma_handshake = {6'b00_1_011};
+      bins x1_rx_ot_dma_rx = {6'b00_1_100};
+      bins x1_rx_ot_flash_cmd = {6'b00_1_101};
+      bins x2_tx_pad_speed_dir_matrix = {6'b01_0_000};
+      bins x2_tx_pad_timing_cfg = {6'b01_0_001};
+      bins x2_tx_fifo_stall_watermark = {6'b01_0_010};
+      bins x2_rx_pad_speed_dir_matrix = {6'b01_1_000};
+      bins x2_rx_pad_timing_cfg = {6'b01_1_001};
+      bins x2_rx_fifo_stall_watermark = {6'b01_1_010};
+      bins x2_rx_dma_handshake = {6'b01_1_011};
+      bins x2_rx_ot_dma_rx = {6'b01_1_100};
+      bins x2_rx_ot_flash_cmd = {6'b01_1_101};
+      bins x4_tx_pad_speed_dir_matrix = {6'b10_0_000};
+      bins x4_tx_pad_timing_cfg = {6'b10_0_001};
+      bins x4_tx_fifo_stall_watermark = {6'b10_0_010};
+      bins x4_tx_ot_flash_cmd = {6'b10_0_101};
+      bins x4_tx_ot_dma_tx = {6'b10_0_110};
+      bins x4_rx_pad_speed_dir_matrix = {6'b10_1_000};
+      bins x4_rx_pad_timing_cfg = {6'b10_1_001};
+      bins x4_rx_fifo_stall_watermark = {6'b10_1_010};
+      bins x4_rx_dma_handshake = {6'b10_1_011};
+      bins x4_rx_ot_dma_rx = {6'b10_1_100};
+      bins x4_rx_ot_flash_cmd = {6'b10_1_101};
     }
   endgroup
 
@@ -10755,7 +10952,6 @@ module sep_fcov (
 
   // =====================================================================
   // AES CFB, OFB and GCM group (docs/SEP_FCOV.adoc, sep_aes_cfb_ofb_gcm_cg).
-  // VCS only.
   //
   // SOURCE. After CHK-AES-CFB, CHK-AES-OFB or CHK-AES-GCM (text and tag)
   // passes, sep_aes_cfb_ofb_gcm_rand_test writes one record into the aes_mx_*
@@ -10859,7 +11055,7 @@ module sep_fcov (
 
   // =====================================================================
   // Mailbox, IRQ and PIC groups (docs/SEP_FCOV.adoc, mailbox, IRQ and PIC
-  // groups). VCS only.
+  // groups).
   //
   // GATE. Every bin samples only while `graded_owner` holds the code of an
   // owning test of its coverpoint (own_* below, codes 313 to 324). The quiet
@@ -23225,12 +23421,16 @@ module sep_fcov (
     // No sentence states INTR_STATE.done after the post-reset wipe, so the leaf
     // logs it only (ungraded in docs/SEP_FCOV.adoc). The iff term makes 0
     // unreachable, so every value is an ignore bin.
+    // verilator lint_off COVERIGN
     cp_post_reset_done: coverpoint s.pd_v iff (s.pd_v) {
       option.weight = 0;
       ignore_bins wipe_raises_done = {1'b1};
       ignore_bins unreachable_no_done = {1'b0};
     }
-    cp_cmd_ignored_err: coverpoint s.ie_v iff (s.ie_v) {bins err_bits_unchanged = {1'b1};}
+    // verilator lint_on COVERIGN
+    cp_cmd_ignored_err: coverpoint s.ie_v iff (s.ie_v) {
+      bins err_bits_unchanged = {1'b1};
+    }
     // An EXECUTE of the labelled program ends at IDLE with ERR_BITS 0, then an
     // OKAY DMEM read (hw/sys/sep/doc/otbn.adoc:16-21).
     cp_capability: coverpoint s.cp iff (s.cp_v) {
@@ -27398,10 +27598,14 @@ module sep_fcov (
     // Not graded (docs/SEP_FCOV.adoc, crypto and entropy, Bins not graded):
     // the owner logs the repetition count after the disable as OBS-BLOCKED,
     // so no value of it is a bin.
+    // verilator lint_off COVERIGN
     cp_disable_clears: coverpoint s.dc iff (s.dc_v) {
       option.weight = 0; ignore_bins reads_zero = {1'b0}; ignore_bins reads_nonzero = {1'b1};
     }
-    cp_prestage_test: coverpoint s.pt_v iff (s.pt_v) {bins stuck_zero_drain = {1'b1};}
+    // verilator lint_on COVERIGN
+    cp_prestage_test: coverpoint s.pt_v iff (s.pt_v) {
+      bins stuck_zero_drain = {1'b1};
+    }
     // Selector {0 REPCNT_HI, 1 APT_HI, 2 APT_LO, 3 MARKOV_HI, 4 MARKOV_LO} at a
     // MODULE_ENABLE rise, with the first HT_WATERMARK read after it equal to the
     // arm value of that selector and the read before it of the other polarity.
@@ -28696,7 +28900,7 @@ module sep_fcov (
       if (((el_act != el_act_q) || (cz_ist != cz_ist_q) || el_wr) && !el_arm_q) begin
         el_arm_q <= 1'b1;
         el_pre_q <= el_act_q;
-      end else if (el_arm_q && (vec_i[15] !== 1'bx) && (vec_i[15] !== 1'bz) &&
+      end else if (el_arm_q && ((vec_i[15] === 1'b0) || (vec_i[15] === 1'b1)) &&
                    ((vec_i[15] === 1'b1) == (el_act != 8'd0)) && (el_act == el_act_q) &&
                    (cz_ist == cz_ist_q)) begin
         el_arm_q <= 1'b0;
@@ -33298,7 +33502,8 @@ module sep_fcov (
     // A change to demotion 00 needs a cleared DEMOTE register. Only a reset
     // clears one, and the reset also ends the compare.
     x_otp_invariant: coverpoint s.oi iff (s.oi_v) {
-      bins cells[] = {[5'd0 : 5'd23]};
+      bins cells[] = {[5'd1 : 5'd3], [5'd5 : 5'd7], [5'd9 : 5'd11], [5'd13 : 5'd15],
+        [5'd17 : 5'd19], [5'd21 : 5'd23]};
       ignore_bins to_undemoted = {5'd0, 5'd4, 5'd8, 5'd12, 5'd16, 5'd20};
     }
     // No bin names a polarity.
@@ -37954,15 +38159,15 @@ module sep_fcov (
     // {source[3:0], rule (0 W1C clears, 1 write 0 keeps, 2 W1C of other bits
     // keeps)}.
     cp_csr_status_semantics: coverpoint v[5:0] iff (pt == 5'd2) {
-      wildcard bins w1c_clears[] = {6'b0000_00, 6'b0001_00, 6'b0010_00, 6'b0011_00,
-                                    6'b0100_00, 6'b0101_00, 6'b0110_00, 6'b0111_00,
-                                    6'b1000_00, 6'b1001_00, 6'b1010_00, 6'b1011_00};
-      wildcard bins zero_keeps[] = {6'b0000_01, 6'b0001_01, 6'b0010_01, 6'b0011_01,
-                                    6'b0100_01, 6'b0101_01, 6'b0110_01, 6'b0111_01,
-                                    6'b1000_01, 6'b1001_01, 6'b1010_01, 6'b1011_01};
-      wildcard bins other_w1c_keeps[] = {6'b0000_10, 6'b0001_10, 6'b0010_10, 6'b0011_10,
-                                         6'b0100_10, 6'b0101_10, 6'b0110_10, 6'b0111_10,
-                                         6'b1000_10, 6'b1001_10, 6'b1010_10, 6'b1011_10};
+      bins w1c_clears[] = {6'b0000_00, 6'b0001_00, 6'b0010_00, 6'b0011_00,
+                           6'b0100_00, 6'b0101_00, 6'b0110_00, 6'b0111_00,
+                           6'b1000_00, 6'b1001_00, 6'b1010_00, 6'b1011_00};
+      bins zero_keeps[] = {6'b0000_01, 6'b0001_01, 6'b0010_01, 6'b0011_01,
+                           6'b0100_01, 6'b0101_01, 6'b0110_01, 6'b0111_01,
+                           6'b1000_01, 6'b1001_01, 6'b1010_01, 6'b1011_01};
+      bins other_w1c_keeps[] = {6'b0000_10, 6'b0001_10, 6'b0010_10, 6'b0011_10,
+                                6'b0100_10, 6'b0101_10, 6'b0110_10, 6'b0111_10,
+                                6'b1000_10, 6'b1001_10, 6'b1010_10, 6'b1011_10};
     }
     // {source[3:0], enable}.
     cp_csr_src_x_en: coverpoint v[4:0] iff (pt == 5'd3) {
@@ -38185,8 +38390,12 @@ module sep_fcov (
     // {region[4:0] 1 to 31, store (0 to a locked region: dropped, violation
     // bit and IRQ bit set; 1 to an unlocked region: accepted, no bit)}.
     cp_if_sram_lock_violation: coverpoint v[5:0] iff (pt == 5'd4) {
-      bins locked[] = {[6'b00001_0 : 6'b11111_0]} with (item[0] == 1'b0);
-      bins unlocked[] = {[6'b00001_1 : 6'b11111_1]} with (item[0] == 1'b1);
+      bins locked[] = {6'd2, 6'd4, 6'd6, 6'd8, 6'd10, 6'd12, 6'd14, 6'd16, 6'd18, 6'd20, 6'd22,
+        6'd24, 6'd26, 6'd28, 6'd30, 6'd32, 6'd34, 6'd36, 6'd38, 6'd40, 6'd42, 6'd44, 6'd46, 6'd48,
+        6'd50, 6'd52, 6'd54, 6'd56, 6'd58, 6'd60, 6'd62};
+      bins unlocked[] = {6'd3, 6'd5, 6'd7, 6'd9, 6'd11, 6'd13, 6'd15, 6'd17, 6'd19, 6'd21, 6'd23,
+        6'd25, 6'd27, 6'd29, 6'd31, 6'd33, 6'd35, 6'd37, 6'd39, 6'd41, 6'd43, 6'd45, 6'd47, 6'd49,
+        6'd51, 6'd53, 6'd55, 6'd57, 6'd59, 6'd61, 6'd63};
     }
     // {field[3:0], class (0 complement correct, 1 value-rail flip, 2
     // complement-rail flip)}.
@@ -38218,11 +38427,11 @@ module sep_fcov (
     // peripheral window, 4 0x10000000), outcome[1:0] (0 permitted, 1
     // EXEC_VIOLATION, 2 ROM_ACCESS_VIOLATION)}.
     cp_ex_mode_x_target: coverpoint v[5:0] iff (pt == 5'd0) {
-      wildcard bins en0_rom = {6'b0_000_??};
-      wildcard bins en0_locked_sram = {6'b0_001_??};
-      wildcard bins en0_unlocked_sram = {6'b0_010_??};
-      wildcard bins en0_periph = {6'b0_011_??};
-      wildcard bins en0_vrom = {6'b0_100_??};
+      wildcard bins en0_rom = {6'b0_000_0?, 6'b0_000_11};
+      wildcard bins en0_locked_sram = {6'b0_001_0?, 6'b0_001_11};
+      wildcard bins en0_unlocked_sram = {6'b0_010_0?, 6'b0_010_11};
+      wildcard bins en0_periph = {6'b0_011_0?, 6'b0_011_11};
+      wildcard bins en0_vrom = {6'b0_100_0?, 6'b0_100_11};
       wildcard bins en1_rom = {6'b1_000_??};
       wildcard bins en1_locked_sram = {6'b1_001_??};
       wildcard bins en1_unlocked_sram = {6'b1_010_??};
@@ -38594,11 +38803,13 @@ module sep_fcov (
     // aligns a KM write with the wipe clear in one cycle, so the point is not
     // graded (docs/SEP_FCOV.adoc, Key Manager bins not graded). The sampler
     // makes 0 unreachable, so every value is an ignore bin.
+    // verilator lint_off COVERIGN
     cp_vw_sideload_clear: coverpoint v[0] iff (pt == 5'd6) {
       option.weight = 0;
       ignore_bins km_write_same_cycle_loses = {1'b1};
       ignore_bins unreachable_no_clear = {1'b0};
     }
+  // verilator lint_on COVERIGN
   endgroup
 
   sep_km_mailbox_fault_cg      u_sep_km_mailbox_fault_cg      = new();
@@ -42944,5 +43155,3 @@ module sep_fcov (
   end
 
 endmodule : sep_fcov
-
-`endif
