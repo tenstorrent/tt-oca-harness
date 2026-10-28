@@ -84,7 +84,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <!-- Sense FSM -->
 <rect class="core" x="480" y="130" width="340" height="100" rx="6"/>
 <text class="b" x="650" y="154" text-anchor="middle">Fuse sense FSM</text>
-<text x="650" y="180" text-anchor="middle">1. Harness map, 2. adopter map</text>
+<text x="650" y="180" text-anchor="middle">One READ: harness, then adopter words</text>
 <text x="650" y="204" text-anchor="middle">Done when both are sensed</text>
 
 <!-- OCAH / adopter boundary -->
@@ -104,7 +104,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text x="660" y="300">Fuse commands</text>
 <rect class="ext" x="480" y="480" width="340" height="70" rx="6"/>
 <text class="b" x="650" y="508" text-anchor="middle">Interface SHIM</text>
-<text x="650" y="532" text-anchor="middle">ready/valid handshake</text>
+<text x="650" y="532" text-anchor="middle">16-bit address, 11-bit length</text>
 <path class="cmd" d="M650,550 L650,576"/>
 <rect class="ext" x="480" y="580" width="340" height="86" rx="6"/>
 <text class="b" x="650" y="604" text-anchor="middle">Fuse macros 0..N</text>

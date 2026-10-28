@@ -3,8 +3,7 @@
 Adopters integrating the harness into their own SoC need fuses of their own. This proposes a
 supported, sized adopter fuse region in the SMC. The harness senses it, shadows it, locks it and
 exports it, without interpreting its contents and without RTL changes per adopter. Harness spares
-stay reserved for the harness. The SEP has no adopter region and is unchanged apart from the SHIM
-handshake (section 4).
+stay reserved for the harness. The SEP has no adopter region and is unchanged.
 
 The scope is a small set of fuses that adopter logic needs continuously, such as memory repair
 entries and sensor trims. Bulk data that needs streaming rather than shadowing is a follow-up.
@@ -63,8 +62,9 @@ logic [31:0][15:0] SMC_ADOPTER_LOCK_REGION_END;  // word one past the end of reg
 
 ## 3. Sensing and the shadow file
 
-- Sensing fills the SMC harness shadow file, then a second, adopter shadow file, through the same
-  SHIM.
+- Sensing fills the SMC harness shadow file and a second, adopter shadow file from one READ through
+  the same SHIM: 256 + `SMC_ADOPTER_FUSE_WORDS` words from bit 0. The harness file stores the first
+  256 responses and the adopter file stores the rest.
 - The harness sees one linear fuse address space, and the adopter's SHIM maps addresses to macros.
 - Because `ADOPTER_LOCKS` sits in the harness map, the adopter's locks are sensed before any adopter
   payload word arrives.
@@ -76,9 +76,10 @@ logic [31:0][15:0] SMC_ADOPTER_LOCK_REGION_END;  // word one past the end of reg
   the boot flow depends only on the combined done.
 - Implementation: reuse `efuse_shadow_regs` as a second instance for the adopter file, rather than
   one FSM writing both files.
-  - Add a start-address parameter (default 0) and a sense-start input (tied high for the harness
-    instance). The adopter instance starts when the harness instance finishes and reads from fuse
-    bit address 8192. `.address` is a bit address, not a word index.
+  - Add a sense-length parameter, a load-offset parameter and an issue-sense parameter. The harness
+    instance issues the READ with the combined length and stores responses from index 0; the adopter
+    instance issues nothing and stores responses from index 256. Both count every response of the
+    one stream, so both finish on the same cycle.
   - Add an optional external lock-vector input (off by default). The harness instance keeps taking
     its lock vector from its own first shadow words; the adopter instance takes it from
     `ADOPTER_LOCKS` in the harness shadow file. Its field map is the region table the harness
@@ -88,11 +89,11 @@ logic [31:0][15:0] SMC_ADOPTER_LOCK_REGION_END;  // word one past the end of reg
     instance has no meta-field and takes all 64 bits of `ADOPTER_LOCKS`.
   - The shadow map type is already a parameter (`efuse_map_t`). The adopter instance passes
     `logic [SMC_ADOPTER_FUSE_WORDS-1:0][31:0]`, so it needs no struct and no flat-output mode.
-  - The sense is one READ whose length is the shadow word count, so the adopter word count needs no
-    rounding; the access-length type only has to hold it (section 5).
+  - The READ length is a word count, so the adopter word count needs no rounding; the access-length
+    type only has to hold 256 + `SMC_ADOPTER_FUSE_WORDS`.
   - Make the preload plusarg name a parameter. Both SMC instances have `HAS_LC_STATE = 0`, so today
     they would load the same `smc_shadow_reg_preload` file.
-  - The controller's command mux keeps the SHIM in sense mode until the adopter instance is done.
+  - The controller's command mux keeps the SHIM in sense mode until the combined done.
   - The harness instance's module code, hierarchy and signal names are unchanged, so testbench taps,
     FSM exclusions, lint waivers and scan-protection naming keep matching. A single FSM would
     rewrite exactly the lines those artifacts are keyed on.
@@ -105,7 +106,7 @@ logic [31:0][15:0] SMC_ADOPTER_LOCK_REGION_END;  // word one past the end of reg
 ### Boot-flow races this avoids
 
 If done meant "harness region only", the fuse-released reset would let the SMC CPU and the
-controller's read and program interfaces run while the adopter READ is still streaming:
+controller's read and program interfaces run while adopter words are still streaming:
 
 - **Firmware can take the SHIM mid-stream.** The mux hands the SHIM to a firmware read or program
   once done is high, and routes responses by its current selection. Adopter words would land in the
@@ -117,17 +118,18 @@ controller's read and program interfaces run while the adopter READ is still str
 - **Adopter hardware captures zeros.** Logic released by the same reset would sample its
   configuration before the adopter shadow is filled.
 
-## 4. SHIM command handshake (ready/valid)
+## 4. SHIM command handshake
 
 Today the command interface has no acknowledgement. The SHIM accepts a command whenever it is idle
 and `valid` is high, and every requester (sense, read, program) holds `valid` high until its
 response returns. Correctness depends on the controller deselecting the request before the SHIM
 returns to idle. With the reference SHIM those two events coincide with zero cycles of margin; a
 SHIM without a finish state would accept the sense READ a second time, its responses would go to
-whichever path the mux has switched to, and the load path can overwrite the last shadow word. The
-adopter region adds a second sense command, and so a second handoff of this kind.
+whichever path the mux has switched to, and the load path can overwrite the last shadow word.
 
-Proposal: the SHIM drives a `ready` signal.
+The adopter region reads its words in the harness sense READ, so it adds no command and no handoff,
+and it does not need a handshake. A `ready` signal remains a possible follow-up for the existing
+handoff, independent of adopter fuses:
 
 - A command transfers on a cycle where `valid` and `ready` are both high. The requester holds the
   request stable while `valid && !ready`, and drops `valid` after the transfer with no consequence.
@@ -382,17 +384,17 @@ and figures that meet the inline font-size floors.
   - `architecture.adoc`: the software-lock row of the lock table names `LOCKS`; the shadow capacity
     row gains the adopter region; one sentence in the SMC JTAG policy saying the adopter window
     follows it.
-  - `interface.adoc`: the "1 KB total" statement, and the SHIM `ready` handshake in the command
-    protocol.
+  - `interface.adoc`: the "1 KB total" statement, and the widened address and access-length fields
+    in the command protocol.
   - `memmap.adoc`: a short paragraph on the adopter window. No generated table, since the adopter
     owns that map.
 - The SMC shadow register table regenerates from `smc_efuse_map.rdl` and needs no hand edit.
 
 **Outside the TRM (same pull request)**
 
-- Integrator guide (`doc/integrator/src/smu-smc.adoc`): the 8 Kbit statement, the SHIM handshake,
-  the three `CFG` fields and their static checks, the new export port, and the optional RDL and
-  script.
+- Integrator guide (`doc/integrator/src/smu-smc.adoc`): the 8 Kbit statement, the widened SHIM
+  command fields, the three `CFG` fields and their static checks, the new export port, and the
+  optional RDL and script.
 - Programmer's Guide (`doc/programmer/src/smc-programming.adoc`): the `LOCKS` rename and locking
   production regions early in boot.
 - SMC scan protection (`hw/sys/smc/doc/scan_protection.adoc`): Class 1 storage covers words 0–3.
@@ -415,9 +417,9 @@ resolution and the figure font floors.
 - **Inbound reach of the adopter window.** The SMC's top-level map, including `smc_external`, is
   described as accessible to external agents. Confirm whether a host can reach the adopter window
   through the SMC chiplet aperture, since unlocked regions rely on firmware locking them in time.
-- **Handshake carrier.** Response-struct field or separate `ready` port (section 4).
-- **Ceiling for the widened address type.** It caps the largest adopter region, including any future
-  streamed or bulk mode, and is chosen together with the 16-bit region-end entries.
+- **Ceiling for the widened address type.** The SMC uses a 16-bit bit address and an 11-bit word
+  counter, which cover the 1023-word ceiling the `adopter_fuse` slot sets. A future streamed or bulk
+  mode beyond that needs a wider address and a larger slot.
 - **Keeping `CFG` and an adopter RDL in step.** Nothing forces an adopter that has an RDL to run the
   checking script, so the two can drift. Decide whether the script is only offered, or also
   documented as a step in the adopter's own build.

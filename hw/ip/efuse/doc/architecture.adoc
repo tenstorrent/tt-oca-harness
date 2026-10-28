@@ -414,7 +414,7 @@ interpreting their contents. Harness spare fuses stay reserved for the harness.
 
 [[efuse-adopter-fuses-fig]]
 .SMC adopter fuse region
-image::efuse_adopter_architecture.svg[alt="Inside the SMC eFuse controller, register access passes through access control and the guard to the harness shadow file, which holds HARNESS_LOCKS, ADOPTER_LOCKS, named fuses and spares, and to the adopter shadow file of up to 32 lock regions, whose locks come from ADOPTER_LOCKS; the fuse sense FSM reads the harness map then the adopter map; on the adopter side, smc_adopter_shadow_regs_o feeds the adopter logic, and fuse commands go through the Interface SHIM to fuse macros holding bits 0 to 8191 and bits from 8192",width=100%,pdfwidth=100%]
+image::efuse_adopter_architecture.svg[alt="Inside the SMC eFuse controller, register access passes through access control and the guard to the harness shadow file, which holds HARNESS_LOCKS, ADOPTER_LOCKS, named fuses and spares, and to the adopter shadow file of up to 32 lock regions, whose locks come from ADOPTER_LOCKS; the fuse sense FSM reads the harness map and the adopter map in one command; on the adopter side, smc_adopter_shadow_regs_o feeds the adopter logic, and fuse commands go through the Interface SHIM to fuse macros holding bits 0 to 8191 and bits from 8192",width=100%,pdfwidth=100%]
 
 ==== Configuration and Address Map
 
@@ -426,6 +426,9 @@ into the eFuse controller instead of `smc_external_req_o`.
 * `SMC_ADOPTER_FUSE_WORDS` sets the region size in 32-bit words. Each word
 takes 4 bytes of the window, so 128 words, for example, give a 512-byte
 window. A word count of 0, the default, removes the region and its logic.
+The window must end inside the `adopter_fuse` slot of `smc_external`, which
+caps the region at 1023 words; static checks in `smu.sv` enforce the bound
+and word alignment.
 * `SMC_ADOPTER_LOCK_REGION_END` divides the region into lock regions
 (<<efuse-adopter-locks>>).
 
@@ -439,8 +442,12 @@ harness map, so harness fuse addresses do not depend on the adopter size.
 ==== Sensing and Export
 
 A second `efuse_shadow_regs` instance holds the adopter shadow file. At cold
-reset release the controller senses the harness map, then the adopter map,
-through the same Interface SHIM. `fuse_sense_done` asserts only when both
+reset release the controller issues one READ through the Interface SHIM that
+covers the harness map and the adopter map: 256 + `CFG.SMC_ADOPTER_FUSE_WORDS`
+words from bit 0. The harness shadow file stores the first 256 responses and
+the adopter shadow file stores the rest, so the region adds no second command.
+The SHIM must accept the 16-bit bit address and the 11-bit access length this
+needs. `fuse_sense_done` asserts only when both
 regions are in their shadow files, so `smc_fuse_sense_done_o`, the
 `efuse_sense_done` status bit and the fuse-released SMC reset all wait for the
 adopter map.
@@ -503,3 +510,5 @@ and raises `locked_field_access_interrupt_o`, as for harness fields.
 response.
 * The guard checks each program and read command to an adopter fuse against
 the `ADOPTER_LOCKS` pair of the region that holds the target bit.
+* Program and read commands at or above bit 8192 + 32 × `CFG.SMC_ADOPTER_FUSE_WORDS`
+set the address error status and never reach the SHIM.
