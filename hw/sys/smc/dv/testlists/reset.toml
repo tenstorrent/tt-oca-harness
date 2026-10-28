@@ -278,6 +278,7 @@ run_modes = ["smoke"]
 name = "smc_cool_reset_deglitch_window_test"
 module = "smc_cool_reset_deglitch_window_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
