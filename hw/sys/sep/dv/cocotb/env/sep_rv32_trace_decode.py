@@ -159,7 +159,7 @@ class RegTracker:
         return self._v.get(reg)
 
     def csr_operand(self, insn: int) -> int | None:
-        """The value a CSR instruction writes, before the instruction retires."""
+        """The rs1 or immediate operand of a CSR instruction; for csrrs and csrrc it is the set or clear mask."""
         op = decode_csr(insn)
         if op is None:
             return None
@@ -228,6 +228,52 @@ def _selftest() -> None:
     assert is_fence(0x0FF0_000F)
     assert decode_csr(INSN_MRET) is None
     assert is_load(asm.lw(asm.T0, asm.SP, 0)) and is_store(asm.sw(asm.T0, asm.SP, 0))
+
+    # Immediate ALU paths, with expected values from the RISC-V encoding.
+    def imm_op(f3: int, rd: int, rs1: int, imm12: int) -> int:
+        return asm.i_type(0x13, f3, rd, rs1, imm12)
+
+    t = RegTracker()
+    t.step(asm.addi(asm.T0, asm.ZERO, -1))
+    assert t.value(asm.T0) == 0xFFFF_FFFF, "addi must sign-extend a negative immediate"
+    t.step(imm_op(5, asm.T1, asm.T0, 4))
+    assert t.value(asm.T1) == 0x0FFF_FFFF, "srli is a logical shift"
+    t.step(imm_op(5, asm.T2, asm.T0, 0x400 | 4))
+    assert t.value(asm.T2) is None, "srai is not tracked"
+    t.step(imm_op(4, asm.T1, asm.T0, 0x0F0))
+    assert t.value(asm.T1) == 0xFFFF_FF0F, "xori"
+    t.step(imm_op(7, asm.T1, asm.T0, 0x0FF))
+    assert t.value(asm.T1) == 0x0000_00FF, "andi"
+    t.step(asm.lui(asm.T0, 0x12345))
+    t.step(asm.ori(asm.T1, asm.T0, 0x67))
+    assert t.value(asm.T1) == 0x1234_5067, "ori"
+    t.step(asm.slli(asm.T1, asm.T0, 4))
+    assert t.value(asm.T1) == 0x2345_0000, "slli drops the bits above 32"
+
+    # auipc adds the pc to the upper immediate.
+    t.step(0x17 | (asm.T0 << 7) | (0x1 << 12), pc=0x1000_0000)
+    assert t.value(asm.T0) == 0x1000_1000, "auipc"
+
+    # Zicsr immediate forms and the read-only cases.
+    def csr_imm(f3: int, csr: int, uimm: int) -> int:
+        return (csr << 20) | (uimm << 15) | (f3 << 12) | 0x73
+
+    t = RegTracker()
+    for f3, kind in ((5, "rw"), (6, "rs"), (7, "rc")):
+        insn = csr_imm(f3, CSR_MTVEC, 5)
+        op = decode_csr(insn)
+        assert op == CsrOp(kind, CSR_MTVEC, 0, 5, True) and op.writes, op
+        assert t.csr_operand(insn) == 5
+    assert decode_csr(csr_imm(5, CSR_MTVEC, 0)).writes, "csrrwi with 0 still writes"
+    assert not decode_csr(csr_imm(6, CSR_MTVEC, 0)).writes, "csrrsi 0 only reads"
+    assert not decode_csr(csr_imm(7, CSR_MTVEC, 0)).writes, "csrrci 0 only reads"
+    csrrc_x0 = (CSR_MTVEC << 20) | (3 << 12) | 0x73
+    assert not decode_csr(csrrc_x0).writes, "csrrc with x0 only reads"
+    assert decode_csr(asm.csrw(CSR_MTVEC, asm.ZERO)).writes, "csrrw x0 still writes"
+
+    # NAPOT: 8-byte region (no trailing ones) and a 4 KiB region.
+    assert pmp_napot(0x1000 >> 2) == (0x1000, 8)
+    assert pmp_napot(0x8000400 | 0x1FF) == (0x2000_1000, 0x1000)
     print("sep_rv32_trace_decode self-test PASS")
 
 
