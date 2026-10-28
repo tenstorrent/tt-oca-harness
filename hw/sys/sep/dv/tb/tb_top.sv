@@ -5600,9 +5600,7 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // Functional-coverage sampler (docs/SEP_FCOV.adoc).
     //
-    // Passive: it drives nothing and has no output. VCS only -- Verilator does
-    // not compile `covergroup`, and cov/sv/sep_fcov.sv is `ifndef VERILATOR`,
-    // so there is no module to bind on the Verilator targets.
+    // Passive: it drives nothing and has no output.
     //
     // The response side (`lsu_axi_resp`) is mirrored to the flat s_axi_* outputs
     // above; the REQUEST side (`lsu_axi_req` AW/W/AR and B/R ready) is read only
@@ -5615,7 +5613,6 @@ module sep_uvm_top
     // force-splice (see the CPU-LSU AXI splice above), read-only, with no force
     // and no new hierarchy depth.
     // ------------------------------------------------------------------
-`ifndef VERILATOR
     // Fabric sampler taps (docs/SEP_FCOV.adoc, fabric and remap groups, Sampler
     // taps): read-only copies of the filter, alias and output remap register
     // fields, one explicit assign per index.
@@ -7103,7 +7100,6 @@ module sep_uvm_top
 `undef FC_AES
 `undef FC_KMAC
 `undef FC_OTBN
-`endif
 
 `undef SEP_ESRC
 `undef SEP_DRBG
