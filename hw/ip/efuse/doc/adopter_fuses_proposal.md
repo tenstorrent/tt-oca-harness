@@ -55,7 +55,8 @@ logic [31:0][15:0] SMC_ADOPTER_LOCK_REGION_END;  // word one past the end of reg
   repair entries, `68, … 96` for the 8 trims, `100, … 128` for the 8 spares.
 - Keep two address spaces distinct:
   - **Software window:** where the adopter map appears in `smc_external`, at
-    `SMC_ADOPTER_FUSE_BASE`, `4 * SMC_ADOPTER_FUSE_WORDS` bytes long.
+    `SMC_ADOPTER_FUSE_BASE`. Each 32-bit shadow word takes 4 bytes of the window, so the window is
+    `4 * SMC_ADOPTER_FUSE_WORDS` bytes long (512 bytes for the 128-word example).
   - **Fuse bit address:** where the adopter bits sit in the OTP. Fixed to start at the end of the
     SMC harness's 8 Kbit, so harness fuse addresses never move because of adopter size. Only the
     size varies.

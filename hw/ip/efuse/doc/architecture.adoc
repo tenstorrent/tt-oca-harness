@@ -405,11 +405,9 @@ where sensitive RMA tokens must be protected during manufacturing test flows.
 === Adopter Fuse Region (SMC)
 
 The SMC eFuse controller supports an optional adopter fuse region: fuses the
-adopter defines for logic elsewhere in its SoC, such as memory repair entries
-and sensor trims. The harness senses, shadows, locks and exports the region
-without interpreting its contents, so the harness RTL is the same for every
-adopter map. Harness spare fuses stay reserved for the harness, and the SEP has
-no adopter region.
+adopter defines for logic elsewhere in its SoC. The harness senses these fuses during boot, populates shadow_registers for easy access, supports HW locks on these fields for security, 
+and exposes the shadow register interpreting its contents. Note the Harness spare fuses stay reserved for 
+the harness.
 
 <<efuse-adopter-fuses-fig>> shows the region's path through the SMC controller.
 <<efuse-adopter-fuses-table>> summarises its properties.
@@ -432,7 +430,9 @@ the default, removes the region and its logic.
 harness RTL does not read it.
 
 |Software window |At `CFG.SMC_ADOPTER_FUSE_BASE` in `smc_external`, after the
-SHIM control block, `4 * CFG.SMC_ADOPTER_FUSE_WORDS` bytes long. The fabric
+SHIM control block. Each 32-bit shadow word takes 4 bytes of the window, so
+the window is `4 * CFG.SMC_ADOPTER_FUSE_WORDS` bytes long; 128 words, for
+example, give a 512-byte window. The fabric
 diverts the window into the eFuse controller instead of
 `smc_external_req_o`.
 
