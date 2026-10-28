@@ -768,6 +768,16 @@ sources = [
   "hw/sys/sep/dv/uvm/seq_lib/sep_seq_lib_pkg.sv",
 ]
 
+# Without --output-groups, Verilator concatenates the generated C++ into one
+# fast and one slow unit per build job, so the units compiling at once always
+# hold the whole model. A fast unit of the SV-UVM model is around 100 MB of
+# source, and under GCC four of them, beside the Verilator process waiting on
+# them, need more than the 16 GB of the 4-core hosted runner. Sixteen units hold
+# a quarter of the model per job. A framework list replaces the shared one, so
+# `-fno-dfg` is restated.
+[frameworks.uvm.build.verilator]
+extra_args = ["-fno-dfg", "--output-groups", "16"]
+
 [frameworks.uvm.sim]
 args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
 
