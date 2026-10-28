@@ -103,10 +103,9 @@ module smc_filt_fcov (
   `OCAH_FCOV_COVER(c_inbound_filter_blocked, inbound_blocked_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_inbound_filter_admitted, inbound_admitted_e, clk_smc_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the prot value against the programmed
-  // requirement, which the flat list can only bucket by hamming distance.
+  // Covergroup: the prot value against the programmed requirement, which the
+  // flat list can only bucket by hamming distance.
   // ------------------------------------------------------------------
   covergroup cg_prot_filter with function sample (
       logic [2:0] prot, logic [2:0] requirement, logic enabled
@@ -127,6 +126,5 @@ module smc_filt_fcov (
       if (gpio_arvalid_i) u_cg_arprot.sample(gpio_arprot_i, gpio_arprot_req_i, gpio_rd_filter_en_i);
     end
   end
-`endif
 
 endmodule : smc_filt_fcov

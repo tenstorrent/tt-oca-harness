@@ -171,9 +171,10 @@ __attribute__((cold)) void rom_isr_kmcsr(void) {
         rom_trigger_unrecoverable(ROM_KM_UFAULT_ROM_ACCESS);
 
     if (status.f.otp_change && enable.f.otp_change_en) {
+        rom_kmcsr_irq_status_clear(ROM_KM_IRQ_STATUS_OTP_CHANGE_MASK);
         uint32_t changed = rom_otp_get_change_status();
-        rom_otp_on_change(changed);
         rom_otp_clear_change_status(changed);
+        rom_otp_on_change(changed);
     }
 }
 

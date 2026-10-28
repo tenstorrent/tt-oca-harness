@@ -794,10 +794,12 @@ Only handshake input 0 is connected, to the SPI host's LSIO trigger. For SPI
 handshake operation, select trigger 0 in `HANDSHAKE_INTR_ENABLE`, configure the
 peripheral FIFO and chunk size, and enable hardware handshake. Each service
 operation moves one chunk, and chunk completion is not reported per trigger in
-this mode. Clear `GO` when stopping handshake operation. For a peripheral that
-needs an explicit trigger-clear write, configure `CLEAR_INTR_SRC`,
-`CLEAR_INTR_BUS`, `INTR_SRC_ADDR` and `INTR_SRC_WR_VAL` for the connected host
-port (`CLEAR_INTR_BUS` bit 0 = 1); otherwise leave that source unselected in
+this mode. The engine keeps `GO` set across chunks and clears it, setting
+`STATUS.DONE`, once `TOTAL_DATA_SIZE` bytes have moved; clear `GO` to stop
+handshake operation earlier. For a peripheral that needs an explicit
+trigger-clear write, configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`,
+`INTR_SRC_ADDR` and `INTR_SRC_WR_VAL` for the connected host port
+(`CLEAR_INTR_BUS` bit 0 = 1); otherwise leave that source unselected in
 `CLEAR_INTR_SRC`.
 
 To abort an active operation, request `CONTROL.ABORT` and wait for

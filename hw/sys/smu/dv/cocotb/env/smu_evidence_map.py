@@ -3634,14 +3634,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-WDT-FIRST",
             "CHK-SMU-WDT-FIRST",
             "CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP "
-            "raises smc_wdt_first_timeout_o, with WDOGIP0 set at the same time "
+            "raises smc_ras_o.wdt_first_timeout, with WDOGIP0 set at the same time "
             "and both clear beforehand",
         ),
         (
             "CHK-SMU-WDT-SECOND",
             "CHK-SMU-WDT-SECOND",
             "the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out "
-            "to smc_wdt_second_timeout_o, and the SMC warm reset drops",
+            "to smc_ras_o.wdt_second_timeout, and the SMC warm reset drops",
         ),
     ],
     "smu_smc_wdt_sanity_test": [

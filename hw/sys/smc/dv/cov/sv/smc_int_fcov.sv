@@ -148,11 +148,17 @@ module smc_int_fcov #(
   `OCAH_FCOV_COVER(c_sync_bit_set, sync_bit_set_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_sync_bit_cleared, sync_bit_cleared_e, clk_smc_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the claimed source id, which a flat
-  // point list can only bucket as zero / non-zero.
+  // Covergroup: the claimed source id, which a flat point list can only
+  // bucket as zero / non-zero.
   // ------------------------------------------------------------------
+  // The cp_dev bins of one threshold, as {threshold, dev} values.
+  `define SMC_INT_CLAIM_BINS(thr) \
+      bins t``thr``_none = {{3'(thr), 9'd0}}; \
+      bins t``thr``_low[] = {[{3'(thr), 9'd1} : {3'(thr), 9'd16}]}; \
+      bins t``thr``_mid = {[{3'(thr), 9'd17} : {3'(thr), 9'd255}]}; \
+      bins t``thr``_high = {[{3'(thr), 9'd256} : {3'(thr), 9'd336}]};
+
   covergroup cg_plic_claim with function sample (logic [8:0] dev, logic [2:0] threshold);
     option.per_instance = 1;
     cp_dev: coverpoint dev {
@@ -163,20 +169,27 @@ module smc_int_fcov #(
       bins out_of_range = default;
     }
     cp_threshold: coverpoint threshold;
-    x_claim: cross cp_dev, cp_threshold{
-      // Priorities are three bits wide, so threshold 7 passes no source and
-      // the only claim it can pair with is the idle one.
-      ignore_bins masked_all = binsof (cp_threshold) intersect {7} && !binsof (cp_dev) intersect {
-        0
-      };
+    // {threshold, dev}: priorities are three bits wide, so threshold 7 passes
+    // no source and the only claim it can pair with is the idle one.
+    cp_claim: coverpoint {
+      threshold, dev
+    } {
+      `SMC_INT_CLAIM_BINS(0)
+      `SMC_INT_CLAIM_BINS(1)
+      `SMC_INT_CLAIM_BINS(2)
+      `SMC_INT_CLAIM_BINS(3)
+      `SMC_INT_CLAIM_BINS(4)
+      `SMC_INT_CLAIM_BINS(5)
+      `SMC_INT_CLAIM_BINS(6)
+      bins t7_none = {{3'd7, 9'd0}};
     }
   endgroup
+  `undef SMC_INT_CLAIM_BINS
 
   cg_plic_claim u_cg_plic_claim = new();
 
   always_ff @(posedge clk_smc_i) begin
     if (!in_reset && claim) u_cg_plic_claim.sample(plic_maxdev0_i, plic_threshold0_i);
   end
-`endif
 
 endmodule : smc_int_fcov
