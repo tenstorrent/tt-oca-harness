@@ -45,15 +45,16 @@ restricts JTAG only in PROD and RMA_SIP, and the held ``LC_STATE`` is
 neither, so the port reaches the map. A writable shadow takes the write. The
 ``LC_STATE`` write is logged (OBS-SECDIS-LC-WR): the held word is the INVALID
 encoding, and the specification does not state the effect of a write to that
-terminal word, so the outcome has no golden. The external debug bus
-must change around those writes and hold still in the quiet windows on each
-side of them; no lane position is assumed.
+terminal word, so the outcome has no golden. The external debug bus is
+watched around those writes and in a quiet window on each side of them and
+logged (OBS-SECDIS-DBG-BUS): no specification puts eFuse state on that bus.
 
 After a later full sense, a fresh match on the PROD image opens
 ``FEAT_CTRL`` with the ``TEST_EN`` strap at 0: the register and the
 feature-control probe are all ones and ``secure_tm_o`` is 0.
 
-Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR is a log line):
+Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR and
+OBS-SECDIS-DBG-BUS are log lines):
 
   CHK-OVR-ALONE          the IC_RESET override alone releases the reset, FEAT_CTRL closed
   CHK-SENSE-GATED-RESET  a match does not release the sense-gated reset
@@ -65,8 +66,6 @@ Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR is a log
   CHK-RETAIN-LC-RESET    after that rst_ni the LC_STATE word reads its reset value
                          0x0F (control: the word read a sensed value before it)
   CHK-SECDIS-SHADOW-WR   JTAG write of a 0 bit of REQUIRED_SIGNERS lands (frontdoor)
-  CHK-SECDIS-DBG-BUS     ext_debug_bus_o changes around the JTAG writes and not
-                         in the quiet windows (control: CHK-HOOK)
   CHK-DROP               a mismatch drops SEC_DIS
   CHK-SENSE-CONTROL      a healthy sense finishes inside each stuck window
   CHK-MISMATCH, CHK-NO-OVERRIDE  mismatch code and the fail-closed PROD FEAT_CTRL
@@ -578,21 +577,14 @@ class sep_sec_dis_override_test(sep_base_test):
         )
         return seq.rdata & _M32
 
-    async def _watch_quiet(self, cycles: int, which: str) -> _BusChangeWatch:
-        """Watch the debug bus for ``cycles`` with no access; any change fails the control."""
-        self._require_sense_open("CHK-SECDIS-DBG-BUS", sec_dis=1)
+    async def _watch_quiet(self, cycles: int) -> _BusChangeWatch:
+        """Watch the debug bus for ``cycles`` with no eFuse access; the result is logged."""
+        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
         dut = cocotb.top
         watch = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
         await ClockCycles(dut.clk_i, cycles)
         await watch.stop()
-        self._require_sense_open("CHK-SECDIS-DBG-BUS", sec_dis=1)
-        if watch.changed:
-            raise AssertionError(
-                f"CHK-HOOK FAIL: CHK-SECDIS-DBG-BUS {which} quiet window: "
-                f"ext_debug_bus_o changed with no eFuse access over {watch.edges} edges "
-                f"(changed bits mask=0x{watch.changed:x}). A lane outside the eFuse "
-                "state toggles, so a whole-bus change cannot grade the eFuse lane"
-            )
+        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
         return watch
 
     async def _check_jtag_writes_under_sec_dis(self) -> None:
@@ -629,10 +621,11 @@ class sep_sec_dis_override_test(sep_base_test):
         The JTAG write response is logged, not graded: the specification does
         not state it.
 
-        The debug bus has no lane layout in the specification, so it is graded
-        layout-free: it must change while the two JTAG writes run, and hold
-        still in a quiet window before them and in one after them, each at
-        least twice the event window. The writable shadow keeps its new bit
+        No specification puts eFuse state on ``ext_debug_bus_o``
+        (port_table.adoc names the port only), so OBS-SECDIS-DBG-BUS logs the
+        bits that change while the two JTAG writes run and in a quiet window
+        before them and one after them, without a verdict. The writable shadow
+        keeps its new bit
         until the rst_ni pulse ahead of the next full sense, which reloads every
         shadow from the staged image before any later check reads it.
         """
@@ -658,12 +651,12 @@ class sep_sec_dis_override_test(sep_base_test):
             f"pre=0x{rs_pre:08x} want RDL reset 0x{rs_reset:08x} -- the shadow did "
             "not keep its reset value after the reset with the match kept"
         )
-        lc_pre = await self._fd_read_word("CHK-SECDIS-DBG-BUS", lc_addr, "lc_state")
+        lc_pre = await self._fd_read_word("CHK-RETAIN-MAP-OPEN", lc_addr, "lc_state")
 
         # The frontdoor reads above are the last eFuse accesses before the
         # first quiet window.
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
-        pre_quiet = await self._watch_quiet(_DBG_QUIET_CYCLES, "pre")
+        pre_quiet = await self._watch_quiet(_DBG_QUIET_CYCLES)
 
         self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
         event = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
@@ -672,13 +665,9 @@ class sep_sec_dis_override_test(sep_base_test):
         lc_resp, _ = await self.jtag_axil_op(write=True, addr=lc_addr, wdata=lc_wdata)
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
         await event.stop()
-        self._require_sense_open("CHK-SECDIS-DBG-BUS", sec_dis=1)
+        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
 
-        post_quiet = await self._watch_quiet(max(_DBG_QUIET_CYCLES, 2 * event.edges), "post")
-        assert pre_quiet.edges >= 2 * event.edges, (
-            f"CHK-HOOK FAIL: CHK-SECDIS-DBG-BUS pre quiet window {pre_quiet.edges} edges "
-            f"is shorter than twice the {event.edges}-edge event window"
-        )
+        post_quiet = await self._watch_quiet(max(_DBG_QUIET_CYCLES, 2 * event.edges))
 
         rs_post = await self._fd_read_word("CHK-SECDIS-SHADOW-WR", rs_addr, "required_signers")
         rs_want = rs_pre | (1 << rs_bit)
@@ -701,7 +690,7 @@ class sep_sec_dis_override_test(sep_base_test):
         # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f. The
         # specification does not state the effect of a write to it, so the
         # outcome is logged without a verdict.
-        lc_post = await self._fd_read_word("CHK-SECDIS-DBG-BUS", lc_addr, "lc_state")
+        lc_post = await self._fd_read_word("CHK-RETAIN-MAP-OPEN", lc_addr, "lc_state")
         self.logger.info(
             "OBS-SECDIS-LC-WR: sec_dis=1 sense_done=0 JTAG wr LC_STATE @0x%08x "
             "wdata=0x%08x resp=%d pre=0x%08x post=0x%08x unchanged=%d "
@@ -715,19 +704,16 @@ class sep_sec_dis_override_test(sep_base_test):
             lc_invalid,
         )
 
-        assert event.changed, (
-            f"CHK-SECDIS-DBG-BUS FAIL: ext_debug_bus_o did not change over the "
-            f"{event.edges}-edge window of the JTAG REQUIRED_SIGNERS and LC_STATE writes "
-            f"(value={event.last or '-'}) -- the eFuse debug state does not reach the bus"
-        )
         self.logger.info(
-            "CHK-SECDIS-DBG-BUS PASS: event edges=%d changed_bits=%d mask=0x%x; "
-            "quiet pre edges=%d changed=0, post edges=%d changed=0",
+            "OBS-SECDIS-DBG-BUS: event edges=%d changed_bits=%d mask=0x%x; "
+            "quiet pre edges=%d mask=0x%x, post edges=%d mask=0x%x",
             event.edges,
             bin(event.changed).count("1"),
             event.changed,
             pre_quiet.edges,
+            pre_quiet.changed,
             post_quiet.edges,
+            post_quiet.changed,
         )
 
     async def run_scenario(self) -> None:
