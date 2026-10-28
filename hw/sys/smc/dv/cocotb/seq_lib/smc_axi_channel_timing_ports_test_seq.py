@@ -68,6 +68,10 @@ R_HOLD = 32
 BURST_BEATS = 8
 READ_BEATS = 4
 GROUP_WORDS = 8
+# Writes of the SEP_IN group of step 7 issued under the drawn tb_sep_axi_b_hold; the
+# other GROUP_WORDS - B_HOLD_WRITES take the manager's b_ready_delay once the hold
+# has dropped (the delay counts from its arming, ocah_axi_master_driver._hold_then_go).
+B_HOLD_WRITES = 2
 RANDOM_MAX_DELAY = 8
 
 PORTS = ("SEP_IN", "SYS_IN", "JTAG")
@@ -421,9 +425,11 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
         recorded when the hold goes up, must stand still until the hold drops and be below the W
         handshake count at the drop. That holds on the gated nets by construction, so it is the
         hold's own consistency, not the stall evidence: the stall evidence of the leg is the
-        manager's BREADY delay after the hold drops, which needs a BVALID-high, BREADY-low cycle
-        from the DUT and is counted by the watch as on the other ports. The count of held cycles
-        with a W handshake seen and its B not yet handshaken is logged beside it.
+        manager's BREADY delay, armed on the rest of the group only once the hold has dropped
+        (the delay counts from its arming, so armed under the hold it would be spent while
+        BVALID is still gated), which needs a BVALID-high, BREADY-low cycle from the DUT and is
+        counted by the watch as on the other ports. The count of held cycles with a W handshake
+        seen and its B not yet handshaken is logged beside it.
         """
         dut = cocotb.top
         clk = dut.clk_smc_i
@@ -552,18 +558,30 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             ]
             rng.shuffle(items)
             if port in _B_HOLD_KNOB:
-                # The drawn hold on the bench knob, then the manager's BREADY delay on the
-                # ungated B: the delay supplies the stall cycles the DUT has to present.
+                # The drawn hold on the bench knob over the first B_HOLD_WRITES writes, then
+                # the manager's BREADY delay on the ungated B over the rest. The delay counts
+                # from the moment its profile is armed (_hold_then_go steps every edge), so
+                # it is armed only after the hold has dropped: armed under the hold it would
+                # be spent while BVALID is still gated and no B stall could be seen. The delay
+                # supplies the stall cycles the DUT has to present, as on the other ports.
                 holder = cocotb.start_soon(self._hold_b(port, win))
                 await self._issue_group(
-                    port, "bready_hold", items, AxiTimingProfile(b_ready_delay=B_HOLD)
+                    port, "bready_hold", items[:B_HOLD_WRITES], AxiTimingProfile()
                 )
                 await holder
+                await self._issue_group(
+                    port,
+                    "bready_delay",
+                    items[B_HOLD_WRITES:],
+                    AxiTimingProfile(b_ready_delay=B_HOLD),
+                )
                 stall = watch.stalled(win, "b")
                 held, dropped, w_hs = self.b_hold_hs
+                delayed = GROUP_WORDS - B_HOLD_WRITES
                 how = (
-                    f"b_hold={self.b_hold} cycles then b_ready_delay={B_HOLD} b_stall={stall} "
-                    f"held_pending={self.b_hold_pending} "
+                    f"b_hold={self.b_hold} cycles over {B_HOLD_WRITES} writes, then "
+                    f"b_ready_delay={B_HOLD} armed after the drop over {delayed} writes "
+                    f"b_stall={stall} held_pending={self.b_hold_pending} "
                     f"b_hs {held} at the raise == {dropped} at the drop < w_hs {w_hs}"
                 )
             else:

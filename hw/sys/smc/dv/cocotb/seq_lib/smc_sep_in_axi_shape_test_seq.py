@@ -111,6 +111,8 @@ AXI_RESP_DECERR = 3
 # A byte model of SCRATCH_COLD_0/1 gives the exact read-back after every shape.
 DRAWN_SHAPES = 6
 SCRATCH_PAIR_BYTES = 8
+# Byte lanes of the 64-bit SEP_IN write data bus: the lane the manager drives a beat in.
+SEP_IN_BYTE_LANES = 8
 SPM_DRAW_PAGE = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR") + 0x3_1000
 SPM_PAGE_BYTES = 0x1000
 SHAPE_KINDS = ("incr_scratch", "incr_spm", "fixed", "wrap")
@@ -120,12 +122,20 @@ BURST_NAME = {BURST_FIXED: "FIXED", BURST_INCR: "INCR", BURST_WRAP: "WRAP"}
 def _model_burst(
     model: bytearray, burst: int, size: int, beats: int, offset: int, payload: int
 ) -> None:
-    """Apply an accepted FIXED or WRAP burst of `payload` (beat 0 in the low bytes) to `model`."""
+    """Apply an accepted FIXED or WRAP burst of `payload` (beat 0 in the low bytes) to `model`.
+
+    The cocotbext manager places beat k's data and strobes in the lanes of offset + k * size,
+    as for INCR, whatever the burst type (`AxiMasterWrite._process_write`), so a correct
+    subordinate stores a beat only when the lane of the address the burst type gives that beat
+    is the lane the manager drove; the other beats carry a zero strobe at that address.
+    """
     window = beats * size
     base = offset - offset % window
     for beat in range(beats):
         data = (payload >> (8 * size * beat)) & ((1 << (8 * size)) - 1)
         at = offset if burst == BURST_FIXED else base + (offset - base + beat * size) % window
+        if at % SEP_IN_BYTE_LANES != (offset + beat * size) % SEP_IN_BYTE_LANES:
+            continue
         model[at : at + size] = data.to_bytes(size, "little")
 
 
@@ -277,8 +287,10 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
                 outcome = f"resp={item.resp_code} (reported), both words unchanged"
             else:
                 # An accepted burst is read back against the model of what it wrote: a FIXED
-                # burst leaves its last beat at the one address, a WRAP burst fills its
-                # aligned window from the offset and wraps (AMBA AXI, burst addressing).
+                # burst leaves at the one address the last beat the manager drove in that
+                # address's lane, a WRAP burst fills its aligned window from the offset and
+                # wraps (AMBA AXI, burst addressing), each beat landing only where the
+                # manager's lane is the lane of the beat's address (see _model_burst).
                 _model_burst(model, burst, size, beats, offset, payload)
                 await self._pair_words(label, model)
                 outcome = "resp=OKAY (reported), both words read back from the model of the burst"

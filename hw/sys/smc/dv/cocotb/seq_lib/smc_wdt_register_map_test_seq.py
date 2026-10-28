@@ -140,12 +140,11 @@ def walk_accesses(plan: list[tuple[int, str, int, int]]) -> int:
     total = 0
     for _core, reg, _pattern, _mask in plan:
         total += 4
-        if reg == "SCALED_COUNT":
-            # The COUNT read before, and the COUNT and CTRL reads after, the strobed write.
-            total += 3
         # CTRL: background write, read-back and second unlock before the strobed write, and
-        # the restore write and read-back after it.
-        total += {"CTRL": 6, "COUNT": 3, "CMP": 3}.get(reg, 0)
+        # the restore write and read-back after it. SCALED_COUNT: the CTRL (wdogscale) write,
+        # the keyed COUNT write and the second unlock before the strobed write, the COUNT read
+        # before it, the COUNT and CTRL reads after it, and the keyed CTRL and COUNT restores.
+        total += {"CTRL": 6, "COUNT": 3, "CMP": 3, "SCALED_COUNT": 11}.get(reg, 0)
     return total
 
 
@@ -416,6 +415,14 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
                 f"{tag}: CTRL reads 0x{bg_rb:08x} after the background write 0x{background:08x}"
             )
             await self._unlock(f"{tag}_KEY_AGAIN", core)
+        if reg == "SCALED_COUNT":
+            # wdogscale 2 in CTRL and COUNT above 0xFFFF before the cell, so the bracket the
+            # compare below takes is above zero, shifted by a non-zero scale and taken from a
+            # COUNT wider than the field: with CTRL and COUNT at 0 the bracket is [0, 0] and a
+            # SCALED_COUNT that ignored the scale or read a constant 0 would pass it.
+            await self.csr_write(f"{tag}_SCALE_WR", self._reg(core, "CTRL"), WDT_CTRL_SCALE2)
+            await self._keyed_write(f"{tag}_COUNT_WR", core, "COUNT", WDT_COUNT_PROBE)
+            await self._unlock(f"{tag}_KEY_AGAIN", core)
         before_ps = get_sim_time("ps")
         before = (
             await self.csr_read(f"{tag}_COUNT_BEFORE", self._reg(core, "COUNT"))
@@ -480,6 +487,14 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             after = await self.csr_read(f"{tag}_COUNT_AFTER", self._reg(core, "COUNT"))
             ctrl = await self.csr_read(f"{tag}_CTRL", self._reg(core, "CTRL"))
             scale = ctrl & WDT_SCALE_MASK
+            assert scale == WDT_CTRL_SCALE2, (
+                f"{tag}: CTRL reads 0x{ctrl:08x}, wdogscale {scale} after the write of "
+                f"0x{WDT_CTRL_SCALE2:x} before the cell"
+            )
+            assert before > WDT_SCALED_MASK, (
+                f"{tag}: COUNT reads 0x{before:x} before the strobed write, not above 0xFFFF "
+                f"after the write of 0x{WDT_COUNT_PROBE:x} before the cell"
+            )
             # wdt.rdl: the write changes nothing in COUNT, which counts on from `before`;
             # a write that leaked into COUNT would move it by more than the cycles since.
             since = math.ceil((get_sim_time("ps") - before_ps) / (self.t_smc_ns * 1000.0))
@@ -500,7 +515,8 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             )
             verdict = (
                 f"rb=0x{rb:04x} inside [0x{lo:04x}, 0x{hi:04x}] (COUNT 0x{before:x}..0x{after:x} "
-                f">> wdogscale {scale}, 16 bits; COUNT counted {counted} <= {since} cycles)"
+                f"above 0xFFFF >> wdogscale {scale}, 16 bits; COUNT counted {counted} <= {since} "
+                f"cycles)"
             )
         elif reg == "FEED":
             verdict = f"rb=0x{rb:08x} printed (not specified)"
@@ -531,6 +547,9 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             await self.csr_read(f"{tag}_RESTORE_RB", addr, expected=0)
         elif reg == "COUNT":
             await self._keyed_write(f"{tag}_RESTORE", core, "COUNT", 0)
+        elif reg == "SCALED_COUNT":
+            await self._keyed_write(f"{tag}_RESTORE_CTRL", core, "CTRL", 0)
+            await self._keyed_write(f"{tag}_RESTORE_COUNT", core, "COUNT", 0)
         elif reg == "CMP":
             await self._keyed_write(f"{tag}_RESTORE", core, "CMP", WDT_CMP_RESET)
             await self.csr_read(f"{tag}_RESTORE_RB", addr, expected=WDT_CMP_RESET)
@@ -571,13 +590,16 @@ class smc_wdt_register_map_test_seq(SmcCsrSeq):
             "masked to its fields, bit 28 masked, so a zero-fill of the unstrobed bytes fails; "
             "CMP[15:0]; COUNT the pattern plus at most the clk_smc_i cycles elapsed between the "
             "write and the read, COUNT read before the write too; COUNT_HI 0; KEY 0; "
-            "SCALED_COUNT inside the two COUNT reads shifted by wdogscale and masked to 16 bits, "
-            "COUNT itself moving by at most the cycles since the before-read) and a "
+            "SCALED_COUNT, with CTRL.wdogscale 2 and COUNT 0x1_0000 written before the cell so "
+            "the scale is not 0 and COUNT is above 0xFFFF, inside the two COUNT reads shifted by "
+            "wdogscale and masked to 16 bits, COUNT itself moving by at most the cycles since "
+            "the before-read) and a "
             "narrower write leaves CMP, "
             "KEY and the lock unchanged (KEY still reads 1, wdt.rdl: changes nothing, not even "
             "the lock) and COUNT reading the value read before it plus at most the clk_smc_i "
             "cycles since that read (the counter counts on); FEED is printed; CTRL, COUNT and "
-            "CMP restored after each cell; cells: %s; drawn=seed %d walk %s",
+            "CMP restored after each cell, CTRL and COUNT after a SCALED_COUNT cell too; "
+            "cells: %s; drawn=seed %d walk %s",
             len(plan),
             eff_text,
             "; ".join(rows),

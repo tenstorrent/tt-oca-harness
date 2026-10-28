@@ -5022,7 +5022,9 @@ been written to it and it is unlocked, 0 otherwise") and `SCALED_COUNT`, the 16-
 the two `COUNT` reads around the write shifted right by `wdogscale` (read from `CTRL`) and masked to
 16 bits, with `COUNT` itself moving by at most the `clk_smc_i` cycles since its first read (the
 write changes nothing in `COUNT`, so a write that leaked into it fails and a `COUNT` above 0xFFFF
-does not fail the field);
+does not fail the field; the cell writes `wdogscale` 2 into `CTRL` and 0x1_0000 into `COUNT` first,
+so the bracket is above zero, shifted by a non-zero scale and taken from a `COUNT` above 0xFFFF,
+and `CTRL` and `COUNT` are restored to 0 after it);
 after a narrower write `CMP` and `KEY` read unchanged, `COUNT_HI` 0 and the lock unchanged, `KEY`
 still reading 1 after a narrower write to another register (`wdt.rdl`: "Any other write returns
 OKAY and changes nothing, not even the lock"), and `COUNT` after a narrower write reads the value
@@ -5142,7 +5144,8 @@ right offsets, stay independent of each other, and the CTRL fields and the CMP w
   cell wrote first, masked to its fields with bit 28 masked, `CMP`
   [15:0], `COUNT` the pattern plus at most the `clk_smc_i` cycles elapsed between the write and
   the read, `COUNT_HI` 0, `KEY` 0 per the `KEY` field, "returns 1 if key has been written to it
-  and it is unlocked, 0 otherwise", `SCALED_COUNT`
+  and it is unlocked, 0 otherwise", `SCALED_COUNT`, with `wdogscale` 2 and `COUNT` 0x1_0000
+  written before the cell and both restored to 0 after it,
   inside the two `COUNT` reads shifted by `wdogscale` and masked to 16 bits with `COUNT` moving by
   at most the cycles since its first read) and a narrower write
   leaves `CMP`, `KEY` and the lock unchanged (`KEY` reads 1 after a narrower write to another
@@ -8592,9 +8595,11 @@ every shape: `CHK-SEP-IN-BURST-INCR` grades the INCR shapes on the scratch regis
 read back from the model), `CHK-SEP-IN-BURST-LONG` the INCR bursts into the SPM (the first and the
 last beat and the whole burst read back), `CHK-SEP-IN-BURST-UNSUPPORTED` the FIXED and WRAP shapes
 (an error response leaves both words as the model; an OKAY is reported, as the Scope limit says,
-and both words are read back against the model of the accepted burst, a FIXED burst leaving its
-last beat at the one address and a WRAP burst filling its aligned window from the offset and
-wrapping, AMBA AXI burst addressing) and `CHK-SEP-IN-NARROW-STROBES` the zero-strobe beat (a drawn
+and both words are read back against the model of the accepted burst, a FIXED burst leaving at
+the one address the last beat the manager drove in that address's lane and a WRAP burst filling
+its aligned window from the offset and wrapping, AMBA AXI burst addressing, each beat landing only
+where the manager's lane is the lane of the beat's address, since the cocotbext manager places
+beat k in the lanes of offset + k * AxSIZE for every burst type) and `CHK-SEP-IN-NARROW-STROBES` the zero-strobe beat (a drawn
 AxSIZE, aligned
 offset and data through the explicit `wstrb` of `SmcSysAxiItem`, the existing bench hook
 `smc_rdl_field_sweep_test` drives with `CHK-RDL-ISO-ZERO-STROBE`; its BRESP is printed and both
@@ -12551,9 +12556,10 @@ scoreboard's per-bus access counts and exact-value compare count
 *Randomization*: RAND-REP; the seed draws the hold length of the R-hold pulses on
 `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` (1 to 64 `clk_smc_i` cycles per beat, in place of the
 eight of the directed walk), on SEP_IN before the `b_ready_delay` of step 7 the length of a
-hold on `tb_sep_axi_b_hold` (16 to 256 cycles, raised once a W handshake is seen; the bench has that
-drive on SEP_IN only, and every port keeps the `b_ready_delay`, which supplies the stall cycles the
-DUT has to present), the AxID of
+hold on `tb_sep_axi_b_hold` (16 to 256 cycles, raised once a W handshake is seen, over the first two
+writes of the group; the bench has that drive on SEP_IN only, and every port keeps the
+`b_ready_delay`, on SEP_IN armed on the other six writes once the hold has dropped, since the delay
+counts from its arming; it supplies the stall cycles the DUT has to present), the AxID of
 every item of steps 7 to 9 (the `axi_id` of each `SmcSysAxiItem`, from the port's ID space: 64 on
 SEP_IN and SYS_IN, 4 on JTAG, the 6-, 6- and 2-bit inbound widths of `hw/sys/smc/doc/fabric.adoc`,
 AXI ID Widths by Fabric Stage) and the interleave of the outstanding accesses (the item order of
@@ -12561,8 +12567,8 @@ each group of steps 7 and 9); every access answers OKAY with the word of its own
 `CHK-CTP-BREADY-PORTS` (the B hold, the IDs and the order of step 7; the bench gates BVALID and
 BREADY while the hold is up, so the watch's B handshake count, recorded when the hold goes up, must
 stand still until the hold drops and be below the W handshake count at the drop, and the stall
-evidence is the BREADY delay after the drop: at least one BVALID-high, BREADY-low cycle from the
-DUT, as on the other ports), `CHK-CTP-RREADY-BEATS` (the R-hold lengths and the IDs) and
+evidence is the BREADY delay armed after the drop on the other six writes: at least one
+BVALID-high, BREADY-low cycle from the DUT, as on the other ports), `CHK-CTP-RREADY-BEATS` (the R-hold lengths and the IDs) and
 `CHK-CTP-RANDOM-STALLS` (the IDs and the interleave, with the AW, W and AR delays the directed walk
 already drew) grade it; 3 seeds per regression (`reseed = 3`).
 
@@ -12622,10 +12628,12 @@ and read it back as one 8-beat burst; print `CHK-CTP-W-FIRST`.
 . On SEP_IN issue one group of four single writes of 0xC0DE_3000+i to `SCRATCH_COLD(i)`, i = 4..7,
 with `w_delay`=16, read the four registers back, and require at least two AW handshakes before the
 first W handshake; print `CHK-CTP-AW-QUEUE`.
-. For each port k issue one group of eight 8-byte writes of distinct words, in a drawn order with
-drawn AxIDs, at the SPM base plus 0x7_0000 plus 0x1000*(k+1): on SEP_IN raise `tb_sep_axi_b_hold`
-for the drawn length once a W handshake is seen, on SYS_IN and JTAG with `b_ready_delay`=64; read
-the eight words back singly, and require at least eight B handshakes, at least one held or stalled
+. For each port k issue eight 8-byte writes of distinct words, in a drawn order with drawn AxIDs,
+at the SPM base plus 0x7_0000 plus 0x1000*(k+1): on SYS_IN and JTAG as one group with
+`b_ready_delay`=64; on SEP_IN as a group of two under `tb_sep_axi_b_hold`, raised for the drawn
+length once a W handshake is seen, then, once the hold has dropped, a group of six with
+`b_ready_delay`=64 (the delay counts from its arming, so it is armed after the hold); read
+the eight words back singly, and require at least eight B handshakes, at least one stalled
 B cycle on the port and, on SEP_IN, the B handshake count unchanged under the hold and below the W
 handshake count at its drop; print `CHK-CTP-BREADY-PORTS`.
 . For each port k read four 8-byte beats at the same address, with a drawn AxID, with
@@ -12662,7 +12670,8 @@ fewer AW handshakes fail the run.
 |`CHK-CTP-BREADY-PORTS` |On each port the eight writes, in the drawn order with drawn AxIDs, answer
 OKAY under the hold of B (the drawn `tb_sep_axi_b_hold` length on SEP_IN, under which the watch's B
 handshake count recorded when the hold went up is unchanged when it drops and below the W handshake
-count at the drop; then the 64-cycle BREADY hold on every port with at least one B stall cycle from
+count at the drop, over the first two writes; then the 64-cycle BREADY hold on every port, on SEP_IN
+armed after the drop over the other six writes, with at least one B stall cycle from
 the DUT), the watch counts at least eight B handshakes, and
 every word reads back equal to the word written.
 |`CHK-CTP-RREADY-BEATS` |On each port the 4-beat read returns the four words written in the BREADY
@@ -21549,8 +21558,9 @@ at which the first pin is cleared (1 to 3) and whether four 8-byte SEP_IN reads 
 the SPM window join the hold half (those reads are stimulus of the hold half only, issued on the
 existing SEP_IN driver once the `RECOVERY` wait has counted the core's fetches past the clear, so
 that wait sees the core alone, no other master being active; whether the hook counts the SEP_IN
-reads is printed by `CHK-ECC-INJECT-RECOVERY` and the fire count is asserted unchanged across
-them); the armed advance, the cleared hold and the second advance of
+reads is printed by `CHK-ECC-INJECT-RECOVERY`, with the fire count read across them, printed and
+not compared, since with both inject pins at 0 the hook's enable term cannot fire and that compare
+could not fail); the armed advance, the cleared hold and the second advance of
 `CHK-ECC-INJECT` grade every drawn cell, the hold being unchanged by the extra reads; the counted
 reads are the core's fetches of the fixed `min_pass.ecc.hex` boot, which no seed controls, and the
 hook corrupts no data, so no entry or bit position is drawn; the CPU trap leg stays with the
@@ -21583,7 +21593,7 @@ Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the
 |Checker |Description
 |`CHK-ECC-INJECT` |Emitted only after three asserted compares on `tb_cpu_ecc_inject_fire_count`: it advanced while the drawn first pin was armed, up to the drawn clear count, held while both inject pins were clear across further scratch reads (and the drawn SEP_IN reads of bank 0), and advanced again while the second pin was armed (`smc_ecc_fault_inject_test_seq.py`); any of the three failing fails the run before the token
 |`CHK-ECC-INJECT-NO-DUT-SECDED` |Carries no compare of its own: a scope statement that this leaf proves the inject hook and its enable gating, not the DUT's SECDED detector, which `smc_ecc_codeword_corrupt_test` covers
-|`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over (the `RECOVERY` wait counts the core's fetches before any drawn SEP_IN read is issued), and whether the drawn SEP_IN reads of bank 0, issued afterwards with the fire count asserted unchanged across them, were counted
+|`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over (the `RECOVERY` wait counts the core's fetches before any drawn SEP_IN read is issued), and whether the drawn SEP_IN reads of bank 0, issued afterwards with the fire count read across them (printed, not compared: with both inject pins at 0 it cannot move), were counted
 |===
 
 

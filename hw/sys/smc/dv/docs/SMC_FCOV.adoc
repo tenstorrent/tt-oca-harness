@@ -607,16 +607,16 @@ Blocked legs lists of SMC_VPLAN).
 exists; the group is planned until the sampler lands). Owner's draw: "the seed draws the AXI
 attributes, burst shapes, outstanding depths, transaction IDs, payload words and the SYS_OUT
 responder timing and error faults on SEP_IN, SYS_IN and JTAG"; co-owner's draw: "the seed draws the
-hold lengths on `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` and, on SEP_IN in place of the
-`b_ready_delay` of step 7, on `tb_sep_axi_b_hold` (the bench has that drive on SEP_IN only; the
-SYS_IN and JTAG legs of step 7 keep their `b_ready_delay`), the AxID set (the `axi_id` of each
+hold lengths on `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold` and, on SEP_IN before the
+`b_ready_delay` of step 7, on `tb_sep_axi_b_hold` (the bench has that drive on SEP_IN only; every
+leg of step 7 keeps its `b_ready_delay`, on SEP_IN armed once the hold has dropped), the AxID set (the `axi_id` of each
 `SmcSysAxiItem`) and the interleave of the outstanding accesses".
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
 |`cp_depth` |port (SEP_IN, SYS_IN, JTAG: 3) x depth (1, 2 to 4, 5 to 8, 9 to 16, 17 to 24: 5); 15 cells; the owner drives groups of depth 4, 8, 9, 16 and 24 (`fabric.adoc`, Configuration Parameters, `FabricMaxTrans` 32, local crossbar 8, AXI-Lite crossbar 4) |a per-port count the planned sampler keeps from the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` AW and AR accepts less the B and R-last accepts of the signal list |`smc_axi_random_stress_test` |planned
-|`cp_hold` |port (3) x held ready with the depth the co-owner's walk puts under it: none x depth 1 (the single writes of steps 2 and 4), none x depth 9 to 16 (the groups of sixteen of step 9: eight writes and eight reads issued as one group per port), none x depth 2 to 4 on SEP_IN only (the group of four of step 6), BREADY x depth 5 to 8 (the eight outstanding writes of step 7) and RREADY x depth 1 (the single 4-beat read of step 8); 13 cells; the SEP_IN BREADY and RREADY holds and the SYS_IN RREADY hold are the drawn lengths on `tb_sep_axi_b_hold`, `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`; the SYS_IN BREADY cells and every JTAG cell come from the `b_ready_delay` and `r_ready_delay` of the co-owner's items (the bench has no `tb_sys_axi_b_hold` and no JTAG hold drive) (`fabric.adoc`, Configuration Parameters) |the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` BREADY and RREADY nets of the signal list with the per-port count of `cp_depth` |`smc_axi_channel_timing_ports_test` |planned
+|`cp_hold` |port (3) x held ready with the depth the co-owner's walk puts under it: none x depth 1 (the single writes of steps 2 and 4), none x depth 9 to 16 (the groups of sixteen of step 9: eight writes and eight reads issued as one group per port), none x depth 2 to 4 on SEP_IN only (the group of four of step 6), BREADY x depth 5 to 8 (the eight outstanding writes of step 7 on SYS_IN and JTAG; on SEP_IN the six under the `b_ready_delay` armed after the drawn hold, which covers the two writes before them) and RREADY x depth 1 (the single 4-beat read of step 8); 13 cells; the SEP_IN BREADY and RREADY holds and the SYS_IN RREADY hold are the drawn lengths on `tb_sep_axi_b_hold`, `tb_sep_axi_r_hold` and `tb_sys_axi_r_hold`; the SYS_IN BREADY cells and every JTAG cell come from the `b_ready_delay` and `r_ready_delay` of the co-owner's items (the bench has no `tb_sys_axi_b_hold` and no JTAG hold drive) (`fabric.adoc`, Configuration Parameters) |the `s_axi_*`, `sys_axi_*` and `jtag_axi_*` BREADY and RREADY nets of the signal list with the per-port count of `cp_depth` |`smc_axi_channel_timing_ports_test` |planned
 |===
 
 *Ignore bins*: depths above 24 (no owner draws them, although the port limit is 32); the other 32
