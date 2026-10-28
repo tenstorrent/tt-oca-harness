@@ -32669,7 +32669,7 @@ On write:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ENABLED_ND</ipxact:name>
-              <ipxact:description>Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.</ipxact:description>
+              <ipxact:description>Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows, modulo 2^56 and without an error when a row address wraps; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.</ipxact:description>
               <ipxact:bitOffset>10</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32686,7 +32686,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32704,7 +32704,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32722,7 +32722,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32740,7 +32740,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32758,7 +32758,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32776,7 +32776,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32794,7 +32794,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32812,7 +32812,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32830,7 +32830,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32848,7 +32848,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32866,7 +32866,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32884,7 +32884,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32902,7 +32902,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32920,7 +32920,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32938,7 +32938,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -32956,7 +32956,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

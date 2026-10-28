@@ -1724,7 +1724,8 @@ dumps, and note that any read whose bytes include it, such as a 64-bit read at
 the submission read between software contexts. Do not assume the low and high
 32-bit halves of a 64-bit field update atomically. Program unused upper bits
 as zero: the engine truncates each field to its effective width rather than
-rejecting an out-of-range value.
+rejecting an out-of-range value. Row addresses step modulo 2^56^ with no error
+on wrap, so keep every row inside the permitted range.
 
 For a linear copy, set `CONFIG.ENABLED_ND`, `NUM_REPETITIONS_LO = 1` and
 `NUM_REPETITIONS_HI = 0`. For a 2D copy, also program the source and destination
@@ -1753,7 +1754,8 @@ To run a transfer:
   register.
 
 Neither frontend readiness in `STATUS_0` nor a zero `STATUS` value indicates
-completion. The DMA interrupt (PLIC ID 323) is a pulse on the falling edge of
+completion. `STATUS_0[8]` falls when the backend accepts the last row, which
+can be before `DONE_0` reaches the transfer ID. The DMA interrupt (PLIC ID 323) is a pulse on the falling edge of
 the engine's busy state, not one interrupt per transfer; use it as a hint to
 poll `DONE_0`.
 
