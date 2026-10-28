@@ -88,15 +88,15 @@ MSR_CTS = reg_field_encode(_UART_16550_MAIN_H, "UART_16550_MAIN", "MSR", cts=1)
 MSR_LIVE_MASK = MSR_DCTS | MSR_CTS
 
 # cts_ni driven 0  =>  CTS = ~0 = 1. DCTS on this first read is an open spec
-# question, tracked with the UART RDL alignment ticket #3428 (history: #3293,
-# fixed in the RTL by #3312): uart_16550_main.rdl defines DCTS as "changed
-# since the last time this register was read" and resets both DCTS and CTS to
-# 0, so read against the reset value a live CTS = 1 is a change (DCTS = 1),
-# while read as a delta between two reads the first read has no predecessor
-# and the RTL reports 0 (uart_core.sv seeds the last-read shadow from the pin
-# until the synchronizer holds it). The RDL does not say which reading is the
-# contract, so until the UART owner rules the first read is compared on CTS
-# alone and its DCTS is logged, not graded.
+# question for the UART owner (see #3428, the UART RDL alignment ticket;
+# history: #3293, fixed in the RTL by #3312): uart_16550_main.rdl defines DCTS
+# as "changed since the last time this register was read" and resets both DCTS
+# and CTS to 0, so read against the reset value a live CTS = 1 is a change
+# (DCTS = 1), while read as a delta between two reads the first read has no
+# predecessor and the RTL reports 0 (uart_core.sv seeds the last-read shadow
+# from the pin until the synchronizer holds it). The RDL does not say which
+# reading is the contract, so until the UART owner rules the first read is
+# compared on CTS alone and its DCTS is logged, not graded.
 MSR_FIRST_READ = MSR_CTS  # 0x10, compared under MSR_CTS only
 # Back-to-back second read: CTS has not moved since the first read, so DCTS
 # is clear.
