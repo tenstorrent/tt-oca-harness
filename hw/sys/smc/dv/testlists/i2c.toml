@@ -569,6 +569,7 @@ run_modes = ["smoke"]
 name = "smc_i2c_ctrl_intr_w1c_test"
 module = "smc_i2c_ctrl_intr_w1c_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]

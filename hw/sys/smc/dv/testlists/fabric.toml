@@ -25,6 +25,7 @@ run_modes = ["smoke"]
 name = "smc_i3c_csr_sweep_core_test"
 module = "smc_i3c_csr_sweep_core_test"
 seed = 1
+reseed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
