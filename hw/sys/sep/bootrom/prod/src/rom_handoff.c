@@ -29,6 +29,7 @@
 
 #include "bl0_state.h"
 #include "errors.h"
+#include "harden.h"
 #include "oca_boot.h"
 #include "oca_validator.h"
 #include "rom_virt_console.h"
@@ -169,11 +170,7 @@ static uint32_t bl1_locate(oca_image_info_t *bl1, bool *in_iccm, bool report) {
     // BL1_SRAM_EXEC_ENABLE is set, so an adopter can lock the ROM down to
     // ICCM-only execution. contains_range() rejects a length that overflows,
     // and its bounds come from the generated register map.
-    // SEP_SRAM_USABLE_SIZE stops the span short of sep_dma_zero()'s fill word,
-    // which the CPU rewrites before every fill. BL1 is the last thing staged,
-    // so nothing fills over it today; bounding it here keeps that a property of
-    // the memory map rather than of the current call order.
-    const bool sram_span = contains_range(SEP_TOP_SEP_SRAM_BASE_ADDR, SEP_SRAM_USABLE_SIZE,
+    const bool sram_span = contains_range(SEP_TOP_SEP_SRAM_BASE_ADDR, SEP_TOP_SEP_SRAM_SIZE,
                                           (size_t)bl1->load_addr, (size_t)bl1->length);
     const bool iccm_span = contains_range(SEP_TOP_SEP_ICCM_BASE_ADDR, SEP_TOP_SEP_ICCM_SIZE,
                                           (size_t)bl1->load_addr, (size_t)bl1->length);
@@ -250,9 +247,10 @@ uint32_t rom_handoff_bl1(void) {
             if (pad_len > ICCM_ECC_PAD_BYTES) {
                 pad_len = ICCM_ECC_PAD_BYTES;
             }
-            uint32_t pad_err = sep_dma_zero(pad_start, pad_len);
-            if (pad_err) {
+            const uint32_t pad_err = sep_dma_zero(pad_start, pad_len);
+            if (pad_err != 0u || harden_u32(pad_err) != 0u) {
                 simputs("ICCM_PAD_FAIL\n");
+                report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_BAD_ADDR);
                 return OCA_BOOT_ERR_BL1_BAD_ADDR;
             }
             simputshex32("ICCM_PAD=", pad_start);

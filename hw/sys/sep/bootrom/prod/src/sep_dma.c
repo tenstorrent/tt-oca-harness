@@ -20,6 +20,7 @@
 
 #include "sep_dma.h"
 #include "errors.h"
+#include "harden.h"
 #include "rom_virt_console.h"
 
 // SMC interface (for dynamic SMC SRAM range checks).
@@ -43,10 +44,17 @@
 #define DMA_STATUS_BUSY SECURE_DMA__STATUS__BUSY_bm
 #define DMA_STATUS_DONE SECURE_DMA__STATUS__DONE_bm
 #define DMA_STATUS_ERROR SECURE_DMA__STATUS__ERROR_bm
+#define DMA_STATUS_W1C \
+    (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ABORTED_bm | DMA_STATUS_ERROR | \
+     SECURE_DMA__STATUS__CHUNK_DONE_bm)
+
+// CONTROL.OPCODE for a zero fill. The register description names no opcode
+// values, so the generated headers carry none.
+#define SEP_DMA_OPCODE_ZERO 0x4u
 
 // Completion-poll budget for one transfer, counted in STATUS reads.
 //
-// The largest transfer dma_transfer() accepts is SMC SRAM's 1 MiB, 256 Ki beats
+// The largest transfer sep_dma_copy() or sep_dma_zero() accepts is SMC SRAM's 1 MiB, 256 Ki beats
 // of 4 bytes. A STATUS read is at least one bus round trip, taken here as no
 // less than 4 core cycles, so DMA_POLLS_PER_BEAT allows over 1000 core cycles
 // per beat, far slower than a copy between on-chip memories. The budget assumes
@@ -56,12 +64,6 @@
 // core cycles. The largest budget, ~67 M reads, fits uint32_t.
 #define DMA_POLLS_SETUP 10000u
 #define DMA_POLLS_PER_BEAT 256u
-
-// Minimal local error codes for the ROM DMA path.
-enum {
-    SEP_DMA_ERR_OUT_OF_RANGE = 0x00020001u,
-    SEP_DMA_ERR_TRANSFER = 0x00020002u,
-};
 
 static inline uint32_t dma_read(uint32_t addr) {
     return mmio_read32(addr);
@@ -98,102 +100,57 @@ static inline int dest_is_iccm(uint32_t dest, uint32_t n) {
     return contains_range_u32(SEP_TOP_SEP_ICCM_BASE_ADDR, SEP_TOP_SEP_ICCM_SIZE, dest, n);
 }
 
-// One secure_dma transfer.  With src_increment clear the engine re-reads the
-// same source word for every beat, which turns the copy into a fill -- that is
-// how sep_dma_zero() writes a constant without needing a buffer of it.
-static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_increment) {
-    // Destination can be in SEP SRAM, SMC SRAM, or ICCM (for BL1 handoff).
-    const uint32_t smc_sram = sep_get_smc_sram_base();
-    if (!contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, dest, n) &&
-        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, dest, n) && !dest_is_iccm(dest, n)) {
-        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
-        return SEP_DMA_ERR_OUT_OF_RANGE;
+// Claims the engine for one transfer. It must be idle, and DONE and ERROR left by
+// an earlier transfer are cleared and seen clear, so they cannot be read as the
+// outcome of this one. The engine drops configuration writes while it is busy.
+static uint32_t dma_claim(void) {
+    dma_write(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_W1C);
+    const uint32_t status = dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    if (status & (DMA_STATUS_BUSY | DMA_STATUS_DONE | DMA_STATUS_ERROR)) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_ERROR);
+        simputshex32("DMA_STS=", status);
+        return SEP_DMA_ERR_TRANSFER;
     }
+    return 0u;
+}
 
-    // Source can be in SPI window, SMC SRAM, or SEP SRAM.  A non-incrementing
-    // source is only ever read one word wide, so that is what is range-checked.
-    const uint32_t src_span = src_increment ? n : 4u;
-    if (!contains_range_u32(SEP_SPI_BASE, SEP_SPI_MAX_SIZE, src, src_span) &&
-        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, src, src_span) &&
-        !contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, src, src_span)) {
-        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
-        return SEP_DMA_ERR_OUT_OF_RANGE;
-    }
-
-    // The DMA master's AXI path includes an axi_local_alias_remap that
-    // translates addresses in [SEP_LOCAL_BASE_ADDR, +SEP_REGION_SIZE) down
-    // by subtracting SEP_LOCAL_BASE_ADDR.  Default: 0xC0000000 → 0x00000000.
-    //
-    // ICCM lives at 0xC0000000 on the crossbar (cpu_tcm port).  With the
-    // remap active, a DMA write to 0xC0000000 becomes 0x00000000 which
-    // routes to external_chiplet (DMA has no connectivity → BUS_ERROR).
-    //
-    // Workaround: temporarily set SEP_REGION_SIZE=0 to disable the remap,
-    // so the DMA address passes through to the crossbar unchanged.
-    const int iccm_dest = dest_is_iccm(dest, n);
-    uint32_t saved_region_size = 0;
-    if (iccm_dest) {
-        saved_region_size = mmio_read32(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR);
-        simputshex32("REMAP_OLD=", saved_region_size);
-
-        // Disable remap: set region size to 0.
-        mmio_write32(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, 0u);
-
-        // Fence to ensure register write is committed before DMA observes it.
-        __asm__ volatile("fence ow, ow" ::: "memory");
-
-        uint32_t readback = mmio_read32(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR);
-        simputshex32("REMAP_NEW=", readback);
-    }
-
-    // Program transfer.
+// One chunk of n bytes, 4-byte beats, OT internal address space at both ends.
+static void dma_program(uint32_t dest, uint32_t src, uint32_t n, uint32_t src_config) {
     dma_write(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
     dma_write(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0u);
     dma_write(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dest);
     dma_write(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
-
-    // Configure address space IDs: SRC_ASID=0x7 (OT internal), DST_ASID=0x7.
-    // Required by secure_dma hardware (see dma_test.c).
     dma_write(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
               (0x7u << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) |
                   (0x7u << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp));
-
-    // Configure for contiguous copy.
-    // - transfer width: 4 bytes (FOUR_BYTE = 0x2) as used in dma_test.
-    // - src/dst increment enabled.
     dma_write(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0x2u);
-    dma_write(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
-              src_increment ? SECURE_DMA__SRC_CONFIG__INCREMENT_bm : 0u);
+    dma_write(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_config);
     dma_write(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
-
     dma_write(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, n);
     dma_write(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, n);
+}
 
-    // Start: OPCODE=COPY (0), INITIAL_TRANSFER=1 (bit 8), GO=1 (bit 31).
-    dma_write(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
-              SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm);
+static int dma_completed(uint32_t status, uint32_t ecode) {
+    return ((status & (DMA_STATUS_BUSY | DMA_STATUS_DONE | DMA_STATUS_ERROR)) == DMA_STATUS_DONE) &&
+           (ecode == 0u);
+}
 
-    // Wait for completion, bounded so that an engine which neither finishes nor
-    // errors becomes a DMA error rather than a hang. n is range-checked above,
-    // so the budget cannot overflow.
+// Starts the programmed transfer and waits for it, bounded so that an engine which
+// neither finishes nor errors becomes a DMA error rather than a hang. n has been
+// range-checked by the caller, so the budget cannot overflow.
+static uint32_t dma_go_and_wait(uint32_t opcode, uint32_t dest, uint32_t src, uint32_t n) {
+    (void)dest;
+    (void)src;
+    dma_write(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm |
+                                                        SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
+                                                        (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
+
     const uint32_t poll_max = DMA_POLLS_SETUP + (n / 4u) * DMA_POLLS_PER_BEAT;
-    uint32_t result = SEP_DMA_ERR_TRANSFER;
     uint32_t status = 0u;
     uint32_t polls = 0u;
     for (; polls < poll_max; ++polls) {
         status = dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
-        if (status & DMA_STATUS_DONE) {
-            result = 0u;
-            break;
-        }
-        if (status & DMA_STATUS_ERROR) {
-            report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_ERROR);
-            uint32_t ecode = dma_read(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
-            simputshex32("DMA_STS=", status);
-            simputshex32("DMA_EC=", ecode);
-            simputshex32("DMA_DST=", dest);
-            simputshex32("DMA_SRC=", src);
-            simputshex32("DMA_LEN=", n);
+        if (status & (DMA_STATUS_DONE | DMA_STATUS_ERROR)) {
             break;
         }
     }
@@ -212,33 +169,154 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
                 break;
             }
         }
+        return SEP_DMA_ERR_TRANSFER;
     }
 
-    // Restore remap if we disabled it.
-    if (iccm_dest) {
-        mmio_write32(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, saved_region_size);
+    // Success needs two separate reads of STATUS and ERROR_CODE to agree, each
+    // evaluated on its own, so one corrupted read or skipped check cannot pass a
+    // failed transfer.
+    status = dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    const uint32_t ecode = dma_read(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    const uint32_t status2 = dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    const uint32_t ecode2 = dma_read(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    const int ok = dma_completed(status, ecode);
+    const int ok2 = dma_completed(harden_u32(status2), harden_u32(ecode2));
+    if (!ok || !ok2) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_ERROR);
+        simputshex32("DMA_STS=", status);
+        simputshex32("DMA_EC=", ecode);
+        simputshex32("DMA_DST=", dest);
+        simputshex32("DMA_SRC=", src);
+        simputshex32("DMA_LEN=", n);
+        return SEP_DMA_ERR_TRANSFER;
     }
-
-    return result;
+    return 0u;
 }
 
 uint32_t sep_dma_copy(uint32_t dest, uint32_t src, size_t len) {
-    return dma_transfer(dest, src, (uint32_t)len, 1);
+    const uint32_t n = (uint32_t)len;
+
+    // Destination can be in SEP SRAM, SMC SRAM, or ICCM (for BL1 handoff).
+    const uint32_t smc_sram = sep_get_smc_sram_base();
+    if (!contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, dest, n) &&
+        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, dest, n) && !dest_is_iccm(dest, n)) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
+        return SEP_DMA_ERR_OUT_OF_RANGE;
+    }
+
+    // Source can be in SPI window, SMC SRAM, or SEP SRAM.
+    if (!contains_range_u32(SEP_SPI_BASE, SEP_SPI_MAX_SIZE, src, n) &&
+        !contains_range_u32(smc_sram, SMC_SRAM_SIZE_BYTES, src, n) &&
+        !contains_range_u32(SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE, src, n)) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
+        return SEP_DMA_ERR_OUT_OF_RANGE;
+    }
+
+    const uint32_t err = dma_claim();
+    if (err != 0u) {
+        return err;
+    }
+    dma_program(dest, src, n, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
+    return dma_go_and_wait(0u, dest, src, n);
+}
+
+// A zero fill may target one of these regions, and the engine's enabled range is
+// set to the whole of that region. The window comes from this table, not from the
+// request, so a request corrupted after it was checked cannot widen it.
+static int fill_region(uint32_t dest, uint32_t n, uint32_t *base, uint32_t *limit) {
+    const uint32_t regions[3][2] = {
+        {SEP_EXT_SRAM_BASE, SEP_SRAM_SIZE},
+        {sep_get_smc_sram_base(), SMC_SRAM_SIZE_BYTES},
+        {SEP_TOP_SEP_ICCM_BASE_ADDR, SEP_TOP_SEP_ICCM_SIZE},
+    };
+    for (uint32_t i = 0u; i < 3u; ++i) {
+        if (contains_range_u32(regions[i][0], regions[i][1], dest, n)) {
+            *base = regions[i][0];
+            *limit = regions[i][0] + regions[i][1] - 1u;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// The registers a zero fill depends on, read back before the engine starts.
+enum {
+    FILL_RB_DST,
+    FILL_RB_TOTAL,
+    FILL_RB_CHUNK,
+    FILL_RB_WIDTH,
+    FILL_RB_DST_CONFIG,
+    FILL_RB_BASE,
+    FILL_RB_LIMIT,
+    FILL_RB_COUNT
+};
+
+static const uint32_t fill_rb_addr[FILL_RB_COUNT] = {
+    SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
+    SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR,
+    SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR,
+    SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
+    SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR,
+    SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR,
+    SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR,
+};
+
+static int fill_registers_match(const uint32_t *got, const uint32_t *want) {
+    uint32_t diff = 0u;
+    for (uint32_t i = 0u; i < FILL_RB_COUNT; ++i) {
+        diff |= got[i] ^ want[i];
+    }
+    return (diff == 0u) &&
+           contains_range_u32(got[FILL_RB_BASE], got[FILL_RB_LIMIT] - got[FILL_RB_BASE] + 1u,
+                              got[FILL_RB_DST], got[FILL_RB_TOTAL]);
 }
 
 uint32_t sep_dma_zero(uint32_t dest, size_t len) {
-    // A fill through a copy needs a source address, so one word of SEP SRAM
-    // is zeroed by the CPU and then read back for every beat.  SRAM is chosen
-    // because it is CPU-writable and already an allowed DMA source; a word in
-    // ROM .rodata would need no write at all, but the engine cannot read the ROM
-    // aperture -- an ICCM fill sourced from it bus-errors with ERROR_CODE 0x10.
-    //
-    // It is the reserved word above SEP_SRAM_USABLE_SIZE, not the base of SRAM:
-    // the base is where oca_boot.c stages the manifest body, and the ICCM ECC
-    // pad at [S29] fills long after that body has been authenticated, so
-    // sourcing from there overwrote the OCA magic in the manifest handed to BL1.
-    const uint32_t zero_word = SEP_SRAM_FILL_WORD_ADDR;
-    *(volatile uint32_t *)(uintptr_t)zero_word = 0u;
+    const uint32_t n = (uint32_t)len;
+    uint32_t base = 0u;
+    uint32_t limit = 0u;
 
-    return dma_transfer(dest, zero_word, (uint32_t)len, 0);
+    // ICCM and DCCM take only aligned word writes; the engine reports a narrow or
+    // misaligned one as a bus error, so every fill is whole aligned words.
+    if (n == 0u || (size_t)n != len || ((dest | n) & 3u) != 0u ||
+        !fill_region(dest, n, &base, &limit)) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
+        simputshex32("DMA_DST=", dest);
+        simputshex32("DMA_LEN=", n);
+        return SEP_DMA_ERR_OUT_OF_RANGE;
+    }
+
+    const uint32_t err = dma_claim();
+    if (err != 0u) {
+        return err;
+    }
+
+    // Every write of a zero fill is checked against the enabled range.
+    dma_write(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, base);
+    dma_write(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, limit);
+    dma_write(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
+    // The engine validates the source address and space but never reads it.
+    dma_program(dest, 0u, n, 0u);
+
+    const uint32_t want[FILL_RB_COUNT] = {
+        dest, n, n, 0x2u, SECURE_DMA__DST_CONFIG__INCREMENT_bm, base, limit,
+    };
+    uint32_t got[FILL_RB_COUNT];
+    uint32_t got2[FILL_RB_COUNT];
+    uint32_t want2[FILL_RB_COUNT];
+    for (uint32_t i = 0u; i < FILL_RB_COUNT; ++i) {
+        got[i] = dma_read(fill_rb_addr[i]);
+        got2[i] = harden_u32(got[i]);
+        want2[i] = harden_u32(want[i]);
+    }
+    const int match = fill_registers_match(got, want);
+    const int match2 = fill_registers_match(got2, want2);
+    if (!match || !match2) {
+        report_status(STATUS_TYPE_WARN, SEP_MSG_DMA_OUT_OF_RANGE);
+        simputshex32("DMA_DST=", got[FILL_RB_DST]);
+        simputshex32("DMA_LEN=", got[FILL_RB_TOTAL]);
+        return SEP_DMA_ERR_OUT_OF_RANGE;
+    }
+
+    return dma_go_and_wait(SEP_DMA_OPCODE_ZERO, dest, 0u, n);
 }
