@@ -607,8 +607,8 @@
 // IRQ_STATUS.key_valid and IRQ_ENABLE.key_valid_en. The ABR bits read 0 in
 // the build without Adams Bridge.
 `SEP_TB_OUT(logic [7:0], km_engine_key_valid_o)
-// The Key Manager error outputs of the DUT (frontdoor, sep_wrapper ports
-// km_unrecoverable_err_o and km_recoverable_err_o; hw/sys/sep/doc/port_table.adoc).
+// The Key Manager error outputs of the DUT (frontdoor, sep_wrapper
+// sep_ras_o.km_uncorrectable and sep_ras_o.km_correctable).
 // Monitor only; PIC vector bits 30 and 31 carry the same faults.
 `SEP_TB_OUT(logic, km_unrecoverable_err_o)
 `SEP_TB_OUT(logic, km_recoverable_err_o)
@@ -954,6 +954,10 @@
 // Debug reset input of the VeeR EL2 wrapper (u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l).
 // Tied to 1 on the CPU stub build.
 `SEP_TB_OUT(logic, dbg_rst_l_probe_o)
+// DMI request of the core debug transport module before the core and uncore
+// mux (u_sep_cpu.u_el2_veer_wrapper): bit 8 dmi_en, bit 7 dmi_wr_en, bits 6:0
+// dmi_addr. Read-only. Tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic [8:0], dmi_req_probe_o)
 // Read source of SEP_CPU_CTRL.TIMEOUT_INTERRUPT.reserved (sw=r, hw=w, no storage):
 // the hwif_in value that the register block returns on a read, on each clock.
 `SEP_TB_OUT(logic, timeout_interrupt_probe_o)
@@ -1002,6 +1006,10 @@
 // the read data of a PIC register read on a clock with bit 47 high. 4-state on
 // VCS. Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic [47:0], pic_rd_data_probe_o)
+// PIC register write strobe, observation-only (VeeR EL2 el2_pic_ctrl): [14:0]
+// picm_waddr_ff[14:0], [15] picm_wren_ff. A clock with bit 15 high is one PIC
+// register write at that offset. Tied to 0 on the CPU stub build.
+`SEP_TB_OUT(logic [15:0], pic_wr_probe_o)
 // Fault and clear pulses of the bridge-fault latches, observation-only. Bit
 // order of each half: [0] aes, [1] hmac, [2] kmac, [3] otbn, [4] csrng,
 // [5] edn, [6] wdt (sep_pkg::periph_bus_err_e), [7] DMA reg_path_err,

@@ -70,6 +70,16 @@ module smc_peripherals_cdc #(
                                                                      // interrupt on the
                                                                      // peripheral clock.
 
+  input  logic [smc_config_pkg::NumI2c-1:0] i2c_intg_err_periph_clk_i,   // Per-instance I2C FIFO
+                                                                         // integrity error on the
+                                                                         // peripheral clock.
+  output logic                              i2c_intg_err_smc_clk_o,   // OR of the I2C FIFO
+                                                                      // integrity errors,
+                                                                      // synchronized to clk_smc_i.
+  output logic                              uart_intg_err_smc_clk_o,   // OR of the UART error
+                                                                       // indications, synchronized
+                                                                       // to clk_smc_i.
+
   input  logic [smc_config_pkg::NumI2c-1:0][3:0] i2c_debug_periph_clk_i,   // I2C Debug Bus CDC
                                                                            // (Periph -> SMC).
                                                                            // Visibility-only path
@@ -388,6 +398,8 @@ module smc_peripherals_cdc #(
   // UART eventually combines: uart_irq_smc_clk | uart_err_smc_clk | log_engine_irq_smc_clk into one interrupt line.
   logic [smc_config_pkg::NumUart-1:0]  uart_irq_combined_periph_clk_flopped;
   logic                                avsbus_irq_periph_clk_flopped;
+  logic                                i2c_intg_err_periph_clk_flopped;
+  logic                                uart_intg_err_periph_clk_flopped;
   logic [smc_config_pkg::NumI2c-1:0][3:0]                          i2c_debug_periph_clk_flopped;
 
   `OCAH_FFNR(i2c_enable_periph_clk_flopped, i2c_enable_periph_clk_i, clk_periph_i)
@@ -398,6 +410,8 @@ module smc_peripherals_cdc #(
              uart_irq_periph_clk_i | uart_err_periph_clk_i | log_engine_irq_periph_clk_i,
              clk_periph_i)
   `OCAH_FFNR(avsbus_irq_periph_clk_flopped, avsbus_irq_periph_clk_i, clk_periph_i)
+  `OCAH_FFNR(i2c_intg_err_periph_clk_flopped, |i2c_intg_err_periph_clk_i, clk_periph_i)
+  `OCAH_FFNR(uart_intg_err_periph_clk_flopped, |uart_err_periph_clk_i, clk_periph_i)
   `OCAH_FFNR(i2c_debug_periph_clk_flopped, i2c_debug_periph_clk_i, clk_periph_i)
 
   ///////////////////////////////////////////
@@ -486,6 +500,16 @@ module smc_peripherals_cdc #(
       .rst_ni(1'b1),
       .d_i   (avsbus_irq_periph_clk_flopped),
       .q_o   (avsbus_irq_smc_clk_o)
+    );
+
+    // I2C and UART integrity errors
+    prim_flop_2sync #(
+      .Width(2)
+    ) u_intg_err_sync (
+      .clk_i (clk_smc_i),
+      .rst_ni(1'b1),
+      .d_i   ({i2c_intg_err_periph_clk_flopped, uart_intg_err_periph_clk_flopped}),
+      .q_o   ({i2c_intg_err_smc_clk_o, uart_intg_err_smc_clk_o})
     );
 
     // Clock gate enables (SMC -> Periph, synced to ungated clk_periph_i)
@@ -600,6 +624,15 @@ module smc_peripherals_cdc #(
       .clk_i (clk_smc_i),
       .d_i   (avsbus_irq_periph_clk_flopped),
       .q_o   (avsbus_irq_smc_clk_o)
+    );
+
+    // I2C and UART integrity errors
+    prim_sync3 #(
+      .WIDTH(2)
+    ) u_intg_err_sync (
+      .clk_i (clk_smc_i),
+      .d_i   ({i2c_intg_err_periph_clk_flopped, uart_intg_err_periph_clk_flopped}),
+      .q_o   ({i2c_intg_err_smc_clk_o, uart_intg_err_smc_clk_o})
     );
 
     // Clock gate enables (SMC -> Periph, synced to ungated clk_periph_i)

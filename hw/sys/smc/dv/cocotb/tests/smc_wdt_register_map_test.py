@@ -26,9 +26,10 @@ class smc_wdt_register_map_test(smc_base_test):
         "CHK-WDT-CTRL-LOCKED-WRITE",
         "CHK-WDT-CTRL-RESERVED",
         "CHK-WDT-CTRL-RESET",
+        "CHK-WDT-DRAWN-STROBE-WALK",
         "CHK-WDT-OFFSET-DECODE",
     )
-    min_evidence = 9
+    min_evidence = 10
 
     auto_protocol_vip = False
 

@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Lightweight Python-side FCOV counters for OSS SMU.
 
-Verilator cannot compile SV covergroups; VCS can still use this as a
-scenario-intent ledger that prints at end-of-test. Hits are recorded when
+A scenario-intent ledger that prints at end-of-test. Hits are recorded when
 tests call ``hit()`` or when ``SmuScoreboard`` tags a check with ``fcov=``.
 """
 

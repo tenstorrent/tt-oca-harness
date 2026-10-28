@@ -259,10 +259,9 @@ module smu_rst_fcov #(
   wire periph_domain_active_e = (rst_primary_periph_clk_ni === 1'b1) && (periph_rst_q === 1'b0);
   `OCAH_FCOV_COVER(c_periph_domain_active, periph_domain_active_e, clk_periph_i, not_powered)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the release ordering across the
-  // four blocks, which a flat point list cannot cross.
+  // Covergroup: the release ordering across the four blocks, which a flat
+  // point list cannot cross.
   // ------------------------------------------------------------------
   covergroup cg_block_release with function sample (
       logic smc_rst, logic dtp_rst, logic sep_rst, logic xbar_rst
@@ -287,6 +286,5 @@ module smu_rst_fcov #(
       u_cg_block_release.sample(smc_rst_ni, dtp_rst_ni, sep_rst_ni, xbar_rst_ni);
     end
   end
-`endif
 
 endmodule : smu_rst_fcov
