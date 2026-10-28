@@ -294,16 +294,17 @@ module efuse_shadow_regs
   ////////////////////////////////////////////////////////////////////////////
 
   // An access phase to a locked field completes at once with 0xBADCAB1E and no error, and
-  // touches no storage. Every other access phase is a bus access, answered from apb_resp_q.
+  // touches no storage. Every other access phase is a shadow-register access, answered from
+  // apb_resp_q.
   logic apb_access_phase;
   logic write_blocked;
   logic read_blocked;
-  logic bus_access;
+  logic shadow_reg_access;
 
   assign apb_access_phase = apb_req_psel_i && apb_req_penable_i;
   assign write_blocked    = apb_access_phase && apb_req_pwrite_i && write_locked;
   assign read_blocked     = apb_access_phase && !apb_req_pwrite_i && read_locked;
-  assign bus_access       = apb_access_phase && !write_blocked && !read_blocked;
+  assign shadow_reg_access = apb_access_phase && !write_blocked && !read_blocked;
 
   assign locked_field_access_interrupt_o = write_blocked || read_blocked;
 
@@ -317,13 +318,13 @@ module efuse_shadow_regs
     if (write_blocked || read_blocked) begin
       apb_resp_o.pready = 1'b1;
       apb_resp_o.prdata = efuse_data_t'(32'hbadcab1e);
-    end else if (bus_access) begin
+    end else if (shadow_reg_access) begin
       apb_resp_o = apb_resp_q;
     end
   end
 
-  // The shadow file takes bus accesses once it is loaded from the fuses, or from the preload
-  // file in simulation, and at once when security_disable_i skips sensing.
+  // The shadow file takes shadow-register accesses once it is loaded from the fuses, or from
+  // the preload file in simulation, and at once when security_disable_i skips sensing.
   logic preloading;
   logic sensing;
   logic shadow_ready;
@@ -344,7 +345,7 @@ module efuse_shadow_regs
   // A write commits in the first cycle of its access phase; apb_resp_q.pready holds it off for
   // the rest of the phase.
   logic wr_commit;
-  assign wr_commit = shadow_ready && bus_access && apb_req_pwrite_i && !addr_out_of_range &&
+  assign wr_commit = shadow_ready && shadow_reg_access && apb_req_pwrite_i && !addr_out_of_range &&
                      !apb_resp_q.pready;
 
   // The word a committed write leaves behind. Set-only fields OR the write data into the
@@ -363,7 +364,7 @@ module efuse_shadow_regs
     // For each byte:
     for (int b = 0; b < 4; b++) begin
       if (apb_req_pstrb_i[b]) begin
-        // If targetting LC state, and byte 0, use value calculated above
+        // If targeting LC state, and byte 0, use value calculated above
         if (lc_state_write && (b == 0)) begin
           wr_word[2*LcStateWidth-1:0] = lc_state_diff_d;
         // Update the byte
@@ -376,12 +377,12 @@ module efuse_shadow_regs
     end
   end
 
-  // Bus accesses error with 0xBADCAB1E until the shadow file is ready, and beyond its last
-  // word.
+  // Shadow-register accesses error with 0xBADCAB1E until the shadow file is ready, and beyond
+  // its last word.
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       apb_resp_q <= '0;
-    end else if (bus_access) begin
+    end else if (shadow_reg_access) begin
       apb_resp_q.pready <= 1'b1;
       if (!shadow_ready || addr_out_of_range) begin
         apb_resp_q.pslverr <= 1'b1;
@@ -439,9 +440,9 @@ module efuse_shadow_regs
               if (efuse_pkg::is_invalid_lc_state(lc_state_cur)) begin
                   lc_state_raw_d = lc_state_cur;
               end
-              // A bus access holds off the transient RMA update; only a write to byte 0 of a
-              // set-only lifecycle-state field changes the state.
-              else if (bus_access) begin
+              // A shadow-register access holds off the transient RMA update; only a write to
+              // byte 0 of a set-only lifecycle-state field changes the state.
+              else if (shadow_reg_access) begin
                   if (apb_req_pwrite_i && lc_state_write && apb_req_pstrb_i[0]) begin
                       lc_state_candidate[0] = apb_req_pwdata_i[0] | lc_state_cur[0];
                       lc_state_candidate[1] = (rma_sip_token_match_i == TOKEN_MATCH_CODE)
@@ -654,7 +655,7 @@ module efuse_shadow_regs
           shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
               CLASS1_SHADOW_RANGES, shadow_word_idx_t'(word_sel))] <= wr_word;
         end
-      end else if (!bus_access) begin : transient_rma_en
+      end else if (!shadow_reg_access) begin : transient_rma_en
         if (HAS_LC_STATE) begin
           if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
             priority if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
