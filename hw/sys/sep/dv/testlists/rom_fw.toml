@@ -3418,3 +3418,19 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
+
+[[tests]]
+# The ROM reads mhartid, programs mtvec and writes MRAC 0xAAAAAAA8 in that order before its
+# first data access, and hart 0 never enters the park loop.
+name = "sep_rom_reset_entry_order_test"
+module = "rom_fw.sep_rom_reset_entry_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "reset", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
