@@ -68,10 +68,12 @@ R_HOLD = 32
 BURST_BEATS = 8
 READ_BEATS = 4
 GROUP_WORDS = 8
-# Writes of the SEP_IN group of step 7 issued under the drawn tb_sep_axi_b_hold; the
-# other GROUP_WORDS - B_HOLD_WRITES take the manager's b_ready_delay once the hold
-# has dropped (the delay counts from its arming, ocah_axi_master_driver._hold_then_go).
-B_HOLD_WRITES = 2
+# Writes of the SEP_IN group of step 7 issued under the drawn tb_sep_axi_b_hold: enough
+# that their W handshakes outnumber the B handshakes the DUT can return before the hold,
+# raised a cycle or two after the first W handshake, is up. The other GROUP_WORDS -
+# B_HOLD_WRITES take the manager's b_ready_delay once the hold has dropped (the delay
+# counts from its arming, ocah_axi_master_driver._hold_then_go).
+B_HOLD_WRITES = 3
 RANDOM_MAX_DELAY = 8
 
 PORTS = ("SEP_IN", "SYS_IN", "JTAG")
