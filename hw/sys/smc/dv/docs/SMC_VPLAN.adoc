@@ -6960,10 +6960,6 @@ handshakes, B cycles and completion cycles are measured and printed, not compare
 
 *Area*: POWER
 
-*Issue*: tenstorrent/tt-oca-harness#2455 -- the disagreement between `dma.adoc` and
-`dma_ctrl.rdl` on what `NEXT_ID_0` returns when no command is set up; the register-boundary
-results of the no-data commands are measured, not compared, until it is resolved.
-
 *Source Module*: `smc_dma_invalid_descriptor_test`
 
 *BFM / Model*: SEP_IN AXI sequencer (`env.sys_axi_agent`, no protocol VIP) for the DMA registers;
@@ -6995,14 +6991,15 @@ copies; the register-boundary results of the no-data commands are measured.
   three copy legs, so no handshake occurs outside the copies.
 * The `NEXT_ID_0` value the submit returned, `DONE_0` before and after, `STATUS_0[9:0]` before and
   after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are measured,
-  not compared, until tenstorrent/tt-oca-harness#2455 is resolved: that issue tracks the open
-  disagreement between `dma.adoc` and `dma_ctrl.rdl` on the `NEXT_ID` and `DONE` registers.
+  not compared: `dma.adoc` and `dma_ctrl.rdl` both state that every `NEXT_ID_0` read retires a
+  non-zero transfer ID, including one with no command set up, and they differ on `DONE_0` (the
+  most recently retired ID in `dma.adoc`, a cumulative count in the RDL).
 * A length-0 command moves no data (`dma.adoc`, Linear and Two-Dimensional Copies, the DMA register
   storage table): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO`
   4, source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
   bytes at 0xEE and produce no AR or AW handshake through the end of a 3000-read `DONE_0` poll.
   Whether `DONE_0` changed, `STATUS_0[9:0]`, the returned `NEXT_ID_0` and the bit 322 pulse count
-  of both commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved.
+  of both commands are measured, not compared.
 * Positive control (`dma.adoc`, Linear and Two-Dimensional Copies): the same descriptor with
   `ENABLED_ND` set and `LENGTH_LO` 16 copies. A 2D copy with `NUM_REPETITIONS_LO` 4 and the strides
   0x30 and 0x28 of the zero-length 2D command writes its four source rows over the 136-byte
@@ -7060,13 +7057,11 @@ copies; the register-boundary results of the no-data commands are measured.
 |`CHK-DMA-ND-CLEAR-DONE-ADVANCES` |`DONE_0` differs from its pre-command value within 3000 reads
   after the `ENABLED_ND`-cleared command
 |`CHK-DMA-ND-CLEAR-MEASURED` |The returned `NEXT_ID_0`, `DONE_0`, `STATUS_0[9:0]` and bit 322 pulse
-  readings of the `ENABLED_ND`-cleared command are measured and printed without comparing them,
-  until tenstorrent/tt-oca-harness#2455 is resolved
+  readings of the `ENABLED_ND`-cleared command are measured and printed without comparing them
 |`CHK-DMA-ZEROLEN-NO-DATA` |The linear and the 2D zero-length commands leave their 16 and 136
   destination bytes at 0xEE with no AR or AW handshake through the end of the poll
 |`CHK-DMA-ZEROLEN-MEASURED` |The returned `NEXT_ID_0`, `DONE_0` change, `STATUS_0[9:0]` and bit 322
-  pulse readings of both zero-length commands are measured and printed without comparing them,
-  until tenstorrent/tt-oca-harness#2455 is resolved
+  pulse readings of both zero-length commands are measured and printed without comparing them
 |`CHK-DMA-COPY-CONTROL` |The `ENABLED_ND`-set 2D copy of four 16-byte rows at strides 0x30 and
   0x28 writes its source rows over the 136-byte destination span with the bytes between rows still
   0xEE, after `DONE_0` differs, with at least four AR and four AW handshakes; the linear copy of 16
@@ -7086,7 +7081,7 @@ command retires its ID and both zero-length commands leave the destination at 0x
 traffic, the 2D copy writes the 136-byte span the zero-length 2D compare covers, the linear copy
 moves its 16 bytes through both a 32-bit and a 64-bit submit with equal handshake counts, and the
 linear copy raises one one-cycle interrupt pulse. The register-boundary results of the no-data
-commands are measured, not compared, until tenstorrent/tt-oca-harness#2455 is resolved. Enrolled in: `all`, `hosted`.
+commands are measured, not compared. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: The returned `NEXT_ID_0`, `DONE_0` before and after, `STATUS_0[9:0]` before and after
 and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command, and the `DONE_0` change,
@@ -42923,7 +42918,7 @@ draws nothing from the seed.
 * The sdata pad is held low, which `interface.adoc` "AVSBus Slave Subframe" makes a valid frame with slave acknowledgment 0, so the controller takes the accept path rather than the retry path.
 * The single-cycle end-of-subframe and post-resync launch states are not directly observable: `cur_state_debug_o` reaches the bench through two handshake data synchronizers, which forward the value they hold when a transfer opens. Their effect is checked instead.
 * The slave response word is not compared: the readback register reads 0 both for the all-zero subframe and for an empty FIFO.
-* With the reply driver on sdata and `AVS_CFG_0.MAX_RETRIES` at 0, AVS_CMD 0x08052E18 and 0x18052E18 (CmdGroup 1, commit then hold write, CMD_DATA 0xA5C3) and 0x0002D1E0 (CmdGroup 0, CMD_DATA 0x5A3C) are captured on `avs_mdata_o`; the CRC-3 bits of the three subframes and the shift order are logged, since no pinned source gives the polynomial (SF-030).
+* With the reply driver on sdata and `AVS_CFG_0.MAX_RETRIES` at 0, AVS_CMD 0x08052E18 and 0x18052E18 (CmdGroup 1, commit then hold write, CMD_DATA 0xA5C3) and 0x0002D1E0 (CmdGroup 0, CMD_DATA 0x5A3C) are captured on `avs_mdata_o`; the CRC-3 bits of the three subframes and the shift order are logged and not compared against the x^3 + x + 1 polynomial `interface.adoc` (AVSBus Frame Format) gives (SF-030).
 * A reply with slave acknowledgment 0, StatusResponse 0b00010 and data 0xFFFF is sent once with each of the eight CRC-3 codes against a broadcast commit write; `architecture.adoc` "CRC Verification Engine" lets exactly one pass the check and update `AVS_LATEST_SLAVE_SUBFRAME` and `AVS_SLAVE_STATUS`. `AVS_SLAVE_ISSUED_INTERRUPT` is logged after that reply and after `AVS_INTERRUPT_CLEAR` = 0x1, not compared (SF-028).
 * A StatusResponse-0 reply is swept over the codes until one is accepted, which clears `AVS_SLAVE_STATUS` bit 1.
 * With `MAX_RETRIES` at 1 a rejected code followed by the accepted one costs one retry of the same subframe, and only the retry reply updates the status latch.
@@ -42939,7 +42934,7 @@ Drive `smc_avsbus_frame_transaction_test_seq`. Each checker below is a named com
 |===
 |Checker |Description
 |`CHK-AVS-FRAME-FSM-MAIN-PATH` |`tb_avsbus_cur_state_debug` held each of AVS_IDLE, AVS_SLAVE_RESYNC, AVS_SHIFT_1ST_SUBFRAME, AVS_SHIFT_MID_SUBFRAME and AVS_SHIFT_LAST_SUBFRAME over two consecutive `clk_periph_i` samples; the one-hot bit order is transcribed from `architecture.adoc` "Protocol State Machine"
-|`CHK-AVS-MASTER-SUBFRAME` |Every master subframe captured on `avs_mdata_o` over the DUT's own AVS clock equals the queued AVS_CMD word in wire order -- `2'b01` preamble in [31:30] and the generated-header AVS_CMD fields in [29:3]; the hardware CRC-3 is excluded because no source in this tree publishes the polynomial
+|`CHK-AVS-MASTER-SUBFRAME` |Every master subframe captured on `avs_mdata_o` over the DUT's own AVS clock equals the queued AVS_CMD word in wire order -- `2'b01` preamble in [31:30] and the generated-header AVS_CMD fields in [29:3]; the hardware CRC-3 is excluded from the compare and logged (`interface.adoc` gives the polynomial, x^3 + x + 1 over bits [31:3]; no CRC model is computed)
 |`CHK-AVS-CMD-FIFO-DRAIN` |After all three responses, AVS_FIFOS_STATUS reports the command FIFO at 0 occupied and the full generated depth vacant, with AVS_NORMAL_STATUS CMD_FIFO_EMPTY and AVS_BUS_IS_IDLE set
 |`CHK-AVS-READBACK-FIFO-FILL` |AVS_FIFOS_STATUS reports exactly one readback entry per command and the matching vacant count, with AVS_NORMAL_STATUS READBACK_HAS_DATA set
 |`CHK-AVS-READBACK-POP` |Each AVS_READBACK read returned OKAY on a non-empty FIFO and advanced the occupancy by exactly one, ending at 0 with READBACK_HAS_DATA clear
@@ -42960,8 +42955,8 @@ Drive `smc_avsbus_frame_transaction_test_seq`. Each checker below is a named com
 observable, because the debug state reaches the bench through two handshake data synchronizers;
 their effect is checked instead. The slave response word is not compared, because the readback
 register reads 0 both for the all-zero subframe and for an empty FIFO. The hardware CRC-3 of the
-master subframe is excluded from the compare, because no source in this tree publishes the
-polynomial.
+master subframe is excluded from the compare; `interface.adoc` gives the polynomial, x^3 + x + 1
+over bits [31:3], and no CRC model is computed.
 
 '''''
 
@@ -42990,7 +42985,7 @@ draws nothing from the seed.
 * `AVS_CFG_0.MAX_RETRIES` is programmed to 2, so the retry countdown is walked rather than stepped straight to zero.
 * Two commands queued back to back separate the retry shapes: the reply to the first arrives while the second is on the wire, so the controller retries while still receiving before alternating transmit-only and receive-only retries.
 * The single-cycle end-of-subframe and buffered-reply retry states are not directly observable through the handshake-synchronised debug bus; the interrupt and retry-count checks stand in for them.
-* After those legs the responder answers each master subframe with a queued slave subframe. No pinned document gives the CRC-3 polynomial, so each reply shape is sent with all eight codes under `MAX_RETRIES` 0 and the one code that updates `AVS_LATEST_SLAVE_SUBFRAME` is used afterwards.
+* After those legs the responder answers each master subframe with a queued slave subframe. Each reply shape is sent with all eight CRC-3 codes under `MAX_RETRIES` 0, rather than with a code computed from the `interface.adoc` polynomial, and the one code that updates `AVS_LATEST_SLAVE_SUBFRAME` is used afterwards.
 * Budgets of 8 and 10 against SlaveAck 1 on every attempt, and 8 against SlaveAck 2, count the identical master subframes, `TOTAL_RETRIES` and `MAX_RETRIES_ATTEMPTED_INT`; they drive `TOTAL_RETRIES` past bit 3. The `AVS_READBACK` content after exhaustion is logged only (SF-032).
 * Success on retry 1 and retry 7 of a budget of 8, two back-to-back commands with the first retried twice (the held reply and the resync that ends the retries), and `MAX_RETRIES_ATTEMPTED_INT` on `tb_avsbus_irq` through `AVS_INTERRUPT_MASK` and `AVS_INTERRUPT_CLEAR`.
 * S4 needs the interrupt clear before it starts, so the line leg raises the flag again with the SlaveAck 2 stimulus before it samples.
@@ -45080,7 +45075,7 @@ specification states.
 
 *Test Coverage*:
 
-* The reply format is transcribed from `interface.adoc` "AVSBus Slave Subframe". No document in this tree gives the CRC-3 polynomial, so each reply shape is sent once with each of the eight CRC codes.
+* The reply format is transcribed from `interface.adoc` "AVSBus Slave Subframe". Each reply shape is sent once with each of the eight CRC-3 codes rather than with a code computed from the `interface.adoc` polynomial (x^3 + x + 1 over bits [31:3]).
 ** `architecture.adoc` says a reply that fails the check does not update `AVS_LATEST_SLAVE_SUBFRAME`.
 ** With `MAX_RETRIES` at 0, a failing reply is still delivered.
 ** So exactly one of the eight codes must update `AVS_LATEST_SLAVE_SUBFRAME`, and the other seven must reach `AVS_READBACK` without updating it. The accepted code is used for the legs that need a reply the controller believes.
@@ -45145,7 +45140,7 @@ specification states.
 
 *Pass Criteria*: all twelve checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: No document in this tree gives the CRC-3 polynomial, so each reply shape is sent once
+*Scope limit*: No CRC model is computed from the `interface.adoc` polynomial; each reply shape is sent once
 with each of the eight CRC codes and exactly one of them must be accepted.
 
 '''''
@@ -48266,7 +48261,6 @@ that records the value.
 <<smc-vplan-area-power,POWER>>:
 
 * The SRAM size the zeroer clears: `doc/programmer/src/smc-programming.adoc` states 128 KiB and the generated memory map (`hw/sys/smc/regs/gen/py/smc_memory_map.py`, `spm_memory`) spans 1 MiB. `smc_zeroer_sram_init_test` clears the 128 KiB the programming guide states and grades nothing past it.
-* The AVSBus CRC-3 polynomial: no document in the tree states it; `hw/ip/avsbus_controller/doc/interface.adoc` (AVSBus Frame Format) gives the subframe layout only. `smc_avsbus_frame_transaction_test` excludes the CRC field from its `avs_mdata_o` compare; `smc_avsbus_slave_reply_test` sends each reply shape with each of the eight codes and requires that exactly one code updates `AVS_LATEST_SLAVE_SUBFRAME`.
 * The bytes left at the destination of a DMA burst that took a SLVERR or DECERR: `hw/sys/smc/doc/dma.adoc` (Submission and Completion) states that no byte-progress register exists and states no outcome for the data of an errored burst. The planned entry `smc_sys_out_error_inject_rand_test` prints them and grades the recovery copy only.
 * The number of descriptors the DMA frontend accepts before `STATUS_0[7:0]` leaves 0xFF under a held responder, and whether a given launch read is held: `hw/sys/smc/doc/dma.adoc` (Architecture and Configuration; Submission and Completion) states the request FIFO depth of 4 and that 0xFF means room to accept a command, and `doc/programmer/src/smc-programming.adoc` (DMA Engine) states that the launch read can be back-pressured; neither states the count or the cycle. The planned entry `smc_dma_backpressure_rand_test` prints both.
 * The hold of `smc_wdt_second_timeout_o` between its rise and the warm reset it asserts: `hw/sys/smc/doc/clk_rst.adoc` (Primary and Warm Reset) states the reset equation the output enters, `doc/programmer/src/smc-programming.adoc` (Watchdog Timers) states that the first-stage request is latched until the cluster uncore is reset and that the countdown expiry asserts the warm reset, and `hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl` (`WDT_TIMEOUT`) states the countdown length; none states how long the expiry output holds. `smc_wdt_warm_reset_rand_test` prints the hold beside the graded hold of the first-stage request.
@@ -49043,9 +49037,9 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 '''''
 
 `smc_ref_clock_timer_rate_test` has an entry in `holdout.toml` and no card: it
-fails the rate comparison it was written to make (`clk_rst.adoc` places the OCTS
-system timer in the reference clock domain; `smc_peripherals.sv` clocks it from
-`clk_smc_i`), and is re-measured on demand.
+fails the rate comparison it was written to make (the leaf measures the OCTS
+system timer against `clk_ref_i`; `clk_rst.adoc`, Timer and Debug Timebases, and
+`smc_peripherals.sv` clock it from `clk_smc_i`), and is re-measured on demand.
 
 ===== SV-UVM held-out scenarios
 
@@ -50776,7 +50770,7 @@ and no DV workflow builds firmware, so every firmware leaf below, each of
 which runs a `c_compile` stage, is run on demand with the toolchain image
 `scripts/docker-run.sh` provides. The `smc_ref_clock_timer_rate_test`
 row is held out for a different reason: it fails the comparison it was written
-to make; its *Closes when* cell names the ruling that closes it.
+to make; its *Closes when* cell names the change that closes it.
 
 [cols="2,1,3,3",options="header"]
 |===
@@ -50812,7 +50806,7 @@ to make; its *Closes when* cell names the ruling that closes it.
 |`smc_occp_dual_unsecure_boot_test` |`occp_rom` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |Toolchain as above and a runner budget that fits the complete 33-case `items: occp_rom` group, including this hours-long member
 |`smc_cpu_mmio_read_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`: the wedge image is built with RISC-V GCC and picolibc, so no hosted-runner tier can run it. The two `smc_cpu_l2_*_wedge_test` leaves beside it in `cpu.toml` need no image and are enrolled in `hosted`; these two are not |Toolchain as above; the leaf then joins `hosted` alongside the L2 pair and this row closes
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |As above
-|`smc_ref_clock_timer_rate_test` |none |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It fails the rate comparison it was written to make: `clk_rst.adoc` places the OCTS system timer in the reference clock domain and `smc_peripherals.sv` clocks `system_timer_octs` from `clk_smc_i`, so TIMER_COUNT advances at the `clk_smc_i` rate. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
+|`smc_ref_clock_timer_rate_test` |none |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It fails the rate comparison it was written to make: the leaf measures TIMER_COUNT against `clk_ref_i` edges, and `clk_rst.adoc` (Timer and Debug Timebases) and `smc_peripherals.sv` clock `system_timer_octs` from `clk_smc_i`, so TIMER_COUNT advances at the `clk_smc_i` rate. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |The leaf's expectation moves to `clk_smc_i`, the clock `clk_rst.adoc` and the RTL give the timer, and the leaf joins the `clock` group with the `ci` tag
 |===
 
 `smc_rom.toml` is in the toolchain bucket: every leaf in it declares

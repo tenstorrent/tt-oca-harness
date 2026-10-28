@@ -47,8 +47,9 @@ from smc_reg import (  # noqa: E402
 # expected values are imported from the generated PeakRDL map. Each read
 # verifies decode + route AND the reset value, not merely an OKAY response.
 # 64-bit RDL windows use length=8; 32-bit UART/log-engine windows use length=4.
-# MAILBOX STATUS.empty is a live FIFO wire (RDL REG_DEFAULT 0x0 disagrees with
-# empty-at-reset); this sweep samples ERROR_FLAGS instead (clean RDL reset).
+# MAILBOX STATUS.empty is a live FIFO wire rather than a stored reset value
+# (axil_mailbox.rdl resets it to 1, empty); this sweep samples ERROR_FLAGS
+# instead (clean RDL reset).
 # I3C HCI windows are covered by smc_i3c_to_fabric_test at 0xC000_5000.
 # Tuple: (name, addr, expected, length)
 LOCAL_FABRIC_READS = [

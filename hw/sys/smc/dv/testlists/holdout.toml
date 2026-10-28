@@ -24,12 +24,12 @@ schema_version = 1
 #   * `occp_boot` -- held out on runtime. The production ROM's whole
 #     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
 #     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
-#   * `held_out` -- leaves whose comparison the RTL and the specification
-#     disagree on, and leaves blocked by a filed RTL defect; each entry's
-#     comment states the disagreement or the defect in words.
+#   * `held_out` -- leaves whose comparison the specification does not support,
+#     and leaves blocked by a filed RTL defect; each entry's comment states the
+#     disagreement or the defect in words.
 #     smc_ref_clock_timer_rate_test compares the OCTS system timer rate against
-#     clk_rst.adoc, which places the timer in the reference clock domain, while
-#     the RTL clocks it from clk_smc_i.
+#     clk_ref_i edges, while clk_rst.adoc (Timer and Debug Timebases) and the
+#     RTL clock the timer from clk_smc_i.
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`,
@@ -192,7 +192,7 @@ tests = [
 ]
 
 [[groups]]
-# Leaves whose comparison the RTL and the specification disagree on; run on demand.
+# Leaves whose comparison the specification does not support; run on demand.
 name = "held_out"
 expected_count = 1
 tests = [
