@@ -18,6 +18,7 @@ class smc_i2c_wire_timing_test(smc_base_test):
         "CHK-I2C-WIRE-DATA-HOLD-DELTA",
         "CHK-I2C-WIRE-DATA-SETUP-MEASURED",
         "CHK-I2C-WIRE-MEASURED-ONLY",
+        "CHK-I2C-WIRE-MIN-SET-RUN",
         "CHK-I2C-WIRE-NACK-HOLD-DELTA",
         "CHK-I2C-WIRE-RSTART-DELTA",
         "CHK-I2C-WIRE-SCL-HIGH-DELTA",
@@ -28,7 +29,7 @@ class smc_i2c_wire_timing_test(smc_base_test):
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 13
+    min_evidence = 14
 
     auto_protocol_vip = False
 
