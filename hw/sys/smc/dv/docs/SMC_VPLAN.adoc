@@ -14399,11 +14399,12 @@ draws nothing from the seed.
 * **Not reachable at this level.** The DTP CSR target (BASE + 0xB000) is a forwarded port with no responder on the subsystem bench, so it is outside the check set (SF-040).
 * **Measure-and-log legs (LINKED-ISSUE).** Every access to the zeroer and iDMA control windows (SF-008) and the DFD/CLA window (SF-038); the two eFuse windows on the AxPROT leg (SF-012); and the response code of every AxLOCK = 1 access (SF-002). These log the response and word as `MEASURE` lines and compare nothing on that leg; the AxLOCK = 1 read word is still compared.
 * **eFuse SHIM word.** With every attribute zero, the first word of the eFuse SHIM control block (BASE + 0x040_0000, `memmap.adoc`) takes an 8-byte read, a write-back of the word read and a second read. The SHIM registers are adopter-defined, so the word is logged and compared only between the two reads: both reads must answer the same response code, and when both answer OKAY the second word must equal the first. A non-OKAY code is logged with both words (SF-041).
+* **SHIM AxPROT variants.** The same read, write-back of the word read and second read of the first SHIM word then repeat with AxPROT 0x2 on both the read and the write, and then with AxPROT 0x0, every other attribute zero (`fabric.adoc` passes protection bits through unmodified). Each read must answer the code of the zero-attribute read, each write-back the code of the zero-attribute write-back, and the two reads of each variant the same word; the word is logged and never compared with a constant. Whether the eFuse elevated-privilege rule of `memmap.adoc` reaches the SHIM is open (SF-012).
 * **External window.** The supplementary region of the external window (BASE + 0x040_4000) takes an 8-byte read and an 8-byte write of data 0 with AxPROT 0x7, then the same pair with AxPROT 0x0. Each must answer DECERR, the response `memmap.adoc` documents for an unclaimed access in that region on the reference integration; the read data is logged.
 * **WUSER.** Every endpoint the AxUSER leg writes back takes a zero-attribute read, a full-strobe write-back of the word read with WUSER 0xFFF and a zero-attribute read, then the same write-back with WUSER 0x000 and a read. On a compared endpoint each write must answer OKAY and each read OKAY with the reference; on a measure-and-log endpoint every response and word is logged.
 * **AxLEN 15.** CPU_CTRL `SCRATCH[0..15]` (BASE + 0x39080, sixteen contiguous 8-byte read-write registers, `cpu_ctrl.adoc`) takes one INCR read burst of sixteen 8-byte beats and one INCR write-back burst of the sixteen words read, then an AxLEN 0 read of each register. Every beat's response and data, the B response and whether each register reads back the word the burst returned are logged, not compared (SF-003). The M-mode and Xvisor output remaps, the alias remap and the reset unit hold no pinned 128-byte read-write footprint and are reported as such on the checker line.
-* The SEP_IN monitor's DECERR excuse covers the measure-and-log endpoints for the whole run, the two eFuse windows only during the AxPROT leg, the burst start addresses only during the burst legs, the SHIM word only during its leg and the external window only during its leg.
-* **Coverage intent.** The SHIM leg targets the `efuse_bank_ctrl` request and response handshake and the eFuse controller's route to the bank; the external-window leg targets the AxPROT bits of the external request port and of the peripheral crossbar's external output; the WUSER leg targets every `w.user[11:0]` net of the input fabric, local crossbar, filters and data-accelerator control demux; the AxLEN 15 leg targets AxLEN[7:3] on the CPU front port output. These are stimulus criteria, not expected values.
+* The SEP_IN monitor's DECERR excuse covers the measure-and-log endpoints for the whole run, the two eFuse windows only during the AxPROT leg, the burst start addresses only during the burst legs, the SHIM word only during its leg and its AxPROT variants and the external window only during its leg.
+* **Coverage intent.** The SHIM leg targets the `efuse_bank_ctrl` request and response handshake and the eFuse controller's route to the bank; the SHIM AxPROT 0x2 variant targets `efuse_bank_ctrl_req.ar.prot[1]` and `aw.prot[1]` of the SMC and of the integration port; the external-window leg targets the AxPROT bits of the external request port and of the peripheral crossbar's external output; the WUSER leg targets every `w.user[11:0]` net of the input fabric, local crossbar, filters and data-accelerator control demux; the AxLEN 15 leg targets AxLEN[7:3] on the CPU front port output. These are stimulus criteria, not expected values.
 * Every response wait is bounded at 20 us and fails with the outstanding request list; recorder beat waits are bounded at 16 clocks.
 
 *Test Procedure*:
@@ -14426,14 +14427,15 @@ Drive `smc_axil_endpoint_prot_sweep_test_seq`. Each checker below is a named com
 |`CHK-ATTR-ID` |As `CHK-ATTR-PROT` for AxID 0x01, 0x15, 0x2A, 0x3F, 0x00, with RID and BID equal to AxID
 |`CHK-ATTR-ID-OUTSTANDING` |Per endpoint class, four outstanding reads with AxID 0x01..0x04 returned exactly that RID set, and on a compared class each OKAY with the reference; AR acceptance depth logged
 |`CHK-ATTR-SHIM-WINDOW` |The read, write-back and second read of the first eFuse SHIM word completed; both reads answered the same code and, answering OKAY, the same word; the word and a non-OKAY code are logged
+|`CHK-ATTR-SHIM-PROT` |With AxPROT 0x2 and then 0x0, the SHIM read, write-back and second read each answered the code of the matching zero-attribute access, and the two reads of each variant returned the same word
 |`CHK-ATTR-EXTERNAL-PROT` |The read and zero-data write at the external window's supplementary region answered DECERR with AxPROT 0x7 and with 0x0
 |`CHK-ATTR-WUSER` |Every compared endpoint answered each write-back with WUSER 0xFFF and 0x000 with OKAY, and the read after each with OKAY and the reference
 |`CHK-ATTR-LEN15` |The AxLEN 15 read and write-back bursts over CPU_CTRL `SCRATCH[0..15]` completed with sixteen read beats and one write response; beats, B response and read-back logged; the windows with no 128-byte footprint named
-|`CHK-NONVAC` |Ordered fence REFERENCE < PROT < DEBUG-MGR < USER < REGION < QOS < LOCK < CACHE < LEN < ID < OUTSTANDING < SHIM < EXTERNAL < WUSER < LEN15, every term with a non-zero count and its own sim time
+|`CHK-NONVAC` |Ordered fence REFERENCE < PROT < DEBUG-MGR < USER < REGION < QOS < LOCK < CACHE < LEN < ID < OUTSTANDING < SHIM < SHIM-PROT < EXTERNAL < WUSER < LEN15, every term with a non-zero count and its own sim time
 |`CHK-TIMEOUT-PATHS` |Every response and recorder wait was bounded, with its bound and last state reported, and none expired
 |===
 
-*Pass Criteria*: all sixteen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all seventeen checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 *Scope limit*: The DTP CSR target (`BASE + 0xB000`) is a forwarded port with no responder on the subsystem bench and is outside the check set; the zeroer, iDMA, DFD/CLA and eFuse windows, the eFuse SHIM word's response and data, and the AxLOCK = 1, burst and AxLEN 15 response codes are measured and logged, not compared.
@@ -35786,7 +35788,11 @@ evidence.
 `tb_gpio_ext_drive_value` (bits from the pad table); no I2C protocol VIP; per instance registers
 `SMBUS_STATUS` (SMBALERT), `INTR_STATE` (SMBALERT), `SMBUS_CTRL`, `CTRL` (`ENABLEHOST`) and the
 `I2C_CTRL` wrapper registers (`SMBUS_EN`, host mode);
-`SMC_BASE_CONFIG.CLOCK_GATE_CONTROL.i2c_cg_en`.
+`SMC_BASE_CONFIG.CLOCK_GATE_CONTROL.i2c_cg_en`; `CTRL.LLPBK` and `CTRL.ENABLETARGET`; the I2C
+wrapper window past its decoded extent (offsets from the generated memory map); the top-level
+direction nets `tb_core2pad_en_o` / `tb_core2pad_o` of the `I2C[1] SMB_A` pad read passively for the
+alert pad direction leg (driven low = en and not data, released = not en, at its pull-up level).
+Contract: SMC_COV_R5_003 revision 1.
 
 *Run mode*: one testlist entry in `testlists/i2c.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
 `timeout_sec` 1800; tags `ci`, `i2c`; seed 1; tool Verilator (cocotb).
@@ -35795,7 +35801,10 @@ evidence.
 draws nothing from the seed.
 
 *Objective*: With the three alert pads driven low, clearing
-`SMBUS_EN` on one instance leaves `SMBUS_STATUS.SMBALERT` of the other two instances at 1.
+`SMBUS_EN` on one instance leaves `SMBUS_STATUS.SMBALERT` of the other two instances at 1; `SMBUS_EN`
+and `CTRL.LLPBK` mask the alert per instance; `I2C_CTRL` reserved-bit, partial-strobe and per-entry
+writes keep the defined fields; the wrapper window past its decoded extent answers DECERR; the alert
+pad is an input or an output by `I2C_CONTROLLER_MODE_EN`.
 
 *Test Coverage*:
 
@@ -35807,6 +35816,18 @@ draws nothing from the seed.
   `i2c_ctrl.rdl` register array).
 * The cleared instance's own `SMBUS_STATUS.SMBALERT` reads 0, because `SMBUS_EN` low masks
   `smbalert_ni` (I2C `index.adoc`); its `INTR_STATE.SMBALERT` is printed without a compare.
+* On instances 1 and 2 with the three pads low, `SMBUS_EN` 0 holds both `SMBUS_STATUS.SMBALERT` and
+  `INTR_STATE.SMBALERT` at 0, `SMBUS_EN` 1 on one instance raises both there and leaves the other two
+  at 0, and clearing it again masks both after a written 1 (`index.adoc`, `i2c_ctrl.adoc`, SF-017).
+* On instances 0, 1 and 2 in Controller Mode, `CTRL.LLPBK` 1 hides the low alert pad from both
+  SMBALERT bits and `LLPBK` 0 shows it again (`i2c.adoc` CTRL.LLPBK, SF-018).
+* `I2C_CTRL[1]` and `[2]` take a reserved-bit-only write, an all-ones write, byte-lane and
+  half-word strobed writes, and one-entry-at-a-time writes; the three defined fields are compared,
+  the reserved readback and every BRESP are logged (SF-004, SF-005).
+* The wrapper window at offsets 0xE0C and 0xFFC answers DECERR with 0xBADCAB1E on a read and DECERR
+  on a write, and the neighbouring registers keep their values (`memory_map.adoc`).
+* The `I2C[1]` alert pad drives `SMBUS_STATUS.SMBALERT` with `I2C_CONTROLLER_MODE_EN` 1 and follows
+  `SMBUS_CTRL.SMBALERT` with it 0; `I2C[2]` is checked as an input (`i2c_ctrl.adoc`, `i2c.adoc`).
 
 *Test Procedure*:
 
@@ -35819,9 +35840,32 @@ draws nothing from the seed.
   instances' status 16 times each and require 1 every time; read the cleared instance's
   `SMBUS_STATUS` and `INTR_STATE`; restore the wrapper register, release the pads and poll all three
   to 0.
+. For k in 1, 2 with the three pads low: write `I2C_CTRL[0..2]` = 0x011 and a 1 to
+  `INTR_STATE.SMBALERT` on all three; read both SMBALERT bits of each instance 16 times; write
+  `I2C_CTRL[k]` = 0x111, poll k's status to 1 and read its `INTR_STATE`; read the other two 16 times;
+  write `I2C_CTRL[k]` = 0x011 and a 1 to k's `INTR_STATE.SMBALERT`; read k 16 times; release the pads
+  and restore 0x111.
+. For k in 0, 1, 2 with k's pad low and `CTRL` = `ENABLEHOST`: poll k's status to 1 and read
+  `INTR_STATE`; write `CTRL` = `ENABLEHOST | LLPBK` and a 1 to `INTR_STATE.SMBALERT`; read both bits
+  16 times; write `CTRL` = `ENABLEHOST` and poll the status back to 1; clear the interrupt and release
+  the pad.
+. On `I2C_CTRL[1]` then `[2]` with that instance's `CTRL` 0: write 0xFFFFFEEE, read; write 0x111;
+  write 0xFFFFFFFF, read; restore 0x111.
+. On `I2C_CTRL[1]` then `[2]` from 0x011: write 0x100 with WSTRB 0b0010 and read, then 0 with WSTRB
+  0b0010 and read; on `I2C_CTRL[1]` from 0x111: 0 with WSTRB 0b0001, 0x111 with WSTRB 0b0011 and
+  0xFFFF0000 with WSTRB 0b1100, each read back; restore 0x111.
+. Read `I2C_CTRL[0..2]`; write `I2C_CTRL[1]` = 0x100 and read all three; write `I2C_CTRL[2]` = 0x010
+  and read all three; restore 0x111.
+. Read, then write 0xA5A5A5A5, at wrapper window offsets 0xE0C and 0xFFC; read and write the word
+  after the `I2C_CTRL` block end from the generated header (logged); read `I2C_CTRL[0..2]` and
+  `SMBUS_CTRL` of I2C1 and I2C2.
+. I2C1 with `I2C_CTRL[1]` = 0x111 and `ENABLEHOST`: drive its pad low and poll the status to 1,
+  release it and poll to 0; with `I2C_CTRL[1]` = 0x101 and `ENABLETARGET`: write `SMBUS_CTRL` 0x10 and
+  poll the pad to driven low, write 0 and poll it to released; I2C2 input leg; restore 0x111 and `CTRL` 0x1.
 . Clear `SMBUS_CTRL`, the wrapper register and `CTRL` on all instances, release the pads and restore
   `CLOCK_GATE_CONTROL`.
-. Print the list of bounded waits and check the ordered fence SETUP, GATE_ROUNDS, TEARDOWN.
+. Print the list of bounded waits and check the ordered fence SETUP, GATE_ROUNDS, SMBUS_EN_MASK, LLPBK,
+  RSVD, PARTIAL, ENTRY, WINDOW, PAD_DIR, TEARDOWN.
 
 *Checkers*:
 
@@ -35835,17 +35879,48 @@ reads 0 on all three within the poll bound after the pads are released.
 the other two instances reads 1 in 16 of 16 polls and the cleared instance's own
 `SMBUS_STATUS.SMBALERT` reads 0, for k = 0, 1, 2; its `INTR_STATE.SMBALERT` is measured and printed
 without comparing.
+|`CHK-SMBUS-EN-MASK-I2C12` |On I2C1 and I2C2 with the pad low, `SMBUS_EN` 0 gives
+`SMBUS_STATUS.SMBALERT` 0 and `INTR_STATE.SMBALERT` 0 in 16 of 16 reads, `SMBUS_EN` 1 gives both 1
+within the poll bound, and `SMBUS_EN` 0 again gives both 0 in 16 of 16 reads after the written 1.
+|`CHK-SMBUS-EN-ISOLATE` |With `SMBUS_EN` set on instance k only (k = 1, then 2) and all pads low,
+the two other instances read both SMBALERT bits 0 in 16 of 16 reads each while k reads 1.
+|`CHK-LLPBK-ALERT-MASK` |On instances 0, 1 and 2 with `ENABLEHOST`, `SMBUS_EN` and the pad low,
+`LLPBK` 0 gives both SMBALERT bits 1, `LLPBK` 1 gives both 0 in 16 of 16 reads after the written 1,
+and `LLPBK` 0 again gives `SMBUS_STATUS.SMBALERT` 1 within the poll bound.
+|`CHK-I2C-CTRL-RSVD-WRITE` |On `I2C_CTRL[1]` and `[2]` the defined fields read 0x000 after
+0xFFFFFEEE and 0x111 after 0xFFFFFFFF; the reserved readback and BRESP are logged (LINKED-ISSUE
+SF-005). The 0xFFFFFFFF write carries the defined fields already held, so only its BRESP tells a
+taken write from a dropped one.
+|`CHK-I2C-CTRL-PARTIAL-WRITE` |`I2C_CTRL[1]` and `[2]` read 0x111 after the lane-1 write of
+`SMBUS_EN` 1 and 0x011 after the lane-1 write of 0; `I2C_CTRL[1]` reads 0x100 after the lane-0 write of
+0, 0x111 after the WSTRB 0b0011 write and fields 0x111 after the WSTRB 0b1100 write; each BRESP is
+logged (SF-004). The WSTRB 0b1100 write strobes only reserved lanes, so only its BRESP tells a taken
+write from a dropped one.
+|`CHK-I2C-CTRL-ENTRY-ISOLATE` |After `I2C_CTRL[1]` = 0x100 the entries read 0x111, 0x100, 0x111;
+after `I2C_CTRL[2]` = 0x010 they read 0x111, 0x100, 0x010.
+|`CHK-I2C-WRAP-PAST-EXTENT` |Reads at window offsets 0xE0C and 0xFFC answer DECERR with 0xBADCAB1E
+and the writes answer DECERR; `I2C_CTRL[0..2]` and `SMBUS_CTRL` of I2C1 and I2C2 are unchanged; the
+block-end word responses are logged (LINKED-ISSUE SF-001 / SF-002).
+|`CHK-I2C-ALERT-PAD-DIR` |With `I2C_CONTROLLER_MODE_EN` 1, `SMBUS_STATUS.SMBALERT` of I2C1 and I2C2
+reads 1 while the pad is low and 0 after release; with it 0, the DUT drives the I2C1 alert pad low
+(`tb_core2pad_en_o` / `tb_core2pad_o`) while `SMBUS_CTRL.SMBALERT` is 1 and releases it after it is
+written 0.
 |`CHK-TIMEOUT-PATHS` |Every bounded poll of the run is satisfied within its bound, otherwise the run
 fails with the last readings; the line lists each bound and last state.
-|`CHK-NONVAC` |The fence prints SETUP, GATE_ROUNDS, TEARDOWN in order with increasing time stamps.
+|`CHK-NONVAC` |The fence prints SETUP, GATE_ROUNDS, SMBUS_EN_MASK, LLPBK, RSVD, PARTIAL, ENTRY,
+WINDOW, PAD_DIR, TEARDOWN in order with increasing time stamps and per-term read and write counts;
+each new term has at least one write and one read.
 |===
 
 *Pass Criteria*: `CHK-GATE-ALL-SEE-ALERT`, `CHK-GATE-OTHERS-UNMASKED` (its 1 reads and the 0 read of the cleared instance),
-`CHK-TIMEOUT-PATHS` and `CHK-NONVAC` hold after their compares and every sequence assert holds; the
+`CHK-SMBUS-EN-MASK-I2C12`, `CHK-SMBUS-EN-ISOLATE`, `CHK-LLPBK-ALERT-MASK`,
+`CHK-I2C-CTRL-RSVD-WRITE`, `CHK-I2C-CTRL-PARTIAL-WRITE`, `CHK-I2C-CTRL-ENTRY-ISOLATE`,
+`CHK-I2C-WRAP-PAST-EXTENT`, `CHK-I2C-ALERT-PAD-DIR`, `CHK-TIMEOUT-PATHS` and `CHK-NONVAC` hold after their compares and every sequence assert holds; the
 cleared instance's `INTR_STATE.SMBALERT` reading records a measurement only. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The cleared instance's `INTR_STATE.SMBALERT` is measured and printed without
-comparing.
+*Scope limit*: The cleared instance's `INTR_STATE.SMBALERT` in the gate rounds, the reserved
+`I2C_CTRL` readback, the BRESP of the reserved-bit and strobed writes (SF-004, SF-005) and the
+block-end word responses (SF-001, SF-002) are measured and printed without comparing.
 
 '''''
 
@@ -41406,12 +41481,13 @@ draws nothing from the seed.
 
 *Test Coverage*:
 
-* Contract `SMC_COV_W2T_008` revision 4 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
+* Contract `SMC_COV_W2T_008` revision 5 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
 * The instance list comes from the generated map (`seq_lib/smc_rdl_regmap.py`): alias 8, M-mode 8, Xvisor 8, inbound filter 16, outbound filter 16, GPIO 65, CPU_CTRL 1, telemetry 3, timer 1, zeroer 1, UART 4, eFuse control 1, CLA 1 (133). The reference registers are alias `region_start`, output remap `region_attrs`, filter `END_ADDR`, GPIO `ACCESS_FILTER`, CPU_CTRL `RESET_VECTOR[0]`, timer `CTRL`, telemetry `STATUS`, zeroer `SIZE`, UART `LSR`, eFuse `EFUSE_READ_REQ_TIMEOUT` and CLA `Trdstcontrol`.
 * Each reference register takes a full-width read, 1-byte reads at every byte offset, 2-byte reads at offsets 0..6 (64-bit) or 0..2 (32-bit), and a second full-width read that must equal the first; outside the inbound filter (SF-006) it must equal the documented reset over the declared fields. Sub-word data and RRESP are logged against the reference read (SF-009).
 * CPU_CTRL `SCRATCH[0]` (preloaded 0) takes 0xA5 at offsets 1 and 3; `START_ADDR` of inbound and outbound entry 15 takes 0x5A at lanes 1, 3 and 5; timer `CTRL` takes 0x05 at offset 1 and telemetry 0 `CTRL` 0x30 at offset 1. `SCRATCH[1]`, the entry's `END_ADDR`, `TIMER_PRESET_LO` and `INTR_ENABLE` must not change, and a full-width restore must read back the pre-leg value.
 * Alias, M-mode and Xvisor `REGION[7].region_attrs` take all ones, then 0; every documented field must read all ones, then 0 (`alias_remap.adoc`, `output_remap.adoc`). Reserved bits are logged (SF-001).
-* Each of the 24 remap regions (alias, M-mode and Xvisor `REGION[0..7].region_attrs`) is read and saved, then takes an 8-byte WSTRB 0x80 write with bit 63 set and lanes 0..6 the complement of the saved bytes, a WSTRB 0x7F write of the saved word with bit 63 clear, and a WSTRB 0xFF write of the saved word, each read back. Every access must answer OKAY, the alias regions must save valid 0 (`alias_remap.adoc` reset) and the restore must read back the saved word; the valid bit and lane fields after the two strobed writes are logged (SF-009).
+* Each of the 24 remap regions (alias, M-mode and Xvisor `REGION[0..7].region_attrs`) is read and saved. A region whose saved valid reads 0 first takes an 8-byte WSTRB 0x7F write with bit 63 set and lanes 0..6 the complement of the saved bytes, read back. Every region then takes an 8-byte WSTRB 0x80 write with bit 63 set and lanes 0..6 the complement of the saved bytes, a WSTRB 0x7F write of the saved word with bit 63 set, and a WSTRB 0xFF write of the saved word, each read back. Every access must answer OKAY, the alias regions must save valid 0 (`alias_remap.adoc` reset) and the restore must read back the saved word; the valid bit and lane fields after the strobed writes are logged (SF-009).
+* Stimulus only, never an expected value: the valid-0 WSTRB 0x7F write drives the remap blocks' valid-lane write-condition sub-terms "valid 0 while lane 7 is unstrobed" and "data bit 63 = 1 while lane 7 is unstrobed", and the later WSTRB 0x7F write drives the second on a region whose valid is 1.
 * The system timer answers its 9 registers OKAY with their documented resets (`STATUS.MODE` = NOT(`tb_chiplet_is_primary`)) and the 1015 words BASE + 0xA024 .. 0xAFFC DECERR with 0xBADCAB1E. The 192 telemetry words BASE + 0x9000 .. 0x92FC answer OKAY with exactly three reading 0x1, and the 832 words past them DECERR with 0xBADCAB1E (`memory_map.adoc`).
 * On each of the 32 filter entries, 8-byte writes strobe lane 0 (read_allowed, write_allowed, entry_enabled alone and cleared), lane 1 (allow_ns), lane 2 (src_id / group_id 0xFF and 0x00) and lane 3 (allow_burst) with the complement of the saved byte on every other lane. `data_bus_width` must read 0x3 after every write. `START_ADDR` / `END_ADDR` are read after every lane write: before the allow_burst leg they must equal the saved words; after allow_burst = 1 they must equal the saved words rounded to the 4 KB granule (start & ~0xFFF, end \| 0xFFF) when both saved words share a 4 KB granule, else the saved words (`filter_ctrl.adoc` granule write-back); after allow_burst = 0 they are logged. Full-width restores of FILTER_CONFIG, `START_ADDR`, `END_ADDR` and `START_ADDR` again must read back the saved words, and those readbacks are the reference words of the later legs; the per-lane FILTER_CONFIG readbacks are logged (SF-009, SF-029). A WSTRB 0x7F write with bit 63 set follows; the lock outcome is logged and an unlocked entry is restored.
 * Outbound entry 15 takes FILTER_CONFIG all ones and must read every documented field set and `data_bus_width` 0x3, and the next write must answer DECERR. The other 31 entries are locked by a WSTRB 0x80 write (full-width fallback if that does not lock) and must keep their S7 post-restore configuration. Every entry then takes five writes (lane 7 clearing and setting `locked`, lane 0 complement, full-width complement of `START_ADDR` and `END_ADDR`) that must answer DECERR and leave the three registers unchanged (`filter_ctrl.adoc`: `locked` is RW1S).
@@ -41428,7 +41504,7 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 |`CHK-SWEEP-SUBWORD` |All 133 instances are visited with the family counts of the map, every planned sub-word read completes, the second full-width read equals the first on 133/133, and 117/117 outside the inbound filter equal the documented reset; sub-word lanes and RRESP are logged (LINKED-ISSUE SF-009)
 |`CHK-SWEEP-BYTE-LANE` |The five full-width restores read back the pre-leg value and the neighbour registers never change; the byte-lane readbacks are logged (LINKED-ISSUE SF-009, SF-031)
 |`CHK-SWEEP-FULLWIDTH-REMAP` |Alias `region_attrs` reads valid 1, cacheable 0xF, offset [55:12] all ones; M-mode and Xvisor read valid 1 and offset [55:0] all ones; all three read their documented fields 0 after the zero write; reserved bits logged (LINKED-ISSUE SF-001)
-|`CHK-SWEEP-VALID-LANE` |All 24 remap regions are visited (8 alias, 8 M-mode, 8 Xvisor) and every access answers OKAY; the 8 alias regions save valid 0; the WSTRB 0xFF restore reads back the saved word on 24/24; the counts of regions reading valid 1 after the WSTRB 0x80 write and still reading valid 1 after the WSTRB 0x7F write, and the lane fields, are logged (LINKED-ISSUE SF-009)
+|`CHK-SWEEP-VALID-LANE` |All 24 remap regions are visited (8 alias, 8 M-mode, 8 Xvisor) and every access answers OKAY; the 8 alias regions save valid 0; the WSTRB 0xFF restore reads back the saved word on 24/24; the counts of regions reading valid 1 after the WSTRB 0x80 write and reading valid 1 after the WSTRB 0x7F write (bit 63 set, so that count does not separate an honoured lane-7 strobe from an ignored one; the valid-0 leg carries that evidence), the count of saved-valid-0 regions still reading valid 0 after the valid-0 WSTRB 0x7F write (bit 63 set) as `valid-0 lane-7-unstrobed kept 0 <k>/<z>`, and the lane fields, are logged (LINKED-ISSUE SF-009)
 |`CHK-SWEEP-TIMER-WINDOW` |The 9 timer registers answer OKAY at their documented resets and all 1015 past-extent reads answer DECERR with 0xBADCAB1E
 |`CHK-SWEEP-TELEM-WINDOW` |All 192 in-extent telemetry reads answer OKAY with exactly three reading 0x1 and the rest 0x0 (positions logged, LINKED-ISSUE SF-014); all 832 past-extent reads answer DECERR with 0xBADCAB1E
 |`CHK-SWEEP-FCFG-LANES` |All 32 entries visited; `data_bus_width` reads 0x3 after every write; `START_ADDR` / `END_ADDR` equal the saved words before the allow_burst leg and, after allow_burst = 1, the 4 KB-rounded saved words when both share a granule, else the saved words; their values after allow_burst = 0 are logged; every full-width restore reads back the saved words; per-lane readbacks and the unstrobed-lock outcome logged (LINKED-ISSUE SF-009, SF-029)
@@ -41462,15 +41538,16 @@ Drive `smc_regblock_subword_strobe_sweep_test_seq`. Each checker below is a name
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the contract and the sequence
 draws nothing from the seed.
 
-*Objective*: The eFuse interface control registers written from the JTAG eFuse port read back over SEP_IN: an RW-field walk of the program, read and timeout registers, a partial-strobe write, the program and read-back of one fuse bit, and a data-0 program that leaves its bit unchanged.
+*Objective*: The eFuse interface control registers written from the JTAG eFuse port read back over SEP_IN: an RW-field walk of the program, read and timeout registers, a partial-strobe write, the program and read-back of one fuse bit, a data-0 program that leaves its bit unchanged, and JTAG-port reads and write-backs under three AxPROT values.
 
 *Test Coverage*:
 
-* Contract `SMC_COV_W2T_009` revision 2 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
+* Contract `SMC_COV_W2T_009` revision 4 (`hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md`).
 * `tb_lc_state` is driven to TEST_DEV (0xF0) for the run and back to that value at the end (SF-017); `EFUSE_INTERFACE_CTRL_STATUS` must read `efuse_sense_done` 1 with bits [6:4] 0 before the first write.
 * Through the JTAG eFuse port, EFUSE_PROGRAM_CTRL takes 0x0805_FFFF, 0 and a walking one over its 19 RW bits; EFUSE_READ_CTRL 0x1000_FFFF, 0 and a walking one over its 17 RW bits; each timeout register 0x1FFF_FFFF, 0 and a walking one over bits [28:0], then 0x0080_0000. Every write is read back over SEP_IN at the same generated address (`efuse_interface_ctrl.adoc`).
 * EFUSE_PROGRAM_CTRL takes 0x0000_1234 full width, then 0x0805_FFA5 with WSTRB 0x1, then 0x0805_FFA5 with WSTRB 0x2 (byte lane 1 on, lane 0 off), then 0 full width; both strobed readbacks and responses are logged (SF-009).
-* Bit A (bit 5 of SPARE[2]) is read through the read interface, programmed with `efuse_data` 1 and read again; bit A2 (bit 9 of SPARE[3]) is read, takes a program request with `efuse_data` 0 and is read again. Both regions are unlocked in the default image and their image words are 0. Every read first writes EFUSE_PROGRAM_CTRL to 0: `program_enable` and `read_enable` are mutually exclusive owners of the command path, and a read issued while `program_enable` is set does not reach the bank (`hw/ip/efuse/doc/architecture.adoc`, Command-path ownership).
+* Bit A (bit 5 of SPARE[2]) is read through the read interface, programmed with `efuse_data` 1 and read again; bit A2 (bit 9 of SPARE[3]) is read, takes a program request with `efuse_data` 0 and is read again; `program_busy`, `program_done` and `program_status` are recorded before that GO write and EFUSE_PROGRAM_CTRL is polled after it until the write has completed and `program_busy` has read 0 on eight consecutive samples; whether the request shows a lifecycle at all is logged, not compared, since `efuse_interface_ctrl.rdl` says a request with `efuse_data` 0 is ignored (SF-034). Both regions are unlocked in the default image and their image words are 0. Every read first writes EFUSE_PROGRAM_CTRL to 0: `program_enable` and `read_enable` are mutually exclusive owners of the command path, and a read issued while `program_enable` is set does not reach the bank (`hw/ip/efuse/doc/architecture.adoc`, Command-path ownership).
+* After the data-0 program, EFUSE_PROGRAM_CTRL is read over the JTAG eFuse port and the value read is written back, with AxPROT 0b101, then 0b000, then the port default 0b010 (stimulus for the AxPROT bits of the JTAG eFuse request path, which every other access drives at 0b010). The register holds the data-0 word, so no write-back starts a fuse program (`efuse_interface_ctrl.adoc`).
 * EFUSE_PROGRAM_CTRL and EFUSE_READ_CTRL end at 0 and both timeouts at 0x0080_0000.
 
 *Test Procedure*:
@@ -41486,14 +41563,15 @@ Drive `smc_efuse_jtag_otp_data_walk_test_seq`. Each checker below is a named com
 |`CHK-EFUSE-JTAG-PARTIAL-STRB` |The full-width writes read back exactly 0x0000_1234 and 0x0; the WSTRB 0x1 readback and response are logged against 0x0000_12A5, and the WSTRB 0x2 readback and response against the WSTRB 0x1 readback with `efuse_addr[15:8]` 0xFF (both LINKED-ISSUE SF-009)
 |`CHK-EFUSE-JTAG-PROGRAM` |After the go write `program_busy` reads 1 on at least one sample before `program_done` reads 1, and `program_status` reads 0, within the poll bound
 |`CHK-EFUSE-JTAG-READBACK` |The read of A completes with `read_done` 1 and `read_status` 0, and its dout differs from the pre-program dout in exactly one bit, which went 0 to 1; the bit position is logged (LINKED-ISSUE SF-016)
-|`CHK-EFUSE-JTAG-DATA0` |The read of A2 after the data-0 program request returns exactly its pre-request dout; `program_done` / `program_busy` samples are logged
+|`CHK-EFUSE-JTAG-DATA0` |After the data-0 GO write EFUSE_PROGRAM_CTRL is polled until the write has completed and `program_busy` reads 0 on eight consecutive samples, within the poll bound, and the read of A2 afterwards returns exactly its pre-request dout. Whether the request showed a lifecycle (`program_busy` 1 on a sample, or `program_done` / `program_status` differing from its pre-GO value; the first kind is printed, else `none`), `program_status` before and after and the `program_done` / `program_busy` samples are logged only (LINKED-ISSUE SF-034: `efuse_interface_ctrl.rdl` says a data-0 request is ignored, and whether that means no lifecycle is open)
+|`CHK-EFUSE-JTAG-PROT` |All six AxPROT-variant JTAG eFuse port accesses answer OKAY (three RRESP, three BRESP), and the 0b101 and 0b000 reads each equal the 0b010 default-attribute reference read taken after both earlier write-backs; a refused access fails the checker and is reported against SF-033; each write-back carries the word just read, so only its BRESP tells a taken write from a dropped one (LINKED-ISSUE SF-033)
 |`CHK-NONVAC` |Ordered fence SETUP < WALK < PARTIAL-STROBE < PROGRAM < READ-BACK < DATA0 < RESTORED, each term with a non-zero access count and a later sim time than the one before
 |`CHK-TIMEOUT-PATHS` |Every program / read poll, JTAG access and SEP_IN access is bounded; the line logs each bound and the last observed state, and no wait expires
 |===
 
-*Pass Criteria*: all seven checkers hold after their compares and the protocol-VIP record clears its 118-access floor. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all eight checkers hold after their compares and the protocol-VIP record clears its 118-access floor. Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The partial-strobe outcome, reserved bits, the lifecycle state that admits JTAG eFuse requests and the dout bit that carries the addressed fuse are logged only (SF-009, SF-001, SF-017, SF-016). The fuse bank is the DV model; a programmed bit stays programmed for the rest of the run.
+*Scope limit*: The partial-strobe outcome, reserved bits, the lifecycle state that admits JTAG eFuse requests and the dout bit that carries the addressed fuse are logged only (SF-009, SF-001, SF-017, SF-016). Whether the eFuse registers require an elevated AxPROT on the JTAG port is open (SF-033), and so is what "ignored" means for a data-0 program request: whether it shows a lifecycle at all and the `program_status` it leaves are logged (SF-034). The fuse bank is the DV model; a programmed bit stays programmed for the rest of the run.
 
 '''''
 
@@ -42826,6 +42904,10 @@ draws nothing from the seed.
 * **Only the `read-write` fields take part, and the reason is in the generated map.** A status register mixes two kinds of field. The event bits are `read-write` -- hardware sets them, software clears them with a one, and they hold otherwise. The rest are `read-only` level bits hardware drives from a condition, and on I2C those are the FIFO thresholds and the stretch and halt indications; a write cannot clear one of those while its condition holds, so the leaf excludes them by their access type rather than expecting them to go.
 * The two halves are alternating bits of the mask, so neither is a contiguous run a byte-granular decode could clear by accident. Where a register has only one clearable bit the write that has to leave it set carries no bits at all, which puts the same contract to the same test.
 * Raising a status bit through `INTR_TEST` is the mechanism `smc_i2c_intr_reg_sweep_test` already uses. Nothing is left raised: every register ends its leg reading clear.
+* **Setup (contract SMC_COV_R5_001 rev 1).** Before the existing pass the leaf ungates the I2C peripheral clock (`CLOCK_GATE_CONTROL.i2c_cg_en` cleared), checks that the generated map's clearable I2C mask is the 13 `RW1C` / `W1P` fields `0x000FE3E8` of the I2C register reference, and reads `INTR_STATE` of I2C1 and I2C2 at exactly `0x00000000`.
+* **Swapped pass on I2C1 then I2C2.** `INTR_TEST` is written `0x000FE3E8` and `INTR_STATE` must read exactly that; `INTR_STATE` is written the second half `0x000542A0` first and must read exactly `0x000AA148` (every bit written 0 held); then written `0x000AA148` and must read `0x00000000`. With the existing pass, which held `0x000542A0`, each of the 13 clearable bits is held once and cleared once per instance.
+* **Single-source walk on I2C1 then I2C2.** For each of the 13 `W1P` sources (bits 3, 5-9, 13-19) the leaf reads `INTR_STATE` at 0, writes `INTR_TEST` `1<<f`, requires `INTR_STATE` of that instance to read exactly `1<<f` and of the other instance to read 0, writes `INTR_STATE` `1<<f` and requires 0 again.
+* Every expected word of the new legs is taken from the I2C register reference (`i2c.adoc`); register addresses come by symbol from the generated map. The leaf closes with an ordered fence `SETUP < EXISTING_PASS < SWAP_PASS < SINGLE_I2C1 < SINGLE_I2C2`, each term with its sim time and a non-zero access count, and a line listing every bounded wait.
 
 *Test Procedure*:
 
@@ -42837,9 +42919,14 @@ Drive `smc_intr_status_partial_clear_test_seq`. Each checker below is a named co
 |===
 |Checker |Description
 |`CHK-INTR-STATUS-PARTIAL-CLEAR` |On all ten write-one-to-clear status registers across the I2C blocks, the log engines and the telemetry receivers, the event mask was raised through INTR_TEST, half of it was written back and went, the bits the write carried a zero over stayed set, and the register read clear again once the rest was written
+|`CHK-I2C12-W1C-SWAP-HOLD` |On I2C1 and I2C2 the swapped pass read `INTR_STATE` exactly `0x000FE3E8` after the INTR_TEST write, exactly `0x000AA148` after the written `0x000542A0` and `0x00000000` after the written `0x000AA148`; with the existing pass first, the held readbacks of the two passes show each of the 13 RW1C bits read held once and then cleared per instance
+|`CHK-I2C1-INTR-TEST-SINGLE` |On I2C1 each of the 13 W1P INTR_TEST sources raised alone read `INTR_STATE` exactly `1<<f` with I2C2 reading 0, from 0 before the raise, and 0 after the written `1<<f`
+|`CHK-I2C2-INTR-TEST-SINGLE` |On I2C2 each of the 13 W1P INTR_TEST sources raised alone read `INTR_STATE` exactly `1<<f` with I2C1 reading 0, from 0 before the raise, and 0 after the written `1<<f`
+|`CHK-NONVAC` |Ordered fence `SETUP < EXISTING_PASS < SWAP_PASS < SINGLE_I2C1 < SINGLE_I2C2`, every term with its own sim time and a non-zero access count, and each checker line printed once inside its term
+|`CHK-TIMEOUT-PATHS` |Every bounded wait (fuse sense, every SEP_IN access against the bench AXI response timeout) listed with its bound and last state; none expired
 |===
 
-*Pass Criteria*: `CHK-INTR-STATUS-PARTIAL-CLEAR` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-INTR-STATUS-PARTIAL-CLEAR`, `CHK-I2C12-W1C-SWAP-HOLD`, `CHK-I2C1-INTR-TEST-SINGLE`, `CHK-I2C2-INTR-TEST-SINGLE`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: Only the `read-write` event fields take part; the `read-only` level bits hardware
 drives from a condition (on I2C the FIFO thresholds and the stretch and halt indications) are

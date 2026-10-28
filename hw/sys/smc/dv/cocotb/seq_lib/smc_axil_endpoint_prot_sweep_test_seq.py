@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B1_007 ANCHOR: smc_axil_endpoint_prot_sweep_test
-# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: 6a415424767d2d0610ab649b8df314737f74940c086eb25d90b57e67e4b9f87a
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 10 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 18e22c56354b6e27812ebeae2ef2e8df773878386d4af34317e9f84e7a617ed6
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 11 ENV: cocotb
 """Request attributes carried from SEP_IN to every AXI-Lite register endpoint.
 
 ``fabric.adoc`` (Protection Bit Pass-Through) passes every protection bit
@@ -31,13 +31,16 @@ read-write registers; there each beat and the footprint are logged.
 Four legs follow the outstanding-ID leg. The first word of the eFuse SHIM
 control block takes a read, a write-back and a second read; its registers are
 adopter-defined (``memmap.adoc``), so the two reads are compared with each
-other and the response is measured. The supplementary region of the external
-window takes a read and a zero-data write with AxPROT 0x7 and 0x0, each
-answering the DECERR the reference integration documents there. Every endpoint
-the AxUSER leg writes back takes a strobed write-back with WUSER 0xFFF and
-0x000, each followed by a zero-attribute read of the reference. CPU_CTRL
-SCRATCH[0..15], the only pinned 128-byte read-write footprint, takes an AxLEN
-15 read burst and a write-back burst of the words read; its beats are logged.
+other and the response is measured. The same three accesses then repeat with
+AxPROT 0x2 and then 0x0 on the read and the write; each must answer the code
+of the matching zero-attribute access and its two reads the same word. The
+supplementary region of the external window takes a read and a zero-data write
+with AxPROT 0x7 and 0x0, each answering the DECERR the reference integration
+documents there. Every endpoint the AxUSER leg writes back takes a strobed
+write-back with WUSER 0xFFF and 0x000, each followed by a zero-attribute read
+of the reference. CPU_CTRL SCRATCH[0..15], the only pinned 128-byte read-write
+footprint, takes an AxLEN 15 read burst and a write-back burst of the words
+read; its beats are logged.
 """
 
 from __future__ import annotations
@@ -89,6 +92,7 @@ SHIM_WINDOW = BASE + 0x40_0000
 EXTERNAL_WINDOW = BASE + 0x40_4000
 assert SHIM_WINDOW == smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
 assert EXTERNAL_WINDOW == smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
+SHIM_PROTS = (0x2, 0x0)
 EXTERNAL_PROTS = (0x7, 0x0)
 WUSER_VALUES = (0xFFF, 0x000)
 LEN15_REGS = tuple(f"smc_cpu_ctrl/SCRATCH[{i}]" for i in range(16))
@@ -107,6 +111,7 @@ TERMS = (
     "ID",
     "OUTSTANDING",
     "SHIM",
+    "SHIM-PROT",
     "EXTERNAL",
     "WUSER",
     "LEN15",
@@ -890,18 +895,25 @@ class smc_axil_endpoint_prot_sweep_test_seq(SmcCsrSeq):
             notes.append(note)
         return notes
 
-    async def _shim(self) -> str:
+    async def _shim_triplet(self, ep: Endpoint, attrs: Attrs, tag: str):
+        """Read, write-back of the word read and second read of one SHIM word."""
+        mask = self._mask(ep)
+        rd1 = await self._access(f"shim{tag}_rd1", SmcSysAxiOp.READ, ep, attrs, tolerate=True)
+        v1 = rd1.rdata & mask
+        wr = await self._access(
+            f"shim{tag}_wr", SmcSysAxiOp.WRITE, ep, attrs, wdata=v1, tolerate=True
+        )
+        rd2 = await self._access(f"shim{tag}_rd2", SmcSysAxiOp.READ, ep, attrs, tolerate=True)
+        v2 = rd2.rdata & mask
+        assert None not in (rd1.resp_code, wr.resp_code, rd2.resp_code), (
+            f"SHIM 0x{ep.addr:08x} {attrs}: an access completed without a response code"
+        )
+        return rd1, wr, rd2, v1, v2
+
+    async def _shim(self) -> tuple[str, int, int]:
         """S13: read, write-back and second read of the first SHIM word."""
         ep = Endpoint("efuse_shim", "shim", SHIM_WINDOW, 8)
-        mask = self._mask(ep)
-        rd1 = await self._access("shim_rd1", SmcSysAxiOp.READ, ep, ZERO, tolerate=True)
-        v1 = rd1.rdata & mask
-        wr = await self._access("shim_wr", SmcSysAxiOp.WRITE, ep, ZERO, wdata=v1, tolerate=True)
-        rd2 = await self._access("shim_rd2", SmcSysAxiOp.READ, ep, ZERO, tolerate=True)
-        v2 = rd2.rdata & mask
-        assert rd1.resp_code is not None and rd2.resp_code is not None, (
-            f"SHIM 0x{ep.addr:08x}: a read completed without a response code"
-        )
+        rd1, wr, rd2, v1, v2 = await self._shim_triplet(ep, ZERO, "")
         assert rd1.resp_code == rd2.resp_code, (
             f"SHIM 0x{ep.addr:08x}: rd1 answered {_resp(rd1.resp_code)}, "
             f"rd2 answered {_resp(rd2.resp_code)}"
@@ -913,11 +925,38 @@ class smc_axil_endpoint_prot_sweep_test_seq(SmcCsrSeq):
                 f"SHIM 0x{ep.addr:08x}: rd1 {_resp(rd1.resp_code)} 0x{v1:x}, "
                 f"wr {_resp(wr.resp_code)}, rd2 {_resp(rd2.resp_code)} 0x{v2:x} (SF-041)"
             )
-        return (
+        line = (
             f"rd 0x{ep.addr:08x} resp={_resp(rd1.resp_code)} data=0x{v1:016x}, "
             f"wr-back resp={_resp(wr.resp_code)}, rd2 resp={_resp(rd2.resp_code)} "
             f"data=0x{v2:016x} equal={'yes' if v1 == v2 else 'no'}"
         )
+        return line, rd1.resp_code, wr.resp_code
+
+    async def _shim_prot(self, rd_code: int, wr_code: int) -> str:
+        """S13 PROT VARIANTS: the SHIM triplet with AxPROT 0x2, then 0x0."""
+        ep = Endpoint("efuse_shim", "shim", SHIM_WINDOW, 8)
+        parts = []
+        for prot in SHIM_PROTS:
+            rd1, wr, rd2, v1, v2 = await self._shim_triplet(ep, Attrs(prot=prot), f"_prot{prot}")
+            self._measure(
+                f"SHIM-PROT 0x{ep.addr:08x} prot=0x{prot:x}: rd1 {_resp(rd1.resp_code)} "
+                f"0x{v1:016x}, wr {_resp(wr.resp_code)}, rd2 {_resp(rd2.resp_code)} 0x{v2:016x}"
+            )
+            for what, got, want in (
+                ("rd1", rd1, rd_code),
+                ("rd2", rd2, rd_code),
+                ("wr", wr, wr_code),
+            ):
+                assert got.resp_code == want, (
+                    f"SHIM 0x{ep.addr:08x} AxPROT 0x{prot:x} {what} answered "
+                    f"{_resp(got.resp_code)}, the zero-attribute access answered {_resp(want)}"
+                )
+            assert v1 == v2, f"SHIM 0x{ep.addr:08x} AxPROT 0x{prot:x}: rd1 0x{v1:x}, rd2 0x{v2:x}"
+            parts.append(
+                f"prot{prot:x} rd={_resp(rd1.resp_code)} wr={_resp(wr.resp_code)} "
+                f"equal={'yes' if v1 == v2 else 'no'}"
+            )
+        return ", ".join(parts)
 
     async def _external(self) -> tuple[str, int]:
         """S14: read and zero-data write at the supplementary region, AxPROT 0x7 then 0x0."""
@@ -1174,11 +1213,18 @@ class smc_axil_endpoint_prot_sweep_test_seq(SmcCsrSeq):
         cocotb.log.info("STEP S13: eFuse SHIM word 0x%08x read, write-back, read", SHIM_WINDOW)
         if monitor is not None:
             monitor.expected_decerr_addrs.add(SHIM_WINDOW)
-        shim = await self._shim()
-        if monitor is not None:
-            monitor.expected_decerr_addrs.discard(SHIM_WINDOW)
+        shim, shim_rd, shim_wr = await self._shim()
         self._stamp("SHIM", 3)
         self._chk("CHK-ATTR-SHIM-WINDOW", shim)
+        cocotb.log.info(
+            "STEP S13: eFuse SHIM word read, write-back, read with AxPROT %s",
+            [hex(v) for v in SHIM_PROTS],
+        )
+        shim_prot = await self._shim_prot(shim_rd, shim_wr)
+        if monitor is not None:
+            monitor.expected_decerr_addrs.discard(SHIM_WINDOW)
+        self._stamp("SHIM-PROT", 3 * len(SHIM_PROTS))
+        self._chk("CHK-ATTR-SHIM-PROT", shim_prot)
 
         cocotb.log.info("STEP S14: external window 0x%08x, AxPROT 0x7 then 0x0", EXTERNAL_WINDOW)
         if monitor is not None:

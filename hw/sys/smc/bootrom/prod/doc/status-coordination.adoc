@@ -75,6 +75,8 @@ The normal values in registers 13 and 14 describe `0xC0066400` through `0xC015AF
 
 The ROM initializes separate SMC and SEP ring buffers at the end of SRAM.
 Each holds 512 32-bit entries plus `head`, `tail`, and `num_entries` fields.
+The ring-buffer algorithm reserves one slot to distinguish full from empty, so
+at most 511 entries can be unread.
 A write to a full buffer advances the tail and overwrites the oldest entry.
 A read returns the oldest unread entry and advances the tail.
 

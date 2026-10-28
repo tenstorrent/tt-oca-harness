@@ -51,7 +51,7 @@ tool = "verilator"
 metric_family = "line"
 source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
 native_locator = "*|o=else|*"
-line = 347
+line = 362
 
 [[holes]]
 id = "sva-lite-counters-disabled"
@@ -70,7 +70,7 @@ metric_family = "branch"
 source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
 hierarchy = "ocah_axi_vip_tb_top.u_l_axi_sva"
 native_locator = "*|o=else|*"
-line = 455
+line = 470
 
 # Verilator places the then-branch count of `if (...) return` after the
 # return statement, so the point cannot increment although the WRAP beats of
@@ -92,4 +92,4 @@ tool = "verilator"
 metric_family = "branch"
 source = "*/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv"
 native_locator = "*|o=if|*"
-line = 326
+line = 341
