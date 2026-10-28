@@ -8588,6 +8588,8 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1, `reseed` 3; tool Verilator (cocotb).
 
+*Known limitation*: on VCS the leaf is RED on `OCAH_AXI_W_STRB_IN_LANES` from the AXI protocol checkers of `tb_top`: the cocotb AXI master drives the write strobes of its narrow FIXED bursts on rotating byte lanes. The defect is in the bench master, not in the SMC; pull request #3448 fixes the master, and the leaf is GREEN with it. The leaf is not masked.
+
 *Randomization*: RAND-REP; after the directed legs the seed draws six transfer shapes, one of each
 of the four kinds first and then two drawn freely from the four, so every seed carries every kind,
 and one zero-strobe beat on SEP_IN: for each shape the burst type (the four kinds: INCR on the two
@@ -14180,6 +14182,8 @@ from a `random.Random` stream per step seeded from `RANDOM_SEED`
 
 *Run mode*: one testlist entry in `testlists/fabric.toml`; groups `all`, `hosted`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `ci`, `fabric`; seed 1; tool Verilator (cocotb).
+
+*Known limitation*: on VCS the leaf is RED on `OCAH_AXI_W_STRB_IN_LANES` from the AXI protocol checkers of `tb_top`: the cocotb AXI master drives the write strobes of its narrow FIXED bursts on rotating byte lanes. The defect is in the bench master, not in the SMC; pull request #3448 fixes the master, and the leaf is GREEN with it. The leaf is not masked.
 
 *Randomization*: RAND-REP: the seed draws the AXI attributes, burst shapes, outstanding depths,
 transaction IDs, payload words and the SYS_OUT responder timing and error faults on SEP_IN, SYS_IN
@@ -41495,8 +41499,17 @@ Drive `smc_cpu_l2_read_wedge_test_seq`. Each checker below is a named compare th
 
 *Pass Criteria*: all five checkers hold. Enrolled in: `all`, `hosted`, `cpu`.
 The leaf passes `+smc_front_port_r_arb_assertoff`, which holds off the
-front-port R arbiter's request-stability assertions for this leaf only; the
-withdrawal they would report is recorded under <<smc-known-limitations,Known Limitations>>.
+front-port R arbiter's request-stability assertions and the two CPU-port AXI
+protocol checkers of `tb_top` (`u_cpu_front_axi_sva`, `u_cpu_mmio_axi_sva`) for
+this leaf only; the withdrawal they would report is recorded under
+<<smc-known-limitations,Known Limitations>>. `u_sys_in_axi_sva` stays on: the
+stale R the isolate flush leaves on SYS_IN fires `OCAH_AXI_R_NOT_BEFORE_AR` and
+`OCAH_AXI_R_ID_OUTSTANDING`, so on VCS the leaf is RED. That R is the beat the
+front-port demux drives toward the fabric after the flush, reported in #2318 and
+closed as a duplicate of #2449; the owner's ruling in #2449 records the
+withdrawal at the front port as a force-mode limitation and does not rule on the
+beat reaching SYS_IN, so the leaf stays RED until it does (Known Limitations).
+The leaf is not masked.
 
 *Scope limit*: The front-port R arbiter's request-stability assertions are held off for this leaf
 only, so the request withdrawal they would report is not graded here; it is recorded under Known
@@ -48463,6 +48476,26 @@ names them for their Phase 3 users.
 |Hierarchical read reference (`hw/sys/smc/dv/tb/tb_top.sv`, `SMC_DUAL` elaboration)
 |The scratch SRAM bank entry and its ECC word at a given offset on each instance of the dual bench.
 |`smc_dual_axi_sram_probe_test`
+|<<smc-vplan-area-fabric,FABRIC>>
+|Inbound AXI protocol checkers (`u_sys_in_axi_sva`, `u_jtag_in_axi_sva`, `u_sep_in_axi_sva`)
+|Monitor (`ocah_axi_sva`)
+|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the SYS_IN, JTAG_IN and SEP_IN links between the TB masters and `smc`. Each checker arms on the first edge where its master's valids and readies are known, since the bench master lines stay X or Z until a cocotb agent drives them, and tracks up to 32 outstanding writes. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. VCS only: the SMC Verilator targets pass no `--assert`.
+|Every test; SYS_IN is driven by `smc_sys_axi_in_port_test` (`+axi_sva_need_sys_in`), JTAG_IN by `smc_jtag_axi_shape_test` (`+axi_sva_need_jtag_in`), SEP_IN by `smc_sep_in_axi_flow_control_test` (`+axi_sva_need_sep_in`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|SYS_OUT egress AXI protocol checker (`u_sys_out_axi_sva`)
+|Monitor (`ocah_axi_sva`)
+|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the `smc` egress master. The TB responder answers B and R, so the checker also grades the responder. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. VCS only: the SMC Verilator targets pass no `--assert`.
+|Every test; the egress is driven by `smc_sys_out_aw_w_split_test` (`+axi_sva_need_sys_out`)
+|<<smc-vplan-area-cpu,CPU>>
+|CPU port AXI protocol checkers (`u_cpu_front_axi_sva`, `u_cpu_mmio_axi_sva`)
+|Monitor (`ocah_axi_sva`)
+|The AXI4 rules of `ocah_axi_sva` (reset, handshake, X, burst, ID and response rules) on the fabric master into the CPU front port and on the CPU MMIO master into the fabric, both read hierarchically inside `smc`. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. VCS only: the SMC Verilator targets pass no `--assert`.
+|Every test; both ports are driven by `smc_fw_hello_world_test` (`+axi_sva_need_cpu_front`, `+axi_sva_need_cpu_mmio`)
+|<<smc-vplan-area-fabric,FABRIC>>
+|AXI-Lite protocol checkers (`u_otp_jtag_axil_sva`, `u_dtp_csr_axil_sva`, `u_log_engine_axil_sva`, `u_periph_axil_sva`)
+|Monitor (`ocah_axi_sva`)
+|The AXI4-Lite rules of `ocah_axi_sva` (reset, handshake, X and response rules) on the JTAG-side OTP link (TB master, armed like the inbound ports), the DTP CSR link (no responder on `smc_wrapper`, so no AW or AR handshake occurs) and, inside `smc`, the log-engine and peripherals links. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`; a CPU-only reset from `smc_reset_unit` is outside `aresetn`, so no reset rule grades it and a transaction open at that reset stays in the outstanding tracking until the next primary reset. Enabled in every single-instance build and run mode once the primary reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM. Each named test carries `+axi_sva_need_<port>` and fails when that port's checker graded no AW or AR handshake; the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` per instance. Protocol, not data. VCS only: the SMC Verilator targets pass no `--assert`.
+|Every test; the OTP link is driven by `smc_efuse_jtag_otp_data_walk_test` (`+axi_sva_need_otp_jtag`), the log-engine link by `smc_fw_uart_log_engine_single_entry_test` (`+axi_sva_need_log_engine`), the peripherals link by `smc_canonical_smoke_test` (`+axi_sva_need_periph`); no test carries `+axi_sva_need_dtp_csr`
 |===
 
 [[smc-vplan-phase3-added-hooks]]
@@ -48880,7 +48913,9 @@ in <<smc-deferred-disposition>>.
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |UART0 transmits two stop bits for a 5-bit word with `LCR.STB` set, where `uart_16550_main.rdl` describes 1.5 |`smc_uart_baud_word_parity_format_test` measures the frame length on the TX pad for every format; for the two 5-bit `STB = 1` formats it admits either 1.5 or 2 stop bits, records which one was measured, and so does not claim the RDL count for them (one stop bit still fails). Every other format is held to the RDL count |Fix the transmitter or the RDL description, then drop the admitted alternative so the two formats are held to one count
 |`INTR_STATUS.LOG_WRITE_ERR` has no firmware-reachable stimulus in this wrap |The log-write AXI-Lite master targets the wrapper's own `uart_16550` block, which ties write-error to 0 and answers every write OKAY. `smc_fw_uart_log_engine_boundary_backpressure_test` covers length and TX backpressure only; `INTR_TEST.LOG_WRITE_ERR` proves the interrupt plumbing, not error detection |A bench-side fault injector on the log-write AXI-Lite B channel
-|A force-mode CPU reset withdraws the R beat the CPU is presenting to the front-port demux without `ready` (`cocotb/seq_lib/README_cpu_isolate_flush.md`) |`smc_cpu_l2_read_wedge_test` reaches that state on purpose, and the front-port R arbiter's request-stability assertions (`rr_arb_tree` `req1` and `lock_req`) report the withdrawal on the reset cycle. The leaf passes `+smc_front_port_r_arb_assertoff` and `tb_top` holds off that one arbiter instance's assertions for that leaf only; every other leaf keeps them, and the leaf's five checkers are unchanged |A CPU reset cannot preserve a beat the fabric side has stopped accepting, and the design owner records this as a limitation of force mode rather than a defect. Re-arm the checks if force mode ever holds or flushes the beat under `ready`
+|A force-mode CPU reset withdraws the R beat the CPU is presenting to the front-port demux without `ready` (`cocotb/seq_lib/README_cpu_isolate_flush.md`) |`smc_cpu_l2_read_wedge_test` reaches that state on purpose, and the front-port R arbiter's request-stability assertions (`rr_arb_tree` `req1` and `lock_req`) report the withdrawal on the reset cycle. The leaf passes `+smc_front_port_r_arb_assertoff` and `tb_top` holds off that one arbiter instance's assertions for that leaf only; every other leaf keeps them, the leaf's five checkers are unchanged, and the two CPU-port AXI protocol checkers of `tb_top` are held off with the same plusarg; the SYS_IN protocol checker is not, and on VCS it reports the stale R the isolate flush leaves on SYS_IN (next row) |A CPU reset cannot preserve a beat the fabric side has stopped accepting, and the design owner records this as a limitation of force mode rather than a defect (#2449, closed as not planned). Re-arm the checks if force mode ever holds or flushes the beat under `ready`
+|After the force-mode CPU reset the isolate flush discards the CPU's stale read response above the demux, and an R with no open AR appears on SYS_IN |`smc_cpu_l2_read_wedge_test` is RED on VCS on `u_sys_in_axi_sva` `OCAH_AXI_R_NOT_BEFORE_AR` / `OCAH_AXI_R_ID_OUTSTANDING`; the leaf's own `CHK-CPU-ISO-FLUSH-STALE-RESP-ABSORBED` records that the bench absorbs the beat |Design-owner ruling on whether a discarded response may reach SYS_IN. #2318 reports that beat (the demux forwards the R the flush cleared) and is closed as a duplicate of #2449, whose ruling covers the withdrawal at the front port and not the beat on SYS_IN; until that ruling is extended or the beat is held, the leaf stays RED and is not masked
+|The cocotb AXI master drives the write strobes of a narrow FIXED burst on rotating byte lanes |`smc_sep_in_axi_shape_test` and `smc_axi_random_stress_test` are RED on VCS on `OCAH_AXI_W_STRB_IN_LANES` from the inbound and CPU front-port checkers; the defect is in the bench master, not in the SMC |Pull request #3448 fixes the master; both leaves are GREEN with it, and neither is masked
 |===
 
 [[smc-held-out-testcases]]

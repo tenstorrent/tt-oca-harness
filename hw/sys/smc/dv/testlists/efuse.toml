@@ -68,6 +68,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_otp_jtag"]
 
 [[tests]]
 name = "smc_efuse_permission_boundary_test"

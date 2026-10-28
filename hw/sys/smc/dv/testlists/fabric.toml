@@ -116,6 +116,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["diag"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sys_out"]
 
 [[tests]]
 name = "smc_filter_lock_window_test"
@@ -310,6 +311,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sys_in"]
 
 [[tests]]
 name = "smc_sep_in_axi_flow_control_test"
@@ -318,6 +320,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_sep_in"]
 
 [[tests]]
 name = "smc_sep_in_axi_shape_test"
@@ -335,6 +338,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_jtag_in"]
 
 [[tests]]
 name = "smc_dual_base_addressing_test"
