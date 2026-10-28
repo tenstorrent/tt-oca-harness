@@ -26,6 +26,10 @@ beats come from ``env/sep_dma_model.DmaZeroFill``.
   (``hw/sys/sep/doc/spi.adoc``, DMA Trigger).
 * Leg A: a fill aborted at a drawn fraction of the clean time of the same fill,
   then a recovery fill.
+* Leg S: a fill with SRC_ADDR_SPACE_ID drawn outside the ADDR_SPACE_ID
+  encodings {0x7, 0xA, 0x9} and DST_ADDR_SPACE_ID 0x7, then the same fill with
+  SRC_ADDR_SPACE_ID 0x7 (``hw/sys/sep/doc/dma.adoc``, Zero Fill: the source
+  registers are validated as for a copy).
 * Leg L, last because the lock holds until reset: RANGE_REGWEN written False,
   a write that would widen LIMIT, then a fill that runs past the locked LIMIT.
 
@@ -80,6 +84,13 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL seed=<n> ...``):
                          and reads the same again after a quarter of the clean
                          time; ABORTED clears by W1C; the recovery fill clears
                          the whole destination.
+  CHK-DMA-ZERO-SRC-ASID  the Leg S fill sets ERROR with DONE=0 and ERROR_CODE
+                         equal to ASID_ERROR alone; no AR, AW or W from GO to
+                         BUSY=0; the destination and its guards unchanged.
+                         Positive probe in the same line: the same fill with
+                         SRC_ADDR_SPACE_ID 0x7 then completes with ERROR_CODE
+                         0, one AW per model beat and the model image, else
+                         CTRL-MISSING.
   CHK-DMA-ZERO-WIN-LOCK  RANGE_REGWEN reads other than True after it is written
                          False and LIMIT keeps its value through a later write;
                          a fill past LIMIT then ends in DST_ADDR_ERROR with
@@ -90,7 +101,13 @@ Logged only: ``OBS-DMA-ZERO-ABORT``, the AR and AW handshakes after the ABORTED
 rise (``sep_dma_abort_recovery_rand_test`` grades that contract).
 
 Run mode: no_cpu, target ``lsu_stub_all_live``, ``+skip_fuse_sense``; Verilator
-and VCS. Graded-window owner code from ``tb/sep_fcov_owner_codes.svh``.
+and VCS. Graded-window owner code from ``tb/sep_fcov_owner_codes.svh``. The
+window opens one clock before the initial GO of each graded zero fill and
+closes when that fill ends. The set-up, the copies, the OPCODE 5 start, the
+reference fill and the recovery fill of Leg A and the control fill of Leg S run
+with the window closed. After every check of a graded fill passed, the leaf
+raises ``dma_zero_pass`` (``env/sep_fcov_gate.set_dma_zero_pass``) for two
+clocks; the sampler samples the cells it held for that fill only then.
 """
 
 from __future__ import annotations
@@ -103,13 +120,14 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import DmaZeroFill, ZeroBeat, bytes_to_words, words_to_bytes
 from env.sep_dma_tap import DmaTapEvents, SepDmaTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_dma_zero_pass
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import SPI_CONTROLLER, sym
 from seq_lib.sep_dma_ops import (
     _D,
+    ADDR_SPACE_ID,
     DST_ADDR_HI,
     ERROR_CODE,
     ERROR_CODE_MASK,
@@ -145,6 +163,16 @@ MODES = {"inc": (True, False), "wrap": (True, True), "fixed": (False, False)}
 
 DST_ERR = _D.field_mask("ERROR_CODE", "dst_addr_error")
 OPC_ERR = _D.field_mask("ERROR_CODE", "opcode_error")
+ASID_ERR = _D.field_mask("ERROR_CODE", "asid_error")
+ASID_FIELDS = _D.mask32("ADDR_SPACE_ID")
+_SRC_ASID_MASK = _D.field_mask("ADDR_SPACE_ID", "src_asid")
+_SRC_ASID_LSB = _D.field_lsb("ADDR_SPACE_ID", "src_asid")
+# ADDR_SPACE_ID encodings OT_ADDR 0x7, SOC_ADDR 0xa, SYS_ADDR 0x9
+# (vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:249-259).
+ASID_ENCODINGS = (0x7, 0xA, 0x9)
+SRC_ASID_INVALID = tuple(
+    a for a in range((_SRC_ASID_MASK >> _SRC_ASID_LSB) + 1) if a not in ASID_ENCODINGS
+)
 INTR_EN_DONE = _D.field_mask("INTR_ENABLE", "dma_done")
 INTR_EN_ERROR = _D.field_mask("INTR_ENABLE", "dma_error")
 HS_RESET = _D.reset32("HANDSHAKE_INTR_ENABLE")
@@ -168,6 +196,7 @@ TRIGGER_BOUND = 200  # clocks in a wait for the SPI trigger
 IRQ_SETTLE = 50  # clocks of line sampling after DONE or ERROR
 BUSY_RISE_BOUND = 2_000
 ABORT_REDRAWS = 3
+LABEL_CLOCKS = 2  # clocks dma_zero_pass stays 1
 
 
 def nonzero_word(rng: SepSeededRng) -> int:
@@ -259,6 +288,7 @@ class Plan:
         self._leg_e(rng, alloc)
         self._leg_a(rng, alloc)
         self._leg_l(rng, alloc)
+        self._leg_s(rng, alloc)
 
     def _leg_z(self, rng: SepSeededRng, alloc: Alloc) -> None:
         cells = [(m, e) for m in MODES for e in WIDTH]
@@ -345,6 +375,16 @@ class Plan:
             f"words={self.l_words} extra={self.l_extra}"
         )
 
+    def _leg_s(self, rng: SepSeededRng, alloc: Alloc) -> None:
+        self.s_total = 4 * rng.randrange(2, 9)
+        self.s_region = draw_region(rng, alloc, GUARD + self.s_total + GUARD)
+        self.s_dst = self.s_region.addr + GUARD
+        self.s_asid = rng.choice(SRC_ASID_INVALID)
+        self.lines.append(
+            f"DRAW leg=S dst=0x{self.s_dst:08x} total={self.s_total} src_asid=0x{self.s_asid:x} "
+            f"dst_asid=0x{ASID:x}"
+        )
+
 
 class _EdgeCount:
     """Counts clock edges, so a tap window can prove it sampled every clock."""
@@ -388,6 +428,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         "CHK-DMA-ZERO-OPC",
         "CHK-DMA-ZERO-HS",
         "CHK-DMA-ZERO-ABORT",
+        "CHK-DMA-ZERO-SRC-ASID",
         "CHK-DMA-ZERO-WIN-LOCK",
     )
 
@@ -395,6 +436,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
     def _pass(self, chk: str, ok: bool, values: str) -> None:
         line = f"{chk} {'PASS' if ok else 'FAIL'} seed={self.seed} {values}"
         if not ok:
+            close_graded_window(self.logger)
             self.logger.error(line)
             raise AssertionError(line)
         self.logger.info(line)
@@ -402,6 +444,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
 
     def _ctrl_missing(self, chk: str, why: str) -> None:
         line = f"CTRL-MISSING {chk} seed={self.seed} {why}"
+        close_graded_window(self.logger)
         self.logger.error(line)
         raise AssertionError(line)
 
@@ -428,16 +471,18 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         self.trigger = SepBitWatch(dut.spi_lsio_trigger_probe_o, name="spi_lsio_trigger").start()
         self.ops = SepDmaOps(self)
         self.mem = SepMemWords(self)
+        set_dma_zero_pass(False, self.logger)
         try:
-            open_graded_window(TEST, self.logger)
             await self._setup()
             await self._leg_z(plan)
             await self._leg_w(plan)
             await self._leg_e(plan)
             await self._leg_a(plan)
+            await self._leg_s(plan)
             await self._leg_l(plan)
         finally:
             close_graded_window(self.logger)
+            set_dma_zero_pass(False)
             for watch in (self.tap, self.busy, self.irq, self.trigger, self.edges):
                 await watch.stop()
         self.result_pass(TEST, self.seed, self.k)
@@ -456,6 +501,26 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             SRAM_LIMIT,
             asid_word(ASID, ASID),
         )
+
+    # ---- graded window and pass label --------------------------------------
+    async def _open(self) -> None:
+        """Open the window one clk_i edge before the GO it counts."""
+        await RisingEdge(cocotb.top.clk_i)
+        open_graded_window(TEST, self.logger)
+        await RisingEdge(cocotb.top.clk_i)
+
+    async def _close(self) -> None:
+        """Close the window when the graded fill has ended, before any clean-up."""
+        await RisingEdge(cocotb.top.clk_i)
+        close_graded_window(self.logger)
+
+    async def _release(self) -> None:
+        """Raise dma_zero_pass for LABEL_CLOCKS clocks; only after every check of one fill passed."""
+        await RisingEdge(cocotb.top.clk_i)
+        set_dma_zero_pass(True, self.logger)
+        await ClockCycles(cocotb.top.clk_i, LABEL_CLOCKS)
+        set_dma_zero_pass(False, self.logger)
+        await RisingEdge(cocotb.top.clk_i)
 
     # ---- shared pieces ----------------------------------------------------
     async def _idle(self) -> None:
@@ -476,6 +541,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         dst_wrap: bool = False,
         hs: int = 0,
         stop_on_error: bool = True,
+        graded: bool = False,
     ) -> FillRun:
         """Program one transfer, GO, and wait for DONE or ERROR (re-GO between chunks).
 
@@ -484,6 +550,8 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         STATUS.ERROR, so a stop on ERROR or ABORTED runs ``_idle`` (W1C, then
         a bounded wait for BUSY=0 that fails on expiry) before the window
         closes. ``status`` and ``error_code`` are read before that W1C.
+        ``graded`` opens the graded window after the transfer registers are
+        written and closes it after the ERROR_CODE read, before the W1C.
         """
         ops = self.ops
         await ops.program_transfer(
@@ -497,10 +565,14 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         )
         mark = self.tap.mark()
         e0 = self.edges.n
+        if graded:
+            await self._open()
         await ops.go(opcode=opcode, hs=hs)
         stop = (lambda s: bool(s.error or s.aborted)) if stop_on_error else (lambda s: False)
         res = await ops.run_to_done(2 * total, busy=self.busy, stop_on=stop)
         ec = await ops.rd(ERROR_CODE)
+        if graded:
+            await self._close()
         if res.status.error or res.status.aborted:
             await self._idle()
         elif res.status.busy:
@@ -604,6 +676,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
                 width_enc=c.enc,
                 dst_inc=inc,
                 dst_wrap=wrap,
+                graded=True,
             )
             beats = f.beats()
             got = await self._read_region(c.region)
@@ -632,6 +705,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
                 f"{tag} copy_last=0x{c.copy_src.words[-1]:08x} "
                 f"copy_dst_last=0x{cp_got[-1]:08x} cleared_bytes={len(cleared)}",
             )
+            await self._release()
             await self._idle()
 
     # ---- Leg W: the erase window ------------------------------------------
@@ -648,6 +722,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             total=fill.total,
             chunk=fill.chunk,
             width_enc=fill.width_enc,
+            graded=True,
         )
         await ClockCycles(cocotb.top.clk_i, IRQ_SETTLE)
         beats = fill.beats_in_range(base, limit)
@@ -674,6 +749,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
                 f"case={case} pic_src9_at_mark={lvl0[0]} pic_src11_at_mark={lvl0[1]} "
                 f"pic_src11_rises={err_r} pic_src9_rises={done_r}",
             )
+        await self._release()
         await self._idle()
 
     async def _leg_w(self, plan: Plan) -> None:
@@ -688,7 +764,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         fill = DmaZeroFill(d.base, size, size)
         m_irq = self.irq.mark()
         lvl0 = self._irq_levels()
-        run = await self._run(opcode=OP_ZERO, dst=d.base, total=size, chunk=size)
+        run = await self._run(opcode=OP_ZERO, dst=d.base, total=size, chunk=size, graded=True)
         await ClockCycles(cocotb.top.clk_i, IRQ_SETTLE)
         got = await self._read_region(d.region)
         exp = self._expect_words(d.region, fill, fill.beats())
@@ -707,6 +783,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             f"case=in_range pic_src9_at_mark={lvl0[0]} pic_src11_at_mark={lvl0[1]} "
             f"pic_src9_rises={done_r} pic_src11_rises={err_r}",
         )
+        await self._release()
         await self._idle()
 
         # Starts below BASE.
@@ -734,7 +811,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         await self.mem.fill(d.region.addr, d.region.words)
         total = size - d.exact_trim
         fill = DmaZeroFill(d.base, total, total)
-        run = await self._run(opcode=OP_ZERO, dst=d.base, total=total, chunk=total)
+        run = await self._run(opcode=OP_ZERO, dst=d.base, total=total, chunk=total, graded=True)
         got = await self._read_region(d.region)
         exp = self._expect_words(d.region, fill, fill.beats())
         st = run.status
@@ -744,6 +821,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             f"limit=0x{limit:08x} total={total} last_beat={fill.beats()[-1].nbytes} {st.fmt()} "
             f"{self._diff(got, exp, d.region.addr)}",
         )
+        await self._release()
         await self._idle()
 
         # Control: a copy whose destination is outside the range completes.
@@ -793,7 +871,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             f"opcode=0x{OP_INVALID:x} {self._diff(got, r.words, r.addr)}",
         )
         await self._idle()
-        run = await self._run(opcode=OP_ZERO, dst=r.addr, total=total, chunk=total)
+        run = await self._run(opcode=OP_ZERO, dst=r.addr, total=total, chunk=total, graded=True)
         got = await self._read_region(r)
         exp = self._expect_words(r, fill, fill.beats())
         self._pass(
@@ -801,6 +879,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             run.status.done and not run.status.error and got == exp,
             f"recovery {run.status.fmt()} {self._diff(got, exp, r.addr)}",
         )
+        await self._release()
         await self._idle()
 
         # Handshake mode with the SPI trigger held high.
@@ -813,7 +892,9 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         except AssertionError:
             self._ctrl_missing("CHK-DMA-ZERO-HS", "the SPI trigger did not rise")
         trig_at_go = self.trigger.level()
-        run = await self._run(opcode=OP_ZERO, dst=r.addr, total=total, chunk=total, hs=1)
+        run = await self._run(
+            opcode=OP_ZERO, dst=r.addr, total=total, chunk=total, hs=1, graded=True
+        )
         got = await self._read_region(r)
         if trig_at_go != 1:
             self._ctrl_missing("CHK-DMA-ZERO-HS", f"trigger_at_go={trig_at_go}")
@@ -823,6 +904,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             got == r.words,
             f"trigger_at_go={trig_at_go} {self._diff(got, r.words, r.addr)}",
         )
+        await self._release()
         await self._idle()
         await ops.wr(HANDSHAKE_INTR_ENABLE, HS_RESET)
         await ops.wr(SPI_CONTROL, spi_ctrl)
@@ -847,12 +929,14 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             await self.mem.fill(r.addr, sentinel)
             await ops.program_transfer(src=0, dst=r.addr, total=total, chunk=total)
             m_busy = self.busy.mark()
+            await self._open()
             await ops.go(opcode=OP_ZERO)
             await self.busy.wait_rise(m_busy, BUSY_RISE_BOUND)
             await ClockCycles(cocotb.top.clk_i, t_clean * frac // 100)
             busy_at_abort = self.busy.level()
             await ops.abort()
             st = await self._wait_status(ST_ABORTED | ST_DONE, "ABORTED or DONE")
+            await self._close()
             if busy_at_abort and st.aborted:
                 break
             self.logger.info(
@@ -902,6 +986,83 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             f"aborted_after_w1c={st_clr.aborted} recovery={rec.status.fmt()} "
             f"recovery_zero={int(all(w == 0 for w in img3))}",
         )
+        await self._release()
+        await self._idle()
+
+    # ---- Leg S: the source address space of a fill is validated ------------
+    async def _leg_s(self, plan: Plan) -> None:
+        """A fill with an invalid SRC_ADDR_SPACE_ID ends in ASID_ERROR alone and writes nothing.
+
+        Goldens: ``hw/sys/sep/doc/dma.adoc:107-109`` (a fill validates the
+        source registers as for a copy);
+        ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson:711-713``
+        (ERROR_CODE.ASID_ERROR: a source or destination ASID with an invalid
+        value); ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/
+        programmers_guide.md:102-103`` (the configuration is checked before a
+        transfer starts, and ERROR_CODE holds every detected error). The
+        control fill differs only in SRC_ADDR_SPACE_ID 0x7: it completes with
+        ERROR_CODE 0, so no other part of the configuration is invalid.
+        """
+        ops = self.ops
+        r = plan.s_region
+        total = plan.s_total
+        fill = DmaZeroFill(plan.s_dst, total, total)
+        beats = fill.beats()
+        src_asid = plan.s_asid
+        await self.mem.fill(r.addr, r.words)
+        await ops.set_asid(src_asid, ASID)
+        asid_rb = await ops.rd(ADDR_SPACE_ID) & ASID_FIELDS
+        if asid_rb != asid_word(src_asid, ASID):
+            self._ctrl_missing(
+                "CHK-DMA-ZERO-SRC-ASID",
+                f"addr_space_id=0x{asid_rb:02x} expect=0x{asid_word(src_asid, ASID):02x}",
+            )
+        run = await self._run(opcode=OP_ZERO, dst=plan.s_dst, total=total, chunk=total, graded=True)
+        got = await self._read_region(r)
+
+        # Control: the same fill with SRC_ADDR_SPACE_ID 0x7 writes the model beats.
+        await ops.set_asid(ASID, ASID)
+        twin = await self._run(opcode=OP_ZERO, dst=plan.s_dst, total=total, chunk=total)
+        twin_got = await self._read_region(r)
+        twin_exp = self._expect_words(r, fill, beats)
+        twin_ec = twin.error_code & ERROR_CODE_MASK
+        twin_probs = self._beat_problems(twin.ev, beats)
+        if not (
+            twin.status.done
+            and not twin.status.error
+            and twin_ec == 0
+            and not twin_probs
+            and twin_got == twin_exp
+        ):
+            self._ctrl_missing(
+                "CHK-DMA-ZERO-SRC-ASID",
+                f"twin src_asid=0x{ASID:x} {twin.status.fmt()} error_code=0x{twin_ec:x} "
+                f"{' '.join(twin_probs) or 'shape=model'} "
+                f"{self._diff(twin_got, twin_exp, r.addr)}",
+            )
+
+        st = run.status
+        ec = run.error_code & ERROR_CODE_MASK
+        ok = (
+            st.error
+            and not st.done
+            and ec == ASID_ERR
+            and not run.ev.ar
+            and not run.ev.aw
+            and not run.ev.w
+            and got == r.words
+            and len(twin.ev.aw) == len(beats) > 0
+        )
+        self._pass(
+            "CHK-DMA-ZERO-SRC-ASID",
+            ok,
+            f"src_asid=0x{src_asid:x} dst_asid=0x{ASID:x} dst=0x{plan.s_dst:08x} total={total} "
+            f"{st.fmt()} error_code=0x{ec:x} expect=0x{ASID_ERR:x} ar={len(run.ev.ar)} "
+            f"aw={len(run.ev.aw)} w={len(run.ev.w)} {self._diff(got, r.words, r.addr)} "
+            f"twin_src_asid=0x{ASID:x} twin_aw={len(twin.ev.aw)} twin_beats={len(beats)} "
+            f"twin_done={twin.status.done} twin_error_code=0x{twin_ec:x}",
+        )
+        await self._release()
         await self._idle()
 
     # ---- Leg L: the locked range -------------------------------------------
@@ -924,7 +1085,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
         total = 4 * plan.l_words + plan.l_extra
         fill = DmaZeroFill(start, total, total)
         await self.mem.fill(r.addr, r.words)
-        run = await self._run(opcode=OP_ZERO, dst=start, total=total, chunk=total)
+        run = await self._run(opcode=OP_ZERO, dst=start, total=total, chunk=total, graded=True)
         beats = fill.beats_in_range(plan.l_base, plan.l_limit)
         got = await self._read_region(r)
         exp = self._expect_words(r, fill, beats)
@@ -944,4 +1105,5 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             f"error_code=0x{ec:x} aw={len(run.ev.aw)} in_range_beats={len(beats)} "
             f"{' '.join(probs) or 'shape=model'} {self._diff(got, exp, r.addr)}",
         )
+        await self._release()
         await self._idle()
