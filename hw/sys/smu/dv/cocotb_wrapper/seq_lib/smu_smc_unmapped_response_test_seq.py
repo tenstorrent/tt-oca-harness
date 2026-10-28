@@ -9,8 +9,9 @@ Past-extent write BRESP of SLVERR-declared blocks is logged as CHK-UNMAP-PAST-EX
 
 The seed draws REGION_SIZE from the powers of two 2^25 to 2^30 (the smallest keeps every cell
 of the walk inside the aperture; the largest keeps both bases aligned and the SMC aperture clear
-of the SEP aperture), the word probed inside each ranged cell (the between-unit gap and the two
-8 MiB remap windows) and whether each cell is read or written first.
+of the SEP aperture), the word probed inside each ranged cell (two words of the between-unit gap
+beside its pinned first word, and one word of each 8 MiB remap window) and whether each cell is
+read or written first.
 """
 
 from __future__ import annotations
@@ -164,7 +165,7 @@ class smu_smc_unmapped_response_test_seq:
         self.seed = test.random_seed()
         self.rng = random.Random(self.seed)
         self.region_size = 0
-        self.gap_addrs: tuple[int, int] = (0, 0)
+        self.gap_addrs: tuple[int, int, int] = (0, 0, 0)
         self.mmode_addr = 0
         self.xvisor_addr = 0
         self.direction: dict[str, str] = {}
@@ -175,18 +176,19 @@ class smu_smc_unmapped_response_test_seq:
 
     def _draw(self) -> None:
         self.region_size = self.rng.choice(REGION_SIZE_CHOICES)
-        gaps = sorted(self.rng.sample(range(_GAP_START, _GAP_END, 4), 2))
-        self.gap_addrs = (gaps[0], gaps[1])
+        gaps = sorted(self.rng.sample(range(_GAP_START + 4, _GAP_END, 4), 2))
+        self.gap_addrs = (_GAP_START, gaps[0], gaps[1])
         self.mmode_addr = self._word_in(MMODE_ADDR, MMODE_ADDR + REMAP_WINDOW_BYTES)
         self.xvisor_addr = self._word_in(XVISOR_ADDR, XVISOR_ADDR + REMAP_WINDOW_BYTES)
-        names = ["gap0", "gap1"]
+        names = ["gap0", "gap1", "gap2"]
         names += [f"gap-0x{addr - BASE:x}" for addr in EXCEPTION_ADDRS]
         names += [name for name, _, _ in PAST_EXTENT_CELLS]
         names += ["mmode", "xvisor"]
         self.direction = {name: self.rng.choice(DIRECTIONS) for name in names}
         self._log(
             f"SEED: RANDOM_SEED={self.seed} drawn region_size=0x{self.region_size:08x} "
-            f"gap=[0x{self.gap_addrs[0]:08x},0x{self.gap_addrs[1]:08x}] "
+            f"gap=[0x{self.gap_addrs[1]:08x},0x{self.gap_addrs[2]:08x}] "
+            f"(pinned first word 0x{self.gap_addrs[0]:08x}) "
             f"mmode=0x{self.mmode_addr:08x} xvisor=0x{self.xvisor_addr:08x} "
             f"direction={self.direction}"
         )
@@ -385,7 +387,8 @@ class smu_smc_unmapped_response_test_seq:
             self._log(f"CHK-UNMAP-0X17000-WRITE: addr=0x{addr:08x} bresp={resp_name(bresp)}")
         sb.expect_eq(
             "CHK-UNMAP-BETWEEN gap reads DECERR/0xBADCAB1E, gap writes DECERR "
-            f"drawn gap=[0x{self.gap_addrs[0]:08x},0x{self.gap_addrs[1]:08x}] "
+            f"pinned first word 0x{self.gap_addrs[0]:08x} "
+            f"drawn gap=[0x{self.gap_addrs[1]:08x},0x{self.gap_addrs[2]:08x}] "
             f"{self._drawn(*gap_names)}",
             gap_obs,
             gap_exp,

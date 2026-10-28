@@ -2643,8 +2643,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-UNMAP-BETWEEN",
             "CHK-UNMAP-BETWEEN",
-            "under the seed-drawn REGION_SIZE, between-unit ext_in reads at two drawn words of "
-            "the gap answer DECERR/0xBADCAB1E and writes there DECERR, in the drawn order",
+            "under the seed-drawn REGION_SIZE, between-unit ext_in reads at the gap's pinned "
+            "first word and at two drawn words of the gap answer DECERR/0xBADCAB1E and writes "
+            "there DECERR, in the drawn order",
         ),
         (
             "CHK-UNMAP-PAST-EXTENT",
@@ -3854,8 +3855,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-RESET-REASSERT",
             "SEP_RESET_REASSERT",
             "sep_reset_n_o reads 0 on every sample while the cold reset is re-asserted after done "
-            "and after response words 0 and 128, and at the seed-drawn word when that fall lands "
-            "before the 256th strobe",
+            "and after response words 0 and 128, near 255 when that fall lands before the 256th "
+            "strobe, and at the seed-drawn word",
         ),
         (
             "CHK-SEP-DONE-COLD-CLEAR",
@@ -3875,7 +3876,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK_TIMEOUT_PATHS",
             "bounded done/strobe/cold-reset/TAP waits with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S8<PASS"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S9<PASS"),
     ],
     "smu_sep_secure_tm_test": [
         (
@@ -4254,7 +4255,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-TELQ-THRESHOLD-LIVE",
             "TELQ_THRESHOLD_LIVE",
             "after every fill and every pop INTR_STATUS.BUFFER_THRESHOLD is 1 when the number "
-            "queued is above the seed-drawn threshold in force and 0 otherwise",
+            "queued is above the seed-drawn threshold in force and 0 otherwise, and reads 1 with "
+            "the threshold at 3 and five queued before and after the pinned raise to 5",
         ),
         (
             "CHK-TELQ-ORDER",
@@ -4266,7 +4268,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "TELQ_THRESHOLD_CLEAR",
             "a write of 1 to the status with eight queued and each seed-drawn threshold write "
             "leave INTR_STATUS.BUFFER_THRESHOLD at the live value, 1 only when the number queued "
-            "is above the threshold",
+            "is above the threshold; raising the threshold to 5 with five queued reads 0, and "
+            "restoring the drawn threshold reads the live value",
         ),
         (
             "CHK-TELQ-THRESHOLD-TEST",
@@ -4706,8 +4709,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CTP-CFG-STRETCH-RW",
             "CHK-CTP-CFG-STRETCH-RW",
-            "the seed-drawn storage port reads back its drawn CONFIG value and then 0x0 and "
-            "STRETCH_MULT 0, 0xFFFF and its drawn value as written",
+            "the seed-drawn storage port reads back CONFIG 0x7, its drawn CONFIG value and then "
+            "0x0, and STRETCH_MULT 0, 0xFFFF and its drawn value as written",
         ),
         (
             "CHK-CTP-STATUS-WRITE-IGNORED",

@@ -8,15 +8,18 @@ Response valid bit: hw/ip/efuse/doc/interface.adoc; done reset value 0: sep_cpu_
 
 The SEP reset follows the cold reset, done is cleared only through the cold reset, and sensing
 restarts after the release. Leg 1 re-asserts the cold reset with done high and runs a second full
-sense. Legs 2 to 4 assert it after response word 0, word 128 and a drawn word of a sense: every
-sample after the falls reads sep_reset_n_o 0 and done 0, and done does not rise. The last leg
-runs a full sense that delivers at least 256 response words before the first done sample of 1
-and rises once. The latency from the pin to each fall is logged and not compared.
+sense. Legs 2 to 5 assert it after response word 0, word 128, near word 255 and at a drawn word
+of a sense: every sample after the falls reads sep_reset_n_o 0 and done 0, and done does not
+rise. The last leg runs a full sense that delivers at least 256 response words before the first
+done sample of 1 and rises once. The latency from the pin to each fall is logged and not compared.
 
-The seed draws the strobe count of the third abort over the whole sense window, below 255 minus
-the largest trigger-to-fall latency the two fixed legs measured, so the fall lands before the
-256th strobe; a fall at or after it fails the leg's fall-before-the-256th-strobe compare; a
-measured latency that leaves no count to draw logs a missed window and the leg is not claimed.
+The near-255 leg stays pinned: its trigger is 255 minus the largest trigger-to-fall latency the
+two fixed legs measured, minus 1, and it is compared when its fall lands before the 256th strobe,
+else logged as a missed window and not claimed. The seed draws the strobe count of the fourth
+abort below that pinned count, at most 255 minus the largest latency of the three earlier abort
+legs, minus 2, so the fall lands before the 256th strobe with two strobes of slack; a fall at or
+after it fails the leg's fall-before-the-256th-strobe compare; a measured latency that leaves no
+count to draw logs a missed window and the leg is not claimed.
 """
 
 from __future__ import annotations
@@ -41,6 +44,9 @@ TAP_RESET_TCK = 16
 FULL_SENSE_WORDS = 256
 LAST_WORD = 255
 LEG_WORD_TRIGGERS = (("0", 1), ("128", 128))
+# The drawn trigger stays this many strobes below 255 minus the largest measured latency, so a
+# latency one strobe above the measured ones still lands the fall before the 256th strobe.
+DRAWN_SLACK = 2
 EXPECTED_WAIT_KINDS = ("done_rise", "strobe", "cold_fall", "cold_rise", "reset_rise")
 
 
@@ -275,20 +281,63 @@ class smu_sep_cold_reassert_during_sense_test_seq:
             evidence=RESET_REASSERT,
         )
 
+    async def _late_abort_leg(self, trigger: int, latency: int) -> None:
+        """The pinned near-255 abort: compare when the fall lands before the 256th strobe."""
+        sb = self.sb
+        self.log.info(
+            "CELL word_255_trigger latency_strobes=%d trigger=%d formula=255-latency-1",
+            latency,
+            trigger,
+        )
+        await self._release("leg4", walk=False)
+        await self._wait_strobes(f"strobe_{trigger}", trigger)
+        at_trigger = self._strobes()
+        sb.expect_eq(
+            "abort after word 255: trigger taken at the target strobe count",
+            at_trigger,
+            trigger,
+            evidence=ABORT_RESTART,
+        )
+        at_fall = await self._assert_cold("abort_255")
+        self.log.info(
+            "CELL abort_trigger_255 target=%d strobes_at_trigger=%d strobes_at_fall=%d",
+            trigger,
+            at_trigger,
+            at_fall,
+        )
+        self.log.info(
+            "CHK-SEP-SENSE-ABORT-RESTART: word255 trigger=%d strobes_at_trigger=%d at_fall=%d",
+            trigger,
+            at_trigger,
+            at_fall,
+        )
+        self.fall_latency_strobes.append(at_fall - at_trigger)
+        held = await self._hold("abort_255")
+        if at_fall < FULL_SENSE_WORDS:
+            await self._compare_held("255", at_fall, held, ABORT_RESTART)
+        else:
+            self.log.info("OBSERVED word-255 window missed strobes_at_fall=%d", at_fall)
+            self.log.info(
+                "CHK-SEP-SENSE-ABORT-RESTART: word255 window missed strobes_at_fall=%d; "
+                "leg not claimed",
+                at_fall,
+            )
+
     async def _drawn_abort_leg(self, trigger_max: int, latency: int) -> None:
         """Draw the trigger from 1..trigger_max, abort there and compare the held samples."""
         sb = self.sb
         trigger = self.rng.randint(1, trigger_max)
         self.drawn_trigger = trigger
         self.log.info(
-            "SEED: RANDOM_SEED=%d drawn trigger=%d range=1..%d latency_strobes=%d (255-latency-1)",
+            "SEED: RANDOM_SEED=%d drawn trigger=%d range=1..%d latency_strobes=%d (255-latency-%d)",
             self.seed,
             trigger,
             trigger_max,
             latency,
+            DRAWN_SLACK,
         )
         name = f"{trigger} (drawn)"
-        await self._release("leg4", walk=False)
+        await self._release("leg5", walk=False)
         await self._wait_strobes("strobe_drawn", trigger)
         at_trigger = self._strobes()
         sb.expect_eq(
@@ -317,16 +366,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
             at_fall < FULL_SENSE_WORDS,
             evidence=ABORT_RESTART,
         )
-        if at_fall < FULL_SENSE_WORDS:
-            await self._compare_held(name, at_fall, held, ABORT_RESTART)
-        else:
-            self.log.info("OBSERVED drawn-word window missed strobes_at_fall=%d", at_fall)
-            self.log.info(
-                "CHK-SEP-SENSE-ABORT-RESTART: drawn trigger=%d window missed "
-                "strobes_at_fall=%d; held samples not compared",
-                trigger,
-                at_fall,
-            )
+        await self._compare_held(name, at_fall, held, ABORT_RESTART)
 
     async def run(self) -> None:
         dut = self.dut
@@ -402,16 +442,30 @@ class smu_sep_cold_reassert_during_sense_test_seq:
         await self._step("S5", "leg 3: abort after word 128")
         await self._abort_leg("128", "leg3", LEG_WORD_TRIGGERS[1][1])
 
-        await self._step("S6", "leg 4: abort at a drawn word of the sense")
+        await self._step("S6", "leg 4: abort near word 255")
         latency = max(self.fall_latency_strobes)
-        trigger_max = LAST_WORD - latency - 1
+        late_trigger = LAST_WORD - latency - 1
+        if late_trigger < 1:
+            self.log.info("OBSERVED word-255 window missed latency_strobes=%d", latency)
+            self.log.info(
+                "CHK-SEP-SENSE-ABORT-RESTART: no near-255 trigger, window missed "
+                "latency_strobes=%d; leg not claimed",
+                latency,
+            )
+        else:
+            await self._late_abort_leg(late_trigger, latency)
+
+        await self._step("S7", "leg 5: abort at a drawn word of the sense")
+        latency = max(self.fall_latency_strobes)
+        trigger_max = LAST_WORD - latency - DRAWN_SLACK
         if trigger_max < 1:
             self.log.info(
                 "SEED: RANDOM_SEED=%d drawn trigger=none range=1..%d latency_strobes=%d "
-                "(255-latency-1): no count lands before the 256th strobe",
+                "(255-latency-%d): no count lands before the 256th strobe",
                 self.seed,
                 trigger_max,
                 latency,
+                DRAWN_SLACK,
             )
             self.log.info("OBSERVED drawn-word window missed latency_strobes=%d", latency)
             self.log.info(
@@ -422,7 +476,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
         else:
             await self._drawn_abort_leg(trigger_max, latency)
 
-        await self._step("S7", "final leg: release and a full sense")
+        await self._step("S8", "final leg: release and a full sense")
         await self._release("final")
         rec = self._site("done_rise_final", "done_rise", SENSE_BOUND, "clk_smu_i")
         strobes_at_first_done = None
@@ -455,7 +509,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
             evidence=ABORT_RESTART,
         )
 
-        await self._step("S8", "timeout paths and ordered fence")
+        await self._step("S9", "timeout paths and ordered fence")
         for label, rec in self.sites.items():
             state = "EXPIRED" if rec["used"] >= rec["bound"] else "ok"
             self.log.info(
@@ -489,7 +543,7 @@ class smu_sep_cold_reassert_during_sense_test_seq:
 
         await ClockCycles(dut.clk_smu_i, 2)
         self.stamps["PASS"] = get_sim_time("ns")
-        order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "PASS"]
+        order = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "PASS"]
         deltas = [self.stamps[b] - self.stamps[a] for a, b in zip(order, order[1:])]
         fence = "<".join(f"{k}@{self.stamps[k]:.1f}" for k in order)
         self.log.info("CHK-NONVAC: %s", fence)

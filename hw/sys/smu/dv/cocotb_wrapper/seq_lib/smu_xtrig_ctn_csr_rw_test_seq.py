@@ -10,14 +10,15 @@ architecture.adoc (Address Map), cross_trigger_matrix.rdl (CT_SRC @0x0 += 0x8), 
 window base). Addresses and masks come from the generated headers.
 
 The seed draws three distinct ports (the storage port and the two end ports), the CONFIG values
-(the three 1-bit fields MODE, INVERT and RESET; the two end ports get distinct values), the
-STRETCH_MULT values (16-bit; the storage port writes 0, 0xFFFF and a drawn value between them, the
-serial value differs from both end ports' walk values) and two distinct CT_SRC indices with a
-nonzero 26-bit CT_DST_SELECT mask written to the first of them.
+(the three 1-bit fields MODE, INVERT and RESET; the storage port writes 0x7, every bit set, then a
+drawn value 1 to 6 and 0x0; the two end ports get distinct values), the STRETCH_MULT values
+(16-bit; the storage port writes 0, 0xFFFF and a drawn value between them, the serial value differs
+from both end ports' walk values) and two distinct CT_SRC indices with a nonzero 26-bit
+CT_DST_SELECT mask written to the first of them.
 
 S1  Idle inputs, TAP in Run-Test/Idle, IDCODE, J2A gate open.
-S2  Storage port CONFIG drawn and 0x0, STRETCH_MULT 0, 0xFFFF and a drawn value between them,
-    each written and read back.
+S2  Storage port CONFIG 0x7, drawn and 0x0, STRETCH_MULT 0, 0xFFFF and a drawn value between
+    them, each written and read back.
 S3  Storage port STATUS read, written 0xFFFF_FFFF, read again.
 S4  Sixteen distinct drawn STRETCH_MULT values written to ports 0..15 and read back; drawn CONFIG
     values on the two end ports; CONFIG and STRETCH_MULT of the end ports read back.
@@ -70,6 +71,7 @@ STRETCH_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__STRETCH_MULT__STRETCH_MULT_b
 CT_DST_SELECT_BM = cross_trigger_u32("CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bm")
 
 CONFIG_ALL = MODE_BM | INVERT_BM | RESET_BM
+STORAGE_CONFIG_PINNED = CONFIG_ALL
 STORAGE_STRETCH_PINNED = (0, STRETCH_BM)
 
 J2A_POLL_LIMIT = 128
@@ -113,7 +115,7 @@ class smu_xtrig_ctn_csr_rw_test_seq:
         ports = rng.sample(range(NUM_CTP), 3)
         self.port_mid = ports[0]
         self.port_low, self.port_high = sorted(ports[1:])
-        self.config_mid = rng.randint(1, CONFIG_ALL)
+        self.config_mid = rng.randint(1, CONFIG_ALL - 1)
         self.config_low = rng.randint(1, CONFIG_ALL)
         self.config_high = rng.choice([v for v in range(1, CONFIG_ALL + 1) if v != self.config_low])
         self.stretch_mid = [*STORAGE_STRETCH_PINNED, rng.randint(1, STRETCH_BM - 1)]
@@ -259,13 +261,13 @@ class smu_xtrig_ctn_csr_rw_test_seq:
         cfg_mid = self._ctp_addr(port_mid, CTP_CONFIG_OFF)
         str_mid = self._ctp_addr(port_mid, CTP_STRETCH_OFF)
         s2: list = []
-        for data in (self.config_mid, 0):
+        for data in (STORAGE_CONFIG_PINNED, self.config_mid, 0):
             await self._wr_rd(cfg_mid, data, f"CTP[{port_mid}].CONFIG", s2)
         for data in self.stretch_mid:
             await self._wr_rd(str_mid, data, f"CTP[{port_mid}].STRETCH_MULT", s2)
         drawn_s2 = (
-            f"drawn port={port_mid} config=0x{self.config_mid:x} "
-            f"stretch={[hex(v) for v in self.stretch_mid]}"
+            f"pinned config=0x{STORAGE_CONFIG_PINNED:x} drawn port={port_mid} "
+            f"config=0x{self.config_mid:x} stretch={[hex(v) for v in self.stretch_mid]}"
         )
         sb.expect_eq(
             f"storage port CONFIG and STRETCH_MULT readback list {drawn_s2}",
