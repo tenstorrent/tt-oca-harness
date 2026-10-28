@@ -24,7 +24,7 @@ module efuse_guard #(
   parameter int unsigned ADOPTER_FIELDS = 0,  // Adopter field-map entry count; 0 disables the
                                               // adopter lookup.
   parameter int unsigned ADOPTER_BIT_BASE = 0,  // Fuse bit address of the first adopter fuse.
-  parameter int unsigned ADOPTER_LOCK_VECTOR_BITS = 2,  // Adopter lock bits on adopter_locks_i.
+  parameter int unsigned ADOPTER_LOCK_VECTOR_BITS = 64,  // Adopter lock bits on adopter_locks_i.
 
   parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: exempts field index 0 from locks and gates
                                         // the RMA token bits on token matches; clear for SMC.
