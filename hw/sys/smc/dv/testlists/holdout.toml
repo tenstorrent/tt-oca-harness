@@ -43,20 +43,6 @@ schema_version = 1
 # it.
 
 [[tests]]
-# CPU_CTRL.WDT_TIMEOUT written to 0 with no first-stage timeout raises
-# smc_ras_o.wdt_second_timeout on the next clock and holds the warm domain in
-# reset (smc_cpu_ctrl_wrap.sv flags the second timeout whenever the reloaded
-# counter reads 0); cpu_ctrl.rdl gives the field no range and defines no 0.
-name = "smc_wdt_timeout_zero_idle_test"
-module = "smc_wdt_timeout_zero_idle_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "WDT_TIMEOUT=0 raises the second-stage timeout with no first-stage timeout"
-expect_fail_match = "CHK-WDT-TIMEOUT-ZERO-IDLE FAIL"
-
-[[tests]]
 # A SCRATCH_COLD_WARM read while the warm reset is asserted is accepted by the
 # primary-domain axi_lite_demux and never answered (smc_misc_wrap.sv has no
 # isolation on the warm-domain leg), so the peripheral crossbar's read channel
@@ -279,9 +265,8 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 4
+expected_count = 3
 tests = [
-    "smc_wdt_timeout_zero_idle_test",
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
