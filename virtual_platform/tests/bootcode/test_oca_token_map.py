@@ -72,3 +72,25 @@ def test_every_oca_result_name_has_the_listed_code(code, name):
     (name,) = _TICKED.findall(name)
     value = _rom_boot_err(name) if name.startswith("OCA_BOOT_ERR_") else mm.boot_err(name)
     assert value == listed, f"{name} is 0x{value:08x}, the map says 0x{listed:08x}"
+
+
+@pytest.mark.parametrize(
+    "result, status_name, status",
+    [
+        ("OCA_FAIL_SIGNATURE", "SEP_MSG_INVALID_SIGNATURE", 0x000E),
+        ("OCA_FAIL_SECURE_BOOT_INVARIANT", "SEP_MSG_MANIFEST_SECURE_BOOT", 0x008D),
+        ("OCA_FAIL_SIGNATURE_CLASS_CONTROL", "SEP_MSG_MANIFEST_SECURE_BOOT", 0x008D),
+    ],
+)
+def test_result_resolves_to_the_status_symbol(result, status_name, status):
+    mm = dv_env.load("sep_manifest_mutate")
+    error = mm.boot_err(result)
+    assert mm.rom_status_name_for_result(error) == status_name
+    assert mm.rom_status_for_result(error) == status
+
+
+def test_rom_owned_codes_resolve_to_the_load_failure_symbol():
+    mm = dv_env.load("sep_manifest_mutate")
+    error = _rom_boot_err("OCA_BOOT_ERR_NO_BL1")
+    assert error & 0xFFFFFF00 != _rom_boot_err("OCA_BOOT_ERR_BASE")
+    assert mm.rom_status_name_for_result(error) == "SEP_MSG_MANIFEST_LOAD_FAILED"
