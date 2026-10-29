@@ -61,7 +61,10 @@ on ``s_axi_aw*``. The first PARK uses the largest W and gives the fall delay and
 the AW latency that time the shorter holds; the leaf logs the measured W of
 every PARK and records a missed W as a missing control.
 
-Not sent (not stated): an IRQ_SET read, the write response of DEBUG or CTRL.
+Logged only (no register text states them): ``OBS-KMCSR-ACCESS``, a read of
+IRQ_SET and of each virtual UART and testbench word, and a write of the
+complement to each read-only register (CTRL, DEBUG, OTP_LIFE_CYCLE,
+OTP_DEMOTION_STATE) with its readback.
 """
 
 from __future__ import annotations
@@ -308,6 +311,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         await self._irq_walk()
         close_graded_window(self.logger)
         await self._real_cause()
+        await self._access_obs()
         open_graded_window(TEST, self.logger)
         await self._irq_set_masks()
         await self._irq_enable_cases()
@@ -555,6 +559,24 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             irq = r[1 + len(ops)].value
             rose = [pl.IRQ_NAMES[b] for b in range(pl.IRQ_BITS) if (irq >> b) & 1]
             self.chk.obs("REAL-CAUSE", cause=name, irq_status=_h(irq), rose=rose or "none")
+
+    async def _access_obs(self) -> None:
+        """Log the response and data of each access no register text states."""
+        reads = await self._run([kp.rd(a) for _, a in pl.OBS_READS], allow_unknown=True)
+        for (reg, _), x in zip(pl.OBS_READS, reads):
+            rdata = _h(x.value) if x.known else "X"
+            self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata, axi_slverr=x.slv)
+        for reg, a in pl.OBS_RO_WRITES:
+            before = (await self._run([kp.rd(a, raw=True)]))[0].value
+            wr, rd = await self._run([kp.wr(a, ~before & pl.WORD_MASK), kp.rd(a, raw=True)])
+            self.chk.obs(
+                "KMCSR-ACCESS",
+                reg=reg,
+                op="wr",
+                before=_h(before),
+                rdata=_h(rd.value),
+                axi_slverr=wr.slv,
+            )
 
     # ---------------------------------------------------------- step 6: IRQ_SET masks
 

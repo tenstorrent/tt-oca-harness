@@ -53,8 +53,8 @@ After a later full sense, a fresh match on the PROD image opens
 ``FEAT_CTRL`` with the ``TEST_EN`` strap at 0: the register and the
 feature-control probe are all ones and ``secure_tm_o`` is 0.
 
-Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR and
-OBS-SECDIS-DBG-BUS are log lines):
+Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR,
+OBS-SECDIS-SHADOW-WR and OBS-SECDIS-DBG-BUS are log lines):
 
   CHK-OVR-ALONE          the IC_RESET override alone releases the reset, FEAT_CTRL closed
   CHK-SENSE-GATED-RESET  a match does not release the sense-gated reset
@@ -65,7 +65,6 @@ OBS-SECDIS-DBG-BUS are log lines):
   CHK-RETAIN-*           the same five contracts after rst_ni with the token kept
   CHK-RETAIN-LC-RESET    after that rst_ni the LC_STATE word reads its reset value
                          0x0F (control: the word read a sensed value before it)
-  CHK-SECDIS-SHADOW-WR   JTAG write of a 0 bit of REQUIRED_SIGNERS lands (frontdoor)
   CHK-DROP               a mismatch drops SEC_DIS
   CHK-SENSE-CONTROL      a healthy sense finishes inside each stuck window
   CHK-MISMATCH, CHK-NO-OVERRIDE  mismatch code and the fail-closed PROD FEAT_CTRL
@@ -579,12 +578,12 @@ class sep_sec_dis_override_test(sep_base_test):
 
     async def _watch_quiet(self, cycles: int) -> _BusChangeWatch:
         """Watch the debug bus for ``cycles`` with no eFuse access; the result is logged."""
-        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
+        self._require_sense_open("CTRL-SECDIS-SHADOW-WR", sec_dis=1)
         dut = cocotb.top
         watch = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
         await ClockCycles(dut.clk_i, cycles)
         await watch.stop()
-        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
+        self._require_sense_open("CTRL-SECDIS-SHADOW-WR", sec_dis=1)
         return watch
 
     async def _check_jtag_writes_under_sec_dis(self) -> None:
@@ -607,7 +606,8 @@ class sep_sec_dis_override_test(sep_base_test):
           registers to software". Fuse field table: REQUIRED_SIGNERS is "SW
           writable true"; sep_efuse_map.rdl: ``required_signers`` is
           ``sw = rw; onwrite = woset`` with reset 0, and the LOCKS bits reset to
-          0. So a write of a 0 bit sets that bit and leaves the rest.
+          0. These lines state the shadow write after sense; no SEP line states
+          it before sense under SEC_DIS.
         * LC_STATE: lifecycle_controller.adoc says the shadow output holds the
           INVALID encoding 4'b1111 before sensing, and "Invalid lifecycle
           encodings are terminal" (otp_fuse_controller.adoc, LC_STATE row);
@@ -616,10 +616,11 @@ class sep_sec_dis_override_test(sep_base_test):
           word, so OBS-SECDIS-LC-WR logs the write and readback without a
           verdict.
 
-        The REQUIRED_SIGNERS write is graded by a frontdoor readback ("A read of the eFuse
-        shadow map over the SEP bus completes with OKAY", security_disable.adoc).
-        The JTAG write response is logged, not graded: the specification does
-        not state it.
+        CTRL-SECDIS-SHADOW-WR: before the write the REQUIRED_SIGNERS shadow reads
+        its reset value at the frontdoor (OKAY, "A read of the eFuse shadow map
+        over the SEP bus completes with OKAY", security_disable.adoc) and sense
+        stays stopped. OBS-SECDIS-SHADOW-WR logs the frontdoor readback after the
+        JTAG write and the JTAG write response, without a verdict.
 
         No specification puts eFuse state on ``ext_debug_bus_o``
         (port_table.adoc names the port only), so OBS-SECDIS-DBG-BUS logs the
@@ -645,9 +646,9 @@ class sep_sec_dis_override_test(sep_base_test):
         lc_new = lc_encode(LC_PROD)
         assert is_invalid_lc(_WITHHELD_LC) and lc_new != lc_invalid
 
-        rs_pre = await self._fd_read_word("CHK-SECDIS-SHADOW-WR", rs_addr, "required_signers")
+        rs_pre = await self._fd_read_word("CTRL-SECDIS-SHADOW-WR", rs_addr, "required_signers")
         assert rs_pre == rs_reset, (
-            f"CHK-SECDIS-SHADOW-WR FAIL: REQUIRED_SIGNERS @0x{rs_addr:08x} "
+            f"CTRL-SECDIS-SHADOW-WR FAIL: REQUIRED_SIGNERS @0x{rs_addr:08x} "
             f"pre=0x{rs_pre:08x} want RDL reset 0x{rs_reset:08x} -- the shadow did "
             "not keep its reset value after the reset with the match kept"
         )
@@ -658,33 +659,29 @@ class sep_sec_dis_override_test(sep_base_test):
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
         pre_quiet = await self._watch_quiet(_DBG_QUIET_CYCLES)
 
-        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
+        self._require_sense_open("CTRL-SECDIS-SHADOW-WR", sec_dis=1)
         event = _BusChangeWatch(dut.ext_debug_bus_o, dut.clk_i).start()
         rs_resp, _ = await self.jtag_axil_op(write=True, addr=rs_addr, wdata=1 << rs_bit)
         lc_wdata = (lc_pre & ~LC_FIELD_MASK & _M32) | lc_new
         lc_resp, _ = await self.jtag_axil_op(write=True, addr=lc_addr, wdata=lc_wdata)
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
         await event.stop()
-        self._require_sense_open("CHK-SECDIS-SHADOW-WR", sec_dis=1)
+        self._require_sense_open("CTRL-SECDIS-SHADOW-WR", sec_dis=1)
 
         post_quiet = await self._watch_quiet(max(_DBG_QUIET_CYCLES, 2 * event.edges))
 
-        rs_post = await self._fd_read_word("CHK-SECDIS-SHADOW-WR", rs_addr, "required_signers")
-        rs_want = rs_pre | (1 << rs_bit)
-        assert rs_post == rs_want, (
-            f"CHK-SECDIS-SHADOW-WR FAIL: sec_dis=1 sense_done=0 JTAG write "
-            f"0x{1 << rs_bit:08x} to REQUIRED_SIGNERS @0x{rs_addr:08x} (resp={rs_resp}): "
-            f"pre=0x{rs_pre:08x} post=0x{rs_post:08x} want 0x{rs_want:08x}"
-        )
+        rs_post = await self._fd_read_word("CTRL-SECDIS-SHADOW-WR", rs_addr, "required_signers")
+        # No SEP specification line states whether a JTAG shadow write lands before
+        # sense under SEC_DIS, so the frontdoor readback is logged without a verdict.
         self.logger.info(
-            "CHK-SECDIS-SHADOW-WR PASS: sec_dis=1 sense_done=0 JTAG wr REQUIRED_SIGNERS "
-            "@0x%08x bit=%d resp=%d resp_graded=0 pre=0x%08x post=0x%08x exp=0x%08x",
+            "OBS-SECDIS-SHADOW-WR: sec_dis=1 sense_done=0 JTAG wr REQUIRED_SIGNERS "
+            "@0x%08x bit=%d resp=%d pre=0x%08x post=0x%08x landed=%d",
             rs_addr,
             rs_bit,
             rs_resp,
             rs_pre,
             rs_post,
-            rs_want,
+            int(rs_post == rs_pre | (1 << rs_bit)),
         )
 
         # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f. The

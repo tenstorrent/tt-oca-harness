@@ -743,9 +743,13 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         n = self.plan.image_n
         code, arg = await self._cmd(pl.CMD_SRAM_LOAD_EXEC, (n,), f"{tag} load")
         confirm = code == pl.RC_SUCCESS and arg is None
-        # The boot flush left FLUSHED_BY_KM set; clear it so that only the
+        # Clear FLUSHED_BY_KM if the boot flush set it, so that only the
         # handover flush sets it again. That flush follows the store of the image
         # size ("SRAM Firmware Handover"), so the warm reset of step 16 waits for it.
+        pre = await self._rd(KM_MBOX_IRQ_STATUS)
+        self.chk.obs(
+            "BOOT-FLUSHED-BY-KM", boot=tag, flushed_by_km=(pre >> KM_IRQ_FLUSHED_BY_KM) & 1
+        )
         await self._wr(KM_MBOX_IRQ_STATUS, 1 << KM_IRQ_FLUSHED_BY_KM)
         irq = await self._rd(KM_MBOX_IRQ_STATUS)
         if irq & (1 << KM_IRQ_FLUSHED_BY_KM):

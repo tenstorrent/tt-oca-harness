@@ -93,8 +93,8 @@ erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
 ``INFO-KPV-RACE``, ``LOG err_o`` (PIC vector bit 30 at the wipe) and the
 second-key control of the cipher leg.
 
-Not sent: a key access during an erase (not defined), a KPV_SCRAMBLER_KEY read
-after the lock (not stated).
+Log only, not stated: ``OBS-KPV-ACCESS LOG``, a word read and write issued right
+after an erase write, and a KPV_SCRAMBLER_KEY read after the lock.
 """
 
 from __future__ import annotations
@@ -874,9 +874,38 @@ class sep_km_kpv_rand_test(sep_base_test):
             "KPV-NEIGH", changes == 0, ops=ops, slots=len(by_slot), neighbor_changes=changes
         )
 
+    async def _access_obs(self, ops: list[kp.PokeOp]) -> list[kp.PokeResult]:
+        """Logged-only accesses; their data stays out of the stored-word compare count."""
+        return await self.poke.run(ops, allow_unknown=True)
+
     # Step 11.
     async def _step_scrambler(self) -> None:
         p = self.plan
+        # A word read and write issued right after the erase write of a slot
+        # that this step erases again before use.
+        s0 = p.scr_slots[0]
+        ca, wa = m.ctrl_addr(s0), m.word_addr(s0, 0)
+        r = await self._access_obs(
+            [
+                kp.wr(ca, m.ERASE),
+                kp.rd(wa),
+                kp.wr(wa, m.WORD),
+                kp.rd(ca),
+                kp.poll(ca, m.ERASE, 0, _ERASE_POLL),
+            ]
+        )
+        self._erase_done(r, s0)
+        erase = int(bool(r[3].value & m.ERASE))
+        for case, x in (("erase_rd", r[1]), ("erase_wr", r[2])):
+            rdata = _h(x.value) if x.known else "X"
+            self.logger.info(
+                "OBS-KPV-ACCESS LOG case=%s slot=%d rdata=%s axi_slverr=%d erase=%d",
+                case,
+                s0,
+                rdata,
+                x.slv,
+                erase,
+            )
         cells = p.scr_cells
         d = p.scr_values
         groups = [_erase_ops(s) for s in p.scr_slots]
@@ -910,6 +939,12 @@ class sep_km_kpv_rand_test(sep_base_test):
             self.logical_ok,
             _h(self.scr_pre),
             "before" if p.lock_before else "after",
+        )
+        key = (await self._access_obs([kp.rd(m.SCR_KEY)]))[0]
+        self.logger.info(
+            "OBS-KPV-ACCESS LOG case=scr_key_locked rdata=%s axi_slverr=%d erase=0",
+            _h(key.value) if key.known else "X",
+            key.slv,
         )
 
     # Step 12.

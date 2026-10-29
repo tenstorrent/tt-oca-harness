@@ -66,6 +66,28 @@ A_ENTRY_LOCK = _csr("IRQ_ENTRY_LOCK")
 A_DEBUG = _csr("DEBUG")
 A_OTP_LOCK = _csr("OTP_READ_LOCK")
 A_OTP_LOCK_COLD = _csr("OTP_READ_LOCK_COLD")
+# Logged-only accesses: reads of the write-only IRQ_SET and of the virtual UART
+# and testbench words, and writes to the read-only registers.
+OBS_READS = tuple(
+    (reg, _csr(reg))
+    for reg in (
+        "IRQ_SET",
+        "VUART_TX",
+        "VUART_RX",
+        "VUART_STATUS",
+        "TB_RESULT",
+        "TB_SIGNATURE",
+        "TB_ERRCODE",
+        "TB_SUBTEST",
+        "TB_CMD",
+        "TB_CMD_ARG",
+        "TB_CMD_STATUS",
+        "TB_CMD_RESULT",
+    )
+)
+OBS_RO_WRITES = tuple(
+    (reg, _csr(reg)) for reg in ("CTRL", "DEBUG", "OTP_LIFE_CYCLE", "OTP_DEMOTION_STATE")
+)
 A_SMP_DATA = km_addr("DRBG_SAMPLER_DATA_BASE_ADDR")
 A_SMP_CFG = km_addr("DRBG_SAMPLER_CFG_BASE_ADDR")
 A_MBOX_KM_STATUS = km_addr("MAILBOX_KM_KM_STATUS_BASE_ADDR")

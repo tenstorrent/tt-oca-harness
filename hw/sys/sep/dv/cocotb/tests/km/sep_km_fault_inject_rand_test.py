@@ -1468,8 +1468,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 hmac_before="golden" if pre.hmac == "key" else pre.hmac,
                 hmac_after=hmac_after,
                 msg_changed=1,
-                writes_delta_logged="none" if delta is None else delta,
             )
+            self.chk.obs("NOSHRED-WRITES", writes_delta="none" if delta is None else delta)
             self.chk.obs("NOSHRED-HOST-AES", control=1, aes_before=pre.aes, aes_after=aes_after)
         self._shred_first(pre, watch, "real_wipe")
         self.logger.info(
@@ -1925,6 +1925,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             fired=fired,
             pending_seen=f"0x{watch.pend_seen:x}",
         )
+        self.chk.obs("CPU-TRAP-CODE", line=line, code=_hx(code))
         self.chk.ok(
             "CPU-TRAP",
             b0 == 0

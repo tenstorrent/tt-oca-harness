@@ -97,6 +97,12 @@ Every leaf with a bus-write cell also runs CHK-UPPER-WRITE: two seed-derived
 the first; a stale OR of the two fails. The set-only rule covers the lifecycle
 nibble alone (CHK-W1S-NO-CLEAR), not these bytes.
 
+Log-only, every cell: ``OBS-LC-STATE-PORT`` (the ``lc_state_o`` port, tap
+``lc_state_probe_o``, beside the ``LC_STATE`` shadow word at
+``efuse_shadow_probe_o``); every write cell: ``OBS-LC-WR-NIBBLE`` (bits [7:4] of the
+write data and of the readback word: the specification does not state how a write
+of the complement nibble acts).
+
 RANDCFG: the tokens and the byte [31:8] pattern come from the run seed
 (``SepLcTransitionCfg``). The two PROD_END leaves pin the exit with
 ``+lc_prod_end_exit=bit0|rma_sip``; without it the seed selects one
@@ -321,6 +327,21 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         assert observed is not None, "sequence did not publish an observed LC code"
         assert seq.observed_feat is not None, "sequence did not publish a FEAT_CTRL value"
         self._last_feat = seq.observed_feat
+        dut = cocotb.top
+        shadow = self.rd(dut.efuse_shadow_probe_o, allow_unknown=True) >> (32 * LC_WORD_IDX)
+        if do_write and seq.observed_word is not None:
+            self.logger.info(
+                "OBS-LC-WR-NIBBLE tag=%s wdata_hi=0x%x observed_hi=0x%x",
+                tag,
+                (full_wdata >> 4) & 0xF,
+                (seq.observed_word >> 4) & 0xF,
+            )
+        self.logger.info(
+            "OBS-LC-STATE-PORT tag=%s lc_state_o=0x%02x shadow=0x%08x",
+            tag,
+            self.rd(dut.lc_state_probe_o, allow_unknown=True) & 0xFF,
+            shadow & 0xFFFF_FFFF,
+        )
 
         # The transition rules again, in observed-code form, against the code the
         # DUT returned. It overlaps the per-cell value check and fails on a step

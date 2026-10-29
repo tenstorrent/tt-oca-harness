@@ -43,7 +43,11 @@ Leg B (TEST_DEV image with the enable at 0): a program of ``LC_STATE`` bit 1 wit
 only RMA_CHIPLET matched changes no bank bit and issues no program command; the
 same program with RMA_SIP matched lands. A program of bit 2 with only RMA_SIP
 matched is refused (a control of the open refusal, ``role=control``); with
-RMA_CHIPLET matched it lands. After each resense the shadow byte is
+RMA_CHIPLET matched it lands. A program of bit 2 under the first RMA_CHIPLET match,
+before bit 1 is set, is logged only (``OBS-PROG-LC-ORDER``: the commands at the
+post-guard tap, the OTP word, ``efuse_req_error`` and ``program_status``; the
+specification states the order rule but not the response to a program out of
+order); it runs with the graded coverage window closed. After each resense the shadow byte is
 ``{~r, r}`` with r the raw nibble OR the programmed bit (``otp_fuse_controller.adoc``,
 sections Fuse Programming and RMA Authorization, Shadow Register Updates and
 Test-Mode Protection). Every match and mismatch go of leg B must reach its code
@@ -729,6 +733,20 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         self._leg_b_code("b1.chp", await self._match(CH_CHIPLET, "b1.chp"), CODE_MATCH)
         ref1 = await self._program(_LC_BIT1)
         shadow_ref1 = await self.fd.rd(shadow_addr("LC_STATE"))
+        # Bit 2 under the same RMA_CHIPLET match, before bit 1 is set: logged only.
+        close_graded_window(self.logger)
+        early2 = await self._program(_LC_BIT2)
+        self._reopen_window()
+        log_line(
+            self.logger,
+            "OBS-PROG-LC-ORDER",
+            seed,
+            post_guard_cmds=early2["cmd_all"],
+            otp_word=f"0x{early2['word']:08x}",
+            req_err=early2["req_err"],
+            program_status=early2["pstatus"],
+            done=early2["done"],
+        )
         self._leg_b_code(
             "b1.chp_end", await self._mismatch(CH_CHIPLET, "b1.chp_end"), CODE_MISMATCH
         )

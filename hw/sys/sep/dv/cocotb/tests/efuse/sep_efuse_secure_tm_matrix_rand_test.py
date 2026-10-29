@@ -70,7 +70,12 @@ secret reads after CHK-STM-SECRET and its strap-0 control, the JTAG writes of
 both straps after every CHK-STM-JTAG and CHK-STM-JTAG-CTL line.
 
 The status value of a blocked program and the response code of a blocked write are
-logged and not graded. No step writes ``LC_STATE`` and no SEC_DIS go runs at strap 1.
+logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
+fields at ``efuse_shadow_probe_o`` at strap 1 and strap 0, against the staged words;
+the specification does not state whether secure test mode masks them) and
+``OBS-DIGEST-PROG-STATE`` (a strap-0 program of a 0 bit of a drawn digest field: the
+OTP bit, the program commands at the tap and ``efuse_req_error``; the specification
+does not state in which states it lands). No step writes ``LC_STATE`` and no SEC_DIS go runs at strap 1.
 In RMA_CHIPLET the profile row is all ones with or without SEC_DIS, so there the
 SEC_DIS control rests on ``security_disable_o`` and the match codes alone.
 """
@@ -85,12 +90,15 @@ from env.sep_efuse_bank_watch import SepShimCmdMonitor
 from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
+    DIGEST_FIELDS,
     PROGRAM_CTRL_ADDR,
     SECRET_FIELDS,
+    STATUS_ADDR,
     STM_PROGRAM_CLASSES,
     STM_TARGETS,
     TOKEN_OTHER,
     TOKEN_ZERO,
+    bit_address,
     feat_ctrl_profile,
     field_n_words,
     field_word,
@@ -98,6 +106,7 @@ from env.sep_efuse_plan import (
     plan,
     program_ctrl_word,
     shadow_addr,
+    zero_bits,
 )
 from env.sep_efuse_test_lib import (
     SenseClock,
@@ -122,7 +131,7 @@ from env.sep_fcov_gate import (
     set_stm_shadow_wr_pass,
 )
 from sep_base_test import sep_base_test
-from sep_reg_meta import SEP_LIFECYCLE_CTRL
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL
 
 TEST = "sep_efuse_secure_tm_matrix_rand_test"
 
@@ -145,6 +154,10 @@ _SRC_IDX = {"fd": 0, "jtag": 1}
 # strap-0 programs, the strap-1 secret reads, the JTAG target writes.
 _TAG_PROG1, _TAG_PROG0, _TAG_SECRET, _TAG_JTAG = 1, 2, 3, 4
 _PASS_HOLD = 2  # clocks a step tag stays on the pass label
+_REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error")
+_REQ_ERR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
+)
 
 
 @pyuvm.test()
@@ -325,6 +338,44 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             )
         return r
 
+    def _field_probe(self, f: str) -> list[int]:
+        return [shadow_word(self, field_word(f) + k) for k in range(field_n_words(f))]
+
+    async def _digest_program(self, state: str, w_prog: int) -> None:
+        """Strap 0: a program of a 0 bit of a drawn RMA token digest field, logged only.
+
+        ``OBS-DIGEST-PROG-STATE``: the specification does not state in which states a
+        program of a token digest lands.
+        """
+        p = self.p
+        f = p.draw.choice("digest_prog_field", DIGEST_FIELDS)
+        zeros = zero_bits(p.image, f)
+        if not zeros:
+            self.chk.obs("DIGEST-PROG-STATE", state=state, field=f, reason="no_zero_bit")
+            return
+        k, b = p.draw.choice("digest_prog_bit", zeros)
+        addr = bit_address(f, k, b)
+        mark = self.shim.mark()
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(addr))
+        await ClockCycles(cocotb.top.clk_i, w_prog)
+        status = await self.fd.rd(PROGRAM_CTRL_ADDR)
+        await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
+        progs = self.shim.programs_since(mark)
+        st = await self.fd.rd(STATUS_ADDR)
+        if st & _REQ_ERR:
+            await self.fd.wr(STATUS_ADDR, _REQ_ERR_CLEAR)
+        word = await direct_word(self, field_word(f) + k)
+        self.chk.obs(
+            "DIGEST-PROG-STATE",
+            state=state,
+            field=f,
+            bit=f"{k}:{b}",
+            otp_bit=(word >> b) & 1,
+            shim_prog=sum(int(c.address == addr) for c in progs),
+            req_err=int(bool(st & _REQ_ERR)),
+            program_ctrl=f"0x{status:08x}",
+        )
+
     async def _programs(self, progs: dict, w_prog: int) -> dict[str, list]:
         """One program go per class, each followed by ``w_prog`` clocks and an enable clear."""
         cmds: dict[str, list] = {}
@@ -354,7 +405,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        p = plan(TEST, seed)
+        self.p = p = plan(TEST, seed)
         state = lc_state_class(p.lc_raw)
         for line in p.log_lines(state=state):
             self.logger.info("%s", line)
@@ -417,6 +468,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             secret1[f] = {"probe": probe, "reads": reads}
         self._tag(0)
         self._close()
+        digest1 = {f: self._field_probe(f) for f in DIGEST_FIELDS}
 
         # Strap-0 epoch. The graded window holds the strap-0 target writes and
         # readbacks and the grades of both epochs' target cells.
@@ -598,6 +650,22 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 otp_word0_eq_staged=int(otp_secret[f] == staged[0]),
             )
         await self._release(_TAG_SECRET, secret_ok)
+        for f in DIGEST_FIELDS:
+            staged = [p.image.words[field_word(f) + k] & M32 for k in range(field_n_words(f))]
+            s0 = self._field_probe(f)
+            self.chk.obs(
+                "STM-RMA-DIGEST-PROBE",
+                state=state,
+                field=f,
+                strap1=f"0x{digest1[f][0]:08x}",
+                strap0=f"0x{s0[0]:08x}",
+                staged=f"0x{staged[0]:08x}",
+                strap1_eq_staged=sum(int(a == b) for a, b in zip(digest1[f], staged)),
+                strap1_zero=sum(int(a == 0) for a in digest1[f]),
+                strap0_eq_staged=sum(int(a == b) for a, b in zip(s0, staged)),
+                words=len(staged),
+            )
+        await self._digest_program(state, w_prog)
 
         # SEC_DIS leg at strap 0: the control of the revision-enable assumption.
         code_m, reads_m = await sec_dis_go(self.fd, TOKEN_ZERO, CODE_MATCH, max_reads=MATCH_READS)

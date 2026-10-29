@@ -13,7 +13,10 @@ other token-block accesses, and per denied access its address and pattern. The
 required interface-control write of every leaf is a denied ``EFUSE_PROGRAM_CTRL``
 program of p, so the p read at the end grades a refused burn in every leaf.
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
-builds the same plan. JTAG and frontdoor accesses never overlap.
+builds the same plan. JTAG and frontdoor accesses never overlap, except one
+frontdoor read and one JTAG read of the shadow word of p, started on the same clock
+at the end of the leaf and logged only (``OBS-EF-ARB-CONCURRENT``: the responses, the
+data, the clock each completes on and the command count at the post-guard tap).
 
 Contract (``hw/sys/sep/doc/otp_fuse_controller.adoc``, section Shadow Register and
 JTAG Access Control; ``hw/sys/sep/doc/lifecycle_controller.adoc``, row SEP OTP
@@ -67,9 +70,11 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
+from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
     CH_CHIPLET,
     CH_SEC_DIS,
@@ -102,6 +107,7 @@ from env.sep_efuse_test_lib import SenseClock, SepEfuseFd, bit, direct_word, hoo
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL, register_fields
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 TEST = "sep_efuse_jtag_access_rand_test"
 
@@ -414,6 +420,54 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 after=f"0x{after & mask:08x}",
             )
 
+    async def _concurrent_read(self, word: int) -> None:
+        """A frontdoor read and a JTAG read of one shadow word, started on the same clock.
+
+        Logged only (``OBS-EF-ARB-CONCURRENT``): the specification does not state the
+        arbitration of the two masters.
+        """
+        dut = cocotb.top
+        addr = SHADOW_BASE + 4 * word
+        done: dict[str, int] = {}
+        clk = {"n": 0}
+
+        async def _count() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                clk["n"] += 1
+
+        async def _fd() -> SepAxiAccessSeq:
+            seq = await self.fd.access(SepAxiOp.READ, addr, ungraded_read=True)
+            done["fd"] = clk["n"]
+            return seq
+
+        async def _jtag() -> tuple[int, int]:
+            res = await self._jrd(addr)
+            done["jtag"] = clk["n"]
+            return res
+
+        mark = self.shim.mark()
+        await RisingEdge(dut.clk_i)
+        counter = cocotb.start_soon(_count())
+        fd_task = cocotb.start_soon(_fd())
+        jtag_task = cocotb.start_soon(_jtag())
+        fd_seq = await fd_task
+        jtag_resp, jtag_data = await jtag_task
+        counter.cancel()
+        await ClockCycles(dut.clk_i, 2)
+        self.chk.obs(
+            "EF-ARB-CONCURRENT",
+            state=self.state,
+            word=word,
+            fd_resp=fd_seq.resp_code,
+            fd_rdata=f"0x{fd_seq.rdata & M32:08x}",
+            fd_done_clk=done["fd"],
+            jtag_resp=jtag_resp,
+            jtag_rdata=f"0x{jtag_data:08x}",
+            jtag_done_clk=done["jtag"],
+            shim_cmds=len(self.shim.commands_since(mark)),
+        )
+
     async def _jtag_token(self, ch: str, token: int) -> list[int]:
         resps = [
             await self._jwr(TOKEN_ARRAY_ADDR[ch][k], w) for k, w in enumerate(token_words(token))
@@ -594,5 +648,6 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             )
             self.last_result[ch] = CODE_MISMATCH
         await self._deny_write_controls(w)
+        await self._concurrent_read(field_word(p_bit["field"]) + p_bit["word"])
         await self.shim.stop()
         self.chk.finish(f" state={self.state}")

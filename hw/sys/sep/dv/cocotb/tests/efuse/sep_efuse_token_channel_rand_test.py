@@ -24,8 +24,10 @@ sections Token Matching Mechanism and Attack Countermeasures, Token Submission;
 ``hw/sys/sep/doc/security_disable.adoc``, sections Token Activation, Reset
 Persistence, Implementation Requirements; ``hw/ip/efuse/regs/gen/adoc/efuse_mmr.adoc``).
 
-No step writes two go bits in one ``TOKEN_EOP`` write, and every SEC_DIS go runs
-with ``secure_tm_req_i`` at 0. Every graded go starts from a held code other than
+No graded step writes two go bits in one ``TOKEN_EOP`` write, and every SEC_DIS go
+runs with ``secure_tm_req_i`` at 0. After the last check, one write sets the go bits
+of a drawn channel pair; it is logged only (``OBS-TOKEN-MULTI-GO``: per channel the
+code after the write and the clocks to the verdict on the comparator rails). Every graded go starts from a held code other than
 its expected final code, so a go that has no effect fails. The one exception is
 the second go of the go-while-busy leg, which is written to a busy channel.
 
@@ -50,6 +52,11 @@ DIGEST words equal HMAC-SHA256 (RFC 2104 over FIPS 180-4) of the key and the
 message in the big-endian read of each word (``digest_swap`` = 0;
 ``env/sep_hmac_golden.py``, ``DSWAP_ORDER``). The same go with HMAC idle gives the same code (CTRL-TOKEN-HMAC-IDLE).
 
+The Match of the right token in the walk is logged (``OBS-TOKEN-DIGEST-LAYOUT``:
+no specification states the layout of the digest in the shadow words) and is the
+control ``CTRL-TOKEN-DIGEST-LAYOUT`` of the hold, idle-first and later legs, which
+need that held Match.
+
 Checkers: CHK-BIND, CHK-TOKEN, CHK-TOKEN-CODES, CHK-TOKEN-HOLD, CHK-TOKEN-INDEP,
 CHK-NORESET, CHK-TOKEN-RETAIN, CHK-TOKEN-PRESENSE, CHK-TOKEN-GWB, CHK-TOKEN-HMAC.
 A failing hook control logs ``CHK-HOOK FAIL`` and ends the leaf.
@@ -64,8 +71,8 @@ CHK-TOKEN-HMAC of that leg passes. Every other sample of the leaf
 ``sep_sec_dis_robustness_cg``) is held with the tag of its graded step
 (``set_ef_hold_tag``) and samples only when the leaf writes that tag to the pass
 label (``set_ef_hold_pass``) after every check of the step passed: each walk
-channel after its two CHK-TOKEN lines and CHK-TOKEN-HOLD, each mismatch cell after
-its CHK-TOKEN line, the independence gos and the SEC_DIS go with an RMA token after
+channel after CTRL-TOKEN-DIGEST-LAYOUT, its CHK-TOKEN line and CHK-TOKEN-HOLD, each
+mismatch cell after its CHK-TOKEN line, the independence gos and the SEC_DIS go with an RMA token after
 every CHK-TOKEN-INDEP line, the pre-sense cell after both CHK-TOKEN-PRESENSE lines,
 the retention cell after CHK-TOKEN-RETAIN, each HMAC overlap go after
 CHK-TOKEN-HMAC and its busy control, each go-while-busy leg after CHK-TOKEN-GWB and
@@ -88,11 +95,13 @@ from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
     FOREIGN_TOKEN,
+    GO_MASK,
     MATCH_ADDR,
     MATCH_STATUS_MASK,
     RIGHT_TOKEN,
     T_TOKEN_CHANNEL,
     TOKEN_ARRAY_ADDR,
+    TOKEN_EOP_ADDR,
     TOKEN_OTHER,
     TOKEN_T1,
     TOKEN_T2,
@@ -761,7 +770,25 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
                     ctl_ok &= seen == decoy[k]
             await self._write(ch, tok, f"walk.{ch}")
 
-            run, ok_walk = await self._graded_go(ch, None, CODE_MATCH, "match", f"walk.{ch}.go")
+            # No specification states the layout of the digest in the shadow words, so
+            # the Match of the right token is logged and is a control of the later legs.
+            held_w = await self._code(ch)
+            await token_go(self._wr, ch)
+            run = await _read_run_from(self._rd, ch, held_w, max_reads=_RUN_READS)
+            self.chk.obs(
+                "TOKEN-DIGEST-LAYOUT",
+                ch=_CH_NAME[ch],
+                final="none" if run.final is None else f"0x{run.final:02x}",
+                held=f"0x{held_w:02x}",
+                idle_reads=run.n_idle,
+                reads=run.w_hash,
+            )
+            ok_walk = self._ctrl(
+                "TOKEN-DIGEST-LAYOUT",
+                run.final == CODE_MATCH and held_w != CODE_MATCH,
+                ch=_CH_NAME[ch],
+                final="none" if run.final is None else f"0x{run.final:02x}",
+            )
             w_hash[ch] = run.w_hash
             self.n_idle_ref[ch] = run.n_idle
             if ch == first_rma and run.final != CODE_MATCH:
@@ -1065,4 +1092,32 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
             reads=len(self.codes_seen),
         )
         close_graded_window(self.logger)
+        await self._multi_go()
         self.chk.finish()
+
+    async def _multi_go(self) -> None:
+        """One ``TOKEN_EOP`` write with the go bits of a drawn channel pair, logged only.
+
+        ``OBS-TOKEN-MULTI-GO``: per channel of the pair, the code after the write and
+        the clocks from the write to the verdict on the comparator rails. The
+        specification does not state the result of two go bits in one write.
+        """
+        pairs = [(a, b) for i, a in enumerate(CHANNELS) for b in CHANNELS[i + 1 :]]
+        pair = self.plan.draw.choice("multi_go.pair", pairs)
+        watches = {ch: _RailWatch(ch) for ch in pair}
+        for w in watches.values():
+            w.start()
+        await ClockCycles(cocotb.top.clk_i, 1)
+        start = {ch: w.cyc for ch, w in watches.items()}
+        bits = GO_MASK[pair[0]] | GO_MASK[pair[1]]
+        await self.fd.wr(TOKEN_EOP_ADDR, bits)
+        fields: dict = {"bits": f"0x{bits:x}"}
+        for ch, w in watches.items():
+            v_cyc, _v = await w.wait_verdict(start[ch], _GWB_BOUND)
+            code, _n = await poll_code(self.fd.rd, ch, max_reads=_RUN_READS)
+            name = _CH_NAME[ch]
+            fields[f"{name}_final"] = "none" if code is None else f"0x{code:02x}"
+            fields[f"{name}_cycles"] = "none" if v_cyc is None else v_cyc - start[ch]
+        for w in watches.values():
+            w.stop()
+        self.chk.obs("TOKEN-MULTI-GO", **fields)

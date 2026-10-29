@@ -54,6 +54,7 @@ from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import kv_field_mask
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_mlkem_seq import (
     KEM_CMD_ENCAPS,
@@ -73,6 +74,7 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_CTRL,
     MLKEM_ENCAPS_KEY,
     MLKEM_KV_MSG_RD_CTRL,
+    MLKEM_KV_MSG_RD_STATUS,
     MLKEM_KV_SEED_RD_CTRL,
     MLKEM_KV_SK_WR_CTRL,
     MLKEM_MSG,
@@ -281,6 +283,32 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             f"dest 0x{dest:02x}"
         )
 
+    async def _kv_entry_obs(self, kem) -> None:
+        """One message-lane KV read that names the last vault entry instead of entry 0.
+
+        The zeroize before it clears the message lane's data-present latch, which
+        holds READ_CTRL write-protected after the sideloaded ENCAPS. The zeroize
+        before the writeback ENCAPS clears it again, so the read leaves no state
+        the later legs use.
+        """
+        await self._zeroize(kem, what="before the KV entry read")
+        entry = kv_field_mask("kv_read_ctrl_reg", "read_entry")
+        await kem.wr32(MLKEM_KV_MSG_RD_CTRL, KV_READ_EN | entry)
+        ctrl = await kem.rd32(MLKEM_KV_MSG_RD_CTRL)
+        for _ in range(_POLL_ITERS):
+            if not ctrl & KV_READ_EN:
+                break
+            await ClockCycles(cocotb.top.clk_i, _POLL_GAP)
+            ctrl = await kem.rd32(MLKEM_KV_MSG_RD_CTRL)
+        await ClockCycles(cocotb.top.clk_i, _POLL_GAP)
+        self.logger.info(
+            "OBS-ABR-KV-ENTRY LOG ctrl_wr=0x%08x ctrl=0x%08x mlkem_status=0x%08x kv_rd_status=0x%08x",
+            KV_READ_EN | entry,
+            ctrl,
+            await kem.rd32(MLKEM_STATUS),
+            await kem.rd32(MLKEM_KV_MSG_RD_STATUS),
+        )
+
     def _seed_z_probe(self) -> list[int]:
         """The eight Z words the ABR engine holds, word i at bits [32*i +: 32]."""
         v = self.rd_known(cocotb.top.abr_mlkem_seed_z_probe_o)
@@ -463,6 +491,8 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             int(first_nz is None),
             "none" if first_nz is None else f"0x{first_nz:08x}",
         )
+
+        await self._kv_entry_obs(kem)
 
         # --- CHK-KEM-SK-WRITEBACK: kv_write, and its negative control ---------
         # Nothing has armed the write lane yet, so the sideload block's

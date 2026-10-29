@@ -62,6 +62,10 @@ Checkers:
 
 Log-only: ``OBS-PROG-TIMEOUT`` (busy, done and status after m x T clocks of a held
 program with the timeout enabled; the specification does not state the report).
+``OBS-SENSE-STATUS-CTRLWORD`` (a last sense with the status bit on the response of a
+control word, drawn from shadow words 0 to 9 and 255: that shadow word,
+``sep_fuse_sense_done_o`` and ``lcc_feat_ctrl_probe_o``; the specification does not
+state the effect on a control word).
 
 FCOV: the graded window is open over the second injected sense and the held program,
 each to its own grade. The control sense and the first injected sense are graded
@@ -665,4 +669,26 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         )
         await ClockCycles(dut.clk_i, 64)
         await self._wr(PROGRAM_CTRL_ADDR, 0)
+
+        # Step 11: status bit on the sense response of one control word, logged only.
+        cw = int(p.leg["ctrl_word"])
+        dut.efuse_sense_status_word_i.value = cw
+        dut.efuse_sense_status_inject_i.value = 1
+        await rst_pulse(self, hold=_RST_HOLD)
+        n = await clocks_to_sense(self, sense_bound, started=True)
+        await ClockCycles(dut.clk_i, 20)
+        await ReadOnly()
+        self.logger.info(
+            "OBS-SENSE-STATUS-CTRLWORD LOG seed=%d word=%d shadow=0x%08x staged=0x%08x "
+            "sense_done=%d t_sense=%s feat=0x%016x",
+            seed,
+            cw,
+            self._probe_words()[cw],
+            staged[cw],
+            self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True),
+            "none" if n is None else n,
+            self.rd(dut.lcc_feat_ctrl_probe_o, allow_unknown=True),
+        )
+        await RisingEdge(dut.clk_i)
+        dut.efuse_sense_status_inject_i.value = 0
         self.chk.finish()

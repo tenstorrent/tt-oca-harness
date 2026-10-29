@@ -64,7 +64,9 @@ Checkers:
                    profile word of the staged disable vectors, which is not all
                    ones.
 
-``INFO-STM-CAPTURE0`` logs ``secure_tm_o`` of the strap-0 boot of leg D (the
+``OBS-STM-CLEAR-NOCLK`` logs ``secure_tm_o`` after leg A when ``rst_ni`` falls with
+``clk_i`` stopped (strap 1); a reset release and a sense with the strap at 1 follow
+before leg B. ``INFO-STM-CAPTURE0`` logs ``secure_tm_o`` of the strap-0 boot of leg D (the
 cold-reset clear gives the same 0, so it is not graded as a capture). The
 sampling at fuse-sense completion is a control here.
 
@@ -89,7 +91,7 @@ from typing import Any
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ReadOnly, RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge, Timer
 from env.sep_efuse_plan import feat_ctrl_profile
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_lcc_golden import LC_PROD
@@ -114,6 +116,8 @@ _MATCH_LSB = EFUSE_MMR.field_lsb("TOKEN_MATCH", "token_match_status")
 
 _HOLD = 256
 _RST_LOW = 20
+# clk_i periods the clock stays stopped around the rst_ni fall of the no-clock clear.
+_NOCLK_PERIODS = 8
 _PULSE = 16
 _OVRD_CYCLES = 32
 _SENSE_BOUND = 20_000
@@ -236,6 +240,43 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         idx = await self._wait_sample("stm", want, _STM_BOUND, f"{label} secure_tm_o")
         assert idx >= sense, f"{label}: secure_tm_o={want} before the sense rise"
         return idx
+
+    async def _clear_no_clock(self) -> None:
+        """``rst_ni`` falls while ``clk_i`` is stopped, strap 1; logged only.
+
+        ``OBS-STM-CLEAR-NOCLK``: ``secure_tm_o`` before the fall and while ``rst_ni``
+        is low with no ``clk_i`` edge. The specification does not state whether the
+        clear needs a clock edge. The clock then restarts, the reset is released
+        with the strap at 1, and the sense brings ``secure_tm_o`` back to 1.
+        """
+        dut = cocotb.top
+        close_graded_window(self.logger)
+        period_ns = self.cfg.sys_clk_period_ns
+        gap_ps = _NOCLK_PERIODS * self._whole_ps(period_ns, "clk_i period")
+        await self._edge()
+        before = _bit(dut.secure_tm_o)
+        self.restart_clock("clk_i", period_ns, phase_ps=gap_ps)
+        await Timer(gap_ps // 4, units="ps")
+        dut.rst_ni.value = 0
+        await Timer(gap_ps // 4, units="ps")
+        await ReadOnly()
+        stm = _bit(dut.secure_tm_o)
+        strap = _bit(dut.test_en_strap_i)
+        self.logger.info(
+            "OBS-STM-CLEAR-NOCLK secure_tm_o=%s strap=%s before=%s clk_stopped_ps=%d",
+            stm,
+            strap,
+            before,
+            gap_ps,
+        )
+        a = await self._edge()
+        await self._until(a + _RST_LOW)
+        dut.rst_ni.value = 1
+        sense = await self._wait_sample("done", 1, _SENSE_BOUND, "no-clock clear resense")
+        await self._stm_after_sense(sense, 1, "no-clock clear resense")
+        await self._wait_sample("sep", 1, _TAP_BOUND, "no-clock clear sep_reset_n")
+        self._check_efuse_shadow_after_sense()
+        open_graded_window(TEST, self.logger)
 
     async def _hold(self, cycles: int = _HOLD) -> int:
         await self._until(self._now() + cycles)
@@ -483,6 +524,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._stm_after_sense(sense, 1, "leg A resense")
         await self._wait_sample("sep", 1, _TAP_BOUND, "leg A sep_reset_n")
         self._check_efuse_shadow_after_sense()
+        await self._clear_no_clock()
 
         # Leg B: non-sampling events with secure_tm_o = 1 and the strap at 0, so a
         # resample of the strap at any event reads 0.

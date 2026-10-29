@@ -28,6 +28,10 @@ OR-merged with the writes of the leaf).
   CHK-DEMOTE-STEP   leg B: after each operation both demotion registers (bits [63:2]
                     at 0) equal the RW1S golden (``demote`` sets only while ``lock``
                     is 0) and ``FEAT_CTRL`` equals the row of the cumulative demotion.
+                    A write of both bits while ``lock`` is 0 has no stated demote
+                    golden: its demote bit is logged (``OBS-DEMOTE-LOCK-ONE-WRITE``,
+                    every both-bits write) and the model takes the readback; the lock
+                    bit and ``FEAT_CTRL`` stay graded.
   CHK-DEMOTE-ENC    leg B: each output pair is complementary, the pair of a demoted
                     register differs from the undemoted reference pair and an
                     undemoted register keeps it, and each lock probe equals the lock
@@ -120,8 +124,8 @@ FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 DEMOTE_ADDR = {1: SEP_LIFECYCLE_CTRL.addr("DEMOTE_1"), 2: SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")}
 DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
 LOCK_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "lock")
-DEMOTE_OP = {"demote": DEMOTE_BIT, "lock": LOCK_BIT, "zero": 0}
-OP_NAME = {"demote": "set_demote", "lock": "set_lock", "zero": "zero"}
+DEMOTE_OP = {"demote": DEMOTE_BIT, "lock": LOCK_BIT, "zero": 0, "both": DEMOTE_BIT | LOCK_BIT}
+OP_NAME = {"demote": "set_demote", "lock": "set_lock", "zero": "zero", "both": "set_both"}
 DIS_ADDR = {"SIP_DIS": shadow_addr("SIP_DIS"), "SYS_DIS": shadow_addr("SYS_DIS")}
 PROGRAM_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 M32 = 0xFFFF_FFFF
@@ -194,10 +198,17 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     def _apply_op(self, reg: int, op: str) -> None:
         """RW1S golden (sep_lifecycle_ctrl.adoc DEMOTE_1/2; lifecycle_controller.adoc,
         Programming and Locking): demote sets only while lock is 0, lock always sets,
-        a zero write changes nothing."""
+        a zero write changes nothing. A write of both bits sets lock; its demote bit is
+        stated only when lock is already 1 (no change). With lock 0 the demote bit is
+        open: ``_cycle`` takes it from the readback."""
+        self.open_demote = None
         if op == "demote" and not self.dem[reg][1]:
             self.dem[reg][0] = 1
         elif op == "lock":
+            self.dem[reg][1] = 1
+        elif op == "both":
+            if not self.dem[reg][1]:
+                self.open_demote = reg
             self.dem[reg][1] = 1
 
     async def _feat(self) -> tuple[int, int]:
@@ -237,6 +248,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.cfg.reset_done.set()
         self.sip_m, self.sys_m = self.p.sip_dis, self.p.sys_dis
         self.dem = {1: [0, 0], 2: [0, 0]}
+        self.open_demote: int | None = None
         self.sdis = 0
 
     def _feat_cell(
@@ -325,12 +337,31 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         lcw = shadow_word(self, LC_WORD_IDX)
         diff = self.bank.diff_since(self.snap)
         progs = self.shim.programs_since(self.otp_mark)
-        row = self._golden()
         got = {1: r1, 2: r2}
+        ungraded = {1: 0, 2: 0}
+        if op == "both":
+            self.chk.obs(
+                "DEMOTE-LOCK-ONE-WRITE",
+                reg=reg,
+                pre_lock=int(self.open_demote is None),
+                demote_rd=int(bool(got[reg] & DEMOTE_BIT)),
+                lock_rd=int(bool(got[reg] & LOCK_BIT)),
+                feat=f"0x{feat:016x}",
+                probe=f"0x{probe:016x}",
+            )
+        if self.open_demote is not None:
+            # The demote bit of a both-bits write with lock 0 has no stated golden: the
+            # model takes the readback, and the lock bit and FEAT_CTRL stay graded.
+            self.dem[self.open_demote][0] = int(bool(got[self.open_demote] & DEMOTE_BIT))
+            ungraded[self.open_demote] = DEMOTE_BIT
+            self.open_demote = None
+        row = self._golden()
         exp = {1: self._dem_value(1), 2: self._dem_value(2)}
         self.chk.ok(
             "DEMOTE-STEP",
-            got[1] == exp[1] and got[2] == exp[2] and feat == row.value and probe == row.value,
+            all((got[r] ^ exp[r]) & ~ungraded[r] == 0 for r in (1, 2))
+            and feat == row.value
+            and probe == row.value,
             step=step,
             reg=reg if reg is not None else "na",
             op=OP_NAME.get(op, "none") if op else "none",
@@ -768,6 +799,13 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             ctl_open=f"{ctl_open['sep']},{ctl_open['smc']}",
             ctl_closed=f"{ctl_closed['sep']},{ctl_closed['smc']}",
         )
+        self.chk.obs(
+            "DTP-PORT-LEVEL",
+            sep_open=ctl_open["sep"],
+            sep_closed=ctl_closed["sep"],
+            smc_open=ctl_open["smc"],
+            smc_closed=ctl_closed["smc"],
+        )
         for c in cells:
             bits = "".join(str((c["sip"] >> b) & 1) for b in LEG_E_ORDER)
             fbits = "".join(str((c["feat"] >> b) & 1) for b in LEG_E_ORDER)
@@ -793,8 +831,6 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
                 sep_class="open_case" if sep_open else "other",
                 smc_port=c["smc"],
                 smc_class="open_case" if smc_open else "other",
-                ctl_open=f"{ctl_open['sep']},{ctl_open['smc']}",
-                ctl_closed=f"{ctl_closed['sep']},{ctl_closed['smc']}",
             )
 
     # -- scenario ------------------------------------------------------------
@@ -828,6 +864,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.fd = SepEfuseFd(self)
         self.sip_m, self.sys_m = p.sip_dis, p.sys_dis
         self.dem = {1: [0, 0], 2: [0, 0]}
+        self.open_demote: int | None = None
         self.sdis = 0
 
         self.write_efuse_image(p.image)

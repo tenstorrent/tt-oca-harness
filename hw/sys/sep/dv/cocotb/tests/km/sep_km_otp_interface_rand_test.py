@@ -296,6 +296,30 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             raise AssertionError(f"host {op.value} 0x{addr:08x} did not complete")
         return seq.rdata & WORD_MASK, bool(seq.resp_ok)
 
+    async def _sample_presense(self) -> dict:
+        """The KM OTP identity inputs each clock from ``rst_ni`` release to sense done."""
+        dut = cocotb.top
+        taps = (dut.km_otp_sep_chiplet_id_o, dut.km_otp_sep_sip_id_o, dut.km_otp_sep_sys_id_o)
+        first = None
+        for cycle in range(1, SENSE_BOUND + 1):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            vals = [self.rd(t, allow_unknown=True) for t in taps]
+            if first is None and any(vals):
+                first = cycle
+            if self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True):
+                return {
+                    "chiplet": _h(vals[0]),
+                    "sip": _h(vals[1]),
+                    "sys": _h(vals[2]),
+                    "first_nonzero_cycle": "none" if first is None else first,
+                    "sense_done_cycle": cycle,
+                }
+        return {
+            "first_nonzero_cycle": "none" if first is None else first,
+            "sense_done_cycle": "none",
+        }
+
     async def _wait_sep_reset_release(self) -> int:
         dut = cocotb.top
         for cycle in range(1, RELEASE_BOUND + 1):
@@ -364,7 +388,9 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         dut.test_en_strap_i.value = strap
         await ClockCycles(dut.clk_i, RESET_HOLD)
         dut.rst_ni.value = 1
+        presense = cocotb.start_soon(self._sample_presense())
         await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
+        self.chk.obs("OTP-PRESENSE", boot=boot, **(await presense))
         rel = await self._wait_sep_reset_release()
         self.cfg.reset_done.set()
         await ReadOnly()

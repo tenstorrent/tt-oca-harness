@@ -117,11 +117,17 @@ exempt 1, order 2, chain 2 of 10). Seed 5 draws the order cell, seed 8 and seed 
 the exempt cell (``LC_STATE`` bit 3 and bit 0).
 
 Draws appended to the plan stream after ``plan`` (no earlier draw or staged value
-moves): ``jtag_rlock_twin`` and ``jtag_rlock_locked`` (lock leg),
+moves): ``jtag_rlock_twin``, ``jtag_rlock_locked``, ``uid_rlock_slot`` and
+``uid_rlock_bit`` (lock leg),
 ``exempt_prog_bit`` (exempt cell).
 
 Observations: ``OBS-LOCK-READ`` logs the response and data of a frontdoor read that a
-read-lock blocks; the specification states neither, so they are not graded.
+read-lock blocks; the specification states neither, so they are not graded. At the end
+of the lock leg, ``OBS-UID-RDLOCK-PROG`` logs a program of a 0 bit of one UID field
+whose slot had no lock and now has its read-lock alone (programmed into ``LOCKS``,
+then a resense): ``efuse_req_error``, the program commands at the post-guard tap and
+the bank diff. The specification does not state whether a read-lock alone stops that
+program.
 
 Time: W is ``_W_MULT`` times the sense time measured at the first sense. A program
 or read-interface request waits the full W with no early exit, then reads its
@@ -154,14 +160,18 @@ from env.sep_efuse_plan import (
     LOCK_SLOT_FIELD,
     PROGRAM_CTRL_ADDR,
     READ_CTRL_ADDR,
+    SLOT_OF_FIELD,
     STATUS_ADDR,
+    WORD_BITS,
     bit_address,
     feat_ctrl_profile,
     field_n_words,
+    field_used_masks,
     field_word,
     plan,
     program_go_no_wait,
     read_ctrl_word,
+    read_lock_bit,
     shadow_addr,
     write_lock_bit,
 )
@@ -215,6 +225,8 @@ _RD_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_RD, "read_status")
 _KIND_W = ("write", "write_read")
 _KIND_R = ("read", "write_read")
 _SHADOW_WRITE_FIELDS = ("SIP_DIS", "SYS_DIS", "REQUIRED_SIGNERS", "REQUIRED_ALGS")
+# Lock slots of CHIPLET_UID, SIP_UID and SYS_UID (otp_fuse_controller.adoc, Fuse Fields).
+_UID_SLOTS = tuple(SLOT_OF_FIELD[f] for f in ("CHIPLET_UID", "SIP_UID", "SYS_UID"))
 
 # Checks per leaf kind (checkers table of the entry). No check runs on every seed.
 _EVIDENCE = {
@@ -706,6 +718,50 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                 blocked=self.blocked_writes,
             )
         await self._jtag_rlock()
+        await self._uid_rlock_prog()
+
+    async def _uid_rlock_prog(self) -> None:
+        """Read-lock alone on one unlocked UID slot, then a program of a 0 bit of that UID.
+
+        Logged only (``OBS-UID-RDLOCK-PROG``): the specification does not state whether
+        a read-lock alone stops a program of a UID field. The read-lock bit is
+        programmed into ``LOCKS`` and takes effect at the resense; the golden of the
+        resense is the bank content.
+        """
+        layout = self.plan.leg["layout"]
+        cands = [s for s in _UID_SLOTS if layout.get(s, "none") == "none"]
+        if not cands:
+            self.chk.obs("UID-RDLOCK-PROG", slot="none", reason="no_unlocked_uid_slot")
+            return
+        slot = self.plan.draw.choice("uid_rlock_slot", cands)
+        name = LOCK_SLOT_FIELD[slot]
+        rb = read_lock_bit(slot)
+        lock_addr = bit_address("LOCKS", rb // WORD_BITS, rb % WORD_BITS)
+        lock = await self._program(lock_addr)
+        set_shadow_golden(self, self.plan.image, words=list(self.bank.read()))
+        await self._sense("CHK-LOCK-CELL")
+        bank = self.bank.read()
+        w0 = field_word(name)
+        zeros = [
+            (k, b)
+            for k, used in enumerate(field_used_masks(name))
+            for b in range(WORD_BITS)
+            if (used >> b) & 1 and not (bank[w0 + k] >> b) & 1
+        ]
+        k, b = self.plan.draw.choice("uid_rlock_bit", zeros)
+        a = bit_address(name, k, b)
+        r = await self._program(a)
+        self.chk.obs(
+            "UID-RDLOCK-PROG",
+            slot=slot,
+            field=name,
+            lock_landed=int(self._landed(lock, lock_addr)),
+            bit_addr=a,
+            req_err=r["req_err"],
+            shim_cmd=len(r["progs"]),
+            bank_diff="none" if not r["diff"] else diff_log(r["diff"]),
+            pg_flags=f"busy{r['busy']}/done{r['done']}/st{r['prog_status']}",
+        )
 
     # --- JTAG read of a read-locked word (lock leg) --------------------------------
     def _jtag_words(self, *, locked: bool) -> list[tuple[int, int]]:

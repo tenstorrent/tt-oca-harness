@@ -74,7 +74,9 @@ event outside a graded step is dropped.
 
 Log-only: the flags of the pre-sense, data-0 and both-enables cases
 (``OBS-IF-STATUS-FLAGS``), the other flags and data of the lock-blocked read, the bank
-diff after the out-of-range and lock-blocked program cases (``OBS-IF-CMD``).
+diff after the out-of-range and lock-blocked program cases (``OBS-IF-CMD``), the
+count of post-guard commands (``efuse_shim_cmd_*_o``) of each out-of-range read and
+program (``OBS-IF-OOB-CMD``).
 Two points the contract leaves open are logged, not graded: the out-of-range program
 has no accepted twin in the procedure (``OBS-IF-CTRL-NO-TWIN``), and the order of the
 two enable-clear writes after the both-enables case is not stated (the leaf clears
@@ -743,6 +745,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         for a in self.oor:
             snap = await self._frame("oor_read")
             tag = self._step()
+            m_cmd = self.cmds.mark()
             f = await self._run_read(a)
             diff = self.bank.diff_since(snap)
             self.logger.info(
@@ -750,6 +753,12 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
                 self.seed,
                 a,
                 "none" if not diff else diff_log(diff),
+            )
+            self.logger.info(
+                "OBS-IF-OOB-CMD LOG seed=%d case=read_oob addr=%d post_guard_cmds=%d",
+                self.seed,
+                a,
+                len(self.cmds.commands_since(m_cmd)),
             )
             fc = await self._clear(_M_CLR_RAE)
             ok_clear = fc["rae"] == 0 and fc["pae"] == f["pae"] and fc["re"] == f["re"]
@@ -761,6 +770,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         for a in self.oor:
             snap = await self._frame("oor_program")
             tag = self._step()
+            m_cmd = self.cmds.mark()
             f = await self._run_program(a)
             diff = self.bank.diff_since(snap)
             self.logger.info(
@@ -768,6 +778,12 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
                 self.seed,
                 a,
                 "none" if not diff else diff_log(diff),
+            )
+            self.logger.info(
+                "OBS-IF-OOB-CMD LOG seed=%d case=prog_oob addr=%d post_guard_cmds=%d",
+                self.seed,
+                a,
+                len(self.cmds.commands_since(m_cmd)),
             )
             fc = await self._clear(_M_CLR_PAE)
             ok_clear = fc["pae"] == 0 and fc["rae"] == f["rae"] and fc["re"] == f["re"]

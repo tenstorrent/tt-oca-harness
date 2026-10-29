@@ -1333,8 +1333,8 @@ _FEAT_LEGS = (
     (LEG_D_WALK, 2),
     (LEG_E, 2),
 )
-_DEMOTE_OPS = ("demote", "lock", "zero")
-DEMOTE_OP_VALUE = {"demote": 0x1, "lock": 0x2, "zero": 0x0}
+_DEMOTE_OPS = ("demote", "lock", "zero", "both")
+DEMOTE_OP_VALUE = {"demote": 0x1, "lock": 0x2, "zero": 0x0, "both": 0x3}
 
 
 def _feat_extra_filter(sip: int, sys_: int) -> bool:
@@ -2139,15 +2139,17 @@ _SHIM_CLASSES = (("edge_10", 2), ("edge_254", 2), ("revoke", 1), ("inner", 1))
 SHIM_HOLD_BUDGET = 120_000
 SHIM_T_MIN = 2_000
 SHIM_M_MAX = 4
+# Shadow words outside the graded word range 10..254 (control and lock words).
+SHIM_CTRL_WORDS = (*range(10), 255)
 
 
 def plan_shim_response_fault(seed: int) -> SepEfusePlan:
-    """Fixed image; runtime draws: word class, inner word, spare bits a, b, c, T, m.
+    """Fixed image; runtime draws: word class, inner word, spare bits a, b, c, T, m, control word.
 
     Order: word class (10 and 254 weight 2, the ``CHIPLET_PUBK_REVOKE`` word and an
     inner 256-bit word weight 1); the inner word (11..253, in a 256-bit field); the
     three spare bits; T in [SHIM_T_MIN, SHIM_HOLD_BUDGET // SHIM_M_MAX]; m in
-    [2, SHIM_M_MAX].
+    [2, SHIM_M_MAX]; the logged control word (one of ``SHIM_CTRL_WORDS``).
     """
     d = SepEfuseDraws(seed)
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=FIXED_SIP_DIS, sys_dis=FIXED_SYS_DIS)
@@ -2173,6 +2175,7 @@ def plan_shim_response_fault(seed: int) -> SepEfusePlan:
     ]
     t = d.randrange("timeout_cycles_T", SHIM_T_MIN, SHIM_HOLD_BUDGET // SHIM_M_MAX + 1)
     m = d.randrange("hold_multiple_m", 2, SHIM_M_MAX + 1)
+    ctrl_word = d.choice("ctrl_word", SHIM_CTRL_WORDS)
     leg = {
         "word_class": cls,
         "word": w,
@@ -2181,6 +2184,7 @@ def plan_shim_response_fault(seed: int) -> SepEfusePlan:
         "spare_c": spares[2],
         "timeout_T": t,
         "hold_m": m,
+        "ctrl_word": ctrl_word,
     }
     return _make_plan(T_SHIM_FAULT, seed, d, LC_TEST_DEV, FIXED_SIP_DIS, FIXED_SYS_DIS, img, leg)
 
