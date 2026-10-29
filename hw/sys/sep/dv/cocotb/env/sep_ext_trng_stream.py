@@ -150,7 +150,7 @@ class SepExtTrngStream:
         d.ext_trng_tstrb_i.value = 0
         d.ext_trng_drive_en_i.value = sum(1 << i for i in en)
         self.enabled = en
-        self.log.info("EXT-TRNG-STREAM start streams=%s max_gap=%d", list(en), self.max_gap)
+        self.log.info("INFO-EXT-TRNG-STREAM start streams=%s max_gap=%d", list(en), self.max_gap)
         if self._task is None:
             self._task = self.life.start(self._run())
         return self
@@ -176,7 +176,7 @@ class SepExtTrngStream:
     def set_irq(self, level: int) -> None:
         """Drive the external TRNG interrupt (``ext_trng_irq_drive_i``) to ``level``."""
         self.dut.ext_trng_irq_drive_i.value = 1 if level else 0
-        self.log.info("EXT-TRNG-IRQ drive=%d", 1 if level else 0)
+        self.log.info("INFO-EXT-TRNG-IRQ drive=%d", 1 if level else 0)
 
     def send(self, stream: int, words: Iterable[int], strb: int = STRB_ALL) -> None:
         """Queue ``words`` on ``stream``; each beat carries ``strb``."""
@@ -329,7 +329,10 @@ class SepExtTrngStream:
                     s.wait = 0
                     s.reset_req = False
                     self.log.info(
-                        "EXT-SRC-RESET stream=%d dropped_beats=%d clk=%d", i, s.dropped, self.clk
+                        "INFO-EXT-SRC-RESET stream=%d dropped_beats=%d clk=%d",
+                        i,
+                        s.dropped,
+                        self.clk,
                     )
                     continue
                 if xfer[i]:

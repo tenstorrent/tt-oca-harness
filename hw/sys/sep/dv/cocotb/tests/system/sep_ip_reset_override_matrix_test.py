@@ -45,7 +45,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-OVR-IP        each pass, pair and domain: after the settle the tap is 0
                     for E=1 V=0, 1 for E=1 V=1, and the software bit for E=0;
                     the tap holds that value to the end of the hold. The
-                    E=1 V=0 cells of Adams Bridge and TRNG log ``CTL-OVR-IP``.
+                    E=1 V=0 cells of Adams Bridge and TRNG log ``CTRL-OVR-IP``.
   CHK-OVR-SKIP-ISO  per domain: the host-path isolate-complete bits stay 0 over
                     every pass 1 override of the domain. Control: the software
                     assert of the same domain raises them.
@@ -75,7 +75,7 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                     the eFuse release is before the override
                     (``hw/sys/sep/doc/clk_rst.adoc``, Reset Architecture), so the
                     override and its release do not touch fuse sense. The idle
-                    TDR leg logs ``OBS-OVR-TRST-IDLE`` only: there the TDR holds
+                    TDR leg logs ``INFO-OVR-TRST-IDLE`` only: there the TDR holds
                     its reset value and no SEP input changes.
 
 Environment choices (logged): the settle of 4 ``clk_i`` cycles after each
@@ -379,7 +379,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                 await self.taps.resets[name].wait_level(1, TAP_BOUND)
             sw0 = await self._sw_read()
             self._ctl(
-                "CTL-BOOT",
+                "CTRL-BOOT",
                 (sw0 & SW_MASK) == SW_DEFAULT,
                 f"SW_RESET_N=0x{sw0:02x} expect=0x{SW_DEFAULT:02x} reset_taps=1,1",
             )
@@ -446,7 +446,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                     f"edges_from_apply={moved[d]}"
                 )
                 if pair.en(d) and not pair.val(d) and d in CTL_CELLS:
-                    self._ctl("CTL-OVR-IP", ok, vals)
+                    self._ctl("CTRL-OVR-IP", ok, vals)
                 else:
                     self._chk("CHK-OVR-IP", ok, vals)
             await self._shift(IC_RESET_IDLE, f"pass{n} pair={pair.idx} remove")
@@ -511,13 +511,13 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
             try:
                 await self._wait_host_iso(d, f"control sw assert {d}")
             except AssertionError as exc:
-                self._ctl("CTL-SW-ASSERT", False, f"dom={d} host_iso_ack_rise=none ({exc})")
+                self._ctl("CTRL-SW-ASSERT", False, f"dom={d} host_iso_ack_rise=none ({exc})")
             rises = [
                 self.taps.iso_ack.rise_clks_since(m["iso_ack"], iso_name(x)) for x in HOST_ISO[d]
             ]
             rise = max(r[0] for r in rises) - m["iso_ack"].clk if all(rises) else -1
             self._ctl(
-                "CTL-SW-ASSERT",
+                "CTRL-SW-ASSERT",
                 rise >= 0,
                 f"dom={d} host_iso_ack_rise_cycle={rise} (from the write issue)",
             )
@@ -639,7 +639,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         # starts once it reads 1, so a fall during the override can show.
         aon = self.taps.resets["aon_rst_n"]
         at = await aon.wait_level(1, AON_BOUND)
-        self.logger.info("CTL-AON-UP: aon_rst_n=1 at tap clock %d (bound %d)", at, AON_BOUND)
+        self.logger.info("CTRL-AON-UP: aon_rst_n=1 at tap clock %d (bound %d)", at, AON_BOUND)
         for ev in range(self.plan.events):
             for p in SEPRST_REGS:
                 await self._arm(p, ev + 1)
@@ -720,7 +720,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                 got = await self._read_probe(p)
                 fc = field_compare(got, p.reset, p.mask)
                 self.logger.info(
-                    "OVR-DOMAIN event=%d reg=%s %s %s",
+                    "INFO-OVR-DOMAIN event=%d reg=%s %s %s",
                     ev,
                     p.name,
                     fc.fields(),
@@ -729,7 +729,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
                 n_ok += int(fc.ok)
             sw_after = await self._sw_read()
             self._ctl(
-                "CTL-OVR-SWRST",
+                "CTRL-OVR-SWRST",
                 (sw_after & SW_MASK) == SW_DEFAULT,
                 f"SW_RESET_N=0x{sw_after & SW_MASK:02x}",
             )
@@ -816,7 +816,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         # Logged only.
         idle, _, _ = await self._trst_window("override idle")
         self.logger.info(
-            "OBS-OVR-TRST-IDLE LOG: sep_reset_n_ovrd values=%s sep_fuse_sense_done_o_low=%d "
+            "INFO-OVR-TRST-IDLE LOG: sep_reset_n_ovrd values=%s sep_fuse_sense_done_o_low=%d "
             "dbg_sep_reset_n_o_low=%d over %d cycles; the TDR holds its reset value, so "
             "no SEP input changes (not graded)",
             sorted({x[3] for x in idle}),
@@ -871,7 +871,7 @@ class sep_ip_reset_override_matrix_test(sep_base_test):
         acyc = self.taps.resets["aon_rst_n"].clk - m_aon.clk
         aon_low = acyc - self.taps.resets["aon_rst_n"].high_clocks_since(m_aon)
         self._ctl(
-            "CTL-RST-NI",
+            "CTRL-RST-NI",
             sense_low > 0 and aon_low > 0,
             f"hold={RST_NI_HOLD} sep_fuse_sense_done_o_low_cycles={sense_low} "
             f"aon_rst_n_low_cycles={aon_low} release_clks={res['release_clks']}",

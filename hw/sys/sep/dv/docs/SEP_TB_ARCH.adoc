@@ -217,7 +217,9 @@ Observation probe groups:
   else the two-flop capture of `wdt_rst_ni`; owner
   `sep_scan_reset_override_test`. `wdt_alert_probe_o` and `wdt_bark_probe_o`,
   the watchdog alert (`wdt_alert`) and bark interrupt (`intr_wdog_timer_bark`)
-  at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`.
+  at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`
+  (the bark line, sampled at the AR of each `INTR_STATE` read of a graded
+  watchdog run, is the bark-line clause of CHK-WDT-ORDER and CHK-WDT-MAX).
   `jtag_sep_reset_n_ovrd_probe_o`, the
   `sep_reset_n` override select on the SEP input port
   (`u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd`), the value SEP receives
@@ -448,7 +450,9 @@ Observation probe groups:
   handshakes). Owners: `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`, `sep_fabric_dma_endpoint_matrix_test`
   (the pool read of CHK-DMA-NOTCONN, the filter-write AW and B of
-  CHK-DMA-FILT-WR).
+  CHK-DMA-FILT-WR), `sep_dma_zero_fill_rand_test` (no AR, AW or W of the
+  rejected fill of CHK-DMA-ZERO-SRC-ASID, and the AW count of its control
+  fill).
 * Secure DMA status tap (`dma_status_probe_o`): the stored level of each
   STATUS bit (BUSY, DONE, ABORTED, ERROR, SHA2_DIGEST_VALID, CHUNK_DONE) on
   each clock. Owners: `sep_dma_transfer_matrix_rand_test`,
@@ -504,6 +508,20 @@ Observation probe groups:
   the period of `entropy_rosc_sample_clk_i` gives the division. Users: the ESRC
   sample-clock divide entry of the crypto and entropy area and the FCOV
   sampler (`sep_esrc_noise_gen_cg` `cp_div_ratio`).
+* ESRC downsample and divider probes (`esrc_downsample_count_o`,
+  `esrc_stream_valid_gated_o`, `esrc_decor_div_lane0_o`): the FIFO downsample
+  count (`downsample_count`), the decorrelator stream strobe after the boot
+  gate (`entropy_stream_valid_gated`), and the divider count of lane 0
+  (`gen_ecmplx[0].u_generator.u_decorrelator.clk_divider`). Read-only. Users:
+  the ESRC conditioning entry of the crypto and entropy area and the FCOV
+  sampler (`sep_esrc_conditioning_cg` `cp_ds_midrun`, `cp_div_midrun`,
+  `cp_ds_resume`).
+* ESRC generator enable probe (`esrc_ro_enable_o`): bit i is the enable of
+  generator lane i at the generator complex
+  (`u_generator_complex.jitter_ro_enable_i`, the stored
+  `RING_OSC_ENABLE.ENABLE`). Read-only. A check that anchors on it assumes only
+  a fixed delay from this tap to the lane. Users: the ESRC conditioning entry
+  of the crypto and entropy area (the lane enable clock of the period walk).
 * PIC read-data probe (`pic_rd_data_probe_o`): `picm_rd_data` of the VeeR
   EL2 PIC with the registered read strobe and read address
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;
@@ -515,7 +533,8 @@ Observation probe groups:
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), one bit and the
   register offset of each PIC register write; tied to 0 on the CPU stub
   build. Read-only copy of DUT nets; no force. Owner: `sep_pic_reg_rand_test`
-  (CHK-MEIP-WR-STORE, the count of PIC writes at the `meip[0]` offset).
+  (CHK-MEIP-WR-STORE, the count of PIC writes at the `meip[0]` offset;
+  CHK-PIC-STORE, the count at each hole, entry-0 and `meigwclr[N]` offset).
 * Bridge-fault pulse probe (`sep_cpu_ctrl_err_pulse_probe_o`): the set term
   and the `err_clr_i` pulse of the seven peripheral register-bridge latches
   and of the two DMA latches (`reg_path_err`, `host_path_err`). Owner:
@@ -734,8 +753,9 @@ Observation probe groups:
   (`u_sep_crypto.entropy_muxed_req`, `entropy_muxed_rsp`); and, through the
   connection block, the probes `trng_reset_active_probe_o`, `crypto_edn_*`,
   `pool_edn_*`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`,
-  `esrc_compress_vld_o`, `esrc_whiten_push_o`, `esrc_decor_noise_o` and the
-  ESRC FIFO integrity inject inputs. Owners: the owning tests of the crypto
+  `esrc_compress_vld_o`, `esrc_whiten_push_o`, `esrc_decor_noise_o`,
+  `esrc_downsample_count_o`, `esrc_stream_valid_gated_o`,
+  `esrc_decor_div_lane0_o` and the ESRC FIFO integrity inject inputs. Owners: the owning tests of the crypto
   and entropy groups.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
@@ -1002,6 +1022,25 @@ Exceptions (a closed set):
   asserts on the next DMA command. Software cannot emit a broken command
   user code. The force targets that input only. `DMA_BUS_ERR_STATUS` and
   the interrupt aggregate stay frontdoor. Owner: `sep_dma_basic_test`.
+* *Mailbox WRITE_DATA unstrobed-lane inject* — while
+  `mbox_lane_inject_arm_i` is 1, a W beat with WSTRB 0x0F or 0xF0 to the
+  outbound `WRITE_DATA` of a mailbox selected in `mbox_lane_inject_mbx_i`
+  carries `mbox_lane_inject_data_i` on its unstrobed byte lanes at the
+  mailbox unit port (`u_sep_system_peripherals.mailbox_axil_req`). A 32-bit
+  CPU store drives 0 on those lanes, so firmware cannot show that the
+  mailbox pushes unstrobed lanes as 0
+  (`hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl:24-26`); non-zero data
+  on unstrobed lanes is legal AXI. The strobed lanes, WSTRB, the address and
+  the response stay frontdoor, and the pop is a frontdoor 64-bit read of
+  `READ_DATA`. Default 0; the force is released only when the live W data
+  equals the value forced last. The read-only tap `mbox_axil_aw_hs_o`,
+  `mbox_axil_aw_addr_o`, `mbox_axil_w_hs_o`, `mbox_axil_w_strb_o` and
+  `mbox_axil_w_data_o` shows the AW and W handshakes of the same port and
+  the W data the mailbox unit takes. The inject sets the W data on the
+  falling edge before the rising edge at which the mailbox unit takes the
+  beat, so a reader samples the tap after the falling edge: a handshake seen
+  there is the one taken at the next rising edge, with the data taken. Owner:
+  `sep_mailbox_plic_test`.
 * *Crypto message-FIFO drain stall* — `hmac_fifo_drain_stall_i` holds the
   read-ready of the HMAC message FIFO (`fifo_rready`) and the word valid that
   `hmac_core` gives the SHA-2 engine (`u_hmac.sha_rvalid_o`, the core's view of
@@ -1326,13 +1365,13 @@ sentence; the inventory sets only which pins are graded.
 |The specification names the two pin classes and no list of instances, so the
 graded set is a bench decision: the SEP-owned boundary. A committed list keeps the graded set independent of a source
 scan at run time: the hierarchy walk finds each inventory pin, an inventory
-pin that the walk does not find fails CTL-PIN-WALK by name, and the source
+pin that the walk does not find fails CTRL-PIN-WALK by name, and the source
 ownership scan of `cocotb/env/sep_test_en_walk.py` only labels the walked pins
 in the log. The inventory changes only by a reviewed edit.
 
 |Scope
 |`GRADED_PINS` (172 pins: 1 clock gater, 171 AXI cells) as the graded set of
-CHK-TEST-EN-PINS and CTL-PIN-WALK in `sep_test_en_pin_reach_test`
+CHK-TEST-EN-PINS and CTRL-PIN-WALK in `sep_test_en_pin_reach_test`
 (`testlists/system.toml`). No other test grades these pins.
 |===
 
@@ -1405,8 +1444,8 @@ real sense where it needs fuse content), and
 
 |`test_en_i` pin inventory
 |`python3 -c 'import sys; sys.path.insert(0, "hw/sys/sep/dv/cocotb"); from tests.system.sep_test_en_pin_inventory import GRADED_PINS as G; print(len(G), sum(c == "clock_gater" for _, c in G))'`,
-then `grep -n 'CTL-PIN-WALK:'` in any log of `sep_test_en_pin_reach_test`
-|`172 1`, and `CTL-PIN-WALK: graded=172 inventory=172 missing=0 class_mismatch=0`.
+then `grep -n 'CTRL-PIN-WALK:'` in any log of `sep_test_en_pin_reach_test`
+|`172 1`, and `CTRL-PIN-WALK: graded=172 inventory=172 missing=0 class_mismatch=0`.
 
 |Source ID carrier
 |`for f in hw/sys/smc/doc/assets/smc-traffic-filters.svg hw/ip/axi_filter/doc/index.adoc hw/sys/sep/doc/fabric.adoc; do git log -1 --format=%h -- $f; done`,
@@ -1730,6 +1769,29 @@ so PULP `common_cells` inline assertions are off on every backend. The checks
 above are the checking layer the Verilator acceptance path relies on: nothing
 else is watching there for a checker miss.
 
+[[sep-log-prefixes]]
+==== Log line prefixes
+
+Every log line that a reader or a tool counts starts with one of these
+prefixes. `SepChkLog` (`cocotb/env/sep_chk_log.py`) prints all five
+through `ok()`, `ctrl()`, `obs()`, `blocked()` and `info()`; firmware prints
+them through `fw/tests/common/sep_console_rec.h`, and `SepFwConsole` parses
+them.
+
+[cols="2,4,1",options="header"]
+|===
+|Prefix |Meaning |Grades
+|`CHK-<NAME> PASS` / `CHK-<NAME> FAIL` |A checker: the DUT value compared with a golden from a specification or the RDL. A FAIL fails the leaf. |yes
+|`CTRL-<NAME>`, `CTRL-MISSING <NAME>` |A control: proof that the stimulus of a check reached its case, so that the check can fail. A missing control fails the leaf. |yes
+|`OBS-<NAME>` |A DUT value whose golden no specification states yet. It prints the value and grades nothing; it becomes a `CHK-` when a specification states the value. |no
+|`OBS-BLOCKED CHK-<NAME>` |A check that this run could not grade, with the reason. |no
+|`INFO-<NAME>` |A bench record: a set-up value, a stimulus draw or redraw, a reference timing that sizes a bench window, a leg marker, or bookkeeping. No specification states it. |no
+|===
+
+Machine records keep their own names: `RUN-IDENTITY*`, `EVIDENCE_SUMMARY`,
+`EVIDENCE-REQUIRED`, `FCOV-GATE`, `FCOV-QUIET`, `FW-CONSOLE`, `RESULT`, and
+the firmware `M G`, `M C` and `REQ` lines.
+
 === Coverage Strategy
 
 Verilator and VCS build the covergroups of `cov/sv/sep_fcov.sv` with the same
@@ -1848,7 +1910,7 @@ leaf carries the matching `+km_rom_hex`.
 The profiles drive the `rom_main`, `rom_main_default`, `rom_main_unrec` and
 `rom_main_otp_change` targets of `hw/sys/sep/dv/cocotb/tests/km_fw/Makefile`.
 A leaf of `sep_km_boot_reset_rand_test` or `sep_km_fault_inject_rand_test` logs
-`ROM-BUILD km_boot_wipe=<0/1> km_unrec_wipe=<0/1>`.
+`INFO-ROM-BUILD km_boot_wipe=<0/1> km_unrec_wipe=<0/1>`.
 
 The small committed `km_rom*.parhex` assembly images are a different class
 and stay tracked; they do not use this profile.

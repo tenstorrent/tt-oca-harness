@@ -14,8 +14,16 @@
  *     enable is still set; and
  *   * the ISR runs exactly once and does not re-fire.
  *
- * A last leg pushes one word into the outbound channel-0 aperture with every
- * mailbox PIC source enabled and checks that no interrupt reaches the CPU.
+ * A direction leg pushes one word into the outbound channel-0 aperture with
+ * every mailbox PIC source enabled and checks that no interrupt reaches the CPU.
+ *
+ * Two half-zero legs follow. Each opens an inbound filter window over the
+ * inbound aperture of a host-drawn mailbox, stores one host-drawn word with a
+ * 32-bit store to one half of that mailbox's outbound WRITE_DATA (the low half,
+ * then the high half of the second mailbox), and spins with no mailbox access
+ * while the host pops the entry with a 64-bit read of the inbound READ_DATA and
+ * grades it. The firmware grades nothing in these legs; it prints one HZ-LEG
+ * line per leg with the values it stored.
  *
  * main() returns the error count; crt0.s turns 0 into the PASS magic and any
  * other value into the FAIL magic.
@@ -23,6 +31,8 @@
 
 #include <stdint.h>
 
+#include "filter_ctrl.h"
+#include "sep.h"
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 #include "sep_axil_mailbox.h"
@@ -41,6 +51,42 @@
 // clear re-traps within a few cycles of mret, so a few hundred iterations is
 // ample; kept small so the Verilator sim fits the regression timeout.
 #define STORM_CHECK_ITERS 256
+
+// Half-zero legs. sep_mailbox_plic_test patches g_hz: the mailbox and the word
+// of the low-half leg, then of the high-half leg. The defaults (0) fail the
+// parameter check below, so an unpatched image cannot run the legs.
+#define HZ_MAGIC_WORD 0x6A2F1D93u
+enum { HZ_P_MAGIC, HZ_P_M_LO, HZ_P_WORD_LO, HZ_P_M_HI, HZ_P_WORD_HI, HZ_P_COUNT };
+volatile uint32_t g_hz[HZ_P_COUNT] = {
+    [HZ_P_MAGIC] = HZ_MAGIC_WORD,
+};
+// Spin after each half-zero store with no mailbox access, so the host 64-bit
+// pop is the only access at the mailbox unit while it is in flight.
+#define HZ_POP_WAIT_ITERS 4000
+// Inbound filter entries of the two half-zero legs.
+#define HZ_FILT_LO 0u
+#define HZ_FILT_HI 1u
+// Byte offset of a 64-bit filter_ctrl register's upper 32-bit word
+// (filter_ctrl.h register types; the CPU bus is little-endian).
+#define FILT_HI_OFF ((uint32_t)(sizeof(filter_ctrl__FILTER_CONFIG_t) / 2u))
+_Static_assert(sizeof(filter_ctrl__FILTER_CONFIG_t) == 8u, "FILTER_CONFIG is 64-bit");
+_Static_assert(sizeof(filter_ctrl__START_ADDR_t) == 8u, "START_ADDR is 64-bit");
+_Static_assert(sizeof(filter_ctrl__END_ADDR_t) == 8u, "END_ADDR is 64-bit");
+// Inbound mailbox window: from the inbound block base to the next channel's
+// outbound block base (generated memory map).
+#define MBX_IN_SPAN \
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR)
+_Static_assert(SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR ==
+                   SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR,
+               "WRITE_DATA opens the inbound block");
+#define CFG_RW_EN \
+    (FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
+     FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm)
+#define MBX_OUT(m, reg) \
+    sep_axil_mbox_ch((m), SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_##reg##_BASE_ADDR)
+#define MBX_IN(m, reg) \
+    sep_axil_mbox_ch((m), SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_##reg##_BASE_ADDR)
 
 static volatile uint32_t g_ch = 0;
 static volatile uint32_t g_isr_fired = 0;
@@ -237,6 +283,52 @@ static int run_outbound_no_cpu_delivery(void) {
     return 0;
 }
 
+static void filt_wr(uint32_t addr, uint32_t value) {
+    *(volatile uint32_t *)addr = value;
+    __asm__ volatile("fence" ::: "memory");
+}
+
+// Inbound filter entry idx: a read/write window over [start, end].
+static void filt_program(uint32_t idx, uint32_t start, uint32_t end, uint32_t cfg) {
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), 0u);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx), start);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx), end);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx) + FILT_HI_OFF, 0u);
+    filt_wr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx), cfg);
+}
+
+// Half-zero leg: one 32-bit store of word to half (0 low, 1 high) of the
+// outbound WRITE_DATA of mailbox m, then a spin while the host pops the entry
+// through the inbound port of m. The host grades the entry it pops.
+static int run_half_zero(uint32_t m, uint32_t half, uint32_t word, uint32_t filt_idx) {
+    if (m == 0u || m >= SEP_AXIL_MBOX_N || word == 0u) {
+        sep_mbx_puts("FAIL: half-zero leg parameters not patched: m=");
+        sep_mbx_puthex(m);
+        sep_mbx_puts(" word=");
+        sep_mbx_puthex(word);
+        sep_mbx_putc('\n');
+        return 1;
+    }
+    uint32_t in_base = MBX_IN(m, WRITE_DATA);
+    filt_program(filt_idx, in_base, in_base + MBX_IN_SPAN - 1u, CFG_RW_EN);
+
+    sep_mbx_puts("HZ-LEG m=");
+    sep_mbx_puthex(m);
+    sep_mbx_puts(" half=");
+    sep_mbx_puthex(half);
+    sep_mbx_puts(" word=");
+    sep_mbx_puthex(word);
+    sep_mbx_putc('\n');
+
+    sep_axil_mbox_wr(MBX_OUT(m, WRITE_DATA) + half * (uint32_t)sizeof(uint32_t), word);
+    for (volatile int i = 0; i < HZ_POP_WAIT_ITERS; i++) {
+        __asm__ volatile("" ::: "memory");
+    }
+    return 0;
+}
+
 int main(void) {
     int errors = 0;
 
@@ -258,16 +350,25 @@ int main(void) {
         }
     }
 
-    // Direction leg last: the entry it pushes stays in the outbound FIFO, and
-    // the paired inbound port would see it as read-data-available, which would
-    // make a later inbound channel-0 leg fire on the read threshold instead of
-    // the write one.
+    // Direction leg after the channel legs: the entry it pushes stays in the
+    // outbound FIFO, and the paired inbound port would see it as
+    // read-data-available, which would make a later inbound channel-0 leg fire
+    // on the read threshold instead of the write one.
     errors += run_outbound_no_cpu_delivery();
     if (errors) {
         return errors;
     }
 
+    // Half-zero legs last: the inbound interrupt enables are 0 after the
+    // channel legs, and the pops of the host leave both outbound FIFOs empty.
+    errors += run_half_zero(g_hz[HZ_P_M_LO], 0u, g_hz[HZ_P_WORD_LO], HZ_FILT_LO);
+    errors += run_half_zero(g_hz[HZ_P_M_HI], 1u, g_hz[HZ_P_WORD_HI], HZ_FILT_HI);
+    if (errors) {
+        return errors;
+    }
+
     sep_mbx_puts("PASS: mailbox[0..7] IRQ -> PIC claim id == ch+1 -> CPU ISR; "
-                 "IRQS/IRQP W1C->0, no storm; outbound push off the CPU PIC\n");
+                 "IRQS/IRQP W1C->0, no storm; outbound push off the CPU PIC; "
+                 "half-zero stores done\n");
     return 0;
 }

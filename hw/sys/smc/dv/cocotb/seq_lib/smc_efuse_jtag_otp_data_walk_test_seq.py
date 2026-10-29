@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_W2T_009 ANCHOR: smc_efuse_jtag_otp_data_walk_test
-# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 03c331b6d757c468b7825f65e5567b17e7096676e54f0cbd29d565b017edfc05
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 5 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 4 RECORD-SHA256: fa15e5c1ab82cfbf8803edfebd9722e7fff6bb05f0cc3eee49fdb4c95cb77224
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md @ artifact_revision 8 ENV: cocotb
 """eFuse interface control written from the JTAG eFuse port, read back over SEP_IN.
 
-Contract: ``SMC_COV_W2T_009`` revision 2
+Contract: ``SMC_COV_W2T_009`` revision 4
 (``hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_W2T_VPLAN_DETAIL_ADDITIONS.md``).
 
 Every write goes through the ``ej_axi`` AXI-Lite manager on the JTAG eFuse port; every
@@ -23,9 +23,19 @@ field access types are those of ``efuse_interface_ctrl.adoc``.
   with WSTRB 0x2 and the same data, then full-width 0. Both strobed readbacks and
   responses are logged (SF-009).
 * S4 reads bit A through the read interface, programs it with ``efuse_data`` 1 and polls
-  ``program_done``; S5 reads A again; S6 issues a data-0 program to bit A2 and reads A2
-  before and after. Each read first clears EFUSE_PROGRAM_CTRL, since ``program_enable``
-  and ``read_enable`` are mutually exclusive owners of the command path.
+  ``program_done``; S5 reads A again; S6 issues a data-0 program to bit A2, polls until
+  the GO write has completed and ``program_busy`` has read 0 on DATA0_SETTLE_READS
+  consecutive samples, and reads A2 before and after. The graded part is the unchanged
+  dout; whether the request shows a lifecycle at all (busy seen, or ``program_done`` /
+  ``program_status`` changed from their pre-GO values) and the ``program_status`` it leaves
+  are logged only, since ``efuse_interface_ctrl.rdl`` says a request with ``efuse_data`` 0
+  "will be ignored" and what that means is open (SF-034). Each read first clears
+  EFUSE_PROGRAM_CTRL, since ``program_enable`` and ``read_enable`` are mutually exclusive
+  owners of the command path.
+* S9 reads EFUSE_PROGRAM_CTRL over the JTAG eFuse port and writes the value read back,
+  with AxPROT 0b101, then 0b000, then the port default 0b010. Every response is OKAY and
+  the 0b101 and 0b000 reads equal the 0b010 reference read (SF-033). The register holds
+  the S6 word with ``efuse_data`` 0, so no write-back can start a fuse program.
 * S7 writes both control registers 0 and both timeouts 0x0080_0000 and drives
   ``tb_lc_state`` back to its S1 value.
 
@@ -116,10 +126,15 @@ WALK_COUNTS = {"PROGRAM_CTRL": 21, "READ_CTRL": 19, "READ_TO": 31, "PROG_TO": 31
 LC_TEST_DEV_PACKED = 0xF0
 
 FULL_STROBE = 0xF
+#: Contract S9 AxPROT legs in order; ``None`` is the port default 0b010, the reference.
+PROT_LEGS = (("prot5", 0b101), ("prot0", 0b000), ("prot2", None))
 RESP_OKAY = 0
 WORD = 0xFFFF_FFFF
 JTAG_ACCESS_TIMEOUT_NS = 2_000
 POLL_BOUND = 10_000
+#: S6: consecutive SEP_IN reads with ``program_busy`` 0 after the GO write completed before
+#: A2 is read again; a busy sample restarts the count.
+DATA0_SETTLE_READS = 8
 
 FENCE = ("SETUP", "WALK", "PARTIAL-STROBE", "PROGRAM", "READ-BACK", "DATA0", "RESTORED")
 
@@ -163,13 +178,20 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         return value
 
     async def _jtag_write(
-        self, label: str, addr: int, data: int, strb: int = FULL_STROBE, check: bool = True
+        self,
+        label: str,
+        addr: int,
+        data: int,
+        strb: int = FULL_STROBE,
+        check: bool = True,
+        prot: int | None = None,
     ) -> int:
         try:
             result = await self.jtag.write_result(
                 addr,
                 data,
                 strb=strb,
+                prot=prot,
                 check_response=False,
                 timeout_ns=JTAG_ACCESS_TIMEOUT_NS,
             )
@@ -187,10 +209,10 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
             )
         return resp
 
-    async def _jtag_read(self, label: str, addr: int) -> tuple[int, int]:
+    async def _jtag_read(self, label: str, addr: int, prot: int | None = None) -> tuple[int, int]:
         try:
             result = await self.jtag.read_result(
-                addr, check_response=False, timeout_ns=JTAG_ACCESS_TIMEOUT_NS
+                addr, prot=prot, check_response=False, timeout_ns=JTAG_ACCESS_TIMEOUT_NS
             )
         except AssertionError as exc:
             raise AssertionError(
@@ -251,6 +273,7 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         dout_pre = await self._program()
         await self._read_back(dout_pre)
         await self._data0()
+        await self._prot_variants()
         await self._restore()
         self._timeout_paths()
         self._nonvac()
@@ -466,8 +489,40 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
     async def _data0(self) -> None:
         _ctrl, pre, _busy = await self._fuse_read("S6_PRE", BIT_A2)
         await self._jtag_write("S6_ARM", PROGRAM_CTRL, BIT_A2 | PROG_EN)
-        await self._jtag_write("S6_GO", PROGRAM_CTRL, BIT_A2 | PROG_EN | PROG_GO)
-        ctrl, samples = await self._poll("S6_IDLE", PROGRAM_CTRL, lambda v: not v & PROG_BUSY)
+        pre_go = await self._sep_read("S6_PRE_GO", PROGRAM_CTRL)
+        done0, status0 = pre_go & PROG_DONE, pre_go & PROG_ERR
+
+        async def _go() -> None:
+            await self._jtag_write("S6_GO", PROGRAM_CTRL, BIT_A2 | PROG_EN | PROG_GO)
+
+        go = cocotb.start_soon(_go())
+        samples: list[int] = []
+        lifecycle = "none"
+        idle = 0
+        for _ in range(POLL_BOUND):
+            value = await self._sep_read("S6_REQ_POLL", PROGRAM_CTRL)
+            samples.append(value)
+            if lifecycle == "none":
+                if value & PROG_BUSY:
+                    lifecycle = "busy"
+                elif value & PROG_DONE != done0:
+                    lifecycle = "done-change"
+                elif value & PROG_ERR != status0:
+                    lifecycle = "status-change"
+            idle = 0 if value & PROG_BUSY else idle + 1
+            if go.done() and idle >= DATA0_SETTLE_READS:
+                break
+        else:
+            raise AssertionError(
+                f"S6_REQ_POLL: GO write not completed with program_busy 0 on "
+                f"{DATA0_SETTLE_READS} consecutive samples within {POLL_BOUND} SEP_IN reads "
+                f"(pre-GO 0x{pre_go:08x}, last 0x{samples[-1]:08x}, lifecycle={lifecycle})"
+            )
+        await go
+        ctrl = samples[-1]
+        self.waits.append(
+            f"S6_REQ_POLL bound={POLL_BOUND} reads used={len(samples)} last=0x{ctrl:08x}"
+        )
         _ctrl2, post, _busy2 = await self._fuse_read("S6_POST", BIT_A2)
         assert post == pre, (
             f"S6: data-0 program of A2=0x{BIT_A2:04x} changed dout 0x{pre:08x} -> 0x{post:08x}"
@@ -475,14 +530,51 @@ class smc_efuse_jtag_otp_data_walk_test_seq(SmcCsrSeq):
         self._stamp("DATA0")
         self._chk(
             "CHK-EFUSE-JTAG-DATA0",
-            "A2=0x%04x dout 0x%08x == 0x%08x, done/busy=%s over %d samples (logged; "
-            "PROGRAM_CTRL=0x%08x)",
+            "A2=0x%04x dout 0x%08x == 0x%08x (graded); lifecycle=%s status_pre=%d "
+            "status_post=%d, pre-GO PROGRAM_CTRL=0x%08x, done/busy=%s over %d samples, "
+            "PROGRAM_CTRL=0x%08x (logged only, LINKED-ISSUE SF-034: the RDL says a data-0 "
+            "request is ignored)",
             BIT_A2,
             pre,
             post,
+            lifecycle,
+            int(bool(status0)),
+            int(bool(ctrl & PROG_ERR)),
+            pre_go,
             ",".join(f"{int(bool(s & PROG_DONE))}/{int(bool(s & PROG_BUSY))}" for s in samples[:8]),
             len(samples),
             ctrl,
+        )
+
+    async def _prot_variants(self) -> None:
+        legs = {}
+        for name, prot in PROT_LEGS:
+            data, rresp = await self._jtag_read(f"S9_{name}_RD", PROGRAM_CTRL, prot=prot)
+            bresp = await self._jtag_write(
+                f"S9_{name}_WR", PROGRAM_CTRL, data, check=False, prot=prot
+            )
+            legs[name] = (data, rresp, bresp)
+        ref = legs["prot2"][0]
+        bad = {n: (r, b) for n, (_d, r, b) in legs.items() if r != RESP_OKAY or b != RESP_OKAY}
+        assert not bad, (
+            f"S9: non-OKAY JTAG eFuse port response(s) (rresp, bresp) {bad} (LINKED-ISSUE SF-033)"
+        )
+        differ = {n: f"0x{d:08x}" for n, (d, _r, _b) in legs.items() if d != ref}
+        assert not differ, (
+            f"S9: EFUSE_PROGRAM_CTRL reads {differ} differ from the 0b010 reference 0x{ref:08x}"
+        )
+        self._chk(
+            "CHK-EFUSE-JTAG-PROT",
+            "prot5 rd=%d wr=%d data==ref y, prot0 rd=%d wr=%d data==ref y, prot2 rd=%d wr=%d "
+            "(reference EFUSE_PROGRAM_CTRL=0x%08x; each write-back carries the word just read, "
+            "so only its BRESP tells a taken write from a dropped one; LINKED-ISSUE SF-033)",
+            legs["prot5"][1],
+            legs["prot5"][2],
+            legs["prot0"][1],
+            legs["prot0"][2],
+            legs["prot2"][1],
+            legs["prot2"][2],
+            ref,
         )
 
     async def _restore(self) -> None:

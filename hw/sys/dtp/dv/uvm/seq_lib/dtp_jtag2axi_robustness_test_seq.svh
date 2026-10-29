@@ -88,6 +88,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   localparam bit [63:0] SeriesBase = 64'h5000;
   // The series-corner size and mid-beat legs: a second set of such windows.
   localparam bit [63:0] SeriesSizesBase = 64'h6000;
+  // The reprogram-under-held-read legs: a third set of such windows, one leg
+  // per phase.
+  localparam bit [63:0] SeriesReprogramBase = 64'h7000;
+  // The data a SERIES_DATA capture returns for the first pl_depth + 1 reads of
+  // a READ programming (PTAP document, AXI_SERIES_CTRL.pl_depth), DEADBEEF
+  // repeated over the payload.
+  localparam bit [63:0] SeriesReadMarker = 64'hDEADBEEF_DEADBEEF;
 
   function new(string name = "dtp_jtag2axi_robustness_test_seq");
     super.new(name);
@@ -3069,6 +3076,274 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     operation_count++;
   endtask
 
+  // --- SERIES_CTRL reprogrammed under a held series read ---------------------
+  // Aligned base of one reprogram leg's window.
+  protected function bit [63:0] reprogram_base(int unsigned idx, int unsigned leg);
+    return SeriesReprogramBase + (idx + 1) * 64'h400 + leg * 64'h100;
+  endfunction
+
+  // `count` seeded words, distinct from each other and from the pending
+  // marker, appended to `words`.
+  protected function void reprogram_words(dtp_j2a_target_t t, int unsigned count,
+                                          ref bit [63:0] words[$]);
+    repeat (count) begin
+      bit [63:0] avoid[] = new[words.size() + 1];
+      foreach (words[i]) avoid[i] = words[i];
+      avoid[words.size()] = SeriesReadMarker;
+      words.push_back(random_distinct_word(t, avoid));
+    end
+  endfunction
+
+  // Program a READ of `addr` at pipeline depth 0, hold R, and issue one
+  // fixed-address read, plain or WITH_ERROR_STATUS; `held` reports whether the
+  // bench holds its R beat. TCK steps until the bench holds the read's R beat
+  // (dtp_tb_if <target>_r_held): the AR has reached the port, so the state
+  // machine waits for the beat.
+  protected task hold_series_read(dtp_j2a_target_t t, bit [63:0] addr, bit with_status,
+                                  string context_s, output bit held);
+    int unsigned size = t.default_size;
+    bit [63:0] raw;
+    bit status_bit;
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    series_ctrl_op(t, DTP_J2A_OP_READ, addr, size);
+    hold_response(t, 1'b1, 1'b1);
+    if (with_status) series_data_with_status(t, '0, size, 1'b0, raw, status_bit);
+    else series_data_no_incr(t, '0, size);
+    for (int unsigned i = 0; i < AbortMidFlightTck && held_responses(t, 1'b1) == 0; i++) step(1'b0);
+    held = held_responses(t, 1'b1) > 0;
+    `uvm_info(get_type_name(), $sformatf("%s: R beats held=%0d read path=%0d", context_s,
+                                         held_responses(t, 1'b1), bridge_fsm_on_path(t, 1'b1)),
+              UVM_LOW)
+  endtask
+
+  // SERIES_CTRL(READ) of B at pipeline depth `depth` while a plain read of A
+  // waits for its held R, with the depth + 1 issue scans of B queued behind
+  // it. The new programming makes the read of A stale: it completes on the
+  // bus, but its response never enters the new programming's response FIFO.
+  // Once R is released, TCK steps until the port has completed A and the
+  // depth + 1 reads of B (CHK-AXI-COMPLETION) with no capture in between.
+  // SERIES_CTRL then reads OKAY at B, and depth + 1 readback scans each return
+  // B's word (CHK-AXI-RDATA). The issue scans' captures are the first
+  // depth + 1 reads, which return the pending marker, and SERIES_CTRL's
+  // pl_depth field reads a pending indication; neither is judged. At the
+  // bridge's read pipeline depth the issue scans fill the request FIFO and the
+  // reads of B fill the response FIFO.
+  protected task reprogram_held_read(int unsigned idx, int unsigned leg, int unsigned depth,
+                                     string label);
+    dtp_j2a_target_t t = select_target(idx);
+    string context_s = $sformatf("reprogram.%s.%s", label, t.name);
+    int unsigned size = t.default_size;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] base = reprogram_base(idx, leg);
+    bit [63:0] a_addr = base + $urandom_range(7) * t.beat_bytes;
+    bit [63:0] b_addr = base + 64'h40 + $urandom_range(7) * t.beat_bytes;
+    bit [63:0] words[$];
+    int unsigned reads0 = port.count(1'b1);
+    bit held;
+    bit [63:0] raw;
+    string issue_s = "";
+    dtp_j2a_status_e sstatus;
+    reprogram_words(t, 2, words);
+    write_target_mem_int(t, a_addr, words[0], size);
+    write_target_mem_int(t, b_addr, words[1], size);
+    `uvm_info(get_type_name(),
+              $sformatf("%s: pipeline depth %0d; A=0x%0h holds 0x%0h, B=0x%0h holds 0x%0h",
+                        context_s, depth, a_addr, words[0], b_addr, words[1]), UVM_LOW)
+    hold_series_read(t, a_addr, 1'b0, context_s, held);
+    series_ctrl_op(t, DTP_J2A_OP_READ, b_addr, size, depth);
+    repeat (depth + 1) begin
+      series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+      issue_s = {issue_s, $sformatf(" 0x%0h", raw & data_mask(size))};
+    end
+    hold_response(t, 1'b1, 1'b0);
+    complete_with_tck(t, 1'b1, reads0 + depth + 1, {context_s, ".reads"});
+    emit_nonvacuity_evidence(t, held, {context_s, ".held"});
+    settle_bridge(t);
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "%s: issue captures%s; port reads=%0d, state machine idle=%0d before any readback",
+            context_s, issue_s, port.count(1'b1) - reads0, bridge_fsm_idle(t)), UVM_LOW)
+    check_series_addr(t, b_addr, size, {context_s, ".settled"}, sstatus);
+    check_status(t, {context_s, ".settled.status"}, sstatus, DTP_J2A_SUCCESS);
+    for (int unsigned k = 0; k <= depth; k++) begin
+      series_data_shift(t, t.series_data_no_incr_instr, '0, size, -1, raw);
+      check_returned_rdata(t, raw & data_mask(size), words[1], $sformatf(
+                           "%s.readback%0d", context_s, k));
+    end
+    status = sstatus;
+    operation_count++;
+  endtask
+
+  // SERIES_CTRL(READ) of B at pipeline depth 0 while a WITH_ERROR_STATUS read
+  // of A waits for its held R. The read of A completes on the bus, and its
+  // data and status are the previous read access a WITH_ERROR_STATUS capture
+  // returns (PTAP document, AXI_SERIES_DATA_WITH_ERROR_STATUS). The PTAP
+  // document also has the first pl_depth + 1 reads return the pending marker,
+  // so once R is released and the state machine is idle, the next
+  // WITH_ERROR_STATUS capture returns A's word or the marker (CHK-AXI-RDATA),
+  // with status bit 0 (CHK-J2A-STATUS-BIT).
+  // That scan's Update-DR issues a with-status read of B, which completes
+  // before SERIES_CTRL reads OKAY at B.
+  protected task reprogram_held_status_read(int unsigned idx);
+    dtp_j2a_target_t t = select_target(idx);
+    string context_s = $sformatf("reprogram.with_status.%s", t.name);
+    int unsigned size = t.default_size;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] base = reprogram_base(idx, 0) + 64'h80;
+    bit [63:0] a_addr = base + $urandom_range(7) * t.beat_bytes;
+    bit [63:0] b_addr = base + 64'h40 + $urandom_range(7) * t.beat_bytes;
+    bit [63:0] words[$];
+    int unsigned reads0 = port.count(1'b1);
+    bit held;
+    bit [63:0] rdata;
+    bit [63:0] capture;
+    bit [63:0] marker = SeriesReadMarker & data_mask(size);
+    bit status_bit;
+    dtp_j2a_status_e sstatus;
+    reprogram_words(t, 2, words);
+    write_target_mem_int(t, a_addr, words[0], size);
+    write_target_mem_int(t, b_addr, words[1], size);
+    `uvm_info(get_type_name(), $sformatf("%s: A=0x%0h holds 0x%0h, B=0x%0h holds 0x%0h", context_s,
+                                         a_addr, words[0], b_addr, words[1]), UVM_LOW)
+    hold_series_read(t, a_addr, 1'b1, context_s, held);
+    series_ctrl_op(t, DTP_J2A_OP_READ, b_addr, size);
+    hold_response(t, 1'b1, 1'b0);
+    complete_with_tck(t, 1'b1, reads0, {context_s, ".read_a"});
+    emit_nonvacuity_evidence(t, held, {context_s, ".held"});
+    settle_bridge(t);
+    reads0 = port.count(1'b1);
+    series_data_with_status(t, '0, size, 1'b0, rdata, status_bit);
+    capture = rdata & data_mask(size);
+    check_returned_rdata(t, capture, (capture == marker) ? marker : words[0], $sformatf(
+                         "%s.capture a_word=0x%0h or marker", context_s, words[0]));
+    void'(axi_evidence.expect_equal(
+        DtpJ2aStatusBitCheckId,
+        64'(status_bit),
+        64'd0,
+        $sformatf(
+            "%s.status_bit target=%s addr=0x%0h", context_s, t.name, a_addr)
+    ));
+    complete_with_tck(t, 1'b1, reads0, {context_s, ".read_b"});
+    settle_bridge(t);
+    check_series_addr(t, b_addr, size, {context_s, ".status"}, sstatus);
+    check_status(t, {context_s, ".status.status"}, sstatus, DTP_J2A_SUCCESS);
+    status = sstatus;
+    operation_count++;
+  endtask
+
+  // An incrementing READ series at the bridge's read pipeline depth D, each
+  // read completing before the next scan. The D + 1 issue scans each issue
+  // one read, at base + k * 2^E in order (CHK-J2A-BUS-REQ), and TCK steps
+  // after each until the state machine is idle, so each read takes the
+  // address the read before it advanced to. SERIES_CTRL then reads OKAY at
+  // base + (D + 1) * 2^E. The first D + 1 reads return the pending marker
+  // (PTAP document) and the bridge may return w1 at the (D + 1)th capture, so
+  // no capture is judged by its position: the captures that are not the
+  // marker, the issue scans' and up to D + 1 data scans' after them, are w1 to
+  // w(D + 1) in order, none missing or repeated (CHK-AXI-RDATA). The
+  // scoreboard pairs every port read with a read the bench model predicts,
+  // and the model predicts no read past the D + 1 the series issues. Every
+  // data scan shifts in a seeded fill word, and the slots after the series
+  // hold seeded words, so one more data scan captures a known nonzero word,
+  // which repeats none of w1 to wD (CHK-AXI-RDATA). A TDO bit at X captures
+  // as 0.
+  protected task incr_read_pipeline(int unsigned idx);
+    dtp_j2a_target_t t = select_target(idx);
+    string context_s = $sformatf("reprogram.incr_pipeline.%s", t.name);
+    int unsigned size = t.default_size;
+    int unsigned depth = t.rd_pl_depth;
+    int unsigned step_bytes = t.beat_bytes;
+    dtp_axi_port_history port = port_history(t.name);
+    bit [63:0] mask = data_mask(size);
+    bit [63:0] marker = SeriesReadMarker & mask;
+    bit [63:0] base = reprogram_base(idx, 2) + $urandom_range(3) * step_bytes;
+    bit [63:0] words[$];
+    bit [63:0] avoid[];
+    bit [63:0] fill;
+    bit [63:0] captures[$];
+    bit [63:0] observed[$];
+    bit [63:0] after;
+    bit [63:0] raw;
+    bit known;
+    string capture_s = "";
+    string rejected_s = "0x0";
+    dtp_j2a_status_e sstatus;
+    reprogram_words(t, 2 * depth + 4, words);
+    avoid = new[words.size() + 1];
+    foreach (words[i]) avoid[i] = words[i];
+    avoid[words.size()] = SeriesReadMarker;
+    fill = random_distinct_word(t, avoid) & mask;
+    foreach (words[k]) write_target_mem_int(t, base + k * step_bytes, words[k], size);
+    `uvm_info(get_type_name(), $sformatf("%s: pipeline depth %0d from 0x%0h; words %p; fill 0x%0h",
+                                         context_s, depth, base, words[0:depth], fill), UVM_LOW)
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    series_ctrl_op(t, DTP_J2A_OP_READ, base, size, depth);
+    for (int unsigned k = 0; k <= depth; k++) begin
+      int unsigned reads0 = port.count(1'b1);
+      bit [63:0] exp_addr = (base + k * step_bytes) & bit_mask(t.addr_width);
+      ocah_axi_item item;
+      string ctx = $sformatf("%s.issue%0d", context_s, k);
+      series_data_shift(t, t.series_data_incr_instr, '0, size, -1, raw);
+      captures.push_back(raw & mask);
+      complete_with_tck(t, 1'b1, reads0, ctx);
+      settle_bridge(t);
+      if (port.last(1'b1, item))
+        void'(axi_evidence.expect_equal(
+            DtpJ2aBusReqCheckId,
+            item.address,
+            exp_addr,
+            $sformatf(
+                "%s target=%s field=address", ctx, t.name)
+        ));
+    end
+    check_series_addr(t, base + (depth + 1) * step_bytes, size, {context_s, ".issued"}, sstatus);
+    check_status(t, {context_s, ".issued.status"}, sstatus, DTP_J2A_SUCCESS);
+    for (int unsigned j = 0; j <= depth; j++) begin
+      observed = captures.find(c) with (c != marker);
+      if (observed.size() > depth) break;
+      series_data_shift(t, t.series_data_incr_instr, fill, size, -1, raw);
+      captures.push_back(raw & mask);
+    end
+    series_data_shift(t, t.series_data_incr_instr, fill, size, -1, raw);
+    after = raw & mask;
+    foreach (captures[i]) capture_s = {capture_s, $sformatf(" 0x%0h", captures[i])};
+    `uvm_info(get_type_name(),
+              $sformatf("%s: captures%s, then 0x%0h", context_s, capture_s, after), UVM_LOW)
+    observed = captures.find(c) with (c != marker);
+    for (int unsigned k = 0; k <= depth; k++) begin
+      check_returned_rdata(t, (k < observed.size()) ? observed[k] : '1, words[k] & mask, $sformatf(
+                           "%s.word%0d non_marker_captures=%0d", context_s, k, observed.size()));
+    end
+    known = after != '0;
+    for (int unsigned k = 0; k < depth; k++) begin
+      rejected_s = {rejected_s, $sformatf(" 0x%0h", words[k] & mask)};
+      if (after == (words[k] & mask)) known = 1'b0;
+    end
+    void'(axi_evidence.expect_equal(
+        "CHK-AXI-RDATA",
+        after,
+        known ? after : fill,
+        $sformatf(
+            "%s.after target=%s fill=0x%0h rejected=%s", context_s, t.name, fill, rejected_s)
+    ));
+    status = sstatus;
+    operation_count++;
+  endtask
+
+  protected task run_series_reprogram_held_read();
+    log_step("1", "Plain read of A held, READ of B at depth 1..D-1 / readbacks return B's word");
+    for (int unsigned i = 0; i < NumTargets; i++)
+      reprogram_held_read(i, 0, $urandom_range(targets[i].rd_pl_depth - 1, 1), "queued");
+    log_step("2", "With-status read of A held, READ of B / next capture is A's word, status 0");
+    for (int unsigned i = 0; i < NumTargets; i++) reprogram_held_status_read(i);
+    log_step("3", "Plain read of A held, READ of B at depth D / readbacks return B's word");
+    for (int unsigned i = 0; i < NumTargets; i++)
+      reprogram_held_read(i, 1, targets[i].rd_pl_depth, "fill");
+    log_step("4", "Incrementing READ at depth D / non-marker captures are w1..w(D + 1) in order");
+    for (int unsigned i = 0; i < NumTargets; i++) incr_read_pipeline(i);
+  endtask
+
   // --- CDC FIFO entry sweep -------------------------------------------------
   // Entries in each CDC FIFO of the bridge behind `t`. The bridge sizes the
   // five FIFOs of its clock crossing to the power of two at or above its read
@@ -3321,6 +3596,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         run_series_corner_all_bridges();
         run_cdc_fifo_entry_sweep();
       end
+      "series_reprogram_held_read": run_series_reprogram_held_read();
       default:
                 `uvm_fatal(get_type_name(), $sformatf(
                     "unknown JTAG2AXI robustness scenario %s", scenario))

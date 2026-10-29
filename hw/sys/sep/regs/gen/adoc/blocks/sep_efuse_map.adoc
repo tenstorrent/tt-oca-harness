@@ -162,7 +162,7 @@ Per-field write-lock and read-lock registers for the SEP eFuse map.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `rsvd` | R | 0x0 a| Unused
-| 7:0 | `lc_state` | R | 0xF0 a| Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}
+| 7:0 | `lc_state` | R | 0xF a| Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}
 |===
 
 [#reg-{regmap-instance}-sep_efuse_map-SBOOT_DIS]

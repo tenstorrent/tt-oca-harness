@@ -22,22 +22,23 @@ non-zero word is loaded and before every one is. From the rise of
 again for W clocks after the IC_RESET TDR releases the SEP reset; sense done stays
 low (``hw/sys/sep/doc/security_disable.adoc``, section Fuse Sensing and the Shadow
 Map). Class C: a match held over a cold reset is present from reset release; for W
-clocks every probe bit of a field other than ``LC_STATE`` that declares a reset
-reads its RDL reset value (the same generated IP-XACT values as
+clocks every probe bit of a field that declares a reset reads its RDL reset
+value (the same generated IP-XACT values as
 CHK-SDIS-RESET-VALUES; the other probe bits are logged as ``probe_unreset``) and no
 read command reaches the post-guard fuse port (``security_disable.adoc``, section
 Reset Persistence).
 
-Both classes: a cold reset under the match leaves every shadow field except
-``LC_STATE`` at its reset value 0x0 with an OKAY response
+Both classes: a cold reset under the match leaves every shadow field at its reset
+value with an OKAY response: 0x0, and 0x0F for ``LC_STATE``, the INVALID hold that
+``hw/sys/sep/doc/otp_fuse_controller.adoc`` (Fuse Sensing and Boot Sequencing)
+gives before sensing completes
 (``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``, reset values). The compare
 takes each word's field bits and reset value from the generated IP-XACT, so the
 ``rsvd`` and ``reserved`` fields (access R, reset 0x0) are compared too; only a bit
 with no field or no declared reset is masked and logged as ``rsvd=0x<v>``. A mismatch,
 a cold reset and a full sense recover the staged image; that recovery, the sense
 stop, the OKAY map read and the feature override are logged controls here.
-``secure_tm_req_i`` stays 0 for the whole leaf. The shadow reset value of
-``LC_STATE`` is not graded.
+``secure_tm_req_i`` stays 0 for the whole leaf.
 
 Checkers: CHK-BIND, CHK-SDIS-HOLD, CHK-SDIS-RESET-VALUES. A failing hook control
 logs ``CHK-HOOK FAIL`` and ends the leaf.
@@ -101,7 +102,6 @@ _SENSE_BOUND = 100_000
 _POLL_READS = 400
 _RST_RELEASE_BOUND = 64
 _LC_WORD = field_word("LC_STATE")
-_LC_MASK = 0xFFFF_FFFF << (32 * _LC_WORD)
 _TO0 = str.maketrans("xXzZ", "0000")
 _X1 = str.maketrans("01xXzZ", "001111")
 
@@ -135,15 +135,13 @@ def _reset_compare(name: str, k: int) -> tuple[int, int]:
 
 
 def _probe_reset() -> tuple[int, int]:
-    """(compared bits, reset value) of the whole shadow probe, ``LC_STATE`` left out.
+    """(compared bits, reset value) of the whole shadow probe.
 
     Word ``field_word(name) + k`` of the probe carries shadow word k of ``name``;
     each word takes its compared bits and reset value from ``_reset_compare``.
     """
     mask = exp = 0
     for name in FIELD_NAMES:
-        if name == "LC_STATE":
-            continue
         for k in range(field_n_words(name)):
             m, e = _reset_compare(name, k)
             shift = 32 * (field_word(name) + k)
@@ -175,7 +173,7 @@ class _HoldMonitor:
     (class C): from its first clock, counts every clock where sense done is not 0,
     security_disable_o is not 1 or a compared probe bit (``_probe_reset``) is X/Z
     or differs from its RDL reset value. The probe bits outside the compared set
-    and outside LC_STATE are ORed into ``unreset_seen`` and logged.
+    are ORed into ``unreset_seen`` and logged.
     """
 
     def __init__(self, mode: str) -> None:
@@ -216,7 +214,7 @@ class _HoldMonitor:
                 self.bad_probe += int(val != self.s_val or xm != self.s_x)
             else:
                 self.bad_probe += int(((val ^ self.r_exp) | xm) & self.r_mask != 0)
-                self.unreset_seen |= (val | xm) & ~self.r_mask & ~_LC_MASK
+                self.unreset_seen |= (val | xm) & ~self.r_mask
 
     async def until(self, n: int) -> None:
         clk = cocotb.top.clk_i
@@ -474,10 +472,10 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         staged_fields = set(p.leg["staged_fields"])
         staged_zero = True
         rsvd = 0
+        lc_word = "na"
         for name, k, data, resp, sd in values:
             if name == "LC_STATE":
-                self.chk.obs("SDIS-LC-RESET", word=f"0x{data:08x}", resp=RESP_NAME.get(resp))
-                continue
+                lc_word = f"0x{data:08x}"
             fields_read.add(name)
             mask, exp = _reset_compare(name, k)
             rsvd |= data & ~mask & 0xFFFF_FFFF
@@ -500,6 +498,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
                 "all_reset_value": int(not bad),
                 "ctl_sense_done": 0,
                 "rsvd": f"0x{rsvd:x}",
+                "lc_state": lc_word,
                 "first_bad": ",".join(bad[:4]) or "none",
             },
         )
@@ -530,7 +529,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         probe_feat = sig_bits(dut.lcc_feat_ctrl_probe_o)
         log_line(
             self.logger,
-            "OBS-SDIS-RECOVER",
+            "INFO-SDIS-RECOVER",
             seed,
             feat=f"0x{feat:016x}",
             ctl_mismatch=f"0x{rec_code if rec_code is not None else 0:02x}",
@@ -583,7 +582,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             n_loaded = sum(1 for x in staged if _word(mon.s_val, x) == staged_val[x])
             n_reset = sum(1 for x in staged if _word(mon.s_val, x) == 0)
             accepted = mon.rise_sd == 0 and n_loaded >= 1 and n_reset >= 1
-            self.chk.obs(
+            self.chk.info(
                 "SDIS-TRY",
                 attempt=attempt,
                 k=k,

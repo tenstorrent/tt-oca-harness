@@ -97,8 +97,9 @@ package smu_pkg;
                                        // 1; forwarded to the SMC MAX_TRANS.
     int unsigned SMC_EFUSE_SHIM_SIZE;  // Size in bytes of the vendor eFuse shim CSR block
                                        // carved off the base of the smc_external window,
-                                       // greater than 0 and smaller than that window;
-                                       // forwarded to the SMC EFUSE_SHIM_SIZE.
+                                       // greater than 0 and smaller than
+                                       // smc_pkg::SmcExternalWindowSize; forwarded to the
+                                       // SMC EFUSE_SHIM_SIZE.
 
     // SEP
     bit          SEP;                    // 1 includes the Secure Execution Processor and the

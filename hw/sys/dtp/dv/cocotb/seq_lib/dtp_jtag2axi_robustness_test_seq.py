@@ -38,6 +38,8 @@ from ocah_lib import OcahKnobs
 
 from .dtp_jtag2axi_base_test_seq import (
     QUEUE_DROP_TCK,
+    RDATA_CHECK_ID,
+    STATUS_BIT_CHECK_ID,
     TAP_STATE_CHECK_ID,
     dtp_jtag2axi_base_test_seq,
 )
@@ -48,6 +50,12 @@ ROBUST_BASE = 0x3800
 SERIES_CORNER_BASE = 0x5000
 # The series-corner size and mid-beat legs: a second set of such windows.
 SERIES_SIZES_BASE = 0x6000
+# The reprogram-under-held-read legs: a third set of such windows, one leg per phase.
+SERIES_REPROGRAM_BASE = 0x7000
+# The data a SERIES_DATA capture returns for the first pl_depth + 1 reads of a
+# READ programming (PTAP document, AXI_SERIES_CTRL.pl_depth), DEADBEEF repeated
+# over the payload.
+SERIES_READ_MARKER = 0xDEADBEEF_DEADBEEF
 # Reset-abort stimulus: the READY stall outlasts everything and is released
 # after the reset, so the write sits on the bus throughout the reset pulse.
 ABORT_HOLD_CYCLES = 100_000
@@ -3855,6 +3863,317 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             ),
         )
 
+    # --- SERIES_CTRL reprogrammed under a held series read ---------------------
+    @staticmethod
+    def _reprogram_base(target_idx: int, leg: int) -> int:
+        """Aligned base of one reprogram leg's window."""
+        return SERIES_REPROGRAM_BASE + target_idx * 0x400 + leg * 0x100
+
+    def _reprogram_words(self, target: str, rng: random.Random, count: int) -> list[int]:
+        """``count`` seeded words, distinct from each other and from the pending marker."""
+        words: list[int] = []
+        for _ in range(count):
+            words.append(
+                self.random_distinct_word(
+                    rng, target, SERIES_READ_MARKER & self.target_data_mask(target), *words
+                )
+            )
+        return words
+
+    async def _hold_series_read(
+        self, target: str, addr: int, *, with_status: bool, context: str
+    ) -> bool:
+        """Program a READ of ``addr`` at pipeline depth 0, hold R, and issue one
+        fixed-address read, plain or WITH_ERROR_STATUS; return whether the bench
+        holds its R beat.
+
+        TCK steps until the bench holds the read's R beat (``dtp_tb_if``
+        ``<target>_r_held``): the AR has reached the port, so the state
+        machine waits for the beat.
+        """
+        size = self.target_cfg(target).default_size
+        tb_if = self.cfg.tb_if
+        held = f"{target}_r_held"
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, reset=1, size=size, target=target)
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.READ, addr, size=size, target=target)
+        await self._hold_response(target, read=True, held=True)
+        if with_status:
+            await self.series_data_with_status(
+                0, size=size, increment=0, target=target, back_to_rti=True
+            )
+        else:
+            await self.series_data_no_incr(0, size=size, target=target, back_to_rti=True)
+        for _ in range(ABORT_MIDFLIGHT_TCK):
+            if tb_if.sample(held):
+                break
+            await self.tms_step(0)
+        self.log.info(
+            "%s: R beats held=%d read path=%d",
+            context,
+            tb_if.sample(held),
+            tb_if.bridge_fsm_on_path(target, read=True),
+        )
+        return tb_if.sample(held) > 0
+
+    async def _reprogram_held_read(
+        self, target: str, target_idx: int, rng: random.Random, *, leg: int, depth: int, label: str
+    ) -> None:
+        """SERIES_CTRL(READ) of B at pipeline depth ``depth`` while a plain read of A waits
+        for its held R, with the depth + 1 issue scans of B queued behind it.
+
+        The new programming makes the read of A stale: it completes on the
+        bus, but its response never enters the new programming's response
+        FIFO. Once R is released, TCK steps until the port has completed A
+        and the depth + 1 reads of B (CHK-AXI-COMPLETION) with no capture in
+        between. SERIES_CTRL then reads OKAY at B, and depth + 1 readback
+        scans each return B's word (CHK-AXI-RDATA). The issue scans' captures
+        are the first depth + 1 reads, which return the pending marker, and
+        SERIES_CTRL's pl_depth field reads a pending indication; neither is
+        judged. At the bridge's read pipeline depth the issue scans fill the
+        request FIFO and the reads of B fill the response FIFO.
+        """
+        context = f"reprogram.{label}.{target}"
+        cfg = self.target_cfg(target)
+        size = cfg.default_size
+        history = self.port_history(target)
+        base = self._reprogram_base(target_idx, leg)
+        a_addr = base + rng.randrange(8) * cfg.beat_bytes
+        b_addr = base + 0x40 + rng.randrange(8) * cfg.beat_bytes
+        a_word, b_word = self._reprogram_words(target, rng, 2)
+        self.write_target_mem_int(target, a_addr, a_word, size)
+        self.write_target_mem_int(target, b_addr, b_word, size)
+        self.log.info(
+            "%s: pipeline depth %d; A=0x%x holds 0x%x, B=0x%x holds 0x%x",
+            context,
+            depth,
+            a_addr,
+            a_word,
+            b_addr,
+            b_word,
+        )
+        reads = history.count(read=True)
+        held = await self._hold_series_read(target, a_addr, with_status=False, context=context)
+        await self.jtag2axi_series_ctrl(
+            DtpJtag2AxiOp.READ, b_addr, pipeline_depth=depth, size=size, target=target
+        )
+        issue = [
+            await self.series_data_no_incr(0, size=size, target=target, back_to_rti=True)
+            & self.data_mask(size)
+            for _ in range(depth + 1)
+        ]
+        await self._hold_response(target, read=True, held=False)
+        await self._complete_with_tck(
+            target, read=True, above=reads + depth + 1, context=f"{context}.reads"
+        )
+        self.emit_nonvacuity(target, held, context=f"{context}.held")
+        await self._settle_bridge(target)
+        self.log.info(
+            "%s: issue captures %s; port reads=%d, state machine idle=%d before any readback",
+            context,
+            " ".join(f"0x{capture:x}" for capture in issue),
+            history.count(read=True) - reads,
+            self.cfg.tb_if.bridge_fsm_idle(target),
+        )
+        status = await self.check_series_addr(
+            target, b_addr, size=size, context=f"{context}.settled"
+        )
+        self.check_bridge_status(target, status, context=f"{context}.settled.status")
+        for k in range(depth + 1):
+            raw = await self.series_data_no_incr(0, size=size, target=target, back_to_rti=True)
+            self.check_bridge_rdata(
+                target, raw & self.data_mask(size), b_word, context=f"{context}.readback{k}"
+            )
+        self.status = DtpJtag2AxiStatus(status)
+        self.operation_count += 1
+
+    async def _reprogram_held_status_read(
+        self, target: str, target_idx: int, rng: random.Random
+    ) -> None:
+        """SERIES_CTRL(READ) of B at pipeline depth 0 while a WITH_ERROR_STATUS read of A
+        waits for its held R.
+
+        The read of A completes on the bus, and its data and status are the
+        previous read access a WITH_ERROR_STATUS capture returns (PTAP
+        document, AXI_SERIES_DATA_WITH_ERROR_STATUS). The PTAP document also
+        has the first pl_depth + 1 reads return the pending marker, so once R
+        is released and the state machine is idle, the next WITH_ERROR_STATUS
+        capture returns A's word or the marker (CHK-AXI-RDATA), with status
+        bit 0 (CHK-J2A-STATUS-BIT). That
+        scan's Update-DR issues a with-status read of B, which completes
+        before SERIES_CTRL reads OKAY at B.
+        """
+        context = f"reprogram.with_status.{target}"
+        cfg = self.target_cfg(target)
+        size = cfg.default_size
+        history = self.port_history(target)
+        base = self._reprogram_base(target_idx, 0) + 0x80
+        a_addr = base + rng.randrange(8) * cfg.beat_bytes
+        b_addr = base + 0x40 + rng.randrange(8) * cfg.beat_bytes
+        a_word, b_word = self._reprogram_words(target, rng, 2)
+        self.write_target_mem_int(target, a_addr, a_word, size)
+        self.write_target_mem_int(target, b_addr, b_word, size)
+        self.log.info(
+            "%s: A=0x%x holds 0x%x, B=0x%x holds 0x%x", context, a_addr, a_word, b_addr, b_word
+        )
+        reads = history.count(read=True)
+        held = await self._hold_series_read(target, a_addr, with_status=True, context=context)
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.READ, b_addr, size=size, target=target)
+        await self._hold_response(target, read=True, held=False)
+        await self._complete_with_tck(target, read=True, above=reads, context=f"{context}.read_a")
+        self.emit_nonvacuity(target, held, context=f"{context}.held")
+        await self._settle_bridge(target)
+        reads = history.count(read=True)
+        rdata, status_bit = await self.series_data_with_status(
+            0, size=size, increment=0, target=target, back_to_rti=True
+        )
+        capture = rdata & self.data_mask(size)
+        marker = SERIES_READ_MARKER & self.target_data_mask(target)
+        self.check_bridge_rdata(
+            target,
+            capture,
+            marker if capture == marker else a_word,
+            context=f"{context}.capture a_word=0x{a_word:x} or marker",
+        )
+        self.check_equal(
+            self.axi_scoreboard,
+            STATUS_BIT_CHECK_ID,
+            status_bit,
+            0,
+            context=f"{context}.status_bit target={target} addr=0x{a_addr:x}",
+        )
+        await self._complete_with_tck(target, read=True, above=reads, context=f"{context}.read_b")
+        await self._settle_bridge(target)
+        self.status = await self.check_series_end(
+            target, b_addr, size=size, context=f"{context}.status"
+        )
+        self.operation_count += 1
+
+    async def _incr_read_pipeline(self, target: str, target_idx: int, rng: random.Random) -> None:
+        """An incrementing READ series at the bridge's read pipeline depth D, each read
+        completing before the next scan.
+
+        The D + 1 issue scans each issue one read, at base + k * 2^E in order
+        (CHK-J2A-BUS-REQ), and TCK steps after each until the state machine is
+        idle, so each read takes the address the read before it advanced to.
+        SERIES_CTRL then reads OKAY at base + (D + 1) * 2^E. The first D + 1
+        reads return the pending marker (PTAP document) and the bridge may
+        return w1 at the (D + 1)th capture, so no capture is judged by its
+        position: the captures that are not the marker, the issue scans' and
+        up to D + 1 data scans' after them, are w1 to w(D + 1) in order, none
+        missing or repeated (CHK-AXI-RDATA). The scoreboard pairs every port
+        read with a read the bench model predicts, and the model predicts no
+        read past the D + 1 the series issues. Every data scan shifts in a
+        seeded fill word, and the slots after the series hold seeded words, so
+        one more data scan captures a known nonzero word, which repeats none of
+        w1 to wD (CHK-AXI-RDATA). A TDO bit at X captures as 0.
+        """
+        context = f"reprogram.incr_pipeline.{target}"
+        cfg = self.target_cfg(target)
+        size = cfg.default_size
+        depth = cfg.rd_pl_depth
+        step = cfg.beat_bytes
+        history = self.port_history(target)
+        marker = SERIES_READ_MARKER & self.target_data_mask(target)
+        mask = self.data_mask(size)
+        base = self._reprogram_base(target_idx, 2) + rng.randrange(4) * step
+        slots = self._reprogram_words(target, rng, 2 * depth + 4)
+        words = slots[: depth + 1]
+        fill = self.random_distinct_word(rng, target, marker, *slots) & mask
+        for k, word in enumerate(slots):
+            self.write_target_mem_int(target, base + k * step, word, size)
+        self.log.info(
+            "%s: pipeline depth %d from 0x%x; words %s; fill 0x%x",
+            context,
+            depth,
+            base,
+            " ".join(f"0x{word:x}" for word in words),
+            fill,
+        )
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.NOP, 0, reset=1, size=size, target=target)
+        await self.jtag2axi_series_ctrl(
+            DtpJtag2AxiOp.READ, base, pipeline_depth=depth, size=size, target=target
+        )
+        captures: list[int] = []
+        for k in range(depth + 1):
+            reads = history.count(read=True)
+            raw = await self.series_data_incr(0, size=size, target=target, back_to_rti=True)
+            captures.append(raw & mask)
+            await self._complete_with_tck(
+                target, read=True, above=reads, context=f"{context}.issue{k}"
+            )
+            await self._settle_bridge(target)
+            item = history.last(read=True)
+            self._record_bus_fields(
+                target,
+                [("address", item.address, self.masked_addr(target, base + k * step))],
+                context=f"{context}.issue{k}",
+            )
+        status = await self.check_series_addr(
+            target, base + (depth + 1) * step, size=size, context=f"{context}.issued"
+        )
+        self.check_bridge_status(target, status, context=f"{context}.issued.status")
+        for _ in range(depth + 1):
+            if sum(capture != marker for capture in captures) > depth:
+                break
+            raw = await self.series_data_incr(fill, size=size, target=target, back_to_rti=True)
+            captures.append(raw & mask)
+        after = await self.series_data_incr(fill, size=size, target=target, back_to_rti=True)
+        after &= mask
+        self.log.info(
+            "%s: captures %s, then 0x%x",
+            context,
+            " ".join(f"0x{capture:x}" for capture in captures),
+            after,
+        )
+        observed = [capture for capture in captures if capture != marker]
+        for k, word in enumerate(words):
+            self.check_bridge_rdata(
+                target,
+                observed[k] if k < len(observed) else -1,
+                word,
+                context=f"{context}.word{k} non_marker_captures={len(observed)}",
+            )
+        rejected = [0, *(word & mask for word in words[:depth])]
+        self.check_equal(
+            self.axi_scoreboard,
+            RDATA_CHECK_ID,
+            after,
+            fill if after in rejected else after,
+            context=f"{context}.after target={target} fill=0x{fill:x} rejected="
+            + " ".join(f"0x{word:x}" for word in rejected),
+        )
+        self.status = DtpJtag2AxiStatus(status)
+        self.operation_count += 1
+
+    async def run_series_reprogram_held_read(self) -> None:
+        self.log_banner("JTAG2AXI SERIES_CTRL reprogrammed under a held series read")
+        await self.reset_tap()
+        rng = self.rng("series_reprogram_held_read")
+        self.log_step(
+            1, "Plain read of A held, READ of B at depth 1..D-1 / readbacks return B's word"
+        )
+        for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
+            depth = rng.randint(1, self.target_cfg(target).rd_pl_depth - 1)
+            await self._reprogram_held_read(
+                target, target_idx, rng, leg=0, depth=depth, label="queued"
+            )
+        self.log_step(
+            2, "With-status read of A held, READ of B / next capture is A's word, status 0"
+        )
+        for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
+            await self._reprogram_held_status_read(target, target_idx, rng)
+        self.log_step(3, "Plain read of A held, READ of B at depth D / readbacks return B's word")
+        for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
+            depth = self.target_cfg(target).rd_pl_depth
+            await self._reprogram_held_read(
+                target, target_idx, rng, leg=1, depth=depth, label="fill"
+            )
+        self.log_step(
+            4, "Incrementing READ at depth D / non-marker captures are w1..w(D + 1) in order"
+        )
+        for target_idx, target in enumerate(ROBUST_TARGETS, start=1):
+            await self._incr_read_pipeline(target, target_idx, rng)
+
     async def body(self) -> None:
         await self.enable_all_debug()
         scenarios = {
@@ -3867,6 +4186,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             "decode_error_decerr_read": self.run_decode_error_decerr_read,
             "decode_error_mixed": self.run_decode_error_mixed,
             "series_corner_all_bridges": self.run_series_corner_all_bridges,
+            "series_reprogram_held_read": self.run_series_reprogram_held_read,
         }
         if self.scenario not in scenarios:
             raise ValueError(f"unknown JTAG2AXI robustness scenario {self.scenario!r}")

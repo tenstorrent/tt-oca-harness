@@ -106,6 +106,7 @@ run_modes = ["smoke"]
 name = "smc_mailbox_register_map_reset_test"
 module = "smc_mailbox_register_map_reset_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
