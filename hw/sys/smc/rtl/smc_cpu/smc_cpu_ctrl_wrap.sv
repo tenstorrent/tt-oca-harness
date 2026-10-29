@@ -75,7 +75,8 @@ module smc_cpu_ctrl_wrap #(
                                                                          // SMC_ATTRIBUTES.
   output logic                                    wdt_second_timeout_o,  // Registered second-stage watchdog
                                                                          // timeout; high while any core's
-                                                                         // counter is zero.
+                                                                         // first-stage timeout is high and
+                                                                         // its counter is zero.
 
   output logic [NUM_CPU_CORES-1:0]                core_reset_n_n0_scan_o,  // Active-low per-core reset from
                                                                            // RESET_CTRL or a reset pulse,

@@ -34104,7 +34104,7 @@ rather than equal to it.</ipxact:description>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>data</ipxact:name>
-              <ipxact:description>Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles</ipxact:description>
+              <ipxact:description>Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
