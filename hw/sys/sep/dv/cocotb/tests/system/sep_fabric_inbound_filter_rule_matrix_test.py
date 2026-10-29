@@ -50,7 +50,12 @@ singles (fabric.adoc: axi_to_axi_lite splits bursts into individual
 transactions). The single-beat access of each deny cell reaches the Lite
 port as one single at its address, so the watch is live when the denied
 burst shows none. WRAP/FIXED/AxLEN>1 are
-not walked.
+not walked. The denied 2-beat read also grades its R beats on the m_axi
+pins: an error response still returns every beat of the burst with RLAST
+on the last beat only, each beat with RID equal to the ARID (AMBA AXI
+IHI 0022), and the filter answers DECERR on RRESP
+(``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions"). The ARID is
+drawn from 1 to 63, so an RID that drops to 0 fails.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
@@ -104,12 +109,15 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_lite_split_pass
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib import sep_row_response_seq as rr
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_BURST, FILTER_RW_MASK
 from seq_lib.sep_inbound_filter_rule_seq import (
+    AXI_BURST_INCR,
+    BURST_BYTES,
     FILTER_LOCKED_HI_BIT,
     GRANULE_BYTES,
     PAGE_SHIFT,
@@ -127,6 +135,9 @@ from seq_lib.sep_inbound_filter_rule_seq import (
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
 _TEST = "sep_fabric_inbound_filter_rule_matrix_test"
+# Separate stream for the denied-burst ARID, so the matrix draws keep their seed mapping.
+_BURST_ID_SALT = 0x4255_5253
+_M_AXI_ID_MAX = 63
 _MAX_SENSE_CYCLES = 20_000
 # Clocks the leaf keeps its coverage window open after a graded step, so the
 # sampler sees a pass label rise while the window is still open.
@@ -209,8 +220,22 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.start_ext_seq(seq)
         return seq.resp_code
 
-    async def _ext_burst_read(self, addr: int, *, expect_error: bool = False) -> tuple[int, int]:
-        seq = ext_burst_read_seq(addr, expect_error=expect_error)
+    async def _ext_burst_read(
+        self, addr: int, *, expect_error: bool = False, axi_id: int = 0
+    ) -> tuple[int, int]:
+        if axi_id:
+            seq = SepAxiAccessSeq(
+                "infilt_ext_burst_rd_id",
+                op=SepAxiOp.READ,
+                addr=addr,
+                length=BURST_BYTES,
+                size=2,
+                burst=AXI_BURST_INCR,
+                expect_error=expect_error,
+                axi_id=axi_id,
+            )
+        else:
+            seq = ext_burst_read_seq(addr, expect_error=expect_error)
         await self.start_ext_seq(seq)
         return seq.resp_code, (seq.rdata & 0xFFFF_FFFF)
 
@@ -236,11 +261,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         return resp, list(addrs)
 
     async def _ext_burst_read_watch(
-        self, addr: int, *, expect_error: bool = False
+        self, addr: int, *, expect_error: bool = False, axi_id: int = 0
     ) -> tuple[int, int, list[int]]:
         task, addrs = self.watch_sys_csr_lite(write=False)
         try:
-            resp, data = await self._ext_burst_read(addr, expect_error=expect_error)
+            resp, data = await self._ext_burst_read(addr, expect_error=expect_error, axi_id=axi_id)
         finally:
             task.kill()
         return resp, data, list(addrs)
@@ -299,11 +324,23 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         self._expect_lite_split(
             lite_sb, start=burst_addr, nbeats=1, tag="CHK-BURST-TO-SINGLE single-beat AR"
         )
+        arid = SepSeededRng(mcfg.seed ^ _BURST_ID_SALT).randrange(1, _M_AXI_ID_MAX + 1)
+        mon = self.env.ext_axi_monitor
         async with self._graded_window():
-            resp, data, lite_ar = await self._ext_burst_read_watch(burst_addr, expect_error=True)
+            mon.start_beat_capture()
+            resp, data, lite_ar = await self._ext_burst_read_watch(
+                burst_addr, expect_error=True, axi_id=arid
+            )
+            mon.take_beat_capture()
+            beats = list(mon.last_beat_detail)
             assert resp == RESP_DECERR, (
                 f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of "
                 f"0x{burst_addr:08x} resp={resp}, expected DECERR"
+            )
+            want = [(RESP_DECERR, arid, 0), (RESP_DECERR, arid, 1)]
+            assert beats == want, (
+                f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of 0x{burst_addr:08x} "
+                f"arid={arid} R beats (rresp, rid, rlast)={beats}, expected {want}"
             )
             assert data != burst_val, (
                 f"CHK-BURST-DENY FAIL: denied burst returned the staged value "
@@ -315,12 +352,15 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             self._release_lite_split()
         self.logger.info(
             "CHK-BURST-DENY PASS: allow_burst=0 single-beat OKAY rdata=0x%08x as Lite AR %s; "
-            "2-beat INCR DECERR at 0x%08x, rdata=0x%08x, Lite AR %s",
+            "2-beat INCR DECERR at 0x%08x, rdata=0x%08x, Lite AR %s, arid=%d "
+            "R beats (rresp, rid, rlast)=%s",
             burst_val,
             [hex(a) for a in lite_sb],
             burst_addr,
             data,
             [hex(a) for a in lite_ar],
+            arid,
+            beats,
         )
 
         await self.filt.disable_all()

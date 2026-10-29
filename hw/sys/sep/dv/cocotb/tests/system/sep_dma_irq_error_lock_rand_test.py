@@ -153,6 +153,19 @@ Checkers:
                     DMA_CHUNK_DONE enabled shows source 10 high.
   CHK-DMA-SIZE-ERR  per L2 kind: the error response, its clear and the
                     recovery copy; the encoding-2 hash control completes.
+                    Also kind copy_w3: a copy at TRANSFER_WIDTH encoding 3
+                    ends with STATUS.ERROR=1 and ERROR_CODE.SIZE_ERROR=1.
+  CHK-DMA-OPCODE-ERR a copy with a drawn CONTROL.OPCODE in 6..15 ends with
+                    STATUS.ERROR=1 and ERROR_CODE.OPCODE_ERROR=1.
+  CHK-DMA-ASID-ERR  a copy with a drawn reserved source or destination ASID
+                    ends with STATUS.ERROR=1, ERROR_CODE.ASID_ERROR=1 and no
+                    DMA AR or AW beat.
+  OBS-DMA-ALIGN     a copy at width 4 to a destination 2 bytes off alignment:
+                    STATUS, ERROR_CODE and the DMA AR and AW beat counts are
+                    logged with graded=0 (no line states the outcome).
+                    Control of the three checks and this line: the same copy with the legal value
+                    (encoding 2, COPY, ASID 0x7, aligned destination) ends with
+                    DONE=1, ERROR=0 and ERROR_CODE=0 (CTRL-DMA-CFG-ERR).
   CHK-DMA-INTR-RELEASE per L2 kind: after the write of 1 to STATUS.ERROR,
                     INTR_STATE.DMA_ERROR reads 0 and source 11 is low. Control:
                     INTR_STATE.DMA_ERROR reads 1 and source 11 is high just
@@ -267,6 +280,35 @@ BUSY_RISE_BOUND = 2_000
 POLL_PER_KIB = 1_500
 
 SIZE_ERR_MASK = _D.field_mask("ERROR_CODE", "size_error")
+OPCODE_ERR_MASK = _D.field_mask("ERROR_CODE", "opcode_error")
+ASID_ERR_MASK = _D.field_mask("ERROR_CODE", "asid_error")
+# Configuration-error kinds, each with its legal control run:
+#   copy_w3  TRANSFER_WIDTH encoding 3 (dma.hjson TRANSFER_WIDTH, "the value 3
+#            ... represents an invalid configuration that leads to an error";
+#            ERROR_CODE.SIZE_ERROR "TRANSFER_WIDTH encodes an invalid value");
+#            control: encoding 2.
+#   opc      CONTROL.OPCODE outside the opcode enum (dma.hjson CONTROL.opcode,
+#            values 0 to 4; ERROR_CODE.OPCODE_ERROR "Opcode is invalid");
+#            control: COPY.
+#   asid     a reserved source or destination ASID (registers.md
+#            ADDR_SPACE_ID, "Other values are reserved"; ERROR_CODE.ASID_ERROR
+#            "The source or destination ASID contains an invalid value");
+#            control: OT_ADDR.
+#   align    DST_ADDR_LO not aligned to the 4-byte transfer width
+#            (secure_dma.adoc DST_ADDR_LO "Must be aligned to the transfer
+#            width"; programmers_guide.md "Error Condition": the controller
+#            checks the configuration before starting a transfer and reports
+#            the errors in ERROR_CODE); control: an aligned destination.
+CFG_ERR_KINDS = ("copy_w3", "opc", "asid", "align")
+CFG_ERR_CHK = {
+    "copy_w3": "CHK-DMA-SIZE-ERR",
+    "opc": "CHK-DMA-OPCODE-ERR",
+    "asid": "CHK-DMA-ASID-ERR",
+    "align": "OBS-DMA-ALIGN",
+}
+# Opcodes above the enum, 5 left to the zero-fill leaf; ASIDs other than OT/SOC/SYS.
+OPC_INVALID = range(6, _D.field_mask("CONTROL", "opcode") + 1)
+ASID_ALL = _D.field_mask("ADDR_SPACE_ID", "src_asid") >> _D.field_lsb("ADDR_SPACE_ID", "src_asid")
 SRC_ERR_MASK = _D.field_mask("ERROR_CODE", "src_addr_error")
 DST_ERR_MASK = _D.field_mask("ERROR_CODE", "dst_addr_error")
 REGWEN_MASK = _D.field_mask("RANGE_REGWEN", "regwen")
@@ -288,6 +330,7 @@ RELEASE_EVENTS = {
 # L5: tied-off address spaces, SOC_ADDR 0xa and SYS_ADDR 0x9 (dma.hjson, ADDR_SPACE_ID).
 ASID_OT = 0x7
 ASID_TIEOFF = (("src", 0x9), ("src", 0xA), ("dst", 0x9), ("dst", 0xA))
+ASID_VALID = (ASID_OT, *sorted({v for _side, v in ASID_TIEOFF}))
 ABORT_POLL_BOUND = 200  # STATUS reads in the wait for ABORTED (L5); its control meets it
 
 
@@ -365,6 +408,11 @@ class _Cfg:
             [v for v in range(_REGWEN_ALL + 1) if v not in (REGWEN_TRUE, REGWEN_FALSE)]
         )
         self.edge_size = 4 * rng.randrange(4, MAX_BYTES // 4) + 2
+        # Configuration-error kinds: size, invalid opcode, reserved ASID and side.
+        self.cfg_err_size = {k: 4 * rng.randrange(4, MAX_BYTES // 4 + 1) for k in CFG_ERR_KINDS}
+        self.bad_opcode = rng.choice(list(OPC_INVALID))
+        self.bad_asid = rng.choice([v for v in range(ASID_ALL + 1) if v not in ASID_VALID])
+        self.bad_asid_side = rng.choice(HI_SIDES)
 
     def _place(self, rng, size: int) -> tuple[int, int]:
         span = size + 2 * self.guard
@@ -396,7 +444,9 @@ class _Cfg:
             + f" l4_size={self.hi_size} "
             + " ".join(f"l4_{s}_hi=0x{self.addr_hi[s]:08x}" for s in HI_SIDES)
             + f" post_err=0x{self.post_err[0]:08x}/0x{self.post_err[1]:08x}"
-            + f" nonmubi=0x{self.nonmubi:x} edge_size={self.edge_size}"
+            + f" nonmubi=0x{self.nonmubi:x} edge_size={self.edge_size} "
+            + " ".join(f"cfgerr_{k}={self.cfg_err_size[k]}" for k in CFG_ERR_KINDS)
+            + f" bad_opcode={self.bad_opcode} bad_asid={self.bad_asid_side}:0x{self.bad_asid:x}"
         )
 
 
@@ -408,6 +458,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         "CHK-DMA-IRQ",
         "CHK-DMA-IRQ-SINGLE",
         "CHK-DMA-SIZE-ERR",
+        "CHK-DMA-OPCODE-ERR",
+        "CHK-DMA-ASID-ERR",
         "CHK-DMA-INTR-RELEASE",
         "CHK-DMA-LOCK",
         "CHK-DMA-RANGE-OUT",
@@ -708,6 +760,85 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         for event in RELEASE_EVENTS:
             await self._release_trial(event)
         await self._obs_size_edge()
+        await self._leg_cfg_err()
+
+    async def _cfg_err_run(self, kind: str, bad: bool) -> tuple[DmaStatus, bool, int, int, int]:
+        """One copy with the ``kind`` fault (``bad``) or its legal value.
+
+        Returns (last STATUS, DONE or ERROR seen, ERROR_CODE, AR beats, AW beats).
+        """
+        c = self.cfg_t
+        ops = self.ops
+        size = c.cfg_err_size[kind]
+        await self._cold_reset()
+        await self._base_config(MAX_BYTES // 4)
+        if kind == "asid":
+            asid = c.bad_asid if bad else ASID_OT
+            src_asid, dst_asid = (asid, ASID_OT) if c.bad_asid_side == "src" else (ASID_OT, asid)
+            await ops.wr(_D.addr("ADDR_SPACE_ID"), asid_word(src_asid, dst_asid))
+        width = 3 if kind == "copy_w3" and bad else 2
+        dst = c.dst + 2 if kind == "align" and bad else c.dst
+        await ops.program_transfer(src=c.src, dst=dst, total=size, chunk=size, width_enc=width)
+        tap = SepDmaTap().start()
+        await ClockCycles(cocotb.top.clk_i, 1)
+        m = tap.mark()
+        await ops.go(opcode=c.bad_opcode if kind == "opc" and bad else OP_COPY, initial=1)
+        st, ended = await self._poll_end(size)
+        ecode = await ops.rd(ERROR_CODE)
+        await ClockCycles(cocotb.top.clk_i, POST_WAIT)
+        ev = tap.since(m)
+        await tap.stop()
+        await ops.clean_state()
+        await ops.wr(CONTROL, control_word())
+        return st, ended, ecode, len(ev.ar), len(ev.aw)
+
+    async def _leg_cfg_err(self) -> None:
+        """Invalid TRANSFER_WIDTH, opcode, ASID and destination alignment end in ERROR."""
+        c = self.cfg_t
+        for kind in CFG_ERR_KINDS:
+            chk = CFG_ERR_CHK[kind]
+            cst, cended, ccode, car, caw = await self._cfg_err_run(kind, bad=False)
+            ctl_ok = cended and cst.done and not cst.error and (ccode & ERROR_CODE_MASK) == 0
+            self.logger.info(
+                "CTRL-DMA-CFG-ERR LOG seed=%d kind=%s legal_done=%d error_code=0x%x ar=%d aw=%d %s",
+                c.seed,
+                kind,
+                int(ctl_ok),
+                ccode,
+                car,
+                caw,
+                cst.fmt(),
+            )
+            if not ctl_ok:
+                self._ctrl_missing(f"{chk} control: kind={kind} legal run did not complete clean")
+            st, ended, ecode, n_ar, n_aw = await self._cfg_err_run(kind, bad=True)
+            if kind == "copy_w3":
+                bit, need_quiet = SIZE_ERR_MASK, False
+            elif kind == "opc":
+                bit, need_quiet = OPCODE_ERR_MASK, False
+            elif kind == "asid":
+                bit, need_quiet = ASID_ERR_MASK, True
+            else:
+                bit, need_quiet = 0, True
+            line = (
+                f"kind={kind} size={c.cfg_err_size[kind]} ended={int(ended)} error={st.error} "
+                f"done={st.done} error_code=0x{ecode:x} bit_mask=0x{bit:x} "
+                f"bit={int(bool(ecode & bit))} ar={n_ar} aw={n_aw}"
+            )
+            if kind == "opc":
+                line += f" opcode={c.bad_opcode}"
+            if kind == "asid":
+                line += f" side={c.bad_asid_side} asid=0x{c.bad_asid:x}"
+            if kind == "align":
+                # No line states the outcome of a misaligned destination.
+                self.logger.info("OBS-DMA-ALIGN seed=%d dst_offset=2 graded=0 %s", c.seed, line)
+                continue
+            ok = ended and st.error and (not bit or ecode & bit)
+            if need_quiet:
+                ok = ok and n_ar == 0 and n_aw == 0
+            if not ok:
+                self._fail(chk, line)
+            self._pass(chk, line)
 
     async def _release_trial(self, event: str) -> None:
         """A write of 1 to STATUS.DONE or STATUS.CHUNK_DONE releases its interrupt."""

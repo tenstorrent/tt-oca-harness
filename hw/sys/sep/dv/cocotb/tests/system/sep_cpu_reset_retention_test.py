@@ -86,6 +86,13 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ``ADDR_SPACE_ID`` reads its reset value; the destination
                           does not change after the reset when its control holds.
   CHK-DMA-COLDRST-RECOVER a new copy after the cold reset completes and matches.
+  CHK-SWRST-KEEP          per overlap run without a cold reset: the SPI
+                          ``CONFIGOPTS``, DMA ``SRC_ADDR_LO`` and DMA range
+                          registers written before the run read their written
+                          values after the ``SW_RESET_N`` engine reset and the
+                          pulse (``reset_controller.adoc:44-49``, SW_RESET_N
+                          fields table: no SPI or DMA bit). A seed whose every
+                          run takes the cold reset logs ``OBS-BLOCKED``.
   CHK-WDT-COLD-RECOVER    last leg, every seed and build: a ``wdt_rst_ni`` pulse
                           lands while an accepted ``SW_RESET_N`` write has its B
                           outstanding and is released before the calibrated B
@@ -181,6 +188,8 @@ NMI_VEC = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
 NMI_MASK = SEP_CPU_CTRL.mask32("SEP_NMI_VEC")
 NMI_RESET = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
 REFCNT = SEP_CPU_CTRL.addr("REFERENCE_COUNTER")
+# Registers outside every SW_RESET_N domain, written before each overlap run.
+KEEP_PROBES = ("spi", "dma")
 RESP_OKAY, RESP_SLVERR = 0, 2
 RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
 ISO_DATA = 0x1501_A7ED  # reset_controller.adoc, Isolation and Reset Sequencing, step 2
@@ -949,10 +958,13 @@ class sep_cpu_reset_retention_test(sep_base_test):
     # ---- step 7: overlap leg ----------------------------------------------------
     async def _overlap_leg(self) -> None:
         d, sib = self.plan.d, self.plan.sibling
+        n_keep = 0
         for n, run in enumerate(r for r in self.plan.ovl if r.cls in self.classes):
             dut = cocotb.top
             await self._arm_probe(_BY_NAME[d], (n % 3) + 1)
             await self._arm_probe(_BY_NAME[sib], (n % 3) + 1)
+            for name in KEEP_PROBES:
+                await self._arm_probe(_BY_NAME[name], (n % 3) + 1)
             await self._write_banks()
             off = int(run.f_o * self.tiso)
             if run.band == "before":
@@ -1104,6 +1116,9 @@ class sep_cpu_reset_retention_test(sep_base_test):
             # The cold reset returns the sibling to its RDL reset value.
             sib_want = ps_.reset if cold else self.armed[ps_.name]
             fs = field_compare(got_s, sib_want, ps_.mask)
+            if not cold:
+                await self._chk_swrst_keep(d, run.cls, run.band)
+                n_keep += 1
             iso_order = pre_iso == 0 and pre_key == 1 and ack_c is not None and ack_c < fall
             ok = iso_order and held and fd.ok and fs.ok and (swv & SW_FIELDS) == SW_HMAC_HELD
             line = (
@@ -1128,6 +1143,33 @@ class sep_cpu_reset_retention_test(sep_base_test):
             if cold:
                 await self._rearm_after_cold()
             await self._bank_ctl(run.cls)
+        if n_keep == 0:
+            self.logger.info(
+                "OBS-BLOCKED CHK-SWRST-KEEP: every overlap run took the cold reset before "
+                "the release write"
+            )
+
+    async def _chk_swrst_keep(self, d: str, cls: str, band: str) -> None:
+        """CHK-SWRST-KEEP: a SW_RESET_N engine reset leaves the SPI host and the DMA.
+
+        ``hw/sys/sep/doc/reset_controller.adoc:44-49``: ``sep_reset_no`` resets
+        the SPI host and the DMA; the ``SW_RESET_N`` fields table (``:88-100``)
+        has no SPI or DMA bit. Each SPI, DMA and DMA range register written
+        before the run reads its written value after the engine reset and the
+        CPU reset pulse.
+        """
+        bad = []
+        for p in (*(_BY_NAME[n] for n in KEEP_PROBES), *RANGE_PROBES):
+            got = await self.pd.read(p)
+            fc = field_compare(got, self.armed[p.name], p.mask)
+            if not fc.ok:
+                bad.append(f"{p.name}:{fc.fields()}")
+        names = ",".join([*KEEP_PROBES, *(p.name for p in RANGE_PROBES)])
+        self._chk(
+            "CHK-SWRST-KEEP",
+            not bad,
+            f"dom={d} pulse={cls} band={band} regs={names}" + (f" mismatch={bad}" if bad else ""),
+        )
 
     async def _rearm_after_cold(self) -> None:
         """Restore the armed state the later legs start from after an overlap cold reset.

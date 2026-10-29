@@ -116,6 +116,12 @@ Isolation proof (both directions, then the remaining isolated bits):
                     and releasing the override lets the domain come back. The
                     override is sampled against the gated reset, so a mux that
                     ignored the override select fails here.
+  * CHK-TRNG-FIPS-LOCK-RESET  ``ENTROPY_SOURCE.FIPS_LOCK`` set to 1 before the
+                    TRNG-only reset reads its RDL reset value after the
+                    release: the TRNG reset is a full-IP reset in which "all
+                    entropy-source CSRs and FIPS_LOCK return to reset values"
+                    (``hw/ip/entropy_source/doc/architecture.adoc:224-227``).
+                    Control: FIPS_LOCK reads 1 after the set, before the reset.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
                     TRNG-only reset. SW_RESET_N inside the window shows the
                     TRNG bit held and the five accelerator bits released
@@ -201,7 +207,7 @@ from env.sep_kmac_golden import kmac_family_words
 from env.sep_reset_taps import ISO_BENCH
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from sep_reg_meta import register_fields, sym, word_reset
+from sep_reg_meta import ENTROPY_SOURCE, register_fields, sym, word_reset
 from seq_lib.sep_abr_mlkem_seq import MLKEM_STATUS
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
@@ -226,6 +232,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     SW_RESET_N_DEFAULT,
     SepCryptoResetIso,
 )
+from seq_lib.sep_esrc_fips_lock_seq import LOCK_BIT, SepEsrcFipsLock
 from seq_lib.sep_hmac_seq import HMAC_CFG, HMAC_DIGEST_0, SepHmac
 from seq_lib.sep_kmac_seq import (
     KMAC_CFG_SHADOWED,
@@ -269,6 +276,7 @@ TRNG_ISO_CSR = (
     ("edn", sym("EDN_REG_MAP_BASE_ADDR")),
 )
 _RESP_DECERR = 3
+FIPS_LOCK_RESET = ENTROPY_SOURCE.reset("FIPS_LOCK") & LOCK_BIT
 # KMAC STATUS after its own SW_RESET_N pulse, read off the IP-XACT. The spec
 # gives sha3_idle (1), fifo_empty (1) and the two alert bits (0) a reset value
 # (vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson:707, :737, :745,
@@ -2675,6 +2683,16 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         h_digest = await self._run_hmac()
         c_block = await self._run_aes()
 
+        fips = SepEsrcFipsLock(self)
+        await fips.set_lock()
+        lock_set = await fips.read_lock_word() & LOCK_BIT
+        if lock_set != LOCK_BIT:
+            close_graded_window(self.logger)
+            raise AssertionError(
+                f"CTRL-MISSING CHK-TRNG-FIPS-LOCK-RESET: FIPS_LOCK.LOCK=0x{lock_set:x} after "
+                "the write of 1, so a reset could not show a clear"
+            )
+        self.logger.info("CTRL-TRNG-FIPS-LOCK-SET: FIPS_LOCK.LOCK=1 before the TRNG reset")
         trng_rst = SepSwReset(self)
         await trng_rst.park("trng")
         await self._wait_gated_rst(SW_RESET_N_BIT["trng"], 0, "CHK-TRNG-NEIGHBORS reset")
@@ -2719,6 +2737,16 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
         await self._obs_trng_iso_resp()
         await trng_rst.release("trng")
+        await self._wait_gated_rst(SW_RESET_N_BIT["trng"], 1, "CHK-TRNG-FIPS-LOCK-RESET release")
+        lock_after = await fips.read_lock_word() & LOCK_BIT
+        self._grade(
+            lock_after == FIPS_LOCK_RESET,
+            "CHK-TRNG-FIPS-LOCK-RESET",
+            f"FIPS_LOCK.LOCK=0x{lock_after:x} after the TRNG-only reset, held 0x{LOCK_BIT:x} "
+            f"before it; expected reset 0x{FIPS_LOCK_RESET:x}",
+            f"FIPS_LOCK.LOCK held 0x{LOCK_BIT:x} before the TRNG-only reset, read "
+            f"0x{lock_after:x} == reset 0x{FIPS_LOCK_RESET:x} after the release",
+        )
         self.logger.info(
             "CHK-TRNG-NEIGHBORS PASS: idle HMAC DIGEST and AES DATA_OUT survived "
             "the shared entropy-complex reset, with SW_RESET_N=0x%08x inside the "

@@ -29,6 +29,11 @@ no stated read value are logged as ``OBS-CC-RSVD`` and not graded.
 
 Checkers:
   CHK-CC-RO       ``SEP_VERSION_ID[31:0]`` after each of the 8 writes.
+  CHK-NMI-DEFAULT ``SEP_NMI_VEC[31:0]`` on the first read after reset, before
+                  any write, equals the RDL reset (``nmi_vec[31:1] =
+                  0x6000_0080``, vector 0xC000_0100, and ``rsvd`` 0;
+                  ``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:276``,
+                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:342-347``).
   CHK-NMI-LOCK    ``SEP_NMI_VEC[31:1]`` after each of the 8 locked writes, and
                   ``lock`` after each of the 4 lock writes.
   CHK-CC-INERT    bit 0 of both sense status registers after the complement
@@ -37,7 +42,7 @@ Checkers:
                   readback, and ``scratch_cold_probe_o`` for the cold bank);
                   in the high-half-first order also after the high-half
                   write, against the value before it.
-Controls (not counted): CTRL-NMI-DEFAULT, CTRL-NMI-STORE, CTRL-SCR-NEIGHBOUR.
+Controls (not counted): CTRL-NMI-STORE, CTRL-SCR-NEIGHBOUR.
 Records: INFO-SCR-SEQ. Observations: OBS-CC-RSVD, OBS-TIMEOUT, OBS-CC-TIMEOUT-RD.
 
 The graded window (owner code of this test) is open around the graded
@@ -262,7 +267,13 @@ class _Cfg:
 class sep_cpu_ctrl_reg_shape_test(sep_base_test):
     """SEP_CPU_CTRL read-only, locked and inert registers; scratch write shapes."""
 
-    required_evidence = ("CHK-CC-RO", "CHK-NMI-LOCK", "CHK-CC-INERT", "CHK-SCR-SHAPE")
+    required_evidence = (
+        "CHK-CC-RO",
+        "CHK-NMI-DEFAULT",
+        "CHK-NMI-LOCK",
+        "CHK-CC-INERT",
+        "CHK-SCR-SHAPE",
+    )
 
     # -- access primitives --------------------------------------------------
 
@@ -345,11 +356,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
 
     async def _nmi(self) -> None:
         cfg = self.tcfg
-        # Step 3: first read (control; the reset value stays with the open owners).
+        # Step 3: first read, before any write: the RDL reset value.
         first = await self._read64(NMI_VEC)
         fc = field_compare(first, NMI_RESET, NMI_FIELD | NMI_RSVD0)
-        assert fc.ok, f"CTRL-NMI-DEFAULT FAIL: {fc.fields()}"
-        self.logger.info("CTRL-NMI-DEFAULT: first_read=0x%016x %s", first, fc.fields())
+        assert fc.ok, f"CHK-NMI-DEFAULT FAIL: first_read=0x{first:016x} {fc.fields()}"
+        self.logger.info("CHK-NMI-DEFAULT PASS: first_read=0x%016x %s", first, fc.fields())
         model = NMI_RESET & NMI_FIELD
 
         # Step 4: writes before the lock (control CTRL-NMI-STORE).

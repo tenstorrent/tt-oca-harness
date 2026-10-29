@@ -133,6 +133,17 @@ edges in (t0, t1].
   ``WDOG_BARK_THOLD - A``, so the petted count stays clear of the threshold
   (CTRL-MISSING otherwise); CTRL-WDT-PET-BARK: the same run barks later, at a
   count of at least ``WDOG_BARK_THOLD - A``.
+* CHK-WDT-PET-BITE. A bite comes only "when the count is at least
+  ``WDOG_BITE_THOLD``" (``<aon>/README.md:56``) and a pet "resets the count to
+  zero" (``<aon>/README.md:57-58``; ``doc/programmers_guide.md:13``), so a pet
+  after the bark and before the bite threshold keeps ``wdt_timer_rst_req_o`` at
+  0 on every ``clk_i`` edge up to ``WDOG_BITE_THOLD + A + 1`` periods after the
+  enable read-back, where an unpetted run bites; the bark status
+  (``INTR_STATE.wdog_timer_bark``, rw1c, ``doc/registers.md:224``) stays 1
+  until its write-1-to-clear and reads 0 after it. Bite threshold
+  ``WDOG_BARK_THOLD + PET_BITE_GAP``. Controls: the bark is set before the pet,
+  and the count read before the pet is below ``WDOG_BITE_THOLD - A``
+  (CTRL-MISSING otherwise).
 * CHK-WDT-THOLD-ZERO. "If the timer is enabled, there is a "bark" on every AON
   clock tick when the count is at least WDOG_BARK_THOLD." (``<aon>/README.md:55``).
   With ``WDOG_BARK_THOLD`` = 0 the bark status is 1 at the status read issued
@@ -238,7 +249,6 @@ CHK-WKUP-PRESC-MAX and CHK-WKUP-RESTART use no allowance: a lagging copy only
 lowers a CHK-WDT-PET read, and the two bracketed steps of CHK-WKUP-PRESC-MAX see the
 same copy delay. The lower count bounds of CHK-WKUP-CARRY-READ use ``A`` for the
 age of the count copy.
-"A pet after the bark stops the bite" is not graded: no sentence states it.
 
 Leg H logs and does not grade. The watchdog clock input is "independent of the
 system clock so that the WDT can detect system clock failures"
@@ -406,6 +416,7 @@ TWO40 = 1 << 40
 FAR = 1 << 33  # least distance of a reload value from the count before its write
 WDOG_FAR_BARK = 0xFFFF_0000  # bark threshold far above every count of leg P
 WDOG_FAR_BITE = 0xFFFF_FFF0  # bite threshold far above every count of leg P
+PET_BITE_GAP = 64  # WDOG_BITE_THOLD - WDOG_BARK_THOLD of the pet-after-bark run
 BITE_FIRST_BITE = 0x40  # bite threshold of the bite-before-bark run
 BITE_FIRST_BARK = 0x400  # bark threshold of the bite-before-bark run
 PRESC_MAX = 0xFFF  # largest 12-bit WKUP_CTRL.prescaler
@@ -588,6 +599,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-REGWEN-LOCK-SCOPE",
         "CHK-WDT-PET",
         "CHK-WDT-PET-HOLD",
+        "CHK-WDT-PET-BITE",
         "CHK-WDT-THOLD-ZERO",
         "CHK-WDT-THOLD-BELOW",
         "CHK-WKUP-PRESC-MAX",
@@ -2506,6 +2518,58 @@ class sep_timer_clock_contract_test(sep_base_test):
         # clears it (reset_controller.adoc:56-58).
         await self._bite_clear("thold_below")
 
+    async def _pet_after_bark(self) -> None:
+        """CHK-WDT-PET-BITE: a pet after the bark keeps the bite request low."""
+        dut = cocotb.top
+        seed = self.tcfg.seed
+        pb = self.tcfg.pb
+        pd = pb + PET_BITE_GAP
+        a = COUNT_ALLOW
+        await self._wdt_baseline(pb, pd, 0)
+        req = SepBitWatch(dut.wdt_timer_rst_req_o, name="wdt_timer_rst_req_o").start()
+        await self._wr(WDOG_CTRL, WDOG_EN)
+        await self._poll_eq("WDOG_CTRL", WDOG_CTRL, WDOG_EN, WDOG_CTRL_FIELDS, "CHK-WDT-PET-BITE")
+        t_en_rb = self._now()
+        mr = req.mark()
+        start = self.pins.count["clk_wdt_i"]
+        limit = 4 * pd + 512
+        while True:
+            st = await self._rd(INTR_STATE)
+            cnt = await self._rd(WDOG_COUNT)
+            if st & BARK_BIT:
+                break
+            if self.pins.count["clk_wdt_i"] - start > limit:
+                raise AssertionError(
+                    f"CTRL-MISSING CHK-WDT-PET-BITE: seed={seed} no bark within {limit} "
+                    f"clk_wdt_i periods (last count 0x{cnt:x}, bark threshold {pb})"
+                )
+        if cnt >= pd - a:
+            raise AssertionError(
+                f"CTRL-MISSING CHK-WDT-PET-BITE: seed={seed} count 0x{cnt:x} at the bark read "
+                f"is not below WDOG_BITE_THOLD - A ({pd} - {a})"
+            )
+        await self._wr(WDOG_COUNT, 0)
+        end = pd + a + 1
+        while True:
+            st_end, s_st, _d = await self._timed_rd(INTR_STATE)
+            if self._edges("clk_wdt_i", t_en_rb, s_st) >= end:
+                break
+        rises = req.rises_since(mr)
+        high = req.high_clocks_since(mr)
+        await self._wr(WDOG_CTRL, 0)
+        await self._wr(INTR_STATE, BARK_BIT)
+        st_clr = await self._poll_eq("INTR_STATE", INTR_STATE, 0, BARK_BIT, "CHK-WDT-PET-BITE")
+        await req.stop()
+        bark_end = int(bool(st_end & BARK_BIT))
+        line = (
+            f"seed={seed} bark_thold={pb} bite_thold={pd} count_at_bark_read=0x{cnt:x} "
+            f"window_periods={end} rst_req_rises={rises} rst_req_high_clk={high} "
+            f"bark_at_window_end={bark_end} bark_after_w1c={int(bool(st_clr & BARK_BIT))}"
+        )
+        if rises or high or not bark_end or st_clr & BARK_BIT:
+            raise AssertionError(f"CHK-WDT-PET-BITE FAIL: {line}")
+        self.logger.info("CHK-WDT-PET-BITE PASS: %s", line)
+
     async def _bite_first(self) -> None:
         """OBS-WDT-BITE-FIRST: one run with the bite threshold below the bark threshold.
 
@@ -2543,6 +2607,7 @@ class sep_timer_clock_contract_test(sep_base_test):
 
     async def _leg_p(self) -> None:
         await self._pet()
+        await self._pet_after_bark()
         await self._thold_zero()
         await self._thold_below()
         await self._bite_first()

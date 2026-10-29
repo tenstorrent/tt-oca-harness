@@ -27,6 +27,12 @@ VCS. A hole write leaves its neighbour register unchanged; the in-extent write
 of the same data to the neighbour changes it (control, run before the hole
 writes of the unit).
 
+CHK-SI-ID-ECHO: every SI access, OKAY and error rows alike, answers with the
+drawn non-zero AxID on BID or RID, sampled from the m_axi response handshake.
+Golden: a response carries the ID of its request (AMBA AXI IHI 0022), and the
+SEP fabric "retains the AXI IDs needed for responses" across the AXI4-Lite
+bridge (``hw/sys/sep/doc/fabric.adoc:22-23``).
+
 CTRL-ROW-RAND: stimulus completeness. Every inventory cell was walked.
 
 CHK-ROW-NOALIAS: a reset-control gap or tail write and an HMAC or KMAC hole
@@ -254,6 +260,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-ROW-POOL-UNMAPPED",
         "CHK-ROW-SPI-BURST",
         "CHK-ROW-SPI-BURST-CONTROL",
+        "CHK-SI-ID-ECHO",
     )
 
     # ------------------------------------------------------------------ access
@@ -323,6 +330,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         mon = self.env.ext_axi_monitor
         if op is SepAxiOp.READ:
             mon.open_error_rdata_window()
+        axi_id = self.rng.randrange(1, 64)
         seq = SepAxiAccessSeq(
             f"row_si_{op.value}_0x{addr:08x}",
             op=op,
@@ -334,7 +342,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             prot=prot,
             user=user,
             attrs=attrs,
-            axi_id=self.rng.randrange(1, 64),
+            axi_id=axi_id,
             allow_unverified_write_resp=op is SepAxiOp.WRITE,
         )
         try:
@@ -343,6 +351,15 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             if op is SepAxiOp.READ:
                 mon.close_error_rdata_window()
         assert not seq.timed_out, f"SI {op.value} 0x{addr:08x} timed out"
+        if seq.resp_id == axi_id:
+            self.si_id_ok += 1
+        else:
+            self.si_id_bad += 1
+            self._fail(
+                "CHK-SI-ID-ECHO",
+                f"SI {op.value} 0x{addr:08x} resp={_RN.get(seq.resp_code)} "
+                f"{'RID' if op is SepAxiOp.READ else 'BID'}={seq.resp_id} expected {axi_id}",
+            )
         return seq
 
     # ------------------------------------------------------------- bookkeeping
@@ -1478,6 +1495,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         self.walked: set[tuple[str, str, str, str]] = set()
         self.fails: list[str] = []
         self.released = 0
+        self.si_id_ok = 0
+        self.si_id_bad = 0
         self.regval: dict[int, int] = {}
         self.noalias_draws: Counter = Counter()
         self.noalias_ctl: set[str] = set()
@@ -1507,6 +1526,13 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             set_row_pass(ROW_PASS_DROP, self.logger)
             raise
         self.logger.info("ROW-PASS LOG: releases=%d fails=%d", self.released, len(self.fails))
+        if self.si_id_ok == 0:
+            self._fail("CHK-SI-ID-ECHO", "no SI access answered, nothing graded")
+        elif not self.si_id_bad:
+            self.logger.info(
+                "CHK-SI-ID-ECHO PASS: %d SI accesses answered BID/RID equal to the drawn AxID",
+                self.si_id_ok,
+            )
 
         # The no-alias control must have changed each reference.
         missing_ctl = {"reset_ctrl", "hmac", "kmac"} - self.noalias_ctl

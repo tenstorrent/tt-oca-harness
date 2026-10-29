@@ -78,7 +78,13 @@ Checkers:
                     ID replaces the initiator's. X or Z on any captured field,
                     W user included, fails (VCS). The captures of the two
                     moved-SMU legs take the same compare, logged under
-                    CHK-OUT-SMU-MOVED and CHK-OUT-SMU-FIRST.
+                    CHK-OUT-SMU-MOVED and CHK-OUT-SMU-FIRST. The predicted
+                    address of an AP or STEE capture replaces the address with
+                    the programmed region offset (``fabric.adoc:178-179``): the
+                    offset bits above the 512 KiB region granule and the
+                    issued address below it
+                    (``hw/ip/output_remap/regs/output_remap.rdl:22-25``). An AP
+                    pass with offset 0 predicts ``{0, a[18:0]}``.
                     Logged, not graded (no stated value): the SMU-path number
                     (OBS-OUT-SRC-ID), AxUSER[11:4] of every capture (graded
                     as zero on the AP and STEE paths) and the W user of
@@ -219,6 +225,7 @@ PAIR_SMU_MOVED = (22, 23)
 PAIR_OVL_LOCAL = (24, 25)
 PAIR_OVL_TRANSLATED = (26, 27)
 PAIR_LOWADDR = (28, 29)
+PAIR_AP_ZERO = (30, 31)
 # The external row below the local units (memory_map.adoc, "SEP External").
 LOWADDR_HI = 0x0FFF_FFFF
 SMU_BASE_FIELD = SEP_CPU_CTRL.field_mask("SMU_GLOBAL_BASE_ADDR", "addr")
@@ -1191,6 +1198,26 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         assert n_smu == 4 and n_ap == 4, f"CHK-OUT-SMU-FIRST FAIL: {line}"
         self.logger.info("CHK-OUT-SMU-FIRST PASS: %s", line)
 
+    async def _ap_zero_leg(self) -> None:
+        """CHK-OUT-CAPTURE of the AP region of the leaf programmed with offset 0."""
+        c = _Cls("ap", AP_REGION_BASE, AP_BASE, self.tcfg.ap.region, 0)
+        await self.remap.program(c, True)
+        lo, hi = granule8(c.translated)
+        await self._program_pair(PAIR_AP_ZERO, lo, hi)
+        for write in self.tcfg.dirs():
+            for p1 in (0, 1):
+                await self._cell(
+                    "ap",
+                    c.local,
+                    c.translated,
+                    write=write,
+                    prot=self.tcfg.prot(p1),
+                    expect_okay=True,
+                    graded=True,
+                )
+        await self._pair_enable(PAIR_AP_ZERO, False)
+        await self.remap.program(self.tcfg.ap, True)
+
     def _draw_region0(self) -> _Cls:
         """AP region 0 with a drawn offset: bit 55 set, bits 54:19 drawn."""
         rng = self.tcfg.rng
@@ -1248,6 +1275,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._nobypass_leg()
         await self._smu_moved_leg()
         await self._smu_over_ap_leg()
+        await self._ap_zero_leg()
         close_graded_window(self.logger)
         await self._lowaddr_leg()
         await self.out.stop()
