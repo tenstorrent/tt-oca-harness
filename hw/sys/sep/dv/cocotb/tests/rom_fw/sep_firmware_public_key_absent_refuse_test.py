@@ -17,20 +17,22 @@ from __future__ import annotations
 
 import pyuvm
 from env import sep_manifest_mutate as mm
-from rom_fw.sep_backup_manifest_fail_base import MANIFEST_ERR_SIG_TYPE_INVALID
+from env.sep_secure_boot_cases import CASES
 from rom_fw.sep_firmware_cntl_secure_boot_flow_test import (
     _SBOOT_DIS_SET,
     sep_firmware_cntl_secure_boot_flow_test,
 )
+
+_CASE = CASES["public_key_absent"]
 
 
 @pyuvm.test()
 class sep_firmware_public_key_absent_refuse_test(sep_firmware_cntl_secure_boot_flow_test):
     """PROD + secure manifest with public key and public_key_size zeroed -> refused."""
 
-    backup_defect_marker = f"MANIFEST_ERR=0x{MANIFEST_ERR_SIG_TYPE_INVALID:08x}"
-    expected_error = MANIFEST_ERR_SIG_TYPE_INVALID
-    primary_expected_error = MANIFEST_ERR_SIG_TYPE_INVALID
+    backup_defect_marker = f"MANIFEST_ERR=0x{_CASE.boot_error:08x}"
+    expected_error = _CASE.boot_error
+    primary_expected_error = _CASE.boot_error
     extra_forbidden = (
         "PUBK_SEL=",
         "RSA_EXEC",
@@ -40,11 +42,9 @@ class sep_firmware_public_key_absent_refuse_test(sep_firmware_cntl_secure_boot_f
     )
 
     def mutate_slot(self, buf: bytearray, slot: str) -> None:
-        assert mm.secure_boot_control(buf, slot) & mm.SECURE_BOOT_ENFORCED_BIT, (
-            f"{slot} manifest does not request secure boot"
-        )
-        mm.remove_public_key(buf, slot, keep_size=False)
+        _CASE.mutate(buf, slot)
         assert not any(mm.public_key_modulus(buf, slot)), f"{slot} modulus not zeroed"
+        assert mm.public_key_size(buf, slot) == 0, f"{slot} public_key_size not zeroed"
         mm.verify_layout(buf, slot)
         self.logger.info(
             "CHK-MUTATION: %s public key and public_key_size zeroed, %s",

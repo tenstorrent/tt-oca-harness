@@ -24,16 +24,13 @@ schema_version = 1
 #   * `occp_boot` -- held out on runtime. The production ROM's whole
 #     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
 #     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
-#   * `held_out` -- leaves whose comparison the RTL and the specification
-#     disagree on, and leaves blocked by a filed RTL defect; each entry's
-#     comment states the disagreement or the defect in words. An observation
-#     leaf waiting on a specification ruling belongs here too: it passes, logs
-#     `OBS-*` lines for the disputed value and grades nothing about it; its
-#     comment states the open question in words and the VPLAN held-out table
-#     names the issue that holds the ruling.
-#     smc_ref_clock_timer_rate_test compares the OCTS system timer rate against
-#     clk_rst.adoc, which places the timer in the reference clock domain, while
-#     the RTL clocks it from clk_smc_i.
+#   * `held_out` -- leaves whose comparison the specification does not support,
+#     and leaves blocked by a filed RTL defect; each entry's comment states the
+#     disagreement or the defect in words. An observation leaf waiting on a
+#     specification ruling belongs here too: it passes, logs `OBS-*` lines for
+#     the disputed value and grades nothing about it; its comment states the
+#     open question in words and the VPLAN held-out table names the issue that
+#     holds the ruling.
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`,
@@ -100,14 +97,6 @@ args = [
     "+rom_bin64=prod_rom.bin64",
     "+smc_hold_cpu_boot",
 ]
-
-[[tests]]
-name = "smc_ref_clock_timer_rate_test"
-module = "smc_ref_clock_timer_rate_test"
-seed = 1
-timeout_sec = 1800
-tags = ["clock"]
-run_modes = ["smoke"]
 
 [[tests]]
 # Observation leaf: a CTRL_STATUS trigger while the zeroer is busy
@@ -280,12 +269,11 @@ tests = [
 ]
 
 [[groups]]
-# Leaves whose comparison the RTL and the specification disagree on, and the
+# Leaves whose comparison the specification does not support, and the
 # observation leaves waiting on a specification ruling; run on demand.
 name = "held_out"
-expected_count = 4
+expected_count = 3
 tests = [
-    "smc_ref_clock_timer_rate_test",
     "smc_zeroer_busy_trigger_obs_test",
     "smc_flr_counter_timing_obs_test",
     "smc_bresp_evidence_obs_test",
