@@ -1,0 +1,82 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+// Memory-map annotations of sep_top: aperture sizes, descriptions and the response an access
+// outside a unit's registers receives. sep.rdl includes this file inside sep_top, and only
+// the memory-map generator defines OCAH_DOC_MEMORY_MAP.
+
+`define OCAH_SEP_OKAY ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0, bresp: ocah_resp_e::OKAY}
+`define OCAH_SEP_SLVERR ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR}
+`define OCAH_SEP_DECERR ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR}
+
+    sep_boot_rom->desc = "BL0 immutable instruction memory.";
+    ocah_hole_resp = `OCAH_SEP_OKAY;
+    ocah_gap_resp = `OCAH_SEP_DECERR;
+    secure_dma->ocah_aperture_size = 0x1000;
+    secure_dma->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    secure_dma->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    secure_dma->ocah_hole_note = "An access to an unmapped offset also latches PIC source 41.";
+    secure_dma->desc = "Secure DMA control and status registers.";
+    wdt_timer->ocah_aperture_size = 0x1000;
+    wdt_timer->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    sep_scratch_cold->desc = "Cold-reset scratch register bank.";
+    sep_scratch_warm->desc = "Warm-reset scratch register bank.";
+    sep_reset_ctrl->ocah_aperture_size = 0x1000;
+    sep_reset_ctrl->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    otbn->ocah_aperture_size = 0x10000;
+    otbn->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    otbn->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    aes->ocah_aperture_size = 0x1000;
+    aes->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    aes->desc = "AES block-cipher accelerator.";
+    hmac->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    kmac->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xFFFFFFFF, bresp: ocah_resp_e::SLVERR};
+    trng->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
+    trng->ocah_hole_note = "With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / DECERR.";
+    csrng->ocah_aperture_size = 0x800;
+    csrng->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    edn->ocah_aperture_size = 0x800;
+    edn->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    entropy_source->ocah_aperture_size = 0x1000;
+    entropy_source->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    sep_lifecycle_ctrl->ocah_aperture_size = 0x8000;
+    sep_lifecycle_ctrl->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    sep_lifecycle_ctrl->desc = "Lifecycle state and transition control.";
+    km_mailbox_sep->ocah_aperture_size = 0x1000;
+    km_mailbox_sep->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    sep_efuse_map->desc = "Cached eFuse shadow registers.";
+    efuse_interface_ctrl->ocah_aperture_size = 0x100;
+    efuse_interface_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+    efuse_interface_ctrl->desc = "eFuse command and status registers.";
+    efuse_mmr->ocah_aperture_size = 0x100;
+    efuse_mmr->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    efuse_mmr->desc = "eFuse security-token registers.";
+    abr->ocah_aperture_size = 0x10000;
+    abr->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    abr->desc = "Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM.";
+    entropy_pool->ocah_aperture_size = 0x10000;
+    entropy_pool->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
+    entropy_pool->ocah_past_extent_note = "A 32-bit read of the upper word of a register also answers SLVERR, 0x0.";
+    axil_mailbox->ocah_aperture_size = 0x10000;
+    axil_mailbox->ocah_past_extent_resp = `OCAH_SEP_SLVERR;
+    axil_mailbox->desc = "Eight bidirectional mailbox pairs.";
+    local_master_alias_remap_ctrl->ocah_aperture_size = 0x200;
+    local_master_alias_remap_ctrl->ocah_full_stride_extent = true;
+    local_master_alias_remap_ctrl->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    outbound_filter_ctrl->ocah_aperture_size = 0x400;
+    outbound_filter_ctrl->ocah_full_stride_extent = true;
+    outbound_filter_ctrl->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    inbound_filter_ctrl->ocah_aperture_size = 0x200;
+    inbound_filter_ctrl->ocah_full_stride_extent = true;
+    inbound_filter_ctrl->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    sep_cpu_ctrl->ocah_aperture_size = 0x2000;
+    sep_cpu_ctrl->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
+    spi_controller->ocah_aperture_size = 0x100000;
+    spi_controller->ocah_past_extent_resp = `OCAH_SEP_DECERR;
+    spi_controller->desc = "External I/O SPI controller bridge.";
+    sep_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
+`ifndef EXCLUDE_CORE_LOCAL_RESOURCES
+    pic->ocah_aperture_size = 0x8000;
+    pic->ocah_past_extent_resp = `OCAH_SEP_OKAY;
+`endif
