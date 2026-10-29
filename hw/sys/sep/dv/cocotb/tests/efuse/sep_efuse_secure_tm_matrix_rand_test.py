@@ -48,7 +48,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     four targets are set-only in every state. PROD and RMA_SIP restrict
                     JTAG to the token block and log
                     ``CHK-STM-JTAG N/A ... reason=lifecycle_gate``.
-  CTL-STM-STATE     logs the drawn state and ``jtag_leg`` (1 when CHK-STM-JTAG runs)
+  INFO-STM-STATE     logs the drawn state and ``jtag_leg`` (1 when CHK-STM-JTAG runs)
                     of the seed. A control line, not a check.
   CTRL-STM-WRITE-ISSUED  each target write returns a response from the DUT; a
                     missing response is a recorded failure.
@@ -362,11 +362,11 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         jtag_leg = bool(p.leg["jtag_leg"])
-        self.logger.info("CTL-STM-STATE seed=%d state=%s jtag_leg=%d", seed, state, int(jtag_leg))
+        self.logger.info("INFO-STM-STATE seed=%d state=%s jtag_leg=%d", seed, state, int(jtag_leg))
         if jtag_leg:
             self.required_evidence = (*self.required_evidence, "CHK-STM-JTAG", "CHK-STM-JTAG-CTL")
         self.logger.info(
-            "EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
+            "INFO-EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
         )
         close_graded_window(self.logger)
         self._win_ok = True

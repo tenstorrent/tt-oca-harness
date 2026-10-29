@@ -44,7 +44,7 @@ extern "C" {
 #define DMA_CTRL__CONFIG__DST_MAX_LLEN_bp 7
 #define DMA_CTRL__CONFIG__DST_MAX_LLEN_bw 3
 #define DMA_CTRL__CONFIG__DST_MAX_LLEN_reset 0x0
-// Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.
+// Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows, modulo 2^56 and without an error when a row address wraps; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.
 #define DMA_CTRL__CONFIG__ENABLED_ND_bm 0x400
 #define DMA_CTRL__CONFIG__ENABLED_ND_bp 10
 #define DMA_CTRL__CONFIG__ENABLED_ND_bw 1
@@ -63,7 +63,7 @@ typedef union {
         uint32_t SRC_MAX_LLEN :3;
         // Base-2 logarithm of the maximum write burst length in 64-bit beats, applied when DST_REDUCE_LEN is 1. A write burst does not cross a boundary aligned to 2^(DST_MAX_LLEN+3) bytes; 0 gives single-beat bursts. Ignored when DST_REDUCE_LEN is 0.
         uint32_t DST_MAX_LLEN :3;
-        // Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.
+        // Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows, modulo 2^56 and without an error when a row address wraps; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.
         uint32_t ENABLED_ND :1;
         uint32_t :21;
     } f;
@@ -71,14 +71,14 @@ typedef union {
 } dma_ctrl__CONFIG_t;
 
 // reg - dma_ctrl::STATUS
-// Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+// Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
 #define DMA_CTRL__STATUS__BUSY_bm 0x3ff
 #define DMA_CTRL__STATUS__BUSY_bp 0
 #define DMA_CTRL__STATUS__BUSY_bw 10
 #define DMA_CTRL__STATUS__BUSY_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
+        // Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.
         uint32_t BUSY :10;
         uint32_t :22;
     } f;

@@ -44,8 +44,8 @@ Checkers:
                         write; the post-reset write shows on the tap, and a
                         response after the readback request carries the
                         post-reset value as read data.
-Controls (not counted): CTL-SRAM-FILTER (inbound filter entry readback),
-CTL-SRAM-REACH (both masters write and read back the first and last word, each
+Controls (not counted): CTRL-SRAM-FILTER (inbound filter entry readback),
+CTRL-SRAM-REACH (both masters write and read back the first and last word, each
 of the 15 word-address bits and 128 drawn words).
 
 Environment choices (logged): the per-access completion bound, the bound of the
@@ -502,11 +502,11 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             fc = field_compare(got, want, mask)
             parts.append(f"{name}: {fc.fields()}")
             if not fc.ok:
-                msg = f"CTL-SRAM-FILTER FAIL: entry {FILTER_ENTRY} {name} readback {fc.fields()}"
+                msg = f"CTRL-SRAM-FILTER FAIL: entry {FILTER_ENTRY} {name} readback {fc.fields()}"
                 self.logger.error(msg)
                 raise AssertionError(msg)
         self.logger.info(
-            "CTL-SRAM-FILTER: entry=%d entry_enabled=1 read_allowed=1 write_allowed=1 "
+            "CTRL-SRAM-FILTER: entry=%d entry_enabled=1 read_allowed=1 write_allowed=1 "
             "allow_burst=1 src_id=0 allow_ns=1 range=0x%08x..0x%08x %s",
             FILTER_ENTRY,
             SRAM_BASE,
@@ -528,7 +528,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
                     bad.append(f"@0x{addr:08x} got={_w(got)} exp={_w(exp)}")
             sizes = sorted({s for _, s, _ in rows})
             line = (
-                f"CTL-SRAM-REACH: words={len(rows)} first=1 last=1 bits_walked={WORD_BITS} "
+                f"CTRL-SRAM-REACH: words={len(rows)} first=1 last=1 bits_walked={WORD_BITS} "
                 f"mismatches={len(bad)} master={m} sizes={sizes}"
             )
             if bad or sizes != list(SIZES):
@@ -849,7 +849,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         win["RD"] = st2["resp"] - st2["anchor"] - 1
         live = wcode == OKAY and rcode == OKAY and rd == data
         self.logger.info(
-            "CTL-SRAM-W: WR anchor=%s resp=%s W=%d resp_code=%s | RD anchor=%s resp=%s W=%d "
+            "CTRL-SRAM-W: WR anchor=%s resp=%s W=%d resp_code=%s | RD anchor=%s resp=%s W=%d "
             "resp_code=%s data=%s expected=%s live=%d",
             st["anchor"],
             st["resp"],
@@ -888,7 +888,7 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
         v = c.otf[path]
         top = cocotb.top
         o = (v["u"] * w) >> 32
-        self.logger.info("DRAW-SCALED %s u_o=%.6f W=%d o=%d", path, v["u"] / 2**32, w, o)
+        self.logger.info("INFO-DRAW-SCALED %s u_o=%.6f W=%d o=%d", path, v["u"] / 2**32, w, o)
         data = v["data"].to_bytes(WORD, "little")
         if path == "RD":
             # Setup (window closed): the read address holds a written value.

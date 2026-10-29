@@ -4,12 +4,15 @@
 
 Exercises SS_COLD0 (port 13) and SS_WARM0 (port 45) on the wrapper, one at a
 time, with mutual exclusion against fuse/warm/cool/cold and each other; the
-indices are SMU_IC_RESET_SMC_SS_*_PORT in smu_jtag_helpers.
+indices are SMU_IC_RESET_SMC_SS_*_PORT in smu_jtag_helpers. The seed draws the
+order in which the two one-domain subsets are walked.
 
 Does NOT close ss_reset_complete handshake (input tied dead on this bench).
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 import pyuvm
@@ -69,6 +72,12 @@ class smu_ic_reset_ss_domain_matrix_test(smu_base_test):
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
 
+        seed = self.random_seed()
+        order = list(_SS_DOMAINS)
+        random.Random(seed).shuffle(order)
+        drawn = "drawn_order=" + ">".join(token for *_, token in order)
+        self.logger.info("SEED: RANDOM_SEED=%d %s", seed, drawn)
+
         for _, ovrd_name, _, idx, _ in _SS_DOMAINS:
             sb.expect_eq(
                 f"idle {ovrd_name}[{idx}]",
@@ -76,7 +85,7 @@ class smu_ic_reset_ss_domain_matrix_test(smu_base_test):
                 0,
             )
 
-        for port, ovrd_name, val_name, idx, token in _SS_DOMAINS:
+        for port, ovrd_name, val_name, idx, token in order:
             pattern = pack_ic_reset_ports(
                 reset_hold=1,
                 port_enable={port: 0},
@@ -86,13 +95,13 @@ class smu_ic_reset_ss_domain_matrix_test(smu_base_test):
             await ClockCycles(dut.clk_smu_i, 16)
 
             sb.expect_eq(
-                f"{token} asserted",
+                f"{token} asserted {drawn}",
                 read_smc_reset_ctrl_bit(dut, ovrd_name, idx),
                 1,
                 evidence=token,
             )
             sb.expect_eq(
-                f"{val_name}[{idx}] asserted low",
+                f"{val_name}[{idx}] asserted low {drawn}",
                 read_smc_reset_ctrl_bit(dut, val_name, idx),
                 0,
                 evidence=token,
@@ -101,7 +110,7 @@ class smu_ic_reset_ss_domain_matrix_test(smu_base_test):
             # Mutual exclusion vs scalar SMC domains.
             for _, other_ovrd, _ in _SCALAR_OVRDS:
                 sb.expect_eq(
-                    f"IC_RESET_SS_EXCL: {other_ovrd} idle while {token}",
+                    f"IC_RESET_SS_EXCL: {other_ovrd} idle while {token} {drawn}",
                     read_smc_reset_ctrl_bit(dut, other_ovrd),
                     0,
                     evidence="IC_RESET_SS_EXCL",
@@ -112,7 +121,7 @@ class smu_ic_reset_ss_domain_matrix_test(smu_base_test):
                 if other_port == port:
                     continue
                 sb.expect_eq(
-                    f"IC_RESET_SS_EXCL: {other_tok} idle while {token}",
+                    f"IC_RESET_SS_EXCL: {other_tok} idle while {token} {drawn}",
                     read_smc_reset_ctrl_bit(dut, other_ovrd, other_idx),
                     0,
                     evidence="IC_RESET_SS_EXCL",
@@ -126,4 +135,4 @@ class smu_ic_reset_ss_domain_matrix_test(smu_base_test):
                 0,
             )
 
-        self.logger.info("smu_ic_reset_ss_domain_matrix_test: SS cold/warm OK")
+        self.logger.info("smu_ic_reset_ss_domain_matrix_test: SS cold/warm OK %s", drawn)

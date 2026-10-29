@@ -76,7 +76,7 @@ markers = [
 ]
 
 [[testcase]]
-name = "sep_mbist_fail_continue_test"
+name = "sep_mbist_fail_skip_fuse_ignored_test"
 family = "platform_gating"
 classification = "partial"
 image = "signed"
@@ -84,31 +84,36 @@ base_ini = "secure"
 boot = "primary"
 observation = "complete"
 timeout = 180
-expect_verdict = "PASSED"
+expect_verdict = "none"
 pytest_markers = ["needs_debug"]
-# STATUS_RPT bit 2 is the SKIP_MEM_CHECK fuse vector.S consults after a failed gate.
+# Reserved STATUS_RPT bit 2 blown; no eFuse lets a failed memory check continue.
 efuse = { status_rpt = 0x4 }
 # Every DFX_CTRL_STATUS bit set except mem_repair_success, the same stimulus as sep_firmware_mbist_fail_test.
 init_writes = [{ address = 0x4000B800, value = 0xFFFFFFFD }]
-expect = [
+expect_silence = true
+forbid = [
   "SMC_MEM_CHK",
   "COLD",
   "MEM_INIT_OK",
-  "CHIP_ID=0x00000000",
+  "LC_STATE=",
+  "LC=PROD",
+  "CHIP_ID=",
   "BOOT_SPI",
   "MANIFEST_PRIMARY",
   "MANIFEST_OK",
-  "PAYLOAD_OK",
   "BL1_COPIED",
+  "PRE_JUMP",
   "GO!",
+  "[VP] SIMULATION OF THE TEST PASSED",
+  "[VP] SIMULATION OF THE TEST FAILED",
 ]
-forbid = ["MANIFEST_ERR=", "MANIFEST_BACKUP", "MANIFEST_ALL_FAILED", "TRAP H0"]
-expect_status = ["DEBUG 0x0056", "WARN 0x0219", "DEBUG 0x0057", "INFO 0x0053", "INFO 0x0055"]
-forbid_status = ["ERROR 0xd001", "ERROR 0x0213"]
+expect_status = ["DEBUG 0x0056", "WARN 0x0219", "ERROR 0xd001"]
+forbid_status = ["DEBUG 0x0057"]
 markers = [
-  "WARN 0x0219 between DEBUG 0x0056 and DEBUG 0x0057 shows the gate failed and the fuse let the boot continue; sep_firmware_mbist_fail_test is the same stimulus without the fuse.",
-  "The stimulus fails the repair arm, so this covers the shared fuse policy, not an MBIST-verdict failure followed by the fuse.",
-  "Not covered: the raw status the ROM copies to SMC scratch 10; the VP does not report it.",
+  "Same stimulus and observables as sep_firmware_mbist_fail_test with STATUS_RPT bit 2 blown: WARN 0x0219 then ERROR 0xd001 and no C runtime.",
+  "DEBUG 0x0057 is the first status rom_main writes; forbidding it shows the C runtime never started.",
+  "Not covered: the raw status the ROM copies to SMC scratch 10, and the PC staying in the WFI loop; the VP reports neither.",
+  "The silence is fenced by the init-write witness and by the run reaching its timeout.",
 ]
 
 [[testcase]]

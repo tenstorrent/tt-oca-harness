@@ -126,6 +126,7 @@ run_modes = ["smoke"]
 name = "smc_ext_irq_hold_release_test"
 module = "smc_ext_irq_hold_release_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "irq", "ext"]
 run_modes = ["smoke"]

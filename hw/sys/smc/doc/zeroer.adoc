@@ -19,7 +19,8 @@ fabric integration.
 [width="100%",cols="30%,70%",options="header",]
 |===================================================================
 |Parameter |Description
-|Address Range |0xC003_8200 - 0xC003_83FF (512 bytes)
+|Address Range |0xC003_8200 - 0xC003_82FF (256-byte slot); the registers decode
+the first 24 bytes, and an access to 0xC003_8218 - 0xC003_82FF receives DECERR
 |Control Interface |AXI4 (5-bit address, 64-bit data, 8-bit ID), converted internally to
 AXI4-Lite for the registers
 |Data Interface |AXI4 Master (56-bit address, 64-bit data, 3-bit ID; 4-bit ID
@@ -72,11 +73,20 @@ image::smc-memory-zeroer.svg[alt="SMC memory zeroer: register path, clear state 
 
 Rounded boxes are the states of the clear state machine, with their encodings; grey
 arrows are transitions, labelled with their conditions. A write to `CTRL_STATUS` while
-`SIZE` is non-zero leaves `ST_IDLE`. Each pass through `ST_ISSUE_ADDR` and
+`SIZE` is non-zero leaves `ST_IDLE` and captures `DEST_ADDR` and `SIZE`; later writes to
+those registers do not affect the clear in progress. Each pass through `ST_ISSUE_ADDR` and
 `ST_ISSUE_DATA` issues one write burst of zeros, and the machine returns to `ST_IDLE`
 once no bytes remain. `ST_ERROR` is entered only from an illegal state encoding and
 is left only by reset. The write-response channel is always ready and its response code
 is not checked; the outstanding-request count decides when the zeroer stops being busy.
+
+A `CTRL_STATUS` write is considered only in `ST_IDLE`. While the machine is in
+`ST_ISSUE_ADDR` or `ST_ISSUE_DATA`, the write completes with OKAY but starts nothing.
+Once the last burst has been issued the machine is back in `ST_IDLE`, so a write while
+write responses are still outstanding starts a new clear at once. `STATUS` reads 1 in
+both windows and stays 1 across back-to-back clears, and the completion interrupt
+pulses once, when `STATUS` falls to 0. Software waits for `STATUS` to read 0 before
+writing `CTRL_STATUS` again.
 
 === Operation Flow
 
