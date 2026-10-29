@@ -696,6 +696,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         shadow = self._probe_words()[cw]
         done_o = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
         feat = self.rd(dut.lcc_feat_ctrl_probe_o, allow_unknown=True)
+        await RisingEdge(dut.clk_i)
         want = word_reset(SHADOW_BASE + 4 * cw)
         sensed = list(staged)
         sensed[cw] = want
@@ -738,6 +739,5 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
                 sense_done=done_o,
                 t_sense="none" if n is None else n,
             )
-        await RisingEdge(dut.clk_i)
         dut.efuse_sense_status_inject_i.value = 0
         self.chk.finish()
