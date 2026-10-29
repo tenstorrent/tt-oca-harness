@@ -68,7 +68,9 @@ Checkers:
                     lane value; a FLUSH with old words of z and words of 1 - z buffered
                     and the sample clock stopped gives LEVEL 0, and every word popped
                     after it equals the word of 1 - z (no kept word); locked at 0:
-                    LEVEL stays 0.
+                    after a write of RAW_ENABLE 1 that the lock refuses, LEVEL
+                    stays 0. That write must get a B response of any code; no text
+                    states the code, so it is logged as ``OBS-OBS-LOCK0-RESP``.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
@@ -114,6 +116,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, Event, First, NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_esrc_pattern_noise import (
     NUM_LANES,
@@ -124,10 +127,12 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
+from env.sep_fabric_common import resp_name
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, sym
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
     ESRC_ALERT_THRESHOLD,
@@ -379,6 +384,23 @@ def draw_plan(seed: int) -> Plan:
 
 class _EsrcRegs(SepAxiRegDriver):
     _DRIVER_TAG = "ESRC"
+
+    async def wr_locked(self, addr: int, data: int) -> int:
+        """A write that FIPS_LOCK refuses; returns its B code, -1 if none came.
+
+        No text states that code, so the scoreboard does not grade it.
+        """
+        seq = SepAxiAccessSeq(
+            "esrc_wr_locked",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=4,
+            size=self._AXI_SIZE,
+            allow_unverified_write_resp=True,
+        )
+        await self.test.start_seq(seq)
+        return -1 if seq.timed_out else seq.resp_code
 
 
 @pyuvm.test()
@@ -1049,7 +1071,11 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         raw0 = await self._read_raw(fifo)
         open_graded_window(TEST, self.logger)
         lock = await self._lock()
-        await self._write_raw(fifo, 1)
+        if fifo == "noise":
+            resp = await self.esrc.wr_locked(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
+        else:
+            resp = await self.esrc.wr_locked(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
+        self.logger.info("OBS-OBS-LOCK0-RESP: fifo=%s B=%s", fifo, resp_name(resp))
         raw_rb = await self._read_raw(fifo)
         wait = LOCK0_WAIT_FACTOR * t_cap if t_cap else 0
         if wait:
@@ -1060,12 +1086,13 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         close_graded_window(self.logger)
         self.chk.ctrl(
             "OBS-LOCK",
-            t_cap is not None and raw0 == 0 and lock == 1 and raw_rb == 0,
+            t_cap is not None and raw0 == 0 and lock == 1 and resp >= 0 and raw_rb == 0,
             fifo=fifo,
             locked_at=0,
             ctrl_locked1_capture_clk=t_cap if t_cap is not None else "none",
             raw_before=raw0,
             lock=lock,
+            b_seen=int(resp >= 0),
             post_lock_write_readback=raw_rb,
         )
         self.chk.ok(

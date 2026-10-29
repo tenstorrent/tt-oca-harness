@@ -52,11 +52,12 @@ Checkers:
   CHK-PF-TRIP-COUNT  every trip: exactly T failing windows (an exact burst,
                   below), then clean noise. ALERT reads 1 within LAT_WINDOWS
                   windows of words from the start of window T (a wait bound,
-                  not a graded latency), PF reads 1, and the peak of
-                  ANY_FAIL_COUNT is at least T. Control: ALERT = PF = 0 and
-                  ANY_FAIL_COUNT = 0 before the burst. Its FCOV cells are
-                  released only when the peak is exactly T; otherwise the leaf
-                  logs INFO-PF-TRIP-COUNT-HOLD and releases none.
+                  not a graded latency) and PF reads 1. The peak of
+                  ANY_FAIL_COUNT is graded (exactly T) by CHK-PF-TRIP-HOLD, not
+                  here. Control: ALERT = PF = 0 and ANY_FAIL_COUNT = 0 before
+                  the burst. Its FCOV cells are released only when the peak is
+                  exactly T; otherwise the leaf logs INFO-PF-TRIP-COUNT-HOLD
+                  with the peak and releases none.
   CHK-PF-TRIP-HOLD   every trip: at a read after the clean window that follows
                   window T has ended, ALERT = PF = 1, and ANY_FAIL_COUNT never
                   read above T. Control: the clean noise ran for at least
@@ -1060,20 +1061,18 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         )
         # The cells of the trip are released only when the peak is exactly T, the
         # count of the failing windows (architecture.adoc:136); the check itself
-        # grades the trip and a peak of at least T.
+        # grades the trip, and CHK-PF-TRIP-HOLD grades the peak.
         exact = r["peak"] == thr
         if not exact:
             self.chk.info("PF-TRIP-COUNT-HOLD", thr=thr, any_fail_peak=r["peak"], released=0)
         await self._grade(
             "PF-TRIP-COUNT",
-            r["reason"] is None and r["peak"] >= thr and r["alert_any"] and r["pf_final"],
+            r["reason"] is None and r["alert_any"] and r["pf_final"],
             ESRC_PA_TRIP_COUNT if exact else 0,
             **reason,
             thr=thr,
             win=win,
             failing_windows=thr,
-            any_fail_peak=r["peak"],
-            expect_any_fail_peak_min=thr,
             alert=r["alert_any"],
             pf=r["pf_final"],
             wrap_obs=r.get("wrap_obs"),

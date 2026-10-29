@@ -62,14 +62,17 @@ GCM values A_GCM and B_GCM (a GCM_INIT next phase and a NUM_VALID_BYTES of 1 to
 Checkers:
   CHK-SHADOW-ERR       AES mismatched pair: status bit set, bit 32 pulses,
                        ALERT_FATAL_FAULT 0.
-  CHK-SHADOW-CTRL      AES equal pair: no pulse over 4 x c_err clocks and the
-                       register reads A. Control: the mismatched pair pulsed.
+  CHK-SHADOW-CTRL      AES equal pair: no pulse over 4 x c_err clocks, the
+                       register reads A and STATUS.ALERT_RECOV_CTRL_UPDATE_ERR
+                       reads its reset value 0 (``aes.hjson:233-235``). Control:
+                       the mismatched pair pulsed.
   CHK-SHADOW-RESTART   after R written twice the next AES block equals its golden.
   CHK-GCM-SHADOW-ERR   AES GCM mismatched pair after GCM_INIT: no bit 32 rise up
                        to the second write, the first rise within 4 x c_err
                        clocks of it, ALERT_FATAL_FAULT 0.
   CHK-GCM-SHADOW-WRITE AES GCM equal pair of A_GCM: no bit 32 rise over 4 x c_err
-                       clocks and PHASE and NUM_VALID_BYTES read A_GCM. Control:
+                       clocks, PHASE and NUM_VALID_BYTES read A_GCM and the
+                       update error reads 0. Control:
                        CTRL-GCM-SHADOW-PRE, the read before the pair gives the
                        RDL reset value (GCM_INIT, 16), which differs from A_GCM.
   CHK-SHADOW-FATAL-QUIET every AES STATUS read inside an FCOV window that shows
@@ -77,11 +80,12 @@ Checkers:
                        bus, at the read). Control: CTRL-SHADOW-FATAL-QUIET, the
                        mismatched CTRL_SHADOWED pair of the AES pass and of the
                        AES reset leg each give at least one such read.
-  CHK-AUX-SHADOW-ERR   AES AUX mismatched pair: bit 32 pulses (alert_cycles > 0)
-                       within 4 x c_err clocks of the second write. Control:
+  CHK-AUX-SHADOW-ERR   AES AUX mismatched pair: no bit 32 rise up to the second
+                       write, the first rise within 4 x c_err clocks of it.
+                       Control:
                        CTRL-AUX-SHADOW-EQ, the equal pair gives no pulse.
-  CHK-AUX-SHADOW-WRITE AES AUX equal pair of A_AUX: the register reads A_AUX.
-                       Control: CTRL-AUX-SHADOW-PRE, the read before the pair
+  CHK-AUX-SHADOW-WRITE AES AUX equal pair of A_AUX: the register reads A_AUX and
+                       the update error reads 0. Control: CTRL-AUX-SHADOW-PRE, the read before the pair
                        gives the reset value 0x1 (``aes.adoc:131``), which
                        differs from A_AUX.
   CHK-AUX-REGWEN       REGWEN reads 0 after a 0 write, a new AUX pair does not
@@ -94,10 +98,11 @@ Checkers:
                        then B_AUX. Control: before the reset
                        the AUX register differs from its reset value and the
                        update error reads 1.
-  CHK-ALERT-MALFORMED  per block: bit 32 stays 0 over a quiet window before,
+  CHK-ALERT-MALFORMED  per block: bit 32 stays 0 over a quiet window before and
                        rises during the malformed pair on a clock 2 to
-                       4 x c - 1 (inclusive) after the mark, reads 0 after the
-                       release and stays 0 over a quiet window after it.
+                       4 x c - 1 (inclusive) after the mark. The level after
+                       the release and its quiet window are logged
+                       (OBS-ALERT-MALFORMED-POST): no text states them.
                        c: the ALERT_TEST delay of the block in the same trial.
                        The mark is the last clock sampled before the inject:
                        the leaf drives the inject on clock 1 and the pair is
@@ -114,11 +119,11 @@ instance passed and before the window closes (``env/sep_fcov_gate.py``,
 cells. ``cp_fatal_quiet`` samples at the graded STATUS read itself: its sample
 condition is the per-read compare of CHK-SHADOW-FATAL-QUIET.
 
-``OBS-SHADOW-AUX`` logs ``STATUS.ALERT_RECOV_CTRL_UPDATE_ERR`` after each AES AUX
-pair: the status text names "the shadowed Control Register" (aes.hjson:995) and
-no text states that it covers CTRL_AUX_SHADOWED; ``OBS-SHADOW-GCM`` logs the same
-bit and the reserved bits of CTRL_GCM_SHADOWED after each GCM pair, for the same
-reason. Every KMAC result
+``OBS-SHADOW-AUX`` logs ``STATUS.ALERT_RECOV_CTRL_UPDATE_ERR`` after the
+mismatched AES AUX pair: the status text names "the shadowed Control Register"
+(aes.hjson:995) and no text states that it covers CTRL_AUX_SHADOWED;
+``OBS-SHADOW-GCM`` logs the same bit after the mismatched GCM pair for the same
+reason, and the reserved bits of CTRL_GCM_SHADOWED after the equal pair. Every KMAC result
 (``CFG_SHADOWED`` and ``ENTROPY_REFRESH_THRESHOLD_SHADOWED``) is logged as
 ``OBS-SHADOW-KMAC`` and not graded: no KMAC text defines the update-error write
 sequence of those registers; one equal CFG_SHADOWED pair with a read between
@@ -725,6 +730,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         window = WINDOW_FACTOR * base
         cycles = -1
         rb = -1
+        status_err = -1
         try:
             m1, m2 = await self._pair(
                 self.aes, AES_CTRL_SHADOWED, plan.a, plan.a, plan.gaps["aes_eq"]
@@ -732,18 +738,21 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             await self._until(m2, window)
             cycles = self.vec.high_clocks_since(m1, "alert")
             st = await self.aes._rd(AES_STATUS)
-            self.chk.obs("SHADOW-STATUS", reg="aes_ctrl", status_err=int(bool(st & AES_ST_ERR)))
+            status_err = int(bool(st & AES_ST_ERR))
             rb = await self.aes._rd(AES_CTRL_SHADOWED)
         except TrialTimeout:
             cycles = -1
         ctrl_ok = self._control("SHADOW-CTRL", c_err is not None and c_err > 0, ctrl_c_err=c_err)
         rb_ok = rb >= 0 and (rb & AES_CTRL_MASK) == (plan.a & AES_CTRL_MASK)
+        # An equal pair after an AES reset is no update error, so the status bit
+        # keeps its reset value 0 (aes.hjson ALERT_RECOV_CTRL_UPDATE_ERR resval 0).
         eq_ok = self._grade(
             "SHADOW-CTRL",
-            cycles == 0 and rb_ok,
+            cycles == 0 and rb_ok and status_err == 0,
             reg="aes_ctrl",
             a=f"0x{plan.a:x}",
             alert_cycles=cycles,
+            status_err=status_err,
             readback=f"0x{rb & AES_CTRL_MASK:x}" if rb >= 0 else "none",
             rsvd=f"0x{rb & ~AES_CTRL_MASK & 0xFFFF_FFFF:x}" if rb >= 0 else "none",
             window_clk=window,
@@ -775,16 +784,15 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         eq_cycles = self.vec.high_clocks_since(m1, "alert")
         st = await self.aes._rd(AES_STATUS)
         aux_rb = await self.aes._rd(AES_AUX) & AES_AUX_MASK
-        self.chk.obs(
-            "SHADOW-AUX", reg="aes_aux", pair="equal", status_err=int(bool(st & AES_ST_ERR))
-        )
+        aux_status_err = int(bool(st & AES_ST_ERR))
         eq_ok = self._control("AUX-SHADOW-EQ", eq_cycles == 0, ctrl_eq_alert_cycles=eq_cycles)
         if self._grade(
             "AUX-SHADOW-WRITE",
-            aux_rb == A_AUX,
+            aux_rb == A_AUX and aux_status_err == 0,
             reg="aes_aux",
             value=f"0x{A_AUX:x}",
             readback=f"0x{aux_rb:x}",
+            status_err=aux_status_err,
             ctrl_aux_pre=f"0x{aux_pre:x}",
             ctrl_eq_alert_cycles=eq_cycles,
         ) and (pre_ok and eq_ok):
@@ -794,6 +802,9 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         self._open()
         m1, m2 = await self._pair(self.aes, AES_AUX, aux1, aux2, plan.gaps["aux_mis"])
         await self._until(m2, window)
+        rises = self.vec.rise_clks_since(m1, "alert")
+        aux_early = sum(1 for r in rises if r <= m2.clk)
+        aux_rise = next((r - m2.clk for r in rises if r > m2.clk), None)
         mis_cycles = self.vec.high_clocks_since(m1, "alert")
         st = await self.aes._rd(AES_STATUS)
         self.chk.obs(
@@ -802,10 +813,12 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         if (
             self._grade(
                 "AUX-SHADOW-ERR",
-                mis_cycles > 0,
+                aux_early == 0 and aux_rise is not None and aux_rise <= window,
                 reg="aes_aux",
                 first=f"0x{aux1:x}",
                 second=f"0x{aux2:x}",
+                early_rises=aux_early,
+                rise_clk=aux_rise,
                 alert_cycles=mis_cycles,
                 window_clk=window,
                 ctrl_eq_alert_cycles=eq_cycles,
@@ -897,7 +910,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         window = WINDOW_FACTOR * base
         a = plan.gcm_a & GCM_FIELDS
         reason = ""
-        pre = rb = cycles = -1
+        pre = rb = cycles = status_err = -1
         try:
             pre = await self._gcm_init()
         except TrialTimeout as exc:
@@ -924,12 +937,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             cycles = self.vec.high_clocks_since(m1, "alert")
             rb = await self.aes._rd(AES_GCM)
             st = await self.aes._rd(AES_STATUS)
-            self.chk.obs(
-                "SHADOW-GCM",
-                pair="equal",
-                status_err=int(bool(st & AES_ST_ERR)),
-                rsvd=f"0x{rb & ~GCM_FIELDS & 0xFFFF_FFFF:x}",
-            )
+            status_err = int(bool(st & AES_ST_ERR))
+            self.chk.obs("SHADOW-GCM", pair="equal", rsvd=f"0x{rb & ~GCM_FIELDS & 0xFFFF_FFFF:x}")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         fields = {
@@ -937,6 +946,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             "a": f"0x{a:x}",
             "alert_cycles": cycles,
             "readback": f"0x{rb & GCM_FIELDS:x}" if rb >= 0 else "none",
+            "status_err": status_err,
             "window_clk": window,
             "ctrl_pre": ctrl_pre,
             "ctrl_c_err": base,
@@ -945,7 +955,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             fields["reason"] = reason
         if self._grade(
             "GCM-SHADOW-WRITE",
-            not reason and cycles == 0 and rb >= 0 and (rb & GCM_FIELDS) == a,
+            not reason and cycles == 0 and rb >= 0 and (rb & GCM_FIELDS) == a and status_err == 0,
             **fields,
         ):
             await self._passed(AES_SHADOW_PASS_GCM_MATCHED)
@@ -1204,17 +1214,24 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             quiet_post = self.vec.high_clocks_since(mp, "alert")
             # The rise counts only on a clock ALERT_RISE_CLK_MIN to rise_max after the mark.
             raised = int(raise_clk is not None and ALERT_RISE_CLK_MIN <= raise_clk <= rise_max)
+            # No text states that bit 32 drops once the pair is legal again, so the
+            # level after the release is logged, not graded.
+            self.chk.obs(
+                "ALERT-MALFORMED-POST",
+                block=blk,
+                post=post,
+                quiet_post_high_clk=quiet_post,
+                quiet_clk=WINDOW_FACTOR * c,
+            )
             if self._grade(
                 "ALERT-MALFORMED",
-                pre == 0 and quiet_pre == 0 and raised == 1 and post == 0 and quiet_post == 0,
+                pre == 0 and quiet_pre == 0 and raised == 1,
                 block=blk,
                 index=idx,
                 wire=val,
                 pre=pre,
                 quiet_pre_high_clk=quiet_pre,
                 raised=raised,
-                post=post,
-                quiet_post_high_clk=quiet_post,
                 quiet_clk=WINDOW_FACTOR * c,
                 raise_clk=raise_clk,
                 expect_raise_clk_min=ALERT_RISE_CLK_MIN,

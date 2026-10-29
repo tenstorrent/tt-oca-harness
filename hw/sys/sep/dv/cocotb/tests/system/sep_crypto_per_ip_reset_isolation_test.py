@@ -44,8 +44,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     (sha3_idle, fifo_empty, the two alert bits); STATUS before
                     the pulse differs from that reset. sha3_absorb,
                     sha3_squeeze, fifo_depth and fifo_full have no stated
-                    reset value and are logged only. KMAC STATE after its own
-                    pulse has no stated value and is logged only. OTBN
+                    reset value and are logged only. OTBN
                     LOAD_CHECKSUM (rst_ni CSR) clears from the held mark to
                     its register-map reset. DMEM is the cross-domain
                     leak check (a neighbour must not wipe it). OTBN's own reset runs
@@ -59,6 +58,14 @@ Isolation proof (both directions, then the remaining isolated bits):
                     on the sibling port stays OKAY; SW_RESET_N readback shows
                     the HMAC bit low; after release DIGEST_0 is OKAY (its
                     data is logged: DIGEST has no stated reset value).
+  * CHK-KMAC-STATE  after KMAC's own pulse, with sha3_idle = 1, the raw words
+                    0..7 of both STATE shares read 0 (OT kmac
+                    theory_of_operation.md, "Keccak State Access": zero while
+                    idle); the held digest before the pulse is non-zero.
+  * CTRL-RESET-PULSE  every helper pulse (_pulse_reset) shows the engine's
+                    gated reset fell after the request and rose after the
+                    release, so each neighbour-survives check follows a reset
+                    that landed.
   * CHK-<ENG>-DRAIN-OPEN  before each drained reset request, the host isolate
                     bit reads 0 and the gated reset is still released, so the
                     drain-order check below can fail.
@@ -238,7 +245,10 @@ from seq_lib.sep_esrc_fips_lock_seq import LOCK_BIT, SepEsrcFipsLock
 from seq_lib.sep_hmac_seq import HMAC_CFG, HMAC_DIGEST_0, SepHmac
 from seq_lib.sep_kmac_seq import (
     KMAC_CFG_SHADOWED,
+    KMAC_DIGEST_WORDS,
     KMAC_MODE,
+    KMAC_STATE_S0,
+    KMAC_STATE_S1,
     KMAC_STATUS,
     KMAC_STRENGTH,
     SepKmac,
@@ -472,7 +482,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await self.rst.release_resets()
         await self._wait_gated_rst(rst_bit, 1, "reset pulse release")
         await ClockCycles(cocotb.top.clk_i, 40)
-        self.logger.info("INFO-RESET-PULSE %s fell and released", _GATED_RST_PROBE[rst_bit])
+        self.logger.info("CTRL-RESET-PULSE %s fell=1 released=1", _GATED_RST_PROBE[rst_bit])
 
     async def _chk_trng_iso_resp(self) -> None:
         """CHK-TRNG-ISO-RESP: one CSR read of each entropy-complex IP inside its reset.
@@ -2612,13 +2622,21 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "(no stated value)",
             kmac_status & KMAC_STATUS_RESERVED_MASK,
         )
-        # STATE is a window, not a register-map CSR, and no spec states its value
-        # after reset, so it is logged, not graded.
-        kmac_after = await self.kmac.read_digest()
-        self.logger.info(
-            "OBS-KMAC-STATE: STATE after KMAC's own SW_RESET_N pulse %s (held %s)",
-            [hex(w) for w in kmac_after],
-            [hex(w) for w in k_digest],
+        # The Keccak state reads zero while KMAC is idle
+        # (vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/theory_of_operation.md,
+        # "Keccak State Access"), and CHK-KMAC-SELF has just graded sha3_idle = 1.
+        # Each share is read raw, so equal non-zero shares cannot pass. The held
+        # digest is non-zero, so the check can fail on a pulse that kept STATE.
+        s0_after = [await self.kmac._rd(KMAC_STATE_S0 + i * 4) for i in range(KMAC_DIGEST_WORDS)]
+        s1_after = [await self.kmac._rd(KMAC_STATE_S1 + i * 4) for i in range(KMAC_DIGEST_WORDS)]
+        self._grade(
+            any(k_digest) and not any(s0_after) and not any(s1_after),
+            "CHK-KMAC-STATE",
+            f"STATE after KMAC's own SW_RESET_N pulse share0 {[hex(w) for w in s0_after]} "
+            f"share1 {[hex(w) for w in s1_after]} (held {[hex(w) for w in k_digest]}); "
+            "expected every word 0 while idle, and a non-zero held digest",
+            f"STATE after KMAC's own SW_RESET_N pulse: share0 and share1 words "
+            f"0..{KMAC_DIGEST_WORDS - 1} all 0 while idle (held [0]=0x{k_digest[0]:08x})",
         )
         hmac_survived = await self.hmac.read_digest()
         self._grade(

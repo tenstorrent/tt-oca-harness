@@ -29,9 +29,15 @@ The draws, the source table and the frame model are in
 Witnesses. HMAC: keyed HMAC-SHA256 of a fixed message with a fixed software key
 in the KEY registers; ``key`` when the digest equals the golden of the delivered
 key, ``nokey`` when it equals the golden of the software key. AES: ECB-256 with
-``sideload`` = 1; ``key`` when the output equals the golden of the delivered
-key. Any other AES result is logged as ``OBS-AES-NOKEY`` and never grades the
-absence of a key.
+``sideload`` = 1 in automatic mode; ``key`` when the output equals the golden of
+the delivered key, ``none`` when no OUTPUT_VALID comes within ``aes_w_clk``
+(8 x the first AES read of the leaf). After the wipe the sideload KEY_VALID is
+0, and an automatic-mode AES starts only with a valid sideload key
+(``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/theory_of_operation.md``,
+"Side-Loaded Key"), so the post-wipe AES result is graded ``none``, with the
+control CTRL-AES-NOKEY-INPUT (every STATUS sample of that read shows
+INPUT_READY = 0). A non-key AES result where a key is expected is logged as
+``OBS-AES-OTHER``.
 
 Probes and taps: ``HOST-MBX``, ``PIC-IRQ`` bit 30, ``KM-COUNT``, ``ENGINE-OUT``,
 ``KM-ENTROPY``, ``KM-ISO``, and the read-only taps ``KM-VALID``, ``KM-KPV``,
@@ -45,10 +51,11 @@ Checks (HOST-UNREC unless marked):
   CHK-FLUSH-FIRST    (both) the r unread responses are flushed: one frame after
                      the rise, no stale RESP_CMD.
   CHK-SRAM-SHRED     the SRAM write count rises by 8192 or more by the rise.
-  CHK-SHRED-WITNESS  (control) the HMAC witness shows no key after the report.
+  CHK-SHRED-WITNESS  (control) the HMAC witness shows no key and the AES gives
+                     no output within aes_w_clk after the report.
   CHK-NOSHRED-HOST   (HOST) with the ROM wipe off, the hardware wipe still clears
                      the HMAC witness key.
-  CHK-NOSHRED-HOST-AES (HOST) and no AES output equals the delivered-key golden.
+  CHK-NOSHRED-HOST-AES (HOST) and the AES gives no output within aes_w_clk.
   CHK-SHRED-FIRST-HOST (HOST) no bank key_valid and no shared key at the first
                      fault word of the real-wipe point (the wipe pulse).
   CHK-SK-AFTER-BOOT  (both) after a wipe, CMD_ABR_SK_TRANSFER of the pending
@@ -79,7 +86,7 @@ Checks (HOST-UNREC unless marked):
   CHK-KEYPATH-FATAL  (HOST) a key write to a reset HMAC is fatal with -7.
   CHK-XFER-STOP      (HOST) the transfer writes no AES bank after the HMAC fault.
 
-Logged only: OBS-AES-NOKEY, the SRAM write count of the HOST fatal
+Logged only: OBS-AES-OTHER, the SRAM write count of the HOST fatal
 path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
 outside the graded set, and INFO-PARITY-VACUOUS parity draws. In the whole leaf the
 CHK-MAINCTX-FATAL point runs after every other fatal point. The regression runs
@@ -128,7 +135,12 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_STATUS,
     SepAbrMlkem,
 )
-from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_OUTPUT_VALID, SepAes
+from seq_lib.sep_aes_seq import (
+    AES_STATUS,
+    AES_STATUS_INPUT_READY,
+    AES_STATUS_OUTPUT_VALID,
+    SepAes,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_km_mailbox_seq import (
@@ -1088,8 +1100,14 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self.swrst.release("aes")
         await self.aes.wait_idle("post-witness-reset")
 
-    async def _aes_read(self, key, step: str) -> str:
-        """AES witness: ``key`` or ``other``. Resets the AES after ``other``."""
+    async def _aes_read(self, key, step: str, expect_key: bool = True) -> str:
+        """AES witness: ``key``, ``none`` or ``other``. Resets the AES after a non-key result.
+
+        With ``expect_key`` False the wipe has cleared the sideload KEY_VALID, so
+        the result is ``none``: no OUTPUT_VALID within ``aes_w_clk``. Its control
+        CTRL-AES-NOKEY-INPUT requires every STATUS sample after the DATA_IN
+        writes to read INPUT_READY = 0: the block landed and was not loaded.
+        """
         golden = aes256_ecb_encrypt_words(list(key[:WITNESS_WORDS]), list(AES_PT))
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()
@@ -1097,8 +1115,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         t0 = self._cyc()
         first = self.aes_first_clk is None
         dur = None
+        samples = in_ready = 0
         while True:
             st = await self.aes._rd(AES_STATUS)
+            samples += 1
+            in_ready += bool(st & (1 << AES_STATUS_INPUT_READY))
             el = self._cyc() - t0
             if st & (1 << AES_STATUS_OUTPUT_VALID):
                 dur = el
@@ -1118,14 +1139,22 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             self.logger.info(
                 "INFO-AES-REF aes_first_clk=%d aes_w_clk=%d step=%s", dur, self.aes_w_clk, step
             )
-        state = "key" if out == golden else "other"
-        if state == "other":
-            self.chk.obs(
-                "AES-NOKEY",
+        if out is None:
+            state = "none"
+        else:
+            state = "key" if out == golden else "other"
+        output = "none" if out is None else "0x" + "".join(f"{w:08x}" for w in out)
+        if not expect_key:
+            self.chk.ctrl(
+                "AES-NOKEY-INPUT",
+                samples > 0 and in_ready == 0,
                 step=step,
-                output="none" if out is None else "0x" + "".join(f"{w:08x}" for w in out),
-                aes_w_clk=self.aes_w_clk,
+                samples=samples,
+                input_ready_samples=in_ready,
             )
+        elif state != "key":
+            self.chk.obs("AES-OTHER", step=step, output=output, aes_w_clk=self.aes_w_clk)
+        if state != "key":
             await self._aes_reset()
         return state
 
@@ -1430,7 +1459,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         high, answered, wframes = await self._trap_window(pre.w_clk)
         delta = None if watch.wr_at_rise is None else watch.wr_at_rise - wr_base  # step 7
         hmac_after = await self._hmac_read(p.keys[0].words, HMAC_MSG2)
-        aes_after = await self._aes_read(p.keys[0].words, "post_wipe")
+        aes_after = await self._aes_read(p.keys[0].words, "post_wipe", expect_key=False)
         status = self._csr_status()  # step 8
         watch.stop()
         b_end = self._b30()
@@ -1513,17 +1542,20 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             # Control: the wipe pulse of the KM_WIPE_CTRL edge clears the
             # sideload keys in hardware (architecture.adoc, "Wipe State"), so
             # this point cannot tell the ROM shred apart. CHK-SHRED-FIRST at
-            # the HK-IRQSET points grades the ROM shred.
+            # the HK-IRQSET points grades the ROM shred. With KEY_VALID 0 an
+            # automatic-mode AES does not start (OT aes theory_of_operation.md,
+            # "Side-Loaded Key"), so it gives no output within aes_w_clk.
             self.chk.ok(
                 "SHRED-WITNESS",
                 pre.hmac == "key"
                 and pre.aes == "key"
                 and hmac_after == "nokey"
-                and aes_after != "key",
+                and aes_after == "none",
                 hmac_before="golden" if pre.hmac == "key" else pre.hmac,
                 hmac_after=hmac_after,
                 aes_before="golden" if pre.aes == "key" else pre.aes,
-                aes_key_after=int(aes_after == "key"),
+                aes_after=aes_after,
+                aes_w_clk=self.aes_w_clk,
                 control=1,
             )
         else:
@@ -1538,14 +1570,17 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             )
             self.chk.obs("NOSHRED-WRITES", writes_delta="none" if delta is None else delta)
             # The wipe pulse clears both shares and KEY_VALID of the AES
-            # sideload block (architecture.adoc, "Wipe State"), so no AES
-            # output equals the golden of the delivered key.
+            # sideload block (architecture.adoc, "Wipe State"), and an
+            # automatic-mode AES starts only with a valid sideload key (OT aes
+            # theory_of_operation.md, "Side-Loaded Key"): no output within
+            # aes_w_clk.
             self.chk.ok(
                 "NOSHRED-HOST-AES",
-                pre.aes == "key" and aes_after != "key",
+                pre.aes == "key" and aes_after == "none",
                 km_unrec_wipe=0,
                 aes_before="golden" if pre.aes == "key" else pre.aes,
-                aes_key_after=int(aes_after == "key"),
+                aes_after=aes_after,
+                aes_w_clk=self.aes_w_clk,
             )
         self._shred_first(pre, watch, "real_wipe")
         # The wipe-state edge sets the sticky IRQ_STATUS.WIPE_STATE
@@ -2038,7 +2073,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         frame, orig, flipped = p.main_stream()
         assert flipped != orig, "the flipped stream word equals the original word"
         self.logger.info(
-            "OBS-MAIN-STREAM n=%d w=%d bit=%d original=%s flipped=%s confirm=%d",
+            "INFO-MAIN-STREAM n=%d w=%d bit=%d original=%s flipped=%s confirm=%d",
             n,
             p.main_w,
             p.main_bit,

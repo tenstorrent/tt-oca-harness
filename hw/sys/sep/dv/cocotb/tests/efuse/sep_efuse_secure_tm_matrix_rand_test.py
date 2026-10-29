@@ -50,8 +50,10 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     ``OBS-BLOCKED CHK-STM-JTAG reason=lifecycle_gate``.
   INFO-STM-STATE     logs the drawn state and ``jtag_leg`` (1 when CHK-STM-JTAG runs)
                     of the seed. A control line, not a check.
-  CTRL-STM-WRITE-ISSUED  each target write returns a response from the DUT; a
-                    missing response is a recorded failure.
+  CTRL-STM-WRITE-ISSUED  each target write returns a B response code of OKAY,
+                    SLVERR or DECERR; an unreadable code (-1 from the JTAG port) is a
+                    recorded failure. A write that gets no B response fails the
+                    access itself (bus timeout).
   CTRL-STM-PROG-ISSUED  after each program go of both straps, the software-owned
                     fields of ``EFUSE_PROGRAM_CTRL`` (``efuse_addr``, ``efuse_data``,
                     ``efuse_program_read_back``, ``program_enable``) read back equal to
@@ -126,7 +128,7 @@ from env.sep_efuse_test_lib import (
     shadow_word,
     wait_bit,
 )
-from env.sep_fabric_common import RESP_OKAY
+from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, RESP_SLVERR
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -154,6 +156,7 @@ SENSE_BOUND = 20_000
 # sampler address decode in cov/sv/sep_fcov.sv.
 _TARGET_IDX = {t: i for i, t in enumerate(STM_TARGETS)}
 _SRC_IDX = {"fd": 0, "jtag": 1}
+_B_RESPS = (RESP_OKAY, RESP_SLVERR, RESP_DECERR)  # a B response the AXI-Lite port can carry
 # Hold tags of the graded steps (set_ef_hold_tag): the strap-1 programs, the
 # strap-0 programs, the strap-1 secret reads, the JTAG target writes.
 _TAG_PROG1, _TAG_PROG0, _TAG_SECRET, _TAG_JTAG = 1, 2, 3, 4
@@ -299,7 +302,6 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             raise AssertionError(
                 f"test bug: {t['field']} word {t['word']} bit {t['bit']} is already set"
             )
-        resp: int | None
         if src == "fd":
             resp = await self.fd.wr_graded_by_readback(addr, before | bit)
         else:
@@ -324,7 +326,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         r = await self._target_write(t, src)
         self._ctrl(
             "STM-WRITE-ISSUED",
-            r["resp"] is not None,
+            r["resp"] in _B_RESPS,
             src=src,
             strap=strap,
             target=r["target"],

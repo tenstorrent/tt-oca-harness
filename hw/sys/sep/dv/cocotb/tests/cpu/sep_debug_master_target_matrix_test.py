@@ -169,8 +169,11 @@ Checks:
                   and of ``DEMOTE_2``: each R or B beat answers OKAY and
                   ``sberror`` reads 0 (both are legal accesses: ``sw = rw``,
                   no lock set, so the golden code is OKAY, AMBA AXI IHI0022);
+                  before the instance the bench LSU master writes a drawn
+                  non-zero ``start_addr`` and one drawn ``DEMOTE_2`` bit in
+                  [63:2] (CTRL-DBG-SBA-PRELOAD: both read back non-zero), and
                   the read returns in ``sbdata`` the value the bench LSU
-                  master read before the instance; after the write the bench LSU
+                  master read after that preload; after the write the bench LSU
                   master reads the written value on the ``start_addr`` field,
                   rounded to the granule only when START and END share one
                   (``hw/ip/axi_filter/regs/filter_ctrl.rdl:94-102``), and for
@@ -210,8 +213,10 @@ write word, the extension word and its reply and write words, the ICCM word, the
 probe word,
 the write words of the boot ROM and ICCM legs, and for AP then STEE the region,
 the word offset, the remap offset and the write word; then for the logged leg
-the hole word, the disabled inbound filter entry, the DEMOTE_2 rsvd bit and
-the write word of each target. Every leg runs on every seed. Entry C uses
+the hole word, the disabled inbound filter entry, the DEMOTE_2 rsvd bit,
+the write word of each target, the preload ``start_addr`` (4 KiB aligned,
+non-zero) and the preload DEMOTE_2 bit (redrawn while it equals the rsvd
+bit). Every leg runs on every seed. Entry C uses
 only the uncore DMI write data, which no check grades; both entries run one
 seed per regression.
 
@@ -1486,7 +1491,8 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         FILT_START (the written value on the ``start_addr`` field, rounded only
         when START and END share a granule) and to LC_RSVD (the value before
         the write OR the written bit), and the debug-master read of each, which
-        returns the bench-LSU value read before the instance in ``sbdata``. The
+        returns in ``sbdata`` the bench-LSU value read after a non-zero preload
+        (CTRL-DBG-SBA-PRELOAD). The
         R or B beat of all four register accesses answers OKAY and ``sberror``
         reads 0. PIC_BASE, HOLE and PAST are logged as OBS-DBG-SBA.
         """
@@ -1518,19 +1524,41 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             name: (1 << demote_bit) if name == "LC_RSVD" else self.rng.getrandbits(8 * size)
             for name, _addr, size in targets
         }
+        # Non-zero preloads: the debug-master read of each target then returns a
+        # value that the reset-valued registers around it do not hold.
+        pre_start = self.rng.randrange(1, 1 << 44) << 12
+        pre_bit = demote_bit
+        while pre_bit == demote_bit:
+            pre_bit = 2 + self.rng.randrange(62)
         self.logger.info(
-            "INFO-DRAW sba_obs hole=0x%08x filt_entry=%d demote_bit=%d writes=%s",
+            "INFO-DRAW sba_obs hole=0x%08x filt_entry=%d demote_bit=%d writes=%s "
+            "pre_start=0x%x pre_bit=%d",
             hole,
             filt,
             demote_bit,
             " ".join(f"{n}:0x{v:x}" for n, v in wvals.items()),
+            pre_start,
+            pre_bit,
         )
         sw_rst = await self._lsu(SepAxiOp.READ, SW_RESET_N)
+        start_orig = await self._lsu(SepAxiOp.READ, filt_start, length=8)
+        await self._lsu(SepAxiOp.WRITE, filt_start, pre_start & 0xFFFF_FFFF)
+        await self._lsu(SepAxiOp.WRITE, filt_start + 4, pre_start >> 32)
+        await self._lsu(SepAxiOp.WRITE, DEMOTE_2 + 4 * (pre_bit // 32), 1 << (pre_bit % 32))
         start_before = await self._lsu(SepAxiOp.READ, filt_start, length=8)
         end_rb = await self._lsu(
             SepAxiOp.READ, filt_start - FILTER_START_ADDR + FILTER_END_ADDR, length=8
         )
         lc_before = await self._lsu(SepAxiOp.READ, DEMOTE_2, length=8)
+        pre = (
+            f"start_rb={_h(start_before)} pre_start=0x{pre_start:x} "
+            f"field_mask=0x{FILTER_ADDR_MASK:x} lc_rb={_h(lc_before)} pre_bit={pre_bit}"
+        )
+        if start_before & FILTER_ADDR_MASK and lc_before >> pre_bit & 1:
+            self.logger.info("CTRL-DBG-SBA-PRELOAD: %s", pre)
+        else:
+            self.logger.error("CTRL-MISSING DBG-SBA-PRELOAD: %s", pre)
+            self.failures.append(f"CTRL-MISSING DBG-SBA-PRELOAD: {pre}")
         # START_ADDR write-back (hw/ip/axi_filter/regs/filter_ctrl.rdl:94-102): the
         # granule is 4 KiB with allow_burst, else 2^data_bus_width bytes; hardware
         # writes the rounded START back only when START and END share a granule.
@@ -1580,8 +1608,8 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     else:
                         got, exp = await self._lsu(SepAxiOp.READ, addr, length=8), expect[name]
                     fc = field_compare(got, exp, mask)
-                    # The request address on PR-DBG-SB: a read that reaches another
-                    # word that also reads 0 cannot pass on the data alone.
+                    # The request address on PR-DBG-SB is the address the debug
+                    # master issues; the preloaded value grades where the read lands.
                     ax = [b.addr for b in self._beats(self.sb_tap, sm, "ar" if d == "r" else "aw")]
                     self._grade(
                         "CHK-DBG-SBA-REG",
@@ -1614,8 +1642,8 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             if name == "ISOLATED":
                 await self._lsu(SepAxiOp.WRITE, SW_RESET_N, sw_rst)
             if name == "FILT_START":
-                await self._lsu(SepAxiOp.WRITE, filt_start, start_before & 0xFFFF_FFFF)
-                await self._lsu(SepAxiOp.WRITE, filt_start + 4, start_before >> 32)
+                await self._lsu(SepAxiOp.WRITE, filt_start, start_orig & 0xFFFF_FFFF)
+                await self._lsu(SepAxiOp.WRITE, filt_start + 4, start_orig >> 32)
         await self._inst_close(0)
 
     async def _remap_program(self, csr_base: int, region: int, word: int) -> None:

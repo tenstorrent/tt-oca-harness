@@ -33,7 +33,8 @@ Checks (anchor):
                          life-cycle words kept, OTP_SIGINT quiet (POKE readback,
                          ``secure_tm_o``)
   CHK-OTP-DEM            a DEMOTE write sets OTP_CHANGE_STATUS.demotion and
-                         IRQ_STATUS.OTP_CHANGE and changes one group (POKE readback)
+                         IRQ_STATUS.OTP_CHANGE and changes only its own group:
+                         DEMOTE_1 bits [1:0], DEMOTE_2 bits [3:2] (POKE readback)
   CHK-OTP-SUPP           no change after a KM warm reset with a demotion held;
                          control CTRL-OTP-SUPP-PARK: OTP_READ_LOCK, set to 0x1FF
                          before PARK, reads 0 after it (warm reset domain)
@@ -61,8 +62,8 @@ Checks (anchor):
                          read 0 in every readout (RDL ``rsvd`` R 0x0)
 
 Logged only (no verdict): ``OBS-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a single-rail
-flip, not stated), ``OBS-OTP-DEM-GROUP`` (which group a DEMOTE register drives,
-not stated), ``OBS-OTP-LOCK-RESP`` (the response of a locked-field read, not
+flip, not stated), ``OBS-OTP-DEM-CODE`` (the 2-bit code of the changed demotion
+group before and after the write: polarity not stated), ``OBS-OTP-LOCK-RESP`` (the response of a locked-field read, not
 stated; only its zero data is graded).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
@@ -1123,10 +1124,11 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         leg.w1c_change, leg.w1c_irq = v["w1c_change"], v["w1c_irq"]
         return leg
 
-    def _grade_dem(self, leg: Leg, other_group: int | None) -> int | None:
+    def _grade_dem(self, leg: Leg, reg: int) -> None:
         pre = leg.pre_dem & m.DEM_FIELDS
         post = leg.dem & m.DEM_FIELDS
         changed = m.dem_groups_changed(pre, post)
+        exp_group = reg - 1
         before0 = self._pre_zero(leg)
         self.chk.ctrl(
             "OTP-DEM-PRE", before0, reg=leg.label, change=_h(leg.pre_change), irq=_h(leg.pre_irq)
@@ -1140,7 +1142,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             and m.dem_groups_cpl(post) == 2
             and not (leg.w1c_change & m.CHANGE_FIELDS)
             and not (leg.w1c_irq & m.IRQ_OTP_CHANGE)
-            and (other_group is None or group != other_group)
+            and group == exp_group
         )
         self.chk.ok(
             "OTP-DEM",
@@ -1148,6 +1150,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             reg=leg.label,
             change_before=int(not before0),
             group=group if group is not None else "none",
+            exp_group=exp_group,
             change_bit=f"0x{leg.change & m.CHANGE_FIELDS:03x}",
             irq=int(bool(leg.irq & m.IRQ_OTP_CHANGE)),
             group_changed=len(changed),
@@ -1155,16 +1158,21 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             dem=f"{_h(pre)}->{_h(post)}",
             w1c_after=f"{leg.w1c_change & m.CHANGE_FIELDS},{int(bool(leg.w1c_irq & m.IRQ_OTP_CHANGE))}",
         )
+        mask = m.DEM_GROUPS[exp_group]
+        lsb = (mask & -mask).bit_length() - 1
         self.chk.obs(
-            "OTP-DEM-GROUP", reg=leg.label, group_index=group if group is not None else "none"
+            "OTP-DEM-CODE",
+            reg=leg.label,
+            group=exp_group,
+            code_pre=f"0b{(pre & mask) >> lsb:02b}",
+            code_post=f"0b{(post & mask) >> lsb:02b}",
         )
-        return group
 
     async def _step_demote_park(self) -> None:
         da = self.rep.demote_first
         db = 3 - da
         self.dem_a = await self._demote(da)
-        g_a = self._grade_dem(self.dem_a, None)
+        self._grade_dem(self.dem_a, da)
         # OTP_READ_LOCK is in the warm reset domain (architecture.adoc, "Cleared by
         # warm or cold reset"): set before PARK, it reads 0 only after a real reset.
         lk = await self._run([kp.wr(m.A_READ_LOCK, m.LOCK_FIELDS), kp.rd(m.A_READ_LOCK)])
@@ -1190,7 +1198,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             lock_after_park=_h(r[4].value),
         )
         self.dem_b = await self._demote(db)
-        self._grade_dem(self.dem_b, g_a)
+        self._grade_dem(self.dem_b, db)
         held = (supp_dem & m.DEM_FIELDS) == (self.dem_a.dem & m.DEM_FIELDS)
         twin = bool(self.dem_b.change & (1 << m.F_DEM)) and bool(self.dem_b.irq & m.IRQ_OTP_CHANGE)
         self.chk.ctrl(

@@ -18,8 +18,10 @@ Contract (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``,
   change ``nmi_vec`` (bits 31:1), bit 0 (``rsvd``, "always 0") reads 0, and a write of 0 or all-ones to the lock
   leaves it at 1.
 * ``SEP_FUSE_SENSE_STATUS`` and ``SMC_FUSE_SENSE_STATUS`` (R) ignore a write
-  of the complement of bit 0. Every access, the ``TIMEOUT_CLEAR`` and
-  ``TIMEOUT_MODE`` writes included, gets a response.
+  of the complement of bit 0. Every access gets a response. The legal
+  writes (``SEP_NMI_VEC_LOCK.lock`` RW1S; ``TIMEOUT_CLEAR`` and
+  ``TIMEOUT_MODE``, ``W`` fields with no lock) answer OKAY (AMBA AXI IHI0022,
+  OKAY: normal access success).
 * Each scratch register stores the low word of every write, for every write
   order and shape. Bits 63:32 have no field.
 
@@ -36,9 +38,11 @@ Checkers:
                   ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:342-347``).
   CHK-NMI-LOCK    ``SEP_NMI_VEC[31:0]`` after each of the 8 locked writes
                   (bits 31:1 the vector before the write, bit 0 zero), and
-                  ``lock`` after each of the 4 lock writes.
+                  ``lock`` and the OKAY response of each of the 4 lock writes.
   CHK-CC-INERT    bit 0 of both sense status registers after the complement
-                  write; every write response, the timeout registers included.
+                  write; the OKAY response of each of the 16 timeout writes;
+                  every write response arrives.
+  Each graded readback and response prints its own ``CHK-<name> PASS`` line.
   CHK-SCR-SHAPE   the low word of each written scratch register (64-bit
                   readback, and ``scratch_cold_probe_o`` for the cold bank);
                   in the high-half-first order also after the high-half
@@ -85,6 +89,7 @@ NMI_LOCK = SEP_CPU_CTRL.addr("SEP_NMI_VEC_LOCK")
 LOCK_FIELD = SEP_CPU_CTRL.field_mask("SEP_NMI_VEC_LOCK", "lock")
 TIMEOUT_CLEAR = SEP_CPU_CTRL.addr("TIMEOUT_CLEAR")
 TIMEOUT_MODE = SEP_CPU_CTRL.addr("TIMEOUT_MODE")
+RESP_OKAY = 0
 RESP_DECERR = 3
 TIMEOUT_INTERRUPT = SEP_CPU_CTRL.addr("TIMEOUT_INTERRUPT")
 SENSE_REGS = {
@@ -294,10 +299,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
     async def _write(self, addr: int, value: int, lane: str, *, tolerant: bool) -> int:
         """One full-strobe write on ``lane``. Returns the response code.
 
-        ``tolerant`` accepts any response code (the code of a write to a
-        read-only register or a reserved field is not stated); the arrival of
-        the response is the only scored outcome. A missing response fails at
-        the AXI response timeout of the agent.
+        ``tolerant`` accepts any response code here, and the caller grades the
+        code of a legal write (OKAY) itself; the code of a write to a read-only
+        register or of a write the lock refuses is not stated, and only its
+        arrival is scored. A missing response fails at the AXI response timeout
+        of the agent.
         """
         if lane == "64":
             a, data, n, size = addr, value & M64, 8, 3
@@ -352,7 +358,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, VERSION_RESET, VERSION_FIELD)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-RO FAIL: {line}"
-            self.logger.info("INFO-CC-RO LOG: %s", line)
+            self.logger.info("CHK-CC-RO PASS: %s", line)
             self._rsvd("SEP_VERSION_ID", got, VERSION_FIELD)
         close_graded_window(self.logger)
         n_low = sum(1 for _v, lane in cfg.ver if lane in LOW_LANES)
@@ -419,7 +425,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, vec, NMI_FIELD | NMI_RSVD0)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-NMI-LOCK FAIL: locked vector write changed bits 31:0: {line}"
-            self.logger.info("CTRL-NMI-LOCK LOG: %s", line)
+            self.logger.info("CHK-NMI-LOCK PASS: %s", line)
             self._rsvd("SEP_NMI_VEC", got, NMI_FIELD | NMI_RSVD0)
 
         # Step 7: lock write cases.
@@ -428,9 +434,9 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             resp = await self._write(NMI_LOCK, k, lane, tolerant=True)
             got = await self._read64(NMI_LOCK)
             fc = field_compare(got, LOCK_FIELD, LOCK_FIELD)
-            line = f"wdata=0x{k:x} lane={lane} resp={resp} {fc.fields()}"
-            assert fc.ok, f"CHK-NMI-LOCK FAIL: lock cleared by a write: {line}"
-            self.logger.info("CTRL-NMI-LOCK LOG: %s", line)
+            line = f"wdata=0x{k:x} lane={lane} resp={resp} expect_resp={RESP_OKAY} {fc.fields()}"
+            assert fc.ok and resp == RESP_OKAY, f"CHK-NMI-LOCK FAIL: lock write: {line}"
+            self.logger.info("CHK-NMI-LOCK PASS: %s", line)
             self._rsvd("SEP_NMI_VEC_LOCK", got, LOCK_FIELD)
             n0 += int(k == 0)
             n1 += int(k == M64)
@@ -451,9 +457,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         for name, addr in (("TIMEOUT_CLEAR", TIMEOUT_CLEAR), ("TIMEOUT_MODE", TIMEOUT_MODE)):
             for v, lane in cfg.timeout[name]:
                 resp = await self._write(addr, v, lane, tolerant=True)
-                self.logger.info(
-                    "INFO-CC-INERT LOG: reg=%s wdata=0x%016x lane=%s resp=%d", name, v, lane, resp
+                line = (
+                    f"reg={name} wdata=0x{v:016x} lane={lane} resp={resp} expect_resp={RESP_OKAY}"
                 )
+                assert resp == RESP_OKAY, f"CHK-CC-INERT FAIL: {line}"
+                self.logger.info("CHK-CC-INERT PASS: %s", line)
         close_graded_window(self.logger)
         n_timeout = self.responses - n_before
         assert n_timeout == 2 * N_WRITES, (
@@ -510,7 +518,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, base[name], field)
             line = f"reg={name} wdata=0x{v:016x} lane={lane} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-INERT FAIL: read-only bit changed by a write: {line}"
-            self.logger.info("CTRL-CC-INERT LOG: %s", line)
+            self.logger.info("CHK-CC-INERT PASS: %s", line)
             self._rsvd(name, got, field)
             after[name] = got & field
         close_graded_window(self.logger)

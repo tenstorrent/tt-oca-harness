@@ -4501,7 +4501,7 @@ module sep_fcov (
     // TEST_DEV->PROD_END and TEST_DEV->RMA_SIP have no walk (those leaves start
     // sensed in the destination), and PROD->PROD_END is impossible under
     // write-1-to-set: 0x1 | 0x8 is 0x9.
-    // Two bins. A pair needs two LC_STATE reads inside ONE leaf, and the
+    // A pair needs two LC_STATE reads inside ONE leaf, and the
     // +lc_start leaves are sensed at PROD, RMA_SIP_0, RMA_CHIP_0 or PROD_END
     // -- none at TEST_DEV -- so TEST_DEV to PROD has no producer. The
     // PROD_END/transient leaf advances 0x8 to 0xA, which is not a named pair,
@@ -4509,8 +4509,11 @@ module sep_fcov (
     cp_transition: coverpoint {
       from, to
     } {
-      bins prod_to_rma_sip = {{LcProd, LcRmaSip1}};
-      bins rma_sip_to_chiplet = {{LcRmaSip1, LcRmaChip1}};
+      // A frontdoor LC_STATE write is the only producer of these two pairs, and
+      // the RDL (lc_state sw = r) and the fuse-field table (set-only) disagree on
+      // its result, so no check grades them.
+      ignore_bins prod_to_rma_sip = {{LcProd, LcRmaSip1}};
+      ignore_bins rma_sip_to_chiplet = {{LcRmaSip1, LcRmaChip1}};
       // TEST_DEV to PROD by a program of LC_STATE bit 0 and a resense, in the
       // window of the LC_STATE stitch leaf only.
       bins test_dev_to_prod_prog = {{LcTestDev, LcProd}};
@@ -29355,10 +29358,11 @@ module sep_fcov (
   endfunction
 
   // A completed single-beat write with any response (the read-only write of
-  // cp_component_id), and the clock after an OKAY write with its address
-  // and lane data.
+  // cp_component_id), and the clock after an OKAY write (cz_w1) or a write
+  // with any response (cz_w1_any) with its address and lane data.
   wire cz_wr_any = !in_reset && b_hs && (aw_out_q == 4'd1) && (w_beats_q == 2'd1);
   logic cz_w1 = 1'b0;
+  logic cz_w1_any = 1'b0;
   logic [31:0] cz_w1_a = '0;
   logic [31:0] cz_w1_d = '0;
 
@@ -29533,6 +29537,7 @@ module sep_fcov (
   always @(posedge clk_i) begin
     cz_owner_q <= graded_owner;
     cz_w1      <= wr_ev;
+    cz_w1_any  <= cz_wr_any;
     cz_w1_a    <= aw_addr_q;
     cz_w1_d    <= wr_data;
     cz_esw1    <= wr_ev && (blk_of(aw_addr_q) == BLK_ESRC);
@@ -29716,7 +29721,8 @@ module sep_fcov (
     // x_fips_field. Locked at 1: the observe level rises after the lock
     // while RAW_ENABLE is still 1 (capture continues; the BIW FIFO has no
     // flush, so no drain is required). Locked at 0: after a write of 1 to RAW_ENABLE
-    // under the lock, an OKAY read of the observe STATUS returns LEVEL 0 and
+    // under the lock (B response of any code: no text states the code of a
+    // write the lock refuses), an OKAY read of the observe STATUS returns LEVEL 0 and
     // the level has not risen since the write.
     if (!cy_own_esobs || !cz_es_on || !cz_lock) begin
       cz_ff_on <= '0;
@@ -29745,7 +29751,7 @@ module sep_fcov (
           cz_ff_on[f] <= 1'b0;
         end
         if (cz_ff_on[f] && !cz_ff_raw[f]) begin
-          if (cz_w1 && (cz_w1_a == ctl_a) && ((cz_w1_d & ctl_m) != 32'h0) && !raw[f]) begin
+          if (cz_w1_any && (cz_w1_a == ctl_a) && ((cz_w1_d & ctl_m) != 32'h0) && !raw[f]) begin
             cz_ff_w1[f] <= 1'b1;
             cz_ff_up[f] <= 1'b0;
           end else if (cz_ff_w1[f]) begin
@@ -31910,7 +31916,8 @@ module sep_fcov (
           cz_lo_w0 <= 1'b1;
         end
       end
-      if (cz_w1 && (cz_w1_a == SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR) && cz_lo_one &&
+      // A select write under the lock has no stated B code: any response counts.
+      if (cz_w1_any && (cz_w1_a == SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR) && cz_lo_one &&
           (3'(cz_w1_d & CzSelMask) != cz_aw_sel) && (cz_sel == cz_aw_sel) && cy_own_xhs) begin
         cz_dlv(1, 3'd4);
       end
@@ -33295,10 +33302,12 @@ module sep_fcov (
   // cp_min_entropy_h (ESRC_RDL, the fields whose text states "FIPS_LOCK.LOCK
   // prevents software changes"; FIPS_LOCK; MIN_ENTROPY_H, RECOMMENDED_THRESHOLDS).
   // A locked register class fills when the first OKAY read after a write
-  // under the lock equals the last OKAY read before the lock and differs from
+  // under the lock (B response of any code: no text states the code of a
+  // write the lock refuses) equals the last OKAY read before the lock and differs from
   // the written value (DEBUG_CTRL per field). The lock cells are pairs of
-  // OKAY FIPS_LOCK reads around a write of 1 with the lock 0, a write of 0 or
-  // a CTRL write with RSVD0 set under the lock, and rst_ni. The cutoff cell
+  // OKAY FIPS_LOCK reads around an OKAY write of 1 with the lock 0, an OKAY
+  // write of 0, or a CTRL write with RSVD0 set under the lock (any B code),
+  // and rst_ni. The cutoff cell
   // samples an OKAY RECOMMENDED_THRESHOLDS read whose RCT_LIMIT equals
   // 1 + ceil(20 / H) with the stored H (Q4.4, H > 0; SP 800-90B 4.4.1).
   // ---------------------------------------------------------------------
@@ -33377,14 +33386,14 @@ module sep_fcov (
           cz_lk_poke.delete(a);
         end
       end
-      if (wr_ev && cz_aw_lock && (cz_lk_cls(aw_addr_q) != CzLkNone))
+      if (cz_wr_any && cz_aw_lock && (cz_lk_cls(aw_addr_q) != CzLkNone))
         cz_lk_poke[aw_addr_q] = wr_data;
       // FIPS_LOCK.LOCK.
       if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_FIPS_LOCK_REG_ADDR)) begin
         if (((wr_data & CzFlMask) != 32'h0) && !cz_aw_lock) cz_fl_w <= 2'd1;
         else if (((wr_data & CzFlMask) == 32'h0) && cz_aw_lock) cz_fl_w <= 2'd2;
       end
-      if (wr_ev && (aw_addr_q == ENTROPY_SOURCE_CTRL_REG_ADDR) && cz_aw_lock &&
+      if (cz_wr_any && (aw_addr_q == ENTROPY_SOURCE_CTRL_REG_ADDR) && cz_aw_lock &&
           ((wr_data & CzRsvdMask) != 32'h0)) begin
         cz_fl_w <= 2'd3;
       end

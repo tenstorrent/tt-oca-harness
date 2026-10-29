@@ -463,6 +463,10 @@ def _gap(order: list[int]) -> str:
     return ",".join(str(g) for g in order)
 
 
+def _hexmap(regs: dict[str, int]) -> str:
+    return ",".join(f"{n}:0x{v:x}" for n, v in regs.items())
+
+
 class _Cfg:
     """Seed-drawn configuration of the leaf (single source of truth)."""
 
@@ -1863,7 +1867,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 lanes.add(lane)
                 n_checks += 1
                 differs[name] |= (got & mask) != (reset & mask)
-                self.logger.info("INFO-WDT-SHAPE LOG: reg=%s lane=%s %s", name, lane, fc.fields())
+                self.logger.info("CHK-WDT-SHAPE PASS: reg=%s lane=%s %s", name, lane, fc.fields())
             # WKUP_CAUSE (RW0C): a write cannot set it. A write lands no later than twice
             # the measured landing time of the clear plus 16 clk_wdt_i periods, so the
             # cause is read back-to-back from the write response to the end of that
@@ -1885,7 +1889,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 f"set_reads={len(bad)}/{len(reads)} window=2x{landing_ps}ps+16 clk_wdt_i"
             )
             self.logger.info(
-                "INFO-WDT-SHAPE LOG: reg=WKUP_CAUSE pattern=0x%08x %s reads=%d "
+                "CHK-WDT-SHAPE PASS: reg=WKUP_CAUSE pattern=0x%08x %s reads=%d "
                 "window=2x%dps+16 clk_wdt_i",
                 pat,
                 fc.fields(),
@@ -1901,19 +1905,31 @@ class sep_timer_clock_contract_test(sep_base_test):
             await self._wr(INTR_STATE, M32)
             await self._poll_eq("INTR_STATE", INTR_STATE, 0, INTR_FIELDS, "CHK-WDT-SHAPE")
             await self._wr(INTR_TEST, pat)
-            await self._poll_eq(
+            r_test = await self._poll_eq(
                 "INTR_STATE", INTR_STATE, pat & INTR_FIELDS, INTR_FIELDS, "CHK-WDT-SHAPE"
             )
             await self._wr(INTR_TEST, M32)
-            await self._poll_eq("INTR_STATE", INTR_STATE, INTR_FIELDS, INTR_FIELDS, "CHK-WDT-SHAPE")
+            r_all = await self._poll_eq(
+                "INTR_STATE", INTR_STATE, INTR_FIELDS, INTR_FIELDS, "CHK-WDT-SHAPE"
+            )
             await self._wr(INTR_STATE, pat)
-            await self._poll_eq(
+            r_clr = await self._poll_eq(
                 "INTR_STATE", INTR_STATE, INTR_FIELDS & ~pat, INTR_FIELDS, "CHK-WDT-SHAPE"
             )
             await self._wr(INTR_STATE, M32)
             n_checks += 3
             self.logger.info(
-                "INFO-WDT-SHAPE LOG: reg=INTR_STATE/INTR_TEST pattern=0x%08x exact", pat
+                "CHK-WDT-SHAPE PASS: reg=INTR_STATE/INTR_TEST pattern=0x%08x field_mask=0x%x "
+                "after_test=0x%x expect=0x%x after_test_all=0x%x expect=0x%x "
+                "after_w1c=0x%x expect=0x%x",
+                pat,
+                INTR_FIELDS,
+                r_test & INTR_FIELDS,
+                pat & INTR_FIELDS,
+                r_all & INTR_FIELDS,
+                INTR_FIELDS,
+                r_clr & INTR_FIELDS,
+                INTR_FIELDS & ~pat,
             )
 
         # WDOG_CTRL walk with the thresholds far above the count.
@@ -1928,7 +1944,10 @@ class sep_timer_clock_contract_test(sep_base_test):
                 "WDOG_CTRL", WDOG_CTRL, pat, WDOG_CTRL_FIELDS, "CHK-WDT-SHAPE"
             )
             self.logger.info(
-                "INFO-WDT-SHAPE LOG: reg=WDOG_CTRL pattern=0x%08x readback=0x%x", pat, got
+                "CHK-WDT-SHAPE PASS: reg=WDOG_CTRL pattern=0x%08x readback=0x%x field_mask=0x%x",
+                pat,
+                got,
+                WDOG_CTRL_FIELDS,
             )
             n_checks += 1
         await self._wr(WDOG_CTRL, 0)
@@ -2322,13 +2341,20 @@ class sep_timer_clock_contract_test(sep_base_test):
                     n_wdtrst += 1
                     continue
                 await self._event(ev)
-                st = await self._read_lock_state()
-                self._grade_hold(st, ev, "first")
+                st0 = await self._read_lock_state()
+                self._grade_hold(st0, ev, "first")
                 await self._wait_wdt(WDT_WAIT)
                 st = await self._read_lock_state()
                 self._grade_hold(st, ev, "after_wait")
                 done.append(ev)
-                self.logger.info("INFO-REGWEN-HOLD LOG: rep=%d event=%s %s", rep, ev, st)
+                self.logger.info(
+                    "CHK-REGWEN-HOLD PASS: rep=%d event=%s first=%s after_wait=%s expect=%s",
+                    rep,
+                    ev,
+                    _hexmap(st0),
+                    _hexmap(st),
+                    _hexmap(self._locked()),
+                )
         assert n_wdtrst == cfg.repeat, (
             f"CHK-REGWEN-WDTRST FAIL: the wdt_rst_ni event ran {n_wdtrst} times, expected "
             f"{cfg.repeat}"
@@ -2341,7 +2367,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 f"{cfg.repeat}; the dbg_rstb_i cell was not graded"
             )
             self.logger.info(
-                "CHK-REGWEN-HOLD PASS: event=DBG_PULSE count=%d dbg_rst_l_low=1 regwen=0 "
+                "CHK-REGWEN-HOLD PASS: event=DBG_PULSE count=%d dbg_rst_l_low=1 expect regwen=0 "
                 "bark=0x%08x bite=0x%08x wkup_hi=0x%08x wkup_lo=0x%08x unchanged",
                 self.n_dbg,
                 cfg.xb,
@@ -2350,8 +2376,8 @@ class sep_timer_clock_contract_test(sep_base_test):
                 cfg.xl,
             )
         self.logger.info(
-            "CHK-REGWEN-HOLD PASS: events=%s regwen=0 bark=0x%08x bite=0x%08x wkup_hi=0x%08x "
-            "wkup_lo=0x%08x unchanged",
+            "CHK-REGWEN-HOLD PASS: events=%s expect regwen=0 bark=0x%08x bite=0x%08x "
+            "wkup_hi=0x%08x wkup_lo=0x%08x unchanged",
             ",".join(done),
             cfg.xb,
             cfg.xd,

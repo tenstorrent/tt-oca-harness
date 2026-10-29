@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""An unsupported SHAKE or cSHAKE strength raises kmac_err and does not start, and err_processed recovers.
+"""An unsupported SHAKE or cSHAKE strength raises kmac_err and does not start, and the engine hashes after err_processed.
 
 Contract (``vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc``):
 ``CFG_SHADOWED.kstrength`` (lines 177-181): with mode SHAKE or cSHAKE only the
@@ -81,7 +81,22 @@ Checkers:
                      configurations").
   CHK-KMAC-ERRPROC   after err_processed and the W1C: kmac_err=0, sha3_idle=1;
                      the next SHA3-256 digest equals the golden and kmac_err
-                     still reads 0.
+                     still reads 0. The check shows that the engine is usable
+                     after the recovery sequence, not that err_processed was
+                     needed: the blocked start left STATUS idle, and no text
+                     states that a start before err_processed is refused.
+                     ``OBS-KMAC-ERRPROC-DONE`` logs ``INTR_STATE.kmac_done`` on
+                     the read after err_processed and the W1C of kmac_err (which
+                     writes bit 2 only).
+                     ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/
+                     programmers_guide.md``:202 says "If the error occurred while
+                     the KMAC HW IP was being used from SW ..., the `kmac_done`
+                     IRQ is raised when the KMAC HW IP is ready again."; the TT
+                     RDL text of ``CMD.err_processed`` and
+                     ``en_unsupported_modestrength`` does not say whether a start
+                     that is not propagated leaves a state machine in its error
+                     state. The DUT reads 0 there, and that gap is open, so the
+                     bit is logged, not graded.
 
 Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
 kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
@@ -596,6 +611,15 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         status = await self._rd(KMAC_STATUS)
         err_cleared = int(_bits(intr, _ERR) == 0)
         idle = _bits(status, _IDLE)
+        # programmers_guide.md:202 states kmac_done for this case; the DUT reads 0 (open).
+        self.chk.obs(
+            "KMAC-ERRPROC-DONE",
+            **fields,
+            kmac_done=_bits(intr, _DONE),
+            expected_text=1,
+            idle=idle,
+            intr=f"0x{intr & _INTR_MASK:x}",
+        )
 
         await self._write_cfg(_cfg_word("sha3", _RECOVER_STRENGTH, 0))
         t0 = self._now_clk()

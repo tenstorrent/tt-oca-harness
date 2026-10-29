@@ -171,12 +171,23 @@ Checkers:
   CHK-DMA-ASID-ERR  a copy with a drawn reserved source or destination ASID
                     ends with STATUS.ERROR=1, ERROR_CODE.ASID_ERROR=1 and no
                     DMA AR or AW beat.
-  OBS-DMA-ALIGN     a copy at width 4 to a destination 2 bytes off alignment:
-                    STATUS, ERROR_CODE and the DMA AR and AW beat counts are
-                    logged with graded=0 (no line states the outcome).
-                    Control of the three checks and this line: the same copy with the legal value
-                    (encoding 2, COPY, ASID 0x7, aligned destination) ends with
-                    DONE=1, ERROR=0 and ERROR_CODE=0 (CTRL-DMA-CFG-ERR).
+  CHK-DMA-ALIGN-ERR a copy at width 4 from an aligned source to a
+                    destination 2 bytes off alignment ends with STATUS.ERROR=1,
+                    ERROR_CODE equal to DST_ADDR_ERROR alone and no DMA AR or
+                    AW beat. DST_ADDR_LO "Must be aligned to the transfer
+                    width. Source and destination address must have the same
+                    alignment." and SRC_ADDR_LO states only the width rule
+                    (``secure_dma.rdl:90-92``, ``:73-74``); DST_ADDR_ERROR
+                    "Destination address is invalid." (``secure_dma.rdl:341``);
+                    the controller checks the configuration "before starting a
+                    transfer" and "reports all detected errors in ERROR_CODE"
+                    (OpenTitan DMA
+                    ``vendor/lowRISC/opentitan/upstream/hw/ip/dma/doc/programmers_guide.md:101-103``).
+                    Control of the four checks: the same copy with the legal
+                    value (encoding 2, COPY, ASID 0x7, aligned destination)
+                    ends with DONE=1, ERROR=0, ERROR_CODE=0 and at least one
+                    DMA AR and one AW beat (CTRL-DMA-CFG-ERR), so a dead DMA
+                    master tap fails the control.
   CHK-DMA-INTR-RELEASE per L2 kind: after the write of 1 to STATUS.ERROR,
                     INTR_STATE.DMA_ERROR reads 0 and source 11 is low. Control:
                     INTR_STATE.DMA_ERROR reads 1 and source 11 is high just
@@ -312,17 +323,21 @@ ASID_ERR_MASK = _D.field_mask("ERROR_CODE", "asid_error")
 #            ADDR_SPACE_ID, "Other values are reserved"; ERROR_CODE.ASID_ERROR
 #            "The source or destination ASID contains an invalid value");
 #            control: OT_ADDR.
-#   align    DST_ADDR_LO not aligned to the 4-byte transfer width
-#            (secure_dma.adoc DST_ADDR_LO "Must be aligned to the transfer
-#            width"; programmers_guide.md "Error Condition": the controller
-#            checks the configuration before starting a transfer and reports
-#            the errors in ERROR_CODE); control: an aligned destination.
+#   align    DST_ADDR_LO not aligned to the 4-byte transfer width, source
+#            aligned (secure_dma.rdl DST_ADDR_LO "Must be aligned to the
+#            transfer width. Source and destination address must have the
+#            same alignment"; SRC_ADDR_LO states only the width rule, which
+#            the source meets; ERROR_CODE.DST_ADDR_ERROR "Destination address
+#            is invalid"; programmers_guide.md "Error Condition": the
+#            controller checks the configuration before starting a transfer
+#            and reports the errors in ERROR_CODE); control: an aligned
+#            destination.
 CFG_ERR_KINDS = ("copy_w3", "opc", "asid", "align")
 CFG_ERR_CHK = {
     "copy_w3": "CHK-DMA-SIZE-ERR",
     "opc": "CHK-DMA-OPCODE-ERR",
     "asid": "CHK-DMA-ASID-ERR",
-    "align": "OBS-DMA-ALIGN",
+    "align": "CHK-DMA-ALIGN-ERR",
 }
 # Opcodes above the enum, 5 left to the zero-fill leaf; ASIDs other than OT/SOC/SYS.
 OPC_INVALID = range(6, _D.field_mask("CONTROL", "opcode") + 1)
@@ -478,6 +493,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         "CHK-DMA-SIZE-ERR",
         "CHK-DMA-OPCODE-ERR",
         "CHK-DMA-ASID-ERR",
+        "CHK-DMA-ALIGN-ERR",
         "CHK-DMA-INTR-RELEASE",
         "CHK-DMA-LOCK",
         "CHK-DMA-RANGE-OUT",
@@ -495,8 +511,8 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         self.logger.error(msg)
         raise AssertionError(msg)
 
-    def _ctrl_missing(self, line: str) -> None:
-        msg = f"CTRL-MISSING seed={self.cfg_t.seed} {line}"
+    def _ctrl_missing(self, name: str, line: str) -> None:
+        msg = f"CTRL-MISSING {name} seed={self.cfg_t.seed} {line}"
         self.logger.error(msg)
         raise AssertionError(msg)
 
@@ -637,8 +653,9 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         mc_src10 = got[("chunk", mc_en)][1]
         if mc_src10 != 1:
             self._ctrl_missing(
+                "CTRL-DMA-IRQ-SINGLE",
                 f"CHK-DMA-IRQ-SINGLE control: multi-chunk trial intr_en=0x{mc_en:x} "
-                f"src10={mc_src10}, expected 1"
+                f"src10={mc_src10}, expected 1",
             )
         for en, (istate, chunk_reads) in single.items():
             src10 = got[("done", en)][1]
@@ -755,8 +772,9 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         for k in hash_kinds:
             if not ctl[k]:
                 self._ctrl_missing(
+                    "CTRL-DMA-SIZE-ERR",
                     f"CHK-DMA-SIZE-ERR control: SHA-256 at width encoding 2 and size "
-                    f"{self.cfg_t.l2_size[k]} (kind={k}) failed"
+                    f"{self.cfg_t.l2_size[k]} (kind={k}) failed",
                 )
         for (line, ok, _), k in zip(results, L2_KINDS):
             k_ctl = ctl[k] if k in ctl else int(all(ctl.values()))
@@ -774,7 +792,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 f"intr_state_after=0x{post:x}"
             )
             if (pre_bit, src11_pre) != (1, 1):
-                self._ctrl_missing(f"CHK-DMA-INTR-RELEASE control: {line}")
+                self._ctrl_missing("CTRL-DMA-INTR-RELEASE", f"CHK-DMA-INTR-RELEASE control: {line}")
             if (post_bit, src11_c) != (0, 0):
                 self._fail("CHK-DMA-INTR-RELEASE", line)
             self._pass("CHK-DMA-INTR-RELEASE", line)
@@ -819,7 +837,14 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         for kind in CFG_ERR_KINDS:
             chk = CFG_ERR_CHK[kind]
             cst, cended, ccode, car, caw = await self._cfg_err_run(kind, bad=False)
-            ctl_ok = cended and cst.done and not cst.error and (ccode & ERROR_CODE_MASK) == 0
+            ctl_ok = (
+                cended
+                and cst.done
+                and not cst.error
+                and (ccode & ERROR_CODE_MASK) == 0
+                and car > 0
+                and caw > 0
+            )
             self.logger.info(
                 "CTRL-DMA-CFG-ERR LOG seed=%d kind=%s legal_done=%d error_code=0x%x ar=%d aw=%d %s",
                 c.seed,
@@ -831,7 +856,10 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 cst.fmt(),
             )
             if not ctl_ok:
-                self._ctrl_missing(f"{chk} control: kind={kind} legal run did not complete clean")
+                self._ctrl_missing(
+                    "CTRL-DMA-CFG-ERR",
+                    f"{chk} control: kind={kind} legal run did not complete clean",
+                )
             st, ended, ecode, n_ar, n_aw = await self._cfg_err_run(kind, bad=True)
             if kind == "copy_w3":
                 bit, need_quiet = SIZE_ERR_MASK, False
@@ -840,7 +868,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             elif kind == "asid":
                 bit, need_quiet = ASID_ERR_MASK, True
             else:
-                bit, need_quiet = 0, True
+                bit, need_quiet = DST_ERR_MASK, True
             line = (
                 f"kind={kind} size={c.cfg_err_size[kind]} ended={int(ended)} error={st.error} "
                 f"done={st.done} error_code=0x{ecode:x} bit_mask=0x{bit:x} "
@@ -851,10 +879,10 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             if kind == "asid":
                 line += f" side={c.bad_asid_side} asid=0x{c.bad_asid:x}"
             if kind == "align":
-                # No line states the outcome of a misaligned destination.
-                self.logger.info("OBS-DMA-ALIGN seed=%d dst_offset=2 graded=0 %s", c.seed, line)
-                continue
-            ok = ended and st.error and (not bit or ecode & bit)
+                line += " dst_offset=2"
+                ok = ended and st.error and (ecode & ERROR_CODE_MASK) == bit
+            else:
+                ok = ended and st.error and ecode & bit
             if need_quiet:
                 ok = ok and n_ar == 0 and n_aw == 0
             if not ok:
@@ -923,7 +951,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"rest_done={rest_done} before[{st.fmt()}] after[{st_post.fmt()}]"
         )
         if not reached or (rel_pre, line_pre) != (1, 1):
-            self._ctrl_missing(f"CHK-DMA-INTR-RELEASE control: {line}")
+            self._ctrl_missing("CTRL-DMA-INTR-RELEASE", f"CHK-DMA-INTR-RELEASE control: {line}")
         if (rel_post, line_post) != (0, 0):
             self._fail("CHK-DMA-INTR-RELEASE", line)
         self._pass("CHK-DMA-INTR-RELEASE", line)
@@ -1061,7 +1089,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             await self._l4_side(s)
         ctl = await self._l4_control()
         if not ctl:
-            self._ctrl_missing("L4 control: the ADDR_HI=0 copy failed")
+            self._ctrl_missing("CTRL-DMA-HI-ADDR", "L4 control: the ADDR_HI=0 copy failed")
 
     # ---- L3 ------------------------------------------------------------------
     async def _wr_log(self, addr: int, value: int) -> int:
@@ -1155,9 +1183,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"range_rb=0x{rng[0]:08x}/0x{rng[1]:08x}/{rng[2]}"
         )
         if not zero_ok:
-            self._ctrl_missing(f"CHK-DMA-RANGE-OUT control: {line}")
+            self._ctrl_missing("CTRL-DMA-RANGE-OUT", f"CHK-DMA-RANGE-OUT control: {line}")
         if rng != (base, limit, 1):
-            self._ctrl_missing(f"CHK-DMA-RANGE-OUT range read-back before GO: {line}")
+            self._ctrl_missing(
+                "CTRL-DMA-RANGE-OUT", f"CHK-DMA-RANGE-OUT range read-back before GO: {line}"
+            )
         # dma.adoc:106: the range does not bound a copy between internal addresses.
         if not (ended and st.done and not st.error and (src_err, dst_err, out_mism) == (0, 0, 0)):
             self._fail("CHK-DMA-RANGE-OUT", line)
@@ -1173,8 +1203,9 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             nb, nl = next(vals)
             if nb == pre[0] or nl == pre[1]:
                 self._ctrl_missing(
+                    "CTRL-DMA-LOCK",
                     f"CHK-DMA-LOCK ctx={ctx} attempt={name}: new value equals the locked "
-                    f"value (0x{nb:08x}/0x{nl:08x})"
+                    f"value (0x{nb:08x}/0x{nl:08x})",
                 )
             resps = [
                 await self._wr_log(RANGE_BASE, nb),
@@ -1227,20 +1258,21 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         limit = await ops.rd(RANGE_LIMIT)
         valid = (await ops.rd(RANGE_VALID) & VALID_MASK) >> _VALID_LSB
         regwen = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
-        err_seen = 1
+        err_seen = "-"
         if ctx == "after_error":
             src, dst = (c.src, c.dst) if c.l3_src_first else (c.dst, c.src)
             await ops.program_transfer(src=src, dst=dst, total=0, chunk=c.zero_chunk)
             await ops.go(opcode=OP_COPY, initial=1)
             _, seen = await self._wait_error(ERR_POLL_BOUND)
-            err_seen = int(seen)
+            err_seen = str(int(seen))
         ctl = (
             f"ctx={ctx} base=0x{base:08x}/0x{pre[0]:08x} limit=0x{limit:08x}/0x{pre[1]:08x} "
             f"regwen=0x{regwen:x}/0x{REGWEN_TRUE:x} valid={valid}/1 error_seen={err_seen}"
         )
         self.logger.info("CTRL-DMA-LOCK seed=%d %s", c.seed, ctl)
-        if (base, limit, regwen, valid, err_seen) != (pre[0], pre[1], REGWEN_TRUE, 1, 1):
-            self._ctrl_missing(f"CHK-DMA-LOCK control before the lock: {ctl}")
+        want_err = "1" if ctx == "after_error" else "-"
+        if (base, limit, regwen, valid, err_seen) != (pre[0], pre[1], REGWEN_TRUE, 1, want_err):
+            self._ctrl_missing("CTRL-DMA-LOCK", f"CHK-DMA-LOCK control before the lock: {ctl}")
         if ctx == "after_error":
             # In the error state, before the lock, range writes land: so a DUT
             # that refuses them after an error for another reason fails here,
@@ -1266,7 +1298,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
                 REGWEN_TRUE,
                 1,
             ):
-                self._ctrl_missing(f"CHK-DMA-LOCK control after the error: {pe}")
+                self._ctrl_missing("CTRL-DMA-LOCK", f"CHK-DMA-LOCK control after the error: {pe}")
         await self._lock_attempts(ctx, pre)
         close_graded_window(self.logger)
 
@@ -1295,7 +1327,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             f"base_landed={int(base == nb)}"
         )
         if regwen_pre != REGWEN_TRUE or base_pre == nb:
-            self._ctrl_missing(f"OBS-DMA-REGWEN-NONMUBI control: {line}")
+            self._ctrl_missing("CTRL-DMA-REGWEN-NONMUBI", f"OBS-DMA-REGWEN-NONMUBI control: {line}")
         self.logger.info("OBS-DMA-REGWEN-NONMUBI LOG seed=%d %s", c.seed, line)
 
     async def _obs_size_edge(self) -> None:
@@ -1482,14 +1514,16 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         ctl_ok, ctl_done_at, ctl_window = await self._l5_control()
         if not ctl_ok:
             self._ctrl_missing(
+                "CTRL-DMA-ASID-TIEOFF",
                 f"CHK-DMA-ASID-TIEOFF control: the ASID 0x7 copy done_read={ctl_done_at} "
-                f"window={ctl_window}"
+                f"window={ctl_window}",
             )
         ab_ok, ab_ctl_at = await self._l5_abort_control()
         if not ab_ok:
             self._ctrl_missing(
+                "CTRL-DMA-TIEOFF-ABORT",
                 f"CHK-DMA-TIEOFF-ABORT control: the ABORT of the ASID 0x7 copy "
-                f"aborted_read={ab_ctl_at} bound={ABORT_POLL_BOUND}"
+                f"aborted_read={ab_ctl_at} bound={ABORT_POLL_BOUND}",
             )
         for side, asid in ASID_TIEOFF:
             line, no_done, ab_at, tie_active, tie_pre = await self._l5_trial(side, asid)
@@ -1506,8 +1540,9 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             )
             if not tie_active:
                 self._ctrl_missing(
+                    "CTRL-DMA-TIEOFF-ABORT",
                     f"CHK-DMA-TIEOFF-ABORT control: the tied-off start is not active "
-                    f"before the ABORT {ab_line} before_abort[{tie_pre.fmt()}]"
+                    f"before the ABORT {ab_line} before_abort[{tie_pre.fmt()}]",
                 )
             if ab_at is None:
                 self._fail("CHK-DMA-TIEOFF-ABORT", ab_line)

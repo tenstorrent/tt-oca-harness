@@ -38,12 +38,16 @@ LC_STATE_UPPER_MASK = _LC_STATE_MAP.field_mask("LC_STATE", "rsvd")
 
 
 class SepLcShadowWriteSeq(uvm_sequence):
-    """Write ``wdata`` to the LC_STATE shadow word; require ``expected_raw``."""
+    """Write ``wdata`` to the LC_STATE shadow word; require ``expected_raw``.
+
+    ``expected_raw`` None reads the word and FEAT_CTRL back with no expected value;
+    the caller grades them.
+    """
 
     def __init__(
         self,
         wdata: int,
-        expected_raw: int,
+        expected_raw: int | None,
         expected_upper: int | None,
         *,
         sip_dis: int,
@@ -56,7 +60,7 @@ class SepLcShadowWriteSeq(uvm_sequence):
     ) -> None:
         super().__init__(name)
         self.wdata = wdata & 0xFFFF_FFFF
-        self.expected_raw = expected_raw & 0xF
+        self.expected_raw = None if expected_raw is None else expected_raw & 0xF
         self.expected_upper = (
             None if expected_upper is None else expected_upper & LC_STATE_UPPER_MASK
         )
@@ -95,16 +99,20 @@ class SepLcShadowWriteSeq(uvm_sequence):
     async def body(self) -> None:
         expected_word = (
             None
-            if self.expected_upper is None
+            if self.expected_upper is None or self.expected_raw is None
             else self.expected_upper | lc_encode(self.expected_raw)
         )
-        feat = feat_ctrl_expected(
-            self.expected_raw,
-            self.sip_dis,
-            self.sys_dis,
-            demote_1=self.demote_1,
-            demote_2=self.demote_2,
-            sec_dis=self.sec_dis,
+        feat = (
+            None
+            if self.expected_raw is None
+            else feat_ctrl_expected(
+                self.expected_raw,
+                self.sip_dis,
+                self.sys_dis,
+                demote_1=self.demote_1,
+                demote_2=self.demote_2,
+                sec_dis=self.sec_dis,
+            )
         )
 
         if self.do_write:
@@ -121,12 +129,15 @@ class SepLcShadowWriteSeq(uvm_sequence):
         self.observed_lc_raw = word & 0xF
 
         feat_lo = await self._access(
-            SepAxiOp.READ, LCC_FEAT_CTRL, expected=feat & 0xFFFF_FFFF, label="rd_feat_lo"
+            SepAxiOp.READ,
+            LCC_FEAT_CTRL,
+            expected=None if feat is None else feat & 0xFFFF_FFFF,
+            label="rd_feat_lo",
         )
         feat_hi = await self._access(
             SepAxiOp.READ,
             LCC_FEAT_CTRL + 4,
-            expected=(feat >> 32) & 0xFFFF_FFFF,
+            expected=None if feat is None else (feat >> 32) & 0xFFFF_FFFF,
             label="rd_feat_hi",
         )
         self.observed_feat = feat_lo | (feat_hi << 32)

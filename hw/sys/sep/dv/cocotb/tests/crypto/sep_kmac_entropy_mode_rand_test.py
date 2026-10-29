@@ -62,6 +62,12 @@ Checkers:
                            gives bits 23:0 a value for this code: they are
                            masked and logged as ``OBS-KMAC-TIMER-ERRCODE``.
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
+                           At prescaler 0 the window is (2^16 // 7 + 4) x the
+                           error time at wait timer 8 (at least 7 whole pulse
+                           periods), so it is longer than 2^16 timer pulses (kmac.adoc ``ENTROPY_PERIOD``: a
+                           16-bit timer) and a DUT that counts 0 as a finite
+                           16-bit count expires in it. At prescaler P the
+                           window is 4 x that error time.
   CHK-KMAC-HASHCNT         counter 1..N, 0 after hash_cnt_clr, 1, 0 after
                            entropy_req, which adds an acknowledge.
   CHK-KMAC-AUTORESEED      threshold R, M hashes -> acknowledge >= 1, and the
@@ -191,6 +197,9 @@ WIN_MULT = 4  # negative windows: WIN_MULT x the clean reference time
 WIN_FLOOR = 64  # clocks; floor of a window built from a short reference
 POLL_EVERY = 4  # clocks between STATUS polls
 BOUND_CLK = 60_000  # outer limit of a start, squeeze, idle, seeding or request wait
+# kmac.adoc ENTROPY_PERIOD.prescaler: "EDN Wait timer has 16 bit value."
+TIMER_PULSES_16B = 1 << 16
+CTRL_WT = 8  # wait timer of the control run that sizes the timer-0 window
 LEGS = ("seed_count", "mode_lock", "timer", "counter", "reseed")
 # kmac.hjson:549-551 states the seed gate; the DUT absorbs before it (open gap).
 SEED_GATE_BLOCKED = "sw_seed_gate_text_vs_dut_open"
@@ -689,7 +698,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
     async def _leg_timer(self) -> None:
         await self._chain_uninit()
         t = self.plan.t
-        wts = (t, 2 * t, 8)
+        wts = (t, 2 * t, CTRL_WT)
         passes: dict[str, list[dict]] = {}
         for name in self.plan.prescaler_order:
             prescaler = 0 if name == "p0" else self.plan.p
@@ -767,8 +776,18 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
 
     async def _timer0(self, prescaler: int, ctrl: dict) -> None:
         ctrl_clk = ctrl["err_clk"]
-        self.chk.ctrl("KMAC-TIMER0", ctrl_clk is not None, wt=8, p=prescaler, ctrl_err_clk=ctrl_clk)
-        window = max(WIN_MULT * ctrl_clk, WIN_FLOOR) if ctrl_clk is not None else BOUND_CLK
+        self.chk.ctrl(
+            "KMAC-TIMER0", ctrl_clk is not None, wt=CTRL_WT, p=prescaler, ctrl_err_clk=ctrl_clk
+        )
+        if ctrl_clk is None:
+            window = BOUND_CLK
+        elif prescaler == 0:
+            # ctrl_clk spans at least CTRL_WT - 1 whole pulse periods (the phase of
+            # the first pulse is not stated), so the window spans more than
+            # TIMER_PULSES_16B pulses.
+            window = (TIMER_PULSES_16B // (CTRL_WT - 1) + WIN_MULT) * ctrl_clk
+        else:
+            window = max(WIN_MULT * ctrl_clk, WIN_FLOOR)
         await self._reset_kmac()
         self._open()
         await self.kmac._wr(KMAC_INTR_ENABLE, KMAC_INTR_KMAC_ERR)
