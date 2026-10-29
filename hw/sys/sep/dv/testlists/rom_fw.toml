@@ -3671,3 +3671,20 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
+
+[[tests]]
+# The PROD O5 demotion boot writes DEMOTE_1 only on a clk edge after all six fuse-secret
+# read-locks are set.
+name = "sep_rom_demote_after_lock_order_test"
+module = "rom_fw.sep_rom_demote_after_lock_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
+]
