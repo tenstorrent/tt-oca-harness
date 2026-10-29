@@ -43,14 +43,18 @@ _RESP_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
 
 
 def _rdl_gap_resp() -> tuple[int, int, int]:
-    """``(rresp, rdata, bresp)`` of ``ocah_gap_resp`` in smc.rdl."""
-    text = (Path(__file__).resolve().parents[3] / "regs" / "smc.rdl").read_text()
+    """``(rresp, rdata, bresp)`` of ``ocah_gap_resp`` in the SMC memory-map annotations."""
+    text = (
+        Path(__file__).resolve().parents[3] / "regs" / "include" / "smc_memory_map.rdl"
+    ).read_text()
+    for name, value in re.findall(r"^`define (\w+) (.+)$", text, re.M):
+        text = text.replace(f"`{name}", value)
     m = re.search(
         r"ocah_gap_resp\s*=\s*ocah_resp'\{rresp:\s*ocah_resp_e::(\w+),\s*"
         r"rdata:\s*(0x[0-9A-Fa-f]+),\s*bresp:\s*ocah_resp_e::(\w+)\}",
         text,
     )
-    assert m, "ocah_gap_resp not found in smc.rdl"
+    assert m, "ocah_gap_resp not found in smc_memory_map.rdl"
     return _RESP_CODES[m.group(1)], int(m.group(2), 16), _RESP_CODES[m.group(3)]
 
 

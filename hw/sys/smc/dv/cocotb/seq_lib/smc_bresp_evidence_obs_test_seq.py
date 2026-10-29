@@ -113,14 +113,18 @@ def _rname(code) -> str:
 
 
 def _rdl_gap_resp() -> dict:
-    """``ocah_gap_resp`` of smc.rdl as the generated map's response dict shape."""
-    text = (Path(__file__).resolve().parents[3] / "regs" / "smc.rdl").read_text()
+    """``ocah_gap_resp`` of the SMC memory-map annotations as the generated map's response dict shape."""
+    text = (
+        Path(__file__).resolve().parents[3] / "regs" / "include" / "smc_memory_map.rdl"
+    ).read_text()
+    for name, value in re.findall(r"^`define (\w+) (.+)$", text, re.M):
+        text = text.replace(f"`{name}", value)
     m = re.search(
         r"ocah_gap_resp\s*=\s*ocah_resp'\{rresp:\s*ocah_resp_e::(\w+),\s*"
         r"rdata:\s*(0x[0-9A-Fa-f]+),\s*bresp:\s*ocah_resp_e::(\w+)\}",
         text,
     )
-    assert m, "ocah_gap_resp not found in smc.rdl"
+    assert m, "ocah_gap_resp not found in smc_memory_map.rdl"
     return {"rresp": m.group(1), "rdata": int(m.group(2), 16), "bresp": m.group(3)}
 
 
