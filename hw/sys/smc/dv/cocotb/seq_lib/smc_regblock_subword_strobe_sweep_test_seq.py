@@ -82,7 +82,7 @@ WINDOW_GROUP = 16
 # S1: family -> (IP-XACT path of the reference register, documented count).
 # A "{}" marks the instance index.
 FAMILIES = (
-    ("alias_remap", "smc_alias_remap[{}]/REGION/region_start", 8),
+    ("alias_remap", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", 8),
     ("mmode_remap", "smc_mmode_remap[{}]/REGION/region_attrs", 8),
     ("xvisor_remap", "smc_xvisor_remap[{}]/REGION/region_attrs", 8),
     ("inbound_filter", "smc_inbound_filter_ctrl[{}]/END_ADDR", 16),
@@ -105,7 +105,7 @@ ORMP_FIELDS = (1 << 63) | ((1 << 56) - 1)
 
 # S13: (family, IP-XACT path of region_attrs, declared fields).
 VALID_LANE_FAMILIES = (
-    ("alias", "smc_alias_remap[{}]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
+    ("alias", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
     ("mmode", "smc_mmode_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
     ("xvisor", "smc_xvisor_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
 )
@@ -582,7 +582,11 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
     async def _fullwidth_remap(self) -> None:
         # S4.
         legs = (
-            ("ALIAS7", "smc_alias_remap[7]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
+            (
+                "ALIAS7",
+                "smc_alias_remap_wrap/alias_remap[7]/REGION/region_attrs",
+                ALIAS_ATTRS_FIELDS,
+            ),
             ("MMODE7", "smc_mmode_remap[7]/REGION/region_attrs", ORMP_FIELDS),
             ("XVISOR7", "smc_xvisor_remap[7]/REGION/region_attrs", ORMP_FIELDS),
         )

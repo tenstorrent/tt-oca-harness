@@ -178,7 +178,7 @@ ISLANDS = (
         _D,
     ),
     Island("BASECFG", "smc_base_config", 0x10000, 0x10048, 0x1004C, 0x11FFC, RW, RW, _D),
-    Island("ALIAS", "smc_alias_remap", 0x12000, 0x120FC, 0x12100, 0x12FFC, RW, HOLE, _D),
+    Island("ALIAS", "smc_alias_remap_wrap", 0x12000, 0x120FC, 0x12100, 0x12FFC, RW, HOLE, _D),
     Island("MREMAP_OUT", "smc_mmode_remap", 0x13000, 0x1303C, 0x13040, 0x13FFC, RW, RW, _D),
     Island("XREMAP_OUT", "smc_xvisor_remap", 0x14000, 0x1403C, 0x14040, 0x14FFC, RW, RW, _D),
     Island(

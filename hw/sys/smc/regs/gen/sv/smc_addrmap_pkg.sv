@@ -127,19 +127,22 @@ localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_SIZE = 64'h4C;
 
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012000 + (smc_alias_remap_idx * 64'h20);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_SIZE = 64'h18;
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_STRIDE = 64'h20;
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE = 64'h100;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR = 64'hC0012000;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_SIZE = 64'h100;
 
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012000 + (smc_alias_remap_idx * 64'h20);
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012000 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_SIZE = 64'h18;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_SIZE = 64'h18;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_STRIDE = 64'h20;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_TOTAL_SIZE = 64'h100;
+
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012000 + (alias_remap_idx * 64'h20);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_SIZE = 64'h18;
 
 function automatic longint unsigned SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(input int unsigned smc_mmode_remap_idx);
     return 64'hC0013000 + (smc_mmode_remap_idx * 64'h8);
@@ -951,18 +954,18 @@ localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_A
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010038;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR = 64'hC0010040;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010048;
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012000 + (smc_alias_remap_idx * 64'h20);
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012000 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012008 + (smc_alias_remap_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_NUM = 64'h8;
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012008 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012010 + (smc_alias_remap_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_NUM = 64'h8;
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012010 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
 function automatic longint unsigned SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned smc_mmode_remap_idx);
     return 64'hC0013000 + (smc_mmode_remap_idx * 64'h8);
 endfunction

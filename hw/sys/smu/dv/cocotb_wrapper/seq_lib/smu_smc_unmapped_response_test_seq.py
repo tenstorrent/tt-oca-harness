@@ -105,9 +105,9 @@ PAST_EXTENT_CELLS = (
         RESP_SLVERR,
     ),
     (
-        "smc_alias_remap",
-        smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR", 0)
-        + smc_addr("SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE"),
+        "smc_alias_remap_wrap",
+        smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR", 0)
+        + smc_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_TOTAL_SIZE"),
         RESP_SLVERR,
     ),
     (

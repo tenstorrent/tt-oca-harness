@@ -192,10 +192,12 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
         ),
         DeadspaceProbe(
             "alias_remap0_region_end",
-            smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR", 0),
+            smc_indexed_addr(
+                "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR", 0
+            ),
             0x100,
-            smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_BASE_ADDR", 0),
-            _block_extent("SMC_TOP_SMC_ALIAS_REMAP_REGION", indexed=True),
+            smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_BASE_ADDR", 0),
+            _block_extent("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION", indexed=True),
             "REMAP_REGION_REGION_END",
         ),
         DeadspaceProbe(

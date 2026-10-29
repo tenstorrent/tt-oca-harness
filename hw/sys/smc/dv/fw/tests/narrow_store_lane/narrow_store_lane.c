@@ -176,7 +176,7 @@ int main(void) {
          * new offset remaps nothing. The bench reads the word back and restores
          * it.
          */
-        uint64_t attrs = SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(0);
+        uint64_t attrs = SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(0);
         uint32_t upper_before = read_reg(attrs + 4);
         write_reg(attrs, ALL_ONES);
         io_fence();

@@ -45,7 +45,7 @@ _HELD = (
 # against the reset value and puts the boot value back.
 _AFTER_BOOT = {"smc_cpu_ctrl/RESET_TIMEOUT": CPU_RESET_TIMEOUT_FORCE}
 _MUTEX = "smc_cpu_ctrl/MUTEX"
-_ATTRS = "smc_alias_remap/REGION/region_attrs"
+_ATTRS = "smc_alias_remap_wrap/alias_remap/REGION/region_attrs"
 
 _WORD = 8
 _LOWER = 0xFFFF_FFFF

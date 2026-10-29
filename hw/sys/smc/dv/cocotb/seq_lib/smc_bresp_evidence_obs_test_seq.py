@@ -42,7 +42,7 @@ BURST_INCR = 1
 
 _INTERNAL_XBAR = {
     "smc_base_config",
-    "smc_alias_remap",
+    "smc_alias_remap_wrap",
     "smc_mmode_remap",
     "smc_xvisor_remap",
     "smc_inbound_filter_ctrl",
@@ -372,7 +372,9 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         assert outfilt_last == base + 0x1_61F8
         cpu_last = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR", 3)
         assert cpu_last == base + 0x3_92B8
-        alias_0 = smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0)
+        alias_0 = smc_indexed_addr(
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0
+        )
         assert alias_0 == base + 0x1_2000
         gpio_0 = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
         assert gpio_0 == base + 0x3000

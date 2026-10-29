@@ -135,7 +135,7 @@ localparam int unsigned SmcFabricRegWords = 5;
 localparam int unsigned SmcCgFilterEntry =
     int'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_NUM) - 1;
 localparam int unsigned SmcCgRemapRegion =
-    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_NUM) - 1;
+    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM) - 1;
 
 typedef struct {
   string name;
@@ -178,7 +178,8 @@ function automatic void smc_fabric_reg_catalog(ref smc_fabric_reg_entry_t entrie
       FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_IB_FILTER});
   entries.push_back(
       '{"ALIAS.REGION_START",
-      smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(SmcCgRemapRegion),
+      smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(
+          SmcCgRemapRegion),
       REMAP_REGION_REGION_START_REG_DEFAULT, REMAP_REGION_REGION_START_START_ADDR_MASK,
       REMAP_REGION_REGION_START_START_ADDR_MASK, SMC_CG_ALIAS_REMAP});
   entries.push_back(
@@ -239,15 +240,15 @@ localparam bit [63:0] SmcHangDataAccelThresholdAddr = 64'(
     smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR
 );
 localparam bit [63:0] SmcAliasRegionStartAddr =
-    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(
     0
 ));
 localparam bit [63:0] SmcAliasRegionEndAddr =
-    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(
     0
 ));
 localparam bit [63:0] SmcAliasRegionAttrsAddr =
-    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
     0
 ));
 

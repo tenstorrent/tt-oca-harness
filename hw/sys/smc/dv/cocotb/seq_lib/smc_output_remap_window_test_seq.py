@@ -741,7 +741,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
 
     async def _alias_cacheable(self) -> None:
         for a, offset in zip(_REGIONS, _ALIAS_OFFSETS):
-            addr = getattr(_regs, f"SMC_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR")
+            addr = getattr(
+                _regs, f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR"
+            )
             await self.csr_read(
                 f"ALIAS{a}_ATTRS_RESET",
                 addr,
@@ -780,7 +782,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 )
                 count += 1
         for a in _REGIONS:
-            addr = getattr(_regs, f"SMC_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR")
+            addr = getattr(
+                _regs, f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR"
+            )
             await self.csr_read(
                 f"ALIAS{a}_FINAL",
                 addr,
@@ -921,7 +925,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
     async def _attr_setup(self) -> None:
         count = 0
         for a in _REGIONS:
-            addr = getattr(_regs, f"SMC_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR")
+            addr = getattr(
+                _regs, f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{a}__REGION_REGION_ATTRS_REG_ADDR"
+            )
             await self.csr_write(
                 f"ALIAS{a}_RESTORE", addr, REMAP_REGION_REGION_ATTRS_REG_DEFAULT, length=_WORD
             )

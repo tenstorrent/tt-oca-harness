@@ -71,9 +71,9 @@ module smc_internal_axi_lite_xbar
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_SIZE)},
     '{idx: 1,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(0)),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_SIZE)},
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(0)),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(0)

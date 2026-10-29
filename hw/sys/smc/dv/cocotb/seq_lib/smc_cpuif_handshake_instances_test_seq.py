@@ -405,11 +405,11 @@ def build_instances() -> tuple[Inst, ...]:
                     b_zero=_mask(b, "valid"),
                 )
             )
-    sym = "SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR"
+    sym = "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR"
     for i in range(8):
-        a = _indexed(sym, "smc_alias_remap[{}]/REGION/region_start", i)
-        b = _indexed(sym, "smc_alias_remap[{}]/REGION/region_end", i)
-        attrs = _indexed(sym, "smc_alias_remap[{}]/REGION/region_attrs", i)
+        a = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", i)
+        b = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_end", i)
+        attrs = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_attrs", i)
         for reg in (a, b, attrs):
             _check_probe(reg, written=reg is not attrs)
         out.append(

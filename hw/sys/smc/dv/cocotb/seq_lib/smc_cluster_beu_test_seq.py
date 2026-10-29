@@ -48,8 +48,8 @@ UNTOUCHED = (
     rdl_register("smc_base_config/GLOBAL_BASE"),
     rdl_register("smc_base_config/REGION_SIZE"),
     rdl_register("smc_base_config/CLOCK_GATE_CONTROL"),
-    rdl_contract("smc_alias_remap/REGION/region_start"),
-    rdl_contract("smc_alias_remap/REGION/region_attrs"),
+    rdl_contract("smc_alias_remap_wrap/alias_remap/REGION/region_start"),
+    rdl_contract("smc_alias_remap_wrap/alias_remap/REGION/region_attrs"),
     rdl_contract("smc_mmode_remap/REGION/region_attrs"),
 )
 assert all(reg.reset_word & 0xFFFF_FFFF != WRITE_WORD for reg in UNTOUCHED), (

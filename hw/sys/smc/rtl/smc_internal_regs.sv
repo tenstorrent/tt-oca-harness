@@ -963,7 +963,7 @@ module smc_internal_regs #(
   );
 
   localparam int unsigned AliasRemapSelStartIdx = $clog2(
-      smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_SIZE
+      smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_SIZE
   );
   localparam int unsigned AliasRemapSelEndIdx = AliasRemapSelStartIdx + smc_pkg::AliasRemapSelW - 1;
 

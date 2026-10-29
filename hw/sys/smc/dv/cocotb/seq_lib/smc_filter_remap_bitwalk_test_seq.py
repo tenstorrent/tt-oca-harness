@@ -75,10 +75,10 @@ def _filter_spec(bank: str, register: str) -> tuple[str, str, str, str]:
 
 def _remap_spec(register: str) -> tuple[str, str, str, str]:
     return (
-        f"smc_alias_remap/REGION/{register}",
-        f"SMC_TOP_SMC_ALIAS_REMAP_REGION_{register.upper()}_BASE_ADDR",
-        f"SMC_TOP_SMC_ALIAS_REMAP_REGION_{register.upper()}_NUM",
-        f"SMC_ALIAS_REMAP_{{index}}__REGION_{register.upper()}_REG_ADDR",
+        f"smc_alias_remap_wrap/alias_remap/REGION/{register}",
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_{register.upper()}_BASE_ADDR",
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_{register.upper()}_NUM",
+        f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{{index}}__REGION_{register.upper()}_REG_ADDR",
     )
 
 

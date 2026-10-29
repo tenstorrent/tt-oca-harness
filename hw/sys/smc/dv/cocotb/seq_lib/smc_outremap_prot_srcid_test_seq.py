@@ -41,7 +41,9 @@ def _remap_reg(bank: str, entry: int) -> int:
 
 
 def _alias_reg(reg: str) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_{reg}_BASE_ADDR", 6)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_{reg}_BASE_ADDR", 6
+    )
 
 
 # Register words (output_remap.rdl REGION_ATTRS offset[55:0], valid[63]; alias region 6).

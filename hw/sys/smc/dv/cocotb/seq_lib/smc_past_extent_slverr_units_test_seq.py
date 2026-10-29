@@ -112,9 +112,11 @@ _TIMER_UNIT = (
 _BASE_CONFIG_UNIT = ("smc_base_config", "BCFG", CLOCK_GATE_CONTROL)
 _FABRIC_UNITS = (
     (
-        "smc_alias_remap",
+        "smc_alias_remap_wrap",
         "ALIAS",
-        smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0),
+        smc_indexed_addr(
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0
+        ),
     ),
     ("smc_mmode_remap", "MMODE", smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_BASE_ADDR", 0)),
     (

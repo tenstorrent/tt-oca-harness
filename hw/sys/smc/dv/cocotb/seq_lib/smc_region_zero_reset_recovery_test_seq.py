@@ -137,7 +137,7 @@ _UNITS = (
     ("OCTS_TIMER", 0xA000, 0xAFFF, "smc_system_timer_octs/TIMER_START"),
     ("DFX", 0xB800, 0xBFFF, "dfx_ctrl/STATUS_SMU"),
     ("BASE_CONFIG", 0x1_0000, 0x1_1FFF, "smc_base_config/GLOBAL_BASE"),
-    ("ALIAS_REMAP", 0x1_2000, 0x1_2FFF, "smc_alias_remap/REGION/region_start"),
+    ("ALIAS_REMAP", 0x1_2000, 0x1_2FFF, "smc_alias_remap_wrap/alias_remap/REGION/region_start"),
     ("MMODE_REMAP", 0x1_3000, 0x1_3FFF, "smc_mmode_remap/REGION/region_attrs"),
     ("XVISOR_REMAP", 0x1_4000, 0x1_4FFF, "smc_xvisor_remap/REGION/region_attrs"),
     ("INBOUND_FILTER", 0x1_5000, 0x1_5FFF, "smc_inbound_filter_ctrl/FILTER_CONFIG"),

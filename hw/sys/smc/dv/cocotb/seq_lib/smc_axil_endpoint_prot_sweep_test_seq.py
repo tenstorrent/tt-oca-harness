@@ -206,7 +206,12 @@ def check_set() -> tuple[Endpoint, ...]:
             "base_config", "internal-regs", "smc_base_config/HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD"
         ),
         _probe("cpu_ctrl", "internal-regs", "smc_cpu_ctrl/SCRATCH[15]", seed=RW),
-        _probe("alias_remap", "remap-ctrl", "smc_alias_remap[0]/REGION/region_start", seed=RW),
+        _probe(
+            "alias_remap",
+            "remap-ctrl",
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_start",
+            seed=RW,
+        ),
         _probe(
             "mmode_remap",
             "remap-ctrl",
@@ -319,7 +324,10 @@ BURST_SET = (
     ),
     Burst(
         "alias-remap len1",
-        ("smc_alias_remap[0]/REGION/region_start", "smc_alias_remap[0]/REGION/region_end"),
+        (
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_start",
+            "smc_alias_remap_wrap/alias_remap[0]/REGION/region_end",
+        ),
         2,
     ),
     Burst(

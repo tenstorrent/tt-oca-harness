@@ -2762,38 +2762,23 @@ localparam int unsigned SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_RE
 
 
 //==============================================================================
-// Addresses for Address Map: smc_alias_remap[0]
+// Addresses for Address Map: smc_alias_remap_wrap
 //==============================================================================
 
 
-localparam int unsigned SMC_ALIAS_REMAP_0__REG_MAP_BASE_ADDR                                                      = 32'hC0012000;
-localparam int unsigned SMC_ALIAS_REMAP_0__REG_MAP_SIZE                                                           = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_REG_MAP_BASE_ADDR                                                    = 32'hC0012000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_REG_MAP_SIZE                                                         = 32'h00000100;
 
 
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_ALIAS_REMAP_0__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0012000;
-localparam int unsigned SMC_ALIAS_REMAP_0__REGION_REG_FILE_SIZE                                                   = 32'h00000018;
-
-localparam int unsigned SMC_ALIAS_REMAP_0__REGION_REGION_START_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR                                           = 32'hC0012000;
-localparam int unsigned SMC_ALIAS_REMAP_0__REGION_REGION_END_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned SMC_ALIAS_REMAP_0__REGION_REGION_END_REG_ADDR                                             = 32'hC0012008;
-localparam int unsigned SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000010;
-localparam int unsigned SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0012010;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_alias_remap[1]
+// Addresses for Address Map: alias_remap[0]
 //==============================================================================
 
 
-localparam int unsigned SMC_ALIAS_REMAP_1__REG_MAP_BASE_ADDR                                                      = 32'hC0012020;
-localparam int unsigned SMC_ALIAS_REMAP_1__REG_MAP_SIZE                                                           = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR                                     = 32'hC0012000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REG_MAP_SIZE                                          = 32'h00000018;
 
 
 
@@ -2802,50 +2787,24 @@ localparam int unsigned SMC_ALIAS_REMAP_1__REG_MAP_SIZE                         
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_ALIAS_REMAP_1__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0012020;
-localparam int unsigned SMC_ALIAS_REMAP_1__REGION_REG_FILE_SIZE                                                   = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REGION_REG_FILE_BASE_ADDR                             = 32'hC0012000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REGION_REG_FILE_SIZE                                  = 32'h00000018;
 
-localparam int unsigned SMC_ALIAS_REMAP_1__REGION_REGION_START_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_ALIAS_REMAP_1__REGION_REGION_START_REG_ADDR                                           = 32'hC0012020;
-localparam int unsigned SMC_ALIAS_REMAP_1__REGION_REGION_END_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned SMC_ALIAS_REMAP_1__REGION_REGION_END_REG_ADDR                                             = 32'hC0012028;
-localparam int unsigned SMC_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000010;
-localparam int unsigned SMC_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0012030;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_alias_remap[2]
-//==============================================================================
-
-
-localparam int unsigned SMC_ALIAS_REMAP_2__REG_MAP_BASE_ADDR                                                      = 32'hC0012040;
-localparam int unsigned SMC_ALIAS_REMAP_2__REG_MAP_SIZE                                                           = 32'h00000018;
-
-
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REGION_REGION_START_REG_OFFSET                        = 32'h00000000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR                          = 32'hC0012000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REGION_REGION_END_REG_OFFSET                          = 32'h00000008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REGION_REGION_END_REG_ADDR                            = 32'hC0012008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET                        = 32'h00000010;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR                          = 32'hC0012010;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_ALIAS_REMAP_2__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0012040;
-localparam int unsigned SMC_ALIAS_REMAP_2__REGION_REG_FILE_SIZE                                                   = 32'h00000018;
-
-localparam int unsigned SMC_ALIAS_REMAP_2__REGION_REGION_START_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_ALIAS_REMAP_2__REGION_REGION_START_REG_ADDR                                           = 32'hC0012040;
-localparam int unsigned SMC_ALIAS_REMAP_2__REGION_REGION_END_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned SMC_ALIAS_REMAP_2__REGION_REGION_END_REG_ADDR                                             = 32'hC0012048;
-localparam int unsigned SMC_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000010;
-localparam int unsigned SMC_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0012050;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_alias_remap[3]
+// Addresses for Address Map: alias_remap[1]
 //==============================================================================
 
 
-localparam int unsigned SMC_ALIAS_REMAP_3__REG_MAP_BASE_ADDR                                                      = 32'hC0012060;
-localparam int unsigned SMC_ALIAS_REMAP_3__REG_MAP_SIZE                                                           = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REG_MAP_BASE_ADDR                                     = 32'hC0012020;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REG_MAP_SIZE                                          = 32'h00000018;
 
 
 
@@ -2854,50 +2813,24 @@ localparam int unsigned SMC_ALIAS_REMAP_3__REG_MAP_SIZE                         
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_ALIAS_REMAP_3__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0012060;
-localparam int unsigned SMC_ALIAS_REMAP_3__REGION_REG_FILE_SIZE                                                   = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REGION_REG_FILE_BASE_ADDR                             = 32'hC0012020;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REGION_REG_FILE_SIZE                                  = 32'h00000018;
 
-localparam int unsigned SMC_ALIAS_REMAP_3__REGION_REGION_START_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_ALIAS_REMAP_3__REGION_REGION_START_REG_ADDR                                           = 32'hC0012060;
-localparam int unsigned SMC_ALIAS_REMAP_3__REGION_REGION_END_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned SMC_ALIAS_REMAP_3__REGION_REGION_END_REG_ADDR                                             = 32'hC0012068;
-localparam int unsigned SMC_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000010;
-localparam int unsigned SMC_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0012070;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_alias_remap[4]
-//==============================================================================
-
-
-localparam int unsigned SMC_ALIAS_REMAP_4__REG_MAP_BASE_ADDR                                                      = 32'hC0012080;
-localparam int unsigned SMC_ALIAS_REMAP_4__REG_MAP_SIZE                                                           = 32'h00000018;
-
-
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REGION_REGION_START_REG_OFFSET                        = 32'h00000000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REGION_REGION_START_REG_ADDR                          = 32'hC0012020;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REGION_REGION_END_REG_OFFSET                          = 32'h00000008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REGION_REGION_END_REG_ADDR                            = 32'hC0012028;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET                        = 32'h00000010;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_1__REGION_REGION_ATTRS_REG_ADDR                          = 32'hC0012030;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_ALIAS_REMAP_4__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0012080;
-localparam int unsigned SMC_ALIAS_REMAP_4__REGION_REG_FILE_SIZE                                                   = 32'h00000018;
-
-localparam int unsigned SMC_ALIAS_REMAP_4__REGION_REGION_START_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_ALIAS_REMAP_4__REGION_REGION_START_REG_ADDR                                           = 32'hC0012080;
-localparam int unsigned SMC_ALIAS_REMAP_4__REGION_REGION_END_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned SMC_ALIAS_REMAP_4__REGION_REGION_END_REG_ADDR                                             = 32'hC0012088;
-localparam int unsigned SMC_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000010;
-localparam int unsigned SMC_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0012090;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_alias_remap[5]
+// Addresses for Address Map: alias_remap[2]
 //==============================================================================
 
 
-localparam int unsigned SMC_ALIAS_REMAP_5__REG_MAP_BASE_ADDR                                                      = 32'hC00120A0;
-localparam int unsigned SMC_ALIAS_REMAP_5__REG_MAP_SIZE                                                           = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REG_MAP_BASE_ADDR                                     = 32'hC0012040;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REG_MAP_SIZE                                          = 32'h00000018;
 
 
 
@@ -2906,50 +2839,24 @@ localparam int unsigned SMC_ALIAS_REMAP_5__REG_MAP_SIZE                         
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_ALIAS_REMAP_5__REGION_REG_FILE_BASE_ADDR                                              = 32'hC00120A0;
-localparam int unsigned SMC_ALIAS_REMAP_5__REGION_REG_FILE_SIZE                                                   = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REGION_REG_FILE_BASE_ADDR                             = 32'hC0012040;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REGION_REG_FILE_SIZE                                  = 32'h00000018;
 
-localparam int unsigned SMC_ALIAS_REMAP_5__REGION_REGION_START_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_ALIAS_REMAP_5__REGION_REGION_START_REG_ADDR                                           = 32'hC00120A0;
-localparam int unsigned SMC_ALIAS_REMAP_5__REGION_REGION_END_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned SMC_ALIAS_REMAP_5__REGION_REGION_END_REG_ADDR                                             = 32'hC00120A8;
-localparam int unsigned SMC_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000010;
-localparam int unsigned SMC_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC00120B0;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_alias_remap[6]
-//==============================================================================
-
-
-localparam int unsigned SMC_ALIAS_REMAP_6__REG_MAP_BASE_ADDR                                                      = 32'hC00120C0;
-localparam int unsigned SMC_ALIAS_REMAP_6__REG_MAP_SIZE                                                           = 32'h00000018;
-
-
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REGION_REGION_START_REG_OFFSET                        = 32'h00000000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REGION_REGION_START_REG_ADDR                          = 32'hC0012040;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REGION_REGION_END_REG_OFFSET                          = 32'h00000008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REGION_REGION_END_REG_ADDR                            = 32'hC0012048;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET                        = 32'h00000010;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_2__REGION_REGION_ATTRS_REG_ADDR                          = 32'hC0012050;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_ALIAS_REMAP_6__REGION_REG_FILE_BASE_ADDR                                              = 32'hC00120C0;
-localparam int unsigned SMC_ALIAS_REMAP_6__REGION_REG_FILE_SIZE                                                   = 32'h00000018;
-
-localparam int unsigned SMC_ALIAS_REMAP_6__REGION_REGION_START_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_ALIAS_REMAP_6__REGION_REGION_START_REG_ADDR                                           = 32'hC00120C0;
-localparam int unsigned SMC_ALIAS_REMAP_6__REGION_REGION_END_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned SMC_ALIAS_REMAP_6__REGION_REGION_END_REG_ADDR                                             = 32'hC00120C8;
-localparam int unsigned SMC_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000010;
-localparam int unsigned SMC_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC00120D0;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_alias_remap[7]
+// Addresses for Address Map: alias_remap[3]
 //==============================================================================
 
 
-localparam int unsigned SMC_ALIAS_REMAP_7__REG_MAP_BASE_ADDR                                                      = 32'hC00120E0;
-localparam int unsigned SMC_ALIAS_REMAP_7__REG_MAP_SIZE                                                           = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REG_MAP_BASE_ADDR                                     = 32'hC0012060;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REG_MAP_SIZE                                          = 32'h00000018;
 
 
 
@@ -2958,15 +2865,119 @@ localparam int unsigned SMC_ALIAS_REMAP_7__REG_MAP_SIZE                         
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_ALIAS_REMAP_7__REGION_REG_FILE_BASE_ADDR                                              = 32'hC00120E0;
-localparam int unsigned SMC_ALIAS_REMAP_7__REGION_REG_FILE_SIZE                                                   = 32'h00000018;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REGION_REG_FILE_BASE_ADDR                             = 32'hC0012060;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REGION_REG_FILE_SIZE                                  = 32'h00000018;
 
-localparam int unsigned SMC_ALIAS_REMAP_7__REGION_REGION_START_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR                                           = 32'hC00120E0;
-localparam int unsigned SMC_ALIAS_REMAP_7__REGION_REGION_END_REG_OFFSET                                           = 32'h00000008;
-localparam int unsigned SMC_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR                                             = 32'hC00120E8;
-localparam int unsigned SMC_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000010;
-localparam int unsigned SMC_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC00120F0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REGION_REGION_START_REG_OFFSET                        = 32'h00000000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REGION_REGION_START_REG_ADDR                          = 32'hC0012060;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REGION_REGION_END_REG_OFFSET                          = 32'h00000008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REGION_REGION_END_REG_ADDR                            = 32'hC0012068;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET                        = 32'h00000010;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_3__REGION_REGION_ATTRS_REG_ADDR                          = 32'hC0012070;
+
+
+//==============================================================================
+// Addresses for Address Map: alias_remap[4]
+//==============================================================================
+
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REG_MAP_BASE_ADDR                                     = 32'hC0012080;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REG_MAP_SIZE                                          = 32'h00000018;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REGION_REG_FILE_BASE_ADDR                             = 32'hC0012080;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REGION_REG_FILE_SIZE                                  = 32'h00000018;
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REGION_REGION_START_REG_OFFSET                        = 32'h00000000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REGION_REGION_START_REG_ADDR                          = 32'hC0012080;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REGION_REGION_END_REG_OFFSET                          = 32'h00000008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REGION_REGION_END_REG_ADDR                            = 32'hC0012088;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET                        = 32'h00000010;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_4__REGION_REGION_ATTRS_REG_ADDR                          = 32'hC0012090;
+
+
+//==============================================================================
+// Addresses for Address Map: alias_remap[5]
+//==============================================================================
+
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REG_MAP_BASE_ADDR                                     = 32'hC00120A0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REG_MAP_SIZE                                          = 32'h00000018;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REGION_REG_FILE_BASE_ADDR                             = 32'hC00120A0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REGION_REG_FILE_SIZE                                  = 32'h00000018;
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REGION_REGION_START_REG_OFFSET                        = 32'h00000000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REGION_REGION_START_REG_ADDR                          = 32'hC00120A0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REGION_REGION_END_REG_OFFSET                          = 32'h00000008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REGION_REGION_END_REG_ADDR                            = 32'hC00120A8;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET                        = 32'h00000010;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_5__REGION_REGION_ATTRS_REG_ADDR                          = 32'hC00120B0;
+
+
+//==============================================================================
+// Addresses for Address Map: alias_remap[6]
+//==============================================================================
+
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REG_MAP_BASE_ADDR                                     = 32'hC00120C0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REG_MAP_SIZE                                          = 32'h00000018;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REGION_REG_FILE_BASE_ADDR                             = 32'hC00120C0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REGION_REG_FILE_SIZE                                  = 32'h00000018;
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REGION_REGION_START_REG_OFFSET                        = 32'h00000000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REGION_REGION_START_REG_ADDR                          = 32'hC00120C0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REGION_REGION_END_REG_OFFSET                          = 32'h00000008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REGION_REGION_END_REG_ADDR                            = 32'hC00120C8;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET                        = 32'h00000010;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_6__REGION_REGION_ATTRS_REG_ADDR                          = 32'hC00120D0;
+
+
+//==============================================================================
+// Addresses for Address Map: alias_remap[7]
+//==============================================================================
+
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REG_MAP_BASE_ADDR                                     = 32'hC00120E0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REG_MAP_SIZE                                          = 32'h00000018;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REG_FILE_BASE_ADDR                             = 32'hC00120E0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REG_FILE_SIZE                                  = 32'h00000018;
+
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REGION_START_REG_OFFSET                        = 32'h00000000;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REGION_START_REG_ADDR                          = 32'hC00120E0;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REGION_END_REG_OFFSET                          = 32'h00000008;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REGION_END_REG_ADDR                            = 32'hC00120E8;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET                        = 32'h00000010;
+localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REGION_ATTRS_REG_ADDR                          = 32'hC00120F0;
 
 
 //==============================================================================
@@ -16315,6 +16326,9 @@ localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_SHI
 
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_MASK                                                           = 32'hFFFFFFFF;
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_SHIFT                                                          = 0;
+
+
+
 
 
 

@@ -107,7 +107,7 @@ _PROBES: tuple[tuple[str, str], ...] = (
     ("system_timer_octs", "smc_system_timer_octs/TIMER_PRESET_LO"),
     ("dfx_ctrl_status", "dfx_ctrl/DEBUG_BUS_MUX"),
     ("smc_base_config", "smc_base_config/HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD"),
-    ("alias_remap", "smc_alias_remap/REGION/region_start"),
+    ("alias_remap", "smc_alias_remap_wrap/alias_remap/REGION/region_start"),
     ("output_remap", "smc_mmode_remap/REGION/region_attrs"),
     ("filter_ctrl", "smc_outbound_filter_ctrl/START_ADDR"),
     ("zeroer_ctrl", "zeroer_ctrl/DEST_ADDR"),

@@ -112,7 +112,9 @@ CHECKERS = (
 
 
 def _alias(kind: str, entry: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", entry)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", entry
+    )
 
 
 def _ormp(table: str, entry: int) -> int:

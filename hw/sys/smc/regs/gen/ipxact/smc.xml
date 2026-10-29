@@ -9002,91 +9002,98 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
           </ipxact:register>
         </ipxact:registerFile>
         <ipxact:registerFile>
-          <ipxact:name>smc_alias_remap</ipxact:name>
-          <ipxact:displayName>AXI Alias Remap Address Map</ipxact:displayName>
-          <ipxact:description>TLB Registers for address remapping and attribute tagging</ipxact:description>
-          <ipxact:dim>8</ipxact:dim>
+          <ipxact:name>smc_alias_remap_wrap</ipxact:name>
+          <ipxact:displayName>AXI Alias Remap Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Wrapper address map instantiating one alias remap register block per remap region.</ipxact:description>
           <ipxact:addressOffset>'hc0012000</ipxact:addressOffset>
-          <ipxact:range>'h20</ipxact:range>
+          <ipxact:range>'h100</ipxact:range>
           <ipxact:registerFile>
-            <ipxact:name>REGION</ipxact:name>
+            <ipxact:name>alias_remap</ipxact:name>
+            <ipxact:displayName>AXI Alias Remap Address Map</ipxact:displayName>
+            <ipxact:description>TLB Registers for address remapping and attribute tagging</ipxact:description>
+            <ipxact:dim>8</ipxact:dim>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
-            <ipxact:range>'h18</ipxact:range>
-            <ipxact:register>
-              <ipxact:name>region_start</ipxact:name>
+            <ipxact:range>'h20</ipxact:range>
+            <ipxact:registerFile>
+              <ipxact:name>REGION</ipxact:name>
               <ipxact:addressOffset>'h0</ipxact:addressOffset>
-              <ipxact:size>64</ipxact:size>
-              <ipxact:field>
-                <ipxact:name>start_addr</ipxact:name>
-                <ipxact:description>Start of remap region</ipxact:description>
-                <ipxact:bitOffset>12</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>44</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-            </ipxact:register>
-            <ipxact:register>
-              <ipxact:name>region_end</ipxact:name>
-              <ipxact:addressOffset>'h8</ipxact:addressOffset>
-              <ipxact:size>64</ipxact:size>
-              <ipxact:field>
-                <ipxact:name>end_addr</ipxact:name>
-                <ipxact:description>End of remap region (non-inclusive).</ipxact:description>
-                <ipxact:bitOffset>12</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>44</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-            </ipxact:register>
-            <ipxact:register>
-              <ipxact:name>region_attrs</ipxact:name>
-              <ipxact:addressOffset>'h10</ipxact:addressOffset>
-              <ipxact:size>64</ipxact:size>
-              <ipxact:field>
-                <ipxact:name>offset</ipxact:name>
-                <ipxact:description>The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.</ipxact:description>
-                <ipxact:bitOffset>12</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>44</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-              <ipxact:field>
-                <ipxact:name>cacheable</ipxact:name>
-                <ipxact:description>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</ipxact:description>
-                <ipxact:bitOffset>56</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>4</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-              <ipxact:field>
-                <ipxact:name>valid</ipxact:name>
-                <ipxact:description>If set, this remap will be active</ipxact:description>
-                <ipxact:bitOffset>63</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-            </ipxact:register>
+              <ipxact:range>'h18</ipxact:range>
+              <ipxact:register>
+                <ipxact:name>region_start</ipxact:name>
+                <ipxact:addressOffset>'h0</ipxact:addressOffset>
+                <ipxact:size>64</ipxact:size>
+                <ipxact:field>
+                  <ipxact:name>start_addr</ipxact:name>
+                  <ipxact:description>Start of remap region</ipxact:description>
+                  <ipxact:bitOffset>12</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>44</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+              </ipxact:register>
+              <ipxact:register>
+                <ipxact:name>region_end</ipxact:name>
+                <ipxact:addressOffset>'h8</ipxact:addressOffset>
+                <ipxact:size>64</ipxact:size>
+                <ipxact:field>
+                  <ipxact:name>end_addr</ipxact:name>
+                  <ipxact:description>End of remap region (non-inclusive).</ipxact:description>
+                  <ipxact:bitOffset>12</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>44</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+              </ipxact:register>
+              <ipxact:register>
+                <ipxact:name>region_attrs</ipxact:name>
+                <ipxact:addressOffset>'h10</ipxact:addressOffset>
+                <ipxact:size>64</ipxact:size>
+                <ipxact:field>
+                  <ipxact:name>offset</ipxact:name>
+                  <ipxact:description>The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.</ipxact:description>
+                  <ipxact:bitOffset>12</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>44</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+                <ipxact:field>
+                  <ipxact:name>cacheable</ipxact:name>
+                  <ipxact:description>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</ipxact:description>
+                  <ipxact:bitOffset>56</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>4</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+                <ipxact:field>
+                  <ipxact:name>valid</ipxact:name>
+                  <ipxact:description>If set, this remap will be active</ipxact:description>
+                  <ipxact:bitOffset>63</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>1</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+              </ipxact:register>
+            </ipxact:registerFile>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>

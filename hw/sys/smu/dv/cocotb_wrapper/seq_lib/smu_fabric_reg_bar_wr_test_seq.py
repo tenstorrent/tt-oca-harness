@@ -39,7 +39,9 @@ FABCFG_DESTS = (
     ),
     (
         "alias_remap",
-        smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0),
+        smc_indexed_addr(
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0
+        ),
         8,
     ),
     (

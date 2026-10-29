@@ -452,7 +452,9 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
         m_attrs = smc_reg_addr(_REMAP_ATTRS.format(unit="MMODE"))
         x_attrs = smc_reg_addr(_REMAP_ATTRS.format(unit="XVISOR"))
         alias = {
-            name: smc_reg_addr(f"SMC_ALIAS_REMAP_{_ALIAS_REGION}__REGION_REGION_{name}_REG_ADDR")
+            name: smc_reg_addr(
+                f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{_ALIAS_REGION}__REGION_REGION_{name}_REG_ADDR"
+            )
             for name in ("START", "END", "ATTRS")
         }
         remap_default = smc_reg_addr("OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT")

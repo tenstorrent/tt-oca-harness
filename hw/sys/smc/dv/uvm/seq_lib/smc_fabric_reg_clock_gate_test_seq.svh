@@ -29,7 +29,7 @@ class smc_fabric_reg_clock_gate_test_seq extends smc_base_test_seq;
   localparam int unsigned CatalogWrites = 2 * SmcFabricRegWords;
   localparam int unsigned ComparisonsPerPass = CatalogReads + CatalogWrites;
   localparam int unsigned FixedMemAccesses = 1 + 2 * 2 +
-      int'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_NUM) + ComparisonsPerPass;
+      int'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM) + ComparisonsPerPass;
   localparam bit [31:0] GateMask =
       SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_FILTER_OB_AXI_CG_EN_MASK |
       SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_FILTER_OB_REG_CG_EN_MASK |
@@ -282,9 +282,11 @@ class smc_fabric_reg_clock_gate_test_seq extends smc_base_test_seq;
                    end_value == FILTER_CTRL_END_ADDR_REG_DEFAULT,
           "filter baseline");
     end
-    for (int unsigned i = 0; i < smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_NUM; i++) begin
-      mem_read(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(i), value,
-               "alias inactive prerequisite");
+    for (int unsigned i = 0; i < smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM;
+         i++) begin
+      mem_read(
+          smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(i),
+          value, "alias inactive prerequisite");
       prerequisite((value & REMAP_REGION_REGION_ATTRS_VALID_MASK) == 0, "alias region inactive");
     end
     foreach (entries[i]) begin
