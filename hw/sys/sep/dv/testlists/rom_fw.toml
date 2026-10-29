@@ -3518,3 +3518,124 @@ args = [
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
   "+sep_smc_fuse_sense_hold",
 ]
+
+[[tests]]
+# FUSE-030: with LC_STATE TEST_DEV (0x0) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_test_dev"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x0",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE PROD (0x1) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+# The ROM refuses the unsigned default image after that point, so the run ends on the FAIL verdict.
+name = "sep_rom_lc_state_record_test_prod"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x1",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE RMA_SiP (0x2) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_rma_sip_0x2"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x2",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE RMA_SiP (0x3) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_rma_sip_0x3"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x3",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE RMA_CHIPLET (0x6) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_rma_chiplet_0x6"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x6",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE RMA_CHIPLET (0x7) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+name = "sep_rom_lc_state_record_test_rma_chiplet_0x7"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x7",
+]
+
+[[tests]]
+# FUSE-030: with LC_STATE PROD_END (0x8) the ROM records the raw value in bl0_state.lc_state and
+# reports it as INFO_EXT after FUSE_LC_STATE on cold_scratch[1].
+# The ROM refuses the unsigned default image after that point, so the run ends on the FAIL verdict.
+name = "sep_rom_lc_state_record_test_prod_end"
+module = "rom_fw.sep_rom_lc_state_record_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "efuse", "lifecycle", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_lc=0x8",
+]
