@@ -4,10 +4,12 @@
 
 Firmware test: `fw/tests/i2c_fifo_full` is loaded into scratch by the firmware
 loader and runs I2C_0 and I2C_1 against each other on the shared pad bus.
-FMT and TX are filled by software stores to the depth the specification
-gives (`fw/include/i2c_opentitan.h` transcribes the I2C IP parameter defaults
-and the SMC override table) and reset; RX and ACQ are filled by a real 8-byte
-read and a real 8-byte write
+FMT and TX are filled by software stores until they report full and then
+reset. No specification states their depth, so the firmware measures it: the
+level must equal the store count before every store, full must assert at a
+non-zero level within the range the RDL level field reports, and a store into
+the full FIFO must leave the level and the full flag unchanged. RX and ACQ are
+filled by a real 8-byte read and a real 8-byte write
 between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero
 after, with the driver's software-drain repair flag read back so a repaired
 FIFO fails instead of passing. The cocotb smc_i2c_fifo_full_test covers the

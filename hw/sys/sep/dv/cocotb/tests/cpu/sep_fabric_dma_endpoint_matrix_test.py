@@ -52,7 +52,7 @@ model of the staged data and the fabric taps:
                   unchanged). Stream 2, the pool fill, selects the external
                   source, and the test sends a drawn number of word pairs,
                   fewer than the depth, on it before the GO (precondition
-                  CTL-DMA-POOL-PRE); so the leg shows its DMA read on the DMA
+                  CTRL-DMA-POOL-PRE); so the leg shows its DMA read on the DMA
                   master tap, keeps its staged SRAM word, and the level after
                   the run equals the level before the GO. The end state
                   (STATUS and ERROR_CODE) is logged as OBS-DMA-NOTCONN-RESP.
@@ -532,7 +532,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
 
         Records the transferred beat count and the time the last one was
         transferred; a drive or timeout error is recorded and fails the pool
-        precondition (CTL-DMA-POOL-PRE).
+        precondition (CTRL-DMA-POOL-PRE).
         """
         words = self.ep.pool_words()
         ext = SepExtTrngStream(logger=self.logger).start(streams=(POOL_STREAM,))
@@ -855,7 +855,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         assert ok, f"CHK-DMA-ALIAS FAIL: alias copy {text} expect sum=0x{exp:08x}"
         self.logger.info(
-            "CTL-DMA-ALIAS LOG: direct source 0x%08x read by the LSU sum=0x%08x expect=0x%08x",
+            "CTRL-DMA-ALIAS LOG: direct source 0x%08x read by the LSU sum=0x%08x expect=0x%08x",
             SRAM + p["pa_os"],
             r["ctl_sum"],
             exp,
@@ -882,7 +882,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         self._recovery_after("alias_ext_top")
         self.logger.info(
-            "CTL-DMA-ALIAS LOG: alias_ext_top later_beats=%s port_resp=DECERR replies=%d "
+            "CTRL-DMA-ALIAS LOG: alias_ext_top later_beats=%s port_resp=DECERR replies=%d "
             "dma_status=0x%08x error_code=0x%08x",
             [hex(b.addr) if b.addr is not None else "X" for b in aws[1:]],
             len(rep),
@@ -1095,7 +1095,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             self.logger.info("CHK-DMA-REMAP PASS: %s done=1", line)
             if d == "r":
                 self.logger.info(
-                    "OBS-REMAP-REPLY: leg=%s port_resp=%s (bench responder, logged)",
+                    "INFO-REMAP-REPLY: leg=%s port_resp=%s (bench responder, logged)",
                     leg,
                     [b.resp for b in self._beats("PR-OUT-RSP", leg_i, "r")],
                 )
@@ -1121,7 +1121,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             n = p[f"reg_len{rid}"] // 4
             nw, xz = self._xz_free(self._sram_in(leg_r))
             self.logger.info(
-                "CTL-DMA-EP-REG LOG: reg=%s lsu_before=0x%08x lsu_after=0x%08x expect=0x%08x",
+                "CTRL-DMA-EP-REG LOG: reg=%s lsu_before=0x%08x lsu_after=0x%08x expect=0x%08x",
                 REG_NAME[rid],
                 r["ctl_a"],
                 r["ctl_b"],
@@ -1368,7 +1368,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         _, c2, _ = self._one("NCCTL2")
         self.logger.info(
-            "CTL-DMA-NOTCONN LOG: rom=0x%08x csr=0x%08x rom_after=0x%08x csr_after=0x%08x rom_ctrl_seen=%d",
+            "CTRL-DMA-NOTCONN LOG: rom=0x%08x csr=0x%08x rom_after=0x%08x csr_after=0x%08x rom_ctrl_seen=%d",
             c0["rom"],
             c0["csr"],
             c2["rom"],
@@ -1475,7 +1475,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         internal endpoint is backpressured (hw/sys/sep/doc/trng.adoc:104-105)
         and only the words this test sends on the external stream 2 reach the
         pool: POOL_WORDS_PER_ENTRY times a drawn count below POOL_DEPTH. The
-        precondition CTL-DMA-POOL-PRE grades the level read before the GO
+        precondition CTRL-DMA-POOL-PRE grades the level read before the GO
         against the depth and that every sent word transferred before the GO.
         The firmware reads the level until it is stable. A DATA read pops one
         word (entropy_pool.adoc:31), and nothing fills the pool, so the level
@@ -1500,12 +1500,12 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         if not pre_ok:
             msg = (
-                f"CTL-DMA-POOL-PRE FAIL: {pre}; expected 1 <= level_before_go < {POOL_DEPTH} "
+                f"CTRL-DMA-POOL-PRE FAIL: {pre}; expected 1 <= level_before_go < {POOL_DEPTH} "
                 "and every sent word transferred before the GO"
             )
             self.logger.error(msg)
             raise AssertionError(msg)
-        self.logger.info("CTL-DMA-POOL-PRE PASS: %s", pre)
+        self.logger.info("CTRL-DMA-POOL-PRE PASS: %s", pre)
         ars = [b for b in self._dma_ev(leg_i).ar if b.addr == POOL_POP]
         stage = model_words(self.ep.p["seed"], 0x81, 1)[0] | 1
         ok = (
@@ -1551,7 +1551,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         p = self.ep.p
         _, s0, _ = self._one("FILTSET")
         self.logger.info(
-            "CTL-DMA-FILT-WR LOG: entry=%d cfg=0x%08x_%08x start=0x%08x_%08x end=0x%08x_%08x",
+            "INFO-DMA-FILT-WR LOG: entry=%d cfg=0x%08x_%08x start=0x%08x_%08x end=0x%08x_%08x",
             FILT_IDX,
             s0["cfg_hi"],
             s0["cfg_lo"],

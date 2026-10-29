@@ -639,19 +639,17 @@ args = [
 ]
 
 [[tests]]
-# Same injection as the MBIST fail arm, but the STATUS_RPT skip-mem-check fuse bit lets the boot
-# continue.
-name = "sep_mbist_fail_continue_test"
-module = "rom_fw.sep_mbist_fail_continue_test"
+# Same injection as the MBIST fail arm with reserved STATUS_RPT bit 2 blown; the ROM still halts.
+name = "sep_mbist_fail_skip_fuse_ignored_test"
+module = "rom_fw.sep_mbist_fail_skip_fuse_ignored_test"
 target = "rom_boot"
 firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
-timeout_sec = 7200
-tags = ["boot", "rom", "mbist", "cpu", "subsystem"]
+timeout_sec = 3600
+tags = ["boot", "rom", "mbist", "error", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
-  "+sep_boot_from_spi",
   "+sep_dft_status=FFFFFFFD",
 ]
 

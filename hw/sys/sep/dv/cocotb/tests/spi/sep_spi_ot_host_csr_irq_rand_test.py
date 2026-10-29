@@ -104,7 +104,7 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       a twin sample at INTR_ENABLE=3 where INTR_STATE equals
                       the read at INTR_ENABLE=I, and on the 16-cell line
                       walk. The five walk cells that the checks above grade log
-                      CTL-SPI-LINE and fail the leaf on a mismatch.
+                      CTRL-SPI-LINE and fail the leaf on a mismatch.
   L2 CHK-SPI-ERR-KIND : each of the five error kinds sets ERROR_STATUS to its own
                       bit alone and sets INTR_STATE.ERROR, which survives the
                       ERROR_STATUS clear and clears on its own W1C.
@@ -658,7 +658,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         # Control: the write of 0 landed (a non-OKAY write response raises in
         # spi.wr), so the latch read below grades a write the DUT took.
         self.logger.info(
-            "CTL-ZERO-WR LOG seed=%d reg=INTR_TEST data=0x0 bresp=OKAY", self.random_seed()
+            "CTRL-ZERO-WR LOG seed=%d reg=INTR_TEST data=0x0 bresp=OKAY", self.random_seed()
         )
         st = await self.spi.rd(INTR_STATE)
         assert st & INTR_ERROR, (
@@ -1246,7 +1246,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         ist = await self.ops.rd(INTR_STATE)
         if ist & INTR_ERROR:
             self._ctrl_missing(f"INTR_STATE.ERROR=1 after the SPI clean state (0x{ist:08x})")
-        self.logger.info("LEG-SETUP LOG seed=%d intr_state=0x%08x", self.seed, ist)
+        self.logger.info("INFO-LEG-SETUP LOG seed=%d intr_state=0x%08x", self.seed, ist)
 
     # ---- L1 ---------------------------------------------------------------
     async def _state_read(self, tag: str, levels: dict[str, int], *, mask_step: int = 0) -> None:
@@ -1334,7 +1334,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         st = await self.ops.poll_status(
             lambda s: s.rxfull == 1 and s.rxstall == 1, 20_000, "RXFULL=1 and RXSTALL=1"
         )
-        self.logger.info("L1-RXFULL LOG seed=%d ev_en=0x%02x %s", self.seed, ev, st.fmt())
+        self.logger.info("INFO-L1-RXFULL LOG seed=%d ev_en=0x%02x %s", self.seed, ev, st.fmt())
         await self._state_read("RXFULL-full", {"RXFULL": 1})
         words = 0
         for _ in range(_RX_DRAIN_READS):
@@ -1346,7 +1346,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 break
         else:
             raise AssertionError(f"RXFULL segment not drained after {_RX_DRAIN_READS} reads")
-        self.logger.info("L1-RXFULL LOG seed=%d drained_words=%d", self.seed, words)
+        self.logger.info("INFO-L1-RXFULL LOG seed=%d drained_words=%d", self.seed, words)
         await self._state_read("RXFULL-drained", {"RXFULL": 0})
 
     async def _stall_head(self, word: int) -> None:
@@ -1601,7 +1601,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._set_ev(EVT_READY)
         await self._state_read("READY-ready", {"READY": 1})
         accepted = await self._l1_ready_low()
-        self.logger.info("L1-READY LOG seed=%d accepted=%d", self.seed, accepted)
+        self.logger.info("INFO-L1-READY LOG seed=%d accepted=%d", self.seed, accepted)
         await self._state_read("READY-low", {"READY": 0})
         await self._set_ev(0)
         await self._state_read("READY-low-masked", {"READY": 0})
@@ -1642,9 +1642,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 )
                 ok = pic == expect and got_state == (ev, err)
                 if control:
-                    self.logger.info("CTL-SPI-LINE LOG seed=%d %s", self.seed, values)
+                    self.logger.info("CTRL-SPI-LINE LOG seed=%d %s", self.seed, values)
                     if not ok:
-                        self._fail("CTL-SPI-LINE", values)
+                        self._fail("CTRL-SPI-LINE", values)
                 else:
                     self._grade("CHK-SPI-LINE", ok, f"walk=1 {values}")
                 await self._release(_FAM_WALK)
@@ -1755,7 +1755,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._poll_reg(ERROR_STATUS, bit, f"{kind}: own ERROR_STATUS bit")
         es = await self._graded_rd(ERROR_STATUS)
         self.logger.info(
-            "CTL-SPI-ERR-OWN LOG seed=%d kind=%s err_status=0x%02x own_bit=0x%02x",
+            "CTRL-SPI-ERR-OWN LOG seed=%d kind=%s err_status=0x%02x own_bit=0x%02x",
             self.seed,
             kind,
             es,
@@ -1775,7 +1775,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         es2 = await self.ops.rd(ERROR_STATUS)
         ie2 = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
         if es2 & ERR_STATUS_MASK:
-            self._fail("CTL-SPI-ERR-W1C", f"kind={kind} err_status=0x{es2:02x} after its W1C")
+            self._fail("CTRL-SPI-ERR-W1C", f"kind={kind} err_status=0x{es2:02x} after its W1C")
         await self.ops.wr(INTR_STATE, INTR_ERROR)
         ie3 = int(bool(await self.ops.rd(INTR_STATE) & INTR_ERROR))
         self._grade(
@@ -1837,7 +1837,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._kind_entry()
         await self._segment(_CMD_DUMMY)
         csid0_es = await self.ops.rd(ERROR_STATUS)
-        self.logger.info("CTL-SPI-CSID0 LOG seed=%d err_status=0x%02x", self.seed, csid0_es)
+        self.logger.info("CTRL-SPI-CSID0 LOG seed=%d err_status=0x%02x", self.seed, csid0_es)
         if csid0_es:
             self._ctrl_missing(f"ERROR_STATUS=0x{csid0_es:02x} after a COMMAND with CSID=0")
         self._window(True)
@@ -1871,7 +1871,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.ops.wr(ERROR_STATUS, 0)
         # Control: the write of 0 landed (a non-OKAY write response raises in
         # ops.wr), so the readback below grades a write the DUT took.
-        self.logger.info("CTL-ZERO-WR LOG seed=%d reg=ERROR_STATUS data=0x0 bresp=OKAY", self.seed)
+        self.logger.info("CTRL-ZERO-WR LOG seed=%d reg=ERROR_STATUS data=0x0 bresp=OKAY", self.seed)
         got = await self.ops.rd(ERROR_STATUS)
         self._grade(
             "CHK-SPI-ERR-MASK",
@@ -2210,7 +2210,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             rst = _R.reset32(name)
             nonreset += int(value != rst)
             self.logger.info(
-                "L4-SWRST-ARM LOG seed=%d reg=%s value=0x%08x read=0x%08x reset=0x%08x",
+                "INFO-L4-SWRST-ARM LOG seed=%d reg=%s value=0x%08x read=0x%08x reset=0x%08x",
                 self.seed,
                 name,
                 value,
@@ -2230,7 +2230,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         before = await self.ops.read_status()
         await self.ops.wr(CONTROL, sw["control"] | CTRL_SW_RST)
         self.logger.info(
-            "L4-SWRST-POINT LOG seed=%d t=%d edges=%d cs_low=%d %s",
+            "INFO-L4-SWRST-POINT LOG seed=%d t=%d edges=%d cs_low=%d %s",
             self.seed,
             sw["t"],
             edges,
@@ -2249,7 +2249,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         fc = field_compare(
             await self._graded_rd(CONTROL), sw["control"] | CTRL_SW_RST, _R.mask32("CONTROL")
         )
-        self.logger.info("L4-SWRST-REG LOG seed=%d reg=CONTROL held %s", self.seed, fc.fields())
+        self.logger.info(
+            "INFO-L4-SWRST-REG LOG seed=%d reg=CONTROL held %s", self.seed, fc.fields()
+        )
         kept = [fc.ok]
         await self.ops.wr(CONTROL, sw["control"])
         # CONTROL.SW_RST is sw = rw (spi_controller.rdl:78-86): the release write of 0 reads back 0.
@@ -2259,7 +2261,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             if name == "CONTROL":
                 continue
             fc = field_compare(await self.ops.rd(addr), value, _R.mask32(name))
-            self.logger.info("L4-SWRST-REG LOG seed=%d reg=%s %s", self.seed, name, fc.fields())
+            self.logger.info(
+                "INFO-L4-SWRST-REG LOG seed=%d reg=%s %s", self.seed, name, fc.fields()
+            )
             kept.append(fc.ok)
         await self.ops.wait_ready()
         wins = await self._segment(command_word(sw["clean_len"], direction=DIR_DUMMY))
@@ -2307,7 +2311,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         hold_mark = self.pads.mark()
         st = await self.ops.read_status()
         self.logger.info(
-            "L4-SPIEN LOG seed=%d accepted=%d cmdqd=%d t_seg=%d",
+            "INFO-L4-SPIEN LOG seed=%d accepted=%d cmdqd=%d t_seg=%d",
             self.seed,
             accepted,
             st.cmdqd,

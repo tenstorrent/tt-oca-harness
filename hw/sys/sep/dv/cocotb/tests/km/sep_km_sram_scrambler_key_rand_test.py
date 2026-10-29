@@ -301,7 +301,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             raise AssertionError(f"{TEST}: the staged block differs from the plan block")
         tmpl = TEMPLATE.read_text(encoding="ascii")
         self.logger.info(
-            "KM-IMG-PARAM item=%s seed=%d template=%s template_sha256=%s staged=%s "
+            "INFO-KM-IMG-PARAM item=%s seed=%d template=%s template_sha256=%s staged=%s "
             "staged_sha256=%s block_words=%d",
             TEST,
             seed,
