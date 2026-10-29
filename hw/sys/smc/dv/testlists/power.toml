@@ -317,3 +317,12 @@ reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_warm_reset_rand_test"
+module = "smc_wdt_warm_reset_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "wdt"]
+run_modes = ["smoke"]

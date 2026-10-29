@@ -195,7 +195,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  s1={[hex(w) for w in s1_pub if w]}"
         )
         self.logger.info(
-            "PUB-OBSERVATION AES public KEY_SHARE0/1 frontdoor reads zero after "
+            "INFO-PUB-OBSERVATION AES public KEY_SHARE0/1 frontdoor reads zero after "
             "sideload. Asserted, but aes.hjson declares them swaccess=wo, so this read "
             "alone cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,

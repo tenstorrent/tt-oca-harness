@@ -643,7 +643,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         # The sampler counts the sep_reset_n tap low cycles until here.
         self.released = True
         self.logger.info(
-            "CTL-COLD: sep_reset_n tap low for %d clk_i cycles of the cold reset",
+            "CTRL-COLD: sep_reset_n tap low for %d clk_i cycles of the cold reset",
             self.cold_sep_low,
         )
 
@@ -926,7 +926,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
     def _log_pair(self, acc: _Access) -> None:
         pin, pout = acc.pair
         self.logger.info(
-            "OBS-DBG-PAIR: target=%s in=%s out=%s",
+            "INFO-DBG-PAIR: target=%s in=%s out=%s",
             acc.target,
             ",".join(f"{c}:0x{a:08x}" for c, a in pin),
             ",".join(f"{c}:0x{a:08x}" for c, a in pout),
@@ -955,7 +955,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             raise AssertionError(
                 f"set-up: SRAM word 0 reads 0x{got:016x}, wrote 0x{self.sram_init:016x}"
             )
-        self.logger.info("CTL-SRAM-INIT: sram_word0=0x%016x", got)
+        self.logger.info("CTRL-SRAM-INIT: sram_word0=0x%016x", got)
         # Step 5.
         self.sb_tap = SepFabricTap("PR-DBG-SB").start()
         self.lx_tap = SepFabricTap("PR-LSU-XBAR").start()
@@ -995,7 +995,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             raise AssertionError(
                 f"set-up: SEP_LOCAL_BASE_ADDR reads 0x{rb:08x}, wrote 0x{base:08x}"
             )
-        self.logger.info("CTL-BASE-MOVE: SEP_LOCAL_BASE_ADDR=0x%08x readback=0x%08x", base, rb)
+        self.logger.info("CTRL-BASE-MOVE: SEP_LOCAL_BASE_ADDR=0x%08x readback=0x%08x", base, rb)
         self.sb_tap = SepFabricTap("PR-DBG-SB").start()
         moved_addr = base + (SRAM_WORD - ALIAS_TARGET)
         moved: list[_Access] = []
@@ -1069,7 +1069,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         # Clean-up: the window back at its reset base.
         await self._lsu(SepAxiOp.WRITE, LOCAL_BASE_ADDR, LOCAL_BASE_RESET & 0xFFFF_FFFF)
         rb = await self._lsu(SepAxiOp.READ, LOCAL_BASE_ADDR)
-        self.logger.info("CTL-BASE-RESTORE: SEP_LOCAL_BASE_ADDR readback=0x%08x", rb)
+        self.logger.info("INFO-BASE-RESTORE: SEP_LOCAL_BASE_ADDR readback=0x%08x", rb)
 
     # ------------------------------------------------- entry S, after the alias legs
     def _beats(self, tap: SepFabricTap, mark: TapMark, ch: str) -> list:
@@ -1087,7 +1087,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 raise AssertionError(
                     f"clean-up: {name} reads 0x{rb:08x}, wrote 0x{restore:08x} (mask 0x{mask:x})"
                 )
-            self.logger.info("CTL-RESTORE: %s=0x%08x readback=0x%08x", name, restore, rb)
+            self.logger.info("CTRL-RESTORE: %s=0x%08x readback=0x%08x", name, restore, rb)
 
     async def _pool_leg(self) -> None:
         """CHK-DBG-POOL-RD and CHK-DBG-POOL-WR in one window."""
@@ -1167,7 +1167,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         clk = cocotb.top.clk_i
         on = self.rd(cocotb.top.ext_port_rsp_on_o)
         if on != 1:
-            msg = "CTL-EXT-RSP FAIL: ext_port_rsp_on_o=0; the entry needs +sep_ext_port_responder"
+            msg = "CTRL-EXT-RSP FAIL: ext_port_rsp_on_o=0; the entry needs +sep_ext_port_responder"
             self.logger.error(msg)
             raise AssertionError(msg)
         word = EXT_FIRST + 8 * self.rng.randrange((EXT_LAST - EXT_FIRST) // 8 + 1)
@@ -1215,7 +1215,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 f"sbdata={_h(rd)}",
             )
             self.logger.info(
-                "CTL-EXT-RSP-DRIVE: dir=R port_r=%s set_code=%d set_word=0x%016x",
+                "CTRL-EXT-RSP-DRIVE: dir=R port_r=%s set_code=%d set_word=0x%016x",
                 " ".join(x.fmt() for x in p_r) or "-",
                 code,
                 rword,
@@ -1251,7 +1251,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 f"dbg_b={len(s_b)} dbg_bresp={_h(sb.resp if sb else None, 1)} sberror={werr}",
             )
             self.logger.info(
-                "CTL-EXT-RSP-DRIVE: dir=W port_b=%s set_code=%d",
+                "CTRL-EXT-RSP-DRIVE: dir=W port_b=%s set_code=%d",
                 " ".join(x.fmt() for x in p_b) or "-",
                 code,
             )
@@ -1357,7 +1357,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         await ClockCycles(clk, SETTLE)
         live_tcm = len(tcm.since(tm, "aw"))
         self.logger.info(
-            "CTL-NC-LIVE: lsu_rom_read pr_rom_req=%d dma_copy src=0x%08x dst=0x%08x "
+            "CTRL-NC-LIVE: lsu_rom_read pr_rom_req=%d dma_copy src=0x%08x dst=0x%08x "
             "status=%s pr_xbar_tcm_aw=%d",
             live_rom,
             DMA_PROBE_SRC,
@@ -1378,7 +1378,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         if not fc.ok:
             raise AssertionError(f"set-up: remap region {region} attrs {fc.fields()}")
         self.logger.info(
-            "CTL-REMAP-PROGRAM: csr=0x%08x region=%d %s", csr_base, region, fc.fields()
+            "CTRL-REMAP-PROGRAM: csr=0x%08x region=%d %s", csr_base, region, fc.fields()
         )
 
     async def _remap_leg(self) -> None:
@@ -1461,7 +1461,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     f"wdata={_h(wval) if d == 'w' else 'na'}",
                 )
                 self.logger.info(
-                    "OBS-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
+                    "INFO-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
                     path,
                     d.upper(),
                     err,
@@ -1530,7 +1530,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         self.uncore_ctl = None
         dut.dmi_uncore_enable_i.value = 0
         await ClockCycles(dut.clk_i, 2)
-        self.logger.info("OBS-UNCORE-CTL-RD: rdata=0x%08x (bench holds 0)", rd)
+        self.logger.info("INFO-UNCORE-CTL-RD: rdata=0x%08x (bench holds 0)", rd)
         return res
 
     def _grade_uncore(self, ctl: dict[str, int]) -> bool:
@@ -1602,7 +1602,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 return 1
             await RisingEdge(dut.clk_i)
         self.logger.info(
-            "OBS-WDT-CONTROL: sep_cpu_reset_n tap falls=%d rises=%d within %d clk_i cycles",
+            "INFO-WDT-CONTROL: sep_cpu_reset_n tap falls=%d rises=%d within %d clk_i cycles",
             self.cpu_falls - falls0,
             self.cpu_rises - rises0,
             TAP_BOUND,
@@ -1613,7 +1613,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         if not self.full_cpu_build():
-            msg = "CTL-FULL-CPU FAIL: the build has the CPU stub, which has no EL2 debug module"
+            msg = "CTRL-FULL-CPU FAIL: the build has the CPU stub, which has no EL2 debug module"
             self.logger.error(msg)
             raise AssertionError(msg)
         self.clk = 0
@@ -1651,7 +1651,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 "CHK-DBG-AXPROT",
             )
         self.logger.info(
-            "OBS-BUILD: entry=%s full_cpu=1 required_evidence=%s",
+            "INFO-BUILD: entry=%s full_cpu=1 required_evidence=%s",
             "C" if self.entry_c else "S",
             ",".join(self.required_evidence),
         )
@@ -1664,7 +1664,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             self.uncore_armed = True
             self.uncore_never = True
             first = await self._wait_retire(0, "first retirement after the cold reset")
-            self.logger.info("CTL-RETIRE: first retirement seen (count %d)", first)
+            self.logger.info("CTRL-RETIRE: first retirement seen (count %d)", first)
         await self._gate()
         if self.entry_c:
             await self._uncore_never()

@@ -104,6 +104,20 @@ memory macros; they are passed unchanged to each macro and do not resize
 caches or the scratchpad. Macro-specific repair and power controls depend on
 the selected memory implementation.
 
+The scratchpad occupies `0xC006_0000` to `0xC015_FFFF` as eight contiguous
+128 KiB groups of four banks. Within a group, consecutive 64-byte stripes
+rotate across the group's four banks. For a byte offset from the scratchpad
+base, the bank and the 64-bit entry within that bank are:
+
+----
+bank  = 4 * offset[19:17] + offset[7:6]
+entry = {offset[16:8], offset[5:3]}
+----
+
+Each bank holds 4096 entries (32 KiB), and the bank number is the index of the
+bank's memory interface port at the SMC boundary. Software or a loader that
+places data in particular banks uses this map.
+
 The cluster uses TileLink internally for the scratchpad and boot ROM, for
 the PLIC, CLINT and BEUs on the control bus, and for watchdog timers on the
 peripheral bus. At its boundary, the MMIO manager bridge converts TileLink

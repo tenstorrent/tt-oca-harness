@@ -24,11 +24,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from .smc_dfd_cla_action_seq_utils import (
-    ACTION_DEBUG_INTERRUPT,
-    SAMPLE_CYCLES,
-    SmcDfdClaActionSeq,
-)
+from .smc_dfd_cla_action_seq_utils import SAMPLE_CYCLES, SmcDfdClaActionSeq
 
 CHK = "CHK-CLA-IRQ-W2C-RELEASE"
 
@@ -52,13 +48,13 @@ class smc_dfd_cla_irq_w2c_release_test_seq(SmcDfdClaActionSeq):
         await self.wait_fuse_sense_done()
         await self._write(self._eap(), {}, "reset")
         await self._write_ctrl(1, 1, 1, "arm")
-        activating, quiet = await self._fire(ACTION_DEBUG_INTERRUPT, "irq")
+        action, activating, quiet = await self._discover("tb_cla_interrupt", "irq")
         fired = await self._sample("fired")
         assert fired == (1, 1), (
-            f"debug-interrupt action with LogicalOp {activating}: status={fired[0]} "
+            f"debug-interrupt action {action} with LogicalOp {activating}: status={fired[0]} "
             f"irq={fired[1]} after the fire, want both 1"
         )
-        await self._quiet(ACTION_DEBUG_INTERRUPT, quiet, "quiet")
+        await self._quiet(action, quiet, "quiet")
         await self._sample("quiet")
         await self._w2c("once")
         status, irq = await self._sample("after_w2c")

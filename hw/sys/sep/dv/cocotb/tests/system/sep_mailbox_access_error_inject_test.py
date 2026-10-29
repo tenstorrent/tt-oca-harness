@@ -56,7 +56,7 @@ which mailbox is not graded: no text states the map.
 Checks: CHK-ERR-RD, CHK-ERR-WR, CHK-RO, CHK-HOLE, CHK-EXTENT,
 CHK-FLAGS-CLEAR, CHK-FLAGS-BOTH, CHK-ERR-LINE, CHK-WO-READ, CHK-TWIN,
 CHK-MBX-ERR-UPPER-CLEAR.
-Controls: CTL-RESP (K6), CTL-UPPER-CLEAR, CTRL-MISSING when a K4/K5 live value
+Controls: CTRL-RESP (K6), CTRL-UPPER-CLEAR, CTRL-MISSING when a K4/K5 live value
 reads 0.
 Log only: the high 32 bits of the empty-read and ``WRITE_DATA`` read data,
 and ``ERROR_FLAGS``/``IRQS`` after a hole access (``OBS-HOLE-FLAGS``).
@@ -713,8 +713,8 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             f"exp_open=SLVERR resp_closed={resp_name(resp_closed)} exp_closed=DECERR {' '.join(cfgs)}"
         )
         if resp_open != RESP_SLVERR or resp_closed != RESP_DECERR:
-            self._fail("CTL-RESP", txt)
-        self.logger.info("CTL-RESP LOG seed=%d %s", self.seed, txt)
+            self._fail("CTRL-RESP", txt)
+        self.logger.info("CTRL-RESP LOG seed=%d %s", self.seed, txt)
         obs = []
         for p in ("out", "in"):
             flags, irqs = await self._clear_port(m, p)
@@ -865,7 +865,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                     and pg == pe == w
                     and st & ST_EMPTY
                 )
-                self.logger.info("WO-READ LOG seed=%d %s", self.seed, txt)
+                self.logger.info("INFO-WO-READ LOG seed=%d %s", self.seed, txt)
                 if not ok:
                     self._fail("CHK-WO-READ", txt)
                 n += 1
@@ -946,19 +946,19 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         ords = ",".join(order)
         # Control: the same two errors, then a 64-bit read returns both flags in
         # the lower 32 bits and 0 above, and a second 64-bit read returns 0.
-        await self._flags_pre("CTL-UPPER-CLEAR", m, p)
-        cwords, cobs, cok = await self._induce_both("CTL-UPPER-CLEAR", m, p, order)
+        await self._flags_pre("CTRL-UPPER-CLEAR", m, p)
+        cwords, cobs, cok = await self._induce_both("CTRL-UPPER-CLEAR", m, p, order)
         r1, full1 = await self._rd_flags(m, p, upper=False)
         r2, full2 = await self._rd_flags(m, p, upper=False)
-        await self._drain("CTL-UPPER-CLEAR", m, p, cwords)
+        await self._drain("CTRL-UPPER-CLEAR", m, p, cwords)
         ctxt = (
             f"mbox={m} port={p} order={ords} {cobs} "
             f"full_read_resp={resp_name(r1)} full_read=0x{full1:016x} exp=0x{both:016x} "
             f"second_full_read_resp={resp_name(r2)} second_full_read=0x{full2:016x} exp=0x0"
         )
         if not cok or r1 != RESP_OKAY or full1 != both or r2 != RESP_OKAY or full2 != 0:
-            self._fail("CTL-UPPER-CLEAR", ctxt)
-        self.logger.info("CTL-UPPER-CLEAR LOG seed=%d %s", self.seed, ctxt)
+            self._fail("CTRL-UPPER-CLEAR", ctxt)
+        self.logger.info("CTRL-UPPER-CLEAR LOG seed=%d %s", self.seed, ctxt)
         # Graded leg: the same two errors, each seen by its response and by
         # IRQS.eirq, then the upper half, then the whole register.
         await self._flags_pre("CHK-MBX-ERR-UPPER-CLEAR", m, p)

@@ -239,7 +239,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         hexname = cocotb.plusargs.get("km_rom_hex")
         if not isinstance(hexname, str) or Path(hexname).name != ROM_HEX:
             raise AssertionError(f"+km_rom_hex={hexname}; this leaf needs +km_rom_hex={ROM_HEX}")
-        self.logger.info("ROM-BUILD km_boot_wipe=1 km_unrec_wipe=1 image=%s", hexname)
+        self.logger.info("INFO-ROM-BUILD km_boot_wipe=1 km_unrec_wipe=1 image=%s", hexname)
         image = self.select_efuse_image(lc_raw=LC_PROD, fixed={"SIP_DIS": 0, "SYS_DIS": 0})
         self.write_efuse_image(image)
         await self.bring_up_no_cpu()

@@ -10,7 +10,7 @@ pexpect-style `expect()` API over the platform's decoded stdout.
 sepvp/                 importable runner library
   paths.py             locate sep-vp, base config, firmware trees
   inifile.py           generate the per-run overlay .ini (stage base + override)
-  fuses.py             fuse-map (YAML or RTL .toml) -> sep_efuse.* / lc_ctrl.lc_state overrides
+  fuses.py             fuse-map: YAML -> sep_efuse.* overrides, RTL .toml -> 256-word image
   config.py            SimConfig (ELF, straps, OTP, SPI, channel toggles)
   harness.py           Harness base: expect / expect_status / finish
   sepvp_harness.py     SepVpHarness backend (overlay-gen, SPI staging, pexpect spawn)
@@ -88,28 +88,28 @@ to `[VP] SIMULATION OF THE TEST PASSED` / `... FAILED`.
 per-run overlay `.ini` that `@include`s the staged base `accellera_config.ini` and then
 re-states straps, fuses, channel toggles, and absolute `targets`/`configFile`
 (the CSML parser chdir()s to the ini's dir, so those base-relative paths must be absolute).
-Straps are `och_sep_ss1.smc.*` bools; OTP is translated from a fuse-map into
-`och_sep_ss1.sep_efuse.*` (with the `lc_ctrl.lc_state` mirror); the SPI image is staged to
-`<run_dir>/data/flash_memory.bin`. Each run gets its own dir under `logs/sepvp/<name>/`.
+Straps are `och_sep_ss1.smc.*` bools; OTP configures only the eFuse model (see below), and
+the platform derives the lifecycle controller's inputs from the sensed eFuse; the SPI image is
+staged to `<run_dir>/data/flash_memory.bin`. Each run gets its own dir under `logs/sepvp/<name>/`.
 
 ### Fuse-maps: `--otp` accepts two formats
 
-`--otp` (and `SimConfig.otp`) dispatches on file extension:
+`--otp` (and `SimConfig.otp`) dispatches on file extension. Either way the run has one fuse
+source: the harness comments out the base config's `fuse_preload_file` in the staged copy,
+and `SimConfig.extra_ini` may not set it while `otp` is set. `extra_ini` may never set
+`och_sep_ss1.lc_ctrl.lc_state`; the lifecycle comes from the eFuse.
 
 - **`*.yaml` / `*.yml`** — the VP-native, hand-friendly map keyed by sep-vp field name
-  (`lc_state: PROD`, `sboot_dis: 0`, `chiplet_uid: [1,...,8]`); see `tests/fuse_maps/`.
-- **`*.toml`** — the same RTL/UVM eFuse config format the SEP testbench's efuse-preload
-  generator consumes (keyed by hardware REGISTER, with `fields.<name>.value` and
-  per-register `write_locked`/`read_locked`), so a single config can drive both RTL sim
-  (`.preload` binary) and the VP (CCI params):
+  (`lc_state: PROD`, `sboot_dis: 0`, `chiplet_uid: [1,...,8]`), applied as per-field
+  `och_sep_ss1.sep_efuse.*` parameters on an erased array; see `tests/fuse_maps/`.
+- **`*.toml`** — the RTL DV eFuse configuration
+  (`hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/`), loaded through the RTL
+  loader `SepEfuseImage` into the complete 256-word image. Omitted registers are zero,
+  lock state comes from `LOCKS`/`LOCKS_SPARE`, and an unknown register, field or lock key
+  fails. `LC_STATE` must be a legal, canonical `{~raw, raw}` pair. The image is staged to
+  `<run_dir>/data/efuse.hex` and named by `och_sep_ss1.sep_efuse.fuse_preload_file`, so
+  the VP senses the same array as RTL:
 
   ```bash
   python -m sepvp.cli --bin <elf> --otp <efuse_config>.toml
   ```
-
-  The `.toml` path handles the RTL↔VP encoding differences automatically: LC_STATE is
-  decoded from its differential byte (PROD `0xE1` → `0x1`), 64-bit `SiP_DIS`/`SYS_DIS`
-  split into `*_lo`/`*_hi`, 256-bit tokens/keys split into little-endian 8-word arrays, and
-  `locks_lo` is reconstructed from the per-register lock flags. Requires the `toml` package
-  (in the `vp` dependency group; `make vp-py-deps`). Registers with no VP counterpart
-  (`RESERVED_*`) are ignored.

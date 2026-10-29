@@ -16,8 +16,8 @@ acts on four line shapes, printed by ``fw/tests/common/sep_console_rec.h``:
     between the line and the gate write. Each registered mark hook is called
     in the read-only phase of the clock that ends the marker line, so a tap or
     bit watcher marks before the leg starts.
-``CHK-<NAME> PASS|FAIL k=v ...`` / ``CTL-<NAME> ...`` / ``OBS-<NAME> LOG ...``
-    A check, control or observation record of the firmware. The key=value
+``CHK-<NAME> PASS|FAIL k=v ...`` / ``CTRL-<NAME> ...`` / ``OBS-<NAME> LOG ...`` / ``INFO-<NAME> LOG ...``
+    A check, control, observation or bench record of the firmware. The key=value
     tokens are parsed; a ``0x`` value becomes an int. A line that starts with
     ``CHK-`` but does not have the record shape (name of ``[A-Z0-9_-]``, then
     ``PASS``, ``FAIL`` or ``LOG``) fails the leaf: the follower raises, and
@@ -61,7 +61,7 @@ from cocotb.triggers import ReadOnly, RisingEdge
 
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 
-_REC = re.compile(r"^((?:CHK|CTL|OBS)-[A-Z0-9_-]+)\s+(PASS|FAIL|LOG)\b(.*)$")
+_REC = re.compile(r"^((?:CHK|CTRL|OBS|INFO)-[A-Z0-9_-]+)\s+(PASS|FAIL|LOG)\b(.*)$")
 
 
 def parse_kv(text: str) -> dict:
@@ -194,7 +194,7 @@ class SepFwConsole:
         )
         if problems:
             raise AssertionError("FW-CHK-COUNT FAIL: " + "; ".join(problems))
-        self.log.info("FW-CHK-COUNT LOG %s", summary)
+        self.log.info("INFO-FW-CHK-COUNT LOG %s", summary)
 
     # ---- follower ----
     async def _run(self) -> None:
