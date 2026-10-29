@@ -62,8 +62,9 @@ samples on the pass of a later leg.
 Expected values are the RDL reset and field layout
 (``hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc``) and the drawn stimulus,
 never a DUT read-back. cpu run mode, ``+skip_fuse_sense``; VCS grades
-CHK-RESET-X, Verilator runs the value checks and the probe compare control
-``CTRL-RESET-X``.
+CHK-RESET-X. Verilator is two-state, so it logs each group as
+``OBS-BLOCKED CHK-RESET-X reason=two_state``, runs the value checks, and grades
+the probe compare as the control ``CTRL-RESET-X``.
 """
 
 from __future__ import annotations
@@ -458,7 +459,7 @@ class sep_pic_reg_rand_test(sep_base_test):
                 f"ctrl_nonzero={ctrl_nonzero}"
             )
             if not four_state:
-                self.logger.info("CTRL-RESET-X LOG tool=verilator %s", body)
+                self.logger.info("OBS-BLOCKED CHK-RESET-X reason=two_state %s", body)
                 continue
             if not ok:
                 raise AssertionError(
@@ -466,10 +467,18 @@ class sep_pic_reg_rand_test(sep_base_test):
                 )
             self.logger.info("CHK-RESET-X PASS seed=%d %s", self.tcfg.seed, body)
             n += 1
-        if not four_state and not ctrl_ok:
-            raise AssertionError(
-                f"CTRL-RESET-X FAIL: probe read-backs do not match the firmware ({ctrl_match}/"
-                f"{ctrl_reads}, sampled {len(arr)}) mism={mism}"
+        if not four_state:
+            if not ctrl_ok:
+                raise AssertionError(
+                    f"CTRL-RESET-X FAIL: probe read-backs do not match the firmware ({ctrl_match}/"
+                    f"{ctrl_reads}, sampled {len(arr)}) mism={mism}"
+                )
+            self.logger.info(
+                "CTRL-RESET-X LOG ctrl_reads=%d ctrl_sampled=%d ctrl_match=%d ctrl_nonzero=%d",
+                ctrl_reads,
+                len(arr),
+                ctrl_match,
+                ctrl_nonzero,
             )
         return n
 
