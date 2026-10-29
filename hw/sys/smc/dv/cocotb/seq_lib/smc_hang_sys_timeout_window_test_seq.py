@@ -95,6 +95,7 @@ _CHECKER_TERM = (
     ("CHK-SYSWIN-IRQTEST-DISABLED", "IRQTEST-DISABLED"),
     ("CHK-SYSWIN-IRQTEST-NOIRQEN", "IRQTEST-NOIRQEN"),
 )
+_SAMPLE_NAMES = ("sys", "raw286", "sep", "data")
 _HELD_READS = 6
 
 
@@ -311,6 +312,59 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         self._windows.append((f"{name} window", BELOW_WINDOW_RISES, compared))
         await self._await_done(task, name)
         return compared
+
+    async def _poll_peer(
+        self, wait_name: str, bound: int, pos: int, want: int
+    ) -> tuple[int, tuple[int, int, int, int]]:
+        """Sample now and at each rise until sample[pos] and raw bit 286 read `want`."""
+        wait = self._wait(wait_name, bound)
+        sample = self._sample(wait.name)
+        for n in range(0, wait.bound + 1):
+            if n:
+                await RisingEdge(cocotb.top.clk_smc_i)
+                sample = self._sample(wait.name)
+            wait.used = n
+            wait.last = " ".join(f"{k}={v}" for k, v in zip(_SAMPLE_NAMES, sample))
+            if sample[pos] == want and sample[1] == want:
+                self._met(wait)
+                return n, sample
+        self._expire(wait, f"{_SAMPLE_NAMES[pos]} irq and raw286 did not read {want}")
+        return -1, sample
+
+    async def _peer_control(self) -> str:
+        """Raise each armed peer detector's irq with irq_test, then clear irq_test.
+
+        interrupts.adoc, bit 286 row: a detector's irq_o asserts from its irq_test bit and
+        drops when irq_test is cleared. Each peer probe must read 1 here, with the other two
+        detector probes at 0, before the beyond windows require it to stay 0.
+        """
+        texts = []
+        for pos, name, ctrl in (
+            (2, "SEP", HANG_DET_SEP_AXI_CTRL),
+            (3, "DATA", HANG_DET_DATA_ACCEL_CTRL),
+        ):
+            await self.csr_write(f"HANG_{name}_CTRL_FIRE_PEER", ctrl, HANG_DET_FIRE)
+            up, sample = await self._poll_peer(
+                f"peer {name} irq_test rise wait", TEST_RISE_CEILING_RISES, pos, 1
+            )
+            assert sample[0] == 0 and sample[5 - pos] == 0, (
+                f"{name} irq_test: sys irq={sample[0]} {_SAMPLE_NAMES[5 - pos]} "
+                f"irq={sample[5 - pos]}, want 0/0"
+            )
+            fire_rd = await self.csr_read(f"HANG_{name}_CTRL_FIRE_PEER_RB", ctrl)
+            assert fire_rd & HANG_DET_IRQ, (
+                f"HANG_DET_{name} CTRL=0x{fire_rd:x} with irq_test set, irq bit reads 0"
+            )
+            await self.csr_write(f"HANG_{name}_CTRL_TEST_OFF_PEER", ctrl, HANG_DET_ARMED)
+            down, _ = await self._poll_peer(
+                f"peer {name} irq_test drop wait", CLEAR_CEILING_RISES, pos, 0
+            )
+            texts.append(
+                f"{name} irq_test: {name.lower()}=1 raw286=1 after {up} rises with "
+                f"sys=0 {_SAMPLE_NAMES[5 - pos]}=0, CTRL=0x{fire_rd:x}; "
+                f"{name.lower()}=0 after {down} rises with irq_test 0"
+            )
+        return "; ".join(texts)
 
     async def _set_peers(self, label: str, armed: bool) -> None:
         """Arm or disarm the SEP_AXI and DATA_ACCEL detectors; armed ones use THRESHOLD."""
@@ -556,6 +610,7 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         )
 
         await self._set_peers("BEYOND", True)
+        peers = await self._peer_control()
         sys_at, raw_at, rdata = await self._beyond()
         cleared = await self._await_sys_low("beyond")
         await self.csr_write("HANG_SYS_THR_WIDE", HANG_DET_SYS_AXI_TIMEOUT, THRESHOLD_WIDE)
@@ -578,7 +633,8 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         self._term("EXISTING-BEYOND")
         self._log_legs(
             "CHK-SYSWIN-BEYOND",
-            f"SYS_IN read held past threshold 0x{THRESHOLD:x}, SEP_AXI and DATA_ACCEL armed",
+            f"SYS_IN read held past threshold 0x{THRESHOLD:x}, SEP_AXI and DATA_ACCEL armed "
+            "and each raised then cleared through irq_test",
             "tb_axi_hang_irq_sys, tb_cpu_interrupts[286] and CTRL.irq",
             "CTRL written 0 after the release",
             f"tb_axi_hang_irq_sys and raw286 read 0 after {cleared} rises",
@@ -586,7 +642,8 @@ class smc_hang_sys_timeout_window_test_seq(SmcCsrSeq):
         self._log_chk(
             "CHK-SYSWIN-BEYOND",
             f"sys irq first 1 at rise {sys_at}, raw286 first 1 at rise {raw_at} "
-            f"(ceiling {BEYOND_CEILING_RISES}); sep=0 data=0 with both armed at threshold "
+            f"(ceiling {BEYOND_CEILING_RISES}); {peers}; "
+            "sep=0 data=0 with both armed at threshold "
             f"0x{THRESHOLD:x}; CTRL=0x{rdata:x} irq=1; cleared after {cleared} rises; threshold "
             f"0x{THRESHOLD_WIDE:x}: sys irq first 1 at rise {wide_at}, raw286 at rise "
             f"{wide_raw}, {wide_at - sys_at} later than at 0x{THRESHOLD:x}",

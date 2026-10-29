@@ -33,8 +33,9 @@ and Diagnostics" makes SlaveAck 1 and 2 retry codes, counted in
 ``MAX_RETRIES_ATTEMPTED_INT``:
 
 * the accepted CRC-3 code of every reply shape is found first with
-  ``MAX_RETRIES`` at 0, since no pinned document gives the polynomial and
-  exactly one of the eight codes updates ``AVS_LATEST_SLAVE_SUBFRAME``,
+  ``MAX_RETRIES`` at 0 by sweeping the eight codes, since exactly one of them
+  updates ``AVS_LATEST_SLAVE_SUBFRAME``; the ``interface.adoc`` polynomial is
+  not computed here,
 * budgets of 8 and 10 against SlaveAck 1 on every attempt, and 8 against
   SlaveAck 2, must send exactly ``MAX_RETRIES`` + 1 identical master subframes,
   raise ``TOTAL_RETRIES`` by the budget and set the interrupt; the

@@ -1544,6 +1544,20 @@ module smc_uvm_top
     assign tb_efuse_readback = `SMC_EFUSE_READ.read_back_data_o;
     assign tb_efuse_read_addr = 16'(`SMC_EFUSE_IFC.reg_interface_read_addr_csr);
     assign tb_efuse_program_addr = 16'(`SMC_EFUSE_IFC.reg_interface_program_addr_csr);
+    // eFuse bank-model response stall knob: the counts of efuse_bank_reg are forced from the
+    // hooks while the enable reads 1 and to the model default 0 otherwise, so a leaf that does not
+    // drive the hooks sees the bank without a stall.
+`define SMC_EFUSE_BANK_REG u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg
+    always @(posedge clk_smc) begin
+        if (tb_efuse_bank_stall_en === 1'b1) begin
+            force `SMC_EFUSE_BANK_REG.stall_rd_cycles = tb_efuse_bank_stall_rd;
+            force `SMC_EFUSE_BANK_REG.stall_wr_cycles = tb_efuse_bank_stall_wr;
+        end else begin
+            force `SMC_EFUSE_BANK_REG.stall_rd_cycles = 16'd0;
+            force `SMC_EFUSE_BANK_REG.stall_wr_cycles = 16'd0;
+        end
+    end
+`undef SMC_EFUSE_BANK_REG
     always @(posedge clk_smc) begin
         if (tb_efuse_program_state_inject_en === 1'b1) begin
             force `SMC_EFUSE_PROGRAM.program_state_q[1:0] = tb_efuse_program_state_inject;
@@ -2460,6 +2474,350 @@ module smc_uvm_top
         .program_addr_i     (tb_efuse_program_addr)
     );
 
+
+    // ------------------------------------------------------------------
+    // AXI4 and AXI4-Lite protocol checkers (ocah_axi_sva) on the SMC AXI
+    // master links: the three inbound ports (SYS_IN, JTAG_IN, SEP_IN), the
+    // SYS_OUT egress, the CPU front and MMIO ports, the JTAG-side OTP
+    // AXI-Lite, the DTP CSR AXI-Lite, and the log-engine and peripheral
+    // AXI-Lite links inside smc. Each instance grades both sides of its link.
+    // On SYS_OUT the TB responder answers B and R, so that checker also grades
+    // the responder. Nothing answers on the DTP CSR link (its response is tied
+    // idle), so no AW or AR handshake occurs there.
+    //
+    // aresetn is the primary SMC reset rst_primary_smc_clk_no on every link. A
+    // CPU-only reset from smc_reset_unit is outside it: no reset rule grades
+    // it, and a transaction open at that reset stays in the checker's
+    // outstanding tracking until the next primary reset. The checkers are on
+    // in every run once the primary reset is known, ANDed with
+    // smc_tb_if.axi_sva_en under SV-UVM.
+    //
+    // On SYS_IN, JTAG_IN, SEP_IN and the OTP AXI-Lite the bench is the
+    // master, and its request lines are top-level inputs that stay X or Z
+    // until a cocotb agent drives them; a leaf that never attaches the agent
+    // leaves them undriven for the whole run. Each of those four checkers arms
+    // on the first edge where its master's AW, W and AR valids and B and R
+    // readies are all known, and then stays armed, so a later X on any of
+    // them still fails the X-hygiene rules.
+    //
+    // The SYS_IN, JTAG_IN and SEP_IN backpressure sequences hold BREADY low
+    // with 24 writes open; MAX_OUTSTANDING on those three checkers sizes their
+    // write tracking (twice MAX_OUTSTANDING entries) above that.
+    //
+    // The rules, the handshake counts and the +axi_sva_need_<port> check are
+    // live under VCS only (the Verilator targets pass no --assert). A test
+    // that names a port with +axi_sva_need_<port> fails when that checker
+    // graded no AW or AR handshake.
+    //
+    // This checks PROTOCOL, not data.
+`define SMC_AXI_SVA_PORTS(REQ, RSP)                                         \
+        .aclk    (clk_smc),                                                 \
+        .aresetn (rst_primary_smc_clk_no),                                  \
+        .awid    (REQ.aw.id),                                               \
+        .awaddr  (REQ.aw.addr),                                             \
+        .awlen   (REQ.aw.len),                                              \
+        .awsize  (REQ.aw.size),                                             \
+        .awburst (REQ.aw.burst),                                            \
+        .awlock  (REQ.aw.lock),                                             \
+        .awprot  (REQ.aw.prot),                                             \
+        .awvalid (REQ.aw_valid),                                            \
+        .awready (RSP.aw_ready),                                            \
+        .wdata   (REQ.w.data),                                              \
+        .wstrb   (REQ.w.strb),                                              \
+        .wlast   (REQ.w.last),                                              \
+        .wvalid  (REQ.w_valid),                                             \
+        .wready  (RSP.w_ready),                                             \
+        .bid     (RSP.b.id),                                                \
+        .bresp   (RSP.b.resp),                                              \
+        .bvalid  (RSP.b_valid),                                             \
+        .bready  (REQ.b_ready),                                             \
+        .arid    (REQ.ar.id),                                               \
+        .araddr  (REQ.ar.addr),                                             \
+        .arlen   (REQ.ar.len),                                              \
+        .arsize  (REQ.ar.size),                                             \
+        .arburst (REQ.ar.burst),                                            \
+        .arlock  (REQ.ar.lock),                                             \
+        .arprot  (REQ.ar.prot),                                             \
+        .arvalid (REQ.ar_valid),                                            \
+        .arready (RSP.ar_ready),                                            \
+        .rid     (RSP.r.id),                                                \
+        .rdata   (RSP.r.data),                                              \
+        .rresp   (RSP.r.resp),                                              \
+        .rlast   (RSP.r.last),                                              \
+        .rvalid  (RSP.r_valid),                                             \
+        .rready  (REQ.r_ready)
+
+    // AXI-Lite carries no ID, length, burst, lock or last: each is tied to
+    // its single-beat value, and SIZE is log2 of the data bytes.
+`define SMC_AXIL_SVA_PORTS(REQ, RSP, SIZE)                                  \
+        .aclk    (clk_smc),                                                 \
+        .aresetn (rst_primary_smc_clk_no),                                  \
+        .awid    (1'b0),                                                    \
+        .awaddr  (REQ.aw.addr),                                             \
+        .awlen   (8'd0),                                                    \
+        .awsize  (SIZE),                                                    \
+        .awburst (2'b01),                                                   \
+        .awlock  (1'b0),                                                    \
+        .awprot  (REQ.aw.prot),                                             \
+        .awvalid (REQ.aw_valid),                                            \
+        .awready (RSP.aw_ready),                                            \
+        .wdata   (REQ.w.data),                                              \
+        .wstrb   (REQ.w.strb),                                              \
+        .wlast   (1'b1),                                                    \
+        .wvalid  (REQ.w_valid),                                             \
+        .wready  (RSP.w_ready),                                             \
+        .bid     (1'b0),                                                    \
+        .bresp   (RSP.b.resp),                                              \
+        .bvalid  (RSP.b_valid),                                             \
+        .bready  (REQ.b_ready),                                             \
+        .arid    (1'b0),                                                    \
+        .araddr  (REQ.ar.addr),                                             \
+        .arlen   (8'd0),                                                    \
+        .arsize  (SIZE),                                                    \
+        .arburst (2'b01),                                                   \
+        .arlock  (1'b0),                                                    \
+        .arprot  (REQ.ar.prot),                                             \
+        .arvalid (REQ.ar_valid),                                            \
+        .arready (RSP.ar_ready),                                            \
+        .rid     (1'b0),                                                    \
+        .rdata   (RSP.r.data),                                              \
+        .rresp   (RSP.r.resp),                                              \
+        .rlast   (1'b1),                                                    \
+        .rvalid  (RSP.r_valid),                                             \
+        .rready  (REQ.r_ready)
+
+`define SMC_AXI_HS(REQ, RSP) \
+        (((REQ.aw_valid && RSP.aw_ready) || (REQ.ar_valid && RSP.ar_ready)) === 1'b1)
+
+`ifdef UVM
+`define SMC_AXI_SVA_ON (!$isunknown(rst_primary_smc_clk_no) && u_tb_if.axi_sva_en)
+`else
+`define SMC_AXI_SVA_ON (!$isunknown(rst_primary_smc_clk_no))
+`endif
+
+    // The force-mode CPU reset of the read-wedge leaf withdraws the R beat the
+    // CPU presents without ready; that leaf's +smc_front_port_r_arb_assertoff
+    // holds the two CPU-port checkers off, as it holds the front-port R
+    // arbiter assertion off. The SYS_IN checker stays on: the stale R the
+    // isolate flush leaves on SYS_IN is graded there.
+    bit cpu_reset_probe = $test$plusargs("smc_front_port_r_arb_assertoff");
+
+`define SMC_AXI_MASTER_KNOWN(REQ) \
+        (!$isunknown({REQ.aw_valid, REQ.w_valid, REQ.ar_valid, REQ.b_ready, REQ.r_ready}))
+
+    bit sys_in_axi_sva_armed, jtag_in_axi_sva_armed, sep_in_axi_sva_armed;
+    bit otp_jtag_axil_sva_armed;
+    always_ff @(posedge clk_smc) begin
+        if (`SMC_AXI_MASTER_KNOWN(sys_axi_in_req))  sys_in_axi_sva_armed    <= 1'b1;
+        if (`SMC_AXI_MASTER_KNOWN(jtag_axi_in_req)) jtag_in_axi_sva_armed   <= 1'b1;
+        if (`SMC_AXI_MASTER_KNOWN(sep_axi_in_req))  sep_in_axi_sva_armed    <= 1'b1;
+        if (`SMC_AXI_MASTER_KNOWN(ej_axi_req))      otp_jtag_axil_sva_armed <= 1'b1;
+    end
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (56),
+        .DATA_WIDTH      (64),
+        .ID_WIDTH        (6),
+        .MAX_OUTSTANDING (16)
+    ) u_sys_in_axi_sva (                  // SYS_IN, TB master into smc
+        .en_i (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed),
+        `SMC_AXI_SVA_PORTS(sys_axi_in_req, sys_axi_in_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (56),
+        .DATA_WIDTH      (64),
+        .ID_WIDTH        (2),
+        .MAX_OUTSTANDING (16)
+    ) u_jtag_in_axi_sva (                 // JTAG_IN, TB master into smc
+        .en_i (`SMC_AXI_SVA_ON && jtag_in_axi_sva_armed),
+        `SMC_AXI_SVA_PORTS(jtag_axi_in_req, jtag_axi_in_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE         (1'b0),
+        .ADDR_WIDTH      (56),
+        .DATA_WIDTH      (64),
+        .ID_WIDTH        (6),
+        .MAX_OUTSTANDING (16)
+    ) u_sep_in_axi_sva (                  // SEP_IN, TB master into smc
+        .en_i (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed),
+        `SMC_AXI_SVA_PORTS(sep_axi_in_req, sep_axi_in_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (8)
+    ) u_sys_out_axi_sva (                 // SYS_OUT egress, smc master, TB responder
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXI_SVA_PORTS(output_axi_req, output_axi_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (8)
+    ) u_cpu_front_axi_sva (               // fabric master into the CPU front port
+        .en_i (`SMC_AXI_SVA_ON && !cpu_reset_probe),
+        `SMC_AXI_SVA_PORTS(u_dut.u_smc.cpu_axi_front_port_req,
+                           u_dut.u_smc.cpu_axi_front_port_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b0),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (3)
+    ) u_cpu_mmio_axi_sva (                // CPU MMIO master into the fabric
+        .en_i (`SMC_AXI_SVA_ON && !cpu_reset_probe),
+        `SMC_AXI_SVA_PORTS(u_dut.u_smc.cpu_axi_mmio_port_req,
+                           u_dut.u_smc.cpu_axi_mmio_port_resp)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_otp_jtag_axil_sva (               // JTAG-side OTP AXI-Lite, TB master into smc
+        .en_i (`SMC_AXI_SVA_ON && otp_jtag_axil_sva_armed),
+        `SMC_AXIL_SVA_PORTS(ej_axi_req, ej_axi_resp, 3'd2)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_dtp_csr_axil_sva (                // DTP CSR AXI-Lite, smc master, no responder
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(axil_dtp_csr_req, axil_dtp_csr_resp, 3'd2)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (56),
+        .DATA_WIDTH (64),
+        .ID_WIDTH   (1)
+    ) u_log_engine_axil_sva (             // log-engine AXI-Lite master into the fabric
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(u_dut.u_smc.axil_log_engine_req,
+                            u_dut.u_smc.axil_log_engine_resp, 3'd3)
+    );
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_periph_axil_sva (                 // fabric AXI-Lite master into the peripherals
+        .en_i (`SMC_AXI_SVA_ON),
+        `SMC_AXIL_SVA_PORTS(u_dut.u_smc.axil_peripherals_req,
+                            u_dut.u_smc.axil_peripherals_resp, 3'd2)
+    );
+
+    // AW and AR handshakes each checker graded.
+    int unsigned axi_hs_sys_in, axi_hs_jtag_in, axi_hs_sep_in, axi_hs_sys_out;
+    int unsigned axi_hs_cpu_front, axi_hs_cpu_mmio, axi_hs_otp_jtag, axi_hs_dtp_csr;
+    int unsigned axi_hs_log_engine, axi_hs_periph;
+    always_ff @(posedge clk_smc) begin
+        if (`SMC_AXI_SVA_ON && sys_in_axi_sva_armed &&
+            `SMC_AXI_HS(sys_axi_in_req, sys_axi_in_resp))
+            axi_hs_sys_in <= axi_hs_sys_in + 1;
+        if (`SMC_AXI_SVA_ON && jtag_in_axi_sva_armed &&
+            `SMC_AXI_HS(jtag_axi_in_req, jtag_axi_in_resp))
+            axi_hs_jtag_in <= axi_hs_jtag_in + 1;
+        if (`SMC_AXI_SVA_ON && sep_in_axi_sva_armed &&
+            `SMC_AXI_HS(sep_axi_in_req, sep_axi_in_resp))
+            axi_hs_sep_in <= axi_hs_sep_in + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(output_axi_req, output_axi_resp))
+            axi_hs_sys_out <= axi_hs_sys_out + 1;
+        if (`SMC_AXI_SVA_ON && !cpu_reset_probe &&
+            `SMC_AXI_HS(u_dut.u_smc.cpu_axi_front_port_req,
+                        u_dut.u_smc.cpu_axi_front_port_resp))
+            axi_hs_cpu_front <= axi_hs_cpu_front + 1;
+        if (`SMC_AXI_SVA_ON && !cpu_reset_probe &&
+            `SMC_AXI_HS(u_dut.u_smc.cpu_axi_mmio_port_req,
+                        u_dut.u_smc.cpu_axi_mmio_port_resp))
+            axi_hs_cpu_mmio <= axi_hs_cpu_mmio + 1;
+        if (`SMC_AXI_SVA_ON && otp_jtag_axil_sva_armed &&
+            `SMC_AXI_HS(ej_axi_req, ej_axi_resp))
+            axi_hs_otp_jtag <= axi_hs_otp_jtag + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(axil_dtp_csr_req, axil_dtp_csr_resp))
+            axi_hs_dtp_csr <= axi_hs_dtp_csr + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(u_dut.u_smc.axil_log_engine_req,
+                                           u_dut.u_smc.axil_log_engine_resp))
+            axi_hs_log_engine <= axi_hs_log_engine + 1;
+        if (`SMC_AXI_SVA_ON && `SMC_AXI_HS(u_dut.u_smc.axil_peripherals_req,
+                                           u_dut.u_smc.axil_peripherals_resp))
+            axi_hs_periph <= axi_hs_periph + 1;
+    end
+`ifndef VERILATOR
+    final begin
+        $display("CHK-AXI-SVA-SYS-IN: aw_ar_handshakes=%0d instance=u_sys_in_axi_sva",
+                 axi_hs_sys_in);
+        $display("CHK-AXI-SVA-JTAG-IN: aw_ar_handshakes=%0d instance=u_jtag_in_axi_sva",
+                 axi_hs_jtag_in);
+        $display("CHK-AXI-SVA-SEP-IN: aw_ar_handshakes=%0d instance=u_sep_in_axi_sva",
+                 axi_hs_sep_in);
+        $display("CHK-AXI-SVA-SYS-OUT: aw_ar_handshakes=%0d instance=u_sys_out_axi_sva",
+                 axi_hs_sys_out);
+        $display("CHK-AXI-SVA-CPU-FRONT: aw_ar_handshakes=%0d instance=u_cpu_front_axi_sva",
+                 axi_hs_cpu_front);
+        $display("CHK-AXI-SVA-CPU-MMIO: aw_ar_handshakes=%0d instance=u_cpu_mmio_axi_sva",
+                 axi_hs_cpu_mmio);
+        $display("CHK-AXI-SVA-OTP-JTAG: aw_ar_handshakes=%0d instance=u_otp_jtag_axil_sva",
+                 axi_hs_otp_jtag);
+        $display("CHK-AXI-SVA-DTP-CSR: aw_ar_handshakes=%0d instance=u_dtp_csr_axil_sva",
+                 axi_hs_dtp_csr);
+        $display("CHK-AXI-SVA-LOG-ENGINE: aw_ar_handshakes=%0d instance=u_log_engine_axil_sva",
+                 axi_hs_log_engine);
+        $display("CHK-AXI-SVA-PERIPH: aw_ar_handshakes=%0d instance=u_periph_axil_sva",
+                 axi_hs_periph);
+        if ($test$plusargs("axi_sva_need_sys_in") && axi_hs_sys_in == 0)
+            $error({"u_sys_in_axi_sva: +axi_sva_need_sys_in, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_jtag_in") && axi_hs_jtag_in == 0)
+            $error({"u_jtag_in_axi_sva: +axi_sva_need_jtag_in, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_sep_in") && axi_hs_sep_in == 0)
+            $error({"u_sep_in_axi_sva: +axi_sva_need_sep_in, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_sys_out") && axi_hs_sys_out == 0)
+            $error({"u_sys_out_axi_sva: +axi_sva_need_sys_out, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_cpu_front") && axi_hs_cpu_front == 0)
+            $error({"u_cpu_front_axi_sva: +axi_sva_need_cpu_front, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_cpu_mmio") && axi_hs_cpu_mmio == 0)
+            $error({"u_cpu_mmio_axi_sva: +axi_sva_need_cpu_mmio, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_otp_jtag") && axi_hs_otp_jtag == 0)
+            $error({"u_otp_jtag_axil_sva: +axi_sva_need_otp_jtag, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_dtp_csr") && axi_hs_dtp_csr == 0)
+            $error({"u_dtp_csr_axil_sva: +axi_sva_need_dtp_csr, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_log_engine") && axi_hs_log_engine == 0)
+            $error({"u_log_engine_axil_sva: +axi_sva_need_log_engine, ",
+                    "but no AW or AR handshake was graded"});
+        if ($test$plusargs("axi_sva_need_periph") && axi_hs_periph == 0)
+            $error({"u_periph_axil_sva: +axi_sva_need_periph, ",
+                    "but no AW or AR handshake was graded"});
+    end
+`endif
+
+`undef SMC_AXI_MASTER_KNOWN
+`undef SMC_AXI_SVA_ON
+`undef SMC_AXI_HS
+`undef SMC_AXIL_SVA_PORTS
+`undef SMC_AXI_SVA_PORTS
+
 `else  // SMC_DUAL
     // ==================================================================
     // Dual-instance body: two smc_dual_inst on a shared I3C bus.
@@ -3366,50 +3724,6 @@ module smc_uvm_top
     assign u_sep_in_axi_if.ruser    = 16'(s_axi_ruser);
     assign u_sep_in_axi_if.rvalid   = s_axi_rvalid;
     assign u_sep_in_axi_if.rready   = s_axi_rready;
-
-    ocah_axi_sva #(
-        .IS_LITE    (1'b0),
-        .ADDR_WIDTH (56),
-        .DATA_WIDTH (64),
-        .ID_WIDTH   (6)
-    ) u_sep_in_axi_sva (
-        .aclk    (clk_smc),
-        .aresetn (rst_primary_smc_clk_no),
-        .en_i    (u_tb_if.axi_sva_en),
-        .awid    (s_axi_awid),
-        .awaddr  (s_axi_awaddr),
-        .awlen   (s_axi_awlen),
-        .awsize  (s_axi_awsize),
-        .awburst (s_axi_awburst),
-        .awlock  (s_axi_awlock),
-        .awprot  (s_axi_awprot),
-        .awvalid (s_axi_awvalid),
-        .awready (s_axi_awready),
-        .wdata   (s_axi_wdata),
-        .wstrb   (s_axi_wstrb),
-        .wlast   (s_axi_wlast),
-        .wvalid  (s_axi_wvalid),
-        .wready  (s_axi_wready),
-        .bid     (s_axi_bid),
-        .bresp   (s_axi_bresp),
-        .bvalid  (s_axi_bvalid),
-        .bready  (s_axi_bready),
-        .arid    (s_axi_arid),
-        .araddr  (s_axi_araddr),
-        .arlen   (s_axi_arlen),
-        .arsize  (s_axi_arsize),
-        .arburst (s_axi_arburst),
-        .arlock  (s_axi_arlock),
-        .arprot  (s_axi_arprot),
-        .arvalid (s_axi_arvalid),
-        .arready (s_axi_arready),
-        .rid     (s_axi_rid),
-        .rdata   (s_axi_rdata),
-        .rresp   (s_axi_rresp),
-        .rlast   (s_axi_rlast),
-        .rvalid  (s_axi_rvalid),
-        .rready  (s_axi_rready)
-    );
 
     // Clean-room JTAG protocol SVA on the CPU TAP pins. The SMC exports no
     // one-hot TAP state, so the state rules are off; the TAP reset pin is

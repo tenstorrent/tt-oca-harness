@@ -59,10 +59,10 @@
 <tr><td>24</td><td>debug_reset_n_n0_scan</td><td>RW</td><td>0x0</td><td>Debug Module Reset, active low</td></tr>
 <tr><td>23:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>uncore_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Cluster Uncore Reset, active low. Resets the uncore portion of the chipyard cluster and holds every core in reset<br>with it. The reset waits for the cluster boundary to drain, bounded by RESET_TIMEOUT.<br>WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.</td></tr>
-<tr><td>7</td><td>core3_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
-<tr><td>6</td><td>core2_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
-<tr><td>5</td><td>core1_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
-<tr><td>4</td><td>core0_reset_pulse_start_n0_scan</td><td>RW</td><td>0x0</td><td>Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.<br>A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>7</td><td>core3_reset_pulse_start_n0_scan</td><td>RW 1P</td><td>0x0</td><td>Writing a 1 starts a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.<br>The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the<br>count of its current phase, the pre-reset wait or the hold; it does not queue a<br>second pulse. A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>6</td><td>core2_reset_pulse_start_n0_scan</td><td>RW 1P</td><td>0x0</td><td>Writing a 1 starts a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.<br>The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the<br>count of its current phase, the pre-reset wait or the hold; it does not queue a<br>second pulse. A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>5</td><td>core1_reset_pulse_start_n0_scan</td><td>RW 1P</td><td>0x0</td><td>Writing a 1 starts a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.<br>The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the<br>count of its current phase, the pre-reset wait or the hold; it does not queue a<br>second pulse. A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
+<tr><td>4</td><td>core0_reset_pulse_start_n0_scan</td><td>RW 1P</td><td>0x0</td><td>Writing a 1 starts a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.<br>The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the<br>count of its current phase, the pre-reset wait or the hold; it does not queue a<br>second pulse. A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</td></tr>
 <tr><td>3</td><td>core3_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
 <tr><td>2</td><td>core2_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
 <tr><td>1</td><td>core1_reset_n_n0_scan</td><td>RW</td><td>0x1</td><td>Reset control for the CPU, active low.</td></tr>
@@ -72,7 +72,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:36</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>35:32</td><td>core_resets_done</td><td>R</td><td>0xF</td><td>Logic low while performing core reset, logic high otherwise.</td></tr>
+<tr><td>35:32</td><td>core_resets_done</td><td>R</td><td>0xF</td><td>One bit per core, low while that core&#x27;s reset pulse runs (pre-reset wait and hold),<br>high otherwise. A level reset held through the core&#x27;s RESET_CTRL reset_n field,<br>or through RESET_CTRL.uncore_reset_n_n0_scan, does not clear it.</td></tr>
 <tr><td>31:16</td><td>post_reset_count</td><td>RW</td><td>0x10</td><td>Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.</td></tr>
 <tr><td>15:0</td><td>pre_reset_count</td><td>RW</td><td>0x8</td><td>Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.</td></tr>
 </table>
@@ -110,7 +110,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:32</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>Test control register for the CPU</td></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>Reads 0 in hardware. A simulation testbench can deposit a value here to hand<br>test control values to firmware.</td></tr>
 </table>
 <h3 id="SCRATCH_16_">SCRATCH[16]</h3>
 <table>

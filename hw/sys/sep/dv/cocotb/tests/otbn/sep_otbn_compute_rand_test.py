@@ -84,7 +84,7 @@ class sep_otbn_compute_rand_test(sep_base_test):
             fields = {"op": op, "a": f"0x{a:08x}", "b": f"0x{b:08x}"}
             self.chk.ok("ERRBITS", err == 0, **fields, err_bits=f"0x{err:08x}")
             self.chk.ok("DMEM", got == expect, **fields, got=f"0x{got:08x}", exp=f"0x{expect:08x}")
-        self.chk.obs(
+        self.chk.info(
             "RANDCFG", cells=list(op for op, *_ in cfg.cells()), capabilities=list(CAP_KINDS)
         )
 

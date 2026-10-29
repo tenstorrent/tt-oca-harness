@@ -66,8 +66,8 @@ Checks (anchor):
 
 Logged only (no verdict): ``OBS-XBAR-UNSTATED`` (the first word of the mailbox,
 the DRBG sampler and the five key windows, which have no stated read response),
-``CTL-XBAR`` (cells another open test grades: 0x4000, 0x13108 store),
-``CTL-EFW-PROG`` / ``CTL-EFW-DENY`` (the host path line of each
+``CTRL-XBAR`` (cells another open test grades: 0x4000, 0x13108 store),
+``INFO-EFW-PROG`` / ``INFO-EFW-DENY`` (the host path line of each
 program check), ``OBS-EFW-TM-TUPLE`` (the secure test program
 status values and the pre-guard program request count; program_done and
 program_status have no stated value under the strap, the second program of the
@@ -630,7 +630,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
     def _check_staged_identity(self, fp: KmFusePlan) -> None:
         path = Path(os.getcwd()) / "out" / "sep_efuse.hex"
         digest = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else "missing"
-        self.logger.info("KM-FUSE-PLAN staged=%s staged_sha256=%s", path, digest)
+        self.logger.info("INFO-KM-FUSE-PLAN staged=%s staged_sha256=%s", path, digest)
         if digest != fp.identity():
             raise AssertionError(
                 f"staged fuse image {path} sha256={digest} is not the plan image "
@@ -885,7 +885,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             ],
         )
         self.logger.info(
-            "CTL-XBAR-CLEAN mbx_status=%s drbg_status=%s rom0=%s sram0=%s (slv=0 dec=0)",
+            "CTRL-XBAR-CLEAN mbx_status=%s drbg_status=%s rom0=%s sram0=%s (slv=0 dec=0)",
             *(f"0x{r.value:08x}" for r in clean),
         )
         efw_ok = [d for d in rd1 if d["km_cls"] == "OKAY"]
@@ -922,7 +922,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 got_ok = res.flags_known and res.clean and (res.slv, res.dec) == want
             line = f"{tag} rd={rd_txt} slv={res.slv} dec={res.dec} pre_clean={int(res.clean)}"
             if cell.control:
-                self.logger.info("CTL-XBAR %s control=1 match=%d", line, int(got_ok))
+                self.logger.info("INFO-XBAR %s control=1 match=%d", line, int(got_ok))
                 continue
             chk = "CHK-XBAR-SIZE" if cell.chk == "SIZE" else cell.chk
             exp = f"expected {cell.resp}" + (
@@ -956,7 +956,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 f"dec={rom_next.dec}; the leaf cannot show an error bit next to the ROM top"
             )
         self.logger.info(
-            "CTL-XBAR win=reserved_4000 off=0x%05x kind=first dir=rd rd=0x%08x slv=%d dec=%d "
+            "CTRL-XBAR win=reserved_4000 off=0x%05x kind=first dir=rd rd=0x%08x slv=%d dec=%d "
             "control=1",
             KM_RSV_ROM_GROWTH,
             rom_next.value,
@@ -1495,7 +1495,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 problems += [f"{b}: {line}" for b in bad]
             else:
                 self.logger.info(
-                    "CTL-EFW-PROG %s control=1 match=%d", line, int(not bad and not done_bad)
+                    "INFO-EFW-PROG %s control=1 match=%d", line, int(not bad and not done_bad)
                 )
         # efuse_req_error belongs to each program (see above); program_done
         # and program_status only to the first one.
@@ -1571,7 +1571,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             if path == "km":
                 problems += [f"{b}: {line}" for b in bad]
             else:
-                self.logger.info("CTL-EFW-DENY %s control=1 match=%d", line, int(not bad))
+                self.logger.info("INFO-EFW-DENY %s control=1 match=%d", line, int(not bad))
         if any(not v["eq"] or not v["waited"] for v in spare.values()):
             problems.append(
                 "control: a spare OTP word of the unlocked programs != staged + its bit: "
@@ -1708,7 +1708,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             word = tm_res[path]["echo"]
             echo[path] = int((word & PC_ADDR_MASK) >> PC_ADDR_LSB == tgt.address)
             self.logger.info(
-                "LOG-EFW-TM echo path=%s program_ctrl=0x%08x efuse_addr_echo=%d",
+                "INFO-LOG-EFW-TM echo path=%s program_ctrl=0x%08x efuse_addr_echo=%d",
                 path,
                 word,
                 echo[path],
@@ -1781,7 +1781,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             want = model.shadow_word(idx)
             shadow[key] = (front, probe, want)
             self.logger.info(
-                "LOG-EFW-TM shadow %s %s[%d].%d frontdoor=0x%08x probe=0x%08x model=0x%08x",
+                "INFO-LOG-EFW-TM shadow %s %s[%d].%d frontdoor=0x%08x probe=0x%08x model=0x%08x",
                 key,
                 tgt.field,
                 tgt.word,

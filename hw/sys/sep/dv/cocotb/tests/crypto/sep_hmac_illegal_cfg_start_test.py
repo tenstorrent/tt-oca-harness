@@ -328,7 +328,7 @@ class sep_hmac_illegal_cfg_start_test(sep_base_test):
         self.swrst = SepSwReset(self)
         self.swrst.value = SW_RESET_BASELINE
         await self.swrst.release()
-        self.logger.info("CTRL-HMAC-BASELINE seed=%d sw_reset_n=0x%02x", seed, SW_RESET_BASELINE)
+        self.logger.info("INFO-HMAC-BASELINE seed=%d sw_reset_n=0x%02x", seed, SW_RESET_BASELINE)
         self._period_ps = round(self.cfg.sys_clk_period_ns * 1000)
         self._dorder: str | None = None
         await self._reset_hmac(dut)

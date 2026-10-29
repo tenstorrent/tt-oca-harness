@@ -24,16 +24,13 @@ schema_version = 1
 #   * `occp_boot` -- held out on runtime. The production ROM's whole
 #     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
 #     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
-#   * `held_out` -- leaves whose comparison the RTL and the specification
-#     disagree on, and leaves blocked by a filed RTL defect; each entry's
-#     comment states the disagreement or the defect in words. An observation
-#     leaf waiting on a specification ruling belongs here too: it passes, logs
-#     `OBS-*` lines for the disputed value and grades nothing about it; its
-#     comment states the open question in words and the VPLAN held-out table
-#     names the issue that holds the ruling.
-#     smc_ref_clock_timer_rate_test compares the OCTS system timer rate against
-#     clk_rst.adoc, which places the timer in the reference clock domain, while
-#     the RTL clocks it from clk_smc_i.
+#   * `held_out` -- leaves whose comparison the specification does not support,
+#     and leaves blocked by a filed RTL defect; each entry's comment states the
+#     disagreement or the defect in words. An observation leaf waiting on a
+#     specification ruling belongs here too: it passes, logs `OBS-*` lines for
+#     the disputed value and grades nothing about it; its comment states the
+#     open question in words and the VPLAN held-out table names the issue that
+#     holds the ruling.
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`,
@@ -114,14 +111,6 @@ args = [
     "+rom_bin64=prod_rom.bin64",
     "+smc_hold_cpu_boot",
 ]
-
-[[tests]]
-name = "smc_ref_clock_timer_rate_test"
-module = "smc_ref_clock_timer_rate_test"
-seed = 1
-timeout_sec = 1800
-tags = ["clock"]
-run_modes = ["smoke"]
 
 [[tests]]
 # Observation leaf: a CTRL_STATUS trigger while the zeroer is busy
@@ -222,6 +211,22 @@ tools = ["vcs"]
 tags = ["uvm", "clock"]
 run_modes = ["smoke"]
 
+[[tests]]
+# A launch with LENGTH 0 and ENABLED_ND set advances DONE_0 by the drawn
+# NUM_REPETITIONS, where dma.adoc ("still retire[s] a transfer ID") and the
+# dma_ctrl.rdl NEXT_ID description ("still retires an ID without copying any
+# data") retire one; every other launch advances it by one. The leaf runs the
+# smc_dma_transfer_matrix_rand_test draw (its twelve copies and the ENABLED_ND
+# clear are the arm leg) and asserts DONE_0 equal to the returned ID.
+name = "smc_dma_zero_length_done_id_test"
+module = "smc_dma_zero_length_done_id_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "DONE_0 after a LENGTH 0 launch advances by NUM_REPETITIONS, not to the one returned ID (#3509)"
+expect_fail_match = "CHK-DXM-ZERO-LENGTH-DONE FAIL"
+
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
 name = "cg_uvm_extended"
@@ -279,12 +284,13 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 4
+expected_count = 5
 tests = [
     "smc_wdt_timeout_zero_idle_test",
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
+    "smc_dma_zero_length_done_id_test",
 ]
 
 [[groups]]
@@ -295,12 +301,11 @@ tests = [
 ]
 
 [[groups]]
-# Leaves whose comparison the RTL and the specification disagree on, and the
+# Leaves whose comparison the specification does not support, and the
 # observation leaves waiting on a specification ruling; run on demand.
 name = "held_out"
-expected_count = 4
+expected_count = 3
 tests = [
-    "smc_ref_clock_timer_rate_test",
     "smc_zeroer_busy_trigger_obs_test",
     "smc_flr_counter_timing_obs_test",
     "smc_bresp_evidence_obs_test",

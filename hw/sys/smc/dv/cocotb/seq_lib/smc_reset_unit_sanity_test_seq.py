@@ -35,11 +35,13 @@ _CSR_BOUND = 64
 # hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl -- plain software-owned
 # storage whose only consumer is a TOP-LEVEL OUTPUT, so no write feeds back into
 # the DUT and resets the bench:
-#   * `ss_reset_ctrl_o [31:0]` (smc.sv) reaches tb_top as
+#   * `ss_reset_ctrl_o [31:0]`, the subsystem reset control output
+#     (hw/sys/smc/doc/port_table.adoc:80), reaches tb_top.sv as
 #     `ss_reset_ctrl [31:0]` and only `ss_reset_ctrl[0].warm_reset_n` is
 #     tapped out.
-#   * `isolate_req_o [31:0]` (smc.sv) goes straight to the observation port
-#     `tb_isolate_req_o`.
+#   * `isolate_req_o [31:0]`, the isolation request output
+#     (hw/sys/smc/doc/port_table.adoc:77), goes straight to the observation
+#     port `tb_isolate_req_o` in tb_top.sv.
 # Neither loops back into the DUT, so driving them perturbs nothing.
 #
 _SS_SWEEP_REGS = (
@@ -73,27 +75,34 @@ _SS_SWEEP_REGS = (
 #     `smc_reset_unit_lock_test_seq` covers them.
 #   * `ISOLATE_REQ_VIS` @0xC0 -- `sw = r; hw = w` pin visibility
 #     (reset_unit.rdl).
-#   * `ISOLATE_REQ_SMC_REG` @0xB8 -- hardware-set, write-1-to-clear
-#     (`onwrite = woclr`), and one bit wide. `smc_cool_reset_wrap.sv` sets it
-#     to 1 when `cfg_flr_pf_active` asserts and clears it to 0 only on a
-#     software write whose byte-0 strobe is set and whose bit 0 is 1; its read
-#     data is `{31'b0, isolate_req_smc_reg}`. A write/readback probe from the
-#     reset value therefore reads 0x0 by specification. Proving the set half
-#     needs an FLR event, which is out of this testcase's scope.
+#   * `ISOLATE_REQ_SMC_REG` @0xB8 -- `isolate_req_smc_reg [0:0]`, reset 0x0,
+#     `onwrite = woclr` (reset_unit.rdl). Its field description and
+#     hw/sys/smc/doc/clk_rst.adoc:378-381 state that only a rising edge of
+#     `cfg_flr_pf_active` sets it and a software write of 1 clears it, so a
+#     write/readback probe from the reset value reads 0x0 by specification.
+#     Proving the set half needs an FLR event, which is out of this
+#     testcase's scope.
 #   * `ISOLATE_REQ_PINEN_REG` @0xB4 and `ISOLATE_REQ_SMCEN_REG` @0xBC -- plain
-#     `sw = rw` storage, but both OR into the pin this testcase observes:
-#     `smc_cool_reset_wrap.sv` computes `isolate_req_o[i] =
-#     isolate_req_reg[i] | (isolate_req_pinen_reg[i] & isolate_req_pin) |
-#     (isolate_req_smcen_reg[i] & isolate_req_smc_reg)`. Leaving them at reset
-#     keeps the `tb_isolate_req_o` observation below attributable to
-#     `ISOLATE_REQ_REG` alone.
+#     `sw = rw` storage, but both qualify the other two terms of the pin this
+#     testcase observes. hw/sys/smc/doc/clk_rst.adoc:369-376 specifies each
+#     `isolate_req_o` bit as
+#       ISOLATE_REQ_REG[i]
+#       OR (ISOLATE_REQ_PINEN_REG[i] AND synchronized isolate_req_pin_i)
+#       OR (ISOLATE_REQ_SMCEN_REG[i] AND ISOLATE_REQ_SMC_REG).
+#     With both masks at their RDL reset 0x0 the last two terms are 0, so the
+#     `tb_isolate_req_o` observation below is attributable to `ISOLATE_REQ_REG`
+#     alone.
 #
 # `ISOLATE_REQ_REG` @0xB0 keeps its own dedicated check below because its value
 # is observable on a DUT output pin, a property independent of all of the above.
 # Alternating bits so a stuck-at-0 or stuck-at-1 register cannot read it back.
 _SS_PATTERN = 0x5A5A_A5A5
 # ISOLATE_REQ_REG gets a stronger check than write/readback: its value is
-# observable on a DUT output pin, so the CSR-to-pin path is checked too. A
+# observable on a DUT output pin, so the CSR-to-pin path is checked too.
+# hw/sys/smc/doc/clk_rst.adoc:458 states that software-set `ISOLATE_REQ_REG`
+# bits reach `isolate_req_o` directly; with the PINEN/SMCEN masks at reset the
+# OR at clk_rst.adoc:369-376 reduces to isolate_req_o[i] = ISOLATE_REQ_REG[i],
+# so the pin is expected to equal the register value bit for bit. A
 # single bit is driven, and one that is not bit 0, so a tie-off or an
 # off-by-one on the bus would not satisfy it.
 ISOLATE_REQ_BIT = 5
