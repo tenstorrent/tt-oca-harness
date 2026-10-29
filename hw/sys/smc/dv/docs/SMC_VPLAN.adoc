@@ -672,13 +672,12 @@ points are Phase 2 in `SMC_FCOV.adoc`
 |System timer OCTS
 |`periphs.adoc` SMC Peripheral Summary, System Timer OCTS; `clk_rst.adoc` Timer and Debug Timebases
 |`smc_fw_octs_p0_primary_test` (`fw`), `smc_octs_primary_count_test`, `smc_octs_primary_start_test`,
-`smc_octs_csr_access_test`, `smc_octs_clk_rate_test`; `smc_octs_dual_sync_test` is `sanity`, outside
-`all`
+`smc_octs_csr_access_test`, `smc_octs_clk_rate_test`, `smc_octs_timer_rate_test`;
+`smc_octs_dual_sync_test` is `sanity`, outside `all`
 |`smc_periph_fcov` (`c_octs_count_advances`, `c_octs_count_monotonic`); `smc_clk_domain_fcov`
 (`c_octs_tick_on_clk_ref`); `smc_map_fcov` (`c_octs_decode`, `c_octs_aperture_decode`)
 |`REGRESSION`: `smc_octs_sanity_test` is an AVS status proxy (<<smc-known-limitations>>); the OCTS
-leaves have no canonical scenario, and the timer-rate comparison is held out in
-<<smc-held-out-testcases>>
+leaves have no canonical scenario
 |F28
 |eFuse controller, shim and OTP access
 |`periphs.adoc` SMC Peripheral Summary, eFuse; `doc/integrator/src/smu-smc.adoc` eFuse Interface
@@ -1007,7 +1006,7 @@ single-byte writes.
 |`smc_dma_completion_status_test` |3 |DONE_0 and STATUS_0 report reset, idle, no-data and held; the busy indication is measured.
 |`smc_dma_csr_config_test` |3 |DMA descriptor registers and CONFIG hold, keep and alias their values.
 |`smc_dma_field_widths_test` |3 |DMA fields drop bits above their effective widths and keep bits 55:32.
-|`smc_dma_invalid_descriptor_test` |3 |ENABLED_ND-cleared and zero-length DMA commands move no data against a valid copy; their registers are measured.
+|`smc_dma_invalid_descriptor_test` |3 |ENABLED_ND-cleared and zero-length DMA commands move no data against a valid copy; every NEXT_ID_0 read returns a non-zero transfer ID and DONE_0 and STATUS_0 are measured.
 |`smc_dma_linear_copy_test` |2 |Linear DMA copies match byte for byte across offsets and sizes.
 |`smc_zeroer_busy_outstanding_test` |3 |Zeroer stays busy to the last B; over 32 bursts; AW/W in order.
 |`smc_zeroer_busy_trigger_obs_test` |3, held out |A second `CTRL_STATUS` trigger in the issue and drain windows of a running clear, recorded for #3422.
@@ -1331,6 +1330,8 @@ values at each single-axis clock relation of the run, in the smc_slower cell (cl
 / clk_periph_i = 10 / 12 / 8 ns).
 |`smc_octs_clk_rate_test` |3 |The OCTS counter advances at the clk_smc_i rate in every clock cell and
 restarts from its preset on a START after the preset is latched.
+|`smc_octs_timer_rate_test` |2 |The OCTS TIMER_COUNT delta over one window lies within the bench's
+clk_smc_i edge count widened by the credit granularity, and the clk_ref_i edge count lies outside it.
 |`smc_octs_clk_rate_periph3_test` |3 |The OCTS counter advances at the clk_smc_i rate in every clock
 cell and restarts from its preset on a START after the preset is latched, in the periph3 cell
 (clk_ref_i / clk_smc_i / clk_periph_i = 10 / 1.25 / 3 ns).
@@ -6991,7 +6992,8 @@ draws nothing from the seed.
 
 *Objective*: A command with `CONFIG.ENABLED_ND` cleared and a zero-length command move no data and
 issue no AR or AW handshake, while the same descriptor with `ENABLED_ND` set and a nonzero length
-copies; the register-boundary results of the no-data commands are measured.
+copies; every `NEXT_ID_0` read returns a non-zero transfer ID, and the other register-boundary
+results of the no-data commands are measured.
 
 *Test Coverage*:
 
@@ -7001,17 +7003,19 @@ copies; the register-boundary results of the no-data commands are measured.
   destination bytes must keep their 0xEE poison and no AR or AW handshake may occur between the
   submit and the `DONE_0` change. Over the whole leaf the AR and AW counts must equal those of the
   three copy legs, so no handshake occurs outside the copies.
-* The `NEXT_ID_0` value the submit returned, `DONE_0` before and after, `STATUS_0[9:0]` before and
-  after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are measured,
-  not compared: `dma.adoc` and `dma_ctrl.rdl` both state that every `NEXT_ID_0` read retires a
-  non-zero transfer ID, including one with no command set up, and they differ on `DONE_0` (the
-  most recently retired ID in `dma.adoc`, a cumulative count in the RDL).
+* Every read of `NEXT_ID_0` returns a transfer ID, never 0 (`dma.adoc`, Linear and Two-Dimensional
+  Copies; `dma_ctrl.rdl`, `NEXT_ID`), including the reads that submit the `ENABLED_ND`-cleared and
+  the zero-length commands. The leaf requires the low word of every `NEXT_ID_0` read of its six
+  submits to be non-zero and prints the six IDs. `DONE_0` before and after, `STATUS_0[9:0]` before
+  and after and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command are
+  measured, not compared: `dma.adoc` and `dma_ctrl.rdl` differ on `DONE_0` (the most recently
+  retired ID in `dma.adoc`, a cumulative count in the RDL).
 * A length-0 command moves no data (`dma.adoc`, Linear and Two-Dimensional Copies, the DMA register
   storage table): a linear command (`NUM_REPETITIONS_LO` 1) and a 2D command (`NUM_REPETITIONS_LO`
   4, source stride 0x30, destination stride 0x28) with `LENGTH` 0 must leave 16 and 136 destination
   bytes at 0xEE and produce no AR or AW handshake through the end of a 3000-read `DONE_0` poll.
-  Whether `DONE_0` changed, `STATUS_0[9:0]`, the returned `NEXT_ID_0` and the bit 322 pulse count
-  of both commands are measured, not compared.
+  Whether `DONE_0` changed, `STATUS_0[9:0]` and the bit 322 pulse count of both commands are
+  measured, not compared.
 * Positive control (`dma.adoc`, Linear and Two-Dimensional Copies): the same descriptor with
   `ENABLED_ND` set and `LENGTH_LO` 16 copies. A 2D copy with `NUM_REPETITIONS_LO` 4 and the strides
   0x30 and 0x28 of the zero-length 2D command writes its four source rows over the 136-byte
@@ -7054,10 +7058,10 @@ copies; the register-boundary results of the no-data commands are measured.
   following rise, then read the destination and take the counts and the bit 322 pulses.
 . Re-poison the destination, program the same descriptor, submit with a 64-bit read at 0x48, poll
   `DONE_0`, read it six more times and read the destination.
-. Wait two `clk_smc_i` cycles after step 6, require the step stamps to strictly increase and the
-  step order to hold, and require the AR and AW counts accumulated since step 1 over the whole leaf
-  to equal the sums of the three copy legs' counts, so any extra handshake fails; record the
-  non-vacuity checker.
+. Wait two `clk_smc_i` cycles after step 6, require six submits with one `NEXT_ID_0` read each and
+  every ID non-zero, require the step stamps to strictly increase and the step order to hold, and
+  require the AR and AW counts accumulated since step 1 over the whole leaf to equal the sums of
+  the three copy legs' counts, so any extra handshake fails; record the non-vacuity checker.
 
 *Checkers*:
 
@@ -7068,12 +7072,14 @@ copies; the register-boundary results of the no-data commands are measured.
   bytes read 0xEE and no AR or AW handshake occurs between the submit and the `DONE_0` change
 |`CHK-DMA-ND-CLEAR-DONE-ADVANCES` |`DONE_0` differs from its pre-command value within 3000 reads
   after the `ENABLED_ND`-cleared command
-|`CHK-DMA-ND-CLEAR-MEASURED` |The returned `NEXT_ID_0`, `DONE_0`, `STATUS_0[9:0]` and bit 322 pulse
-  readings of the `ENABLED_ND`-cleared command are measured and printed without comparing them
+|`CHK-DMA-ND-CLEAR-MEASURED` |The `DONE_0`, `STATUS_0[9:0]` and bit 322 pulse readings of the
+  `ENABLED_ND`-cleared command are measured and printed without comparing them
 |`CHK-DMA-ZEROLEN-NO-DATA` |The linear and the 2D zero-length commands leave their 16 and 136
   destination bytes at 0xEE with no AR or AW handshake through the end of the poll
-|`CHK-DMA-ZEROLEN-MEASURED` |The returned `NEXT_ID_0`, `DONE_0` change, `STATUS_0[9:0]` and bit 322
-  pulse readings of both zero-length commands are measured and printed without comparing them
+|`CHK-DMA-ZEROLEN-MEASURED` |The `DONE_0` change, `STATUS_0[9:0]` and bit 322 pulse readings of both
+  zero-length commands are measured and printed without comparing them
+|`CHK-DMA-NEXT-ID-NONZERO` |Each of the six submits read `NEXT_ID_0` once and every read returned a
+  non-zero transfer ID; the six IDs are printed
 |`CHK-DMA-COPY-CONTROL` |The `ENABLED_ND`-set 2D copy of four 16-byte rows at strides 0x30 and
   0x28 writes its source rows over the 136-byte destination span with the bytes between rows still
   0xEE, after `DONE_0` differs, with at least four AR and four AW handshakes; the linear copy of 16
@@ -7088,17 +7094,18 @@ copies; the register-boundary results of the no-data commands are measured.
   accumulated since setup equal the sums of the three copy legs' counts; any extra handshake fails
 |===
 
-*Pass Criteria*: all ten checkers hold and every sequence assert holds: the `ENABLED_ND`-cleared
+*Pass Criteria*: all eleven checkers hold and every sequence assert holds: the `ENABLED_ND`-cleared
 command retires its ID and both zero-length commands leave the destination at 0xEE with no bus
 traffic, the 2D copy writes the 136-byte span the zero-length 2D compare covers, the linear copy
-moves its 16 bytes through both a 32-bit and a 64-bit submit with equal handshake counts, and the
-linear copy raises one one-cycle interrupt pulse. The register-boundary results of the no-data
-commands are measured, not compared. Enrolled in: `all`, `hosted`.
+moves its 16 bytes through both a 32-bit and a 64-bit submit with equal handshake counts, the
+linear copy raises one one-cycle interrupt pulse, and every `NEXT_ID_0` read returns a non-zero
+ID. The `DONE_0` and `STATUS_0` results of the no-data commands are measured, not compared.
+Enrolled in: `all`, `hosted`.
 
-*Scope limit*: The returned `NEXT_ID_0`, `DONE_0` before and after, `STATUS_0[9:0]` before and after
-and the bit 322 pulse count and widths of the `ENABLED_ND`-cleared command, and the `DONE_0` change,
-`STATUS_0[9:0]`, returned `NEXT_ID_0` and bit 322 pulse count of both zero-length commands, are
-measured and not compared until the open issue above is resolved.
+*Scope limit*: `DONE_0` before and after, `STATUS_0[9:0]` before and after and the bit 322 pulse
+count and widths of the `ENABLED_ND`-cleared command, and the `DONE_0` change, `STATUS_0[9:0]` and
+bit 322 pulse count of both zero-length commands, are measured and not compared until the open
+issue above is resolved.
 
 [[sec-559-smc_dma_transfer_matrix_rand_test]]
 ===== 559 `smc_dma_transfer_matrix_rand_test`
@@ -20977,6 +20984,92 @@ record, not a compare.
 
 *Scope limit*: An input clock whose period equals the `clk_smc_i` period has its edge count over the
 window printed and not compared. The bounded waits are recorded, not compared.
+
+'''''
+
+
+[[sec-569-smc_octs_timer_rate_test]]
+===== 569 `smc_octs_timer_rate_test`
+
+*Phase*: 2
+
+*Area*: CLOCK
+
+*Source Module*: `smc_octs_timer_rate_test`
+
+*BFM / Model*: SEP_IN AXI driver (`SmcSysAxiItem` 4-byte accesses) to the OCTS (`system_timer_octs`)
+`CTRL`, `TIMER_START`, `STATUS`, `TIMER_COUNT_LO` and `TIMER_COUNT_HI` registers at their generated
+addresses; bench rising-edge counters on `tb_top.clk_smc_i` and `clk_ref_i`;
+`tb_top.tb_chiplet_is_primary` required 1; the sideband protocol-VIP record with a stimulus floor of
+7 accesses; no external VIP
+
+*Run mode*: one testlist entry in `testlists/clock.toml`; groups `all`, `hosted`, `clock`;
+`run_modes` `smoke`; `timeout_sec` 1800; tags `clock`, `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, the window length and the tolerance are module constants and
+the bench drives its default clock periods.
+
+*Objective*: The OCTS `TIMER_COUNT` advances at the `clk_smc_i` rate: over one window its delta lies
+within the bench's `clk_smc_i` edge count widened by the credit granularity, and the `clk_ref_i`
+edge count over the same window lies outside that bracket.
+
+*Test Coverage*:
+
+* `clk_rst.adoc` (Timer and Debug Timebases) states "OCTS uses `clk_smc_i`", and the
+  `system_timer_octs` architecture describes a continuously incrementing 64-bit counter that, in
+  PRIMARY mode, advances by `CTRL.CREDIT_VAL` every `CREDIT_VAL` cycles of its clock. The leaf reads
+  `CTRL` at its reset value, starts the timer with `TIMER_START`, requires `STATUS.RUNNING` within
+  32 reads and `STATUS.MODE` primary, then reads `TIMER_COUNT` twice around a window of 3200
+  `clk_smc_i` edges while bench tasks count the `clk_smc_i` and `clk_ref_i` rising edges.
+* The delta must lie between the `clk_smc_i` edges counted strictly between the two reads and the
+  `clk_smc_i` edges counted over the whole window including the reads, each widened by the reset
+  `CREDIT_VAL` plus four `clk_smc_i` periods for the count to reach a register read. The
+  specification does not state the rule for the count latch, so the tolerance is only that
+  granularity and allowance.
+* The `clk_ref_i` edge count over the whole window must lie outside the same bracket, so the compare
+  tells `clk_smc_i` from the reference clock in the run: a counter clocked from `clk_ref_i` would
+  fail the bracket. The bench's default periods are 10 ns `clk_ref_i` and 1.25 ns `clk_smc_i`.
+* The CLINT `mtime` half of the timebases is not reachable from SEP_IN in this bench: at the reset
+  `REGION_SIZE` the cluster-local window lies outside the local and global apertures and answers
+  DECERR. The leaf records that and grades nothing about the CLINT.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse sense done and require `tb_chiplet_is_primary` = 1.
+. Read `CTRL` and require its generated reset value; write `TIMER_START` = 1; poll `STATUS` up to 32
+  reads until `RUNNING` is set and require `MODE` primary.
+. Start the `clk_smc_i` and `clk_ref_i` edge counters; read `TIMER_COUNT_LO` and `TIMER_COUNT_HI` as
+  c0; wait 3200 `clk_smc_i` edges; read c1; stop the counters.
+. Require c1 - c0 at least the between-reads `clk_smc_i` count minus the tolerance and at most the
+  whole-window `clk_smc_i` count plus the tolerance; require the `clk_ref_i` whole-window count
+  outside that bracket; require every access answered (the six fixed accesses plus the `STATUS`
+  polls).
+. Print the rate line, the CLINT record line and the window summary; record the sideband
+  protocol-VIP line with the access count against its floor of 7.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OCTS-TICK-ON-CLK-SMC` |The `TIMER_COUNT` delta lies within the `clk_smc_i` edge bracket of the
+window widened by the `CREDIT_VAL` granularity and the latch allowance, and the `clk_ref_i` edge
+count over the same window lies outside it; the edge counts and the bracket are printed
+|`CHK-OCTS-TIMER-RATE` |The sequence returned both `TIMER_COUNT` samples; the delta, the bracket and
+the access count are printed by the test
+|`CHK-CLINT-TICK-NOT-CLOSED` |Records that the CLINT `mtime` cell is unreachable from SEP_IN at the
+reset `REGION_SIZE`; the line is a record, not a compare
+|===
+
+*Pass Criteria*: `CHK-OCTS-TICK-ON-CLK-SMC` and `CHK-OCTS-TIMER-RATE` hold after their compares and
+`CHK-CLINT-TICK-NOT-CLOSED` prints; the sideband protocol-VIP record meets its access floor.
+Enrolled in: `all`, `hosted`, `clock`.
+
+*Scope limit*: The CLINT `mtime` rate is not graded. A run whose `clk_ref_i` period equals the
+`clk_smc_i` period fails the distinguishability compare rather than passing on an ambiguous bracket.
+The specification does not state the rule for the count latch, so the delta tolerance is only the
+`CREDIT_VAL` granularity plus four `clk_smc_i` periods.
 
 '''''
 
@@ -47090,7 +47183,7 @@ inside its area.
 |43, 44, 47, 51, 55, 183, 189, 191, 326, 398 to 400, 532 to 534, 556
 |Reset interactions and corners: cool-versus-cold, core reset sources, an interrupt during a power-good glitch, mixed boot stall, the recovery matrix, cold-boot chain order, primary reset scope, synchronizer edges, the override-mux walk, process extra bits, pin de-glitch, asynchronous assertion, the cool-reset de-glitch window, the pin-versus-FLR overlap and the collision recovery. Seeded reset kinds asserted mid-operation, retention by domain.
 |<<smc-vplan-area-clock,CLOCK>>
-|67, 305 to 319, 403, 404, 406 to 429, 558
+|67, 305 to 319, 403, 404, 406 to 429, 558, 569
 |Zeroer clock-gate independence, the AVS configuration crossing, AVS clock select, base-configuration registers, handshake stalls, per-ID order and single responses across the clock domains, scratch storage at a pinned triple, and the fixed-cell families: the fifteen pinned-period ratio modules (the owning leaf of the family, `smc_clk_smc_slower_than_ref_test`, is Phase 2), the register-crossbar relation cells, the OCTS rate cells, the peripheral-floor round trips and the reference-period reset-cycle counts. Seeded clock period triples, register traffic completes.
 |<<smc-vplan-area-cpu,CPU>>
 |70, 72, 78, 82, 430, 433, 435, 437 to 442, 445, 544
@@ -47682,6 +47775,10 @@ entry's `*Randomization*` field.
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
 |none; directed, the cell of this entry is pinned by its testlist entry; the other cells run as fixed-cell variant modules.
+|`smc_octs_timer_rate_test`
+|<<smc-vplan-area-clock,CLOCK>>
+|RAND-NONE
+|none; directed, the window length and the tolerance are module constants and the bench drives its default clock periods.
 |`smc_octs_clk_rate_periph3_test`
 |<<smc-vplan-area-clock,CLOCK>>
 |RAND-NONE
@@ -48679,7 +48776,7 @@ ordered by area.
 |<<smc-vplan-area-power,POWER>>
 |The `NEXT_ID` and `DONE` reset values and the meaning of `DONE_0` after a command.
 |`hw/sys/smc/doc/dma.adoc` and the register description `integration/rdl/smc/dma_ctrl.rdl` state different reset values for `NEXT_ID` and `DONE` and a different meaning for `DONE` (the last retired id versus a cumulative count); which one is normative. Source: `hw/sys/smc/doc/dma.adoc` (Stream and Register Ownership); `integration/rdl/smc/dma_ctrl.rdl` (`NEXT_ID`, `DONE`); GitHub issue tenstorrent/tt-oca-harness#2455.
-|`smc_dma_invalid_descriptor_test` logs `NEXT_ID_0`, `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states. `smc_dma_transfer_matrix_rand_test` prints `DONE_0` before and after its zero-length launch with the drawn `NUM_REPETITIONS`, without comparing it, and grades the returned ID and the untouched destination; `smc_dma_zero_length_done_id_test` (`rtl_issue`) asserts `DONE_0` equal to the returned ID against #3509.
+|`smc_dma_invalid_descriptor_test` grades every `NEXT_ID_0` read non-zero and logs `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states. `smc_dma_transfer_matrix_rand_test` prints `DONE_0` before and after its zero-length launch with the drawn `NUM_REPETITIONS`, without comparing it, and grades the returned ID and the untouched destination; `smc_dma_zero_length_done_id_test` (`rtl_issue`) asserts `DONE_0` equal to the returned ID against #3509.
 |<<smc-vplan-area-power,POWER>>
 |A DMA row address that steps past 2^56 wraps within 56 bits.
 |Whether the effective address wraps at bit 56, saturates or errors. Source: `hw/sys/smc/doc/dma.adoc` (Transfer Configuration; the register storage and effective field widths).
@@ -49605,7 +49702,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
 |#3426 |`smc_bresp_evidence_obs_test` |`held_out` |The merged BRESP of a split write burst has no stated rule; the `OBS-BRESP` lines record every past-extent and gap write beside its #3294 declaration and the `OBS-BURST` lines the merged response, the CHK lines grade the table counts and unchanged live words
-|-- |`smc_ref_clock_timer_rate_test` |`held_out` |The OCTS timer-rate comparison disagrees with `clk_rst.adoc`; below
 |===
 
 The reproducers are the `rtl_issue` group:
@@ -49754,11 +49850,6 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_r
 *Pass Criteria*: the POST code reaches `OCCP_PROC` and ROM fetch activity corroborates it. Real fuse sense is used -- no `+skip_fuse_sense` -- so the ROM reads straps and fuses itself. Enrolled in: `occp_boot` only -- held out of `all` on runtime and run on demand as `occp_boot` (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
 
 '''''
-
-`smc_ref_clock_timer_rate_test` has an entry in `holdout.toml` and no card: it
-fails the rate comparison it was written to make (the leaf measures the OCTS
-system timer against `clk_ref_i`; `clk_rst.adoc`, Timer and Debug Timebases, and
-`smc_peripherals.sv` clock it from `clk_smc_i`), and is re-measured on demand.
 
 The three observation leaves of `held_out` (`smc_zeroer_busy_trigger_obs_test`,
 `smc_flr_counter_timing_obs_test`, `smc_bresp_evidence_obs_test`) pass today:
@@ -51227,8 +51318,8 @@ Each row names the blocker whose clearing restores the module, and its sequence,
 |waived
 |Intent already proven under smc_wdt_timeout_pin_test; catalog-only.
 |smc_system_timer_sanity
-|adopter-pending OUT
-|`smc_ref_clock_timer_rate_test` is held out of `all` and fails the rate comparison it makes: `clk_rst.adoc` and `smc_peripherals.sv` clock the OCTS system timer from `clk_smc_i`, not the reference clock the leaf measures against. Restore when the leaf's expectation is reconciled with the spec and it is scheduled.
+|waived
+|Intent already proven under smc_octs_timer_rate_test and smc_octs_clk_rate_test; catalog-only.
 |smc_remap_sanity
 |waived
 |Intent already proven under smc_remap_cla_test; catalog-only.
@@ -51493,9 +51584,7 @@ here with the reason and the
 closing condition. The hosted runners carry Verilator, bender and uv only,
 and no DV workflow builds firmware, so every firmware leaf below, each of
 which runs a `c_compile` stage, is run on demand with the toolchain image
-`scripts/docker-run.sh` provides. The `smc_ref_clock_timer_rate_test`
-row is held out for a different reason: it fails the comparison it was written
-to make; its *Closes when* cell names the change that closes it.
+`scripts/docker-run.sh` provides.
 
 [cols="2,1,3,3",options="header"]
 |===
@@ -51531,7 +51620,6 @@ to make; its *Closes when* cell names the change that closes it.
 |`smc_occp_dual_unsecure_boot_test` |`occp_rom` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |Toolchain as above and a runner budget that fits the complete 33-case `items: occp_rom` group, including this hours-long member
 |`smc_cpu_mmio_read_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`: the wedge image is built with RISC-V GCC and picolibc, so no hosted-runner tier can run it. The two `smc_cpu_l2_*_wedge_test` leaves beside it in `cpu.toml` need no image and are enrolled in `hosted`; these two are not |Toolchain as above; the leaf then joins `hosted` alongside the L2 pair and this row closes
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |As above
-|`smc_ref_clock_timer_rate_test` |none |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It fails the rate comparison it was written to make: the leaf measures TIMER_COUNT against `clk_ref_i` edges, and `clk_rst.adoc` (Timer and Debug Timebases) and `smc_peripherals.sv` clock `system_timer_octs` from `clk_smc_i`, so TIMER_COUNT advances at the `clk_smc_i` rate. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |The leaf's expectation moves to `clk_smc_i`, the clock `clk_rst.adoc` and the RTL give the timer, and the leaf joins the `clock` group with the `ci` tag
 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records what a `CTRL_STATUS` trigger does while the zeroer is busy and grades nothing about it; #3422 asks the zeroer chapter and `zeroer_ctrl.rdl` for the rule |#3422 is ruled: the `OBS-ZEROER-BUSY` line becomes a `CHK-ZEROER-BUSY-TRIGGER` grade and the leaf joins its feature testlist
 |`smc_flr_counter_timing_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It measures the FLR pre-delay and hold on `clk_ref_i` and grades nothing about them; #3423 asks `reset_unit.rdl` to name the clock and the offset |#3423 is ruled: the `OBS-FLR` lines become `CHK-FLR-PRE-DELAY-CYCLES` and `CHK-FLR-HOLD-CYCLES` grades and the leaf joins `reset`
 |`smc_bresp_evidence_obs_test` |`held_out` |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It records the write response of every declared past-extent and gap address and the merged BRESP of split two-beat writes, and grades nothing about them; #3426 asks for the merge rule |#3426 is ruled: the `OBS-BURST` lines become a `CHK-BURST-MERGE-RESP` grade and the leaf joins `fabric`

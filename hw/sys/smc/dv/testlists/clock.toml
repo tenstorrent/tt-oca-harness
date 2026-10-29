@@ -90,6 +90,14 @@ tags = ["ci", "clock"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_octs_timer_rate_test"
+module = "smc_octs_timer_rate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_clk_smc_slower_than_ref_test"
 module = "smc_clk_smc_slower_than_ref_test"
 seed = 1
@@ -284,6 +292,7 @@ name = "clock"
 tests = [
     "smc_clk_running_test",
     "smc_clk_multi_window_test",
+    "smc_octs_timer_rate_test",
     "smc_clk_smc_slower_than_ref_test",
     "smc_clk_smc_equal_ref_test",
     "smc_clk_periph_slower_than_ref_test",
