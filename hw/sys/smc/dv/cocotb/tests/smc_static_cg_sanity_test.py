@@ -8,11 +8,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from seq_lib.smc_static_cg_sanity_test_seq import (
-    THRESH_MAX,
-    THRESH_MIN,
-    smc_static_cg_sanity_test_seq,
-)
+from seq_lib.smc_static_cg_sanity_test_seq import smc_static_cg_sanity_test_seq
 from smc_base_test import smc_base_test
 
 
@@ -77,6 +73,7 @@ class smc_static_cg_sanity_test(smc_base_test):
             details=(
                 f"STATIC_CG P0+P1 LIVE: measured={seq.measured} "
                 f"cells={seq.required_cells_hit}. Enable-threshold coverage is "
-                f"hysteresis {THRESH_MIN} and {THRESH_MAX}."
+                f"hysteresis 9 and 63 only; the CG_HYSTERESIS 0..8 band is "
+                f"not exercised and is not claimed here."
             ),
         )

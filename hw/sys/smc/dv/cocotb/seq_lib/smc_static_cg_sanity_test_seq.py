@@ -21,6 +21,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 # Enable threshold and hysteresis control are the same programmable field.
+# smc_clk_multi_window_test_seq.HYST_LOW_EXCLUSION records the 0..8 band this
+# sequence does not exercise.
 THRESH_MIN = 9
 THRESH_MAX = 63
 HYST_IDLE = 8
@@ -348,6 +350,9 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
 
         # ---- P1 enable-threshold (=hyst) sweep points ----
         # The cells are named after the hysteresis value each one measures.
+        # CG_HYSTERESIS is a 6-bit field whose true minimum is 0; THRESH_MIN is
+        # the lowest point this sequence exercises, not the field's floor, and
+        # the 0..8 band is unproven.
         d_min = await self._measure_threshold(
             "S3b",
             THRESH_MIN,
@@ -367,7 +372,8 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
             "CHK-ENABLE-THRESHOLD",
             "CHK-ENABLE-THRESHOLD: re-gate delay tracks CG_HYSTERESIS within "
             f"1 cycle at the two swept points: hyst={THRESH_MIN} -> delay="
-            f"{d_min}, hyst={THRESH_MAX} -> delay={d_max}",
+            f"{d_min}, hyst={THRESH_MAX} -> delay={d_max}. CG_HYSTERESIS 0..8 "
+            f"is NOT swept here",
         )
         # Each bounded wait raises on expiry; the token reports the cycles each
         # one consumed against the bound it was given.
