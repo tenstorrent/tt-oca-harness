@@ -132,7 +132,7 @@ static void mbx_window(uint32_t idx, uint32_t m) {
     en[1] = 0u;
     cfg[0] = FILT_CFG_RW_EN;
     __asm__ volatile("fence" ::: "memory");
-    rec_ctl("MBX-WINDOW");
+    rec_info("MBX-WINDOW");
     rec_num("mbox", m);
     rec_hex("FILTER_CONFIG", cfg[0]);
     rec_hex("START_ADDR", st[0]);
