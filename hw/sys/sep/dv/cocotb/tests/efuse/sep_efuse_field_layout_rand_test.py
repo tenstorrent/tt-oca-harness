@@ -33,7 +33,7 @@ Checkers:
                   the staged words. Hook control: the DUT port ``jtag_id_i`` equals the
                   drawn ID (``CHK-HOOK FAIL`` otherwise).
 
-Log-only: the word-by-word compare of the 43 registers (``OBS-FIELD LOG``).
+Log-only: the word-by-word compare of the 43 registers (``INFO-FIELD LOG``).
 """
 
 from __future__ import annotations
@@ -167,7 +167,7 @@ class sep_efuse_field_layout_rand_test(sep_base_test):
             mask = _USED_MASK.get(name, _WORD) if nw == 1 else (1 << (32 * nw)) - 1
             log_line(
                 self.logger,
-                "OBS-FIELD",
+                "INFO-FIELD",
                 seed,
                 field=name,
                 off=f"0x{off:x}",

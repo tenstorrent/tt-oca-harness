@@ -111,7 +111,7 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         )
         for sha_bits, key_bits in EXCLUDED_KEYED:
             self.logger.info(
-                "SKIP-ILLEGAL-KEYED: SHA-%d with a %d-bit key exceeds the SHA-2 "
+                "INFO-SKIP-ILLEGAL-KEYED: SHA-%d with a %d-bit key exceeds the SHA-2 "
                 "block size, which hmac.adoc says blocks the start and signals an "
                 "error, so it is not a keyed cell. "
                 "Declared, not driven: no negative cell provokes ERR_CODE here",

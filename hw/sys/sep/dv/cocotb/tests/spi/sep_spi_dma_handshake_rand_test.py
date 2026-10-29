@@ -189,7 +189,7 @@ fewer than chunks_total; the normal-mode copy reads GO=0 at DONE, shows
 CHUNK_DONE in a poll, and shows a rise of PIC source 10 (bit 9 of
 ``sep_internal_interrupts_probe_o``), so a dead or mis-bound bit-9 tap fails
 the control of the line leg of CHK-HS-NOCHUNK; INTR_ENABLE reads back with
-DMA_CHUNK_DONE=1 in the handshake run (``CTL-HS-INTR-EN``). A missing control logs
+DMA_CHUNK_DONE=1 in the handshake run (``CTRL-HS-INTR-EN``). A missing control logs
 CTRL-MISSING and fails the leaf.
 
 Probes: ``spi_lsio_trigger_probe_o``, ``dma_busy_probe_o``, ``spi_tx_qd_probe_o``
@@ -755,7 +755,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             self._ctrl_missing("CHK-HS-DEPTH", f"segment of {rx_bytes} bytes did not end: {exc}")
         st = await self.spi.poll_status(lambda s: s.active == 0, 2_000, "depth: ACTIVE=0")
         self.logger.info(
-            "CTL-HS-DEPTH LOG seed=%d rx_bytes=%d rxqd=%d rxfull=%d",
+            "CTRL-HS-DEPTH LOG seed=%d rx_bytes=%d rxqd=%d rxfull=%d",
             cfg.seed,
             rx_bytes,
             st.rxqd,
@@ -1184,7 +1184,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         go_nm = self._go_cmp(await dma.rd(DMA_CONTROL))
         nm_img = await self.mem.read(NM_DST, NM_TOTAL // 4)
         self.logger.info(
-            "CTL-HS-NORMAL LOG seed=%d done=%d error=%d polls=%d polls_with_chunk_done=%d "
+            "CTRL-HS-NORMAL LOG seed=%d done=%d error=%d polls=%d polls_with_chunk_done=%d "
             "chunk_irq_rises=%d go_writes=%d go=%d image_equal=%d",
             cfg.seed,
             st.done,
@@ -1335,7 +1335,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         # (chunks of cfg.cw words); CHK-HS-DATA fails.
         ref_match = sum(1 for i in range(nw) if ref[i] == golden[i])
         self.logger.info(
-            "CTL-HS-REF LOG seed=%d words=%d ref_distinct=%d ref_match_golden=%d/%d "
+            "CTRL-HS-REF LOG seed=%d words=%d ref_distinct=%d ref_match_golden=%d/%d "
             "sentinel=0x%08x ref=%s",
             cfg.seed,
             len(ref),
@@ -1363,7 +1363,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         # resets to 0, so a lost write would also keep bits 9 and 8 low.
         hs_intr_en = await self.dma.rd(INTR_ENABLE)
         self.logger.info(
-            "CTL-HS-INTR-EN LOG seed=%d intr_enable=0x%08x chunk_en=%d done_en=%d",
+            "CTRL-HS-INTR-EN LOG seed=%d intr_enable=0x%08x chunk_en=%d done_en=%d",
             cfg.seed,
             hs_intr_en,
             int(bool(hs_intr_en & INTR_EN_CHUNK)),
@@ -1404,7 +1404,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         self._pass("CHK-HS-DATA", line)
         self._expect_rx(FLASH_READ, 1, words_bytes(dest), want=4 * nw, label="handshake")
         self.logger.info(
-            "T-FILL LOG seed=%d t_fill_clks=%d polls=%d", cfg.seed, t_fill, len(hs_polls)
+            "INFO-T-FILL LOG seed=%d t_fill_clks=%d polls=%d", cfg.seed, t_fill, len(hs_polls)
         )
         # CHK-HS-GO at the total: CONTROL and STATUS once the destination holds
         # TOTAL_DATA_SIZE bytes (logged), and again after a further t_fill wait
@@ -1435,10 +1435,10 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         hs_irq_high = self.irq.high_clocks_since(m_hs_irq, "chunk")
         self._probe_log("handshake")
         for i, st in enumerate(hs_polls):
-            self.logger.debug("HS-POLL %d %s", i, st.fmt())
+            self.logger.debug("INFO-HS-POLL %d %s", i, st.fmt())
         hs_chunk_polls = sum(st.chunk_done for st in hs_polls)
         self.logger.info(
-            "HS-POLL LOG seed=%d polls=%d polls_with_chunk_done=%d chunk_irq_rises=%d "
+            "INFO-HS-POLL LOG seed=%d polls=%d polls_with_chunk_done=%d chunk_irq_rises=%d "
             "chunk_irq_high_clks=%d last=%s",
             cfg.seed,
             len(hs_polls),
@@ -1484,7 +1484,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         filled = self._filled(img1, n_tot)
         n_moved = sum(filled)
         self.logger.info(
-            "STOP-PRE LOG seed=%d n_moved=%d chunks_total=%d filled=%s",
+            "INFO-STOP-PRE LOG seed=%d n_moved=%d chunks_total=%d filled=%s",
             cfg.seed,
             n_moved,
             n_tot,
@@ -1514,7 +1514,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             and all(w == self.sentinel for w in img_re[re_words:])
         )
         self.logger.info(
-            "STOP-RETRIG LOG seed=%d n_moved_retrigger=%d filled=%s trigger_low_before=%d "
+            "OBS-STOP-RETRIG LOG seed=%d n_moved_retrigger=%d filled=%s trigger_low_before=%d "
             "trigger_rises=%d",
             cfg.seed,
             n_re,

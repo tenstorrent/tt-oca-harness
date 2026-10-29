@@ -94,7 +94,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogenalways</ipxact:name>
-              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake</ipxact:description>
+              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -339,7 +339,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogenalways</ipxact:name>
-              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake</ipxact:description>
+              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -584,7 +584,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogenalways</ipxact:name>
-              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake</ipxact:description>
+              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -829,7 +829,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogenalways</ipxact:name>
-              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake</ipxact:description>
+              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34155,8 +34155,10 @@ including a write with no byte lanes enabled. The start is ignored while SIZE is
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core0_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
-A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 starts a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+count of its current phase, the pre-reset wait or the hold; it does not queue a
+second pulse. A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34164,12 +34166,15 @@ A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxac
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core1_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
-A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 starts a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+count of its current phase, the pre-reset wait or the hold; it does not queue a
+second pulse. A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34177,12 +34182,15 @@ A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxac
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core2_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
-A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 starts a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+count of its current phase, the pre-reset wait or the hold; it does not queue a
+second pulse. A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34190,12 +34198,15 @@ A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxac
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core3_reset_pulse_start_n0_scan</ipxact:name>
-              <ipxact:description>Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
-A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
+              <ipxact:description>Writing a 1 starts a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+count of its current phase, the pre-reset wait or the hold; it does not queue a
+second pulse. A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34203,6 +34214,7 @@ A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.</ipxac
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -34262,7 +34274,9 @@ WARNING: using this can cause any outstanding axi requests to and from the clust
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>core_resets_done</ipxact:name>
-              <ipxact:description>Logic low while performing core reset, logic high otherwise.</ipxact:description>
+              <ipxact:description>One bit per core, low while that core's reset pulse runs (pre-reset wait and hold),
+high otherwise. A level reset held through the core's RESET_CTRL reset_n field,
+or through RESET_CTRL.uncore_reset_n_n0_scan, does not clear it.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -34434,7 +34448,8 @@ rather than equal to it.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>data</ipxact:name>
-              <ipxact:description>Test control register for the CPU</ipxact:description>
+              <ipxact:description>Reads 0 in hardware. A simulation testbench can deposit a value here to hand
+test control values to firmware.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

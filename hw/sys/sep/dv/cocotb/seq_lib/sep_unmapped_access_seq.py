@@ -855,7 +855,7 @@ class SepUnmappedAccess:
                 task.kill()
             where = f"control {op} 0x{EXT_LOOPBACK_CTRL:08x}"
             self.log.info(
-                "UNMAPPED-EXT-CONTROL: %s resp=%s timed_out=%s; %d handshake(s) at the ext initiator",
+                "INFO-UNMAPPED-EXT-CONTROL: %s resp=%s timed_out=%s; %d handshake(s) at the ext initiator",
                 where,
                 RESP_NAME.get(resp, resp),
                 to,
@@ -881,7 +881,7 @@ class SepUnmappedAccess:
         for w in self.cfg.live:
             if w.addr in self.cfg.unreset:
                 self.log.info(
-                    "UNMAPPED-LIVE: %s 0x%08x has a field with no RDL reset; it is "
+                    "INFO-UNMAPPED-LIVE: %s 0x%08x has a field with no RDL reset; it is "
                     "written before its first read and is not restored",
                     w.name,
                     w.addr,

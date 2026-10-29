@@ -80,7 +80,7 @@ width, so the cell checks grade the stages, endianness, corners and lock on
 their own; the byte-lane placement is graded only by CHK-KMAC-NARROW-WRITE.
 
 Observations: ``OBS-KMAC-DONE-FALL`` logs bit 20 after the write-one clear.
-``OBS-KMAC-FIFO-DONE`` logs the whole ``STATUS`` word of the graded read.
+``INFO-KMAC-FIFO-DONE`` logs the whole ``STATUS`` word of the graded read.
 ``OBS-KMAC-REGWEN-GATED-ERR`` logs ``INTR_STATE.kmac_err`` and ``ERR_CODE``
 after the gated writes (registers.md lines 724-725 say an update while hashing
 reports an error and state no code). ``OBS-KMAC-REGWEN-GATED-RSVD`` logs the
@@ -867,7 +867,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             fifo_full=full,
             squeeze=_bits(status, _SQUEEZE),
         )
-        self.chk.obs("KMAC-FIFO-DONE", **tag, status=f"0x{status:08x}")
+        self.chk.info("KMAC-FIFO-DONE", **tag, status=f"0x{status:08x}")
         if cell.corner > 0:
             # Positive probe from the DUT: under the drain stall the FIFO held message
             # words (fifo_depth >= 1, fifo_empty 0), and the cell wrote more than one
