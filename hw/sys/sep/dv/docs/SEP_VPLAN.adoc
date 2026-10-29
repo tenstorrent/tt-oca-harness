@@ -2705,7 +2705,7 @@ the test does.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |KMAC `STATUS` reports `fifo_depth`, `fifo_empty`, `fifo_full`, `alert_fatal_fault` and `alert_recov_ctrl_update_err`. The entries grade `sha3_idle`, `sha3_absorb` and `sha3_squeeze`, and `fifo_depth`, `fifo_empty` and `fifo_full` after the done event.
 |KMAC: at which `fifo_depth` does `STATUS.fifo_full` read 1? The depth is not stated (same question as for the HMAC message FIFO). Source: `vendor/lowRISC/opentitan/overlay/regs/kmac/regs/gen/adoc/kmac.adoc` (`STATUS`).
-|`sep_kmac_stream_cfg_rand_test` grades `fifo_depth` 0, `fifo_empty` 1 and `fifo_full` 0 after the done event (CHK-KMAC-FIFO-DONE). Its control holds message words in the FIFO with the drain-stall inject and requires `fifo_depth` >= 1 and `fifo_empty` 0 on that `STATUS` read. It does not grade the depth during a burst, the two alert bits, or `fifo_full` at depth, because the depth is not stated. No test logs it.
+|`sep_kmac_stream_cfg_rand_test` grades `fifo_depth` 0, `fifo_empty` 1 and `fifo_full` 0 after the done event (CHK-KMAC-FIFO-DONE). Its control holds message words in the FIFO with the drain-stall inject and requires `fifo_depth` >= 1 and `fifo_empty` 0 on that `STATUS` read. It does not grade the depth during a burst, the two alert bits, or `fifo_full` at depth, because the depth is not stated. No test logs the burst depth or the alert bits.
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |CSRNG `HW_EXC_STS` reports a hardware-instance exception per bit (write zero to clear), and `INTR_STATE.CS_HW_INST_EXC` mirrors it. The entry logs the register only.
 |Which stimulus that the SEP can drive sets a `HW_EXC_STS` bit, and which bit does each cause set? Source: `vendor/lowRISC/opentitan/overlay/regs/csrng/regs/csrng.rdl` (`HW_EXC_STS`).
@@ -2805,7 +2805,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Tie-break among equal-priority enabled sources
 |Which source wins among equal-priority enabled sources? (`hw/sys/sep/regs/gen/adoc/blocks/el2_pic.adoc`, `meipl` states no tie-break.)
-|`sep_pic_priority_gate_rand_test` (CHK-WINNER) grades the lowest source ID first on a tie, the rule of the VeeR EL2 PRM section 8.3.3 (cited at `hw/sys/sep/doc/cpu.adoc:22-23`). No test logs it.
+|`sep_pic_priority_gate_rand_test` (CHK-WINNER) grades the lowest source ID first on a tie, the rule of the VeeR EL2 PRM section 8.3.3 (cited at `hw/sys/sep/doc/cpu.adoc:22-23`).
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |`meigwclr` write to a level source
 |What does a `meigwclr[N]` write do to a level-configured source? (`el2_pic.adoc`, `meigwctrl` names edge sources only.)
@@ -2829,7 +2829,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Running priority, claim and complete, nesting
 |Does the PIC have a running-priority threshold, a claim and complete register, or a nesting rule? (`hw/sys/sep/doc/interrupts.adoc`, "Software Handling" says "and related registers"; `el2_pic.adoc` lists none.)
-|`sep_pic_priority_gate_rand_test` grades the `meipt` threshold (CHK-THRESHOLD) and nesting through `meicidpl` and `meicurpl` (CHK-NEST) against the VeeR EL2 PRM sections 8.8, 8.12.5, 8.12.9 and 8.12.10 (cited at `hw/sys/sep/doc/cpu.adoc:22-23`). The claim and complete registers are not graded. No test logs it.
+|`sep_pic_priority_gate_rand_test` grades the `meipt` threshold (CHK-THRESHOLD) and nesting through `meicidpl` and `meicurpl` (CHK-NEST) against the VeeR EL2 PRM sections 8.8, 8.12.5, 8.12.9 and 8.12.10 (cited at `hw/sys/sep/doc/cpu.adoc:22-23`). The claim and complete registers are not graded, and no test logs them.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Width and mapping of `extintsrc_req_i`
 |What is the width of `extintsrc_req_i`, and which bit drives which of sources 44 to 255? (`hw/sys/sep/doc/interrupts.adoc`; `hw/sys/sep/doc/port_table.adoc`.)
@@ -2845,7 +2845,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Order of bark against a takeable PIC interrupt
 |Is a bark or a takeable PIC interrupt taken first, and does an NMI preempt a running external handler? (`hw/sys/sep/doc/interrupts.adoc`, "NMI — Watchdog Timer Bark".)
-|`sep_nmi_vector_bark_rand_test` (CHK-NMI-IN-EXT) grades the preempt part: a bark fired while an external handler waits is taken once inside that handler (VeeR EL2 PRM section 3.16, cited at `hw/sys/sep/doc/cpu.adoc:22-23`). The order of a bark against a takeable PIC interrupt is not graded. No test logs it.
+|`sep_nmi_vector_bark_rand_test` (CHK-NMI-IN-EXT) grades the preempt part: a bark fired while an external handler waits is taken once inside that handler (VeeR EL2 PRM section 3.16, cited at `hw/sys/sep/doc/cpu.adoc:22-23`). The order of a bark against a takeable PIC interrupt is not graded, and no test logs it.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |`mstatus` at NMI entry
 |Does an NMI entry update `mstatus.MPIE` and `mstatus.MIE`, and to what values? `hw/sys/sep/doc/interrupts.adoc` ("NMI — Watchdog Timer Bark") and VeeR EL2 PRM section 3.16 (cited at `hw/sys/sep/doc/cpu.adoc:22-23`) state no `mstatus` update on NMI entry.
@@ -2865,7 +2865,7 @@ the test does.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>; <<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Arming of internal timers
 |Which CSRs arm the two internal timers (`mip.MITIP0`, `mip.MITIP1`), and what does "linked" mean? They are not in the specification set. (`hw/sys/sep/doc/interrupts.adoc`, "Timer and Software Interrupts".)
-|`sep_pic_priority_gate_rand_test` arms both timers through the CSRs of the VeeR EL2 PRM chapter 6, Internal Timers (cited at `hw/sys/sep/doc/cpu.adoc:22-23`), and grades the cause, the `mie.MITIE` gate and the bound: no trap with the timer stopped at one below `mitb`, one trap at `mitb` (CHK-INT-TIMER-HOLD, CHK-INT-TIMER-TRAP). The linked mode is not graded. No test logs it.
+|`sep_pic_priority_gate_rand_test` arms both timers through the CSRs of the VeeR EL2 PRM chapter 6, Internal Timers (cited at `hw/sys/sep/doc/cpu.adoc:22-23`), and grades the cause, the `mie.MITIE` gate and the bound: no trap with the timer stopped at one below `mitb`, one trap at `mitb` (CHK-INT-TIMER-HOLD, CHK-INT-TIMER-TRAP). The linked mode is not graded, and no test logs it.
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>
 |Source 13
 |What does source 13 aggregate, when `hw/sys/sep/doc/interrupts.adoc` calls it the WDT aggregated alert and `hw/sys/sep/doc/watchdog.adoc` says the alert outputs are left unconnected?
@@ -3009,7 +3009,7 @@ the test does.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |Lockstep status
 |What does `lockstep_status_o` report for a `lockstep_ctrl_i` value? The core build disables lockstep (`hw/sys/sep/doc/cpu.adoc`, Processor Core), and the status reads 0 and the control is inert unless the core is built with `RV_LOCKSTEP_ENABLE` (`hw/sys/sep/doc/port_table.adoc`).
-|`sep_cpu_isa_pmp_csr_test` (CHK-LOCKSTEP-INERT, VCS only) holds each of the four `lockstep_ctrl_i` values over retired instructions and grades `lockstep_status_o` 0 on every clock. The check fails on a lockstep-enabled build or on a status tied to a control bit. No test logs it.
+|`sep_cpu_isa_pmp_csr_test` (CHK-LOCKSTEP-INERT, VCS only) holds each of the four `lockstep_ctrl_i` values over retired instructions and grades `lockstep_status_o` 0 on every clock. The check fails on a lockstep-enabled build or on a status tied to a control bit.
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
 |`lockstep_ctrl_i` bit layout
 |Which bit of `lockstep_ctrl_i` is the corruption-detection disable and which is the error-injection enable? `hw/sys/sep/doc/port_table.adoc:58` names the two controls and states no bit position.
