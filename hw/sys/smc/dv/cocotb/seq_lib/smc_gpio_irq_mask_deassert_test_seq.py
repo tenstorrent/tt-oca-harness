@@ -35,7 +35,7 @@ from cocotb.triggers import ClockCycles
 from .smc_addr_map import smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
 # Field encoding per hw/ip/gpio/regs/gpio_intf.rdl.
 _RX_ENABLE = 2 << 4  # enable_rx_tx = 2'b10, sample the pad

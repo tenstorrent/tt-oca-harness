@@ -328,14 +328,14 @@ def build_instances() -> tuple[Inst, ...]:
     out: list[Inst] = []
     assert GPIO_INTF_NUM == 65, f"GPIO_INTF_NUM is {GPIO_INTF_NUM}, the contract names 0..64"
     for i in range(GPIO_INTF_NUM):
-        sym = "SMC_TOP_GPIO_INTF_BASE_ADDR"
-        a = _indexed(sym, "gpio_intf[{}]/ACCESS_FILTER", i)
-        b = _indexed(sym, "gpio_intf[{}]/DATA_CTRL", i)
+        sym = "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR"
+        a = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", i)
+        b = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/DATA_CTRL", i)
         _check_probe(a, written=True)
         _check_probe(b, written=True)
         out.append(
             Inst(
-                f"gpio_intf[{i}]",
+                f"gpio_intf_wrap/gpio_intf[{i}]",
                 "gpio_intf",
                 a.addr,
                 a.width_bytes,

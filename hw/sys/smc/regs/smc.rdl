@@ -8,7 +8,7 @@
 `include "dma_ctrl.rdl"
 `include "dfx_ctrl_status.rdl"
 `include "filter_ctrl.rdl"
-`include "gpio_intf.rdl"
+`include "gpio_intf_wrap.rdl"
 `include "remapped_region.rdl"
 `include "reset_unit.rdl"
 `include "scratch.rdl"
@@ -55,7 +55,7 @@ addrmap smc_top #(
     reset_unit                     smc_reset_unit             @BASE_ADDR + 0x000_2000;
     misc_wrap                      smc_misc_wrap              @BASE_ADDR + 0x000_2800;
 
-    gpio_intf                      gpio_intf[65]              @BASE_ADDR + 0x000_3000 += 0x10;
+    gpio_intf_wrap #(.NUM_GPIOS(65)) gpio_intf_wrap           @BASE_ADDR + 0x000_3000;
 
     avsbus_controller              smc_avsbus_controller          @BASE_ADDR + 0x000_4000;
 
@@ -125,8 +125,8 @@ addrmap smc_top #(
     smc_reset_unit->desc = "System reset control.";
     smc_misc_wrap->ocah_aperture_size = 0x800;
     smc_misc_wrap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
-    gpio_intf->ocah_aperture_size = 0x1000;
-    gpio_intf->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    gpio_intf_wrap->ocah_aperture_size = 0x1000;
+    gpio_intf_wrap->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_avsbus_controller->ocah_aperture_size = 0x1000;
     smc_avsbus_controller->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_i2c_wrap->ocah_aperture_size = 0x1000;

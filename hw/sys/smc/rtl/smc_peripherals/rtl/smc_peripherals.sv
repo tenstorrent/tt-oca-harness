@@ -878,12 +878,12 @@ module smc_peripherals #(
   /////////////
 
   // Protect against truncation from casts
-  `OCAH_ASSERT_STATIC(PadringGpioBaseFits_A, smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0
-                      ) < (64'd1 << gpio_pkg::AddrWidth))
+  `OCAH_ASSERT_STATIC(PadringGpioBaseFits_A,
+                      smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR < (64'd1 << gpio_pkg::AddrWidth))
 
   smc_padring #(
     .MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
-    .GPIO_INTF_BASE_ADDR        (gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
+    .GPIO_INTF_BASE_ADDR        (gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR))
   ) u_smc_padring (
     .clk_i                      (clk_smc_i),
     .rst_primary_ni             (rst_primary_smc_clk_no),

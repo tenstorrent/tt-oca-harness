@@ -18,7 +18,7 @@ description = "Per-core watchdog timers."
 [[views.rows]]
 kind = "group"
 label = "System and Peripheral Control"
-members = ["smc_reset_unit", "smc_misc_wrap", "gpio_intf", "smc_avsbus_controller", "smc_i2c_wrap", "smc_uart_wrap", "smc_efuse_map", "efuse_interface_ctrl", "smc_telemetry_receiver_wrap", "smc_system_timer_octs", "dtp_ctrl_reg", "dfx_ctrl"]
+members = ["smc_reset_unit", "smc_misc_wrap", "gpio_intf_wrap", "smc_avsbus_controller", "smc_i2c_wrap", "smc_uart_wrap", "smc_efuse_map", "efuse_interface_ctrl", "smc_telemetry_receiver_wrap", "smc_system_timer_octs", "dtp_ctrl_reg", "dfx_ctrl"]
 description = "Reset, GPIO, serial peripherals, eFuse, telemetry, timer, DTP, and DFT status."
 
 [[views.rows]]

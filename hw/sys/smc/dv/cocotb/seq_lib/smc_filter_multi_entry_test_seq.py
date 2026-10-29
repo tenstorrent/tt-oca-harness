@@ -382,7 +382,7 @@ _PX_SPREAD_GROUPS = 2
 _PXBAR_PROBES: tuple[tuple[str, str, bool], ...] = (
     ("reset_unit", "smc_reset_unit/SS_CONFIG", False),
     ("misc_scratch", "smc_misc_wrap/scratch_cold/SCRATCH[0]", False),
-    ("gpio_intf", "gpio_intf/ACCESS_FILTER", False),
+    ("gpio_intf", "gpio_intf_wrap/gpio_intf/ACCESS_FILTER", False),
     ("avsbus", "smc_avsbus_controller/AVS_CFG_0", True),
     ("i2c", "smc_i2c_wrap/i2c/HOST_FIFO_CONFIG", True),
     ("uart", "smc_uart_wrap/uart_log_engine_wrap/uart/SCR", True),

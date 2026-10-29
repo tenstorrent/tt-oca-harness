@@ -127,7 +127,7 @@ _UNITS = (
     ("WDT3", 0xC00, 0xFFF, "smc_cluster_core3_wdt/CTRL"),
     ("RESET_UNIT", 0x2000, 0x27FF, None),
     ("MISC_WRAP", 0x2800, 0x2FFF, "smc_misc_wrap/scratch_cold/SCRATCH[0]"),
-    ("GPIO", 0x3000, 0x3FFF, "gpio_intf/DATA_CTRL"),
+    ("GPIO", 0x3000, 0x3FFF, "gpio_intf_wrap/gpio_intf/DATA_CTRL"),
     ("AVSBUS", 0x4000, 0x4FFF, "smc_avsbus_controller/AVS_CMD"),
     ("I2C", 0x5000, 0x5FFF, "smc_i2c_wrap/i2c/INTR_STATE"),
     ("UART", 0x6000, 0x6FFF, "smc_uart_wrap/uart_log_engine_wrap/uart_log_engine_ctrl/CTRL"),

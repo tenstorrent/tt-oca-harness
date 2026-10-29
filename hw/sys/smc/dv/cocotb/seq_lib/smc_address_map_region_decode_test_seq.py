@@ -90,10 +90,12 @@ MISC_WRAP_BASE = smc_addr("SMC_TOP_SMC_MISC_WRAP_BASE_ADDR")
 MISC_WRAP_SIZE = smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
 
 # --- GPIO: 65 interface instances ----------------------------------------------------
-GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_NUM")
-GPIO0_ACCESS_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
+GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM")
+GPIO0_ACCESS_FILTER = smc_indexed_addr(
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0
+)
 GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
 )
 
 # --- Words past a generated block's extent -------------------------------------------------
@@ -101,8 +103,8 @@ GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
 # go to the error slave: past the GPIO_INTF instances (TOTAL_SIZE), past
 # misc_wrap (SIZE), and, in the data-accelerator range, past the DMA block
 # (the gap below the zeroer) and past the zeroer block.
-GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
-    "SMC_TOP_GPIO_INTF_TOTAL_SIZE"
+GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE"
 )
 MISC_PAST_LAST = MISC_WRAP_BASE + MISC_WRAP_SIZE + 4
 DMA_DESC_FIRST = smc_addr("SMC_TOP_DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR")

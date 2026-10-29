@@ -41,13 +41,16 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE = 64'h10;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR = 64'hC0002A00;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE = 64'hC;
 
-function automatic longint unsigned SMC_TOP_GPIO_INTF_BASE_ADDR(input int unsigned gpio_intf_idx);
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR = 64'hC0003000;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_SIZE = 64'h410;
+
+function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_NUM = 64'h41;
-localparam longint unsigned SMC_TOP_GPIO_INTF_SIZE = 64'hC;
-localparam longint unsigned SMC_TOP_GPIO_INTF_STRIDE = 64'h10;
-localparam longint unsigned SMC_TOP_GPIO_INTF_TOTAL_SIZE = 64'h410;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_SIZE = 64'hC;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE = 64'h10;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE = 64'h410;
 
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR = 64'hC0004000;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE = 64'h5C;
@@ -638,18 +641,18 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR = 64'hC0002A00;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR = 64'hC0002A04;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR = 64'hC0002A08;
-function automatic longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(input int unsigned gpio_intf_idx);
+function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_NUM = 64'h41;
-function automatic longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR(input int unsigned gpio_intf_idx);
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM = 64'h41;
+function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003004 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h41;
-function automatic longint unsigned SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(input int unsigned gpio_intf_idx);
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h41;
+function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003008 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h41;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CMD_BASE_ADDR = 64'hC0004000;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_READBACK_BASE_ADDR = 64'hC0004004;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR = 64'hC0004008;

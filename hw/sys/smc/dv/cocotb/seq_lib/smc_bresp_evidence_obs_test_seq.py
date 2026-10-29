@@ -53,7 +53,7 @@ _INTERNAL_XBAR = {
 _PERIPH_XBAR = {
     "smc_reset_unit",
     "smc_misc_wrap",
-    "gpio_intf",
+    "gpio_intf_wrap",
     "smc_avsbus_controller",
     "smc_i2c_wrap",
     "smc_uart_wrap",
@@ -366,7 +366,7 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         )
         assert scratch_cold_7 == base + 0x281C and scratch_cold_6 == base + 0x2818
         assert scratch_warm_0 == base + 0x2880
-        gpio_last = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 64)
+        gpio_last = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 64)
         assert gpio_last == base + 0x3408
         outfilt_last = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 15) + 0x18
         assert outfilt_last == base + 0x1_61F8
@@ -374,7 +374,7 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         assert cpu_last == base + 0x3_92B8
         alias_0 = smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0)
         assert alias_0 == base + 0x1_2000
-        gpio_0 = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+        gpio_0 = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
         assert gpio_0 == base + 0x3000
         mb_wd = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR")
         assert mb_wd == base + 0x1_8000

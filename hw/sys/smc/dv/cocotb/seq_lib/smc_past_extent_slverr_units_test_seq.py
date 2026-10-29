@@ -147,9 +147,9 @@ _SPARE_OFFSETS = (
 )
 _PERIPH_UNITS = (
     (
-        "gpio_intf",
+        "gpio_intf_wrap",
         "GPIO",
-        smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", 0),
     ),
     ("smc_avsbus_controller", "AVS", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR")),
     (

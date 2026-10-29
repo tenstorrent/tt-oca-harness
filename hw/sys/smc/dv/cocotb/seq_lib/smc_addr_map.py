@@ -315,8 +315,8 @@ TELEMETRY_CG_EN = _field_mask(
 AVS_CG_EN = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__AVS_CG_EN_bm")
 
 # GPIO_INTF meta from PeakRDL.
-GPIO_INTF_NUM = smc_addr("SMC_TOP_GPIO_INTF_NUM")
-GPIO_INTF_STRIDE = smc_addr("SMC_TOP_GPIO_INTF_STRIDE")
+GPIO_INTF_NUM = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM")
+GPIO_INTF_STRIDE = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE")
 
 _GPIO_INTF_H = _REPO / "hw" / "ip" / "gpio" / "regs" / "gen" / "c" / "gpio_intf.h"
 

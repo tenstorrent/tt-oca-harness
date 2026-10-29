@@ -409,20 +409,31 @@ localparam int unsigned SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_ADDR 
 
 
 //==============================================================================
+// Addresses for Address Map: gpio_intf_wrap
+//==============================================================================
+
+
+localparam int unsigned GPIO_INTF_WRAP_REG_MAP_BASE_ADDR                                                          = 32'hC0003000;
+localparam int unsigned GPIO_INTF_WRAP_REG_MAP_SIZE                                                               = 32'h00000410;
+
+
+
+
+//==============================================================================
 // Addresses for Address Map: gpio_intf[0]
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_0__REG_MAP_BASE_ADDR                                                            = 32'hC0003000;
-localparam int unsigned GPIO_INTF_0__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_0__REG_MAP_BASE_ADDR                                             = 32'hC0003000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_0__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_0__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_0__DATA_CTRL_REG_ADDR                                                           = 32'hC0003000;
-localparam int unsigned GPIO_INTF_0__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_0__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003004;
-localparam int unsigned GPIO_INTF_0__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_0__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_0__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_0__DATA_CTRL_REG_ADDR                                            = 32'hC0003000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_0__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_0__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_0__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_0__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003008;
 
 
 //==============================================================================
@@ -430,16 +441,16 @@ localparam int unsigned GPIO_INTF_0__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_1__REG_MAP_BASE_ADDR                                                            = 32'hC0003010;
-localparam int unsigned GPIO_INTF_1__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_1__REG_MAP_BASE_ADDR                                             = 32'hC0003010;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_1__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_1__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_1__DATA_CTRL_REG_ADDR                                                           = 32'hC0003010;
-localparam int unsigned GPIO_INTF_1__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_1__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003014;
-localparam int unsigned GPIO_INTF_1__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_1__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003018;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_1__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_1__DATA_CTRL_REG_ADDR                                            = 32'hC0003010;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_1__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_1__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003014;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_1__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_1__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003018;
 
 
 //==============================================================================
@@ -447,16 +458,16 @@ localparam int unsigned GPIO_INTF_1__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_2__REG_MAP_BASE_ADDR                                                            = 32'hC0003020;
-localparam int unsigned GPIO_INTF_2__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_2__REG_MAP_BASE_ADDR                                             = 32'hC0003020;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_2__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_2__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_2__DATA_CTRL_REG_ADDR                                                           = 32'hC0003020;
-localparam int unsigned GPIO_INTF_2__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_2__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003024;
-localparam int unsigned GPIO_INTF_2__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_2__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003028;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_2__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_2__DATA_CTRL_REG_ADDR                                            = 32'hC0003020;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_2__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_2__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003024;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_2__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_2__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003028;
 
 
 //==============================================================================
@@ -464,16 +475,16 @@ localparam int unsigned GPIO_INTF_2__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_3__REG_MAP_BASE_ADDR                                                            = 32'hC0003030;
-localparam int unsigned GPIO_INTF_3__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_3__REG_MAP_BASE_ADDR                                             = 32'hC0003030;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_3__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_3__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_3__DATA_CTRL_REG_ADDR                                                           = 32'hC0003030;
-localparam int unsigned GPIO_INTF_3__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_3__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003034;
-localparam int unsigned GPIO_INTF_3__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_3__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003038;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_3__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_3__DATA_CTRL_REG_ADDR                                            = 32'hC0003030;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_3__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_3__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003034;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_3__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_3__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003038;
 
 
 //==============================================================================
@@ -481,16 +492,16 @@ localparam int unsigned GPIO_INTF_3__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_4__REG_MAP_BASE_ADDR                                                            = 32'hC0003040;
-localparam int unsigned GPIO_INTF_4__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_4__REG_MAP_BASE_ADDR                                             = 32'hC0003040;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_4__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_4__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_4__DATA_CTRL_REG_ADDR                                                           = 32'hC0003040;
-localparam int unsigned GPIO_INTF_4__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_4__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003044;
-localparam int unsigned GPIO_INTF_4__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_4__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003048;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_4__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_4__DATA_CTRL_REG_ADDR                                            = 32'hC0003040;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_4__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_4__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003044;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_4__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_4__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003048;
 
 
 //==============================================================================
@@ -498,16 +509,16 @@ localparam int unsigned GPIO_INTF_4__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_5__REG_MAP_BASE_ADDR                                                            = 32'hC0003050;
-localparam int unsigned GPIO_INTF_5__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_5__REG_MAP_BASE_ADDR                                             = 32'hC0003050;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_5__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_5__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_5__DATA_CTRL_REG_ADDR                                                           = 32'hC0003050;
-localparam int unsigned GPIO_INTF_5__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_5__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003054;
-localparam int unsigned GPIO_INTF_5__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_5__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003058;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_5__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_5__DATA_CTRL_REG_ADDR                                            = 32'hC0003050;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_5__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_5__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003054;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_5__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_5__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003058;
 
 
 //==============================================================================
@@ -515,16 +526,16 @@ localparam int unsigned GPIO_INTF_5__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_6__REG_MAP_BASE_ADDR                                                            = 32'hC0003060;
-localparam int unsigned GPIO_INTF_6__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_6__REG_MAP_BASE_ADDR                                             = 32'hC0003060;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_6__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_6__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_6__DATA_CTRL_REG_ADDR                                                           = 32'hC0003060;
-localparam int unsigned GPIO_INTF_6__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_6__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003064;
-localparam int unsigned GPIO_INTF_6__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_6__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003068;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_6__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_6__DATA_CTRL_REG_ADDR                                            = 32'hC0003060;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_6__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_6__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003064;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_6__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_6__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003068;
 
 
 //==============================================================================
@@ -532,16 +543,16 @@ localparam int unsigned GPIO_INTF_6__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_7__REG_MAP_BASE_ADDR                                                            = 32'hC0003070;
-localparam int unsigned GPIO_INTF_7__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_7__REG_MAP_BASE_ADDR                                             = 32'hC0003070;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_7__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_7__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_7__DATA_CTRL_REG_ADDR                                                           = 32'hC0003070;
-localparam int unsigned GPIO_INTF_7__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_7__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003074;
-localparam int unsigned GPIO_INTF_7__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_7__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003078;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_7__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_7__DATA_CTRL_REG_ADDR                                            = 32'hC0003070;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_7__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_7__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003074;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_7__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_7__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003078;
 
 
 //==============================================================================
@@ -549,16 +560,16 @@ localparam int unsigned GPIO_INTF_7__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_8__REG_MAP_BASE_ADDR                                                            = 32'hC0003080;
-localparam int unsigned GPIO_INTF_8__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_8__REG_MAP_BASE_ADDR                                             = 32'hC0003080;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_8__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_8__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_8__DATA_CTRL_REG_ADDR                                                           = 32'hC0003080;
-localparam int unsigned GPIO_INTF_8__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_8__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003084;
-localparam int unsigned GPIO_INTF_8__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_8__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003088;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_8__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_8__DATA_CTRL_REG_ADDR                                            = 32'hC0003080;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_8__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_8__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003084;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_8__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_8__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003088;
 
 
 //==============================================================================
@@ -566,16 +577,16 @@ localparam int unsigned GPIO_INTF_8__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_9__REG_MAP_BASE_ADDR                                                            = 32'hC0003090;
-localparam int unsigned GPIO_INTF_9__REG_MAP_SIZE                                                                 = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_9__REG_MAP_BASE_ADDR                                             = 32'hC0003090;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_9__REG_MAP_SIZE                                                  = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_9__DATA_CTRL_REG_OFFSET                                                         = 32'h00000000;
-localparam int unsigned GPIO_INTF_9__DATA_CTRL_REG_ADDR                                                           = 32'hC0003090;
-localparam int unsigned GPIO_INTF_9__DATA_CTRL_ENABLE_REG_OFFSET                                                  = 32'h00000004;
-localparam int unsigned GPIO_INTF_9__DATA_CTRL_ENABLE_REG_ADDR                                                    = 32'hC0003094;
-localparam int unsigned GPIO_INTF_9__ACCESS_FILTER_REG_OFFSET                                                     = 32'h00000008;
-localparam int unsigned GPIO_INTF_9__ACCESS_FILTER_REG_ADDR                                                       = 32'hC0003098;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_9__DATA_CTRL_REG_OFFSET                                          = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_9__DATA_CTRL_REG_ADDR                                            = 32'hC0003090;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_9__DATA_CTRL_ENABLE_REG_OFFSET                                   = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_9__DATA_CTRL_ENABLE_REG_ADDR                                     = 32'hC0003094;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_9__ACCESS_FILTER_REG_OFFSET                                      = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_9__ACCESS_FILTER_REG_ADDR                                        = 32'hC0003098;
 
 
 //==============================================================================
@@ -583,16 +594,16 @@ localparam int unsigned GPIO_INTF_9__ACCESS_FILTER_REG_ADDR                     
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_10__REG_MAP_BASE_ADDR                                                           = 32'hC00030A0;
-localparam int unsigned GPIO_INTF_10__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_10__REG_MAP_BASE_ADDR                                            = 32'hC00030A0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_10__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_10__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_10__DATA_CTRL_REG_ADDR                                                          = 32'hC00030A0;
-localparam int unsigned GPIO_INTF_10__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_10__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00030A4;
-localparam int unsigned GPIO_INTF_10__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_10__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00030A8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_10__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_10__DATA_CTRL_REG_ADDR                                           = 32'hC00030A0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_10__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_10__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00030A4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_10__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_10__ACCESS_FILTER_REG_ADDR                                       = 32'hC00030A8;
 
 
 //==============================================================================
@@ -600,16 +611,16 @@ localparam int unsigned GPIO_INTF_10__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_11__REG_MAP_BASE_ADDR                                                           = 32'hC00030B0;
-localparam int unsigned GPIO_INTF_11__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_11__REG_MAP_BASE_ADDR                                            = 32'hC00030B0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_11__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_11__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_11__DATA_CTRL_REG_ADDR                                                          = 32'hC00030B0;
-localparam int unsigned GPIO_INTF_11__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_11__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00030B4;
-localparam int unsigned GPIO_INTF_11__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_11__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00030B8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_11__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_11__DATA_CTRL_REG_ADDR                                           = 32'hC00030B0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_11__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_11__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00030B4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_11__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_11__ACCESS_FILTER_REG_ADDR                                       = 32'hC00030B8;
 
 
 //==============================================================================
@@ -617,16 +628,16 @@ localparam int unsigned GPIO_INTF_11__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_12__REG_MAP_BASE_ADDR                                                           = 32'hC00030C0;
-localparam int unsigned GPIO_INTF_12__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_12__REG_MAP_BASE_ADDR                                            = 32'hC00030C0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_12__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_12__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_12__DATA_CTRL_REG_ADDR                                                          = 32'hC00030C0;
-localparam int unsigned GPIO_INTF_12__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_12__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00030C4;
-localparam int unsigned GPIO_INTF_12__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_12__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00030C8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_12__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_12__DATA_CTRL_REG_ADDR                                           = 32'hC00030C0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_12__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_12__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00030C4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_12__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_12__ACCESS_FILTER_REG_ADDR                                       = 32'hC00030C8;
 
 
 //==============================================================================
@@ -634,16 +645,16 @@ localparam int unsigned GPIO_INTF_12__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_13__REG_MAP_BASE_ADDR                                                           = 32'hC00030D0;
-localparam int unsigned GPIO_INTF_13__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_13__REG_MAP_BASE_ADDR                                            = 32'hC00030D0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_13__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_13__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_13__DATA_CTRL_REG_ADDR                                                          = 32'hC00030D0;
-localparam int unsigned GPIO_INTF_13__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_13__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00030D4;
-localparam int unsigned GPIO_INTF_13__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_13__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00030D8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_13__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_13__DATA_CTRL_REG_ADDR                                           = 32'hC00030D0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_13__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_13__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00030D4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_13__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_13__ACCESS_FILTER_REG_ADDR                                       = 32'hC00030D8;
 
 
 //==============================================================================
@@ -651,16 +662,16 @@ localparam int unsigned GPIO_INTF_13__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_14__REG_MAP_BASE_ADDR                                                           = 32'hC00030E0;
-localparam int unsigned GPIO_INTF_14__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_14__REG_MAP_BASE_ADDR                                            = 32'hC00030E0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_14__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_14__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_14__DATA_CTRL_REG_ADDR                                                          = 32'hC00030E0;
-localparam int unsigned GPIO_INTF_14__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_14__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00030E4;
-localparam int unsigned GPIO_INTF_14__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_14__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00030E8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_14__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_14__DATA_CTRL_REG_ADDR                                           = 32'hC00030E0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_14__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_14__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00030E4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_14__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_14__ACCESS_FILTER_REG_ADDR                                       = 32'hC00030E8;
 
 
 //==============================================================================
@@ -668,16 +679,16 @@ localparam int unsigned GPIO_INTF_14__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_15__REG_MAP_BASE_ADDR                                                           = 32'hC00030F0;
-localparam int unsigned GPIO_INTF_15__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_15__REG_MAP_BASE_ADDR                                            = 32'hC00030F0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_15__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_15__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_15__DATA_CTRL_REG_ADDR                                                          = 32'hC00030F0;
-localparam int unsigned GPIO_INTF_15__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_15__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00030F4;
-localparam int unsigned GPIO_INTF_15__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_15__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00030F8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_15__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_15__DATA_CTRL_REG_ADDR                                           = 32'hC00030F0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_15__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_15__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00030F4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_15__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_15__ACCESS_FILTER_REG_ADDR                                       = 32'hC00030F8;
 
 
 //==============================================================================
@@ -685,16 +696,16 @@ localparam int unsigned GPIO_INTF_15__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_16__REG_MAP_BASE_ADDR                                                           = 32'hC0003100;
-localparam int unsigned GPIO_INTF_16__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_16__REG_MAP_BASE_ADDR                                            = 32'hC0003100;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_16__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_16__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_16__DATA_CTRL_REG_ADDR                                                          = 32'hC0003100;
-localparam int unsigned GPIO_INTF_16__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_16__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003104;
-localparam int unsigned GPIO_INTF_16__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_16__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003108;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_16__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_16__DATA_CTRL_REG_ADDR                                           = 32'hC0003100;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_16__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_16__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003104;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_16__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_16__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003108;
 
 
 //==============================================================================
@@ -702,16 +713,16 @@ localparam int unsigned GPIO_INTF_16__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_17__REG_MAP_BASE_ADDR                                                           = 32'hC0003110;
-localparam int unsigned GPIO_INTF_17__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_17__REG_MAP_BASE_ADDR                                            = 32'hC0003110;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_17__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_17__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_17__DATA_CTRL_REG_ADDR                                                          = 32'hC0003110;
-localparam int unsigned GPIO_INTF_17__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_17__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003114;
-localparam int unsigned GPIO_INTF_17__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_17__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003118;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_17__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_17__DATA_CTRL_REG_ADDR                                           = 32'hC0003110;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_17__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_17__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003114;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_17__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_17__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003118;
 
 
 //==============================================================================
@@ -719,16 +730,16 @@ localparam int unsigned GPIO_INTF_17__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_18__REG_MAP_BASE_ADDR                                                           = 32'hC0003120;
-localparam int unsigned GPIO_INTF_18__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_18__REG_MAP_BASE_ADDR                                            = 32'hC0003120;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_18__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_18__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_18__DATA_CTRL_REG_ADDR                                                          = 32'hC0003120;
-localparam int unsigned GPIO_INTF_18__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_18__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003124;
-localparam int unsigned GPIO_INTF_18__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_18__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003128;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_18__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_18__DATA_CTRL_REG_ADDR                                           = 32'hC0003120;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_18__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_18__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003124;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_18__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_18__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003128;
 
 
 //==============================================================================
@@ -736,16 +747,16 @@ localparam int unsigned GPIO_INTF_18__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_19__REG_MAP_BASE_ADDR                                                           = 32'hC0003130;
-localparam int unsigned GPIO_INTF_19__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_19__REG_MAP_BASE_ADDR                                            = 32'hC0003130;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_19__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_19__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_19__DATA_CTRL_REG_ADDR                                                          = 32'hC0003130;
-localparam int unsigned GPIO_INTF_19__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_19__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003134;
-localparam int unsigned GPIO_INTF_19__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_19__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003138;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_19__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_19__DATA_CTRL_REG_ADDR                                           = 32'hC0003130;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_19__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_19__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003134;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_19__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_19__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003138;
 
 
 //==============================================================================
@@ -753,16 +764,16 @@ localparam int unsigned GPIO_INTF_19__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_20__REG_MAP_BASE_ADDR                                                           = 32'hC0003140;
-localparam int unsigned GPIO_INTF_20__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_20__REG_MAP_BASE_ADDR                                            = 32'hC0003140;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_20__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_20__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_20__DATA_CTRL_REG_ADDR                                                          = 32'hC0003140;
-localparam int unsigned GPIO_INTF_20__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_20__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003144;
-localparam int unsigned GPIO_INTF_20__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_20__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003148;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_20__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_20__DATA_CTRL_REG_ADDR                                           = 32'hC0003140;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_20__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_20__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003144;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_20__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_20__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003148;
 
 
 //==============================================================================
@@ -770,16 +781,16 @@ localparam int unsigned GPIO_INTF_20__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_21__REG_MAP_BASE_ADDR                                                           = 32'hC0003150;
-localparam int unsigned GPIO_INTF_21__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_21__REG_MAP_BASE_ADDR                                            = 32'hC0003150;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_21__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_21__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_21__DATA_CTRL_REG_ADDR                                                          = 32'hC0003150;
-localparam int unsigned GPIO_INTF_21__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_21__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003154;
-localparam int unsigned GPIO_INTF_21__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_21__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003158;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_21__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_21__DATA_CTRL_REG_ADDR                                           = 32'hC0003150;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_21__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_21__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003154;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_21__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_21__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003158;
 
 
 //==============================================================================
@@ -787,16 +798,16 @@ localparam int unsigned GPIO_INTF_21__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_22__REG_MAP_BASE_ADDR                                                           = 32'hC0003160;
-localparam int unsigned GPIO_INTF_22__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_22__REG_MAP_BASE_ADDR                                            = 32'hC0003160;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_22__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_22__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_22__DATA_CTRL_REG_ADDR                                                          = 32'hC0003160;
-localparam int unsigned GPIO_INTF_22__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_22__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003164;
-localparam int unsigned GPIO_INTF_22__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_22__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003168;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_22__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_22__DATA_CTRL_REG_ADDR                                           = 32'hC0003160;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_22__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_22__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003164;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_22__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_22__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003168;
 
 
 //==============================================================================
@@ -804,16 +815,16 @@ localparam int unsigned GPIO_INTF_22__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_23__REG_MAP_BASE_ADDR                                                           = 32'hC0003170;
-localparam int unsigned GPIO_INTF_23__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_23__REG_MAP_BASE_ADDR                                            = 32'hC0003170;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_23__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_23__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_23__DATA_CTRL_REG_ADDR                                                          = 32'hC0003170;
-localparam int unsigned GPIO_INTF_23__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_23__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003174;
-localparam int unsigned GPIO_INTF_23__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_23__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003178;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_23__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_23__DATA_CTRL_REG_ADDR                                           = 32'hC0003170;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_23__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_23__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003174;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_23__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_23__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003178;
 
 
 //==============================================================================
@@ -821,16 +832,16 @@ localparam int unsigned GPIO_INTF_23__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_24__REG_MAP_BASE_ADDR                                                           = 32'hC0003180;
-localparam int unsigned GPIO_INTF_24__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_24__REG_MAP_BASE_ADDR                                            = 32'hC0003180;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_24__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_24__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_24__DATA_CTRL_REG_ADDR                                                          = 32'hC0003180;
-localparam int unsigned GPIO_INTF_24__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_24__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003184;
-localparam int unsigned GPIO_INTF_24__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_24__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003188;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_24__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_24__DATA_CTRL_REG_ADDR                                           = 32'hC0003180;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_24__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_24__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003184;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_24__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_24__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003188;
 
 
 //==============================================================================
@@ -838,16 +849,16 @@ localparam int unsigned GPIO_INTF_24__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_25__REG_MAP_BASE_ADDR                                                           = 32'hC0003190;
-localparam int unsigned GPIO_INTF_25__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_25__REG_MAP_BASE_ADDR                                            = 32'hC0003190;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_25__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_25__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_25__DATA_CTRL_REG_ADDR                                                          = 32'hC0003190;
-localparam int unsigned GPIO_INTF_25__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_25__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003194;
-localparam int unsigned GPIO_INTF_25__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_25__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003198;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_25__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_25__DATA_CTRL_REG_ADDR                                           = 32'hC0003190;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_25__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_25__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003194;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_25__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_25__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003198;
 
 
 //==============================================================================
@@ -855,16 +866,16 @@ localparam int unsigned GPIO_INTF_25__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_26__REG_MAP_BASE_ADDR                                                           = 32'hC00031A0;
-localparam int unsigned GPIO_INTF_26__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_26__REG_MAP_BASE_ADDR                                            = 32'hC00031A0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_26__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_26__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_26__DATA_CTRL_REG_ADDR                                                          = 32'hC00031A0;
-localparam int unsigned GPIO_INTF_26__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_26__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00031A4;
-localparam int unsigned GPIO_INTF_26__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_26__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00031A8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_26__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_26__DATA_CTRL_REG_ADDR                                           = 32'hC00031A0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_26__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_26__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00031A4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_26__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_26__ACCESS_FILTER_REG_ADDR                                       = 32'hC00031A8;
 
 
 //==============================================================================
@@ -872,16 +883,16 @@ localparam int unsigned GPIO_INTF_26__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_27__REG_MAP_BASE_ADDR                                                           = 32'hC00031B0;
-localparam int unsigned GPIO_INTF_27__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_27__REG_MAP_BASE_ADDR                                            = 32'hC00031B0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_27__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_27__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_27__DATA_CTRL_REG_ADDR                                                          = 32'hC00031B0;
-localparam int unsigned GPIO_INTF_27__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_27__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00031B4;
-localparam int unsigned GPIO_INTF_27__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_27__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00031B8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_27__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_27__DATA_CTRL_REG_ADDR                                           = 32'hC00031B0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_27__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_27__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00031B4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_27__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_27__ACCESS_FILTER_REG_ADDR                                       = 32'hC00031B8;
 
 
 //==============================================================================
@@ -889,16 +900,16 @@ localparam int unsigned GPIO_INTF_27__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_28__REG_MAP_BASE_ADDR                                                           = 32'hC00031C0;
-localparam int unsigned GPIO_INTF_28__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_28__REG_MAP_BASE_ADDR                                            = 32'hC00031C0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_28__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_28__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_28__DATA_CTRL_REG_ADDR                                                          = 32'hC00031C0;
-localparam int unsigned GPIO_INTF_28__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_28__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00031C4;
-localparam int unsigned GPIO_INTF_28__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_28__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00031C8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_28__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_28__DATA_CTRL_REG_ADDR                                           = 32'hC00031C0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_28__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_28__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00031C4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_28__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_28__ACCESS_FILTER_REG_ADDR                                       = 32'hC00031C8;
 
 
 //==============================================================================
@@ -906,16 +917,16 @@ localparam int unsigned GPIO_INTF_28__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_29__REG_MAP_BASE_ADDR                                                           = 32'hC00031D0;
-localparam int unsigned GPIO_INTF_29__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_29__REG_MAP_BASE_ADDR                                            = 32'hC00031D0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_29__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_29__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_29__DATA_CTRL_REG_ADDR                                                          = 32'hC00031D0;
-localparam int unsigned GPIO_INTF_29__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_29__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00031D4;
-localparam int unsigned GPIO_INTF_29__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_29__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00031D8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_29__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_29__DATA_CTRL_REG_ADDR                                           = 32'hC00031D0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_29__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_29__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00031D4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_29__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_29__ACCESS_FILTER_REG_ADDR                                       = 32'hC00031D8;
 
 
 //==============================================================================
@@ -923,16 +934,16 @@ localparam int unsigned GPIO_INTF_29__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_30__REG_MAP_BASE_ADDR                                                           = 32'hC00031E0;
-localparam int unsigned GPIO_INTF_30__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_30__REG_MAP_BASE_ADDR                                            = 32'hC00031E0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_30__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_30__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_30__DATA_CTRL_REG_ADDR                                                          = 32'hC00031E0;
-localparam int unsigned GPIO_INTF_30__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_30__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00031E4;
-localparam int unsigned GPIO_INTF_30__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_30__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00031E8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_30__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_30__DATA_CTRL_REG_ADDR                                           = 32'hC00031E0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_30__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_30__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00031E4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_30__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_30__ACCESS_FILTER_REG_ADDR                                       = 32'hC00031E8;
 
 
 //==============================================================================
@@ -940,16 +951,16 @@ localparam int unsigned GPIO_INTF_30__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_31__REG_MAP_BASE_ADDR                                                           = 32'hC00031F0;
-localparam int unsigned GPIO_INTF_31__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_31__REG_MAP_BASE_ADDR                                            = 32'hC00031F0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_31__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_31__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_31__DATA_CTRL_REG_ADDR                                                          = 32'hC00031F0;
-localparam int unsigned GPIO_INTF_31__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_31__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00031F4;
-localparam int unsigned GPIO_INTF_31__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_31__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00031F8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_31__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_31__DATA_CTRL_REG_ADDR                                           = 32'hC00031F0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_31__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_31__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00031F4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_31__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_31__ACCESS_FILTER_REG_ADDR                                       = 32'hC00031F8;
 
 
 //==============================================================================
@@ -957,16 +968,16 @@ localparam int unsigned GPIO_INTF_31__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_32__REG_MAP_BASE_ADDR                                                           = 32'hC0003200;
-localparam int unsigned GPIO_INTF_32__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_32__REG_MAP_BASE_ADDR                                            = 32'hC0003200;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_32__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_32__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_32__DATA_CTRL_REG_ADDR                                                          = 32'hC0003200;
-localparam int unsigned GPIO_INTF_32__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_32__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003204;
-localparam int unsigned GPIO_INTF_32__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_32__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003208;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_32__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_32__DATA_CTRL_REG_ADDR                                           = 32'hC0003200;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_32__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_32__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003204;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_32__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_32__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003208;
 
 
 //==============================================================================
@@ -974,16 +985,16 @@ localparam int unsigned GPIO_INTF_32__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_33__REG_MAP_BASE_ADDR                                                           = 32'hC0003210;
-localparam int unsigned GPIO_INTF_33__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_33__REG_MAP_BASE_ADDR                                            = 32'hC0003210;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_33__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_33__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_33__DATA_CTRL_REG_ADDR                                                          = 32'hC0003210;
-localparam int unsigned GPIO_INTF_33__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_33__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003214;
-localparam int unsigned GPIO_INTF_33__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_33__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003218;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_33__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_33__DATA_CTRL_REG_ADDR                                           = 32'hC0003210;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_33__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_33__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003214;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_33__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_33__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003218;
 
 
 //==============================================================================
@@ -991,16 +1002,16 @@ localparam int unsigned GPIO_INTF_33__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_34__REG_MAP_BASE_ADDR                                                           = 32'hC0003220;
-localparam int unsigned GPIO_INTF_34__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_34__REG_MAP_BASE_ADDR                                            = 32'hC0003220;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_34__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_34__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_34__DATA_CTRL_REG_ADDR                                                          = 32'hC0003220;
-localparam int unsigned GPIO_INTF_34__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_34__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003224;
-localparam int unsigned GPIO_INTF_34__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_34__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003228;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_34__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_34__DATA_CTRL_REG_ADDR                                           = 32'hC0003220;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_34__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_34__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003224;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_34__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_34__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003228;
 
 
 //==============================================================================
@@ -1008,16 +1019,16 @@ localparam int unsigned GPIO_INTF_34__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_35__REG_MAP_BASE_ADDR                                                           = 32'hC0003230;
-localparam int unsigned GPIO_INTF_35__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_35__REG_MAP_BASE_ADDR                                            = 32'hC0003230;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_35__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_35__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_35__DATA_CTRL_REG_ADDR                                                          = 32'hC0003230;
-localparam int unsigned GPIO_INTF_35__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_35__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003234;
-localparam int unsigned GPIO_INTF_35__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_35__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003238;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_35__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_35__DATA_CTRL_REG_ADDR                                           = 32'hC0003230;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_35__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_35__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003234;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_35__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_35__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003238;
 
 
 //==============================================================================
@@ -1025,16 +1036,16 @@ localparam int unsigned GPIO_INTF_35__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_36__REG_MAP_BASE_ADDR                                                           = 32'hC0003240;
-localparam int unsigned GPIO_INTF_36__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_36__REG_MAP_BASE_ADDR                                            = 32'hC0003240;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_36__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_36__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_36__DATA_CTRL_REG_ADDR                                                          = 32'hC0003240;
-localparam int unsigned GPIO_INTF_36__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_36__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003244;
-localparam int unsigned GPIO_INTF_36__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_36__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003248;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_36__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_36__DATA_CTRL_REG_ADDR                                           = 32'hC0003240;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_36__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_36__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003244;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_36__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_36__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003248;
 
 
 //==============================================================================
@@ -1042,16 +1053,16 @@ localparam int unsigned GPIO_INTF_36__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_37__REG_MAP_BASE_ADDR                                                           = 32'hC0003250;
-localparam int unsigned GPIO_INTF_37__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_37__REG_MAP_BASE_ADDR                                            = 32'hC0003250;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_37__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_37__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_37__DATA_CTRL_REG_ADDR                                                          = 32'hC0003250;
-localparam int unsigned GPIO_INTF_37__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_37__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003254;
-localparam int unsigned GPIO_INTF_37__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_37__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003258;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_37__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_37__DATA_CTRL_REG_ADDR                                           = 32'hC0003250;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_37__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_37__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003254;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_37__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_37__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003258;
 
 
 //==============================================================================
@@ -1059,16 +1070,16 @@ localparam int unsigned GPIO_INTF_37__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_38__REG_MAP_BASE_ADDR                                                           = 32'hC0003260;
-localparam int unsigned GPIO_INTF_38__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_38__REG_MAP_BASE_ADDR                                            = 32'hC0003260;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_38__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_38__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_38__DATA_CTRL_REG_ADDR                                                          = 32'hC0003260;
-localparam int unsigned GPIO_INTF_38__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_38__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003264;
-localparam int unsigned GPIO_INTF_38__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_38__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003268;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_38__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_38__DATA_CTRL_REG_ADDR                                           = 32'hC0003260;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_38__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_38__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003264;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_38__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_38__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003268;
 
 
 //==============================================================================
@@ -1076,16 +1087,16 @@ localparam int unsigned GPIO_INTF_38__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_39__REG_MAP_BASE_ADDR                                                           = 32'hC0003270;
-localparam int unsigned GPIO_INTF_39__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_39__REG_MAP_BASE_ADDR                                            = 32'hC0003270;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_39__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_39__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_39__DATA_CTRL_REG_ADDR                                                          = 32'hC0003270;
-localparam int unsigned GPIO_INTF_39__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_39__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003274;
-localparam int unsigned GPIO_INTF_39__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_39__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003278;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_39__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_39__DATA_CTRL_REG_ADDR                                           = 32'hC0003270;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_39__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_39__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003274;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_39__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_39__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003278;
 
 
 //==============================================================================
@@ -1093,16 +1104,16 @@ localparam int unsigned GPIO_INTF_39__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_40__REG_MAP_BASE_ADDR                                                           = 32'hC0003280;
-localparam int unsigned GPIO_INTF_40__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_40__REG_MAP_BASE_ADDR                                            = 32'hC0003280;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_40__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_40__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_40__DATA_CTRL_REG_ADDR                                                          = 32'hC0003280;
-localparam int unsigned GPIO_INTF_40__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_40__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003284;
-localparam int unsigned GPIO_INTF_40__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_40__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003288;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_40__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_40__DATA_CTRL_REG_ADDR                                           = 32'hC0003280;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_40__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_40__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003284;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_40__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_40__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003288;
 
 
 //==============================================================================
@@ -1110,16 +1121,16 @@ localparam int unsigned GPIO_INTF_40__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_41__REG_MAP_BASE_ADDR                                                           = 32'hC0003290;
-localparam int unsigned GPIO_INTF_41__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_41__REG_MAP_BASE_ADDR                                            = 32'hC0003290;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_41__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_41__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_41__DATA_CTRL_REG_ADDR                                                          = 32'hC0003290;
-localparam int unsigned GPIO_INTF_41__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_41__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003294;
-localparam int unsigned GPIO_INTF_41__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_41__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003298;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_41__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_41__DATA_CTRL_REG_ADDR                                           = 32'hC0003290;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_41__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_41__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003294;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_41__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_41__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003298;
 
 
 //==============================================================================
@@ -1127,16 +1138,16 @@ localparam int unsigned GPIO_INTF_41__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_42__REG_MAP_BASE_ADDR                                                           = 32'hC00032A0;
-localparam int unsigned GPIO_INTF_42__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_42__REG_MAP_BASE_ADDR                                            = 32'hC00032A0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_42__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_42__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_42__DATA_CTRL_REG_ADDR                                                          = 32'hC00032A0;
-localparam int unsigned GPIO_INTF_42__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_42__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00032A4;
-localparam int unsigned GPIO_INTF_42__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_42__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00032A8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_42__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_42__DATA_CTRL_REG_ADDR                                           = 32'hC00032A0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_42__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_42__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00032A4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_42__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_42__ACCESS_FILTER_REG_ADDR                                       = 32'hC00032A8;
 
 
 //==============================================================================
@@ -1144,16 +1155,16 @@ localparam int unsigned GPIO_INTF_42__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_43__REG_MAP_BASE_ADDR                                                           = 32'hC00032B0;
-localparam int unsigned GPIO_INTF_43__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_43__REG_MAP_BASE_ADDR                                            = 32'hC00032B0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_43__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_43__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_43__DATA_CTRL_REG_ADDR                                                          = 32'hC00032B0;
-localparam int unsigned GPIO_INTF_43__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_43__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00032B4;
-localparam int unsigned GPIO_INTF_43__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_43__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00032B8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_43__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_43__DATA_CTRL_REG_ADDR                                           = 32'hC00032B0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_43__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_43__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00032B4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_43__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_43__ACCESS_FILTER_REG_ADDR                                       = 32'hC00032B8;
 
 
 //==============================================================================
@@ -1161,16 +1172,16 @@ localparam int unsigned GPIO_INTF_43__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_44__REG_MAP_BASE_ADDR                                                           = 32'hC00032C0;
-localparam int unsigned GPIO_INTF_44__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_44__REG_MAP_BASE_ADDR                                            = 32'hC00032C0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_44__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_44__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_44__DATA_CTRL_REG_ADDR                                                          = 32'hC00032C0;
-localparam int unsigned GPIO_INTF_44__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_44__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00032C4;
-localparam int unsigned GPIO_INTF_44__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_44__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00032C8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_44__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_44__DATA_CTRL_REG_ADDR                                           = 32'hC00032C0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_44__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_44__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00032C4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_44__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_44__ACCESS_FILTER_REG_ADDR                                       = 32'hC00032C8;
 
 
 //==============================================================================
@@ -1178,16 +1189,16 @@ localparam int unsigned GPIO_INTF_44__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_45__REG_MAP_BASE_ADDR                                                           = 32'hC00032D0;
-localparam int unsigned GPIO_INTF_45__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_45__REG_MAP_BASE_ADDR                                            = 32'hC00032D0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_45__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_45__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_45__DATA_CTRL_REG_ADDR                                                          = 32'hC00032D0;
-localparam int unsigned GPIO_INTF_45__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_45__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00032D4;
-localparam int unsigned GPIO_INTF_45__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_45__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00032D8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_45__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_45__DATA_CTRL_REG_ADDR                                           = 32'hC00032D0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_45__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_45__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00032D4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_45__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_45__ACCESS_FILTER_REG_ADDR                                       = 32'hC00032D8;
 
 
 //==============================================================================
@@ -1195,16 +1206,16 @@ localparam int unsigned GPIO_INTF_45__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_46__REG_MAP_BASE_ADDR                                                           = 32'hC00032E0;
-localparam int unsigned GPIO_INTF_46__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_46__REG_MAP_BASE_ADDR                                            = 32'hC00032E0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_46__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_46__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_46__DATA_CTRL_REG_ADDR                                                          = 32'hC00032E0;
-localparam int unsigned GPIO_INTF_46__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_46__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00032E4;
-localparam int unsigned GPIO_INTF_46__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_46__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00032E8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_46__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_46__DATA_CTRL_REG_ADDR                                           = 32'hC00032E0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_46__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_46__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00032E4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_46__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_46__ACCESS_FILTER_REG_ADDR                                       = 32'hC00032E8;
 
 
 //==============================================================================
@@ -1212,16 +1223,16 @@ localparam int unsigned GPIO_INTF_46__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_47__REG_MAP_BASE_ADDR                                                           = 32'hC00032F0;
-localparam int unsigned GPIO_INTF_47__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_47__REG_MAP_BASE_ADDR                                            = 32'hC00032F0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_47__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_47__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_47__DATA_CTRL_REG_ADDR                                                          = 32'hC00032F0;
-localparam int unsigned GPIO_INTF_47__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_47__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00032F4;
-localparam int unsigned GPIO_INTF_47__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_47__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00032F8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_47__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_47__DATA_CTRL_REG_ADDR                                           = 32'hC00032F0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_47__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_47__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00032F4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_47__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_47__ACCESS_FILTER_REG_ADDR                                       = 32'hC00032F8;
 
 
 //==============================================================================
@@ -1229,16 +1240,16 @@ localparam int unsigned GPIO_INTF_47__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_48__REG_MAP_BASE_ADDR                                                           = 32'hC0003300;
-localparam int unsigned GPIO_INTF_48__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_48__REG_MAP_BASE_ADDR                                            = 32'hC0003300;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_48__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_48__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_48__DATA_CTRL_REG_ADDR                                                          = 32'hC0003300;
-localparam int unsigned GPIO_INTF_48__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_48__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003304;
-localparam int unsigned GPIO_INTF_48__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_48__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003308;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_48__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_48__DATA_CTRL_REG_ADDR                                           = 32'hC0003300;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_48__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_48__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003304;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_48__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_48__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003308;
 
 
 //==============================================================================
@@ -1246,16 +1257,16 @@ localparam int unsigned GPIO_INTF_48__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_49__REG_MAP_BASE_ADDR                                                           = 32'hC0003310;
-localparam int unsigned GPIO_INTF_49__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_49__REG_MAP_BASE_ADDR                                            = 32'hC0003310;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_49__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_49__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_49__DATA_CTRL_REG_ADDR                                                          = 32'hC0003310;
-localparam int unsigned GPIO_INTF_49__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_49__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003314;
-localparam int unsigned GPIO_INTF_49__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_49__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003318;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_49__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_49__DATA_CTRL_REG_ADDR                                           = 32'hC0003310;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_49__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_49__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003314;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_49__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_49__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003318;
 
 
 //==============================================================================
@@ -1263,16 +1274,16 @@ localparam int unsigned GPIO_INTF_49__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_50__REG_MAP_BASE_ADDR                                                           = 32'hC0003320;
-localparam int unsigned GPIO_INTF_50__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_50__REG_MAP_BASE_ADDR                                            = 32'hC0003320;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_50__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_50__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_50__DATA_CTRL_REG_ADDR                                                          = 32'hC0003320;
-localparam int unsigned GPIO_INTF_50__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_50__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003324;
-localparam int unsigned GPIO_INTF_50__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_50__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003328;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_50__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_50__DATA_CTRL_REG_ADDR                                           = 32'hC0003320;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_50__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_50__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003324;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_50__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_50__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003328;
 
 
 //==============================================================================
@@ -1280,16 +1291,16 @@ localparam int unsigned GPIO_INTF_50__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_51__REG_MAP_BASE_ADDR                                                           = 32'hC0003330;
-localparam int unsigned GPIO_INTF_51__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_51__REG_MAP_BASE_ADDR                                            = 32'hC0003330;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_51__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_51__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_51__DATA_CTRL_REG_ADDR                                                          = 32'hC0003330;
-localparam int unsigned GPIO_INTF_51__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_51__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003334;
-localparam int unsigned GPIO_INTF_51__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_51__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003338;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_51__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_51__DATA_CTRL_REG_ADDR                                           = 32'hC0003330;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_51__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_51__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003334;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_51__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_51__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003338;
 
 
 //==============================================================================
@@ -1297,16 +1308,16 @@ localparam int unsigned GPIO_INTF_51__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_52__REG_MAP_BASE_ADDR                                                           = 32'hC0003340;
-localparam int unsigned GPIO_INTF_52__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_52__REG_MAP_BASE_ADDR                                            = 32'hC0003340;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_52__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_52__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_52__DATA_CTRL_REG_ADDR                                                          = 32'hC0003340;
-localparam int unsigned GPIO_INTF_52__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_52__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003344;
-localparam int unsigned GPIO_INTF_52__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_52__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003348;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_52__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_52__DATA_CTRL_REG_ADDR                                           = 32'hC0003340;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_52__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_52__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003344;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_52__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_52__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003348;
 
 
 //==============================================================================
@@ -1314,16 +1325,16 @@ localparam int unsigned GPIO_INTF_52__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_53__REG_MAP_BASE_ADDR                                                           = 32'hC0003350;
-localparam int unsigned GPIO_INTF_53__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_53__REG_MAP_BASE_ADDR                                            = 32'hC0003350;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_53__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_53__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_53__DATA_CTRL_REG_ADDR                                                          = 32'hC0003350;
-localparam int unsigned GPIO_INTF_53__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_53__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003354;
-localparam int unsigned GPIO_INTF_53__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_53__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003358;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_53__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_53__DATA_CTRL_REG_ADDR                                           = 32'hC0003350;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_53__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_53__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003354;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_53__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_53__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003358;
 
 
 //==============================================================================
@@ -1331,16 +1342,16 @@ localparam int unsigned GPIO_INTF_53__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_54__REG_MAP_BASE_ADDR                                                           = 32'hC0003360;
-localparam int unsigned GPIO_INTF_54__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_54__REG_MAP_BASE_ADDR                                            = 32'hC0003360;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_54__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_54__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_54__DATA_CTRL_REG_ADDR                                                          = 32'hC0003360;
-localparam int unsigned GPIO_INTF_54__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_54__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003364;
-localparam int unsigned GPIO_INTF_54__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_54__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003368;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_54__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_54__DATA_CTRL_REG_ADDR                                           = 32'hC0003360;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_54__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_54__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003364;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_54__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_54__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003368;
 
 
 //==============================================================================
@@ -1348,16 +1359,16 @@ localparam int unsigned GPIO_INTF_54__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_55__REG_MAP_BASE_ADDR                                                           = 32'hC0003370;
-localparam int unsigned GPIO_INTF_55__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_55__REG_MAP_BASE_ADDR                                            = 32'hC0003370;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_55__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_55__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_55__DATA_CTRL_REG_ADDR                                                          = 32'hC0003370;
-localparam int unsigned GPIO_INTF_55__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_55__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003374;
-localparam int unsigned GPIO_INTF_55__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_55__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003378;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_55__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_55__DATA_CTRL_REG_ADDR                                           = 32'hC0003370;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_55__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_55__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003374;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_55__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_55__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003378;
 
 
 //==============================================================================
@@ -1365,16 +1376,16 @@ localparam int unsigned GPIO_INTF_55__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_56__REG_MAP_BASE_ADDR                                                           = 32'hC0003380;
-localparam int unsigned GPIO_INTF_56__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_56__REG_MAP_BASE_ADDR                                            = 32'hC0003380;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_56__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_56__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_56__DATA_CTRL_REG_ADDR                                                          = 32'hC0003380;
-localparam int unsigned GPIO_INTF_56__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_56__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003384;
-localparam int unsigned GPIO_INTF_56__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_56__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003388;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_56__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_56__DATA_CTRL_REG_ADDR                                           = 32'hC0003380;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_56__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_56__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003384;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_56__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_56__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003388;
 
 
 //==============================================================================
@@ -1382,16 +1393,16 @@ localparam int unsigned GPIO_INTF_56__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_57__REG_MAP_BASE_ADDR                                                           = 32'hC0003390;
-localparam int unsigned GPIO_INTF_57__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_57__REG_MAP_BASE_ADDR                                            = 32'hC0003390;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_57__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_57__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_57__DATA_CTRL_REG_ADDR                                                          = 32'hC0003390;
-localparam int unsigned GPIO_INTF_57__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_57__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003394;
-localparam int unsigned GPIO_INTF_57__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_57__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003398;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_57__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_57__DATA_CTRL_REG_ADDR                                           = 32'hC0003390;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_57__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_57__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003394;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_57__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_57__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003398;
 
 
 //==============================================================================
@@ -1399,16 +1410,16 @@ localparam int unsigned GPIO_INTF_57__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_58__REG_MAP_BASE_ADDR                                                           = 32'hC00033A0;
-localparam int unsigned GPIO_INTF_58__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_58__REG_MAP_BASE_ADDR                                            = 32'hC00033A0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_58__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_58__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_58__DATA_CTRL_REG_ADDR                                                          = 32'hC00033A0;
-localparam int unsigned GPIO_INTF_58__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_58__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00033A4;
-localparam int unsigned GPIO_INTF_58__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_58__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00033A8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_58__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_58__DATA_CTRL_REG_ADDR                                           = 32'hC00033A0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_58__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_58__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00033A4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_58__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_58__ACCESS_FILTER_REG_ADDR                                       = 32'hC00033A8;
 
 
 //==============================================================================
@@ -1416,16 +1427,16 @@ localparam int unsigned GPIO_INTF_58__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_59__REG_MAP_BASE_ADDR                                                           = 32'hC00033B0;
-localparam int unsigned GPIO_INTF_59__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_59__REG_MAP_BASE_ADDR                                            = 32'hC00033B0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_59__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_59__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_59__DATA_CTRL_REG_ADDR                                                          = 32'hC00033B0;
-localparam int unsigned GPIO_INTF_59__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_59__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00033B4;
-localparam int unsigned GPIO_INTF_59__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_59__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00033B8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_59__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_59__DATA_CTRL_REG_ADDR                                           = 32'hC00033B0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_59__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_59__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00033B4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_59__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_59__ACCESS_FILTER_REG_ADDR                                       = 32'hC00033B8;
 
 
 //==============================================================================
@@ -1433,16 +1444,16 @@ localparam int unsigned GPIO_INTF_59__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_60__REG_MAP_BASE_ADDR                                                           = 32'hC00033C0;
-localparam int unsigned GPIO_INTF_60__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_60__REG_MAP_BASE_ADDR                                            = 32'hC00033C0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_60__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_60__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_60__DATA_CTRL_REG_ADDR                                                          = 32'hC00033C0;
-localparam int unsigned GPIO_INTF_60__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_60__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00033C4;
-localparam int unsigned GPIO_INTF_60__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_60__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00033C8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_60__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_60__DATA_CTRL_REG_ADDR                                           = 32'hC00033C0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_60__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_60__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00033C4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_60__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_60__ACCESS_FILTER_REG_ADDR                                       = 32'hC00033C8;
 
 
 //==============================================================================
@@ -1450,16 +1461,16 @@ localparam int unsigned GPIO_INTF_60__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_61__REG_MAP_BASE_ADDR                                                           = 32'hC00033D0;
-localparam int unsigned GPIO_INTF_61__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_61__REG_MAP_BASE_ADDR                                            = 32'hC00033D0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_61__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_61__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_61__DATA_CTRL_REG_ADDR                                                          = 32'hC00033D0;
-localparam int unsigned GPIO_INTF_61__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_61__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00033D4;
-localparam int unsigned GPIO_INTF_61__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_61__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00033D8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_61__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_61__DATA_CTRL_REG_ADDR                                           = 32'hC00033D0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_61__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_61__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00033D4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_61__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_61__ACCESS_FILTER_REG_ADDR                                       = 32'hC00033D8;
 
 
 //==============================================================================
@@ -1467,16 +1478,16 @@ localparam int unsigned GPIO_INTF_61__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_62__REG_MAP_BASE_ADDR                                                           = 32'hC00033E0;
-localparam int unsigned GPIO_INTF_62__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_62__REG_MAP_BASE_ADDR                                            = 32'hC00033E0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_62__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_62__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_62__DATA_CTRL_REG_ADDR                                                          = 32'hC00033E0;
-localparam int unsigned GPIO_INTF_62__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_62__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00033E4;
-localparam int unsigned GPIO_INTF_62__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_62__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00033E8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_62__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_62__DATA_CTRL_REG_ADDR                                           = 32'hC00033E0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_62__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_62__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00033E4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_62__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_62__ACCESS_FILTER_REG_ADDR                                       = 32'hC00033E8;
 
 
 //==============================================================================
@@ -1484,16 +1495,16 @@ localparam int unsigned GPIO_INTF_62__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_63__REG_MAP_BASE_ADDR                                                           = 32'hC00033F0;
-localparam int unsigned GPIO_INTF_63__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_63__REG_MAP_BASE_ADDR                                            = 32'hC00033F0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_63__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_63__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_63__DATA_CTRL_REG_ADDR                                                          = 32'hC00033F0;
-localparam int unsigned GPIO_INTF_63__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_63__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC00033F4;
-localparam int unsigned GPIO_INTF_63__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_63__ACCESS_FILTER_REG_ADDR                                                      = 32'hC00033F8;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_63__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_63__DATA_CTRL_REG_ADDR                                           = 32'hC00033F0;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_63__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_63__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC00033F4;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_63__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_63__ACCESS_FILTER_REG_ADDR                                       = 32'hC00033F8;
 
 
 //==============================================================================
@@ -1501,16 +1512,16 @@ localparam int unsigned GPIO_INTF_63__ACCESS_FILTER_REG_ADDR                    
 //==============================================================================
 
 
-localparam int unsigned GPIO_INTF_64__REG_MAP_BASE_ADDR                                                           = 32'hC0003400;
-localparam int unsigned GPIO_INTF_64__REG_MAP_SIZE                                                                = 32'h0000000C;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_64__REG_MAP_BASE_ADDR                                            = 32'hC0003400;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_64__REG_MAP_SIZE                                                 = 32'h0000000C;
 
 
-localparam int unsigned GPIO_INTF_64__DATA_CTRL_REG_OFFSET                                                        = 32'h00000000;
-localparam int unsigned GPIO_INTF_64__DATA_CTRL_REG_ADDR                                                          = 32'hC0003400;
-localparam int unsigned GPIO_INTF_64__DATA_CTRL_ENABLE_REG_OFFSET                                                 = 32'h00000004;
-localparam int unsigned GPIO_INTF_64__DATA_CTRL_ENABLE_REG_ADDR                                                   = 32'hC0003404;
-localparam int unsigned GPIO_INTF_64__ACCESS_FILTER_REG_OFFSET                                                    = 32'h00000008;
-localparam int unsigned GPIO_INTF_64__ACCESS_FILTER_REG_ADDR                                                      = 32'hC0003408;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_64__DATA_CTRL_REG_OFFSET                                         = 32'h00000000;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_64__DATA_CTRL_REG_ADDR                                           = 32'hC0003400;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_64__DATA_CTRL_ENABLE_REG_OFFSET                                  = 32'h00000004;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_64__DATA_CTRL_ENABLE_REG_ADDR                                    = 32'hC0003404;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_64__ACCESS_FILTER_REG_OFFSET                                     = 32'h00000008;
+localparam int unsigned GPIO_INTF_WRAP_GPIO_INTF_64__ACCESS_FILTER_REG_ADDR                                       = 32'hC0003408;
 
 
 //==============================================================================
@@ -16304,6 +16315,9 @@ localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_SHI
 
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_MASK                                                           = 32'hFFFFFFFF;
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_SHIFT                                                          = 0;
+
+
+
 
 
 

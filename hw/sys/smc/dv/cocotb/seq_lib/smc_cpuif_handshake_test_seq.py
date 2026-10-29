@@ -96,7 +96,7 @@ _PROBES: tuple[tuple[str, str], ...] = (
     ("chip_config", "smc_misc_wrap/chip_config/VERSION_LO"),
     ("ndm_reset", "smc_misc_wrap/ndm_reset/NDMRESET_CLUSTER_COUNT"),
     ("scratch", "smc_misc_wrap/scratch_cold/SCRATCH[0]"),
-    ("gpio_intf", "gpio_intf/ACCESS_FILTER"),
+    ("gpio_intf", "gpio_intf_wrap/gpio_intf/ACCESS_FILTER"),
     ("avsbus_controller", "smc_avsbus_controller/AVS_CFG_0"),
     ("i2c", "smc_i2c_wrap/i2c/HOST_FIFO_CONFIG"),
     ("i2c_ctrl", "smc_i2c_wrap/i2c_ctrl_regs/I2C_CTRL[0]"),

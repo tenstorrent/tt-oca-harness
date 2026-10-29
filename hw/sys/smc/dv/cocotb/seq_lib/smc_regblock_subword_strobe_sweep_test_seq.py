@@ -87,7 +87,7 @@ FAMILIES = (
     ("xvisor_remap", "smc_xvisor_remap[{}]/REGION/region_attrs", 8),
     ("inbound_filter", "smc_inbound_filter_ctrl[{}]/END_ADDR", 16),
     ("outbound_filter", "smc_outbound_filter_ctrl[{}]/END_ADDR", 16),
-    ("gpio_intf", "gpio_intf[{}]/ACCESS_FILTER", 65),
+    ("gpio_intf", "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", 65),
     ("cpu_ctrl", "smc_cpu_ctrl/RESET_VECTOR[0]", 1),
     ("telemetry", "smc_telemetry_receiver_wrap/telemetry_receiver[{}]/STATUS", 3),
     ("timer", "smc_system_timer_octs/CTRL", 1),

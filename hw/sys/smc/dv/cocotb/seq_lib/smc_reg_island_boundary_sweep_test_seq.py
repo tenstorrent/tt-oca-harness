@@ -118,7 +118,7 @@ ISLANDS = (
     Island("CPUCTRL", "smc_cpu_ctrl", 0x39000, 0x392BC, 0x392C0, 0x39FFC, RW, RW, _D),
     Island("RESET", "smc_reset_unit", 0x2000, 0x20C8, 0x20CC, 0x27FC, HOLE, RW, _D),
     Island("MISC", "smc_misc_wrap", 0x2800, 0x2A08, 0x2A0C, 0x2FFC, RW, "ro(sw=r)", _D),
-    Island("GPIO", "gpio_intf", 0x3000, 0x340C, 0x3410, 0x3FFC, RW, HOLE, _D),
+    Island("GPIO", "gpio_intf_wrap", 0x3000, 0x340C, 0x3410, 0x3FFC, RW, HOLE, _D),
     Island(
         "AVS",
         "smc_avsbus_controller",
