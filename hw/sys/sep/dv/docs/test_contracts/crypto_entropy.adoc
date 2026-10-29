@@ -4752,10 +4752,7 @@ verify that must pass (tcId 63).
 [arabic]
 . Bring up in `no_cpu`.
 . For each case, tcId 63 first: write `ZEROIZE` and wait for VALID to drop and
-  READY to rise. Write the public key and the signature. Read back the hint
-  words of `MLDSA_SIGNATURE` (words 1136 to 1156: FIPS 204 sigEncode puts the
-  83-byte hint after the 64-byte c~ and the 4480-byte z) and require the written
-  values (`CTRL-HINT-SIG-LOADED`).
+  READY to rise. Write the public key and the signature.
 . For an external-mu case, write mu to `MLDSA_EXTERNAL_MU` and issue VERIFYING
   with `MLDSA_CTRL.EXTERNAL_MU` set. For an external-mu reject case, set the
   `sep_abr_completion_cg` reject-class label to 3 (hint) before VERIFYING and
@@ -4769,7 +4766,12 @@ verify that must pass (tcId 63).
   strobe of the trailing bytes, or `0x0` and a dummy word for a whole-word
   message.
 . Wait for VALID with ERROR=0 and read `MLDSA_VERIFY_RES` (CHK-HINT-CONTROL,
-  CHK-HINT-REJECT).
+  CHK-HINT-REJECT). Then read back the hint words of `MLDSA_SIGNATURE` (words
+  1136 to 1156: FIPS 204 sigEncode puts the 83-byte hint after the 64-byte c~
+  and the 4480-byte z) and require the written values (`CTRL-HINT-SIG-LOADED`).
+  The readback follows VALID, where the driver reads c~ back from `MLDSA_SIGNATURE`
+  (`hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc:80-83`); no text states
+  what the signature reads before an operation completes.
 . After the last case, zeroize and require that the leaf ran every case of the
   table (`INFO-HINT-CASES`).
 
@@ -4788,8 +4790,9 @@ streamed message and the context reach the engine intact.
 |Each malformed-hint case completes VALID with ERROR=0, and `MLDSA_VERIFY_RES`
 differs from c~ in at least one word: the engine did not accept the signature.
 Control: `CTRL-HINT-SIG-LOADED` for the same case, so the malformed hint is in
-`MLDSA_SIGNATURE` (`sw = rw`, `abr_reg.rdl`) when VERIFYING starts; a hint write
-that did not land fails the control, not passes as a reject.
+`MLDSA_SIGNATURE` (`sw = rw`, `abr_reg.rdl`) when VERIFYING completes; the
+leaf writes the signature only before VERIFYING, so a hint write that did not
+land fails the control, not passes as a reject.
 |CHK-HINT-PRELOAD
 |On each pure (streamed) case, `MLDSA_VERIFY_RES` reads ~c~, the bitwise inverse of the c~ of the signature, right after VERIFYING is accepted and before the message stream: the driver is to "require `MLDSA_VERIFY_RES` to read `~c~`: the accelerator preloads it when it accepts VERIFY" (`hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc:70-72`). tcId 63 is a pure case, so every run grades it. A DUT that leaves the register at 0, at c~ or at another value fails. Anchor: `MLDSA_VERIFY_RES` readback. Evidence: `CHK-HINT-PRELOAD PASS: <case>: MLDSA_VERIFY_RES after VERIFY accept is ~c~`.
 |===

@@ -94,7 +94,9 @@ walked cells and the seed are logged).
 Every cell grades LC_STATE[7:0] against ``{~raw, raw}`` of the golden state.
 Every write cell also carries, in LC_STATE[31:8], one bit that no earlier write
 or the sensed word set; ``CTRL-LC-WR-LANDED`` requires that bit in the readback,
-so a dropped write fails the leaf whether the bytes overwrite or OR-merge.
+so a dropped write fails the leaf whether the bytes overwrite or OR-merge. The
+seeded patterns leave LC_STATE[31:24] clear (``_MARK_POOL``), so every write cell
+of every walk has such a bit on every seed.
 Every leaf with a bus-write cell also writes a second seed-derived [31:8]
 pattern that differs from the first in both directions (a CHK-W1S-NO-CLEAR
 cell). ``CTRL-TOKEN-MATCH`` (each token match), ``CTRL-GATE-SIP-FAULT`` (the
@@ -109,8 +111,8 @@ word at ``efuse_shadow_probe_o``); every write cell: ``OBS-LC-WR-NIBBLE`` (bits
 [7:4] of the write data and of the readback word: the specification does not
 state how a write of the complement nibble acts).
 
-RANDCFG: the tokens and the byte [31:8] pattern come from the run seed
-(``SepLcTransitionCfg``). The two PROD_END leaves pin the exit with
+RANDCFG: the tokens and the LC_STATE[23:8] patterns come from the run seed
+(``SepLcTransitionCfg``, masked with ``_MARK_POOL``). The two PROD_END leaves pin the exit with
 ``+lc_prod_end_exit=bit0|rma_sip``; without it the seed selects one
 (``_prod_end_exit``).
 Every other cell within a leaf is fixed.
@@ -166,6 +168,9 @@ _PROD_END_EXITS = ("bit0", "rma_sip")
 # Salt for the exit-choice stream, so it is independent of the SepLcTransitionCfg
 # stream drawn from the same seed.
 _PROD_END_EXIT_SALT = 0x5052_4F44_454E_4400
+# LC_STATE bits kept out of the seeded [31:8] patterns, so CTRL-LC-WR-LANDED has
+# an unused bit for each write cell. Eight bits cover the longest walk (six writes).
+_MARK_POOL = 0xFF00_0000
 
 
 @pyuvm.test()
@@ -220,7 +225,9 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._upper = image.shadow_word(LC_WORD_IDX) & LC_STATE_UPPER_MASK
         # Every [31:8] bit written or sensed so far. A bit outside this set is
         # absent from the readback whether the bytes overwrite or OR-merge.
-        self._upper_seen = self._upper | self.cfg_lc.nuisance | self.cfg_lc.nuisance2
+        self._nuisance = self.cfg_lc.nuisance & ~_MARK_POOL
+        self._nuisance2 = self.cfg_lc.nuisance2 & ~_MARK_POOL
+        self._upper_seen = self._upper | self._nuisance | self._nuisance2
         sec_dis = int(getattr(cocotb.top, "lcc_security_disable_probe_o").value) & 0x1
         assert sec_dis == 0, (
             "SEC_DIS is asserted, which forces FEAT_CTRL to all-ones and would "
@@ -307,7 +314,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # this write reached the shadow (CTRL-LC-WR-LANDED).
         free = LC_STATE_UPPER_MASK & ~self._upper_seen
         mark = free & -free
-        pattern = (self.cfg_lc.nuisance if upper is None else upper) | mark
+        pattern = (self._nuisance if upper is None else upper) | mark
         full_wdata = (wdata & LC_STATE_BYTE_MASK) | pattern
         if do_write:
             assert mark, f"CTRL-MISSING LC-WR-LANDED {tag}: no unused LC_STATE[31:8] bit left"
@@ -431,7 +438,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         an overwrite from an OR-merge. The nibble cell is a write of 0
         (CHK-W1S-NO-CLEAR).
         """
-        await self._cell(0x0, "CHK-W1S-NO-CLEAR", upper=self.cfg_lc.nuisance2)
+        await self._cell(0x0, "CHK-W1S-NO-CLEAR", upper=self._nuisance2)
 
     # -- per-leaf walks ------------------------------------------------------
     async def _walk_prod(self) -> None:

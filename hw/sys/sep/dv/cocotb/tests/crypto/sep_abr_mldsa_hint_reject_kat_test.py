@@ -26,10 +26,12 @@ Case 0 is a pure-with-context signature that must verify, run first: the
 streamed message and the context are new to this aperture's DV, and a stream or
 context fault fails there on a known answer rather than reading as a reject.
 
-Before each VERIFY the leaf reads back the hint words of ``MLDSA_SIGNATURE``
+Once VALID rises, the leaf reads back the hint words of ``MLDSA_SIGNATURE``
 (``sw = rw``, abr_reg.rdl) and requires the written values
 (``CTRL-HINT-SIG-LOADED``), so a reject is graded only on a malformed hint that
-reached the engine.
+reached the engine. The readback follows VALID, where the driver reads c~ back
+from the signature (``hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc:80-83``);
+no text states what the signature reads before an operation completes.
 
 VALID is sticky and READY does not re-assert until a zeroize, so each command
 is preceded by one. no_cpu / +skip_fuse_sense; the vectors are fixed.
@@ -160,19 +162,6 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
             await self._zeroize(abr, what=f"before {what}")
             await abr.write_words(ABR_PUBKEY, case.pk)
             await abr.write_words(ABR_SIGNATURE, case.sig)
-            hint = list(case.sig[_HINT_WORD0:])
-            hint_rb = await abr.read_words(ABR_SIGNATURE + 4 * _HINT_WORD0, len(hint))
-            assert hint_rb == hint, (
-                f"CTRL-MISSING HINT-SIG-LOADED: {what}: MLDSA_SIGNATURE hint words "
-                f"{_HINT_WORD0}..{_HINT_WORD0 + len(hint) - 1} read back "
-                f"{sum(a != b for a, b in zip(hint_rb, hint))} word(s) different from the written values"
-            )
-            self.logger.info(
-                "CTRL-HINT-SIG-LOADED: %s: MLDSA_SIGNATURE words %d..%d read back as written",
-                what,
-                _HINT_WORD0,
-                _HINT_WORD0 + len(hint) - 1,
-            )
             if label:
                 set_abr_reject_class(_REJECT_CLASS_HINT, self.logger)
             streamed = None
@@ -205,6 +194,19 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
             res = await abr.read_words(ABR_VERIFY_RES, VERIFY_RES_WORDS)
             if label:
                 set_abr_reject_class(0, self.logger)
+            hint = list(case.sig[_HINT_WORD0:])
+            hint_rb = await abr.read_words(ABR_SIGNATURE + 4 * _HINT_WORD0, len(hint))
+            assert hint_rb == hint, (
+                f"CTRL-MISSING HINT-SIG-LOADED: {what}: MLDSA_SIGNATURE hint words "
+                f"{_HINT_WORD0}..{_HINT_WORD0 + len(hint) - 1} read back "
+                f"{sum(a != b for a, b in zip(hint_rb, hint))} word(s) different from the written values"
+            )
+            self.logger.info(
+                "CTRL-HINT-SIG-LOADED: %s: MLDSA_SIGNATURE words %d..%d read back as written",
+                what,
+                _HINT_WORD0,
+                _HINT_WORD0 + len(hint) - 1,
+            )
 
             if case.verdict:
                 assert res == c_tilde, (
