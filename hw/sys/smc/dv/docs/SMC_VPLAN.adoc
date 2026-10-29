@@ -8836,7 +8836,7 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * AMBA IHI 0022 A3.2.1: a transfer completes only when VALID and READY are both asserted, VALID may not be withdrawn before that, and the channel's payload stays stable across the wait. B and R are driven by the design, so their stability under the manager's backpressure is the design's obligation and is sampled every cycle the manager holds READY low.
-* Three write passes over the eight scratch registers go out as one outstanding group with BREADY held, each pass carrying its own word, so the individual readbacks also show that writes to one address took effect in the order they were issued.
+* Three write passes over the eight scratch registers go out as one outstanding group with BREADY held, each pass carrying its own word, so the individual readbacks show which pass landed last on each address.
 * Four read passes over the same registers go out as one outstanding group with RREADY held, each compared against that address's word, so an access that was dropped, merged, reordered or mis-routed returns the wrong word.
 * The stalled-cycle counts are asserted non-zero for all four channels. They are the measurement that the backpressure happened, not the claim: a run whose timing profile stopped reaching the bus fails rather than passing on traffic that never stalled.
 
