@@ -52,12 +52,12 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IIR` registers.</td></tr>
+<tr><td>7</td><td>DLAB</td><td>RW</td><td>0x0</td><td>Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers<br>when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access<br>to the `THR`, `RBR`, and `IER` registers. `IIR` and `FCR` are accessible<br>regardless of this bit.</td></tr>
 <tr><td>6</td><td>SET_BREAK</td><td>RW</td><td>0x0</td><td>Set Break. If set, forces the `tx_o` output to `0` to cause a break condition<br>on the receiving UART.</td></tr>
 <tr><td>5</td><td>STICK_PARITY</td><td>RW</td><td>0x0</td><td>Stick Parity. If set, forces the transmit and received parity bits to be `0` if<br>even parity is selected and `1` if odd parity is selected.</td></tr>
 <tr><td>4</td><td>EPS</td><td>RW</td><td>0x0</td><td>Even Parity Select:<br>* `1` - even parity<br>* `0` - odd parity</td></tr>
 <tr><td>3</td><td>PEN</td><td>RW</td><td>0x0</td><td>Parity Enable.</td></tr>
-<tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)</td></tr>
+<tr><td>2</td><td>STB</td><td>RW</td><td>0x0</td><td>Stop Bits:<br>* `0` - 1 stop bit.<br>* `1` - 2 stop bits. The transmitter always sends 2 stop bits; with 5-bit<br>words the receiver checks only the first.</td></tr>
 <tr><td>1:0</td><td>WLS</td><td>RW</td><td>0x0</td><td>Word Length Select:<br>* `0x0` - 5 bits per character<br>* `0x1` - 6 bits per character<br>* `0x2` - 7 bits per character<br>* `0x3` - 8 bits per character</td></tr>
 </table>
 <h3 id="MCR">MCR</h3>
@@ -81,7 +81,7 @@
 <tr><td>4</td><td>BI</td><td>R RC</td><td>0x0</td><td>Break Interrupt. When set, indicates that the `rx_i` input is `0` for an entire<br>frame&#x27;s time (start + data + parity + stop bits). In FIFO mode, this bit set<br>when the character reaches the top of the receiver FIFO. In non-FIFO mode, this<br>bit is set when the character enters the RBR. This bit triggers the Receiver<br>Line Status Interrupt.</td></tr>
 <tr><td>3</td><td>FE</td><td>R RC</td><td>0x0</td><td>Framing Error. When set, indicates that the received character is missing a<br>stop bit. In FIFO mode, this bit is set when the character reaches the top of<br>the FIFO. In non-FIFO mode, this bit is set when the character enters the RBR.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
 <tr><td>2</td><td>PE</td><td>R RC</td><td>0x0</td><td>Parity Error. When set, indicates that the character at the top of the receiver<br>FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the<br>Receiver Line Status Interrupt.</td></tr>
-<tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer<br>Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character<br>is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.<br>This bit triggers the Receiver Line Status Interrupt.</td></tr>
+<tr><td>1</td><td>OE</td><td>R RC</td><td>0x0</td><td>Overrun Error. When set, indicates that the RX FIFO was full when a new<br>character was received; the new character is dropped. This bit sets only in<br>FIFO mode: in non-FIFO mode a new character overwrites an unread character in<br>the RBR without setting it. This bit triggers the Receiver Line Status<br>Interrupt.</td></tr>
 <tr><td>0</td><td>DR</td><td>R</td><td>0x0</td><td>Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO<br>mode) contains data.</td></tr>
 </table>
 <h3 id="MSR">MSR</h3>
@@ -107,7 +107,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
+<tr><td>1:0</td><td>RCVR_TRIGGER_MS2B</td><td>RW</td><td>0x0</td><td>Receiver FIFO Trigger Level Most Significant 2 Bits. To configure the least<br>significant 2 bits, use the `FCR.RCVR_TRIGGER` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters<br>The Received Data Ready interrupt asserts while the receive FIFO holds<br>at least the selected number of characters. A level above the receive<br>FIFO depth, and any combined value above `0xB`, never asserts it.</td></tr>
 </table>
 <h3 id="ITR">ITR</h3>
 <table>

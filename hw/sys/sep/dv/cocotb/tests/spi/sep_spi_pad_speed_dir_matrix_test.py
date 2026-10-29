@@ -102,7 +102,7 @@ Checks:
 * CHK-SPI-ILLEGAL: each of the 5 graded illegal cells sets ERROR_STATUS to
   CMDINVAL only, and a legal control command after the SPI clean state reads
   ERROR_STATUS 0. SPEED 3 with DIRECTION 2 runs as the control
-  ``CTL-SPI-ILLEGAL LOG`` and prints no CHK line. The illegal COMMAND is written
+  ``CTRL-SPI-ILLEGAL LOG`` and prints no CHK line. The illegal COMMAND is written
   with the core held (CONTROL.SPIEN=0), so the reserved cell never runs on the
   pads, and the SW_RST of the SPI clean state empties the command queue.
 * CHK-SPI-LONGDUMMY: on a seed that draws it (1 in 4), LEN 0xFFFFF at CLKDIV 0
@@ -778,7 +778,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 f"rxqd={before.rxqd} before the dummy segment"
             )
         self.logger.info(
-            "CTL-SPI-DUMMY LOG seed=%d txqd_before=%d rxqd_before=%d",
+            "CTRL-SPI-DUMMY LOG seed=%d txqd_before=%d rxqd_before=%d",
             seed,
             before.txqd,
             before.rxqd,
@@ -824,7 +824,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 f"CSAAT=0 commands (windows={[w.fmt() for w in wins]} gaps={gaps})"
             )
         self.logger.info(
-            "CTL-SPI-CHAIN LOG seed=%d control_cs_rise_between_csaat0=1 gap_clks=%d",
+            "CTRL-SPI-CHAIN LOG seed=%d control_cs_rise_between_csaat0=1 gap_clks=%d",
             seed,
             gaps[0],
         )
@@ -956,8 +956,8 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                     f"err_status=0x{err.got & err.mask:02x} err_mask=0x{err.mask:02x}"
                 )
                 if not err.ok:
-                    raise AssertionError(f"CTL-SPI-ILLEGAL FAIL {line}")
-                self.logger.info("CTL-SPI-ILLEGAL LOG %s", line)
+                    raise AssertionError(f"CTRL-SPI-ILLEGAL FAIL {line}")
+                self.logger.info("CTRL-SPI-ILLEGAL LOG %s", line)
             # Legal control command after the SPI clean state.
             await self._clean_state()
             await self.ops.wr(CONTROL, self.ctrl)
@@ -976,7 +976,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             if control:
                 if not ctl.ok:
                     raise AssertionError(
-                        f"CTL-SPI-ILLEGAL FAIL seed={seed} control_err_status=0x{ctl.got:02x}"
+                        f"CTRL-SPI-ILLEGAL FAIL seed={seed} control_err_status=0x{ctl.got:02x}"
                     )
                 continue
             line = (
@@ -1031,11 +1031,11 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             intr0 = field_compare(int(await self.ops.rd(INTR_STATE)), 0, INTR_STATE_MASK)
             if not err0.ok or not intr0.ok:
                 raise AssertionError(
-                    f"CTL-SPI-BRINGUP FAIL seed={self.seed} error_status {err0.fields()} "
+                    f"CTRL-SPI-BRINGUP FAIL seed={self.seed} error_status {err0.fields()} "
                     f"intr_state {intr0.fields()}"
                 )
             self.logger.info(
-                "CTL-SPI-BRINGUP LOG seed=%d control=0x%08x error_status=0x%02x "
+                "CTRL-SPI-BRINGUP LOG seed=%d control=0x%08x error_status=0x%02x "
                 "intr_state=0x%x fcov=%d",
                 self.seed,
                 ctrl,
@@ -1050,7 +1050,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             if self.long_dummy:
                 await self._long_dummy_leg()
             else:
-                self.logger.info("OBS-SPI-LONGDUMMY seed=%d long_dummy=0 graded=0", self.seed)
+                self.logger.info("INFO-SPI-LONGDUMMY seed=%d long_dummy=0 graded=0", self.seed)
             await self._illegal_leg()
             self._ungraded()
             await self.pads.stop()
@@ -1069,7 +1069,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 f"CHK-SPI-OE-SEG rows not graded {miss_oe}"
             )
         self.logger.info(
-            "CTL-SPI-LANES LOG seed=%d data_graded=%s oe_rows=%s",
+            "CTRL-SPI-LANES LOG seed=%d data_graded=%s oe_rows=%s",
             self.seed,
             ",".join(f"x{lanes}{'rx' if rx else 'tx'}" for lanes, rx in sorted(self.lane_graded)),
             ",".join(sorted(self.oe_graded)),

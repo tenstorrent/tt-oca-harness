@@ -376,7 +376,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         if leg_c:
             self.required_evidence = (*self.required_evidence, "CHK-JTAG-SIGINT")
         self.logger.info(
-            "EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
+            "INFO-EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
         )
         close_graded_window(self.logger)
         self.fd = SepEfuseFd(self)

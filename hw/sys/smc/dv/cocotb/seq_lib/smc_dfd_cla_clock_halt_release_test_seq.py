@@ -26,11 +26,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
-from .smc_dfd_cla_action_seq_utils import (
-    ACTION_CLOCK_HALT,
-    SAMPLE_CYCLES,
-    SmcDfdClaActionSeq,
-)
+from .smc_dfd_cla_action_seq_utils import SAMPLE_CYCLES, SmcDfdClaActionSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import dfd_register
 
 CHK = "CHK-CLA-CLOCK-HALT-RELEASE"
@@ -66,13 +62,13 @@ class smc_dfd_cla_clock_halt_release_test_seq(SmcDfdClaActionSeq):
         await self._write_ctrl(1, 1, 0, "arm")
         armed = await self._sample("armed")
         assert armed == (0, 0), f"status={armed[0]} stopped={armed[1]} before the fire, want 0 0"
-        activating, quiet = await self._fire(ACTION_CLOCK_HALT, "stop")
+        action, activating, quiet = await self._discover("tb_cla_halt_clock_global", "stop")
         fired = await self._sample("fired")
         assert fired == (1, 1), (
-            f"clock-halt action with LogicalOp {activating}: status={fired[0]} "
+            f"clock-halt action {action} with LogicalOp {activating}: status={fired[0]} "
             f"stopped={fired[1]} after the fire, want both 1"
         )
-        await self._quiet(ACTION_CLOCK_HALT, quiet, "quiet")
+        await self._quiet(action, quiet, "quiet")
         await self._sample("action_dropped")
         await self._w2c("once")
         status, _ = await self._sample("after_w2c")

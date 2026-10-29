@@ -802,7 +802,7 @@ class sep_hmac_swap_context_rand_test(sep_base_test):
             len=len(trip.unrelated),
             order=order or "none",
         )
-        self.chk.obs("HMAC-CTX-CHANGED", tag=tag, part=part, changed=int(got != saved[:n]))
+        self.chk.info("HMAC-CTX-CHANGED", tag=tag, part=part, changed=int(got != saved[:n]))
         # The unrelated stream ends with its own sha_en clear (context-switch step 6).
         await self._wr(HMAC_CFG, cfg & ~HMAC_CFG_SHA_EN)
         self._window(True)

@@ -221,7 +221,7 @@ class sep_abr_combined_cmd_kat_test(sep_base_test):
 
     async def _recover(self, where: str) -> None:
         """Clean-up after a timed-out wait: ABR reset, bounded READY wait on both blocks."""
-        self.logger.info("ABR-RECOVER seed=%d where=%s", self.seed, where)
+        self.logger.info("INFO-ABR-RECOVER seed=%d where=%s", self.seed, where)
         await self._abr_reset()
         for status, ready in ((MLKEM_STATUS, KEM_ST_READY), (ABR_STATUS, ST_READY)):
             if await self._poll(status, ready, READY_POLLS, READY_GAP) is None:

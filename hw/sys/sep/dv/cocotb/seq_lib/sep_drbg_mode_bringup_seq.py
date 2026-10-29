@@ -84,7 +84,7 @@ async def drbg_bring_up(
     if edn_ctrl is not None:
         await test.start_seq(SepEdnCtrlWriteSeq("edn_ctrl_write", value=edn_ctrl))
     test.logger.info(
-        "DRBG-BRING-UP seed=1 edn_ctrl=%s strict=%s",
+        "INFO-DRBG-BRING-UP seed=1 edn_ctrl=%s strict=%s",
         "none" if edn_ctrl is None else f"0x{edn_ctrl:08x}",
         strict,
     )

@@ -12,14 +12,14 @@ the leg, one bit per AVS clock, most significant first. The frame format is
 (0 = valid) in [29], status in [28:24], data in [23:8], reserved [7:3] and a
 CRC-3 in [2:0].
 
-No document in this tree gives the CRC-3 polynomial. The responder does not
-need it: `architecture.adoc` says a reply that fails the check does not
-update `AVS_LATEST_SLAVE_SUBFRAME`, and with `MAX_RETRIES` at 0 the failing
-reply is still delivered to the readback FIFO. So each reply shape is sent
-once with each of the eight CRC codes, and the DUT names the one it accepts:
-exactly one of the eight must update `AVS_LATEST_SLAVE_SUBFRAME`, and the
-other seven must reach `AVS_READBACK` without doing so. The accepted code is
-then used for the legs that need a reply the controller believes.
+`interface.adoc` gives the CRC-3 polynomial, x^3 + x + 1 over bits [31:3].
+The responder does not use it: `architecture.adoc` says a reply that fails
+the check does not update `AVS_LATEST_SLAVE_SUBFRAME`, and with `MAX_RETRIES`
+at 0 the failing reply is still delivered to the readback FIFO. So each reply
+shape is sent once with each of the eight CRC codes, and the DUT names the one
+it accepts: exactly one of the eight must update `AVS_LATEST_SLAVE_SUBFRAME`,
+and the other seven must reach `AVS_READBACK` without doing so. The accepted
+code is then used for the legs that need a reply the controller believes.
 
 Reply shapes and what each leg requires:
 
