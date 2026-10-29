@@ -133,6 +133,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |AXI Extension port responder |Added hook (top-port drive). The integration wrapper answers the `sep` extension port (`sep_external_axi_resp_i`) from an error slave: DECERR, read data `0xBADCAB1E`. In a run with `+sep_ext_port_responder`, `tb_top` forces the wrapper net `axi_extension_axi_resp` from its own responder instead, re-issued on each falling edge of `clk_i`; without the plusarg the net is never forced and the responder stays in reset. The responder accepts one write burst and one read burst at a time and returns the request ID. The B code of a write is `ext_port_rsp_bresp_i` at the AW handshake. R beat k of a read answers RRESP `ext_port_rsp_rresp_i[2k +: 2]` and RDATA `ext_port_rsp_rdata_i[64k +: 64]`, sampled at the AR handshake, beat k modulo 8. `ext_port_rsp_on_o` reads 1 while the responder is on. Owners: `sep_fabric_extension_port_window_test` (CHK-EXT-REPLY, CHK-EXT-PORT, CHK-EXT-BURST) and the `_sba` entry of `sep_debug_master_target_matrix_test` (CHK-DBG-EXT), each of which sets the reply before each access.
 |TRNG AXI-Lite passthrough responder |Added hook (top-port drive). The integration wrapper answers the `sep` TRNG AXI-Lite port (`ext_trng_axil_resp_i`) from an error slave: DECERR. In a run with `+sep_ext_trng_axil_responder`, from the first clock with `ext_trng_axil_rsp_en_i` at 1, `tb_top` forces the wrapper net `ext_trng_axil_resp` from its own responder instead, re-issued on each falling edge of `clk_i`. The responder then stays on for the rest of the run and the net is never released. Without the plusarg the net is never forced. The responder accepts one write and one read at a time. B handshake k answers BRESP `ext_trng_axil_rsp_bresp_i[2j +: 2]`, sampled when B becomes valid, and R handshake k answers RRESP `ext_trng_axil_rsp_rresp_i[2j +: 2]` and RDATA `ext_trng_axil_rsp_rdata_i[32j +: 32]`, sampled at the AR handshake, with j = k modulo 8. k counts the handshakes of each channel from 0 at each rise of the enable and at the bench reset. `ext_trng_axil_rsp_on_o` reads 1 while the responder is on, and `ext_trng_axil_rsp_bcnt_o` and `ext_trng_axil_rsp_rcnt_o` read the two counts. All inputs are 0 by default. Users: the dead-space decode entry of the fabric and remap area of `docs/SEP_VPLAN.adoc`, which turns the responder on after its reference-slave legs, with the port idle.
 |Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN).
+|CPU machine timer interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `timer_int` (the core pin that drives `mip.MTIP`) from the TB input `timer_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-TIMER-PIN).
 |External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, the DRBG stall point of `sep_km_fault_inject_rand_test`, and the pool leg of `sep_fabric_dma_endpoint_matrix_test` (stream 2: a drawn number of word pairs below the pool depth).
 |External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
@@ -236,12 +237,23 @@ Observation probe groups:
   `dmi_addr` of `u_sep_cpu.u_el2_veer_wrapper`), tied to 0 on the CPU stub
   build. No frontdoor shows a DMI request that the enable gates block. Read-only;
   owner `sep_debug_master_target_matrix_test` (CHK-DMI-GATE, CHK-DMI-UNCORE).
+  `dmi_active_probe_o`, the wrapper output `dmi_active`. No register shows
+  it. Read-only; owner `sep_debug_master_target_matrix_test`, which counts
+  its rises and high clocks while the DTM is on and logs them
+  (OBS-DMI-ACTIVE).
 * Watchdog count tap (`wdt_wdog_count_o`): the `WDOG_COUNT` register of the
   watchdog AON timer (`u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q`),
   clocked by `clk_wdt_i`. A bus read of `WDOG_COUNT` needs `clk_i`, so no
   frontdoor shows the count while `clk_i` is stopped. Read-only. Users: the
   timer and clock contract entry of the memory, boot, reset, WDT and clock
   area.
+* AON wakeup tap (`aon_wkup_probe_o[32:0]`): bit 32 the wakeup interrupt
+  request `wkup_intr_o` and bits 31:0 the low word of the wakeup count
+  `wkup_count` of the watchdog AON timer core
+  (`u_sep_wdt_wrap.u_wdt_aon_timer.u_core`), clocked by `clk_wdt_i`. No bus
+  read shows the count on the clock the request rises. Read-only. Owner:
+  `sep_wdt_aon_timer_internals_test`, which logs the count at the first
+  `clk_wdt_i` edge with the request high (OBS-WKUP-EXPIRE-COUNT).
 * `TIMEOUT_INTERRUPT` read-source tap (`timeout_interrupt_probe_o`): the
   hardware input `sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.reserved.next` of
   the `SEP_CPU_CTRL` register block in `u_sep_system_csr`. The field has no
@@ -278,6 +290,13 @@ Observation probe groups:
   `u_otbn.u_prim_sync_reqack_data_urnd`): the word the client takes on its
   handshake clock. No register shows that word for KMAC or OTBN URND. Owner:
   `sep_trng_ext_sink_reset_rand_test`.
+* DRBG seed-packer ready tap (`drbg_seed_word_ready_o`, read-only, no
+  force): `csrng_word_ready_o` of the CSRNG seed adapter of the DRBG
+  (`u_csrng_seed_adapter`), the ready of the packer that takes each ESRC
+  word that `esrc_compress_vld_o` offers. No register shows whether an
+  offered word was taken or dropped. Owner: `sep_drbg_cmd_sequence_rand_test`,
+  which counts the offered words taken and dropped and logs the counts
+  (OBS-DRBG-SEED-INGRESS).
 * RMA-SIP token-digest latch probes (`token_digest_*`).
 * eFuse and lifecycle taps (read-only, no force). `efuse_shim_cmd_*_o`, the
   post-guard fuse command at the `sep` output `efuse_shim_command_req_o`
@@ -303,14 +322,19 @@ Observation probe groups:
   `jtag_filter_lc_sigint_err_probe_o`, the integrity-error flag of the JTAG
   lifecycle filter decoder; `lcc_sigint_err_probe_o` stays 0 under a
   filter-side inject. `jtag_id_probe_o`, the `sep` input `jtag_id_i`. `sec_dis_digest_probe_o`, the SEC_DIS
-  expected digest that the bench binds to `SEP_SEC_DISABLE_TOKEN`. Owners:
+  expected digest that the bench binds to `SEP_SEC_DISABLE_TOKEN`.
+  `lc_state_probe_o`, the `sep` output `lc_state_o`, the differentially
+  encoded lifecycle state; no register shows the port value.
+  `sep_lcc_lc_state_transition_matrix_test` logs it beside the `LC_STATE`
+  shadow word (OBS-LC-STATE-PORT). Owners:
   `sep_lcc_feat_ctrl_state_matrix_rand_test`,
   `sep_efuse_transient_rma_rand_test`, `sep_efuse_token_channel_rand_test`,
   `sep_efuse_token_fault_matrix_test`, `sep_efuse_interface_status_rand_test`,
   `sep_efuse_lock_slot_matrix_rand_test`,
   `sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test`,
   `sep_sec_dis_timing_rand_test`, `sep_lcc_state_codeword_rand_test`,
-  `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`.
+  `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`,
+  `sep_lcc_lc_state_transition_matrix_test`.
 * eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of
   `u_sep_fcov`): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
   comparator fault bits), `token_go_i` (hash start pulses),
@@ -435,7 +459,7 @@ Observation probe groups:
 * Memory-interface reset taps (`pr_sram_memif_rst_n_o` /
   `pr_rom_memif_rst_n_o`): the `rst_ni` inputs of the SEP SRAM and boot ROM
   memory interfaces (`u_sram_memory_interface`, `u_boot_rom_memory_interface`).
-  Monitor only. Owner: `sep_cpu_reset_entry_test` (OBS-MEMIF-WDT-RST).
+  Monitor only. Owner: `sep_cpu_reset_entry_test` (CHK-MEMIF-WDT-RST).
 * The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`).
 * SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`,
   `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:
@@ -824,6 +848,19 @@ Exceptions (a closed set):
   until the next entropy-source reset (the TRNG reset). `MAIN_SM_STATUS` and
   the other registers the checkers read stay frontdoor. Users: the ESRC
   persistent-alert entry of the crypto and entropy area.
+* *ESRC main state machine illegal-state force* — a cocotb `Force` in the
+  leaf, with no `tb_top` input. The leaf forces one drawn 9-bit encoding
+  outside the state set of the entropy-source main state machine on both
+  state flops (`u_main_sm.u_state_regs.u_state_flop.q_o` and the parallel
+  `u_main_sm.state_q`) for 2 clocks after a clock edge, then releases them.
+  Software cannot put the state machine in an undefined state, so the
+  illegal-state error has no frontdoor. The legal encodings only select the
+  stimulus; the golden is `MAIN_SM_STATUS.ERR`
+  (`hw/ip/entropy_source/regs/entropy_source.rdl:650`). VCS only: the flops
+  are not public under Verilator, and the leaf logs
+  `OBS-BLOCKED CHK-SM-ILLEGAL`. `MAIN_SM_STATUS` and `INTR_STATUS` stay
+  frontdoor. Users: the ESRC persistent-alert entry of the crypto and
+  entropy area (CHK-SM-ILLEGAL).
 * *Crypto alert sender inject* — while `crypto_alert_inject_i` is 1, the alert
   pair (`alert_p`, `alert_n`) at the input of crypto alert receiver
   `crypto_alert_inject_idx_i` (0 to 10, the index order of

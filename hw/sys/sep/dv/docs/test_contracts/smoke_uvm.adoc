@@ -369,7 +369,7 @@ not grade that rejection.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-SENSE` (`cocotb/tests/efuse/sep_efuse_sense_test.py`), covers CHK-SENSE-DONE and CHK-IMAGE-MATCH. The record refuses to pass under `+skip_fuse_sense`, which would skip the shadow compare.
+*Evidence*: one aggregate record, `CHK-SENSE` (`cocotb/tests/efuse/sep_efuse_sense_test.py`), covers CHK-SENSE-DONE and CHK-IMAGE-MATCH. The record refuses to pass under `+skip_fuse_sense`, which would skip the shadow compare. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock. No specification states the order in which the fields land, so it grades nothing.
 
 '''''
 
