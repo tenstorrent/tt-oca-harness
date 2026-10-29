@@ -383,8 +383,11 @@ def build_instances() -> tuple[Inst, ...]:
                 )
             )
     for fam in ("mmode", "xvisor"):
-        sym = f"SMC_TOP_SMC_{fam.upper()}_REMAP_BASE_ADDR"
-        regs = [_indexed(sym, f"smc_{fam}_remap[{{}}]/REGION/region_attrs", i) for i in range(8)]
+        sym = f"SMC_TOP_SMC_{fam.upper()}_REMAP_WRAP_OUTPUT_REMAP_BASE_ADDR"
+        regs = [
+            _indexed(sym, f"smc_{fam}_remap_wrap/output_remap[{{}}]/REGION/region_attrs", i)
+            for i in range(8)
+        ]
         for i, a in enumerate(regs):
             b = regs[(i + 1) % len(regs)]
             _check_probe(a, written=True)

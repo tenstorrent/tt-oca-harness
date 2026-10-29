@@ -118,11 +118,15 @@ _FABRIC_UNITS = (
             "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0
         ),
     ),
-    ("smc_mmode_remap", "MMODE", smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_BASE_ADDR", 0)),
     (
-        "smc_xvisor_remap",
+        "smc_mmode_remap_wrap",
+        "MMODE",
+        smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0),
+    ),
+    (
+        "smc_xvisor_remap_wrap",
         "XVISOR",
-        smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0),
     ),
     (
         "smc_inbound_filter_ctrl",

@@ -46,12 +46,16 @@ FABCFG_DESTS = (
     ),
     (
         "mmode_remap",
-        smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0),
+        smc_indexed_addr(
+            "SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0
+        ),
         8,
     ),
     (
         "xvisor_remap",
-        smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0),
+        smc_indexed_addr(
+            "SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0
+        ),
         8,
     ),
     (

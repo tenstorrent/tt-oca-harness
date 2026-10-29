@@ -9097,91 +9097,105 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>
-          <ipxact:name>smc_mmode_remap</ipxact:name>
-          <ipxact:displayName>Output Remap Address Map</ipxact:displayName>
-          <ipxact:description>Address-translation registers that remap outbound transactions and tag their attributes.</ipxact:description>
-          <ipxact:dim>8</ipxact:dim>
+          <ipxact:name>smc_mmode_remap_wrap</ipxact:name>
+          <ipxact:displayName>Output Remap Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Wrapper address map instantiating one output remap register block per remap region.</ipxact:description>
           <ipxact:addressOffset>'hc0013000</ipxact:addressOffset>
-          <ipxact:range>'h8</ipxact:range>
+          <ipxact:range>'h40</ipxact:range>
           <ipxact:registerFile>
-            <ipxact:name>REGION</ipxact:name>
+            <ipxact:name>output_remap</ipxact:name>
+            <ipxact:displayName>Output Remap Address Map</ipxact:displayName>
+            <ipxact:description>Address-translation registers that remap outbound transactions and tag their attributes.</ipxact:description>
+            <ipxact:dim>8</ipxact:dim>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h8</ipxact:range>
-            <ipxact:register>
-              <ipxact:name>region_attrs</ipxact:name>
+            <ipxact:registerFile>
+              <ipxact:name>REGION</ipxact:name>
               <ipxact:addressOffset>'h0</ipxact:addressOffset>
-              <ipxact:size>64</ipxact:size>
-              <ipxact:field>
-                <ipxact:name>offset</ipxact:name>
-                <ipxact:description>Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
+              <ipxact:range>'h8</ipxact:range>
+              <ipxact:register>
+                <ipxact:name>region_attrs</ipxact:name>
+                <ipxact:addressOffset>'h0</ipxact:addressOffset>
+                <ipxact:size>64</ipxact:size>
+                <ipxact:field>
+                  <ipxact:name>offset</ipxact:name>
+                  <ipxact:description>Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
 e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs from this register used
     SEP: 16 * 512KB regions --&gt; 19 bits of address space per region, 37 MSBs from this register used</ipxact:description>
-                <ipxact:bitOffset>0</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>56</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-              <ipxact:field>
-                <ipxact:name>valid</ipxact:name>
-                <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
-                <ipxact:bitOffset>63</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-            </ipxact:register>
+                  <ipxact:bitOffset>0</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>56</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+                <ipxact:field>
+                  <ipxact:name>valid</ipxact:name>
+                  <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
+                  <ipxact:bitOffset>63</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>1</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+              </ipxact:register>
+            </ipxact:registerFile>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>
-          <ipxact:name>smc_xvisor_remap</ipxact:name>
-          <ipxact:displayName>Output Remap Address Map</ipxact:displayName>
-          <ipxact:description>Address-translation registers that remap outbound transactions and tag their attributes.</ipxact:description>
-          <ipxact:dim>8</ipxact:dim>
+          <ipxact:name>smc_xvisor_remap_wrap</ipxact:name>
+          <ipxact:displayName>Output Remap Wrapper Address Map</ipxact:displayName>
+          <ipxact:description>Wrapper address map instantiating one output remap register block per remap region.</ipxact:description>
           <ipxact:addressOffset>'hc0014000</ipxact:addressOffset>
-          <ipxact:range>'h8</ipxact:range>
+          <ipxact:range>'h40</ipxact:range>
           <ipxact:registerFile>
-            <ipxact:name>REGION</ipxact:name>
+            <ipxact:name>output_remap</ipxact:name>
+            <ipxact:displayName>Output Remap Address Map</ipxact:displayName>
+            <ipxact:description>Address-translation registers that remap outbound transactions and tag their attributes.</ipxact:description>
+            <ipxact:dim>8</ipxact:dim>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:range>'h8</ipxact:range>
-            <ipxact:register>
-              <ipxact:name>region_attrs</ipxact:name>
+            <ipxact:registerFile>
+              <ipxact:name>REGION</ipxact:name>
               <ipxact:addressOffset>'h0</ipxact:addressOffset>
-              <ipxact:size>64</ipxact:size>
-              <ipxact:field>
-                <ipxact:name>offset</ipxact:name>
-                <ipxact:description>Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
+              <ipxact:range>'h8</ipxact:range>
+              <ipxact:register>
+                <ipxact:name>region_attrs</ipxact:name>
+                <ipxact:addressOffset>'h0</ipxact:addressOffset>
+                <ipxact:size>64</ipxact:size>
+                <ipxact:field>
+                  <ipxact:name>offset</ipxact:name>
+                  <ipxact:description>Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.
 e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs from this register used
     SEP: 16 * 512KB regions --&gt; 19 bits of address space per region, 37 MSBs from this register used</ipxact:description>
-                <ipxact:bitOffset>0</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>56</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-              <ipxact:field>
-                <ipxact:name>valid</ipxact:name>
-                <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
-                <ipxact:bitOffset>63</ipxact:bitOffset>
-                <ipxact:resets>
-                  <ipxact:reset>
-                    <ipxact:value>'h0</ipxact:value>
-                  </ipxact:reset>
-                </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-write</ipxact:access>
-              </ipxact:field>
-            </ipxact:register>
+                  <ipxact:bitOffset>0</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>56</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+                <ipxact:field>
+                  <ipxact:name>valid</ipxact:name>
+                  <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
+                  <ipxact:bitOffset>63</ipxact:bitOffset>
+                  <ipxact:resets>
+                    <ipxact:reset>
+                      <ipxact:value>'h0</ipxact:value>
+                    </ipxact:reset>
+                  </ipxact:resets>
+                  <ipxact:bitWidth>1</ipxact:bitWidth>
+                  <ipxact:access>read-write</ipxact:access>
+                </ipxact:field>
+              </ipxact:register>
+            </ipxact:registerFile>
           </ipxact:registerFile>
         </ipxact:registerFile>
         <ipxact:registerFile>

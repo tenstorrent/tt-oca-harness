@@ -120,7 +120,9 @@ def _outbound(reg: str, entry: int) -> int:
 
 
 def _remap_attrs(bank: str) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_{bank}_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_{bank}_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0
+    )
 
 
 class smc_outfilt_attr_match_test_seq(SmcCsrSeq):

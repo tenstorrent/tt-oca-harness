@@ -43,8 +43,8 @@ BURST_INCR = 1
 _INTERNAL_XBAR = {
     "smc_base_config",
     "smc_alias_remap_wrap",
-    "smc_mmode_remap",
-    "smc_xvisor_remap",
+    "smc_mmode_remap_wrap",
+    "smc_xvisor_remap_wrap",
     "smc_inbound_filter_ctrl",
     "smc_outbound_filter_ctrl",
     "smc_mailbox",

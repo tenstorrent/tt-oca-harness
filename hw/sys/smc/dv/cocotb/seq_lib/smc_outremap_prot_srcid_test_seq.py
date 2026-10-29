@@ -36,7 +36,7 @@ _ALIAS_RESET = {
 
 
 def _remap_reg(bank: str, entry: int) -> int:
-    sym = f"SMC_TOP_SMC_{bank}_REMAP_REGION_REGION_ATTRS_BASE_ADDR"
+    sym = f"SMC_TOP_SMC_{bank}_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR"
     return smc_indexed_addr(sym, entry)
 
 

@@ -118,7 +118,9 @@ def _alias(kind: str, entry: int) -> int:
 
 
 def _ormp(table: str, entry: int) -> int:
-    return getattr(_regs, f"SMC_{table}_REMAP_{entry}__REGION_REGION_ATTRS_REG_ADDR")
+    return getattr(
+        _regs, f"SMC_{table}_REMAP_WRAP_OUTPUT_REMAP_{entry}__REGION_REGION_ATTRS_REG_ADDR"
+    )
 
 
 # (label, address, documented-field mask) of all 40 remap registers.

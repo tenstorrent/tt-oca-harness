@@ -2981,34 +2981,23 @@ localparam int unsigned SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_7__REGION_REGION_ATTRS_
 
 
 //==============================================================================
-// Addresses for Address Map: smc_mmode_remap[0]
+// Addresses for Address Map: smc_mmode_remap_wrap
 //==============================================================================
 
 
-localparam int unsigned SMC_MMODE_REMAP_0__REG_MAP_BASE_ADDR                                                      = 32'hC0013000;
-localparam int unsigned SMC_MMODE_REMAP_0__REG_MAP_SIZE                                                           = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_REG_MAP_BASE_ADDR                                                    = 32'hC0013000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_REG_MAP_SIZE                                                         = 32'h00000040;
 
 
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_MMODE_REMAP_0__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0013000;
-localparam int unsigned SMC_MMODE_REMAP_0__REGION_REG_FILE_SIZE                                                   = 32'h00000008;
-
-localparam int unsigned SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0013000;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_mmode_remap[1]
+// Addresses for Address Map: output_remap[0]
 //==============================================================================
 
 
-localparam int unsigned SMC_MMODE_REMAP_1__REG_MAP_BASE_ADDR                                                      = 32'hC0013008;
-localparam int unsigned SMC_MMODE_REMAP_1__REG_MAP_SIZE                                                           = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR                                    = 32'hC0013000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE                                         = 32'h00000008;
 
 
 
@@ -3017,42 +3006,20 @@ localparam int unsigned SMC_MMODE_REMAP_1__REG_MAP_SIZE                         
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_MMODE_REMAP_1__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0013008;
-localparam int unsigned SMC_MMODE_REMAP_1__REGION_REG_FILE_SIZE                                                   = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REG_FILE_BASE_ADDR                            = 32'hC0013000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REG_FILE_SIZE                                 = 32'h00000008;
 
-localparam int unsigned SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0013008;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_mmode_remap[2]
-//==============================================================================
-
-
-localparam int unsigned SMC_MMODE_REMAP_2__REG_MAP_BASE_ADDR                                                      = 32'hC0013010;
-localparam int unsigned SMC_MMODE_REMAP_2__REG_MAP_SIZE                                                           = 32'h00000008;
-
-
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET                       = 32'h00000000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR                         = 32'hC0013000;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_MMODE_REMAP_2__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0013010;
-localparam int unsigned SMC_MMODE_REMAP_2__REGION_REG_FILE_SIZE                                                   = 32'h00000008;
-
-localparam int unsigned SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0013010;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_mmode_remap[3]
+// Addresses for Address Map: output_remap[1]
 //==============================================================================
 
 
-localparam int unsigned SMC_MMODE_REMAP_3__REG_MAP_BASE_ADDR                                                      = 32'hC0013018;
-localparam int unsigned SMC_MMODE_REMAP_3__REG_MAP_SIZE                                                           = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR                                    = 32'hC0013008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_1__REG_MAP_SIZE                                         = 32'h00000008;
 
 
 
@@ -3061,42 +3028,20 @@ localparam int unsigned SMC_MMODE_REMAP_3__REG_MAP_SIZE                         
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_MMODE_REMAP_3__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0013018;
-localparam int unsigned SMC_MMODE_REMAP_3__REGION_REG_FILE_SIZE                                                   = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REG_FILE_BASE_ADDR                            = 32'hC0013008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REG_FILE_SIZE                                 = 32'h00000008;
 
-localparam int unsigned SMC_MMODE_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_MMODE_REMAP_3__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0013018;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_mmode_remap[4]
-//==============================================================================
-
-
-localparam int unsigned SMC_MMODE_REMAP_4__REG_MAP_BASE_ADDR                                                      = 32'hC0013020;
-localparam int unsigned SMC_MMODE_REMAP_4__REG_MAP_SIZE                                                           = 32'h00000008;
-
-
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET                       = 32'h00000000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_ADDR                         = 32'hC0013008;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_MMODE_REMAP_4__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0013020;
-localparam int unsigned SMC_MMODE_REMAP_4__REGION_REG_FILE_SIZE                                                   = 32'h00000008;
-
-localparam int unsigned SMC_MMODE_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_MMODE_REMAP_4__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0013020;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_mmode_remap[5]
+// Addresses for Address Map: output_remap[2]
 //==============================================================================
 
 
-localparam int unsigned SMC_MMODE_REMAP_5__REG_MAP_BASE_ADDR                                                      = 32'hC0013028;
-localparam int unsigned SMC_MMODE_REMAP_5__REG_MAP_SIZE                                                           = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_2__REG_MAP_BASE_ADDR                                    = 32'hC0013010;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_2__REG_MAP_SIZE                                         = 32'h00000008;
 
 
 
@@ -3105,42 +3050,20 @@ localparam int unsigned SMC_MMODE_REMAP_5__REG_MAP_SIZE                         
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_MMODE_REMAP_5__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0013028;
-localparam int unsigned SMC_MMODE_REMAP_5__REGION_REG_FILE_SIZE                                                   = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REG_FILE_BASE_ADDR                            = 32'hC0013010;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REG_FILE_SIZE                                 = 32'h00000008;
 
-localparam int unsigned SMC_MMODE_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_MMODE_REMAP_5__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0013028;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_mmode_remap[6]
-//==============================================================================
-
-
-localparam int unsigned SMC_MMODE_REMAP_6__REG_MAP_BASE_ADDR                                                      = 32'hC0013030;
-localparam int unsigned SMC_MMODE_REMAP_6__REG_MAP_SIZE                                                           = 32'h00000008;
-
-
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET                       = 32'h00000000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_ADDR                         = 32'hC0013010;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_MMODE_REMAP_6__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0013030;
-localparam int unsigned SMC_MMODE_REMAP_6__REGION_REG_FILE_SIZE                                                   = 32'h00000008;
-
-localparam int unsigned SMC_MMODE_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_MMODE_REMAP_6__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0013030;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_mmode_remap[7]
+// Addresses for Address Map: output_remap[3]
 //==============================================================================
 
 
-localparam int unsigned SMC_MMODE_REMAP_7__REG_MAP_BASE_ADDR                                                      = 32'hC0013038;
-localparam int unsigned SMC_MMODE_REMAP_7__REG_MAP_SIZE                                                           = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_3__REG_MAP_BASE_ADDR                                    = 32'hC0013018;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_3__REG_MAP_SIZE                                         = 32'h00000008;
 
 
 
@@ -3149,42 +3072,20 @@ localparam int unsigned SMC_MMODE_REMAP_7__REG_MAP_SIZE                         
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_MMODE_REMAP_7__REGION_REG_FILE_BASE_ADDR                                              = 32'hC0013038;
-localparam int unsigned SMC_MMODE_REMAP_7__REGION_REG_FILE_SIZE                                                   = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_3__REGION_REG_FILE_BASE_ADDR                            = 32'hC0013018;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_3__REGION_REG_FILE_SIZE                                 = 32'h00000008;
 
-localparam int unsigned SMC_MMODE_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET                                         = 32'h00000000;
-localparam int unsigned SMC_MMODE_REMAP_7__REGION_REGION_ATTRS_REG_ADDR                                           = 32'hC0013038;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_xvisor_remap[0]
-//==============================================================================
-
-
-localparam int unsigned SMC_XVISOR_REMAP_0__REG_MAP_BASE_ADDR                                                     = 32'hC0014000;
-localparam int unsigned SMC_XVISOR_REMAP_0__REG_MAP_SIZE                                                          = 32'h00000008;
-
-
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET                       = 32'h00000000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_ADDR                         = 32'hC0013018;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_XVISOR_REMAP_0__REGION_REG_FILE_BASE_ADDR                                             = 32'hC0014000;
-localparam int unsigned SMC_XVISOR_REMAP_0__REGION_REG_FILE_SIZE                                                  = 32'h00000008;
-
-localparam int unsigned SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET                                        = 32'h00000000;
-localparam int unsigned SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_ADDR                                          = 32'hC0014000;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_xvisor_remap[1]
+// Addresses for Address Map: output_remap[4]
 //==============================================================================
 
 
-localparam int unsigned SMC_XVISOR_REMAP_1__REG_MAP_BASE_ADDR                                                     = 32'hC0014008;
-localparam int unsigned SMC_XVISOR_REMAP_1__REG_MAP_SIZE                                                          = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_4__REG_MAP_BASE_ADDR                                    = 32'hC0013020;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_4__REG_MAP_SIZE                                         = 32'h00000008;
 
 
 
@@ -3193,42 +3094,20 @@ localparam int unsigned SMC_XVISOR_REMAP_1__REG_MAP_SIZE                        
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_XVISOR_REMAP_1__REGION_REG_FILE_BASE_ADDR                                             = 32'hC0014008;
-localparam int unsigned SMC_XVISOR_REMAP_1__REGION_REG_FILE_SIZE                                                  = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_4__REGION_REG_FILE_BASE_ADDR                            = 32'hC0013020;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_4__REGION_REG_FILE_SIZE                                 = 32'h00000008;
 
-localparam int unsigned SMC_XVISOR_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET                                        = 32'h00000000;
-localparam int unsigned SMC_XVISOR_REMAP_1__REGION_REGION_ATTRS_REG_ADDR                                          = 32'hC0014008;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_xvisor_remap[2]
-//==============================================================================
-
-
-localparam int unsigned SMC_XVISOR_REMAP_2__REG_MAP_BASE_ADDR                                                     = 32'hC0014010;
-localparam int unsigned SMC_XVISOR_REMAP_2__REG_MAP_SIZE                                                          = 32'h00000008;
-
-
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET                       = 32'h00000000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_ADDR                         = 32'hC0013020;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_XVISOR_REMAP_2__REGION_REG_FILE_BASE_ADDR                                             = 32'hC0014010;
-localparam int unsigned SMC_XVISOR_REMAP_2__REGION_REG_FILE_SIZE                                                  = 32'h00000008;
-
-localparam int unsigned SMC_XVISOR_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET                                        = 32'h00000000;
-localparam int unsigned SMC_XVISOR_REMAP_2__REGION_REGION_ATTRS_REG_ADDR                                          = 32'hC0014010;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_xvisor_remap[3]
+// Addresses for Address Map: output_remap[5]
 //==============================================================================
 
 
-localparam int unsigned SMC_XVISOR_REMAP_3__REG_MAP_BASE_ADDR                                                     = 32'hC0014018;
-localparam int unsigned SMC_XVISOR_REMAP_3__REG_MAP_SIZE                                                          = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_5__REG_MAP_BASE_ADDR                                    = 32'hC0013028;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_5__REG_MAP_SIZE                                         = 32'h00000008;
 
 
 
@@ -3237,42 +3116,20 @@ localparam int unsigned SMC_XVISOR_REMAP_3__REG_MAP_SIZE                        
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_XVISOR_REMAP_3__REGION_REG_FILE_BASE_ADDR                                             = 32'hC0014018;
-localparam int unsigned SMC_XVISOR_REMAP_3__REGION_REG_FILE_SIZE                                                  = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_5__REGION_REG_FILE_BASE_ADDR                            = 32'hC0013028;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_5__REGION_REG_FILE_SIZE                                 = 32'h00000008;
 
-localparam int unsigned SMC_XVISOR_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET                                        = 32'h00000000;
-localparam int unsigned SMC_XVISOR_REMAP_3__REGION_REGION_ATTRS_REG_ADDR                                          = 32'hC0014018;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_xvisor_remap[4]
-//==============================================================================
-
-
-localparam int unsigned SMC_XVISOR_REMAP_4__REG_MAP_BASE_ADDR                                                     = 32'hC0014020;
-localparam int unsigned SMC_XVISOR_REMAP_4__REG_MAP_SIZE                                                          = 32'h00000008;
-
-
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET                       = 32'h00000000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_ADDR                         = 32'hC0013028;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_XVISOR_REMAP_4__REGION_REG_FILE_BASE_ADDR                                             = 32'hC0014020;
-localparam int unsigned SMC_XVISOR_REMAP_4__REGION_REG_FILE_SIZE                                                  = 32'h00000008;
-
-localparam int unsigned SMC_XVISOR_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET                                        = 32'h00000000;
-localparam int unsigned SMC_XVISOR_REMAP_4__REGION_REGION_ATTRS_REG_ADDR                                          = 32'hC0014020;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_xvisor_remap[5]
+// Addresses for Address Map: output_remap[6]
 //==============================================================================
 
 
-localparam int unsigned SMC_XVISOR_REMAP_5__REG_MAP_BASE_ADDR                                                     = 32'hC0014028;
-localparam int unsigned SMC_XVISOR_REMAP_5__REG_MAP_SIZE                                                          = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_6__REG_MAP_BASE_ADDR                                    = 32'hC0013030;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_6__REG_MAP_SIZE                                         = 32'h00000008;
 
 
 
@@ -3281,42 +3138,20 @@ localparam int unsigned SMC_XVISOR_REMAP_5__REG_MAP_SIZE                        
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_XVISOR_REMAP_5__REGION_REG_FILE_BASE_ADDR                                             = 32'hC0014028;
-localparam int unsigned SMC_XVISOR_REMAP_5__REGION_REG_FILE_SIZE                                                  = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_6__REGION_REG_FILE_BASE_ADDR                            = 32'hC0013030;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_6__REGION_REG_FILE_SIZE                                 = 32'h00000008;
 
-localparam int unsigned SMC_XVISOR_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET                                        = 32'h00000000;
-localparam int unsigned SMC_XVISOR_REMAP_5__REGION_REGION_ATTRS_REG_ADDR                                          = 32'hC0014028;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_xvisor_remap[6]
-//==============================================================================
-
-
-localparam int unsigned SMC_XVISOR_REMAP_6__REG_MAP_BASE_ADDR                                                     = 32'hC0014030;
-localparam int unsigned SMC_XVISOR_REMAP_6__REG_MAP_SIZE                                                          = 32'h00000008;
-
-
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET                       = 32'h00000000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_ADDR                         = 32'hC0013030;
 
 
 //==============================================================================
-// Register File: REGION
-//==============================================================================
-
-localparam int unsigned SMC_XVISOR_REMAP_6__REGION_REG_FILE_BASE_ADDR                                             = 32'hC0014030;
-localparam int unsigned SMC_XVISOR_REMAP_6__REGION_REG_FILE_SIZE                                                  = 32'h00000008;
-
-localparam int unsigned SMC_XVISOR_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET                                        = 32'h00000000;
-localparam int unsigned SMC_XVISOR_REMAP_6__REGION_REGION_ATTRS_REG_ADDR                                          = 32'hC0014030;
-
-
-//==============================================================================
-// Addresses for Address Map: smc_xvisor_remap[7]
+// Addresses for Address Map: output_remap[7]
 //==============================================================================
 
 
-localparam int unsigned SMC_XVISOR_REMAP_7__REG_MAP_BASE_ADDR                                                     = 32'hC0014038;
-localparam int unsigned SMC_XVISOR_REMAP_7__REG_MAP_SIZE                                                          = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_7__REG_MAP_BASE_ADDR                                    = 32'hC0013038;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_7__REG_MAP_SIZE                                         = 32'h00000008;
 
 
 
@@ -3325,11 +3160,198 @@ localparam int unsigned SMC_XVISOR_REMAP_7__REG_MAP_SIZE                        
 // Register File: REGION
 //==============================================================================
 
-localparam int unsigned SMC_XVISOR_REMAP_7__REGION_REG_FILE_BASE_ADDR                                             = 32'hC0014038;
-localparam int unsigned SMC_XVISOR_REMAP_7__REGION_REG_FILE_SIZE                                                  = 32'h00000008;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_7__REGION_REG_FILE_BASE_ADDR                            = 32'hC0013038;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_7__REGION_REG_FILE_SIZE                                 = 32'h00000008;
 
-localparam int unsigned SMC_XVISOR_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET                                        = 32'h00000000;
-localparam int unsigned SMC_XVISOR_REMAP_7__REGION_REGION_ATTRS_REG_ADDR                                          = 32'hC0014038;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET                       = 32'h00000000;
+localparam int unsigned SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_ADDR                         = 32'hC0013038;
+
+
+//==============================================================================
+// Addresses for Address Map: smc_xvisor_remap_wrap
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_REG_MAP_BASE_ADDR                                                   = 32'hC0014000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_REG_MAP_SIZE                                                        = 32'h00000040;
+
+
+
+
+//==============================================================================
+// Addresses for Address Map: output_remap[0]
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR                                   = 32'hC0014000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE                                        = 32'h00000008;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REG_FILE_BASE_ADDR                           = 32'hC0014000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REG_FILE_SIZE                                = 32'h00000008;
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_OFFSET                      = 32'h00000000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR                        = 32'hC0014000;
+
+
+//==============================================================================
+// Addresses for Address Map: output_remap[1]
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_1__REG_MAP_BASE_ADDR                                   = 32'hC0014008;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_1__REG_MAP_SIZE                                        = 32'h00000008;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REG_FILE_BASE_ADDR                           = 32'hC0014008;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REG_FILE_SIZE                                = 32'h00000008;
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_OFFSET                      = 32'h00000000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_1__REGION_REGION_ATTRS_REG_ADDR                        = 32'hC0014008;
+
+
+//==============================================================================
+// Addresses for Address Map: output_remap[2]
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_2__REG_MAP_BASE_ADDR                                   = 32'hC0014010;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_2__REG_MAP_SIZE                                        = 32'h00000008;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REG_FILE_BASE_ADDR                           = 32'hC0014010;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REG_FILE_SIZE                                = 32'h00000008;
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_OFFSET                      = 32'h00000000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_2__REGION_REGION_ATTRS_REG_ADDR                        = 32'hC0014010;
+
+
+//==============================================================================
+// Addresses for Address Map: output_remap[3]
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_3__REG_MAP_BASE_ADDR                                   = 32'hC0014018;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_3__REG_MAP_SIZE                                        = 32'h00000008;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_3__REGION_REG_FILE_BASE_ADDR                           = 32'hC0014018;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_3__REGION_REG_FILE_SIZE                                = 32'h00000008;
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_OFFSET                      = 32'h00000000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_3__REGION_REGION_ATTRS_REG_ADDR                        = 32'hC0014018;
+
+
+//==============================================================================
+// Addresses for Address Map: output_remap[4]
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_4__REG_MAP_BASE_ADDR                                   = 32'hC0014020;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_4__REG_MAP_SIZE                                        = 32'h00000008;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_4__REGION_REG_FILE_BASE_ADDR                           = 32'hC0014020;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_4__REGION_REG_FILE_SIZE                                = 32'h00000008;
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_OFFSET                      = 32'h00000000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_4__REGION_REGION_ATTRS_REG_ADDR                        = 32'hC0014020;
+
+
+//==============================================================================
+// Addresses for Address Map: output_remap[5]
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_5__REG_MAP_BASE_ADDR                                   = 32'hC0014028;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_5__REG_MAP_SIZE                                        = 32'h00000008;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_5__REGION_REG_FILE_BASE_ADDR                           = 32'hC0014028;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_5__REGION_REG_FILE_SIZE                                = 32'h00000008;
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_OFFSET                      = 32'h00000000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_5__REGION_REGION_ATTRS_REG_ADDR                        = 32'hC0014028;
+
+
+//==============================================================================
+// Addresses for Address Map: output_remap[6]
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_6__REG_MAP_BASE_ADDR                                   = 32'hC0014030;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_6__REG_MAP_SIZE                                        = 32'h00000008;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_6__REGION_REG_FILE_BASE_ADDR                           = 32'hC0014030;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_6__REGION_REG_FILE_SIZE                                = 32'h00000008;
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_OFFSET                      = 32'h00000000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_6__REGION_REGION_ATTRS_REG_ADDR                        = 32'hC0014030;
+
+
+//==============================================================================
+// Addresses for Address Map: output_remap[7]
+//==============================================================================
+
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_7__REG_MAP_BASE_ADDR                                   = 32'hC0014038;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_7__REG_MAP_SIZE                                        = 32'h00000008;
+
+
+
+
+//==============================================================================
+// Register File: REGION
+//==============================================================================
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_7__REGION_REG_FILE_BASE_ADDR                           = 32'hC0014038;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_7__REGION_REG_FILE_SIZE                                = 32'h00000008;
+
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_OFFSET                      = 32'h00000000;
+localparam int unsigned SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_7__REGION_REGION_ATTRS_REG_ADDR                        = 32'hC0014038;
 
 
 //==============================================================================
@@ -16326,6 +16348,12 @@ localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_SHI
 
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_MASK                                                           = 32'hFFFFFFFF;
 localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_SHIFT                                                          = 0;
+
+
+
+
+
+
 
 
 

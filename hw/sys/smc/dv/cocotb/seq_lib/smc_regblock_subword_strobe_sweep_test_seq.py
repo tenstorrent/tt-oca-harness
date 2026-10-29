@@ -83,8 +83,8 @@ WINDOW_GROUP = 16
 # A "{}" marks the instance index.
 FAMILIES = (
     ("alias_remap", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", 8),
-    ("mmode_remap", "smc_mmode_remap[{}]/REGION/region_attrs", 8),
-    ("xvisor_remap", "smc_xvisor_remap[{}]/REGION/region_attrs", 8),
+    ("mmode_remap", "smc_mmode_remap_wrap/output_remap[{}]/REGION/region_attrs", 8),
+    ("xvisor_remap", "smc_xvisor_remap_wrap/output_remap[{}]/REGION/region_attrs", 8),
     ("inbound_filter", "smc_inbound_filter_ctrl[{}]/END_ADDR", 16),
     ("outbound_filter", "smc_outbound_filter_ctrl[{}]/END_ADDR", 16),
     ("gpio_intf", "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", 65),
@@ -106,8 +106,8 @@ ORMP_FIELDS = (1 << 63) | ((1 << 56) - 1)
 # S13: (family, IP-XACT path of region_attrs, declared fields).
 VALID_LANE_FAMILIES = (
     ("alias", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
-    ("mmode", "smc_mmode_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
-    ("xvisor", "smc_xvisor_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
+    ("mmode", "smc_mmode_remap_wrap/output_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
+    ("xvisor", "smc_xvisor_remap_wrap/output_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
 )
 VALID_LANE_REGIONS = 8
 REGION_VALID = 1 << 63
@@ -587,8 +587,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
                 "smc_alias_remap_wrap/alias_remap[7]/REGION/region_attrs",
                 ALIAS_ATTRS_FIELDS,
             ),
-            ("MMODE7", "smc_mmode_remap[7]/REGION/region_attrs", ORMP_FIELDS),
-            ("XVISOR7", "smc_xvisor_remap[7]/REGION/region_attrs", ORMP_FIELDS),
+            ("MMODE7", "smc_mmode_remap_wrap/output_remap[7]/REGION/region_attrs", ORMP_FIELDS),
+            ("XVISOR7", "smc_xvisor_remap_wrap/output_remap[7]/REGION/region_attrs", ORMP_FIELDS),
         )
         ok = []
         zeroed = 0

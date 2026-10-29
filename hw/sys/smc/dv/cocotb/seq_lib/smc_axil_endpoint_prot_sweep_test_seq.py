@@ -215,13 +215,13 @@ def check_set() -> tuple[Endpoint, ...]:
         _probe(
             "mmode_remap",
             "remap-ctrl",
-            "smc_mmode_remap[0]/REGION/region_attrs",
+            "smc_mmode_remap_wrap/output_remap[0]/REGION/region_attrs",
             seed=REMAP_OFFSET,
         ),
         _probe(
             "xvisor_remap",
             "remap-ctrl",
-            "smc_xvisor_remap[0]/REGION/region_attrs",
+            "smc_xvisor_remap_wrap/output_remap[0]/REGION/region_attrs",
             seed=REMAP_OFFSET,
         ),
         *(
@@ -309,7 +309,7 @@ BURST_SET = (
     *(
         Burst(
             f"out-remap-mmode len{n - 1}",
-            tuple(f"smc_mmode_remap[{i}]/REGION/region_attrs" for i in range(n)),
+            tuple(f"smc_mmode_remap_wrap/output_remap[{i}]/REGION/region_attrs" for i in range(n)),
             n,
         )
         for n in (2, 4, 8)
@@ -317,7 +317,7 @@ BURST_SET = (
     *(
         Burst(
             f"out-remap-xvisor len{n - 1}",
-            tuple(f"smc_xvisor_remap[{i}]/REGION/region_attrs" for i in range(n)),
+            tuple(f"smc_xvisor_remap_wrap/output_remap[{i}]/REGION/region_attrs" for i in range(n)),
             n,
         )
         for n in (2, 4, 8)
