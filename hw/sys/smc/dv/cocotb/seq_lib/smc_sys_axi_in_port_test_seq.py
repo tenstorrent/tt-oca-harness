@@ -12,14 +12,19 @@ writes a scratch word that is read back over both ports, so the same storage
 is shown reachable from the system port and from SEP_IN. The entry is restored
 to its generated reset afterwards.
 
-The write and read channels of the port are then driven together: the filter
-decides each direction from its own request (``axi_filter_wrap.sv``:
-``isolate_write`` / ``isolate_read`` are separate terms), so an entry that
-allows both must admit a write and a read presented in the same cycle. Four
-interleaved passes go out as one outstanding group; SEP_IN reads back the write
-targets and each read carries the value SEP_IN seeded, so a filter that blocked
-one direction while the other was in flight, or crossed the two decisions,
-fails on the data rather than only on the response.
+The write and read channels of the port are then driven together. The AXI
+Traffic Filter specification (``hw/ip/axi_filter/doc/index.adoc``, Match, Then
+Permit) decodes writes and reads independently, the AW and AR channels each
+running the full decode against their own request and consulting
+``write_allowed`` for AW and ``read_allowed`` for AR; ``fabric.adoc`` (Filtering
+and Protection) blocks inbound traffic that matches no entry. Entry 0 is
+programmed with both permission bits set, so a write and a read accepted on
+``sys_axi_*`` in the same cycle must both complete OKAY. Four interleaved passes
+go out as one outstanding group; the port watcher counts the cycles in which the
+AW and AR handshakes complete together, every member must answer OKAY, SEP_IN
+reads back the write targets and each read carries the value SEP_IN seeded, so a
+filter that blocked one direction while the other was in flight, or crossed the
+two decisions, fails on the response and on the data.
 
 The pre-admit SYS_IN read is issued with the error response tolerated and its
 response is reported, not asserted: the specification leaves the reset state
@@ -179,38 +184,30 @@ EXPECTED_SYS_IN_ACCESSES = (
 )
 
 
-class _FilterWatch:
-    """Counts the cycles the inbound filter admitted a write and a read at once.
+class _DuplexWatch:
+    """Counts the cycles sys_axi_in accepted a write address and a read address at once.
 
-    ``axi_filter_wrap.sv`` raises ``write_filter_hit`` / ``read_filter_hit``
-    from the matching entry and drives ``isolate_write`` / ``isolate_read`` from
-    that entry's per-direction rule, with block-by-default when nothing matches
-    (``smc_input_fabric.sv`` BLOCK_BY_DEFAULT). Admitting both directions in one
-    cycle is therefore both hits set with neither isolate.
+    A cycle counts only when ``AWVALID``, ``AWREADY``, ``ARVALID`` and
+    ``ARREADY`` of the port all sample 1; an unresolvable value does not count.
     """
+
+    _HANDSHAKE = ("sys_axi_awvalid", "sys_axi_awready", "sys_axi_arvalid", "sys_axi_arready")
 
     def __init__(self, dut) -> None:
         self.dut = dut
         self.stop = False
-        self.duplex_admitted = 0
+        self.duplex_accepted = 0
 
-    def _read(self, name: str) -> int:
+    def _high(self, name: str) -> bool:
         value = getattr(self.dut, name).value
-        return int(value) if value.is_resolvable else 0
+        return value.is_resolvable and int(value) == 1
 
     async def run(self) -> None:
         while not self.stop:
             await RisingEdge(self.dut.clk_smc_i)
             await ReadOnly()
-            if (
-                self._read("sys_axi_awvalid")
-                and self._read("sys_axi_arvalid")
-                and self._read("tb_inb_write_hit")
-                and self._read("tb_inb_read_hit")
-                and not self._read("tb_inb_isolate_write")
-                and not self._read("tb_inb_isolate_read")
-            ):
-                self.duplex_admitted += 1
+            if all(self._high(name) for name in self._HANDSHAKE):
+                self.duplex_accepted += 1
 
 
 class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
@@ -221,7 +218,7 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         self.pre_admit_resp: int | None = None
         self.sys_read_word: int | None = None
         self.sys_scratch_word: int | None = None
-        self.duplex_admitted: int | None = None
+        self.duplex_accepted: int | None = None
         self.unimplemented_resp: int | None = None
         self.unimplemented_write_resp: int | None = None
         self.denied_write_resp: int | None = None
@@ -361,7 +358,7 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         item.expected = expected
         return item
 
-    async def _duplex_phase(self, watch: "_FilterWatch") -> None:
+    async def _duplex_phase(self, watch: "_DuplexWatch") -> None:
         """Drive the SYS_IN write and read channels together through the filter."""
         for index in DUPLEX_READ_INDICES:
             await self.csr_write(f"DUPLEX_SEED_{index}", scratch_cold(index), duplex_seed(index))
@@ -388,6 +385,14 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
                 )
         group = SmcSysAxiGroupItem("sys_in_duplex_group", members)
         await _OneShot(group, "sys_in_duplex_os").start(self.env.sys_in_axi_agent.sequencer)
+        refused = {
+            m.get_name(): _RESP_NAME.get(m.resp_code, m.resp_code)
+            for m in members
+            if m.resp_code != 0
+        }
+        assert not refused, (
+            f"entry 0 permits both directions, but concurrent sys_axi_in accesses answered {refused}"
+        )
 
         for index in DUPLEX_WRITE_INDICES:
             await self.csr_read(
@@ -396,16 +401,15 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         for index in DUPLEX_WRITE_INDICES + DUPLEX_READ_INDICES:
             await self.csr_write(f"DUPLEX_RESTORE_{index}", scratch_cold(index), 0)
 
-        self.duplex_admitted = watch.duplex_admitted
-        assert self.duplex_admitted > 0, (
-            "the inbound filter never admitted a SYS_IN write and read in the "
-            "same cycle, so the concurrent-direction stimulus this phase is "
-            "built on never reached the filter"
+        self.duplex_accepted = watch.duplex_accepted
+        assert self.duplex_accepted > 0, (
+            "sys_axi_in never accepted a write address and a read address in the "
+            "same cycle, so the two directions never reached the filter together"
         )
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
-        watch = _FilterWatch(cocotb.top)
+        watch = _DuplexWatch(cocotb.top)
         watcher = cocotb.start_soon(watch.run())
 
         pre = await self._sys_in(
@@ -652,10 +656,11 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-SYS-AXI-IN-DUPLEX: %d outstanding sys_axi_in accesses drove the write and read "
-            "channels together; the inbound filter admitted both directions in %d cycle(s), each "
-            "read returned the word SEP_IN seeded and SCRATCH_COLD_%s held pass %d after the group",
+            "channels together; AW and AR handshakes completed in the same cycle %d time(s), every "
+            "access answered OKAY, each read returned the word SEP_IN seeded and SCRATCH_COLD_%s "
+            "held pass %d after the group",
             DUPLEX_PASSES * (len(DUPLEX_WRITE_INDICES) + len(DUPLEX_READ_INDICES)),
-            self.duplex_admitted,
+            self.duplex_accepted,
             "/".join(str(i) for i in DUPLEX_WRITE_INDICES),
             DUPLEX_PASSES - 1,
         )

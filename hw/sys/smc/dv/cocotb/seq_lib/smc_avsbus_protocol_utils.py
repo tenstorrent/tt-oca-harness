@@ -30,8 +30,8 @@ Two DUT-produced observables are recorded here.
     preamble in [31:30], the AVS_CMD fields in the same bit positions they
     occupy in the register, and a hardware CRC-3 in [2:0]. The line idles
     high, so a frame is the 32 bits starting at the first low bit; the CRC
-    is left out of every compare because no published source in this tree
-    gives the AVSBus CRC-3 polynomial.
+    is left out of every compare. ``interface.adoc`` gives the polynomial,
+    x^3 + x + 1 over bits [31:3], and no CRC model is computed here.
 """
 
 from __future__ import annotations
