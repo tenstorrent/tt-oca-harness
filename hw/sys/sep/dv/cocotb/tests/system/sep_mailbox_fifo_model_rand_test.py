@@ -602,6 +602,10 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             self.ctx = Ctx("thresh", m, value=v, fifo=f)
             await self._wr(m, "out", "IRQEN", run["irqen"][0])
             await self._wr(m, "in", "IRQEN", run["irqen"][1])
+            # Threshold 0 first: a value write that does not land leaves 0, so
+            # the above bit at occupancy 1 differs from the model.
+            await self._wr(m, wp, "WIRQT", 0)
+            await self._wr(m, rp, "RIRQT", 0)
             await self._wr(m, wp, "WIRQT", v)
             await self._wr(m, rp, "RIRQT", v)
             seen: dict[int, tuple[int, int]] = {}
