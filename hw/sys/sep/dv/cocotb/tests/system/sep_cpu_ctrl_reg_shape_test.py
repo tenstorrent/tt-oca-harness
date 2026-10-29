@@ -330,7 +330,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         first = await self._read64(VERSION_ID)
         fc = field_compare(first, VERSION_RESET, VERSION_FIELD)
         assert fc.ok, f"CHK-CC-RO FAIL: first read before any write {fc.fields()}"
-        self.logger.info("CTRL-CC-RO-FIRST: SEP_VERSION_ID %s", fc.fields())
+        self.logger.info("INFO-CC-RO-FIRST: SEP_VERSION_ID %s", fc.fields())
         open_graded_window(TEST, self.logger)
         for i, (v, lane) in enumerate(cfg.ver):
             resp = await self._write(VERSION_ID, v, lane, tolerant=True)
@@ -338,7 +338,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, VERSION_RESET, VERSION_FIELD)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-RO FAIL: {line}"
-            self.logger.info("CTRL-CC-RO LOG: %s", line)
+            self.logger.info("INFO-CC-RO LOG: %s", line)
             self._rsvd("SEP_VERSION_ID", got, VERSION_FIELD)
         close_graded_window(self.logger)
         n_low = sum(1 for _v, lane in cfg.ver if lane in LOW_LANES)
