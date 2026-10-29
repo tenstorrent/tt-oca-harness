@@ -75,14 +75,22 @@ register with an access that includes byte 0.
 | 8 | `uncore_reset_n_n0_scan` | RW | 0x1 a| Cluster Uncore Reset, active low. Resets the uncore portion of the chipyard cluster and holds every core in reset
 with it. The reset waits for the cluster boundary to drain, bounded by RESET_TIMEOUT.
 WARNING: using this can cause any outstanding axi requests to and from the cluster to cause timeouts/exceptions.
-| 7 | `core3_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
-A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
-| 6 | `core2_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
-A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
-| 5 | `core1_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
-A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
-| 4 | `core0_reset_pulse_start_n0_scan` | RW | 0x0 a| Writing a 1 to this register triggers a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
-A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 7 | `core3_reset_pulse_start_n0_scan` | RW 1P | 0x0 a| Writing a 1 starts a core reset pulse on core 3, timed by CORE_RESET_PULSE_COUNT.
+The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+count of its current phase, the pre-reset wait or the hold; it does not queue a
+second pulse. A 0 in core3_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 6 | `core2_reset_pulse_start_n0_scan` | RW 1P | 0x0 a| Writing a 1 starts a core reset pulse on core 2, timed by CORE_RESET_PULSE_COUNT.
+The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+count of its current phase, the pre-reset wait or the hold; it does not queue a
+second pulse. A 0 in core2_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 5 | `core1_reset_pulse_start_n0_scan` | RW 1P | 0x0 a| Writing a 1 starts a core reset pulse on core 1, timed by CORE_RESET_PULSE_COUNT.
+The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+count of its current phase, the pre-reset wait or the hold; it does not queue a
+second pulse. A 0 in core1_reset_n_n0_scan holds the core in reset for the whole pulse.
+| 4 | `core0_reset_pulse_start_n0_scan` | RW 1P | 0x0 a| Writing a 1 starts a core reset pulse on core 0, timed by CORE_RESET_PULSE_COUNT.
+The bit is not stored and reads 0. Writing a 1 while the pulse runs reloads the
+count of its current phase, the pre-reset wait or the hold; it does not queue a
+second pulse. A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
 | 3 | `core3_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
 | 2 | `core2_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
 | 1 | `core1_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
@@ -96,7 +104,9 @@ A 0 in core0_reset_n_n0_scan holds the core in reset for the whole pulse.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:36 | `Reserved` | - | - a| Reserved
-| 35:32 | `core_resets_done` | R | 0xF a| Logic low while performing core reset, logic high otherwise.
+| 35:32 | `core_resets_done` | R | 0xF a| One bit per core, low while that core's reset pulse runs (pre-reset wait and hold),
+high otherwise. A level reset held through the core's RESET_CTRL reset_n field,
+or through RESET_CTRL.uncore_reset_n_n0_scan, does not clear it.
 | 31:16 | `post_reset_count` | RW | 0x10 a| Cycles (clk_smc), minus one, that a core reset pulse holds the core in reset.
 | 15:0 | `pre_reset_count` | RW | 0x8 a| Cycles (clk_smc), minus one, from the start of a core reset pulse to reset assertion.
 |===
@@ -161,7 +171,8 @@ rather than equal to it.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:32 | `Reserved` | - | - a| Reserved
-| 31:0 | `data` | R | 0x0 a| Test control register for the CPU
+| 31:0 | `data` | R | 0x0 a| Reads 0 in hardware. A simulation testbench can deposit a value here to hand
+test control values to firmware.
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-SCRATCH-]
