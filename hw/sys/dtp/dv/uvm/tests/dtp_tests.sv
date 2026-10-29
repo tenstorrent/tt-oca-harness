@@ -131,6 +131,7 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_jtag2axi_decode_error_mixed_test.svh"
 `include "dtp_jtag2axi_series_corner_all_bridges_test.svh"
 `include "dtp_jtag2axi_series_reprogram_held_read_test.svh"
+`include "dtp_jtag2axi_cdc_jitter_all_bridges_test.svh"
 
 // Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
 `include "dtp_jtag_tmp_status_register_smoke_test.svh"
