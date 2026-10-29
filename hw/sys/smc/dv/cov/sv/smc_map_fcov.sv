@@ -121,7 +121,9 @@ module smc_map_fcov (
   localparam logic [31:0] ResetUnitLo = 32'(SMC_TOP_SMC_RESET_UNIT_BASE_ADDR - LocalBase);
   localparam logic [31:0] MiscWrapLo = 32'(SMC_TOP_SMC_MISC_WRAP_BASE_ADDR - LocalBase);
   localparam logic [31:0] MiscWrapLast = MiscWrapLo + 32'(SMC_TOP_SMC_MISC_WRAP_SIZE) - 32'd4;
-  localparam logic [31:0] GpioIntfLo = 32'(SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0) - LocalBase);
+  localparam logic [31:0] GpioIntfLo = 32'(SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(
+      0
+  ) - LocalBase);
   localparam logic [31:0] GpioIntfStride = 32'(SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE);
   localparam int unsigned GpioIntfNum = int'(SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM);
   localparam logic [31:0] AvsLo = 32'(SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR - LocalBase);

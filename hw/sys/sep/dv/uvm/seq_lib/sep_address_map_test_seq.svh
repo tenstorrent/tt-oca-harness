@@ -270,8 +270,7 @@ class sep_address_map_test_seq extends sep_base_test_seq;
                    64'(LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR), 1'b0,
                    32'h0});
     rows.push_back('{"AP_OUTPUT_REMAP",
-                   64'(AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR), 1'b0, 32'h0
-                   });
+                   64'(AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR), 1'b0, 32'h0});
     rows.push_back('{"OT_SPI_HOST", 64'(SPI_CONTROLLER_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
   endfunction
 

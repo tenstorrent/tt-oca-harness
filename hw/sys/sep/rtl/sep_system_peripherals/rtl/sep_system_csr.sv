@@ -158,10 +158,11 @@ module sep_system_csr (
 
     if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_BASE_ADDR(
             0
-        ) && sep_system_csr_axil_req_i.aw.addr <
-            sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(
+        ) && sep_system_csr_axil_req_i.aw.addr < sep_top_addrmap_pkg
+            ::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(
             15
-        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE) begin
+        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE
+            ) begin
       system_csr_demux_select_aw = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
     end else if (sep_system_csr_axil_req_i.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
             0
@@ -203,10 +204,11 @@ module sep_system_csr (
 
     if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_BASE_ADDR(
             0
-        ) && sep_system_csr_axil_req_i.ar.addr <
-            sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(
+        ) && sep_system_csr_axil_req_i.ar.addr < sep_top_addrmap_pkg
+            ::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(
             15
-        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE) begin
+        ) + sep_top_addrmap_pkg::SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE
+            ) begin
       system_csr_demux_select_ar = sep_pkg::LOCAL_MASTER_ALIAS_REMAP;
     end else if (sep_system_csr_axil_req_i.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(
             0

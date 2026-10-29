@@ -282,11 +282,14 @@ class smc_fabric_reg_clock_gate_test_seq extends smc_base_test_seq;
                    end_value == FILTER_CTRL_END_ADDR_REG_DEFAULT,
           "filter baseline");
     end
-    for (int unsigned i = 0; i < smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM;
-         i++) begin
+    for (
+        int unsigned i = 0;
+        i < smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM;
+        i++
+    ) begin
       mem_read(
-          smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(i),
-          value, "alias inactive prerequisite");
+          smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(
+          i), value, "alias inactive prerequisite");
       prerequisite((value & REMAP_REGION_REGION_ATTRS_VALID_MASK) == 0, "alias region inactive");
     end
     foreach (entries[i]) begin
