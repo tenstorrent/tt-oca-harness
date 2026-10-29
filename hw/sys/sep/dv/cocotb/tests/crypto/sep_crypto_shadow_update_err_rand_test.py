@@ -64,7 +64,7 @@ Checkers:
                        ALERT_FATAL_FAULT 0.
   CHK-SHADOW-CTRL      AES equal pair: no pulse over 4 x c_err clocks, the
                        register reads A and STATUS.ALERT_RECOV_CTRL_UPDATE_ERR
-                       reads its reset value 0 (``aes.hjson:233-235``). Control:
+                       reads its reset value 0 (``aes.hjson:992-995``). Control:
                        the mismatched pair pulsed.
   CHK-SHADOW-RESTART   after R written twice the next AES block equals its golden.
   CHK-GCM-SHADOW-ERR   AES GCM mismatched pair after GCM_INIT: no bit 32 rise up

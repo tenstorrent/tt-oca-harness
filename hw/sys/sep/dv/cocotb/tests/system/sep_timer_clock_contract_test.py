@@ -38,7 +38,11 @@ this order, over the CPU-LSU master on ``s_axi``:
   fall while counting.
 * Leg L. ``WDOG_REGWEN`` stays 0 after a write of 1, and ``regwen`` and the four
   thresholds keep their values over ``dbg_rstb_i`` (VCS, full-CPU build only), a
-  software engine reset and a ``sep_reset_n`` override (CHK-REGWEN-HOLD). A
+  software engine reset and a ``sep_reset_n`` override (CHK-REGWEN-HOLD). Each
+  event reads its reset load low in the pulse (``dbg_rst_l_probe_o``,
+  ``hmac_gated_rst_n_probe_o``, ``dbg_sep_reset_n_o``; ``sep_cpu_reset_n_o`` for
+  ``wdt_rst_ni``) and logs CTRL-REGWEN-HOLD-EVENT or CTRL-REGWEN-WDTRST-EVENT
+  with the value read; a load that does not fall fails as CTRL-MISSING. A
   ``wdt_rst_ni`` pulse returns every watchdog timer register to its
   register-description reset value and clears the bark interrupt
   (CHK-REGWEN-WDTRST), and the leg then programs and locks the thresholds
@@ -287,7 +291,8 @@ CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-SCOPE, CHK-WDT-PET,
 CHK-WDT-PET-HOLD, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
 CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ. Controls (not
 counted): CTRL-WDT-ENABLE, CTRL-WDT-THOLD, CTRL-WDT-PAUSE, CTRL-WKUP-SMALL,
-CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-WDTRST-ARMED, CTRL-WDT-PET-BARK,
+CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
+CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
 CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY,
 CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED. Observations (not graded): OBS-WDT-CLKSTOP,
 OBS-BITE-CLEAR-EDGE, OBS-REFCNT-SPACED-LAT.
@@ -2099,7 +2104,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             ",".join(preload),
             bark_before,
         )
-        await self._event("WDT_PULSE")
+        await self._event("WDT_PULSE", "CHK-REGWEN-WDTRST")
         for when in ("first", "after_wait"):
             if when == "after_wait":
                 await self._wait_wdt(WDT_WAIT)
@@ -2182,7 +2187,14 @@ class sep_timer_clock_contract_test(sep_base_test):
         assert bark == 0, f"{chk} FAIL: seed={seed} {tag} wdt_bark_probe_o={bark} {after}"
         return st
 
-    async def _event(self, ev: str) -> None:
+    def _event_reached(self, chk: str, ev: str, load: str, low: int) -> None:
+        """Control of ``chk``: the reset load of event ``ev`` read 0 in the pulse."""
+        line = f"seed={self.tcfg.seed} event={ev} load={load} low={low}"
+        if low != 0:
+            raise AssertionError(f"CTRL-MISSING {chk}: {line}")
+        self.logger.info("%s-EVENT: %s", chk.replace("CHK-", "CTRL-", 1), line)
+
+    async def _event(self, ev: str, chk: str = "CHK-REGWEN-HOLD") -> None:
         dut = cocotb.top
         if ev == "WDT_PULSE":
             await RisingEdge(dut.clk_i)
@@ -2192,21 +2204,20 @@ class sep_timer_clock_contract_test(sep_base_test):
             low = self.rd(dut.sep_cpu_reset_n_o)
             await RisingEdge(dut.clk_i)
             dut.wdt_rst_ni_i.value = 1
-            assert low == 0, "sep_cpu_reset_n_o did not fall during the wdt_rst_ni pulse"
+            self._event_reached(chk, ev, "sep_cpu_reset_n_o", low)
             await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
         elif ev == "DBG_PULSE":
             # Runs only on the full-CPU build, where dbg_rstb_i resets the EL2 debug
             # module; the debug reset input of the core wrapper (tap dbg_rst_l_probe_o,
             # tied to 1 on the CPU stub build) must read 0 in the pulse.
-            load = dut.dbg_rst_l_probe_o
             await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 0
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
             await ReadOnly()
-            low = self.rd(load)
+            low = self.rd(dut.dbg_rst_l_probe_o)
             await RisingEdge(dut.clk_i)
             dut.dbg_rstb_i.value = 1
-            assert low == 0, "dbg_rst_l_probe_o did not fall during the dbg_rstb_i pulse"
+            self._event_reached(chk, ev, "dbg_rst_l_probe_o", low)
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
             self.n_dbg += 1
         elif ev == "SW_RESET":
@@ -2218,7 +2229,8 @@ class sep_timer_clock_contract_test(sep_base_test):
                 await ReadOnly()
                 if not self.rd(hmac):
                     break
-            assert not self.rd(hmac), "ip_rst_n[3] did not fall after the SW_RESET_N write of 0"
+            low = self.rd(hmac)
+            self._event_reached(chk, ev, "hmac_gated_rst_n_probe_o", low)
             await RisingEdge(dut.clk_i)
             await self.swrst.release("hmac")
             await self._wait_high(hmac, "ip_rst_n[3]")
@@ -2231,7 +2243,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             low = self.rd(dut.dbg_sep_reset_n_o)
             await RisingEdge(dut.clk_i)
             dut.jtag_sep_reset_n_ovrd_i.value = 0
-            assert low == 0, "dbg_sep_reset_n_o did not fall under the sep_reset_n override"
+            self._event_reached(chk, ev, "dbg_sep_reset_n_o", low)
             await self._wait_high(dut.dbg_sep_reset_n_o, "dbg_sep_reset_n_o")
         else:
             raise ValueError(ev)
@@ -2367,7 +2379,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 f"{cfg.repeat}; the dbg_rstb_i cell was not graded"
             )
             self.logger.info(
-                "CHK-REGWEN-HOLD PASS: event=DBG_PULSE count=%d dbg_rst_l_low=1 expect regwen=0 "
+                "CHK-REGWEN-HOLD PASS: event=DBG_PULSE count=%d expect regwen=0 "
                 "bark=0x%08x bite=0x%08x wkup_hi=0x%08x wkup_lo=0x%08x unchanged",
                 self.n_dbg,
                 cfg.xb,

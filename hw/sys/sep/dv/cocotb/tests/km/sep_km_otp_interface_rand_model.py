@@ -19,9 +19,11 @@ word reads 0 and its complement word 0xFFFFFFFF; otherwise a value word is
 the staged fuse word and its complement word the bitwise inverse
 (``architecture.adoc``, "OTP Inputs and Readout"; ``km_csr.adoc``,
 "OTP_READ_LOCK", "OTP_READ_LOCK_COLD"). OTP_LIFE_CYCLE is ``{~lc, lc}`` of the
-staged life-cycle state. The demotion groups have no stated polarity, so the
-model holds the value read in the first boot (a DUT readback), and the leaf
-grades only their complementarity against the spec.
+staged life-cycle state. OTP_DEMOTION_STATE is ``{~demote, demote}`` per group
+(``architecture.adoc``, "OTP Inputs and Readout": dual-rail ``{~value, value}``),
+where ``demote`` is the ``DEMOTE_1`` / ``DEMOTE_2`` ``demote`` bit, 1 once written
+("Demote bit to enter PROD_DBG state", reset 0, ``sep_lifecycle_ctrl.rdl``):
+``dem_expected``.
 
 Inject masks. ``HK-OTP`` (``docs/SEP_TB_ARCH.adoc``, inject exceptions) XORs a
 mask of the width of ``km_otp_data_t`` into the KM OTP input. The packed
@@ -29,7 +31,7 @@ struct puts its first member at the top, so the bit offset of each member is
 the sum of the widths below it. Each 256-bit field is ``{complement, value}``;
 the life-cycle byte is ``{~lc[3:0], lc[3:0]}``; each demotion group is two
 bits. The value rail of a demotion group is its bit 0 and the complement rail
-its bit 1 (a naming of the two bits only; the polarity is not graded).
+its bit 1.
 
 Seed plan. ``draw_rep`` turns one ``SepSeededRng`` into every RAND-REP value of
 the integrity and change legs and returns the ``DRAW`` lines the leaf logs.
@@ -207,14 +209,17 @@ def expected_readout(
     return out
 
 
-def dem_groups_cpl(value: int) -> int:
-    """Number of the two demotion groups that hold a complementary pair (01 or 10)."""
-    n = 0
-    for m in DEM_GROUPS:
+def dem_expected(demoted: frozenset[int] = frozenset()) -> int:
+    """OTP_DEMOTION_STATE with the groups in ``demoted`` (0 = DEMOTE_1, 1 = DEMOTE_2) set.
+
+    Each group is ``{~demote, demote}``: 2'b10 before its DEMOTE write, 2'b01 after it.
+    """
+    v = 0
+    for i, m in enumerate(DEM_GROUPS):
         lsb = (m & -m).bit_length() - 1
-        g = (value & m) >> lsb
-        n += int(g in (1, 2))
-    return n
+        d = int(i in demoted)
+        v |= (((1 - d) << 1) | d) << lsb
+    return v
 
 
 def dem_groups_changed(before: int, after: int) -> list[int]:

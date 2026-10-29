@@ -224,6 +224,10 @@ Checkers:
                     nor 0x9 and whether a following BASE write lands, logged
                    . Control: RANGE_REGWEN reads 0x6 before the write
                     and BASE before the write differs from the value written.
+  OBS-DMA-SIZE-EDGE one copy 2 bytes past a multiple of 4 at width encoding 2:
+                    the end, ERROR_CODE, the AW and W counts, the last WSTRB
+                    and the destination footprint, logged. The tail rule of
+                    hw/sys/sep/doc/dma.adoc:113-114 is a zero-fill rule.
   CHK-DMA-ASID-TIEOFF per L5 trial (side, ASID 0x9 or 0xA): no DONE in the
                     window. Controls: the ASID 0x7 copy shows DONE inside the
                     same window and copies the source, else CTRL-MISSING.
@@ -276,7 +280,6 @@ from seq_lib.sep_dma_ops import (
     TOTAL_DATA_SIZE,
     TRANSFER_WIDTH,
     DmaStatus,
-    DmaTimeout,
     SepDmaOps,
     SepMemWords,
     asid_word,
@@ -573,12 +576,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         if event == "error":
             st, seen = await self._wait_error(ERR_POLL_BOUND)
             if not seen:
-                msg = (
-                    f"FAIL-DMA-TIMEOUT: zero-size trial intr_en=0x{en:x} no ERROR in "
-                    f"{ERR_POLL_BOUND} STATUS reads (last {st.fmt()})"
+                self._fail(
+                    "CHK-DMA-IRQ",
+                    f"intr_en=0x{en:x} event=error zero-size trial: no ERROR in "
+                    f"{ERR_POLL_BOUND} STATUS reads (last {st.fmt()})",
                 )
-                self.logger.error(msg)
-                raise DmaTimeout(msg)
             go_writes = 1
             chunk_reads = int(st.chunk_done)
         else:

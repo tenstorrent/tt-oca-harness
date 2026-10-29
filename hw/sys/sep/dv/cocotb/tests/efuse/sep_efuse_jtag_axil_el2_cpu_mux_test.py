@@ -25,9 +25,13 @@ Checkers (each logged):
   * CHK-JTAG-DENY: a JTAG shadow-map read at PROD gets SLVERR or DECERR. No SEP text states
     the read data, so ``OBS-JTAG-DENY-RDATA`` logs it and grades nothing.
   * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY.
-  * CHK-JTAG-TOKEN-BLOCK: JTAG reads of a seeded ``SEC_DISABLE_TOKEN_I[0]``, ``TOKEN_EOP`` and
-    ``SEC_DISABLE_TOKEN_MATCH`` return OKAY. No ``TOKEN_EOP`` write is issued, since that starts
-    a compare. This samples the allow class; it does not walk every token word.
+  * CHK-JTAG-TOKEN-BLOCK: JTAG reads of a seeded ``SEC_DISABLE_TOKEN_I[0]`` and of
+    ``SEC_DISABLE_TOKEN_MATCH`` return OKAY, and the token word reads back its seed. This
+    samples the allow class; it does not walk every token word.
+  * OBS-JTAG-TOKEN-EOP-READ: the response and data of a JTAG read of ``TOKEN_EOP``. Every
+    field of that register is ``sw = w`` in ``efuse_mmr.rdl``, and no text states the response
+    of a read of it, so the line grades nothing. No ``TOKEN_EOP`` write is issued, since that
+    starts a compare.
   * CHK-JTAG-IFACE-DENY: a JTAG read of ``EFUSE_PROGRAM_CTRL`` gets the same deny as shadow;
     ``OBS-JTAG-DENY-RDATA`` logs its read data.
   * CHK-COEXIST: the CPU loop counter (scratch-cold[2], via scratch_cold_probe_o) advances across
@@ -250,7 +254,6 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         # CHK-JTAG-MMR already walks RMA TOKEN_I.
         for label, addr in (
             ("SEC_DISABLE_TOKEN_I[0]", _EFUSE_MMR_SEC_DIS_I0),
-            ("TOKEN_EOP", _EFUSE_MMR_TOKEN_EOP),
             ("SEC_DISABLE_TOKEN_MATCH", _EFUSE_MMR_SEC_DIS_MATCH),
         ):
             code, rdata = await self.jtag_axil_op(write=False, addr=addr)
@@ -264,8 +267,17 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
                     f"0x{rdata:08x}, expected the seeded 0x{_SEC_DIS_I0_SEED:08x}"
                 )
         self.logger.info(
-            "CHK-JTAG-TOKEN-BLOCK PASS: JTAG SEC_DISABLE_TOKEN_I / TOKEN_EOP / "
-            "SEC_DISABLE_TOKEN_MATCH all OKAY in PROD"
+            "CHK-JTAG-TOKEN-BLOCK PASS: JTAG reads of SEC_DISABLE_TOKEN_I[0] (seed 0x%08x "
+            "read back) and SEC_DISABLE_TOKEN_MATCH OKAY in PROD",
+            _SEC_DIS_I0_SEED,
+        )
+        # TOKEN_EOP is write-only (efuse_mmr.rdl): no text states the response of a read.
+        code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_MMR_TOKEN_EOP)
+        self.logger.info(
+            "OBS-JTAG-TOKEN-EOP-READ addr=0x%08x resp=%d rdata=0x%08x",
+            _EFUSE_MMR_TOKEN_EOP,
+            code,
+            rdata,
         )
 
         code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_IFACE_PROGRAM)

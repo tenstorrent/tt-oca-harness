@@ -611,7 +611,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.chk.ok(name, True, **fields)
         if held:
             close_graded_window(self.logger)
-            self.logger.info("FCOV-ESRC-PA-HOLD %s: a control is absent, no cell released", name)
+            self.logger.info(
+                "INFO-FCOV-ESRC-PA-HOLD %s: a control is absent, no cell released", name
+            )
             return True
         if bits:
             await self._release(bits)

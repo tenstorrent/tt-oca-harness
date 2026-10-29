@@ -25,8 +25,10 @@ EL2 debug module exists only in the full ``sep_cpu``:
 Checks:
   CHK-DTMCS     : the first ``dtmcs`` read after the TAP reset is 0x0000_0071:
                   version 1, abits 7, dmistat 0, idle 0 (EL2 Programmer's
-                  Reference Manual section 11.1.1.2, Table 11.3, linked from
-                  ``hw/sys/sep/doc/cpu.adoc``).
+                  Reference Manual, linked from ``hw/sys/sep/doc/cpu.adoc``,
+                  at the vendored core revision, the ``el2`` ``rev`` in
+                  ``Bender.yml``: upstream ``docs/source/debugging.md``,
+                  section 11.1.1.2, Table 11.3).
   CHK-DMI-GATE  : a write of ``dmcontrol.dmactive`` = 1 with
                   ``dmi_core_enable_i`` low does not land: after the enable
                   rises ``dmactive`` reads 0 (``hw/sys/sep/doc/port_table.adoc``,
@@ -117,8 +119,10 @@ Checks:
                   PR-DBG-SB, and its B beat answers SLVERR
                   (``hw/sys/sep/doc/entropy_pool.adoc:38-39``); ``sberror`` is
                   not 0 (RISC-V debug ``sbcs.sberror``, EL2 debug module, PRM
-                  cited at ``hw/sys/sep/doc/cpu.adoc:23``), and the LSU read of
-                  ``STATUS`` after it equals the one before it on the fields.
+                  cited at ``hw/sys/sep/doc/cpu.adoc:23`` at the vendored core
+                  revision, upstream ``docs/source/debugging.md``, sbcs
+                  table), and the LSU read of ``STATUS`` after it equals the
+                  one before it on the fields.
   CHK-DBG-EXT   : (entry S) a debug-master 64-bit read and write of a drawn word
                   of the extension window above the eFuse shim, once with the
                   bench responder set to OKAY and once to SLVERR. Each access
@@ -454,7 +458,8 @@ DTM_WR = 1 << 7
 DTM_ADDR = 0x7F
 SPIN_LOOP = 0x0000_006F  # jal x0, 0
 # dtmcs after the TAP reset: version 1, abits 7, dmistat 0, idle 0 (EL2 PRM
-# section 11.1.1.2, Table 11.3, linked from hw/sys/sep/doc/cpu.adoc).
+# linked from hw/sys/sep/doc/cpu.adoc, at the el2 rev in Bender.yml:
+# upstream docs/source/debugging.md, section 11.1.1.2, Table 11.3).
 DTMCS_RESET = (7 << 4) | 1
 
 
@@ -740,11 +745,14 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         # The sampler counts the sep_reset_n tap low cycles until here.
         self.released = True
         # Entry C grades the count in CHK-DBG-RST; entry S records it only.
-        self.logger.info(
-            "%s: sep_reset_n tap low for %d clk_i cycles of the cold reset",
-            "CTRL-COLD" if self.entry_c else "INFO-COLD",
-            self.cold_sep_low,
-        )
+        line = f"sep_reset_n tap low for {self.cold_sep_low} clk_i cycles of the cold reset"
+        if not self.entry_c:
+            self.logger.info("INFO-COLD: %s", line)
+        elif self.cold_sep_low > 0:
+            self.logger.info("CTRL-COLD: %s", line)
+        else:
+            self.logger.error("CTRL-MISSING COLD: %s", line)
+            self.failures.append(f"CTRL-MISSING COLD: {line}")
 
     async def _tap_setup(self) -> None:
         """Step 1: TAP pins to the bench, TRST pulse, Run-Test/Idle, DMI selected."""
@@ -1280,7 +1288,9 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         clk = cocotb.top.clk_i
         on = self.rd(cocotb.top.ext_port_rsp_on_o)
         if on != 1:
-            msg = "CTRL-EXT-RSP FAIL: ext_port_rsp_on_o=0; the entry needs +sep_ext_port_responder"
+            msg = (
+                "CTRL-MISSING EXT-RSP: ext_port_rsp_on_o=0; the entry needs +sep_ext_port_responder"
+            )
             self.logger.error(msg)
             raise AssertionError(msg)
         word = EXT_FIRST + 8 * self.rng.randrange((EXT_LAST - EXT_FIRST) // 8 + 1)
@@ -1433,7 +1443,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         An LSU read of the boot ROM base must put a request on PR-ROM, and a
         secure DMA copy of one SRAM word to the ICCM word must put a write on
         PR-XBAR-TCM. The counts are read on the tap objects that CHK-DBG-NC
-        reads; a count of 0 fails CHK-DBG-NC.
+        reads; a count of 0 fails CHK-DBG-NC and prints CTRL-MISSING NC-LIVE.
         """
         clk = cocotb.top.clk_i
         word = self.rng.getrandbits(32)
@@ -1469,15 +1479,15 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         )
         await ClockCycles(clk, SETTLE)
         live_tcm = len(tcm.since(tm, "aw"))
-        self.logger.info(
-            "CTRL-NC-LIVE: lsu_rom_read pr_rom_req=%d dma_copy src=0x%08x dst=0x%08x "
-            "status=%s pr_xbar_tcm_aw=%d",
-            live_rom,
-            DMA_PROBE_SRC,
-            iccm,
-            st.fmt(),
-            live_tcm,
+        line = (
+            f"lsu_rom_read pr_rom_req={live_rom} dma_copy src=0x{DMA_PROBE_SRC:08x} "
+            f"dst=0x{iccm:08x} status={st.fmt()} pr_xbar_tcm_aw={live_tcm}"
         )
+        if live_rom >= 1 and live_tcm >= 1:
+            self.logger.info("CTRL-NC-LIVE: %s", line)
+        else:
+            self.logger.error("CTRL-MISSING NC-LIVE: %s", line)
+            self.failures.append(f"CTRL-MISSING NC-LIVE: {line}")
         return live_rom, live_tcm
 
     async def _sba_obs_leg(self) -> None:
@@ -1893,7 +1903,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         if not self.full_cpu_build():
-            msg = "CTRL-FULL-CPU FAIL: the build has the CPU stub, which has no EL2 debug module"
+            msg = "CTRL-MISSING FULL-CPU: the build has the CPU stub, which has no EL2 debug module"
             self.logger.error(msg)
             raise AssertionError(msg)
         self.clk = 0

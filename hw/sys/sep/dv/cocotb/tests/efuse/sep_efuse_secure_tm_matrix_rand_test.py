@@ -589,6 +589,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                     self._strap1_kept(r) and c["landed"] and same,
                     target=t,
                     strap=1,
+                    state=state,
                     bit=f"{r['word']}:{r['bit']}",
                     before=f"0x{r['before']:08x}",
                     after=f"0x{r['after']:08x}",

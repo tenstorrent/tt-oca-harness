@@ -163,8 +163,10 @@ Isolation proof (both directions, then the remaining isolated bits):
                     all report isolated until its reset releases. The
                     KMAC, AES, OTBN URND and OTBN RND trials each need
                     resets whose cancel finds the endpoint's edn_req high
-                    and not just acknowledged, so an acknowledge EDN would
-                    otherwise give lands in the window. The KMAC trials also grade
+                    and not just acknowledged. Control (CTRL-EDN-LEAD-DUE):
+                    per engine, the same arm with no reset is acknowledged
+                    no later than the latest gated-reset fall of its live
+                    trials, counted from the request. The KMAC trials also grade
                     CHK-KMAC-DRAIN-ORDER on their reset edge. No endpoint
                     of the engine is acknowledged on any cycle of the cancel
                     window. The bus of a cancelled endpoint has no stated
@@ -363,10 +365,10 @@ _EDN_KEEP_CYCLES = 20_000
 #
 # The "kmac", "aes", "otbn_urnd" and "otbn_rnd" counts are resets whose cancel
 # finds the endpoint's edn_req live: high on the last released cycle before the gated
-# reset falls, with no edn_ack on that cycle or the one before. With a live
-# request and EDN granting, the adapter would acknowledge the engine inside the
-# window if the cancel did not hold it off, so the CHK-EDN-LEAD compare can
-# fail. KMAC is armed by a CFG commit with EDN entropy, AES by a PRNG reseed,
+# reset falls, with no edn_ack on that cycle or the one before. After the live
+# trials of an engine, CTRL-EDN-LEAD-DUE runs the same arm with no reset and
+# requires an acknowledge no later than the latest fall of those trials, so an
+# acknowledge was due in the time the graded windows cover. KMAC is armed by a CFG commit with EDN entropy, AES by a PRNG reseed,
 # OTBN RND by the RND program. Each of these reseeds spans several EDN words.
 # OTBN URND is armed by an OTBN reset pulse: a cold OTBN raises URND edn_req
 # and holds it until an acknowledge.
@@ -1971,6 +1973,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 self._edn_held.append((issued_at, b, w))
         for b, (at, w) in res["committed"].items():
             self._edn_committed.append((at, b, w))
+        # Sample i of the reset is delay + 2 + i cycles after the cycle the
+        # request was seen.
+        self._edn_lead_window = (delay + 2 + res["c0"], delay + 2 + res["fall"])
         return res["live"][lead_bit]
 
     async def _edn_lead_reset(
@@ -2091,6 +2096,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "start_bus": start_bus,
             "bus_live": bus_live,
             "live": live,
+            "c0": c0,
+            "fall": len(samples) - 1,
         }
 
     async def _edn_live_trials(
@@ -2108,9 +2115,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         """
         need = _EDN_LEAD_TRIALS[name]
         budget = _EDN_LIVE_PASSES * _EDN_HOLD_STEP
-        armed = 0
+        windows: list[tuple[int, int]] = []
         attempts = 0
-        while armed < need and attempts < budget:
+        while len(windows) < need and attempts < budget:
             await arm(f"{tag} {name} attempt {attempts}")
             if await self._edn_lead_trial(
                 tag,
@@ -2122,15 +2129,60 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 graded=True,
                 iso=iso,
             ):
-                armed += 1
+                windows.append(self._edn_lead_window)
             attempts += 1
-        if armed < need:
+        if len(windows) < need:
             raise AssertionError(
-                f"{tag} FAIL: {armed} of {attempts} {name} resets found edn_req live at "
-                f"the cancel ({need} required). The acknowledge compare cannot fail "
-                "without a live request, so the cancel is not graded."
+                f"{tag} FAIL: {len(windows)} of {attempts} {name} resets found edn_req "
+                f"live at the cancel ({need} required). The acknowledge compare cannot "
+                "fail without a live request, so the cancel is not graded."
             )
+        await self._edn_due_control(name, eng, bits[0], arm, windows)
         return attempts
+
+    async def _edn_due_control(self, name: str, eng, bit: int, arm, windows) -> None:
+        """CTRL-EDN-LEAD-DUE: the same arm with no reset is acknowledged in time.
+
+        ``windows`` holds, per live trial of ``eng``, the cancel start and the
+        gated-reset fall as cycles after the request was seen. The arm of
+        those trials runs once more with no reset, and ``bit`` must be
+        acknowledged no later than the latest fall, counted from the cycle
+        the request is seen in the same way. Otherwise no acknowledge was due
+        inside any graded window, the leaf logs ``CTRL-MISSING`` and fails.
+        The line also counts the trials whose window, cancel start to fall,
+        holds that acknowledge cycle. The engine is then pulsed back to reset.
+        """
+        clk = cocotb.top.clk_i
+        bound = max(fall for _c0, fall in windows)
+        await arm(f"CTRL-EDN-LEAD-DUE {name}")
+        for _ in range(_EDN_PEND_CYCLES):
+            await RisingEdge(clk)
+            await ReadOnly()
+            if self._edn_req() & (1 << bit):
+                break
+        else:
+            raise AssertionError(
+                f"CTRL-EDN-LEAD-DUE SETUP FAILED (not a contract result): {name} "
+                f"endpoint {bit} never raised edn_req"
+            )
+        due = None
+        for k in range(bound + 1):
+            if k:
+                await RisingEdge(clk)
+                await ReadOnly()
+            if self._edn_ack() & (1 << bit):
+                due = k
+                break
+        in_window = sum(1 for c0, fall in windows if due is not None and c0 <= due <= fall)
+        fields = (
+            f"client={name} ack_after_req={due if due is not None else 'none'} "
+            f"bound={bound} windows={windows} due_in_window={in_window}"
+        )
+        if due is None:
+            raise AssertionError(f"CTRL-MISSING CHK-EDN-LEAD: CTRL-EDN-LEAD-DUE {fields}")
+        self.logger.info("CTRL-EDN-LEAD-DUE %s", fields)
+        await NextTimeStep()
+        await self._pulse_reset(eng.rst_bit)
 
     async def _arm_aes_live(self, tag: str) -> None:
         # A PRNG reseed raises the AES edn_req for several EDN words.

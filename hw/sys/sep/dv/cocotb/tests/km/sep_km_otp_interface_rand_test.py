@@ -14,6 +14,7 @@ and Readout", "Reset Conditioning", "Scan and Scan-Dump Protection";
 "OTP_READ_LOCK_COLD", "IRQ_STATUS", "IRQ_SET", "OTP_CHANGE_STATUS";
 ``hw/sys/sep/doc/otp_fuse_controller.adoc`` "Fuse Fields";
 ``hw/sys/sep/doc/lifecycle_controller.adoc`` "In-Field Debug Demotion";
+``sep_lifecycle_ctrl.rdl`` DEMOTE ``demote`` (1 = demoted, reset 0);
 ``hw/sys/sep/doc/test_mode.adoc`` "Protection While Active".
 
 The KM CPU reads and writes every KMCSR register through the POKE image, which
@@ -25,7 +26,8 @@ for the integrity and change legs; it is stimulus only and never a golden.
 
 Checks (anchor):
   CHK-OTP-RD             boot-1 readout of the four secrets, the life cycle and
-                         the demotion state (POKE readback vs staged image)
+                         the demotion state (POKE readback vs staged image;
+                         OTP_DEMOTION_STATE = 0xA, each group {~demote, demote})
   CHK-OTP-LOCK           zero read of every field in m_w | m_c, staged read of
                          the rest, write-one-to-set lock registers (POKE readback)
   CHK-OTP-HANDOVER-MASK  control=1: OTP_READ_LOCK = 0x03C (POKE readback)
@@ -33,12 +35,13 @@ Checks (anchor):
                          life-cycle words kept, OTP_SIGINT quiet (POKE readback,
                          ``secure_tm_o``)
   CHK-OTP-DEM            a DEMOTE write sets OTP_CHANGE_STATUS.demotion and
-                         IRQ_STATUS.OTP_CHANGE and changes only its own group:
-                         DEMOTE_1 bits [1:0], DEMOTE_2 bits [3:2] (POKE readback)
+                         IRQ_STATUS.OTP_CHANGE and changes only its own group,
+                         2'b10 -> 2'b01: DEMOTE_1 bits [1:0], DEMOTE_2 bits [3:2]
+                         (POKE readback)
   CHK-OTP-SUPP           no change after a KM warm reset with a demotion held;
                          control CTRL-OTP-SUPP-PARK: OTP_READ_LOCK, set to 0x1FF
                          before PARK, reads 0 after it (warm reset domain)
-  CHK-OTP-COLD           a SEP cold reset restores the first-boot demotion state
+  CHK-OTP-COLD           a SEP cold reset restores OTP_DEMOTION_STATE = 0xA
   CHK-OTP-NOTKM          shadow writes of REQUIRED_ALGS / REQUIRED_SIGNERS leave
                          the KM OTP words and status unchanged (POKE + host readback)
   CHK-OTP-NOTKM-CLASS    programmed bits of one field outside the KM interface
@@ -62,8 +65,7 @@ Checks (anchor):
                          read 0 in every readout (RDL ``rsvd`` R 0x0)
 
 Logged only (no verdict): ``OBS-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a single-rail
-flip, not stated), ``OBS-OTP-DEM-CODE`` (the 2-bit code of the changed demotion
-group before and after the write: polarity not stated), ``OBS-OTP-LOCK-RESP`` (the response of a locked-field read, not
+flip, not stated), ``OBS-OTP-LOCK-RESP`` (the response of a locked-field read, not
 stated; only its zero data is graded).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
@@ -625,8 +627,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     async def _step_first_read(self) -> None:
         ro = await self._readout("boot1")
         self.r0 = ro
-        self.dem_record = ro.words[(m.F_DEM, "reg", 0)] & m.DEM_FIELDS
-        self._draw("record.demotion", self.dem_record)
+        self.dem_record = m.dem_expected()
+        dem = ro.words[(m.F_DEM, "reg", 0)] & m.DEM_FIELDS
         exp = self._expected(0)
         diff = self._diff(ro, exp)
         graded = (m.F_LC, m.F_DEM, *m.SECRET)
@@ -645,14 +647,12 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             and ro.words[(f, "cpl", w)] == exp[(f, "cpl", w)]
         )
         lc = ro.words[(m.F_LC, "reg", 0)] & m.LC_FIELDS
-        dem_cpl = m.dem_groups_cpl(self.dem_record)
         ok = (
             not ro.bad
             and n_val == 32
             and n_cpl == 32
             and lc == m.lc_encode(self.fp.lc_raw)
-            and dem_cpl == 2
-            and all(not diff[f] for f in graded if f != m.F_DEM)
+            and all(not diff[f] for f in graded)
         )
         self.chk.ok(
             "OTP-RD",
@@ -661,8 +661,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             graded_cpl=n_cpl,
             lc=_h(lc),
             lc_exp=_h(m.lc_encode(self.fp.lc_raw)),
-            dem=_h(self.dem_record),
-            dem_groups_cpl=dem_cpl,
+            dem=_h(dem),
+            dem_exp=_h(self.dem_record),
             bad=len(ro.bad),
             first=(ro.bad + [f"{_FN[f]}:{d[0]}" for f, d in diff.items() if d])[:4],
         )
@@ -1124,11 +1124,14 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         leg.w1c_change, leg.w1c_irq = v["w1c_change"], v["w1c_irq"]
         return leg
 
-    def _grade_dem(self, leg: Leg, reg: int) -> None:
+    def _grade_dem(self, leg: Leg, reg: int, demoted: frozenset[int]) -> None:
+        """Grade one DEMOTE leg; ``demoted`` holds the groups demoted before it."""
         pre = leg.pre_dem & m.DEM_FIELDS
         post = leg.dem & m.DEM_FIELDS
         changed = m.dem_groups_changed(pre, post)
         exp_group = reg - 1
+        exp_pre = m.dem_expected(demoted)
+        exp_post = m.dem_expected(demoted | {exp_group})
         before0 = self._pre_zero(leg)
         self.chk.ctrl(
             "OTP-DEM-PRE", before0, reg=leg.label, change=_h(leg.pre_change), irq=_h(leg.pre_irq)
@@ -1139,7 +1142,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             and (leg.change & m.CHANGE_FIELDS) == leg.exp
             and bool(leg.irq & m.IRQ_OTP_CHANGE)
             and len(changed) == 1
-            and m.dem_groups_cpl(post) == 2
+            and pre == exp_pre
+            and post == exp_post
             and not (leg.w1c_change & m.CHANGE_FIELDS)
             and not (leg.w1c_irq & m.IRQ_OTP_CHANGE)
             and group == exp_group
@@ -1154,25 +1158,16 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             change_bit=f"0x{leg.change & m.CHANGE_FIELDS:03x}",
             irq=int(bool(leg.irq & m.IRQ_OTP_CHANGE)),
             group_changed=len(changed),
-            group_cpl=m.dem_groups_cpl(post),
             dem=f"{_h(pre)}->{_h(post)}",
+            dem_exp=f"{_h(exp_pre)}->{_h(exp_post)}",
             w1c_after=f"{leg.w1c_change & m.CHANGE_FIELDS},{int(bool(leg.w1c_irq & m.IRQ_OTP_CHANGE))}",
-        )
-        mask = m.DEM_GROUPS[exp_group]
-        lsb = (mask & -mask).bit_length() - 1
-        self.chk.obs(
-            "OTP-DEM-CODE",
-            reg=leg.label,
-            group=exp_group,
-            code_pre=f"0b{(pre & mask) >> lsb:02b}",
-            code_post=f"0b{(post & mask) >> lsb:02b}",
         )
 
     async def _step_demote_park(self) -> None:
         da = self.rep.demote_first
         db = 3 - da
         self.dem_a = await self._demote(da)
-        self._grade_dem(self.dem_a, da)
+        self._grade_dem(self.dem_a, da, frozenset())
         # OTP_READ_LOCK is in the warm reset domain (architecture.adoc, "Cleared by
         # warm or cold reset"): set before PARK, it reads 0 only after a real reset.
         lk = await self._run([kp.wr(m.A_READ_LOCK, m.LOCK_FIELDS), kp.rd(m.A_READ_LOCK)])
@@ -1198,7 +1193,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             lock_after_park=_h(r[4].value),
         )
         self.dem_b = await self._demote(db)
-        self._grade_dem(self.dem_b, db)
+        self._grade_dem(self.dem_b, db, frozenset({da - 1}))
         held = (supp_dem & m.DEM_FIELDS) == (self.dem_a.dem & m.DEM_FIELDS)
         twin = bool(self.dem_b.change & (1 << m.F_DEM)) and bool(self.dem_b.irq & m.IRQ_OTP_CHANGE)
         self.chk.ctrl(
@@ -1287,8 +1282,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             and dem == self.dem_record
             and not (change & m.CHANGE_FIELDS)
             and not (irq & m.IRQ_OTP_CHANGE),
-            dem_equals_first_boot=int(dem == self.dem_record),
             dem=_h(dem),
+            dem_exp=_h(self.dem_record),
             change=_h(change & m.CHANGE_FIELDS),
             irq_change=int(bool(irq & m.IRQ_OTP_CHANGE)),
         )

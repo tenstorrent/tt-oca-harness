@@ -235,7 +235,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 . Host: attempt a debug-port read of the protected shadow window; expect an error response. Log its read data (`OBS-JTAG-DENY-RDATA`).
 . Host: repeat a register read after the denial; expect success.
 . Read the CPU's counter to confirm it advanced during the burst.
-. Host: read `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH`; expect OKAY. A sample of the token-block allow class in PROD.
+. Host: read `SEC_DISABLE_TOKEN_I[0]` and `SEC_DISABLE_TOKEN_MATCH`; expect OKAY, and the token word reads back its seed. A sample of the token-block allow class in PROD. Then read `TOKEN_EOP` and log its response and read data (`OBS-JTAG-TOKEN-EOP-READ`).
 . Host: read `EFUSE_PROGRAM_CTRL`; expect an error response. Log its read data (`OBS-JTAG-DENY-RDATA`).
 
 *Checkers*:
@@ -254,7 +254,7 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |CHK-COEXIST
 |The CPU made real progress during the debug-port burst — the overlap was genuine.
 |CHK-JTAG-TOKEN-BLOCK
-|In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the `hw/sys/sep/doc/otp_fuse_controller.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`.
+|In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]` and `SEC_DISABLE_TOKEN_MATCH` return OKAY, and `SEC_DISABLE_TOKEN_I[0]` reads back its seed. A sample of the `hw/sys/sep/doc/otp_fuse_controller.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`. Every field of `TOKEN_EOP` is `sw = w` (`hw/ip/efuse/regs/efuse_mmr.rdl`) and no text states the response of a read of it, so `OBS-JTAG-TOKEN-EOP-READ` logs that read and grades nothing.
 |CHK-JTAG-IFACE-DENY
 |In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes with an error response (SLVERR or DECERR), as for CHK-JTAG-DENY. `OBS-JTAG-DENY-RDATA` logs the read data. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
 |===
@@ -709,16 +709,16 @@ The freeze leg is falsifiable in both fields. Without the valid gate, `start_i` 
 |A write of zero to the lifecycle word clears nothing. Write-one-to-set means a bit never returns to 0, so a controller that treated the write as an assignment fails here.
 |CHK-GATE-SIP
 |prod
-|The system-in-package bit does not set without a matching token. The write is otherwise identical to the one that succeeds later in the same leaf, so the gate is the only difference between the two outcomes.
+|The system-in-package bit does not set without a matching token. The write is otherwise identical to the advance cell later in the same leaf, which presents the token; that cell's result is logged (`OBS-LC-WR-ADVANCE`), not graded. On `prod_end_rma`, `CTRL-LC-INVALID-START` requires that a bit-1 write with the SIP token matched moves the state, so the SIP gate is proven to open.
 |CHK-GATE-SIP-FAULT
 |prod
-|A valid SIP token presented with the comparator collapsed must not set the bit. The status is the fault code `6'b111111`, which a gate written as "not a mismatch" would accept. The cell that follows presents the same token with the fault removed and does advance.
+|A valid SIP token presented with the comparator collapsed must not set the bit. The status is the fault code `6'b111111`, which a gate written as "not a mismatch" would accept. The cell that follows presents the same token with the fault removed; its result is logged (`OBS-LC-WR-ADVANCE`), not graded.
 |CHK-GATE-CHIP-ORD
 |prod
 |The chiplet bit does not set from the production state even with the chiplet token *already matched*, because the system-in-package state is not yet established. This isolates the ordering requirement from the token requirement — with the token gate open, only the ordering gate can hold.
 |CHK-GATE-CHIP-TOK
 |rma_sip
-|The complementary half: from the system-in-package state, the chiplet bit does not set without a chiplet token match.
+|The complementary half: from the system-in-package state, the chiplet bit does not set without a chiplet token match. The bit-2 write with a chiplet match that follows is an advance cell, logged (`OBS-LC-WR-ADVANCE`) and not graded, so no check of this test shows that a bus write can set bit 2; `CHK-GATE-CHIP-ORD` and this check prove the hold only.
 |CHK-DEMOTE-OPEN
 |prod_demote
 |Both demotion registers read back asserted AND the decoded feature-control word matches the golden *with demotion applied*. The advance cell that follows runs demoted only if this check passes.
@@ -1809,9 +1809,9 @@ hook and blocks no check.
 |CHK-STM-SECRET
 |At strap 1 the four secret fields read zero at the sensed-shadow output, while the frontdoor read returns OKAY and the staged value and the OTP bank keeps it (`test_mode.adoc`, section Protection While Active: the controller masks the secret shadow outputs to zero, masking does not erase the stored value, and register reads keep their access controls). This check is a stated superset of the secret blanking of `sep_efuse_lcc_lc_state_stitch_test` (strap-1 probe value differs from the staged value); it claims only the exact zero at the probe, the kept frontdoor read and the kept OTP word. A DUT that masks to a non-zero value or erases the stored value fails. Anchor: `efuse_shadow_probe_o`, a frontdoor readback and, in the strap-0 epoch, the direct read of the first word of the field. Control: the strap-0 epoch shows the staged secret on the same probe, and a secret field that is zero at the probe in the strap-0 epoch fails the leaf. Evidence: `CHK-STM-SECRET PASS seed=<n> strap=1 field=<name> probe=0x0 ctl_probe=0x<staged> reg_read_eq_staged=1 otp_word0_eq_staged=1`, printed after the strap-0 epoch of the same field.
 |CHK-STM-JTAG
-|In TEST_DEV, PROD_END and RMA_CHIPLET at strap 1, a JTAG write of one new bit to each drawn protection shadow leaves the shadow equal to its value before the write (`test_mode.adoc` and `otp_fuse_controller.adoc`: updates from every source are blocked, JTAG named, with no lifecycle qualifier; the JTAG restriction of `otp_fuse_controller.adoc` covers PROD and RMA_SIP only). A DUT that lets the JTAG source update a protection shadow under secure test mode in any of these states fails. Anchor: frontdoor readback of the shadow. Control: CHK-STM-JTAG-CTL, the strap-0 JTAG write to the same target in the same leaf, which lands; the line passes only when that twin landed. In PROD and RMA_SIP the leg does not run and the leaf logs `OBS-BLOCKED CHK-STM-JTAG reason=lifecycle_gate seed=<n>` (the state is in `INFO-STM-STATE`); that line grades nothing. Evidence: `CHK-STM-JTAG PASS seed=<n> target=<name> strap=1 state=<name> before=0x<w> after=0x<w>`.
+|In TEST_DEV, PROD_END and RMA_CHIPLET at strap 1, a JTAG write of one new bit to each drawn protection shadow leaves the shadow equal to its value before the write (`test_mode.adoc` and `otp_fuse_controller.adoc`: updates from every source are blocked, JTAG named, with no lifecycle qualifier; the JTAG restriction of `otp_fuse_controller.adoc` covers PROD and RMA_SIP only). A DUT that lets the JTAG source update a protection shadow under secure test mode in any of these states fails. Anchor: frontdoor readback of the shadow. Control: CHK-STM-JTAG-CTL, the strap-0 JTAG write to the same target in the same leaf, which lands; the line passes only when that twin landed. In PROD and RMA_SIP the leg does not run and the leaf logs `OBS-BLOCKED CHK-STM-JTAG reason=lifecycle_gate seed=<n>` (the state is in `INFO-STM-STATE`); that line grades nothing. Evidence: `CHK-STM-JTAG PASS: seed=<n> target=<name> strap=1 state=<name> bit=<w>:<b> before=0x<w> after=0x<w>`.
 |CHK-STM-JTAG-CTL
-|In TEST_DEV, PROD_END and RMA_CHIPLET at strap 0, a JTAG write of one new bit to each of the four protection shadows lands, in the word of the strap-1 JTAG write of that target: the readback equals the value before the write OR the bit (`otp_fuse_controller.adoc`: the JTAG restriction covers PROD and RMA_SIP only, and the four fields are set-only in every state). A target whose control does not land fails the leaf, so a JTAG write path that never lands cannot pass CHK-STM-JTAG. Anchor: frontdoor readback of the shadow. Evidence: `CHK-STM-JTAG-CTL PASS seed=<n> target=<name> strap=0 state=<name> bit=<w>:<b> before=0x<w> after=0x<w> landed=1 resp=<c>`.
+|In TEST_DEV, PROD_END and RMA_CHIPLET at strap 0, a JTAG write of one new bit to each of the four protection shadows lands, in the word of the strap-1 JTAG write of that target: the readback equals the value before the write OR the bit (`otp_fuse_controller.adoc`: the JTAG restriction covers PROD and RMA_SIP only, and the four fields are set-only in every state). A target whose control does not land fails the leaf, so a JTAG write path that never lands cannot pass CHK-STM-JTAG. Anchor: frontdoor readback of the shadow. Evidence: `CHK-STM-JTAG-CTL PASS: seed=<n> target=<name> strap=0 state=<name> bit=<w>:<b> before=0x<w> after=0x<w> landed=1 resp=<c>`.
 |INFO-STM-STATE
 |Bench control, not a check. Logs `INFO-STM-STATE seed=<n> state=<name> jtag_leg=<0\|1>`, so the run shows which of the five states the seed drew and whether the JTAG leg ran. In RMA_CHIPLET the profile row is all ones with or without SEC_DIS, so there the SEC_DIS control of CHK-STM-CTL rests on `security_disable_o` and the match codes alone.
 |OBS-STM-RMA-DIGEST-PROBE
