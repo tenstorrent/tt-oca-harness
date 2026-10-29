@@ -22,6 +22,10 @@ EL2 debug module exists only in the full ``sep_cpu``:
   a logged leg of targets with no stated response (``OBS-DBG-SBA``).
 
 Checks:
+  CHK-DTMCS     : the first ``dtmcs`` read after the TAP reset is 0x0000_0071:
+                  version 1, abits 7, dmistat 0, idle 0 (EL2 Programmer's
+                  Reference Manual section 11.1.1.2, Table 11.3, linked from
+                  ``hw/sys/sep/doc/cpu.adoc``).
   CHK-DMI-GATE  : a write of ``dmcontrol.dmactive`` = 1 with
                   ``dmi_core_enable_i`` low does not land: after the enable
                   rises ``dmactive`` reads 0 (``hw/sys/sep/doc/port_table.adoc``,
@@ -399,6 +403,9 @@ DTM_EN = 1 << 8
 DTM_WR = 1 << 7
 DTM_ADDR = 0x7F
 SPIN_LOOP = 0x0000_006F  # jal x0, 0
+# dtmcs after the TAP reset: version 1, abits 7, dmistat 0, idle 0 (EL2 PRM
+# section 11.1.1.2, Table 11.3, linked from hw/sys/sep/doc/cpu.adoc).
+DTMCS_RESET = (7 << 4) | 1
 
 
 @dataclass
@@ -695,7 +702,11 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         await tap.goto_state("RUN_TEST_IDLE")
         await tap.shift_ir(IR_DMI, IR_WIDTH, back_to_rti=True)
         dtmcs = await self.dmi.read_dtmcs()
-        self.logger.info("OBS-DTMCS: dtmcs=0x%08x (logged only)", dtmcs)
+        self._grade(
+            "CHK-DTMCS",
+            dtmcs == DTMCS_RESET,
+            f"dtmcs=0x{dtmcs:08x} expect=0x{DTMCS_RESET:08x}",
+        )
         # The TAP is out of reset: the sampler records DTM requests from here.
         self.dtm_on = True
 
@@ -1749,9 +1760,10 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         self.n_checks = 0
         self.axp_tap = None
         if self.entry_c:
-            self.required_evidence = ("CHK-DMI-GATE", "CHK-DMI-UNCORE", "CHK-DBG-RST")
+            self.required_evidence = ("CHK-DTMCS", "CHK-DMI-GATE", "CHK-DMI-UNCORE", "CHK-DBG-RST")
         else:
             self.required_evidence = (
+                "CHK-DTMCS",
                 "CHK-DMI-GATE",
                 "CHK-DBG-SBA",
                 "CHK-DBG-ALIAS-MOVE",

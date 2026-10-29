@@ -44,6 +44,16 @@ Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DU
                   (doc/programmer/src/sep-programming.adoc:819-820).
                   INTR_ENABLE raises and drops sep_internal_interrupts[13]
                   (PIC source 14) for both sources.
+  CHK-SPI-ALERT-TEST: with INTR_ENABLE = both bits, a write of 1 to
+                  ALERT_TEST.fatal_fault leaves INTR_STATE 0 and
+                  sep_internal_interrupts[13] 0 on every clk_i cycle of the
+                  sample window. The SPI line is the OR of the error and
+                  SPI-event interrupts (hw/sys/sep/doc/spi.adoc, Interrupts),
+                  and ALERT_TEST triggers an alert event, not an interrupt
+                  (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/
+                  registers.md, ALERT_TEST). Control: INTR_TEST.ERROR at the same
+                  enable raises the line inside the same window. The other
+                  vector bits are logged (OBS-SPI-ALERT-TEST).
   CHK-ERR-W1C   : each drivable ERROR_STATUS bit is set by its exact trigger and
                   W1C-clears -- UNDERFLOW (read empty RXDATA), CMDINVAL (COMMAND
                   SPEED=reserved), CSIDINVAL (CSID at the top of the field, out of
@@ -306,6 +316,9 @@ _NEG_WINDOW_FLOOR = 32
 _FILL_LIMIT = 512
 _CMD_LIMIT = 64
 _SPI_AGG = agg_from_pic("SPI IRQ")
+# clk_i cycles sampled after the ALERT_TEST write; the INTR_TEST control must
+# raise the SPI line inside the same window.
+_ALERT_WIN = 64
 
 # ---- Legs L1 to L4 -----------------------------------------------------------
 TEST = "sep_spi_ot_host_csr_irq_rand_test"
@@ -473,6 +486,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         "CHK-NONVAC",
         "CHK-ZERO-STRB",
         "CHK-INTR",
+        "CHK-SPI-ALERT-TEST",
         "CHK-ERR-W1C",
         "CHK-WATERMARK",
         "CHK-ENABLE",
@@ -490,6 +504,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._chk_reset()
         await self._chk_reg_rw()
         await self._obs_wo_ro()
+        await self._chk_alert_test()
         await self._chk_zero_strb()
         await self._chk_intr()
         await self._chk_err_w1c()
@@ -761,6 +776,56 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             "with EVENT_ENABLE = 0, and INTR_ENABLE gates its aggregator line on and off",
             _SPI_AGG,
         )
+
+    async def _line_window(self) -> tuple[int, int, int]:
+        """(high cycles of the SPI line, first high cycle or -1, OR of the known
+        changed bits of the whole vector) over _ALERT_WIN clk_i cycles."""
+        sig = cocotb.top.sep_internal_interrupts_probe_o
+        high, first, base, diff = 0, -1, None, 0
+        for i in range(_ALERT_WIN):
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            bit = (self.rd_known(sig, mask=1 << _SPI_AGG) >> _SPI_AGG) & 1
+            high += bit
+            if bit and first < 0:
+                first = i
+            v = sig.value
+            if v.is_resolvable:
+                base = int(v) if base is None else base
+                diff |= int(v) ^ base
+        await NextTimeStep()
+        return high, first, diff
+
+    async def _chk_alert_test(self) -> None:
+        await self._clear_error_status()
+        await self.spi.wr(INTR_TEST, 0)
+        await self.spi.wr(INTR_ENABLE, INTR_STATE_MASK)
+        await self.spi.wr(INTR_STATE, INTR_STATE_MASK)
+        pre = await self.spi.rd(INTR_STATE)
+        await self.poll_internal_irq(_SPI_AGG, 0)
+        await self.spi.wr(ALERT_TEST, 1)
+        high, _first, diff = await self._line_window()
+        st = await self.spi.rd(INTR_STATE)
+        self.logger.info(
+            "OBS-SPI-ALERT-TEST vec_diff=0x%x (bit %d excluded)", diff & ~(1 << _SPI_AGG), _SPI_AGG
+        )
+        # Control: an interrupt source at the same enable raises the line in
+        # the same window.
+        await self.spi.wr(INTR_TEST, INTR_ERROR)
+        ctl_high, ctl_first, _ = await self._line_window()
+        await self.spi.wr(INTR_TEST, 0)
+        await self.spi.wr(INTR_STATE, INTR_ERROR)
+        await self.poll_internal_irq(_SPI_AGG, 0)
+        await self.spi.wr(INTR_ENABLE, 0)
+        text = (
+            f"seed={self.random_seed()} intr_state_pre=0x{pre:08x} intr_state=0x{st:08x} "
+            f"line_high_clk={high} window={_ALERT_WIN} control_intr_test_rise_clk={ctl_first} "
+            f"control_high_clk={ctl_high}"
+        )
+        assert pre == 0 and st == 0 and high == 0 and ctl_high > 0, (
+            f"CHK-SPI-ALERT-TEST FAIL: {text}"
+        )
+        self.logger.info("CHK-SPI-ALERT-TEST PASS: %s", text)
 
     # ---- CHK-ERR-W1C ------------------------------------------------------
     async def _trigger_err(self, label: str, bit: int, trigger) -> None:

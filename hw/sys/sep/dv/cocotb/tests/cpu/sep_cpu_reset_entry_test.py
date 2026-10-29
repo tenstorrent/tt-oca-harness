@@ -94,13 +94,13 @@ Checks:
                        to the pair after the write's B, and an R beat with
                        RRESP OKAY that carries the written value.
                        Graded last, after every other check.
-  OBS-MEMIF-WDT-RST  : logged, not graded. In each ``wdt_rst_ni`` CPU reset,
-                       on the last ``clk_i`` cycle with ``wdt_rst_ni`` low, the
-                       reset inputs of the SRAM and boot ROM memory interfaces
-                       and the ``sep_reset_n`` tap. ``port_table.adoc`` says
-                       the watchdog request resets the memory interfaces; the
-                       RTL resets them on ``sep_reset_n``. The contract is
-                       open.
+  CHK-MEMIF-WDT-RST  : on every ``clk_i`` cycle of each ``wdt_rst_ni`` CPU
+                       reset, the reset inputs of the SRAM and boot ROM memory
+                       interfaces read 1: they are on ``sep_reset_no``
+                       (reset_controller.adoc ``sep_reset_no``), and
+                       ``wdt_rst_ni`` resets the SEP CPU and the SEP watchdog
+                       only (port_table.adoc ``wdt_rst_ni``). Control: both
+                       read 0 on at least one cycle of a cold reset.
   OBS-RUNREQ0-FETCH  : logged, not graded. After every grade, one more cold
                        reset with ``mpc_reset_run_req`` 0: the retirements and
                        the ``ifu_req`` cycles within W_obs of the tap rise.
@@ -535,6 +535,11 @@ class _Epoch:
     first_ifu_ar: tuple | None = None
     # ifu_req cycles within W_OBS clk_i cycles of the tap rise.
     ifu_req_in_window: int = 0
+    # Cycles of the reset assertion (rst_ni low for a cold reset, wdt_rst_ni
+    # low for a CPU reset) and, among them, the cycles with each memory-
+    # interface reset not 1: (sram, rom).
+    rst_clk: int = 0
+    memif_not1: list = field(default_factory=lambda: [0, 0])
 
 
 @dataclass
@@ -719,6 +724,10 @@ class sep_cpu_reset_entry_test(sep_base_test):
             if not self.epochs:
                 continue
             ep = self.epochs[-1]
+            if (rst if ep.kind == "cold" else wdt) == 0:
+                ep.rst_clk += 1
+                ep.memif_not1[0] += self._rd_or_none(dut.pr_sram_memif_rst_n_o) != 1
+                ep.memif_not1[1] += self._rd_or_none(dut.pr_rom_memif_rst_n_o) != 1
             if cpu_tap == 0:
                 ep.tap_low += 1
                 if tv:
@@ -866,29 +875,11 @@ class sep_cpu_reset_entry_test(sep_base_test):
         dut.wdt_rst_ni_i.value = 0
         ep = await self._new_epoch(n)
         await ClockCycles(dut.clk_i, RST_HOLD - 1)
-        await ReadOnly()
-        self._log_memif_wdt_rst(ep)
         await RisingEdge(dut.clk_i)
         if during is not None:
             await during()
         dut.wdt_rst_ni_i.value = 1
         return ep, mark
-
-    def _log_memif_wdt_rst(self, ep: _Epoch) -> None:
-        """Log the SRAM and boot ROM memory-interface resets while wdt_rst_ni is low.
-
-        Logged, not graded: hw/sys/sep/doc/port_table.adoc says the watchdog
-        request resets the memory interfaces, and the RTL resets them on
-        sep_reset_n; the contract is open.
-        """
-        dut = cocotb.top
-        self.logger.info(
-            "OBS-MEMIF-WDT-RST epoch=%d sram_memif_rst_n=%s rom_memif_rst_n=%s sep_reset_n=%s",
-            ep.idx,
-            self._rd_or_none(dut.pr_sram_memif_rst_n_o),
-            self._rd_or_none(dut.pr_rom_memif_rst_n_o),
-            self._rd_or_none(dut.dbg_sep_reset_n_o),
-        )
 
     async def _entry(self, ep: _Epoch, mark: int, what: str) -> tuple[int | None, str, list]:
         """Wait for the tap rise, the first retirement and the marker of the run of ``ep``.
@@ -1376,6 +1367,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-RSTVEC-TAPRST",
             "CHK-TRST-SCOPE",
             "CHK-WDT-STORE-RESP",
+            "CHK-MEMIF-WDT-RST",
         )
         self.st_rows: list[dict] = []
         self.st_errors: list[str] = []
@@ -1402,6 +1394,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             ),
         )
         self._grade_no_early()
+        self._grade_memif_wdt_rst()
         # Graded last: every other check above has already run.
         self._grade_store_resp()
         await self._run_req0_leg()
@@ -1776,6 +1769,18 @@ class sep_cpu_reset_entry_test(sep_base_test):
                     f" rdata={h(None if r is None else r.data, 16)}"
                 )
             self._grade("CHK-WDT-STORE-RESP", ok, text)
+
+    def _grade_memif_wdt_rst(self) -> None:
+        cpu = [e for e in self.epochs if e.kind == "cpu"]
+        cold = [e for e in self.epochs if e.kind == "cold"]
+        bad = [(e.idx, *e.memif_not1) for e in cpu if any(e.memif_not1) or e.rst_clk == 0]
+        ctl = [e.idx for e in cold if e.memif_not1[0] and e.memif_not1[1]]
+        self._grade(
+            "CHK-MEMIF-WDT-RST",
+            bool(cpu) and not bad and bool(ctl),
+            f"cpu_resets={len(cpu)} wdt_low_clk={','.join(str(e.rst_clk) for e in cpu)} "
+            f"memif_not_1(epoch,sram,rom)={bad} control_cold_memif_low={ctl}",
+        )
 
     def _grade_no_early(self) -> None:
         eps = self.epochs

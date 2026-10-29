@@ -11,7 +11,11 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 * CHK-NONE-BEFORE-PROGRAM (firmware) no delivery with the reset meie and meipl.
 * CHK-GATED      (firmware) no delivery through a closed gate (meie 0, never
                  priority, mstatus.MIE 0); opening the gate delivers the same
-                 source once and no other.
+                 source once and no other. One more record, after the timer
+                 legs: source 1 pending at an open PIC gate with mstatus.MIE 1
+                 and ``mie.MEIE`` 0 does not deliver, and ``mie.MEIE`` 1
+                 delivers it once (``gate=mie_meie``; RISC-V privileged spec
+                 v1.12 section 3.1.9).
 * CHK-WINNER     (host) the handlers after the mstatus.MIE gate step run in
                  effective-priority order: each one is the source of highest
                  effective priority among the sources not yet delivered,
@@ -40,7 +44,11 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  ``mstatus`` and sets mstatus.MIE: source B at level L stays
                  pending with no entry for a hold window of 32 core clocks or
                  more, at level L + 1 it nests once;
-                 ``meicidpl`` reads L (PRM sections 8.8, 8.12.9, 8.12.10).
+                 ``meicidpl`` reads L with no ``meicpct`` write (fast
+                 interrupt redirect captures the claim ID and level pair,
+                 PRM sections 8.6.1, 8.8, 8.12.9, 8.12.10;
+                 ``hw/sys/sep/doc/interrupts.adoc:387`` names the
+                 fast-interrupt path of this core).
 * CHK-INT-TIMER-HOLD (firmware) internal timer k with bound 0 is pending
                  (``mip`` bit 29 - k reads 1) with ``mie.MITIEk`` 0 and
                  mstatus.MIE 1, with ``mie.MTIE`` and ``mie.MSIE`` both 0 and
@@ -62,6 +70,14 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  specification states the trap latency after the timer
                  reaches its bound, so the clocks past B are logged
                  (``OBS-INT-TIMER-TRAP-LATENCY``) and have no upper bound.
+* CHK-TIMER-PIN  (firmware, last leg) the host drives ``timer_int_i`` on each
+                 ``REQ tint`` line. With the pin 1, ``mip.MTIP`` reads 1; with
+                 ``mie.MTIE`` 0 and mstatus.MIE 1 no trap for a hold window;
+                 with ``mie.MTIE`` 1 one trap with ``mcause`` 0x8000_0007;
+                 with the pin 0, ``mip.MTIP`` reads 0
+                 (``hw/sys/sep/doc/interrupts.adoc:291``: the pin drives
+                 ``mip.MTIP``; RISC-V privileged spec v1.12 section 3.1.9 and
+                 table 3.6).
 
 The host also checks that each record of the threshold, nesting and timer
 legs carries the drawn stimulus. Log only: ``OBS-LEVEL-SWEEP`` (window
@@ -363,6 +379,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         "CHK-NEST",
         "CHK-INT-TIMER-HOLD",
         "CHK-INT-TIMER-TRAP",
+        "CHK-TIMER-PIN",
     )
 
     def build_phase(self) -> None:
@@ -563,6 +580,11 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 set_pic_fw_pass(out, self.logger)
                 hold = PFP_HOLD_CLK
 
+    async def _req_tint(self, kv: dict) -> None:
+        await RisingEdge(cocotb.top.clk_i)
+        cocotb.top.timer_int_i.value = 1 if int(kv["on"]) else 0
+        self.logger.info("INFO-TINT-DRIVE LOG on=%d", int(kv["on"]))
+
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.tcfg = PrioCfg.from_seed(seed)
@@ -575,6 +597,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         self.con = SepFwConsole(self, graded_test=TEST).start()
         close_graded_window(self.logger)
         set_pic_fw_pass(0, self.logger)
+        self.con.on_request("tint", self._req_tint)
         follower = cocotb.start_soon(self._label_follower())
         try:
             await self.boot_firmware(
@@ -589,6 +612,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             follower.kill()
             await self.con.stop()
             set_pic_fw_pass(0, self.logger)
+            cocotb.top.timer_int_i.value = 0
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         prm = self.con.text_lines("PARAMS")
         want = f"seed=0x{seed & 0xFFFF_FFFF:08x} rounds={len(self.tcfg.rounds)}"
@@ -600,7 +624,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         self.con.require_counts(
             {
                 "CHK-NONE-BEFORE-PROGRAM": 1,
-                "CHK-GATED": sum(len(r.srcs) for r in self.tcfg.rounds) + nr,
+                "CHK-GATED": sum(len(r.srcs) for r in self.tcfg.rounds) + nr + 1,
                 "CHK-STAY-PENDING": nr,
                 "CHK-NEVER": nr,
                 "CHK-MIE-LIVE": 1,
@@ -611,6 +635,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 "CHK-NEST": 1,
                 "CHK-INT-TIMER-HOLD": 4,
                 "CHK-INT-TIMER-TRAP": 2,
+                "CHK-TIMER-PIN": 1,
             }
         )
         self._chk_legs()
@@ -622,7 +647,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         got = [
             (int(r.kv["src"]), r.kv["gate"])
             for r in self.con.records("CHK-GATED")
-            if r.kv.get("gate") != "mie0"
+            if r.kv.get("gate") not in ("mie0", "mie_meie")
         ]
         if got != exp:
             raise AssertionError(f"CHK-GATED FAIL: firmware cells {got} != drawn {exp}")

@@ -13,7 +13,8 @@
 //
 //   CHK-NONE-BEFORE-PROGRAM  no delivery with the reset meie and meipl
 //   CHK-GATED                no delivery through a closed gate (meie 0, never
-//                            priority, mstatus.MIE 0); opening it delivers once
+//                            priority, mstatus.MIE 0, mie.MEIE 0); opening it
+//                            delivers once
 //   CHK-STAY-PENDING         a waiting source keeps its meip bit while the
 //                            winner handler runs
 //   CHK-NEVER                the never value does not deliver; effective 1 does
@@ -30,7 +31,15 @@
 //   CHK-NEST                 in a handler that copies meicidpl into meicurpl
 //                            and sets mstatus.MIE, a source at the same level
 //                            stays pending with no entry; one level higher it
-//                            nests once
+//                            nests once; meicidpl holds the level of the
+//                            claimed source with no meicpct write (fast
+//                            interrupt redirect, PRM sections 8.6.1, 8.12.9;
+//                            hw/sys/sep/doc/interrupts.adoc:387 names the
+//                            fast-interrupt path of this core)
+//   CHK-TIMER-PIN            the timer_int pin drives mip.MTIP: with mie.MTIE 0
+//                            it takes no trap; with mie.MTIE 1 and mstatus.MIE
+//                            1 it takes one trap with mcause 0x8000_0007; the
+//                            bit drops with the pin
 //   CHK-INT-TIMER-HOLD       internal timer k pending (mip.MITIPk 1) with
 //                            mie.MITIEk 0 takes no trap, with mie.MTIE and
 //                            mie.MSIE both 0 or both 1; then mie.MITIEk 1
@@ -150,6 +159,8 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define MIE_WRITE (MIE_MEIE | MIE_MTIE | MIE_MSIE)
 #define MCAUSE_IRQ 0x80000000u
 #define MCAUSE_ECALL_M 11u // RISC-V privileged spec: environment call from M-mode
+// RISC-V privileged spec v1.12 table 3.6: machine timer interrupt.
+#define MCAUSE_MTI (MCAUSE_IRQ | 7u)
 #define LOG_MAX 64u
 #define SRC_CTRL 1u
 
@@ -1042,6 +1053,96 @@ static void leg_it_trap(uint32_t k) {
     chk_end(pass);
 }
 
+static void req_tint(uint32_t on) {
+    rec_req("tint");
+    rec_num("on", on);
+    rec_end();
+}
+
+static int wait_mtip(uint32_t want) {
+    for (uint32_t i = 0; i < g_prm[P_WAIT]; i++) {
+        if (((read_mip() & MIP_MTIP) != 0u) == (want != 0u)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// mie.MEIE gate (RISC-V privileged spec v1.12 section 3.1.9: interrupt i traps
+// only when mip[i], mie[i] and mstatus.MIE are all 1): the source pending at an
+// open PIC gate with mstatus.MIE 1 and mie.MEIE 0 does not deliver; mie.MEIE 1
+// delivers it once.
+static void leg_mie_meie(void) {
+    uint32_t s = SRC_CTRL;
+    mstatus_mie(0);
+    set_order(0u);
+    __asm__ volatile("csrc mie, %0" ::"r"(MIE_MEIE));
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 1u);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
+    uint32_t own0 = g_runs[s], t0 = g_total;
+    uint32_t raised = src_raise(s);
+    mstatus_mie(1);
+    uint32_t hclk = hold();
+    uint32_t gated = g_total - t0;
+    uint32_t pend = meip_bit(s);
+    __asm__ volatile("csrs mie, %0" ::"r"(MIE_MEIE));
+    (void)wait_runs(s, own0 + 1u);
+    (void)hold();
+    mstatus_mie(0);
+    uint32_t own = g_runs[s] - own0;
+    uint32_t other = (g_total - t0) - own;
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 0u);
+    int pass = raised == 1u && gated == 0u && pend == 1u && own == 1u && other == 0u;
+    rec_chk("GATED", pass);
+    rec_num("src", s);
+    rec_str("gate", "mie_meie");
+    rec_num("handler_runs", gated);
+    rec_num("then_open_runs", own);
+    rec_num("other_runs", other);
+    rec_num("raised", raised);
+    rec_num("pending_meip", pend);
+    rec_num("hold_clk", hclk);
+    chk_end(pass);
+}
+
+// Timer pin (hw/sys/sep/doc/interrupts.adoc:291: the timer_int pin drives
+// mip.MTIP; RISC-V privileged spec v1.12 section 3.1.9 and table 3.6). The
+// host drives timer_int_i on each REQ tint line.
+static void leg_timer_pin(void) {
+    mstatus_mie(0);
+    __asm__ volatile("csrc mie, %0" ::"r"(MIE_MTIE | MIE_MSIE));
+    uint32_t tt0 = g_cls_timer;
+    req_tint(1u);
+    int up = wait_mtip(1u);
+    uint32_t mip_on = (read_mip() >> 7) & 1u;
+    mstatus_mie(1);
+    uint32_t hclk = hold();
+    uint32_t held = g_cls_timer - tt0;
+    g_last_mcause = 0u;
+    __asm__ volatile("csrs mie, %0" ::"r"(MIE_MTIE));
+    for (uint32_t i = 0; i < g_prm[P_WAIT] && g_cls_timer - tt0 == held; i++) {
+    }
+    (void)hold();
+    mstatus_mie(0);
+    uint32_t taken = g_cls_timer - tt0 - held;
+    uint32_t mc = g_last_mcause;
+    req_tint(0u);
+    int down = wait_mtip(0u);
+    uint32_t mip_off = (read_mip() >> 7) & 1u;
+    __asm__ volatile("csrw mie, %0" ::"r"(MIE_WRITE));
+    int pass = up && mip_on == 1u && held == 0u && taken == 1u && mc == MCAUSE_MTI && down &&
+               mip_off == 0u;
+    rec_chk("TIMER-PIN", pass);
+    rec_num("mip_mtip_on", mip_on);
+    rec_num("mtie0_traps", held);
+    rec_num("hold_clk", hclk);
+    rec_num("mtie1_traps", taken);
+    rec_hex("mcause", mc);
+    rec_num("mip_mtip_off", mip_off);
+    chk_end(pass);
+}
+
 int main(void) {
     sep_outbound_filter_init();
     sep_mbx_puts("SEP PIC priority gate test\n");
@@ -1241,6 +1342,11 @@ int main(void) {
         rec_mark(0, "itimer_setup");
         leg_it_trap(k);
     }
+
+    rec_mark(0, "mie_meie_setup");
+    leg_mie_meie();
+    rec_mark(0, "timer_pin_setup");
+    leg_timer_pin();
 
     rec_mark(0, "end");
     if (g_err == 0) {
