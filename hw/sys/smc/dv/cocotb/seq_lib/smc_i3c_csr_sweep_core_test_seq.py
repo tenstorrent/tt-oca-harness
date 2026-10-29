@@ -21,6 +21,8 @@ step's own readbacks; the bus is 64 bits wide with one write strobe per byte (fa
 
 from __future__ import annotations
 
+import os
+import random
 import re
 from collections import Counter
 from dataclasses import dataclass, field
@@ -75,7 +77,9 @@ _FENCE = {
     "S8": "UPPER_LANE",
 }
 _WORD = 0xFFFF_FFFF
+# Pinned pattern of the read-write step; the drawn pattern phase precedes it (see _draw).
 _PATTERN = 0x5555_5555
+_PATTERN_TRIES = 64
 _FULL_STROBE = 0xFF
 _UPPER_STROBE = 0xF0
 _BYTE_LANES = tuple(0xFF << (8 * k) for k in range(4))
@@ -252,6 +256,47 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
         self.pair: tuple[Reg, Reg] | None = None
         self.chk_order: list[tuple[str, str]] = []
         self.instances = 0
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        self.rng = random.Random(self.seed)
+        self.order: list[Reg] = []
+        self.inst_order: list[int] = []
+        self.patterns: dict[str, int] = {}
+        self.iso_indices: dict[str, list[int]] = {}
+
+    def _draw(self) -> None:
+        """Draw the register order, the instance order and the write patterns (RAND-REP).
+
+        Every register of the table is walked in every run; the seed selects the order of the
+        registers and of the instances, one 32-bit pattern per register for the read-write step
+        (masked to its in-scope fields; where the scope holds two or more bits the pattern and
+        its complement both differ from the reset in scope, so the lane steps can tell a write
+        from no write), and the distinct isolation patterns per instance.
+        """
+        rng = self.rng
+        self.order = rng.sample(self.table, len(self.table))
+        self.inst_order = rng.sample(range(self.instances), self.instances)
+        for reg in self.table:
+            mask = reg.scope_mask
+            pattern = rng.getrandbits(32)
+            if bin(mask).count("1") >= 2:
+                for _ in range(_PATTERN_TRIES):
+                    if (pattern & mask) != (reg.reset_word & mask) and (~pattern & mask) != (
+                        reg.reset_word & mask
+                    ):
+                        break
+                    pattern = rng.getrandbits(32)
+                else:
+                    raise AssertionError(
+                        f"{reg.name}: no pattern off the reset in {_PATTERN_TRIES}"
+                    )
+            self.patterns[reg.name] = pattern
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: register order %s; instance order %s; patterns %s",
+            self.seed,
+            [f"{r.block}.{r.name}" for r in self.order],
+            self.inst_order,
+            " ".join(f"{r.name}=0x{self.patterns[r.name]:08x}" for r in self.order),
+        )
 
     def _stamp(self, step: str, count: int | None = None) -> None:
         """Close ``step``; its count is ``count`` or the bus accesses issued since the last stamp."""
@@ -306,8 +351,8 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
     async def _sweep_reset(self) -> str:
         asserted = measured = 0
         diffs: list[str] = []
-        for n in range(self.instances):
-            for reg in self.table:
+        for n in self.inst_order:
+            for reg in self.order:
                 word = await self._rd(n, reg)
                 for f in reg.fields:
                     got = (word & f.mask) >> f.lsb
@@ -331,10 +376,10 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
 
     # S3
     async def _sweep_ro(self) -> str:
-        targets = [r for r in self.table if r.mask_of(lambda f: f.sw == "r")]
+        targets = [r for r in self.order if r.mask_of(lambda f: f.sw == "r")]
         asserted = measured = 0
         diffs: list[str] = []
-        for n in range(self.instances):
+        for n in self.inst_order:
             for reg in targets:
                 ro_mask = reg.mask_of(lambda f: f.sw == "r")
                 await self._wr("RO_FLIP", n, reg, reg.reset_word ^ ro_mask)
@@ -365,13 +410,16 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
 
     # S4
     async def _sweep_rw(self) -> str:
-        targets = [r for r in self.table if r.scope_mask]
+        targets = [r for r in self.order if r.scope_mask]
         fields = sum(1 for r in targets for f in r.fields if r.in_scope(f))
-        for n in range(self.instances):
+        for n in self.inst_order:
             for reg in targets:
                 scope = [f for f in reg.fields if reg.in_scope(f)]
                 base = reg.reset_word & ~reg.scope_mask
+                drawn = self.patterns[reg.name]
                 for phase, per_field in (
+                    ("DRAWN", lambda f, p=drawn: (p >> f.lsb) & ((1 << f.width) - 1)),
+                    ("DRAWN_CMP", lambda f, p=drawn: (~p >> f.lsb) & ((1 << f.width) - 1)),
                     ("PAT", lambda f: _PATTERN & ((1 << f.width) - 1)),
                     ("CMP", lambda f: ~_PATTERN & ((1 << f.width) - 1)),
                     ("RST", lambda f: f.reset),
@@ -400,18 +448,21 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
             f"{sum(1 for r in regs for f in r.fields if r.in_scope(f))}"
             for b, regs in self._by_block().items()
         )
+        drawn = " ".join(f"{r.name}=0x{self.patterns[r.name]:08x}" for r in targets)
         return (
             f"{self.instances} instances x {len(targets)} registers, {fields} sw=rw fields each "
-            f"read back 0x5555_5555 masked to the field, then its complement, then its reset; "
-            f"{per_block}; excluded sw=rw fields with reason ({len(skipped)}): "
-            f"{' '.join(skipped)}; onwrite fields not round-tripped ({len(w1c)}): {' '.join(w1c)}"
+            f"read back the drawn pattern masked to the field, its complement, 0x5555_5555 masked "
+            f"to the field, its complement, then its reset; {per_block}; excluded sw=rw fields "
+            f"with reason ({len(skipped)}): {' '.join(skipped)}; onwrite fields not round-tripped "
+            f"({len(w1c)}): {' '.join(w1c)}; drawn=seed {self.seed} register order "
+            f"{[r.name for r in targets]} instance order {self.inst_order} patterns {drawn}"
         )
 
     # S5
     def _w1c_groups(self) -> list[tuple[Reg, Reg, Reg, list[Field]]]:
         by_name = {r.name: r for r in self.table}
         groups = []
-        for reg in self.table:
+        for reg in self.order:
             fields = [f for f in reg.fields if f.onwrite == "woclr" and f.intr and f.hw == "w"]
             if not fields:
                 continue
@@ -429,7 +480,7 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
         groups = self._w1c_groups()
         lines: list[str] = []
         per_block: Counter = Counter()
-        for n in range(self.instances):
+        for n in self.inst_order:
             for status, enable, force, fields in groups:
                 w1c_mask = sum(f.mask for f in fields)
                 for k, f in enumerate(fields):
@@ -495,13 +546,19 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
         for reg in picks:
             mask = reg.scope_mask
             skip = _pext(reg.reset_word, mask)
-            indices = [i for i in range(1, 64) if i != skip][: self.instances]
+            room = min(1 << bin(mask).count("1"), 64)
+            pool = [i for i in range(1, room) if i != skip]
+            assert len(pool) >= self.instances, (
+                f"{reg.name}: scope mask 0x{mask:08x} cannot hold {self.instances} distinct values"
+            )
+            indices = self.rng.sample(pool, self.instances)
+            self.iso_indices[reg.name] = indices
             values[reg.name] = [_pdep(i, mask) | (reg.reset_word & ~mask) for i in indices]
             assert len({v & mask for v in values[reg.name]}) == self.instances, (
                 f"{reg.name}: scope mask 0x{mask:08x} cannot hold {self.instances} distinct values"
             )
         checked = 0
-        for n in range(self.instances):
+        for n in self.inst_order:
             for reg in picks:
                 mask = reg.scope_mask
                 word = values[reg.name][n]
@@ -531,9 +588,11 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
             for r in picks
         )
         return (
-            f"for n=0..{self.instances - 1} a distinct pattern was written to one register of "
-            f"each block in instance n, the other {self.instances - 1} instances read their "
-            f"reset ({checked} cross reads), and the pattern was restored: {regs_text}"
+            f"for n=0..{self.instances - 1} (instance order {self.inst_order}) a distinct drawn "
+            f"pattern was written to one register of each block in instance n, the other "
+            f"{self.instances - 1} instances read their reset ({checked} cross reads), and the "
+            f"pattern was restored: {regs_text}; drawn=seed {self.seed} instance order "
+            f"{self.inst_order} pattern indices {self.iso_indices}"
         )
 
     def _pick_pair(self) -> tuple[Reg, Reg]:
@@ -653,6 +712,7 @@ class smc_i3c_csr_sweep_core_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
         self.instances = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
         self._build_table()
+        self._draw()
         self._stamp("S1", len(self.table))
 
         text = await self._sweep_reset()

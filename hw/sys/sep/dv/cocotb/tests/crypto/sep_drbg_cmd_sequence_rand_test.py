@@ -277,6 +277,7 @@ from env.sep_fcov_gate import (
 from env.sep_reg_meta import CSRNG, EDN, SEP_CPU_CTRL, sym
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_trial_wait import TrialTimeout, wait_until
+from models.entropy_noise_model import EntropyNoiseModel
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_drbg_mode_bringup_seq import drbg_bring_up
@@ -524,6 +525,33 @@ class _Reg(SepAxiRegDriver):
 
 def _field(value: int, meta: dict[str, int]) -> int:
     return (value & meta["bm"]) >> meta["bp"]
+
+
+class _NoiseDrive:
+    """Raw-noise driver of ``start_esrc_noise_driver`` with a cooperative stop.
+
+    ``stop`` clears the run flag and waits for the loop to leave at its next clock
+    edge, so no trigger is cancelled while it is pending.
+    """
+
+    def __init__(self) -> None:
+        self._gen = EntropyNoiseModel()
+        self._gen.configure("unbiased", seed_base=0x1234_5678)
+        self._run = True
+        self._task = cocotb.start_soon(self._drive())
+
+    async def _drive(self) -> None:
+        dut = cocotb.top
+        while self._run:
+            await RisingEdge(dut.clk_i)
+            if not self._run:
+                break
+            await NextTimeStep()
+            dut.esrc_noise_ext_i.value = self._gen.step_all()
+
+    async def stop(self) -> None:
+        self._run = False
+        await self._task
 
 
 class _InstSeedWatch:
@@ -1013,12 +1041,15 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         # The TRNG reset stops the scoreboard and its noise driver, and this leg runs
         # no scoreboard, so it drives the raw noise itself; with a static noise port
         # ESRC never fills a seed after the generators go on.
-        noise = self.start_esrc_noise_driver()
+        # The driver ends on its own at a clock edge and the leg waits for it. On
+        # Verilator a cancel of this driver makes the next AXI write time out one
+        # time step after it starts.
+        noise = _NoiseDrive()
         try:
             await self.assert_noise_force_active()
             await self._inst_seed_body(hold)
         finally:
-            noise.cancel()
+            await noise.stop()
 
     async def _inst_seed_body(self, hold: int) -> None:
         dut = cocotb.top
@@ -1125,10 +1156,11 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
     # --- boot group -----------------------------------------------------------------
     async def _boot(
         self, auto: bool, bound: int, graded: bool = True
-    ) -> tuple[int | None, int, int]:
+    ) -> tuple[int | None, int, int, int | None]:
         """One boot with BOOT_REQ_MODE true. Returns (clocks to BOOT_MODE or None, the
-        HW_CMD_STS read that first shows BOOT_MODE, the CTRL word). Only a ``graded``
-        boot, one that CHK-EDN-BOOT grades, opens the coverage window."""
+        HW_CMD_STS read that first shows BOOT_MODE, the CTRL word, the CTRL readback
+        after that read or None). Only a ``graded`` boot, one that CHK-EDN-BOOT grades,
+        opens the coverage window."""
         off = _edn_ctrl(boot=True, auto=auto, enable=False)
         on = _edn_ctrl(boot=True, auto=auto, enable=True)
         await self.reg._wr(EDN_BOOT_INS_CMD, BOOT_INS_ZERO_SEED)
@@ -1142,13 +1174,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             )
         except TrialTimeout:
             close_graded_window(self.logger)
-            return None, 0, on
+            return None, 0, on, None
+        ctrl_rb = await self.reg._rd(EDN_CTRL)
         close_graded_window(self.logger)
-        return clk, sts, on
+        return clk, sts, on, ctrl_rb
 
     async def _boot_group(self) -> None:
         await self._clean_start("boot_ref")
-        t0, sts, ctrl = await self._boot(auto=False, bound=FIRST_CAP, graded=False)
+        t0, sts, ctrl, _ = await self._boot(auto=False, bound=FIRST_CAP, graded=False)
         if t0 is None:
             self.chk.ok(
                 "EDN-BOOT",
@@ -1167,7 +1200,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         for auto in (True, False):
             for graded in (False, True):
                 await self._clean_start(f"boot_auto{int(auto)}{'_cov' if graded else ''}")
-                clk, sts, ctrl = await self._boot(auto=auto, bound=bound, graded=graded)
+                clk, sts, ctrl, ctrl_rb = await self._boot(auto=auto, bound=bound, graded=graded)
+                self.chk.ctrl(
+                    "EDN-BOOT",
+                    ctrl_rb == ctrl,
+                    instance="cov" if graded else "first",
+                    ctrl=f"0x{ctrl:04x}",
+                    ctrl_rb="na" if ctrl_rb is None else f"0x{ctrl_rb:04x}",
+                )
                 fields = {
                     "instance": "cov" if graded else "first",
                     "ctrl": f"0x{ctrl:04x}",

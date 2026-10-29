@@ -4,10 +4,11 @@
 """SimConfig — declarative inputs for one sep-vp run.
 
 Mirrors the example harness's ``SimConfig`` but adapted to sep-vp's control surface:
-boot straps and channel toggles map to ``och_sep_ss1.*`` CCI bools, the OTP fuse-map is a
-YAML file, and the SPI flash is a prebuilt raw ``.bin``.
+boot straps and channel toggles map to ``och_sep_ss1.*`` CCI bools, the OTP is a YAML
+fuse-map or an RTL eFuse-config TOML, and the SPI flash is a prebuilt raw ``.bin``.
 """
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
@@ -25,6 +26,20 @@ SMC_SRAM_SIZE_BYTES = 0x100000
 # Default smcSramBackdoorOffset in the model, also the MANIFEST_ADDR it publishes.
 SMC_SRAM_DEFAULT_OFFSET = 0x2000
 
+FUSE_PRELOAD_KEY = "och_sep_ss1.sep_efuse.fuse_preload_file"
+LC_CTRL_LC_STATE_KEY = "och_sep_ss1.lc_ctrl.lc_state"
+# The model's ini parser ends a key at the first ':' and accepts only these characters. A
+# key without a hierarchy, such as instance_prefix, re-roots the keys that follow it.
+_INI_KEY_RE = re.compile(r"[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+")
+
+
+def _has_line_break(value) -> bool:
+    if isinstance(value, (list, tuple)):
+        return any(_has_line_break(item) for item in value)
+    if isinstance(value, (str, Path)):
+        return any(c in str(value) for c in "\r\n")
+    return False
+
 
 @dataclass
 class SimConfig:
@@ -37,7 +52,7 @@ class SimConfig:
     elf: PathLike
     flash_image: Optional[PathLike] = None  # prebuilt raw .bin staged to data/flash_memory.bin
     spi_preload: Optional[PathLike] = None  # $readmemh .spi_preload image, loaded VP-side
-    otp: Optional[PathLike] = None  # YAML fuse-map path
+    otp: Optional[PathLike] = None  # YAML fuse-map or RTL eFuse-config TOML
     # Raw OCA bundle (not a combined SPI image) staged into the SMC SRAM window for boots that
     # take the manifest from the SMC; the offset defaults to the model's.
     smc_sram_image: Optional[PathLike] = None
@@ -79,6 +94,7 @@ class SimConfig:
                     "smc_sram_image needs a boot that reads the SMC window: a primary "
                     "chiplet outside recovery boots from SPI flash and never looks at it"
                 )
+        self._check_extra_ini()
         for address, value in self.init_writes:
             if type(address) is not int or not 0 <= address <= 0xFFFFFFFF:
                 raise ValueError(
@@ -89,6 +105,32 @@ class SimConfig:
             if type(value) is not int or not 0 <= value <= 0xFFFFFFFF:
                 raise ValueError(
                     f"init_writes value must be a 32-bit unsigned integer, got {value!r}"
+                )
+
+    def _check_extra_ini(self):
+        """Reject overrides that would replace the fuse source or bypass the eFuse.
+
+        extra_ini renders last and the parser keeps the last assignment, so it is checked
+        here, before any overlay exists.
+        """
+        for _section, key, value in self.extra_ini:
+            if not isinstance(key, str):
+                raise ValueError(f"extra_ini key must be a string, got {key!r}")
+            if _has_line_break(key) or _has_line_break(value):
+                raise ValueError("extra_ini keys and values may not contain CR or LF")
+            if not _INI_KEY_RE.fullmatch(key):
+                raise ValueError(
+                    f"extra_ini key {key!r} is not canonical; use a full dotted name of letters, "
+                    "digits and '_'"
+                )
+            if key == LC_CTRL_LC_STATE_KEY:
+                raise ValueError(
+                    f"{key} is reserved: the platform derives lc_ctrl.lc_state from the eFuse "
+                    "lifecycle, so set the lifecycle through otp"
+                )
+            if key == FUSE_PRELOAD_KEY and self.otp:
+                raise ValueError(
+                    f"{key} is reserved while otp is set: otp already selects the fuse source"
                 )
 
     @property

@@ -1397,8 +1397,8 @@ module smu #(
   `OCAH_ASSERT_STATIC(
       SmcEfuseShimSize_A,
       CFG.SMC_EFUSE_SHIM_SIZE != 0 &&
-      CFG.SMC_EFUSE_SHIM_SIZE < smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE,
-      "CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than smc_external")
+      CFG.SMC_EFUSE_SHIM_SIZE < smc_pkg::SmcExternalWindowSize,
+      "CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than the smc_external window")
 
   `OCAH_ASSERT_STATIC(
       SepEfuseShimSize_A,

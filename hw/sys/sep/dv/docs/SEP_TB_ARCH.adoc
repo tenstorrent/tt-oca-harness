@@ -217,7 +217,9 @@ Observation probe groups:
   else the two-flop capture of `wdt_rst_ni`; owner
   `sep_scan_reset_override_test`. `wdt_alert_probe_o` and `wdt_bark_probe_o`,
   the watchdog alert (`wdt_alert`) and bark interrupt (`intr_wdog_timer_bark`)
-  at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`.
+  at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`
+  (the bark line, sampled at the AR of each `INTR_STATE` read of a graded
+  watchdog run, is the bark-line clause of CHK-WDT-ORDER and CHK-WDT-MAX).
   `jtag_sep_reset_n_ovrd_probe_o`, the
   `sep_reset_n` override select on the SEP input port
   (`u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd`), the value SEP receives
@@ -448,7 +450,9 @@ Observation probe groups:
   handshakes). Owners: `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`, `sep_fabric_dma_endpoint_matrix_test`
   (the pool read of CHK-DMA-NOTCONN, the filter-write AW and B of
-  CHK-DMA-FILT-WR).
+  CHK-DMA-FILT-WR), `sep_dma_zero_fill_rand_test` (no AR, AW or W of the
+  rejected fill of CHK-DMA-ZERO-SRC-ASID, and the AW count of its control
+  fill).
 * Secure DMA status tap (`dma_status_probe_o`): the stored level of each
   STATUS bit (BUSY, DONE, ABORTED, ERROR, SHA2_DIGEST_VALID, CHUNK_DONE) on
   each clock. Owners: `sep_dma_transfer_matrix_rand_test`,
@@ -504,6 +508,20 @@ Observation probe groups:
   the period of `entropy_rosc_sample_clk_i` gives the division. Users: the ESRC
   sample-clock divide entry of the crypto and entropy area and the FCOV
   sampler (`sep_esrc_noise_gen_cg` `cp_div_ratio`).
+* ESRC downsample and divider probes (`esrc_downsample_count_o`,
+  `esrc_stream_valid_gated_o`, `esrc_decor_div_lane0_o`): the FIFO downsample
+  count (`downsample_count`), the decorrelator stream strobe after the boot
+  gate (`entropy_stream_valid_gated`), and the divider count of lane 0
+  (`gen_ecmplx[0].u_generator.u_decorrelator.clk_divider`). Read-only. Users:
+  the ESRC conditioning entry of the crypto and entropy area and the FCOV
+  sampler (`sep_esrc_conditioning_cg` `cp_ds_midrun`, `cp_div_midrun`,
+  `cp_ds_resume`).
+* ESRC generator enable probe (`esrc_ro_enable_o`): bit i is the enable of
+  generator lane i at the generator complex
+  (`u_generator_complex.jitter_ro_enable_i`, the stored
+  `RING_OSC_ENABLE.ENABLE`). Read-only. A check that anchors on it assumes only
+  a fixed delay from this tap to the lane. Users: the ESRC conditioning entry
+  of the crypto and entropy area (the lane enable clock of the period walk).
 * PIC read-data probe (`pic_rd_data_probe_o`): `picm_rd_data` of the VeeR
   EL2 PIC with the registered read strobe and read address
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;
@@ -734,8 +752,9 @@ Observation probe groups:
   (`u_sep_crypto.entropy_muxed_req`, `entropy_muxed_rsp`); and, through the
   connection block, the probes `trng_reset_active_probe_o`, `crypto_edn_*`,
   `pool_edn_*`, `esrc_decor_bytes_o`, `esrc_decor_valid_o`,
-  `esrc_compress_vld_o`, `esrc_whiten_push_o`, `esrc_decor_noise_o` and the
-  ESRC FIFO integrity inject inputs. Owners: the owning tests of the crypto
+  `esrc_compress_vld_o`, `esrc_whiten_push_o`, `esrc_decor_noise_o`,
+  `esrc_downsample_count_o`, `esrc_stream_valid_gated_o`,
+  `esrc_decor_div_lane0_o` and the ESRC FIFO integrity inject inputs. Owners: the owning tests of the crypto
   and entropy groups.
 * The covergroup sampler's direct reads of the WDT bark interrupt
   (`intr_wdog_timer_bark`, owner `sep_nmi_sanity_test`) and the LSU read
@@ -1002,6 +1021,25 @@ Exceptions (a closed set):
   asserts on the next DMA command. Software cannot emit a broken command
   user code. The force targets that input only. `DMA_BUS_ERR_STATUS` and
   the interrupt aggregate stay frontdoor. Owner: `sep_dma_basic_test`.
+* *Mailbox WRITE_DATA unstrobed-lane inject* — while
+  `mbox_lane_inject_arm_i` is 1, a W beat with WSTRB 0x0F or 0xF0 to the
+  outbound `WRITE_DATA` of a mailbox selected in `mbox_lane_inject_mbx_i`
+  carries `mbox_lane_inject_data_i` on its unstrobed byte lanes at the
+  mailbox unit port (`u_sep_system_peripherals.mailbox_axil_req`). A 32-bit
+  CPU store drives 0 on those lanes, so firmware cannot show that the
+  mailbox pushes unstrobed lanes as 0
+  (`hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl:24-26`); non-zero data
+  on unstrobed lanes is legal AXI. The strobed lanes, WSTRB, the address and
+  the response stay frontdoor, and the pop is a frontdoor 64-bit read of
+  `READ_DATA`. Default 0; the force is released only when the live W data
+  equals the value forced last. The read-only tap `mbox_axil_aw_hs_o`,
+  `mbox_axil_aw_addr_o`, `mbox_axil_w_hs_o`, `mbox_axil_w_strb_o` and
+  `mbox_axil_w_data_o` shows the AW and W handshakes of the same port and
+  the W data the mailbox unit takes. The inject sets the W data on the
+  falling edge before the rising edge at which the mailbox unit takes the
+  beat, so a reader samples the tap after the falling edge: a handshake seen
+  there is the one taken at the next rising edge, with the data taken. Owner:
+  `sep_mailbox_plic_test`.
 * *Crypto message-FIFO drain stall* — `hmac_fifo_drain_stall_i` holds the
   read-ready of the HMAC message FIFO (`fifo_rready`) and the word valid that
   `hmac_core` gives the SHA-2 engine (`u_hmac.sha_rvalid_o`, the core's view of

@@ -11,7 +11,10 @@ this order, over the CPU-LSU master on ``s_axi``:
   ``k`` of {2, 3, 5, 8, 13} in a drawn order; a 64-bit write reloads it with
   and without a carry into the high word; a cold reset restarts it
   (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``, ``REFERENCE_COUNTER``;
-  ``hw/sys/sep/doc/clk_rst.adoc``, Clock Distribution).
+  ``hw/sys/sep/doc/clk_rst.adoc``, Clock Distribution). Of two writes with no
+  poll between them, separated by 8 and by a drawn 9 to 12 ``clk_ref_i`` periods,
+  the second one holds (CHK-REFCNT-SPACED;
+  ``doc/programmer/src/sep-smc-common.adoc:516-518``).
 * Leg T. The bark status and then the bite request follow the count reads that
   reach the bark and bite thresholds, neither earlier than threshold - A nor
   later than threshold + A + D_pass in count (D_pass: the most the count
@@ -258,7 +261,7 @@ The leg ends as leg T does: the baseline sets the far thresholds and, when the
 bite request holds, a ``wdt_rst_ni_i`` pulse clears it (CHK-BITE-CLEAR).
 
 Checkers: CHK-REFCNT-RATE, CHK-REFCNT-PHASE, CHK-REFCNT-WRITE,
-CHK-REFCNT-RESET, CHK-WDT-ORDER, CHK-WDT-THOLD-MONO, CHK-WDT-MAX,
+CHK-REFCNT-RESET, CHK-REFCNT-SPACED, CHK-WDT-ORDER, CHK-WDT-THOLD-MONO, CHK-WDT-MAX,
 CHK-WDT-INTRTEST, CHK-WDT-ALERT-ACCESS, CHK-WKUP-WIDE, CHK-WKUP-LATER,
 CHK-WDT-SHAPE, CHK-WDT-COHERENT, CHK-REGWEN-STICKY, CHK-REGWEN-HOLD,
 CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE-CLEAR, CHK-WDT-RATE,
@@ -268,12 +271,17 @@ CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ. Controls (not
 counted): CTL-WDT-ENABLE, CTL-WDT-THOLD, CTL-WDT-PAUSE, CTL-WKUP-SMALL,
 CTL-WKUP-CAUSE, CTL-REGWEN-LOCKED, CTL-REGWEN-WDTRST-ARMED, CTL-WDT-PET-BARK,
 CTL-WDT-THOLD-ZERO, CTL-WDT-THOLD-BELOW, CTL-WKUP-THOLD-ZERO, CTL-WKUP-CARRY,
-CTL-CLKI-STOPPED. Observations (not graded): OBS-WDT-CLKSTOP,
-OBS-WDT-ALERT-RESP, OBS-BITE-CLEAR-EDGE.
+CTL-CLKI-STOPPED, CTL-REFCNT-SPACED. Observations (not graded): OBS-WDT-CLKSTOP,
+OBS-WDT-ALERT-RESP, OBS-BITE-CLEAR-EDGE, OBS-REFCNT-SPACED-LAT.
 
 The graded window (owner code of this test) opens at leg R and closes for the
-enable control run, leg H, the small wakeup control runs, and at the end of the
-leaf.
+enable control run, leg H, the small wakeup control runs, the preload of each
+reset event, the CTL-WDT-PET-BARK run, the count wait of CHK-WDT-THOLD-BELOW,
+and at the end of the leaf. The sampler holds every cell the window fills and
+samples the held cells once, when the leaf writes the release bit of its pass
+label after every check passed; a failing leaf writes the drop bit. The bark-line
+cells of ``cp_thold_order`` fill only inside the graded runs of CHK-WDT-ORDER and
+CHK-WDT-MAX, whose LINE clause reads the bark line (tap ``wdt_bark_probe_o``).
 """
 
 from __future__ import annotations
@@ -286,7 +294,14 @@ from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, with
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    TIMER_CONTRACT_PASS_DROP,
+    TIMER_CONTRACT_PASS_ORDER_RUN,
+    TIMER_CONTRACT_PASS_RELEASE,
+    close_graded_window,
+    open_graded_window,
+    set_timer_contract_pass,
+)
 from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -396,6 +411,28 @@ CARRY_MARGIN = 256  # counts from the leg K carry preload to the 32-bit carry
 PRESC_RUN = 32  # N: count steps between the two bracketed steps of CHK-WKUP-PRESC-MAX
 CLKSTOP_PAST = 8  # clk_wdt_i periods of the leg H hold past the bite threshold (at least 4)
 CLKSTOP_RUN = 8  # clk_i cycles after the leg H restart before the first read
+# Spaced reload pair of leg R. SPACED_MIN_REF: "separate consecutive writes by at least
+# eight reference-clock periods" (doc/programmer/src/sep-smc-common.adoc:516-518).
+SPACED_MIN_REF = 8
+SPACED_MAX_REF = 12  # largest drawn spacing (environment choice)
+# clk_ref_i period of the pairs, in clk_i periods: longer than the issue-to-AW time of a
+# write, and not one of RATIOS (the pairs are not a rate pass).
+SPACED_RATIO = 16
+SPACED_STAY_READS = 16  # reads after the first readback in the window that stay in it
+
+
+async def _aw_handshake() -> int:
+    """Simulation time (ps) of the next ``s_axi`` AW handshake.
+
+    Sampled in ReadOnly after each ``clk_i`` edge, the phase that
+    ``capture_resp_handshake`` uses for B, so the two times compare directly.
+    """
+    dut = cocotb.top
+    while True:
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        if dut.s_axi_awvalid.value == 1 and dut.s_axi_awready.value == 1:
+            return int(get_sim_time("ps"))
 
 
 def _gap(order: list[int]) -> str:
@@ -487,6 +524,24 @@ class _Cfg:
         # Leg H: bark and bite thresholds of the clk_i hold run.
         self.hb = rng.randrange(32, 65)
         self.hd = rng.randrange(self.hb + 32, self.hb + 65)
+        # Leg R spaced pairs (drawn after every other value, so the earlier draws do not
+        # move): pair 0 is spaced SPACED_MIN_REF clk_ref_i edges, pair 1 a drawn d above
+        # it. Each value is at least FAR away from every earlier reload value, the arm
+        # value and the other value of its pair, so a read of the count before V2 lands
+        # can never fall inside the window [V2, V2 + edges + a].
+        self.spaced_d = [SPACED_MIN_REF, rng.randrange(SPACED_MIN_REF + 1, SPACED_MAX_REF + 1)]
+        self.spaced = []
+        seen = [TWO40, self.w_lo, self.w_hi]
+        for _ in self.spaced_d:
+            pair = []
+            for _v in range(2):
+                while True:
+                    w = rng.randrange(0, lim)
+                    if far(w, tuple(seen)):
+                        break
+                pair.append(w)
+                seen.append(w)
+            self.spaced.append(tuple(pair))
 
     def order_of(self, p: int) -> str:
         if p == 0:
@@ -508,6 +563,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-REFCNT-PHASE",
         "CHK-REFCNT-WRITE",
         "CHK-REFCNT-RESET",
+        "CHK-REFCNT-SPACED",
         "CHK-WDT-ORDER",
         "CHK-WDT-THOLD-MONO",
         "CHK-WDT-MAX",
@@ -610,11 +666,66 @@ class sep_timer_clock_contract_test(sep_base_test):
             if dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1:
                 return self.rd(sig)
 
+    async def _sample2_at_ar(self, sig_a, sig_b) -> tuple[int, int]:
+        """``sig_a`` and ``sig_b`` at the next s_axi AR handshake (read-only phase)."""
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1:
+                return self.rd(sig_a), self.rd(sig_b)
+
     def _gate(self, on: bool) -> None:
+        self._win = on
         if on:
             open_graded_window(TEST, self.logger)
         else:
             close_graded_window(self.logger)
+
+    def _fail(self, msg: str) -> None:
+        """Close the graded window, then fail the leaf with ``msg``."""
+        self._gate(False)
+        raise AssertionError(msg)
+
+    async def _ungraded(self) -> bool:
+        """Close the graded window over a control step. Returns the window state before."""
+        await RisingEdge(cocotb.top.clk_i)
+        was = self._win
+        self._gate(False)
+        return was
+
+    async def _regraded(self, was: bool) -> None:
+        """Open the graded window again after a control step, if it was open before."""
+        await RisingEdge(cocotb.top.clk_i)
+        if was:
+            self._gate(True)
+
+    def _tc_write(self, bits: int) -> None:
+        self._tc = bits
+        set_timer_contract_pass(bits, self.logger)
+
+    async def _tc_order_run(self, on: bool) -> None:
+        """Raise or lower the graded-run bit of the pass label after a clk_i edge."""
+        await RisingEdge(cocotb.top.clk_i)
+        bits = (
+            self._tc | TIMER_CONTRACT_PASS_ORDER_RUN
+            if on
+            else self._tc & ~TIMER_CONTRACT_PASS_ORDER_RUN
+        )
+        self._tc_write(bits)
+
+    async def _tc_release(self) -> None:
+        """Pulse the release bit of the pass label after every check of the leaf passed.
+
+        The sampler holds every legal cell of this owner at its event and samples
+        the held cells on the rise of ``TIMER_CONTRACT_PASS_RELEASE``. The write runs
+        after a clock edge, never in a read-only phase.
+        """
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        self._tc_write(self._tc | TIMER_CONTRACT_PASS_RELEASE)
+        await ClockCycles(dut.clk_i, 2)
+        self._tc_write(self._tc & ~TIMER_CONTRACT_PASS_RELEASE)
 
     # -- leg R ------------------------------------------------------------------
 
@@ -641,7 +752,7 @@ class sep_timer_clock_contract_test(sep_base_test):
             if w <= v <= w + e + EDGE_ALLOW:
                 return v, polls, e, stale
             stale += 1
-        raise AssertionError(
+        self._fail(
             f"{chk} FAIL: W=0x{w:016x} no readback in [W, W + edges + {EDGE_ALLOW}] within "
             f"{REFCNT_POLL} reads{'' if bound_ref is None else f' or {bound_ref} clk_ref_i cycles'}"
             f" (last 0x{v:016x}, stale reads {stale})"
@@ -735,6 +846,13 @@ class sep_timer_clock_contract_test(sep_base_test):
                 last,
             )
 
+        # Spaced pairs: two writes SPACED_MIN_REF or more clk_ref_i edges apart, no poll
+        # between them.
+        await self._spaced_clock()
+        for idx, d in enumerate(cfg.spaced_d):
+            v1, v2 = cfg.spaced[idx]
+            await self._spaced_pair(idx, v1, v2, d)
+
         # Cold reset with the counter armed at 2^40 or above.
         tw = await self._refcnt_write(TWO40)
         armed, polls, e_a, stale = await self._reload_poll(
@@ -769,6 +887,104 @@ class sep_timer_clock_contract_test(sep_base_test):
             r_r,
             e_r,
             prev,
+        )
+
+    async def _spaced_clock(self) -> None:
+        """Run ``clk_ref_i`` at SPACED_RATIO with its rising edges half a ``clk_i`` period off.
+
+        The clock restarts on a ``clk_i`` rising edge, so no ``clk_ref_i`` rising edge
+        meets a ``clk_i`` rising edge; the bench edge count of the pair then equals the
+        count that the FCOV sampler takes at the ``clk_i`` edges of the handshakes.
+        """
+        dut = cocotb.top
+        phase = PHASE_GRID_PS * max(1, (self.sys_ps // 2) // PHASE_GRID_PS)
+        await FallingEdge(dut.clk_ref_i)
+        await RisingEdge(dut.clk_i)
+        self.restart_clock("clk_ref_i", SPACED_RATIO * self.cfg.sys_clk_period_ns, phase)
+        await ClockCycles(dut.clk_ref_i, 8)
+        self.logger.info(
+            "LEG-R spaced ratio=%d clk_ref_period_ps=%d start_phase_ps=%d",
+            SPACED_RATIO,
+            SPACED_RATIO * self.sys_ps,
+            phase,
+        )
+
+    async def _spaced_pair(self, idx: int, v1: int, v2: int, d: int) -> None:
+        """CHK-REFCNT-SPACED: of two writes d clk_ref_i edges apart, the second one holds.
+
+        Spec: "separate consecutive writes by at least eight reference-clock
+        periods" (doc/programmer/src/sep-smc-common.adoc:516-518), and the readback
+        is "at or just above the written value"
+        (hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:101-104). V1 is written,
+        then V2 with no read between, d edges after the B handshake of V1 (counted
+        to the AW handshake of V2, which is at least the separation of any other
+        reading of the rule). The bounded poll must read a value in
+        [V2, V2 + edges + a] (edges counted from the B of V2), and the next
+        SPACED_STAY_READS reads must stay monotone inside that window. A DUT that
+        loses V2 while V1 crosses the clock domain, or lets V1 land after V2, never
+        reads V2 or leaves its window: V1 and V2 are more than 2^33 apart.
+        """
+        dut = cocotb.top
+        p = self.sys_ps
+        chk = "CHK-REFCNT-SPACED"
+        tb1 = await self._refcnt_write(v1)
+        while self._edges("clk_ref_i", tb1 + p, self._now()) < d:
+            await RisingEdge(dut.clk_ref_i)
+            await ReadOnly()
+        await RisingEdge(dut.clk_i)
+        aw_task = cocotb.start_soon(_aw_handshake())
+        tb2 = await self._refcnt_write(v2)
+        taw = take_handshake(aw_task)
+        if taw is None:
+            self._fail(f"CTRL-MISSING {chk}: pair={idx} no AW handshake seen for V2")
+        # The sampler takes each handshake at the clk_i edge after it; count the same span.
+        d_seen = self._edges("clk_ref_i", tb1 + p, taw + p)
+        ref = self.pins.edge_times("clk_ref_i")
+        lo = bisect.bisect_right(ref, tb1)
+        hi = bisect.bisect_right(ref, taw + p)
+        on_clk = sum(1 for t in ref[lo:hi] if (t - tb1) % p == 0)
+        ctrl = (
+            f"pair={idx} d_planned={d} d_seen={d_seen} t_b1={tb1} t_aw2={taw} t_b2={tb2} "
+            f"ref_edges_on_clk_i={on_clk}"
+        )
+        if d_seen != d or on_clk:
+            self._fail(f"CTRL-MISSING {chk}: {ctrl}")
+        self.logger.info("CTL-REFCNT-SPACED: %s", ctrl)
+        want = v2
+        first, polls, e_2, stale = await self._reload_poll(tb2, want, chk)
+        self.logger.info(
+            "OBS-REFCNT-SPACED-LAT: pair=%d polls=%d stale_reads=%d E_since_b2=%d",
+            idx,
+            polls,
+            stale,
+            e_2,
+        )
+        prev = first
+        bound = first
+        for n in range(1, SPACED_STAY_READS + 1):
+            v, t = await self._refcnt_read()
+            bound = v2 + self._edges("clk_ref_i", tb2, t) + EDGE_ALLOW
+            if not (prev <= v <= bound):
+                self._fail(
+                    f"{chk} FAIL: pair={idx} V2=0x{v2:016x} stay read {n} 0x{v:016x} not in "
+                    f"[0x{prev:016x}, 0x{bound:016x}] (V1=0x{v1:016x} d={d})"
+                )
+            prev = v
+        self.logger.info(
+            "%s PASS: pair=%d d=%d V1=0x%016x V2=0x%016x first_readback=0x%016x polls=%d "
+            "stale_reads=%d E_since_b2=%d stay_reads=%d monotone=1 last=0x%016x last_bound=0x%016x",
+            chk,
+            idx,
+            d,
+            v1,
+            v2,
+            first,
+            polls,
+            stale,
+            e_2,
+            SPACED_STAY_READS,
+            prev,
+            bound,
         )
 
     # -- leg T ------------------------------------------------------------------
@@ -899,21 +1115,32 @@ class sep_timer_clock_contract_test(sep_base_test):
         """One watchdog run (baseline, enable, poll loop). Returns the pass list."""
         dut = cocotb.top
         await self._wdt_baseline(bx, dx, c0)
+        await self._tc_order_run(True)
         await self._wr(WDOG_CTRL, WDOG_EN)
         t_en = self._now()
         passes = []
         limit = (dx - c0 + 128) * P_W * 4
         start = self.pins.count["clk_i"]
         while True:
-            task = cocotb.start_soon(self._sample_at_ar(dut.wdt_timer_rst_req_o))
+            task = cocotb.start_soon(
+                self._sample2_at_ar(dut.wdt_timer_rst_req_o, dut.wdt_bark_probe_o)
+            )
             st = await self._rd(INTR_STATE)
             t_st = self._now()
-            bite = take_handshake(task)
-            assert bite is not None, f"{chk} FAIL: no AR handshake seen for the INTR_STATE read"
+            seen = take_handshake(task)
+            assert seen is not None, f"{chk} FAIL: no AR handshake seen for the INTR_STATE read"
+            bite, line = seen
             cnt = await self._rd(WDOG_COUNT)
             t_c = self._now()
             passes.append(
-                {"bark": int(bool(st & BARK_BIT)), "bite": bite, "count": cnt, "t": t_st, "tc": t_c}
+                {
+                    "bark": int(bool(st & BARK_BIT)),
+                    "bite": bite,
+                    "line": line,
+                    "count": cnt,
+                    "t": t_st,
+                    "tc": t_c,
+                }
             )
             if passes[-1]["bark"] and bite and cnt >= dx:
                 break
@@ -922,6 +1149,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                     f"{chk} FAIL: bx=0x{bx:x} dx=0x{dx:x} c0=0x{c0:x}: no pass with bark set, "
                     f"bite high and count >= dx within {limit} clk_i cycles (last {passes[-1]})"
                 )
+        await self._tc_order_run(False)
         counts = [p["count"] for p in passes]
         d_pass = max([b - a for a, b in zip(counts, counts[1:])] or [0])
         return {"passes": passes, "t_en": t_en, "d_pass": d_pass}
@@ -967,6 +1195,21 @@ class sep_timer_clock_contract_test(sep_base_test):
             f"{chk} FAIL: run={tag} bark first seen at pass {bark_pass}, not before the bite "
             f"at pass {bite_pass} (bx=0x{bx:x} dx=0x{dx:x})"
         )
+        # The bark interrupt line (tap wdt_bark_probe_o), sampled at the AR of each
+        # status read: "the watchdog bark interrupt that fires when the first timeout
+        # stage expires" (hw/sys/sep/doc/watchdog.adoc:27). A status read of 0 means
+        # the stage had not expired at its AR, so the line reads 0 there; after the
+        # first status read of 1 (sticky until a write of 1) the line reads 1 at every
+        # later AR. bark_pass < bite_pass gives at least one later pass.
+        early = [i for i, p in enumerate(passes) if not p["bark"] and p["line"]]
+        after = [p["line"] for p in passes[bark_pass + 1 :]]
+        line_txt = (
+            f"run={tag} bark_line_high_with_status0={early} "
+            f"bark_line_after_bark_pass={after} bark_pass={bark_pass}"
+        )
+        if early or not after or not all(after):
+            self._fail(f"{chk} FAIL: bark line: {line_txt}")
+        self.logger.info("%s LINE: %s", chk, line_txt)
         return {
             "count_at_bark": passes[bark_pass]["count"],
             "count_at_bite": passes[bite_pass]["count"],
@@ -1752,6 +1995,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         (tap ``wdt_bark_probe_o``) reads 1."""
         dut = cocotb.top
         cfg = self.tcfg
+        was = await self._ungraded()
         for name, val in (("WKUP_COUNT_HI", cfg.xh), ("WKUP_COUNT_LO", cfg.xl)):
             await self._wr(AON[name][0], val)
             await self._poll_eq(name, AON[name][0], val, AON[name][1], f"CTRL-MISSING {chk}")
@@ -1774,6 +2018,7 @@ class sep_timer_clock_contract_test(sep_base_test):
                 f"CTRL-MISSING {chk}: seed={self.tcfg.seed} {tag} preloaded={preload} "
                 f"bark_before={bark_before} {pre}"
             )
+        await self._regraded(was)
         return preload, bark_before
 
     async def _grade_aon_reset(self, chk: str, tag: str, after: str) -> dict[str, int]:
@@ -2093,6 +2338,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         )
 
         # Control: the same run barks once the petted count reaches pb.
+        was = await self._ungraded()
         while True:
             st = await self._rd(INTR_STATE)
             cnt = await self._rd(WDOG_COUNT)
@@ -2107,6 +2353,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._wr(WDOG_CTRL, 0)
         await self._wr(INTR_STATE, BARK_BIT)
         self.logger.info("CTL-WDT-PET-BARK: seed=%d bark=1 count=%d pb=%d", seed, cnt, pb)
+        await self._regraded(was)
 
     async def _thold_zero(self) -> None:
         """CHK-WDT-THOLD-ZERO, control CTL-WDT-THOLD-ZERO."""
@@ -2152,6 +2399,8 @@ class sep_timer_clock_contract_test(sep_base_test):
         a = COUNT_ALLOW
         await self._wdt_baseline(WDOG_FAR_BARK, WDOG_FAR_BITE, 0)
         await self._wr(WDOG_CTRL, WDOG_EN)
+        # The count wait is set-up: no coherence check grades its back-to-back reads.
+        was = await self._ungraded()
         start = self.pins.count["clk_wdt_i"]
         cnt = 0
         while cnt < cfg.below_c:
@@ -2166,6 +2415,8 @@ class sep_timer_clock_contract_test(sep_base_test):
             ("bite", WDOG_BITE_THOLD, cfg.bite_off),
         ):
             c_read = await self._rd(WDOG_COUNT)
+            if ev == "bark":
+                await self._regraded(was)
             st = await self._rd(INTR_STATE)
             await RisingEdge(dut.clk_i)
             await ReadOnly()
@@ -2506,6 +2757,11 @@ class sep_timer_clock_contract_test(sep_base_test):
             cfg.reload_order,
         )
         self.logger.info(
+            "DRAW leg_r spaced d=%s pairs=%s",
+            cfg.spaced_d,
+            [f"0x{a:016x},0x{b:016x}" for a, b in cfg.spaced],
+        )
+        self.logger.info(
             "DRAW leg_t b=%d d=%d b2=%d bm=0x%x dm=0x%x", cfg.b, cfg.d, cfg.b2, cfg.bm, cfg.dm
         )
         self.logger.info(
@@ -2587,15 +2843,24 @@ class sep_timer_clock_contract_test(sep_base_test):
         self.wdt = SepWdtAon(self)
         self.swrst = SepSwReset(self)
 
+        self._tc = 0
         self._gate(True)
-        await self._leg_r()
-        await self._leg_t()
-        await self._leg_h()
-        await self._leg_w()
-        await self._leg_s()
-        await self._leg_l()
-        await self._leg_p()
-        await self._leg_k()
-        await self._leg_carry()
+        try:
+            await self._leg_r()
+            await self._leg_t()
+            await self._leg_h()
+            await self._leg_w()
+            await self._leg_s()
+            await self._leg_l()
+            await self._leg_p()
+            await self._leg_k()
+            await self._leg_carry()
+        except BaseException:
+            # A failing leaf drops every held cell of its owner.
+            await RisingEdge(cocotb.top.clk_i)
+            self._tc_write(self._tc | TIMER_CONTRACT_PASS_DROP)
+            self._gate(False)
+            raise
+        await self._tc_release()
         self._gate(False)
         self.result_pass(TEST, seed, len(self.required_evidence))

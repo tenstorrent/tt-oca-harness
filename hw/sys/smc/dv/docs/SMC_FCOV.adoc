@@ -712,15 +712,19 @@ cells stay with the external-interrupt entries).
 ==== `smc_state_inject_cg`
 *Description*: State-encoding injection by block, encoding, live-operation phase and recovery.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_state_fault_inject_test` is a planned
-upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the unused encoding,
-the block (read, program, zeroer), the injection cycle relative to the live operation and the
-recovery order".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_state_fault_inject_test` is an existing
+entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the order of the
+three blocks (program, read, zeroer); for each eFuse interface which of its two unused encodings
+(`0b00`, `0b11`) is forced with no request outstanding and which concurrently with a live
+operation, and which of the two comes first; the injection cycle of the live corruption, an
+offset inside the request window the baseline operation measured"; the field goes on to the
+order of the legal read and the `REQ_ERROR` clear after the read-path injections and the order
+of the four illegal Zeroer encodings.
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_block_enc` |block x encoding x phase of the injection cycle (idle, during the request or start, during the response or data wait: 3): zeroer (the unused codes `3'b011`, `3'b101`, `3'b110`, `3'b111`: 4) x phase (3) = 12; eFuse read interface (the two encodings outside the two documented states: 2) x phase (3) = 6; eFuse program interface (2) x phase (3) = 6; 24 cells (`zeroer.adoc`, State Machine; `efuse` `architecture.adoc`, State Machine Architecture, the two-state sequence of the read interface only; the program interface has a capture-data state, `efuse_interface_ctrl.rdl`, `EFUSE_PROGRAM_INTERFACE_READ_DATA`, and the 2 unused encodings of each eFuse interface rest on the owner's walk, entry 101: `0b00` and `0b11` on the 2-bit `tb_efuse_read_state` and `tb_efuse_program_state` taps) |`tb_zeroer_state`, `tb_efuse_read_state`, `tb_efuse_program_state` with the `_inject_en` taps |`smc_state_fault_inject_test` |planned
+|`cp_block_enc` |block x encoding x phase of the injection cycle (idle, during the request or start, during the response or data wait: 3): zeroer (the unused codes `3'b011`, `3'b101`, `3'b110`, `3'b111`: 4) x phase (3) = 12; eFuse read interface (the two encodings outside the two documented states: 2) x phase (3) = 6; eFuse program interface (2) x phase (3) = 6; 24 cells (`zeroer.adoc`, State Machine; `efuse` `architecture.adoc`, State Machine Architecture, the two-state sequence of the read interface only; the program interface has a capture-data state, `efuse_interface_ctrl.rdl`, `EFUSE_PROGRAM_INTERFACE_READ_DATA`, and the 2 unused encodings of each eFuse interface rest on the owner's walk, entry 101: `0b00` and `0b11` on the 2-bit `tb_efuse_read_state` and `tb_efuse_program_state` taps); across seeds the owner reaches 12 of the 24: the Zeroer is injected from `IDLE` only (its 4 idle cells), and each eFuse interface takes one encoding while idle and the other inside the request-valid window (`tb_efuse_read_req_valid`, `tb_efuse_program_req_valid`), the during-the-request phase (its 4 idle and request cells); the response or data-wait phase and the live Zeroer phases have no owner leg |`tb_zeroer_state`, `tb_efuse_read_state`, `tb_efuse_program_state` with the `_inject_en` taps |`smc_state_fault_inject_test` |planned
 |`cp_recovery` |zeroer: stays busy until the cold reset (1 cell, the stated outcome: `ST_ERROR` holds the zeroer busy with no interrupt until reset); eFuse read interface, eFuse program interface: returns to idle with done and error set (2 recorded bins: the eFuse chapter states no outcome of an illegal encoding; the existing entry's `CHK-STATE-FAULT` grades it) (`zeroer.adoc`, `ST_ERROR`; `efuse` `architecture.adoc`, State Machine Architecture) |`tb_zeroer_busy`, `tb_efuse_read_busy`, `tb_efuse_program_busy`; `CTRL_STATUS`, `EFUSE_READ_CTRL`, `EFUSE_PROGRAM_CTRL` as the owner reads them |`smc_state_fault_inject_test` |planned
 |===
 
@@ -755,10 +759,11 @@ draw).
 ==== `smc_efuse_jtag_lc_cg`
 *Description*: Lifecycle image, eFuse JTAG operation and the verdict the SMC JTAG policy states.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_jtag_lc_access_matrix_test` is a
-planned upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the
-operation, the address class, the lifecycle image and the order"; the images are the ones the
-existing walk drives (one encoding per state plus the integrity-error case).
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_jtag_lc_access_matrix_test` is an
+existing entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the order
+of the six lifecycle images, per image the order of the three operations and the non-identity
+register the read probes"; the images are the ones the walk drives (one encoding per state plus
+the integrity-error case, every image in every run).
 
 [cols="2,6,3,3,2",options="header"]
 |===
@@ -777,15 +782,15 @@ RMA_SIP is absent from the encoding table).
 *Description*: eFuse request stall against the programmed timeout count, per interface, with the
 status.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_read_program_timeout_test` is a
-planned upgrade of an existing entry; needs the added bank-model stall knob; no sampler exists).
-Owner's draw: "the seed draws the timeout count and a stall length on either side of it through the
-added bank-model stall knob".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_efuse_read_program_timeout_test` is an
+existing entry that draws its cells through the bank-model stall knob; no sampler exists).
+Owner's draw: "the seed draws, per interface, the timeout count and a stall length on either side
+of it, applied through the bank-model stall knob".
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_stall_status` |interface (read, program: 2) x stall (shorter than the count, longer than the count: 2); 3 cells plus 1 recorded bin; a shorter stall completes with done and the status clear, a longer stall on the read interface sets `read_status` (stated); the longer stall on the program interface is a recorded cell (no statement that a program timeout sets `program_status`) (`efuse_interface_ctrl.rdl`, `read_req_timeout_cycles`, `program_req_timeout_cycles`, `read_status`) |`tb_efuse_read_busy`, `tb_efuse_read_done`, `tb_efuse_read_error`, `tb_efuse_program_busy`, `tb_efuse_program_done`, `tb_efuse_program_error`; `efuse_bank_ctrl_resp_i` |`smc_efuse_read_program_timeout_test` |planned
+|`cp_stall_status` |interface (read, program: 2) x stall (shorter than the count, longer than the count: 2); 4 cells; a shorter stall completes with done and the status clear, a longer stall sets the interface's status, `read_status` on the read interface and `program_status` on the program interface ("1: Error", the stated error indication) (`efuse_interface_ctrl.rdl`, `read_req_timeout_cycles`, `program_req_timeout_cycles`, `read_status`, `program_status`) |`tb_efuse_read_busy`, `tb_efuse_read_done`, `tb_efuse_read_error`, `tb_efuse_program_busy`, `tb_efuse_program_done`, `tb_efuse_program_error`; `efuse_bank_ctrl_resp_i` |`smc_efuse_read_program_timeout_test` |planned
 |`cp_count` |count (1 to 0x7FFFFF, the reset value 0x800000: 2) x interface (2); 4 cells (`efuse_interface_ctrl.rdl`, `read_req_timeout_cycles`, `program_req_timeout_cycles`) |`EFUSE_READ_REQ_TIMEOUT`, `EFUSE_PROGRAM_REQ_TIMEOUT` fields as the owner reads them back |`smc_efuse_read_program_timeout_test` |planned
 |===
 
@@ -968,15 +973,15 @@ interrupt behaviour of the error (not graded by the owner).
 ==== `smc_uart_fifo_cg`
 *Description*: UART receive trigger level against the FIFO fill and the read gap.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_uart_fifo_control_depth_test` is a planned
-upgrade of an existing entry; no sampler exists). Owner's draw: "the seed draws the fill count, the
-trigger level and the read gap".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_uart_fifo_control_depth_test` is an
+existing entry that draws its cells; no sampler exists). Owner's draw: "the seed draws the fill
+count, the trigger level and the read gap of a leg run inside step 7".
 
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_trigger_fill` |trigger level (1, 4, 8, 14, 32 characters: 5) x fill against the level (below, at, above: 3), without level 32 x above; 9 cells plus 5 recorded bins; below the level no receive-data interrupt is pending and above it one is (stated); the 5 cells at the level are recorded bins (whether the comparator fires at or above the level is not stated: the owner's Scope limit) (`uart_16550_main_wo.rdl`, `FCR.RCVR_TRIGGER`; `uart_16550_main.rdl`, `RCVR_TRIGGER_MS2B`; `periphs.adoc`, SMC Peripheral Parameter Overrides) |`FCR`, `ECR` trigger fields as the owner writes them; `IIR` as the owner reads it; `tb_uart_irq_raw` |`smc_uart_fifo_control_depth_test` |planned
-|`cp_read_gap` |read gap (drain fully, partial drain then refill: 2); 2 recorded bins, the interrupt after the drain printed by the owner (`uart_16550_main_wo.rdl`) |`tb_uart_irq_raw`, `tb_uart_irq_any`; `IIR` as the owner reads it |`smc_uart_fifo_control_depth_test` |planned
+|`cp_trigger_fill` |trigger level (1, 4, 8, 14, 32 characters: 5) x fill against the level (below, at, above: 3), without level 32 x above; 14 cells; below the level no receive-data interrupt is pending and above it one is (stated: `uart_16550/doc/architecture.adoc`, interrupt service table, ID 2 cleared by draining `RBR` below the selected trigger); at the level it is printed (`smc-programming.adoc` says "more than this amount", one character off that table) (`uart_16550_main_wo.rdl`, `FCR.RCVR_TRIGGER`; `uart_16550_main.rdl`, `RCVR_TRIGGER_MS2B`; `periphs.adoc`, SMC Peripheral Parameter Overrides) |`FCR`, `ECR` trigger fields as the owner writes them; `IIR` as the owner reads it; `tb_uart_irq_raw` |`smc_uart_fifo_control_depth_test` |planned
+|`cp_read_gap` |read gap (drain fully, partial drain then refill: 2); the full-drain bin stated: neither ID 2 nor the receive timeout ID 6 pending at occupancy 0 (`uart_16550/doc/architecture.adoc`, interrupt service table; the owner's `CHK-UART-TRIG-COMPOSE` compare); the partial-drain bin recorded, the interrupt after the drain printed by the owner (`uart_16550_main_wo.rdl`) |`tb_uart_irq_raw`, `tb_uart_irq_any`; `IIR` as the owner reads it |`smc_uart_fifo_control_depth_test` |planned
 |===
 
 *Ignore bins*: trigger levels 64 to 4096 (encodings 0x5 to 0xB: above the 32-deep receive FIFO, no
@@ -1012,9 +1017,10 @@ cells (the owner's Scope limit leaves them with the directed entries).
 ==== `smc_intr_mask_cg`
 *Description*: I2C interrupt bit class against enable, test and clear writes.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_i2c_ctrl_intr_w1c_test` is a planned upgrade
-of an existing entry; no sampler exists). Owner's draw: "the seed draws the enable mask, the test
-mask, the clear mask and their order".
+*Tool*: Verilator and VCS. *Class*: planned (owner `smc_i2c_ctrl_intr_w1c_test` is an existing
+entry that draws its cells; no sampler exists). Owner's draw: "on instances 1 and 2 the seed draws
+the enable mask, the test mask and the clear mask over the 20 `INTR_STATE` bits of `i2c.rdl` and
+the order of the three writes".
 
 [cols="2,6,3,3,2",options="header"]
 |===
