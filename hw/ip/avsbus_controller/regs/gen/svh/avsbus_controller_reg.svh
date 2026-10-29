@@ -64,7 +64,7 @@ localparam int unsigned AVS_CONFIG_REG_ADDR                                     
 localparam longint unsigned AVSBUS_CONTROLLER_AVS_CMD_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned AVSBUS_CONTROLLER_AVS_READBACK_REG_DEFAULT                                            = 32'h00000000;
 localparam longint unsigned AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_REG_DEFAULT                                      = 32'hFFFFFFFF;
-localparam longint unsigned AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_DEFAULT                               = 32'h0000FFFF;
+localparam longint unsigned AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_DEFAULT                               = 32'h00000000;
 localparam longint unsigned AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_REG_DEFAULT                                       = 32'h00000000;
 localparam longint unsigned AVSBUS_CONTROLLER_AVS_SLAVE_STATUS_REG_DEFAULT                                        = 32'h00000000;
 localparam longint unsigned AVSBUS_CONTROLLER_AVS_FIFOS_STATUS_REG_DEFAULT                                        = 32'h08000800;

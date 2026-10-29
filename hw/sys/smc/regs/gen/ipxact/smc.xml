@@ -2161,7 +2161,7 @@ this register causes the AVS response readback fifo pointer to advance.</ipxact:
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CONST0</ipxact:name>
-              <ipxact:description>Always 0</ipxact:description>
+              <ipxact:description>Frame-valid bit of the slave response sub-frame: 0 in a valid frame, 1 when the slave did not respond</ipxact:description>
               <ipxact:bitOffset>29</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2227,7 +2227,7 @@ have considerable latency relative to when it was initially received from the AV
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
-                  <ipxact:value>'hffff</ipxact:value>
+                  <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>32</ipxact:bitWidth>
@@ -2913,8 +2913,8 @@ The master always issues a slave resync first when the clock restarts.</ipxact:d
               <ipxact:description>Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).
 The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%
 duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of
-2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings
-(divider=0x4) by matching the FF default in the resynced version of the signal.</ipxact:description>
+2 - for lower values, 2 will be assumed. Out of reset the divider uses a ratio of 4, not this field's reset value of 0. A write that
+changes this field or clk_divider_duty_cycle_numerator loads both fields into the divider, so program both together.</ipxact:description>
               <ipxact:bitOffset>16</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2929,8 +2929,8 @@ duty cycle is only possible on even clk_divider_values with clk_divider_duty_cyc
               <ipxact:description>Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).
 This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,
 it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,
-a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)
-by matching the FF default in the resynced version of the signal.</ipxact:description>
+a value of 1 will be assumed. Out of reset the divider uses a numerator of 0x80 (50%), not this field's reset value of 0. A write that
+changes this field or clk_divider_value loads both fields into the divider, so program both together.</ipxact:description>
               <ipxact:bitOffset>24</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -7735,7 +7735,9 @@ message. This operation does not erase storage.</ipxact:description>
                 <ipxact:name>TELEMETRY_TX_FLUSH</ipxact:name>
                 <ipxact:description>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry
 transmitter. The flushing is done via the ATB AF interface. This bit clears
-itself after the flush completes.</ipxact:description>
+itself when the transmitter acknowledges the flush. Writing `0` while a
+flush is pending withdraws the request, so other fields of this register
+must be updated with a read-modify-write while the bit is set.</ipxact:description>
                 <ipxact:bitOffset>8</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -50037,7 +50039,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>count</ipxact:name>
-              <ipxact:description>Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</ipxact:description>
+              <ipxact:description>Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME. This register has no reset: its value, and therefore the level of the machine timer interrupt, is undefined until software writes it. Write it before enabling the machine timer interrupt.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>64</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -50049,8 +50051,13 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>count</ipxact:name>
-              <ipxact:description>Cycle count (time) value</ipxact:description>
+              <ipxact:description>Machine time. Increments by one every 1000 CPU-cluster cbus clock cycles. A software write takes precedence over an increment in the same cycle.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
               <ipxact:bitWidth>64</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
