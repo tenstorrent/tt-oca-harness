@@ -435,7 +435,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         if p.setup_fail:
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         self.logger.info(
-            "EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
+            "INFO-EVIDENCE-PLAN seed=%d required=%s", seed, ",".join(self.required_evidence)
         )
         close_graded_window(self.logger)
         self.fd = SepEfuseFd(self)
@@ -478,7 +478,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             hook_fail(
                 self.chk, reason="efuse_read_addr_error did not set", status=f"0x{status:08x}"
             )
-        self.logger.info("READ-ADDR-ERROR status=0x%08x", status)
+        self.logger.info("INFO-READ-ADDR-ERROR status=0x%08x", status)
 
         # Control program of c.
         self.shim = SepShimCmdMonitor().start()

@@ -270,8 +270,8 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         fs = field_compare(size, self.ap_size, REGION_SIZE_MASK)
         line = f"base {fb.fields()} size {fs.fields()}"
         if not (fb.ok and fs.ok):
-            raise AssertionError(f"APERTURE-READBACK FAIL: {line}")
-        self.logger.info("APERTURE-READBACK LOG: %s", line)
+            raise AssertionError(f"CTRL-APERTURE-READBACK FAIL: {line}")
+        self.logger.info("CTRL-APERTURE-READBACK LOG: %s", line)
 
     # --------------------------------------------------------------- bring-up
     async def _bring_up(self) -> None:
@@ -288,13 +288,13 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         sep_dbg = feat & 1
         if feat != golden or sec_dis != 0 or sep_dbg != 0:
             msg = (
-                f"CTL-REBASE-FILTER-ACTIVE FAIL: feat_ctrl=0x{feat:016x} "
+                f"CTRL-REBASE-FILTER-ACTIVE FAIL: feat_ctrl=0x{feat:016x} "
                 f"golden=0x{golden:016x} sec_dis={sec_dis} sep_dbg={sep_dbg}"
             )
             self.logger.error(msg)
             raise AssertionError(msg)
         self.logger.info(
-            "CTL-REBASE-FILTER-ACTIVE LOG: feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d",
+            "CTRL-REBASE-FILTER-ACTIVE LOG: feat_ctrl=0x%016x golden=0x%016x sep_dbg=%d",
             feat,
             golden,
             sep_dbg,
@@ -323,7 +323,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         seq = await self._si(SepAxiOp.READ, g, length=8)
         if seq.resp_code != RESP_OKAY or seq.rdata != self.d.m1:
             raise AssertionError(
-                f"CTL-REBASE-UNREACH FAIL: cfg={cfg} control read 0x{g:x} "
+                f"CTRL-REBASE-UNREACH FAIL: cfg={cfg} control read 0x{g:x} "
                 f"resp={_RESP.get(seq.resp_code)} rdata=0x{seq.rdata:x} staged=0x{self.d.m1:x}; "
                 "the entry that covers the units does not admit a live unit"
             )
@@ -342,7 +342,10 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         rom_word = lane32(await self._lsu_rd(BOOT_ROM), BOOT_ROM)
         rst_word = lane32(await self._lsu_rd(RESET_CTRL_SW_RESET_N), RESET_CTRL_SW_RESET_N)
         self.logger.info(
-            "UNIT-VALUES LOG: cfg=%s boot_rom=0x%08x sw_reset_n=0x%08x", cfg, rom_word, rst_word
+            "INFO-UNIT-VALUES LOG: cfg=%s boot_rom=0x%08x sw_reset_n=0x%08x",
+            cfg,
+            rom_word,
+            rst_word,
         )
 
         ctl_resp, ctl_data = await self._sram_control_read(cfg)
@@ -441,7 +444,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         # Step 2.
         base0, size0 = await self._read_aperture()
         self.logger.info(
-            "APERTURE-RESET LOG: SEP_GLOBAL_BASE_ADDR=0x%x SEP_REGION_SIZE=0x%x", base0, size0
+            "INFO-APERTURE-RESET LOG: SEP_GLOBAL_BASE_ADDR=0x%x SEP_REGION_SIZE=0x%x", base0, size0
         )
 
         # Step 3: stage M1, M3 in SRAM and M2 in a cold scratch word.
@@ -583,7 +586,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
                 )
             seen = self.xext.addrs(mx, "ar")
             self.logger.info(
-                "REBASE-EDGE LOG: cell=%s global=0x%x model_local=0x%x resp=%s (not graded) seen=%s",
+                "INFO-REBASE-EDGE LOG: cell=%s global=0x%x model_local=0x%x resp=%s (not graded) seen=%s",
                 name,
                 ga,
                 n,
@@ -641,7 +644,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             )
         below_seen = self.xext.addrs(mx, "ar")
         self.logger.info(
-            "REBASE-XBAR LOG: global=0x%x model_local=0x%x resp=%s (not graded) seen=%s",
+            "INFO-REBASE-XBAR LOG: global=0x%x model_local=0x%x resp=%s (not graded) seen=%s",
             ga,
             n,
             _RESP.get(seq.resp_code),
@@ -649,7 +652,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         )
         if below_seen != [n]:
             raise AssertionError(
-                f"CTL-REBASE-XBAR-LIMIT FAIL: control read 0x{ga:x} expected PR-XEXT 0x{n:x}, "
+                f"CTRL-REBASE-XBAR-LIMIT FAIL: control read 0x{ga:x} expected PR-XEXT 0x{n:x}, "
                 f"saw {[hex(a or 0) for a in below_seen]}"
             )
         ga = G + XBAR_LIMIT
@@ -679,7 +682,7 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
             _, rb_lo, rb_hi = await self.infilt.read_entry(idx)
             if (rb_lo, rb_hi) != (lo, hi):
                 raise AssertionError(
-                    f"CTL-REBASE-ABOVE FAIL: entry {idx} read back START=0x{rb_lo:x} "
+                    f"CTRL-REBASE-ABOVE FAIL: entry {idx} read back START=0x{rb_lo:x} "
                     f"END=0x{rb_hi:x}, programmed 0x{lo:x}..0x{hi:x}"
                 )
         for addr in [ABOVE_LIMIT] + [a for _, a in CPU_RESOURCES]:
@@ -719,7 +722,9 @@ class sep_fabric_inbound_rebase_test(sep_base_test):
         await self._write_aperture(base=RESTORE_BASE, size=RESTORE_SIZE)
         base1, size1 = await self._read_aperture()
         self.logger.info(
-            "APERTURE-RESTORE LOG: SEP_GLOBAL_BASE_ADDR=0x%x SEP_REGION_SIZE=0x%x", base1, size1
+            "INFO-APERTURE-RESTORE LOG: SEP_GLOBAL_BASE_ADDR=0x%x SEP_REGION_SIZE=0x%x",
+            base1,
+            size1,
         )
         await self.xext.stop()
         await self.csr.stop()

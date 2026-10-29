@@ -277,10 +277,10 @@ class sep_km_key_transfer_rand_test(sep_base_test):
     def _cyc(self) -> int:
         return int(get_sim_time("ps")) // self.period_ps
 
-    def _ctl(self, name: str, **fields) -> None:
-        """A control line. It shows that the scenario ran and grades nothing."""
+    def _info(self, name: str, **fields) -> None:
+        """A bench record. It shows that the scenario ran and grades nothing."""
         text = " ".join(f"{k}={v}" for k, v in fields.items())
-        self.logger.info("CTL-%s LOG seed=%d control=1 %s", name, self.seed, text)
+        self.logger.info("INFO-%s LOG seed=%d control=1 %s", name, self.seed, text)
 
     def _keyvalid(self) -> int:
         return self.rd_known(cocotb.top.km_engine_key_valid_o) & pl.ALL_BANKS
@@ -533,7 +533,9 @@ class sep_km_key_transfer_rand_test(sep_base_test):
                 **{field: match},
             )
         else:
-            self._ctl("GOLD", eng=name, size=r.size, leading=r.width, state=state, match=int(match))
+            self._info(
+                "GOLD", eng=name, size=r.size, leading=r.width, state=state, match=int(match)
+            )
 
     # -------------------------------------------------------------- policy leg
 
@@ -604,7 +606,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         assert p.z and not p.z & p.p1, f"Z {_h(p.z)} is not outside P1 {_h(p.p1)}"
         code_x, arg_x = await self._transfer(h1, p.x)
         code_z, arg_z = await self._transfer(h1, p.z)
-        self._ctl(
+        self._info(
             "REFUSE-Z",
             p1=_h(p.p1),
             z=_h(p.z),
@@ -673,7 +675,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         kv = self._bank("all_bank", pl.ALL_BANKS)
         hmac = await self._hmac_read(p.k3)
         aes = await self._aes_read(p.k3, "all_bank")
-        self._ctl(
+        self._info(
             "ALL-BANK-XFER",
             code=code,
             echo=self._echo_mask(arg),
@@ -686,7 +688,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         kv_after = self._bank("all_bank_after_shred", 0)
         hmac_after = await self._hmac_read(p.k3)
         aes_after = await self._aes_read(p.k3, "all_bank_after_shred")
-        self._ctl(
+        self._info(
             "ALL-BANK-SHRED",
             code=code_s,
             echo="none" if arg_s is None else _h(arg_s & 0xFF),

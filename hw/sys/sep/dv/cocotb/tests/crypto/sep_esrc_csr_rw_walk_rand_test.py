@@ -29,7 +29,7 @@ FIFO data ports; the restore leg takes every stored read-write field (no RDL wri
 read side effect such as ``woclr``, and not written by hardware alone) whose RDL text
 lacks "FIPS_LOCK.LOCK prevents software changes", outside ``CTRL``.
 ``HEALTH_TEST_CTRL.ENABLE`` lacks the phrase and is walked as unlocked
-(``OBS-LOCK-LIST``). The read-write status and alert latches that hardware sets
+(``INFO-LOCK-LIST``). The read-write status and alert latches that hardware sets
 (``INTR_STATUS``, ``*_HEALTH_STATUS``, ``MAIN_SM_STATUS.ALERT``/``ERR``) are not
 stored configuration; the restore leg logs their non-zero fields before and after
 the reset as ``OBS-ESRC-VOLATILE`` and grades none of them.
@@ -347,8 +347,8 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
         self.t_drain: int | None = None
         self.p: int | None = None
 
-        self.chk.obs("LOCK-COUNT", locked_fields=plan.locked_count)
-        self.chk.obs("LOCK-LIST", field="HEALTH_TEST_CTRL.ENABLE", walked="unlocked")
+        self.chk.info("LOCK-COUNT", locked_fields=plan.locked_count)
+        self.chk.info("LOCK-LIST", field="HEALTH_TEST_CTRL.ENABLE", walked="unlocked")
         self.logger.info(
             "WALK ro=%s restore=%s",
             ",".join(sorted(plan.ro_order)),
@@ -484,7 +484,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             r1 = await self._rd(reg)
             r2 = await self._rd(reg)
             if (r1 ^ r2) & mask:
-                self.chk.obs("RO-DYNAMIC", reg=reg, read1=f"0x{r1:08x}", read2=f"0x{r2:08x}")
+                self.chk.info("RO-DYNAMIC", reg=reg, read1=f"0x{r1:08x}", read2=f"0x{r2:08x}")
                 continue
             wrote = ~r1 & 0xFFFF_FFFF
             resp = await self._write_resp(reg, wrote)
@@ -755,7 +755,7 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             if self.stream.high_clocks_since(m) >= T_REF_WORDS:
                 break
         t_ref = max(1, self._now() - t0)
-        self.logger.info("T-REF clk=%d words=%d bound=%d", t_ref, T_REF_WORDS, t_cap)
+        self.logger.info("INFO-T-REF clk=%d words=%d bound=%d", t_ref, T_REF_WORDS, t_cap)
         return t_ref
 
     async def _enable_trials(self) -> None:

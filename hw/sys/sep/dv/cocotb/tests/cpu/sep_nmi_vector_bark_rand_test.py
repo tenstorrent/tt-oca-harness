@@ -16,12 +16,12 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   entry address and run count, and the first retired PC after the wait loop
   on ``cpu_trace_addr_o``, equal the programmed vector. Bark 1 runs with
   mstatus.MIE 0, bark 2 with mstatus.MIE 1: the firmware reads mstatus back
-  before each bark (``CTL-MIE-AT-BARK``), and the check needs that read equal
+  before each bark (``CTRL-MIE-AT-BARK``), and the check needs that read equal
   to the value of the leg. ``wdt_timer_rst_req_o`` at the handler entry is
   logged (``OBS-BITE-REQ``).
 * CHK-NMI-STUB (firmware) the reset-vector bark runs the stub at the
   SEP_NMI_VEC reset value once. CHK-NMI-ENTRY (firmware) each locked-copy bark
-  enters the drawn copy once, with the ``CTL-MIE-AT-BARK`` read equal to the
+  enters the drawn copy once, with the ``CTRL-MIE-AT-BARK`` read equal to the
   value of the leg: the firmware copy of the CHK-NMI-TAKEN compare without the
   trace term. No cited specification states ``mstatus.MPIE`` at an NMI entry,
   so the value the handler reads is logged (``OBS-NMI-MPIE``) and not graded.
@@ -399,7 +399,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             raise AssertionError(
                 f"CHK-NMI-TAKEN FAIL: copies not in four consecutive 256-byte slots: {slots}"
             )
-        vs = self._one("CTL-VEC-SET", boot=1)
+        vs = self._one("CTRL-VEC-SET", boot=1)
         if (vs.kv["vec"] & VEC_MASK) != vec or (vs.kv["lock"] & LOCK_MASK) != 1:
             raise AssertionError(
                 f"CHK-NMI-TAKEN FAIL: vector or lock not set before the barks: {vs.text}"
@@ -407,7 +407,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         legs = ("case_a", f"case_{CASES[cfg.case]}")
         for bark, (leg, mie) in enumerate(zip(legs, (0, 1), strict=True), start=1):
             rec = self._one("CHK-NMI-ENTRY", bark=bark)
-            ctl = self._one("CTL-MIE-AT-BARK", bark=bark)
+            ctl = self._one("CTRL-MIE-AT-BARK", bark=bark)
             t = self._first_trans(leg)
             pc = t[1] if t else None
             bite = t[2] if t else "na"
@@ -441,7 +441,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             raise AssertionError(
                 f"CHK-BARK-VEC FAIL: image stub at 0x{stub:08x}, reset vector 0x{VEC_RESET:08x}"
             )
-        r1 = self._one("CTL-VEC-RESET", boot=1)
+        r1 = self._one("CTRL-VEC-RESET", boot=1)
         st = self.con.records("CHK-NMI-STUB")
         t = self._first_trans("reset_vector")
         pc0 = t[1] if t else None
@@ -462,8 +462,8 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if not ok:
             raise AssertionError(f"CHK-BARK-VEC FAIL {body} stub={st[0].text if st else None}")
         self.logger.info("CHK-BARK-VEC PASS %s", body)
-        r2 = self._one("CTL-VEC-RESET", boot=2)
-        vs = self._one("CTL-VEC-SET", boot=2)
+        r2 = self._one("CTRL-VEC-RESET", boot=2)
+        vs = self._one("CTRL-VEC-SET", boot=2)
         t = self._first_trans("programmed")
         pc = t[1] if t else None
         mk = [c for c, txt in self.con.lines if txt == "Mk" and c >= boot2_clk]

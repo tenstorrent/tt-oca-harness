@@ -158,7 +158,7 @@ the sum of the ``*_TOTAL_FAILS`` counters after the wrap that ends window n
 minus the sum at that wrap (``test_fails_after_window_n``), the DUT record
 that the later windows hold no failure. Before the consecutive leg and before
 the first trip of a block, a leg that left ALERT, PF or ANY_FAIL_COUNT set is
-followed by a restart (``OBS-PF-LEG-RESTART``). CHK-PF-TRIP-HOLD and
+followed by a restart (``INFO-PF-LEG-RESTART``). CHK-PF-TRIP-HOLD and
 CHK-PF-NOTRIP grade the peak of ANY_FAIL_COUNT as exactly n, so a misplaced
 switch fails a check and never passes one. Vector bit 15 of
 ``sep_internal_interrupts_probe_o`` is logged as ``OBS-PIC16``.
@@ -721,7 +721,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             while self.noise.words_since(m) < 1 and self._now() - t0 <= bound:
                 await RisingEdge(cocotb.top.clk_i)
             if self.noise.words_since(m) < 1:
-                self.chk.obs("PF-BREAK", strobes=0, bound=bound)
+                self.chk.info("PF-BREAK", strobes=0, bound=bound)
         self.noise.set_lanes(list(self.plan.balanced))
 
     async def _fail_totals(self) -> int:
@@ -739,7 +739,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         """
         a, f, cnt = await self._poll_triple()
         if a or f or cnt:
-            self.chk.obs("PF-LEG-RESTART", thr=thr, leg=leg, alert=int(a), pf=int(f), any_fail=cnt)
+            self.chk.info("PF-LEG-RESTART", thr=thr, leg=leg, alert=int(a), pf=int(f), any_fail=cnt)
             close_graded_window(self.logger)
             await self._start_seq(thr, win)
             await self._drain()

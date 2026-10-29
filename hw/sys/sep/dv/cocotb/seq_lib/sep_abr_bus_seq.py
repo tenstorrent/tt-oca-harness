@@ -472,7 +472,7 @@ class SepAbrBus:
                 await self.one(AbrAccess(bus, "rd", w.addr, 4, 2, tag="id_ref")) for _ in range(2)
             ]
             for acc in reads:
-                self.log.info("ABR-ID-REF %s %s", w.name, acc.describe())
+                self.log.info("INFO-ABR-ID-REF %s %s", w.name, acc.describe())
             bad = [a for a in reads if a.timed_out or a.resp != RESP_OKAY]
             if bad:
                 problems.append(

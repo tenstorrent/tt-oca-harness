@@ -41,8 +41,8 @@ bit-by-bit responder of ``smc_avsbus_slave_reply_test``, with
 
 * two CmdGroup 1 writes and one CmdGroup 0 write with non-zero CMD_DATA go out
   and each captured master subframe must carry the ``2'b01`` preamble and the
-  written AVS_CMD bits [29:3]; their CRC-3 bits are logged only, since no
-  pinned source gives the polynomial (SF-030),
+  written AVS_CMD bits [29:3]; their CRC-3 bits are logged only, not compared
+  against the x^3 + x + 1 polynomial ``interface.adoc`` gives (SF-030),
 * a reply with StatusResponse bit 1 is sent with each of the eight CRC codes:
   ``architecture.adoc`` "CRC Verification Engine" lets exactly one pass the
   check, and only that one may update ``AVS_LATEST_SLAVE_SUBFRAME`` and

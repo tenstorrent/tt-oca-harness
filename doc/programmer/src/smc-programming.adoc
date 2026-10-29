@@ -647,7 +647,8 @@ The `wdogenalways` (bit 12) and `wdogcoreawake` (bit 13) fields of `CTRL`
 control under what conditions `COUNT` is incremented. If `wdogcoreawake` is set,
 `COUNT` is only incremented while the core is not in reset. If `wdogenalways`
 is set, `COUNT` always increments. `wdogenalways` takes priority over
-`wdogcoreawake` if both bits are set.
+`wdogcoreawake` if both bits are set. If both bits are clear, `COUNT` does not
+increment and holds its value.
 
 If `wdogzerocmp` (bit 9) is enabled in `CTRL`, the watchdog timer `COUNT` will
 reset to `0` once the comparison threshold `CMP` has been reached and an
@@ -2218,7 +2219,8 @@ void telemetry_drain(unsigned i) {
   and resets assembly position, without erasing stored bytes or flushing the
   wrapper crossing FIFO. New traffic can make the queue nonempty again.
 * *Upstream flush:* set `CTRL.TELEMETRY_TX_FLUSH` and poll until hardware clears
-  it after acknowledgement. Choose a firmware timeout appropriate to the producer;
+  it after acknowledgement. Write `CTRL` only with a read-modify-write until
+  then; a write with the bit clear withdraws the request. Choose a firmware timeout appropriate to the producer;
   the core provides no fixed completion deadline.
 
 Neither operation makes stale trailing blocks safe: producers must still

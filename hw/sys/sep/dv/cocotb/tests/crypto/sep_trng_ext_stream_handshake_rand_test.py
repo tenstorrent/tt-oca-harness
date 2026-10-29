@@ -1132,7 +1132,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         await self._clocks(2)
         expect = ENDPOINT_FIFO_DEPTH
         pops = t.pops[i] - pops0
-        self.chk.obs("EDN-PUSH-GAP", stream=i, max_push_gap=t.max_gap[i], quiet=ADAPTER_QUIET)
+        self.chk.info("EDN-PUSH-GAP", stream=i, max_push_gap=t.max_gap[i], quiet=ADAPTER_QUIET)
         fields = {
             "stream": i,
             "occ": t.occ[i],
