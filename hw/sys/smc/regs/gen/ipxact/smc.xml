@@ -94,7 +94,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogenalways</ipxact:name>
-              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake</ipxact:description>
+              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -339,7 +339,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogenalways</ipxact:name>
-              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake</ipxact:description>
+              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -584,7 +584,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogenalways</ipxact:name>
-              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake</ipxact:description>
+              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -829,7 +829,7 @@ Each effective write to a register other than KEY locks the watchdog, and change
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>wdogenalways</ipxact:name>
-              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake</ipxact:description>
+              <ipxact:description>Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
