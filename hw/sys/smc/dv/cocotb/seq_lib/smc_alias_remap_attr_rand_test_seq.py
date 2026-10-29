@@ -443,10 +443,13 @@ class smc_alias_remap_attr_rand_test_seq(SmcCsrSeq):
                 )
             ]
             words.append(f"R{i} " + "/".join(f"0x{v:x}" for v in got))
+            assert got == [0, 0, 0], (
+                f"{words[-1]} before any write, alias_remap.rdl reset words 0x0/0x0/0x0"
+            )
         self._mark_step("S1")
         self._log_chk(
             "CHK-ALR-RESET-WORDS",
-            f"logged control, not graded: REGION_START/END/ATTRS before any write {words}; "
+            f"REGION_START/END/ATTRS of the eight regions before any write {words} equal the "
             "alias_remap.rdl reset words 0x0/0x0/0x0",
         )
 

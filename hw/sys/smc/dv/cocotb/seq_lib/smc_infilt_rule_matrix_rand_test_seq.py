@@ -851,6 +851,10 @@ class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
                 reset_reads.append(
                     f"E{idx} " + " ".join(f"{r}=0x{w:x}" for r, w in zip(_REGS, words))
                 )
+                assert words == [_RESET[r] for r in _REGS], (
+                    f"inbound entry {idx} before any write reads {reset_reads[-1]}, "
+                    f"filter_ctrl.rdl reset words {[hex(_RESET[r]) for r in _REGS]}"
+                )
         for s in sets:
             for p in s["probes"]:
                 for b in self._beats(p):
@@ -862,7 +866,7 @@ class smc_infilt_rule_matrix_rand_test_seq(SmcCsrSeq):
         self._mark_step("S1")
         self._log_chk(
             "CHK-IFM-RESET",
-            "logged control, not graded: inbound entries 2 to 15 before any write "
+            "inbound entries 2 to 15 before any write equal the RDL reset words: "
             f"{'; '.join(reset_reads)}; RDL reset words "
             f"FILTER_CONFIG=0x{_RESET['FILTER_CONFIG']:x} "
             f"START_ADDR=0x{_RESET['START_ADDR']:x} END_ADDR=0x{_RESET['END_ADDR']:x}; "

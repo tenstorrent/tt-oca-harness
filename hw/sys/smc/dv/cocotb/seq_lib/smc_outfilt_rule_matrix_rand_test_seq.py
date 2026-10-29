@@ -731,6 +731,10 @@ class smc_outfilt_rule_matrix_rand_test_seq(SmcCsrSeq):
             ]
             assert not words[0] & _ENTRY_ENABLED, f"outbound entry {idx} enabled at start"
             reset_reads.append(f"E{idx} " + " ".join(f"{r}=0x{w:x}" for r, w in zip(_REGS, words)))
+            assert words == [_RESET[r] for r in _REGS], (
+                f"outbound entry {idx} before any write reads {reset_reads[-1]}, "
+                f"filter_ctrl.rdl reset words {[hex(_RESET[r]) for r in _REGS]}"
+            )
         for s in sets:
             for p in s["probes"]:
                 for b in range(p["axlen"] + 1):
@@ -741,7 +745,7 @@ class smc_outfilt_rule_matrix_rand_test_seq(SmcCsrSeq):
         self._mark_step("S1")
         self._log_chk(
             "CHK-OFM-RESET",
-            "logged control, not graded: outbound entries 0 to 15 before any write "
+            "outbound entries 0 to 15 before any write equal the RDL reset words: "
             f"{'; '.join(reset_reads)}; RDL reset words "
             f"FILTER_CONFIG=0x{_RESET['FILTER_CONFIG']:x} START_ADDR=0x{_RESET['START_ADDR']:x} "
             f"END_ADDR=0x{_RESET['END_ADDR']:x}; {len(self._shadow)} seed words preset",

@@ -251,8 +251,15 @@ class _Xfer:
 class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
     """Twelve seeded copies, an ENABLED_ND-clear launch and a zero-length launch."""
 
-    def __init__(self, name: str = "smc_dma_transfer_matrix_rand_test_seq", *, seed: int) -> None:
+    def __init__(
+        self,
+        name: str = "smc_dma_transfer_matrix_rand_test_seq",
+        *,
+        seed: int,
+        grade_zero_length_done: bool = False,
+    ) -> None:
         super().__init__(name)
+        self.grade_zero_length_done = grade_zero_length_done
         self.steps: list[tuple[str, int]] = []
         self.chk_steps: list[tuple[str, str]] = []
         self.chk_ids: list[str] = []
@@ -565,9 +572,11 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
             await self._await_settle(x)
             self._check_id(x, label, done_compared=False)
             self._compare(x, tag, False, label)
+            grade = "compared" if self.grade_zero_length_done else "printed, not compared"
             cocotb.log.info(
-                "ZERO_LENGTH DONE_0 (printed, not compared): returned id %d, DONE_0 before the "
+                "ZERO_LENGTH DONE_0 (%s): returned id %d, DONE_0 before the "
                 "launch %d, after %d (delta %d), reads %s, drawn reps %d",
+                grade,
                 x.id,
                 x.done_before,
                 x.done_after,
@@ -575,12 +584,18 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
                 x.done_reads,
                 x.reps,
             )
+            if self.grade_zero_length_done:
+                assert x.done_after == x.id, (
+                    f"CHK-DXM-ZERO-LENGTH-DONE FAIL: DONE_0 {x.done_after} after the LENGTH 0 "
+                    f"launch, returned id {x.id} (DONE_0 before the launch {x.done_before}, "
+                    f"delta {x.done_after - x.done_before}, drawn reps {x.reps}); {src.cells()}"
+                )
             return (
                 f"launch read returned the non-zero id {x.id} = DONE_0 before the launch "
                 f"{x.done_before} plus one, all {x.span(x.dst_stride) + 2 * GUARD} destination "
                 f"bytes kept the sentinel and the source rows are unchanged after {x.polls} "
                 f"DONE_0 reads that ended moved and idle (tb_dma_busy low, two equal reads); "
-                f"printed, not compared: DONE_0 before {x.done_before} after "
+                f"{grade}: DONE_0 before {x.done_before} after "
                 f"{x.done_after} (delta {x.done_after - x.done_before}, drawn reps {x.reps}), "
                 f"launch read response {resp}, STATUS_0 0x{x.status:x}; CONFIG 0x{config:x} "
                 f"LENGTH {length}; drawn={src.cells()}"

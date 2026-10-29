@@ -222,6 +222,22 @@ tools = ["vcs"]
 tags = ["uvm", "clock"]
 run_modes = ["smoke"]
 
+[[tests]]
+# A launch with LENGTH 0 and ENABLED_ND set advances DONE_0 by the drawn
+# NUM_REPETITIONS, where dma.adoc ("still retire[s] a transfer ID") and the
+# dma_ctrl.rdl NEXT_ID description ("still retires an ID without copying any
+# data") retire one; every other launch advances it by one. The leaf runs the
+# smc_dma_transfer_matrix_rand_test draw (its twelve copies and the ENABLED_ND
+# clear are the arm leg) and asserts DONE_0 equal to the returned ID.
+name = "smc_dma_zero_length_done_id_test"
+module = "smc_dma_zero_length_done_id_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "DONE_0 after a LENGTH 0 launch advances by NUM_REPETITIONS, not to the one returned ID (#3509)"
+expect_fail_match = "CHK-DXM-ZERO-LENGTH-DONE FAIL"
+
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
 name = "cg_uvm_extended"
@@ -279,12 +295,13 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 4
+expected_count = 5
 tests = [
     "smc_wdt_timeout_zero_idle_test",
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
+    "smc_dma_zero_length_done_id_test",
 ]
 
 [[groups]]

@@ -1116,7 +1116,7 @@ never reverses.
 |`smc_alias_remap_translate_test` |2 |Alias remap adds the region offset: edges, carry, open cases.
 |`smc_axi_inbound_ports_burst_test` |3 |Round trips and INCR bursts on all three inbound AXI ports.
 |`smc_ext_window_routing_test` |3 |eFuse SHIM and external window accesses route to the right port.
-|`smc_gap_decode_response_test` |3 |Gap, SLVERR-window and debug aperture responses on all ports.
+|`smc_gap_decode_response_test` |3 |Gap, 0x1_7000 window and debug aperture responses on all ports.
 |`smc_inbound_concurrency_limits_test` |3 |Outstanding limits and concurrent reads on inbound ports.
 |`smc_inbound_outside_window_decerr_test` |3 |DECERR outside both windows and at BASE+REGION_SIZE.
 |`smc_inbound_window_port_matrix_test` |3 |Window reads and storage on all three ports at both bases.
@@ -7254,7 +7254,9 @@ reported.
 destination byte changes, compared after the `DONE_0` poll ended with `DONE_0` moved from its
 pre-launch value and `tb_dma_busy` low (a liveness bound; the poll fails at its bound otherwise);
 `DONE_0` before and after the launch, with the drawn `NUM_REPETITIONS`, and `STATUS_0` after it are
-printed, not compared (Scope limit).
+printed, not compared (Scope limit, #3509); `smc_dma_zero_length_done_id_test` (`rtl_issue`,
+`testlists/holdout.toml`) runs the same draw and asserts `DONE_0` equal to the returned ID under
+`expect_fail` against #3509.
 |`CHK-NONVAC` |The step stamps S1 to S6 are in increasing time order, the 5 checker lines above
 were printed in step order each after its own step, and 14 launches were issued with at least one
 of the 12 drawn transfers a copy of two or more rows (`NUM_REPETITIONS` 2 or more), each row at its
@@ -7274,7 +7276,7 @@ is a printed report with no compare, each wait raising its own failure when its 
 `CHK-DXM-ZERO-LENGTH`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every drawn copy is
 byte-exact with its sentinel intact and retires its ID, every burst stays inside its configured
 bound, and the `ENABLED_ND` clear and zero-length launches move no data; `DONE_0` after the
-zero-length launch is printed, not graded. Enrolled in: `all`, `hosted`.
+zero-length launch is printed, not graded (#3509). Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `STATUS_0` after every launch, the place the no-data launches' error response is
 reported (<<smc-vplan-phase3-blocked-legs>>) are printed, not compared; the order in which the rows
@@ -7284,8 +7286,10 @@ are issued is neither printed nor compared.
 transfer ID", and the `dma_ctrl.rdl` `NEXT_ID` description says such a command "still retires an
 ID without copying any data", which reads as `DONE_0` reaching the one returned ID; on this bench
 `DONE_0` advances by the drawn `NUM_REPETITIONS` after a length-0 launch, and by one after every
-other launch of this entry, so the leaf prints the returned ID, `DONE_0` before and after and the
-drawn `NUM_REPETITIONS` until the documents and the RTL agree.
+other launch of this entry; #3509 holds the question. The leaf prints the returned ID, `DONE_0`
+before and after and the drawn `NUM_REPETITIONS`; `smc_dma_zero_length_done_id_test` (`rtl_issue`)
+runs the same draw and asserts the compare the documents state, expected to fail until #3509
+closes (<<smc-vplan-phase3-blocked-legs>>).
 Zero or overlapping strides, `DECOUPLE_RW` 1, addresses near 2^56 and the backpressure and abort
 cells are not drawn, because the DMA chapter states no order or outcome for them. This entry
 consolidates the cells of `smc_dma_2d_copy_test` and `smc_dma_burst_shaping_test`, which stay
@@ -11339,7 +11343,7 @@ module, outbound filter control, mailbox, DMA and zeroer control, CPU control)
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Gap, SLVERR-window and debug aperture responses on all ports.
+*Objective*: Gap, 0x1_7000 window and debug aperture responses on all ports.
 
 *Test Coverage*:
 
@@ -11420,9 +11424,9 @@ at the local base answer DECERR
 writes (DECERR) the same from SYS_IN and JTAG at the local base and from all three
 ports at the global base, ten legs in all
 |`CHK-SLVERR-WINDOW-WRITE-FIRST` |The write at offset 0x1_7000 completes; its response is printed
-beside the SLVERR the memory map states and is not compared
+beside the DECERR the memory map states and is not compared
 |`CHK-SLVERR-WINDOW-WRITE-LAST` |The write at offset 0x1_7FF8 completes; its response is printed
-beside the SLVERR the memory map states and is not compared
+beside the DECERR the memory map states and is not compared
 |`CHK-SLVERR-WINDOW-READ` |The reads at offsets 0x1_7000 and 0x1_7FF8 answer DECERR with 0xBADCAB1E
 |`CHK-SLVERR-WINDOW-NEIGHBOURS` |The word below the window answers DECERR with 0xBADCAB1E for the
 read and the mailbox base above it reads OKAY; the write responses of both are printed against their
@@ -14812,9 +14816,9 @@ that prints `CHK-NONVAC`.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-IFM-RESET` |Logged control, not graded: the reads of inbound entries 2 to 15 before any write
-are printed beside the RDL reset words (`filter_ctrl.rdl`), which `smc_filter_reset_word_test`
-(`CHK-RESET-WORD-INBOUND`) grades; a drawn table adds no cell to them.
+|`CHK-IFM-RESET` |The reads of inbound entries 2 to 15 before any write equal the RDL reset words
+(`filter_ctrl.rdl`), the compare `smc_filter_reset_word_test` (`CHK-RESET-WORD-INBOUND`) also
+makes; a drawn table adds no cell to them.
 |`CHK-IFM-MATCH-TERMS` |Over the drawn tables every probe answered the golden response with the data
 of the golden (the seeded or landed word on every read beat, the written words landed by an admitted
 write, the words kept by a blocked one); the line lists the probes whose response turns on one
@@ -15026,9 +15030,9 @@ such window and one pinned other-direction twin per set holding a lowest-entry d
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-OFM-RESET` |Logged control, not graded: the reads of outbound entries 0 to 15 before any
-write are printed beside the RDL reset words (`filter_ctrl.rdl`), which `smc_filter_reset_word_test`
-(`CHK-RESET-WORD-OUTBOUND`) grades; a drawn table adds no cell to them.
+|`CHK-OFM-RESET` |The reads of outbound entries 0 to 15 before any write equal the RDL reset words
+(`filter_ctrl.rdl`), the compare `smc_filter_reset_word_test` (`CHK-RESET-WORD-OUTBOUND`) also
+makes; a drawn table adds no cell to them.
 |`CHK-OFM-UNMATCHED-PASS` |Every probe that matches no enabled entry, one granule outside a window
 or inside a disabled one, answered OKAY with one handshake at the driven address, AxPROT and AxLEN,
 its counter up by exactly one and its words landed or returned; at least one per seed.
@@ -15371,10 +15375,10 @@ in the compared legs; print `CHK-TIMEOUT-PATHS`, then run the fence that prints 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ALR-RESET-WORDS` |Logged control, not graded: the reads of `REGION_START`, `REGION_END` and
-`REGION_ATTRS` of the eight regions before any write are printed beside the RDL reset words
-(`alias_remap.rdl`), which `smc_filter_reset_word_test` (`CHK-RESET-ALIAS-REMAP`) and
-`smc_remap_cla_test` (`CHK-REMAP-TABLE-RESET`) grade; a drawn configuration adds no cell to them.
+|`CHK-ALR-RESET-WORDS` |The reads of `REGION_START`, `REGION_END` and `REGION_ATTRS` of the eight
+regions before any write equal the RDL reset words (`alias_remap.rdl`), the compare
+`smc_filter_reset_word_test` (`CHK-RESET-ALIAS-REMAP`) and `smc_remap_cla_test`
+(`CHK-REMAP-TABLE-RESET`) also make; a drawn configuration adds no cell to them.
 |`CHK-ALR-RESET-TRANSPARENT` |With every region at its reset words the drawn JTAG write and read
 reach the responder at their own address with their own drawn AxCACHE, exactly one handshake each,
 and the word lands and returns there.
@@ -17861,7 +17865,7 @@ and asserts none the reset state does not already assert (`reset_unit.rdl`, `SS_
 "Subsystem active low cold resets", reset 0). The watchdog kind is never drawn with an SPM
 operation (an SPM draw on a watchdog pass is redrawn, at most 64 times, and the draw asserts the
 pair absent), because a watchdog warm reset with an SPM access in flight leaves the cluster
-boundary unanswering until a primary reset (recorded as a candidate, not graded here). On every
+boundary unanswering until a primary reset (#3510; not graded here). On every
 seed at least one SPM pass has its burst inside the reset (at the assertion the burst has been
 issued into the cluster, the pending count of the L2-frontend isolate for its direction having risen
 from 0 after the launch, with its SEP_IN address handshake done and its response not returned): when
@@ -18022,7 +18026,7 @@ while an SPM write burst was in flight and no primary reset after it, the cut wr
 and every later SPM write and every `CPU_CTRL` write whose AXI ID bits [2:0] equal the cut write's
 never received a B response until a cool-pin, FLR or cold reset cleared it; `cpu.adoc` (CPU AXI
 Isolation) says each cluster port is drained before the reset takes effect, and (Reset-Domain
-Crossing) that a watchdog timeout is followed by a cold reset. The pair is recorded as a candidate
+Crossing) that a watchdog timeout is followed by a cold reset. The pair is excluded under #3510
 and not graded here (<<smc-vplan-phase3-blocked-legs>>). The all-zero compares are graded for bit
 resolution on a four-state simulator only; on Verilator that leg is printed, and the scheduled runs
 have no four-state simulator (<<smc-vplan-phase3-blocked-legs>>). The mailbox push, the UART frame,
@@ -48675,7 +48679,7 @@ ordered by area.
 |<<smc-vplan-area-power,POWER>>
 |The `NEXT_ID` and `DONE` reset values and the meaning of `DONE_0` after a command.
 |`hw/sys/smc/doc/dma.adoc` and the register description `integration/rdl/smc/dma_ctrl.rdl` state different reset values for `NEXT_ID` and `DONE` and a different meaning for `DONE` (the last retired id versus a cumulative count); which one is normative. Source: `hw/sys/smc/doc/dma.adoc` (Stream and Register Ownership); `integration/rdl/smc/dma_ctrl.rdl` (`NEXT_ID`, `DONE`); GitHub issue tenstorrent/tt-oca-harness#2455.
-|`smc_dma_invalid_descriptor_test` logs `NEXT_ID_0`, `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states. `smc_dma_transfer_matrix_rand_test` prints `DONE_0` before and after its zero-length launch with the drawn `NUM_REPETITIONS`, without comparing it, and grades the returned ID and the untouched destination.
+|`smc_dma_invalid_descriptor_test` logs `NEXT_ID_0`, `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states. `smc_dma_transfer_matrix_rand_test` prints `DONE_0` before and after its zero-length launch with the drawn `NUM_REPETITIONS`, without comparing it, and grades the returned ID and the untouched destination; `smc_dma_zero_length_done_id_test` (`rtl_issue`) asserts `DONE_0` equal to the returned ID against #3509.
 |<<smc-vplan-area-power,POWER>>
 |A DMA row address that steps past 2^56 wraps within 56 bits.
 |Whether the effective address wraps at bit 56, saturates or errors. Source: `hw/sys/smc/doc/dma.adoc` (Transfer Configuration; the register storage and effective field widths).
@@ -48775,7 +48779,7 @@ not graded; the leg is graded only on a four-state simulator.
 |<<smc-vplan-area-reset,RESET>>
 |Watchdog reset during an SPM access: the bench answers OKAY once the resets release.
 |A watchdog warm reset with an SPM access in flight leaves the cluster boundary unanswering until a
-primary reset. Observed with an SPM write burst cut by the watchdog reset and no primary reset after
+primary reset (#3510). Observed with an SPM write burst cut by the watchdog reset and no primary reset after
 it: the cut write never answered, and every later SPM write and every `CPU_CTRL` write whose AXI ID
 bits [2:0] equal the cut write's never received a B response, until a cool-pin, FLR or cold reset
 cleared it. `cpu.adoc` says each cluster port is drained before the reset takes effect, and that a
@@ -49597,6 +49601,7 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes
 |#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
+|#3509 |`smc_dma_zero_length_done_id_test` |`rtl_issue` |`DONE_0` after a `LENGTH` 0 launch advances by the drawn `NUM_REPETITIONS` where `dma.adoc` and the `NEXT_ID` description retire one ID; the leaf runs the `smc_dma_transfer_matrix_rand_test` draw and asserts `DONE_0` equal to the returned ID
 |#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
 |#3426 |`smc_bresp_evidence_obs_test` |`held_out` |The merged BRESP of a split write burst has no stated rule; the `OBS-BRESP` lines record every past-extent and gap write beside its #3294 declaration and the `OBS-BURST` lines the merged response, the CHK lines grade the table counts and unchanged live words
