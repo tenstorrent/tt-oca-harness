@@ -907,7 +907,10 @@ class OutboundLeaf:
         self.logger.info("OBS-%s: %s", tag.removeprefix("CHK-"), line)
 
     def _info_row(self, tag: str, line: str) -> None:
-        self.logger.info("INFO-%s: %s", tag.removeprefix("CHK-"), line)
+        self.logger.info("INFO-%s: %s", tag, line)
+
+    def _blocked_row(self, chk: str, reason: str, line: str) -> None:
+        self.logger.info("OBS-BLOCKED %s reason=%s seed=%d: %s", chk, reason, self.c.seed, line)
 
     def _fail(self, chk: str, line: str) -> None:
         msg = f"{chk} FAIL seed={self.c.seed} {line} last_port_state={self._port_state()}"
@@ -964,13 +967,14 @@ class OutboundLeaf:
 
         Every bounded wait logged has at least one measured use, and its use
         closest to its limit is within that limit (the wait ended on its
-        condition, not on expiry). A run with no bounded wait logs INFO-TIMEOUT-PATHS and no PASS.
+        condition, not on expiry). A run with no bounded wait logs
+        ``OBS-BLOCKED CHK-TIMEOUT-PATHS reason=no_bounded_wait`` and no PASS.
         """
         chk = "CHK-TIMEOUT-PATHS"
         windows = ",".join(f"{k}:{v}" for k, v in sorted(self.windows_logged.items()))
         if not self.waits_logged:
-            self._info_row(
-                chk, f"bounded_waits=0 windows={{{windows}}} {extra} (nothing to compare)"
+            self._blocked_row(
+                chk, "no_bounded_wait", f"bounded_waits=0 windows={{{windows}}} {extra}"
             )
             return
         rows = []
