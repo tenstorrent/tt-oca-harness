@@ -50039,7 +50039,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>count</ipxact:name>
-              <ipxact:description>Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</ipxact:description>
+              <ipxact:description>Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME. This register has no reset: its value, and therefore the level of the machine timer interrupt, is undefined until software writes it. Write it before enabling the machine timer interrupt.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>64</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
@@ -50051,8 +50051,13 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>count</ipxact:name>
-              <ipxact:description>Cycle count (time) value</ipxact:description>
+              <ipxact:description>Machine time. Increments by one every 1000 CPU-cluster cbus clock cycles. A software write takes precedence over an increment in the same cycle.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
               <ipxact:bitWidth>64</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>

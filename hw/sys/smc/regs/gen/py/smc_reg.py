@@ -33261,7 +33261,7 @@ CLINT_MTIME_REG_FIELD_ACCESS = (
 
 CLINT_MTIME_REG_WIDTH = 64
 CLINT_MTIME_REG_FIELDS = (
-    ('count', 0, 63, 'rw', 'r', '', '', False, False, None),
+    ('count', 0, 63, 'rw', 'r', '', '', False, False, 0),
 )
 
 class CLINT_MTIME_reg_t(Structure):
