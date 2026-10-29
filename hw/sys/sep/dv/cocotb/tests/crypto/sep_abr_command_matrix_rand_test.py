@@ -77,8 +77,8 @@ from Y's outputs G, so a run of Y changes a graded window) and
 write-only (``abr_reg.rdl``:190); the leaf writes the same mu both times.
 ``OBS-ABR-PARKED-MSG`` logs the ``MLKEM_MSG`` readback at the park and grades
 nothing.
-``CTRL-ABR-SECRET-PRE`` logs which secret windows held a non-zero word before a
-ZEROIZE; a window that held none logs ``OBS-ABR-SECRET-EMPTY`` and is not
+``INFO-ABR-SECRET-PRE`` logs which secret windows held a non-zero word before a
+ZEROIZE; a window that held none records ``INFO-ABR-SECRET-EMPTY`` and is not
 graded. A zero window proves that the window is not readable, not that the
 memory is wiped.
 
@@ -445,7 +445,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
         """Clean-up after a timed-out wait: ABR reset, bounded READY wait on both blocks."""
         was_open = self._win_open
         self._win(False)
-        self.logger.info("ABR-RECOVER seed=%d where=%s", self.seed, where)
+        self.logger.info("INFO-ABR-RECOVER seed=%d where=%s", self.seed, where)
         await self._abr_reset()
         for blk in (DSA, KEM):
             if await self._wait_ready(blk) is None:
@@ -775,7 +775,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             pre = await self._windows()
             for name, words in pre.items():
                 self.logger.info(
-                    "CTRL-ABR-SECRET-PRE seed=%d cell=%s window=%s nonzero=%d",
+                    "INFO-ABR-SECRET-PRE seed=%d cell=%s window=%s nonzero=%d",
                     self.seed,
                     cell,
                     name,
@@ -821,7 +821,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
         graded = 0
         for name, words in post.items():
             if not any(pre[name]):
-                self.chk.obs("ABR-SECRET-EMPTY", cell=cell, window=name)
+                self.chk.info("ABR-SECRET-EMPTY", cell=cell, window=name)
                 states.append(f"{name}:empty")
                 continue
             graded += 1

@@ -123,6 +123,11 @@ in the bin, without a warning, so no goal bin overlaps an `ignore_bins`:
 the SEP-absent lifecycle value is a bin of `cg_lc_state_at_release`, which only
 the SEP-absent build elaborates.
 
+Verilator frees a covergroup instance whose samples a build gates off entirely
+after static initialization, while its bins stay registered, and the database
+then reads their counts from freed memory. `cov/config/verilator/smu_fcov.vlt`
+keeps every `u_cg_*` handle a member, so those bins read 0.
+
 The two simulators report those bins differently. Verilator keeps one record
 per covergroup, summed over every instance, and ignores
 `option.per_instance`, so `u_cg_bresp` and `u_cg_rresp` are one

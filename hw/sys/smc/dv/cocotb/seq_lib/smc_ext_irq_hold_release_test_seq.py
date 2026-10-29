@@ -18,6 +18,9 @@ its register map, route, bound and retention are open (SF-025, SF-026, SF-027, S
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
@@ -28,7 +31,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 # TB ceiling for a pin-to-raw-bit transition in clk_smc_i rises; not a latency claim.
 WAIT_BOUND_RISES = 64
+# Every hold samples at least HOLD_RISES rises; the drawn hold length per input lies in
+# [HOLD_RISES, HOLD_RISES_MAX] (the ceiling is a bench bucket).
 HOLD_RISES = 256
+HOLD_RISES_MAX = 1024
 BASELINE_RISES = 16
 # The external inputs pass a three-flop synchroniser (interrupts.adoc).
 SYNC_FLOPS = 3
@@ -59,10 +65,14 @@ _PLIC_PATH = (
 
 
 class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
-    """Walk inputs 0 and 2..16: hold each high for 256 rises, release it, watch the raw vector."""
+    """Walk inputs 0 and 2..16: hold each high at least 256 rises, release it, watch the vector."""
 
     def __init__(self, name: str = "smc_ext_irq_hold_release_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(self.seed)
+        self.walk = rng.sample(WALK, len(WALK))
+        self.holds = {bit: rng.randint(HOLD_RISES, HOLD_RISES_MAX) for bit in WALK}
         self.done = False
         self._stamps: list[tuple[str, int]] = []
         self._chk_marks: list[tuple[str, int]] = []
@@ -190,7 +200,7 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
             "synchroniser latency"
         )
         self._mark(f"ASSERT-{bit}")
-        held = await self._hold(bit, 1, HOLD_RISES, f"{label}_HOLD")
+        held = await self._hold(bit, 1, self.holds[bit], f"{label}_HOLD")
         self._iso_samples += held
         pend_hold = self._pending(bit + 1)
         other_hold = self._other_pending(bit)
@@ -265,9 +275,17 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
             plic_where,
             cocotb.RANDOM_SEED,
         )
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: walk order %s; hold rises per input %s (range %d..%d)",
+            self.seed,
+            self.walk,
+            self.holds,
+            HOLD_RISES,
+            HOLD_RISES_MAX,
+        )
 
         results: dict[int, dict] = {}
-        for bit in WALK:
+        for bit in self.walk:
             results[bit] = await self._hold_release(bit)
             assert self._pins()[1] == 0, "the temperature pin left 0 during the walk"
             if bit in _EXTHOLD:
@@ -275,40 +293,46 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
                 self._log_chk(
                     _EXTHOLD[bit],
                     f"raw bit {bit} rose after {r['rise']} rises (bound {WAIT_BOUND_RISES}) and "
-                    f"held 1 with vector XOR baseline 0x{1 << bit:x} at {HOLD_RISES} rises; fell "
+                    f"held 1 with vector XOR baseline 0x{1 << bit:x} at {r['held']} rises; fell "
                     f"after {r['fall']} rises and vector equalled baseline 0x{self._baseline:x} "
-                    f"for {RELEASE_RISES} rises",
+                    f"for {RELEASE_RISES} rises; drawn=seed {self.seed} hold {r['held']} "
+                    f"walk position {self.walk.index(bit)}",
                 )
 
         missing = [b for b in WALK if b not in results]
         assert not missing, f"walk did not complete inputs {missing}"
         n = len(WALK)
-        rises = ",".join(f"{b}:{results[b]['rise']}" for b in WALK)
-        pend = ",".join(f"{b}:{results[b]['pend_hold']}" for b in WALK)
+        rises = ",".join(f"{b}:{results[b]['rise']}" for b in self.walk)
+        pend = ",".join(f"{b}:{results[b]['pend_hold']}" for b in self.walk)
+        holds = ",".join(f"{b}:{results[b]['held']}" for b in self.walk)
         self._log_chk(
             "CHK-EXTIRQ-ASSERT",
-            f"{n}/{n} inputs {{0,2..16}}, raw bit i=1 after n rises (i:n {rises}; min "
-            f"{SYNC_FLOPS}, bound {WAIT_BOUND_RISES}) and held {HOLD_RISES}/{HOLD_RISES}, "
-            f"pending(ID i+1)=(i:observed {pend}) measured only, LINKED-ISSUE SF-025 SF-026 SF-028",
+            f"{n}/{n} inputs {{0,2..16}} in walk order {self.walk}, raw bit i=1 after n rises "
+            f"(i:n {rises}; min {SYNC_FLOPS}, bound {WAIT_BOUND_RISES}) and held the drawn "
+            f"hold (i:rises {holds}; at least {HOLD_RISES}), pending(ID i+1)=(i:observed {pend}) "
+            f"measured only, LINKED-ISSUE SF-025 SF-026 SF-028; drawn=seed {self.seed} walk "
+            f"{self.walk} holds {holds}",
         )
-        want_iso = n * HOLD_RISES
+        want_iso = sum(self.holds.values())
         assert self._iso_samples == want_iso, (
             f"isolation samples {self._iso_samples}, want {want_iso}"
         )
-        other = "; ".join(f"{b}:{results[b]['other_hold']}" for b in WALK)
+        other = "; ".join(f"{b}:{results[b]['other_hold']}" for b in self.walk)
         self._log_chk(
             "CHK-EXTIRQ-ISOLATION",
-            f"{n} walks x {HOLD_RISES} samples ({self._iso_samples} total), other raw external "
-            f"bits = 0 throughout (bits 0..255 incl. temperature bit 1 and tied 17..255), other "
-            f"pending=(i:observed {other}) measured only, LINKED-ISSUE SF-025",
+            f"{n} walks x the drawn hold ({self._iso_samples} samples in total, each hold at "
+            f"least {HOLD_RISES}), other raw external bits = 0 throughout (bits 0..255 incl. "
+            f"temperature bit 1 and tied 17..255), other pending=(i:observed {other}) measured "
+            f"only, LINKED-ISSUE SF-025; drawn=seed {self.seed} holds {holds}",
         )
-        falls = ",".join(f"{b}:{results[b]['fall']}" for b in WALK)
-        rel = ",".join(f"{b}:{results[b]['pend_rel']}" for b in WALK)
+        falls = ",".join(f"{b}:{results[b]['fall']}" for b in self.walk)
+        rel = ",".join(f"{b}:{results[b]['pend_rel']}" for b in self.walk)
         self._log_chk(
             "CHK-EXTIRQ-RELEASE",
             f"{n}/{n} raw bits 1->0 (i:n {falls}; bound {WAIT_BOUND_RISES}), baseline restored "
             f"0x{self._baseline:x} for {RELEASE_RISES} rises each, pending(ID i+1) after "
-            f"release=(i:observed {rel}) measured only, LINKED-ISSUE SF-027",
+            f"release=(i:observed {rel}) measured only, LINKED-ISSUE SF-027; drawn=seed "
+            f"{self.seed} walk order {self.walk}",
         )
         await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0)
         self.done = True
@@ -326,21 +350,24 @@ class smc_ext_irq_hold_release_test_seq(SmcCsrSeq):
         )
 
     def _nonvac_fence(self) -> None:
-        want = ["BASELINE"] + [f"{t}-{b}" for b in WALK for t in _TERMS]
+        want = ["BASELINE"] + [f"{t}-{b}" for b in self.walk for t in _TERMS]
         got = [s for s, _ in self._stamps]
         assert got == want, f"fence terms {got}, want {want}"
         times = [t for _, t in self._stamps]
         assert all(b > a for a, b in zip(times, times[1:])), f"stamps not increasing: {times}"
         chk_ids = tuple(c for c, _ in self._chk_marks)
-        assert chk_ids == _CHECKERS, f"checker lines {chk_ids}, want {_CHECKERS}"
+        hold_ids = tuple(_EXTHOLD[b] for b in self.walk if b in _EXTHOLD)
+        want_ids = hold_ids + _CHECKERS[len(hold_ids) :]
+        assert chk_ids == want_ids, f"checker lines {chk_ids}, want {want_ids}"
         stamp_at = dict(self._stamps)
         for chk_id, when in self._chk_marks:
-            bit = next((b for b, c in _EXTHOLD.items() if c == chk_id), WALK[-1])
+            bit = next((b for b, c in _EXTHOLD.items() if c == chk_id), self.walk[-1])
             assert when >= stamp_at[f"RELEASE-{bit}"], f"{chk_id} printed before its step"
         cocotb.log.info(
-            "CHK-NONVAC: BASELINE < ASSERT-i < HOLD-i < RELEASE-i (x%d, i in {0,2..16}), "
-            "%d terms each count 1 in order; checker lines %s; stamps %s",
+            "CHK-NONVAC: BASELINE < ASSERT-i < HOLD-i < RELEASE-i (x%d, i in the drawn walk "
+            "order %s), %d terms each count 1 in order; checker lines %s; stamps %s",
             len(WALK),
+            self.walk,
             len(self._stamps),
             ",".join(chk_ids),
             ",".join(f"{s}={t}" for s, t in self._stamps),

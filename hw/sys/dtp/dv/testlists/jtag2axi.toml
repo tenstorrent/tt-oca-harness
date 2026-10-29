@@ -453,6 +453,29 @@ timeout_sec = 6000
 tags = ["jtag2axi"]
 run_modes = ["jtag2axi"]
 
+# Without -xlrm hier_inst_seed, VCS seeds every module instance's random number
+# generator alike, so the CDC jitter model delays synchronizers whose inputs change
+# together by the same cycles. Verilator ignores the switch.
+[[tests]]
+name = "dtp_jtag2axi_cdc_jitter_all_bridges_test"
+module = { cocotb = "dtp_jtag2axi_cdc_jitter_all_bridges_test", uvm = "dtp_jtag2axi_cdc_jitter_all_bridges_test" }
+args = ["+cdc_instrumentation_enabled=1", "-xlrm", "hier_inst_seed"]
+seed = 1
+reseed = 3
+timeout_sec = 1200
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
+[[tests]]
+name = "dtp_jtag2axi_series_reprogram_held_read_test"
+module = { cocotb = "dtp_jtag2axi_series_reprogram_held_read_test", uvm = "dtp_jtag2axi_series_reprogram_held_read_test" }
+seed = 1
+reseed = 3
+# Wall time grows with the drawn TCK-to-system-clock period ratio, up to 100:1.
+timeout_sec = 3600
+tags = ["jtag2axi"]
+run_modes = ["jtag2axi"]
+
 [[tests]]
 name = "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test"
 module = { cocotb = "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test", uvm = "dtp_jtag2axi_smc_otp_axi_single_write_data_verify_test" }

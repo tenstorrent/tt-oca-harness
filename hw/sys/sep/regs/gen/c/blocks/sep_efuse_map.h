@@ -437,7 +437,7 @@ extern "C" {
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm 0xff
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp 0
 #define SEP_EFUSE_MAP__LC_STATE__LC_STATE_bw 8
-#define SEP_EFUSE_MAP__LC_STATE__LC_STATE_reset 0xf0
+#define SEP_EFUSE_MAP__LC_STATE__LC_STATE_reset 0xf
 // Unused
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bm 0xffffff00
 #define SEP_EFUSE_MAP__LC_STATE__RSVD_bp 8

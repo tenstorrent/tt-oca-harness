@@ -24,7 +24,8 @@ Firmware-self-checking: the firmware returns its error count and fw/startup/crt0
 the PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which
 the boot scoreboard gates on. The firmware self-checks (each with a positive PASS
 line in the console log): CHK-RESET (reset values), CHK-CFG-REGWEN (HW busy-lock),
-CHK-RANGE-REGWEN (range gating + rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
+CHK-RANGE-REGWEN (an unconfigured range raises range_valid_error alone, an
+inverted range base_limit_error alone, then the rw0c lock), CHK-COPY-MODE (FIXED/INCR/WRAP
 expected images + neighbor), CHK-WIDTH (1B/2B/4B), CHK-DONE-RW1C, CHK-ERR-OPCODE
 (opcode_error + recovery), CHK-ERR-ADDR (four misaligned descriptors, each
 raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
@@ -32,7 +33,16 @@ raising its ERROR_CODE bit exclusively, then a recovery copy), CHK-HOSTINTG
 + aggregator [41], CLEAR, recovery copy), CHK-HOSTFABRIC (fabric DECERR dest
 -> exclusive host_path_err with the pin low, CLEAR, recovery), CHK-ERR-ASID (unencoded
 ASID), CHK-ERR-SIZE (unencoded width), CHK-ICCM (SRAM->ICCM->SRAM round trip). The
-scoreboard also checks the banner + ICCM execution.
+scoreboard also checks the banner + ICCM execution. Every ERROR_CODE compare grades the
+named fields; bits 31:8 have no stated reset and the firmware prints them on OBS-ERR-RSVD.
+CHK-RESET grades the named fields of each register; its reserved bits print on OBS-RESET-RSVD.
+
+FCOV: the graded window of this leaf opens when the CPU is released and closes after
+the host has parsed the console. ``cp_error_class_exclusive`` holds each cell at the
+ERROR_CODE read of its error leg; the firmware check of that leg also grades
+STATUS.done 0, the W1C clear and a recovery copy after that read, so the leaf
+releases a cell (``set_dma_basic_pass``) only when CHK-ERR-CLASS finds the PASS
+line of the firmware check that owns the cell.
 
 cpu / +skip_fuse_sense (no fuse data is read).
 """
@@ -45,9 +55,20 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_fcov_gate import (
+    DMA_BASIC_PASS_ASID,
+    DMA_BASIC_PASS_BASE_LIMIT,
+    DMA_BASIC_PASS_DST,
+    DMA_BASIC_PASS_RANGE_VALID,
+    DMA_BASIC_PASS_SIZE,
+    DMA_BASIC_PASS_SRC,
+    close_graded_window,
+    open_graded_window,
+    set_dma_basic_pass,
+)
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -69,6 +90,17 @@ _PARAM_MAGIC = 0xDA0A11C0
 _BUSY_LEN = 0x100
 _PIC_POLL = 200_000
 _DMA_PATH_BITS = (1 << IRQ_DMA_HOST_PATH) | (1 << IRQ_DMA_REG_PATH)
+
+# The firmware check that grades each error leg, and the cp_error_class_exclusive
+# cells those legs hold. A cell is released only after that PASS line is found.
+_CLASS_CHECKS = (
+    ("CHK-RANGE-REGWEN PASS:", (DMA_BASIC_PASS_RANGE_VALID, DMA_BASIC_PASS_BASE_LIMIT)),
+    ("CHK-ERR-ADDR PASS:", (DMA_BASIC_PASS_SRC, DMA_BASIC_PASS_DST)),
+    ("CHK-ERR-ASID PASS:", (DMA_BASIC_PASS_ASID,)),
+    ("CHK-ERR-SIZE PASS:", (DMA_BASIC_PASS_SIZE,)),
+)
+# Firmware OBS lines: reserved register bits that no document states.
+_OBS_LINES = ("OBS-RESET-RSVD:", "OBS-ERR-RSVD:")
 
 
 @dataclass(frozen=True)
@@ -106,7 +138,7 @@ class sep_dma_basic_test(sep_base_test):
 
     build_env = False
     # The leaf's own graded records; the base-class records do not count.
-    required_evidence = ("CHK-HOSTINTG-PIC", "CHK-HOSTINTG-CLR", "CHK-RAND-REP")
+    required_evidence = ("CHK-HOSTINTG-PIC", "CHK-HOSTINTG-CLR", "CHK-ERR-CLASS", "CHK-RAND-REP")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -229,24 +261,27 @@ class sep_dma_basic_test(sep_base_test):
             await RisingEdge(dut.clk_i)
         raise AssertionError("firmware never printed CHK-HOSTFABRIC-ARM")
 
-    async def run_scenario(self) -> None:
-        # Override the boot scoreboard's expected banner here (after its own
-        # build_phase, which resets it to the hello_world default).
-        self.sb.expected_line = _BANNER
-        dtcm = self._stage_dtcm()
-        inj = cocotb.start_soon(self._drive_host_intg_inject())
-        fabric = cocotb.start_soon(self._check_host_fabric_pin())
-        await self.boot_firmware(
-            self.sb,
-            _ITCM_HEX,
-            dtcm,
-            rst_vec=_ICCM_BASE >> 1,
-            max_run_cycles=_MAX_RUN_CYCLES,
-            no_boot_cycles=_NO_BOOT_CYCLES,
-            progress_every=_PROGRESS_EVERY,
+    def _class_release_mask(self, console: str) -> int:
+        """CHK-ERR-CLASS: every firmware check that grades an error leg printed its PASS line."""
+        lines = console.splitlines()
+        mask = 0
+        for needle, cells in _CLASS_CHECKS:
+            if not any(ln.startswith(needle) for ln in lines):
+                raise AssertionError(
+                    f"CHK-ERR-CLASS FAIL: firmware console has no {needle!r} line, so its "
+                    "error legs did not pass"
+                )
+            for cell in cells:
+                mask |= 1 << cell
+        self.logger.info(
+            "CHK-ERR-CLASS PASS: firmware reported %s; release mask=0x%02x",
+            ", ".join(needle.split()[0] for needle, _ in _CLASS_CHECKS),
+            mask,
         )
-        await inj
-        await fabric
+        return mask
+
+    def _parse_console(self) -> int:
+        """Grade the firmware console after the run; returns the cell release mask."""
         cfg = self._dma_cfg
         needle = (
             f"SCENARIO src=0x{_SRAM_BASE + cfg.src_off:08x} "
@@ -260,6 +295,7 @@ class sep_dma_basic_test(sep_base_test):
                 "firmware did not consume the patched DMA cfg "
                 f"(missing {needle!r} in console; patch was inert or the image is stale)"
             )
+        mask = self._class_release_mask(console)
         if "CHK-HOSTINTG PASS:" not in console:
             raise AssertionError(
                 "firmware console missing CHK-HOSTINTG PASS "
@@ -286,6 +322,57 @@ class sep_dma_basic_test(sep_base_test):
                     f"firmware console missing {needle} ({what} did not pass), so "
                     "CHK-RAND-REP has nothing to report"
                 )
+        # Logged only: no document states the reserved register bits, so no check grades them.
+        for tag in _OBS_LINES:
+            obs = [ln for ln in console.splitlines() if ln.startswith(tag)]
+            if not obs:
+                raise AssertionError(f"firmware console has no {tag!r} line (stale image)")
+            self.logger.info("%s firmware: %s", tag[:-1], obs[-1][len(tag) :].strip())
+        return mask
+
+    async def _release_cells(self, mask: int) -> None:
+        """Release the held cp_error_class_exclusive cells of the passed checks."""
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        set_dma_basic_pass(mask, self.logger)
+        await ClockCycles(dut.clk_i, 2)
+        set_dma_basic_pass(0, self.logger)
+        await RisingEdge(dut.clk_i)
+
+    async def run_scenario(self) -> None:
+        # Override the boot scoreboard's expected banner here (after its own
+        # build_phase, which resets it to the hello_world default).
+        self.sb.expected_line = _BANNER
+        dtcm = self._stage_dtcm()
+
+        async def _open_window() -> None:
+            # The CPU is released; every error leg the firmware runs from here
+            # is graded stimulus of this leaf.
+            set_dma_basic_pass(0, self.logger)
+            open_graded_window("sep_dma_basic_test", self.logger)
+
+        try:
+            inj = cocotb.start_soon(self._drive_host_intg_inject())
+            fabric = cocotb.start_soon(self._check_host_fabric_pin())
+            await self.boot_firmware(
+                self.sb,
+                _ITCM_HEX,
+                dtcm,
+                rst_vec=_ICCM_BASE >> 1,
+                max_run_cycles=_MAX_RUN_CYCLES,
+                no_boot_cycles=_NO_BOOT_CYCLES,
+                progress_every=_PROGRESS_EVERY,
+                after_bring_up_hook=_open_window,
+            )
+            await inj
+            await fabric
+            mask = self._parse_console()
+        except BaseException:
+            close_graded_window(self.logger)
+            raise
+        await self._release_cells(mask)
+        close_graded_window(self.logger)
+        cfg = self._dma_cfg
         self.logger.info(
             "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
             cfg.seed,

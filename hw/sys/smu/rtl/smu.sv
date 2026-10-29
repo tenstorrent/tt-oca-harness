@@ -209,7 +209,8 @@ module smu #(
   input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afready_i,  // ATB flush ready from telemetry sources.
 
   output smc_pkg::smc_ras_t  smc_ras_o,        // SMC error, watchdog, AXI hang and lifecycle
-                                               // integrity levels for chip-level RAS aggregation.
+                                               // integrity indications for chip-level RAS
+                                               // aggregation.
   output sep_pkg::sep_ras_t  sep_ras_o,        // SEP error, watchdog and hang indications for
                                                // chip-level RAS aggregation; zero when CFG.SEP
                                                // is 0.
@@ -1397,8 +1398,8 @@ module smu #(
   `OCAH_ASSERT_STATIC(
       SmcEfuseShimSize_A,
       CFG.SMC_EFUSE_SHIM_SIZE != 0 &&
-      CFG.SMC_EFUSE_SHIM_SIZE < smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE,
-      "CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than smc_external")
+      CFG.SMC_EFUSE_SHIM_SIZE < smc_pkg::SmcExternalWindowSize,
+      "CFG.SMC_EFUSE_SHIM_SIZE must be non-zero and smaller than the smc_external window")
 
   `OCAH_ASSERT_STATIC(
       SepEfuseShimSize_A,

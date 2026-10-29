@@ -365,6 +365,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_sep_to_smc",
 ]
 
 # SEP AP/STEE output-remap programming. The firmware is a stimulus generator,
@@ -510,6 +512,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_xbar_sep_out",
 ]
 
 # SEP lifecycle flow: real eFuse sense, then firmware-driven demotes. The SEP
@@ -1164,6 +1168,11 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
   "+pll_sys_period_ns=10",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_smu_out",
+  "+axi_sva_need_xbar_smc_out",
+  "+axi_sva_need_xbar_sep_in",
+  "+axi_sva_need_xbar_ext_out",
 ]
 
 [[tests]]
@@ -1263,6 +1272,7 @@ module = "smu_smc_unmapped_response_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["depth", "fabric", "no_sep"]
 run_modes = ["sep_rtl"]
@@ -1749,6 +1759,7 @@ module = "smu_ic_reset_ss_domain_matrix_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 1
 timeout_sec = 1800
 tags = ["dtp", "ic_reset", "no_sep"]
 run_modes = ["sep_rtl"]
@@ -2200,6 +2211,7 @@ module = "smu_octs_reset_and_secondary_hold_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["depth", "no_sep", "octs", "smc", "tier_c"]
 run_modes = ["sep_rtl"]
@@ -2500,6 +2512,8 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_dtp_dbg",
 ]
 
 [[tests]]
@@ -2650,6 +2664,7 @@ module = "smu_dtp_otp_smc_series_error_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["depth", "dtp", "no_sep", "otp", "tier_c"]
 run_modes = ["sep_rtl"]
@@ -4070,6 +4085,7 @@ module = "smu_secure_tm_real_sense_window_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["sep", "efuse", "real_rtl"]
 run_modes = ["sep_rtl_fuse_sense"]
@@ -4088,6 +4104,7 @@ module = "smu_sep_cold_reassert_during_sense_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["sep", "efuse", "real_rtl"]
 run_modes = ["sep_rtl_fuse_sense"]
@@ -4644,6 +4661,10 @@ args = [
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # +axi_sva_need_*: the AXI SVA checkers this leaf's traffic grades.
+  "+axi_sva_need_smu_in",
+  "+axi_sva_need_xbar_ext_in",
+  "+axi_sva_need_xbar_smc_in",
 ]
 
 [[tests]]
@@ -4652,6 +4673,7 @@ module = "smu_axi_in_burst_outstanding_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "no_sep", "smn", "tier_c"]
 run_modes = ["sep_rtl"]
@@ -4951,6 +4973,7 @@ module = "smu_telemetry_queue_threshold_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 3000
 tags = ["smc", "telemetry", "sep", "real_rtl"]
 run_modes = ["sep_rtl"]
@@ -5048,6 +5071,7 @@ module = "smu_xtrig_ctn_csr_rw_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
+reseed = 3
 timeout_sec = 3000
 tags = ["dtp", "no_sep", "xtrig"]
 run_modes = ["sep_rtl"]

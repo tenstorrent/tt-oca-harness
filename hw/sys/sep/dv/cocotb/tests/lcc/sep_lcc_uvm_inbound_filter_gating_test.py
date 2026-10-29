@@ -156,7 +156,7 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             wr = ext_write_seq(addr, wdata)
             await self.start_ext_seq(wr)
             self.logger.info(
-                "INBOUND-UNREACHABLE %s 0x%08x: read resp=%d rdata=0x%08x, write resp=%d",
+                "INFO-INBOUND-UNREACHABLE %s 0x%08x: read resp=%d rdata=0x%08x, write resp=%d",
                 unit,
                 addr,
                 rd.resp_code,

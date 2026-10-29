@@ -223,7 +223,7 @@ program with a legal instruction in place of the faulting one ends at IDLE with
 ``ERR_BITS`` = 0), ``CTRL-OTBN-ILLEGAL-BUS`` (the same host read at IDLE returns the
 non-zero staged word).
 Log-only: ``OBS-OTBN-STATUS-SEQ``; ``OBS-OTBN-INITDONE-DONE`` (``INTR_STATE.done``
-after the post-reset wipe: no sentence states its value); ``OBS-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
+after the post-reset wipe: no sentence states its value); ``INFO-OTBN-BUSYWR-RNDREP`` (bit 6 after the RND
 program, a chance outcome); ``OBS-OTBN-SWERR-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of the recoverable run: no sentence states the bits other
 than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
@@ -232,7 +232,7 @@ than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
 fatal index or the repeat period), ``OBS-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of each integrity run: "a non-zero value that describes the
 error", ToO:186, does not fix the other bits; also the alert high clocks in a fixed
-window after the OTBN reset); ``OBS-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
+window after the OTBN reset); ``INFO-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
 clean RND run, a chance outcome); ``OBS-OTBN-SWERR-KIND-CAUSE`` (the full
 ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of the drawn error: no sentence states the
 other bits); ``OBS-OTBN-ILLEGAL-BUS-CAUSE`` (the full ``ERR_BITS`` and
@@ -686,7 +686,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         rises = self.rst_t.rises(t0, bit=0) if released else []
         ok, vals, clks = await self._wait_idle(self.idle_bound, gap=4)
         self.logger.info(
-            "OTBN-RESET %s released=%d idle=%d clk=%d status=%s",
+            "INFO-OTBN-RESET %s released=%d idle=%d clk=%d status=%s",
             tag,
             int(released),
             int(ok),
@@ -1292,7 +1292,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         idle, ivals, _ = await self._wait_idle(_OUTER_CLK, gap=4)
         err = await self._rd(A_ERR_BITS, M_ERR_BITS)
         # Bit 6 (two equal EDN words) is a chance outcome: logged, not graded.
-        self.chk.obs(
+        self.chk.info(
             "OTBN-BUSYWR-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
         )
         err_graded = err & ~M_ERR_RND_REP
@@ -1401,7 +1401,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             bound=_OUTER_CLK,
         )
         # Bit 6 (two equal EDN words) is a chance outcome: logged, not graded.
-        self.chk.obs(
+        self.chk.info(
             "OTBN-RND-CLEAN-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
         )
 

@@ -170,7 +170,7 @@ class smu_axi_filter_out_instance_matrix_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != 0x1:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
-        sb.expect_eq("CHK-FILTER-OUT-J2A-READY", idcode, 0x1)
+        sb.expect_eq("CHK-FILTER-OUT-J2A-READY", idcode, 0x1, evidence="CHK-FILTER-OUT-J2A-READY")
 
         stride = smc_indexed_addr(_OUT_CFG, 1) - smc_indexed_addr(_OUT_CFG, 0)
         if stride != 0x20:

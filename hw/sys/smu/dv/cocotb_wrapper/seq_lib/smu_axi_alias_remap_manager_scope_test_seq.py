@@ -142,7 +142,7 @@ class smu_axi_alias_remap_manager_scope_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != 0x1:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
-        sb.expect_eq("CHK-ALIAS-REMAP-J2A-READY", idcode, 0x1)
+        sb.expect_eq("CHK-ALIAS-REMAP-J2A-READY", idcode, 0x1, evidence="CHK-ALIAS-REMAP-J2A-READY")
 
         if not (PROGRAMMED_ALIAS_INPUT >= SPM_BASE + 0x100000 or ALIAS_END <= SPM_BASE):
             raise AssertionError(

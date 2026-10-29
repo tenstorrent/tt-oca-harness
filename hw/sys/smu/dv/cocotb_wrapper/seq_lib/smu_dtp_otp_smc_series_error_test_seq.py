@@ -9,17 +9,23 @@ S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
 S2: Series NO_INCR write PATTERN_A to MAP SPARE[0], then series NO_INCR readback
     OKAY + data match.
 S3: SINGLE_OP read of SPARE[0] (same IR as the hole) returns SUCCESS + PATTERN_A;
-    SINGLE_OP read of MAP_BASE+MAP_SIZE (below CTRL) returns SLVERR +
-    ``0xbadcab1e``; SINGLE_OP re-read of SPARE[0] still SUCCESS + PATTERN_A.
+    then, in the drawn order, a SINGLE_OP read of each drawn hole word (below
+    CTRL) returns SLVERR + ``0xbadcab1e`` and a SINGLE_OP re-read of SPARE[0]
+    after it still returns SUCCESS + PATTERN_A.
 
 SPARE[0] from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``.
-Hole from ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + SMC_TOP_SMC_EFUSE_MAP_SIZE``.
+The hole set holds the gap's first word, ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR +
+SMC_TOP_SMC_EFUSE_MAP_SIZE``, in every run; the seed draws zero to two further
+distinct 4-byte-aligned words from the rest of the gap, up to
+``SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR``, and the order they are read in.
 
 Not claimed: Force-closed gate; SEP OTP; INCR across MAP fields; SHIM-unmapped
 DECERR at 0xC000D000 (needs a real eFuse SHIM or TB err_slv).
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 from ocah_jtag_vip import OcahJtagState
@@ -42,12 +48,14 @@ SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
 CTRL_BASE = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
-HOLE = MAP_BASE + MAP_SIZE
-if not (MAP_BASE < HOLE < CTRL_BASE):
+HOLE_START = MAP_BASE + MAP_SIZE
+if not (MAP_BASE < HOLE_START < CTRL_BASE):
     raise RuntimeError(
-        f"MAP-CTRL hole 0x{HOLE:08x} not strictly between MAP 0x{MAP_BASE:08x} "
+        f"MAP-CTRL hole 0x{HOLE_START:08x} not strictly between MAP 0x{MAP_BASE:08x} "
         f"and CTRL 0x{CTRL_BASE:08x}"
     )
+HOLE_REST = range(HOLE_START + 4, CTRL_BASE, 4)
+HOLE_EXTRA_DRAWS = (0, 2)
 PATTERN_A = 0xA5A5_5A5A
 OTP_POLL = 128
 
@@ -59,6 +67,9 @@ class smu_dtp_otp_smc_series_error_test_seq:
         self.test = test
         self.dut = cocotb.top
         self.cfg = test.cfg
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.holes: list[int] = []
         self.s1_ok = False
         self.s2_ok = False
         self.s3_ok = False
@@ -81,8 +92,18 @@ class smu_dtp_otp_smc_series_error_test_seq:
         )
         return st, int(rdata) & 0xFFFF_FFFF
 
+    def _draw(self) -> None:
+        extra = self.rng.sample(HOLE_REST, self.rng.randint(*HOLE_EXTRA_DRAWS))
+        self.holes = [HOLE_START, *extra]
+        self.rng.shuffle(self.holes)
+        self._log(f"SEED: RANDOM_SEED={self.seed} drawn holes={self._holes_text()}")
+
+    def _holes_text(self) -> str:
+        return "[" + ",".join(f"0x{a:08x}" for a in self.holes) + "]"
+
     async def run(self) -> None:
         sb = self.test.env.scoreboard
+        self._draw()
         jtag = make_smu_jtag_tap(self.dut, self.cfg.jtag_period_ns)
         await jtag.reset_tap()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
@@ -92,7 +113,12 @@ class smu_dtp_otp_smc_series_error_test_seq:
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
-        sb.expect_eq("CHK-OTP-SMC-SERIES-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
+        sb.expect_eq(
+            "CHK-OTP-SMC-SERIES-JTAG-READY",
+            idcode,
+            DTP_DEFAULT_IDCODE,
+            evidence="CHK-OTP-SMC-SERIES-JTAG-READY",
+        )
 
         gate = self._sample_int("tb_otp_jtag2axi_security_disable") & 1
         lc = self._sample_int("lc_state_o") & 0xFF
@@ -108,7 +134,9 @@ class smu_dtp_otp_smc_series_error_test_seq:
             raise AssertionError(f"lc_sigint_err_o={sigint} want 0 (demux err_slv)")
         self.s1_ok = True
         self._log(f"CHK-OTP-SMC-SERIES-GATE-OPEN disable={gate} lc=0x{lc:02x} sigint={sigint}")
-        sb.expect_eq("CHK-OTP-SMC-SERIES-GATE-OPEN", gate, 0)
+        sb.expect_eq(
+            "CHK-OTP-SMC-SERIES-GATE-OPEN", gate, 0, evidence="CHK-OTP-SMC-SERIES-GATE-OPEN"
+        )
 
         mask = otp_series_data_mask()
         want = PATTERN_A & mask
@@ -129,7 +157,7 @@ class smu_dtp_otp_smc_series_error_test_seq:
             )
         self.s2_ok = True
         self._log(f"CHK-OTP-SMC-SERIES-RW @0x{SPARE0:08x} data=0x{got:08x} status=SUCCESS")
-        sb.expect_eq("CHK-OTP-SMC-SERIES-RW", got, want)
+        sb.expect_eq("CHK-OTP-SMC-SERIES-RW", got, want, evidence="CHK-OTP-SMC-SERIES-RW")
 
         allow_st, allow_data = await self._single_rd(jtag, SPARE0, "SPARE0-ALLOW")
         if allow_st != J2A_STATUS_SUCCESS or allow_data != want:
@@ -140,42 +168,54 @@ class smu_dtp_otp_smc_series_error_test_seq:
         self._log(
             f"CHK-OTP-SMC-SINGLE-OP-ALLOW @0x{SPARE0:08x} data=0x{allow_data:08x} status=SUCCESS"
         )
-        sb.expect_eq("CHK-OTP-SMC-SINGLE-OP-ALLOW", allow_data, want)
-
-        hole_st, hole_data = await self._single_rd(jtag, HOLE, "HOLE")
-        if hole_st == J2A_STATUS_SUCCESS:
-            raise AssertionError(f"OTP decode hole @0x{HOLE:08x} returned OKAY")
-        if hole_st != J2A_STATUS_SLVERR:
-            raise AssertionError(
-                f"OTP decode hole @0x{HOLE:08x} status={hole_st} want SLVERR={J2A_STATUS_SLVERR}"
-            )
-        if hole_data != SMC_OTP_ERR_DECODE_DATA:
-            raise AssertionError(
-                f"OTP decode hole @0x{HOLE:08x} data=0x{hole_data:08x} "
-                f"want 0x{SMC_OTP_ERR_DECODE_DATA:08x}"
-            )
-        self._log(f"CHK-OTP-SMC-DECODE-SLVERR @0x{HOLE:08x} status=SLVERR data=0x{hole_data:08x}")
         sb.expect_eq(
-            "CHK-OTP-SMC-DECODE-SLVERR",
-            (hole_st, hole_data),
-            (J2A_STATUS_SLVERR, SMC_OTP_ERR_DECODE_DATA),
-            evidence="CHK-OTP-SMC-DECODE-SLVERR",
+            "CHK-OTP-SMC-SINGLE-OP-ALLOW", allow_data, want, evidence="CHK-OTP-SMC-SINGLE-OP-ALLOW"
         )
 
-        stab_st, stab_data = await self._single_rd(jtag, SPARE0, "SPARE0-STABLE")
-        if stab_st != J2A_STATUS_SUCCESS or stab_data != want:
-            raise AssertionError(
-                f"OTP SINGLE_OP SPARE0 after hole @0x{SPARE0:08x} status={stab_st} "
-                f"data=0x{stab_data:08x} want SUCCESS+0x{want:08x}"
+        for n, hole in enumerate(self.holes, start=1):
+            drawn = f"drawn hole=0x{hole:08x} ({n}/{len(self.holes)} of {self._holes_text()})"
+            hole_st, hole_data = await self._single_rd(jtag, hole, "HOLE")
+            if hole_st == J2A_STATUS_SUCCESS:
+                raise AssertionError(f"OTP decode hole @0x{hole:08x} returned OKAY")
+            if hole_st != J2A_STATUS_SLVERR:
+                raise AssertionError(
+                    f"OTP decode hole @0x{hole:08x} status={hole_st} "
+                    f"want SLVERR={J2A_STATUS_SLVERR}"
+                )
+            if hole_data != SMC_OTP_ERR_DECODE_DATA:
+                raise AssertionError(
+                    f"OTP decode hole @0x{hole:08x} data=0x{hole_data:08x} "
+                    f"want 0x{SMC_OTP_ERR_DECODE_DATA:08x}"
+                )
+            self._log(
+                f"CHK-OTP-SMC-DECODE-SLVERR @0x{hole:08x} status=SLVERR data=0x{hole_data:08x}"
+            )
+            sb.expect_eq(
+                f"CHK-OTP-SMC-DECODE-SLVERR {drawn}",
+                (hole_st, hole_data),
+                (J2A_STATUS_SLVERR, SMC_OTP_ERR_DECODE_DATA),
+                evidence="CHK-OTP-SMC-DECODE-SLVERR",
+            )
+
+            stab_st, stab_data = await self._single_rd(jtag, SPARE0, "SPARE0-STABLE")
+            if stab_st != J2A_STATUS_SUCCESS or stab_data != want:
+                raise AssertionError(
+                    f"OTP SINGLE_OP SPARE0 after hole @0x{SPARE0:08x} status={stab_st} "
+                    f"data=0x{stab_data:08x} want SUCCESS+0x{want:08x}"
+                )
+            self._log(
+                f"CHK-OTP-SMC-SPARE-STABLE @0x{SPARE0:08x} data=0x{stab_data:08x} "
+                f"status=SUCCESS hole=0x{hole:08x}"
+            )
+            sb.expect_eq(
+                f"CHK-OTP-SMC-SPARE-STABLE {drawn}",
+                stab_data,
+                want,
+                evidence="CHK-OTP-SMC-SPARE-STABLE",
             )
         self.s3_ok = True
-        self._log(
-            f"CHK-OTP-SMC-SPARE-STABLE @0x{SPARE0:08x} data=0x{stab_data:08x} "
-            f"status=SUCCESS hole=0x{HOLE:08x}"
-        )
-        sb.expect_eq("CHK-OTP-SMC-SPARE-STABLE", stab_data, want)
 
         self._log(
             f"PASS DTP-OTP-SMC-SERIES-ERROR s1={self.s1_ok} s2={self.s2_ok} "
-            f"s3={self.s3_ok} spare0=0x{SPARE0:08x} hole=0x{HOLE:08x}"
+            f"s3={self.s3_ok} spare0=0x{SPARE0:08x} holes={self._holes_text()}"
         )

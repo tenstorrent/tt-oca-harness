@@ -332,7 +332,7 @@ class sep_pic_external_access_refuse_test(sep_base_test):
                     )
                 last = self.acc[-1]
                 self.logger.info(
-                    "PIC-EXT-DONE LOG regime=%s last_op=%s addr=0x%08x resp=%s clk=%d",
+                    "INFO-PIC-EXT-DONE LOG regime=%s last_op=%s addr=0x%08x resp=%s clk=%d",
                     regime,
                     last.op,
                     last.target.addr,
@@ -343,7 +343,7 @@ class sep_pic_external_access_refuse_test(sep_base_test):
                 resp = await self.mbx7.push("in", (CW_HI << 32) | CW[regime])
                 self.cw[regime] = (resp, self.con.clk)
                 self.logger.info(
-                    "PIC-COMPLETION-WORD LOG regime=%s resp=%s clk=%d",
+                    "INFO-PIC-COMPLETION-WORD LOG regime=%s resp=%s clk=%d",
                     regime,
                     resp_name(resp),
                     self.con.clk,

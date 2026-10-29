@@ -10,6 +10,8 @@ hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl (RESET_CTRL).
 from __future__ import annotations
 
 import math
+import os
+import random
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -149,6 +151,43 @@ def access_register(
     )
 
 
+# S4 with cmderr 1 held: the drawn reject form is written first and leaves the
+# held 1 (cpu.adoc, Abstract Command Writes While cmderr Is Set: only a cmdtype
+# other than Access Register sets 2, and no command executes while cmderr is
+# nonzero); the pinned Quick Access follows and replaces the held code with 2.
+REJECT_FORMS = ("regno_out_of_range", "aarsize_16")
+# S6 with cmderr 2 held: the first stored command is a drawn write form of x8,
+# so that the execution of a stored command would show in x8; the rest are drawn
+# from STORE_FORMS, and every form leaves the held 2 (cpu.adoc, Abstract Command
+# Writes While cmderr Is Set: an Access Register form sets no code, Quick Access
+# sets the 2 already held, and no command executes while cmderr is nonzero).
+WRITE_FORMS = ("write_x8_64", "write_x8_32")
+STORE_FORMS = (
+    "write_x8_64",
+    "write_x8_32",
+    "read_x8_64",
+    "quick_access",
+    "regno_out_of_range",
+    "aarsize_16",
+)
+STORE_SEQUENCE_MAX = 4
+
+
+def command_word(form: str) -> int:
+    return {
+        "quick_access": CMD_QUICK_ACCESS,
+        "regno_out_of_range": access_register(REGNO_OUT_OF_RANGE, write=False, transfer=True),
+        "aarsize_16": access_register(
+            GPR_BASE + X8, write=False, transfer=True, aarsize=AARSIZE_16
+        ),
+        "write_x8_64": access_register(GPR_BASE + X8, write=True, transfer=True),
+        "write_x8_32": access_register(
+            GPR_BASE + X8, write=True, transfer=True, aarsize=AARSIZE_32
+        ),
+        "read_x8_64": access_register(GPR_BASE + X8, write=False, transfer=True),
+    }[form]
+
+
 LOOP_DECREMENT = encode_addi(X5, X5, -1)
 LOOP_BRANCH = encode_bne(X5, 0, -4)
 PROGBUF = (LOOP_DECREMENT, LOOP_BRANCH) + (NOP,) * (PROGBUF_WORDS - 2)
@@ -159,6 +198,7 @@ class smc_jtag_dm_abstractcs_lifecycle_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_jtag_dm_abstractcs_lifecycle_test_seq") -> None:
         super().__init__(name)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         self.dm_ok: bool = False
         self.x8_low: int = 0
         self._tap: SmcJtagTap | None = None
@@ -303,6 +343,13 @@ class smc_jtag_dm_abstractcs_lifecycle_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         clk = cocotb.top.clk_smc_i
+        rng = random.Random(self.seed)
+        reject_form = rng.choice(REJECT_FORMS)
+        store_forms = [rng.choice(WRITE_FORMS)] + [
+            rng.choice(STORE_FORMS) for _ in range(rng.randint(0, STORE_SEQUENCE_MAX - 1))
+        ]
+        drawn = f"seed {self.seed} reject {reject_form} store {store_forms}"
+        cocotb.log.info("RAND-SEED: %d; RAND-DRAW: %s", self.seed, drawn)
         clk_period_ns = await measure_clock_period_ns(clk)
         window_ns = WINDOW_DMI_ACCESSES * TCK_PER_DMI_ACCESS * TCK_PERIOD_NS
         loop_count = math.ceil(window_ns / (LOOP_CLOCKS_PER_ITERATION * clk_period_ns))
@@ -414,11 +461,21 @@ class smc_jtag_dm_abstractcs_lifecycle_test_seq(SmcCsrSeq):
         assert busy_cmderr == CMDERR_BUSY, (
             f"command written while busy left cmderr={busy_cmderr}, abstractcs=0x{after_busy:08X}"
         )
+        reject_command = command_word(reject_form)
+        await self._dmi_write(DMI_COMMAND, reject_command)
+        rejected, _ = await self._wait_idle("reject_wait")
+        reject_cmderr = self._cmderr(rejected)
+        assert reject_cmderr == CMDERR_BUSY and not rejected & ABSTRACTCS_BUSY, (
+            f"the {reject_form} form 0x{reject_command:08X} with cmderr 1 held left "
+            f"abstractcs=0x{rejected:08X} (an Access Register form sets no code and executes "
+            f"nothing under a held code)"
+        )
         await self._dmi_write(DMI_COMMAND, CMD_QUICK_ACCESS)
         replaced, _ = await self._wait_idle("replace_wait")
         replace_cmderr = self._cmderr(replaced)
         assert replace_cmderr == CMDERR_NOT_SUPPORTED and not replaced & ABSTRACTCS_BUSY, (
-            f"Quick Access with cmderr 1 held left abstractcs=0x{replaced:08X}"
+            f"Quick Access 0x{CMD_QUICK_ACCESS:08X} with cmderr {reject_cmderr} held after the "
+            f"{reject_form} form left abstractcs=0x{replaced:08X}"
         )
         cleared = await self._clear_cmderr("busy_write_clear")
         x6_after = await self._read_gpr("x6_after_busy_write", X6)
@@ -443,8 +500,12 @@ class smc_jtag_dm_abstractcs_lifecycle_test_seq(SmcCsrSeq):
         )
         self._set_chk(
             "CHK-DM-CMDERR-REPLACE",
-            f"cmderr 1 held (abstractcs=0x{after_busy:08X}), Quick Access 0x{CMD_QUICK_ACCESS:08X} "
-            f"left abstractcs=0x{replaced:08X} cmderr=2 busy=0",
+            f"cmderr 1 held (abstractcs=0x{after_busy:08X}): the drawn {reject_form} form "
+            f"0x{reject_command:08X} left abstractcs=0x{rejected:08X} cmderr=1 busy=0 "
+            f"(compared: an Access Register form sets no code and executes nothing under a "
+            f"held code); the pinned Quick Access 0x{CMD_QUICK_ACCESS:08X} then left "
+            f"abstractcs=0x{replaced:08X} cmderr=2 busy=0 (compared: a command type other than "
+            f"Access Register replaces the held code with 2); drawn={drawn}",
         )
 
         legs = {}
@@ -503,18 +564,30 @@ class smc_jtag_dm_abstractcs_lifecycle_test_seq(SmcCsrSeq):
 
         await self._write_data64(PATTERN_B)
         await self._command("store_leg_a", cmd_a, expect_cmderr=CMDERR_NOT_SUPPORTED)
-        store_command = access_register(GPR_BASE + X8, write=True, transfer=True)
-        await self._dmi_write(DMI_COMMAND, store_command)
-        command_back = await self._dmi_read(DMI_COMMAND)
-        store_abstractcs, _ = await self._wait_idle("store_wait")
+        stored: list[str] = []
+        for n, form in enumerate(store_forms):
+            store_command = command_word(form)
+            await self._dmi_write(DMI_COMMAND, store_command)
+            command_back = await self._dmi_read(DMI_COMMAND)
+            store_abstractcs, _ = await self._wait_idle(f"store_wait_{n}")
+            store_cmderr = self._cmderr(store_abstractcs)
+            assert command_back == store_command, (
+                f"stored command {n} ({form}) read back 0x{command_back:08X}, written "
+                f"0x{store_command:08X}"
+            )
+            assert store_cmderr == CMDERR_NOT_SUPPORTED, (
+                f"stored command {n} ({form}) changed cmderr to {store_cmderr}, "
+                f"abstractcs=0x{store_abstractcs:08X}"
+            )
+            graded = "cmderr=2 held"
+            stored.append(
+                f"{n}:{form} 0x{store_command:08X} read back 0x{command_back:08X} {graded}"
+            )
         await self._clear_cmderr("store_clear")
         x8_after = await self._read_gpr("x8_after_store", X8)
         self._step_done("S6")
-        assert command_back == store_command, (
-            f"command read back 0x{command_back:08X}, written 0x{store_command:08X}"
-        )
-        assert self._cmderr(store_abstractcs) == CMDERR_NOT_SUPPORTED, (
-            f"cmderr changed to {self._cmderr(store_abstractcs)}, 0x{store_abstractcs:08X}"
+        assert store_forms[0] in WRITE_FORMS, (
+            f"NOEXEC reach: the first stored command {store_forms[0]} is not a write form of x8"
         )
         assert x8_after == PATTERN_A, (
             f"x8 reads 0x{x8_after:016X}, pattern A 0x{PATTERN_A:016X}, "
@@ -522,14 +595,18 @@ class smc_jtag_dm_abstractcs_lifecycle_test_seq(SmcCsrSeq):
         )
         self._set_chk(
             "CHK-DM-CMDERR-STORE",
-            f"command written while busy=0 cmderr=2 read back 0x{command_back:08X} (earlier "
-            f"0x{cmd_a:08X}); abstractcs=0x{store_abstractcs:08X} cmderr=2",
+            f"{len(store_forms)} drawn command(s) written while busy=0 cmderr=2 (held by "
+            f"0x{cmd_a:08X}), the first slot pinned to a drawn write form of x8 (64- or 32-bit: "
+            f"{store_forms[0]}), each read back as written and leaving cmderr 2, the reject "
+            f"forms included (cpu.adoc, Abstract Command Writes While cmderr Is Set): "
+            f"{'; '.join(stored)}; drawn={drawn}",
         )
         self._set_chk(
             "CHK-DM-CMDERR-NOEXEC",
-            f"x8 reads 0x{x8_after:016X} after the pattern-B write command issued with cmderr=2 "
-            f"and the clear; pattern A 0x{PATTERN_A:016X} written in S1, pattern B "
-            f"0x{PATTERN_B:016X} not stored",
+            f"x8 reads 0x{x8_after:016X} after the {len(store_forms)} drawn command(s) stored "
+            f"with cmderr=2, the first a {store_forms[0]} of pattern B, and the clear; pattern A "
+            f"0x{PATTERN_A:016X} written in S1, pattern B 0x{PATTERN_B:016X} in data0/data1 not "
+            f"stored; drawn={drawn}",
         )
 
         await ClockCycles(clk, 2)
@@ -557,8 +634,9 @@ class smc_jtag_dm_abstractcs_lifecycle_test_seq(SmcCsrSeq):
             "fail-on-expiry=SmcJtagTapError last=%s; dm_active_poll=%d dmstatus reads "
             "fail-on-expiry=AssertionError last=dmstatus; halt_wait=%d dmstatus reads "
             "fail-on-expiry=AssertionError last=dmstatus; idle_wait=%d abstractcs reads, used by "
-            "every command (the GPR writes and reads, the rejected-command legs, replace_wait and "
-            "store_wait) and every cmderr clear, fail-on-expiry=AssertionError last=abstractcs; "
+            "every command (the GPR writes and reads, the rejected-command legs, reject_wait, "
+            "replace_wait and store_wait) and every cmderr clear, "
+            "fail-on-expiry=AssertionError last=abstractcs; "
             "loop_wait=%d abstractcs reads fail-on-expiry=AssertionError last=abstractcs; "
             "busy_observe=%d abstractcs reads fail-on-expiry=AssertionError last=abstractcs; "
             "busy_write_wait=%d abstractcs reads fail-on-expiry=AssertionError last=abstractcs",
