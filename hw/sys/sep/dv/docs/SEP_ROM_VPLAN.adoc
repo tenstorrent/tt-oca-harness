@@ -352,7 +352,7 @@ holds the stimulus, the checkers and the requirements.
 |`sep_scratch_7_test` |<<sep-rom-vplan-warm-reset>> |warm jump: cold_scratch[1]=0x01010068 (WARM_RESET_JUMP), cold_scratch[7] 0xC0000100->0x0, instruction retired at 0xC0000100, no console.
 |`sep_firmware_mbist_only_fail_test` |<<sep-rom-vplan-dft-gate>> |scratch[10]=0x00000012; cold_scratch[1] 0x08010219 then 0x0F01D001 (ROM_ERR_DFT_GATE_BLOCKED); silent console; PC spins; no boot.
 |`sep_firmware_mbist_pass_test` |<<sep-rom-vplan-dft-gate>> |boots; cold_scratch[1] shows PRESTART_DONE 0x80010056 and never WARN 0x08010219 or ROM_ERR_DFT_GATE_BLOCKED 0x0F01D001; SMC scratch[10] stays 0; SMC_MEM_CHK and CHIP_ID= printed.
-|`sep_mbist_fail_continue_test` |<<sep-rom-vplan-dft-gate>> |cold_scratch[1] transiently holds WARN 0x08010219, SMC scratch[10] holds 0xFFFFFFFD, ROM_ERR_DFT_GATE_BLOCKED 0x0F01D001 never appears, and the boot reaches BL1 PASS.
+|`sep_mbist_fail_skip_fuse_ignored_test` |<<sep-rom-vplan-dft-gate>> |STATUS_RPT bit 2 blown, still terminal ROM_ERR_DFT_GATE_BLOCKED: cold_scratch[1] WARN 0x08010219 then 0x0F01D001 and no later change, SMC scratch[10]=0xFFFFFFFD, PC only in the halt spin, no C-runtime console marker.
 |`sep_warm_reset_invalid_hang_test` |<<sep-rom-vplan-warm-reset>> |terminal hang: cold_scratch[1]=0x0F010069 (WARM_RESET_HANG), no 0x01010068, no cold-boot words or poison, silent console, PC spin <=64 B.
 |`sep_warm_reset_below_range_hang_test` |<<sep-rom-vplan-warm-reset>> |cold_scratch[1]=0x0F010069 (WARM_RESET_HANG); no 0x01010068 jump, no BOOTROM_START/PRESTART_DONE, no 0xFFFFFFFF poison, silent console; PC spins within 64 B.
 |`sep_warm_reset_unarmed_cold_boot_test` |<<sep-rom-vplan-warm-reset>> |cold_scratch[7] 0 -> 0xFFFFFFFF; cold_scratch[1] shows 0x80010044 then 0x80010056; no WARM_RESET_JUMP or WARM_RESET_HANG.
@@ -942,12 +942,12 @@ PASS record of its own.
 
 *Base:* `hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_mbist_fail_test.py`.
 
-*Objective:* Proves that the pre-C DFT gate in vector.S blocks boot on an injected memory-repair or MBIST failure: it publishes the raw status to SMC scratch[10], emits MBIST_FAIL WARN, writes ROM_ERR_DFT_GATE_BLOCKED and spins. It lets a status with mem_repair_success, mbist_done and mbist_pass set boot, and continues to BL1 after the WARN and the scratch[10] publish when STATUS_RPT bit 2 is set.
+*Objective:* Proves that the pre-C DFT gate in vector.S blocks boot on an injected memory-repair or MBIST failure: it publishes the raw status to SMC scratch[10], emits MBIST_FAIL WARN, writes ROM_ERR_DFT_GATE_BLOCKED and spins. It lets a status with mem_repair_success, mbist_done and mbist_pass set boot, and still halts when reserved STATUS_RPT bit 2 is blown, because no eFuse lets a failed check continue.
 
 *Procedure:*
 
 . Assert +sep_dft_status is set and equals dft_status_injected, then run the member's stimulus-shape check.
-. Write a zero eFuse image stamped TEST_DEV (STATUS_RPT bypass bit 2 unblown).
+. Write a zero eFuse image stamped TEST_DEV (reserved STATUS_RPT bit 2 unblown; `sep_mbist_fail_skip_fuse_ignored_test` blows it).
 . Stage ROM .itcm/.dtcm through tcm_load_i and release the core at the Boot ROM base.
 . Sample cold_scratch[1] and SMC scratch[10] each cycle until 0x0F01D001 or 400k cycles.
 . Watch 2000 more cycles, recording retired PCs and any change of cold_scratch[1].
@@ -979,7 +979,7 @@ PASS record of its own.
 |`sep_firmware_mbist_fail_test` |+sep_dft_status=FFFFFFFD (SMC DFX_CTRL_STATUS with only bit 1 mem_repair_success clear); STATUS_RPT bit 2 unblown; TEST_DEV. DV shortcut: +sep_dft_status injection through the TB SMC responder; tcm_load_i backdoor preload of boot_rom.itcm/dtcm.hex into ICCM/DCCM before reset. |terminal ROM_ERR_DFT_GATE_BLOCKED: cold_scratch[1] WARN 0x08010219 then 0x0F01D001, SMC scratch[10]=0xFFFFFFFD, silent console, PC spin <=64 B. |`CHK-DFT-READ`, `CHK-DFT-DETECT`, `CHK-DFT-PRE-C`, `CHK-DFT-PUBLISH`, `CHK-DFT-NO-BYPASS`, `CHK-DFT-TERMINAL`, `CHK-DFT-NO-PROGRESS` |`SEP-ROM-SMC-030`
 |`sep_firmware_mbist_only_fail_test` |+sep_dft_status=00000012 (mem_repair_success bit 1 set, mbist_done bit 4 set, mbist_pass bit 8 clear). DV shortcut: +sep_dft_status injects DFX_CTRL_STATUS through the SMC responder model; tcm_load_i backdoor stages ROM .itcm/.dtcm hex with valid ECC before reset |scratch[10]=0x00000012; cold_scratch[1] 0x08010219 then 0x0F01D001 (ROM_ERR_DFT_GATE_BLOCKED); silent console; PC spins; no boot. |None beyond the group |`SEP-ROM-SMC-030`
 |`sep_firmware_mbist_pass_test` |Runs the base procedure of <<sep-rom-vplan-ot-spi-boot>>. +sep_dft_status=00000112 (bits 1, 4, 8 only; repair_done and abort bits clear) into the SMC responder's DFX_CTRL_STATUS_SMU word. DV shortcut: SMC responder is a flat-memory model; +sep_dft_status sets the DFX_CTRL_STATUS_SMU word it serves. |boots; cold_scratch[1] shows PRESTART_DONE 0x80010056 and never WARN 0x08010219 or ROM_ERR_DFT_GATE_BLOCKED 0x0F01D001; SMC scratch[10] stays 0; SMC_MEM_CHK and CHIP_ID= printed. |`CHK-DFT-PASS-STIMULUS`, `CHK-DFT-INJECTED`, `CHK-DFT-REACHED`, `CHK-DFT-NO-WARN`, `CHK-DFT-NO-PUBLISH` |`SEP-ROM-SMC-030`
-|`sep_mbist_fail_continue_test` |Runs the base procedure of <<sep-rom-vplan-ot-spi-boot>>. +sep_dft_status=FFFFFFFD (mem_repair_success clear, mbist_pass set) plus OTP STATUS_RPT bit 2 (SKIP_MEM_CHECK) set on a TEST_DEV image. DV shortcut: SMC responder flat-memory model serves +sep_dft_status as DFX_CTRL_STATUS_SMU. |cold_scratch[1] transiently holds WARN 0x08010219, SMC scratch[10] holds 0xFFFFFFFD, ROM_ERR_DFT_GATE_BLOCKED 0x0F01D001 never appears, and the boot reaches BL1 PASS. |`CHK-BYPASS-FUSE`, `CHK-DFT-FAIL-STIMULUS`, `CHK-DFT-INJECTED`, `CHK-DFT-REACHED`, `CHK-MBIST-FAIL-TAKEN`, `CHK-MBIST-PUBLISH`, `CHK-BYPASS-TAKEN` |`SEP-ROM-SMC-030`
+|`sep_mbist_fail_skip_fuse_ignored_test` |+sep_dft_status=FFFFFFFD (only bit 1 mem_repair_success clear) plus OTP STATUS_RPT bit 2 blown on a TEST_DEV image. DV shortcut: +sep_dft_status injection through the TB SMC responder; tcm_load_i backdoor preload of boot_rom.itcm/dtcm.hex before reset. |terminal ROM_ERR_DFT_GATE_BLOCKED as in `sep_firmware_mbist_fail_test`: cold_scratch[1] WARN 0x08010219 then 0x0F01D001 with no later change, SMC scratch[10]=0xFFFFFFFD, PC only in the halt spin, no C-runtime console marker. |`CHK-SKIP-FUSE-BLOWN`, `CHK-DFT-STATUS-STABLE`, `CHK-DFT-HALT-SPIN`; it keeps `CHK-DFT-PUBLISH` and `CHK-DFT-DETECT`, redefines `CHK-DFT-TERMINAL` and `CHK-DFT-NO-PROGRESS` (which absorbs `CHK-DFT-PRE-C`), and does not run `CHK-DFT-READ` or `CHK-DFT-NO-BYPASS` |`SEP-ROM-SMC-030`
 |===
 
 *Added checker contracts:*
@@ -999,13 +999,11 @@ PASS record of its own.
 |`sep_firmware_mbist_pass_test` |`CHK-DFT-REACHED` |cold_scratch[1] held PRESTART_DONE 0x80010056, so execution reached the gate.
 |`sep_firmware_mbist_pass_test` |`CHK-DFT-NO-WARN` |Neither the MBIST WARN word nor the gate-blocked ERROR word ever reached cold_scratch[1].
 |`sep_firmware_mbist_pass_test` |`CHK-DFT-NO-PUBLISH` |SMC scratch[10] stayed 0 for the whole run.
-|`sep_mbist_fail_continue_test` |`CHK-BYPASS-FUSE` |The generated OTP image has STATUS_RPT bit 2 set.
-|`sep_mbist_fail_continue_test` |`CHK-DFT-FAIL-STIMULUS` |The plusarg equals 0xFFFFFFFD with mem_repair_success clear and mbist_pass set.
-|`sep_mbist_fail_continue_test` |`CHK-DFT-INJECTED` |The SMC model's DFX word only held 0 or 0xFFFFFFFD and ended there.
-|`sep_mbist_fail_continue_test` |`CHK-DFT-REACHED` |cold_scratch[1] held PRESTART_DONE 0x80010056.
-|`sep_mbist_fail_continue_test` |`CHK-MBIST-FAIL-TAKEN` |cold_scratch[1] held the WARN word 0x08010219 at some cycle.
-|`sep_mbist_fail_continue_test` |`CHK-MBIST-PUBLISH` |SMC scratch[10] held 0xFFFFFFFD.
-|`sep_mbist_fail_continue_test` |`CHK-BYPASS-TAKEN` |0x0F01D001 never reached cold_scratch[1].
+|`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-SKIP-FUSE-BLOWN` |The generated OTP image has STATUS_RPT bit 2 set.
+|`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-DFT-TERMINAL` |cold_scratch[1] reached 0x0F01D001 within 400k cycles, after the WARN word.
+|`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-DFT-STATUS-STABLE` |cold_scratch[1] did not change for 2000 cycles after 0x0F01D001.
+|`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-DFT-HALT-SPIN` |Every PC retired in those 2000 cycles is the `wfi` or the `j` of the `mem_repair_fail_hang` spin, read from `boot_rom.dis` of the ROM under test.
+|`sep_mbist_fail_skip_fuse_ignored_test` |`CHK-DFT-NO-PROGRESS` |None of SMC_MEM_CHK, LC=, DFT_STATUS=, CHIP_ID=, MANIFEST_OK, BL1_COPIED or PRE_JUMP appears on the console.
 |===
 
 ==== Fuses, lifecycle and secure-boot decision
@@ -2690,7 +2688,7 @@ reset. Test timeouts are 1 to 6 hours of wall time.
 |Limitation |Impact
 |No CI tier runs `rom_fw` |Boot ROM evidence comes from a local run on a host with the toolchain
 |Cold-path value of `cold_scratch[7]` |`rom.adoc` (Cold Boot Environment Setup, step 1, and Warm-Reset Resume Path, step 2) says the ROM clears the slot on a cold boot. `bl1-handoff.adoc` (Warm-reset return) says the ROM poisons it with `-1`, and `vector.S` writes `0xFFFFFFFF`. `sep_warm_reset_unarmed_cold_boot_test` expects `0xFFFFFFFF`. The two specification chapters disagree, and the ROM owner decides which value is correct
-|Memory-repair gate |`SEP-ROM-SMC-030` names the `mem_repair_bypass` strap (`STRAPS_LO[13]`) as the escape. `vector.S` also continues on `STATUS_RPT` bit 2 (SKIP_MEM_CHECK), which `sep_efuse_map.rdl` lists as reserved, and also gates on the MBIST result. `sep_mbist_fail_continue_test` and `sep_firmware_mbist_only_fail_test` follow `vector.S` for these two behaviours
+|Memory-repair gate |`SEP-ROM-SMC-030` names the `mem_repair_bypass` strap (`STRAPS_LO[13]`) as the only escape. `vector.S` also gates on the MBIST result, which `SEP-ROM-SMC-030` does not name; `sep_firmware_mbist_only_fail_test` follows `vector.S` for this behaviour
 |===
 
 [[sep-rom-vplan-formal]]
