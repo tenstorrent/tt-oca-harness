@@ -1600,7 +1600,11 @@ SPI_CSR_IRQ_FAM_CBZ = 1 << (_SPI_CSR_IRQ_FAM_LSB + 14)  # cp_cmdbusy_cell
 SPI_CSR_IRQ_FAM_SZ = 1 << (_SPI_CSR_IRQ_FAM_LSB + 15)
 # cp_sw_rst_domain and cp_sw_rst_hold.
 SPI_CSR_IRQ_FAM_DOM = 1 << (_SPI_CSR_IRQ_FAM_LSB + 16)
-_SPI_CSR_IRQ_FAM_ALL = ((1 << 17) - 1) << _SPI_CSR_IRQ_FAM_LSB
+# cp_ready_x_active and the CMDQD cell of cp_depth_counter.
+SPI_CSR_IRQ_FAM_QF = 1 << (_SPI_CSR_IRQ_FAM_LSB + 17)
+# The CMDQD cell of cp_depth_counter.
+SPI_CSR_IRQ_FAM_QD = 1 << (_SPI_CSR_IRQ_FAM_LSB + 18)
+_SPI_CSR_IRQ_FAM_ALL = ((1 << 19) - 1) << _SPI_CSR_IRQ_FAM_LSB
 
 
 def set_spi_csr_irq_pass(value: int, log=None) -> bool:
@@ -1639,7 +1643,10 @@ def set_spi_csr_irq_graded_read(on: bool) -> bool:
     a read keys (a source level at a STATUS read, an SPI_EVENT edge or an
     INTR_ENABLE x INTR_STATE cell at an INTR_STATE read, the masked kind, the
     UNDERFLOW, CSID and empty-half cells at an ERROR_STATUS read, the SW_RST
-    hold at a CONTROL read) only at a read with the mark. The write is not
+    hold at a CONTROL read) only at a read with the mark. A marked STATUS read
+    also holds its READY, ACTIVE and CMDQD class, which a later marked STATUS
+    read replaces, for the SPI_CSR_IRQ_FAM_QF and SPI_CSR_IRQ_FAM_QD
+    families. The write is not
     logged, because the leaf writes it around many reads. Same rules as
     ``graded_owner``: a no-op that returns False on Verilator. On VCS a
     sampler without the variable is a testbench error.

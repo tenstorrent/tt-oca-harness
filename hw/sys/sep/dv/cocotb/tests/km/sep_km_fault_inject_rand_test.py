@@ -66,14 +66,17 @@ Checks (HOST-UNREC unless marked):
   CHK-RESIDUE        a flip past the key end raises no fault.
   CHK-CPU-TRAP       CPU lines 1 and 2 report -9 and -10 and rank above KMCSR.
   CHK-MAINCTX-FATAL  a bad image CRC sends one 0xFFFFFFF2 frame and holds bit 30.
-  CHK-DRBG-STALL     (HOST) a stopped KM entropy stream reports -8.
-  CHK-KEYPATH-FATAL  (HOST) a key write to a reset HMAC is fatal with -6 or -7.
+  CHK-DRBG-STALL     (HOST) a stopped KM entropy stream reports -8; key 0 of
+                     the plan sits in its banks (CTRL-DRBG-STALL-KEYED).
+  CHK-DRBG-STALL-KEYS (HOST) with the ROM wipe off, KM-VALID at the bit-30
+                     rise equals the vector after the key-0 transfer.
+  CHK-KEYPATH-FATAL  (HOST) a key write to a reset HMAC is fatal with -7.
   CHK-XFER-STOP      (HOST) the transfer writes no AES bank after the HMAC fault.
 
-Logged only: OBS-AES-NOKEY, OBS-KEYPATH-CODE, the shared-key transfer after each
-boot, the frames of the ML-KEM notify, the SRAM write count of the HOST fatal
-path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
-outside the graded set, and VACUOUS parity draws. In the whole leaf the
+Logged only: OBS-AES-NOKEY, the shared-key transfer after each boot, the frames
+of the ML-KEM notify, the SRAM write count of the HOST fatal path, the KPV and
+KM-VALID samples at the first fault word, the IRQ_STATUS bits outside the graded
+set, and VACUOUS parity draws. In the whole leaf the
 CHK-MAINCTX-FATAL point runs after every other fatal point. The regression runs
 the HOST-UNREC entry as fourteen shards (SHARD_POINTS_UNREC).
 """
@@ -173,6 +176,7 @@ EVIDENCE_HOST = (
     "CHK-RESTORE",
     "CHK-PARITY-CLEAN",
     "CHK-DRBG-STALL",
+    "CHK-DRBG-STALL-KEYS",
     "CHK-KEYPATH-FATAL",
     "CHK-XFER-STOP",
 )
@@ -486,8 +490,11 @@ class _ExtFeed:
 class _FatalWatch:
     """Per-clock record of one fatal point.
 
-    PIC bit 30: the rise clock, the SRAM write count at the rise, and the low
-    and high clocks after it. KM-OUTFIFO: the first clock in which the outbound
+    PIC bit 30: the rise clock, the SRAM write count and the KM-VALID sample
+    at the rise, and the low and high clocks after it. Bit 30 and the wipe
+    pulse both follow the CPU trap without a register, and the pulse clears
+    the keys on the next clock edge (``architecture.adoc``, "Wipe State"), so
+    the KM-VALID sample of the rise clock is the vector before the trap wipe. KM-OUTFIFO: the first clock in which the outbound
     FIFO holds a word after it read empty, with the KM-VALID and KM-KPV sample
     of that clock. ``km_cpuirq_pending_o``: the OR of every sample.
     """
@@ -499,6 +506,8 @@ class _FatalWatch:
         self.cyc = 0
         self.rise: int | None = None
         self.wr_at_rise: int | None = None
+        self.kv_at_rise: int | None = None
+        self.kv_rise_unknown = 0
         self.low_after_rise = 0
         self.high_after_rise = 0
         self.seen_zero = False
@@ -544,6 +553,8 @@ class _FatalWatch:
                 if b:
                     self.rise = self.cyc
                     self.wr_at_rise = t.rd_known(top.km_sram_write_count_o)
+                    self.kv_at_rise = t.rd(top.km_engine_key_valid_o, allow_unknown=True)
+                    self.kv_rise_unknown = int(_bitstr(top.km_engine_key_valid_o).strip("01") != "")
             elif b:
                 self.high_after_rise += 1
             else:
@@ -1517,19 +1528,14 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             control_err_o=control_err,
             fired=fired,
         )
-        if tuple(names) == pl.FORCED_DRBG_SET:
-            # CHK-DRBG-STALL grades drbg_err over axi_slverr on the organic stall.
-            faults = sum(1 for f in frames if f.resp_id == KM_RESP_UNRECOVERABLE_FAULT)
-            self.chk.ok("FATAL-SET", fired == 1 and rose and faults >= 1, control=1, **fields)
-        else:
-            ok = (
-                fired == 1
-                and pre.quiet_high == 0
-                and one
-                and frames[0].is_fault(KM_RESP_UNRECOVERABLE_FAULT, exp)
-                and control_err == 1
-            )
-            self.chk.ok("FATAL-SET", ok, expected=_hx(pl.fault_word(exp)), **fields)
+        ok = (
+            fired == 1
+            and pre.quiet_high == 0
+            and one
+            and frames[0].is_fault(KM_RESP_UNRECOVERABLE_FAULT, exp)
+            and control_err == 1
+        )
+        self.chk.ok("FATAL-SET", ok, expected=_hx(pl.fault_word(exp)), **fields)
         # The CPU trap sets WIPE_STATE itself (architecture.adoc, "Wipe
         # State"), so that bit cannot show a ROM that clears it.
         held = mask & ~(1 << pl.IRQ_BIT["wipe_state"])
@@ -1897,13 +1903,19 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         watch.start()
         await RisingEdge(top.clk_i)
         top.km_cpuirq_lines_i.value = lines
+        csr_bit = 0
         if csr_src is not None:
-            top.km_irqset_mask_i.value = pl.set_mask((csr_src,))
+            csr_bit = pl.set_mask((csr_src,))
+            top.km_irqset_mask_i.value = csr_bit
             top.km_irqset_arm_i.value = 1
         top.km_cpuirq_arm_i.value = 1
+        # "Interrupt Priority": a KMCSR source is eligible only with its status
+        # and its enable set, so the shared-clock point needs both.
+        csr_en = self.rd_known(top.km_csr_irq_enable_o) & csr_bit
         rose = await self._wait_rise(watch, f"HK-CPUIRQ line {line}")
         fired = self.rd(top.km_cpuirq_fired_o, allow_unknown=True)
         csr_fired = self.rd(top.km_irqset_fired_o, allow_unknown=True) if csr_src else 1
+        csr_st = self._csr_status() & csr_bit
         frames = await self._drain()
         await ClockCycles(top.clk_i, 16)
         await ReadOnly()
@@ -1930,12 +1942,16 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             b0 == 0
             and fired == 1
             and csr_fired == 1
+            and csr_st == csr_bit
+            and csr_en == csr_bit
             and rose
             and b1 == 1
             and one
             and frames[0].is_fault(KM_RESP_UNRECOVERABLE_FAULT, exp),
             line=line,
             with_csr="none" if csr_src is None else csr_src,
+            csr_status=int(csr_st != 0) if csr_src else "none",
+            csr_enable=int(csr_en != 0) if csr_src else "none",
             code=_hx(code),
             expected=_hx(pl.fault_word(exp)),
             frames=len(frames),
@@ -2049,8 +2065,13 @@ class sep_km_fault_inject_rand_test(sep_base_test):
     # ================================================================ step 21 (HOST)
     async def _drbg_stall_stop(self):
         """Select the external input for the KM stream with the KM held, feed the
-        boot, and stop the stream with no beat waiting. Returns the coroutine
-        function that restores the internal source while the KM is held."""
+        boot, load and transfer key 0 of the plan, and stop the stream with no
+        beat waiting. Returns the coroutine function that restores the internal
+        source while the KM is held, and the KM-VALID sample after the transfer.
+
+        A key write draws DRBG words (``firmware.adoc``, "Crypto Engine
+        Drivers"), so the transfer runs while the bench still feeds the stream
+        and no reset follows it before the fault."""
         top = cocotb.top
         sel = await self._cpu_ctrl_rd("EXT_TRNG_SRC_SEL")
         stop = sel | (1 << EXT_KM)  # the KM stream takes the external input
@@ -2066,6 +2087,18 @@ class sep_km_fault_inject_rand_test(sep_base_test):
 
         await self._boot("the DRBG stall source switch", parked=switch)
         self.fresh = False
+        key = self.plan.keys[0]
+        handle = await self._load(key.words, key.dest)
+        kv_pre = self._kv()
+        await self._transfer_pre(handle, key.dest)
+        kv = self._kv()
+        self.chk.info(
+            "DRBG-STALL-KEY",
+            handle=_h2(handle),
+            dest=_h2(key.dest),
+            keyvalid_pre=_h2(kv_pre),
+            keyvalid=_h2(kv),
+        )
         offered = await feed.stop()
         self.chk.info(
             "DRBG-STALL-STOP",
@@ -2081,11 +2114,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", sel)
             await ext.stop()
 
-        return restore
+        return restore, kv
 
     async def _drbg_stall_point(self) -> None:
         top = cocotb.top
-        restore = await self._drbg_stall_stop()
+        restore, kv_xfer = await self._drbg_stall_stop()
         drbg_bit = 1 << pl.IRQ_BIT["drbg_err"]
         seen = 0
         for _ in range(TVALID_WINDOW):
@@ -2103,10 +2136,33 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             err_o=b,
         )
         await RisingEdge(top.clk_i)
+        # Control: the engine keys of key 0's destination are valid when the
+        # fault starts, so the point can show the keys that stay with the wipe
+        # predicate off.
+        dest = self.plan.keys[0].dest
+        kv = self._kv()
+        self.chk.ctrl(
+            "DRBG-STALL-KEYED",
+            kv & dest == dest,
+            dest=_h2(dest),
+            keyvalid_before=_h2(kv),
+            keyvalid_xfer=_h2(kv_xfer),
+        )
         watch = _FatalWatch(self)
         watch.start()
         await self._send(KM_CMD_KEY_GENERATE, [DRBG_REQ_WORDS - 1, KEYGEN_DEST])
         rose = await self._wait_rise(watch, "DRBG stall")
+        # Control: AXI_SLVERR is pending with DRBG_ERR, so the reported code
+        # shows that drbg_err ranks above axi_slverr.
+        both = drbg_bit | (1 << pl.IRQ_BIT["axi_slverr"])
+        irq_fault = self._csr_status()
+        self.chk.ctrl(
+            "DRBG-STALL-BOTH",
+            rose and irq_fault & both == both,
+            irq_status=_hx(irq_fault),
+            required=_hx(both),
+            err_o=int(rose),
+        )
         frames = await self._drain()
         high, answered, _wf = await self._trap_window(self.w_ref)
         watch.stop()
@@ -2128,6 +2184,26 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             err_o=int(rose),
             samples_high=high,
             stat_answered_logged=answered,
+        )
+        # With the rom_unrec_wipe_enabled() predicate off, the ROM fatal path
+        # does not shred the sideload banks; the report and the trap are
+        # outside that gate (firmware.adoc, "Error Recovery", lines 1131-1133).
+        # The trap wipe clears the keys one edge after the bit-30 rise
+        # (architecture.adoc, "Wipe State", lines 504-507 and 524-525), so the
+        # rise sample holds the vector of the key transfer.
+        kv_rise = watch.kv_at_rise
+        self.chk.ok(
+            "DRBG-STALL-KEYS",
+            not self.unrec
+            and rose
+            and kv_rise is not None
+            and not watch.kv_rise_unknown
+            and kv_rise == kv_xfer,
+            km_unrec_wipe=int(self.unrec),
+            keyvalid_xfer=_h2(kv_xfer),
+            keyvalid_at_rise="none" if kv_rise is None else _h2(kv_rise),
+            kv_unknown=watch.kv_rise_unknown,
+            rise_cyc="none" if watch.rise is None else watch.rise,
         )
         await self._boot("DRBG stall", parked=restore)
 
@@ -2159,7 +2235,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         watch.stop()
         one = len(frames) == 1
         code = frames[0].fault_word if one else None
-        axi = code in (pl.fault_word(pl.CODE["axi_decerr"]), pl.fault_word(pl.CODE["axi_slverr"]))
+        # A new transaction on an isolated path completes with SLVERR, and the
+        # KM fabric reports an AXI SLVERR as axi_slverr (-7).
+        want = pl.fault_word(pl.CODE["axi_slverr"])
         self.chk.ok(
             "KEYPATH-FATAL",
             iso == 1
@@ -2167,17 +2245,17 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             and rose
             and one
             and frames[0].resp_id == KM_RESP_UNRECOVERABLE_FAULT
-            and axi
+            and code == want
             and high == TRAP_SAMPLES,
             iso=iso,
             frames=len(frames),
-            code_class="axi" if axi else "other",
+            code=_hx(code),
+            want=_hx(want),
             err_o=int(rose),
             samples_high=high,
             control_quiet=b0,
             frame_ids=_ids(frames),
         )
-        self.chk.obs("KEYPATH-CODE", code=_hx(code))
         hmac_req = self.bus.req[PORT_HMAC]
         aes_writes = self.bus.req[PORT_AES]  # every AES key write starts with a request
         # Control: the tap sees the request on the HMAC port, so the transfer started.

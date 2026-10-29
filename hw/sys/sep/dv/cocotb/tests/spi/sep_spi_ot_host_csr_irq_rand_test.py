@@ -135,7 +135,9 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       same kind with ERROR_ENABLE set gives INTR_STATE.ERROR=1
                       (CHK-SPI-ERR-KIND), else CTRL-MISSING.
   L2 CHK-SPI-CMDBUSY0 : a COMMAND written while READY=0 and ACTIVE=0 (SPIEN=0)
-                      sets ERROR_STATUS to CMDBUSY alone.
+                      sets ERROR_STATUS to CMDBUSY alone;
+                      STATUS.CMDQD of the READY=0 exit read equals the
+                      accepted COMMAND writes.
   L3 CHK-SPI-STRB   : an 8-byte write with strobe 0x0F, 0xF0 or 0xFF at the
                       pairs 0x00, 0x18, 0x28 and 0x30 returns OKAY, lands the
                       strobed half by its register type and keeps the other
@@ -157,8 +159,8 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
   L4 CHK-SPI-SWRST  : SW_RST written at a drawn sck cycle of a Tx segment reads
                       back 1, empties both FIFOs and the core, keeps the
                       registers, and a clean command then runs.
-  L4 CHK-SPI-SPIEN  : SPIEN=0 holds 1 to 3 queued commands off the pads for
-                      4*T clocks; SPIEN=1 runs them in order.
+  L4 CHK-SPI-SPIEN  : SPIEN=0 holds 1 to 3 queued commands (ACTIVE=0) off the pads
+                      for 4*T clocks; SPIEN=1 runs them in order.
 
 Run mode: no_cpu with +skip_fuse_sense. The graded window carries this test's
 code during the stimulus and checks of the four legs only. It is closed during
@@ -183,7 +185,13 @@ CONTROL) is held only at a read that the leaf marks as graded
 twin included) and source sample, the INTR_STATE read of each graded line-walk
 cell, the ERROR_STATUS read that CHK-SPI-ERR-KIND and CHK-SPI-CSID-RANGE grade
 after the own-bit poll, the INTR_STATE read of the masked kind, the ERROR_STATUS
-read of CHK-SPI-STRB-EMPTY and the three CONTROL reads of CHK-SPI-SWRST. Set-up
+read of CHK-SPI-STRB-EMPTY, the three CONTROL reads of CHK-SPI-SWRST, the
+STATUS reads of the CMDBUSY fill loop and the STATUS read after the SPIEN=0
+queue. The last of those STATUS reads before a release keys READY, ACTIVE and
+the CMDQD class: CHK-SPI-CMDBUSY0 grades the READY=0 ACTIVE=0 exit read of the
+fill loop (``SPI_CSR_IRQ_FAM_QF``: cp_ready_x_active and the CMDQD cell of
+cp_depth_counter) and CHK-SPI-SPIEN grades the CMDQD of the read after the
+queue (``SPI_CSR_IRQ_FAM_QD``: the CMDQD cell of cp_depth_counter). Set-up
 polls, waits and logged reads carry no mark and hold nothing. A FAIL or
 CTRL-MISSING line writes the drop bit (bit 1) and closes the window before the
 leaf stops. RANDCFG and RAND-REP draws of the legs come from ``SepSeededRng``
@@ -206,6 +214,8 @@ from env.sep_fcov_gate import (
     SPI_CSR_IRQ_FAM_IT,
     SPI_CSR_IRQ_FAM_MK,
     SPI_CSR_IRQ_FAM_OF,
+    SPI_CSR_IRQ_FAM_QD,
+    SPI_CSR_IRQ_FAM_QF,
     SPI_CSR_IRQ_FAM_RC,
     SPI_CSR_IRQ_FAM_SEC,
     SPI_CSR_IRQ_FAM_SW,
@@ -331,8 +341,9 @@ _FAM_ERR = (
 _FAM_STRB = SPI_CSR_IRQ_FAM_ZS | SPI_CSR_IRQ_FAM_TE | SPI_CSR_IRQ_FAM_CF
 # SW_RST leg: CHK-SPI-SWRST grades SW_RST, the FIFOs and the registers.
 _FAM_SWRST = SPI_CSR_IRQ_FAM_SW | SPI_CSR_IRQ_FAM_DOM
-# SPIEN leg: CHK-SPI-SPIEN grades the hold and the run on the pads.
-_FAM_SPIEN = SPI_CSR_IRQ_FAM_SZ
+# SPIEN leg: CHK-SPI-SPIEN grades the hold and the run on the pads, and the
+# CMDQD of the STATUS read after the queued commands.
+_FAM_SPIEN = SPI_CSR_IRQ_FAM_SZ | SPI_CSR_IRQ_FAM_QD
 _R = SPI_CONTROLLER
 _LEG_CHECKS = (
     "CHK-SPI-EVENT",
@@ -1949,8 +1960,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         accepted = 0
         control_busy = 0
         while True:
-            st = await self.ops.read_status()
+            st = await self._graded_status()
             if not st.ready and not st.active:
+                if accepted < 1:
+                    self._ctrl_missing(f"READY=0 before any accepted COMMAND write ({st.fmt()})")
                 break
             if not st.ready:
                 self._ctrl_missing(f"READY=0 with ACTIVE=1 while SPIEN=0 ({st.fmt()})")
@@ -1968,13 +1981,13 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 break
         self._grade(
             "CHK-SPI-CMDBUSY0",
-            (es & ERR_STATUS_MASK) == ERR_CMDBUSY and not control_busy,
+            (es & ERR_STATUS_MASK) == ERR_CMDBUSY and not control_busy and st.cmdqd == accepted,
             f"writes={accepted} error_enable=0x{_ERR_EN_ALL:02x} ready={st.ready} "
-            f"active={st.active} cmdbusy={int(bool(es & ERR_CMDBUSY))} "
+            f"active={st.active} cmdqd={st.cmdqd} accepted={accepted} cmdbusy={int(bool(es & ERR_CMDBUSY))} "
             f"control_cmdbusy={int(bool(control_busy))} err_status=0x{es & ERR_STATUS_MASK:02x} "
             f"expect_err_status=0x{ERR_CMDBUSY:02x} err_status_rsvd=0x{es & ~ERR_STATUS_MASK:x}",
         )
-        await self._release(_FAM_ERR)
+        await self._release(_FAM_ERR | SPI_CSR_IRQ_FAM_QF)
         self._window(False)
         await self.ops.wr(ERROR_STATUS, ERR_CMDBUSY)
         await self.ops.wr(CONTROL, _CTRL_BASE)
@@ -2309,7 +2322,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             await self.ops.wr(COMMAND, command_word(ln, direction=DIR_DUMMY))
             accepted += 1
         hold_mark = self.pads.mark()
-        st = await self.ops.read_status()
+        st = await self._graded_status()
         self.logger.info(
             "INFO-L4-SPIEN LOG seed=%d accepted=%d cmdqd=%d t_seg=%d",
             self.seed,
@@ -2330,10 +2343,18 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self._idle_done("SPIEN release")
         cycles = [w.leading_edges for w in wins]
         exp = [ln + 1 for ln in lens[:accepted]]
+        # vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:633:
+        # "Before any commands are processed, the block must be enabled by writing
+        # one to the CONTROL.SPIEN register." With SPIEN=0 from
+        # the clean state no command starts, so STATUS.ACTIVE reads 0.
         self._grade(
             "CHK-SPI-SPIEN",
-            st.cmdqd == accepted and pad_activity == 0 and cycles == exp and t_seg < window,
-            f"n={len(lens)} accepted={accepted} cmdqd={st.cmdqd} t_seg={t_seg} "
+            st.cmdqd == accepted
+            and st.active == 0
+            and pad_activity == 0
+            and cycles == exp
+            and t_seg < window,
+            f"n={len(lens)} accepted={accepted} cmdqd={st.cmdqd} active={st.active} t_seg={t_seg} "
             f"window_clk={window} pad_activity={pad_activity} "
             f"released_in_order={int(cycles == exp)} cycles={cycles} expect={exp}",
         )

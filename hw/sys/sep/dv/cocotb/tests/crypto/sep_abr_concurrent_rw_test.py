@@ -8,8 +8,8 @@ no_cpu / +skip_fuse_sense.
 may be outstanding on the aperture from any mix of masters, and that they are
 performed one at a time, each returning the value of the address it names.
 This leaf drives that: s_axi and m_axi each run a seeded stream of reads and
-writes with several outstanding, at the same time, with both response channels
-throttled from the master side.
+writes with a seeded number outstanding, at the same time, with both response
+channels throttled from the master side.
 
 Ownership keeps the expectation exact without assuming any order between the
 masters: every read-write register is written by one master only, and that
@@ -38,8 +38,10 @@ reads, priming, CHK-ABR-CRW-FINAL and CHK-ABR-CRW-RESTORE run with the window
 closed.
 
 RANDCFG: the op mix, addresses, data, outstanding depths and throttle patterns
-all come from the run seed. The identity addresses a stream picks from are the
-pool built from the capture, so the configuration is built after it.
+all come from the run seed. One seed in three, on average, runs both streams in
+lockstep at a depth of 1; every other seed draws each stream's depth from 1 to
+6. The identity addresses a stream picks from are the pool built from the
+capture, so the configuration is built after it.
 """
 
 from __future__ import annotations
@@ -179,7 +181,8 @@ class SepAbrConcurrentRwCfg:
         self.seed = seed
         self.pool = pool
         self.granules = granules
-        self.depth = {bus: rng.randrange(3, 7) for bus in OWNED}
+        self.lockstep = rng.randrange(3) == 0
+        self.depth = {bus: 1 if self.lockstep else rng.randrange(1, 7) for bus in OWNED}
         self.awid = {bus: rng.randrange(1 << ID_WIDTH[bus]) for bus in OWNED}
         self.initial = {w.addr: rng.getrandbits(32) & w.mask for w in RW_WORDS}
         self.throttle_seed = {bus: rng.getrandbits(32) for bus in OWNED}
@@ -235,7 +238,10 @@ class SepAbrConcurrentRwCfg:
             bus: {t: sum(a.tag == t for a in ops) for t, _e in _MIX}
             for bus, ops in self.ops.items()
         }
-        return f"seed={self.seed} depth={self.depth} awid={self.awid} mix={mix}"
+        return (
+            f"seed={self.seed} lockstep={int(self.lockstep)} depth={self.depth} "
+            f"awid={self.awid} mix={mix}"
+        )
 
 
 @pyuvm.test()
@@ -258,7 +264,7 @@ class sep_abr_concurrent_rw_test(sep_base_test):
         pool, granules = identity_pool()
         cfg = SepAbrConcurrentRwCfg(self.random_seed(), pool, granules)
         self.logger.info(
-            "abr concurrent rw: %s identity-pool=%s",
+            "INFO-ABR-CRW cfg: %s identity-pool=%s",
             cfg.summary(),
             ",".join(w.name for w in pool),
         )
@@ -497,10 +503,10 @@ class sep_abr_concurrent_rw_test(sep_base_test):
                     f"{bus}: {len(rec.ar)} AR / {len(rec.aw)} AW / {len(rec.b)} B on the "
                     f"pins for {n_rd} reads and {n_wr} writes issued"
                 )
-            if rec.max_outstanding < 3:
+            if rec.max_outstanding < cfg.depth[bus]:
                 problems.append(
                     f"{bus}: at most {rec.max_outstanding} accesses outstanding at once, "
-                    f"with a stream depth of {cfg.depth[bus]}"
+                    f"below its stream depth of {cfg.depth[bus]}"
                 )
             if not (rec.r_stall_cycles and rec.b_stall_cycles):
                 problems.append(f"{bus}: a response channel was never held off")
@@ -513,7 +519,12 @@ class sep_abr_concurrent_rw_test(sep_base_test):
             problems.append("the two masters were never outstanding in the same cycle")
         assert not problems, "CHK-ABR-CRW-STRESS FAIL: " + "; ".join(problems)
         self.logger.info(
-            "CHK-ABR-CRW-STRESS PASS: both masters held several accesses outstanding, "
-            "overlapped for %d cycles, and had R and B held off by RREADY/BREADY",
+            "CHK-ABR-CRW-STRESS PASS: each master reached its stream depth (s_axi %d of "
+            "%d, m_axi %d of %d accesses outstanding), overlapped for %d cycles, and had "
+            "R and B held off by RREADY/BREADY",
+            watch.rec["s_axi"].max_outstanding,
+            cfg.depth["s_axi"],
+            watch.rec["m_axi"].max_outstanding,
+            cfg.depth["m_axi"],
             watch.all_busy_cycles,
         )

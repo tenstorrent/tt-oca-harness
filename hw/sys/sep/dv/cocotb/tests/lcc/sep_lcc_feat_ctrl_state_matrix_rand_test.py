@@ -16,7 +16,12 @@ OR-merged with the writes of the leaf).
 
   CHK-FEAT-CELL     legs A and C: ``FEAT_CTRL`` (register and probe) equals the
                     profile row of the (raw, demotion, SEC_DIS, strap) cell; the
-                    ``LC_STATE`` shadow word holds ``{~r, r}``; ``sep_ras_o.lc_sigint_err`` = 0.
+                    ``LC_STATE`` shadow word holds ``{~r, r}``; ``sep_ras_o.lc_sigint_err`` = 0;
+                    ``DEMOTE_1`` and ``DEMOTE_2`` read the RW1S golden in every state (``dem=``
+                    is the readback); each output pair is complementary, differs from the
+                    undemoted reference pair of the first leg A read when its register is
+                    demoted and equals it otherwise. Leg C also grades a cell right after
+                    its first cold reset (``after=reset``): both registers read 0.
                     Hook control at the leg A read: the strap port and the latched
                     ``secure_tm_o`` equal s (``CHK-HOOK FAIL`` otherwise).
                     In leg C the SEC_DIS cell is all ones with ``security_disable_o``
@@ -46,7 +51,9 @@ OR-merged with the writes of the leaf).
   CHK-RMA-BYPASS    leg D: in RMA_SIP and RMA_CHIPLET both disable shadows read the
                     staged values and ``FEAT_CTRL`` equals the row.
   CHK-DIS-EARLIER   leg D: after a write of 0 to ``SIP_DIS`` and of ~S to ``SYS_DIS``,
-                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0.
+                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0; ``DEMOTE_1`` and
+                    ``DEMOTE_2`` read the RW1S golden after the PROD demotion writes
+                    (``dem_regs=``).
   CHK-DIS-STEP      leg D: after each walk write the owner shadow equals the OR-merge
                     golden and ``FEAT_CTRL`` the row; after the cold reset both shadows
                     read the staged 0 and ``FEAT_CTRL`` the undemoted row.
@@ -239,7 +246,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.dem = {1: [0, 0], 2: [0, 0]}
         self.sdis = 0
 
-    def _feat_cell(
+    async def _feat_cell(
         self,
         leg: str,
         reg: int,
@@ -254,6 +261,16 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         lcw = shadow_word(self, LC_WORD_IDX)
         sigint = bit(self, "lcc_sigint_err_probe_o")
         sdis_ok = sdis_port == "na" or sdis_port == self.sdis
+        got = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
+        exp = {r: self._dem_value(r) for r in (1, 2)}
+        pairs = {r: self._pair(r) for r in (1, 2)}
+        if self.ref_pairs is None and exp[1] == exp[2] == 0:
+            self.ref_pairs = dict(pairs)
+        pairs_ok = self.ref_pairs is not None and all(
+            pairs[r] in (0b01, 0b10)
+            and (pairs[r] != self.ref_pairs[r]) == bool(exp[r] & DEMOTE_BIT)
+            for r in (1, 2)
+        )
         self.chk.ok(
             "FEAT-CELL",
             reg == row.value
@@ -261,11 +278,19 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             and lcw & LC_FIELD_MASK == lc_encode(self.raw)
             and sigint == 0
             and sdis_ok
+            and got == exp
+            and pairs_ok
             and step_ok,
             leg=leg,
             raw=f"0x{self.raw:x}",
             state=self.state,
-            dem=f"{self.dem[1][0]}{self.dem[2][0]}",
+            dem=f"{got[1] & DEMOTE_BIT}{got[2] & DEMOTE_BIT}",
+            dem_regs=f"0x{got[1]:x}/0x{got[2]:x}",
+            dem_exp=f"0x{exp[1]:x}/0x{exp[2]:x}",
+            pairs=f"0b{pairs[1]:02b}/0b{pairs[2]:02b}",
+            pairs_ref=(
+                f"0b{self.ref_pairs[1]:02b}/0b{self.ref_pairs[2]:02b}" if self.ref_pairs else "na"
+            ),
             secdis=self.sdis,
             stm=self._strap,
             sip=f"0x{self.sip_m:016x}",
@@ -305,7 +330,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     async def _leg_a(self) -> None:
         reg, probe = await self._feat()
         self._strap_hook()
-        self._feat_cell("a", reg, probe, sdis_port=bit(self, "lcc_security_disable_probe_o"))
+        await self._feat_cell("a", reg, probe, sdis_port=bit(self, "lcc_security_disable_probe_o"))
         if self._strap:
             close_graded_window(self.logger)
             await self._cold_reset(strap=0)
@@ -561,7 +586,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.sdis_seen = True
         self.sdis = 1
         reg, probe = await self._feat()
-        self._feat_cell(
+        await self._feat_cell(
             "c",
             reg,
             probe,
@@ -576,7 +601,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         fell = await wait_bit(self, "lcc_security_disable_probe_o", 0, SDIS_BOUND)
         self.sdis = 0
         reg, probe = await self._feat()
-        self._feat_cell(
+        await self._feat_cell(
             "c",
             reg,
             probe,
@@ -591,20 +616,22 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         await chk_bind(self.chk)
         self.sdis_seen = False
         reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._feat_cell("c", reg, probe, sdis_port="na")
         await self._sdis_cell()
         await self._write_demote(1, "demote")
         reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._feat_cell("c", reg, probe, sdis_port="na")
         await self._sdis_cell()
         await self._write_demote(2, "demote")
         reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._feat_cell("c", reg, probe, sdis_port="na")
         await self._sdis_cell()
         await self._cold_reset()
+        reg, probe = await self._feat()
+        await self._feat_cell("c", reg, probe, sdis_port="na", after="reset")
         await self._write_demote(2, "demote")
         reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._feat_cell("c", reg, probe, sdis_port="na")
         await self._sdis_cell()
         close_graded_window(self.logger)
         await self._cold_reset()
@@ -649,6 +676,8 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         if self.state == ST_PROD:
             await self._write_demote(1, "demote")
             await self._write_demote(2, "demote")
+        dem = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
+        dem_exp = {r: self._dem_value(r) for r in (1, 2)}
         reg0, _ = await self._feat()
         self.logger.info("INFO-LEG-D earlier owner start FEAT_CTRL=0x%016x", reg0)
         not_s = ~s & M64
@@ -663,6 +692,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             s != 0
             and sip == s
             and sys_ == self.sys_m
+            and dem == dem_exp
             and reg & s == 0
             and reg == row.value
             and probe == row.value,
@@ -674,6 +704,8 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             feat=f"0x{reg:016x}",
             feat_exp=f"0x{row.value:016x}",
             feat_and_S=f"0x{reg & s:x}",
+            dem_regs=f"0x{dem[1]:x}/0x{dem[2]:x}",
+            dem_exp=f"0x{dem_exp[1]:x}/0x{dem_exp[2]:x}",
             resp_sys_wr=resp_sys,
             resp_sip_wr=resp_sip,
         )
@@ -829,6 +861,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.sip_m, self.sys_m = p.sip_dis, p.sys_dis
         self.dem = {1: [0, 0], 2: [0, 0]}
         self.sdis = 0
+        self.ref_pairs = None
 
         self.write_efuse_image(p.image)
         open_graded_window(TEST, self.logger)

@@ -1333,6 +1333,15 @@ _FEAT_LEGS = (
     (LEG_D_WALK, 2),
     (LEG_E, 2),
 )
+_FEAT_LC_STATE_WEIGHTS = {
+    ST_TEST_DEV: 5,
+    ST_PROD: 5,
+    ST_PROD_END: 5,
+    ST_RMA_SIP: 3,
+    ST_RMA_CHIPLET: 3,
+    ST_INVALID: 2,
+}
+_FEAT_LC_RAWS = tuple((r, _FEAT_LC_STATE_WEIGHTS[lc_state_class(r)]) for r in range(16))
 _DEMOTE_OPS = ("demote", "lock", "zero")
 DEMOTE_OP_VALUE = {"demote": 0x1, "lock": 0x2, "zero": 0x0}
 
@@ -1350,15 +1359,16 @@ def plan_feat_ctrl_matrix(seed: int) -> SepEfusePlan:
     """Leaf plan of the feature-control matrix (order stated by the contract).
 
     Order: follow-on leg (B 3, C 2, RMA bypass 1, earlier owner 1, walk 2, E 2); raw
-    code r of the leg; strap s; the pair (legs B, C and RMA bypass); then per leg:
-    B reset vector v, register A, count L and the L operations, control bit b; the
-    earlier-owner vector S; the walk positions, owners and widths; the leg E order
-    and widths.
+    code r of the leg (legs B and C: 5 per TEST_DEV, PROD and PROD_END code, 3 per
+    RMA code, 2 per INVALID code); strap s; the pair (legs B, C and RMA bypass); then
+    per leg: B reset vector v, register A, count L and the L operations, control bit
+    b; the earlier-owner vector S; the walk positions, owners and widths; the leg E
+    order and widths.
     """
     d = SepEfuseDraws(seed)
     leg_name = d.weighted("leg", _FEAT_LEGS)
     if leg_name in (LEG_B, LEG_C):
-        r = d.randrange("lc_raw", 0, 16)
+        r = d.weighted("lc_raw", _FEAT_LC_RAWS)
     elif leg_name == LEG_D_RMA:
         base = d.choice("rma_state", (LC_RMA_SIP_0, LC_RMA_CHIP_0))
         r = base | d.choice("x_bit", (0, 1))
@@ -1624,7 +1634,7 @@ def plan_interface_status(seed: int) -> SepEfusePlan:
     return _make_plan(T_IF_STATUS, seed, d, LC_TEST_DEV, sip, sys_, img, leg)
 
 
-LOCK_KINDS = (("lock_leg", 4), ("single_bit", 1), ("exempt", 1), ("order", 2), ("chain", 2))
+LOCK_KINDS = (("lock_leg", 6), ("single_bit", 1), ("exempt", 1), ("order", 2), ("chain", 2))
 _LOCK_KIND_NONE, _LOCK_KIND_W, _LOCK_KIND_R, _LOCK_KIND_WR = "none", "write", "read", "write_read"
 _SHADOW_WRITE_FIELDS = ("SIP_DIS", "SYS_DIS", "REQUIRED_SIGNERS", "REQUIRED_ALGS")
 
@@ -1643,7 +1653,7 @@ def _all_words_nonzero(sip: int, sys_: int) -> bool:
 
 
 def plan_lock_slot_matrix(seed: int) -> SepEfusePlan:
-    """Leaf kind (lock leg 4, single bit 1, exempt 1, order 2, chain 2), pair, then per kind.
+    """Leaf kind (lock leg 6, single bit 1, exempt 1, order 2, chain 2), pair, then per kind.
 
     Lock leg: target slot (3..40); lock kind per other data slot of 3..40 (the
     target's neighbours unlocked; read alone never on 11, 13, 15); three program
