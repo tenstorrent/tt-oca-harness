@@ -5,8 +5,9 @@
 //
 // Steers one local AXI-Lite initiator to internal CSR targets such as base config,
 // filters, remaps, mailbox, and DFX.
-// Address rules derive from smc_top_addrmap_pkg; arrayed blocks use their generated total
-// extents. Addresses outside every rule receive DECERR.
+// Address rules derive from smc_top_addrmap_pkg, each target's extent (an arrayed block's
+// generated total extent) rounded up to a power of two. Addresses outside every rule receive
+// DECERR.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -69,37 +70,37 @@ module smc_internal_axi_lite_xbar
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_SIZE)},
+                    + smc_pkg::BaseConfigWindow)},
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(0)),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE)},
+                    + smc_pkg::AliasRemapWindow)},
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(0)),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_TOTAL_SIZE)},
+                    + smc_pkg::MmodeRemapWindow)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_BASE_ADDR(0)),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_TOTAL_SIZE)},
+                    + smc_pkg::XvisorRemapWindow)},
     '{idx: 4,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(0)),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_TOTAL_SIZE)},
+                    + smc_pkg::InboundFilterWindow)},
     '{idx: 5,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_TOTAL_SIZE)},
+                    + smc_pkg::OutboundFilterWindow)},
     // mailbox: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_{BASE_ADDR,SIZE}
     '{idx: 6,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE)},
+                    + smc_pkg::MailboxWindow)},
     // dfx_csr: RDL — smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_{BASE_ADDR,SIZE}
     '{idx: 7,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE)}
+                    + smc_pkg::DfxWindow)}
   };
 
   // ===========================================================================

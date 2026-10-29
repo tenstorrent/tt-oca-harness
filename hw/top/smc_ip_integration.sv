@@ -180,20 +180,16 @@ module smc_ip_integration (
     localparam longint unsigned ExtBase = smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR;
     localparam int unsigned ExtGpioCtrlBase = 32'(
         smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(0) - ExtBase);
-    localparam int unsigned ExtGpioCtrlSize = 32'(
-        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_TOTAL_SIZE);
+    localparam int unsigned ExtGpioCtrlSize = 32'(smc_pkg::ExtGpioCtrlWindow);
     localparam int unsigned ExtPllBase = 32'(
         smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_BASE_ADDR - ExtBase);
-    localparam int unsigned ExtPllSize = 32'(
-        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_SIZE);
+    localparam int unsigned ExtPllSize = 32'(smc_pkg::ExtPllWindow);
     localparam int unsigned ExtPvtBase = 32'(
         smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR - ExtBase);
-    localparam int unsigned ExtPvtSize = 32'(
-        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE);
+    localparam int unsigned ExtPvtSize = 32'(smc_pkg::ExtPvtWindow);
     localparam int unsigned ExtStrapsBase = 32'(
         smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_BASE_ADDR - ExtBase);
-    localparam int unsigned ExtStrapsSize = 32'(
-        smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE);
+    localparam int unsigned ExtStrapsSize = 32'(smc_pkg::ExtStrapsWindow);
     localparam int unsigned ExtWindowSize = smc_pkg::SmcExternalWindowSize;
 
     // Targets, in demux port order. Anything unclaimed lands on ExtUnmapped,

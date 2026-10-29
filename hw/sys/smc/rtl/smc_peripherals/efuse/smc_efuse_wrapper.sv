@@ -225,7 +225,8 @@ module smc_efuse_wrapper (
     .EFUSE_MMR_REG_MAP_SIZE      ('0),
 
     .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
-    .EFUSE_CTRL_REG_MAP_SIZE     (32'(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
+    // A power-of-two decode window, so the CSR block answers addresses past its registers.
+    .EFUSE_CTRL_REG_MAP_SIZE     (32'(smc_pkg::EfuseCtrlWindow)),
 
     .SHADOW_REG_BITS             (smc_efuse_pkg::ShadowRegBits),
     .EFUSE_MACRO_WORD_WIDTH      (smc_efuse_pkg::NumFuseWordWidth),

@@ -1062,9 +1062,9 @@ module smc_peripherals #(
     .INPUT_DELAY_CYCLES       (smc_config_pkg::I2cInputDelayCycles),
 
     .I2C_CTRL_REG_MAP_BASE_ADDR (i2c_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_BASE_ADDR)),
-    .I2C_CTRL_REG_MAP_SIZE      (i2c_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE)),
+    .I2C_CTRL_REG_MAP_SIZE      (i2c_wrap_pkg::RegAddrWidth'(smc_pkg::I2cCtrlWindow)),
     .I2C_0__REG_MAP_BASE_ADDR   (i2c_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0))),
-    .I2C_0__REG_MAP_SIZE        (i2c_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE)),
+    .I2C_0__REG_MAP_SIZE        (i2c_wrap_pkg::RegAddrWidth'(smc_pkg::I2cWindow)),
     .I2C_INSTANCE_SPACING       (i2c_wrap_pkg::I2cInstanceSpacing)
   ) u_i2c_wrap (
     .clk_i                    (gated_clk_periph_i2c),
@@ -1146,15 +1146,15 @@ module smc_peripherals #(
     .LOG_ENGINE_FIFO_DEPTH (smc_config_pkg::LogEngineFifoDepth),
 
     .UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_BASE_ADDR(0))),
-    .UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE)),
+    .UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      (uart_wrap_pkg::RegAddrWidth'(smc_pkg::UartLogEngineWrapWindow)),
     .UART_LOG_ENGINE_WRAP_SPACING              (uart_wrap_pkg::UartLogEngineWrapSpacing),
 
     .UART_REG_MAP_BASE_ADDR                    (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))),
-    .UART_REG_MAP_SIZE                         (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE)),
+    .UART_REG_MAP_SIZE                         (uart_wrap_pkg::RegAddrWidth'(smc_pkg::UartWindow)),
     .LOG_ENGINE_REG_MAP_BASE_ADDR              (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))),
-    .LOG_ENGINE_REG_MAP_SIZE                   (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE)),
+    .LOG_ENGINE_REG_MAP_SIZE                   (uart_wrap_pkg::RegAddrWidth'(smc_pkg::LogEngineWindow)),
     .UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR    (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_BASE_ADDR(0))),
-    .UART_LOG_ENGINE_CTRL_REG_MAP_SIZE         (uart_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE))
+    .UART_LOG_ENGINE_CTRL_REG_MAP_SIZE         (uart_wrap_pkg::RegAddrWidth'(smc_pkg::UartLogEngineCtrlWindow))
   ) u_uart_wrap (
     .clk_i                  (gated_clk_periph_uart),
     .rst_ni                 (rst_primary_periph_clk_n),
@@ -1226,7 +1226,7 @@ module smc_peripherals #(
     .TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE    (smc_config_pkg::TelemetryReceiverMaxNumCountersPerMessage),
 
     .TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR            (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_BASE_ADDR(0))),
-    .TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE))
+    .TELEMETRY_RECEIVER_0__REG_MAP_SIZE                 (telemetry_receiver_wrap_pkg::RegAddrWidth'(smc_pkg::TelemetryReceiverWindow))
   ) u_telemetry_receiver_wrap (
     .clk_i                      (gated_clk_smc_tel),
     .rst_ni                     (rst_primary_smc_clk_no),

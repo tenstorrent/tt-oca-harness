@@ -58,26 +58,27 @@ module smc_misc_wrap #(
   /* add new choice to connect ndm to ndm_reset. Modify below demux to accept new NDM_RESET ENUM*/
   // Address decoding logic
   // Uses unique if to avoid priority mux since address ranges are non-overlapping
+  // Each window is its block's extent rounded up to a power of two.
   always_comb begin
-    unique if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE) begin
+    unique if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_pkg::ScratchColdWindow) begin
       reg_axi_lite_aw_select = smc_misc_pkg::SCRATCH_COLD;
-    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE) begin
+    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_pkg::ScratchColdWarmWindow) begin
       reg_axi_lite_aw_select = smc_misc_pkg::SCRATCH_COLD_WARM;
-    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE) begin
+    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_pkg::ChipConfigWindow) begin
       reg_axi_lite_aw_select = smc_misc_pkg::CHIP_CONFIG;
-    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE) begin
+    end else if (reg_axi_lite_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.aw.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_pkg::NdmResetWindow) begin
       reg_axi_lite_aw_select = smc_misc_pkg::NDM_RESET;
     end else begin
       reg_axi_lite_aw_select = smc_misc_pkg::ERR_SLV;
     end
 
-    unique if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE) begin
+    unique if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR + smc_pkg::ScratchColdWindow) begin
       reg_axi_lite_ar_select = smc_misc_pkg::SCRATCH_COLD;
-    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE) begin
+    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR + smc_pkg::ScratchColdWarmWindow) begin
       reg_axi_lite_ar_select = smc_misc_pkg::SCRATCH_COLD_WARM;
-    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE) begin
+    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR + smc_pkg::ChipConfigWindow) begin
       reg_axi_lite_ar_select = smc_misc_pkg::CHIP_CONFIG;
-    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE) begin
+    end else if (reg_axi_lite_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR && reg_axi_lite_req_i.ar.addr < smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR + smc_pkg::NdmResetWindow) begin
       reg_axi_lite_ar_select = smc_misc_pkg::NDM_RESET;
     end else begin
       reg_axi_lite_ar_select = smc_misc_pkg::ERR_SLV;

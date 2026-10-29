@@ -4,7 +4,7 @@
 // Declare SMC local AXI crossbar types and configuration.
 //
 // Defines initiator/target counts and AXI typedefs for the local SMC xbar: three
-// initiators with 6-bit IDs, five targets whose IDs widen to 8 bits, and 19 address
+// initiators with 6-bit IDs, five targets whose IDs widen to 8 bits, and 16 address
 // rules on a 32-bit address and 64-bit data bus, with eight outstanding transactions per
 // port, every port cut and full connectivity. It also declares the AXI-Lite and APB
 // types of the converted CSR ports.
@@ -21,7 +21,7 @@ package smc_local_xbar_pkg;
   // ===========================================================================
   localparam int unsigned NumInputs     = 3;
   localparam int unsigned NumOutputs    = 5;
-  localparam int unsigned NumAddrRules  = 19;
+  localparam int unsigned NumAddrRules  = 16;
   localparam int unsigned MaxInputIdW   = 6;
   localparam int unsigned XbarOutputIdW = 8;
 

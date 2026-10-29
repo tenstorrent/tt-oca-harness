@@ -71,97 +71,61 @@ module smc_local_xbar
   // ===========================================================================
   // Address Map Configuration
   // ===========================================================================
-  // A rule that does not end on a 4 KiB boundary only ever meets a rule for the same port,
-  // so no AXI burst, which cannot cross 4 KiB, reaches a second port. The front-port rules
-  // keep their exact extents so the gaps between them decode-error here: the cluster answers
-  // OKAY for an address it does not map. The debug module's hart-facing window has no rule:
-  // only the cluster's harts may reach it.
+  // Every rule starts and ends on a 4 KiB boundary: the xbar routes a burst by its start
+  // address and an AXI burst cannot cross 4 KiB, so a burst never reaches a second target.
+  // The debug module's hart-facing window has no rule: only the cluster's harts may reach
+  // it.
   localparam smc_local_xbar_pkg::addr_rule_t [smc_local_xbar_pkg::NumAddrRules-1:0] AddrMap = '{
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE)},
-    '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_SIZE)},
-    '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_SIZE)},
-    '{idx: 0,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE)},
+      end_addr:   33'(smc_pkg::WdtPageEnd)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE)},
+      end_addr:   33'(smc_pkg::CpuCtrlPageEnd)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE)},
+      end_addr:   33'(smc_pkg::SpmPageEnd)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_PLIC_SIZE)},
+      end_addr:   33'(smc_pkg::PlicPageEnd)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CLINT_SIZE)},
+      end_addr:   33'(smc_pkg::ClintPageEnd)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_BEU_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_BEU_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_BEU_SIZE)},
+      end_addr:   33'(smc_pkg::BeuPageEnd[0])},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_BEU_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_BEU_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_BEU_SIZE)},
+      end_addr:   33'(smc_pkg::BeuPageEnd[1])},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_BEU_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_BEU_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_BEU_SIZE)},
+      end_addr:   33'(smc_pkg::BeuPageEnd[2])},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_BASE_ADDR),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_BASE_ADDR
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE)},
+      end_addr:   33'(smc_pkg::BeuPageEnd[3])},
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_pkg::axi_window_end(
-                      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR,
-                      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))},
+      end_addr:   33'(smc_pkg::DataAccelPageEnd)},
     // The internal and peripheral child xbars reject holes within these
     // generated aggregate bounds.
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
-      end_addr:   33'(smc_pkg::axi_window_end(
-                      smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR,
-                      smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE))},
+      end_addr:   33'(smc_pkg::LocalRegPageEnd)},
     '{idx: 2,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
-      end_addr:   33'(smc_pkg::axi_window_end(
-                      smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR,
-                      smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE))},
+      end_addr:   33'(smc_pkg::DfxPageEnd)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
-      end_addr:   33'(smc_pkg::axi_window_end(
-                      smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR,
-                      smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE))},
+      end_addr:   33'(smc_pkg::PeriphRegPageEnd)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
-      end_addr:   33'(smc_pkg::axi_window_end(
-                      smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR,
-                      smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE))},
+      end_addr:   33'(smc_pkg::I3cPageEnd)},
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
-      end_addr:   33'(smc_pkg::axi_window_end(
-                      smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR,
-                      smc_pkg::SmcExternalWindowSize))},
+      end_addr:   33'(smc_pkg::ExternalPageEnd)},
     '{idx: 4,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR),
-      end_addr:   33'(smc_pkg::axi_window_end(
-                      smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR,
-                      smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_SIZE))}
+      end_addr:   33'(smc_pkg::ClaPageEnd)}
   };
 
   // ===========================================================================

@@ -198,9 +198,6 @@ module smc_cpu_wrapper #(
   // register block; everything else goes to the CPU cluster.
   localparam bit FrontPortCluster = 1'b0;
   localparam bit FrontPortCpuCtrl = 1'b1;
-  localparam longint unsigned CpuCtrlWindowEnd = smc_pkg::axi_window_end(
-      smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR,
-      smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE);
 
   smc_pkg::smc_local_32_64_8_12_axi_req_t  [1:0] front_port_demux_req;
   smc_pkg::smc_local_32_64_8_12_axi_resp_t [1:0] front_port_demux_resp;
@@ -216,11 +213,11 @@ module smc_cpu_wrapper #(
     front_port_ar_select = FrontPortCluster;
     // Check if address matches the cpu_ctrl CSR window
     if (axi_front_port_req_i.aw.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR &&
-            axi_front_port_req_i.aw.addr <  CpuCtrlWindowEnd) begin
+            axi_front_port_req_i.aw.addr <  smc_pkg::CpuCtrlPageEnd) begin
       front_port_aw_select = FrontPortCpuCtrl;
     end
     if (axi_front_port_req_i.ar.addr >= smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR &&
-            axi_front_port_req_i.ar.addr <  CpuCtrlWindowEnd) begin
+            axi_front_port_req_i.ar.addr <  smc_pkg::CpuCtrlPageEnd) begin
       front_port_ar_select = FrontPortCpuCtrl;
     end
   end

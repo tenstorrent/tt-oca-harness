@@ -514,16 +514,154 @@ package smc_pkg;
     logic i2c_intg_err;        // OR of the I2C FIFO pointer and parity errors.
   } smc_ras_t;
 
+  // Decode windows. An AXI decoder's windows start and end on 4 KiB boundaries: the decoder
+  // routes a burst by its start address and an AXI burst cannot cross 4 KiB, so a burst
+  // never reaches a second target. An AXI-Lite decoder's window is its target's extent
+  // rounded up to a power of two, so the target's low address bits cover the whole window
+  // and an address past its registers reaches that target.
+  localparam longint unsigned PageMask = 64'hFFF;
+
+  // Used in smc_local_xbar.
+  localparam longint unsigned WdtPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE + PageMask) & ~PageMask;
+  // Also used in smc_cpu_wrapper.
+  localparam longint unsigned CpuCtrlPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned SpmPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned PlicPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_PLIC_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned ClintPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CLINT_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned DataAccelPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned LocalRegPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned DfxPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned PeriphRegPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned I3cPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned ExternalPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR +
+       SmcExternalWindowSize + PageMask) & ~PageMask;
+  localparam longint unsigned ClaPageEnd =
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_SIZE + PageMask) & ~PageMask;
+  localparam longint unsigned BeuPageEnd [4] = '{
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_BEU_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_BEU_SIZE + PageMask) & ~PageMask,
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_BEU_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_BEU_SIZE + PageMask) & ~PageMask,
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_BEU_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_BEU_SIZE + PageMask) & ~PageMask,
+      (smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_BASE_ADDR +
+       smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE + PageMask) & ~PageMask
+  };
+
+  // Used in smc_periph_axi_lite_xbar.
+  localparam longint unsigned ResetUnitWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE);
+  localparam longint unsigned MiscWrapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE);
+  localparam longint unsigned GpioIntfWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_TOTAL_SIZE);
+  localparam longint unsigned AvsbusWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE);
+  localparam longint unsigned I2cWrapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_SIZE);
+  localparam longint unsigned UartWrapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_SIZE);
+  localparam longint unsigned EfuseMapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE);
+  // Also used in smc_efuse_wrapper.
+  localparam longint unsigned EfuseCtrlWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE);
+  localparam longint unsigned TelemetryWrapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_SIZE);
+  localparam longint unsigned OctsTimerWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE);
+  localparam longint unsigned DtpWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE);
+  localparam longint unsigned I3cWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE);
+
+  // Used in smc_internal_axi_lite_xbar.
+  localparam longint unsigned BaseConfigWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_SIZE);
+  localparam longint unsigned AliasRemapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE);
+  localparam longint unsigned MmodeRemapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_TOTAL_SIZE);
+  localparam longint unsigned XvisorRemapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_TOTAL_SIZE);
+  localparam longint unsigned InboundFilterWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_TOTAL_SIZE);
+  localparam longint unsigned OutboundFilterWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_TOTAL_SIZE);
+  localparam longint unsigned MailboxWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE);
+  localparam longint unsigned DfxWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE);
+
+  // Used in smc_misc_wrap.
+  localparam longint unsigned ScratchColdWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SIZE);
+  localparam longint unsigned ScratchColdWarmWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE);
+  localparam longint unsigned ChipConfigWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE);
+  localparam longint unsigned NdmResetWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE);
+
+  // Used in smc_data_accelerator_wrap.
+  localparam longint unsigned DmaCtrlWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE);
+  localparam longint unsigned ZeroerCtrlWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE);
+
+  // Used in smc_ip_integration.
+  localparam longint unsigned ExtGpioCtrlWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_TOTAL_SIZE);
+  localparam longint unsigned ExtPllWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PLL_WRAP_SIZE);
+  localparam longint unsigned ExtPvtWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE);
+  localparam longint unsigned ExtStrapsWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_SIZE);
+
+  // Used in smc_peripherals, passed to the I2C, UART and telemetry wrappers.
+  localparam longint unsigned I2cCtrlWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_SIZE);
+  localparam longint unsigned I2cWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_I2C_SIZE);
+  localparam longint unsigned UartLogEngineWrapWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_SIZE);
+  localparam longint unsigned UartWindow =
+      64'd1 << $clog2(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SIZE);
+  localparam longint unsigned LogEngineWindow =
+      64'd1 << $clog2(
+          smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE);
+  localparam longint unsigned UartLogEngineCtrlWindow =
+      64'd1 << $clog2(
+          smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_SIZE);
+  localparam longint unsigned TelemetryReceiverWindow =
+      64'd1 << $clog2(
+          smc_top_addrmap_pkg::SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_SIZE);
+
   function automatic logic is_pow2(input logic [31:0] value);
     return (value != '0) && ((value & (value - 32'd1)) == '0);
-  endfunction
-
-  // End of an AXI decode window holding [base, base + size), rounded up to a 4 KiB boundary.
-  // An AXI burst never crosses one, so with page-aligned bases a burst cannot leave the target
-  // its start address selects.
-  function automatic longint unsigned axi_window_end(input longint unsigned base,
-                                                     input longint unsigned size);
-    return (base + size + 64'hFFF) & ~64'hFFF;
   endfunction
 
 endpackage

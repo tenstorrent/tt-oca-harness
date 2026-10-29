@@ -5,10 +5,10 @@
 //
 // Adapts accelerator control and master data ports to the SMC fabric.
 // Exposes status and clock-gater activity indicators alongside clock-gating control.
-// The control demux sends the DMA and zeroer windows from smc_top_addrmap_pkg to their blocks
-// and any other address in the page to a DECERR responder; a burst that starts in the DMA
-// window and runs past its registers gets SLVERR from the DMA frontend. The master mux
-// prepends a source bit to the transfer IDs.
+// The control demux sends the DMA and zeroer windows, each its extent rounded up to a power
+// of two, to their blocks and any other address in the page to a DECERR responder; the DMA
+// frontend answers SLVERR past its last register. The master mux prepends a source bit to
+// the transfer IDs.
 
 module smc_data_accelerator_wrap #(
   parameter int unsigned DMA_BUFFER_DEPTH = 16  // DMA buffer depth in beats.
@@ -84,12 +84,12 @@ module smc_data_accelerator_wrap #(
   function automatic ctrl_select_t ctrl_select(smc_pkg::smc_axi_local_addr_t addr);
     if (addr >= smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR &&
         addr < smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR +
-               smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE) begin
+               smc_pkg::DmaCtrlWindow) begin
       return ctrl_select_t'(smc_pkg::DMA);
     end
     if (addr >= smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR &&
         addr < smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR +
-               smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE) begin
+               smc_pkg::ZeroerCtrlWindow) begin
       return ctrl_select_t'(smc_pkg::ZEROER);
     end
     return ctrl_select_t'(CtrlErrSlv);

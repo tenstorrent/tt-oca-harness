@@ -64,7 +64,10 @@ ID to 8 bits, registers every port and answers unmapped addresses with DECERR,
 as do the internal CSR and peripheral crossbars. Each of its address rules spans
 whole 4 KiB pages: an AXI burst cannot cross a 4 KiB boundary, so a burst never
 reaches a second target, and an address in a page past a target's registers is
-answered by that target. Its targets, in port order, are
+answered by that target. The internal CSR and peripheral crossbars, and the
+demuxes inside the peripherals, give each target its register map's size rounded
+up to a power of two, so an address past a block's registers inside that window
+is answered by the block. Its targets, in port order, are
 the CPU cluster front port, the data accelerator control port, the internal CSR
 crossbar, the peripheral crossbar and the CLA register window of the DFD block,
 which is reached over APB. The converters in front of the last three belong to
