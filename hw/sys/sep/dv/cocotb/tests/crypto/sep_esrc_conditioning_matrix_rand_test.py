@@ -14,6 +14,11 @@ BIW Mixing, SHA-256 Whitening):
     [8k+7:8k] of word n (architecture.adoc:118; entropy_source.adoc:108).
   * ``DOWNSAMPLE_RATE`` = N selects every (N+1)th decorrelator output while the
     compressor is bypassed (entropy_source.adoc:106).
+  * ``DECORRELATOR_CTRL.SAMPLE_CLK_DIV`` = D sets the byte period to D + 1 cycles
+    (entropy_source.adoc:387; architecture.adoc:107). While a lane is disabled
+    its divider holds at zero, so a D written before the enable sets the distance
+    to the first sample (architecture.adoc:113). The enable of a lane is
+    ``RING_OSC_ENABLE.ENABLE`` (entropy_source.adoc:357).
   * With ``SHA256_WHITENING_ENABLE`` = 1, 16 input words give 8 digest words
     (architecture.adoc:142) and ``SHA256_STATUS.OUTPUT_COUNT`` reports 8 and
     counts down to 0; it stays 0 while bypassed (entropy_source.adoc:206). With
@@ -28,7 +33,9 @@ the first TRNG reset release and never stops; each leg changes the patterns.
 
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the leg order, the partial mask M, the rate N_r (2 to 15), the lane
-noise Z (12 bits with a 0 and a 1) and its polarity, and the balanced lanes.
+noise Z (12 bits with a 0 and a 1) and its polarity, the balanced lanes, the
+divider value D_r (above the reset value, at most 1023) and the order of 0 and
+D_r in the period walk.
 
 Checkers:
   CHK-COND-MASK        each lane byte == (0xFF if Z[j] else 0x00) AND mask, 16 strobes,
@@ -45,6 +52,29 @@ Checkers:
                        is a whole number of strobe periods. Control, exact: with the
                        compressor in use, whitening off and rate N_r, an aligned span
                        of 16 one-word outputs holds 16 strobes (the rate is ignored).
+  CHK-COND-FIRST-PUSH  with the compressor bypassed and N_r written by the clean start
+                       after the TRNG reset, the first FIFO word comes on the (N_r+1)th
+                       strobe of ``esrc_stream_valid_gated_o`` (the stream after the boot
+                       gate, architecture.adoc:40-47; entropy_source.adoc:106). "Every
+                       (N+1)th output" selects outputs N+1, 2(N+1), ...; for N >= 1 the
+                       first output is not one of them. Control: no gated strobe before
+                       the clean start returned and no FIFO word before the first gated
+                       strobe.
+  CHK-COND-PERIOD-RATIO  with every lane disabled, D written, then the lanes enabled,
+                       the steady gap g_D of ``esrc_decor_valid_o`` meets
+                       g_D x (D_ref + 1) == g_ref x (D + 1) for D = 0 and D_r against the
+                       reset value D_ref (entropy_source.adoc:387; architecture.adoc:107).
+                       A ratio of two DUT gaps: no time base.
+  CHK-COND-FIRST-STROBE  the offset o_D = (distance from the clock where
+                       ``esrc_ro_enable_o`` reads all ones to the first strobe) - g_D is
+                       the same for D = 0 and D_r as for D_ref (architecture.adoc:113:
+                       the divider holds at zero while disabled); a fixed enable delay
+                       cancels. Control: 6 strobes after the enable, five equal gaps, no
+                       strobe while disabled, and min(k, D) differs from
+                       min(k', D_ref) for every count k a DUT that keeps its count
+                       while disabled would hold at D and k' at D_ref (``held``, from
+                       the divider trace): such a DUT gives an offset of
+                       L - min(k, D), so it then fails.
   CHK-COND-SHA         16 whitener input words give 8 output words (architecture.adoc:142),
                        exact: over the span between the first and the last quiet clock
                        of the window (SHA256_STATUS BUSY = 0 and OUTPUT_COUNT = 0, no
@@ -70,6 +100,15 @@ Checkers:
 Logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the 32-bit health test with the
 compressor bypassed has no single stated behaviour) and ``OBS-BLOCKED
 CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW word is not stated).
+``OBS-COND-PERIOD-ABS`` logs the gap of each divider value in ``clk_i`` cycles
+(the time base of the period is not stated: the register text names sample-clock
+cycles, the architecture text ``clk_i`` cycles). No text states the effect of a
+``DOWNSAMPLE_RATE`` or ``SAMPLE_CLK_DIV`` write while the stream runs, of a rate
+written while the stream is stopped, or where the downsample count starts when
+the compressor bypass turns on: ``OBS-COND-DS-MIDRUN-UP``,
+``OBS-COND-DS-MIDRUN-DOWN``, ``OBS-COND-DIV-MIDRUN-UP``,
+``OBS-COND-DIV-MIDRUN-DOWN``, ``OBS-COND-DS-RESUME`` and ``OBS-COND-DS-BYPASS-ON``
+log the tapped counts and the distance to the next strobe or FIFO word.
 """
 
 from __future__ import annotations
@@ -89,7 +128,14 @@ from env.sep_esrc_pattern_noise import (
     describe,
 )
 from env.sep_esrc_sha_tap import DIGEST_WORDS, SepEsrcShaTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    ESRC_CNT_PASS_FIRST_PUSH,
+    ESRC_CNT_PASS_FIRST_STROBE,
+    ESRC_CNT_PASS_PERIOD,
+    close_graded_window,
+    open_graded_window,
+    set_esrc_cnt_pass,
+)
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE, sym
@@ -111,6 +157,9 @@ from seq_lib.sep_esrc_bringup_seq import (
 from seq_lib.sep_esrc_clean_start_seq import (
     BYPASS_ALL,
     LATENCY_FACTOR,
+    MAX_PRE_CLEAN_STROBES,
+    PERIOD_CAP,
+    RESET_STROBE_CLK,
     SepEsrcCleanStart,
     SepEsrcLeafSetup,
 )
@@ -141,6 +190,22 @@ PASSTHRU_BIW_MIN = 16
 PASSTHRU_FIFO_MIN = 8
 PASSTHRU_MAX_OFFSET = 8
 HT_WAIT_FACTOR = 3
+# Period walk: strobes after a lane enable (the first distance and five gaps).
+PERIOD_STROBES = 6
+# Largest drawn divider value: a period walk value needs 7 periods of D + 1 clocks.
+DIV_DRAW_MAX = 1023
+# A rate above every drawn N_r (2 to 15), so N_r -> RATE_HI is an increase on every seed.
+RATE_HI = 16
+# Clocks the leaf holds a bit of esrc_cnt_pass before it writes 0.
+CNT_HOLD_CLKS = 2
+# Clean starts tried for a first push whose strobe counts can tell the count start.
+FIRST_PUSH_TRIES = 3
+# Reference walks tried for a held set without 0.
+REF_WALK_TRIES = 3
+# Clocks from a RING_OSC_ENABLE write of 0 to esrc_ro_enable_o reading 0 (outer cap).
+RO_OFF_CLKS = 64
+# Outer cap of the mid-run trace (clocks); never a contract.
+MIDRUN_CAP = 200_000
 
 # Bounds. A latency bound is LAT_FACTOR x the clean time of the same operation
 # measured earlier in the same run; the first measurement of a kind uses an
@@ -149,6 +214,9 @@ LAT_FACTOR = LATENCY_FACTOR
 FIFO_DEPTH = 64
 
 INTR_ENABLE_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
+_RO_ENABLE = ENTROPY_SOURCE.fields("RING_OSC_ENABLE")["ENABLE"]
+# RING_OSC_ENABLE.ENABLE with every lane enabled (the reset value, entropy_source.adoc:357).
+RO_ENABLE_ALL = _RO_ENABLE["bm"] >> _RO_ENABLE["bp"]
 
 
 def _get(value: int, reg: str, field: str) -> int:
@@ -158,6 +226,40 @@ def _get(value: int, reg: str, field: str) -> int:
 
 def _val(reg: str, **fields: int) -> int:
     return ENTROPY_SOURCE.value(reg, **fields)
+
+
+# DECORRELATOR_CTRL.SAMPLE_CLK_DIV reset value, the reference of the period ratio.
+RESET_DIV = _get(ENTROPY_SOURCE.reset("DECORRELATOR_CTRL"), "DECORRELATOR_CTRL", "SAMPLE_CLK_DIV")
+# Clocks between two reference walks: half a reference period, so the disable of the
+# next walk lands away from the count and the wrap that put 0 in the held set.
+REF_WALK_SHIFT_CLKS = (RESET_DIV + 1) // 2
+
+
+def _held(h: set[int] | None) -> str:
+    return "none" if h is None else "/".join(str(v) for v in sorted(h))
+
+
+def _first_push_tells(trace: dict) -> bool:
+    """A count of every strobe from the TRNG release, or from the enable write, misses N+1.
+
+    Such a count reaches N+1 on the first gated strobe j with (u + j) % (N+1) == 0,
+    where u is the strobes it saw before the first gated one, so it pushes on strobe
+    N+1 only when u % (N+1) == 0.
+    """
+    if trace["u0"] is None:
+        return True
+    m = trace["n"] + 1
+    return trace["u0"] % m != 0 and (trace["u0"] - trace["u_at_ctrl"]) % m != 0
+
+
+def _next_telling_rate(trace: dict) -> int:
+    """The first rate after ``trace["n"]`` (15 wraps to 2) whose trace would tell, given its u0."""
+    n = trace["n"]
+    for k in range(1, RATE_HI - 2):
+        c = 2 + (n - 2 + k) % (RATE_HI - 2)
+        if _first_push_tells({**trace, "n": c}):
+            return c
+    return 2 + (n - 1) % (RATE_HI - 2)
 
 
 def _lane_byte(bit: int, mask: int) -> int:
@@ -178,6 +280,8 @@ class Plan:
     n_r: int
     z: int
     balanced: tuple[Balanced, ...]
+    div_r: int
+    div_walk: tuple[int, ...]
 
     @property
     def rates(self) -> tuple[int, ...]:
@@ -186,7 +290,8 @@ class Plan:
     def describe(self) -> str:
         return (
             f"legs={','.join(self.legs)} mask=0x{self.mask:02x} n_r={self.n_r} "
-            f"z=0x{self.z:03x} rates={list(self.rates)} {describe(self.balanced)}"
+            f"z=0x{self.z:03x} rates={list(self.rates)} div_r={self.div_r} "
+            f"div_walk={list(self.div_walk)} {describe(self.balanced)}"
         )
 
 
@@ -205,7 +310,10 @@ def draw_plan(seed: int) -> Plan:
     if rng.getrandbits(1):
         z ^= (1 << NUM_LANES) - 1
     balanced = tuple(balanced_lanes(rng))
-    return Plan(seed, tuple(legs), mask, n_r, z, balanced)
+    div_r = rng.randrange(RESET_DIV + 1, DIV_DRAW_MAX + 1)
+    tail = [0, div_r]
+    rng.shuffle(tail)
+    return Plan(seed, tuple(legs), mask, n_r, z, balanced, div_r, (RESET_DIV, *tail))
 
 
 class _EsrcRegs(SepAxiRegDriver):
@@ -223,6 +331,9 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         "CHK-COND-SHA",
         "CHK-COND-SHA-COUNT",
         "CHK-COND-PASSTHRU",
+        "CHK-COND-FIRST-PUSH",
+        "CHK-COND-PERIOD-RATIO",
+        "CHK-COND-FIRST-STROBE",
     )
 
     async def run_scenario(self) -> None:
@@ -295,16 +406,88 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         """TRNG reset 0 then 1 (SepEsrcLeafSetup); returns the noise mark at the release."""
         return await self.setup.trng_reset(balanced=self.plan.balanced)
 
-    async def _setup(self) -> None:
+    async def _setup(
+        self, *, ctrl_fields: dict[str, int] | None = None, first_push: bool = False
+    ) -> dict | None:
+        """TRNG reset, clean start (with ``ctrl_fields`` in its CTRL writes), period, boot.
+
+        With ``first_push`` a trace of the gated strobes and FIFO words runs from the
+        TRNG reset release to the first FIFO word (``_first_push_trace``); the
+        returned state holds it, with ``gated_at_ctrl`` = the gated strobes when the
+        clean start returned, and ``task`` to await.
+        """
         close_graded_window(self.logger)
         mark = await self._trng_reset()
+        trace = None
+        if first_push:
+            # Outer cap: the boot bound of wait_boot_done, the strobes before the clean
+            # start, two first-push distances and the period measurement.
+            bound = (
+                2 * WINDOW + 64 + MAX_PRE_CLEAN_STROBES + 2 * RATE_HI
+            ) * RESET_STROBE_CLK + PERIOD_CAP
+            trace = {
+                "g": 0,
+                "u": 0,
+                "u0": None,
+                "pre_push": 0,
+                "k": None,
+                "ds_count": None,
+                "reason": "",
+            }
+            trace["task"] = cocotb.start_soon(self._first_push_trace(trace, bound))
         await self._wr(ESRC_INTR_ENABLE, INTR_ENABLE_ALL)
         await self._wr(ESRC_ALERT_THRESHOLD, _val("ALERT_THRESHOLD", THRESHOLD=0))
-        await SepEsrcCleanStart(self, self.noise, self.plan.balanced, window=WINDOW).run(
-            release_mark=mark
-        )
+        await SepEsrcCleanStart(
+            self, self.noise, self.plan.balanced, window=WINDOW, ctrl_fields=ctrl_fields
+        ).run(release_mark=mark)
+        if trace is not None:
+            trace["gated_at_ctrl"] = trace["g"]
+            trace["u_at_ctrl"] = trace["u"]
         self.p = await self.setup.measure_period(self.chk)
         await self.setup.wait_boot_done(self.esrc, WINDOW)
+        return trace
+
+    async def _first_push_trace(self, st: dict, bound: int) -> None:
+        """Counts ``esrc_stream_valid_gated_o`` strobes up to the first FIFO word.
+
+        On every ``clk_i`` (ReadOnly): ``g`` counts the gated strobes and ``u`` the
+        ungated ``esrc_decor_valid_o`` strobes; ``u0`` = ``u`` before the first gated
+        strobe; a word of
+        ``esrc_compress_vld_o`` before the first gated strobe counts in ``pre_push``;
+        the first word after it sets ``k`` = the gated strobes up to and including
+        that clock and ``ds_count`` = ``esrc_downsample_count_o`` on that clock. A
+        bypassed output writes its first word on the clock of its gated strobe, so
+        ``k`` does not depend on a word latency. After ``bound`` clocks ``reason``
+        names the timeout.
+        """
+        dut = cocotb.top
+        for _ in range(bound):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.esrc_stream_valid_gated_o):
+                if st["g"] == 0:
+                    st["u0"] = st["u"]
+                st["g"] += 1
+            if self.rd(dut.esrc_decor_valid_o):
+                st["u"] += 1
+            if self.rd(dut.esrc_compress_vld_o):
+                if st["g"] == 0:
+                    st["pre_push"] += 1
+                else:
+                    st["k"] = st["g"]
+                    st["ds_count"] = self.rd(dut.esrc_downsample_count_o)
+                    break
+        else:
+            st["reason"] = f"timeout:first_push bound={bound}"
+        await NextTimeStep()
+
+    async def _cnt_pass(self, bits: int) -> None:
+        """Pulse the esrc_cnt_pass bits of a check that passed (CNT_HOLD_CLKS)."""
+        if set_esrc_cnt_pass(bits, self.logger):
+            for _ in range(CNT_HOLD_CLKS):
+                await RisingEdge(cocotb.top.clk_i)
+            set_esrc_cnt_pass(0, self.logger)
+            await RisingEdge(cocotb.top.clk_i)
 
     async def _drive_stuck(self, bits: list[int]) -> None:
         """Constant lane bits from the next strobe; waits >= 4 strobes and >= 29 clocks."""
@@ -381,18 +564,25 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self._wr(ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=0))
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         for whiten in (1, 0):
-            await self._wr(
-                ESRC_CTRL,
-                _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, SHA256_WHITENING_ENABLE=whiten),
+            ctrl = _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, SHA256_WHITENING_ENABLE=whiten)
+            await self._wr(ESRC_CTRL, ctrl)
+            ctrl_rb = await self._rd(ESRC_CTRL)
+            self.chk.ctrl(
+                "COND-BYPASS",
+                ctrl_rb == ctrl,
+                whiten=whiten,
+                ctrl=f"0x{ctrl:08x}",
+                ctrl_rb=f"0x{ctrl_rb:08x}",
             )
             for pas in SIGNATURE_PASSES:
-                if not await self._bypass_pass(whiten, pas):
+                if not await self._bypass_pass(ctrl_rb, pas):
                     close_graded_window(self.logger)
                     return
         close_graded_window(self.logger)
 
-    async def _bypass_pass(self, whiten: int, pas) -> bool:
+    async def _bypass_pass(self, ctrl_rb: int, pas) -> bool:
         plan = self.plan
+        whiten = _get(ctrl_rb, "CTRL", "SHA256_WHITENING_ENABLE")
         bits = [1] * NUM_LANES if pas == "all1" else [(j >> pas) & 1 for j in range(NUM_LANES)]
         await self._drive_stuck(bits)
         await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE", ENABLE=0))
@@ -446,10 +636,26 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         (architecture.adoc:115) that reaches the FIFO unchanged (entropy_source.adoc:104),
         whatever the rate, so CTRL_SPAN_OUTPUTS words take exactly CTRL_SPAN_OUTPUTS
         strobes.
+
+        The set-up writes the bypass and N_r in the clean start, so the first FIFO word
+        after the TRNG reset is graded (``_grade_first_push``). After the control
+        span the period walk (``_period_walk``) and the logged-only mid-run writes
+        (``_midrun_obs``) run in the same graded window.
         """
         plan = self.plan
-        await self._setup()
+        n = plan.n_r
+        for tries in range(1, FIRST_PUSH_TRIES + 1):
+            trace = await self._setup(
+                ctrl_fields={"BYPASS_ENTROPY_COMPRESSOR": 1, "DOWNSAMPLE_RATE": n},
+                first_push=True,
+            )
+            await trace["task"]
+            trace.update(n=n, tries=tries)
+            if _first_push_tells(trace):
+                break
+            n = _next_telling_rate(trace)
         open_graded_window(TEST, self.logger)
+        await self._grade_first_push(trace)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         await self._wr(ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=0))
         results: list[tuple[int, dict]] = []
@@ -460,6 +666,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             prev = n
         await self._wr(ESRC_CTRL, _val("CTRL", DOWNSAMPLE_RATE=plan.n_r, SHA256_WHITENING_ENABLE=0))
         c = await self._aligned_span(1, CTRL_SPAN_OUTPUTS, 0, prev)
+        await self._period_walk()
+        await self._midrun_obs()
         close_graded_window(self.logger)
         self.chk.ctrl(
             "COND-DOWNSAMPLE",
@@ -561,6 +769,461 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         )
         return out
 
+    # --- first push, period walk and mid-run writes (downsample leg) -------------
+    async def _grade_first_push(self, trace: dict) -> None:
+        """CHK-COND-FIRST-PUSH: the first FIFO word on the (N_r+1)th gated strobe.
+
+        entropy_source.adoc:106: DOWNSAMPLE_RATE = N selects every (N+1)th
+        decorrelator output while BIW extraction is bypassed, that is outputs N+1,
+        2(N+1), ..., so for N >= 1 the first output is not selected; architecture.adoc:40-47:
+        the boot gate passes the uncompressed bytes only after a passing boot window,
+        and the output select downsamples them by DOWNSAMPLE_RATE. The register block
+        and the downsample count share the TRNG reset; the clean start writes N_r and
+        the bypass before the boot gate passes any strobe, so the count of selected
+        outputs starts at the first gated strobe. Anchor: ``esrc_stream_valid_gated_o``
+        and ``esrc_compress_vld_o``; the clean start is the only stimulus.
+
+        The control needs the CTRL readback and a trace where a count of every strobe
+        from the TRNG release or from the enable write would push on another strobe
+        (``_first_push_tells``). The leg repeats the clean start, up to FIRST_PUSH_TRIES
+        times, with the next rate that the u0 and u_at_ctrl of the last try would tell
+        (``_next_telling_rate``), until the trace tells the count start.
+        """
+        n = trace["n"]
+        k = trace["k"]
+        expect = n + 1
+        fields = {
+            "n": n,
+            "first_push_gated": "none" if k is None else k,
+            "expect": expect,
+            "gated_at_ctrl": trace["gated_at_ctrl"],
+            "pre_push": trace["pre_push"],
+            "ds_count": "none" if trace["ds_count"] is None else trace["ds_count"],
+        }
+        if trace["reason"]:
+            fields["reason"] = trace["reason"]
+        ctrl_rb = await self._rd(ESRC_CTRL)
+        bypass_rb = _get(ctrl_rb, "CTRL", "BYPASS_ENTROPY_COMPRESSOR")
+        rate_rb = _get(ctrl_rb, "CTRL", "DOWNSAMPLE_RATE")
+        self.chk.ctrl(
+            "COND-FIRST-PUSH",
+            trace["gated_at_ctrl"] == 0
+            and trace["pre_push"] == 0
+            and bypass_rb == 1
+            and rate_rb == n
+            and _first_push_tells(trace),
+            gated_at_ctrl=trace["gated_at_ctrl"],
+            pre_push=trace["pre_push"],
+            n=n,
+            bypass_rb=bypass_rb,
+            rate_rb=rate_rb,
+            u0="none" if trace["u0"] is None else trace["u0"],
+            u_at_ctrl=trace["u_at_ctrl"],
+            tries=trace["tries"],
+        )
+        if self.chk.ok("COND-FIRST-PUSH", k == expect, **fields):
+            await self._cnt_pass(ESRC_CNT_PASS_FIRST_PUSH)
+
+    async def _lanes_off(self) -> int | None:
+        """RING_OSC_ENABLE.ENABLE = 0; clocks until ``esrc_ro_enable_o`` reads 0, or None."""
+        dut = cocotb.top
+        await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE", ENABLE=0))
+        return await self.setup.wait_probe(lambda: self.rd(dut.esrc_ro_enable_o) == 0, RO_OFF_CLKS)
+
+    async def _set_div(self, div: int) -> None:
+        """Lanes off, SAMPLE_CLK_DIV = ``div``, lanes on; raises if the lanes do not stop.
+
+        The order of ``doc/programmer/src/sep-programming.adoc:409-411,427``.
+        """
+        if await self._lanes_off() is None:
+            raise AssertionError(f"esrc_ro_enable_o not 0 bound={RO_OFF_CLKS}")
+        await self._wr(
+            ESRC_DECORRELATOR_CTRL, _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL, SAMPLE_CLK_DIV=div)
+        )
+        await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE"))
+
+    async def _enable_trace(self, st: dict, bound: int) -> None:
+        """Strobes of ``esrc_decor_valid_o`` around the lane enable, on every clk_i.
+
+        ``e0`` is the first clock where ``esrc_ro_enable_o`` reads every lane enabled,
+        and ``div_tap`` is ``esrc_decor_div_lane0_o`` on that clock; ``pre`` counts the
+        strobes up to and including it; ``strobes`` holds the clocks of the first
+        PERIOD_STROBES strobes after it. After ``bound`` clocks ``reason`` names the
+        timeout.
+        """
+        dut = cocotb.top
+        for clk in range(1, bound + 1):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            strobe = self.rd(dut.esrc_decor_valid_o)
+            if st["e0"] is None:
+                st["pre"] += strobe
+                if self.rd(dut.esrc_ro_enable_o) == RO_ENABLE_ALL:
+                    st["e0"] = clk
+                    st["div_tap"] = self.rd(dut.esrc_decor_div_lane0_o)
+                continue
+            if strobe:
+                st["strobes"].append(clk)
+                if len(st["strobes"]) == PERIOD_STROBES:
+                    break
+        else:
+            st["reason"] = f"timeout:strobes bound={bound} seen={len(st['strobes'])}"
+        await NextTimeStep()
+
+    async def _walk_one(self, div: int) -> dict:
+        """Lanes off, SAMPLE_CLK_DIV = ``div``, then the lane enable under the trace.
+
+        ``held`` is the set of counts that a divider which keeps its count while
+        disabled would hold, from ``esrc_decor_div_lane0_o`` on every clock from the
+        disable write to the end of the ``div`` write: the count on the clock before
+        the last run of zeros, and also 0 when that count is the stored value (the run
+        can then start at a wrap); {0} when every count is 0; None when the trace does
+        not end in zeros.
+        """
+        dut = cocotb.top
+        st = {
+            "e0": None,
+            "pre": 0,
+            "div_tap": None,
+            "held": None,
+            "strobes": [],
+            "reason": "",
+        }
+        stored = _get(await self._rd(ESRC_DECORRELATOR_CTRL), "DECORRELATOR_CTRL", "SAMPLE_CLK_DIV")
+        counts: list[int] = []
+        run = [True]
+
+        async def _div_trace() -> None:
+            while run[0]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                counts.append(self.rd(dut.esrc_decor_div_lane0_o))
+            await NextTimeStep()
+
+        trace = cocotb.start_soon(_div_trace())
+        off = await self._lanes_off()
+        await self._wr(
+            ESRC_DECORRELATOR_CTRL, _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL, SAMPLE_CLK_DIV=div)
+        )
+        run[0] = False
+        await trace
+        z = len(counts)
+        while z and counts[z - 1] == 0:
+            z -= 1
+        if z == 0 and counts:
+            st["held"] = {0}
+        elif z < len(counts):
+            st["held"] = {counts[z - 1], 0} if counts[z - 1] == stored else {counts[z - 1]}
+        if off is None:
+            st["reason"] = f"timeout:enable_off bound={RO_OFF_CLKS}"
+        task = cocotb.start_soon(self._enable_trace(st, 8 * (div + 1) + 256))
+        await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE"))
+        await task
+        s = st["strobes"]
+        e0 = st["e0"]
+        st["first"] = s[0] - e0 if s and e0 is not None else None
+        st["gaps"] = [b - a for a, b in zip(s, s[1:])]
+        st["ok"] = (
+            off is not None
+            and e0 is not None
+            and st["pre"] == 0
+            and len(s) == PERIOD_STROBES
+            and len(set(st["gaps"])) == 1
+        )
+        st["gap"] = st["gaps"][0] if st["ok"] else None
+        return st
+
+    async def _period_walk(self) -> None:
+        """CHK-COND-PERIOD-RATIO and CHK-COND-FIRST-STROBE over D_ref, then 0 and D_r.
+
+        entropy_source.adoc:387 and architecture.adoc:107: the byte period is
+        SAMPLE_CLK_DIV + 1 cycles, so the steady gaps of two values D and D_ref meet
+        g_D x (D_ref + 1) == g_ref x (D + 1) whatever the unit of a cycle.
+        architecture.adoc:113: while ``enable_i`` is low the divider holds at zero,
+        so a value written before the enable sets the first distance. Any fixed
+        delay L from the ``esrc_ro_enable_o`` tap to the lane enable is the same for
+        every value, so the offset first distance - steady gap is equal for D_ref,
+        0 and D_r; CHK-COND-FIRST-STROBE grades the offsets of 0 and D_r against
+        the offset of D_ref, with no time base and no assumed L. A divider that
+        keeps its count k while disabled gives the offset L - min(k, D), so the
+        control CTRL-COND-FIRST-STROBE needs min(k, D) of the graded value to
+        differ from that of D_ref for every k in ``held`` (see ``_walk_one``). That
+        control cannot hold for 0 when the ``held`` of D_ref contains 0, so the walk of
+        D_ref repeats, REF_WALK_SHIFT_CLKS clocks later each time, up to REF_WALK_TRIES
+        times until its ``held`` has no 0. The enable of a lane is
+        RING_OSC_ENABLE.ENABLE (entropy_source.adoc:357); each value is written with
+        every lane disabled and then the lanes are enabled, the order of
+        ``doc/programmer/src/sep-programming.adoc:409-411,427``. Anchor:
+        ``esrc_ro_enable_o`` and ``esrc_decor_valid_o``.
+        """
+        plan = self.plan
+        await self._wr(ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=0))
+        ref: dict | None = None
+        ratio_pass = 0
+        for div in plan.div_walk:
+            st = await self._walk_one(div)
+            tries = 1
+            while div == RESET_DIV and st["held"] and 0 in st["held"] and tries < REF_WALK_TRIES:
+                await ClockCycles(cocotb.top.clk_i, REF_WALK_SHIFT_CLKS)
+                st = await self._walk_one(div)
+                tries += 1
+            self.chk.ctrl(
+                "COND-PERIOD",
+                st["ok"],
+                div=div,
+                strobes=len(st["strobes"]),
+                gaps=sorted(set(st["gaps"])),
+                enable_rose=st["e0"] is not None,
+                pre_enable_strobes=st["pre"],
+                **({"reason": st["reason"]} if st["reason"] else {}),
+            )
+            self.chk.obs(
+                "COND-PERIOD-ABS", div=div, period_clk="none" if st["gap"] is None else st["gap"]
+            )
+            self.logger.info(
+                "INFO-COND-DIV-TAP seed=%d div=%d div_tap_at_enable=%s",
+                plan.seed,
+                div,
+                "none" if st["div_tap"] is None else st["div_tap"],
+            )
+            st["offset"] = st["first"] - st["gap"] if st["ok"] else None
+            self.logger.info(
+                "INFO-COND-FIRST-OFFSET seed=%d div=%d tries=%d first_clk=%s gap_clk=%s offset=%s"
+                " held=%s",
+                plan.seed,
+                div,
+                tries,
+                "none" if st["first"] is None else st["first"],
+                "none" if st["gap"] is None else st["gap"],
+                "none" if st["offset"] is None else st["offset"],
+                _held(st["held"]),
+            )
+            if div == RESET_DIV:
+                ref = st
+                continue
+            ref_off = None if ref is None else ref["offset"]
+            h, h_ref = st["held"], None if ref is None else ref["held"]
+            self.chk.ctrl(
+                "COND-FIRST-STROBE",
+                h is not None
+                and h_ref is not None
+                and all(min(a, div) != min(b, RESET_DIV) for a in h for b in h_ref),
+                div=div,
+                held=_held(h),
+                ref_held=_held(h_ref),
+            )
+            if self.chk.ok(
+                "COND-FIRST-STROBE",
+                st["offset"] is not None and ref_off is not None and st["offset"] == ref_off,
+                div=div,
+                ref_div=RESET_DIV,
+                first_clk="none" if st["first"] is None else st["first"],
+                gap_clk="none" if st["gap"] is None else st["gap"],
+                offset="none" if st["offset"] is None else st["offset"],
+                ref_offset="none" if ref_off is None else ref_off,
+            ):
+                await self._cnt_pass(ESRC_CNT_PASS_FIRST_STROBE)
+            g = st["gap"]
+            g_ref = None if ref is None else ref["gap"]
+            lhs = None if g is None else g * (RESET_DIV + 1)
+            rhs = None if g_ref is None else g_ref * (div + 1)
+            if self.chk.ok(
+                "COND-PERIOD-RATIO",
+                lhs is not None and rhs is not None and lhs == rhs,
+                div=div,
+                ref_div=RESET_DIV,
+                gap="none" if g is None else g,
+                ref_gap="none" if g_ref is None else g_ref,
+                lhs="none" if lhs is None else lhs,
+                rhs="none" if rhs is None else rhs,
+            ):
+                ratio_pass += 1
+                await self._cnt_pass(ESRC_CNT_PASS_PERIOD)
+        await self._set_div(RESET_DIV)
+        if ratio_pass == len(plan.div_walk) - 1:
+            # The reference value of both passing ratios, while it is stored.
+            await self._cnt_pass(ESRC_CNT_PASS_PERIOD)
+
+    # --- mid-run writes (logged only) -------------------------------------------------
+    async def _tap_trace(self, rows: list, run: list) -> None:
+        """One row per clk_i (ReadOnly): (strobe, gated strobe, FIFO word, ds count, div count)."""
+        dut = cocotb.top
+        while run[0] and len(rows) < MIDRUN_CAP:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            rows.append(
+                (
+                    self.rd(dut.esrc_decor_valid_o),
+                    self.rd(dut.esrc_stream_valid_gated_o),
+                    self.rd(dut.esrc_compress_vld_o),
+                    self.rd(dut.esrc_downsample_count_o),
+                    self.rd(dut.esrc_decor_div_lane0_o),
+                )
+            )
+        await NextTimeStep()
+
+    async def _wait_row(
+        self, rows: list, start: int, pred, bound: int, count: int = 1
+    ) -> list[int]:
+        """Indexes of the first ``count`` rows from ``start`` on where pred(row) holds.
+
+        Waits at most ``bound`` clocks; returns fewer indexes on a timeout.
+        """
+        hits: list[int] = []
+        i = start
+        for _ in range(bound + 1):
+            while i < len(rows):
+                if pred(rows[i]):
+                    hits.append(i)
+                    if len(hits) == count:
+                        return hits
+                i += 1
+            await RisingEdge(cocotb.top.clk_i)
+        return hits
+
+    @staticmethod
+    def _to_push(rows: list, start: int) -> dict:
+        """Gated strobes from row ``start`` up to and including the first FIFO word."""
+        for j in range(start, len(rows)):
+            if rows[j][2]:
+                return {
+                    "gated_to_push": sum(r[1] for r in rows[start : j + 1]),
+                    "ds_count_at_push": rows[j][3],
+                }
+        return {"gated_to_push": "none", "ds_count_at_push": "none"}
+
+    async def _div_write(self, rows: list, before: int, after: int, tag: str) -> None:
+        """A SAMPLE_CLK_DIV write right after a strobe, lanes running; logs ``tag``.
+
+        ``div_tap_at_fire`` is the lane 0 divider count on the clock before the first
+        strobe after the write, the count that met the compare.
+        """
+        sync = await self._wait_row(rows, len(rows), lambda r: r[0], 4 * (before + 1) + 64)
+        i_s = sync[0] if sync else len(rows) - 1
+        await self._wr(
+            ESRC_DECORRELATOR_CTRL,
+            _val("DECORRELATOR_CTRL", BYPASS=BYPASS_ALL, SAMPLE_CLK_DIV=after),
+        )
+        i_w = len(rows) - 1
+        bound = 4 * (max(before, after) + 1) + 64
+        s = await self._wait_row(rows, i_s + 1, lambda r: r[0], bound, count=2)
+        tap_fire = rows[s[0] - 1][4] if s else None
+        fields = {
+            "div_before": before,
+            "div_after": after,
+            "div_tap_at_resp": rows[i_w][4],
+            "div_tap_at_fire": "none" if tap_fire is None else tap_fire,
+            "below_count": "none" if tap_fire is None else int(tap_fire > after),
+            "first_gap": s[0] - i_s if s else "none",
+            "steady_gap": s[1] - s[0] if len(s) == 2 else "none",
+        }
+        if not sync or len(s) < 2:
+            fields["reason"] = "timeout:strobes"
+        self.chk.obs(tag, **fields)
+
+    async def _rate_write(self, rows: list, before: int, after: int, tag: str, sync) -> None:
+        """A DOWNSAMPLE_RATE write, compressor bypassed, once a row meets ``sync``; logs ``tag``.
+
+        ``below_count`` is 1 when the downsample count at the first FIFO word after
+        the write is above the new rate.
+        """
+        p = RESET_DIV + 1
+        hit = await self._wait_row(rows, len(rows), sync, (2 * RATE_HI + 4) * p * 4)
+        await self._wr(ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=after))
+        i_w = len(rows) - 1
+        await self._wait_row(rows, i_w + 1, lambda r: r[2], (max(before, after) + 2) * p * 4)
+        fields = {
+            "rate_before": before,
+            "rate_after": after,
+            "ds_count_at_resp": rows[i_w][3],
+            **self._to_push(rows, i_w + 1),
+        }
+        c = fields["ds_count_at_push"]
+        fields["below_count"] = "none" if c == "none" else int(c > after)
+        if not hit:
+            fields["reason"] = "timeout:sync"
+        self.chk.obs(tag, **fields)
+
+    async def _midrun_obs(self) -> None:
+        """Mid-run DOWNSAMPLE_RATE and SAMPLE_CLK_DIV writes, a rate written while stopped,
+        and the bypass turned on while the gated stream runs: logged only.
+
+        No text states the effect of these writes, so every line is ``OBS-``. Each
+        line logs the stored value before and after, the tapped count
+        (``esrc_downsample_count_o``, ``esrc_decor_div_lane0_o``) and the distance to
+        the next strobe or FIFO word. A count above the new stored value is the
+        ``below_count`` case.
+        """
+        plan = self.plan
+        p = RESET_DIV + 1
+        rows: list = []
+        run = [True]
+        task = cocotb.start_soon(self._tap_trace(rows, run))
+
+        # SAMPLE_CLK_DIV with the lanes running: up, down to at or above the count,
+        # up again, down below the count (0 while the count is above 0).
+        await self._div_write(rows, RESET_DIV, plan.div_r, "COND-DIV-MIDRUN-UP")
+        await self._div_write(rows, plan.div_r, RESET_DIV, "COND-DIV-MIDRUN-DOWN")
+        await self._div_write(rows, RESET_DIV, plan.div_r, "COND-DIV-MIDRUN-UP")
+        await self._div_write(rows, plan.div_r, 0, "COND-DIV-MIDRUN-DOWN")
+        await self._set_div(RESET_DIV)
+
+        # The bypass turned on at rate N_r while the gated stream runs, whitening off.
+        await self._wr(ESRC_CTRL, _val("CTRL", DOWNSAMPLE_RATE=plan.n_r, SHA256_WHITENING_ENABLE=0))
+        await self._wait_row(
+            rows, len(rows), lambda r: r[1], (plan.n_r + 6) * p * 4, count=plan.n_r + 3
+        )
+        await self._wr(
+            ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=plan.n_r)
+        )
+        i_w = len(rows) - 1
+        await self._wait_row(rows, i_w + 1, lambda r: r[2], (plan.n_r + 2) * p * 4)
+        self.chk.obs(
+            "COND-DS-BYPASS-ON",
+            rate=plan.n_r,
+            ds_count_at_resp=rows[i_w][3],
+            **self._to_push(rows, i_w + 1),
+        )
+
+        # DOWNSAMPLE_RATE with the compressor bypassed: up, down below the count,
+        # up, down to at or above the count (right after a word), up.
+        def word(r):
+            return r[2]
+
+        await self._rate_write(rows, plan.n_r, RATE_HI, "COND-DS-MIDRUN-UP", word)
+        await self._rate_write(rows, RATE_HI, 0, "COND-DS-MIDRUN-DOWN", lambda r: r[3] >= 2)
+        await self._rate_write(rows, 0, RATE_HI, "COND-DS-MIDRUN-UP", word)
+        await self._rate_write(rows, RATE_HI, 1, "COND-DS-MIDRUN-DOWN", word)
+        await self._rate_write(rows, 1, RATE_HI, "COND-DS-MIDRUN-UP", word)
+
+        # A rate written while the gated stream is stopped (every lane off), then resume.
+        hit = await self._wait_row(
+            rows, len(rows), lambda r: 1 <= r[3] < RATE_HI - 1, (2 * RATE_HI + 4) * p * 4
+        )
+        off = await self._lanes_off()
+        held = rows[-1][3]
+        await self._wr(
+            ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=plan.n_r)
+        )
+        await self._wr(ESRC_RING_OSC_ENABLE, _val("RING_OSC_ENABLE"))
+        i_e = len(rows) - 1
+        await self._wait_row(rows, i_e + 1, lambda r: r[2], (RATE_HI + 2) * p * 4)
+        fields = {
+            "rate_before": RATE_HI,
+            "rate_after": plan.n_r,
+            "ds_count_held": held,
+            **self._to_push(rows, i_e + 1),
+        }
+        if not hit:
+            fields["reason"] = "timeout:sync"
+        elif off is None:
+            fields["reason"] = f"timeout:enable_off bound={RO_OFF_CLKS}"
+        self.chk.obs("COND-DS-RESUME", **fields)
+
+        run[0] = False
+        await task
+        await self._wr(ESRC_CTRL, _val("CTRL"))
+
     # --- health-test leg (logged only) ----------------------------------------------
     async def _leg_health(self) -> None:
         await self._setup()
@@ -572,7 +1235,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         ok, _, t_ctrl = await self._poll(
             ESRC_HEALTH_TEST_STATUS, "HEALTH_TEST_STATUS", "HEALTH_STATUS", lambda v: v & 1, bound
         )
-        self.chk.obs(
+        self.chk.info(
             "COND-HT-CTRL",
             bypass=0,
             ht_status_before=f"0x{s_ctrl0:08x}",

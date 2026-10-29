@@ -57,7 +57,7 @@ start order with OTBN last. HMAC and KMAC hold their process write, and AES hold
 two blocks with DATA_OUT unread (a stall), until every member is started. A busy
 window runs from the start write response to the last status read that shows busy
 (CTRL-CONC-OVERLAP takes it from DUT status reads only; the process write response of
-HMAC and KMAC is logged as OBS-CONC-PROCESS-WRITE). The PLAN and LEG lines log the
+HMAC and KMAC is logged as INFO-CONC-PROCESS-WRITE). The PLAN and LEG lines log the
 effective start order. In a group
 without an HMAC member, HMAC holds a finished SHA-256 digest (the bystander) and a
 further task reads its DIGEST words while the peers run. The EDN words acked on
@@ -1254,7 +1254,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         for eng in _CFG_ORDER:
             if eng in g.members:
                 readback = await drivers[eng].configure_op(ops[eng])
-                chk.obs("CONC-CFG", group=g.name, engine=eng, readback=f"0x{readback:08x}")
+                chk.info("CONC-CFG", group=g.name, engine=eng, readback=f"0x{readback:08x}")
 
         records: dict[str, list] = {eng: [] for eng in g.members}
         for eng in g.members:
@@ -1332,7 +1332,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
 
         for eng in g.members:
             if results[eng].process_clk >= 0:
-                chk.obs(
+                chk.info(
                     "CONC-PROCESS-WRITE",
                     group=g.name,
                     engine=eng,

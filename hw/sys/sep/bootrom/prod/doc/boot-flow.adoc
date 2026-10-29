@@ -84,8 +84,8 @@ state on a watchdog reset.
 The cold path establishes the stack and global pointer, installs the C-capable
 trap vector, opens the outbound filter window used by later firmware, and
 programs PMP. It then evaluates the SMC memory-repair and MBIST status. A
-failed check stops the boot unless the corresponding strap or
-`SKIP_MEM_CHECK` fuse policy permits it. Only after this gate passes does the
+failed check stops the boot; only the corresponding bypass strap skips a
+check. Only after this gate passes does the
 ROM scrub DCCM, copy initialized data from ROM, clear BSS, and call
 `rom_main()`.
 

@@ -117,7 +117,7 @@ class sep_abr_pipelined_read_matrix_test(sep_base_test):
         # here is a path or decode problem and not the pipelining under test.
         for bus in ("m_axi", "s_axi"):
             acc = await self.abr.read(bus, V1)
-            self.logger.info("ABR-PIPE control: %s", acc.describe())
+            self.logger.info("INFO-ABR-PIPE control: %s", acc.describe())
             assert acc.resp == RESP_OKAY and acc.data == IDENTITY[V1].value, (
                 f"CHK-ABR-PIPE-CTRL FAIL: lone read of MLDSA_VERSION1 on {bus} returned "
                 f"{acc.resp_name} 0x{acc.data:08x}, expected OKAY "
@@ -247,7 +247,7 @@ class sep_abr_pipelined_read_matrix_test(sep_base_test):
                 clean = False
             floor = len(bus_accs) if need is None else min(need, len(bus_accs))
             self.logger.info(
-                "ABR-PIPE [%s] %s concurrency: %d AR accepted before the first R "
+                "INFO-ABR-PIPE [%s] %s concurrency: %d AR accepted before the first R "
                 "(need %d), max %d outstanding",
                 leg,
                 bus,
@@ -264,7 +264,7 @@ class sep_abr_pipelined_read_matrix_test(sep_base_test):
                 clean = False
         if len(accs) > 1:
             self.logger.info(
-                "ABR-PIPE [%s] cycles with every master outstanding: %d",
+                "INFO-ABR-PIPE [%s] cycles with every master outstanding: %d",
                 leg,
                 watch.all_busy_cycles,
             )
@@ -282,7 +282,7 @@ class sep_abr_pipelined_read_matrix_test(sep_base_test):
             want = IDENTITY[a.addr].value
             verdict = "ok" if a.resp == RESP_OKAY and a.data == want else "MISMATCH"
             self.logger.info(
-                "ABR-PIPE [%s] #%d %s %s expected 0x%08x %s",
+                "INFO-ABR-PIPE [%s] #%d %s %s expected 0x%08x %s",
                 leg,
                 k,
                 _NAMES.get(a.addr, "?"),
@@ -309,7 +309,7 @@ class sep_abr_pipelined_read_matrix_test(sep_base_test):
             pending.setdefault(a.axi_id, []).append(a)
         ar_ids = sorted(ar_id for _c, ar_id, _addr in rec.ar)
         self.logger.info(
-            "ABR-PIPE [%s] %s AR order: %s",
+            "INFO-ABR-PIPE [%s] %s AR order: %s",
             leg,
             bus,
             " ".join(f"id{ar_id}@0x{addr:08x}" for _c, ar_id, addr in rec.ar),
@@ -326,7 +326,7 @@ class sep_abr_pipelined_read_matrix_test(sep_base_test):
             got = lane_value(a.addr, 4, rdata if rdata >= 0 else 0)
             want = IDENTITY[a.addr].value
             self.logger.info(
-                "ABR-PIPE [%s] %s R beat cycle=%d rid=%d rresp=%d lane(0x%08x)=0x%08x "
+                "INFO-ABR-PIPE [%s] %s R beat cycle=%d rid=%d rresp=%d lane(0x%08x)=0x%08x "
                 "expected 0x%08x %s",
                 leg,
                 bus,

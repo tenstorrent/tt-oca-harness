@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// dtp_jtag2axi_cdc_jitter_all_bridges_test — cross-bridge robustness scenario
+// iterating all three JTAG2AXI bridges (smc_axi, smc_otp, sep_otp) with the
+// CDC jitter model armed by the testlist entry's
+// +cdc_instrumentation_enabled=1. The random-ops write traffic lands every
+// write once with its own data, one bridge per pass in turn, and on every
+// bridge a pl_depth 0 series read discarded by a system reset a seeded number
+// of TCK edges after its Update-DR reaches no port, leaves SERIES_CTRL
+// reading DECERR at its address, and a second pl_depth 0 read shifted in
+// without reprogramming SERIES_CTRL returns the word at that address.
+
+class dtp_jtag2axi_cdc_jitter_all_bridges_test extends dtp_jtag2axi_robustness_base_test;
+  `uvm_component_utils(dtp_jtag2axi_cdc_jitter_all_bridges_test)
+
+  function new(string name = "dtp_jtag2axi_cdc_jitter_all_bridges_test",
+               uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
+
+  virtual function string scenario_name();
+    return "cdc_jitter_all_bridges";
+  endfunction
+
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.require_jtag_ids('{"CHK-RESET-COUNT"});
+  endfunction
+
+  virtual function void add_required_axi_ids(ref string ids[$]);
+    super.add_required_axi_ids(ids);
+    ids.push_back("CHK-AXI-STRB");
+    ids.push_back("CHK-AXI-WADDR");
+    ids.push_back("CHK-AXI-WDATA");
+    ids.push_back("CHK-AXI-RDATA");
+    ids.push_back("CHK-AXI-WMEM");
+    ids.push_back("CHK-J2A-MEM-IMAGE");
+    ids.push_back("CHK-J2A-STATUS-BIT");
+    ids.push_back(DtpJ2aSeriesAddrCheckId);
+    ids.push_back(DtpJ2aCdcClearCheckId);
+    ids.push_back(DtpJ2aAbortFsmCheckId);
+    ids.push_back(DtpJ2aAbortEscapeCheckId);
+    ids.push_back(DtpJ2aAbortRecoveryCheckId);
+  endfunction
+
+  virtual function ocah_sequence create_scenario_seq();
+    dtp_jtag2axi_cdc_jitter_test_seq seq = dtp_jtag2axi_cdc_jitter_test_seq::type_id::create(
+        {scenario_name(), "_seq"}
+    );
+    seq.scenario = scenario_name();
+    return seq;
+  endfunction
+
+  virtual function string specific_loops_knob();
+    return "DTP_JTAG2AXI_CDC_JITTER_ALL_BRIDGES_TEST_LOOPS";
+  endfunction
+
+endclass : dtp_jtag2axi_cdc_jitter_all_bridges_test

@@ -6,8 +6,11 @@
  *
  * Verifies fill and reset of the four FIFOs of an I2C pair, with I2C_0 as
  * controller and I2C_1 as target on the same bus. The FMT and TX FIFOs are
- * filled by software stores until they report full, and both the level and the
- * store count must equal the configured depth. The RX and ACQ FIFOs are filled
+ * filled by software stores until they report full. No specification states
+ * their depth, so each leg measures it: the level register must track every
+ * store, the full flag must assert at a non-zero level the level field can
+ * represent, and a store into the full FIFO must leave the level and the full
+ * flag unchanged. The RX and ACQ FIFOs are filled
  * by a real bus transfer to an exact level below full, because only the bus can
  * put entries in them. Each reset must empty its FIFO without the driver's
  * software repair, which could otherwise produce the empty level by itself.
@@ -30,8 +33,10 @@
 #define TARGET_IDX 1     // I2C_1 for Target mode (TX, ACQ FIFO)
 #define TARGET_ADDR 0x10 // 7-bit target address programmed into I2C_1
 
-#define FMT_FIFO_DEPTH I2C_CONTROLLER_TX_FIFO_DEPTH
-#define TX_FIFO_DEPTH I2C_TARGET_TX_FIFO_DEPTH
+/* Largest level each fill-level field can report; a FIFO that has not reported
+ * full by this level fails the leg. */
+#define FMT_LEVEL_MAX I2C__HOST_FIFO_STATUS__FMTLVL_bm
+#define TX_LEVEL_MAX I2C__TARGET_FIFO_STATUS__TXLVL_bm
 
 /* Transfer lengths for the two FIFOs that only the bus can fill; both stay
  * below the FIFO depth. */
@@ -152,48 +157,68 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
     simputs("  PASS: FMT FIFO is empty after reset\n");
 
     /* Check the full flag before each store, because a store into a full FIFO
-     * is dropped silently. The loop cap is a little above the configured depth,
-     * so a deeper FIFO never reports full and the leg fails. */
-    for (uint32_t i = 0; i < FMT_FIFO_DEPTH + 6u; i++) {
+     * is not counted. Before each store the level must equal the store count, so
+     * a dropped or duplicated entry fails at the store that caused it. */
+    while (true) {
         i2c__STATUS_t status_check = {.w = read_reg(I2C_REG(idx, STATUS))};
         if (status_check.f.FMTFULL) {
             full_seen = true;
             break;
         }
+        level = fmt_level(idx);
+        if (level != pushed) {
+            simputshex32("  ERROR: FMTLVL is ", level);
+            simputshex32(" after ", pushed);
+            simputs(" stores\n");
+            return I2C_ERROR;
+        }
+        if (pushed == FMT_LEVEL_MAX) break;
 
         i2c__FDATA_t fdata = {.w = 0};
-        fdata.f.FBYTE = (uint8_t)(0xAA + i);
+        fdata.f.FBYTE = (uint8_t)(0xAA + pushed);
         write_reg(I2C_REG(idx, FDATA), fdata.w);
         pushed++;
     }
 
     if (!full_seen) {
         simputshex32("  ERROR: STATUS.FMTFULL never asserted; entries stored=", pushed);
-        simputshex32(", cap=", (uint32_t)(FMT_FIFO_DEPTH + 6u));
-        simputshex32(", FMTLVL=", fmt_level(idx));
-        simputs("\n");
+        simputshex32(", the largest FMTLVL the field reports is ", (uint32_t)FMT_LEVEL_MAX);
         return I2C_ERROR;
     }
 
-    /* The store count and the DUT's level are independent checks; the full flag
-     * alone does not show that the FIFO filled to the configured depth. */
-    if (pushed != FMT_FIFO_DEPTH) {
+    /* An empty FIFO is not full, and the level at full is the store count. */
+    level = fmt_level(idx);
+    if (pushed == 0 || level != pushed) {
         simputshex32("  ERROR: FMTFULL asserted after ", pushed);
-        simputshex32(" stores, expected the configured depth ", (uint32_t)FMT_FIFO_DEPTH);
+        simputshex32(" stores at FMTLVL=", level);
         simputs("\n");
         return I2C_ERROR;
     }
-    level = fmt_level(idx);
-    if (level != FMT_FIFO_DEPTH) {
-        simputshex32("  ERROR: FMTLVL at FMTFULL is ", level);
-        simputshex32(" != configured depth ", (uint32_t)FMT_FIFO_DEPTH);
+    i2c__STATUS_t status_full = {.w = read_reg(I2C_REG(idx, STATUS))};
+    if (status_full.f.FMTEMPTY) {
+        simputshex32("  ERROR: STATUS.FMTEMPTY is set with FMTFULL at FMTLVL=", level);
         simputs("\n");
         return I2C_ERROR;
     }
     simputs("  PASS: FMT FIFO STATUS.FMTFULL is set at FMTLVL=");
     simputshex32("", level);
     simputshex32(" after ", pushed);
-    simputs(" stores\n");
+    simputs(" stores (measured depth)\n");
+
+    /* A store into the full FIFO must not add an entry. */
+    i2c__FDATA_t fdata_over = {.w = 0};
+    fdata_over.f.FBYTE = 0x5Au;
+    write_reg(I2C_REG(idx, FDATA), fdata_over.w);
+    i2c__STATUS_t status_over = {.w = read_reg(I2C_REG(idx, STATUS))};
+    level = fmt_level(idx);
+    if (!status_over.f.FMTFULL || level != pushed) {
+        simputshex32("  ERROR: a store into the full FMT FIFO left FMTLVL=", level);
+        simputshex32(", STATUS=", status_over.w);
+        simputshex32(", measured depth ", pushed);
+        simputs("\n");
+        return I2C_ERROR;
+    }
+    simputs("  PASS: a store into the full FMT FIFO left FMTLVL and FMTFULL unchanged\n");
 
     // Reset FMT FIFO to empty -- this reset is the one under test
     i2c_reset_fifos(idx, false, true, false, false);
@@ -437,46 +462,66 @@ static int test_tx_fifo_full_empty(uint32_t idx) {
     simputs("  PASS: TX FIFO is empty after reset\n");
 
     /* Same construction as the FMT leg: the full flag is read before each store
-     * so no byte is silently dropped, and the cap keeps the leg fail-closed
-     * against a depth larger than the one asserted below. */
-    for (uint32_t i = 0; i < TX_FIFO_DEPTH + 6u; i++) {
+     * and the level must equal the store count up to full. */
+    while (true) {
         i2c__STATUS_t status_check = {.w = read_reg(I2C_REG(idx, STATUS))};
         if (status_check.f.TXFULL) {
             full_seen = true;
             break;
         }
+        level = tx_level(idx);
+        if (level != pushed) {
+            simputshex32("  ERROR: TXLVL is ", level);
+            simputshex32(" after ", pushed);
+            simputs(" stores\n");
+            return I2C_ERROR;
+        }
+        if (pushed == TX_LEVEL_MAX) break;
 
         i2c__TXDATA_t txdata = {.w = 0};
-        txdata.f.DATA = (uint8_t)(0xBB + i);
+        txdata.f.DATA = (uint8_t)(0xBB + pushed);
         write_reg(I2C_REG(idx, TXDATA), txdata.w);
         pushed++;
     }
 
     if (!full_seen) {
         simputshex32("  ERROR: STATUS.TXFULL never asserted; entries stored=", pushed);
-        simputshex32(", cap=", (uint32_t)(TX_FIFO_DEPTH + 6u));
-        simputshex32(", TXLVL=", tx_level(idx));
-        simputs("\n");
+        simputshex32(", the largest TXLVL the field reports is ", (uint32_t)TX_LEVEL_MAX);
         return I2C_ERROR;
     }
 
-    if (pushed != TX_FIFO_DEPTH) {
+    level = tx_level(idx);
+    if (pushed == 0 || level != pushed) {
         simputshex32("  ERROR: TXFULL asserted after ", pushed);
-        simputshex32(" stores, expected the configured depth ", (uint32_t)TX_FIFO_DEPTH);
+        simputshex32(" stores at TXLVL=", level);
         simputs("\n");
         return I2C_ERROR;
     }
-    level = tx_level(idx);
-    if (level != TX_FIFO_DEPTH) {
-        simputshex32("  ERROR: TXLVL at TXFULL is ", level);
-        simputshex32(" != configured depth ", (uint32_t)TX_FIFO_DEPTH);
+    i2c__STATUS_t status_full = {.w = read_reg(I2C_REG(idx, STATUS))};
+    if (status_full.f.TXEMPTY) {
+        simputshex32("  ERROR: STATUS.TXEMPTY is set with TXFULL at TXLVL=", level);
         simputs("\n");
         return I2C_ERROR;
     }
     simputs("  PASS: TX FIFO STATUS.TXFULL is set at TXLVL=");
     simputshex32("", level);
     simputshex32(" after ", pushed);
-    simputs(" stores\n");
+    simputs(" stores (measured depth)\n");
+
+    /* A store into the full FIFO must not add an entry. */
+    i2c__TXDATA_t txdata_over = {.w = 0};
+    txdata_over.f.DATA = 0xA5u;
+    write_reg(I2C_REG(idx, TXDATA), txdata_over.w);
+    i2c__STATUS_t status_over = {.w = read_reg(I2C_REG(idx, STATUS))};
+    level = tx_level(idx);
+    if (!status_over.f.TXFULL || level != pushed) {
+        simputshex32("  ERROR: a store into the full TX FIFO left TXLVL=", level);
+        simputshex32(", STATUS=", status_over.w);
+        simputshex32(", measured depth ", pushed);
+        simputs("\n");
+        return I2C_ERROR;
+    }
+    simputs("  PASS: a store into the full TX FIFO left TXLVL and TXFULL unchanged\n");
 
     // Reset TX FIFO to empty -- this reset is the one under test
     i2c_reset_fifos(idx, false, false, true, false);

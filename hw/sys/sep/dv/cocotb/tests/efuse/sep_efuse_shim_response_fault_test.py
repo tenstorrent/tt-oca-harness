@@ -60,7 +60,7 @@ Checkers:
                     command request stays valid while the response is withheld, so the tap
                     shows one command.
 
-Log-only: ``CHK-PROG-TIMEOUT INFO`` (busy, done and status after m x T clocks of a held
+Log-only: ``OBS-PROG-TIMEOUT`` (busy, done and status after m x T clocks of a held
 program with the timeout enabled; the specification does not state the report).
 
 FCOV: the graded window is open over the second injected sense and the held program,
@@ -654,7 +654,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         v = await self._rd(PROGRAM_CTRL_ADDR)
         dut.efuse_shim_resp_hold_i.value = 0
         self.logger.info(
-            "CHK-PROG-TIMEOUT INFO seed=%d cycles=%d held=%dx busy=%d done=%d status=%d bit_addr=%d",
+            "OBS-PROG-TIMEOUT LOG seed=%d cycles=%d held=%dx busy=%d done=%d status=%d bit_addr=%d",
             seed,
             t_cyc,
             m,
