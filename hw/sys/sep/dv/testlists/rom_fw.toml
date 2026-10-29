@@ -3828,3 +3828,41 @@ args = [
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
   "+sep_smc_scratch8=000FF008",
 ]
+
+[[tests]]
+# STAT-010, secondary boot: scratch[11] puts the 12-byte status-ring header across the end of the
+# 1 MiB SMC SRAM window; no SMC write leaves the window or touches the header, the scratch channel
+# reports STATUS_REPORTING_INVALID, and the boot reaches BL1. Partial STAT-010: no out-of-window
+# entry case and no "never disable reporting on a possibly-transient error" case.
+name = "sep_rom_status_ring_bounds_test_straddle"
+module = "rom_fw.sep_rom_status_ring_bounds_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "secondary", "smc", "status", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_ring_case=straddle",
+]
+
+[[tests]]
+# STAT-010, secondary boot: the status-ring header lies inside SMC SRAM but its head equals its
+# entry count; no SMC write leaves the window or the declared ring, the scratch channel reports
+# STATUS_REPORTING_INVALID, and the boot reaches BL1. Partial STAT-010: no out-of-window entry
+# case and no "never disable reporting on a possibly-transient error" case.
+name = "sep_rom_status_ring_bounds_test_bad_header"
+module = "rom_fw.sep_rom_status_ring_bounds_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "secondary", "smc", "status", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_rom_ring_case=bad_header",
+]
