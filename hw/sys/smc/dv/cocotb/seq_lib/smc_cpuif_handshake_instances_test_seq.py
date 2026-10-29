@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_COV_B1_008 ANCHOR: smc_cpuif_handshake_instances_test
-# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: 4d68d1879a666d752f86205bbe7816fd6beb72a0287f15da626741cf702c43c4
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 8 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 6 RECORD-SHA256: f165cbf1e38c36bc5b0814ec5d5439e1f9733d3ed543509569a5eb40f6507947
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_COV_B1_VPLAN_DETAIL.md @ artifact_revision 9 ENV: cocotb
 """The AXI-Lite front end of every generated register-block instance, pipelined and held.
 
 `smc_cpuif_handshake_test` drives instance 0 of each register block. This
@@ -58,7 +58,8 @@ number of cycles after the response's VALID is first seen; for a W-ahead write
 the AW source is held and released so that AW VALID rises exactly the driven
 number of cycles after W VALID, which the monitor measures.
 
-One instance of each family in ``LONG_HOLD_FAMILIES`` then repeats the held
+Every instance of each family in ``LONG_HOLD_EVERY_INSTANCE`` and the first
+instance of every other family in ``LONG_HOLD_FAMILIES`` then repeat the held
 groups with the ready released 512 cycles after the first response VALID
 instead of 16, and must hold the head response unchanged for all of them.
 """
@@ -97,8 +98,10 @@ WRITEBACK_LEAD = 2
 HOLD_CYCLES = 16
 HELD_DEPTH = 16
 LONG_HOLD_CYCLES = 512
-# One instance of each of these families takes the held groups again behind
-# LONG_HOLD_CYCLES; a family missing from the instance set fails the run.
+# These families take the held groups again behind LONG_HOLD_CYCLES: every
+# instance of a family in LONG_HOLD_EVERY_INSTANCE, the first instance of every
+# other one. A family missing from the instance set, or an every-instance family
+# whose instance count differs from the contract's, fails the run.
 LONG_HOLD_FAMILIES = (
     "inbound_filter",
     "outbound_filter",
@@ -117,6 +120,15 @@ LONG_HOLD_FAMILIES = (
     "straps",
     "i2c_ctrl",
 )
+LONG_HOLD_EVERY_INSTANCE = {
+    "inbound_filter": 16,
+    "outbound_filter": 16,
+    "mmode_remap": 8,
+    "xvisor_remap": 8,
+    "alias_remap": 8,
+    "telemetry_receiver": 3,
+}
+LONG_HOLD_INSTANCES = 69
 # Read-arrival offsets swept behind write-backs of the reference, as in the
 # instance-0 leaf: which offset lines a read accept up with a write's
 # acknowledge depends on the path in front of each instance.
@@ -586,7 +598,19 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         for fam in LONG_HOLD_FAMILIES:
             names = [x.name for x in self.instances if x.family == fam]
             assert names, f"long-hold family {fam} has no instance in the set"
-            self.long_hold[names[0]] = fam
+            if fam in LONG_HOLD_EVERY_INSTANCE:
+                assert len(names) == LONG_HOLD_EVERY_INSTANCE[fam], (
+                    f"long-hold family {fam} has {len(names)} instances, the contract lists "
+                    f"{LONG_HOLD_EVERY_INSTANCE[fam]}"
+                )
+            else:
+                names = names[:1]
+            for name in names:
+                self.long_hold[name] = fam
+        assert len(self.long_hold) == LONG_HOLD_INSTANCES, (
+            f"the long-hold set holds {len(self.long_hold)} instances, the contract lists "
+            f"{LONG_HOLD_INSTANCES}"
+        )
         self.long_families: list[str] = []
         self.long_waits = 0
         self.waits = 0
@@ -1288,14 +1312,18 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         n_pin = sum(1 for x in self.instances if x.pinned)
         t = self.tally
         assert t["REFERENCE"].instances == n_all
-        assert sorted(self.long_families) == sorted(LONG_HOLD_FAMILIES), (
-            f"long-hold legs ran on families {self.long_families}, the contract lists "
-            f"{LONG_HOLD_FAMILIES}"
+        assert sorted(self.long_families) == sorted(self.long_hold.values()), (
+            f"long-hold legs ran on families {self.long_families}, the long-hold set lists "
+            f"{sorted(self.long_hold.values())}"
+        )
+        assert set(self.long_families) == set(LONG_HOLD_FAMILIES), (
+            f"long-hold legs ran on families {sorted(set(self.long_families))}, the contract "
+            f"lists {LONG_HOLD_FAMILIES}"
         )
         for term in TERMS:
             want = n_pin if term in PINNED_ONLY_TERMS else n_all
             if term == "LONG-HOLD":
-                want = len(LONG_HOLD_FAMILIES)
+                want = LONG_HOLD_INSTANCES
             if term == "W-AHEAD-WB":
                 assert t[term].instances + len(self.logged_writeback) == n_all
                 continue
@@ -1399,13 +1427,15 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
             hg.inflight,
         )
         cocotb.log.info(
-            "CHK-CPUIF-LONG-HOLD: %d families x %d behind a %d-cycle hold, %d/%d in order, "
+            "CHK-CPUIF-LONG-HOLD: %d instances in %d families x %d behind a %d-cycle hold, "
+            "%d/%d in order, "
             "0 lost, 0 duplicated; reads==reference-or-last-acked-write %d, "
             "reads==overlapping-write %d (SF-010, logged; per match AR/R/AW/B cycles), "
             "reads==no-write-of-group 0; head held cycles RREADY min/max=%d/%d BREADY "
             "min/max=%d/%d, head unchanged while held; distinct-ID groups %d accesses; "
             "instances %s",
             lh.instances,
+            len(set(self.long_families)),
             HELD_DEPTH,
             LONG_HOLD_CYCLES,
             HELD_DEPTH,

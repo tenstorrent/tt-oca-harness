@@ -61,19 +61,17 @@ module smu_clkstop_fcov (
                    in_reset)
   `OCAH_FCOV_COVER(c_stop_clks_released, stop_clks_released_e, clk_smu_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: which source was requesting while the
-  // aggregate halt was in whichever state, which a flat point list cannot
-  // cross.
+  // Covergroup: which source was requesting while the aggregate halt was in
+  // whichever state, which a flat point list cannot cross.
   // ------------------------------------------------------------------
   covergroup cg_clk_stop_sources with function sample (
-      logic [7:0] req_ext, logic jtag_stop, logic stop
+      logic [7:0] req_ext, logic jtag_stop, logic stop_clks
   );
     option.per_instance = 1;
     cp_req_ext: coverpoint req_ext {bins none = {8'h00}; bins requesting = default;}
     cp_jtag_stop: coverpoint jtag_stop;
-    cp_stop: coverpoint stop;
+    cp_stop: coverpoint stop_clks;
     x_source: cross cp_jtag_stop, cp_req_ext, cp_stop;
   endgroup
 
@@ -84,6 +82,5 @@ module smu_clkstop_fcov (
       u_cg_clk_stop_sources.sample(dtp_clk_stop_req_ext_i, jtag_clock_stop_i, dtp_stop_clks_i);
     end
   end
-`endif
 
 endmodule : smu_clkstop_fcov

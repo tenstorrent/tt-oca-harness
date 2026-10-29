@@ -100,7 +100,7 @@ needed. See [Troubleshooting](#troubleshooting) if a build complains about it.
 | `tb/` | `sep_uvm_top` (`tb_top.sv`), the core both realizations share, the TB signal list, the outbound-mailbox console model, and the preload images |
 | `cocotb/` | PyUVM realization: `env/`, `seq_lib/`, `tests/`, and the pre-sim hook `dv_sim_prestage.py` |
 | `uvm/` | SV-UVM realization: `env/`, `seq_lib/`, `tests/` |
-| `cov/` | VCS code-coverage scope and exclusion lists (`cov/config/vcs/`) and the FCOV sampler (`cov/sv/sep_fcov.sv`, VCS only) |
+| `cov/` | VCS code-coverage scope and exclusion lists (`cov/config/vcs/`), the Verilator coverage configuration (`cov/config/verilator/`) and the FCOV sampler (`cov/sv/sep_fcov.sv`) |
 | `fw/` | DV firmware (`fw.mk`, built by `c_compile`); the shared engine finds it at `hw/{ip,sys}/*/dv/fw/fw.mk`. The product Boot ROM is at `../bootrom/` |
 | `testlists/` | TOML testlists; `all.toml` defines the groups |
 | `models/` | The DV-owned `sep_external` RDL and its generated headers |

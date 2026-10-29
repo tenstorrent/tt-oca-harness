@@ -195,6 +195,7 @@ run_modes = ["smoke"]
 name = "smc_gpio_rst_primary_test"
 module = "smc_gpio_rst_primary_test"
 seed = 1
+reseed = 3
 timeout_sec = 1800
 tags = ["ci", "gpio"]
 run_modes = ["smoke"]

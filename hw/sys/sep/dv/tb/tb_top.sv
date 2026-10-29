@@ -564,6 +564,11 @@ module sep_uvm_top
     logic [31:1] jtag_id_drive;
     assign jtag_id_drive = $isunknown(jtag_id_i) ? 31'h0 : jtag_id_i;
 
+    sep_pkg::sep_ras_t sep_ras_w;
+    assign lcc_sigint_err_probe_o = sep_ras_w.lc_sigint_err;
+    assign km_unrecoverable_err_o = sep_ras_w.km_uncorrectable;
+    assign km_recoverable_err_o   = sep_ras_w.km_correctable;
+
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
         .SEP_SEC_DISABLE_TOKEN (SecDisTbDigest)
@@ -659,11 +664,9 @@ module sep_uvm_top
         .dbg_disable_o                (dbg_disable_w),
         .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
         .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
-        .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
-        .km_unrecoverable_err_o       (km_unrecoverable_err_o),
-        .km_recoverable_err_o         (km_recoverable_err_o),
+        .sep_ras_o                    (sep_ras_w),
         .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
@@ -1390,9 +1393,11 @@ module sep_uvm_top
         `SEP_PIC_CTRL.picm_raddr_ff[14:0],
         `SEP_PIC_CTRL.picm_rd_data
     };
+    assign pic_wr_probe_o = {`SEP_PIC_CTRL.picm_wren_ff, `SEP_PIC_CTRL.picm_waddr_ff[14:0]};
 `undef SEP_PIC_CTRL
 `else
     assign pic_rd_data_probe_o = '0;
+    assign pic_wr_probe_o = '0;
 `endif
     // Set term and clear pulse of each bridge-fault latch. The register bridges
     // (axi_lite_to_tlul) set on a TL-UL error response; the DMA master bridge
@@ -1717,6 +1722,17 @@ module sep_uvm_top
     assign dbg_rst_l_probe_o = `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dbg_rst_l;
 `else
     assign dbg_rst_l_probe_o = 1'b1;
+`endif
+    // DMI request of the core debug transport module, before the core and
+    // uncore mux: {dmi_en, dmi_wr_en, dmi_addr}; the CPU stub has none.
+`ifndef SEP_CPU_STUB
+    assign dmi_req_probe_o = {
+        `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_en,
+        `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_wr_en,
+        `SEP_CORE.u_sep_cpu.u_el2_veer_wrapper.dmi_addr
+    };
+`else
+    assign dmi_req_probe_o = '0;
 `endif
     // Read source of TIMEOUT_INTERRUPT.reserved, the value a register read returns.
 `define SEP_SYS_CSR `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
@@ -2927,6 +2943,124 @@ module sep_uvm_top
 `undef DMA_HOST_CMD_INTG_DI
 
     // ------------------------------------------------------------------
+    // Mailbox WRITE_DATA unstrobed-lane inject.
+    // ------------------------------------------------------------------
+    // A 32-bit store of the SEP CPU reaches the mailbox unit as one 64-bit
+    // AXI-Lite W beat with WSTRB 0x0F or 0xF0, and the CPU drives 0 on the
+    // unstrobed lanes, so firmware cannot show that the mailbox pushes the
+    // unstrobed lanes of WRITE_DATA as 0. Non-zero data on unstrobed lanes is
+    // legal AXI. While mbox_lane_inject_arm_i is 1, a W beat at the mailbox unit
+    // port (u_sep_system_peripherals.mailbox_axil_req) whose write address is
+    // the WRITE_DATA register of the outbound port of a mailbox selected in
+    // mbox_lane_inject_mbx_i, and whose WSTRB is 0x0F or 0xF0, carries
+    // mbox_lane_inject_data_i on its unstrobed byte lanes. The strobed lanes,
+    // WSTRB and the other channels keep their values. The write address of the
+    // beat is the one address the port accepted without its W beat, or the
+    // address on the AW channel when none waits (AXI keeps W in AW order); with
+    // more than one address waiting the beat keeps its value.
+    // The value is set on every falling edge (Verilator snapshots a force RHS).
+    // A released net keeps its forced value until its driver changes, so the
+    // bench ends a force by forcing the live W data (the input of the address
+    // fixer that drives the port) and releases the net only in a clock in which
+    // the live value equals the value forced last; one falling edge after the
+    // release the net must equal the live value, else the bench reports an
+    // error. Default 0: no force.
+    // Taps (read-only): mbox_axil_aw_hs_o / mbox_axil_aw_addr_o and
+    // mbox_axil_w_hs_o / mbox_axil_w_strb_o / mbox_axil_w_data_o show the AW
+    // and W handshakes of the same port, with the W data the mailbox unit takes.
+`define MBX_LANE_PORT `SEP_CORE.u_sep_system_peripherals.mailbox_axil_req
+`define MBX_LANE_RSP  `SEP_CORE.u_sep_system_peripherals.mailbox_axil_resp
+`define MBX_LANE_LIVE `SEP_CORE.u_sep_system_peripherals.mailbox_from_csr_axil_req
+    localparam logic [31:0] MbxLaneBase =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    localparam logic [31:0] MbxLaneWdata =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    // Mailbox stride and the end of the mailbox aperture, both from the
+    // generated address map.
+    localparam logic [31:0] MbxLaneStride =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    localparam logic [31:0] MbxLaneEnd =
+        32'(sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_BASE_ADDR +
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_SIZE -
+            sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    wire mbx_lane_aw_hs = (`MBX_LANE_PORT.aw_valid === 1'b1) && (`MBX_LANE_RSP.aw_ready === 1'b1);
+    wire mbx_lane_w_hs  = (`MBX_LANE_PORT.w_valid === 1'b1) && (`MBX_LANE_RSP.w_ready === 1'b1);
+    assign mbox_axil_aw_hs_o   = mbx_lane_aw_hs;
+    assign mbox_axil_aw_addr_o = 32'(`MBX_LANE_PORT.aw.addr);
+    assign mbox_axil_w_hs_o    = mbx_lane_w_hs;
+    assign mbox_axil_w_strb_o  = `MBX_LANE_PORT.w.strb;
+    assign mbox_axil_w_data_o  = `MBX_LANE_PORT.w.data;
+    // Write addresses the port accepted without their W beat, and the address
+    // of the one waiting (valid while exactly one waits and it was recorded).
+    logic [3:0]  mbx_lane_awn_q;
+    logic [31:0] mbx_lane_awa_q;
+    logic        mbx_lane_awa_ok_q;
+    wire  [3:0]  mbx_lane_awn_d = mbx_lane_awn_q + 4'(mbx_lane_aw_hs) -
+        4'(mbx_lane_w_hs && ((mbx_lane_awn_q != 4'd0) || mbx_lane_aw_hs));
+    always @(posedge clk_i) begin
+        if (rst_ni !== 1'b1) begin
+            mbx_lane_awn_q    <= 4'd0;
+            mbx_lane_awa_ok_q <= 1'b0;
+        end else begin
+            mbx_lane_awn_q <= mbx_lane_awn_d;
+            if (mbx_lane_awn_d != 4'd1) begin
+                mbx_lane_awa_ok_q <= 1'b0;
+            end else if (mbx_lane_aw_hs) begin
+                mbx_lane_awa_q    <= 32'(`MBX_LANE_PORT.aw.addr);
+                mbx_lane_awa_ok_q <= 1'b1;
+            end else if (mbx_lane_awn_q != 4'd1) begin
+                mbx_lane_awa_ok_q <= 1'b0;
+            end
+        end
+    end
+    wire        mbx_lane_addr_v = (mbx_lane_awn_q == 4'd0) ? (`MBX_LANE_PORT.aw_valid === 1'b1) :
+                                  ((mbx_lane_awn_q == 4'd1) && mbx_lane_awa_ok_q);
+    wire [31:0] mbx_lane_off = ((mbx_lane_awn_q == 4'd0) ? 32'(`MBX_LANE_PORT.aw.addr) :
+                                                            mbx_lane_awa_q) - MbxLaneBase;
+    wire [31:0] mbx_lane_m = mbx_lane_off / MbxLaneStride;
+    wire        mbx_lane_tgt = mbx_lane_addr_v && (mbx_lane_off < MbxLaneEnd) &&
+        (((mbx_lane_off % MbxLaneStride) >> 3) == (MbxLaneWdata >> 3)) &&
+        (mbox_lane_inject_mbx_i[mbx_lane_m[$clog2($bits(mbox_lane_inject_mbx_i))-1:0]] === 1'b1);
+    function automatic logic [63:0] mbx_lane_mix(input logic [63:0] live, input logic [7:0] strb,
+                                                 input logic [63:0] inj);
+        logic [63:0] v;
+        for (int i = 0; i < 8; i++) v[i*8 +: 8] = strb[i] ? live[i*8 +: 8] : inj[i*8 +: 8];
+        return v;
+    endfunction
+    logic [63:0] mbx_lane_fv;
+    logic        mbx_lane_forced, mbx_lane_rel_chk;
+    initial begin
+        mbx_lane_fv      = '0;
+        mbx_lane_forced  = 1'b0;
+        mbx_lane_rel_chk = 1'b0;
+    end
+    always @(negedge clk_i) begin
+        if (mbx_lane_rel_chk && (`MBX_LANE_PORT.w.data !== `MBX_LANE_LIVE.w.data))
+            $error("[tb] mailbox lane inject: W data differs from the live value after the release");
+        mbx_lane_rel_chk = 1'b0;
+        if ((mbox_lane_inject_arm_i === 1'b1) && (`MBX_LANE_PORT.w_valid === 1'b1) &&
+            mbx_lane_tgt &&
+            ((`MBX_LANE_PORT.w.strb === 8'h0F) || (`MBX_LANE_PORT.w.strb === 8'hF0))) begin
+            mbx_lane_fv     = mbx_lane_mix(`MBX_LANE_LIVE.w.data, `MBX_LANE_PORT.w.strb,
+                                           mbox_lane_inject_data_i);
+            mbx_lane_forced = 1'b1;
+            force `MBX_LANE_PORT.w.data = mbx_lane_fv;
+        end else if (mbx_lane_forced && (mbx_lane_fv !== `MBX_LANE_LIVE.w.data)) begin
+            mbx_lane_fv = `MBX_LANE_LIVE.w.data;
+            force `MBX_LANE_PORT.w.data = mbx_lane_fv;
+        end else if (mbx_lane_forced) begin
+            release `MBX_LANE_PORT.w.data;
+            mbx_lane_forced  = 1'b0;
+            mbx_lane_rel_chk = 1'b1;
+        end
+    end
+`undef MBX_LANE_PORT
+`undef MBX_LANE_RSP
+`undef MBX_LANE_LIVE
+
+    // ------------------------------------------------------------------
     // HMAC message-FIFO drain stall.
     // ------------------------------------------------------------------
     // hmac_fifo_drain_stall_i=1 holds the read side of the message FIFO idle,
@@ -3448,6 +3582,12 @@ module sep_uvm_top
                                     `SEP_DRBG.edn_axis_endpoint_rsp[1].edn_ack,
                                     `SEP_DRBG.edn_axis_endpoint_rsp[0].edn_ack};
     assign esrc_sample_clk_lane0_o = `SEP_ESRC.u_generator_complex.u_sampler_clocks.sample_clk_o[0];
+    // ESRC FIFO downsample count, the decorrelator stream strobe after the boot
+    // gate, and the divider count of lane 0. Read-only XMR taps.
+    assign esrc_downsample_count_o   = `SEP_ESRC.downsample_count;
+    assign esrc_stream_valid_gated_o = `SEP_ESRC.entropy_stream_valid_gated;
+    assign esrc_decor_div_lane0_o    =
+        `SEP_ESRC.u_generator_complex.gen_ecmplx[0].u_generator.u_decorrelator.clk_divider;
     // drbg_axil64_lane_adapter arbitration, sampled at each DUT adapter's
     // own AXI-Lite-64 port:
     // {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
@@ -5494,6 +5634,9 @@ module sep_uvm_top
     assign efuse_sense_status_word_i = '0;
     assign efuse_shim_resp_hold_i   = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
+    assign mbox_lane_inject_arm_i   = 1'b0;
+    assign mbox_lane_inject_mbx_i   = '0;
+    assign mbox_lane_inject_data_i  = '0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
     assign crypto_alert_inject_i    = 1'b0;
@@ -5584,9 +5727,7 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // Functional-coverage sampler (docs/SEP_FCOV.adoc).
     //
-    // Passive: it drives nothing and has no output. VCS only -- Verilator does
-    // not compile `covergroup`, and cov/sv/sep_fcov.sv is `ifndef VERILATOR`,
-    // so there is no module to bind on the Verilator targets.
+    // Passive: it drives nothing and has no output.
     //
     // The response side (`lsu_axi_resp`) is mirrored to the flat s_axi_* outputs
     // above; the REQUEST side (`lsu_axi_req` AW/W/AR and B/R ready) is read only
@@ -5599,7 +5740,6 @@ module sep_uvm_top
     // force-splice (see the CPU-LSU AXI splice above), read-only, with no force
     // and no new hierarchy depth.
     // ------------------------------------------------------------------
-`ifndef VERILATOR
     // Fabric sampler taps (docs/SEP_FCOV.adoc, fabric and remap groups, Sampler
     // taps): read-only copies of the filter, alias and output remap register
     // fields, one explicit assign per index.
@@ -7022,14 +7162,18 @@ module sep_uvm_top
         .iso_slv_bresp_i       (iso_slv_bresp_probe_o),
         .iso_slv_rresp_i       (iso_slv_rresp_probe_o),
         // Entropy taps of the EDN auto-mode sequence, the stream-adapter FIFO,
-        // the lane 0 sample-clock divider, the counter-copy inject, the
-        // conditioner output, the seed packer and the CSRNG seed handshake.
+        // the lane 0 sample-clock divider, the ESRC downsample and decorrelator
+        // counts, the counter-copy inject, the conditioner output, the seed
+        // packer and the CSRNG seed handshake.
         .edn_csrng_cmd_valid_i (edn_csrng_cmd_valid_o),
         .edn_csrng_cmd_ready_i (edn_csrng_cmd_ready_o),
         .edn_csrng_cmd_bus_i   (edn_csrng_cmd_bus_o),
         .drbg_adapter_push_i   (drbg_adapter_push_o),
         .esrc_rosc_clk_i       (entropy_rosc_sample_clk_i),
         .esrc_sample_clk0_i    (esrc_sample_clk_lane0_o),
+        .esrc_ds_count_i       (esrc_downsample_count_o),
+        .esrc_stream_gated_i   (esrc_stream_valid_gated_o),
+        .esrc_div0_i           (esrc_decor_div_lane0_o),
         .esrc_cntr_inj_i       (esrc_cntr_inject_i === 1'b1),
         .esrc_compress_data_i  (esrc_compress_data_o),
         .seed_word_ready_i     (`SEP_DRBG.u_csrng_seed_adapter.csrng_word_ready_o),
@@ -7087,7 +7231,6 @@ module sep_uvm_top
 `undef FC_AES
 `undef FC_KMAC
 `undef FC_OTBN
-`endif
 
 `undef SEP_ESRC
 `undef SEP_DRBG

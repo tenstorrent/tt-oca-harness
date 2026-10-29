@@ -11,9 +11,10 @@ no-data compares: a four-row 2D copy with the strides of the zero-length 2D comm
 whole 136-byte destination span, and a linear 16-byte copy writes its first row.
 
 The NEXT_ID_0 value a submit returns, DONE_0 before and after a no-data command and the bit 322
-pulse count are measured, not compared: tenstorrent/tt-oca-harness#2455 tracks the open
-disagreement between dma.adoc and dma_ctrl.rdl on what NEXT_ID_0 returns when no command is set
-up, and those legs stay measured until it is resolved.
+pulse count are measured, not compared. dma.adoc (Linear and Two-Dimensional Copies) and
+dma_ctrl.rdl both state that every NEXT_ID_0 read retires a non-zero transfer ID, including one
+with no command set up; the two differ on DONE_0 (the most recently retired ID in dma.adoc, a
+cumulative count in the RDL).
 """
 
 from __future__ import annotations
@@ -349,8 +350,7 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         self._mark("S2")
         measured = (
             f"measured {self._fmt(leg)} bit{IRQ_BIT} {irq}; "
-            f"relation of NEXT_ID_0 to DONE_0 and the pulse count are not compared "
-            f"(tenstorrent/tt-oca-harness#2455)"
+            f"relation of NEXT_ID_0 to DONE_0 and the pulse count are not compared"
         )
         assert leg.changed, (
             f"ND_CLEAR: DONE_0 still {leg.done_before} after {POLL_LIMIT} reads "
@@ -404,8 +404,7 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         measured = (
             f"measured linear {self._fmt(lin)} bit{IRQ_BIT} pulses {len(lin.widths)} "
             f"widths {lin.widths} cycles; "
-            f"2d {self._fmt(leg)} bit{IRQ_BIT} {irq}; post-conditions are not compared "
-            f"(tenstorrent/tt-oca-harness#2455)"
+            f"2d {self._fmt(leg)} bit{IRQ_BIT} {irq}; post-conditions are not compared"
         )
         return [
             ("CHK-DMA-ZEROLEN-MEASURED", measured),

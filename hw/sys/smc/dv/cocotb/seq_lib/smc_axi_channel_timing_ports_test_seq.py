@@ -11,6 +11,7 @@ the stimulus is shown to have reached the bus.
 
 from __future__ import annotations
 
+import os
 import random
 import sys
 from pathlib import Path
@@ -45,7 +46,13 @@ FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
 # Bound, in clk_smc_i rises, of each wait of the r_hold pulse driver.
 HOLD_WAIT_BOUND_CYCLES = 2000
-HOLD_CYCLES = 8
+# Drawn hold lengths: the R hold per beat on SEP_IN and SYS_IN, and the B hold
+# on SEP_IN through tb_sep_axi_b_hold, which gates BVALID toward the manager.
+R_HOLD_MIN, R_HOLD_MAX = 1, 64
+B_HOLD_MIN, B_HOLD_MAX = 16, 256
+# AxID space per port: the inbound ID widths of fabric.adoc, AXI ID Widths by
+# Fabric Stage (sep_axi_in 6, sys_axi_in 6, jtag_axi_in 2 bits).
+ID_SPACE = {"SEP_IN": 64, "SYS_IN": 64, "JTAG": 4}
 RESP_OKAY = 0
 PASS_ALL_END = 0x00FF_FFFF_FFFF_FFFF
 
@@ -61,6 +68,12 @@ R_HOLD = 32
 BURST_BEATS = 8
 READ_BEATS = 4
 GROUP_WORDS = 8
+# Writes of the SEP_IN group of step 7 issued under the drawn tb_sep_axi_b_hold: enough
+# that their W handshakes outnumber the B handshakes the DUT can return before the hold,
+# raised a cycle or two after the first W handshake, is up. The other GROUP_WORDS -
+# B_HOLD_WRITES take the manager's b_ready_delay once the hold has dropped (the delay
+# counts from its arming, ocah_axi_master_driver._hold_then_go).
+B_HOLD_WRITES = 3
 RANDOM_MAX_DELAY = 8
 
 PORTS = ("SEP_IN", "SYS_IN", "JTAG")
@@ -68,6 +81,7 @@ _PREFIX = {"SEP_IN": "s_axi", "SYS_IN": "sys_axi", "JTAG": "jtag_axi"}
 _BUS_NAME = {"SEP_IN": "SEP_IN AXI", "SYS_IN": "SYS_IN AXI", "JTAG": "JTAG AXI"}
 _R_HOLD_KNOB = {"SEP_IN": "tb_sep_axi_r_hold", "SYS_IN": "tb_sys_axi_r_hold"}
 _R_RAW_VALID = {"SEP_IN": "tb_sep_axi_r_raw_valid", "SYS_IN": "tb_sys_axi_r_raw_valid"}
+_B_HOLD_KNOB = {"SEP_IN": "tb_sep_axi_b_hold"}
 
 STEPS = ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")
 CHECKERS = (
@@ -210,6 +224,7 @@ def _item(
     wdata: int = 0,
     expected: int | None = None,
     timing: AxiTimingProfile | None = None,
+    axi_id: int | None = None,
 ) -> SmcSysAxiItem:
     item = SmcSysAxiItem(f"{op.value}_{label}")
     item.op = op
@@ -219,6 +234,7 @@ def _item(
     item.wdata = wdata
     item.expected = expected
     item.timing = timing
+    item.axi_id = axi_id
     return item
 
 
@@ -235,6 +251,11 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
         self.hold_waits: dict[str, str] = {}
         self.seed = 0
         self.drawn: list[str] = []
+        self.r_hold: dict[str, int] = {}
+        self.b_hold = 0
+        self.b_hold_pending = 0
+        self.b_hold_hs = (0, 0, 0)
+        self.ids_drawn: dict[str, list[int]] = {port: [] for port in PORTS}
 
     # -- bookkeeping -----------------------------------------------------
 
@@ -314,7 +335,9 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             ),
         )
 
-    async def _read(self, port, label, addr, expected, *, length=4, beats=1, timing=None):
+    async def _read(
+        self, port, label, addr, expected, *, length=4, beats=1, timing=None, axi_id=None
+    ):
         return await self._issue(
             port,
             _item(
@@ -325,8 +348,14 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
                 beats=beats,
                 expected=expected,
                 timing=timing,
+                axi_id=axi_id,
             ),
         )
+
+    def _draw_id(self, rng: random.Random, port: str) -> int:
+        ident = rng.randrange(ID_SPACE[port])
+        self.ids_drawn[port].append(ident)
+        return ident
 
     @staticmethod
     def _lead(win: _Window, aw_ahead: bool) -> str:
@@ -342,7 +371,7 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
     # -- r_hold pulses ---------------------------------------------------
 
     async def _pulse_r_hold(self, port: str, beats: int) -> None:
-        """Hold R off for HOLD_CYCLES cycles once each beat is visible at the DUT.
+        """Hold R off for the drawn length once each beat is visible at the DUT.
 
         Samples are the settled state after each clk_smc_i rise; the hold is driven on the
         falling edge, so it lands before the handshake the sampled state would complete.
@@ -370,7 +399,7 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
                     )
                 await FallingEdge(clk)
                 hold.value = 1
-                await ClockCycles(clk, HOLD_CYCLES)
+                await ClockCycles(clk, self.r_hold[port])
                 hold.value = 0
                 for accept_wait in range(HOLD_WAIT_BOUND_CYCLES):
                     await ReadOnly()
@@ -390,6 +419,52 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             await FallingEdge(clk)
             hold.value = 0
             self.hold_waits[port] = f"beats={len(waited)} wait(valid+accept)={','.join(waited)}"
+
+    async def _hold_b(self, port: str, win: _Window) -> None:
+        """Hold B off for the drawn length once a W handshake has been seen on `port`.
+
+        tb_top gates BVALID and BREADY while the hold is up, so the watch's B handshake count,
+        recorded when the hold goes up, must stand still until the hold drops and be below the W
+        handshake count at the drop. That holds on the gated nets by construction, so it is the
+        hold's own consistency, not the stall evidence: the stall evidence of the leg is the
+        manager's BREADY delay, armed on the rest of the group only once the hold has dropped
+        (the delay counts from its arming, so armed under the hold it would be spent while
+        BVALID is still gated), which needs a BVALID-high, BREADY-low cycle from the DUT and is
+        counted by the watch as on the other ports. The count of held cycles with a W handshake
+        seen and its B not yet handshaken is logged beside it.
+        """
+        dut = cocotb.top
+        clk = dut.clk_smc_i
+        hold = getattr(dut, _B_HOLD_KNOB[port])
+        for _ in range(HOLD_WAIT_BOUND_CYCLES):
+            await FallingEdge(clk)
+            await ReadOnly()
+            if win.w_hs >= 1:
+                break
+        else:
+            raise AssertionError(f"{port}: no W handshake within {HOLD_WAIT_BOUND_CYCLES} cycles")
+        await FallingEdge(clk)
+        hold.value = 1
+        await ReadOnly()
+        held_b_hs = win.b_hs
+        pending = 0
+        try:
+            for _ in range(self.b_hold):
+                await FallingEdge(clk)
+                await ReadOnly()
+                if win.w_hs > win.b_hs:
+                    pending += 1
+            assert win.b_hs == held_b_hs, (
+                f"{port}: B handshakes advanced under the hold ({held_b_hs} -> {win.b_hs})"
+            )
+            assert win.b_hs < win.w_hs, (
+                f"{port}: no B pending at the drop of the hold (b_hs={win.b_hs} w_hs={win.w_hs})"
+            )
+        finally:
+            await FallingEdge(clk)
+            hold.value = 0
+        self.b_hold_pending = pending
+        self.b_hold_hs = (held_b_hs, win.b_hs, win.w_hs)
 
     # -- steps -----------------------------------------------------------
 
@@ -465,7 +540,7 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             f"{','.join(f'0x{w:08X}' for w in words)}"
         )
 
-    async def _step_bready(self) -> str:
+    async def _step_bready(self, rng: random.Random) -> str:
         notes = []
         for k, port in enumerate(PORTS):
             watch = self.watches[port]
@@ -473,21 +548,67 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             base = W0 + 0x1000 * (k + 1)
             words = [group_word(0xC7, k, i) for i in range(GROUP_WORDS)]
             items = [
-                _item(f"BHOLD{k}_{i}", SmcSysAxiOp.WRITE, base + 8 * i, length=8, wdata=words[i])
+                _item(
+                    f"BHOLD{k}_{i}",
+                    SmcSysAxiOp.WRITE,
+                    base + 8 * i,
+                    length=8,
+                    wdata=words[i],
+                    axi_id=self._draw_id(rng, port),
+                )
                 for i in range(GROUP_WORDS)
             ]
-            await self._issue_group(
-                port, "bready_hold", items, AxiTimingProfile(b_ready_delay=B_HOLD)
-            )
+            rng.shuffle(items)
+            if port in _B_HOLD_KNOB:
+                # The drawn hold on the bench knob over the first B_HOLD_WRITES writes, then
+                # the manager's BREADY delay on the ungated B over the rest. The delay counts
+                # from the moment its profile is armed (_hold_then_go steps every edge), so
+                # it is armed only after the hold has dropped: armed under the hold it would
+                # be spent while BVALID is still gated and no B stall could be seen. The delay
+                # supplies the stall cycles the DUT has to present, as on the other ports.
+                holder = cocotb.start_soon(self._hold_b(port, win))
+                await self._issue_group(
+                    port, "bready_hold", items[:B_HOLD_WRITES], AxiTimingProfile()
+                )
+                await holder
+                await self._issue_group(
+                    port,
+                    "bready_delay",
+                    items[B_HOLD_WRITES:],
+                    AxiTimingProfile(b_ready_delay=B_HOLD),
+                )
+                stall = watch.stalled(win, "b")
+                held, dropped, w_hs = self.b_hold_hs
+                delayed = GROUP_WORDS - B_HOLD_WRITES
+                how = (
+                    f"b_hold={self.b_hold} cycles over {B_HOLD_WRITES} writes, then "
+                    f"b_ready_delay={B_HOLD} armed after the drop over {delayed} writes "
+                    f"b_stall={stall} held_pending={self.b_hold_pending} "
+                    f"b_hs {held} at the raise == {dropped} at the drop < w_hs {w_hs}"
+                )
+            else:
+                await self._issue_group(
+                    port, "bready_hold", items, AxiTimingProfile(b_ready_delay=B_HOLD)
+                )
+                stall = watch.stalled(win, "b")
+                how = f"b_ready_delay={B_HOLD} b_stall={stall}"
             for i in range(GROUP_WORDS):
-                await self._read(port, f"BHOLD{k}_RB{i}", base + 8 * i, words[i], length=8)
-            b_stall = watch.stalled(win, "b")
+                await self._read(
+                    port,
+                    f"BHOLD{k}_RB{i}",
+                    base + 8 * i,
+                    words[i],
+                    length=8,
+                    axi_id=self._draw_id(rng, port),
+                )
             assert win.b_hs >= GROUP_WORDS, f"{port}: {win.b_hs} B handshakes for 8 writes"
-            assert b_stall >= 1, f"{port}: no b-channel stall cycle under the BREADY hold"
-            notes.append(f"{port} 8 writes OKAY b_hs={win.b_hs} b_stall={b_stall}")
+            assert stall >= 1, f"{port}: no held or stalled B cycle ({how})"
+            order = ",".join(item.get_name().rsplit("_", 1)[-1] for item in items)
+            ids = ",".join(str(i.axi_id) for i in items)
+            notes.append(f"{port} 8 writes OKAY b_hs={win.b_hs} {how} order={order} ids={ids}")
         return "; ".join(notes) + "; every word read back equals the word written"
 
-    async def _step_rready(self) -> str:
+    async def _step_rready(self, rng: random.Random) -> str:
         notes = []
         for k, port in enumerate(PORTS):
             watch = self.watches[port]
@@ -498,6 +619,7 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             pulse = None
             if port in _R_HOLD_KNOB:
                 pulse = cocotb.start_soon(self._pulse_r_hold(port, READ_BEATS))
+            ident = self._draw_id(rng, port)
             await self._read(
                 port,
                 f"RHOLD{k}",
@@ -506,6 +628,7 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
                 length=8,
                 beats=READ_BEATS,
                 timing=AxiTimingProfile(r_ready_delay=R_HOLD),
+                axi_id=ident,
             )
             if pulse is not None:
                 await pulse
@@ -513,9 +636,14 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
             want_last = [0] * (READ_BEATS - 1) + [1]
             assert win.r_last == want_last, f"{port}: RLAST pattern {win.r_last}, want {want_last}"
             assert r_stall >= 1, f"{port}: no r-channel stall cycle under the RREADY hold"
-            hold = f" r_hold pulses {self.hold_waits[port]}" if pulse is not None else " no r_hold"
+            hold = (
+                f" r_hold={self.r_hold[port]} cycles per beat, pulses {self.hold_waits[port]}"
+                if pulse is not None
+                else " no r_hold"
+            )
             notes.append(
-                f"{port} {READ_BEATS} beats in order rlast={win.r_last} r_stall={r_stall}{hold}"
+                f"{port} {READ_BEATS} beats in order rlast={win.r_last} r_stall={r_stall}{hold} "
+                f"id={ident}"
             )
         return "; ".join(notes)
 
@@ -547,6 +675,7 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
                         base + 8 * i,
                         length=8,
                         wdata=words[i],
+                        axi_id=self._draw_id(rng, port),
                     )
                     for i in range(GROUP_WORDS)
                 ] + [
@@ -556,20 +685,37 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
                         read_base + 8 * i,
                         length=8,
                         expected=seeds[i],
+                        axi_id=self._draw_id(rng, port),
                     )
                     for i in range(GROUP_WORDS)
                 ]
+                rng.shuffle(items)
+                self.drawn.append(
+                    f"{port}.{leg}:order="
+                    + ",".join(item.get_name().split("_", 1)[-1] for item in items)
+                )
                 await self._issue_group(port, f"random{leg}", items, timing)
                 for i in range(GROUP_WORDS):
-                    await self._read(port, f"RND{k}{leg}_RB{i}", base + 8 * i, words[i], length=8)
+                    await self._read(
+                        port,
+                        f"RND{k}{leg}_RB{i}",
+                        base + 8 * i,
+                        words[i],
+                        length=8,
+                        axi_id=self._draw_id(rng, port),
+                    )
             notes.append(f"{port} 16 accesses x2 groups OKAY, aw_hs={win.aw_hs}")
         assert drawn_aw > 0 and drawn_w > 0 and drawn_ar > 0, (
             f"a channel was never delayed: aw={drawn_aw} w={drawn_w} ar={drawn_ar}"
         )
         return (
             "; ".join(notes) + f"; every read returned the word of its own address; seed "
-            f"{self.seed}; delays {' '.join(self.drawn)}"
+            f"{self.seed}; delays and interleave {' '.join(self.drawn)}; drawn=seed {self.seed} "
+            f"ids {self._ids_text()}"
         )
+
+    def _ids_text(self) -> str:
+        return " ".join(f"{port}:{','.join(map(str, ids))}" for port, ids in self.ids_drawn.items())
 
     async def _step_teardown(self) -> None:
         for i in range(SCRATCH_COUNT):
@@ -590,9 +736,17 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
     # -- body ------------------------------------------------------------
 
     async def body(self) -> None:
-        self.seed = int(cocotb.RANDOM_SEED)
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
         rng = random.Random(self.seed)
-        cocotb.log.info("CTP random seed %d", self.seed)
+        self.r_hold = {port: rng.randint(R_HOLD_MIN, R_HOLD_MAX) for port in _R_HOLD_KNOB}
+        self.b_hold = rng.randint(B_HOLD_MIN, B_HOLD_MAX)
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: r_hold %s clk_smc_i cycles per beat, b_hold %d cycles on "
+            "SEP_IN; the AxIDs and the group interleave are drawn as each step issues them",
+            self.seed,
+            self.r_hold,
+            self.b_hold,
+        )
 
         await self._step_setup()
         self._mark_step("S1")
@@ -623,13 +777,22 @@ class smc_axi_channel_timing_ports_test_seq(SmcCsrSeq):
         self._mark_step("S6")
         self._log_chk("CHK-CTP-AW-QUEUE", queue)
 
-        bready = await self._step_bready()
+        bready = await self._step_bready(rng)
         self._mark_step("S7")
-        self._log_chk("CHK-CTP-BREADY-PORTS", f"BREADY held {B_HOLD} cycles: {bready}")
+        self._log_chk(
+            "CHK-CTP-BREADY-PORTS",
+            f"B held on SEP_IN by tb_sep_axi_b_hold and then BREADY held {B_HOLD} cycles on every "
+            f"port: {bready}; drawn=seed {self.seed} b_hold {self.b_hold} ids "
+            f"{self._ids_text()}",
+        )
 
-        rready = await self._step_rready()
+        rready = await self._step_rready(rng)
         self._mark_step("S8")
-        self._log_chk("CHK-CTP-RREADY-BEATS", f"RREADY held {R_HOLD} cycles: {rready}")
+        self._log_chk(
+            "CHK-CTP-RREADY-BEATS",
+            f"RREADY held {R_HOLD} cycles: {rready}; drawn=seed {self.seed} r_hold "
+            f"{self.r_hold} ids {self._ids_text()}",
+        )
 
         random_text = await self._step_random(rng)
         self._mark_step("S9")

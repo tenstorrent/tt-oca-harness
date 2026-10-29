@@ -100,7 +100,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
-        sb.expect_eq("CHK-J2ASMN-GATE-OPEN", gate, 0)
+        sb.expect_eq("CHK-J2ASMN-GATE-OPEN", gate, 0, evidence="CHK-J2ASMN-GATE-OPEN")
 
         master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         await program_inbound0_window(jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="RACE")
@@ -123,7 +123,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         require_jtag_tdo_resolved("pre-race scratch clear")
         if st0 != J2A_STATUS_SUCCESS:
             raise AssertionError(f"pre-race scratch clear status={st0}")
-        sb.expect_eq("CHK-J2ASMN-CLEAR", st0, J2A_STATUS_SUCCESS)
+        sb.expect_eq("CHK-J2ASMN-CLEAR", st0, J2A_STATUS_SUCCESS, evidence="CHK-J2ASMN-CLEAR")
 
         j_result: dict = {}
         s_result: dict = {}
@@ -219,10 +219,15 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
                 "the two writes did not overlap"
             )
         self.s2_ok = True
-        sb.expect_eq("CHK-J2ASMN-WR-J", j_result["st"], J2A_STATUS_SUCCESS)
-        sb.expect_eq("CHK-J2ASMN-WR-S", s_result["resp"], RESP_OKAY)
         sb.expect_eq(
-            "CHK-J2ASMN-OVERLAP SMN accepted inside the J2A AW..B window", overlapped, True
+            "CHK-J2ASMN-WR-J", j_result["st"], J2A_STATUS_SUCCESS, evidence="CHK-J2ASMN-WR-J"
+        )
+        sb.expect_eq("CHK-J2ASMN-WR-S", s_result["resp"], RESP_OKAY, evidence="CHK-J2ASMN-WR-S")
+        sb.expect_eq(
+            "CHK-J2ASMN-OVERLAP SMN accepted inside the J2A AW..B window",
+            overlapped,
+            True,
+            evidence="CHK-J2ASMN-OVERLAP",
         )
 
         await ClockCycles(dut.clk_smu_i, 64)
@@ -268,4 +273,9 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         if v_resp != RESP_OKAY or (int(v_smn) & 0xFFFF_FFFF) != VERSION_LO_RESET:
             raise AssertionError(f"post-race SMN VERSION resp={v_resp} data=0x{int(v_smn):08x}")
         self.s4_ok = True
-        sb.expect_eq("CHK-J2ASMN-VERSION", int(r_v) & 0xFFFF_FFFF, VERSION_LO_RESET)
+        sb.expect_eq(
+            "CHK-J2ASMN-VERSION",
+            int(r_v) & 0xFFFF_FFFF,
+            VERSION_LO_RESET,
+            evidence="CHK-J2ASMN-VERSION",
+        )

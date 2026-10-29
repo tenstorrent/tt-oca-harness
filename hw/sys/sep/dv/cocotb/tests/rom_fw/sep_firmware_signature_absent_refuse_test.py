@@ -17,20 +17,22 @@ from __future__ import annotations
 
 import pyuvm
 from env import sep_manifest_mutate as mm
-from rom_fw.sep_backup_manifest_fail_base import MANIFEST_ERR_SIG_TYPE_INVALID
+from env.sep_secure_boot_cases import CASES
 from rom_fw.sep_firmware_cntl_secure_boot_flow_test import (
     _SBOOT_DIS_SET,
     sep_firmware_cntl_secure_boot_flow_test,
 )
+
+_CASE = CASES["signature_absent"]
 
 
 @pyuvm.test()
 class sep_firmware_signature_absent_refuse_test(sep_firmware_cntl_secure_boot_flow_test):
     """PROD + secure manifest with signature and signature_size zeroed -> refused."""
 
-    backup_defect_marker = f"MANIFEST_ERR=0x{MANIFEST_ERR_SIG_TYPE_INVALID:08x}"
-    expected_error = MANIFEST_ERR_SIG_TYPE_INVALID
-    primary_expected_error = MANIFEST_ERR_SIG_TYPE_INVALID
+    backup_defect_marker = f"MANIFEST_ERR=0x{_CASE.boot_error:08x}"
+    expected_error = _CASE.boot_error
+    primary_expected_error = _CASE.boot_error
     extra_forbidden = (
         "PUBK_SEL=",
         "RSA_EXEC",
@@ -40,13 +42,9 @@ class sep_firmware_signature_absent_refuse_test(sep_firmware_cntl_secure_boot_fl
     )
 
     def mutate_slot(self, buf: bytearray, slot: str) -> None:
-        assert mm.secure_boot_control(buf, slot) & mm.SECURE_BOOT_ENFORCED_BIT, (
-            f"{slot} manifest does not request secure boot"
-        )
         before = mm.signature_size(buf, slot)
-        assert before, f"{slot} signature_size is already zero"
-        mm.remove_signature(buf, slot, keep_size=False)
-        assert mm.signature_size(buf, slot) == 0
+        _CASE.mutate(buf, slot)
+        assert before and mm.signature_size(buf, slot) == 0
         mm.verify_layout(buf, slot)
         self.logger.info(
             "CHK-MUTATION: %s signature and signature_size (%d -> 0) zeroed, %s",

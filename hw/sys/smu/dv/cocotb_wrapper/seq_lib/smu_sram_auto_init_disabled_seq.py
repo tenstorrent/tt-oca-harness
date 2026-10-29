@@ -7,18 +7,16 @@ The complement of smu_sram_auto_init_done_test. That leaf runs with
 sweep run to completion; this one runs the same cold reset with the input
 high: the initialisation enable must never rise and no zeroing write may
 reach the scratch RAM, which is the input's stated purpose (``smu.adoc``,
-``cpu.adoc``). Neither document says what ``smc_init_mem_done_o`` does when
-the sweep is held off, so its behaviour after the release is recorded --
-whether and when it rose, and how it held -- and carries no token: a
-specification statement, not a reading of the implementation, is what would
-turn that record into a claim.
+``cpu.adoc``). ``cpu.adoc`` (Reset and Boot) states that ``smc_init_mem_done_o``
+reports either completion or bypass. This leaf records the output's behaviour
+after the release -- whether and when it rose, and how it held -- without a
+compare, and the record carries no token; it is not graded against that
+sentence here.
 
-That gap also bounds what the cold-reset leg here may claim. Requiring the
-output high before the reset would claim the same unspecified behaviour from
-the other side, so this leaf compares only that the output reads low while the
-reset is asserted and records what it read beforehand. The clear of an output
-known to be high is the sibling's: it runs the sweep to completion, requires
-the output high, and only then asserts the cold reset.
+The cold-reset leg compares only that the output reads low while the reset is
+asserted and records what it read beforehand. The clear of an output known to
+be high is the sibling's: it runs the sweep to completion, requires the output
+high, and only then asserts the cold reset.
 
 The bench raises the input when a test supplies ``+smc_scratch_ram_hex``,
 because the sweep would otherwise overwrite the image; the testlist entry
@@ -97,9 +95,9 @@ class smu_sram_auto_init_disabled_seq:
             evidence="CHK-SMU-MEMINIT-DISABLED",
         )
         self.log.info(
-            "OBSERVED-ONLY smc_init_mem_done_o read %d before the cold reset. Whether it was "
-            "high with the sweep held off is the unspecified behaviour above, so this leg "
-            "requires only the low level under reset; smu_sram_auto_init_done_test carries the "
+            "OBSERVED-ONLY smc_init_mem_done_o read %d before the cold reset; cpu.adoc states "
+            "that the output reports either completion or bypass, and this leg compares only "
+            "the low level under reset; smu_sram_auto_init_done_test carries the "
             "clear of an output it first requires high",
             done_before_reset,
         )
@@ -129,8 +127,8 @@ class smu_sram_auto_init_disabled_seq:
         )
         self.log.info(
             "OBSERVED-ONLY smc_init_mem_done_o with the sweep held off: %s; high on %d of the "
-            "last %d cycles of the window (init_mem_complete=%d). No specification states the "
-            "done behaviour for a disabled sweep, so this is recorded, not compared",
+            "last %d cycles of the window (init_mem_complete=%d). cpu.adoc states that the "
+            "output reports either completion or bypass; this is recorded, not compared",
             f"rose {done_cycle} clk_smu after the release"
             if done_cycle is not None
             else f"did not rise within {DONE_BOUND_CYCLES + QUIET_SAMPLES} clk_smu",

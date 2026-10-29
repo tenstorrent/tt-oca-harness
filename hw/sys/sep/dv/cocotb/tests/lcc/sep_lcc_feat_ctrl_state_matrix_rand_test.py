@@ -16,7 +16,7 @@ OR-merged with the writes of the leaf).
 
   CHK-FEAT-CELL     legs A and C: ``FEAT_CTRL`` (register and probe) equals the
                     profile row of the (raw, demotion, SEC_DIS, strap) cell; the
-                    ``LC_STATE`` shadow word holds ``{~r, r}``; ``lc_sigint_err_o`` = 0.
+                    ``LC_STATE`` shadow word holds ``{~r, r}``; ``sep_ras_o.lc_sigint_err`` = 0.
                     Hook control at the leg A read: the strap port and the latched
                     ``secure_tm_o`` equal s (``CHK-HOOK FAIL`` otherwise).
                     In leg C the SEC_DIS cell is all ones with ``security_disable_o``

@@ -18,12 +18,7 @@
 
 `include "ocah_fcov_macros.svh"
 
-module smc_fabric_fcov #(
-  // 1 when the bench answers the SMC's DTP CSR AXI-Lite port. The SMC bench
-  // ties that response port off, so no access to it completes and none is
-  // issued; the DTP-active bins are dropped rather than carried unhittable.
-  parameter bit DTP_CSR_RESPONDER = 1'b0
-) (
+module smc_fabric_fcov (
   input wire clk_smc_i,
   input wire rst_cold_ni,
 
@@ -410,14 +405,18 @@ module smc_fabric_fcov #(
           && (sep_rid_i === rd_id_q));
   `OCAH_FCOV_COVER(c_response_id_matches_request_port, response_id_matches_e, clk_smc_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroup: the downstream AXI-Lite interface
-  // concurrency cross. Per-manager AXI crosses live in smc_axi_chan_fcov.
+  // Covergroups: the downstream AXI-Lite interface concurrency cross and the
+  // SEP_IN write shape. The per-manager burst-length and response groups
+  // live in smc_axi_chan_fcov.
   // ------------------------------------------------------------------
   covergroup cg_axil_masters with function sample (logic dtp_csr, logic external, logic efuse_bank);
     option.per_instance = 1;
-    cp_dtp_csr: coverpoint dtp_csr {ignore_bins no_responder = {1'b1} with (!DTP_CSR_RESPONDER);}
+    // The SMC bench ties the DTP CSR AXI-Lite response port off, so no access
+    // to it completes and none is issued.
+    cp_dtp_csr: coverpoint dtp_csr {
+      ignore_bins no_responder = {1'b1};
+    }
     cp_external: coverpoint external;
     cp_efuse_bank: coverpoint efuse_bank;
     x_concurrency: cross cp_dtp_csr, cp_external, cp_efuse_bank;
@@ -461,6 +460,5 @@ module smc_fabric_fcov #(
       if (sep_aw_accept) u_cg_sep_in_shape.sample(sep_awsize_i, sep_awburst_i, sep_wstrb_i);
     end
   end
-`endif
 
 endmodule : smc_fabric_fcov

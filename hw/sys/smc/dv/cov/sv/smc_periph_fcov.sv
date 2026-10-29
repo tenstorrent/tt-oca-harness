@@ -446,10 +446,9 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_octs_count_advances, octs_count_advances_e, clk_ref_i, in_reset)
   `OCAH_FCOV_COVER(c_octs_count_monotonic, octs_count_monotonic_e, clk_ref_i, in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the driver-pair and irq-source
-  // crosses, which the flat point list cannot express.
+  // Covergroups: the driver-pair and irq-source crosses, which the flat point
+  // list cannot express.
   // ------------------------------------------------------------------
   covergroup cg_i2c0_bus with function sample (
       logic scl_dut_low, logic sda_dut_low, logic scl_ext_low, logic sda_ext_low, logic enable
@@ -518,6 +517,5 @@ module smc_periph_fcov #(
   always_ff @(posedge clk_smc_i) begin
     if (!in_reset) u_cg_irq_sources.sample(irq_sources);
   end
-`endif
 
 endmodule : smc_periph_fcov

@@ -121,6 +121,8 @@ if { [sizeof_collection $avs_sdata_intdet_q0_pin] > 0 } {
 #     bus mux and CPU CSR read data (PLIC pending / xbar D-channel)
 #   - peripherals_cdc IRQ syncs (+ ndmreset per-core requests): independent
 #     level interrupts ORed / vectored toward the CPU.
+#   - peripherals_cdc UART/I2C integrity-error syncs: independent level flags,
+#     each a separate RAS bit with no cross-bit coherency.
 #   - SEP WDT IRQ resync (u_rst_ext_wdt_irq_sync at smc_peripherals top): independent
 #     level interrupt into PLIC fan-in.
 #   - GPIO pad2core syncs: independent pad inputs.
@@ -156,6 +158,7 @@ _smc_conv_ignore i3c_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i3
 _smc_conv_ignore uart_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_uart_combined_irq_sync/*/q_ddd/Q}
 _smc_conv_ignore i2c_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_i2c_irq_sync/*/q_ddd/Q}
 _smc_conv_ignore avsbus_irq {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_avsbus_irq_sync/*/q_ddd/Q}
+_smc_conv_ignore intg_err {u_smc_peripherals/u_smc_peripherals_cdc/gen_sync3.u_intg_err_sync/*/q_ddd/Q}
 _smc_conv_ignore ndmreset_req {u_smc_peripherals/u_smc_peripherals_cdc/u_ndmreset_request_sync/*/q_ddd/Q}
 _smc_conv_ignore sep_wdt_irq {u_smc_peripherals/u_rst_ext_wdt_irq_sync/*/q_ddd/Q}
 _smc_conv_ignore gpio_pad2core {u_smc_peripherals/u_smc_padring/*/u_pad2core_sync/*/q_ddd/Q}
