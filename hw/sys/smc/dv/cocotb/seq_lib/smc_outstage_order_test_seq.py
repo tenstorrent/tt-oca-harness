@@ -67,8 +67,8 @@ _DENY_B1 = 0x0000_0000_0100_0010
 _DENY_B1_READBACK = 0x0000_0000_0100_3010
 _GRANULE = 0x1000
 
-_OUT = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_{reg}_BASE_ADDR"
-_REMAP_ATTRS = "SMC_{unit}_REMAP_0__REGION_REGION_ATTRS_REG_ADDR"
+_OUT = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR"
+_REMAP_ATTRS = "SMC_{unit}_REMAP_WRAP_OUTPUT_REMAP_0__REGION_REGION_ATTRS_REG_ADDR"
 _ENTRY_REGS = ("FILTER_CONFIG", "START_ADDR", "END_ADDR")
 
 # Test-chosen stimulus addresses (SYS_OUT memory, post-remap).
@@ -213,7 +213,8 @@ class smc_outstage_order_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self._fuse_calls = 0
         self._watch = _OutputWatch()
         self._resets = {
-            reg: rdl_contract(f"smc_outbound_filter_ctrl/{reg}").reset_word for reg in _ENTRY_REGS
+            reg: rdl_contract(f"smc_outbound_filter_ctrl_wrap/filter_ctrl/{reg}").reset_word
+            for reg in _ENTRY_REGS
         }
 
     async def _dispatch_reset_item(self, item: SmcResetItem) -> None:

@@ -105,10 +105,14 @@ class smc_fw_narrow_store_lane_test_seq(smc_fw_image_boot_seq):
         await self._all_targets("after PASS", after_boot=True)
         # The image stores into both halves of outbound filter 14's FILTER_CONFIG
         # and restores its lower half; locked must still be clear.
-        filter_reset = rdl_contract("smc_outbound_filter_ctrl/FILTER_CONFIG").reset_word
+        filter_reset = rdl_contract(
+            "smc_outbound_filter_ctrl_wrap/filter_ctrl/FILTER_CONFIG"
+        ).reset_word
         await self.csr_read(
             "OB14_FILTER_CONFIG:after PASS",
-            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", 14),
+            smc_indexed_addr(
+                "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", 14
+            ),
             expected=filter_reset,
             length=_WORD,
         )

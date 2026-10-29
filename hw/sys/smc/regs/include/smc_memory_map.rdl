@@ -60,10 +60,10 @@
     smc_mmode_remap_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_xvisor_remap_wrap->ocah_aperture_size = 0x1000;
     smc_xvisor_remap_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
-    smc_inbound_filter_ctrl->ocah_aperture_size = 0x1000;
-    smc_inbound_filter_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
-    smc_outbound_filter_ctrl->ocah_aperture_size = 0x1000;
-    smc_outbound_filter_ctrl->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    smc_inbound_filter_ctrl_wrap->ocah_aperture_size = 0x1000;
+    smc_inbound_filter_ctrl_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
+    smc_outbound_filter_ctrl_wrap->ocah_aperture_size = 0x1000;
+    smc_outbound_filter_ctrl_wrap->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_mailbox->ocah_aperture_size = 0x20000;
     smc_mailbox->ocah_past_extent_resp = `OCAH_SMC_DECERR;
     smc_mailbox->desc = "Thirty-two bidirectional mailbox pairs.";

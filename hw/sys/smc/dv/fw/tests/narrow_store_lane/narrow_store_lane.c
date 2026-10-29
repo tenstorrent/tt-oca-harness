@@ -123,7 +123,8 @@ int main(void) {
          * strobe clear and writes the lower fields, the entry enable included,
          * to 0; the reset lower half is then written back.
          */
-        uint64_t filter = SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(14);
+        uint64_t filter =
+            SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(14);
         uint32_t filter_lower = read_reg(filter);
         hold_other_half_with("FILTER_CONFIG lower lanes", filter, filter + 4, FILTER_LOWER_LANES);
         hold_other_half_with("FILTER_CONFIG locked lane", filter + 4, filter, FILTER_LOCKED_LANE);

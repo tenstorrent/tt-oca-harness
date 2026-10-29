@@ -83,13 +83,13 @@ module smc_internal_axi_lite_xbar
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_SIZE)},
     '{idx: 4,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(0)),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_TOTAL_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_SIZE)},
     '{idx: 5,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_TOTAL_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_SIZE)},
     // mailbox: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_{BASE_ADDR,SIZE}
     '{idx: 6,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR),

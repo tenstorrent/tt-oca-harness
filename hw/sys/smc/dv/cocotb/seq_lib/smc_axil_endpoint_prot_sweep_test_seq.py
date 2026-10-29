@@ -226,7 +226,10 @@ def check_set() -> tuple[Endpoint, ...]:
         ),
         *(
             _probe(
-                f"in_filter{i}", "filter-entry", f"smc_inbound_filter_ctrl[{i}]/START_ADDR", seed=RW
+                f"in_filter{i}",
+                "filter-entry",
+                f"smc_inbound_filter_ctrl_wrap/filter_ctrl[{i}]/START_ADDR",
+                seed=RW,
             )
             for i in range(16)
         ),
@@ -234,7 +237,7 @@ def check_set() -> tuple[Endpoint, ...]:
             _probe(
                 f"out_filter{i}",
                 "filter-entry",
-                f"smc_outbound_filter_ctrl[{i}]/START_ADDR",
+                f"smc_outbound_filter_ctrl_wrap/filter_ctrl[{i}]/START_ADDR",
                 seed=RW,
             )
             for i in range(16)

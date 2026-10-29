@@ -225,7 +225,9 @@ _FILTER_ENTRIES = (
 
 
 def _outbound(reg: str, entry: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_{reg}_BASE_ADDR", entry)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", entry
+    )
 
 
 _REGIONS = range(8)
@@ -465,7 +467,9 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
 
         resets = {}
         for reg in ("FILTER_CONFIG", "START_ADDR", "END_ADDR"):
-            resets[reg] = rdl_contract(f"smc_outbound_filter_ctrl/{reg}").reset_word
+            resets[reg] = rdl_contract(
+                f"smc_outbound_filter_ctrl_wrap/filter_ctrl/{reg}"
+            ).reset_word
         for entry, start, end, config in _FILTER_ENTRIES:
             await self.csr_read(
                 f"OB{entry}_CONFIG_RESET",

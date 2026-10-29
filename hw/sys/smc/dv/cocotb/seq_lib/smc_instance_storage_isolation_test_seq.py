@@ -267,9 +267,11 @@ class smc_instance_storage_isolation_test_seq(SmcCsrSeq):
         opat = [0x005A_5A00_0000_2000 + (i + 1) * 0x0000_0002_0000_0321 for i in range(16)]
         assert not set(ipat) & set(opat), "inbound and outbound patterns collide"
         entries = [
-            (f"I{i}", _array("SMC_INBOUND_FILTER_CTRL_START_ADDR", i), ipat[i]) for i in range(16)
+            (f"I{i}", _array("SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR", i), ipat[i])
+            for i in range(16)
         ] + [
-            (f"O{i}", _array("SMC_OUTBOUND_FILTER_CTRL_START_ADDR", i), opat[i]) for i in range(16)
+            (f"O{i}", _array("SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR", i), opat[i])
+            for i in range(16)
         ]
         obs = await self._coresident("FILTER_START", entries, 8, FILTER_CTRL_START_ADDR_REG_DEFAULT)
         for i in range(FILTER_COUNT):

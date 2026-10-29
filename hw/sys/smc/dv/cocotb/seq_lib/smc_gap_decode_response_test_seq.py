@@ -379,12 +379,12 @@ class smc_gap_decode_response_test_seq(SmcCsrSeq):
         await self._restore()
 
     async def _neighbours(self, base_name: str, base: int) -> str:
-        rresp_decl, bresp_decl = generated_past_extent_resp("smc_outbound_filter_ctrl")
+        rresp_decl, bresp_decl = generated_past_extent_resp("smc_outbound_filter_ctrl_wrap")
         assert rresp_decl == "DECERR", f"outbound filter past-extent rresp {rresp_decl}"
         below = base + BELOW_OFFSET
         rdata = await self._rd_decerr("SEP", f"{base_name}_BELOW_RD", below)
         bresp = await self._wr_observe(
-            "SEP", f"{base_name}_BELOW_WR", below, "smc_outbound_filter_ctrl", bresp_decl
+            "SEP", f"{base_name}_BELOW_WR", below, "smc_outbound_filter_ctrl_wrap", bresp_decl
         )
         above = base + MAILBOX_OFFSET
         resp, mdata = await self._rd("SEP", f"{base_name}_ABOVE_RD", above)

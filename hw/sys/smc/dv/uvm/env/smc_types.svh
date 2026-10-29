@@ -133,7 +133,7 @@ typedef enum int unsigned {
 localparam int unsigned SmcFabricGaters = 8;
 localparam int unsigned SmcFabricRegWords = 5;
 localparam int unsigned SmcCgFilterEntry =
-    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_NUM) - 1;
+    int'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM) - 1;
 localparam int unsigned SmcCgRemapRegion =
     int'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM) - 1;
 
@@ -148,32 +148,35 @@ typedef struct {
 
 function automatic bit [63:0] smc_cg_filter_config(bit inbound);
   if (inbound)
-    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
         SmcCgFilterEntry
     );
-  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
       SmcCgFilterEntry
   );
 endfunction
 
 function automatic bit [63:0] smc_cg_filter_end(bit inbound);
   if (inbound)
-    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(
+    return smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(
         SmcCgFilterEntry
     );
-  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(SmcCgFilterEntry);
+  return smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(
+      SmcCgFilterEntry);
 endfunction
 
 function automatic void smc_fabric_reg_catalog(ref smc_fabric_reg_entry_t entries[$]);
   entries.delete();
   entries.push_back(
       '{"OB_FILTER.START",
-      smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(SmcCgFilterEntry),
+      smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(
+          SmcCgFilterEntry),
       FILTER_CTRL_START_ADDR_REG_DEFAULT, FILTER_CTRL_START_ADDR_START_ADDR_MASK,
       FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_OB_FILTER});
   entries.push_back(
       '{"IB_FILTER.START",
-      smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(SmcCgFilterEntry),
+      smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(
+          SmcCgFilterEntry),
       FILTER_CTRL_START_ADDR_REG_DEFAULT, FILTER_CTRL_START_ADDR_START_ADDR_MASK,
       FILTER_CTRL_START_ADDR_START_ADDR_MASK, SMC_CG_IB_FILTER});
   entries.push_back(

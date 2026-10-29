@@ -45,8 +45,8 @@ _INTERNAL_XBAR = {
     "smc_alias_remap_wrap",
     "smc_mmode_remap_wrap",
     "smc_xvisor_remap_wrap",
-    "smc_inbound_filter_ctrl",
-    "smc_outbound_filter_ctrl",
+    "smc_inbound_filter_ctrl_wrap",
+    "smc_outbound_filter_ctrl_wrap",
     "smc_mailbox",
     "dfx_ctrl",
 }
@@ -372,7 +372,10 @@ class smc_bresp_evidence_obs_test_seq(SmcCsrSeq):
         assert scratch_warm_0 == base + 0x2880
         gpio_last = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 64)
         assert gpio_last == base + 0x3408
-        outfilt_last = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 15) + 0x18
+        outfilt_last = (
+            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 15)
+            + 0x18
+        )
         assert outfilt_last == base + 0x1_61F8
         cpu_last = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_DUMMY_ROM_NULL_BASE_ADDR", 3)
         assert cpu_last == base + 0x3_92B8

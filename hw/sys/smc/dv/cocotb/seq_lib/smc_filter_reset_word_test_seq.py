@@ -63,7 +63,7 @@ CHK_ORDER = (
 
 
 def _filt(bank: str, reg: str, idx: int) -> int:
-    return smc_indexed_addr(f"{_P}{bank}_FILTER_CTRL_{reg}_BASE_ADDR", idx)
+    return smc_indexed_addr(f"{_P}{bank}_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", idx)
 
 
 def _alias(reg: str, idx: int) -> int:

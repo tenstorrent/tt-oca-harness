@@ -183,7 +183,7 @@ ISLANDS = (
     Island("XREMAP_OUT", "smc_xvisor_remap_wrap", 0x14000, 0x1403C, 0x14040, 0x14FFC, RW, RW, _D),
     Island(
         "INFLT",
-        "smc_inbound_filter_ctrl",
+        "smc_inbound_filter_ctrl_wrap",
         0x15000,
         0x151FC,
         0x15200,
@@ -194,7 +194,7 @@ ISLANDS = (
     ),
     Island(
         "OUTFLT",
-        "smc_outbound_filter_ctrl",
+        "smc_outbound_filter_ctrl_wrap",
         0x16000,
         0x161FC,
         0x16200,

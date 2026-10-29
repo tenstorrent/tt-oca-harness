@@ -49,8 +49,8 @@
 |BASE + 0x12000 – BASE + 0x12FFF |4 KiB |256 B |AXI Alias Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one alias remap register block per remap region. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x13000 – BASE + 0x13FFF |4 KiB |64 B |Output Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one output remap register block per remap region. |- |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x14000 – BASE + 0x14FFF |4 KiB |64 B |Output Remap Wrapper Address Map |1 instance |- |Wrapper address map instantiating one output remap register block per remap region. |- |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x15000 – BASE + 0x15FFF |4 KiB |512 B |AXI Filter Control Address Map |16 instances |32 B |Per-filter access-control registers defining permitted address ranges and transaction attributes. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
-|BASE + 0x16000 – BASE + 0x16FFF |4 KiB |512 B |AXI Filter Control Address Map |16 instances |32 B |Per-filter access-control registers defining permitted address ranges and transaction attributes. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|BASE + 0x15000 – BASE + 0x15FFF |4 KiB |512 B |AXI Filter Wrapper Address Map |1 instance |- |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|BASE + 0x16000 – BASE + 0x16FFF |4 KiB |512 B |AXI Filter Wrapper Address Map |1 instance |- |Wrapper address map instantiating one filter control register block per filter entry. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x18000 – BASE + 0x37FFF |128 KiB |129104 B |SMC AXI-Lite Mailbox Wrapper Address Map |1 instance |- |Thirty-two bidirectional mailbox pairs. |SLVERR, 0x0 / SLVERR |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x38000 – BASE + 0x381FF |512 B |312 B |iDMA Controller Address Map |1 instance |- |Direct-memory-access controller. |OKAY, 0xFFFFFFFF / OKAY |DECERR, 0xBADCAB1E / DECERR
 |BASE + 0x38200 – BASE + 0x382FF |256 B |24 B |Zeroer Control Address Map |1 instance |- |Control and status registers for the AXI memory-zeroing engine. |- |DECERR, 0xBADCAB1E / DECERR

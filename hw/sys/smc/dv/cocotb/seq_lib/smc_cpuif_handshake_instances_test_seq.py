@@ -350,9 +350,9 @@ def build_instances() -> tuple[Inst, ...]:
             )
         )
     for bank in ("inbound", "outbound"):
-        sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_BASE_ADDR"
+        sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR"
         for i in range(16):
-            path = f"smc_{bank}_filter_ctrl[{{}}]/"
+            path = f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[{{}}]/"
             cfg = _indexed(sym, path + "FILTER_CONFIG", i)
             a = _indexed(sym, path + "START_ADDR", i)
             b = _indexed(sym, path + "END_ADDR", i)

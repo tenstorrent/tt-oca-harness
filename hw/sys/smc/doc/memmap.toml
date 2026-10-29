@@ -24,7 +24,7 @@ description = "Reset, GPIO, serial peripherals, eFuse, telemetry, timer, DTP, an
 [[views.rows]]
 kind = "group"
 label = "Fabric Control"
-members = ["smc_base_config", "smc_alias_remap_wrap", "smc_mmode_remap_wrap", "smc_xvisor_remap_wrap", "smc_inbound_filter_ctrl", "smc_outbound_filter_ctrl"]
+members = ["smc_base_config", "smc_alias_remap_wrap", "smc_mmode_remap_wrap", "smc_xvisor_remap_wrap", "smc_inbound_filter_ctrl_wrap", "smc_outbound_filter_ctrl_wrap"]
 description = "Base configuration, address remapping, and traffic filters."
 
 [[views.rows]]

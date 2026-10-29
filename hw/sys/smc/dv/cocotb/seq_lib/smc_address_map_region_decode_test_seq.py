@@ -156,13 +156,15 @@ assert DFX_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
 
 # --- fabric control ----------------------------------------------------------------------------
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
-OUTBOUND_NUM = smc_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_NUM")
+OUTBOUND_NUM = smc_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM")
 OUTBOUND_LAST_END = smc_indexed_addr(
-    "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", OUTBOUND_NUM - 1
+    "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR", OUTBOUND_NUM - 1
 )
 # First 4 KiB page after the outbound filter array; the mailbox array starts one
 # page later, so nothing in the generated map claims this address.
-FABRIC_CTRL_BEYOND = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0) + 0x1000
+FABRIC_CTRL_BEYOND = (
+    smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0) + 0x1000
+)
 assert FABRIC_CTRL_BEYOND < smc_addr("SMC_TOP_SMC_MAILBOX_BASE_ADDR")
 
 # --- mailbox: 32 outbound + 32 inbound -------------------------------------------------------

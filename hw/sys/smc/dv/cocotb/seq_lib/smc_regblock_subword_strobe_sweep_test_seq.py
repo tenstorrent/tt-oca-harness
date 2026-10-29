@@ -85,8 +85,8 @@ FAMILIES = (
     ("alias_remap", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", 8),
     ("mmode_remap", "smc_mmode_remap_wrap/output_remap[{}]/REGION/region_attrs", 8),
     ("xvisor_remap", "smc_xvisor_remap_wrap/output_remap[{}]/REGION/region_attrs", 8),
-    ("inbound_filter", "smc_inbound_filter_ctrl[{}]/END_ADDR", 16),
-    ("outbound_filter", "smc_outbound_filter_ctrl[{}]/END_ADDR", 16),
+    ("inbound_filter", "smc_inbound_filter_ctrl_wrap/filter_ctrl[{}]/END_ADDR", 16),
+    ("outbound_filter", "smc_outbound_filter_ctrl_wrap/filter_ctrl[{}]/END_ADDR", 16),
     ("gpio_intf", "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", 65),
     ("cpu_ctrl", "smc_cpu_ctrl/RESET_VECTOR[0]", 1),
     ("telemetry", "smc_telemetry_receiver_wrap/telemetry_receiver[{}]/STATUS", 3),
@@ -259,7 +259,7 @@ def build_entries() -> tuple[Entry, ...]:
     for bank in ("inbound", "outbound"):
         for i in range(16):
             regs = [
-                rdl_register(f"smc_{bank}_filter_ctrl[{i}]/{r}")
+                rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[{i}]/{r}")
                 for r in ("FILTER_CONFIG", "START_ADDR", "END_ADDR")
             ]
             out.append(Entry(f"{bank}{i}", *(r.addr for r in regs)))
@@ -267,7 +267,7 @@ def build_entries() -> tuple[Entry, ...]:
 
 
 def _cfg_mask_check() -> None:
-    reg = rdl_contract("smc_outbound_filter_ctrl[0]/FILTER_CONFIG")
+    reg = rdl_contract("smc_outbound_filter_ctrl_wrap/filter_ctrl[0]/FILTER_CONFIG")
     assert reg.declared_mask == F_DECLARED, (
         f"FILTER_CONFIG declared fields 0x{reg.declared_mask:016x}, filter_ctrl.adoc gives "
         f"0x{F_DECLARED:016x}"
@@ -538,8 +538,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             *(
                 (
                     f"{bank.upper()}15_START",
-                    rdl_register(f"smc_{bank}_filter_ctrl[15]/START_ADDR"),
-                    rdl_register(f"smc_{bank}_filter_ctrl[15]/END_ADDR"),
+                    rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[15]/START_ADDR"),
+                    rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[15]/END_ADDR"),
                     PRELOAD_PRE,
                     (1, 3, 5),
                     0x5A,

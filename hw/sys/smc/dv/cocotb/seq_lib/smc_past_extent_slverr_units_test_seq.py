@@ -129,14 +129,14 @@ _FABRIC_UNITS = (
         smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0),
     ),
     (
-        "smc_inbound_filter_ctrl",
+        "smc_inbound_filter_ctrl_wrap",
         "INFILT",
-        smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0),
     ),
     (
-        "smc_outbound_filter_ctrl",
+        "smc_outbound_filter_ctrl_wrap",
         "OUTFILT",
-        smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0),
     ),
 )
 _SPARE_LIVE = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)

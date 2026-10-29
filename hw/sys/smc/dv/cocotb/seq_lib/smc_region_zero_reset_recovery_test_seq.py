@@ -47,7 +47,7 @@ _RESET = {
     for name in ("GLOBAL_BASE", "LOCAL_BASE", "REGION_SIZE")
 }
 _FILTER_RESET = {
-    reg: rdl_contract(f"smc_inbound_filter_ctrl/{reg}").reset_word
+    reg: rdl_contract(f"smc_inbound_filter_ctrl_wrap/filter_ctrl/{reg}").reset_word
     for reg in ("START_ADDR", "END_ADDR", "FILTER_CONFIG")
 }
 _SCRATCH_RESET = rdl_contract("smc_misc_wrap/scratch_cold/SCRATCH[0]").reset_word
@@ -140,8 +140,18 @@ _UNITS = (
     ("ALIAS_REMAP", 0x1_2000, 0x1_2FFF, "smc_alias_remap_wrap/alias_remap/REGION/region_start"),
     ("MMODE_REMAP", 0x1_3000, 0x1_3FFF, "smc_mmode_remap_wrap/output_remap/REGION/region_attrs"),
     ("XVISOR_REMAP", 0x1_4000, 0x1_4FFF, "smc_xvisor_remap_wrap/output_remap/REGION/region_attrs"),
-    ("INBOUND_FILTER", 0x1_5000, 0x1_5FFF, "smc_inbound_filter_ctrl/FILTER_CONFIG"),
-    ("OUTBOUND_FILTER", 0x1_6000, 0x1_6FFF, "smc_outbound_filter_ctrl/FILTER_CONFIG"),
+    (
+        "INBOUND_FILTER",
+        0x1_5000,
+        0x1_5FFF,
+        "smc_inbound_filter_ctrl_wrap/filter_ctrl/FILTER_CONFIG",
+    ),
+    (
+        "OUTBOUND_FILTER",
+        0x1_6000,
+        0x1_6FFF,
+        "smc_outbound_filter_ctrl_wrap/filter_ctrl/FILTER_CONFIG",
+    ),
     ("MAILBOX", 0x1_8000, 0x3_7FFF, "smc_mailbox/outbound_mailbox_0/WRITE_DATA"),
     ("IDMA", 0x3_8000, 0x3_81FF, "dma_ctrl/CONFIG"),
     ("ZEROER", 0x3_8200, 0x3_82FF, "zeroer_ctrl/DEST_ADDR"),

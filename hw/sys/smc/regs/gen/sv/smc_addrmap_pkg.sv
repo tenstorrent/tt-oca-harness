@@ -178,21 +178,27 @@ endfunction
 localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_NUM = 64'h8;
 localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_SIZE = 64'h8;
 
-function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(input int unsigned smc_inbound_filter_ctrl_idx);
-    return 64'hC0015000 + (smc_inbound_filter_ctrl_idx * 64'h20);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_NUM = 64'h10;
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_SIZE = 64'h18;
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_TOTAL_SIZE = 64'h200;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR = 64'hC0015000;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_SIZE = 64'h200;
 
-function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(input int unsigned smc_outbound_filter_ctrl_idx);
-    return 64'hC0016000 + (smc_outbound_filter_ctrl_idx * 64'h20);
+function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0015000 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_NUM = 64'h10;
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_SIZE = 64'h18;
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_TOTAL_SIZE = 64'h200;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM = 64'h10;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE = 64'h18;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE = 64'h20;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE = 64'h200;
+
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR = 64'hC0016000;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_SIZE = 64'h200;
+
+function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0016000 + (filter_ctrl_idx * 64'h20);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM = 64'h10;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE = 64'h18;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE = 64'h20;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE = 64'h200;
 
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_BASE_ADDR = 64'hC0018000;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_SIZE = 64'h1F850;
@@ -980,30 +986,30 @@ function automatic longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_R
     return 64'hC0014000 + (output_remap_idx * 64'h8);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned smc_inbound_filter_ctrl_idx);
-    return 64'hC0015000 + (smc_inbound_filter_ctrl_idx * 64'h20);
+function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0015000 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned smc_inbound_filter_ctrl_idx);
-    return 64'hC0015008 + (smc_inbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0015008 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned smc_inbound_filter_ctrl_idx);
-    return 64'hC0015010 + (smc_inbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0015010 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned smc_outbound_filter_ctrl_idx);
-    return 64'hC0016000 + (smc_outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0016000 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned smc_outbound_filter_ctrl_idx);
-    return 64'hC0016008 + (smc_outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0016008 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned smc_outbound_filter_ctrl_idx);
-    return 64'hC0016010 + (smc_outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0016010 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_NUM = 64'h10;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_NUM = 64'h10;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR = 64'hC0018000;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR = 64'hC0018008;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR = 64'hC0018010;

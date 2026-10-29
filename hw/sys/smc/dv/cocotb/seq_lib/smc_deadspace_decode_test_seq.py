@@ -184,10 +184,12 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
         ),
         DeadspaceProbe(
             "outbound_filter0_start",
-            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", 0),
+            smc_indexed_addr(
+                "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR", 0
+            ),
             0x200,
-            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0),
-            _block_extent("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL", indexed=True),
+            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0),
+            _block_extent("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", indexed=True),
             "FILTER_CTRL_START_ADDR",
         ),
         DeadspaceProbe(
