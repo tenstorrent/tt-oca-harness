@@ -31,8 +31,9 @@ and window read groups.
   regions must start with valid 0 (`alias_remap.adoc`) and the restore must
   read back the saved word; the valid bit and lane fields after the strobed
   writes are logged (SF-009 is open).
-* The system-timer window answers its 9 registers with their documented resets
-  and DECERR 0xBADCAB1E past its 36-byte extent; the telemetry window answers
+* The system-timer window answers its 9 registers with their documented resets,
+  the generated map's window response up to its decode window past its 36-byte
+  extent, and DECERR 0xBADCAB1E beyond that; the telemetry window answers
   OKAY over its 768-byte extent with exactly three words reading 0x1 and DECERR
   0xBADCAB1E past it (`memory_map.adoc`).
 * FILTER_CONFIG of all 32 filter entries takes 8-byte writes with one byte lane
@@ -66,7 +67,9 @@ from .smc_addr_map import (
     LOCAL_BASE_RESET,
     TELEMETRY_CG_EN,
     UART_CG_EN,
+    _component_row,
     generated_decoded_extent,
+    generated_response_at,
     generated_window,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -74,6 +77,7 @@ from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_register
 
 RESP_OKAY = 0
 RESP_DECERR = 3
+RESP_CODES = {"OKAY": RESP_OKAY, "SLVERR": 2, "DECERR": RESP_DECERR}
 FUSE_BOUND = 200_000
 ALL64 = (1 << 64) - 1
 DEADSPACE_RDATA = 0xBADCAB1E
@@ -760,14 +764,27 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
                     f"timer {name} reads 0x{got:08x}, documented reset 0x{want:08x}"
                 )
             self._note_reserved("timer", got, reg.declared_mask)
-        past = await self._window_reads(
-            "TIMER_PAST", base, range(TIMER_EXTENT, TIMER_APERTURE, 4), RESP_DECERR
+        # The timer answers up to its decode window; the crossbar's DECERR follows.
+        window = _component_row("smc_system_timer_octs")["window_size"]
+        in_window = generated_response_at(base + TIMER_EXTENT)
+        assert generated_response_at(base + window)["rresp"] == "DECERR"
+        tail = await self._window_reads(
+            "TIMER_WINDOW",
+            base,
+            range(TIMER_EXTENT, window, 4),
+            RESP_CODES[in_window["rresp"]],
         )
-        bad = [i for i in past if i.rdata != DEADSPACE_RDATA]
+        past = await self._window_reads(
+            "TIMER_PAST", base, range(window, TIMER_APERTURE, 4), RESP_DECERR
+        )
+        bad = [i for i in tail if i.rdata != in_window["rdata"]] + [
+            i for i in past if i.rdata != DEADSPACE_RDATA
+        ]
         assert not bad, (
-            f"{len(bad)} past-extent timer reads returned data other than 0x{DEADSPACE_RDATA:X}: "
+            f"{len(bad)} past-extent timer reads returned data other than the generated map's: "
             + ", ".join(f"0x{i.addr:x}=0x{i.rdata:x}" for i in bad[:6])
         )
+        past = tail + past
         assert len(past) == 1015, f"{len(past)} past-extent timer reads"
         self._mark("TIMER-WINDOW", len(regs) + len(past))
         self._chk(
@@ -775,7 +792,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             f"9/9 regs reset OKAY (MODE={int(not self.is_primary)} for "
             f"tb_chiplet_is_primary={self.is_primary}, reserved OR="
             f"0x{self._reserved.get('timer', 0):x} logged), "
-            f"{len(past)}/1015 past-extent DECERR 0x{DEADSPACE_RDATA:X}",
+            f"{len(tail)} past-extent words in the decode window {in_window['text']}, "
+            f"{len(past) - len(tail)} beyond it DECERR 0x{DEADSPACE_RDATA:X} ({len(past)}/1015)",
         )
 
     async def _telem_window(self) -> None:

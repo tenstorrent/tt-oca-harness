@@ -2,10 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC inbound responses for between-unit, past-extent and M-mode/Xvisor addresses. SEP=1, no Force.
 
-Spec: hw/sys/smc/regs/smc.rdl (ocah_gap_resp, ocah_past_extent_resp, ocah_aperture_size),
+Spec: hw/sys/smc/regs/smc_memory_map.rdl (ocah_gap_resp, ocah_window_resp,
+ocah_past_extent_resp, ocah_aperture_size), the generated SMC memory map,
 hw/sys/smc/doc/memmap.adoc (Address Space Organization), doc/integrator/src/smu-smc.adoc.
 The BRESP at BASE+0x001_7000 and BASE+0x001_7FFC is logged as CHK-UNMAP-0X17000-WRITE only.
-Past-extent write BRESP of SLVERR-declared blocks is logged as CHK-UNMAP-PAST-EXTENT-WRITE only.
+A past-extent write the map declares DECERR that answers SLVERR is logged as
+CHK-UNMAP-PAST-EXTENT-WRITE only.
 """
 
 from __future__ import annotations
@@ -20,7 +22,8 @@ from seq_lib.smu_addr_map import (
     INBOUND0_FILTER_CONFIG,
     INBOUND0_START,
     smc_addr,
-    smc_indexed_addr,
+    smc_first_past_registers,
+    smc_response_past_registers,
 )
 from seq_lib.smu_axi_helpers import (
     AXI_TIMEOUT_NS,
@@ -64,72 +67,23 @@ MMODE_ADDR = BASE + 0x100_0000
 XVISOR_ADDR = BASE + 0x180_0000
 
 
-def _extent_end(base_sym: str, size_sym: str) -> int:
-    return smc_addr(base_sym) + smc_addr(size_sym)
-
-
-# (cell, first word past the last register, bresp per ocah_past_extent_resp in smc.rdl)
-PAST_EXTENT_CELLS = (
-    (
-        "smc_reset_unit",
-        _extent_end("SMC_TOP_SMC_RESET_UNIT_BASE_ADDR", "SMC_TOP_SMC_RESET_UNIT_SIZE"),
-        RESP_SLVERR,
-    ),
-    (
-        "smc_misc_wrap",
-        _extent_end("SMC_TOP_SMC_MISC_WRAP_BASE_ADDR", "SMC_TOP_SMC_MISC_WRAP_SIZE"),
-        RESP_SLVERR,
-    ),
-    (
-        "gpio_intf",
-        smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0)
-        + smc_addr("SMC_TOP_GPIO_INTF_TOTAL_SIZE"),
-        RESP_SLVERR,
-    ),
-    (
-        "smc_base_config",
-        _extent_end("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR", "SMC_TOP_SMC_BASE_CONFIG_SIZE"),
-        RESP_SLVERR,
-    ),
-    (
-        "smc_alias_remap",
-        smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR", 0)
-        + smc_addr("SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE"),
-        RESP_SLVERR,
-    ),
-    (
-        "dfx_ctrl",
-        _extent_end("SMC_TOP_DFX_CTRL_BASE_ADDR", "SMC_TOP_DFX_CTRL_SIZE"),
-        RESP_DECERR,
-    ),
-    (
-        "smc_mailbox",
-        _extent_end("SMC_TOP_SMC_MAILBOX_BASE_ADDR", "SMC_TOP_SMC_MAILBOX_SIZE"),
-        RESP_DECERR,
-    ),
-    (
-        "dma_ctrl",
-        _extent_end("SMC_TOP_DMA_CTRL_BASE_ADDR", "SMC_TOP_DMA_CTRL_SIZE"),
-        RESP_DECERR,
-    ),
-    (
-        "zeroer_ctrl",
-        _extent_end("SMC_TOP_ZEROER_CTRL_BASE_ADDR", "SMC_TOP_ZEROER_CTRL_SIZE"),
-        RESP_DECERR,
-    ),
-    (
-        "smc_cpu_ctrl",
-        _extent_end("SMC_TOP_SMC_CPU_CTRL_BASE_ADDR", "SMC_TOP_SMC_CPU_CTRL_SIZE"),
-        RESP_DECERR,
-    ),
-    (
-        "wdt",
-        _extent_end(
-            "SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR", "SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE"
-        ),
-        RESP_DECERR,
-    ),
+# Units probed at the first word past their registers. The address and the expected
+# response come from the generated SMC memory map: the unit itself inside its decode
+# window, the fabric's past-extent response beyond it.
+PAST_EXTENT_UNITS = (
+    "smc_reset_unit",
+    "smc_misc_wrap",
+    "gpio_intf",
+    "smc_base_config",
+    "smc_alias_remap",
+    "dfx_ctrl",
+    "smc_mailbox",
+    "dma_ctrl",
+    "zeroer_ctrl",
+    "smc_cpu_ctrl",
+    "smc_cluster_core0_wdt",
 )
+_RESP_CODES = {"OKAY": 0, "SLVERR": RESP_SLVERR, "DECERR": RESP_DECERR}
 
 J2A_POLL_LIMIT = 128
 REGION_POLL_CYCLES = 64
@@ -334,21 +288,25 @@ class smu_smc_unmapped_response_test_seq:
         self._mark("S3", "past-extent reads and writes")
         past_obs = {}
         past_exp = {}
-        for name, addr, want_bresp in PAST_EXTENT_CELLS:
+        for name in PAST_EXTENT_UNITS:
+            addr = smc_first_past_registers(name)
+            want = smc_response_past_registers(name, addr)
             resp, data = await self._read_cell(name, addr)
             past_obs[f"{name}.read"] = (resp, data)
-            past_exp[f"{name}.read"] = (RESP_DECERR, GAP_RDATA)
+            past_exp[f"{name}.read"] = (_RESP_CODES[want["rresp"]], want["rdata"] & 0xFFFF_FFFF)
             bresp = await self._write_cell(name, addr)
-            if want_bresp == RESP_SLVERR:
+            # Where the map states DECERR the AXI-Lite crossbars refuse a write with SLVERR
+            # (SF-001); that answer is logged, not compared.
+            if want["bresp"] == "DECERR" and bresp == RESP_SLVERR:
                 self._log(
                     f"CHK-UNMAP-PAST-EXTENT-WRITE: block={name} addr=0x{addr:08x} "
                     f"bresp={resp_name(bresp)}"
                 )
                 continue
             past_obs[f"{name}.write"] = bresp
-            past_exp[f"{name}.write"] = want_bresp
+            past_exp[f"{name}.write"] = _RESP_CODES[want["bresp"]]
         sb.expect_eq(
-            "CHK-UNMAP-PAST-EXTENT reads DECERR/0xBADCAB1E, DECERR-declared writes DECERR",
+            "CHK-UNMAP-PAST-EXTENT reads and writes answer the generated SMC memory map",
             past_obs,
             past_exp,
             evidence="CHK-UNMAP-PAST-EXTENT",

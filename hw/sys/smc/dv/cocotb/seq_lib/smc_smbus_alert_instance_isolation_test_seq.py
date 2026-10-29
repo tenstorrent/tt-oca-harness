@@ -22,7 +22,9 @@ The specification does not state the padring reach.
 * I2C_CTRL[1] and [2] take reserved-bit-only and all-ones writes, byte- and
   half-word-strobed writes and one-entry-at-a-time writes; the defined fields are
   compared, the reserved readback and every BRESP are logged (SF-004, SF-005).
-* The wrapper window past its decoded extent answers DECERR 0xBADCAB1E / DECERR.
+* The wrapper window past its decoded extent answers as the generated map gives:
+  SLVERR from the I2C control block inside its decode window, DECERR
+  0xBADCAB1E / DECERR past it.
 * The I2C1 alert pad is an input with I2C_CONTROLLER_MODE_EN 1 and follows
   SMBUS_CTRL.SMBALERT as an output with it 0; I2C2 is checked as an input.
 """
@@ -39,7 +41,7 @@ from .smc_addr_map import (
     LOCAL_BASE_RESET,
     _field_mask,
     generated_decoded_extent,
-    generated_past_extent_resp,
+    generated_response_at,
     generated_window,
     smc_addr,
     smc_indexed_addr,
@@ -89,6 +91,7 @@ assert WRAP_RSVD_ONLY == 0xFFFF_FEEE, f"reserved-only word {WRAP_RSVD_ONLY:#x}"
 
 DECERR = 3
 RESP_NAMES = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
+RESP_CODES = {name: code for code, name in RESP_NAMES.items()}
 PROBE_WORD = 0xA5A5_A5A5
 I2C_WRAP_UNIT = "smc_i2c_wrap"
 I2C_WRAP_BASE = smc_addr("SMC_TOP_SMC_I2C_WRAP_BASE_ADDR")
@@ -577,19 +580,27 @@ class smc_smbus_alert_instance_isolation_test_seq(SmcCsrSeq):
         assert LOCAL_BASE_RESET + first == I2C_WRAP_BASE, "I2C wrapper window base mismatch"
         offsets = (extent, last - first + 1 - 4)
         assert offsets == (0xE0C, 0xFFC), f"I2C wrapper probe offsets {[hex(o) for o in offsets]}"
-        rresp, bresp = generated_past_extent_resp(I2C_WRAP_UNIT)
-        assert (rresp, bresp) == ("DECERR", "DECERR"), f"past-extent response {rresp}/{bresp}"
         before_smbus = {
             k: await self.csr_read(f"win_smbus_ctrl{k}_before", _reg("SMBUS_CTRL", k))
             for k in CTRL_INSTANCES
         }
         parts = []
         for off in offsets:
+            # The generated map's response: i2c_ctrl inside its decode window, DECERR past it.
             addr = I2C_WRAP_BASE + off
-            rd = await self.csr_read_err_signature(f"win_{off:x}_RD", addr, resp=DECERR)
-            wr = await self.csr_write_expect_error(f"win_{off:x}_WR", addr, PROBE_WORD, resp=DECERR)
+            want = generated_response_at(addr)
+            if want["rresp"] == "DECERR":
+                rd = await self.csr_read_err_signature(f"win_{off:x}_RD", addr, resp=DECERR)
+            else:
+                rd = await self.csr_read_expect_error(f"win_{off:x}_RD", addr)
+                assert rd & 0xFFFF_FFFF == want["rdata"], (
+                    f"0x{addr:08x} read 0x{rd:x}, the generated map gives {want['text']}"
+                )
+            wr = await self.csr_write_expect_error(
+                f"win_{off:x}_WR", addr, PROBE_WORD, resp=RESP_CODES[want["bresp"]]
+            )
             parts.append(
-                f"0x{off:03X} R={RESP_NAMES[DECERR]}/0x{rd & 0xFFFF_FFFF:08X} W={RESP_NAMES[wr]}"
+                f"0x{off:03X} R={want['rresp']}/0x{rd & 0xFFFF_FFFF:08X} W={RESP_NAMES[wr]}"
             )
         gap_off = I2C_CTRL_BLOCK_END - I2C_WRAP_BASE
         gap_r, gap_d = await self._read_logged(f"win_gap_{gap_off:x}_RD", I2C_CTRL_BLOCK_END)

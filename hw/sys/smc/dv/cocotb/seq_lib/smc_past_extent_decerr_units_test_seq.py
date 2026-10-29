@@ -2,7 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Past-extent and last-aperture-word response of the DECERR write units over SEP_IN.
 
-Spec sources: smc.rdl ocah_past_extent_resp placements, memmap.adoc Address Space Organization.
+Each probe expects the response the generated memory map gives its address: the
+unit's own ocah_window_resp inside its decode window, ocah_past_extent_resp beyond.
+Spec sources: smc.rdl ocah_window_resp and ocah_past_extent_resp placements, memmap.adoc
+Address Space Organization.
 """
 
 from __future__ import annotations
@@ -13,16 +16,15 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
     LOCAL_BASE_RESET,
-    _component_row,
-    generated_decoded_extent,
-    generated_past_extent_resp,
+    generated_first_past_registers,
+    generated_response_past_registers,
     generated_window,
     smc_addr,
     smc_indexed_addr,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-AXI_RESP_DECERR = 3
+_RESP_CODES = {"OKAY": 0, "SLVERR": 2, "DECERR": 3}
 WRITE_PATTERN = 0xA5A55A5A
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
@@ -61,21 +63,25 @@ class smc_past_extent_decerr_units_test_seq(SmcCsrSeq):
         cocotb.log.info("%s: %s", chk_id, text)
         self._chk_marks.append((chk_id, int(get_sim_time("ps"))))
 
-    async def _read_past(self, label: str, addr: int, want: int) -> int:
+    async def _read_past(self, label: str, addr: int, resp: dict) -> int:
+        want_resp = _RESP_CODES[resp["rresp"]]
         item = SmcSysAxiItem(f"rd_{label}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
         item.allow_error = True
-        item.expect_error = True
-        item.expected_resp = AXI_RESP_DECERR
+        item.expect_error = want_resp != 0
+        if item.expect_error:
+            item.expected_resp = want_resp
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        assert item.resp_code == AXI_RESP_DECERR, (
-            f"{label} @ 0x{addr:08x}: rresp {item.resp_code}, want DECERR (rdata 0x{item.rdata:x})"
+        assert item.resp_code == want_resp, (
+            f"{label} @ 0x{addr:08x}: rresp {item.resp_code}, want {resp['rresp']} "
+            f"(rdata 0x{item.rdata:x})"
         )
         got = item.rdata & 0xFFFF_FFFF
+        want = resp["rdata"] & 0xFFFF_FFFF
         assert got == want, f"{label} @ 0x{addr:08x}: rdata 0x{got:08x}, want 0x{want:08x}"
         return got
 
@@ -97,46 +103,46 @@ class smc_past_extent_decerr_units_test_seq(SmcCsrSeq):
     ) -> tuple[str, list[str]]:
         """Probe the past-extent and last-aperture words of ``unit``.
 
-        Every access is registered as an expected DECERR address first. ``live`` is
+        A DECERR access is registered as an expected DECERR address first. ``live`` is
         the (label, address) list of registers read before and after each write.
         """
         first, last = generated_window(unit)
         window_first = LOCAL_BASE_RESET + first
         window_last = LOCAL_BASE_RESET + last
-        extent = generated_decoded_extent(unit)
-        assert extent % 4 == 0, f"{unit}: decoded extent 0x{extent:x} not on a 4-byte boundary"
-        rresp_name, bresp_name = generated_past_extent_resp(unit)
-        assert rresp_name == "DECERR", f"{unit}: RDL past-extent rresp {rresp_name}"
-        past_rdata = _component_row(unit)["past_response"]["rdata"]
-        past = window_first + extent
+        past = generated_first_past_registers(unit)
         top = window_last & ~0x3
         assert window_first < past < top, f"{unit}: past 0x{past:x} top 0x{top:x} not ordered"
-        self.env.axi_monitor.expected_decerr_addrs.update((past, top))
+        resps = {a: generated_response_past_registers(unit, a) for a in (past, top)}
+        self.env.axi_monitor.expected_decerr_addrs.update(
+            a for a, r in resps.items() if "DECERR" in (r["rresp"], r["bresp"])
+        )
         before = {}
         for lbl, addr in live:
             before[lbl] = await self.csr_read(f"{tag}_{lbl}_PRE", addr)
         bresps = []
         for where, addr in (("PAST", past), ("TOP", top)):
-            rdata = await self._read_past(f"{tag}_{where}", addr, past_rdata)
+            resp = resps[addr]
+            bresp_name = resp["bresp"]
+            rdata = await self._read_past(f"{tag}_{where}", addr, resp)
             bresp = await self._write_past(f"{tag}_{where}", addr)
             for lbl, laddr in live:
                 after = await self.csr_read(f"{tag}_{lbl}_POST_{where}", laddr)
                 assert after == before[lbl], (
                     f"{unit} {lbl}: 0x{after:x} after write to 0x{addr:08x}, was 0x{before[lbl]:x}"
                 )
-            declared = 3 if bresp_name == "DECERR" else 2
+            declared = _RESP_CODES[bresp_name]
             assert bresp == declared, (
                 f"{unit} {where} @ 0x{addr:08x}: bresp {_RESP_NAMES.get(bresp, bresp)}, "
                 f"declared {bresp_name}"
             )
             bresps.append(
-                f"{where}@0x{addr:08x} rresp=DECERR rdata=0x{rdata:08X} "
+                f"{where}@0x{addr:08x} rresp={resp['rresp']} rdata=0x{rdata:08X} "
                 f"bresp={_RESP_NAMES.get(bresp, bresp)}(declared {bresp_name}, "
                 f"match={int(bresp == declared)})"
             )
         lives = ",".join(f"{lbl}=0x{before[lbl]:X}" for lbl, _ in live)
         head = (
-            f"{unit} aperture 0x{window_first:08X}..0x{window_last:08X} extent 0x{extent:X} "
+            f"{unit} aperture 0x{window_first:08X}..0x{window_last:08X} "
             f"first-past 0x{past:08X} last-word 0x{top:08X}; live {lives} unchanged"
         )
         return head, bresps

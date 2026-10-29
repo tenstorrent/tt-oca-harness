@@ -181,10 +181,11 @@ LOCAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "LOCAL_BAS
 # (``regs/gen/py/smc_memory_map.py``, written by the register generator from
 # the same RDL address map as ``smc_addr.h``): one row per ``smc_top`` unit,
 # with the absolute ``base`` and ``end`` of the aperture the RDL reserves for
-# it (``ocah_aperture_size``), the ``occupied_size`` the fabric decodes and the
-# ``past_response`` an access past that extent receives
-# (``ocah_past_extent_resp``). A unit with instances has one row for the whole
-# array. Offsets below are from the map's ``BASE``, ``LOCAL_BASE``.
+# it (``ocah_aperture_size``), the ``occupied_size`` of its registers and the
+# response an access past them receives: ``window_response`` from the unit itself
+# up to its decode window (``window_size``, ``ocah_window_resp``), then
+# ``past_response`` (``ocah_past_extent_resp``). A unit with instances has one row
+# for the whole array. Offsets below are from the map's ``BASE``, ``LOCAL_BASE``.
 _SMC_REG_PY = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
     sys.path.insert(0, str(_SMC_REG_PY))
@@ -227,10 +228,45 @@ def generated_decoded_extent(unit: str) -> int:
 
 
 def generated_past_extent_resp(unit: str) -> tuple[str, str]:
-    """``(rresp, bresp)`` names the RDL gives an access past ``unit``'s decoded extent."""
+    """``(rresp, bresp)`` names the RDL gives an access past ``unit``'s decode window."""
     past = _component_row(unit)["past_response"]
-    assert past is not None, f"{unit}'s decoded extent fills its aperture; nothing lies past it"
+    assert past is not None, f"{unit}'s decode window fills its aperture; nothing lies past it"
     return past["rresp"], past["bresp"]
+
+
+def generated_first_past_registers(unit: str) -> int:
+    """First address past ``unit``'s registers: its extent rounded up to its register width.
+
+    The word holding the last register is decoded whole, so the next register-width
+    word is the first one no register owns.
+    """
+    row = _component_row(unit)
+    word = row["word_size"]
+    return row["base"] + (row["occupied_size"] + word - 1) // word * word
+
+
+def generated_response_past_registers(unit: str, addr: int) -> dict:
+    """The response the generated map gives ``addr``, past ``unit``'s registers.
+
+    Inside the unit's decode window (``window_size``) the unit itself answers with
+    ``window_response``; from the window's end to the aperture's end, ``past_response``.
+    """
+    row = _component_row(unit)
+    assert generated_first_past_registers(unit) <= addr <= row["end"], (
+        f"{unit}: 0x{addr:x} is not past its registers inside its aperture"
+    )
+    if addr < row["base"] + (row["window_size"] or row["occupied_size"]):
+        return row["window_response"]
+    return row["past_response"]
+
+
+def generated_response_at(addr: int) -> dict:
+    """The response the generated map gives ``addr``, past the registers of its unit."""
+    for row in _COMPONENT_ROWS:
+        if row["base"] <= addr <= row["end"]:
+            unit = row["key"].rsplit(":", 1)[-1]
+            return generated_response_past_registers(unit, addr)
+    raise KeyError(f"0x{addr:x} lies in no generated component row")
 
 
 def generated_unit_at(offset: int) -> str | None:

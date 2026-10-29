@@ -20,7 +20,8 @@ from .smc_addr_map import (
     GLOBAL_BASE_RESET,
     LOCAL_BASE_RESET,
     REGION_SIZE_RESET,
-    generated_decoded_extent,
+    _component_row,
+    generated_response_at,
     generated_window,
     smc_addr,
     smc_indexed_addr,
@@ -69,12 +70,18 @@ VALID_BASE_CONFIG = (
 CLOCK_GATE_CONTROL_WORD = 0x1F00_0000
 
 OUTSIDE_ADDRS = (0xBFFF_FFFC, 0x8000_0000, 0xD000_0000, 0x0000_0100_0000_0000)
-_WDT0_FIRST, _ = generated_window("smc_cluster_core0_wdt")
+# The past-extent probe is the first word past the reset unit's decode window: the
+# unit itself answers inside the window, the crossbar's DECERR past it.
+_RESET_UNIT_FIRST, _ = generated_window("smc_reset_unit")
+_RESET_UNIT_PAST_WINDOW = (
+    LOCAL_BASE_RESET + _RESET_UNIT_FIRST + _component_row("smc_reset_unit")["window_size"]
+)
+assert generated_response_at(_RESET_UNIT_PAST_WINDOW)["rresp"] == "DECERR"
 GAP_ADDRS = (
     LOCAL_BASE_RESET + 0xD000,
     LOCAL_BASE_RESET + 0x3_8300,
     LOCAL_BASE_RESET + 0x1_6200,
-    LOCAL_BASE_RESET + _WDT0_FIRST + generated_decoded_extent("smc_cluster_core0_wdt"),
+    _RESET_UNIT_PAST_WINDOW,
 )
 MIXED_GAP_ADDRS = GAP_ADDRS[:3]
 

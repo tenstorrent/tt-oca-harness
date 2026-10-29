@@ -80,6 +80,15 @@ class MapRow:
     past_response: Response | None = None
     hole_notes: tuple[str, ...] = ()
     past_note: str = ""
+    window_size: int = 0
+    window_response: Response | None = None
+    window_note: str = ""
+    word_size: int = 4
+
+    @property
+    def decoded_window(self) -> int:
+        """Bytes from base the block itself answers: its window, else its extent."""
+        return self.window_size or self.occupied_size
 
     @property
     def end(self) -> int:
@@ -192,6 +201,10 @@ def _gap_response(node: AddressableNode) -> Response:
     return Response.from_rdl(value, f"{node.get_path()}: ocah_gap_resp")
 
 
+def _window_response(node: AddressableNode) -> Response:
+    return Response.from_rdl(_own(node, "ocah_window_resp"), f"{node.get_path()}: ocah_window_resp")
+
+
 def _opaque_response(node: AddressableNode) -> Response | None:
     value = _inherited(node, "ocah_hole_resp")
     if value is None:
@@ -250,6 +263,8 @@ def _extent_responses(
         )
     for block in blocks:
         parts += _extent_responses(block, memo)
+        if _own(block, "ocah_window_size") is not None:
+            parts.append(("past a sub-block's registers", _window_response(block)))
         if block.is_array and block.array_stride > block.size:
             tail = _own(block, "ocah_gap_resp")
             parts.append(
@@ -297,6 +312,7 @@ def _node_row(source: str, key: str, node: AddressableNode) -> MapRow:
     occupied = _node_extent(node)
     aperture = node.get_property("ocah_aperture_size", default=None)
     aperture = occupied if aperture is None else int(aperture)
+    window = int(node.get_property("ocah_window_size", default=None) or 0)
     return MapRow(
         key=f"{source}:{key}",
         label=node.get_property("name", default=None) or node.inst_name,
@@ -306,7 +322,21 @@ def _node_row(source: str, key: str, node: AddressableNode) -> MapRow:
         description=node.get_property("desc", default="") or "",
         count=count,
         stride=stride,
+        window_size=window,
+        word_size=_word_size(node),
     )
+
+
+def _word_size(node: AddressableNode) -> int:
+    """Bytes of the widest register under ``node``: the word its registers are decoded in."""
+    if isinstance(node, RegNode):
+        return int(node.get_property("regwidth")) // 8
+    widths = [
+        int(reg.get_property("regwidth")) // 8
+        for reg in node.descendants(unroll=False)
+        if isinstance(reg, RegNode)
+    ]
+    return max(widths, default=4)
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
@@ -440,6 +470,11 @@ def _validate(rows: list[MapRow], view_name: str) -> None:
                 f"{row.key}: aperture 0x{row.aperture_size:X} is smaller than occupied "
                 f"extent 0x{row.occupied_size:X}"
             )
+        if row.window_size and not row.occupied_size < row.window_size <= row.aperture_size:
+            raise ValueError(
+                f"{row.key}: window 0x{row.window_size:X} must lie past the occupied extent "
+                f"0x{row.occupied_size:X} and within the aperture 0x{row.aperture_size:X}"
+            )
         if row.key in keys:
             raise ValueError(f"{view_name}: duplicate row key {row.key}")
         keys.add(row.key)
@@ -490,12 +525,19 @@ def _fill_responses(
             )
         if "past_resp" in requested:
             past = None
-            if row.aperture_size > row.occupied_size:
+            if row.aperture_size > row.decoded_window:
                 past = Response.from_rdl(
                     _inherited(node, "ocah_past_extent_resp"),
                     f"{node.get_path()}: ocah_past_extent_resp",
                 )
-            row = replace(row, past_response=past, past_note=_note(node, "ocah_past_extent_note"))
+            window = _window_response(node) if row.window_size else None
+            row = replace(
+                row,
+                past_response=past,
+                past_note=_note(node, "ocah_past_extent_note"),
+                window_response=window,
+                window_note=_note(node, "ocah_window_note"),
+            )
         filled.append(row)
     return filled
 
@@ -703,6 +745,16 @@ def _hole_text(parts: tuple[tuple[str, Response], ...], mark: Callable[[str], st
     )
 
 
+def _past_text(row: MapRow, mark: Callable[[str], str]) -> str:
+    past = (row.past_response.adoc(mark) if row.past_response else "-") + mark(row.past_note)
+    if row.window_response is None:
+        return past
+    window = row.window_response.adoc(mark) + mark(row.window_note)
+    if row.past_response is None:
+        return window
+    return f"to {format_size(row.window_size)}: {window}; beyond: {past}"
+
+
 def _notes(view: MapView) -> tuple[Callable[[str], str], list[str]]:
     """Return a marker linking to its note, and the list it numbers each distinct note into."""
     notes: list[str] = []
@@ -732,9 +784,7 @@ def _cell(view: MapView, row: MapRow, column: str, mark: Callable[[str], str]) -
         "hole_resp": lambda: (
             _hole_text(row.hole_responses, mark) + "".join(mark(note) for note in row.hole_notes)
         ),
-        "past_resp": lambda: (
-            (row.past_response.adoc(mark) if row.past_response else "-") + mark(row.past_note)
-        ),
+        "past_resp": lambda: _past_text(row, mark),
     }
     if column not in values:
         raise ValueError(f"{view.name}: unknown column {column!r}")
@@ -818,7 +868,11 @@ def render_py(views: Iterable[MapView]) -> str:
         "gives the ``ocah_resp_e`` names and the full RDL ``rdata`` (up to 64 bits);",
         "``text`` is the response as the AsciiDoc cell shows it, without note marks.",
         "``hole_responses`` pairs a location label (empty for the whole extent) with a",
-        "response. Notes are the RDL note strings.",
+        "response. A nonzero ``window_size`` is the span from ``base`` the block itself",
+        "answers, with ``window_response`` past its extent; ``past_response`` then applies",
+        "only beyond the window. ``word_size`` is the byte width of the unit's widest register:",
+        "the word that holds the last register ends at ``occupied_size`` rounded up to it.",
+        "Notes are the RDL note strings.",
         '"""',
         "",
         "VIEWS = {",
@@ -851,6 +905,10 @@ def render_py(views: Iterable[MapView]) -> str:
                 f'                "hole_notes": {_py_tuple([_py_str(n) for n in row.hole_notes])},',
                 f'                "past_response": {_py_response(row.past_response)},',
                 f'                "past_note": {_py_str(row.past_note)},',
+                f'                "window_size": 0x{row.window_size:X},',
+                f'                "window_response": {_py_response(row.window_response)},',
+                f'                "window_note": {_py_str(row.window_note)},',
+                f'                "word_size": {row.word_size},',
                 "            },",
             ]
         lines += ["        ),", "    },"]

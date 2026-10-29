@@ -32,7 +32,8 @@ patterns and generated resets are what prove the aperture widened:
   four distinct co-resident patterns, so the per-core instances are proven
   separate rather than one aliased register; the last word of core 3's decoded
   extent answers and the top word of the 80 KiB timer / bus-error region, past
-  it, is refused.
+  it but inside core 3's 4 KiB decode window, answers as the generated map gives
+  (OKAY: the CPU cluster answers an address it does not map).
 
 ``REGION_SIZE`` is restored to its generated reset and a local-window register
 is read afterwards, so the aperture is left as the rest of the suite expects.
@@ -51,12 +52,13 @@ from .smc_addr_map import (
     REGION_SIZE_RESET,
     generated_decoded_extent,
     generated_past_extent_resp,
+    generated_response_at,
     generated_window,
     reg_reset_word,
     smc_addr,
     smc_indexed_addr,
 )
-from .smc_decode_probe_utils import AXI_RESP_DECERR, SmcDecodeProbeSeq
+from .smc_decode_probe_utils import AXI_RESP_CODES, AXI_RESP_DECERR, SmcDecodeProbeSeq
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -137,8 +139,11 @@ _BEU_PATTERNS = (0x02, 0x04, 0x20, 0x40)
 
 TIMER_BUSERROR_SPEC_TOP = LOCAL_BASE + 0x0801_3FF8
 BEU3_DECODED_TOP = _decoded_top("smc_cluster_core3_beu", "SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE")
-for _unit in ("smc_cluster_plic", "smc_cluster_clint", "smc_cluster_core3_beu"):
+for _unit in ("smc_cluster_plic", "smc_cluster_clint"):
     assert generated_past_extent_resp(_unit)[0] == "DECERR", _unit
+# A BEU's decode window fills its 4 KiB page: the CPU cluster answers the words past
+# its registers itself, OKAY for an address it does not map.
+BEU3_TOP_RESPONSE = generated_response_at(TIMER_BUSERROR_SPEC_TOP)
 assert BEU_ENABLE[3] <= BEU3_DECODED_TOP < TIMER_BUSERROR_SPEC_TOP
 
 EXPECTED_ACCESSES = 56
@@ -318,13 +323,17 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
             f"0x{BEU_SPEC_STRIDE:x} held {_BEU_PATTERNS[3]:#x} co-resident with cores 0-2",
         )
         top = await self.csr_read("BEU3_DECODED_TOP", BEU3_DECODED_TOP, length=8)
-        await self.read_decerr("TIMER_BUSERROR_SPEC_TOP", TIMER_BUSERROR_SPEC_TOP, length=8)
+        resp, _ = await self.read_any("TIMER_BUSERROR_SPEC_TOP", TIMER_BUSERROR_SPEC_TOP, length=8)
+        want = BEU3_TOP_RESPONSE["rresp"]
+        assert resp == AXI_RESP_CODES[want], (
+            f"0x{TIMER_BUSERROR_SPEC_TOP:08x}: resp={resp}, the generated map gives {want}"
+        )
         self.close_cell(
             "timer-buserror-region",
             f"the 80 KiB region answered at its CLINT base 0x{CLINT_MSIP_0:08x}, at all four BEU "
             f"instances and at the last word of core 3's decoded extent 0x{BEU3_DECODED_TOP:08x} "
-            f"(0x{top:x}); its top word 0x{TIMER_BUSERROR_SPEC_TOP:08x}, past that extent, was "
-            f"refused with DECERR as the RDL's past-extent response requires",
+            f"(0x{top:x}); its top word 0x{TIMER_BUSERROR_SPEC_TOP:08x}, past that extent and "
+            f"inside core 3's decode window, answered {want} as the generated map gives",
         )
 
     async def _restore_region_size(self) -> None:
@@ -337,7 +346,7 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         self.env.axi_monitor.expected_decerr_addrs.update(
-            {PLIC_SPEC_TOP, PLIC_SPEC_ABOVE, CLINT_SPEC_TOP, TIMER_BUSERROR_SPEC_TOP}
+            {PLIC_SPEC_TOP, PLIC_SPEC_ABOVE, CLINT_SPEC_TOP}
         )
 
         await self._reset_region_size()

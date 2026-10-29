@@ -13,12 +13,14 @@ below is derived from that generated map, and ``LOCAL_BASE`` from the generated
 ``SMC_BASE_CONFIG.LOCAL_BASE`` reset.
 
 The map gives each unit an aperture and a decoded extent, the part of the
-aperture that decodes, and the RDL fixes what happens between the two
-(``ocah_past_extent_resp``, the map's ``past_response``): the fabric refuses an
-address past the decoded extent with DECERR, and inside it an offset that owns
-no register answers OKAY (``ocah_hole_resp``). So where a unit's aperture is
-larger than its decoded extent, the last word *of the decoded extent* is the
-window top that must answer, and the last word of the aperture must be refused.
+aperture its registers occupy, and the RDL fixes what happens past them: the
+unit itself answers up to its decode window (``ocah_window_resp``, the map's
+``window_response``), and the fabric refuses an address past that with the
+past-extent response (``ocah_past_extent_resp``); inside the extent an offset
+that owns no register answers OKAY (``ocah_hole_resp``). So where a unit's
+aperture is larger than its decoded extent, the last word *of the decoded
+extent* is the window top that must answer, and the last word of the aperture
+must answer as the generated map gives it.
 
 * Scratchpad memory (``spm_memory``, 1 MiB): the first and the last 64-bit word
   hold distinct co-resident patterns, so a short or aliased window fails the
@@ -34,7 +36,8 @@ window top that must answer, and the last word of the aperture must be refused.
   the last word of each decoded extent answers OKAY and returns neither
   pattern -- no specification pins what an in-extent offset without a register
   returns, so the value is not compared -- and the last word of each aperture,
-  past the decoded extent, is refused with DECERR.
+  past the decoded extent, answers as the generated map gives: SLVERR from the
+  DMA, whose decode window fills its aperture, and DECERR past the zeroer's.
 * DMA stream banks (``dma.adoc``, Stream Support: "the register file is always
   generated with all 16 stream banks, and every bank decodes normally", and the
   reserved banks' ``NEXT_ID`` "completes with no bus error and returns 0"):
@@ -72,11 +75,12 @@ from .smc_addr_map import (
     dma_ctrl_offset,
     generated_decoded_extent,
     generated_past_extent_resp,
+    generated_response_at,
     generated_window,
     reg_reset_word,
     smc_addr,
 )
-from .smc_decode_probe_utils import SmcDecodeProbeSeq
+from .smc_decode_probe_utils import AXI_RESP_CODES, SmcDecodeProbeSeq
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -134,8 +138,6 @@ assert _window_base("dma_ctrl") == DMA_CTRL_BASE
 assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
 assert generated_decoded_extent("zeroer_ctrl") == smc_addr("SMC_TOP_ZEROER_CTRL_SIZE")
 assert DMA_DECODED_TOP < DMA_APERTURE_TOP and ZEROER_DECODED_TOP < ZEROER_APERTURE_TOP
-assert generated_past_extent_resp("dma_ctrl")[0] == "DECERR"
-assert generated_past_extent_resp("zeroer_ctrl")[0] == "DECERR"
 DMA_NEXT_ID = tuple(
     DMA_CTRL_BASE + dma_ctrl_offset(f"DMA_CTRL_NEXT_ID_{bank}_BASE_ADDR") for bank in range(16)
 )
@@ -252,9 +254,9 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
                     f"{pattern_name} pattern 0x{pattern:x} (read 0x{word:x}): the extent aliases "
                     f"onto that register"
                 )
-        # Past the decoded extent the fabric refuses the access (RDL ocah_past_extent_resp).
-        await self.read_decerr("DMA_APERTURE_TOP", DMA_APERTURE_TOP, length=_WORD)
-        await self.read_decerr("ZEROER_APERTURE_TOP", ZEROER_APERTURE_TOP, length=_WORD)
+        # Past the decoded extent: the window response, then the past-extent response.
+        dma_past = await self._read_past_top("DMA_APERTURE_TOP", DMA_APERTURE_TOP)
+        zeroer_past = await self._read_past_top("ZEROER_APERTURE_TOP", ZEROER_APERTURE_TOP)
         await self.csr_write("DMA_DST_RESTORE", DMA_CTRL_DST_ADDRESS_LO, 0)
         await self.csr_read("DMA_DST_RESTORE_RB", DMA_CTRL_DST_ADDRESS_LO, expected=0)
         await self.csr_write("ZEROER_DEST_RESTORE", ZEROER_CTRL_DEST_ADDR, 0)
@@ -266,7 +268,7 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
             f"DMA nor the resident zeroer pattern -- no specification pins an in-extent word "
             f"without a register, so its value is reported, not compared -- and "
             f"0x{DMA_APERTURE_TOP:08x} (last word of the 512 B aperture, past the decoded "
-            f"extent) was refused with DECERR as the RDL's past-extent response requires",
+            f"extent) answered {dma_past} as the generated map gives",
         )
         self.close_cell(
             "zeroer-aperture-top",
@@ -275,8 +277,15 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
             f"OKAY with 0x{zeroer_top:x}, neither the resident DMA nor the resident zeroer "
             f"pattern -- reported, not compared, for the same reason -- and "
             f"0x{ZEROER_APERTURE_TOP:08x} (last word of the 256 B aperture, past the decoded "
-            f"extent) was refused with DECERR as the RDL's past-extent response requires",
+            f"extent) answered {zeroer_past} as the generated map gives",
         )
+
+    async def _read_past_top(self, label: str, addr: int) -> str:
+        """Read the word past a unit's registers; its response must be the generated map's."""
+        want = generated_response_at(addr)["rresp"]
+        resp, _ = await self.read_any(label, addr, length=_WORD)
+        assert resp == AXI_RESP_CODES[want], f"{label} @ 0x{addr:08x}: resp={resp}, want {want}"
+        return want
 
     async def _stream_banks(self) -> None:
         for bank in range(1, NUM_STREAM_BANKS):
@@ -350,7 +359,7 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         self.env.axi_monitor.expected_decerr_addrs.update(
-            {DMA_APERTURE_TOP, ZEROER_APERTURE_TOP}
+            {ZEROER_APERTURE_TOP}
             | {aperture_top for _cell, _unit, _decoded, aperture_top in _SHORT_WINDOW_TOPS}
         )
 

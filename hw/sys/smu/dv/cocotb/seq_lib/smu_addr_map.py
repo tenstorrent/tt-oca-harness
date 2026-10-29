@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -256,3 +257,38 @@ OUTBOUND0_FILTER_CONFIG = smc_indexed_addr(OUTBOUND_FILTER_CONFIG_SYM, 0)
 OUTBOUND0_START = smc_indexed_addr(OUTBOUND_FILTER_START_SYM, 0)
 OUTBOUND0_END = smc_indexed_addr(OUTBOUND_FILTER_END_SYM, 0)
 INBOUND_FILTER_INST_STRIDE = smc_indexed_stride(INBOUND_FILTER_CONFIG_SYM)
+
+
+def _smc_component_rows() -> tuple[dict, ...]:
+    """Unit rows of the generated SMC memory map (regs/gen/py/smc_memory_map.py)."""
+    path = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "py" / "smc_memory_map.py"
+    spec = importlib.util.spec_from_file_location("smc_memory_map", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.VIEWS["smc-components"]["rows"]
+
+
+def _smc_unit_row(unit: str) -> dict:
+    for row in _smc_component_rows():
+        if row["key"].rsplit(":", 1)[-1] == unit:
+            return row
+    raise KeyError(f"{unit} has no component row in the generated SMC memory map")
+
+
+def smc_first_past_registers(unit: str) -> int:
+    """First address past ``unit``'s registers: its extent rounded up to its register width."""
+    row = _smc_unit_row(unit)
+    word = row["word_size"]
+    return row["base"] + (row["occupied_size"] + word - 1) // word * word
+
+
+def smc_response_past_registers(unit: str, addr: int) -> dict:
+    """The generated SMC map's response at ``addr`` past ``unit``'s registers: the unit's
+    window response inside its decode window, the past-extent response beyond it."""
+    row = _smc_unit_row(unit)
+    assert smc_first_past_registers(unit) <= addr <= row["end"], (
+        f"{unit}: 0x{addr:x} is not past its registers inside its aperture"
+    )
+    if addr < row["base"] + (row["window_size"] or row["occupied_size"]):
+        return row["window_response"]
+    return row["past_response"]

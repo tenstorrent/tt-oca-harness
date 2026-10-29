@@ -15,6 +15,9 @@ Probe shapes, each fail-capable on its own:
 * ``write_expect_error`` -- a write to a region the specification declares
   read-only. The scoreboard enforces an error response and a non-wedge, so a
   write that is quietly accepted fails.
+* ``probe_past_registers`` -- a read and a write past a unit's registers, each
+  held to the response the generated memory map gives that address: the unit's
+  own window response inside its decode window, the past-extent response beyond.
 * ``read_decerr`` -- an access that must be answered by the fabric error slave
   (``fabric.adoc`` Traffic Subordinates: "Error Slave -- invalid address
   response generation"). The scoreboard enforces both the error response and
@@ -33,10 +36,12 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import generated_response_at
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_OKAY = 0
 AXI_RESP_DECERR = 3
+AXI_RESP_CODES = {"OKAY": 0, "SLVERR": 2, "DECERR": 3}
 
 # The probed word inside the adopter external window: the port may carry the
 # full local address or the window offset, so both are compared on the window
@@ -91,6 +96,34 @@ class SmcDecodeProbeSeq(SmcCsrSeq):
             f"resp={item.resp_code} rdata=0x{item.rdata:x}"
         )
         return item.rdata
+
+    async def probe_past_registers(
+        self, label: str, addr: int, data: int, length: int = 4
+    ) -> tuple[str, str]:
+        """Read then write ``addr`` past its unit's registers; returns (rresp, bresp) names.
+
+        Both answers, and the read data, must be the generated map's response for
+        ``addr``.
+        """
+        want = generated_response_at(addr)
+        resp, rdata = await self.read_any(f"{label}_RD", addr, length)
+        assert (resp, rdata & 0xFFFF_FFFF) == (
+            AXI_RESP_CODES[want["rresp"]],
+            want["rdata"] & 0xFFFF_FFFF,
+        ), f"{label} @ 0x{addr:08x}: read resp={resp} rdata=0x{rdata:x}, want {want['text']}"
+        item = SmcSysAxiItem(f"wr_{label}")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = addr
+        item.length = length
+        item.wdata = data
+        item.allow_error = True
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code == AXI_RESP_CODES[want["bresp"]], (
+            f"{label} @ 0x{addr:08x}: write resp={item.resp_code}, want {want['text']}"
+        )
+        return want["rresp"], want["bresp"]
 
     async def write_expect_error(self, label: str, addr: int, data: int, length: int = 4) -> int:
         """Write an address the specification makes read-only; it must be refused.

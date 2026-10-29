@@ -112,6 +112,8 @@ OCAH_REG_MEMORY_MAP_BLOCKS ?= \
 OCAH_REG_MEMORY_MAP_BLOCKS += $(OCAH_REG_MEMORY_MAP_BLOCKS_EXTRA)
 OCAH_REG_MEMORY_MAP_DEPS_hw_sys_sep := \
   $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_cpu_logical.rdl
+OCAH_REG_MEMORY_MAP_DEPS_hw_sys_smc := \
+  $(OCAH_ROOT)/hw/sys/smc/regs/smc_memory_map.rdl
 OCAH_REG_MEMORY_MAP_DEPS_hw_ip_axi_lite_mailbox_unit_regs_axil_mailbox := \
   $(OCAH_ROOT)/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap.rdl \
   $(OCAH_ROOT)/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap.rdl

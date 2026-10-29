@@ -5,16 +5,17 @@
 The generated memory map gives the miscellaneous block a 2 KiB aperture, the
 GPIO interfaces 4 KiB and the DMA controller 512 B, and each a smaller decoded
 extent: misc_wrap's ``SIZE``, ``GPIO_INTF_TOTAL_SIZE`` and the DMA's ``SIZE``.
-The crossbars decode each block to that extent, so an address in the tail
-between the extent and the end of the aperture reaches no block and the
-fabric's error slave answers it: the RDL gives each unit the response an
-access past its decoded extent receives (``ocah_past_extent_resp``, the
-generated map's ``past_response``), a DECERR read for all three.
+An address in the tail between the extent and the end of the aperture is
+answered as the generated map gives it: by the block itself inside its decode
+window (``ocah_window_resp``, the map's ``window_response``), by the fabric's
+error slave past it (``ocah_past_extent_resp``, the map's ``past_response``).
+The misc and GPIO tails lie past their windows and answer DECERR; the DMA's
+window fills its aperture, so the DMA answers its tail with SLVERR.
 
 For each aperture the leaf seeds a live register near the start of the block,
-writes and reads the word halfway through the unmapped tail, and requires the
-read to answer DECERR and the write to be refused with an error response, the
-live register to still hold its seed and the unmapped read not to return it.
+writes and reads the word halfway through the unmapped tail, and requires both
+to answer the generated map's response, the live register to still hold its
+seed and the unmapped read not to return it.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import (
     LOCAL_BASE_RESET,
     generated_decoded_extent,
-    generated_past_extent_resp,
+    generated_response_at,
     generated_unit_at,
     generated_window,
     smc_addr,
@@ -38,8 +39,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 AXI_RESP_OKAY = 0
 AXI_RESP_SLVERR = 2
 AXI_RESP_DECERR = 3
-# The write refusal the crossbars give: DECERR from the local crossbar, SLVERR
-# from the AXI-Lite peripheral and internal crossbars.
+# The write refusal the crossbars give where the map states DECERR: DECERR from the
+# local crossbar, SLVERR from the AXI-Lite peripheral and internal crossbars.
 _REFUSED = (AXI_RESP_SLVERR, AXI_RESP_DECERR)
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
@@ -84,8 +85,6 @@ def _holes() -> tuple[Hole, ...]:
     dma_base = smc_addr("SMC_TOP_DMA_CTRL_BASE_ADDR")
     assert generated_decoded_extent("smc_misc_wrap") == smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
     assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
-    for unit in ("smc_misc_wrap", "gpio_intf", "dma_ctrl"):
-        assert generated_past_extent_resp(unit)[0] == "DECERR", unit
     return (
         Hole(
             "MISC",
@@ -156,19 +155,25 @@ class smc_decode_hole_test_seq(SmcCsrSeq):
         after = await self._okay(f"{label}_LIVE_AFTER", SmcSysAxiOp.READ, hole.live_addr)
         after &= hole.mask
         dead_data = dead_rd.rdata & 0xFFFF_FFFF
-        assert dead_rd.resp_code == AXI_RESP_DECERR and dead_wr.resp_code in _REFUSED, (
+        want = generated_response_at(hole.dead_addr)
+        got = (
+            _RESP_NAME.get(dead_wr.resp_code, dead_wr.resp_code),
+            _RESP_NAME.get(dead_rd.resp_code, dead_rd.resp_code),
+        )
+        write_ok = got[0] == want["bresp"] or (
+            want["bresp"] == "DECERR" and dead_wr.resp_code in _REFUSED
+        )
+        assert write_ok and got[1] == want["rresp"], (
             f"{label}: unmapped 0x{hole.dead_addr:08x}, past the decoded extent ending "
-            f"0x{hole.mapped_end:08x}, answered write "
-            f"{_RESP_NAME.get(dead_wr.resp_code, dead_wr.resp_code)} and read "
-            f"{_RESP_NAME.get(dead_rd.resp_code, dead_rd.resp_code)}; the fabric decodes no "
-            f"block there, so the read has to be DECERR and the write refused"
+            f"0x{hole.mapped_end:08x}, answered write {got[0]} and read {got[1]}; the "
+            f"generated map gives {want['text']}"
         )
         assert after == seeded, (
             f"{label}: a write of 0x{payload:08x} to unmapped 0x{hole.dead_addr:08x} changed live "
             f"0x{hole.live_addr:08x} from 0x{seeded:08x} to 0x{after:08x}"
         )
         assert dead_data & hole.mask != seeded, (
-            f"{label}: the DECERR read of unmapped 0x{hole.dead_addr:08x} returned "
+            f"{label}: the error read of unmapped 0x{hole.dead_addr:08x} returned "
             f"0x{dead_data:08x}, live 0x{hole.live_addr:08x}'s seed; the error slave's word "
             f"must not be the live register's value"
         )

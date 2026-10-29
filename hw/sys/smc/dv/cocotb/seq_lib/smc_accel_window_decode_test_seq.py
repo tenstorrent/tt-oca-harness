@@ -20,8 +20,8 @@ from .smc_addr_map import (
     REGION_SIZE_RESET,
     ZEROER_CG_EN,
     _component_row,
-    generated_decoded_extent,
-    generated_past_extent_resp,
+    generated_first_past_registers,
+    generated_response_at,
     generated_window,
     smc_addr,
 )
@@ -32,7 +32,9 @@ AXI_RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 AXI_RESP_DECERR = 3
 AXI_RESP_CODE = {name: code for code, name in AXI_RESP_NAME.items()}
 _DMA_ROW = _component_row("dma_ctrl")
-ERR_DATA = _DMA_ROW["past_response"]["rdata"]
+# Data of the DECERR responders around the DMA and zeroer; the DMA's own window fills
+# its aperture, so the zeroer's past-extent row carries it.
+ERR_DATA = _component_row("zeroer_ctrl")["past_response"]["rdata"]
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
@@ -61,18 +63,17 @@ REDUCED_REGION_SIZE = 0x2_0000
 DMA_HOLE_RRESP = AXI_RESP_CODE[_DMA_HOLE_ROW["rresp"]]
 DMA_HOLE_RDATA = _DMA_HOLE_ROW["rdata"]
 DMA_HOLE_BRESP = AXI_RESP_CODE[_DMA_HOLE_ROW["bresp"]]
-DMA_PAST_RRESP, DMA_PAST_BRESP = (
-    AXI_RESP_CODE[name] for name in generated_past_extent_resp("dma_ctrl")
-)
-ZEROER_PAST_RRESP, ZEROER_PAST_BRESP = (
-    AXI_RESP_CODE[name] for name in generated_past_extent_resp("zeroer_ctrl")
-)
+
+
+def _past_expect(addr: int) -> tuple[int, int, int]:
+    """(rresp, rdata, bresp) the generated map gives ``addr``, past its unit's registers."""
+    resp = generated_response_at(addr)
+    return AXI_RESP_CODE[resp["rresp"]], resp["rdata"], AXI_RESP_CODE[resp["bresp"]]
+
 
 DMA_HOLES = [DMA_BASE + 0x44] + [DMA_BASE + 0x4C + 8 * n for n in range(16)]
-DMA_PAST = list(range(DMA_BASE + generated_decoded_extent("dma_ctrl"), DMA_APERTURE_END + 1, 4))
-ZEROER_PAST = list(
-    range(ZEROER_BASE + generated_decoded_extent("zeroer_ctrl"), ZEROER_APERTURE_END + 1, 8)
-)
+DMA_PAST = list(range(generated_first_past_registers("dma_ctrl"), DMA_APERTURE_END + 1, 4))
+ZEROER_PAST = list(range(generated_first_past_registers("zeroer_ctrl"), ZEROER_APERTURE_END + 1, 8))
 
 STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6", "S7")
 CHK_ORDER = (
@@ -225,10 +226,13 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
         first_zer = await self.csr_read("ZER_FIRST_RD", ZER_DEST, expected=zer_pat, length=8)
         last_zer = await self.csr_read("ZER_LAST_RD", ZER_CTRL_STATUS, expected=0, length=8)
         dma_dst = await self.csr_read("DMA_DST_LO_RD", DMA_DST_LO, expected=dma_pat)
-        self._expect_decerr_at([DMA_APERTURE_LAST_WORD])
-        below = await self._read_decerr("DMA_LAST_WORD", DMA_APERTURE_LAST_WORD)
+        last_rresp, last_rdata, _ = _past_expect(DMA_APERTURE_LAST_WORD)
+        last_resp, below = await self._read_any("DMA_LAST_WORD", DMA_APERTURE_LAST_WORD, 4)
         above = await self.csr_read("ZER_BOUNDARY_RD", ZEROER_BASE, expected=zer_pat, length=8)
-        assert below == ERR_DATA, f"DMA word past its extent reads 0x{below:x}, not 0x{ERR_DATA:x}"
+        assert (last_resp, below) == (last_rresp, last_rdata), (
+            f"DMA word past its extent answered {AXI_RESP_NAME[last_resp]}/0x{below:x}, "
+            f"not {AXI_RESP_NAME[last_rresp]}/0x{last_rdata:x}"
+        )
         await self.csr_write("DMA_CONFIG_RESTORE", DMA_CONFIG, self.saved["DMA_CONFIG"])
         await self.csr_write("DMA_REPS_HI_RESTORE", DMA_REPS_HI, self.saved["DMA_REPS_HI"])
         await self.csr_write("DMA_DST_LO_RESTORE", DMA_DST_LO, self.saved["DMA_DST_LO"])
@@ -239,15 +243,15 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
             f"zeroer first DEST_ADDR=0x{first_zer:x} and last CTRL_STATUS=0x{last_zer:x} "
             f"answered OKAY with their own content; DST_ADDRESS_LO=0x{dma_dst:x}; "
             f"DMA word past its extent (0x{DMA_APERTURE_LAST_WORD:08x}) answered "
-            f"DECERR/0x{below:x}; "
+            f"{AXI_RESP_NAME[last_resp]}/0x{below:x}; "
             f"BASE+0x3_8200 (0x{ZEROER_BASE:08x}) read zeroer DEST_ADDR 0x{above:x}"
         )
 
-    async def _sweep(
-        self, addrs: list[int], length: int, rresp: int, rdata: int, bresp: int
-    ) -> tuple[list, list]:
+    async def _sweep(self, addrs: list[int], length: int, expect) -> tuple[list, list]:
+        """Read then write every address; ``expect(addr)`` gives (rresp, rdata, bresp)."""
         reads, writes = [], []
         for addr in addrs:
+            rresp, rdata, _ = expect(addr)
             resp, data = await self._read_any(f"HOLE_RD_{addr:08x}", addr, length)
             assert resp == rresp, f"hole read @ 0x{addr:08x}: resp={resp}, expected {rresp}"
             assert data & 0xFFFF_FFFF == rdata, (
@@ -255,6 +259,7 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
             )
             reads.append((addr, resp, data))
         for addr in addrs:
+            bresp = expect(addr)[2]
             resp = await self._write_any(f"HOLE_WR_{addr:08x}", addr, 0, length)
             assert resp == bresp, f"hole write @ 0x{addr:08x}: resp={resp}, expected {bresp}"
             writes.append((addr, resp, 0))
@@ -263,12 +268,13 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
     async def _s4(self) -> str:
         self._expect_decerr_at(DMA_PAST + ZEROER_PAST)
         parts = []
-        for window, addrs, length, rresp, rdata, bresp in (
-            ("DMA in-extent hole", DMA_HOLES, 4, DMA_HOLE_RRESP, DMA_HOLE_RDATA, DMA_HOLE_BRESP),
-            ("DMA past-extent", DMA_PAST, 4, DMA_PAST_RRESP, ERR_DATA, DMA_PAST_BRESP),
-            ("ZEROER past-extent", ZEROER_PAST, 8, ZEROER_PAST_RRESP, ERR_DATA, ZEROER_PAST_BRESP),
+        hole = (DMA_HOLE_RRESP, DMA_HOLE_RDATA, DMA_HOLE_BRESP)
+        for window, addrs, length, expect in (
+            ("DMA in-extent hole", DMA_HOLES, 4, lambda _addr: hole),
+            ("DMA past-extent", DMA_PAST, 4, _past_expect),
+            ("ZEROER past-extent", ZEROER_PAST, 8, _past_expect),
         ):
-            reads, writes = await self._sweep(addrs, length, rresp, rdata, bresp)
+            reads, writes = await self._sweep(addrs, length, expect)
             parts.append(
                 f"{window} {len(addrs)} words reads[{_runs(reads)}] "
                 f"writes[{_runs([(a, r, 0) for a, r, _ in writes])}]"
@@ -280,17 +286,22 @@ class smc_accel_window_decode_test_seq(SmcCsrSeq):
         )
 
     async def _s5(self) -> str:
-        self._expect_decerr_at([BELOW_DMA, ABOVE_ZEROER])
-        below = await self._read_decerr("BELOW_DMA_RD", BELOW_DMA)
+        # The word below the DMA is the end of the mailbox's decode window, which the
+        # mailbox answers; above the zeroer's aperture nothing is mapped.
+        self._expect_decerr_at([ABOVE_ZEROER])
+        below_want = _past_expect(BELOW_DMA)
+        below_resp, below = await self._read_any("BELOW_DMA_RD", BELOW_DMA, 4)
+        assert (below_resp, below & 0xFFFF_FFFF) == below_want[:2], (
+            f"0x{BELOW_DMA:08x} answered {AXI_RESP_NAME[below_resp]}/0x{below:x}, the generated "
+            f"map gives {AXI_RESP_NAME[below_want[0]]}/0x{below_want[1]:x}"
+        )
         above = await self._read_decerr("ABOVE_ZEROER_RD", ABOVE_ZEROER)
         await self._write_decerr("ABOVE_ZEROER_WR", ABOVE_ZEROER, 0)
-        assert below == ERR_DATA and above == ERR_DATA, (
-            f"neighbour data 0x{below:x} / 0x{above:x}, expected 0x{ERR_DATA:x}"
-        )
+        assert above == ERR_DATA, f"0x{ABOVE_ZEROER:08x} data 0x{above:x}, expected 0x{ERR_DATA:x}"
         self._mark("S5")
         return (
-            f"read 0x{BELOW_DMA:08x} DECERR/0x{below:08x}; read 0x{ABOVE_ZEROER:08x} "
-            f"DECERR/0x{above:08x}; write 0x{ABOVE_ZEROER:08x} DECERR"
+            f"read 0x{BELOW_DMA:08x} {AXI_RESP_NAME[below_resp]}/0x{below:08x} (mailbox window); "
+            f"read 0x{ABOVE_ZEROER:08x} DECERR/0x{above:08x}; write 0x{ABOVE_ZEROER:08x} DECERR"
         )
 
     async def _s6(self) -> str:

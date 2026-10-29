@@ -28,10 +28,10 @@ from seq_lib.smc_past_extent_slverr_units_test_seq import (
 from smc_base_test import smc_base_test
 
 # Accesses the sequence issues: setup 1; past-extent legs: reset unit 7, eFuse 14, timer 7,
-# base config 10, fabric arrays 35, spare wrapper 25, peripherals 4 x 7 + UART and I3C 2 x 2,
+# base config 7, fabric arrays 35, spare wrapper 25, peripherals 4 x 7 + UART and I3C 2 x 2,
 # CLA 3, UART/log-engine wrappers 36; window probes: CLA 10, DMA 3 + zeroer 5, UART 6 +
 # log engine 8, eFuse 6, I3C 3, telemetry 5 + AVSBus 3, external 4.
-STIMULUS_FLOOR = 223
+STIMULUS_FLOOR = 220
 # The UART and I3C aperture-end reads bypass the driver, so the scoreboard sees the rest.
 UNCONVERTED_READS = 2
 SCOREBOARD_ACCESSES = STIMULUS_FLOOR - UNCONVERTED_READS

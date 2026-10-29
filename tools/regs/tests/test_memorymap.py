@@ -388,6 +388,69 @@ class ResponseColumnTest(unittest.TestCase):
         cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text))
         self.assertEqual(cells["memory"][-2:], ["DECERR, 0x0 / DECERR", "-"])
 
+    def window_text(self, extra: str) -> str:
+        return RESPONSE_RDL.replace(
+            "    plain->ocah_aperture_size = 0x100;\n",
+            "    plain->ocah_aperture_size = 0x100;\n" + extra,
+        )
+
+    def test_window_splits_the_past_extent_cell(self):
+        text = self.window_text(
+            "    plain->ocah_window_size = 0x10;\n"
+            "    plain->ocah_window_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0,"
+            " bresp: ocah_resp_e::SLVERR};\n"
+        )
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        cells = self.cells(view)
+        self.assertEqual(
+            cells["plain"][-1],
+            "to 16 B: SLVERR, 0x0 / SLVERR; beyond: DECERR, 0xBADCAB1E / SLVERR",
+        )
+        row = next(row for row in view.rows if row.label == "plain")
+        self.assertEqual(
+            (row.decoded_window, row.window_response.text), (0x10, "SLVERR, 0x0 / SLVERR")
+        )
+        self.assertIn('"window_size": 0x10,', render_py([view]))
+
+    def test_window_filling_the_aperture_has_no_past_response(self):
+        text = self.window_text(
+            "    plain->ocah_window_size = 0x100;\n"
+            "    plain->ocah_window_resp = ocah_resp'{rresp: ocah_resp_e::OKAY, rdata: 0x0,"
+            " bresp: ocah_resp_e::OKAY};\n"
+        )
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        self.assertEqual(self.cells(view)["plain"][-1], "OKAY, 0x0 / OKAY")
+        self.assertIsNone(next(row for row in view.rows if row.label == "plain").past_response)
+
+    def test_sub_block_window_is_a_hole_part_of_its_parent(self):
+        text = self.window_text(
+            "    composite.low->ocah_window_size = 0x20;\n"
+            "    composite.low->ocah_window_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0,"
+            " bresp: ocah_resp_e::SLVERR};\n"
+        )
+        cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text))
+        self.assertIn("past a sub-block's registers: SLVERR, 0x0 / SLVERR", cells["composite"][-2])
+
+    def test_rejects_window_outside_the_aperture(self):
+        text = self.window_text(
+            "    plain->ocah_window_size = 0x200;\n"
+            "    plain->ocah_window_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0,"
+            " bresp: ocah_resp_e::SLVERR};\n"
+        )
+        with self.assertRaisesRegex(ValueError, "window 0x200 must lie"):
+            self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+
+    def test_word_size_is_the_widest_register(self):
+        text = RESPONSE_RDL.replace(
+            "addrmap tiled {\n    reg { field { sw = rw; hw = r; } value[31:0]; } only @0x0;",
+            "addrmap tiled {\n    reg { regwidth = 64; field { sw = rw; hw = r; } value[63:0]; }"
+            " only @0x0;",
+        )
+        view = self.view({"include_all": True, "columns": RESPONSE_COLUMNS}, text)
+        sizes = {row.label: row.word_size for row in view.rows}
+        self.assertEqual((sizes["full"], sizes["plain"]), (8, 4))
+        self.assertIn('"word_size": 8,', render_py([view]))
+
     def test_forwarded_memory(self):
         cells = self.cells(self.view({"include_all": True, "columns": RESPONSE_COLUMNS}))
         self.assertEqual(cells["window"][-2:], ["Forwarded", "-"])

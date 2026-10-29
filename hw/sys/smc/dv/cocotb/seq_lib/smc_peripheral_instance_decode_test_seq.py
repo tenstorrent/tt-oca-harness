@@ -154,7 +154,8 @@ PVT_MODEL_RDATA = 0
 _CLA_PATTERNS = (0x3C3C_C3C3, 0xC3C3_3C3C)
 
 # One word past the middle of each aperture, well beyond the unit's decoded
-# extent (smc_addr.h *_SIZE) and inside its aperture (smc.rdl ocah_aperture_size).
+# extent (smc_addr.h *_SIZE) and inside its aperture (smc.rdl ocah_aperture_size),
+# where the unit's own decode window answers (smc.rdl ocah_window_resp).
 WDT0_BASE = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR")
 WDT_DECODED_EXTENT = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE")
 WDT0_PAST_EXTENT = WDT0_BASE + 0x200
@@ -471,30 +472,28 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         self.close_cell("pvt-wrapper-decodes", evidence)
 
     async def _past_decoded_extent(self) -> None:
-        """Offsets inside a unit's aperture but past its decoded extent are refused.
+        """Offsets inside a unit's aperture but past its decoded extent answer as the map gives.
 
-        memmap.adoc (Address Space Organization): the fabric refuses an address
-        past a unit's decoded extent. The watchdog and CPU-control windows are
-        the units in their layout regions whose extent ends well short of the
-        aperture; a read and a write past each must answer an error, and the
-        unit's last decoded register must keep its value across them.
+        The watchdog and CPU-control windows are the units in their layout regions
+        whose extent ends well short of the aperture. A read and a write past each
+        must answer the generated memory map's response -- OKAY from the CPU cluster,
+        which answers an address it does not map, and SLVERR from the CPU-control
+        block -- and the unit's last decoded register must keep its value across them.
         """
-        monitor = getattr(self.env, "axi_monitor", None)
+        answers = []
         for label, addr, live, restore in (
             ("WDT0_PAST_EXTENT", WDT0_PAST_EXTENT, WDT0_CMP, WDT_CMP_REG_DEFAULT),
             ("CPU_CTRL_PAST_EXTENT", CPU_CTRL_PAST_EXTENT, None, None),
         ):
-            if monitor is not None:
-                monitor.expected_decerr_addrs.add(addr)
-            await self.csr_read_expect_error(f"{label}_RD", addr)
-            await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
+            answers.append(await self.probe_past_registers(label, addr, 0xFFFF_FFFF))
             if live is not None:
                 await self.csr_read(f"{label}_LIVE_AFTER", live, expected=restore)
         self.close_cell(
-            "past-decoded-extent-refused",
+            "past-decoded-extent",
             f"reads and writes at 0x{WDT0_PAST_EXTENT:08x} (past the core 0 watchdog's "
             f"0x{WDT_DECODED_EXTENT:x}-byte extent) and 0x{CPU_CTRL_PAST_EXTENT:08x} (past "
-            f"smc_cpu_ctrl's 0x{CPU_CTRL_DECODED_EXTENT:x}-byte extent) answered an error, and "
+            f"smc_cpu_ctrl's 0x{CPU_CTRL_DECODED_EXTENT:x}-byte extent) answered {answers} as "
+            f"the generated map gives, and "
             f"WDT0 CMP still read 0x{WDT_CMP_REG_DEFAULT:x}",
         )
 

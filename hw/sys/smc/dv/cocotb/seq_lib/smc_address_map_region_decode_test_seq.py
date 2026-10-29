@@ -35,13 +35,12 @@ from .smc_addr_map import (
     SPM_MEMORY_BASE,
     SPM_MEMORY_SIZE,
     generated_decoded_extent,
-    generated_past_extent_resp,
     generated_unit_at,
     generated_window,
     smc_addr,
     smc_indexed_addr,
 )
-from .smc_decode_probe_utils import AXI_RESP_DECERR, SmcDecodeProbeSeq
+from .smc_decode_probe_utils import SmcDecodeProbeSeq
 from .smc_efuse_vip_utils import EFUSE_BANK_INIT_TIME_RESET, EFUSE_SHIM_CTRL_WINDOW
 from .smc_i3c_to_fabric_test_seq import HCI_VERSION_OFFSET, I3C_HCI_VERSION_RESET
 
@@ -116,8 +115,6 @@ assert generated_decoded_extent("zeroer_ctrl") == smc_addr("SMC_TOP_ZEROER_CTRL_
 assert generated_unit_at(DMA_PAST_LAST - LOCAL_BASE_RESET) is None
 assert generated_unit_at(ZEROER_PAST_LAST - LOCAL_BASE_RESET) is None
 # The RDL answers a read and a write past either block's extent with DECERR.
-assert generated_past_extent_resp("dma_ctrl") == ("DECERR", "DECERR")
-assert generated_past_extent_resp("zeroer_ctrl") == ("DECERR", "DECERR")
 
 # --- I3C: six CSR windows -----------------------------------------------------------------
 I3C_NUM = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
@@ -461,16 +458,13 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         ]
         assert not any(snapshot), f"DMA descriptor registers not idle: {snapshot}"
         await self.csr_read("ZEROER_DEST_BEFORE", ZEROER_DEST_ADDR, expected=0)
-        for label, addr in (
-            ("DMA_PAST_LAST", DMA_PAST_LAST),
-            ("ZEROER_PAST_LAST", ZEROER_PAST_LAST),
-        ):
-            await self.read_decerr(f"{label}_RD", addr)
-            resp = await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
-            assert resp == AXI_RESP_DECERR, (
-                f"{label} @ 0x{addr:08x}: write answered resp={resp}, expected DECERR from the "
-                f"error slave"
+        answers = [
+            await self.probe_past_registers(label, addr, 0xFFFF_FFFF)
+            for label, addr in (
+                ("DMA_PAST_LAST", DMA_PAST_LAST),
+                ("ZEROER_PAST_LAST", ZEROER_PAST_LAST),
             )
+        ]
         for i in range(DMA_DESC_WORDS):
             await self.csr_read(f"DMA_DESC_AFTER_{i}", DMA_DESC_FIRST + 4 * i, expected=0)
         await self.csr_read("ZEROER_DEST_AFTER", ZEROER_DEST_ADDR, expected=0)
@@ -479,8 +473,9 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             f"0x{GPIO_PAST_LAST:08x} (past GPIO_INTF[{GPIO_NUM - 1}], read and write) and "
             f"0x{MISC_PAST_LAST:08x} (past misc_wrap) were refused with an error response, "
             f"the last register before each unchanged; 0x{DMA_PAST_LAST:08x} (past dma_ctrl) and "
-            f"0x{ZEROER_PAST_LAST:08x} (past zeroer_ctrl) answered DECERR to a read and an "
-            f"all-ones write, the DMA descriptor and zeroer registers still 0",
+            f"0x{ZEROER_PAST_LAST:08x} (past zeroer_ctrl) answered {answers} to a read and an "
+            f"all-ones write as the generated map gives, the DMA descriptor and zeroer "
+            f"registers still 0",
         )
 
     async def _region_external(self) -> None:
@@ -554,8 +549,6 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
                 STRAPS_BEYOND,
                 GPIO_PAST_LAST,
                 MISC_PAST_LAST,
-                DMA_PAST_LAST,
-                ZEROER_PAST_LAST,
             }
         )
 

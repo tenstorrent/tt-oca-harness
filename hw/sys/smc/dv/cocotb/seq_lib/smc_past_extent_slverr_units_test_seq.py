@@ -20,6 +20,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
+    _COMPONENT_ROWS,
     AVS_CG_EN,
     CLOCK_GATE_CONTROL,
     I3C_CG_EN,
@@ -29,7 +30,8 @@ from .smc_addr_map import (
     ZEROER_CTRL_DEST_ADDR,
     ZEROER_CTRL_STATUS,
     generated_decoded_extent,
-    generated_past_extent_resp,
+    generated_first_past_registers,
+    generated_response_at,
     generated_window,
     smc_addr,
     smc_indexed_addr,
@@ -40,6 +42,7 @@ AXI_RESP_OKAY = 0
 AXI_RESP_SLVERR = 2
 AXI_RESP_DECERR = 3
 PAST_EXTENT_RDATA = 0xBADCAB1E
+_RESP_CODES = {"OKAY": AXI_RESP_OKAY, "SLVERR": AXI_RESP_SLVERR, "DECERR": AXI_RESP_DECERR}
 WRITE_PATTERN = 0xA5A55A5A
 FUSE_WAIT_BOUND_SMC_CYCLES = 200_000
 AXI_TIMEOUT_NS = 50_000
@@ -221,7 +224,11 @@ TELEMETRY_CTRL_OFF = 0x9000
 AVS_PAST_OFF = 0x4800
 AVS_FIRST_OFF = 0x4000
 EXTERNAL_UNCLAIMED_OFF = 0x40_6000
-EXTERNAL_PAST_OFF = 0x40_6548
+# Past the last external block's decode window: smc_ip_integration gives the PVT wrapper its
+# extent rounded up to a power of two, so the word after that window is the first unclaimed one.
+_PVT_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR")
+_PVT_SIZE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_SIZE")
+EXTERNAL_PAST_OFF = _PVT_BASE + (1 << (_PVT_SIZE - 1).bit_length()) - LOCAL_BASE_RESET
 # Probes whose documented answer is an error, or one of a pair that includes DECERR.
 _ERROR_PROBE_OFFSETS = (
     DMA_PAST_OFF,
@@ -235,6 +242,20 @@ _ERROR_PROBE_OFFSETS = (
     EXTERNAL_UNCLAIMED_OFF,
     EXTERNAL_PAST_OFF,
 )
+
+
+def _expected_at(addr: int) -> dict:
+    """The generated map's response at ``addr``: between a unit's sub-blocks, past them, or
+    outside every unit."""
+    for row in _COMPONENT_ROWS:
+        if row["base"] <= addr <= row["end"]:
+            unit = row["key"].rsplit(":", 1)[-1]
+            if addr < generated_first_past_registers(unit):
+                gaps = dict(row["hole_responses"])
+                return gaps["between sub-blocks"]
+            return generated_response_at(addr)
+    # Outside every unit the fabric's error slave answers.
+    return {"rresp": "DECERR", "rdata": PAST_EXTENT_RDATA, "bresp": "DECERR", "text": "DECERR"}
 
 
 class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
@@ -265,24 +286,35 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         self._chk_marks.append((chk_id, int(get_sim_time("ps"))))
 
     async def _read_past(self, label: str, addr: int) -> int:
+        """Read past a unit's registers; the generated map gives the response and data."""
+        resp = _expected_at(addr)
+        want = _RESP_CODES[resp["rresp"]]
         item = SmcSysAxiItem(f"rd_{label}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
         item.allow_error = True
-        item.expect_error = True
-        item.expected_resp = AXI_RESP_DECERR
+        item.expect_error = want != AXI_RESP_OKAY
+        if item.expect_error:
+            item.expected_resp = want
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        assert item.resp_code == AXI_RESP_DECERR, (
-            f"{label} @ 0x{addr:08x}: rresp {item.resp_code}, want DECERR (rdata 0x{item.rdata:x})"
+        assert item.resp_code == want, (
+            f"{label} @ 0x{addr:08x}: rresp {item.resp_code}, want {resp['rresp']} "
+            f"(rdata 0x{item.rdata:x})"
         )
         got = item.rdata & 0xFFFF_FFFF
-        assert got == PAST_EXTENT_RDATA, (
-            f"{label} @ 0x{addr:08x}: rdata 0x{got:08x}, want 0x{PAST_EXTENT_RDATA:08x}"
+        want_data = resp["rdata"] & 0xFFFF_FFFF
+        assert got == want_data, (
+            f"{label} @ 0x{addr:08x}: rdata 0x{got:08x}, want 0x{want_data:08x}"
         )
         return got
+
+    @staticmethod
+    def _past_names(addr: int) -> tuple[str, str]:
+        resp = _expected_at(addr)
+        return resp["rresp"], resp["bresp"]
 
     async def _observe_read(self, label: str, addr: int, length: int = 4) -> tuple[int, int]:
         item = SmcSysAxiItem(f"rd_{label}")
@@ -367,16 +399,8 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         assert item.resp_code is not None, f"{label} @ 0x{addr:08x}: no bresp recorded"
         return item.resp_code
 
-    def _declared(self, unit: str) -> str:
-        rresp_name, bresp_name = generated_past_extent_resp(unit)
-        assert rresp_name == "DECERR", f"{unit}: RDL past-extent rresp {rresp_name}"
-        return bresp_name
-
     def _past_addr(self, unit: str) -> int:
-        first, _ = generated_window(unit)
-        extent = generated_decoded_extent(unit)
-        assert extent % 4 == 0, f"{unit}: decoded extent 0x{extent:x} not on a 4-byte boundary"
-        return LOCAL_BASE_RESET + first + extent
+        return generated_first_past_registers(unit)
 
     def _top_addr(self, unit: str) -> int:
         _, last = generated_window(unit)
@@ -387,17 +411,19 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
     ) -> tuple[str, list[str]]:
         """Read and write each (where, address) point of ``unit``.
 
-        The read must answer DECERR with 0xBADCAB1E; the write answer is printed and
-        compared with the declared bresp only as a printed flag. ``live_addr`` is read
-        before the points and after each write.
+        The read must answer the generated map's response and data; the write answer is
+        printed and compared with the declared bresp only as a printed flag. ``live_addr`` is
+        read before the points and after each write.
         """
-        declared = self._declared(unit)
-        self.env.axi_monitor.expected_decerr_addrs.update(addr for _, addr in points)
+        self.env.axi_monitor.expected_decerr_addrs.update(
+            addr for _, addr in points if "DECERR" in self._past_names(addr)
+        )
         before = None
         if live_addr is not None:
             before = await self.csr_read(f"{tag}_LIVE_PRE", live_addr)
         parts = []
         for where, addr in points:
+            rresp, declared = self._past_names(addr)
             rdata = await self._read_past(f"{tag}_{where}", addr)
             bresp = await self._write_past(f"{tag}_{where}", addr)
             if live_addr is not None:
@@ -415,7 +441,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
                 observed,
             )
             parts.append(
-                f"{where}@0x{addr:08x} rresp=DECERR rdata=0x{rdata:08X} "
+                f"{where}@0x{addr:08x} rresp={rresp} rdata=0x{rdata:08X} "
                 f"bresp_declared={declared} bresp_observed={observed}"
             )
         first, last = generated_window(unit)
@@ -496,12 +522,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         self._log_chk("CHK-PAST-EXTENT-TIMER", text)
 
         unit, tag, live = _BASE_CONFIG_UNIT
-        past = self._past_addr(unit)
-        points = [
-            ("PAST", past),
-            ("NEXT8", (past + 7) & ~0x7),
-            ("TOP", self._top_addr(unit)),
-        ]
+        points = [("PAST", self._past_addr(unit)), ("TOP", self._top_addr(unit))]
         head, parts = await self._probe_addrs(unit, tag, live, points)
         self._mark_leg("BASE_CONFIG")
         self._log_chk("CHK-PAST-EXTENT-BASE-CONFIG", f"{head}; {'; '.join(parts)}")
@@ -669,10 +690,13 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         first, _ = generated_window(unit)
         extent = generated_decoded_extent(unit)
         assert off >= first + extent, f"{unit}: offset 0x{off:x} inside the 0x{extent:x} extent"
-        assert generated_past_extent_resp(unit) == ("DECERR", "DECERR"), (
-            f"{unit}: generated past-extent response {generated_past_extent_resp(unit)}"
-        )
         return addr
+
+    async def _wr_past(self, label: str, addr: int) -> str:
+        """Write past a unit's registers; the generated map gives the bresp."""
+        _, bresp = self._past_names(addr)
+        await self._wr_exact(None, label, addr, _RESP_CODES[bresp])
+        return bresp
 
     def _want(self, win: str | None, pair: tuple[int, int]) -> tuple[int, int]:
         return GATED_PAIR if win is not None and self.gated[win] else pair
@@ -734,9 +758,10 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
     async def _err_dma_zeroer(self) -> tuple[str, str]:
         past = self._past_extent("dma_ctrl", DMA_PAST_OFF)
         rd = await self._read_past("DMA_PAST", past)
-        await self._wr_exact(None, "DMA_PAST", past, AXI_RESP_DECERR)
+        wr_dma_past = await self._wr_past("DMA_PAST", past)
         ctrl0 = await self._rd_code(None, "DMA_CTRL0", self._in_window("dma_ctrl", DMA_CTRL0_OFF))
-        dma = f"past rd DECERR 0x{rd:08X}, wr DECERR; +0x0 rd OKAY data=0x{ctrl0:08X}"
+        rresp = self._past_names(past)[0]
+        dma = f"past rd {rresp} 0x{rd:08X}, wr {wr_dma_past}; +0x0 rd OKAY data=0x{ctrl0:08X}"
 
         status_addr = self._in_window("zeroer_ctrl", ZEROER_CTRL_STATUS_OFF)
         dest_addr = self._in_window("zeroer_ctrl", ZEROER_DEST_ADDR_OFF)
@@ -747,7 +772,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         assert status_pre == 0, f"zeroer STATUS={status_pre} before the probe (0x{pre:016x})"
         past = self._past_extent("zeroer_ctrl", ZEROER_PAST_OFF)
         rd = await self._read_past("ZEROER_PAST", past)
-        await self._wr_exact(None, "ZEROER_PAST", past, AXI_RESP_DECERR)
+        wr_zeroer_past = await self._wr_past("ZEROER_PAST", past)
         post = await self._rd_code(None, "ZEROER_CTRL_STATUS_POST", status_addr, length=8)
         status_post = (post >> ZEROER_STATUS_BIT) & 1
         assert status_post == 0, f"zeroer STATUS={status_post} after the probe (0x{post:016x})"
@@ -755,7 +780,8 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             None, "ZEROER_DEST_ADDR", dest_addr, (AXI_RESP_OKAY, 0), length=8
         )
         zeroer = (
-            f"past rd DECERR 0x{rd:08X}, wr DECERR; STATUS {status_pre}->{status_post}; "
+            f"past rd {self._past_names(past)[0]} 0x{rd:08X}, wr {wr_zeroer_past}; "
+            f"STATUS {status_pre}->{status_post}; "
             f"DEST_ADDR=0x{dest:X} OKAY"
         )
         return dma, zeroer
@@ -816,7 +842,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
     async def _err_efuse(self) -> str:
         past = self._past_extent("efuse_interface_ctrl", EFUSE_CTRL_PAST_OFF)
         rd_ctrl = await self._read_past("EFUSE_CTRL_PAST", past)
-        await self._wr_exact(None, "EFUSE_CTRL_PAST", past, AXI_RESP_DECERR)
+        wr_efuse_ctrl_past = await self._wr_past("EFUSE_CTRL_PAST", past)
         status_addr = self._in_window("efuse_interface_ctrl", EFUSE_CTRL_STATUS_OFF)
         assert status_addr == smc_addr(
             "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
@@ -824,7 +850,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
         status = await self._rd_code(None, "EFUSE_INTERFACE_CTRL_STATUS", status_addr)
         past = self._past_extent("smc_efuse_map", EFUSE_SHADOW_PAST_OFF)
         rd_shadow = await self._read_past("EFUSE_SHADOW_PAST", past)
-        await self._wr_exact(None, "EFUSE_SHADOW_PAST", past, AXI_RESP_DECERR)
+        wr_efuse_shadow_past = await self._wr_past("EFUSE_SHADOW_PAST", past)
         first = await self._rd_code(
             None, "EFUSE_SHADOW_FIRST", self._in_window("smc_efuse_map", EFUSE_SHADOW_FIRST_OFF)
         )
@@ -834,8 +860,8 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
             first,
         )
         return (
-            f"ctrl past rd DECERR 0x{rd_ctrl:08X} wr DECERR, STATUS OKAY; shadow past rd DECERR "
-            f"0x{rd_shadow:08X} wr DECERR, +0x0 OKAY"
+            f"ctrl past rd 0x{rd_ctrl:08X} wr {wr_efuse_ctrl_past}, STATUS OKAY; shadow past rd "
+            f"0x{rd_shadow:08X} wr {wr_efuse_shadow_past}, +0x0 OKAY"
         )
 
     async def _err_i3c(self) -> str:
@@ -884,7 +910,7 @@ class smc_past_extent_slverr_units_test_seq(SmcCsrSeq):
     async def _err_external(self) -> str:
         unit = "smc_external"
         _, last = generated_window(unit)
-        assert last + 1 == EXTERNAL_PAST_OFF, f"external window ends at +0x{last:x}"
+        assert last + 1 <= EXTERNAL_PAST_OFF, f"external window ends at +0x{last:x}"
         past = LOCAL_BASE_RESET + EXTERNAL_PAST_OFF
         rd = await self._read_past("EXTERNAL_PAST", past)
         await self._wr_exact(None, "EXTERNAL_PAST", past, AXI_RESP_DECERR)

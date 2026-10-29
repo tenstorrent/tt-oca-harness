@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""dfx_ctrl register addresses, past-extent DECERR and the gap at offset 0xC.
+"""dfx_ctrl register addresses, past-extent responses and the gap at offset 0xC.
 
 Spec: smc.rdl dfx_ctrl placement, dfx_ctrl_status.rdl address map, memmap.adoc address space.
 """
@@ -18,7 +18,8 @@ from .smc_addr_map import (
     DFX_MEM_REPAIR_DONE,
     DFX_MEM_REPAIR_SUCCESS,
     _component_row,
-    generated_past_extent_resp,
+    generated_first_past_registers,
+    generated_response_at,
     generated_window,
     smc_addr,
 )
@@ -57,8 +58,6 @@ DFX_EXTENT = smc_addr("SMC_TOP_DFX_CTRL_SIZE")
 _DFX_FIRST, _DFX_LAST = generated_window("dfx_ctrl")
 DFX_APERTURE = _DFX_LAST - _DFX_FIRST + 1
 _DFX_ROW = _component_row("dfx_ctrl")
-PAST_RRESP, PAST_BRESP = (RESP_CODES[n] for n in generated_past_extent_resp("dfx_ctrl"))
-PAST_RDATA = _DFX_ROW["past_response"]["rdata"]
 _HOLE_ROW = _DFX_ROW["hole_responses"][0][1]
 HOLE_RRESP = RESP_CODES[_HOLE_ROW["rresp"]]
 HOLE_RDATA = _HOLE_ROW["rdata"]
@@ -66,7 +65,7 @@ DFX_STATUS_SMU_ADDR = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
 DFX_DEBUG_CTRL_ADDR = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_CTRL_BASE_ADDR")
 DFX_DEBUG_BUS_MUX_ADDR = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR")
 HOLE_ADDR = DFX_DEBUG_CTRL_ADDR + 4
-PAST_EXTENT_ADDR = DFX_BASE + DFX_EXTENT
+PAST_EXTENT_ADDR = generated_first_past_registers("dfx_ctrl")
 PAST_MID_ADDR = DFX_BASE + 0x100
 PAST_LAST_ADDR = DFX_BASE + DFX_APERTURE - 4
 NEXT_BLOCK_ADDR = DFX_BASE + DFX_APERTURE
@@ -139,24 +138,26 @@ class smc_dfx_aperture_extent_test_seq(SmcCsrSeq):
             ("PAST_MID", PAST_MID_ADDR),
             ("PAST_LAST", PAST_LAST_ADDR),
         ):
+            want = generated_response_at(addr)
             item = await self._read_item(label, addr)
             data = item.rdata & 0xFFFFFFFF
-            assert item.resp_code == PAST_RRESP and data == PAST_RDATA, (
+            assert item.resp_code == RESP_CODES[want["rresp"]] and data == want["rdata"], (
                 f"{label} @ 0x{addr:08x}: resp={item.resp_code} data=0x{data:08x}, "
-                f"want resp={PAST_RRESP} data=0x{PAST_RDATA:08x}"
+                f"the generated map gives {want['text']}"
             )
             past_reads.append(f"0x{addr:x}->{_RESP_NAMES[item.resp_code]} data=0x{data:08x}")
         self._stamp("S3")
         self._chk(
             "CHK-APERTURE-PAST-READ",
             "S3",
-            f"{'; '.join(past_reads)}; each answered with the generated past-extent response "
-            f"and data 0x{PAST_RDATA:08x}",
+            f"{'; '.join(past_reads)}; each answered with the generated map's response and "
+            f"data (DFX inside its decode window, DECERR past it)",
         )
 
         past_writes = []
         for label, addr in (("PAST_EXTENT_WR", PAST_EXTENT_ADDR), ("PAST_LAST_WR", PAST_LAST_ADDR)):
-            resp = await self.csr_write_expect_error(label, addr, ALL_ONES_WORD, resp=PAST_BRESP)
+            want = RESP_CODES[generated_response_at(addr)["bresp"]]
+            resp = await self.csr_write_expect_error(label, addr, ALL_ONES_WORD, resp=want)
             past_writes.append(f"0x{addr:x}->{_RESP_NAMES[resp]}")
         status2, ctrl2, mux2 = await self._read_regs()
         assert (status2, ctrl2, mux2) == (status, ctrl, mux), (

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Gap, SLVERR-window and debug-module aperture responses on sep, sys and jtag at both bases.
 
-Spec sources: memmap.adoc Address Space Organization, smc.rdl ocah_gap_resp / ocah_hole_resp /
+Spec sources: memmap.adoc Address Space Organization, smc_memory_map.rdl ocah_gap_resp / ocah_hole_resp /
 ocah_past_extent_resp placements, smc_mailbox placement.
 """
 
@@ -43,14 +43,16 @@ _RESP_CODES = {"OKAY": 0, "EXOKAY": 1, "SLVERR": 2, "DECERR": 3}
 
 
 def _rdl_gap_resp() -> tuple[int, int, int]:
-    """``(rresp, rdata, bresp)`` of ``ocah_gap_resp`` in smc.rdl."""
-    text = (Path(__file__).resolve().parents[3] / "regs" / "smc.rdl").read_text()
+    """``(rresp, rdata, bresp)`` of ``ocah_gap_resp`` in smc_memory_map.rdl, macros expanded."""
+    text = (Path(__file__).resolve().parents[3] / "regs" / "smc_memory_map.rdl").read_text()
+    for name, value in re.findall(r"^`define\s+(\w+)\s+(.+)$", text, re.MULTILINE):
+        text = text.replace(f"`{name};", f"{value};")
     m = re.search(
         r"ocah_gap_resp\s*=\s*ocah_resp'\{rresp:\s*ocah_resp_e::(\w+),\s*"
         r"rdata:\s*(0x[0-9A-Fa-f]+),\s*bresp:\s*ocah_resp_e::(\w+)\}",
         text,
     )
-    assert m, "ocah_gap_resp not found in smc.rdl"
+    assert m, "ocah_gap_resp not found in smc_memory_map.rdl"
     return _RESP_CODES[m.group(1)], int(m.group(2), 16), _RESP_CODES[m.group(3)]
 
 

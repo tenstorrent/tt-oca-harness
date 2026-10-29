@@ -94,6 +94,24 @@ property ocah_past_extent_resp {
     type = ocah_resp;
 };
 
+// A decoder that hands a block more address space than its registers: the block answers
+// [extent, ocah_window_size) with ocah_window_resp, and ocah_past_extent_resp applies only
+// from the window's end.
+property ocah_window_size {
+    component = addrmap | regfile | reg | mem;
+    type = longint unsigned;
+};
+
+property ocah_window_resp {
+    component = addrmap | regfile | reg | mem;
+    type = ocah_resp;
+};
+
+property ocah_window_note {
+    component = addrmap | regfile | reg | mem;
+    type = string;
+};
+
 property ocah_gap_resp {
     component = addrmap | regfile;
     type = ocah_resp;

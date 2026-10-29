@@ -3,7 +3,8 @@
 """REGION_SIZE-gated decode of the M-mode / Xvisor regions and the PLIC, CLINT and BEU units.
 
 Spec sources: memmap.adoc Address Space Organization and Memory Map, smc.rdl
-ocah_past_extent_resp, doc/integrator smu-smc.adoc Address Map and Aperture.
+ocah_window_resp and ocah_past_extent_resp, doc/integrator smu-smc.adoc Address Map
+and Aperture.
 """
 
 from __future__ import annotations
@@ -19,9 +20,8 @@ from .smc_addr_map import (
     GLOBAL_BASE_RESET,
     LOCAL_BASE_RESET,
     REGION_SIZE_RESET,
-    _component_row,
-    generated_decoded_extent,
-    generated_past_extent_resp,
+    generated_first_past_registers,
+    generated_response_at,
     generated_window,
     reg_reset_word,
     smc_addr,
@@ -420,25 +420,26 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
         targets = []
         for label, unit in UNITS:
             first, last = generated_window(unit)
-            extent = generated_decoded_extent(unit)
-            rresp_name, _bresp_name = generated_past_extent_resp(unit)
-            assert rresp_name == "DECERR", f"{unit}: RDL past-extent rresp {rresp_name}"
-            past = LOCAL_BASE + first + extent
+            past = generated_first_past_registers(unit)
             top = (LOCAL_BASE + last) & ~0x3
             assert LOCAL_BASE + first < past < top, f"{unit}: past 0x{past:x} top 0x{top:x}"
             targets.append((label, unit, past, top))
-        self._expect_decerr(*(a for _l, _u, past, top in targets for a in (past, top)))
+        # Each word answers as the generated map gives: the unit inside its decode window
+        # (the CPU cluster answers OKAY for an address it does not map), DECERR past it.
+        want = {a: generated_response_at(a) for _l, _u, past, top in targets for a in (past, top)}
+        self._expect_decerr(*(a for a, r in want.items() if r["rresp"] == "DECERR"))
         for port in PORTS:
             for label, unit, past, top in targets:
-                _rr, declared = generated_past_extent_resp(unit)
-                past_rdata = _component_row(unit)["past_response"]["rdata"]
                 for where, addr in (("PAST", past), ("TOP", top)):
+                    rresp, declared = want[addr]["rresp"], want[addr]["bresp"]
+                    past_rdata = want[addr]["rdata"] & 0xFFFF_FFFF
+                    code = _RESP_CODES[rresp]
                     rd = await self._xfer(
                         port,
                         f"{label}_{where}",
                         SmcSysAxiOp.READ,
                         addr,
-                        expect_resp=AXI_RESP_DECERR,
+                        expect_resp=code if code else None,
                     )
                     got = rd.rdata & 0xFFFF_FFFF
                     assert got == past_rdata, (
@@ -458,7 +459,7 @@ class smc_region_gated_units_decode_test_seq(SmcCsrSeq):
                         f"{_RESP_NAMES[wr.resp_code]}, declared {declared}"
                     )
                     rows.append(
-                        f"{port}:{label}.{where}@0x{addr:08X} rresp=DECERR rdata=0x{got:08X} "
+                        f"{port}:{label}.{where}@0x{addr:08X} rresp={rresp} rdata=0x{got:08X} "
                         f"bresp_declared={declared} bresp_observed={_RESP_NAMES[wr.resp_code]}"
                     )
         self._mark_step("S7")

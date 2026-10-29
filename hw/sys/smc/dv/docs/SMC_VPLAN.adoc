@@ -2499,11 +2499,14 @@ response and reads back the value read; read-only words are listed as read-only,
 column that reads not specified for some islands, and the
 watchdog state is printed without a compare.
 |`CHK-ISL-PASTEXT-READ-DECERR` |The first past-extent word and the aperture-end word of all 24
-islands read DECERR with data 0xBADCAB1E, 48 of 48 words.
+islands read the generated memory map's response and data: the unit's window response inside its
+decode window, DECERR with 0xBADCAB1E past it, 48 of 48 words. The first past-extent word is the
+unit's extent rounded up to its register width.
 |`CHK-ISL-PASTEXT-WRITE-DECERR-CLASS` |The first past-extent word and the aperture-end word of the
-24 islands answer a write with DECERR, 48 of 48 words.
-|`CHK-ISL-PASTEXT-NOCHANGE` |After the refused writes every past-extent and aperture-end word still
-reads DECERR with 0xBADCAB1E and every read-write last decoded word equals its earlier value.
+24 islands answer a write with the generated memory map's response, 48 of 48 words.
+|`CHK-ISL-PASTEXT-NOCHANGE` |After the past-extent writes every past-extent and aperture-end word
+still reads the generated memory map's response and data, and every read-write last decoded word
+equals its earlier value.
 |`CHK-ISL-TABLE` |The per-island table has 24 rows, each with its four probe words and its drawn
 interior word measured (a 4-byte interior read answered OKAY, the other sizes reported), and each
 row is counted as match or mismatch so that the two counts sum to 24.
@@ -8484,7 +8487,7 @@ draws nothing from the seed.
 * 256 MiB is the smallest legal power of two whose aperture contains the whole documented map up to BASE + 0x801_3FFF; the sequence asserts that relation against the generated reset size rather than hard-coding a verdict.
 * PLIC: the priority and per-core enable words hold distinct co-resident patterns, are then written to the priority-0 / disabled state `interrupts.adoc` requires of firmware and read back exactly; the last word of the PLIC's decoded extent (generated memory map `regs/gen/py/smc_memory_map.py`, cross-checked against the generated `smc_addr.h` size) must answer without returning either pattern, and the top word of the 4 MiB window and the first word above it, both past the decoded extent, must be refused with DECERR, the response the RDL gives an access past a unit's decoded extent (`ocah_past_extent_resp`).
 * CLINT: `MSIP_0` and `MTIMECMP_0` hold distinct co-resident patterns; the last word of the 48 KiB decoded extent must not return them, and the top word of the 64 KiB aperture must be refused.
-* BEU: the four `ENABLE` registers read their generated reset, are each checked against the specified 0x1000 stride, and then hold four distinct co-resident patterns, so the per-core instances are proven separate registers rather than one alias; the last word of core 3's decoded extent answers and the top word of the 80 KiB timer / bus-error region, past it, is refused.
+* BEU: the four `ENABLE` registers read their generated reset, are each checked against the specified 0x1000 stride, and then hold four distinct co-resident patterns, so the per-core instances are proven separate registers rather than one alias; the last word of core 3's decoded extent answers and the top word of the 80 KiB timer / bus-error region, past it but inside core 3's 4 KiB decode window, answers OKAY as the generated memory map gives: the CPU cluster answers an address it does not map.
 * `REGION_SIZE` is restored to its generated reset and a local-window register is read afterwards, so the aperture is left as the rest of the suite expects.
 
 *Test Procedure*:
@@ -8777,7 +8780,7 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-PERIPHERAL-INSTANCE` |The cell ledger: one line per block or instance cell closed with the measured evidence behind it, including `past-decoded-extent-refused`, plus one line per cell left NOT closed in this bench with the tie-off or aperture limit that prevents it. The NOT-closed lines are recorded gaps, not compares
+|`CHK-PERIPHERAL-INSTANCE` |The cell ledger: one line per block or instance cell closed with the measured evidence behind it, including `past-decoded-extent`, plus one line per cell left NOT closed in this bench with the tie-off or aperture limit that prevents it. The NOT-closed lines are recorded gaps, not compares
 |`CHK-PERIPHERAL-INSTANCE-DECODE` |Summary line: cells closed, the scoreboard exact-value compare count against its floor, the access count, the PVT external-port active cycles and the number of cells left open. Logged after the per-block compares and both floors have held
 |`CHK-PERIPHERAL-INSTANCE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
@@ -13377,21 +13380,20 @@ control. Kind: the same read and write pair at each address. Expected response: 
 |===
 |Checker |Description
 |`CHK-PAST-EXTENT-WDT` |The reads at the first address past the core 0 watchdog's extent and at
-the last word of its 0x400 aperture answer DECERR with 0xBADCAB1E, exact compares, and `CMP` reads
-the same value before and after each write; the write responses must equal the declared DECERR.
+the last word of its 0x400 aperture answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it), exact compares, and `CMP` reads the same value before
+and after each write; the write responses must equal the map's.
 |`CHK-PAST-EXTENT-MAILBOX` |The reads past the mailbox register extent and at the last word of its
-0x20000 aperture answer DECERR with 0xBADCAB1E and outbound mailbox 0 `ERROR_FLAGS` is unchanged
-after each write; the write responses equal the declared DECERR.
+0x20000 aperture answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it) and outbound mailbox 0 `ERROR_FLAGS` is unchanged after each write; the
+write responses equal the map's.
 |`CHK-PAST-EXTENT-DMA-ZEROER` |For the DMA control (0x200 aperture) and the zeroer control (0x100
-aperture) the reads past the extent and at the aperture's last word answer DECERR with 0xBADCAB1E
-and both `DST_ADDRESS_LO` and `DEST_ADDR` are unchanged after each write; the write responses are
-equal the declared DECERR.
+aperture) the reads past the extent and at the aperture's last word answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it) and both
+`DST_ADDRESS_LO` and `DEST_ADDR` are unchanged after each write; the write responses equal the
+map's.
 |`CHK-PAST-EXTENT-DFX` |The reads past the DFX control extent and at the last word of its 0x800
-aperture answer DECERR with 0xBADCAB1E and `STATUS` is unchanged after each write; the write
-responses equal the declared DECERR.
+aperture answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it) and `STATUS` is unchanged after each write; the write responses equal the map's.
 |`CHK-PAST-EXTENT-CPU-CTRL` |The reads past the CPU control extent and at the last word of its
-0x1000 aperture answer DECERR with 0xBADCAB1E and `SCRATCH_0` is unchanged after each write; the
-write responses equal the declared DECERR.
+0x1000 aperture answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it) and `SCRATCH_0` is unchanged after each write; the write responses equal
+the map's.
 |`CHK-NONVAC` |The step stamps S1 to S6 are in increasing time order, the five checker lines above
 were printed in step order each after its own step, and at least 48 accesses were issued.
 |`CHK-TIMEOUT-PATHS` |Reports each bounded wait with its bound and last observed value (the three
@@ -13573,7 +13575,7 @@ accessed; print `CHK-ERR-I3C`.
 . Telemetry and AVSBus (S8). Read and write BASE + 0x9040 and BASE + 0x9800, read `CTRL`; read and
 write BASE + 0x4800, read BASE + 0x4000; print `CHK-ERR-TELEMETRY` and `CHK-ERR-AVS`.
 . External (S9). Read and write BASE + 0x406548, then BASE + 0x406000; print `CHK-ERR-EXTERNAL`.
-. Require 223 accesses: 221 against the sequence's own count and the scoreboard's checked count
+. Require 220 accesses: 218 against the sequence's own count and the scoreboard's checked count
 and the two unconverted reads, print `CHK-TIMEOUT-PATHS` (S10), then run the fence that prints
 `CHK-NONVAC`.
 
@@ -13583,18 +13585,18 @@ and the two unconverted reads, print `CHK-TIMEOUT-PATHS` (S10), then run the fen
 |===
 |Checker |Description
 |`CHK-PAST-EXTENT-RESET-UNIT` |The reads at the first address past the reset unit extent and at
-the last word of its 0x800 aperture answer DECERR with 0xBADCAB1E, exact compares, and `SS_CONFIG`
+the last word of its 0x800 aperture answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it), exact compares, and `SS_CONFIG`
 reads the same value after each write; the write responses are measured and printed against the
 declared SLVERR, not compared.
 |`CHK-PAST-EXTENT-EFUSE` |For the eFuse map and the eFuse interface control the reads past the
-extent and at the last word of the 0x1000 aperture answer DECERR with 0xBADCAB1E and each unit's
+extent and at the last word of the 0x1000 aperture answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it) and each unit's
 live register is unchanged after each write; the write responses are measured and printed, not
 compared.
 |`CHK-PAST-EXTENT-TIMER` |The reads past the system timer extent and at the last word of its
-0x1000 aperture answer DECERR with 0xBADCAB1E and `OCTS_CTRL` is unchanged after each write; the
+0x1000 aperture answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it) and `OCTS_CTRL` is unchanged after each write; the
 write responses are measured and printed, not compared.
-|`CHK-PAST-EXTENT-BASE-CONFIG` |The reads past the last base config register, at the next 8-byte
-boundary and at the last word of the 0x2000 aperture answer DECERR with 0xBADCAB1E and
+|`CHK-PAST-EXTENT-BASE-CONFIG` |The reads at the first address past the base config registers
+(the extent rounded up to the unit's 64-bit register width) and at the last word of the 0x2000 aperture answer the generated memory map's response (the unit inside its decode window, DECERR with 0xBADCAB1E past it) and
 `CLOCK_GATE_CONTROL` is unchanged after each write; the write responses are measured and printed,
 not compared.
 |`CHK-PAST-EXTENT-FABRIC-CTRL` |For each of the five fabric control arrays the reads past the
@@ -13651,7 +13653,7 @@ DECERR; the read and write at BASE + 0x406000 complete and their codes and data 
 TELEMETRY-AVS < EXTERNAL: the step stamps S1 to S9 are in increasing time order and every term
 has a non-zero access count; the nine existing legs inside EXISTING are stamped in order with
 non-zero counts; the twenty checker lines above were printed in order each after its own stamp;
-and at least 223 accesses were issued.
+and at least 220 accesses were issued.
 |`CHK-TIMEOUT-PATHS` |Reports each bounded wait with its bound and last observed state (the three
 fuse-sense waits of 200000 `clk_smc_i` rises and the 50 us guard of every SEP_IN access, with the
 monitor's R-beat and B-response tallies); it is a printed report with no compare, each wait
@@ -45779,7 +45781,7 @@ draws nothing from the seed.
 |Checker |Description
 |`CHK-DECODE-HOLE-MISC` |An unmapped write and read in the misc aperture's tail were refused (the read with DECERR), left `SCRATCH_COLD` 0 holding its seed and did not read it back
 |`CHK-DECODE-HOLE-GPIO` |An unmapped write and read past the last GPIO interface were refused (the read with DECERR), left `DATA_CTRL` of GPIO 64 holding its seed and did not read it back
-|`CHK-DECODE-HOLE-DATA_ACCEL` |An unmapped write and read past the DMA's decoded extent were refused (the read with DECERR), left the DMA's `DST_ADDRESS_LO` holding its seed and did not read it back
+|`CHK-DECODE-HOLE-DATA_ACCEL` |An unmapped write and read past the DMA's decoded extent answered the generated memory map's response (SLVERR: the DMA's decode window fills its aperture), left the DMA's `DST_ADDRESS_LO` holding its seed and did not read it back
 |===
 
 *Pass Criteria*: every checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
