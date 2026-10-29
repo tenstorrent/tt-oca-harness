@@ -81,7 +81,8 @@ Interrupt.
 | 31:8 | `Reserved` | - | - a| Reserved
 | 7 | `DLAB` | RW | 0x0 a| Divisor Latch Access Bit. If set, allows access to the `DLL` and `DLM` registers
 when accessing addresses `0x0` and `0x4`, respectively. If unset, allows access
-to the `THR`, `RBR`, and `IIR` registers.
+to the `THR`, `RBR`, and `IER` registers. `IIR` and `FCR` are accessible
+regardless of this bit.
 | 6 | `SET_BREAK` | RW | 0x0 a| Set Break. If set, forces the `tx_o` output to `0` to cause a break condition
 on the receiving UART.
 | 5 | `STICK_PARITY` | RW | 0x0 a| Stick Parity. If set, forces the transmit and received parity bits to be `0` if
@@ -92,7 +93,8 @@ even parity is selected and `1` if odd parity is selected.
 | 3 | `PEN` | RW | 0x0 a| Parity Enable.
 | 2 | `STB` | RW | 0x0 a| Stop Bits:
 * `0` - 1 stop bit.
-* `1` - 2 stop bits (or 1.5 stop bits if word length is set to 5 bits)
+* `1` - 2 stop bits. The transmitter always sends 2 stop bits; with 5-bit
+words the receiver checks only the first.
 | 1:0 | `WLS` | RW | 0x0 a| Word Length Select:
 * `0x0` - 5 bits per character
 * `0x1` - 6 bits per character
@@ -148,10 +150,11 @@ This bit triggers the Receiver Line Status Interrupt.
 | 2 | `PE` | R RC | 0x0 a| Parity Error. When set, indicates that the character at the top of the receiver
 FIFO (or RBR in non-FIFO mode) has a parity error. This bit triggers the
 Receiver Line Status Interrupt.
-| 1 | `OE` | R RC | 0x0 a| Overrun Error. When set, indicates that the RX FIFO (or Receiver Buffer
-Register in Non-FIFO Mode) is full when new character is received. In FIFO Mode, the new character
-is dropped. In non-FIFO mode, the existing character in the RBR is overwritten.
-This bit triggers the Receiver Line Status Interrupt.
+| 1 | `OE` | R RC | 0x0 a| Overrun Error. When set, indicates that the RX FIFO was full when a new
+character was received; the new character is dropped. This bit sets only in
+FIFO mode: in non-FIFO mode a new character overwrites an unread character in
+the RBR without setting it. This bit triggers the Receiver Line Status
+Interrupt.
 | 0 | `DR` | R | 0x0 a| Data Ready. When set, indicates that the RX FIFO (or RBR in non-FIFO
 mode) contains data.
 |===
@@ -216,6 +219,9 @@ configurations for the trigger levels are:
 * `0x9` - 1024 characters
 * `0xA` - 2048 characters
 * `0xB` - 4096 characters
+The Received Data Ready interrupt asserts while the receive FIFO holds
+at least the selected number of characters. A level above the receive
+FIFO depth, and any combined value above `0xB`, never asserts it.
 |===
 
 [#reg-{regmap-instance}-uart_16550_main-ITR]
