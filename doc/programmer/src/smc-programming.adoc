@@ -111,8 +111,9 @@ to initialize SRAM before use. This can be performed like so:
 . Disable interrupts to the core.
 . Write the SRAM base address (`0xC006_0000`) to the Memory Zeroer's `DEST_ADDR`
 register.
-. Write the size of SRAM (128 KiB = `0x0002_0000`) to the Memory Zeroer's `SIZE`
-register.
+. Write the size of SRAM (1 MiB = `0x0010_0000`) to the Memory Zeroer's `SIZE`
+register. `SMC_ATTRIBUTES.sram_size` reports the size as a power of two: the
+SRAM is 2^`sram_size`^ bytes.
 . Write zero to the Memory Zeroer's `CTRL_STATUS` register, which starts the
 operation.
 . Poll the Memory Zeroer's `CTRL_STATUS` register until the `STATUS` bit (bit
@@ -123,7 +124,8 @@ See also `__metal_sram_init_early` in
 `hw/sys/smc/bootrom/prod/boot/sram_init.S`, described in <<smc-boot-rom>>.
 
 The production ROM assumes that SRAM is automatically zeroed on reset. If
-either `SRAM_AUTO_ZERO_DISABLE` or the eFuse `RESERVED_0[6]` is set, the
+either the `SRAM_AUTO_ZERO_DISABLE` strap or the eFuse
+`SMC_CONFIG.sram_auto_zero_disable` (bit 7) is set, the
 Memory Zeroer is used by the production ROM.
 
 [[smc-zeroer-general-use]]
@@ -157,7 +159,7 @@ assume the MBIST was not required, and return.
 . Check if the MBIST passed (register `STATUS_SMU` bit 8). If set, return -- the
 MBIST has passed.
 . The MBIST has failed, or aborted due to a timeout. If the eFuse
-`RESERVED_2[0]` is set, ignore the failure and return.
+`SMC_CONFIG.dft_ignore_error` (bit 15) is set, ignore the failure and return.
 . The MBIST has failed -- park the core in a `wfi` loop.
 
 .SMC Boot ROM `__metal_mbist_early_check`.
@@ -172,7 +174,7 @@ else (unset)
   else (set)
     if (Check STATUS_SMU bit mbist_pass) then (set)
     else (unset)
-      if (Check eFuse RESERVED_2[0]) then (set)
+      if (Check eFuse SMC_CONFIG.dft_ignore_error) then (set)
       else (unset)
         : Fail;
         kill
@@ -194,8 +196,8 @@ skip memory repair check, otherwise continue.
 assume memory repair was not required, and return.
 . Check if memory repair passed (register `STATUS_SMU` bit 1). If set, return --
 memory repair has passed.
-. Memory repair has failed. If the eFuse `RESERVED_2[0]` is set, ignore the
-failure and return.
+. Memory repair has failed. If the eFuse `SMC_CONFIG.dft_ignore_error`
+(bit 15) is set, ignore the failure and return.
 . Memory repair has failed -- park the core in a `wfi` loop.
 
 .SMC Boot ROM `__metal_memory_repair_check`.
@@ -210,7 +212,7 @@ else (unset)
   else (set)
     if (Check STATUS_SMU bit mem_repair_success) then (set)
     else (unset)
-      if (Check eFuse RESERVED_2[0]) then (set)
+      if (Check eFuse SMC_CONFIG.dft_ignore_error) then (set)
       else (unset)
         : Fail;
         kill
@@ -627,11 +629,11 @@ delivery paths select from the same accrued bits, so clearing them affects both.
 
 Each core of the SMC has a dedicated watchdog timer (WDT), that can generate
 an interrupt and optionally a reset request if not serviced within a
-configurable period of time. The watchdog timers are driven by the SMU clock
-signal `clk_smu_i`.
+configurable period of time. The watchdog timers are driven by the SMC core
+clock `clk_smc_i`.
 
 The `COUNT` register contains the raw WDT timer value, and increments at the
-frequency of the SMU clock signal `clk_smu_i`. The `wdogscale` field in the
+frequency of the SMC core clock `clk_smc_i`. The `wdogscale` field in the
 `CTRL` register contains a right-shift amount which is applied to the `COUNT`
 register, effectively dividing the WDT tick rate by 2^`CTRL.wdogscale`^.
 The scaled counter after shifting can be read from the `SCALED_COUNT` register.
@@ -734,7 +736,7 @@ static void wdt_write(uintptr_t addr, uint32_t value) {
 void wdt_configure(void) {
     unsigned long hartid = read_hartid();
 
-    // 10ms at an assumed 50MHz SMU clock.
+    // 10ms at an assumed 50MHz SMC clock.
     // = 500000 cycles. Use a divisor of 8
     // (wdogscale = 3) so that the compare
     // value fits in `CMP`, which is 16-bits.
@@ -783,8 +785,12 @@ FIFO configuration is done using the `FCR` and `ECR` registers. The FIFO is
 enabled by setting the least-significant bit in the `FCR` register.
 The `RCVR_TRIGGER_MS2B` field of `ECR` and `RCVR_TRIGGER` field of `FCR` form
 a 4-bit value which determines the receive FIFO trigger level. While the receive
-FIFO contains more than this amount of characters, the UART asserts the
-Received Data Ready interrupt.
+FIFO contains at least this many characters, the UART asserts the Received Data
+Ready interrupt. The SMC UARTs have 32-entry transmit and receive FIFOs, so only
+the levels `0x0` to `0x4` (1 to 32 characters) can assert it. A level above the
+FIFO depth never asserts the receive watermark: the Received Data Ready
+interrupt stays clear, and only the receive timeout reports received data, both
+as an interrupt and as the mode-1 DMA receive indication.
 
 .UART Receive FIFO levels
 [width="100%",cols="25%,25%,25%,25%",options="header",]
@@ -832,7 +838,7 @@ registers are accessible only when the `DLAB` bit of `LCR` is disabled.
 #define UART_FCR_XMIT_FIFO_RESET   0x4
 #define UART_FCR_DMA_MODE_SELECT_0 0x0
 #define UART_FCR_DMA_MODE_SELECT_1 0x8
-#define UART_FCR_RCVR_TRIGGER_256C 0xC0
+#define UART_FCR_RCVR_TRIGGER_14C 0xC0
 
 #define UART_LCR_PEN    0x8 // Parity enable bit.
 #define UART_LCR_STB_2S 0x4 // 2 stop bits.
@@ -842,7 +848,7 @@ registers are accessible only when the `DLAB` bit of `LCR` is disabled.
 
 #define UART_LSR_THRE 0x20
 
-#define UART_ECR_RCVR_TRIGGER_MS2B_256C 0x1
+#define UART_ECR_RCVR_TRIGGER_MS2B_14C 0x0
 ----
 
 .UART example C configuration and usage (no FIFO).
@@ -907,10 +913,10 @@ void uart_configure_fifo(void) {
     // Reset and disable FIFOs.
     write32(UART_REG_IIR_FCR, UART_FCR_RCVR_FIFO_RESET | UART_FCR_XMIT_FIFO_RESET);
 
-    // FIFO configuration: Enabled, 256-character trigger level.
-    write32(UART_REG_ECR, UART_ECR_RCVR_TRIGGER_MS2B_256C);
+    // FIFO configuration: Enabled, 14-character trigger level.
+    write32(UART_REG_ECR, UART_ECR_RCVR_TRIGGER_MS2B_14C);
     write32(UART_REG_IIR_FCR,
-            UART_FCR_RCVR_TRIGGER_256C | UART_FCR_FIFO_ENABLE
+            UART_FCR_RCVR_TRIGGER_14C | UART_FCR_FIFO_ENABLE
               | UART_FCR_DMA_MODE_SELECT_0);
 
     // UART configuration: 8 bits per character, 1 stop bit, no parity bits.
@@ -938,8 +944,8 @@ void uart_write_fifo(const char *str) {
         // Poll until transmit FIFO is empty.
         while (!(read32(UART_REG_LSR) & UART_LSR_THRE));
 
-        // Burst write up to 4096 characters at a time.
-        for (size_t i = 0; i < 4096; i++) {
+        // Burst write up to the 32-entry transmit FIFO depth.
+        for (size_t i = 0; i < 32; i++) {
             if (*str == 0) return;
             write32(UART_REG_RBR_THR, (uint32_t)(*str));
             str++;
@@ -1209,9 +1215,10 @@ corresponding region in the memory buffer.
 . Write the length of the to be sent message into the log entry's corresponding
 `LOG_CTRL` register in the Log Engine.
 
-Reading from the `LOG_CTRL` register array returns the number of remaining
-bytes for each log entry. A log entry has finished transmission once reading
-the corresponding `LOG_CTRL` register returns `0`.
+Each `LOG_CTRL` register holds the submitted length until the transfer
+completes, when hardware clears it to zero; it is not a remaining-byte counter.
+A log entry has finished transmission once reading the corresponding `LOG_CTRL`
+register returns `0`.
 
 [[smc-log-engine-submit]]
 Observe these rules when submitting:
@@ -1327,17 +1334,17 @@ The interrupt condition is configured in the `interrupt_type` field:
 To enable interrupts for the specific pin, `interrupt_enable` (bit 18) must
 be set.
 
-The per-pin `DATA_CTRL_ENABLE` register provides per-field LSIO overrides.
-When an LSIO peripheral controls the pad (`DATA_CTRL.interface_enable` is not set),
-setting a bit here forces the corresponding `DATA_CTRL` field to take effect
-for that field only.
+The per-pin `DATA_CTRL_ENABLE` register provides per-field register overrides.
+Each bit is OR'd with `DATA_CTRL.interface_enable` for its field only, and ranks
+above the software `lsio_select`. A hardware LSIO request keeps the pad unless
+`DATA_CTRL.lsio_disable` is set (see <<smc-gpio-lsio>>).
 
-. `use_reg_core2pad` (bit 0) forces the register-controlled `DATA_CTRL.core2pad`
-onto the pad, regardless of LSIO output.
-. `use_reg_tx` (bit 4) forces the register-controlled `DATA_CTRL.enable_rx_tx[0]`
-(TX enable) value, regardless of the LSIO output.
-. `use_reg_rx` (bit 5) forces the register-controlled `DATA_CTRL.enable_rx_tx[1]`
-(RX enable) value, regardless of the LSIO output.
+. `use_reg_core2pad` (bit 0) selects the register-controlled `DATA_CTRL.core2pad`
+as the pad output.
+. `use_reg_tx` (bit 4) selects the register-controlled `DATA_CTRL.enable_rx_tx[0]`
+(TX enable) value.
+. `use_reg_rx` (bit 5) selects the register-controlled `DATA_CTRL.enable_rx_tx[1]`
+(RX enable) value.
 
 `DATA_CTRL_ENABLE` is only meaningful for pins where an LSIO peripheral is used.
 For general-purpose register-driven pin usage by the cores, `DATA_CTRL_ENABLE`
