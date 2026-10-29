@@ -49,6 +49,12 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
 * CHK-SRC0     (firmware) source 0 never sets and never takes a handler, in the
                all-ones and the level active-low legs; control: the source 1
                handler runs once.
+* CHK-PIC-STORE (host) the writes that CHK-ENTRY0, CHK-GWCLR0 and CHK-SRC0
+               grade by a 0 reach the PIC: one write on ``pic_wr_probe_o`` at
+               each entry-0 offset the ``entry0``, ``src0_allones`` and
+               ``src0_lowlevel`` legs write, and at ``meigwclr[N]`` of each
+               drawn entry in the ``gwclr`` leg, so a store that faults or never
+               reaches the PIC fails. A write with an X or Z bit in the leg fails.
 
 Each graded firmware leg (``M G``) holds only accesses that its CHK lines
 grade. The owner-318 access and value cells of ``sep_pic_reg_map_cg`` are held
@@ -100,6 +106,15 @@ _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 PIC_BASE = sym("PIC_REG_MAP_BASE_ADDR")
 # meip[0] offset inside the PIC aperture (the pic_wr_probe_o address bits [14:0]).
 MEIP0_OFF = sym("PIC_MEIP_0__REG_OFFSET")
+
+
+def pic_off(name: str, n: int) -> int:
+    """Offset of entry ``n`` of PIC register array ``name``, from the RDL."""
+    lo = sym(f"PIC_{name}_0__REG_OFFSET")
+    return lo + n * (sym(f"PIC_{name}_1__REG_OFFSET") - lo)
+
+
+ENTRY0_ALL = ("MEIPL", "MEIE", "MEIGWCTRL", "MEIGWCLR")
 _MAX_RUN_CYCLES = 8_000_000
 _NO_BOOT_CYCLES = 80_000
 
@@ -278,6 +293,7 @@ class sep_pic_reg_rand_test(sep_base_test):
         "CHK-MEIP-WR",
         "CHK-MEIP-WR-STORE",
         "CHK-SRC0",
+        "CHK-PIC-STORE",
     )
 
     def build_phase(self) -> None:
@@ -554,7 +570,30 @@ class sep_pic_reg_rand_test(sep_base_test):
                 self.logger.info("%s", rec.text)
         n_host = self._chk_reset_x(four_state)
         n_host += self._chk_meip_store()
+        n_host += self._chk_pic_store()
         self.result_pass(TEST, seed, n_fw + n_host)
+
+    def _chk_pic_store(self) -> int:
+        """CHK-PIC-STORE: one PIC write at each graded offset of the zero-result legs."""
+        legs = {
+            "entry0": [pic_off(r, 0) for r in ENTRY0_ALL],
+            "gwclr": [pic_off("MEIGWCLR", n) for n in self.tcfg.entries],
+            "src0_allones": [pic_off(r, 0) for r in ENTRY0_ALL],
+            "src0_lowlevel": [pic_off(r, 0) for r in ("MEIGWCTRL", "MEIE", "MEIPL")],
+        }
+        for leg, offs in legs.items():
+            lo, hi = self._leg_clk(leg)
+            win = [off for clk, off in self.writes if lo <= clk < hi]
+            got = [win.count(off) for off in offs]
+            body = (
+                f"leg={leg} offsets={','.join(f'0x{o:04x}' for o in offs)} "
+                f"writes={','.join(str(n) for n in got)} expect=1 xz_writes={win.count(-1)} "
+                f"pic_writes_other={sum(1 for o in win if o not in offs and o >= 0)}(logged)"
+            )
+            if any(n != 1 for n in got) or -1 in win:
+                raise AssertionError(f"CHK-PIC-STORE FAIL seed={self.tcfg.seed} {body}")
+            self.logger.info("CHK-PIC-STORE PASS seed=%d %s", self.tcfg.seed, body)
+        return len(legs)
 
     def _chk_meip_store(self) -> int:
         """CHK-MEIP-WR-STORE: one PIC write at ``meip[0]`` per CHK-MEIP-WR instance."""
