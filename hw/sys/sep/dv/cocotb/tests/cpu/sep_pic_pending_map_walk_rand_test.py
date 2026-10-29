@@ -190,6 +190,11 @@ AES_DONE_MASK = (
     | AES.field_mask("STATUS", "alert_fatal_fault")
 )
 AES_DONE_WANT = AES_IDLE | AES.field_mask("STATUS", "input_ready")
+# FIPS-197 Appendix C.1 (AES-128): the ciphertext of the firmware key
+# 000102..0f and plaintext 00112233..ff, as DATA_OUT_0..3 little-endian words.
+AES_C1_OUT = (0xD8E0C469, 0x30047B6A, 0x80B7CDD8, 0x5AC5B470)
+# OTBN STATUS value BUSY_EXECUTE (otbn.hjson, STATUS).
+OTBN_BUSY_EXECUTE = 0x01
 KMAC_FE_STATE = KMAC.field_mask("INTR_STATE", "fifo_empty")
 # meip word 0 offset in the PIC and the meip word stride (register export).
 MEIP0_OFF = sym("PIC_MEIP_0__REG_OFFSET")
@@ -513,7 +518,20 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             srcs |= {SRC_HMAC_FIFO_EMPTY, SRC_KMAC_FIFO_EMPTY}
         return srcs
 
+    def _ctrl_map_state(self) -> None:
+        """CTRL-MAP-STATE: each event source's INTR_TEST write set its INTR_STATE bit."""
+        for pas in (1, 2):
+            recs = [kv for _, kv in self._lines("CTRL-MAP-STATE") if int(kv["p"]) == pas]
+            got = {int(kv["src"]): int(kv["state"]) for kv in recs}
+            if sorted(got) != sorted(DRAWN) or len(recs) != len(DRAWN):
+                raise AssertionError(
+                    f"CTRL-MISSING CTRL-MAP-STATE pass={pas} srcs={sorted(got)} want={sorted(DRAWN)}"
+                )
+            low = sorted(src for src, st in got.items() if st != 1)
+            assert not low, f"CTRL-MAP-STATE FAIL seed={self.wc.seed} pass={pas} state0={low}"
+
     def _chk_vector(self) -> None:
+        self._ctrl_map_state()
         for pas in (1, 2):
             tag = f"p{pas}"
             _, got = self._meip(tag)
@@ -761,7 +779,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             busy[when] = (
                 int(not (s["hmac"] & HMAC_IDLE))
                 + int(not (s["kmac"] & KMAC_IDLE))
-                + int(s["otbn"] != 0)
+                + int(s["otbn"] == OTBN_BUSY_EXECUTE)
             )
         hc = self._high("ia", "i1", "b32")
         aes_busy = int(not (st["before"]["aes"] & AES_IDLE))
@@ -826,10 +844,16 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 st = [kv for _, kv in self._lines("CTRL-AES-STATUS")]
                 assert len(st) == 1, f"expected one CTRL-AES-STATUS record, got {len(st)}"
                 status, cfg_ok = st[0]["status"], int(st[0]["cfg_ok"])
-                ok = ok and cfg_ok == 1 and status & AES_DONE_MASK == AES_DONE_WANT
+                valid = int(st[0]["valid"])
+                out = tuple(st[0][f"out{k}"] for k in range(4))
+                ok = (
+                    ok and cfg_ok == 1 and valid == 1 and out == AES_C1_OUT
+                    and status & AES_DONE_MASK == AES_DONE_WANT
+                )  # fmt: skip
                 text += (
                     f" aes_status=0x{status:08x} field_mask=0x{AES_DONE_MASK:02x} "
-                    f"want=0x{AES_DONE_WANT:02x} cfg_ok={cfg_ok}"
+                    f"want=0x{AES_DONE_WANT:02x} cfg_ok={cfg_ok} output_valid={valid} "
+                    f"out={_hexw(out)} want_out={_hexw(AES_C1_OUT)}"
                 )
             self._check(ok, "CHK-SLOTLESS", text)
 
