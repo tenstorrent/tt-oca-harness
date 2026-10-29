@@ -10,11 +10,18 @@ secure_tm_req_i is sampled into secure_tm_o when SEP fuse sensing completes and 
 by a reset. Leg 1 latches a 1 from a strap held at 1. Leg 2 asserts a cold reset with the strap
 still 1, requires secure_tm_o to read 0, drops the strap, and releases the reset. Over the whole
 real sense that follows secure_tm_o is sampled every clk_smu_i and stays 0, including while the
-strap pulses to 1 between response strobes 100 and 180. It stays 0 after sep_fuse_sense_done_o
+strap pulses to 1 between two drawn response strobe counts. It stays 0 after sep_fuse_sense_done_o
 rises with the strap at 0.
+
+The seed draws the strobe count at which the strap rises and the later one at which it drops,
+both below 255, so the pulse ends before the completion rise that follows the 256th strobe and
+the strap is 0 at the rise. A run whose strap is still 1 at the rise logs a missed window and
+does not claim the pulse leg.
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -30,8 +37,8 @@ STEP_CYCLES = 64
 LEG1_SAMPLE_DELAY = 64
 TAP_RESET_TCK = 16
 MIN_WINDOW_SAMPLES = 1000
-STROBE_RAISE = 100
-STROBE_LOWER = 180
+STROBE_RAISE_MIN = 1
+STROBE_LOWER_MAX = 254
 AFTER_EDGE_SAMPLES = 512
 HOLD_SAMPLE_BOUND = 20000
 RESET_DONE_BOUND = 200000
@@ -50,6 +57,24 @@ class smu_secure_tm_real_sense_window_test_seq:
         self.stamps: dict[str, float] = {}
         self.sites: dict[str, dict] = {}
         self._hold_over = False
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.strobe_raise = 0
+        self.strobe_lower = 0
+        self.missed_window = False
+
+    def _draw(self) -> None:
+        self.strobe_raise = self.rng.randint(STROBE_RAISE_MIN, STROBE_LOWER_MAX - 1)
+        self.strobe_lower = self.rng.randint(self.strobe_raise + 1, STROBE_LOWER_MAX)
+        self.log.info(
+            "SEED: RANDOM_SEED=%d drawn strobe_raise=%d strobe_lower=%d",
+            self.seed,
+            self.strobe_raise,
+            self.strobe_lower,
+        )
+
+    def _drawn(self) -> str:
+        return f"drawn strobe_raise={self.strobe_raise} strobe_lower={self.strobe_lower}"
 
     def _site(self, label: str, bound: int, unit: str) -> dict:
         rec = {"bound": bound, "unit": unit, "used": 0, "last": "none", "hit": False}
@@ -136,8 +161,8 @@ class smu_secure_tm_real_sense_window_test_seq:
         dut = self.dut
         probe = self.probe
         done_rec = self.sites["done_rise_2"]
-        raise_rec = self.sites["strobe_100"]
-        lower_rec = self.sites["strobe_180"]
+        raise_rec = self.sites["strobe_raise"]
+        lower_rec = self.sites["strobe_lower"]
         samples = highs = pulse_samples = pulse_highs = 0
         strap_high = False
         raised = lowered = False
@@ -151,6 +176,16 @@ class smu_secure_tm_real_sense_window_test_seq:
                 and len(probe.rises["sep_fuse_sense_done_o"]) > rises_before
             ):
                 done_rec["hit"] = True
+                if strap_high:
+                    self.missed_window = True
+                    dut.tb_secure_tm_req.value = 0
+                    lower_rec.update(used=cycle + 1, last=f"strobes={strobes} at done", hit=True)
+                    self.log.info(
+                        "OBSERVED missed window: strap still 1 at the completion rise "
+                        "strobes=%d %s",
+                        strobes,
+                        self._drawn(),
+                    )
                 break
             sample = self._bit("tb_secure_tm")
             samples += 1
@@ -158,19 +193,19 @@ class smu_secure_tm_real_sense_window_test_seq:
             if strap_high:
                 pulse_samples += 1
                 pulse_highs += sample
-            if not raised and strobes >= STROBE_RAISE:
+            if not raised and strobes >= self.strobe_raise:
                 dut.tb_secure_tm_req.value = 1
                 strap_high = raised = True
                 raise_rec.update(used=cycle + 1, last=f"strobes={strobes}", hit=True)
-                self._step("S5", f"strap raised at response strobe {strobes}")
-            if raised and not lowered and strobes >= STROBE_LOWER:
+                self._step("S5", f"strap raised at response strobe {strobes} ({self._drawn()})")
+            if raised and not lowered and strobes >= self.strobe_lower:
                 dut.tb_secure_tm_req.value = 0
                 strap_high = False
                 lowered = True
                 lower_rec.update(used=cycle + 1, last=f"strobes={strobes}", hit=True)
         else:
             self._timeout("done_rise_2")
-        for label, rec in (("strobe_100", raise_rec), ("strobe_180", lower_rec)):
+        for label, rec in (("strobe_raise", raise_rec), ("strobe_lower", lower_rec)):
             if not rec["hit"]:
                 rec["used"] = DONE_BOUND
                 rec["last"] = f"strobes={self._strobes() - base} at done"
@@ -191,6 +226,7 @@ class smu_secure_tm_real_sense_window_test_seq:
         self._step("S1", "setup: real sense, strap at 1 before the first cold reset")
         if "skip_fuse_sense" in cocotb.plusargs:
             raise AssertionError("+skip_fuse_sense is set; a real sense is required")
+        self._draw()
         await self._wait_reset_done()
         await RisingEdge(dut.clk_smu_i)
         strap = self._bit("tb_secure_tm_req")
@@ -249,8 +285,8 @@ class smu_secure_tm_real_sense_window_test_seq:
         base = self._strobes()
         self._site("tap_reset", TAP_RESET_TCK, "TCK")
         self._site("done_rise_2", DONE_BOUND, "clk_smu_i")
-        self._site("strobe_100", STROBE_BOUND, "clk_smu_i")
-        self._site("strobe_180", STROBE_BOUND, "clk_smu_i")
+        self._site("strobe_raise", STROBE_BOUND, "clk_smu_i")
+        self._site("strobe_lower", STROBE_BOUND, "clk_smu_i")
         dut.rst_cold_ni.value = 1
         dut.jtag_trst.value = 1
         window_task = cocotb.start_soon(self._window(rises_before, base))
@@ -270,16 +306,24 @@ class smu_secure_tm_real_sense_window_test_seq:
             evidence=CLEAR,
         )
         self.log.info(
-            "CELL strap_1_before_sample pulse_samples=%d highs=%d",
+            "CELL strap_1_before_sample pulse_samples=%d highs=%d %s",
             window["pulse_samples"],
             window["pulse_highs"],
+            self._drawn(),
         )
-        sb.expect_eq(
-            "secure_tm_o samples while the strap pulses at 1 before done",
-            (window["pulse_samples"] > 0, window["pulse_highs"]),
-            (True, 0),
-            evidence=NO_FOLLOW,
-        )
+        if self.missed_window:
+            self.log.info(
+                "CHK-SEP-SECURE-TM-NO-EARLY-FOLLOW: window missed, strap at 1 at the rise; "
+                "leg not claimed %s",
+                self._drawn(),
+            )
+        else:
+            sb.expect_eq(
+                f"secure_tm_o samples while the strap pulses at 1 before done {self._drawn()}",
+                (window["pulse_samples"] > 0, window["pulse_highs"]),
+                (True, 0),
+                evidence=NO_FOLLOW,
+            )
 
         self._step("S6", "after the done rise with the strap at 0")
         after_high = 0
@@ -287,9 +331,13 @@ class smu_secure_tm_real_sense_window_test_seq:
             await RisingEdge(dut.clk_smu_i)
             after_high += self._bit("tb_secure_tm")
         self.log.info("CELL after_edge_strap_0 samples=%d highs=%d", AFTER_EDGE_SAMPLES, after_high)
-        sb.expect_eq(
-            "secure_tm_o samples after done with the strap at 0", after_high, 0, evidence=NO_FOLLOW
-        )
+        if not self.missed_window:
+            sb.expect_eq(
+                f"secure_tm_o samples after done with the strap at 0 {self._drawn()}",
+                after_high,
+                0,
+                evidence=NO_FOLLOW,
+            )
 
         self._step("S7", "timeout paths and ordered fence")
         for label, rec in self.sites.items():

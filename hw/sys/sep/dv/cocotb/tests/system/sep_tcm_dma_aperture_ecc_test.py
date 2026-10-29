@@ -419,9 +419,9 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             "dbg_core_rst_l": str(w.veer.dbg_core_rst_l.value),
             "rst_vec": str(w.veer.rst_vec.value),
         }
-        self.logger.info("CTL-TCM-RESET: core reset state after bring-up %s", state)
+        self.logger.info("CTRL-TCM-RESET: core reset state after bring-up %s", state)
         if any(c not in "01" for v in state.values() for c in v):
-            raise AssertionError(f"CTL-TCM-RESET FAIL: core reset state not known {state}")
+            raise AssertionError(f"CTRL-TCM-RESET FAIL: core reset state not known {state}")
         # All-zero TCM image: every word a valid code word (tb_backdoor_mem).
         for name in ("sep_itcm.hex", "sep_dtcm.hex"):
             with open(os.path.join(os.getcwd(), name), "w") as fh:
@@ -430,7 +430,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         await ClockCycles(top.clk_i, 4)
         top.tcm_load_i.value = 0
         await ClockCycles(top.clk_i, 4)
-        self.logger.info("CTL-TCM-INIT: all-zero ICCM and DCCM image loaded through tcm_load_i")
+        self.logger.info("INFO-TCM-INIT: all-zero ICCM and DCCM image loaded through tcm_load_i")
 
         first = await self._bus_err()
         fc = field_compare(first, DMA_STATUS_RESET, DMA_STATUS_MASK)
@@ -444,8 +444,8 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             fc = field_compare(got, want, _D.mask32(name))
             parts.append(f"{name}: {fc.fields()}")
             if not fc.ok:
-                raise AssertionError(f"CTL-TCM-RANGE FAIL: {name} readback {fc.fields()}")
-        self.logger.info("CTL-TCM-RANGE: %s", " | ".join(parts))
+                raise AssertionError(f"CTRL-TCM-RANGE FAIL: {name} readback {fc.fields()}")
+        self.logger.info("CTRL-TCM-RANGE: %s", " | ".join(parts))
         written = await self.dma.program_transfer(
             src=SRC_STAGE, dst=RB_STAGE, total=WORD_BYTES, chunk=WORD_BYTES, width_enc=WIDTH_ENC
         )
@@ -453,9 +453,9 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             got = await self.dma.rd(_D.addr(name))
             fc = field_compare(got, val, _D.mask32(name))
             if not fc.ok:
-                raise AssertionError(f"CTL-TCM-XFER FAIL: {name} readback {fc.fields()}")
+                raise AssertionError(f"CTRL-TCM-XFER FAIL: {name} readback {fc.fields()}")
         self.logger.info(
-            "CTL-TCM-XFER: transfer registers read back %s",
+            "CTRL-TCM-XFER: transfer registers read back %s",
             " ".join(f"{n}=0x{v:x}" for n, v in written.items()),
         )
 
@@ -617,10 +617,10 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
 
         await self.bring_up_no_cpu()
         full = self.full_cpu_build()
-        self.logger.info("OBS-BUILD: full_cpu=%d", int(full))
+        self.logger.info("INFO-BUILD: full_cpu=%d", int(full))
         if not full:
             self._fail(
-                "CTL-FULL-CPU",
+                "CTRL-FULL-CPU",
                 "the build has the CPU stub, which has no TCM controller; run the leaf on the "
                 "full-CPU default target (+sep_require_full_cpu)",
             )
@@ -658,5 +658,5 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         self.sampler.stop()
         await self.tcm_tap.stop()
         await self.xbar_tap.stop()
-        self.logger.info("OBS-TCM-COPIES: %d secure DMA copies", self.n_copies)
+        self.logger.info("INFO-TCM-COPIES: %d secure DMA copies", self.n_copies)
         self.result_pass(TEST, seed, self.n_checks)

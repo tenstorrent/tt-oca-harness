@@ -32,12 +32,12 @@ a graded pin. ``PIN_BOUND`` is a bench bound: the specification states no
 latency.
 
 Checkers:
-  CTL-PIN-WALK      every inventory pin is in the walk with its inventory
+  CTRL-PIN-WALK      every inventory pin is in the walk with its inventory
                     class: a FAIL names every inventory pin that is not walked
                     and every class mismatch. Walked pins that are not in the
                     inventory are logged with their group and a count per
-                    group (OBS-TEST-EN-UNGRADED), and scopes that the simulator
-                    cannot iterate are logged by name (OBS-TEST-EN-UNWALKABLE).
+                    group (INFO-TEST-EN-UNGRADED), and scopes that the simulator
+                    cannot iterate are logged by name (INFO-TEST-EN-UNWALKABLE).
   CHK-TEST-EN-PINS  every inventory pin equals test_en_i PIN_BOUND clk_i
                     cycles after each edge. A FAIL names every pin that does
                     not (path, class, cell, instantiating module, edge). A pin
@@ -46,7 +46,7 @@ Checkers:
                     counts it in fail_pins and in stuck_0.
 
 Coverage: the test owns ``sep_static_tieoff_cg.cp_test_en_consumer``. Its
-graded window opens after CTL-PIN-WALK passes and the base read, right before
+graded window opens after CTRL-PIN-WALK passes and the base read, right before
 the 0 to 1 edge, and closes after CHK-TEST-EN-PINS. The cells sample only from
 the pass label ``te_pin_pass`` (``env/sep_fcov_gate.py``), which the test
 writes only after CHK-TEST-EN-PINS passes: one bit per edge and class that has
@@ -145,7 +145,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
         in_inventory = {p.path for p in graded}
         others = [p for p in walk.pins if p.path not in in_inventory]
         self.logger.info(
-            "TEST-EN-WALK LOG: root=%s scopes=%d pins=%d inventory=%d index_files=%d unwalkable=%d",
+            "INFO-TEST-EN-WALK LOG: root=%s scopes=%d pins=%d inventory=%d index_files=%d unwalkable=%d",
             walk.root,
             walk.scopes,
             len(walk.pins),
@@ -154,28 +154,28 @@ class sep_test_en_pin_reach_test(sep_base_test):
             len(walk.unwalkable),
         )
         for p in graded:
-            self.logger.info("TEST-EN-PIN LOG: %s group=%s graded=1", p.label(), p.owner)
+            self.logger.info("INFO-TEST-EN-PIN LOG: %s group=%s graded=1", p.label(), p.owner)
         inv_groups = walk.group_counts(graded)
         for owner, n in inv_groups.items():
-            self.logger.info("OBS-TEST-EN-INVENTORY-GROUP: group=%s pins=%d", owner, n)
+            self.logger.info("INFO-TEST-EN-INVENTORY-GROUP: group=%s pins=%d", owner, n)
         other_groups = walk.group_counts(others)
         for owner, n in other_groups.items():
-            self.logger.info("OBS-TEST-EN-UNGRADED: group=%s pins=%d", owner, n)
+            self.logger.info("INFO-TEST-EN-UNGRADED: group=%s pins=%d", owner, n)
         for p in others:
-            self.logger.info("OBS-TEST-EN-UNGRADED pin: %s group=%s", p.label(), p.owner)
+            self.logger.info("INFO-TEST-EN-UNGRADED pin: %s group=%s", p.label(), p.owner)
         for u in walk.unwalkable:
-            self.logger.info("OBS-TEST-EN-UNWALKABLE: %s", u.label())
+            self.logger.info("INFO-TEST-EN-UNWALKABLE: %s", u.label())
         per_class = {c: sum(1 for p in graded if p.cls == c) for c in CLASS_NAMES}
         for line in problems:
-            self.logger.info("CTL-PIN-WALK mismatch: %s", line)
+            self.logger.info("CTRL-PIN-WALK mismatch: %s", line)
         assert not problems, (
-            f"CTL-PIN-WALK FAIL: walked={len(graded)} inventory={len(GRADED_PINS)} "
+            f"CTRL-PIN-WALK FAIL: walked={len(graded)} inventory={len(GRADED_PINS)} "
             f"problems={len(problems)}: "
             + "; ".join(problems[:FAIL_LINES])
             + (" ..." if len(problems) > FAIL_LINES else "")
         )
         self.logger.info(
-            "CTL-PIN-WALK: graded=%d inventory=%d missing=0 class_mismatch=0 %s "
+            "CTRL-PIN-WALK: graded=%d inventory=%d missing=0 class_mismatch=0 %s "
             "walked=%d not_in_inventory=%d unwalkable=%d inventory_groups=%s logged=%s",
             len(graded),
             len(GRADED_PINS),
@@ -191,7 +191,8 @@ class sep_test_en_pin_reach_test(sep_base_test):
         base = pins_not_equal(graded, 0)
         await RisingEdge(dut.clk_i)
         self.logger.info(
-            "TEST-EN-BASE LOG: test_en_i=0 graded pins not 0 before the first edge=%d", len(base)
+            "INFO-TEST-EN-BASE LOG: test_en_i=0 graded pins not 0 before the first edge=%d",
+            len(base),
         )
 
         open_graded_window(TEST, self.logger)
@@ -203,7 +204,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
         failing += [(p, "1to0") for p in fall_bad]
         for p, edge in failing:
             self.logger.info(
-                "TEST-EN-PINS not_following: edge=%s %s value=%s",
+                "INFO-TEST-EN-PINS not_following: edge=%s %s value=%s",
                 edge,
                 p.label(),
                 pin_value(p),
@@ -211,7 +212,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
         parents = sorted({f"{p.parent}.{p.cell}" for p, _e in failing})
         for name in parents:
             n = sum(1 for p, _e in failing if f"{p.parent}.{p.cell}" == name)
-            self.logger.info("TEST-EN-PINS group: parent.cell=%s failing_edges=%d", name, n)
+            self.logger.info("INFO-TEST-EN-PINS group: parent.cell=%s failing_edges=%d", name, n)
         fail_pins = {p.path for p, _e in failing}
         stuck = {
             v: sum(1 for x in fail_pins if rise_val[x] == v and fall_val[x] == v) for v in (0, 1)
@@ -241,7 +242,7 @@ class sep_test_en_pin_reach_test(sep_base_test):
                 if per_class[c] > 0 and not any(p.cls == c for p in bad):
                     cells |= 1 << (2 * te + ci)
         self.logger.info(
-            "TEST-EN-PIN-PASS LOG: cells=%#x %s",
+            "INFO-TEST-EN-PIN-PASS LOG: cells=%#x %s",
             cells,
             " ".join(
                 f"te{te}_{c}={(cells >> (2 * te + ci)) & 1}"

@@ -1,17 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The OCTS system timer advances at the reference clock rate.
+"""The OCTS system timer advances at the clk_smc_i rate.
 
-``clk_rst.adoc`` (The Reference Clock Domain) places the system timers,
-"including the Core Local Interruptor (CLINT) and specialized system timer
-OCTS", in the ``clk_ref_i`` domain; the OCTS architecture describes a
-"continuously incrementing 64-bit counter" that, in PRIMARY mode, advances by
-``CREDIT_VAL`` every ``CREDIT_VAL`` cycles of that clock. Two reads of
-``TIMER_COUNT`` bracket an interval whose ``clk_ref_i`` rising edges the bench
-counts independently; the count delta must lie within the edge count widened
-only by the ``CREDIT_VAL`` credit granularity and a CDC allowance. A counter
-clocked from ``clk_smc_i`` (a different, faster period on every seed) or from
-``clk_periph_i`` at a non-unity ratio falls outside that window.
+``clk_rst.adoc`` (Timer and Debug Timebases) states "OCTS uses ``clk_smc_i``";
+the OCTS architecture describes a "continuously incrementing 64-bit counter"
+that, in PRIMARY mode, advances by ``CREDIT_VAL`` every ``CREDIT_VAL`` cycles of
+that clock. Two reads of ``TIMER_COUNT`` bracket an interval whose ``clk_smc_i``
+rising edges the bench counts independently; the count delta must lie within
+the edge count widened only by the ``CREDIT_VAL`` credit granularity and a
+count-latch allowance. The bench counts ``clk_ref_i`` edges over the same
+window and requires that count to fall outside the window, so a counter clocked
+from the reference clock would fail the bracket.
 
 The CLINT ``mtime`` half of the scenario is not reachable from SEP_IN in this
 bench (at the reset REGION_SIZE the cluster-local window lies outside the local
@@ -57,15 +56,16 @@ CREDIT_VAL_BM = _octs_field("SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bm")
 CREDIT_VAL_BP = _octs_field("SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bp")
 STATUS_RUNNING_BM = _octs_field("SYSTEM_TIMER_OCTS__STATUS__RUNNING_bm")
 STATUS_MODE_BM = _octs_field("SYSTEM_TIMER_OCTS__STATUS__MODE_bm")
+TIMER_START_BM = _octs_field("SYSTEM_TIMER_OCTS__TIMER_START__START_bm")
 CREDIT_VAL_RESET = (SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT & CREDIT_VAL_BM) >> CREDIT_VAL_BP
 assert CREDIT_VAL_RESET > 0
 
-# clk_ref_i edges awaited between the two samples; long enough that a counter
+# clk_smc_i edges awaited between the two samples; long enough that a counter
 # on the wrong clock lands far outside the credit-granularity tolerance.
-REF_WAIT = 400
-# The count crosses a synchronizer to the register domain; a couple of ref
-# periods of latency on top of the credit granularity.
-CDC_SKEW_REF = 4
+WINDOW_EDGES = 3200
+# A few clk_smc_i periods between the count advancing and a register read
+# returning it, on top of the credit granularity.
+LATCH_SKEW_SMC = 4
 START_BOUND_READS = 32
 # Accesses the body issues outside the STATUS poll: the CTRL reset read, the
 # TIMER_START write, and two TIMER_COUNT reads of a LO and a HI register each.
@@ -73,18 +73,18 @@ START_BOUND_READS = 32
 EXPECTED_ACCESSES = 6
 
 
-class smc_ref_clock_timer_rate_test_seq(SmcCsrSeq):
-    """TIMER_COUNT delta bracketed by an independent clk_ref_i edge count."""
+class smc_octs_timer_rate_test_seq(SmcCsrSeq):
+    """TIMER_COUNT delta bracketed by an independent clk_smc_i edge count."""
 
-    def __init__(self, name: str = "smc_ref_clock_timer_rate_test_seq") -> None:
+    def __init__(self, name: str = "smc_octs_timer_rate_test_seq") -> None:
         super().__init__(name)
         self.c0: int | None = None
         self.c1: int | None = None
         self.delta: int | None = None
-        self.ref_edges_lo: int | None = None
-        self.ref_edges_hi: int | None = None
+        self.smc_edges_lo: int | None = None
         self.smc_edges_hi: int | None = None
-        self.tolerance = CREDIT_VAL_RESET + CDC_SKEW_REF
+        self.ref_edges_hi: int | None = None
+        self.tolerance = CREDIT_VAL_RESET + LATCH_SKEW_SMC
 
     async def _read_count(self, label: str) -> int:
         lo = await self.csr_read(f"{label}_LO", OCTS_COUNT_LO)
@@ -99,7 +99,7 @@ class smc_ref_clock_timer_rate_test_seq(SmcCsrSeq):
         await self.csr_read(
             "OCTS_CTRL_RESET", OCTS_CTRL, expected=SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT
         )
-        await self.csr_write("OCTS_TIMER_START", OCTS_TIMER_START, 1)
+        await self.csr_write("OCTS_TIMER_START", OCTS_TIMER_START, TIMER_START_BM)
         status = None
         for _ in range(START_BOUND_READS):
             status = await self.csr_read("OCTS_STATUS", OCTS_STATUS)
@@ -124,50 +124,54 @@ class smc_ref_clock_timer_rate_test_seq(SmcCsrSeq):
         smc_task = cocotb.start_soon(_count(dut.clk_smc_i, "smc"))
         try:
             self.c0 = await self._read_count("OCTS_COUNT_0")
-            n_after_c0 = edges["ref"]
-            for _ in range(REF_WAIT):
-                await RisingEdge(dut.clk_ref_i)
-            n_before_c1 = edges["ref"]
+            n_after_c0 = edges["smc"]
+            for _ in range(WINDOW_EDGES):
+                await RisingEdge(dut.clk_smc_i)
+            n_before_c1 = edges["smc"]
             self.c1 = await self._read_count("OCTS_COUNT_1")
-            n_end = edges["ref"]
-            self.smc_edges_hi = edges["smc"]
+            n_end = edges["smc"]
+            self.ref_edges_hi = edges["ref"]
         finally:
             stop["done"] = True
             ref_task.cancel()
             smc_task.cancel()
 
         self.delta = self.c1 - self.c0
-        self.ref_edges_lo = n_before_c1 - n_after_c0
-        self.ref_edges_hi = n_end
-        assert self.delta >= self.ref_edges_lo - self.tolerance, (
-            f"OCTS TIMER_COUNT advanced too slowly for clk_ref_i: 0x{self.c0:x} -> 0x{self.c1:x} "
-            f"(delta={self.delta}) while at least {self.ref_edges_lo} clk_ref_i edges elapsed "
+        self.smc_edges_lo = n_before_c1 - n_after_c0
+        self.smc_edges_hi = n_end
+        lower = self.smc_edges_lo - self.tolerance
+        upper = self.smc_edges_hi + self.tolerance
+        assert self.delta >= lower, (
+            f"OCTS TIMER_COUNT advanced too slowly for clk_smc_i: 0x{self.c0:x} -> 0x{self.c1:x} "
+            f"(delta={self.delta}) while at least {self.smc_edges_lo} clk_smc_i edges elapsed "
             f"between the two reads (tolerance {self.tolerance})"
         )
-        assert self.delta <= self.ref_edges_hi + self.tolerance, (
-            f"OCTS TIMER_COUNT advanced faster than clk_ref_i: 0x{self.c0:x} -> 0x{self.c1:x} "
-            f"(delta={self.delta}) while only {self.ref_edges_hi} clk_ref_i edges elapsed over "
-            f"the whole window (tolerance {self.tolerance}); clk_smc_i had {self.smc_edges_hi}"
+        assert self.delta <= upper, (
+            f"OCTS TIMER_COUNT advanced faster than clk_smc_i: 0x{self.c0:x} -> 0x{self.c1:x} "
+            f"(delta={self.delta}) while only {self.smc_edges_hi} clk_smc_i edges elapsed over "
+            f"the whole window (tolerance {self.tolerance}); clk_ref_i had {self.ref_edges_hi}"
         )
-        # The bound is only discriminating if the other clock would have
-        # landed outside it on this seed.
-        assert self.smc_edges_hi > self.ref_edges_hi + self.tolerance, (
-            f"clk_smc_i ({self.smc_edges_hi} edges) is not distinguishable from clk_ref_i "
-            f"({self.ref_edges_hi} edges) within the tolerance on this seed"
+        # The bracket only tells the clocks apart when the other clock's edge
+        # count over the same window lies outside it.
+        assert not lower <= self.ref_edges_hi <= upper, (
+            f"clk_ref_i ({self.ref_edges_hi} edges) is not distinguishable from clk_smc_i "
+            f"([{self.smc_edges_lo}, {self.smc_edges_hi}] edges) within the tolerance in this run"
         )
-        self.assert_all_reachable(EXPECTED_ACCESSES + status_reads, "OCTS_REF_RATE")
+        self.assert_all_reachable(EXPECTED_ACCESSES + status_reads, "OCTS_SMC_RATE")
         cocotb.log.info(
-            "CHK-OCTS-TICK-ON-CLK-REF: TIMER_COUNT 0x%x -> 0x%x delta=%d; clk_ref_i edges "
-            "between the reads %d, over the whole window %d (clk_smc_i would have given %d); "
-            "tolerance CREDIT_VAL %d + CDC %d",
+            "CHK-OCTS-TICK-ON-CLK-SMC: TIMER_COUNT 0x%x -> 0x%x delta=%d; clk_smc_i edges "
+            "between the reads %d, over the whole window %d; clk_ref_i had %d, outside "
+            "[%d, %d]; tolerance CREDIT_VAL %d + latch %d",
             self.c0,
             self.c1,
             self.delta,
-            self.ref_edges_lo,
-            self.ref_edges_hi,
+            self.smc_edges_lo,
             self.smc_edges_hi,
+            self.ref_edges_hi,
+            lower,
+            upper,
             CREDIT_VAL_RESET,
-            CDC_SKEW_REF,
+            LATCH_SKEW_SMC,
         )
         cocotb.log.info(
             "CHK-CLINT-TICK-NOT-CLOSED: CLINT mtime is in the cluster-local window, which lies "
