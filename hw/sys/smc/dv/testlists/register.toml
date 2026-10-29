@@ -46,6 +46,16 @@ tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
+# Narrow and zero-strobe writes to plain, watchdog, mutex, mailbox, zeroer and lock registers.
+name = "smc_axil_narrow_zero_strobe_write_test"
+module = "smc_axil_narrow_zero_strobe_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil"]
+run_modes = ["smoke"]
+args = ["+axi_sva_need_sep_in"]
+
+[[tests]]
 # Sub-word reads of 133 register-block instances, strobed FILTER_CONFIG writes, window sweeps.
 name = "smc_regblock_subword_strobe_sweep_test"
 module = "smc_regblock_subword_strobe_sweep_test"

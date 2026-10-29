@@ -56,7 +56,7 @@ includes = [
 # list and the count diverge, so a leaf cannot be added to a feature testlist
 # and silently miss the regression.
 name = "all"
-expected_count = 546
+expected_count = 550
 tests = [
     "smc_dfd_csr_field_access_test",
     "smc_dfx_aperture_extent_test",
@@ -124,6 +124,7 @@ tests = [
     "smc_axil_burst_idle_test",
     "smc_axil_downstream_concurrency_test",
     "smc_axil_idle_test",
+    "smc_axil_narrow_zero_strobe_write_test",
     "smc_canonical_smoke_test",
     "smc_cg_dft_reset_bringup_test",
     "smc_cg_test_mode_bypass_test",
@@ -407,6 +408,7 @@ tests = [
     "smc_periph_regblock_sweep_test",
     "smc_peripheral_instance_decode_test",
     "smc_powergood_glitch_test",
+    "smc_primary_reset_inflight_links_test",
     "smc_primary_reset_scope_test",
     "smc_rdl_field_sweep_test",
     "smc_reference_counter_test",
@@ -437,6 +439,7 @@ tests = [
     "smc_ss_reset_complete_test",
     "smc_state_fault_inject_test",
     "smc_static_cg_sanity_test",
+    "smc_sw_uncore_reset_drain_isolate_test",
     "smc_sys_axi_in_port_test",
     "smc_sys_out_aw_w_split_test",
     "smc_telemetry_address_map_test",
@@ -467,6 +470,7 @@ tests = [
     "smc_uart_rbr_error_path_test",
     "smc_uart_sanity_test",
     "smc_uart_spi_log_engine_test",
+    "smc_warm_reset_inflight_links_test",
     "smc_wdt_key_csr_test",
     "smc_wdt_key_relock_test",
     "smc_wdt_register_map_test",

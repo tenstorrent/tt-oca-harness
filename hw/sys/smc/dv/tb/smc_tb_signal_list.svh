@@ -441,6 +441,12 @@
 `SMC_TB_OUT(logic [smc_pkg::SmcLocalAddrWidth-1:0], tb_axil_external_awaddr)
 `SMC_TB_OUT(logic, tb_axil_efuse_bank_active)
 `SMC_TB_OUT(logic, tb_axil_any_master_active)
+`SMC_TB_OUT(logic [4:0], tb_periph_axil_valid)
+`SMC_TB_OUT(logic [4:0], tb_periph_axil_ready)
+`SMC_TB_OUT(logic [4:0], tb_cpu_front_valid)
+`SMC_TB_OUT(logic [4:0], tb_cpu_front_ready)
+`SMC_TB_OUT(logic [4:0], tb_cpu_mmio_valid)
+`SMC_TB_OUT(logic [4:0], tb_cpu_mmio_ready)
 
 // Output-fabric observability (U6-2). SLVERR on this boundary comes from
 // the SYS_OUT slave agent's fault programming, not a DUT Force / starve knob.

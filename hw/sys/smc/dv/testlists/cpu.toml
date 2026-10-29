@@ -523,6 +523,19 @@ args = [
 ]
 
 [[tests]]
+name = "smc_sw_uncore_reset_drain_isolate_test"
+module = "smc_sw_uncore_reset_drain_isolate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cpu", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
+args = [
+    "+axi_sva_need_sep_in",
+    "+axi_sva_need_sys_in",
+    "+axi_sva_need_cpu_front",
+]
+
+[[tests]]
 name = "smc_flr_isolation_sources_test"
 module = "smc_flr_isolation_sources_test"
 seed = 1
