@@ -534,7 +534,7 @@ Observation probe groups:
   register offset of each PIC register write; tied to 0 on the CPU stub
   build. Read-only copy of DUT nets; no force. Owner: `sep_pic_reg_rand_test`
   (CHK-MEIP-WR-STORE, the count of PIC writes at the `meip[0]` offset;
-  CHK-PIC-STORE, the count at each entry-0 and `meigwclr[N]` offset).
+  CHK-PIC-STORE, the count at each hole, entry-0 and `meigwclr[N]` offset).
 * Bridge-fault pulse probe (`sep_cpu_ctrl_err_pulse_probe_o`): the set term
   and the `err_clr_i` pulse of the seven peripheral register-bridge latches
   and of the two DMA latches (`reg_path_err`, `host_path_err`). Owner:

@@ -49,12 +49,14 @@ follows the console live (``env/sep_fw_console``: graded window on ``M G`` /
 * CHK-SRC0     (firmware) source 0 never sets and never takes a handler, in the
                all-ones and the level active-low legs; control: the source 1
                handler runs once.
-* CHK-PIC-STORE (host) the writes that CHK-ENTRY0, CHK-GWCLR0 and CHK-SRC0
-               grade by a 0 reach the PIC: one write on ``pic_wr_probe_o`` at
-               each entry-0 offset the ``entry0``, ``src0_allones`` and
-               ``src0_lowlevel`` legs write, and at ``meigwclr[N]`` of each
-               drawn entry in the ``gwclr`` leg, so a store that faults or never
-               reaches the PIC fails. A write with an X or Z bit in the leg fails.
+* CHK-PIC-STORE (host) the writes that CHK-HOLE, CHK-ENTRY0, CHK-GWCLR0 and
+               CHK-SRC0 grade by an unchanged or 0 read reach the PIC: two
+               writes on ``pic_wr_probe_o`` at each drawn hole offset in the
+               ``hole`` leg, one at each entry-0 offset the ``entry0``,
+               ``src0_allones`` and ``src0_lowlevel`` legs write, and one at
+               ``meigwclr[N]`` of each drawn entry in the ``gwclr`` leg, so a
+               store that faults or never reaches the PIC fails. A write with an
+               X or Z bit in the leg fails.
 
 Each graded firmware leg (``M G``) holds only accesses that its CHK lines
 grade. The owner-318 access and value cells of ``sep_pic_reg_map_cg`` are held
@@ -574,8 +576,9 @@ class sep_pic_reg_rand_test(sep_base_test):
         self.result_pass(TEST, seed, n_fw + n_host)
 
     def _chk_pic_store(self) -> int:
-        """CHK-PIC-STORE: one PIC write at each graded offset of the zero-result legs."""
+        """CHK-PIC-STORE: the PIC writes at each graded offset of the zero-result legs."""
         legs = {
+            "hole": [ha & 0x7FFF for ha in self.tcfg.holes for _ in range(2)],
             "entry0": [pic_off(r, 0) for r in ENTRY0_ALL],
             "gwclr": [pic_off("MEIGWCLR", n) for n in self.tcfg.entries],
             "src0_allones": [pic_off(r, 0) for r in ENTRY0_ALL],
@@ -584,13 +587,16 @@ class sep_pic_reg_rand_test(sep_base_test):
         for leg, offs in legs.items():
             lo, hi = self._leg_clk(leg)
             win = [off for clk, off in self.writes if lo <= clk < hi]
-            got = [win.count(off) for off in offs]
+            uniq = list(dict.fromkeys(offs))
+            got = [win.count(off) for off in uniq]
+            want = [offs.count(off) for off in uniq]
             body = (
-                f"leg={leg} offsets={','.join(f'0x{o:04x}' for o in offs)} "
-                f"writes={','.join(str(n) for n in got)} expect=1 xz_writes={win.count(-1)} "
+                f"leg={leg} offsets={','.join(f'0x{o:04x}' for o in uniq)} "
+                f"writes={','.join(str(n) for n in got)} expect={','.join(str(n) for n in want)} "
+                f"xz_writes={win.count(-1)} "
                 f"pic_writes_other={sum(1 for o in win if o not in offs and o >= 0)}(logged)"
             )
-            if any(n != 1 for n in got) or -1 in win:
+            if got != want or -1 in win:
                 raise AssertionError(f"CHK-PIC-STORE FAIL seed={self.tcfg.seed} {body}")
             self.logger.info("CHK-PIC-STORE PASS seed=%d %s", self.tcfg.seed, body)
         return len(legs)
