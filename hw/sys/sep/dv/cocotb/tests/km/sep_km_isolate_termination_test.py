@@ -381,7 +381,7 @@ class sep_km_isolate_termination_test(sep_base_test):
         await self._set_reset(dest.rst_bit, held=True, tag=f"{dest.name}_park")
         waited = await self._await_bit(km_iso, 1, f"{dest.name} km path isolated")
         self.logger.info(
-            "INFO-KM-ISO-PARK: dest=%s km path isolated %d clocks after the SW_RESET_N readback",
+            "OBS-KM-ISO-PARK: dest=%s km path isolated %d clocks after the SW_RESET_N readback",
             dest.name,
             waited,
         )

@@ -4687,9 +4687,9 @@ differs from c~ in at least one word: the engine did not accept the signature.
 |===
 
 The leaf also logs two lines per reject case that no checker grades.
-`OBS-HINT-REJECT-TIMING` (pure cases) records `timing=early` when VALID rose
+`OBS-HINT-REJECT-TIMING` (pure cases) logs `timing=early` when VALID rose
 before `MSG_STREAM_READY` and `timing=late` when the whole message was streamed.
-`OBS-HINT-REJECT-RES` records the 16 words of `MLDSA_VERIFY_RES` and whether they
+`OBS-HINT-REJECT-RES` logs the 16 words of `MLDSA_VERIFY_RES` and whether they
 are the inverted c~ (`res=preload`), all zero (`res=zero`) or another value
 (`res=other`).
 
@@ -4778,7 +4778,7 @@ alone: READY set, and VALID, ERROR and MSG_STREAM_READY clear (`adams_bridge.ado
 |===
 
 The leaf also logs one line per zeroize that no checker grades.
-`OBS-ABR-ZEROIZE-CYCLES` records `engine`, the `clk_i` edges from the zeroize
+`OBS-ABR-ZEROIZE-CYCLES` logs `engine`, the `clk_i` edges from the zeroize
 request to the sequencer's return to RESET; `bus`, the cycles from the `ZEROIZE`
 write's completion to the first STATUS read that returns READY after one that
 did not; and `first`, whether the first STATUS read after the write still
