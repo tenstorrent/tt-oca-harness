@@ -88,6 +88,8 @@ required checks; it grades nothing). Each walk names its required checks
                            the remaining lifecycle bits with both tokens matched
                            changes nothing.
   8 + transient RMA
+    * CTRL-TRANSIENT-EN-ARMED the TRANSIENT_RMA_EN shadow bit 0 reads 1 after
+                             sense (``efuse_shadow_probe_o``), so both cells run armed.
     * CHK-TRANSIENT-NO-TOKEN with TRANSIENT_RMA_EN armed and no token presented,
                              the state holds at PROD_END.
     * CHK-TRANSIENT-INVALID  the transient path applies the same W1S and token
@@ -106,8 +108,8 @@ collapsed comparator code) and ``CTRL-TOKEN-SIP-HELD`` (the SIP match before
 CHK-INVALID-TERM) record the preconditions of the hold cells.
 
 Log-only, every cell: ``OBS-LC-UPPER`` (LC_STATE[31:8] written, prior and read:
-the RDL gives ``rsvd`` as "Unused" and the fuse-field table gives LC_STATE as
-set-only, so no text states the readback after a write), ``OBS-LC-STATE-PORT``
+the RDL gives ``lc_state`` and ``rsvd`` as sw = r and ``rsvd`` as "Unused", and
+the fuse-field table gives LC_STATE as SW writable set-only; the texts disagree), ``OBS-LC-STATE-PORT``
 (the ``lc_state_o`` port, tap ``lc_state_probe_o``, beside the ``LC_STATE`` shadow
 word at ``efuse_shadow_probe_o``); every write cell: ``OBS-LC-WR-NIBBLE`` (bits
 [7:4] of the write data and of the readback word: the specification does not
@@ -127,7 +129,8 @@ from functools import partial
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env.sep_efuse_image import LC_WORD_IDX, lc_encode
+from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage, lc_encode
+from env.sep_efuse_test_lib import shadow_word
 from env.sep_lc_transition import SIP_DIS, SYS_DIS, SepLcTransitionCfg
 from env.sep_lcc_golden import (
     LC_PROD,
@@ -419,9 +422,10 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 mark,
                 got_upper,
             )
-        # LC_STATE[31:8]: the RDL gives ``rsvd`` as "Unused" and the fuse-field
-        # table gives LC_STATE as set-only, so no text states the readback after
-        # a write; logged as an open question.
+        # LC_STATE[31:8]: the RDL gives ``lc_state`` and ``rsvd`` as sw = r and
+        # ``rsvd`` as "Unused" (sep_efuse_map.rdl, LC_STATE), while the fuse-field
+        # table gives LC_STATE as SW writable set-only (otp_fuse_controller.adoc,
+        # Fuse Fields). The texts disagree, so the readback after a write is logged.
         self.logger.info(
             "OBS-LC-UPPER LOG tag=%s wrote=0x%08x prior=0x%08x read=0x%08x "
             "overwrite=%d or_merge=%d",
@@ -618,6 +622,15 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         """Transient RMA: the same gates, with no bus request at all."""
         expected = lc_state_next(LC_PROD_END, 0x2, sip_match=True, chiplet_match=False)
         assert is_invalid_lc(expected), "test bug: PROD_END + bit1 should be INVALID"
+
+        en = shadow_word(self, SepEfuseImage.field("TRANSIENT_RMA_EN").word) & 1
+        assert en == 1, (
+            f"CTRL-MISSING TRANSIENT-EN-ARMED: TRANSIENT_RMA_EN shadow bit 0 reads {en} "
+            "after sense, staged 1"
+        )
+        self.logger.info(
+            "CTRL-TRANSIENT-EN-ARMED seen: seed=%d staged=1 shadow=%d", self.cfg_lc.seed, en
+        )
 
         # TRANSIENT_RMA_EN is armed but no token has been presented. The state
         # must hold: the transient path applies the token gates, it does not

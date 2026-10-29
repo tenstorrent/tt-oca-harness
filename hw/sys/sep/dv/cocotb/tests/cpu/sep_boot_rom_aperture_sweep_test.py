@@ -37,7 +37,9 @@ Checks:
   CHK-ROM-NOECC    : a 1-bit or 2-bit flip in a stored word reads back as the
                      whole flipped 64-bit word with no trap and no NMI; the
                      neighbour words read exact (rom.adoc:59-60, no ECC or
-                     integrity-error sideband). Positive probes in the same
+                     integrity-error sideband), and every PR-LSU-ROM R beat
+                     answers OKAY (a ROM load is a legal access; AMBA AXI
+                     IHI0022, OKAY: normal access success). Positive probes in the same
                      line: every flipped word holds image ^ mask in the macro
                      before the loads (CTRL-FLIP-STORED), and PR-ROM carries a
                      request at exactly the planned flip-leg words. Control:

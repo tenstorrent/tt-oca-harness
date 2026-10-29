@@ -21,7 +21,9 @@ OR-merged with the writes of the leaf).
                     ``secure_tm_o`` equal s (``CHK-HOOK FAIL`` otherwise).
                     In leg C the SEC_DIS cell is all ones with ``security_disable_o``
                     high and the cell after the mismatch is the demotion row with it
-                    low. The RMA_CHIPLET SEC_DIS cell is logged ``ctl=1``.
+                    low. The RMA_CHIPLET SEC_DIS cell is logged ``ctl=1``. Each
+                    leg C demotion cell also requires the write response OKAY and
+                    both DEMOTE registers equal to the RW1S golden.
   CHK-GATE-BOUND    every read with SEC_DIS 0: no bit outside the OR of the SEC_DIS 0
                     rows of the state (model shadows). A read whose mask is all ones
                     logs ``INFO-GATE-BOUND LOG ... graded=0``.
@@ -56,7 +58,8 @@ OR-merged with the writes of the leaf).
   CHK-RMA-BYPASS    leg D: in RMA_SIP and RMA_CHIPLET both disable shadows read the
                     staged values and ``FEAT_CTRL`` equals the row.
   CHK-DIS-EARLIER   leg D: after a write of 0 to ``SIP_DIS`` and of ~S to ``SYS_DIS``,
-                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0.
+                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0; both writes
+                    are answered OKAY (set-only, unlocked: a legal write).
   CHK-DIS-STEP      leg D: after each walk write the owner shadow equals the OR-merge
                     golden and ``FEAT_CTRL`` the row; after the cold reset both shadows
                     read the staged 0 and ``FEAT_CTRL`` the undemoted row.
@@ -88,6 +91,7 @@ from env.sep_efuse_image import LC_FIELD_MASK, LC_WORD_IDX, lc_encode
 from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
+    DFT_GATE_BITS,
     DIS_GROUPS,
     LEG_B,
     LEG_C,
@@ -147,9 +151,9 @@ PROGRAM_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_do
 M32 = 0xFFFF_FFFF
 M64 = (1 << 64) - 1
 ALL_ONES = M64
-# Leg E disable bits (lifecycle_controller.adoc, Disable Vector Format and Debug and
-# Test Port Path Gating, rows DFT-inserted SEP fuse path and DFT-inserted SMC fuse path).
-SEP_DBG, CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG, SIP_DBG = 0, 1, 2, 3, 24
+# Leg E disable bits, positions from the RDL LC_DISABLE fields (lifecycle_controller.adoc,
+# Disable Vector Format and Debug and Test Port Path Gating).
+SEP_DBG, CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG, SIP_DBG = DFT_GATE_BITS
 LEG_E_ORDER = (SEP_DBG, CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG, SIP_DBG)
 SEP_CASE_BITS = (SIP_DBG, CHIPLET_DBG, SEP_DBG, SEP_FUSE_DBG)
 SMC_CASE_BITS = (SIP_DBG, CHIPLET_DBG, SMC_FUSE_DBG)
@@ -643,24 +647,41 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             mismatch_reads=reads,
         )
 
+    async def _demote_cell(self, reg_n: int) -> None:
+        """Leg C demote write, then a FEAT_CTRL cell that also grades the write.
+
+        The write is answered OKAY and DEMOTE_1/2 read back the RW1S golden, so a lost
+        write fails also in a state whose profile row does not depend on demotion.
+        """
+        await self._write_demote(reg_n, "demote")
+        got = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
+        exp = {r: self._dem_value(r) for r in (1, 2)}
+        reg, probe = await self._feat()
+        self._feat_cell(
+            "c",
+            reg,
+            probe,
+            sdis_port="na",
+            step_ok=self._wr_resp == 0 and got == exp,
+            wr_resp=self._wr_resp,
+            demote1_exp=f"0x{exp[1]:x}",
+            demote1_rd=f"0x{got[1]:x}",
+            demote2_exp=f"0x{exp[2]:x}",
+            demote2_rd=f"0x{got[2]:x}",
+        )
+
     async def _leg_c(self) -> None:
         await chk_bind(self.chk)
         self.sdis_seen = False
         reg, probe = await self._feat()
         self._feat_cell("c", reg, probe, sdis_port="na")
         await self._sdis_cell()
-        await self._write_demote(1, "demote")
-        reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._demote_cell(1)
         await self._sdis_cell()
-        await self._write_demote(2, "demote")
-        reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._demote_cell(2)
         await self._sdis_cell()
         await self._cold_reset()
-        await self._write_demote(2, "demote")
-        reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._demote_cell(2)
         await self._sdis_cell()
         close_graded_window(self.logger)
         await self._cold_reset()
@@ -721,7 +742,9 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             and sys_ == self.sys_m
             and reg & s == 0
             and reg == row.value
-            and probe == row.value,
+            and probe == row.value
+            and resp_sys == 0
+            and resp_sip == 0,
             state=self.state,
             S=f"0x{s:016x}",
             sip_got=f"0x{sip:016x}",

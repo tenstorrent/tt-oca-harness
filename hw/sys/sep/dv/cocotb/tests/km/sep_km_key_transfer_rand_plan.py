@@ -327,6 +327,7 @@ SHARD_EVIDENCE = {
         "CHK-BANKS",
         "CHK-ENG-ORDER",
         "CHK-AES-NOKEY",
+        "CHK-DELIV-COUNT",
     ),
 }
 POLICY_SHARD = 4

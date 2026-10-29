@@ -9,7 +9,7 @@ the test rebuilds the same plan from the same seed for its golden and checks
 the sha256 of the staged file against it.
 
 Contract (spec only): ``hw/ip/key_manager/doc/architecture.adoc`` "OTP Inputs
-and Readout", "Errors and reset", "Scan and Scan-Dump Protection";
+and Readout", "Reset Conditioning", "Scan and Scan-Dump Protection";
 ``hw/ip/key_manager/regs/gen/adoc/km_csr.adoc`` "OTP_LIFE_CYCLE" through
 "OTP_READ_LOCK_COLD", "IRQ_STATUS", "IRQ_SET", "OTP_CHANGE_STATUS";
 ``hw/sys/sep/doc/otp_fuse_controller.adoc`` "Fuse Fields";
@@ -66,7 +66,7 @@ not stated), ``OBS-OTP-LOCK-RESP`` (the response of a locked-field read, not
 stated; only its zero data is graded).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
-draw is logged on a ``DRAW`` line.
+draw is logged on an ``INFO-DRAW`` line.
 
 The fuse array changes in the simulation only through ``EFUSE_PROGRAM_CTRL``
 (host writes, staged image unlocked); the golden of every later sense is the
@@ -282,9 +282,9 @@ class sep_km_otp_interface_rand_test(sep_base_test):
 
     def _draw(self, name: str, value) -> None:
         if isinstance(value, int):
-            self.logger.info("DRAW %s=0x%x", name, value)
+            self.logger.info("INFO-DRAW %s=0x%x", name, value)
         else:
-            self.logger.info("DRAW %s=%s", name, value)
+            self.logger.info("INFO-DRAW %s=%s", name, value)
 
     async def _run(self, ops: list[kp.PokeOp], **kw) -> list[kp.PokeResult]:
         return await self.poke.run(ops, timeout_cycles=LIST_TIMEOUT, allow_unknown=True, **kw)
@@ -414,11 +414,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         tm = self.rd(dut.secure_tm_o)
         await RisingEdge(dut.clk_i)
         self.logger.info(
-            "LOG %s cold reset strap=%d: sep_reset_n release +%d clk, secure_tm_o=%d",
-            boot,
-            strap,
-            rel,
-            tm,
+            "INFO-COLD-RESET boot=%s strap=%d sep_reset_n_release_clk=%d", boot, strap, rel
         )
         self.swrst = SepSwReset(self)
         await self._km_boot(boot)
@@ -547,15 +543,15 @@ class sep_km_otp_interface_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         fp = plan(TEST, seed)
         self.fp = fp
         # The KM OTP field values of the current fuse array: the staged plan
         # plus every bit this leaf programs.
         self.otp_fields = dict(fp.otp_fields)
-        self.logger.info("DRAW fuse_plan %s", fp.summary())
+        self.logger.info("INFO-DRAW fuse_plan %s", fp.summary())
         lc_name = {0x0: "TEST_DEV", 0x1: "PROD"}.get(fp.lc_raw, f"0x{fp.lc_raw:x}")
-        self.logger.info("LC lc=%s", lc_name)
+        self.logger.info("INFO-LC lc=%s", lc_name)
         self.masks = m.lock_rounds(fp.lock_mask_a)
         self._draw("lock.a", self.masks["a"])
         self._draw("lock.not_a", self.masks["not_a"])
@@ -596,9 +592,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         dut.test_en_strap_i.value = 0
         rel = await self._wait_sep_reset_release()
         self.tm0 = self.rd(dut.secure_tm_o)
-        self.logger.info(
-            "LOG boot1 strap=0: sep_reset_n release +%d clk, secure_tm_o=%d", rel, self.tm0
-        )
+        self.logger.info("INFO-COLD-RESET boot=boot1 strap=0 sep_reset_n_release_clk=%d", rel)
         self.swrst = SepSwReset(self)
         self.poke = SepKmPoke(self)
         open_graded_window(TEST, self.logger)
@@ -698,9 +692,6 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             fields_staged=sum(1 for d in diff.values() if not d),
             lock=_h(ro.lock),
             lock_cold=_h(ro.lock_cold),
-        )
-        self.logger.info(
-            "LOG boot1 status: change=%s irq=%s secure_tm_o=%d", _h(ro.change), _h(ro.irq), self.tm0
         )
 
     # --- steps 4 to 6: lock rounds ------------------------------------------------------
@@ -978,7 +969,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
                 irq_change=int(bool(leg.irq & m.IRQ_OTP_CHANGE)),
             )
         self.logger.info(
-            "LOG HK-OTP %s points=%s mask_bits=%d active_clocks=%d",
+            "INFO-HK-OTP leg=%s points=%s mask_bits=%d active_clocks=%d",
             label,
             ",".join(p.text() for p in pts),
             bin(mask).count("1"),
@@ -1118,9 +1109,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         async def on_sync(_k: int) -> None:
             seq = SepLccDemoteSeq(group)
             await self.start_seq(seq)
-            self.logger.info(
-                "LOG DEMOTE_%d host readback demote=%s lock=%s", group, seq.demote, seq.lock
-            )
+            self.logger.info("INFO-DEMOTE-WRITE group=%d", group)
             return None
 
         r = await self._run(o.ops, on_sync=on_sync)
@@ -1333,7 +1322,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             got, rd_ok = await self._host(SepAxiOp.READ, fld.shadow_addr)
             landed += int(rd_ok and got == want)
             host.append(f"{name}:{_h(staged)}->{_h(got)} wr_ok={int(wr_ok)} rd_ok={int(rd_ok)}")
-        self.logger.info("LOG shadow writes %s", " ".join(host))
+        self.logger.info("INFO-SHADOW-WRITES %s", " ".join(host))
         self.notkm_a = pre
         await self._run([kp.delay(QUIET)])
         post = await self._readout("boot5_post_shadow")
@@ -1403,7 +1392,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             self.model.words[fld.word + w] |= 1 << b
             if name in self.otp_fields:
                 self.otp_fields[name] |= 1 << (32 * w + b)
-        self.logger.info("LOG fuse program %s", " ".join(info))
+        self.logger.info("INFO-FUSE-PROGRAM %s", " ".join(info))
         return done, info
 
     async def _shadow_bits(self, bits: list[FuseBit]) -> tuple[bool, list[str]]:

@@ -1827,8 +1827,12 @@ them.
 |===
 
 Machine records keep their own names: `RUN-IDENTITY*`, `EVIDENCE_SUMMARY`,
-`EVIDENCE-REQUIRED`, `FCOV-GATE`, `FCOV-QUIET`, `FW-CONSOLE`, `RESULT`, and
-the firmware `M G`, `M C` and `REQ` lines.
+`EVIDENCE-REQUIRED`, `FCOV-GATE`, `FCOV-QUIET`, `FW-CONSOLE`, `RESULT`, the
+firmware `M G`, `M C` and `REQ` lines, and the firmware data records of
+`sep_pic_pending_map_walk_rand_test` (`MEIP`, `PARAMS`, `PARAMS2`, `FILL`, `FE`,
+`SINGLE`, `ALERT`, `GW`, `GWCLR`, `HOLD`, `CLRIDLE`, `IDLE-STATUS`). A data
+record carries register reads and parameter echoes that the host parses and
+grades in its own `CHK-` and `CTRL-` lines.
 
 === Coverage Strategy
 

@@ -44,8 +44,9 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    status reads done after the encryption.
 * CHK-ALERT-MEIP   meip[1] bit 1 (edge source 33) reads 1 after each alert
                    kind, before its meigwclr write.
-* CHK-MASKED-CLEAR the meip words equal the reset baseline after the masked
-                   report and the meigwclr writes to sources 12 and 33.
+* CHK-MASKED-CLEAR the held edge bits of sources 12 and 33 read 1 with
+                   ``meie`` and ``meipl`` back at 1, and the meip words equal
+                   the reset baseline after the meigwclr writes to both.
 * CHK-GW-CELL, CHK-EDGE-HOLD, CHK-HOLD, CHK-CLR-IDLE, CHK-GWCLR-VALUE,
   CHK-GW-NONVAC    the gateway cells LH, LL, EH and EL (EL: the hold after the
                    deassertion and the reassertion, and the clear), the edge
@@ -1146,12 +1147,15 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self._chk_slotless()
         self._chk_gateway()
         self._chk_ext()
+        _, ms = self._meip("masked_set")
+        held = [(ms[s // 32] >> (s % 32)) & 1 for s in (SRC_DMA_ALERT, SRC_CRYPTO_ALERT)]
         _, mc = self._meip("masked_clr")
         base = self._meip("reset")[1]
         self._check(
-            meip_masked(mc) == meip_masked(base),
+            held == [1, 1] and meip_masked(mc) == meip_masked(base),
             "CHK-MASKED-CLEAR",
-            f"meip={_hexw(mc)} baseline={_hexw(base)} (unstated idle sources masked)",
+            f"held_src12={held[0]} held_src33={held[1]} meip={_hexw(mc)} "
+            f"baseline={_hexw(base)} (unstated idle sources masked)",
         )
         n_eh = sum(1 for s in GW_SRCS if c.cell(s) == "EH")
         want = {

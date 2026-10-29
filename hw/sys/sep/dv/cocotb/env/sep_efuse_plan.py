@@ -266,10 +266,14 @@ if (DBG1_MASK, DBG2_MASK, FUNC_MASK) != (0xFF_FFFF, 0xFF_FFFF << 24, 0xFFFF << 4
         f"LC_DISABLE groups {DBG1_MASK:#x}/{DBG2_MASK:#x}/{FUNC_MASK:#x} differ from the "
         "specification layout DBG_1 [23:0], DBG_2 [47:24], Function [63:48]"
     )
-# The five named disable bits of the DFT fuse gate ports: SEP_DBG 0, CHIPLET_DBG 1,
-# SEP_FUSE_DBG 2, SMC_FUSE_DBG 3 and SIP_DBG 24 (lifecycle_controller.adoc, SEP
-# feature-disable vector table and Debug and Test Port Path Gating).
-DFT_GATE_BITS = (0, 1, 2, 3, 24)
+# The five named disable bits of the DFT fuse gate ports, in the order SEP_DBG,
+# CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG, SIP_DBG, at the positions of their RDL
+# LC_DISABLE fields (lifecycle_controller.adoc, SEP feature-disable vector table and
+# Debug and Test Port Path Gating).
+DFT_GATE_BITS = tuple(
+    _lc_disable_mask(f).bit_length() - 1
+    for f in ("sep_debug", "chiplet_dbg", "sep_fuse_dbg", "smc_fuse_dbg", "sip_debug")
+)
 # Bits that the walk of sep_lcc_feat_ctrl_state_matrix_rand_test weights double and
 # pins to the owner SIP_DIS in TEST_DEV and SYS_DIS in PROD (VPLAN entry).
 WALK_PINNED_BITS = (0, 1, 2, 3, 4, 23, 24, 25, 47, 48, 63)

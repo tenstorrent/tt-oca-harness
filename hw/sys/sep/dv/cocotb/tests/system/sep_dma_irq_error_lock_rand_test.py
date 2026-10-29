@@ -1519,13 +1519,13 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         self.cfg_t = c = _Cfg(seed)
         self.n_checks = 0
         self.logger.info(
-            "PLAN seed=%d L1 6 trials, L2 5 kinds + width-2 control + DONE and CHUNK_DONE "
+            "INFO-PLAN LOG seed=%d L1 6 trials, L2 5 kinds + width-2 control + DONE and CHUNK_DONE "
             "release, L3 outside copy + zero-fill control + lock from idle and after an error "
             "with 4 unlock attempts each, L4 2 ADDR_HI sides (logged) + ADDR_HI=0 control, L5 4 "
             "tied-off ASID starts + ASID 0x7 control + ABORT control; every trial from a cold reset",
             seed,
         )
-        self.logger.info("DRAW %s", c.draw_line())
+        self.logger.info("INFO-DRAW LOG %s", c.draw_line())
 
         image = self.select_efuse_image(lc_raw=LC_PROD, fixed={"SIP_DIS": 0, "SYS_DIS": 0})
         self.write_efuse_image(image)

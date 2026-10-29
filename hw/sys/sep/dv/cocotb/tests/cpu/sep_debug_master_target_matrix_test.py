@@ -51,7 +51,9 @@ Checks:
                   of the access) and in ``sbdata``, and the independent path
                   still reads ``new`` after it. ``sbdata`` holds the write value
                   from the write, so a read whose data never arrives fails.
-                  ``sberror`` reads 0 after the write and after the read. On
+                  ``sberror`` reads 0 after the write and after the read, and
+                  the R beat answers OKAY (each target is a legal access, so
+                  the golden code is OKAY, AMBA AXI IHI0022). On
                   PR-DBG-SB each access shows one write and one read record
                   with ID bits [2:1] = 0, AWSIZE = ARSIZE = log2 of the access
                   bytes, AWLEN = ARLEN = 0, one W beat whose strobes are the byte
@@ -105,8 +107,8 @@ Checks:
   CHK-DBG-POOL-RD : (entry S) one 64-bit debug-master read of the entropy-pool
                   ``STATUS`` (``hw/sys/sep/doc/entropy_pool.adoc:34``,
                   non-destructive; ``:40-41``, one 64-bit access) shows one AR at
-                  ``STATUS`` with ARSIZE 3 and one R beat on PR-DBG-SB,
-                  ``sberror`` 0, the bench LSU 64-bit reads of ``STATUS`` before
+                  ``STATUS`` with ARSIZE 3 and one R beat (OKAY: a legal
+                  access, AMBA AXI IHI0022) on PR-DBG-SB, ``sberror`` 0, the bench LSU 64-bit reads of ``STATUS`` before
                   and after it agree, and ``sbdata`` equals both on the
                   ``STATUS`` fields
                   (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:149``).
@@ -163,9 +165,11 @@ Checks:
                   the debug master reaches ``sep_crypto``,
                   ``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:129``).
   CHK-DBG-SBA-REG: (entry S) 64-bit debug-master read and write of
-                  ``START_ADDR`` of a disabled inbound filter entry and of
-                  ``DEMOTE_2``: each R or B beat answers OKAY and ``sberror``
-                  reads 0; the read returns in ``sbdata`` the value the bench LSU
+                  ``START_ADDR`` of a disabled, unlocked inbound filter entry
+                  and of ``DEMOTE_2``: each R or B beat answers OKAY and
+                  ``sberror`` reads 0 (both are legal accesses: ``sw = rw``,
+                  no lock set, so the golden code is OKAY, AMBA AXI IHI0022);
+                  the read returns in ``sbdata`` the value the bench LSU
                   master read before the instance; after the write the bench LSU
                   master reads the written value on the ``start_addr`` field,
                   rounded to the granule only when START and END share one
@@ -254,7 +258,13 @@ from env.sep_jtag_dmi import (
 from env.sep_seeded_rng import SepSeededRng
 from ocah_jtag_vip import OcahJtagMasterDriver
 from sep_base_test import sep_base_test
-from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, SEP_RESET_CTRL, RegBlock, sym
+from sep_reg_meta import (
+    AP_OUTPUT_REMAP_CTRL_0,
+    INBOUND_FILTER_CTRL_0,
+    SEP_RESET_CTRL,
+    RegBlock,
+    sym,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import SepDmaOps, SepMemWords
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -386,6 +396,7 @@ ISO_DATA = 0x1501_A7ED
 # (hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:22-45), so a
 # set bit stays set; that write is the last access of the leaf.
 DEMOTE_2 = sym("SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR")
+F_LOCKED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "locked")
 
 # AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:178-181, :314-315).
 REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
@@ -1004,7 +1015,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 cmp += f" upper_kept={int(up_ok)}"
         else:
             cmp = f"field_mask=0x{mask:x} " + " ".join(rsvd)
-        ok = ok and acc.before != acc.wr and acc.sberr == (0, 0)
+        ok = ok and acc.before != acc.wr and acc.sberr == (0, 0) and r_resp == RESP_OKAY
         w = 2 * acc.size
 
         def h(v: int | None) -> str:
@@ -1015,7 +1026,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             f"before={h(acc.before)} wr={h(acc.wr)} cpu_path={h(acc.mid)} "
             f"new={h(acc.new)} new_rb={h(acc.new_rb)} r_data={h(r_data)} rd={h(acc.rd)} "
             f"cpu_path_end={h(acc.after)} sberror_wr={acc.sberr[0]} sberror_rd={acc.sberr[1]} "
-            f"rresp_obs={'X' if r_resp is None else r_resp} {cmp}"
+            f"rresp={'X' if r_resp is None else r_resp} {cmp}"
         )
         return ok, text
 
@@ -1212,6 +1223,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             and len(r) == 1
             and r_data == rd
             and rerr == 0
+            and r[0].resp == RESP_OKAY
             and stable.ok
             and c0.ok
             and c1.ok,
@@ -1219,7 +1231,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             f"arsize={_h(ar[0].size if ar else None, 1)} sberror={rerr} "
             f"sbdata={_h(rd)} r_data={_h(r_data)} lsu_before={_h(before)} "
             f"lsu_after={_h(after)} lsu_stable={int(stable.ok)} field_mask=0x{POOL_STATUS_MASK:x} "
-            f"rsvd_obs=0x{c0.rsvd:x} rresp_obs={_h(r[0].resp if r else None, 1)}",
+            f"rsvd_obs=0x{c0.rsvd:x} rresp={_h(r[0].resp if r else None, 1)}",
         )
         mark = self.sb_tap.mark()
         werr = await self.dmi.sba_write(POOL_STATUS, wval, size=8)
@@ -1480,13 +1492,17 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         """
         clk = cocotb.top.clk_i
         hole = HOLE_FIRST + 8 * self.rng.randrange((HOLE_LAST - HOLE_FIRST) // 8 + 1)
+        # An unlocked entry makes the FILT_START write a legal access, whose golden
+        # response is OKAY (filter_ctrl.rdl, locked: a locked entry refuses writes).
         disabled = {}
         for i in range(INFILT_ENTRIES):
-            cfg = await self._lsu(SepAxiOp.READ, INFILT_BASE + i * FILTER_STRIDE + FILTER_CONFIG)
-            if not cfg & F_ENTRY_ENABLED:
+            cfg = await self._lsu(
+                SepAxiOp.READ, INFILT_BASE + i * FILTER_STRIDE + FILTER_CONFIG, length=8
+            )
+            if not cfg & (F_ENTRY_ENABLED | F_LOCKED):
                 disabled[i] = cfg
         if not disabled:
-            raise AssertionError("set-up: no disabled inbound filter entry")
+            raise AssertionError("set-up: no disabled and unlocked inbound filter entry")
         filt = self.rng.choice(list(disabled))
         filt_start = INFILT_BASE + filt * FILTER_STRIDE + FILTER_START_ADDR
         demote_bit = 2 + self.rng.randrange(62)

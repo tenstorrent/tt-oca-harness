@@ -54,7 +54,9 @@ Checkers:
                   windows of words from the start of window T (a wait bound,
                   not a graded latency), PF reads 1, and the peak of
                   ANY_FAIL_COUNT is at least T. Control: ALERT = PF = 0 and
-                  ANY_FAIL_COUNT = 0 before the burst.
+                  ANY_FAIL_COUNT = 0 before the burst. Its FCOV cells are
+                  released only when the peak is exactly T; otherwise the leaf
+                  logs INFO-PF-TRIP-COUNT-HOLD and releases none.
   CHK-PF-TRIP-HOLD   every trip: at a read after the clean window that follows
                   window T has ended, ALERT = PF = 1, and ANY_FAIL_COUNT never
                   read above T. Control: the clean noise ran for at least
@@ -505,10 +507,10 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=BASELINE_PARK)
         seed = self.random_seed()
         plan = draw_plan(seed, shard)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self.esrc = _Esrc(self)
         self.clk = SepBitWatch(dut.rst_ni, {"rst_ni": 0}, name="clk_count").start()
         self.noise = SepEsrcPatternNoise(logger=self.logger)
@@ -670,12 +672,16 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             self._boot_bound(win),
         )
         if not boot:
-            self.logger.info("%s: BOOT_PHASE_DONE not 1 bound=%d", what, self._boot_bound(win))
+            self.logger.info(
+                "INFO-START-TIMEOUT %s: BOOT_PHASE_DONE not 1 bound=%d", what, self._boot_bound(win)
+            )
             return False, False
         bound = self._latency_bound() if self.stream_clean else self._clocks(STREAM_CAP_STROBES)
         level, _ = await self._poll_level_gt0(bound)
         if not level:
-            self.logger.info("%s: FIFO_STATUS.LEVEL stayed 0 bound=%d", what, bound)
+            self.logger.info(
+                "INFO-START-TIMEOUT %s: FIFO_STATUS.LEVEL stayed 0 bound=%d", what, bound
+            )
         return True, level
 
     async def _poll_level_gt0(self, bound: int) -> tuple[bool, list]:
@@ -756,7 +762,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         t_ref = box[0]
         if self.stream_clean is None:
             self.stream_clean = t_ref
-        self.logger.info("t_ref=%d clk_i (24 stream strobes) bound=%d", t_ref, bound)
+        self.logger.info("INFO-T-REF t_ref=%d clk_i (24 stream strobes) bound=%d", t_ref, bound)
         return t_ref
 
     async def _hold(self, hold: int) -> tuple[int, int]:
@@ -1052,10 +1058,16 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             pf_before=r["pf_before"],
             count_before=r["count_before"],
         )
+        # The cells of the trip are released only when the peak is exactly T, the
+        # count of the failing windows (architecture.adoc:136); the check itself
+        # grades the trip and a peak of at least T.
+        exact = r["peak"] == thr
+        if not exact:
+            self.chk.info("PF-TRIP-COUNT-HOLD", thr=thr, any_fail_peak=r["peak"], released=0)
         await self._grade(
             "PF-TRIP-COUNT",
             r["reason"] is None and r["peak"] >= thr and r["alert_any"] and r["pf_final"],
-            ESRC_PA_TRIP_COUNT,
+            ESRC_PA_TRIP_COUNT if exact else 0,
             **reason,
             thr=thr,
             win=win,

@@ -16,7 +16,8 @@ program of p, so the p read at the end grades a refused burn in every leaf.
 builds the same plan. JTAG and frontdoor accesses never overlap, except one
 frontdoor read and one JTAG read of the shadow word of p, started on the same clock
 at the end of the leaf. CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the
-frontdoor read OKAY with the staged word; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
+frontdoor read OKAY with the staged word; ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires
+both AR handshakes before either read completes; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
 the clock each read completes on and the command count at the post-guard tap.
 
 Contract (``hw/sys/sep/doc/otp_fuse_controller.adoc``, section Shadow Register and
@@ -389,17 +390,31 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         bit c when it shares the word). ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
         the clock each read completes on and the command count at the post-guard tap:
         the specification does not state the arbitration of the two masters or the data
-        of a denied read.
+        of a denied read. ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires that each read had
+        its AR handshake (``s_axi_ar*``, ``j_axi_ar*``) no later than the clock the
+        other read completed on, so both requests were outstanding together.
         """
         dut = cocotb.top
         addr = SHADOW_BASE + 4 * word
         done: dict[str, int] = {}
+        ar: dict[str, int] = {}
         clk = {"n": 0}
+        ar_sigs = {
+            "fd": (dut.s_axi_arvalid, dut.s_axi_arready),
+            "jtag": (dut.j_axi_arvalid, dut.j_axi_arready),
+        }
 
         async def _count() -> None:
             while True:
                 await RisingEdge(dut.clk_i)
                 clk["n"] += 1
+                for k, (v, r) in ar_sigs.items():
+                    if (
+                        k not in ar
+                        and self.rd(v, allow_unknown=True)
+                        and self.rd(r, allow_unknown=True)
+                    ):
+                        ar[k] = clk["n"]
 
         async def _fd() -> SepAxiAccessSeq:
             seq = await self.fd.access(SepAxiOp.READ, addr, ungraded_read=True)
@@ -420,6 +435,20 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         jtag_resp, jtag_data = await jtag_task
         counter.cancel()
         await ClockCycles(dut.clk_i, 2)
+        fd_ar, jtag_ar = ar.get("fd"), ar.get("jtag")
+        self.chk.ctrl(
+            "JTAG-CONCURRENT-OVERLAP",
+            fd_ar is not None
+            and jtag_ar is not None
+            and fd_ar <= done["jtag"]
+            and jtag_ar <= done["fd"],
+            state=self.state,
+            word=word,
+            fd_ar_clk="none" if fd_ar is None else fd_ar,
+            jtag_ar_clk="none" if jtag_ar is None else jtag_ar,
+            fd_done_clk=done["fd"],
+            jtag_done_clk=done["jtag"],
+        )
         fd_rdata = fd_seq.rdata & M32
         staged = self.p.image.words[word]
         keep = ~ignore_mask & M32

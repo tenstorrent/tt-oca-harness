@@ -28,27 +28,35 @@ on every ``clk_i`` rising edge for the whole leaf.
 Checkers:
   CHK-STM-CAPTURE  in leg D with the match present and the strap at 1,
                    ``secure_tm_o`` first reads 1, with ``sep_fuse_sense_done_o``
-                   low, in the sample after the second rising ``clk_i`` edge after
-                   the ``rst_ni`` release (``test_mode.adoc:27-28``; the bench
-                   drives ``rst_ni`` as the wrapper cold reset), and keeps 1 after
-                   the strap flips to 0. Control: in leg D0 (no match)
-                   ``secure_tm_o`` reads 0 at the same cycle and follows the
+                   low, no later than the sample after the second rising ``clk_i``
+                   edge after the ``rst_ni`` release (the bench drives ``rst_ni``
+                   as the wrapper cold reset), and keeps 1 after the strap flips
+                   to 0. The texts disagree on the edge (``test_mode.adoc``: the
+                   second rising edge; ``security_disable.adoc``: one cycle after
+                   release; ``lifecycle_controller.adoc``: on release), so the edge
+                   is logged as ``OBS-STM-CAPTURE-EDGE`` and the bound is graded.
+                   Control: in leg D0 (no match) ``secure_tm_o`` reads 0 at the same cycle and follows the
                    strap only at sense completion.
   CHK-STM-RETAIN   in legs B, C and D ``secure_tm_o`` keeps its value on every
                    sample through every event and after every strap change. In
                    leg B the strap reads 0 and ``secure_tm_o`` holds 1 through
                    all four events, so a resample at an event changes it.
+                   In the leg-D strap-0 boot ``secure_tm_o`` reads 0 on every
+                   sample from the release to the strap flip (the clear and the
+                   capture of strap 0 both give 0).
                    Control: leg A shows ``secure_tm_o`` = 1. The leg-B
                    ``wdt_rst_ni`` pulse reads ``sep_cpu_reset_n_o`` low, the
                    override pulse reads ``dbg_sep_reset_n_o`` low and, on the
                    full-CPU build, the ``dbg_rstb_i`` pulse reads
                    ``mpc_run_sync_probe_o`` low inside the pulse window, so
-                   each graded event reaches the DUT. In both leg-D
+                   each graded event reaches the DUT (``CTRL-STM-B-REACH``, also
+                   for the ``sw_reset_n`` fall and rise of ``ip_rst_n[3]``). In
+                   both leg-D
                    boots ``lcc_security_disable_probe_o`` reads 1 on every
                    sample from the release to the end of the hold, so the
                    match is shown present (a lost match runs a sense that
                    ends past the leg-D windows, which the sense-done level
-                   alone does not show).
+                   alone does not show; ``CTRL-STM-D-MATCH``).
   CHK-STM-CLEAR    with ``rst_ni`` low and the strap at 1, ``secure_tm_o`` reads 0
                    on every ``clk_i`` edge from the first edge with ``rst_ni`` low
                    to the release. Control: it reads 1 before the reset.
@@ -68,9 +76,8 @@ Checkers:
 
 ``OBS-STM-CLEAR-NOCLK`` logs ``secure_tm_o`` after leg A when ``rst_ni`` falls with
 ``clk_i`` stopped (strap 1); a reset release and a sense with the strap at 1 follow
-before leg B. ``INFO-STM-CAPTURE0`` logs ``secure_tm_o`` of the strap-0 boot of leg D (the
-cold-reset clear gives the same 0, so it is not graded as a capture). The
-sampling at fuse-sense completion is a control here.
+before leg B. The leg-E token match is a control (``CTRL-STM-E-TOKEN``, code and
+``security_disable``). The sampling at fuse-sense completion is a control here.
 
 Environment choices (not from the specification): the hold H, the reset width,
 the event pulse widths and the wait bounds below. The image is a PROD image
@@ -118,8 +125,9 @@ _MATCH_LSB = EFUSE_MMR.field_lsb("TOKEN_MATCH", "token_match_status")
 
 _HOLD = 256
 _RST_LOW = 20
-# Rising clk_i edge after the cold-reset release on which the early capture samples the
-# strap (hw/sys/sep/doc/test_mode.adoc:27-28).
+# Latest rising clk_i edge after the cold-reset release on which the early capture may
+# sample the strap: test_mode.adoc says the second rising edge, security_disable.adoc and
+# the programmer's guide one cycle after release, lifecycle_controller.adoc on release.
 _CAPTURE_EDGE = 2
 # clk_i periods the clock stays stopped around the rst_ni fall of the no-clock clear.
 _NOCLK_PERIODS = 8
@@ -303,7 +311,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"in the pulse window (samples {w0}..{w1 - 1}), so the event did not happen"
         )
         self.logger.info(
-            "INFO-LEG-B wdt_rst_ni pulse reached sep_cpu_reset_n: low on %d of samples %d..%d",
+            "CTRL-STM-B-REACH seen: event=wdt_rst_ni net=sep_cpu_reset_n low=%d samples=%d..%d",
             low,
             w0,
             w1 - 1,
@@ -347,8 +355,8 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"in the pulse window (samples {d0}..{d1 - 1}), so the event did not happen"
         )
         self.logger.info(
-            "INFO-LEG-B dbg_rstb_i pulse reached the debug reset domain: mpc_run_sync low on %d of "
-            "samples %d..%d control_high_at=%d high_again_at=%d",
+            "CTRL-STM-B-REACH seen: event=dbg_rstb_i net=mpc_run_sync low=%d samples=%d..%d "
+            "control_high_at=%d high_again_at=%d",
             low,
             d0,
             d1 - 1,
@@ -366,6 +374,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                 break
         else:
             raise AssertionError(f"ip_rst_n[3] did not fall within {_HMAC_BOUND} cycles")
+        s0 = self._now()
         await self.swrst.release("hmac")
         for _ in range(_HMAC_BOUND):
             await RisingEdge(dut.clk_i)
@@ -373,6 +382,11 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                 break
         else:
             raise AssertionError(f"ip_rst_n[3] did not rise within {_HMAC_BOUND} cycles")
+        self.logger.info(
+            "CTRL-STM-B-REACH seen: event=sw_reset_n net=ip_rst_n[3] fell_at=%d rose_at=%d",
+            s0,
+            self._now(),
+        )
 
     async def _ev_ovrd(self) -> None:
         dut = cocotb.top
@@ -391,7 +405,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"in the override window (samples {o0}..{o1 - 1}), so the event did not happen"
         )
         self.logger.info(
-            "INFO-LEG-B sep_reset_n override reached sep_reset_n: low on %d of samples %d..%d",
+            "CTRL-STM-B-REACH seen: event=sep_reset_n_ovrd net=sep_reset_n low=%d samples=%d..%d",
             low,
             o0,
             o1 - 1,
@@ -410,7 +424,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"{chk} FAIL: {label}: security_disable read 0 at samples "
             f"{[a + i for i, v in enumerate(vals) if v != 1][:8]} (match_present=0 at this boot)"
         )
-        self.logger.info("INFO-LEG-D %s match_present=1 on samples %d..%d", label, a, b)
+        self.logger.info("CTRL-STM-D-MATCH seen: %s match_present=1 samples=%d..%d", label, a, b)
 
     async def _present_sec_dis(self, token: int = _SEC_DIS_TOKEN) -> int:
         """Present the SEC_DIS token over j_axi; return the settled match code."""
@@ -675,7 +689,14 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"CHK-STM-LATE FAIL: match_present=0 strap=1 SEC_DIS late: secure_tm_o left 0 at "
             f"samples {[e0 + i for i, v in enumerate(late) if v != 0][:8]}"
         )
-        self.logger.info("INFO-LEG-E strap rise %d token matched by %d hold end %d", e0, tok, e1)
+        self.logger.info(
+            "CTRL-STM-E-TOKEN seen: code=0x%02x secdis=%d strap_rise=%d matched_by=%d hold_end=%d",
+            code,
+            sec_dis,
+            e0,
+            tok,
+            e1,
+        )
 
         # Leg D, strap 1: early capture with the match present.
         _a, rel = await self._cold_reset()
@@ -696,12 +717,16 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"CHK-STM-CAPTURE FAIL: secure_tm_o=1 at sample {cap} with sense_done=1; "
             "match_present=0 at this boot"
         )
-        # test_mode.adoc:27-28: with SEC_DIS asserted the strap is sampled on the second
-        # rising clk_i edge after the cold-reset release (rst_ni). Sample rel holds the
-        # release; sample rel + k is read after the k-th rising edge after it.
-        assert cap == rel + _CAPTURE_EDGE, (
+        # Sample rel holds the release; sample rel + k is read after the k-th rising edge
+        # after it. Every text places the capture at or before the second edge; which
+        # edge is open, so the edge is logged and the bound is graded.
+        self.logger.info(
+            "OBS-STM-CAPTURE-EDGE: match_present=1 strap=1 secure_tm_o=1 first at release+%d",
+            cap - rel,
+        )
+        assert cap <= rel + _CAPTURE_EDGE, (
             f"CHK-STM-CAPTURE FAIL: match_present=1 strap=1: secure_tm_o first read 1 at "
-            f"release+{cap - rel}, expected release+{_CAPTURE_EDGE} (second rising edge)"
+            f"release+{cap - rel}, later than release+{_CAPTURE_EDGE}"
         )
         await self._until(cap + c)
         dut.test_en_strap_i.value = 0
@@ -753,15 +778,15 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         # Leg D, strap 0 (retention leg).
         _a, rel = await self._cold_reset()
         await self._until(rel + c)
-        obs = self.rec[-1]
-        self.logger.info(
-            "INFO-STM-CAPTURE0: match_present=1 strap=0 secure_tm_o=%s sense_done=%s at release+%d",
-            obs["stm"],
-            obs["done"],
-            c - 1,
-        )
         dut.test_en_strap_i.value = 1
         f0 = self._now()
+        # Strap 0 at the early capture: the cold-reset clear and the capture both give 0
+        # (test_mode.adoc, Entry and Exit), so every sample from the release to the flip is 0.
+        pre_flip = self._window(rel, f0 - 1)
+        assert all(v == 0 for v in pre_flip), (
+            f"CHK-STM-RETAIN FAIL: leg=D strap=0 before the flip: secure_tm_o left 0 at samples "
+            f"{[rel + i for i, v in enumerate(pre_flip) if v != 0][:8]}"
+        )
         f1 = await self._hold()
         vals = self._window(f0, f1 - 1)
         self._require_match(rel, f1 - 1, "CHK-STM-RETAIN", "strap=0 window")
@@ -773,7 +798,10 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"CHK-STM-RETAIN FAIL: leg=D strap 0->1 at release+{c}: secure_tm_o left 0 at samples "
             f"{[f0 + i for i, v in enumerate(vals) if v != 0][:8]}"
         )
-        retain.append(f"leg=D events=strap_0to1@release+{c} value=0 cycles={f1 - f0}")
+        retain.append(
+            f"leg=D events=strap_0to1@release+{c} value=0 cycles={f1 - f0} "
+            f"pre_flip_samples={len(pre_flip)}"
+        )
         close_graded_window(self.logger)
 
         # Evaluate the controls read at the end of the leaf.

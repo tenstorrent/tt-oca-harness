@@ -392,14 +392,15 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         status = await self._rd(STATUS_ADDR)
         dut.efuse_sense_status_inject_i.value = 0
         others = [i for i in range(_N_WORDS) if i != w and probe[i] != staged[i]]
+        rst_w = word_reset(SHADOW_BASE + 4 * w)
         ok = self._grade(
             "SENSE-STATUS",
             n is not None
             and ctl_ok
             and resp_ok
             and shape["ok"]
-            and probe[w] == 0
-            and got_w == 0
+            and probe[w] == rst_w
+            and got_w == rst_w
             and got_w1 == staged[w + 1]
             and not others
             and _b(status, _M_SENSE_DONE) == 1,
@@ -408,6 +409,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             word_class=p.leg["word_class"],
             got_probe=f"0x{probe[w]:x}",
             got_read=f"0x{got_w:x}",
+            reset=f"0x{rst_w:x}",
             staged=f"0x{staged[w]:08x}",
             next_read=f"0x{got_w1:08x}",
             others_equal=int(not others),
@@ -521,9 +523,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         )
 
         # Steps 4-5: injected sense at word w, twice. The first instance runs with the
-        # graded window closed; the second runs inside it only when every check and
-        # control so far has passed, so a sense-time FCOV sample is taken only after
-        # the same check has passed on an identical sense.
+        # graded window closed. The second always runs; the window is open for it only
+        # when no check or control so far failed, so a sense-time FCOV sample is taken
+        # only after the same check has passed on an identical sense.
         await self._injected_sense(w, staged, sense_bound, ctl_ok, ctl_w, "injected", False)
         await self._injected_sense(w, staged, sense_bound, ctl_ok, ctl_w, "injected_binned", True)
 
@@ -695,7 +697,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await ReadOnly()
         shadow = self._probe_words()[cw]
         done_o = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
-        feat = self.rd(dut.lcc_feat_ctrl_probe_o, allow_unknown=True)
+        feat = self.rd_known(dut.lcc_feat_ctrl_probe_o)
         await RisingEdge(dut.clk_i)
         want = word_reset(SHADOW_BASE + 4 * cw)
         sensed = list(staged)

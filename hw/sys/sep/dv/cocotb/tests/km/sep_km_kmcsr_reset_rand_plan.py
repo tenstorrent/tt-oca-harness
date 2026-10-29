@@ -66,8 +66,9 @@ A_ENTRY_LOCK = _csr("IRQ_ENTRY_LOCK")
 A_DEBUG = _csr("DEBUG")
 A_OTP_LOCK = _csr("OTP_READ_LOCK")
 A_OTP_LOCK_COLD = _csr("OTP_READ_LOCK_COLD")
-# Accesses whose AXI response is logged only: reads of the write-only IRQ_SET and
-# of the virtual UART and testbench words, and writes to the read-only registers.
+# Reads of the write-only IRQ_SET and of the virtual UART and testbench words, and
+# writes to the read-only registers. A read of a readable register expects OKAY;
+# the IRQ_SET read and the read-only writes log their response.
 OBS_READS = tuple(
     (reg, _csr(reg))
     for reg in (
@@ -151,6 +152,12 @@ OTP_LOCK_RESET = KM_CSR.reset("OTP_READ_LOCK_REG")
 OTP_COLD_RESET = KM_CSR.reset("OTP_READ_LOCK_COLD_REG")
 CBD_RESET = KM_CSR.reset("BOOT_STATUS_REG") & CBD_BIT
 CFG_RESET = KM_SMP.reset("CFG_REG")
+# Software-written words (sw = rw, hw = r) that no master writes in this leaf: a
+# read returns the RDL reset.
+RESET_READS = {
+    reg: KM_CSR.reset(f"{reg}_REG")
+    for reg in ("VUART_TX", "TB_RESULT", "TB_SIGNATURE", "TB_ERRCODE", "TB_SUBTEST", "TB_CMD_ARG")
+}
 
 # The register text of km_csr.adoc and km_drbg_sampler.adoc states the same
 # resets as the RDL; a mismatch is a specification conflict, not a leaf result.
@@ -339,7 +346,8 @@ def _sram_round(rng: SepSeededRng, index: int) -> SramRound:
 
 def _wrong_codes(rng: SepSeededRng) -> list[int]:
     neighbours = [SOFT_RST_CODE ^ (1 << b) for b in range(32)]
-    codes = [0x0000_0000, 0xFFFF_FFFF, rng.choice(neighbours)]
+    # Code 0 follows a non-zero code, so its readback differs from the value before it.
+    codes = [0xFFFF_FFFF, 0x0000_0000, rng.choice(neighbours)]
     while len(codes) < 5:
         v = rng.choice(neighbours) if rng.getrandbits(1) else rng.getrandbits(32)
         if v != SOFT_RST_CODE and v not in codes:

@@ -32,8 +32,15 @@ channel: each go bit starts its own lane (``hw/ip/efuse/regs/efuse_mmr.rdl``,
 ``TOKEN_EOP``; ``token_processing.adoc``, one token array, go bit, SHA-256 engine and
 comparator per lane). ``OBS-TOKEN-MULTI-GO`` logs the clocks from the write to each
 verdict. Every graded go starts from a held code other than
-its expected final code, so a go that has no effect fails. The one exception is
-the second go of the go-while-busy leg, which is written to a busy channel.
+its expected final code, so a go that has no effect fails. Two exceptions: the
+second go of the go-while-busy leg, which is written to a busy channel, and the
+re-go after sense of the pre-sense cell, which must read ``0x00`` before its
+``0x15`` (a go clears the retained digest validity, ``token_processing.adoc``,
+Token Submission).
+
+After the SEC_DIS Mismatch of the walk, ``security_disable_o`` reads 0, and it
+read 1 before that go (CHK-SDIS-AFTER-FOREIGN; ``token_processing.adoc``, Post
+Token Matching Handling: SEC_DIS acts while its match holds).
 
 Go while busy (``token_processing.adoc:107-108``, no submission queue). The leg
 runs on every channel, the drawn channel first and then the other two in channel
@@ -63,7 +70,8 @@ need that held Match.
 
 Checkers: CHK-BIND, CHK-TOKEN, CHK-TOKEN-CODES, CHK-TOKEN-HOLD, CHK-TOKEN-INDEP,
 CHK-NORESET, CHK-TOKEN-RETAIN, CHK-TOKEN-PRESENSE, CHK-TOKEN-GWB, CHK-TOKEN-HMAC,
-CHK-TOKEN-MULTI-GO. A failing hook control logs ``CHK-HOOK FAIL`` and ends the leaf.
+CHK-TOKEN-MULTI-GO, CHK-SDIS-AFTER-FOREIGN. A failing hook control logs ``CHK-HOOK FAIL``
+and ends the leaf.
 
 FCOV owner window (``env/sep_fcov_gate.py``): open from the no-reset cell to
 CHK-TOKEN-CODES, closed by the first FAIL or missing control, and not reopened
@@ -75,7 +83,8 @@ CHK-TOKEN-HMAC of that leg passes. Every other sample of the leaf
 ``sep_sec_dis_robustness_cg``) is held with the tag of its graded step
 (``set_ef_hold_tag``) and samples only when the leaf writes that tag to the pass
 label (``set_ef_hold_pass``) after every check of the step passed: each walk
-channel after CTRL-TOKEN-DIGEST-LAYOUT, its CHK-TOKEN line and CHK-TOKEN-HOLD, each
+channel after CTRL-TOKEN-DIGEST-LAYOUT, its CHK-TOKEN line and CHK-TOKEN-HOLD (and
+CHK-SDIS-AFTER-FOREIGN on SEC_DIS), each
 mismatch cell after its CHK-TOKEN line, the independence gos and the SEC_DIS go with an RMA token after
 every CHK-TOKEN-INDEP line, the pre-sense cell after both CHK-TOKEN-PRESENSE lines,
 the retention cell after CHK-TOKEN-RETAIN, each HMAC overlap go after
@@ -114,7 +123,6 @@ from env.sep_efuse_plan import (
     expected_digest,
     plan,
     poll_code,
-    read_run,
     token_go,
     token_words,
     write_token,
@@ -293,6 +301,25 @@ async def _read_run_from(rd, ch: str, held: int, *, max_reads: int) -> ReadRun:
     return ReadRun(None, len(codes), codes.count(CODE_IDLE), codes)
 
 
+async def _read_run_via_idle(rd, ch: str, *, max_reads: int) -> ReadRun:
+    """Read run of a go whose held code equals its expected code.
+
+    Starting a hash clears the retained digest validity, so the result reads
+    ``0x00`` until the new digest is ready (``token_processing.adoc``, Token
+    Submission). The run ends at two consecutive equal codes other than ``0x00``
+    after the first ``0x00``. ``final`` is None when ``max_reads`` ends the run
+    first: a go that has no effect never reads ``0x00``.
+    """
+    codes: list[int] = []
+    for _ in range(max_reads):
+        code = (await rd(MATCH_ADDR[ch])) & MATCH_STATUS_MASK
+        codes.append(code)
+        seen_idle = CODE_IDLE in codes
+        if seen_idle and code != CODE_IDLE and codes[-2] == code:
+            return ReadRun(code, len(codes), codes.count(CODE_IDLE), codes)
+    return ReadRun(None, len(codes), codes.count(CODE_IDLE), codes)
+
+
 def _idle_rule(run: ReadRun, held: int, n_idle_ref: int) -> tuple[bool, bool]:
     """Relative Idle rule of a read run after a go from the held code ``held``.
 
@@ -330,6 +357,7 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         "CHK-TOKEN-GWB",
         "CHK-TOKEN-HMAC",
         "CHK-TOKEN-MULTI-GO",
+        "CHK-SDIS-AFTER-FOREIGN",
     )
 
     # ------------------------------------------------------------------ grading
@@ -815,10 +843,22 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
             hold_ok = all(c == held for c in hold_codes)
 
             # Idle-first cell: go with the words of F.
+            sdis_pre = self._sdis() if ch == CH_SEC_DIS else None
             run_d, ok_d = await self._graded_go(ch, None, CODE_MISMATCH, "foreign", f"idle.{ch}.go")
+            ok_sd = True
             if ch == CH_SEC_DIS:
+                # SEC_DIS acts only while its match holds (token_processing.adoc, Post
+                # Token Matching Handling), so the Mismatch verdict drops the port.
                 await ClockCycles(dut.clk_i, 2)
-                self.chk.obs("SDIS-AFTER-FOREIGN", secdis=self._sdis())
+                secdis = self._sdis()
+                ok_sd = self._grade(
+                    "SDIS-AFTER-FOREIGN",
+                    sdis_pre == 1 and run_d.final == CODE_MISMATCH and secdis == 0,
+                    exp=0,
+                    secdis=secdis,
+                    secdis_before_go=sdis_pre,
+                    code="none" if run_d.final is None else f"0x{run_d.final:02x}",
+                )
             ok_hold = self._grade(
                 "TOKEN-HOLD",
                 hold_ok and held in (CODE_MATCH, CODE_MISMATCH) and run_d.w_hash <= w_hash[ch],
@@ -829,7 +869,7 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
                 next_go_reads=run_d.w_hash,
                 w_hash=w_hash[ch],
             )
-            await self._pass(tag, ok_walk and ok_d and ok_hold)
+            await self._pass(tag, ok_walk and ok_d and ok_hold and ok_sd)
 
         self._grade(
             "NORESET",
@@ -991,7 +1031,7 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         post = {}
         for ch in (CH_SIP, CH_CHIPLET):
             await token_go(self._wr, ch)
-            post[ch] = (await read_run(self._rd, ch, max_reads=_RUN_READS)).final
+            post[ch] = (await _read_run_via_idle(self._rd, ch, max_reads=_RUN_READS)).final
         pre_ok = True
         for ch in (CH_SIP, CH_CHIPLET):
             codes = pre_codes[ch]

@@ -53,10 +53,14 @@ Checks (HOST-UNREC unless marked):
                      fault word of the real-wipe point (the wipe pulse).
   CHK-SK-AFTER-BOOT  (both) after a wipe, CMD_ABR_SK_TRANSFER of the pending
                      shared key returns failure with no argument.
+  CHK-SK-READY-FRAME (both) RESP_ABR_SHARED_KEY_READY carries no payload.
+  CHK-WIPE-STATUS    (both) the real wipe sets IRQ_STATUS.WIPE_STATE (control:
+                     0 before the KM_WIPE_CTRL write).
   CHK-TRAP-HELD      (both) bit 30 stays high and a CMD_STAT gets no answer.
   CHK-RESTORE        (both, control) a warm reset restores CMD_STAT and bit 30 = 0.
   CHK-PARITY-CLEAN   (both, control) a clean run and each no-flip twin raise no fault.
-  CHK-FATAL-SET      HK-IRQSET sets report the code of the first source.
+  CHK-FATAL-SET      HK-IRQSET sets report the code of the first source, the
+                     forced {drbg_err, axi_slverr} set included (-8).
   CHK-SHRED-FIRST    no bank key_valid and no shared key at the first fault word
                      (real-wipe point: control).
   CHK-STATUS-HELD    the IRQ_STATUS bits of the set, WIPE_STATE excluded, stay
@@ -75,7 +79,7 @@ Checks (HOST-UNREC unless marked):
   CHK-KEYPATH-FATAL  (HOST) a key write to a reset HMAC is fatal with -7.
   CHK-XFER-STOP      (HOST) the transfer writes no AES bank after the HMAC fault.
 
-Logged only: OBS-AES-NOKEY, the frames of the ML-KEM notify, the SRAM write count of the HOST fatal
+Logged only: OBS-AES-NOKEY, the SRAM write count of the HOST fatal
 path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
 outside the graded set, and INFO-PARITY-VACUOUS parity draws. In the whole leaf the
 CHK-MAINCTX-FATAL point runs after every other fatal point. The regression runs
@@ -176,6 +180,8 @@ EVIDENCE_HOST = (
     "CHK-NOSHRED-HOST-AES",
     "CHK-SHRED-FIRST-HOST",
     "CHK-SK-AFTER-BOOT",
+    "CHK-SK-READY-FRAME",
+    "CHK-WIPE-STATUS",
     "CHK-TRAP-HELD",
     "CHK-RESTORE",
     "CHK-PARITY-CLEAN",
@@ -194,6 +200,8 @@ EVIDENCE_UNREC = (
     "CHK-FATAL-SET",
     "CHK-SHRED-FIRST",
     "CHK-SK-AFTER-BOOT",
+    "CHK-SK-READY-FRAME",
+    "CHK-WIPE-STATUS",
     "CHK-STATUS-HELD",
     "CHK-KPV-TRAP",
     "CHK-PARITY",
@@ -239,6 +247,8 @@ POINT_EVIDENCE_UNREC = {
         "CHK-TRAP-HELD",
         "CHK-SHRED-FIRST",
         "CHK-SK-AFTER-BOOT",
+        "CHK-SK-READY-FRAME",
+        "CHK-WIPE-STATUS",
         "CHK-RESTORE",
     ),
     "single": (
@@ -246,6 +256,7 @@ POINT_EVIDENCE_UNREC = {
         "CHK-STATUS-HELD",
         "CHK-SHRED-FIRST",
         "CHK-SK-AFTER-BOOT",
+        "CHK-SK-READY-FRAME",
         "CHK-KPV-TRAP",
         "CHK-RESTORE",
     ),
@@ -254,6 +265,7 @@ POINT_EVIDENCE_UNREC = {
         "CHK-STATUS-HELD",
         "CHK-SHRED-FIRST",
         "CHK-SK-AFTER-BOOT",
+        "CHK-SK-READY-FRAME",
         "CHK-KPV-TRAP",
         "CHK-RESTORE",
     ),
@@ -938,7 +950,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 )
             self.resp_next = (fr.seq + 1) & 0xFF
             if fr.resp_id == KM_RESP_ABR_SHARED_KEY_READY:
-                self.chk.obs("SK-NOTIFY", cmd=_h2(cmd_id), frame=fr.text())
+                self._sk_ready_frame(fr, f"cmd_{_h2(cmd_id)}")
                 continue
             frames.append(fr)
             code, _arg = fr.resp_cmd(cmd_id, sent)
@@ -948,6 +960,22 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 raise AssertionError(
                     f"command 0x{cmd_id:02x}: no RESP_CMD echo in {[f.text() for f in frames]}"
                 )
+
+    def _sk_ready_frame(self, fr: _Frame, after: str) -> None:
+        """CHK-SK-READY-FRAME: RESP_ABR_SHARED_KEY_READY has no payload.
+
+        firmware.adoc, "0x56 - RESP_ABR_SHARED_KEY_READY": "This message has no
+        payload."
+        """
+        self.chk.ok(
+            "SK-READY-FRAME",
+            fr.payload_len == 0 and len(fr.words) == 1,
+            after=after,
+            payload_len=fr.payload_len,
+            words=len(fr.words),
+            frame=fr.text(),
+            sk_valid=self._sk(),
+        )
 
     async def _cmd(self, cmd_id: int, payload: list[int]) -> tuple[int, int | None, _Frame]:
         """One command whose only frame is its RESP_CMD; (code, argument, frame)."""
@@ -1169,7 +1197,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.resp_next = (fr.seq + 1) & 0xFF
         self.sk_pending = True
         self.sk_valid_pending = self._sk()
-        self.chk.obs("SK-READY-FRAME", frame=fr.text(), sk_valid=self.sk_valid_pending)
+        self._sk_ready_frame(fr, "encaps")
 
     # ================================================================ fatal plumbing
     async def _wipe_write(self, value: int) -> None:
@@ -1389,6 +1417,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         p = self.plan
         self.fresh = False
         pre = await self._precondition(witness=True)
+        status_before = self._csr_status()
         wr_base = self._wr_count()  # step 5
         depth_before = pre.depth
         watch = _FatalWatch(self)
@@ -1519,6 +1548,18 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 aes_key_after=int(aes_after == "key"),
             )
         self._shred_first(pre, watch, "real_wipe")
+        # The wipe-state edge sets the sticky IRQ_STATUS.WIPE_STATE
+        # (architecture.adoc, "Wipe State"; km_csr.rdl IRQ_STATUS), and the
+        # fatal handler leaves it set (firmware.adoc, "Interrupt Priority").
+        wipe_bit = 1 << pl.IRQ_BIT["wipe_state"]
+        self.chk.ok(
+            "WIPE-STATUS",
+            rose and not status_before & wipe_bit and bool(status & wipe_bit),
+            control_wipe_state_before=int(bool(status_before & wipe_bit)),
+            wipe_state=int(bool(status & wipe_bit)),
+            status=f"0x{status:03x}",
+            err_o=int(rose),
+        )
         self.logger.info(
             "OBS-REAL-WIPE W=%d status=0x%03x err_o_end=%d rise_cyc=%s",
             p.wipe_w,
@@ -1564,19 +1605,14 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             control_err_o=control_err,
             fired=fired,
         )
-        if tuple(names) == pl.FORCED_DRBG_SET:
-            # CHK-DRBG-STALL grades drbg_err over axi_slverr on the organic stall.
-            faults = sum(1 for f in frames if f.resp_id == KM_RESP_UNRECOVERABLE_FAULT)
-            self.chk.ok("FATAL-SET", fired == 1 and rose and faults >= 1, control=1, **fields)
-        else:
-            ok = (
-                fired == 1
-                and pre.quiet_high == 0
-                and one
-                and frames[0].is_fault(KM_RESP_UNRECOVERABLE_FAULT, exp)
-                and control_err == 1
-            )
-            self.chk.ok("FATAL-SET", ok, expected=_hx(pl.fault_word(exp)), **fields)
+        ok = (
+            fired == 1
+            and pre.quiet_high == 0
+            and one
+            and frames[0].is_fault(KM_RESP_UNRECOVERABLE_FAULT, exp)
+            and control_err == 1
+        )
+        self.chk.ok("FATAL-SET", ok, expected=_hx(pl.fault_word(exp)), **fields)
         # The CPU trap sets WIPE_STATE itself (architecture.adoc, "Wipe
         # State"), so that bit cannot show a ROM that clears it.
         held = mask & ~(1 << pl.IRQ_BIT["wipe_state"])

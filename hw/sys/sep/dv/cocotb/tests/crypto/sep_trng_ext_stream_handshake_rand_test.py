@@ -525,11 +525,11 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         await self.swrst.park(*PARKED)
         await ClockCycles(dut.clk_i, 2)
         self._jtag_sw_rst_hold(PARKED, False)
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         sel0 &= SEL_MASK
@@ -641,11 +641,13 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         if source_reset is not None:
             dropped = await self.ext.source_reset(source_reset)
-            self.logger.info("source reset stream=%d dropped=%d", source_reset, dropped)
+            self.logger.info("INFO-SOURCE-RESET stream=%d dropped=%d", source_reset, dropped)
         await self.swrst.release("trng")
         fall = await self._wait_probe(dut.trng_reset_active_probe_o, True, "trng reset fall")
         await RisingEdge(dut.clk_i)
-        self.logger.info("TRNG reset: rise_clk=%d fall_clk=%d cap=%d", rise, fall, TRNG_RESET_CAP)
+        self.logger.info(
+            "INFO-TRNG-RESET-EDGES rise_clk=%d fall_clk=%d cap=%d", rise, fall, TRNG_RESET_CAP
+        )
         return rise, fall
 
     async def _drop_source(self, *streams: int) -> None:

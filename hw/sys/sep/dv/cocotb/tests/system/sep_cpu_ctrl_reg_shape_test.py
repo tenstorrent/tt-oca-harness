@@ -15,7 +15,7 @@ Contract (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``,
 * ``SEP_VERSION_ID.version_id`` (R) reads its reset value 0xDEADBEEF after
   every write.
 * After ``SEP_NMI_VEC_LOCK.lock`` (RW1S) is 1, a ``SEP_NMI_VEC`` write does not
-  change ``nmi_vec`` (bits 31:1), and a write of 0 or all-ones to the lock
+  change ``nmi_vec`` (bits 31:1), bit 0 (``rsvd``, "always 0") reads 0, and a write of 0 or all-ones to the lock
   leaves it at 1.
 * ``SEP_FUSE_SENSE_STATUS`` and ``SMC_FUSE_SENSE_STATUS`` (R) ignore a write
   of the complement of bit 0. Every access, the ``TIMEOUT_CLEAR`` and
@@ -34,7 +34,8 @@ Checkers:
                   0x6000_0080``, vector 0xC000_0100, and ``rsvd`` 0;
                   ``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:276``,
                   ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:342-347``).
-  CHK-NMI-LOCK    ``SEP_NMI_VEC[31:1]`` after each of the 8 locked writes, and
+  CHK-NMI-LOCK    ``SEP_NMI_VEC[31:0]`` after each of the 8 locked writes
+                  (bits 31:1 the vector before the write, bit 0 zero), and
                   ``lock`` after each of the 4 lock writes.
   CHK-CC-INERT    bit 0 of both sense status registers after the complement
                   write; every write response, the timeout registers included.
@@ -415,11 +416,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             assert lane == "hi" or (v & NMI_FIELD) != vec
             resp = await self._write(NMI_VEC, v, lane, tolerant=True)
             got = await self._read64(NMI_VEC)
-            fc = field_compare(got, vec, NMI_FIELD)
+            fc = field_compare(got, vec, NMI_FIELD | NMI_RSVD0)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
-            assert fc.ok, f"CHK-NMI-LOCK FAIL: locked vector write changed nmi_vec: {line}"
+            assert fc.ok, f"CHK-NMI-LOCK FAIL: locked vector write changed bits 31:0: {line}"
             self.logger.info("CTRL-NMI-LOCK LOG: %s", line)
-            self._rsvd("SEP_NMI_VEC", got, NMI_FIELD)
+            self._rsvd("SEP_NMI_VEC", got, NMI_FIELD | NMI_RSVD0)
 
         # Step 7: lock write cases.
         n0 = n1 = 0

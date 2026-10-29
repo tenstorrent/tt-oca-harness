@@ -1072,6 +1072,7 @@ int main(void) {
     pic_set_priority(12u, 1u);
     pic_enable_source(33u);
     pic_set_priority(33u, 1u);
+    dump_meip("masked_set");
     pic_write_meigwclr(12u, 0u);
     pic_write_meigwclr(33u, 0u);
     dump_meip("masked_clr");

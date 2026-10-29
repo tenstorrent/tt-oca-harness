@@ -15,7 +15,7 @@ Entropy Source):
   * A word offered while full is discarded and sets ``NOISE_OBS_OVERFLOW`` or
     ``BIW_OBS_OVERFLOW``, which clear by write-one (entropy_source.adoc:134, :136).
   * ``FIPS_LOCK.LOCK`` prevents changes of both ``RAW_ENABLE`` fields
-    (entropy_source.adoc:752, :792, :828; architecture.adoc:239-241).
+    (entropy_source.adoc:752, :792, :828; architecture.adoc:243-245).
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. ``SW_RESET_N`` baseline 0x20. Every set-up selects the
@@ -87,8 +87,15 @@ Checkers:
                     (architecture.adoc:75).
                     Control: every sample edge lies at least 150 ps from each ``clk_i``
                     rising and falling edge, measured.
-Logged only: ``OBS-BLOCKED CHK-OBS-MAIN`` (no stated rule that observe capture leaves
-the main chain rate unchanged); the main-chain leg logs its counts. ``OBS-OBS-FAST``
+  CHK-OBS-MAIN      with ``SHA256_WHITENING_ENABLE`` = 0, the ``esrc_compress_vld_o``
+                    word count over 256 decorrelator strobes with both observe paths
+                    on equals the count over 256 strobes with both off
+                    (entropy_source.rdl ``NOISE_OBS_CTRL``: "Copy-only: the main
+                    datapath is unaffected"; ``BIW_OBS_CTRL``: "without disturbing
+                    the main datapath").
+                    Controls: two windows with capture off give the same non-zero
+                    count, and both observe LEVELs are above 0 after the on window.
+Logged only: ``OBS-OBS-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
 ``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-OBS-LANESEL-SAME`` logs
 LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (the ``LANE_SEL`` text
@@ -162,7 +169,8 @@ LOCK_EXTRA_POPS = 2
 LOCK_FLUSH_WORDS = 4
 LOCK0_WAIT_FACTOR = 4
 UNGATED_WAIT_FACTOR = 4
-MAIN_WORDS = 256
+# Decorrelator strobes per main-chain window.
+MAIN_STROBES = 256
 # Strobes of the capture-off leg: eight observe words of 32 samples.
 OFF_STROBES = 8 * 32
 # The capture-off hold also spans this many first-word times of each FIFO, measured
@@ -389,13 +397,14 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         "CHK-OBS-OFF",
         "CHK-OBS-SEQ",
         "CHK-SYNC-DEPTH",
+        "CHK-OBS-MAIN",
     )
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _EsrcRegs(self)
@@ -404,7 +413,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         # clean ungated trial, noise from the failing ungated trial.
         self.t_biw_word: int | None = None
         self.t_noise_word: int | None = None
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self._release_stuck()
         self.noise = SepEsrcPatternNoise(logger=self.logger)
         self.noise.start(plan.balanced)
@@ -509,7 +518,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             balanced=self.plan.balanced, before_release=self._release_stuck
         )
 
-    async def _setup(self, *, clean: bool = True, extra_writes=()) -> None:
+    async def _setup(self, *, clean: bool = True, extra_writes=(), ctrl_fields=None) -> None:
         close_graded_window(self.logger)
         mark = await self._trng_reset()
         # entropy_source.adoc RING_OSC_CTRL: a clear bit selects the external sample
@@ -522,7 +531,12 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         if not clean:
             return
         await SepEsrcCleanStart(
-            self, self.noise, self.plan.balanced, window=WINDOW, extra_writes=extra_writes
+            self,
+            self.noise,
+            self.plan.balanced,
+            window=WINDOW,
+            ctrl_fields=ctrl_fields,
+            extra_writes=extra_writes,
         ).run(release_mark=mark)
         self.p = await self.setup.measure_period(self.chk)
         await self.setup.wait_boot_done(self.esrc, WINDOW)
@@ -793,20 +807,49 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 **fields,
             )
 
-    # --- main-chain leg (logged only) ----------------------------------------------------
+    # --- main-chain leg ------------------------------------------------------------
     async def _main_chain_leg(self) -> None:
-        await self._setup()
+        """CHK-OBS-MAIN: observe capture leaves the main-chain word count unchanged.
+
+        ``SHA256_WHITENING_ENABLE`` = 0 passes each BIW word straight to the FIFO
+        stream (entropy_source.rdl ``CTRL``). Each window starts after a strobe and
+        ends on the MAIN_STROBES-th strobe after it, so every window spans the same
+        number of whole strobe periods; two windows with capture off give the same
+        count (the control) before the window with capture on is graded.
+        """
+        await self._setup(ctrl_fields={"SHA256_WHITENING_ENABLE": 0})
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
-        cap = MAIN_WORDS * 64 * self._period()
-        w_clk = await self._clocks_for_words(MAIN_WORDS, cap)
-        off = await self._words_in(w_clk) if w_clk else 0
+        bound = 2 * (MAIN_STROBES + 1) * self._period()
+        off_a = await self._words_over_strobes(MAIN_STROBES, bound)
+        off_b = await self._words_over_strobes(MAIN_STROBES, bound)
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
-        on = await self._words_in(w_clk) if w_clk else 0
+        on = await self._words_over_strobes(MAIN_STROBES, bound)
+        levels = {fifo: await self._level(fifo) for fifo in FIFOS}
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, 0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
-        self.chk.blocked("OBS-MAIN", "observe_capture_vs_main_chain_unstated")
-        self.chk.obs("OBS-MAIN", words_obs_on=on, words_obs_off=off, window_clk=w_clk or "none")
+        self.chk.ctrl(
+            "OBS-MAIN",
+            off_a is not None and off_a == off_b and off_a > 0,
+            words_off_a=off_a,
+            words_off_b=off_b,
+            strobes=MAIN_STROBES,
+            bound=bound,
+        )
+        self.chk.ctrl(
+            "OBS-MAIN",
+            levels["noise"] > 0 and levels["biw"] > 0,
+            noise_obs_level=levels["noise"],
+            biw_obs_level=levels["biw"],
+        )
+        fields = {
+            "strobes": MAIN_STROBES,
+            "words_obs_on": on,
+            "words_obs_off": off_b,
+        }
+        if on is None or off_b is None:
+            fields["reason"] = f"timeout:strobes bound={bound}"
+        self.chk.ok("OBS-MAIN", on is not None and on == off_b, **fields)
 
     # --- capture-off leg ---------------------------------------------------------------
     async def _off_leg(self) -> None:
@@ -860,28 +903,28 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             **fields,
         )
 
-    async def _clocks_for_words(self, words: int, cap: int) -> int | None:
+    async def _words_over_strobes(self, strobes: int, bound: int) -> int | None:
+        """``esrc_compress_vld_o`` words from the clock after a strobe of
+        ``esrc_decor_valid_o`` to the ``strobes``-th strobe after it, inclusive;
+        None when a strobe is missing after ``bound`` clocks."""
         dut = cocotb.top
-        seen = 0
-        for clk in range(1, cap + 1):
+        seen = None
+        words = 0
+        for _ in range(bound):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
-            seen += self.rd(dut.esrc_compress_vld_o)
-            if seen >= words:
+            strobe = self.rd(dut.esrc_decor_valid_o)
+            if seen is None:
+                if strobe:
+                    seen = 0
+                continue
+            words += self.rd(dut.esrc_compress_vld_o)
+            seen += strobe
+            if seen == strobes:
                 await NextTimeStep()
-                return clk
+                return words
         await NextTimeStep()
         return None
-
-    async def _words_in(self, clocks: int) -> int:
-        dut = cocotb.top
-        seen = 0
-        for _ in range(clocks):
-            await RisingEdge(dut.clk_i)
-            await ReadOnly()
-            seen += self.rd(dut.esrc_compress_vld_o)
-        await NextTimeStep()
-        return seen
 
     # --- lock leg (steps 19-23) ------------------------------------------------------------
     async def _write_raw(self, fifo: str, raw: int) -> None:

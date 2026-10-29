@@ -4,9 +4,10 @@
 
 A read go with ``read_enable`` clear sets ``read_status``. A read or program address
 of 8192 or more sets its own address-error flag (and ``read_status`` for a read), and
-the flag clears by write-one. A request that a lock blocks sets ``efuse_req_error``.
-``program_enable`` keeps a read from reaching the bank. No bank bit changes from reset
-release until sense completes. A program with data 0 programs nothing.
+the flag clears by write-one. A request that a lock blocks sets ``efuse_req_error`` and
+neither address-error flag. ``program_enable`` keeps a read from reaching the bank. No
+bank bit changes from reset release until sense completes. A program with data 0
+programs nothing and sets no flag.
 
 Sources: ``hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc``
 (``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_PROGRAM_CTRL``, ``EFUSE_READ_CTRL``; field
@@ -26,8 +27,13 @@ no early exit), then reads of ``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_READ_CTRL
 ``EFUSE_PROGRAM_CTRL``; both busy bits must read 0.
 
 Checkers:
-  CHK-IF-STATUS    the error flags and ``read_status`` of each refusal case equal the
-                   case golden; each clear bit clears its flag only.
+  CHK-IF-STATUS    the error flags and ``read_status`` of each refusal case and of the
+                   data-0 program equal the case golden (the lock-blocked read grades
+                   the three error flags, not ``read_status``); each clear bit clears
+                   its flag only.
+  CTRL-IF-GO-LANDED  after each refused go (pre-sense, each JTAG pre-sense leg, both
+                   enables, data 0) the software-owned fields of the written control
+                   register read back as written, so a go that did not land fails.
   CHK-IF-CMD       the data-0 program leaves the bank unchanged; the program of a 0 bit
                    of the write-locked field leaves the bank unchanged
                    (``efuse_program_go``: ignored when the lock bit is set;
@@ -76,8 +82,9 @@ graded step (``set_ef_hold_tag``) and samples only when the leaf writes that tag
 to the pass label (``set_ef_hold_pass``) after every check of the step passed. An
 event outside a graded step is dropped.
 
-Log-only: the flags of the pre-sense, data-0 and both-enables cases
-(``OBS-IF-STATUS-FLAGS``), the other flags and data of the lock-blocked read, the bank
+Log-only: the flags of the pre-sense and both-enables cases
+(``OBS-IF-STATUS-FLAGS``), ``read_status`` (``OBS-IF-LOCK-READ-STATUS``) and the data of
+the lock-blocked read, the bank
 diff after the out-of-range program cases (``OBS-IF-CMD``), the
 count of post-guard commands (``efuse_shim_cmd_*_o``) of each out-of-range read and
 program (``OBS-IF-OOB-CMD``).
@@ -156,6 +163,16 @@ _M_RD_DONE = _IC.field_mask("EFUSE_READ_CTRL", "read_done")
 _M_PG_BUSY = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_busy")
 _M_PG_DONE = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _M_PG_STATUS = _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
+# Software-owned (sw=rw, hw=r) fields of each control register: they read back as written.
+_M_PG_RW = (
+    _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
+    | _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
+    | _IC.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
+    | _IC.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
+)
+_M_RD_RW = _IC.field_mask("EFUSE_READ_CTRL", "efuse_addr") | _IC.field_mask(
+    "EFUSE_READ_CTRL", "read_enable"
+)
 _BIT_8191 = 8191  # last bit of the 8192-bit OTP (256 words of 32 bits)
 
 # Test parameters (the contract leaves them to the test).
@@ -273,6 +290,18 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self._wr(STATUS_ADDR, mask)
         await ClockCycles(cocotb.top.clk_i, _CLEAR_SETTLE)
         return await self._flags()
+
+    def _landed(self, case: str, reg: str, wrote: int, got: int) -> bool:
+        """CTRL-IF-GO-LANDED: the software-owned fields of a refused go read back as written."""
+        m = _M_PG_RW if reg == "EFUSE_PROGRAM_CTRL" else _M_RD_RW
+        return self._ctrl(
+            "IF-GO-LANDED",
+            (got & m) == (wrote & m),
+            case=case,
+            reg=reg,
+            wrote=f"0x{wrote & m:08x}",
+            readback=f"0x{got & m:08x}",
+        )
 
     # -- reset and sense ----------------------------------------------------
 
@@ -405,11 +434,15 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         task, win = self._start_presense_monitor(self.bank.read())
         dut.rst_ni.value = 1
         # First access after the release: one write with enable, data 1, address, go.
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit, data=1))
+        go = program_ctrl_word(bit, data=1)
+        await self._wr(PROGRAM_CTRL_ADDR, go)
         sense_at_go = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
         t_go = win["n"]
         await task
         t_sense = win["t_sense"]
+        landed = self._landed(
+            "pre_sense", "EFUSE_PROGRAM_CTRL", go, await self._rd(PROGRAM_CTRL_ADDR)
+        )
         await ClockCycles(dut.clk_i, self.w)
         f = await self._flags()
         self.chk.obs(
@@ -468,7 +501,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             self._ctrl("HOOK", True, **fields)
         else:
             self._grade("HOOK", False, **fields)
-        await self._pass(tag, ok and hook)
+        await self._pass(tag, ok and hook and landed)
 
     def _start_presense_monitor(self, ref: Any) -> tuple[Any, dict[str, Any]]:
         """Start the per-clock monitor of a pre-sense window; ``rst_ni`` is low.
@@ -636,9 +669,8 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         r_data &= M32
         t_rd = None if task.done() else win["n"]
         s_rd = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
-        w_resp, _ = await self.jtag_axil_op(
-            write=True, addr=PROGRAM_CTRL_ADDR, wdata=program_ctrl_word(prog_bit, data=1)
-        )
+        go = program_ctrl_word(prog_bit, data=1)
+        w_resp, _ = await self.jtag_axil_op(write=True, addr=PROGRAM_CTRL_ADDR, wdata=go)
         t_wr = None if task.done() else win["n"]
         s_wr = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
         if not task.done():
@@ -649,6 +681,9 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         p_data &= M32
         probe = shadow_word(self, rd["idx"])
         await ClockCycles(dut.clk_i, self.w)
+        landed = self._landed(
+            f"pre_sense_jtag.{leg}", "EFUSE_PROGRAM_CTRL", go, await self._rd(PROGRAM_CTRL_ADDR)
+        )
         self.chk.obs(
             "IF-PRESENSE-JTAG-RESP",
             leg=leg,
@@ -708,9 +743,9 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         else:
             self._grade("HOOK", False, **fields)
         if leg == "window":
-            await self._pass(tag, ok and hook)
+            await self._pass(tag, ok and hook and landed)
             close_graded_window(self.logger)
-        return ok and hook
+        return ok and hook and landed
 
     async def _case_presense_jtag(self) -> None:
         """JTAG map read and JTAG program go before sense done, with their post-sense twins.
@@ -832,22 +867,19 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         mark = self.cmds.mark()
         f = await self._run_read(bit)
         n_reads = len(self.cmds.reads_since(mark))
-        # The clear of efuse_req_error drops that flag only; the other flags of this
-        # case are not stated, so they must only keep their values.
+        # In range and blocked by the read lock: efuse_req_error only of the three
+        # status flags. read_status is not stated for this case (logged), and the
+        # clear of efuse_req_error must keep it.
         fc = await self._clear(_M_CLR_RE)
-        ok_clear = (
-            fc["re"] == 0
-            and fc["rs"] == f["rs"]
-            and fc["rae"] == f["rae"]
-            and fc["pae"] == f["pae"]
-        )
+        ok_clear = fc["re"] == 0 and fc["rs"] == f["rs"] and fc["rae"] == 0 and fc["pae"] == 0
+        self.chk.obs("IF-LOCK-READ-STATUS", addr=bit, read_status=f["rs"], graded=0)
         ok_st = self._grade(
             "IF-STATUS",
-            f["re"] == 1 and self._idle(f) and ok_clear,
+            f["re"] == 1 and f["rae"] == 0 and f["pae"] == 0 and self._idle(f) and ok_clear,
             case="lock_read",
             addr=bit,
             status=self._s4(f),
-            exp="0bxxx1",
+            exp="0bx001",
             cleared=int(ok_clear),
             status_after_clear=self._s4(fc),
             busy=f"{f['rd_busy']}{f['pg_busy']}",
@@ -872,11 +904,16 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self._frame("both_enables")
         tag = self._step()
         mark = self.cmds.mark()
-        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(0, data=0, enable=1, go=0))
-        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit, enable=1))
+        pg_go = program_ctrl_word(0, data=0, enable=1, go=0)
+        rd_go = read_ctrl_word(bit, enable=1)
+        await self._wr(PROGRAM_CTRL_ADDR, pg_go)
+        await self._wr(READ_CTRL_ADDR, rd_go)
         await ClockCycles(dut.clk_i, _BOTH_WAIT)
         st = await self._rd(STATUS_ADDR)
         rc = await self._rd(READ_CTRL_ADDR)
+        pg = await self._rd(PROGRAM_CTRL_ADDR)
+        landed = self._landed("both_enables", "EFUSE_READ_CTRL", rd_go, rc)
+        landed = self._landed("both_enables", "EFUSE_PROGRAM_CTRL", pg_go, pg) and landed
         self.chk.obs(
             "IF-STATUS-FLAGS",
             case="both_enables",
@@ -911,16 +948,18 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             ctl_twin_cmd=ctl,
             addr=bit,
         )
-        await self._pass(tag, ok and ok_twin)
+        await self._pass(tag, ok and ok_twin and landed)
 
     async def _case_data0(self) -> None:
         """Step 14: program with data 0 changes no bank bit; then the data-1 twin."""
         bit = self.progs["data0"]["addr"]
         snap = await self._frame("data0")
         tag = self._step()
+        go = program_ctrl_word(bit, data=0)
         f = await self._run_program(bit, data=0)
+        landed = self._landed("data0", "EFUSE_PROGRAM_CTRL", go, await self._rd(PROGRAM_CTRL_ADDR))
         diff = self.bank.diff_since(snap)
-        self.chk.obs("IF-STATUS-FLAGS", case="data0", addr=bit, status=self._s4(f), graded=0)
+        ok_st = self._status("data0", bit, f, "0b0000", "na", True)
         ok = self._grade(
             "IF-CMD",
             not diff and self._idle(f),
@@ -929,7 +968,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             addr=bit,
             busy=f"{f['rd_busy']}{f['pg_busy']}",
         )
-        await self._pass(tag, ok)
+        await self._pass(tag, ok and ok_st and landed)
         tag = self._step()
         snap = self.bank.read()
         f = await self._run_program(bit, data=1)

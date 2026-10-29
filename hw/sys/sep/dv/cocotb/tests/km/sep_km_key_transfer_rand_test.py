@@ -61,8 +61,16 @@ Checks:
                     bit order, and each selected bank shows a write.
   CHK-AES-NOKEY     every AES witness read where the bank holds no key (AES
                     outside M, the refused masks, after the all-bank shred)
-                    gives no output within W. Control: CTRL-ALL-BANK-XFER, the
-                    AES output equals the golden of K3 before that shred.
+                    gives no output within W. Controls: CTRL-ALL-BANK-XFER, the
+                    AES output equals the golden of K3 before that shred, and
+                    CTRL-AES-NOKEY-INPUT, every STATUS sample of the read shows
+                    INPUT_READY = 0 (the block reached DATA_IN, not loaded).
+  CHK-DELIV-COUNT   in the transfer of K3 to 0xFF, ``KM-BUS`` shows 2 x width
+                    share writes plus one KEY_CTRL write on each bank (17, 25
+                    for OTBN) and no write outside the mask
+                    (``hw/sys/sep/doc/crypto.adoc``, words per share;
+                    ``hw/ip/key_manager/doc/firmware.adoc``, "Crypto Engine
+                    Drivers": the two shares, then set key_valid).
 
 Controls: CTRL-GOLD (the 8, 9 and 16 word rounds equal the golden of the
 leading 8 words), CTRL-REFUSE-Z (the mask Z outside P1 returns -1 with no
@@ -97,7 +105,12 @@ from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_shard import sep_shard
 from km import sep_km_key_transfer_rand_plan as pl
 from sep_base_test import sep_base_test
-from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_OUTPUT_VALID, SepAes
+from seq_lib.sep_aes_seq import (
+    AES_STATUS,
+    AES_STATUS_INPUT_READY,
+    AES_STATUS_OUTPUT_VALID,
+    SepAes,
+)
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_ENGINE_SHRED,
@@ -202,6 +215,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         "CHK-BANKS",
         "CHK-ENG-ORDER",
         "CHK-AES-NOKEY",
+        "CHK-DELIV-COUNT",
     )
 
     # ------------------------------------------------------------------ main
@@ -416,7 +430,9 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         """AES witness: ``key``, ``none`` or ``other``. Resets the AES after a non-key result.
 
         With ``expect_key`` False the bank holds no key, and CHK-AES-NOKEY
-        grades ``none``.
+        grades ``none``. Its control CTRL-AES-NOKEY-INPUT requires every
+        STATUS sample after the DATA_IN writes to read INPUT_READY = 0: the
+        block landed in DATA_IN and was not loaded.
         """
         golden = aes256_ecb_encrypt_words(list(key[:WITNESS_WORDS]), list(AES_PT)) if key else None
         await self.aes.configure_ecb_enc_256(sideload=True)
@@ -425,8 +441,11 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         t0 = self._cyc()
         first = self.aes_first_clk is None
         dur = None
+        samples = in_ready = 0
         while True:
             st = await self.aes._rd(AES_STATUS)
+            samples += 1
+            in_ready += bool(st & (1 << AES_STATUS_INPUT_READY))
             el = self._cyc() - t0
             if st & (1 << AES_STATUS_OUTPUT_VALID):
                 dur = el
@@ -457,6 +476,13 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             "w_clk": self.w_clk,
         }
         if not expect_key:
+            self.chk.ctrl(
+                "AES-NOKEY-INPUT",
+                samples > 0 and in_ready == 0,
+                step=step,
+                samples=samples,
+                input_ready_samples=in_ready,
+            )
             self.chk.ok("AES-NOKEY", state == "none", **fields)
         elif state != "key":
             self.chk.obs("AES-OTHER", **fields)
@@ -684,7 +710,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         self.bus.start()
         code, arg = await self._transfer(self.h3, pl.ALL_BANKS)
         writes = await self.bus.stop()
-        self._bus_obs("all_bank", writes)
+        self._grade_deliv_count(writes, pl.ALL_BANKS)
         kv = self._bank("all_bank", pl.ALL_BANKS)
         hmac = await self._hmac_read(p.k3)
         aes = await self._aes_read(p.k3, "all_bank")
@@ -733,6 +759,22 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             bank=",".join(f"{n}:{c}" for n, c in counts.items()) or "-",
             writes=len(writes),
             order=",".join(runs) or "-",
+        )
+
+    def _grade_deliv_count(self, writes: list[tuple[int, int]], mask: int) -> None:
+        """Each bank of ``mask`` takes 2 x width share writes and one KEY_CTRL write."""
+        banks = [pl.bank_of(port, addr) for port, addr in writes]
+        got = {b: banks.count(b) for b in range(len(pl.BANK_NAME)) if mask >> b & 1}
+        exp = {b: 2 * pl.WIDTH[b] + 1 for b in got}
+        outside = sum(1 for b in banks if b is None or not mask >> b & 1)
+        self.chk.ok(
+            "DELIV-COUNT",
+            got == exp and outside == 0,
+            mask=_h(mask),
+            bank=",".join(f"{pl.BANK_NAME[b]}:{c}" for b, c in got.items()),
+            expected=",".join(f"{pl.BANK_NAME[b]}:{c}" for b, c in exp.items()),
+            outside_mask=outside,
+            writes=len(writes),
         )
 
     def _grade_order(self, writes: list[tuple[int, int]], mask: int, leg: str) -> None:

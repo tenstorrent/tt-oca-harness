@@ -94,15 +94,16 @@ Checkers:
                    cell change exactly one stored word, and
                    ibox(iplayer(S1)) ^ ibox(iplayer(S2)) == d1 ^ d2 in 32 draws
                    that cover every nibble value in each of the 8 lanes.
+  CHK-KSCR-CIPHER-K2  d1 of the last draw rewritten under a second key k2 stores
+                   one word W2 with ibox(iplayer(W1)) ^ ibox(iplayer(W2)) == k ^ k2
+                   (the tweak uses the logical index, so only the key differs).
   CHK-NONVAC       every control of a "no effect" check above was seen.
 
 Log only: OBS-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
 erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
 (KPV cells after a cold reset are not stated), ``INFO-KPV-RACE-REDRAW`` and
 ``INFO-KPV-RACE``, ``OBS-KPV-WIPE-ERR-O`` (PIC vector bit 30 at the wipe),
-``OBS-KPV-NEIGH-PORT`` (changes of the port read of neighbour word 0) and
-``OBS-KSCR-CIPHER-K2`` (the cipher-leg cell written under a second key, with the
-measured ``k2_differs``).
+and ``OBS-KPV-NEIGH-PORT`` (changes of the port read of neighbour word 0).
 
 Log only, not stated: ``OBS-KPV-ACCESS``, a word read and write issued right
 after an erase write, each with the erase bit of a CTRL read right after that
@@ -170,6 +171,7 @@ _REQUIRED = (
     "CHK-WIPE-SCOPE",
     "CHK-WIPE-EDGE2",
     "CHK-KSCR-CIPHER",
+    "CHK-KSCR-CIPHER-K2",
     "CHK-NONVAC",
 )
 
@@ -281,7 +283,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         return v & m.IRQ_WIPE
 
     def _draw(self, name: str, value) -> None:
-        self.logger.info("DRAW %s=%s", name, value)
+        self.logger.info("INFO-DRAW %s=%s", name, value)
 
     async def _watched(self, w: _Watch, groups: list[list[kp.PokeOp]]) -> list[list[kp.PokeResult]]:
         """Run ``groups`` on slot ``w.slot`` with a neighbour snapshot before and after each."""
@@ -373,7 +375,8 @@ class sep_km_kpv_rand_test(sep_base_test):
         completes (``km_kpv.adoc``, "CTRL[64]": hardware self-clears the bit when
         the erase completes), so the count equals the number of erase writes.
         """
-        bit = 4 * slot + 2
+        # KM-KPV packs CTRL[s] at [w*s +: w], w the CTRL field width (SEP_TB_ARCH).
+        bit = m.CTRL_FIELDS.bit_length() * slot + m.ERASE.bit_length() - 1
         state = {"run": True, "rises": 0}
 
         async def watch() -> None:
@@ -434,7 +437,7 @@ class sep_km_kpv_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.rng = SepSeededRng(seed)
         self.plan = m.draw_plan(self.rng)
         for name, value in self.plan.draws:
@@ -1392,8 +1395,9 @@ class sep_km_kpv_rand_test(sep_base_test):
             diff_ok=diff_ok,
         )
 
-        # Control (logged): under the second key the same cell and data store
-        # another word. Draw 32 gives the index and the word of d1 under key k.
+        # Under the second key the same cell and data store one word whose
+        # inverse differs from the word under key k by k ^ k2: the tweak uses the
+        # logical index, so only the key changes. Draw 32 gives d1 under key k.
         self._gate(False)
         (s, w), d1, _d2 = p.cipher[-1]
         sa, sb = snaps[-2], snaps[-1]
@@ -1403,15 +1407,23 @@ class sep_km_kpv_rand_test(sep_base_test):
         )
         under_k2 = snaps[-1]
         idx_k2 = [i for i in range(m.N_KPV_WORDS) if under_k2[i] != sb[i]]
-        self.chk.obs(
+        key_diff = p.cipher_key ^ p.cipher_key2
+        got_diff = (
+            m.inverse_diff(sa[idx_k[0]], under_k2[idx_k2[0]])
+            if len(idx_k) == 1 and len(idx_k2) == 1
+            else None
+        )
+        self.chk.ok(
             "KSCR-CIPHER-K2",
+            got_diff == key_diff,
             cell=f"{s}.{w}",
             d1=_h(d1),
             idx_k=idx_k,
             word_k=[_h(sa[i]) for i in idx_k],
             idx_k2=idx_k2,
             word_k2=[_h(under_k2[i]) for i in idx_k2],
-            k2_differs=int([sa[i] for i in idx_k] != [under_k2[i] for i in idx_k2]),
+            inverse_diff="none" if got_diff is None else _h(got_diff),
+            golden=_h(key_diff),
         )
         self._gate(True)
 

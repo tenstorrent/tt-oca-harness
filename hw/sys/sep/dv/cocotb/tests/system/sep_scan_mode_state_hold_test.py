@@ -86,8 +86,12 @@ OBS-SCAN-FEAT-HOLD (``FEAT_CTRL``, the DEMOTE state and lock bits and the
 shadow words whose value is not in ``shadow_efuse_values_n0_scan``; the
 specification does not state that every Class-1 word carries the name),
 OBS-SCAN-SHADOW-WR (a ``SIP_DIS``
-shadow write with ``test_en_i`` = 1 at strap 0) and OBS-SCAN-SECDIS-GO (a
-mismatch SEC_DIS go with ``test_en_i`` = 1, after the last session). The
+shadow write with ``test_en_i`` = 1 at strap 0), OBS-SCAN-SECRET0 (per strap-0
+session, the samples on which the secret shadow outputs equal the staged words),
+OBS-SCAN-KM-COPY (the three Key Manager OTP copy signals through each session)
+and OBS-SCAN-SECDIS-GO (a mismatch SEC_DIS go with ``test_en_i`` = 1, after the
+last session). ``INFO-SCAN-FEAT-ORIENT`` prints the PROD profile words of DEMOTE
+0/0 and 1/1 (model values) for orientation. The
 specification does not state these values under a scan reset.
 
 The graded window (owner code of this test) is open for each session only.
@@ -867,7 +871,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             for d in (0, 1)
         }
         self.logger.info(
-            "OBS-SCAN-FEAT-HOLD orientation: profile PROD demote 0/0=0x%016x 1/1=0x%016x "
+            "INFO-SCAN-FEAT-ORIENT: profile PROD demote 0/0=0x%016x 1/1=0x%016x "
             "(staged SIP_DIS=0x%016x SYS_DIS=0x%016x)",
             orient[0],
             orient[1],

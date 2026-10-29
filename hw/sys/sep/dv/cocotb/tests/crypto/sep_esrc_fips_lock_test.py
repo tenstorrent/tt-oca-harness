@@ -22,6 +22,8 @@ stays 0 so this test does not trip the alert path.
 
 Every write the lock must reject, and the reserved CTRL write, grades its OKAY
 B response in the same CHK line, so a write that never reached the DUT fails.
+The reserved bits of each graded FIPS_LOCK read are logged as OBS-FIPS-LOCK-RSVD
+(no stated reset value).
 CHK-RANDCFG grades the (register, field) pairs that the walked targets cover,
 taken from their bus addresses and compare masks, against every field the RDL
 marks swwel less the declared exclusions.
@@ -68,11 +70,6 @@ def _lock_of(word: int) -> int:
     return 1 if word & LOCK_BIT else 0
 
 
-def _rsvd_of(word: int) -> str:
-    """FIPS_LOCK reserved bits: no reset value in the register table, logged only."""
-    return f"OBS rsvd=0x{word & ~LOCK_BIT & WORD_MASK:08x}"
-
-
 @pyuvm.test()
 class sep_esrc_fips_lock_test(sep_base_test):
     """Lock freezes certified config, the debug pin and both observe-tap enables."""
@@ -101,6 +98,13 @@ class sep_esrc_fips_lock_test(sep_base_test):
         self.logger.error("%s FAIL: %s", chk, text)
         close_graded_window(self.logger)
         raise AssertionError(f"{chk} FAIL: {text}")
+
+    async def _read_lock_word(self, esrc: SepEsrcFipsLock, when: str) -> int:
+        """Read FIPS_LOCK; log its reserved bits, which have no reset value in the
+        register table, as OBS-FIPS-LOCK-RSVD."""
+        word = await esrc.read_lock_word()
+        self.logger.info("OBS-FIPS-LOCK-RSVD: %s rsvd=0x%08x", when, word & ~LOCK_BIT & WORD_MASK)
+        return word
 
     async def _check_pre(self, esrc: SepEsrcFipsLock, target) -> None:
         await esrc.write(target.addr, target.pre)
@@ -160,7 +164,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
         cfg = SepEsrcFipsLockCfg(self.random_seed())
         esrc = SepEsrcFipsLock(self)
         self._walked: list = []
-        self.logger.info("esrc fips lock: %s", cfg.summary())
+        self.logger.info("INFO-RANDCFG %s", cfg.summary())
 
         # The threshold bin samples at the RECOMMENDED_THRESHOLDS read, before
         # the compare. Grade the whole sweep with the window closed first, so the
@@ -220,31 +224,32 @@ class sep_esrc_fips_lock_test(sep_base_test):
         # value fails here, so the post-lock freeze cannot pass on a stuck bit.
         for reg, held in cfg.obs_held.items():
             for want in (held ^ 1, held):
-                await esrc.write_obs(reg, want, cfg.lane_pre)
+                resp = await esrc.write_obs(reg, want, cfg.lane_pre)
                 got, lane = await esrc.read_obs(reg)
                 self._grade(
                     "CHK-OBS-PRE-LOCK",
-                    got == want and (reg != "NOISE_OBS_CTRL" or lane == cfg.lane_pre),
+                    resp == RESP_OKAY
+                    and got == want
+                    and (reg != "NOISE_OBS_CTRL" or lane == cfg.lane_pre),
                     f"{reg}.RAW_ENABLE wrote {want} read {got}; LANE_SEL wrote "
-                    f"{cfg.lane_pre if reg == 'NOISE_OBS_CTRL' else 'n/a'} read {lane}",
+                    f"{cfg.lane_pre if reg == 'NOISE_OBS_CTRL' else 'n/a'} read {lane} "
+                    f"B={_resp(resp)}",
                 )
 
         resp = await esrc.set_lock()
-        word = await esrc.read_lock_word()
+        word = await self._read_lock_word(esrc, "after LOCK write 1")
         self._grade(
             "CHK-LOCK-SET",
             resp == RESP_OKAY and _lock_of(word) == 1,
-            f"FIPS_LOCK.LOCK={_lock_of(word)} after a write of 1 B={_resp(resp)} "
-            f"({_rsvd_of(word)})",
+            f"FIPS_LOCK.LOCK={_lock_of(word)} after a write of 1 B={_resp(resp)}",
         )
 
         resp = await esrc.try_unlock()
-        word = await esrc.read_lock_word()
+        word = await self._read_lock_word(esrc, "after LOCK write 0")
         self._grade(
             "CHK-LOCK-W1S",
             resp == RESP_OKAY and _lock_of(word) == 1,
-            f"FIPS_LOCK.LOCK={_lock_of(word)} after a write of 0 B={_resp(resp)} "
-            f"({_rsvd_of(word)})",
+            f"FIPS_LOCK.LOCK={_lock_of(word)} after a write of 0 B={_resp(resp)}",
         )
 
         for target in cfg.targets:
@@ -255,13 +260,14 @@ class sep_esrc_fips_lock_test(sep_base_test):
         # lane moving while RAW_ENABLE holds shows the write reached the register
         # and the lock is per field, not a dropped write or a whole-register freeze.
         for reg, held in cfg.obs_held.items():
-            await esrc.write_obs(reg, held ^ 1, cfg.lane_post)
+            resp = await esrc.write_obs(reg, held ^ 1, cfg.lane_post)
             got, lane = await esrc.read_obs(reg)
             direction = "set" if held == 0 else "clear"
             self._grade(
                 "CHK-OBS-ENABLE-LOCKED",
-                got == held,
-                f"{reg}.RAW_ENABLE read {got} after a {direction} under lock (held {held})",
+                resp == RESP_OKAY and got == held,
+                f"{reg}.RAW_ENABLE read {got} after a {direction} under lock (held {held}) "
+                f"B={_resp(resp)}",
             )
             if reg == "NOISE_OBS_CTRL":
                 self._grade(
@@ -272,7 +278,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
                 )
 
         ctrl_before, resp, ctrl_after = await esrc.poke_reserved_ctrl_bit()
-        word = await esrc.read_lock_word()
+        word = await self._read_lock_word(esrc, "after locked CTRL RSVD0 write")
         self._grade(
             "CHK-CTRL-RSVD",
             resp == RESP_OKAY
@@ -281,18 +287,16 @@ class sep_esrc_fips_lock_test(sep_base_test):
             and _lock_of(word) == 1,
             f"locked CTRL RSVD0 write B={_resp(resp)}; CTRL 0x{ctrl_before:08x} -> "
             f"0x{ctrl_after:08x} (fields 0x{ctrl_after & ctrl_t.mask:08x} want "
-            f"0x{ctrl_t.pre & ctrl_t.mask:08x}); FIPS_LOCK.LOCK={_lock_of(word)} "
-            f"({_rsvd_of(word)})",
+            f"0x{ctrl_t.pre & ctrl_t.mask:08x}); FIPS_LOCK.LOCK={_lock_of(word)}",
         )
         lock_before_rst = _lock_of(word)
 
         await self.resense()
-        word = await esrc.read_lock_word()
+        word = await self._read_lock_word(esrc, "after rst_ni")
         self._grade(
             "CHK-RST-NI",
             lock_before_rst == 1 and _lock_of(word) == 0,
-            f"FIPS_LOCK.LOCK={lock_before_rst} before rst_ni, {_lock_of(word)} after rst_ni "
-            f"({_rsvd_of(word)})",
+            f"FIPS_LOCK.LOCK={lock_before_rst} before rst_ni, {_lock_of(word)} after rst_ni",
         )
 
         # cfg.release is chosen so its poke differs from the register reset. On a
@@ -315,12 +319,12 @@ class sep_esrc_fips_lock_test(sep_base_test):
         rel_tap = next(reg for reg, held in cfg.obs_held.items() if held == 0)
         raw_reset = ENTROPY_SOURCE.fields(rel_tap)["RAW_ENABLE"]["reset"]
         at_reset, _ = await esrc.read_obs(rel_tap)
-        await esrc.write_obs(rel_tap, 1)
+        resp = await esrc.write_obs(rel_tap, 1)
         got, _ = await esrc.read_obs(rel_tap)
         self._grade(
             "CHK-OBS-POST-UNLOCK",
-            at_reset == raw_reset and got == 1,
+            at_reset == raw_reset and resp == RESP_OKAY and got == 1,
             f"{rel_tap}.RAW_ENABLE read {at_reset} after rst_ni (reset {raw_reset}) and "
-            f"{got} after a set",
+            f"{got} after a set B={_resp(resp)}",
         )
         await esrc.write_obs(rel_tap, 0)

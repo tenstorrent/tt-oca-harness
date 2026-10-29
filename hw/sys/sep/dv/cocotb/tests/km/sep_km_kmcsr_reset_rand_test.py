@@ -48,7 +48,8 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-RST-PARK-DOMAINS  after PARK the DRBG sampler CFG (warm domain) reads its reset
                     0x01000000 and COLD_BOOT_DONE (cold domain) reads 1
   CHK-RST-COLD      a cold reset clears both domains and the mailbox word
-  CHK-RST-WRONG     a wrong SOFT_RST_CODE takes no reset: the witnesses keep their
+  CHK-RST-WRONG     a wrong SOFT_RST_CODE (0 after all ones, so each readback
+                    differs from the value before) takes no reset: the witnesses keep their
                     values and the KM warm reset (``km_cpu_rst_n_o``) never reads 0
                     from the first wrong write to the end of the list. Controls:
                     CTRL-RST-WRONG-WR (SOFT_RST_CODE, RW, reads back each wrong code)
@@ -60,6 +61,13 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-HOLD          the KM warm reset rises at least MIN_RESET_CYCLES (10)
                     clocks after the km_sw_rst_n rise
   CHK-ISO           the three KM isolation probes stay 0 during a SOFT reset
+  CHK-RST-SOFT-MBOX after SOFT the mailbox word survives: the restarted image reads it
+                    as its list header and stops in ERROR with ERR_HDR and the word's
+                    low 24 bits
+  CHK-KMCSR-READ-RESP   each read of a virtual UART or testbench word completes OKAY
+  CHK-KMCSR-RESET-READ  VUART_TX, TB_RESULT, TB_SIGNATURE, TB_ERRCODE, TB_SUBTEST and
+                    TB_CMD_ARG (sw = rw, hw = r, no writer in this leaf) read their
+                    RDL reset
 
 Controls: the VERSION read before the write; the W1C of the other bits next to
 the own W1C; E = 0 next to case (c), which raises the line for each of the 12
@@ -77,7 +85,7 @@ every PARK and records a missed W as a missing control.
 
 Logged only (no register text states them): ``OBS-KMCSR-ACCESS``, the AXI
 response of the IRQ_SET read and of each read-only register write, and the
-response and data of each virtual UART and testbench word read.
+data of the hardware-driven virtual UART and testbench words.
 """
 
 from __future__ import annotations
@@ -261,6 +269,9 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         "CHK-REAL-CAUSE",
         "CHK-HOLD",
         "CHK-ISO",
+        "CHK-RST-SOFT-MBOX",
+        "CHK-KMCSR-READ-RESP",
+        "CHK-KMCSR-RESET-READ",
     )
 
     # ------------------------------------------------------------------ main
@@ -418,10 +429,9 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 kp.rd(pl.A_SCR_CTRL),
             ]
         )
-        en, entry, lock, ver, dbg, ctrl, scr = (x.value for x in r)
+        en, entry, lock, _ver, dbg, ctrl, scr = (x.value for x in r)
         self.entry_reset = (entry, lock & pl.ENTRY_LOCK_BIT, lock & ~pl.ENTRY_LOCK_BIT)
         self.scr_boot = scr
-        self.chk.info("CSR-VERSION-READ", control=1, version=_h(ver))
         self.chk.ok(
             "CSR-ENABLE",
             (en & pl.IRQ_EN_FIELDS) == pl.IRQ_ENABLE_RESET,
@@ -597,9 +607,28 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         reads = await self._run([kp.rd(a) for _, a in pl.OBS_READS], allow_unknown=True)
         for (reg, _), x in zip(pl.OBS_READS, reads):
             rdata = _h(x.value) if x.known else "X"
-            self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata, axi_slverr=x.slv)
             if reg == "IRQ_SET":
+                self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata, axi_slverr=x.slv)
                 self.chk.ok("CSR-SET-READ", x.known and x.value == 0, rdata=rdata, golden=_h(0))
+                continue
+            self.chk.ok(
+                "KMCSR-READ-RESP",
+                x.flags_known and x.slv == 0 and x.dec == 0,
+                reg=reg,
+                axi_slverr=x.slv,
+                axi_decerr=x.dec,
+            )
+            if reg in pl.RESET_READS:
+                golden = pl.RESET_READS[reg]
+                self.chk.ok(
+                    "KMCSR-RESET-READ",
+                    x.known and x.value == golden,
+                    reg=reg,
+                    rdata=rdata,
+                    golden=_h(golden),
+                )
+            else:
+                self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata)
         for reg, a in pl.OBS_RO_WRITES:
             before = (await self._run([kp.rd(a, raw=True)]))[0].value
             wr_val = ~before & pl.WORD_MASK
@@ -1349,11 +1378,15 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         wrst_low = sum(1 for s in smp if s.wrst == 0)
         self.chk.ctrl("RST-SOFT-WRST", wrst_low > 0, round=k, km_cpu_rst_low_clocks=wrst_low)
         depth = await self._inbound_depth()
-        self.chk.obs(
+        err = self.poke.word(kp.W_ERR)
+        err_exp = (kp.ERR_HDR << 24) | (w.mbox_word & 0xFF_FFFF)
+        self.chk.ok(
             "RST-SOFT-MBOX",
+            st[0] == kp.ST_ERROR and err == err_exp,
             round=k,
             state=kp.STATE_NAMES.get(st[0], st[0]),
-            err=_h(self.poke.word(kp.W_ERR)),
+            err=_h(err),
+            expected=_h(err_exp),
             word_low=_h(w.mbox_word & 0xFF_FFFF),
             sep_inbound_depth=depth,
         )

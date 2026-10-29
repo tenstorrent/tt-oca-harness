@@ -71,16 +71,17 @@ Checkers:
   CHK-KMAC-AUTORESEED-OFF  threshold 0, M hashes -> no acknowledge, counter == M.
 
 Log-only (``OBS-BLOCKED``): CHK-KMAC-SWSEED-NEG (five or zero seeds -> no
-absorb) and the absorb part of the sw-locked CHK-KMAC-MODE-LOCK leg. The
-seed gate text (``kmac.hjson`` ``ENTROPY_SEED``: "Only after that, the module
-can start processing commands") does not state whether a start before six
-seeds is refused or only gives no digest, and the register text SEP uses
-(``kmac.adoc`` ``ENTROPY_SEED``) does not carry it. These legs log the
-observed absorb, the seed count and ``kmac_err`` as ``OBS`` lines. No text
-gives an error for a start before the seeds: error 0x09 (theory_of_operation.md
-:729) applies only when the masking feature is enabled, no SEP text states that
-build value, and the seed count itself differs between ``kmac.hjson``
-``ENTROPY_SEED`` (6 writes, :857) and theory_of_operation.md:705 (9 writes).
+absorb) and the absorb part of the sw-locked CHK-KMAC-MODE-LOCK leg.
+``kmac.hjson`` ``CFG_SHADOWED.entropy_mode`` sw_mode (:549-551) says the module
+waits for six ``ENTROPY_SEED`` writes and "Only after that, the module can
+start processing commands"; theory_of_operation.md:705 gives 9 writes. Both
+counts exceed 0 and 5, so a start with 0 or 5 seed words is not processed
+under either text. The DUT reaches ``sha3_absorb`` on such a start, and that
+gap between text and DUT is open, so these legs log the observed absorb, the
+seed count and ``kmac_err`` as ``OBS`` lines and grade none of them. No text
+gives an error code for a start before the seeds: error 0x09
+(theory_of_operation.md:729) applies only when the masking feature is enabled,
+and no SEP text states that build value.
 
 Observables: KMAC register readback over the CPU-LSU master,
 ``crypto_edn_req_o[1]`` and ``crypto_edn_ack_o[1]`` (client 1 is KMAC,
@@ -191,8 +192,8 @@ WIN_FLOOR = 64  # clocks; floor of a window built from a short reference
 POLL_EVERY = 4  # clocks between STATUS polls
 BOUND_CLK = 60_000  # outer limit of a start, squeeze, idle, seeding or request wait
 LEGS = ("seed_count", "mode_lock", "timer", "counter", "reseed")
-# The seed gate does not state whether a start before six seeds is refused.
-SEED_GATE_BLOCKED = "sw_start_before_six_seeds_not_stated"
+# kmac.hjson:549-551 states the seed gate; the DUT absorbs before it (open gap).
+SEED_GATE_BLOCKED = "sw_seed_gate_text_vs_dut_open"
 
 
 @dataclass(frozen=True)

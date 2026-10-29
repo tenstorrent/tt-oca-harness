@@ -282,4 +282,4 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             rdata,
         )
 
-        self.logger.info("SEP eFuse JTAG/EL2 mux test PASS")
+        self.logger.info("INFO-JTAG-EL2-MUX done: every check of the leaf passed")

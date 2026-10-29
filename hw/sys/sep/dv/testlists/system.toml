@@ -754,7 +754,8 @@ name = "sep_scan_mode_state_hold_test"
 module = "system.sep_scan_mode_state_hold_test"
 seed = 1
 # No reseed: every run runs the strap-0, strap-1 and SEC_DIS legs; the seed selects
-# only the pulse width, its phase and the strap-leg order.
+# only the pulse width, its phase, the strap-leg order and the three strap-flip
+# cycles.
 timeout_sec = 3600
 tags = ["reset", "dft", "scan", "efuse", "system", "subsystem", "scan_secure_tm", "harness_dv_holes", "sep_spec_log"]
 tools = ["vcs"]

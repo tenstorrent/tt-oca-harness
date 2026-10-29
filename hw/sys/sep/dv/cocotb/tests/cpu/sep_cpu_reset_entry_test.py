@@ -101,7 +101,10 @@ Checks:
                        firmware start-up sets it). One line per
                        access (watchdog.adoc Bus Interface: the 64-bit port is
                        narrowed to the 32-bit ``aon_timer`` register block).
-                       The (a) read-back is graded on the bus: an AR of size 8
+                       Each access is legal (``sw = rw`` fields in
+                       ``aon_timer.rdl``, ``WDOG_REGWEN`` at its reset value
+                       1), so its golden code is OKAY (AMBA AXI IHI0022,
+                       OKAY: normal access success). The (a) read-back is graded on the bus: an AR of size 8
                        to the pair after the write's B, and an R beat with
                        RRESP OKAY that carries the written value.
                        Graded last, after every other check.

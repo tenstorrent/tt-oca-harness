@@ -86,7 +86,9 @@ Checkers:
                     256 sensed words equal the model, the frontdoor word holds the bit
                     and ``FEAT_CTRL`` equals the profile row of the new image.
   CHK-PROG-VERSION  chain leg: after the resense only the programmed version flag is
-                    set, and it stays set after a second resense.
+                    set, and it stays set after a second resense. Every resense
+                    of the leaf fails its check unless sense done reads 0 on the
+                    last clock of the ``rst_ni`` hold.
 
 Controls: the unlocked neighbours of the target slot are the accepted read and
 landed program twins of the lock leg (``CTRL-LOCK-CELL-RD-TWIN``,
@@ -153,7 +155,7 @@ from typing import Any
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import (
@@ -185,10 +187,10 @@ from env.sep_efuse_plan import (
     write_lock_bit,
 )
 from env.sep_efuse_test_lib import (
+    RST_HOLD,
     SenseClock,
     SepEfuseFd,
     probe_words,
-    rst_pulse,
     set_shadow_golden,
 )
 from env.sep_fcov_gate import (
@@ -366,13 +368,22 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
         The base post-sense compare grades every staged field at the sensed-shadow
         output against the current golden; a mismatch or a timeout fails ``check``.
+        A pulse fails ``check`` unless sense done reads 0 on the last clock of the
+        ``rst_ni`` hold, so every resense is a new 0 to 1 edge of sense done.
         """
+        dut = cocotb.top
         clock = SenseClock(self).start()
         try:
             if first:
                 await self.release_no_cpu_reset()
             else:
-                await rst_pulse(self)
+                await RisingEdge(dut.clk_i)
+                dut.rst_ni.value = 0
+                await ClockCycles(dut.clk_i, RST_HOLD)
+                await ReadOnly()
+                self._require_sense_restart()
+                await RisingEdge(dut.clk_i)
+                dut.rst_ni.value = 1
             await self.wait_fuse_sense(max_cycles=_SENSE_BOUND)
             if clock.clocks is None:
                 raise AssertionError("the sense clock did not see the sense-done rise")
@@ -523,7 +534,10 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             raise AssertionError(f"SETUP FAIL seed={seed} reason={p.setup_fail}")
         self.required_evidence = _EVIDENCE[kind]
         self.logger.info(
-            "EVIDENCE seed=%d kind=%s required=%s", seed, kind, ",".join(self.required_evidence)
+            "INFO-EVIDENCE seed=%d kind=%s required=%s",
+            seed,
+            kind,
+            ",".join(self.required_evidence),
         )
         self.chk = SepChkLog(self, TEST, seed)
         self.plan = p
@@ -1208,9 +1222,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         set_shadow_golden(self, self.plan.image, words=ref)
         exp = [0] * field_n_words(vname)
         exp[vb["word"]] = 1 << vb["bit"]
-        await self._sense("CHK-PROG-VERSION")
+        sense1 = await self._sense("CHK-PROG-VERSION")
         after1, bad1 = await self._fd_words(vname)
-        await self._sense("CHK-PROG-VERSION")
+        sense2 = await self._sense("CHK-PROG-VERSION")
         after2, bad2 = await self._fd_words(vname)
         ok = self._grade(
             "PROG-VERSION",
@@ -1223,6 +1237,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             exp=f"0x{_hexw(exp)}",
             word_after_sense=f"0x{_hexw(after1)}",
             word_after_resense2=f"0x{_hexw(after2)}",
+            sense1_clks=sense1,
+            sense2_clks=sense2,
         )
         await self._pass(tag, ok)
 

@@ -53,7 +53,14 @@ Checkers:
                      the end of the hold: the enable is 0, so the raised kmac_err
                      raises no interrupt (kmac.adoc line 67: "Enable interrupt
                      when INTR_STATE.kmac_err is set"). The kmac_err read of 1 in
-                     the same line is the positive probe. The SHA3-128
+                     the same line is the positive probe. Control
+                     CTRL-KMAC-UNSUP-LINE, in the mode 2'b01 cell with
+                     ``en_unsupported_modestrength`` = 1: with
+                     ``INTR_ENABLE.kmac_err`` written and read 1 before
+                     ``CMD.start``, kmac_err reads 1 and the same watcher of
+                     vector bit 22 sees a rise within the kmac_err bound after
+                     the start; a watcher bound to a dead or wrong bit fails it.
+                     The SHA3-128
                      and mode 2'b01 cells are graded the same way.
   CHK-KMAC-ERRCODE   en bit 0, every unsupported cell (SHAKE/cSHAKE 224, 384,
                      512, SHA3-128 and mode 2'b01): ERR_CODE[31:24] = 0x06 on the
@@ -116,7 +123,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
-from env.sep_bit_watch import SepBitWatch
+from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_kmac_unsup_pass
 from env.sep_kmac_golden import encode_string, sha3
@@ -682,11 +689,16 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
     async def _rsvd_enabled_cell(self, plan: Plan, t_clean: int) -> None:
         """Mode 2'b01, drawn strength, en bit 1: CHK-KMAC-UNSUP-EN grades absorb; the rest is logged.
 
-        Runs after the owner window closed: no FCOV bin owns this cell.
+        ``INTR_ENABLE.kmac_err`` is set before the start, and CTRL-KMAC-UNSUP-LINE
+        requires a rise of vector bit 22. Runs after the owner window closed: no
+        FCOV bin owns this cell.
         """
         bound = _ERR_BOUND_MULT * t_clean
         pre_intr, pre_code, cfg_rb = await self._arm_cell(_MODE_RSVD, plan.rsvd_strength, 1)
         cfg_exp = _cfg_word(_MODE_RSVD, plan.rsvd_strength, 1) & _CFG_CELL_MASK
+        await self._wr(_KMAC_INTR_ENABLE, _ERR_EN)
+        err_en = _bits(await self._rd(_KMAC_INTR_ENABLE), _ERR_EN)
+        mark = self.vec.mark()
         t0 = self._now_clk()
         await self._wr(KMAC_CMD, KMAC_CMD_START)
         absorb_seen, status, absorb_clk = await self._poll(KMAC_STATUS, _ABSORB, t0, bound)
@@ -716,6 +728,20 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             code=f"0x{_code(start_code):02x}",
             expected=f"0x{exp:02x}",
             **({} if absorb_seen else {"reason": "timeout"}),
+        )
+        try:
+            rise_clk = await self.vec.wait_rise(mark, bound, "kmac_err")
+        except BitWatchTimeout:
+            rise_clk = None
+        self._ctrl(
+            "KMAC-UNSUP-LINE",
+            err_en == 1 and _bits(start_intr, _ERR) == 1 and rise_clk is not None,
+            mode=_MODE_RSVD,
+            err_en=err_en,
+            err=_bits(start_intr, _ERR),
+            vec22_rise_clk=rise_clk if rise_clk is not None else "none",
+            start_clk=mark.clk,
+            bound=bound,
         )
         if absorb_seen:
             await self.kmac._push_msg_bytes(plan.rsvd_msg)

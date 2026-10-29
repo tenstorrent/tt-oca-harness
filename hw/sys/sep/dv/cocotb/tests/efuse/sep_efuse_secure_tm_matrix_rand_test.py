@@ -52,6 +52,10 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     of the seed. A control line, not a check.
   CTRL-STM-WRITE-ISSUED  each target write returns a response from the DUT; a
                     missing response is a recorded failure.
+  CTRL-STM-PROG-ISSUED  after each program go of both straps, the software-owned
+                    fields of ``EFUSE_PROGRAM_CTRL`` (``efuse_addr``, ``efuse_data``,
+                    ``efuse_program_read_back``, ``program_enable``) read back equal to
+                    the go, so a strap-1 go that did not land fails.
 
 Each strap-0 target cell is graded right after its readback. A strap-1 cell FAILs
 right after its readback when the word changed; it PASSes only after the strap-0
@@ -69,8 +73,8 @@ programs after CHK-STM-PROG, the strap-0 programs after CHK-STM-PROG-CTL, the
 secret reads after CHK-STM-SECRET and its strap-0 control, the JTAG writes of
 both straps after every CHK-STM-JTAG and CHK-STM-JTAG-CTL line.
 
-The status value of a blocked program and the response code of a blocked write are
-logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
+The status value of each program (``OBS-STM-PROG-STATUS``) and the response code of
+a blocked write are logged and not graded. Log-only: ``OBS-STM-RMA-DIGEST-PROBE`` (the two RMA token digest
 fields at ``efuse_shadow_probe_o`` at strap 1 and strap 0, against the staged words;
 the specification does not state whether secure test mode masks them) and
 ``OBS-DIGEST-PROG-STATE`` (a strap-0 program of a 0 bit of a drawn digest field: the
@@ -155,6 +159,13 @@ _SRC_IDX = {"fd": 0, "jtag": 1}
 _TAG_PROG1, _TAG_PROG0, _TAG_SECRET, _TAG_JTAG = 1, 2, 3, 4
 _PASS_HOLD = 2  # clocks a step tag stays on the pass label
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error")
+# Software-owned (sw=rw, hw=r) fields of EFUSE_PROGRAM_CTRL: they read back as written.
+_PG_RW = (
+    EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
+    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
+    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
+    | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
+)
 _REQ_ERR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
 )
@@ -378,27 +389,41 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         )
 
     async def _programs(self, progs: dict, w_prog: int) -> dict[str, list]:
-        """One program go per class, each followed by ``w_prog`` clocks and an enable clear."""
+        """One program go per class, each followed by ``w_prog`` clocks and an enable clear.
+
+        ``CTRL-STM-PROG-ISSUED`` requires the software-owned fields of
+        ``EFUSE_PROGRAM_CTRL`` read back after ``w_prog`` to equal the go, so a go that
+        did not land fails. ``OBS-STM-PROG-STATUS`` logs the whole word: the TT texts
+        disagree on the status of a program blocked in secure test mode.
+        """
         cmds: dict[str, list] = {}
         for cls in STM_PROGRAM_CLASSES:
             pr = progs[cls]
             mark = self.shim.mark()
-            await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(pr["addr"]))
+            go = program_ctrl_word(pr["addr"])
+            await self.fd.wr(PROGRAM_CTRL_ADDR, go)
             await ClockCycles(cocotb.top.clk_i, w_prog)
             status = await self.fd.rd(PROGRAM_CTRL_ADDR)
             await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
             cmds[cls] = self.shim.programs_since(mark)
-            self.logger.info(
-                "INFO-PROGRAM strap=%d class=%s field=%s word=%d bit=%d addr=0x%x status=0x%08x "
-                "program_cmds=%d",
-                self._strap,
-                cls,
-                pr["field"],
-                pr["word"],
-                pr["bit"],
-                pr["addr"],
-                status,
-                len(cmds[cls]),
+            self._ctrl(
+                "STM-PROG-ISSUED",
+                (status & _PG_RW) == (go & _PG_RW),
+                strap=self._strap,
+                cls=cls,
+                wrote=f"0x{go & _PG_RW:08x}",
+                readback=f"0x{status & _PG_RW:08x}",
+            )
+            self.chk.obs(
+                "STM-PROG-STATUS",
+                strap=self._strap,
+                cls=cls,
+                field=pr["field"],
+                word=pr["word"],
+                bit=pr["bit"],
+                addr=f"0x{pr['addr']:x}",
+                status=f"0x{status:08x}",
+                program_cmds=len(cmds[cls]),
             )
         return cmds
 

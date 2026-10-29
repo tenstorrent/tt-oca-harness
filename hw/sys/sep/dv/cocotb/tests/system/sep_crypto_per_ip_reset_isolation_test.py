@@ -126,6 +126,10 @@ Isolation proof (both directions, then the remaining isolated bits):
                     TRNG-only reset. SW_RESET_N inside the window shows the
                     TRNG bit held and the five accelerator bits released
                     (OTBN, AES, HMAC, KMAC, ABR).
+  * CHK-TRNG-ISO-RESP  inside the same TRNG reset, one CSR read of each of
+                    ESRC, CSRNG and EDN completes SLVERR with read data
+                    0x1501A7ED, and the TRNG gated reset is still low after
+                    the three reads.
   * CHK-EDN-PEND / CHK-EDN-PEND-AES  before EDN is enabled, OTBN URND and
                     AES each hold ``edn_req`` with ``edn_ack`` low.
   * CHK-EDN-FLUSH / CHK-EDN-FLUSH-AES  resetting that requester drops its
@@ -201,7 +205,6 @@ import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge, with_timeout
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
-from env.sep_axi_agent import SepAxiOp
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_iprst_edn_pass
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_reset_taps import ISO_BENCH
@@ -218,7 +221,6 @@ from seq_lib.sep_aes_seq import (
     SepAes,
     build_aes_ctrl,
 )
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_crypto_reset_iso_seq import (
     ENG_AES,
     ENG_HMAC,
@@ -275,7 +277,6 @@ TRNG_ISO_CSR = (
     ("csrng", sym("CSRNG_REG_MAP_BASE_ADDR")),
     ("edn", sym("EDN_REG_MAP_BASE_ADDR")),
 )
-_RESP_DECERR = 3
 FIPS_LOCK_RESET = ENTROPY_SOURCE.reset("FIPS_LOCK") & LOCK_BIT
 # KMAC STATUS after its own SW_RESET_N pulse, read off the IP-XACT. The spec
 # gives sha3_idle (1), fifo_empty (1) and the two alert bits (0) a reset value
@@ -291,7 +292,7 @@ KMAC_STATUS_RDL_MASK = sum(f.mask for f in _KMAC_STATUS_FIELDS if f.reset is not
 KMAC_STATUS_RDL_RESET = sum(f.reset << f.lsb for f in _KMAC_STATUS_FIELDS if f.reset is not None)
 KMAC_STATUS_UNSTATED_MASK = KMAC_STATUS_FIELD_MASK & ~KMAC_STATUS_RDL_MASK
 # Read data of a new transaction on an isolated path: SLVERR with 0x1501A7ED in
-# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:127-129). No generated
+# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:139-141). No generated
 # constant holds it.
 ISO_DATA = 0x1501_A7ED
 KMAC_STATUS_RESERVED_MASK = ~KMAC_STATUS_FIELD_MASK & 0xFFFF_FFFF
@@ -382,7 +383,7 @@ _EDN_OTBN_RND = 2
 # Isolate-complete bits (``crypto_isolated_probe_o``, bench stage order) of the
 # host and Key Manager paths of each engine whose EDN endpoints a software
 # reset cancels. The cancel runs from the cycle all of them read 1 until the
-# reset releases (hw/sys/sep/doc/reset_controller.adoc:149-151).
+# reset releases (hw/sys/sep/doc/reset_controller.adoc:161-163).
 _CANCEL_ISO_MASK = {
     ENG_AES.rst_bit: (1 << ISO_BENCH.index("host_aes")) | (1 << ISO_BENCH.index("km_aes")),
     ENG_KMAC.rst_bit: (1 << ISO_BENCH.index("host_kmac")) | (1 << ISO_BENCH.index("km_kmac")),
@@ -473,35 +474,37 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 40)
         self.logger.info("INFO-RESET-PULSE %s fell and released", _GATED_RST_PROBE[rst_bit])
 
-    async def _obs_trng_iso_resp(self) -> None:
-        """OBS-TRNG-ISO-RESP: one CSR read of each entropy-complex IP inside its reset.
+    async def _chk_trng_iso_resp(self) -> None:
+        """CHK-TRNG-ISO-RESP: one CSR read of each entropy-complex IP inside its reset.
 
-        No line states the response of a host access to the entropy complex
-        while its reset is held. The line logs it and grades nothing.
+        The TRNG domain isolates the ESRC, CSRNG and EDN host paths, and a new
+        transaction on an isolated path completes SLVERR with read data
+        0x1501A7ED (hw/sys/sep/doc/reset_controller.adoc:139-141, :155). The
+        reads go out while the TRNG gated reset is low, which follows the
+        isolated report (:143); the probe is read again after the three reads,
+        so a read that was not inside the hold fails.
         """
-        mon = self.env.axi_monitor
+        got = []
         for ip, addr in TRNG_ISO_CSR:
-            mon.arm_expected_decerr(1)
-            seq = SepAxiAccessSeq(
-                f"trng_iso_{ip}",
-                op=SepAxiOp.READ,
-                addr=addr,
-                length=4,
-                size=2,
-                allow_ungraded_read_resp=True,
-                allow_timeout=True,
-            )
-            await self.start_seq(seq)
-            if seq.timed_out or seq.resp_code != _RESP_DECERR:
-                mon.release_expected_decerr(1)
-            self.logger.info(
-                "OBS-TRNG-ISO-RESP ip=%s addr=0x%08x resp=%s rdata=0x%08x timed_out=%d",
-                ip,
-                addr,
-                "none" if seq.timed_out else seq.resp_code,
-                seq.rdata & 0xFFFF_FFFF,
-                int(seq.timed_out),
-            )
+            seq = await self.rst.probe(addr, expect_error=True)
+            got.append((ip, addr, seq.resp_code, seq.rdata & 0xFFFF_FFFF, int(seq.timed_out)))
+        held = self.rd_known(cocotb.top.trng_gated_rst_n_probe_o) == 0
+        txt = "; ".join(
+            f"ip={ip} addr=0x{addr:08x} resp={code} rdata=0x{rdata:08x} timed_out={to}"
+            for ip, addr, code, rdata, to in got
+        )
+        self._grade(
+            held
+            and all(
+                code == RESP_SLVERR and rdata == ISO_DATA and not to
+                for _, _, code, rdata, to in got
+            ),
+            "CHK-TRNG-ISO-RESP",
+            f"{txt}; trng_gated_rst_n_low_after={int(held)}; expected SLVERR with the "
+            f"isolated read data 0x{ISO_DATA:08x} on each read inside the TRNG reset",
+            f"{txt}; trng_gated_rst_n_low_after={int(held)}; each read SLVERR with "
+            f"0x{ISO_DATA:08x}",
+        )
 
     async def _run_hmac(self) -> list[int]:
         """Run SHA-256 -> DIGEST holds the golden digest; value-check it."""
@@ -765,7 +768,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
     async def _grade_host_drain(self, rec: dict, *, name: str, chk: str) -> None:
         """Grade the drain reads that went out with the reset request.
 
-        Golden: ``hw/sys/sep/doc/reset_controller.adoc:127-130``. Once isolation
+        Golden: ``hw/sys/sep/doc/reset_controller.adoc:139-142``. Once isolation
         is requested, new transactions complete with SLVERR and read data
         0x1501A7ED in each 32-bit word; the isolate unit drains the
         transactions it accepted before that. Each read is one aligned 32-bit
@@ -783,7 +786,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         A read accepted on ``s_axi`` before the request passes ``u_axi_demux``
         and, on AXI-Lite paths, the bus conversion before the isolate stage
-        (``reset_controller.adoc:109-112``). No spec states where the stage
+        (``reset_controller.adoc:121-124``). No spec states where the stage
         accepts a read, and an ARVALID already pending at the stage when the
         request rises cannot be withdrawn, so such a read may complete OKAY or
         SLVERR. Its stage AR handshake (``rec["stage_hs"]``) and the request at
@@ -891,7 +894,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         The arrival AR is accepted after the isolate request rose, so the
         isolate stage sees it as a new transaction on an isolated path: it
         completes with SLVERR and read data 0x1501A7ED in each 32-bit word
-        (hw/sys/sep/doc/reset_controller.adoc:127-129). The read is one aligned
+        (hw/sys/sep/doc/reset_controller.adoc:139-141). The read is one aligned
         32-bit word.
         """
         self._check_arrival_in_window(rec, name=name, chk=chk)
@@ -1167,7 +1170,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         """The cancelled KMAC endpoint gives no acknowledge on its reset edge.
 
         The spec states the cancel, not the bus value of a cancelled endpoint
-        (hw/sys/sep/doc/reset_controller.adoc:149-153), so ``edn_bus`` and
+        (hw/sys/sep/doc/reset_controller.adoc:161-165), so ``edn_bus`` and
         ``edn_fips`` are logged as ``OBS-EDN-CANCEL-BUS`` and not graded.
         """
         if snap["ack"]:
@@ -1249,7 +1252,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         change the prior data by popping the data FIFO",
         vendor/lowRISC/opentitan/upstream/hw/ip/edn/doc/theory_of_operation.md:152-160).
         A KMAC software reset leaves the other clients unaffected
-        (hw/sys/sep/doc/reset_controller.adoc:149-153). So the last URND
+        (hw/sys/sep/doc/reset_controller.adoc:161-165). So the last URND
         acknowledge before the edge must carry ``word``: a different word
         there means the edge cleared a word that URND never received. Then
         the next URND acknowledge after the edge must come within
@@ -1574,7 +1577,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         the word URND is finally acknowledged with.
 
         A software reset cancels only that engine's endpoints, and other
-        clients are unaffected (hw/sys/sep/doc/reset_controller.adoc:149-153),
+        clients are unaffected (hw/sys/sep/doc/reset_controller.adoc:161-165),
         so a sibling word that changes on the KMAC reset edge breaks the
         contract.
 
@@ -1756,7 +1759,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "and the previous cycle had not acknowledged that word. "
                     "This breaks the contract that a software reset leaves "
                     "other EDN clients unaffected "
-                    "(hw/sys/sep/doc/reset_controller.adoc:149-153)."
+                    "(hw/sys/sep/doc/reset_controller.adoc:161-165)."
                 )
                 self.logger.error(failures[-1])
             else:
@@ -1842,7 +1845,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         AXI master itself, so ``delay`` walks the phase of the cancel start.
 
         The cancel runs from the first cycle all of the engine's paths report
-        isolated until its reset releases (hw/sys/sep/doc/reset_controller.adoc:149-151).
+        isolated until its reset releases (hw/sys/sep/doc/reset_controller.adoc:161-163).
         No endpoint in ``bits`` may be acknowledged on any cycle of that window.
         A word an endpoint held with ``edn_ack`` low on the cycle before the
         cancel start, and that no client was acknowledged with before, is a
@@ -2253,13 +2256,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         A word committed to an endpoint and not yet acknowledged on the cycle
         before its cancel started must never be acknowledged to any client
-        afterwards (hw/sys/sep/doc/reset_controller.adoc:152-153). At least one
+        afterwards (hw/sys/sep/doc/reset_controller.adoc:164-165). At least one
         such word is required, so the discard is graded.
 
         The words the endpoints held at each reset request are logged as
         ``OBS-EDN-HELD-AT-REQUEST``, with any acknowledge of the same word
         after the request. EDN keeps serving the engine while it drains
-        (reset_controller.adoc:151), and no text states whether a word on the
+        (reset_controller.adoc:163), and no text states whether a word on the
         endpoint bus before the paths isolate is committed, so they are not
         graded.
         """
@@ -2740,7 +2743,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "results were read, so "
             "they were not sampled inside the reset"
         )
-        await self._obs_trng_iso_resp()
+        await self._chk_trng_iso_resp()
         await trng_rst.release("trng")
         await self._wait_gated_rst(SW_RESET_N_BIT["trng"], 1, "CHK-TRNG-FIPS-LOCK-RESET release")
         lock_after = await fips.read_lock_word() & LOCK_BIT

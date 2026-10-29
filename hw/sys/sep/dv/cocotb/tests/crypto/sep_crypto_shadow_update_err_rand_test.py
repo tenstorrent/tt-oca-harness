@@ -89,8 +89,9 @@ Checkers:
                        AUX write lands before the lock.
   CHK-AUX-RESET        after an AES reset the update error reads 0 with no X,
                        CTRL_AUX_SHADOWED reads its reset value
-                       (``aes.adoc:126``, ``aes.adoc:131``) and both new AUX
-                       pairs land. Control: before the reset
+                       (``aes.adoc:126``, ``aes.adoc:131``) and two new AUX
+                       pairs land: A_AUX, which differs from the reset value,
+                       then B_AUX. Control: before the reset
                        the AUX register differs from its reset value and the
                        update error reads 1.
   CHK-ALERT-MALFORMED  per block: bit 32 stays 0 over a quiet window before,
@@ -1101,8 +1102,10 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         # FORCE_MASKS 0x0, KEY_TOUCH_FORCES_RESEED 0x1).
         aux_reset = aux & AES_AUX_MASK == AES_AUX_RESET & AES_AUX_MASK
         self.chk.obs("AUX-RESET", status_rsvd=f"0x{st & ~AES_ST_FIELDS & 0xFFFF_FFFF:x}")
-        after_b = await self._aux_write(B_AUX)
+        # A_AUX differs from the reset value and B_AUX from A_AUX, so each pair,
+        # the first one after the reset included, changes the register.
         after_a = await self._aux_write(A_AUX)
+        after_b = await self._aux_write(B_AUX)
         await tap.stop()
         # Positive evidence that the tap saw the graded reads: at least one idle poll
         # read, the two reads above and the two AUX readbacks.
@@ -1112,7 +1115,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         ctrl_ok = self._control(
             "AUX-RESET", ctrl_ok, ctrl_aux_pre_reset=f"0x{aux_pre:x}", ctrl_err_pre_reset=err_pre
         )
-        lands = after_b == B_AUX and after_a == A_AUX
+        lands = after_a == A_AUX and after_b == B_AUX
         if self._grade(
             "AUX-RESET",
             status_err == 0 and x_free == 1 and lands and aux_reset,
@@ -1123,8 +1126,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             status_err=status_err,
             x_free=x_free,
             graded_read_beats=tap.beats,
-            aux_after_b=f"0x{after_b:x}",
             aux_after_a=f"0x{after_a:x}",
+            aux_after_b=f"0x{after_b:x}",
             write_pairs_land=int(lands),
         ) and (tap_ok and ctrl_ok):
             await self._passed(AES_SHADOW_PASS_RESET_RESTORE)

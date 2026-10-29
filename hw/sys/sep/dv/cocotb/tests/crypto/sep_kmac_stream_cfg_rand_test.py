@@ -57,7 +57,14 @@ Checkers:
                       write of CFG_SHADOWED in absorb leaves it at C. The line
                       logs the AXI response of each locked write
                       (``locked_wr_resp``, not graded). Control: the idle
-                      write reads back C.
+                      write reads back C. A second line (``part=squeeze``)
+                      grades CFG_REGWEN 0 on the read after ``kmac_done``,
+                      with the STATUS read before it showing ``sha3_squeeze``
+                      1: squeeze is not the idle state, and the configuration
+                      is updated only in the idle state (kmac.hjson lines
+                      354-358;
+                      ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/programmers_guide.md``
+                      line 5).
   CHK-KMAC-REGWEN-GATED  on one drawn cell: in absorb, with CFG_REGWEN read 0,
                       a write of PREFIX_n = pre XOR mask reads back pre
                       (role=prefix), and a write of ENTROPY_PERIOD = pre XOR
@@ -89,11 +96,15 @@ their own; the byte-lane placement is graded only by CHK-KMAC-NARROW-WRITE.
 Observations: ``OBS-KMAC-DONE-FALL`` logs bit 20 after the write-one clear.
 ``INFO-KMAC-FIFO-DONE`` logs the whole ``STATUS`` word of the graded read.
 ``OBS-KMAC-REGWEN-GATED-ERR`` logs ``INTR_STATE.kmac_err`` and ``ERR_CODE``
-after the gated writes (registers.md lines 724-725 say an update while hashing
-reports an error and state no code). ``OBS-KMAC-REGWEN-GATED-RSVD`` logs the
+after the gated writes. The ``PREFIX`` text (registers.md lines 722-725) says
+that while the engine hashes it discards attempts to update "the secret keys"
+and reports an error, and states no code. Whether that error applies to a
+gated ``PREFIX`` write is open against the DUT, so both values are logged and
+not graded. ``OBS-KMAC-REGWEN-GATED-RSVD`` logs the
 ENTROPY_PERIOD reserved bits, which have no stated value.
 ``OBS-KMAC-REGWEN-SQUEEZE`` logs ``CFG_REGWEN`` in squeeze and at idle after
-``CMD.done`` of each cell. ``OBS-KMAC-FE-INTRTEST`` logs ``INTR_STATE.fifo_empty``
+``CMD.done`` of each cell; no text states the clock at which it returns to 1.
+``OBS-KMAC-FE-INTRTEST`` logs ``INTR_STATE.fifo_empty``
 of the CHK-KMAC-FE-INTRTEST leg after a settle window and after a write-one
 clear: no text states whether the forced bit stays set or whether the clear
 acts on it.
@@ -785,6 +796,14 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         ctrl_process_squeeze = _bits(done_status, _SQUEEZE)
         self._grade_fifo_done(tag, cell, done_status, written, fill)
         squeeze_regwen = _bits(await self._rd(_KMAC_CFG_REGWEN), _REGWEN_EN)
+        self._ok(
+            "KMAC-REGWEN",
+            ctrl_process_squeeze == 1 and squeeze_regwen == 0,
+            **tag,
+            part="squeeze",
+            squeeze=ctrl_process_squeeze,
+            squeeze_regwen=squeeze_regwen,
+        )
 
         # Step 12: write-one clear of kmac_done; the line fall is logged only.
         await self._wr(KMAC_INTR_STATE, _DONE)

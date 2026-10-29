@@ -74,11 +74,11 @@ _PARAM_MAGIC = 0xDA2E40C5
 # of them inside the fill and at least one past it. The firmware FAILs an n outside [1, NWORDS].
 _N_MAX = 16
 _CHECKS = (
-    ("PASS: CHK-ZERO-SRAM ", "CHK-ZERO-SRAM", "the SRAM word and byte fills"),
-    ("PASS: CHK-ZERO-DCCM ", "CHK-ZERO-DCCM", "the DCCM fill through the core's DMA port"),
-    ("PASS: CHK-ZERO-ICCM ", "CHK-ZERO-ICCM", "the ICCM fill through the core's DMA port"),
+    ("CHK-ZERO-SRAM PASS ", "CHK-ZERO-SRAM", "the SRAM word and byte fills"),
+    ("CHK-ZERO-DCCM PASS ", "CHK-ZERO-DCCM", "the DCCM fill through the core's DMA port"),
+    ("CHK-ZERO-ICCM PASS ", "CHK-ZERO-ICCM", "the ICCM fill through the core's DMA port"),
     (
-        "PASS: CHK-ZERO-TCM-NARROW ",
+        "CHK-ZERO-TCM-NARROW PASS ",
         "CHK-ZERO-TCM-NARROW",
         "the rejected 2-byte-wide ICCM fill and its recovery",
     ),
@@ -89,11 +89,11 @@ _CHECKS_N = (
     ("CHK-ZERO-DCCM-4N2", "n_dccm", "the rejected 4n + 2 DCCM fill, its guards and its recovery"),
 )
 _CHECK_DCCM_NARROW = (
-    "PASS: CHK-ZERO-DCCM-NARROW ",
+    "CHK-ZERO-DCCM-NARROW PASS ",
     "CHK-ZERO-DCCM-NARROW",
     "the rejected 2-byte-wide DCCM fill, its guards and its recovery",
 )
-_CTRL_DCCM_MISALIGN = "PASS: CTRL-ZERO-DCCM-MISALIGN "
+_CTRL_DCCM_MISALIGN = "CTRL-ZERO-DCCM-MISALIGN LOG "
 
 
 def _draw_n(seed: int) -> dict[str, int]:
@@ -125,7 +125,7 @@ class sep_dma_zero_test(sep_base_test):
             _DTCM_HEX, patched, _PARAM_MAGIC, [_PARAM_MAGIC, n["n_iccm"], n["n_dccm"]]
         )
         self.logger.info(
-            "DMA zero RANDCFG seed=%d n_iccm=%d n_dccm=%d", seed, n["n_iccm"], n["n_dccm"]
+            "INFO-RANDCFG LOG seed=%d n_iccm=%d n_dccm=%d", seed, n["n_iccm"], n["n_dccm"]
         )
         return patched, n
 
@@ -164,15 +164,16 @@ class sep_dma_zero_test(sep_base_test):
         console = self.sb.console_text()
         lines = console.splitlines()
         for ln in lines:
-            if ln.startswith("OBS-"):
-                self.logger.info("%s LOG (firmware)", ln)
+            if ln.startswith(("OBS-", "CTRL-")):
+                self.logger.info("%s (firmware)", ln)
         needles = list(_CHECKS)
         for chk, key, what in _CHECKS_N:
-            needles.append((f"PASS: {chk} n=0x{n[key]:08x} ", chk, f"{what} (n={n[key]})"))
+            needles.append((f"{chk} PASS n=0x{n[key]:08x} ", chk, f"{what} (n={n[key]})"))
         needles.append(_CHECK_DCCM_NARROW)
         if not any(ln.startswith(_CTRL_DCCM_MISALIGN) for ln in lines):
             self._fail(
-                f"CTRL-MISSING: firmware console has no {_CTRL_DCCM_MISALIGN.strip()!r} line, "
+                f"CTRL-MISSING CTRL-ZERO-DCCM-MISALIGN: firmware console has no "
+                f"{_CTRL_DCCM_MISALIGN.strip()!r} line, "
                 "so the fill of OBS-ZERO-DCCM-MISALIGN did not reach a misaligned DCCM "
                 f"destination or did not end. Console was:\n{console}"
             )
