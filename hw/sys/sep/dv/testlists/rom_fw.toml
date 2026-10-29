@@ -3738,3 +3738,20 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
+
+[[tests]]
+# SMC-040, secondary boot: with MANIFEST_READY held low and a decoy in scratch[8], the ROM polls
+# scratch[9] and reads neither scratch[8] nor SMC SRAM until the release, then fetches the manifest
+# from the offset published at the release.
+name = "sep_rom_smc_manifest_ready_wait_test"
+module = "rom_fw.sep_rom_smc_manifest_ready_wait_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "secondary", "smc", "manifest", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
