@@ -481,7 +481,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         dut.esrc_noise_stuck_val_i.value = sum(b << j for j, b in enumerate(bits))
         dut.esrc_noise_stuck_en_i.value = ALL_LANES
         self.noise.set_lanes([Stuck(b) for b in bits])
-        self.logger.info("LANE-DRIVE lane=%d z=%d others=%d", lane, z, 1 - z)
+        self.logger.info("INFO-LANE-DRIVE lane=%d z=%d others=%d", lane, z, 1 - z)
 
     # --- set-up -----------------------------------------------------------------
     async def _trng_reset(self) -> int:
@@ -1149,7 +1149,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         level = await self._level("noise")
         words = [await self._pop("noise") for _ in range(min(level, FIFO_DEPTH_MAX))]
         self.logger.info(
-            "SEQ-WINDOW window=%s lane=%d period_ps=%d t_ref=%d phase_ps=%d edges=%d level=%d",
+            "INFO-SEQ-WINDOW window=%s lane=%d period_ps=%d t_ref=%d phase_ps=%d edges=%d level=%d",
             window,
             lane,
             period,

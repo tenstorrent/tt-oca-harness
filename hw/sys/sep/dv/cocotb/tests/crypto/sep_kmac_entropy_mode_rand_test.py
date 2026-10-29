@@ -656,7 +656,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             runs = []
             for wt in wts:
                 run = await self._timer_run(wait_timer=wt, prescaler=prescaler)
-                self.logger.info("TIMER-RUN %s", run)
+                self.logger.info("INFO-TIMER-RUN %s", run)
                 runs.append(run)
             passes[name] = runs
             await self._timer0(prescaler, runs[2])
@@ -766,7 +766,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         req_m, ack_m = self.w_req.mark(), self.w_ack.mark()
         await self.kmac.write_cfg(self.kmac.cfg_word(entropy_mode="edn", ready=True, keyed=True))
         t_reseed = await self._measure_t_reseed(req_m, ack_m)
-        self.logger.info("T-RESEED threshold=%d t_reseed_clk=%s", threshold, t_reseed)
+        self.logger.info("INFO-T-RESEED threshold=%d t_reseed_clk=%s", threshold, t_reseed)
         return t_reseed
 
     async def _leg_counter(self) -> None:

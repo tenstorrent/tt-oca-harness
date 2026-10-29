@@ -10,8 +10,11 @@ A leaf makes one ``SepChkLog`` and grades each contract through it:
 * ``ctrl(name, cond, **fields)`` logs ``CTRL-<NAME> ...``. A false control logs
   ``CTRL-MISSING <NAME>`` and is recorded as a failure: a check whose control
   did not show the healthy behaviour proves nothing.
-* ``obs(name, **fields)`` logs ``OBS-<NAME> ...`` and ``blocked(check, reason)``
-  logs ``OBS-BLOCKED CHK-<NAME> reason=<r>``. Neither grades anything.
+* ``obs(name, **fields)`` logs ``OBS-<NAME> ...``: a DUT value whose golden no
+  specification states yet. ``blocked(check, reason)`` logs
+  ``OBS-BLOCKED CHK-<NAME> reason=<r>``. ``info(name, **fields)`` logs
+  ``INFO-<NAME> ...``: a bench record (set-up value, reference timing, leg
+  marker, bookkeeping). None of the three grades anything.
 * ``finish()`` is the verdict. It raises ``AssertionError`` if any check or
   control failed, or if no check passed. Otherwise it hands the
   ``RESULT <leaf> seed=<n> PASS checks=<k>`` line to ``result_pass`` of the
@@ -25,8 +28,9 @@ there. Each FAIL and each missing control is also appended to
 
 A ``CHK-<NAME> PASS`` line is the evidence the base test counts
 (``_EvidenceFilter`` in ``tests/sep_base_test.py``); a FAIL, CTRL or OBS line
-is not. Names are upper case: ``[A-Z0-9_-]``, with or without the ``CHK-``
-prefix. Field values print as given: ``bool`` as 0/1, ``int`` in decimal, a
+is not. The prefix set is defined in
+``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``, section "Log line prefixes".
+Names are upper case: ``[A-Z0-9_-]``, with or without the ``CHK-`` prefix. Field values print as given: ``bool`` as 0/1, ``int`` in decimal, a
 list as ``[a,b]``; pass a register value as a string, e.g. ``f"0x{v:08x}"``.
 """
 
@@ -139,6 +143,10 @@ class SepChkLog:
     def obs(self, name: str, **fields: Any) -> None:
         """Log one observation. It grades nothing and never fails the leaf."""
         self._log.info(self._line(f"OBS-{_name(name)}", fields))
+
+    def info(self, name: str, **fields: Any) -> None:
+        """Log one bench record. It grades nothing and never fails the leaf."""
+        self._log.info(self._line(f"INFO-{_name(name)}", fields))
 
     def blocked(self, check: str, reason: str) -> None:
         """Log a check that this leaf cannot grade. It earns no credit."""

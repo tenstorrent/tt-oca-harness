@@ -254,7 +254,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         self.plan = pl.draw_plan(seed)
         for line in pl.plan_draw_lines(self.plan):
             self.logger.info(line)
-        self.chk.obs(
+        self.chk.info(
             "RSVD-MASKS",
             irq_status=_h(pl.IRQ_FIELDS),
             irq_enable=_h(pl.IRQ_EN_FIELDS),
@@ -402,7 +402,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         en, entry, lock, ver, dbg, ctrl, scr = (x.value for x in r)
         self.entry_reset = (entry, lock & pl.ENTRY_LOCK_BIT, lock & ~pl.ENTRY_LOCK_BIT)
         self.scr_boot = scr
-        self.chk.obs("CSR-VERSION-READ", control=1, version=_h(ver))
+        self.chk.info("CSR-VERSION-READ", control=1, version=_h(ver))
         self.chk.ok(
             "CSR-ENABLE",
             (en & pl.IRQ_EN_FIELDS) == pl.IRQ_ENABLE_RESET,

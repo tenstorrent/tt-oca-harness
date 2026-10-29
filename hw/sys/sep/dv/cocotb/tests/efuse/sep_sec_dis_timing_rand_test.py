@@ -529,7 +529,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         probe_feat = sig_bits(dut.lcc_feat_ctrl_probe_o)
         log_line(
             self.logger,
-            "OBS-SDIS-RECOVER",
+            "INFO-SDIS-RECOVER",
             seed,
             feat=f"0x{feat:016x}",
             ctl_mismatch=f"0x{rec_code if rec_code is not None else 0:02x}",
@@ -582,7 +582,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             n_loaded = sum(1 for x in staged if _word(mon.s_val, x) == staged_val[x])
             n_reset = sum(1 for x in staged if _word(mon.s_val, x) == 0)
             accepted = mon.rise_sd == 0 and n_loaded >= 1 and n_reset >= 1
-            self.chk.obs(
+            self.chk.info(
                 "SDIS-TRY",
                 attempt=attempt,
                 k=k,
