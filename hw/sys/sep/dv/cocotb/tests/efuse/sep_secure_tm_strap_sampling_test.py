@@ -27,8 +27,10 @@ on every ``clk_i`` rising edge for the whole leaf.
 
 Checkers:
   CHK-STM-CAPTURE  in leg D with the match present and the strap at 1,
-                   ``secure_tm_o`` reads 1 with ``sep_fuse_sense_done_o`` low no
-                   later than ``T_sense`` after the release, and keeps 1 after
+                   ``secure_tm_o`` first reads 1, with ``sep_fuse_sense_done_o``
+                   low, in the sample after the second rising ``clk_i`` edge after
+                   the ``rst_ni`` release (``test_mode.adoc:27-28``; the bench
+                   drives ``rst_ni`` as the wrapper cold reset), and keeps 1 after
                    the strap flips to 0. Control: in leg D0 (no match)
                    ``secure_tm_o`` reads 0 at the same cycle and follows the
                    strap only at sense completion.
@@ -116,6 +118,9 @@ _MATCH_LSB = EFUSE_MMR.field_lsb("TOKEN_MATCH", "token_match_status")
 
 _HOLD = 256
 _RST_LOW = 20
+# Rising clk_i edge after the cold-reset release on which the early capture samples the
+# strap (hw/sys/sep/doc/test_mode.adoc:27-28).
+_CAPTURE_EDGE = 2
 # clk_i periods the clock stays stopped around the rst_ni fall of the no-clock clear.
 _NOCLK_PERIODS = 8
 _PULSE = 16
@@ -689,6 +694,13 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         assert self.rec[cap]["done"] == 0, (
             f"CHK-STM-CAPTURE FAIL: secure_tm_o=1 at sample {cap} with sense_done=1; "
             "match_present=0 at this boot"
+        )
+        # test_mode.adoc:27-28: with SEC_DIS asserted the strap is sampled on the second
+        # rising clk_i edge after the cold-reset release (rst_ni). Sample rel holds the
+        # release; sample rel + k is read after the k-th rising edge after it.
+        assert cap == rel + _CAPTURE_EDGE, (
+            f"CHK-STM-CAPTURE FAIL: match_present=1 strap=1: secure_tm_o first read 1 at "
+            f"release+{cap - rel}, expected release+{_CAPTURE_EDGE} (second rising edge)"
         )
         await self._until(cap + c)
         dut.test_en_strap_i.value = 0

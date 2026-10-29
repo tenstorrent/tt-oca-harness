@@ -73,6 +73,10 @@ Checkers:
   CHK-LOCK-ORDER    order cell: a shadow write lands only before the lock, the lock bit
                     survives a write of 0 to ``LOCKS``, a later write of a third bit
                     leaves the shadow unchanged.
+  CHK-LOCK-SLOT0-STORE order cell, after CHK-LOCK-ORDER: a write of ``LOCKS`` bits [1:0]
+                    (slot 0, ``LC_STATE``) reads both bits 1, and a later write of 0
+                    leaves both 1 (``sep_efuse_map.rdl`` ``LOCKS``, woset). The effect
+                    on ``LC_STATE`` is not graded. Control: both bits read 0 before.
   CHK-PROG-ROUND    chain leg, per round: the frontdoor word is unchanged after the
                     program and the bank gains exactly the bit; after the resense all
                     256 sensed words equal the model, the frontdoor word holds the bit
@@ -233,7 +237,7 @@ _EVIDENCE = {
     "lock_leg": ("CHK-LOCK-CELL", "CHK-GUARD-NOPULSE", "CHK-LOCK-JTAG-RD"),
     "single_bit": ("CHK-LOCK-CELL", "CHK-GUARD-NOPULSE"),
     "exempt": ("CHK-LOCK-EXEMPT", "CHK-LOCK-EXEMPT-PROG"),
-    "order": ("CHK-LOCK-ORDER",),
+    "order": ("CHK-LOCK-ORDER", "CHK-LOCK-SLOT0-STORE"),
     "chain": ("CHK-PROG-ROUND", "CHK-PROG-VERSION"),
 }
 _KIND_CHECK = {k: v[0] for k, v in _EVIDENCE.items()}
@@ -1129,6 +1133,31 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             trace=",".join(trace),
         )
         await self._pass(tag, ok)
+        await self._slot0_store(locks_after)
+
+    async def _slot0_store(self, locks_before: int) -> None:
+        """CHK-LOCK-SLOT0-STORE: the two slot-0 bits of ``LOCKS`` are stored write-one-to-set.
+
+        ``sep_efuse_map.rdl`` ``LOCKS``: ``LC_STATE_WRITE_LOCK`` [0] and
+        ``LC_STATE_READ_LOCK`` [1] are ``sw = rw; onwrite = woset``, reset 0. A write of
+        both bits sets them; a later write of 0 clears neither. Their effect on
+        ``LC_STATE`` is not graded (the specification and the RDL text disagree).
+        Control: both bits read 0 before the write.
+        """
+        slot0 = (1 << write_lock_bit(0)) | (1 << read_lock_bit(0))
+        self._control("LOCK-SLOT0-PRE", not locks_before & slot0, locks=f"0x{locks_before:016x}")
+        await self._wr(shadow_addr("LOCKS", 0), slot0, shadow=True)
+        after_set = await self._locks()
+        await self._wr(shadow_addr("LOCKS", 0), 0, shadow=True)
+        after_zero = await self._locks()
+        self._grade(
+            "LOCK-SLOT0-STORE",
+            after_set & slot0 == slot0 and after_zero & slot0 == slot0,
+            bits_after_set=f"0b{(after_set & slot0):02b}",
+            bits_after_zero=f"0b{(after_zero & slot0):02b}",
+            locks_after_set=f"0x{after_set:016x}",
+            locks_after_zero=f"0x{after_zero:016x}",
+        )
 
     # --- chain leg (entry steps 12 to 16) -----------------------------------------
     async def _chain(self) -> None:

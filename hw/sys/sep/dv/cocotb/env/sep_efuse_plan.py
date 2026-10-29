@@ -49,7 +49,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 # sep_reg_meta puts regs/gen/py on sys.path, so it comes before sep_reg.
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, EFUSE_MMR, RegBlock, sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, EFUSE_MMR, SEP_LIFECYCLE_CTRL, RegBlock, sym
 
 # isort: split
 import sep_reg  # noqa: E402
@@ -1333,8 +1333,10 @@ _FEAT_LEGS = (
     (LEG_D_WALK, 2),
     (LEG_E, 2),
 )
-_DEMOTE_OPS = ("demote", "lock", "zero", "both")
-DEMOTE_OP_VALUE = {"demote": 0x1, "lock": 0x2, "zero": 0x0, "both": 0x3}
+_DEMOTE_OPS = ("demote", "lock", "zero", "both", "rsvd")
+# DEMOTE_1/DEMOTE_2 rsvd field (sep_lifecycle_ctrl.rdl): the bit range of the "rsvd.<k>" op.
+_DEMOTE_RSVD_LSB = SEP_LIFECYCLE_CTRL.field_lsb("DEMOTE_1", "rsvd")
+_DEMOTE_RSVD_END = _DEMOTE_RSVD_LSB + SEP_LIFECYCLE_CTRL.field_width("DEMOTE_1", "rsvd")
 
 
 def _feat_extra_filter(sip: int, sys_: int) -> bool:
@@ -1387,9 +1389,18 @@ def plan_feat_ctrl_matrix(seed: int) -> SepEfusePlan:
         count = d.randrange("op_count", 6, 13)
 
         def _ops() -> list[tuple[str, int]]:
-            return [(d.rng.choice(_DEMOTE_OPS), d.rng.choice((1, 2))) for _ in range(count)]
+            ops = []
+            for _ in range(count):
+                op = d.rng.choice(_DEMOTE_OPS)
+                if op == "rsvd":
+                    op = f"rsvd.{d.rng.randrange(_DEMOTE_RSVD_LSB, _DEMOTE_RSVD_END)}"
+                ops.append((op, d.rng.choice((1, 2))))
+            return ops
 
-        leg["ops"] = d.until("ops", _ops, lambda ops: any(o != "zero" for o, _r in ops))
+        # The reset check after the sequence needs a demote or lock bit set.
+        leg["ops"] = d.until(
+            "ops", _ops, lambda ops: any(o in ("demote", "lock", "both") for o, _r in ops)
+        )
         # The control bit is a 0 bit of the first SPARE8 word.
         b0 = d.choice("ctl_bit", [b for (w, b) in zero_bits(img, "SPARE8") if w == 0])
         leg["ctl_bit"] = {

@@ -25,9 +25,14 @@ OR-merged with the writes of the leaf).
   CHK-GATE-BOUND    every read with SEC_DIS 0: no bit outside the OR of the SEC_DIS 0
                     rows of the state (model shadows). A read whose mask is all ones
                     logs ``INFO-GATE-BOUND LOG ... graded=0``.
-  CHK-DEMOTE-STEP   leg B: after each operation both demotion registers (bits [63:2]
-                    at 0) equal the RW1S golden (``demote`` sets only while ``lock``
-                    is 0) and ``FEAT_CTRL`` equals the row of the cumulative demotion.
+  CHK-DEMOTE-STEP   leg B: after each operation both demotion registers equal the
+                    RW1S golden (``demote`` sets only while ``lock`` is 0; the
+                    ``rsvd`` bits [63:2] are write-one-to-set with no lock and hold
+                    every bit written since the cold reset,
+                    ``sep_lifecycle_ctrl.rdl`` DEMOTE_1/2 ``rsvd``) and ``FEAT_CTRL``
+                    equals the row of the cumulative demotion (``rsvd`` is "Not
+                    used"). The random sequence draws ``rsvd.<k>`` writes of one
+                    bit k in [63:2].
                     A write of both bits while ``lock`` is 0 has no stated demote
                     golden: its demote bit is logged (``OBS-DEMOTE-LOCK-ONE-WRITE``,
                     every both-bits write) and the model takes the readback; the lock
@@ -126,6 +131,16 @@ DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
 LOCK_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "lock")
 DEMOTE_OP = {"demote": DEMOTE_BIT, "lock": LOCK_BIT, "zero": 0, "both": DEMOTE_BIT | LOCK_BIT}
 OP_NAME = {"demote": "set_demote", "lock": "set_lock", "zero": "zero", "both": "set_both"}
+RSVD_MASK = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "rsvd")
+
+
+def _op_value(op: str) -> int:
+    """Write data of a leg-B op; ``rsvd.<k>`` sets bit k of the ``rsvd`` field."""
+    if op.startswith("rsvd."):
+        return 1 << int(op.split(".")[1])
+    return DEMOTE_OP[op]
+
+
 DIS_ADDR = {"SIP_DIS": shadow_addr("SIP_DIS"), "SYS_DIS": shadow_addr("SYS_DIS")}
 PROGRAM_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 M32 = 0xFFFF_FFFF
@@ -190,7 +205,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
 
     def _dem_value(self, reg: int) -> int:
         d, lk = self.dem[reg]
-        return (DEMOTE_BIT if d else 0) | (LOCK_BIT if lk else 0)
+        return (DEMOTE_BIT if d else 0) | (LOCK_BIT if lk else 0) | self.rsvd[reg]
 
     def _vec(self) -> int:
         return self.dem[1][0] << 3 | self.dem[1][1] << 2 | self.dem[2][0] << 1 | self.dem[2][1]
@@ -202,7 +217,9 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         stated only when lock is already 1 (no change). With lock 0 the demote bit is
         open: ``_cycle`` takes it from the readback."""
         self.open_demote = None
-        if op == "demote" and not self.dem[reg][1]:
+        if op.startswith("rsvd."):
+            self.rsvd[reg] |= _op_value(op) & RSVD_MASK
+        elif op == "demote" and not self.dem[reg][1]:
             self.dem[reg][0] = 1
         elif op == "lock":
             self.dem[reg][1] = 1
@@ -249,6 +266,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.sip_m, self.sys_m = self.p.sip_dis, self.p.sys_dis
         self.dem = {1: [0, 0], 2: [0, 0]}
         self.open_demote: int | None = None
+        self.rsvd = {1: 0, 2: 0}
         self.sdis = 0
 
     def _feat_cell(
@@ -364,7 +382,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             and probe == row.value,
             step=step,
             reg=reg if reg is not None else "na",
-            op=OP_NAME.get(op, "none") if op else "none",
+            op=OP_NAME.get(op, op) if op else "none",
             reg_exp=f"0x{exp[reg or 1]:x}",
             reg_got=f"0x{got[reg or 1]:x}",
             other_exp=f"0x{exp[3 - (reg or 1)]:x}",
@@ -402,7 +420,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             self.otp_bad.append(f"{step}:lc=0x{lcw:x},diff={diff_log(diff)},progs={len(progs)}")
 
     async def _write_demote(self, reg: int, op: str) -> None:
-        await self.fd.wr64(DEMOTE_ADDR[reg], DEMOTE_OP[op])
+        await self.fd.wr64(DEMOTE_ADDR[reg], _op_value(op))
         self._apply_op(reg, op)
 
     async def _reset_check(self, stage: str) -> None:
@@ -865,6 +883,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.sip_m, self.sys_m = p.sip_dis, p.sys_dis
         self.dem = {1: [0, 0], 2: [0, 0]}
         self.open_demote: int | None = None
+        self.rsvd = {1: 0, 2: 0}
         self.sdis = 0
 
         self.write_efuse_image(p.image)

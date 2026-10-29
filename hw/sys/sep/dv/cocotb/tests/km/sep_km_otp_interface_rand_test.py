@@ -45,7 +45,10 @@ Checks (anchor):
                          image (POKE readback; host program and shadow readback)
   CHK-OTP-SIG            a single-rail flip sets the sticky OTP_SIGINT (IRQ_STATUS)
   CHK-OTP-CHG            a two-rail flip sets the field change bit and
-                         OTP_CHANGE, no OTP_SIGINT (POKE readback)
+                         OTP_CHANGE, no OTP_SIGINT (POKE readback); on the held
+                         point the readout word after the flip release equals the
+                         word before the flip, with no KM reset between
+                         (``km_csr.adoc``: "Read-through from OTP port; no reset")
 
 Logged only (no verdict): ``OBS-OTP-BOOT-SIGINT`` (IRQ_STATUS.OTP_SIGINT right
 after each KM reset; the leaf clears it with a write of 1 before any graded
@@ -182,6 +185,8 @@ class Leg:
     w1c_change: int = 0
     bad: list[str] = field(default_factory=list)
     active: int = 0
+    pre_rd: int | None = None
+    post_rd: int | None = None
 
 
 # One fuse bit to program: (eFuse field name, word in the field, bit in the word).
@@ -892,8 +897,14 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             )
         return active
 
-    async def _leg(self, label: str, pts: list[m.FlipPoint], *, single: bool) -> Leg:
-        """Control reads, one HK-OTP flip at the sync, bounded poll, readback, W1C."""
+    async def _leg(
+        self, label: str, pts: list[m.FlipPoint], *, single: bool, rd_addr: int | None = None
+    ) -> Leg:
+        """Control reads, one HK-OTP flip at the sync, bounded poll, readback, W1C.
+
+        With ``rd_addr`` the readout word at that address is also read before the
+        sync and after the poll.
+        """
         leg = Leg(label, pts)
         leg.exp = 0 if single else sum(1 << p.f for p in pts)
         mask = m.flip_mask([p.tup() for p in pts])
@@ -901,6 +912,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         o.add(kp.rd(m.A_DEMOTION), "pre_dem")
         o.add(kp.rd(m.A_IRQ_STATUS), "pre_irq")
         o.add(kp.rd(m.A_CHANGE), "pre_change")
+        if rd_addr is not None:
+            o.add(kp.rd(rd_addr), "pre_rd")
         o.add(kp.sync())
         if single:
             o.add(kp.poll(m.A_IRQ_STATUS, m.IRQ_OTP_SIGINT, m.IRQ_OTP_SIGINT, POLL_LOADS), "poll")
@@ -911,6 +924,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             )
         o.add(kp.rd(m.A_IRQ_STATUS), "irq")
         o.add(kp.rd(m.A_CHANGE), "change")
+        if rd_addr is not None:
+            o.add(kp.rd(rd_addr), "post_rd")
         if single:
             o.add(kp.wr(m.A_IRQ_STATUS, m.IRQ_OTP_SIGINT))
             o.add(kp.rd(m.A_IRQ_STATUS), "w1c_sig")
@@ -935,6 +950,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         leg.irq, leg.change = v["irq"], v["change"]
         leg.w1c_change = v["w1c_change"]
         leg.w1c_irq = v["w1c_sig"] if single else v["w1c_irq"]
+        leg.pre_rd, leg.post_rd = v.get("pre_rd"), v.get("post_rd")
         if single:
             self.chk.obs(
                 "OTP-SIG-CHANGE",
@@ -1167,7 +1183,14 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         )
         # Step 13: a two-rail flip well after the reboot with both demotions held.
         await self._run([kp.delay(QUIET)])
-        leg = await self._leg(f"chg.held.{self.rep.held.text()}", [self.rep.held], single=False)
+        hp = self.rep.held
+        if hp.f == m.F_LC:
+            rd_addr = m.A_LIFE_CYCLE
+        elif hp.f == m.F_DEM:
+            rd_addr = m.A_DEMOTION
+        else:
+            rd_addr = m.word_addr(hp.f, "val", hp.word)
+        leg = await self._leg(f"chg.held.{hp.text()}", [hp], single=False, rd_addr=rd_addr)
         both = (leg.pre_dem & m.DEM_FIELDS) == (self.dem_b.dem & m.DEM_FIELDS)
         self.chk.ctrl(
             "OTP-CHG-PRE",
@@ -1178,7 +1201,22 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         )
         self.chk.ctrl("OTP-CHG-HELD", both, dem=_h(leg.pre_dem))
         ok, info = self._chg_ok(leg)
-        self.chk.ok("OTP-CHG", ok, field=_FN[self.rep.held.f], both_rail=1, held=1, **info)
+        # km_csr.adoc OTP readout registers: "Read-through from OTP port; no reset".
+        # After the release the port is back at its live value and no KM reset ran,
+        # so the readout word equals the word read before the flip.
+        thru = leg.pre_rd is not None and leg.post_rd == leg.pre_rd
+        self.chk.ok(
+            "OTP-CHG",
+            ok and thru,
+            field=_FN[hp.f],
+            both_rail=1,
+            held=1,
+            readout_addr=f"0x{rd_addr:x}",
+            readout_pre=_h(leg.pre_rd or 0),
+            readout_post=_h(leg.post_rd or 0),
+            read_through=int(thru),
+            **info,
+        )
         self.dem_last = self.dem_b.dem & m.DEM_FIELDS
 
     # --- step 14: SEP cold reset ---------------------------------------------------------
