@@ -3688,3 +3688,19 @@ args = [
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
+
+[[tests]]
+# A cold boot reports BL0_VERSION and the SHA-256 of [ROM base, __metadata_end) of the loaded
+# image on the console, and the hash prefix as two INFO_EXT words after ROM_HASH, during [S05].
+name = "sep_rom_version_hash_report_test"
+module = "rom_fw.sep_rom_version_hash_report_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "attestation", "status", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
