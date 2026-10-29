@@ -210,10 +210,7 @@ module efuse_shadow_regs
     logic preload_plusarg_found;
     preload_plusarg_found = 1'b0;
 
-     // preload shadow reg after a 10 time unit delay, can not wait until reset.
      if (HAS_LC_STATE) begin
-          // Only load shadow reg preload when skip_fuse_sense is enabled.
-          // This prevents a "default" preload path from affecting normal fuse-sense operation.
           if ($test$plusargs("skip_fuse_sense") &&
               $value$plusargs("sep_shadow_reg_preload=%s", sep_shadow_reg_preload)) begin
             $display("Loading SEP shadow reg preload data from %s", sep_shadow_reg_preload);
@@ -221,7 +218,6 @@ module efuse_shadow_regs
             preload_plusarg_found = 1'b1;
           end
      end else begin
-          // Only load shadow reg preload if skip fuse sense is enabled
           if (sim_skip_fuse_sense == 1'b1 && $value$plusargs("smc_shadow_reg_preload=%s", smc_shadow_reg_preload)) begin
             $display("Loading SMC shadow reg preload data from %s", smc_shadow_reg_preload);
             $readmemh(smc_shadow_reg_preload, shadow_reg_preload, 0, NumShadowWords-1);
@@ -229,7 +225,6 @@ module efuse_shadow_regs
           end
     end
     if (sim_skip_fuse_sense == 1'b1 && preload_plusarg_found == 1'b0) begin
-        // Construct the expected plusarg name string based on HAS_LC_STATE for the warning
         string expected_plusarg_name = HAS_LC_STATE ? "sep_shadow_reg_preload" : "smc_shadow_reg_preload";
         $display("[INFO] +skip_fuse_sense provided, but the required shadow register preload plusarg (+%s=filename) was NOT found.", expected_plusarg_name);
 
@@ -310,7 +305,6 @@ module efuse_shadow_regs
 
   efuse_apb_resp_t apb_resp_q;
 
-  // Pass apb_resp back or intercept with badcab1e if blocked
   always_comb begin
     apb_resp_o.pready  = 1'b0;
     apb_resp_o.prdata  = efuse_data_t'(0);
@@ -358,16 +352,12 @@ module efuse_shadow_regs
   assign set_only_write = write_setup_only && !is_lc_state_access;
   assign lc_state_write = write_setup_only && is_lc_state_access;
 
-  // TODO: in the SR, we enforce LC state to be set-only, but we dont enforce it for other values in SR.
   always_comb begin
     wr_word = shadow_efuse.values[word_sel];
-    // For each byte:
     for (int b = 0; b < 4; b++) begin
       if (apb_req_pstrb_i[b]) begin
-        // If targeting LC state, and byte 0, use value calculated above
         if (lc_state_write && (b == 0)) begin
           wr_word[2*LcStateWidth-1:0] = lc_state_diff_d;
-        // Update the byte
         end else if (set_only_write) begin
           wr_word[b*8+:8] = wr_word[b*8+:8] | apb_req_pwdata_i[b*8+:8];
         end else begin
@@ -413,28 +403,20 @@ module efuse_shadow_regs
       if (HAS_LC_STATE) begin
           lc_state_raw_d = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
           lc_state_candidate = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
-          // If skip_fuse_sense is enabled, use the preload data for the LC state
           if (preloading) begin
               lc_state_raw_d = shadow_reg_preload[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
           end
-          // If fuse sense is not done and security is not disabled, use the fuse command response for the LC state
           else if (sensing) begin
-              // If the fuse command response is valid, not in error, and the response is targeting the LC state word, use the data for the LC state
               if (fuse_command_resp_i.valid && !fuse_command_resp_i.status &&
                   words_received_q < efuse_word_counter_t'(NumShadowWords) &&
                   words_received_q == efuse_word_counter_t'(efuse_pkg::ShadowIdxLcState)) begin
                   lc_state_raw_d = fuse_command_resp_i.data[LcStateWidth-1:0];
-              end else begin
-                  // Keep default: lc_state_raw_d already set at line 225
-                  // Aka dont change the LC state while still completing fuse sensing
               end
           end else begin
-              // LC state transition enforcement. A write may target any encoding,
-              // valid or not; only the token gates constrain the destination:
-              //   bit[1] (RMA_SIP) requires the SIP token to match.
-              //   bit[2] (RMA_CHIPLET) requires the chiplet token to match and a previous RMA_SIP token match
-
-              // An encoding outside the spec's set is terminal.
+              // A write may set any LC_STATE bit, giving a valid encoding or not, subject to the
+              // token gates: bit 1 (RMA_SIP) needs a SIP token match, and bit 2 (RMA_CHIPLET)
+              // needs a chiplet token match with bit 1 already set. An invalid encoding is
+              // terminal.
               lc_state_cur = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
 
               if (efuse_pkg::is_invalid_lc_state(lc_state_cur)) begin
@@ -460,7 +442,7 @@ module efuse_shadow_regs
                   if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE && lc_state_cur[1]) begin
                       lc_state_raw_d[2] = 1'b1;
                   end else if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE) begin
-                      // CHIPLET matched but RMA_SIP is not established — block, don't fall through
+                      // A chiplet match without RMA_SIP established changes nothing.
                   end else if (rma_sip_token_match_i == TOKEN_MATCH_CODE) begin
                       lc_state_raw_d[1] = 1'b1;
                   end
@@ -476,14 +458,13 @@ module efuse_shadow_regs
       .data_o (lc_state_diff_d)
   );
 
-  // Read execution state machine
+  // Fuse sense state machine
   typedef enum {
     ST_IDLE, ST_READ, ST_WAIT, ST_FINISHED
   } efuse_sense_state_e;
 
   efuse_sense_state_e efuse_sense_state_d, efuse_sense_state_q;
 
-    // Combinational decode of the state
     always_comb begin
         efuse_sense_state_d = efuse_sense_state_q;
         words_received_d = words_received_q;
@@ -492,7 +473,6 @@ module efuse_shadow_regs
 
         unique case (efuse_sense_state_q)
             ST_IDLE: begin
-                // Fuse sensing begins when reset is deasserted
                 if (rst_ni) begin
                     efuse_sense_state_d = ST_READ;
                     words_received_d = '0;
@@ -500,41 +480,33 @@ module efuse_shadow_regs
                 end
             end
 
-            // ST_READ: Send the fuse command to read entire OTP
             ST_READ: begin
-                // width-match the 9b word counter to the 13b bit-address field (clears W164b lint).
-                // NOTE: value is 0 here; .address is a BIT address, so a nonzero word count would be wrong (see commit note re: word-vs-bit).
+                // .address is a bit address. current_word_num_q is always 0 here, so it is also
+                // bit 0 of word 0.
                 fuse_command_req_d.address = efuse_addr_t'(current_word_num_q);
                 fuse_command_req_d.access_length_words =
                     efuse_word_counter_t'(NumShadowWords);
                 fuse_command_req_d.valid = 1'b1;
                 fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
 
-                // Move to wait acknowledgment state
                 efuse_sense_state_d = ST_WAIT;
                 words_received_d = '0;
             end
 
-            // ST_WAIT: Wait for remaining streaming responses and store data
             ST_WAIT: begin
 
                 if (fuse_command_resp_i.valid) begin
-                    // Check if we've received all expected words
                     if (words_received_q >= efuse_word_counter_t'(NumShadowWords - 1)) begin
                         efuse_sense_state_d = ST_FINISHED;
                     end else begin
                         words_received_d = words_received_q + efuse_word_counter_t'(1);
                         current_word_num_d = current_word_num_q + efuse_word_counter_t'(1);
                     end
-                    // Stay in wait state to receive more data
                 end
 
-                // Continue waiting for more responses
             end
 
-            // ST_FINISHED: OTP sensing complete
             ST_FINISHED: begin
-                // Stay in finished state
                 efuse_sense_state_d = ST_FINISHED;
             end
 
@@ -545,7 +517,6 @@ module efuse_shadow_regs
         endcase
     end
 
-    // Register the state
     `OCAH_FF(efuse_sense_state_q, efuse_sense_state_d, ST_IDLE, clk_i, rst_ni)
     `OCAH_FF(current_word_num_q, current_word_num_d, '0, clk_i, rst_ni)
     `OCAH_FF(words_received_q, words_received_d, efuse_word_counter_t'(0), clk_i, rst_ni)
@@ -619,13 +590,11 @@ module efuse_shadow_regs
             if (HAS_LC_STATE &&
                 words_received_q ==
                     efuse_word_counter_t'(efuse_pkg::ShadowIdxLcState)) begin
-              // ShadowEfuseWidth' cast narrows the 9b word-count to the 8b array index, conventional in this module (not entirely necessary as guarded < NumShadowWords above)
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))] <=
                   {fuse_command_resp_i.data[31:2*LcStateWidth], lc_state_diff_d};
             end else begin
-              // Check if access belongs to class1 shadow range
               if (efuse_pkg::shadow_range_map_contains_word(
                   CLASS1_SHADOW_RANGES,
                   shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))) begin
