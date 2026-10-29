@@ -4497,8 +4497,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "with smc_disable_sram_auto_init_i high the zeroing sweep never "
             "starts and no zeroing write reaches the scratch RAM, and "
             "smc_init_mem_done_o reads low while the cold reset is asserted; "
-            "what it read beforehand and how it behaves after the release is "
-            "recorded, not compared",
+            "what it read beforehand is recorded",
+        ),
+        (
+            "CHK-SMU-MEMINIT-BYPASS-DONE",
+            "CHK-SMU-MEMINIT-BYPASS-DONE",
+            "with the sweep held off smc_init_mem_done_o rises within twice the "
+            "cold-reset release pipeline under +skip_fuse_sense after the release "
+            "and reads high on "
+            "every sampled cycle from the rise to the end of the window",
         ),
     ],
     "smu_sram_auto_init_done_test": [
