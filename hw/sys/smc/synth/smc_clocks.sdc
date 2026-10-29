@@ -75,8 +75,8 @@ foreach trace_mem_clk_port $trace_mem_clk_ports {
     incr trace_mem_clk_idx
 }
 
-# I3C DAT/DCT/RLT table memory clocks (the gated I3C peripheral clock)
-foreach mem {dat dct rlt} {
+# I3C message buffer, DAT and DCT memory clocks (the gated I3C peripheral clock)
+foreach mem {buf dat dct} {
     set i3c_mem_clk_ports [lsort -dictionary [get_object_name [get_ports -quiet "i3c_${mem}_mem_sink_o*clk"]]]
     set i3c_mem_clk_idx 0
     foreach i3c_mem_clk_port $i3c_mem_clk_ports {
@@ -274,8 +274,15 @@ create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master
 # no clock divider in efuse interface controller
 
 # I3C
-# Controller uses PERIPHCLK + a counter to create output SCL, there is no logic based on SCL output
-# input SCL is also not used as a clock
+# Controller uses PERIPHCLK + a counter to create output SCL, there is no logic based on SCL output.
+# The target and the bus-reset detector clock flops on SCL and SDA from the pad, so each
+# instance's SCL and SDA pads carry a clock. Pad pairs are in instance order (smc_padring.sv).
+set i3c_idx 0
+foreach {scl_pad sda_pad} {27 28 63 64 29 30 31 32 33 34 35 36} {
+    create_clock -add -name I3C_SCL${i3c_idx} -period $clock_periods(I3C_SCL_PERIOD) [cdc_port_or_pin "pad2core_i\[$scl_pad\]"]
+    create_clock -add -name I3C_SDA${i3c_idx} -period $clock_periods(I3C_SCL_PERIOD) [cdc_port_or_pin "pad2core_i\[$sda_pad\]"]
+    incr i3c_idx
+}
 
 # feedthrough clock for any async input/outputs
 if {[cdc_is_block_top]} {

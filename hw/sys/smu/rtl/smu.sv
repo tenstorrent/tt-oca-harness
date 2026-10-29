@@ -377,12 +377,12 @@ module smu #(
 
   input  logic                  secure_tm_req_i,  // SEP secure test-mode request strap.
 
-  input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_dat_mem_src_i,  // I3C DAT memory source interfaces.
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_dat_mem_sink_o,  // I3C DAT memory sink interfaces.
-  input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_dct_mem_src_i,  // I3C DCT memory source interfaces.
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_dct_mem_sink_o,  // I3C DCT memory sink interfaces.
-  input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_rlt_mem_src_i,  // I3C RLT memory source interfaces.
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_rlt_mem_sink_o,  // I3C RLT memory sink interfaces.
+  input  ot_i3c_wrap_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_dat_mem_src_i,  // I3C DAT memory source interfaces.
+  output ot_i3c_wrap_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_dat_mem_sink_o,  // I3C DAT memory sink interfaces.
+  input  ot_i3c_wrap_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_dct_mem_src_i,  // I3C DCT memory source interfaces.
+  output ot_i3c_wrap_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_dct_mem_sink_o,  // I3C DCT memory sink interfaces.
+  input  ot_i3c_wrap_pkg::buf_mem_src_t  [smc_config_pkg::NumI3c-1:0]   i3c_buf_mem_src_i,  // I3C message buffer memory source interfaces.
+  output ot_i3c_wrap_pkg::buf_mem_sink_t [smc_config_pkg::NumI3c-1:0]   i3c_buf_mem_sink_o,  // I3C message buffer memory sink interfaces.
   output logic                                                  gated_clk_periph_i3c_o,  // Gated peripheral clock for I3C.
 
   input  logic [127:0]  ext_debug_bus_i,        // External debug bus; the SMC receives it above the
@@ -844,8 +844,8 @@ module smu #(
     .i3c_dct_mem_src_i               (i3c_dct_mem_src_i),
     .i3c_dct_mem_sink_o              (i3c_dct_mem_sink_o),
     .gated_clk_periph_i3c_o          (gated_clk_periph_i3c_o),
-    .i3c_rlt_mem_src_i               (i3c_rlt_mem_src_i),
-    .i3c_rlt_mem_sink_o              (i3c_rlt_mem_sink_o),
+    .i3c_buf_mem_src_i               (i3c_buf_mem_src_i),
+    .i3c_buf_mem_sink_o              (i3c_buf_mem_sink_o),
 
     .gpio_interrupt_o                (gpio_interrupt_o),
     .uart_interrupt_o                (uart_interrupt_o)

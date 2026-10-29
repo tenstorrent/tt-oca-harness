@@ -311,12 +311,12 @@ module smu_wrapper #(
   logic [smc_pkg::NumGpioWraps-1:0] core2pad_en;
 
   // I3C table memory macros (smu <-> smc_ip_integration)
-  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_src;
-  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink;
-  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_src;
-  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink;
-  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_src;
-  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_sink;
+  ot_i3c_wrap_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_src;
+  ot_i3c_wrap_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink;
+  ot_i3c_wrap_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_src;
+  ot_i3c_wrap_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink;
+  ot_i3c_wrap_pkg::buf_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_buf_mem_src;
+  ot_i3c_wrap_pkg::buf_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_buf_mem_sink;
 
   smc_pkg::smc_axil_32_32_req_t     smc_efuse_bank_ctrl_req;
   smc_pkg::smc_axil_32_32_resp_t    smc_efuse_bank_ctrl_resp;
@@ -531,8 +531,8 @@ module smu_wrapper #(
     .i3c_dat_mem_sink_o (i3c_dat_mem_sink),
     .i3c_dct_mem_src_i  (i3c_dct_mem_src),
     .i3c_dct_mem_sink_o (i3c_dct_mem_sink),
-    .i3c_rlt_mem_src_i  (i3c_rlt_mem_src),
-    .i3c_rlt_mem_sink_o (i3c_rlt_mem_sink),
+    .i3c_buf_mem_src_i  (i3c_buf_mem_src),
+    .i3c_buf_mem_sink_o (i3c_buf_mem_sink),
 
     .smc_efuse_bank_ctrl_req_o     (smc_efuse_bank_ctrl_req),
     .smc_efuse_bank_ctrl_resp_i    (smc_efuse_bank_ctrl_resp),
@@ -614,8 +614,8 @@ module smu_wrapper #(
     .i3c_dat_mem_src_o  (i3c_dat_mem_src),
     .i3c_dct_mem_sink_i (i3c_dct_mem_sink),
     .i3c_dct_mem_src_o  (i3c_dct_mem_src),
-    .i3c_rlt_mem_sink_i (i3c_rlt_mem_sink),
-    .i3c_rlt_mem_src_o  (i3c_rlt_mem_src),
+    .i3c_buf_mem_sink_i (i3c_buf_mem_sink),
+    .i3c_buf_mem_src_o  (i3c_buf_mem_src),
 
     .trace_mem_req  (trace_mem_req),
     .trace_mem_resp (trace_mem_resp),

@@ -14,7 +14,7 @@ export_include_dirs:
   - upstream/hw/ip/prim/rtl
 
 sources:
-  - target: any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager)
+  - target: any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager, ot_i3c)
     files:
       - upstream/hw/ip/prim/rtl/prim_util_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_count_pkg.sv
@@ -25,7 +25,7 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
   # prim_generic cells that the current synth overlay replaces; the emulation
   # view keeps them. Add a cell here only if the overlay supplies a replacement.
-  - target: all(any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager), any(not(synth), emulation))
+  - target: all(any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager, ot_i3c), any(not(synth), emulation))
     files:
       - upstream/hw/ip/prim_generic/rtl/prim_and2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_buf.sv
@@ -78,7 +78,7 @@ sources:
   # the big any(opentitan_smu, sep, smu) list below: that list also carries
   # hw/sys/sep RTL (sep_pkg.sv), which the smc and key_manager builds must not
   # pull in.
-  - target: any(drbg, sep, smc, opentitan_smu, smu, key_manager, uart)
+  - target: any(drbg, sep, smc, opentitan_smu, smu, key_manager, uart, ot_i3c)
     files:
       - upstream/hw/ip/prim/rtl/prim_alert_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_sec_anchor_buf.sv
@@ -119,9 +119,8 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_ram_1p.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
 
-  # I3C DAT/DCT/RLT table memories instantiated by smc_ip_integration, and the
-  # same cells in the OpenTitan subsystem graph.
-  - target: any(drbg, sep, smc_wrapper, smu_wrapper, opentitan_smu, smu)
+  # prim_ram_1r1w in the list below imports prim_ram_2p_pkg.
+  - target: any(drbg, sep, smc, smc_wrapper, smu_wrapper, opentitan_smu, smu, ot_i3c)
     files:
       - upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_ram_2p.sv
@@ -131,7 +130,7 @@ sources:
   # hmac_wrapper.sv, kmac_wrapper.sv, sep_crypto_otbn_wrapper.sv, sep.sv's secure_dma
   # integration) unconditionally instantiate these OpenTitan IP cores, so any build
   # that compiles SEP/SMU needs this whole file list to elaborate cleanly.
-  - target: any(drbg, opentitan_smu, sep, smu)
+  - target: any(drbg, opentitan_smu, sep, smc, smu, ot_i3c)
     files:
       # Primitive packages.
       - upstream/hw/ip/prim/rtl/prim_secded_pkg.sv

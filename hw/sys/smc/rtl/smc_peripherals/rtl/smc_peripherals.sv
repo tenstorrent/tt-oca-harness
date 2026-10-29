@@ -321,28 +321,28 @@ module smc_peripherals #(
                                                                  // integrity errors, on the
                                                                  // SMC clock.
 
-  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dat_mem_src_i,   // Read data from each
-                                                                                   // I3C device address
-                                                                                   // table memory.
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink_o,   // Request to each I3C
-                                                                                    // device address table
-                                                                                    // memory.
-  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dct_mem_src_i,   // Read data from each
-                                                                                   // I3C device
-                                                                                   // characteristics table
-                                                                                   // memory.
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink_o,   // Request to each I3C
-                                                                                    // device
-                                                                                    // characteristics table
-                                                                                    // memory.
-  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_rlt_mem_src_i,   // Read data from each
-                                                                                   // I3C reverse-lookup
-                                                                                   // table memory.
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_sink_o,   // Request to each I3C
-                                                                                    // reverse-lookup table
-                                                                                    // memory.
+  input  ot_i3c_wrap_pkg::buf_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_buf_mem_src_i,   // Read data from each
+                                                                                           // I3C message buffer
+                                                                                           // memory.
+  output ot_i3c_wrap_pkg::buf_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_buf_mem_sink_o,  // Request to each I3C
+                                                                                           // message buffer
+                                                                                           // memory.
+  input  ot_i3c_wrap_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dat_mem_src_i,   // Read data from each
+                                                                                           // I3C device address
+                                                                                           // table memory.
+  output ot_i3c_wrap_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink_o,  // Request to each I3C
+                                                                                           // device address table
+                                                                                           // memory.
+  input  ot_i3c_wrap_pkg::dct_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dct_mem_src_i,   // Read data from each
+                                                                                           // I3C device
+                                                                                           // characteristics table
+                                                                                           // memory.
+  output ot_i3c_wrap_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink_o,  // Request to each I3C
+                                                                                           // device
+                                                                                           // characteristics table
+                                                                                           // memory.
   output logic gated_clk_periph_i3c_o,  // Gated I3C peripheral clock (same domain as
-                                        // i3ccore_wrapper).
+                                        // ot_i3c_wrapper).
 
   output logic [16:0] avsbus_cur_state_debug_o,  // AVSBus controller state,
                                                  // synchronized to the SMC clock.
@@ -1409,21 +1409,16 @@ module smc_peripherals #(
     .clk_o(gated_clk_periph_i3c)
   );
 
-  i3ccore_wrapper #(
+  ot_i3c_wrapper #(
     .NUM_I3C            (smc_config_pkg::NumI3c),
-    .I3C_REG_ADDR_WIDTH (i3ccore_wrap_pkg::I3cRegAddrWidth),
+    .I3C_REG_ADDR_WIDTH (ot_i3c_wrap_pkg::I3cRegAddrWidth),
     .BASE_ADDR          (smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
-    .INSTANCE_SPACING   (i3ccore_wrap_pkg::I3cInstanceSpacing),
-
-    // I3C Core parameters
-    .DAT_AW             (i3c_pkg::DatAw),
-    .DCT_AW             (i3c_pkg::DctAw),
-    .CSR_ADDR_WIDTH     (I3CCSR_pkg::I3CCSR_MIN_ADDR_WIDTH),
-    .CSR_DATA_WIDTH     (I3CCSR_pkg::I3CCSR_DATA_WIDTH)
-  ) u_i3ccore_wrapper (
+    .INSTANCE_SPACING   (ot_i3c_wrap_pkg::I3cInstanceSpacing)
+  ) u_ot_i3c_wrapper (
     .clk_i              (gated_clk_periph_i3c),
     .rst_ni             (rst_primary_periph_clk_n),
     .test_en_i          (test_en_i),
+    .scan_rst_ni        (scan_rst_ni),
 
     // AXI4-Lite Write Address Channel
     .awvalid_i          (axil_i3c_req_periph_clk.aw_valid),
@@ -1466,20 +1461,13 @@ module smc_peripherals #(
     .sda_oe_o           (i3c_sda_oe_to_pad),
     .sel_od_pp_o        (i3c_sel_od_pp_to_pad),
 
-    // Recovery signals (unused for now)
-    .recovery_payload_available_o   (/* UNUSED */),
-    .recovery_image_activated_o     (/* UNUSED */),
-    .peripheral_reset_o             (/* UNUSED */),
-    .peripheral_reset_done_i        ({smc_config_pkg::NumI3c{1'b0}}),
-    .escalated_reset_o              (/* UNUSED */),
-
-    // DAT/DCT memory interfaces
+    // Message buffer/DAT/DCT memory interfaces
+    .buf_mem_src_i  (i3c_buf_mem_src_i),
+    .buf_mem_sink_o (i3c_buf_mem_sink_o),
     .dat_mem_src_i  (i3c_dat_mem_src_i),
     .dat_mem_sink_o (i3c_dat_mem_sink_o),
     .dct_mem_src_i  (i3c_dct_mem_src_i),
-    .dct_mem_sink_o (i3c_dct_mem_sink_o),
-    .rlt_mem_src_i  (i3c_rlt_mem_src_i),
-    .rlt_mem_sink_o (i3c_rlt_mem_sink_o)
+    .dct_mem_sink_o (i3c_dct_mem_sink_o)
   );
 
   ///////////////////

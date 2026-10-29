@@ -475,26 +475,26 @@ module smc #(
   input  logic [3:0]  smc_cpu_jtag_version_i,  // Version reported in the CPU cluster JTAG
                                                // IDCODE.
 
-  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dat_mem_src_i,   // Read data from each
-                                                                                   // I3C device address
-                                                                                   // table memory.
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink_o,   // Request to each I3C
-                                                                                    // device address table
-                                                                                    // memory.
-  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dct_mem_src_i,   // Read data from each
-                                                                                   // I3C device
-                                                                                   // characteristics table
-                                                                                   // memory.
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink_o,   // Request to each I3C
-                                                                                    // device
-                                                                                    // characteristics table
-                                                                                    // memory.
-  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_rlt_mem_src_i,   // Read data from each
-                                                                                   // I3C reverse-lookup
-                                                                                   // table memory.
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_sink_o,   // Request to each I3C
-                                                                                    // reverse-lookup table
-                                                                                    // memory.
+  input  ot_i3c_wrap_pkg::dat_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dat_mem_src_i,   // Read data from each
+                                                                                           // I3C device address
+                                                                                           // table memory.
+  output ot_i3c_wrap_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink_o,   // Request to each I3C
+                                                                                            // device address table
+                                                                                            // memory.
+  input  ot_i3c_wrap_pkg::dct_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_dct_mem_src_i,   // Read data from each
+                                                                                           // I3C device
+                                                                                           // characteristics table
+                                                                                           // memory.
+  output ot_i3c_wrap_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink_o,   // Request to each I3C
+                                                                                            // device
+                                                                                            // characteristics table
+                                                                                            // memory.
+  input  ot_i3c_wrap_pkg::buf_mem_src_t [smc_config_pkg::NumI3c-1:0]  i3c_buf_mem_src_i,   // Read data from each
+                                                                                           // I3C message buffer
+                                                                                           // memory.
+  output ot_i3c_wrap_pkg::buf_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_buf_mem_sink_o,   // Request to each I3C
+                                                                                            // message buffer
+                                                                                            // memory.
 
   output logic [smc_pkg::NumGpioWraps-1:0]  gpio_interrupt_o,    // Interrupt from each GPIO
                                                                  // interface, active-high,
@@ -914,8 +914,8 @@ module smc #(
     .i3c_dat_mem_sink_o                    (i3c_dat_mem_sink_o),
     .i3c_dct_mem_src_i                     (i3c_dct_mem_src_i),
     .i3c_dct_mem_sink_o                    (i3c_dct_mem_sink_o),
-    .i3c_rlt_mem_src_i                     (i3c_rlt_mem_src_i),
-    .i3c_rlt_mem_sink_o                    (i3c_rlt_mem_sink_o),
+    .i3c_buf_mem_src_i                     (i3c_buf_mem_src_i),
+    .i3c_buf_mem_sink_o                    (i3c_buf_mem_sink_o),
     .gated_clk_periph_i3c_o                (gated_clk_periph_i3c_o),
 
     // AVSBus Controller debug

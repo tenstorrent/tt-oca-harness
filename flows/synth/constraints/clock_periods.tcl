@@ -18,6 +18,8 @@ set clock_periods(REFCLK_PERIOD) 10000
 set clock_periods(SYSCLK_PERIOD) 1000
 set clock_periods(PERIPHERALCLK_PERIOD) 5000
 set clock_periods(SPICLK_PERIOD) 5000
+# I3C SCL, and SDA where it clocks START/STOP detection: 12.5 MHz SDR.
+set clock_periods(I3C_SCL_PERIOD) 80000
 set clock_periods(TELEMETRYCLK_PERIOD) 2000
 set clock_periods(JTAG_TCK_PERIOD) 10000
 set clock_periods(ck_feedthru_PERIOD) 10000

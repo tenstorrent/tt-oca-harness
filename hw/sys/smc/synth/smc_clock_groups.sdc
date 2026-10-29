@@ -63,5 +63,7 @@ if {[cdc_is_block_top]} {
         TELEMETRYCLK
         JTAG_TCK
         ck_feedthru
+        I3C_SCL0 I3C_SCL1 I3C_SCL2 I3C_SCL3 I3C_SCL4 I3C_SCL5
+        I3C_SDA0 I3C_SDA1 I3C_SDA2 I3C_SDA3 I3C_SDA4 I3C_SDA5
     } -exclude {{AVS_*_FROM_REFCLK* AVS_*_FROM_PERIPHERALCLK*}}
 }

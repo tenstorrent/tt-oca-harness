@@ -201,10 +201,10 @@ set_output_delay 0 -clock [get_clock SPICLK] [get_ports {spi_rxd_o*}] -add_delay
 set_output_delay 0 -clock [get_clock SPICLK] [get_ports spi_rxds_o] -add_delay
 set_output_delay 0 -clock [get_clock SPICLK] [get_ports spi_mem_rebar_ipad_o] -add_delay
 
-# I3C DAT/DCT/RLT memory interfaces (struct-flattened port names). Tied or driven
+# I3C message buffer, DAT and DCT memory interfaces (struct-flattened port names). Tied or driven
 # from the memory controller in chip context; stamp PERIPHERALCLK for block CDC SETUP.
 # Guarded with -quiet since I3C is a configurable peripheral count.
-foreach mem {dat dct rlt} {
+foreach mem {buf dat dct} {
     set i3c_mem_src_ports [get_ports -quiet "i3c_${mem}_mem_src_i*"]
     if {[sizeof_collection $i3c_mem_src_ports] > 0} {
         set_input_delay  [expr $clock_periods(PERIPHERALCLK_PERIOD)*$io_budget(default)] -clock [get_clock PERIPHERALCLK] $i3c_mem_src_ports -add_delay

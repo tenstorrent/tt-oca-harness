@@ -94,13 +94,13 @@ module smc_ip_integration (
     // Physical GPIO pad bus, one prim_pad_shim.sv instance per pin
     inout wire [smc_pkg::NumGpioWraps-1:0] gpio_pad_io,
 
-    // I3C table memory macro interfaces (from smc.sv / smu.sv)
-    input  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink_i,
-    output i3c_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_src_o,
-    input  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink_i,
-    output i3c_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_src_o,
-    input  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_sink_i,
-    output i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_rlt_mem_src_o,
+    // I3C memory macro interfaces (from smc.sv / smu.sv)
+    input  ot_i3c_wrap_pkg::buf_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_buf_mem_sink_i,
+    output ot_i3c_wrap_pkg::buf_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_buf_mem_src_o,
+    input  ot_i3c_wrap_pkg::dat_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_sink_i,
+    output ot_i3c_wrap_pkg::dat_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dat_mem_src_o,
+    input  ot_i3c_wrap_pkg::dct_mem_sink_t [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_sink_i,
+    output ot_i3c_wrap_pkg::dct_mem_src_t  [smc_config_pkg::NumI3c-1:0] i3c_dct_mem_src_o,
 
     // eFuse debug bus (internal shim state, surfaced for DV visibility)
     output logic [15:0] efuse_debug_bus_o
@@ -484,45 +484,56 @@ module smc_ip_integration (
     );
 
     //=========================================================================
-    // I3C DAT/DCT/RLT table memories
+    // I3C message buffer and table memories
     //
-    // smc.sv / smu.sv export the I3C controller's three table memories as
-    // macro interfaces rather than instantiating them, so an adopter can drop
-    // in vendor SRAMs. These are the reference macros, one set per instance:
+    // smc.sv / smu.sv export each I3C instance's three memories as macro
+    // interfaces rather than instantiating them, so an adopter can drop in
+    // vendor SRAMs. These are the reference macros, one set per instance, all
+    // single port:
     //
-    //   DAT  Device Address Table            64 b x 2**DatAw, single port
-    //   DCT  Device Characteristic Table    128 b x 2**DctAw, single port
-    //   RLT  dynamic address -> DAT index    DatAw b x 128,   dual port
+    //   BUF  Message buffer                    32 b x 1024, byte write mask
+    //   DAT  Device Address Table              52 b x 32,   bit write mask
+    //   DCT  Device Characteristics Table      72 b x 32,   byte write mask
     //
-    // Sizing and the 32-bit write granularity mirror the I3C core's own
-    // bring-up testbench (hw/ip/i3ccore_wrap/dv/tb/tb_i3ccore.sv), which
-    // drives the identical interface. The core reads combinationally one cycle
-    // after asserting req, which is exactly prim_ram_*'s latency.
+    // The core expects read data one cycle after asserting req, which is
+    // prim_ram_1p's latency.
     //=========================================================================
 
-    // Address widths are the core's; depths follow from them so the arrays
-    // always cover every address the core can present.
-    localparam int unsigned DatDepth = 1 << i3c_pkg::DatAw;
-    localparam int unsigned DctDepth = 1 << i3c_pkg::DctAw;
-    // Fixed by the core: RLT is indexed by the 7-bit dynamic address
-    // (vendor/chipsalliance/i3c-core/upstream/src/ctrl/flow_active.sv).
-    localparam int unsigned RltDepth = 128;
-    localparam int unsigned RltWidth = i3c_pkg::DatAw;
-
-    // CSR writes reach DAT/DCT one 32-bit word at a time, so the macros need
-    // 32-bit write granularity (dxt.sv builds {32{1'b1}}/{32{1'b0}} masks).
-    localparam int unsigned I3cMaskGranularity = 32;
+    localparam int unsigned BufDepth = 1 << ot_i3c_wrap_pkg::BufAw;
+    localparam int unsigned DatDepth = 1 << ot_i3c_wrap_pkg::DatAw;
+    localparam int unsigned DctDepth = 1 << ot_i3c_wrap_pkg::DctAw;
 
     for (genvar i = 0; i < smc_config_pkg::NumI3c; i++) begin : gen_i3c_mem
+
+        ///////////
+        // BUF   //
+        ///////////
+
+        prim_ram_1p #(
+            .Width           (ot_i3c_wrap_pkg::BufDw),
+            .Depth           (BufDepth),
+            .DataBitsPerMask (8)
+        ) u_buf_mem (
+            .clk_i     (i3c_buf_mem_sink_i[i].clk),
+            .rst_ni    (rst_primary_periph_clk_ni),
+            .req_i     (i3c_buf_mem_sink_i[i].req),
+            .write_i   (i3c_buf_mem_sink_i[i].write),
+            .addr_i    (i3c_buf_mem_sink_i[i].addr),
+            .wdata_i   (i3c_buf_mem_sink_i[i].wdata),
+            .wmask_i   (i3c_buf_mem_sink_i[i].wmask),
+            .rdata_o   (i3c_buf_mem_src_o[i].rdata),
+            .cfg_i     ('0),
+            .cfg_rsp_o ()
+        );
 
         ///////////
         // DAT   //
         ///////////
 
         prim_ram_1p #(
-            .Width           (64),
+            .Width           (ot_i3c_wrap_pkg::DatDw),
             .Depth           (DatDepth),
-            .DataBitsPerMask (I3cMaskGranularity)
+            .DataBitsPerMask (1)
         ) u_dat_mem (
             .clk_i     (i3c_dat_mem_sink_i[i].clk),
             .rst_ni    (rst_primary_periph_clk_ni),
@@ -541,9 +552,9 @@ module smc_ip_integration (
         ///////////
 
         prim_ram_1p #(
-            .Width           (128),
+            .Width           (ot_i3c_wrap_pkg::DctDw),
             .Depth           (DctDepth),
-            .DataBitsPerMask (I3cMaskGranularity)
+            .DataBitsPerMask (8)
         ) u_dct_mem (
             .clk_i     (i3c_dct_mem_sink_i[i].clk),
             .rst_ni    (rst_primary_periph_clk_ni),
@@ -553,38 +564,6 @@ module smc_ip_integration (
             .wdata_i   (i3c_dct_mem_sink_i[i].wdata),
             .wmask_i   (i3c_dct_mem_sink_i[i].wmask),
             .rdata_o   (i3c_dct_mem_src_o[i].rdata),
-            .cfg_i     ('0),
-            .cfg_rsp_o ()
-        );
-
-        ///////////
-        // RLT   //
-        ///////////
-
-        // Port A is write-only (ENTDAA installs dynamic address -> DAT index),
-        // port B is read-only (reverse lookup). Both live on the same clock.
-        prim_ram_2p #(
-            .Width           (RltWidth),
-            .Depth           (RltDepth),
-            .DataBitsPerMask (1)
-        ) u_rlt_mem (
-            .clk_a_i   (i3c_rlt_mem_sink_i[i].clk),
-            .clk_b_i   (i3c_rlt_mem_sink_i[i].clk),
-
-            .a_req_i   (i3c_rlt_mem_sink_i[i].a_req),
-            .a_write_i (i3c_rlt_mem_sink_i[i].a_write),
-            .a_addr_i  (i3c_rlt_mem_sink_i[i].a_addr),
-            .a_wdata_i (i3c_rlt_mem_sink_i[i].a_wdata),
-            .a_wmask_i (i3c_rlt_mem_sink_i[i].a_wmask),
-            .a_rdata_o (i3c_rlt_mem_src_o[i].a_rdata),
-
-            .b_req_i   (i3c_rlt_mem_sink_i[i].b_req),
-            .b_write_i (i3c_rlt_mem_sink_i[i].b_write),
-            .b_addr_i  (i3c_rlt_mem_sink_i[i].b_addr),
-            .b_wdata_i (i3c_rlt_mem_sink_i[i].b_wdata),
-            .b_wmask_i (i3c_rlt_mem_sink_i[i].b_wmask),
-            .b_rdata_o (i3c_rlt_mem_src_o[i].b_rdata),
-
             .cfg_i     ('0),
             .cfg_rsp_o ()
         );
