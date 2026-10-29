@@ -1807,7 +1807,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`smc_fw_i2c_acq_fifo_stretch_reset_test` |2 |The target's ACQ FIFO stretches SCL automatically when full, and ACQ reset releases the stretch, observed on the target's own SCL driver.
 |`smc_fw_i2c_p1_fifo_depth_xfer_test` |3 |A full-FIFO-depth 64-byte transfer with the controller pushing while the target drains; length and every byte compared, NACKed entries excluded from the payload.
 |`smc_fw_i2c_tx_stretch_timeout_recovery_test` |3 |The controller's stretch timeout fires on a read the empty target TX FIFO stretches; the recovery -- target disable releases SCL, controller disable drives the automatic STOP, both re-initialised -- ends in a clean 16-byte write.
-|`smc_fw_i2c_fifo_full_test` |3 |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the specified depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
+|`smc_fw_i2c_fifo_full_test` |3 |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores until full, with the depth measured (no specification states it), RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 |`smc_fw_uart_log_engine_single_entry_test` |2 |Log-engine golden path: one 16-byte SRAM entry fetched and written to UART0, returned through MCR.LOOP and read back from RBR in order; LOG_CTRL[0] hwclr; INTR_STATUS 0.
 |`smc_fw_uart_log_engine_boundary_backpressure_test` |3 |Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
 |`smc_fw_uart_log_engine_disable_during_xfer_test` |3 |CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
@@ -8558,7 +8558,7 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 |`CHK-SYS-AXI-IN-BACKPRESSURE` |The BREADY/RREADY hold stalled the B and R channels for a non-zero number of cycles, measured by the sequence, and every read of the outstanding group is an exact scoreboard compare
 |`CHK-SYS-AXI-IN-ERRORS` |The unimplemented-region write and the refused filter read are compared against DECERR, the refused read against the error-slave signature, the refused write against an error response, the empty-mailbox read against SLVERR, and the armed filter reads back unchanged
 |`CHK-SYS-AXI-IN-BURST` |The AxLEN=1 and AxLEN=15 INCR bursts written over `sys_axi_in` read back as exact scoreboard compares, and the unimplemented-region read is compared against DECERR by the sequence; the run fails if either mismatches
-|`CHK-SYS-AXI-IN-DUPLEX` |The interleaved write/read group over `sys_axi_in`: every read returned the word SEP_IN seeded and the write targets held the last pass, and the inbound filter was observed admitting both directions in at least one cycle -- both filter hits set with neither isolate -- so a run whose two channels never overlapped fails
+|`CHK-SYS-AXI-IN-DUPLEX` |The interleaved write/read group over `sys_axi_in`: every read returned the word SEP_IN seeded and the write targets held the last pass, every access of the group answered OKAY, and the AW and AR handshakes on `sys_axi_*` completed in the same cycle at least once (axi_filter `index.adoc` Match, Then Permit: writes and reads are decoded independently), so a run whose two channels never overlapped fails
 |`CHK-SYS-AXI-IN-SLVERR-RO` |The `sys_axi_in` writes to `READ_DATA`, `STATUS`, `ERROR_FLAGS` and `IRQP` of inbound mailbox 0 each answered BRESP SLVERR, and `STATUS` and `IRQP` read over SEP_IN after the writes equal their pre-write values; an OKAY or DECERR response, or a changed register, fails the run
 |`CHK-NONVAC` |Ordered fence EXISTING-LEGS < PRE-READ < SYSIN-RO-WRITES < POST-READ < FILTER-RESTORE, each term with its own sim time and a measured non-zero count. Fails on a missing, zero-count or out-of-order term
 |===
@@ -16217,7 +16217,7 @@ Drive `smc_reset_unit_sanity_test_seq`. Each checker below is a named compare th
 |===
 |Checker |Description
 |`CHK-RESET-UNIT-PRE` |Named compare in `smc_reset_unit_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-RESET-UNIT-SS-SWEEP` |Named compare in `smc_reset_unit_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-RESET-UNIT-SS-SWEEP` |SS_CONFIG, SS_COLD_RESET_N, the four SS_*_HOLD registers and SS_FORCE_TO_REF_CLK read reset 0x0, take 0x5A5AA5A5 and restore 0x0 (reset_unit.rdl `sw = rw`). With ISOLATE_REQ_PINEN_REG and ISOLATE_REQ_SMCEN_REG at reset, setting ISOLATE_REQ_REG bit 5 drives isolate_req_o to 0x20, and clearing it returns isolate_req_o to 0x0 (clk_rst.adoc, Isolation Controls; SMC software request path)
 |`CHK-RESET-UNIT-WDT` |Named compare in `smc_reset_unit_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-RU-HOLD-RESET` |The four hold registers read 0x00000000 with RRESP OKAY on their first access after cold reset
 |`CHK-RU-HOLD-PATTERN` |136 hold register readbacks (4 registers x 34 words) equal the word just written, BRESP and RRESP OKAY
@@ -24214,7 +24214,7 @@ Drive `smc_dfd_trace_sink_window_test_seq`. Each checker below is a named compar
 *Test Coverage*:
 
 * `EventType0`, `EventType1` and `EventType2` of each of the four `CDbgNode<n>Eap<m>` pairs of each of the four nodes, each selector driven over all 64 values of its six-bit field: 3072 selector values in all. Each value is one index of the CLA event bus the selector compares against, so a pair left at its reset only ever exercises index zero.
-* The pair's relation is left at its RDL reset, so a pair activates when and only when the selected event is asserted, and `CDbgEapStatus` is read after every value with the pair quiesced and its status cleared between values.
+* `EventType0` and `EventType1` are swept with the pair's relation at its RDL reset. The RDL names `EventType2` only as an argument of `Udf` and gives no encoding for `LogicalOp` or `Udf`, so before the `EventType2` sweep the relation is measured: with the other two selectors on an index seen idle, `LogicalOp` and `Udf` are walked over their field ranges until pair 0 activates with `EventType2` on an index seen live and stays idle with it on the idle index. `CDbgEapStatus` is read after every value with the pair quiesced and its status cleared between values.
 * A node's pairs can only set their status while that node is current, so after each node's sweep one of its pairs is re-programmed with an event index seen live and `DestNode` naming the next node, and `CurrentNode` is polled until the DUT reports the move.
 
 *Test Procedure*:
@@ -24228,7 +24228,7 @@ Drive `smc_dfd_cla_event_type_sweep_test_seq`. Each checker below is a named com
 |===
 |Checker |Description
 |`CHK-CLA-EVENT-SELECT-SWEEP` |All three selectors of all four pairs of all four nodes took every one of the 64 values their field offers and read back exactly, with `CurrentNode` reporting each node in turn; a value the register does not accept, or a node the walk never reaches, fails it
-|`CHK-CLA-EVENT-SELECT-LIVE` |On every node the DUT set a pair-activation bit for at least one event index, so the selectors pick a live event bus rather than storing a value nothing reads; a node on which no index ever activates fails it
+|`CHK-CLA-EVENT-SELECT-LIVE` |On every node each of `EventType0`, `EventType1` and `EventType2` set a pair-activation bit for at least one event index and left at least one index idle, `EventType2` under a `LogicalOp`/`Udf` relation measured to make it alone decide activation; a selector that never activates on a node, one that activates on every index, or an `EventType2` for which no relation makes it decide activation fails it
 |===
 
 
@@ -31223,7 +31223,11 @@ after a timeout and gate `irq_test` with each enable.
   threshold 0x80 both rise within 192 rises, again with the SYS and SEP interrupts 0 at every rise,
   and the data interrupt rise is exactly 0x40 rises later than in the second job. Setup and
   remaining actions: write 0x40 to the SYS and SEP threshold registers and `enable | irq_en` to
-  both control registers before the second job; poll `DONE_0` until it increments after each
+  both control registers before the second job, then, as the live control for the peer probes,
+  write `enable | irq_en | irq_test` to each of those control registers in turn, require that
+  detector's interrupt and raw bit 286 to read 1 within 128 rises with the data and the other peer
+  interrupt 0 and its `irq` = 1, and write `enable | irq_en` again, requiring it back at 0 within
+  128 rises; poll `DONE_0` until it increments after each
   release; write 0x80 to the data threshold with readback and re-arm before the third job; after it
   release, write 0, poll `DONE_0`, wait for both to read 0, write 0 to the SYS and SEP control
   registers and restore the data threshold to 0x40.
@@ -31262,7 +31266,7 @@ after a timeout and gate `irq_test` with each enable.
 |===
 |Checker |Description
 |`CHK-DATAWIN-BELOW` |A 16-rise stall below 0x40 keeps data irq and bit 286 at 0 for 256 rises
-|`CHK-DATAWIN-BEYOND` |Stall past 0x40 raises data irq and bit 286, armed sys, sep 0, CTRL.irq 1; 0x80 shifts the rise by 0x40
+|`CHK-DATAWIN-BEYOND` |irq_test raises each armed peer (sys, sep) alone; stall past 0x40 raises data irq and bit 286, armed sys, sep 0, CTRL.irq 1; 0x80 shifts the rise by 0x40
 |`CHK-DATAWIN-AT-LOG` |Records the first data irq rise for a stall of 0x40 rises; no compare
 |`CHK-DATAWIN-DISABLE-AFTER-TIMEOUT` |enable=0 after a timeout drops data irq, bit 286, CTRL.irq for 0x80 held rises
 |`CHK-DATAWIN-IRQEN-CLEAR` |irq_en=0 after a timeout drops data irq and bit 286 for 0x80 held rises, CTRL.irq 0
@@ -31276,7 +31280,7 @@ after a timeout and gate `irq_test` with each enable.
 *Pass Criteria*: `CHK-DATAWIN-BELOW` and `CHK-DATAWIN-BEYOND` hold: the data interrupt and raw bit
 286 stay 0 for the whole sub-threshold window, rise within 128 rises of the handshake for the
 past-threshold stall with `HANG_DET_DATA_ACCEL_CTRL.irq` = 1 and the armed SYS and SEP interrupts
-0, read 0 again within 128 rises of the release, and rise exactly 0x40 rises later when the
+0 (each of those having read 1 alone under its own `irq_test` beforehand), read 0 again within 128 rises of the release, and rise exactly 0x40 rises later when the
 threshold is 0x80. `CHK-DATAWIN-AT-LOG` records the measured rise without
 a compare. The five gating checkers hold: after a timeout, clearing `enable` or `irq_en` with the
 stall held drops the data interrupt and raw bit 286 within 128 rises and keeps them 0 for 0x80 held
@@ -31807,9 +31811,11 @@ after a timeout and gate `irq_test` with each enable.
   every rise and `HANG_DET_SYS_AXI_CTRL` read through SEP_IN shows `irq` = 1; after the release and
   a write of 0 to `HANG_DET_SYS_AXI_CTRL` both read 0 within 128 rises; with threshold 0x80 both
   rise within 192 rises, again with the SEP and data interrupts 0 at every rise, and the SYS
-  interrupt rise is exactly 0x40 rises later than in the 0x40-threshold stall. Before the second
-  read write 0x40 to the SEP and data threshold registers and `enable | irq_en` to both control
-  registers; after each release wait for the read; write 0x80 to the SYS threshold with readback
+  interrupt rise is exactly 0x40 rises later than in the 0x40-threshold stall. Before the second read write 0x40 to the SEP and data threshold registers and `enable | irq_en`
+  to both control registers, then, as the live control for the peer probes, write
+  `enable | irq_en | irq_test` to each of those control registers in turn, require that detector's
+  interrupt and raw bit 286 to read 1 within 128 rises with the SYS and the other peer interrupt 0
+  and its `irq` = 1, and write `enable | irq_en` again, requiring it back at 0 within 128 rises; after each release wait for the read; write 0x80 to the SYS threshold with readback
   and re-arm before the third read; after it release, write 0, wait for both to read 0, write 0 to
   the SEP and data control registers and restore the SYS threshold to 0x40.
 . Error injection. Point: the SYS_IN read response hold `tb_sys_axi_r_hold`. Kind: a fourth read
@@ -31846,7 +31852,7 @@ after a timeout and gate `irq_test` with each enable.
 |===
 |Checker |Description
 |`CHK-SYSWIN-BELOW` |A 16-rise stall below 0x40 keeps the sys irq and raw bit 286 at 0 for 256 rises
-|`CHK-SYSWIN-BEYOND` |Stall past 0x40 raises sys irq, bit 286; armed sep, data 0; 0x80 shifts rise by 0x40
+|`CHK-SYSWIN-BEYOND` |irq_test raises each armed peer (sep, data) alone; stall past 0x40 raises sys irq, bit 286; armed sep, data 0; 0x80 shifts rise by 0x40
 |`CHK-SYSWIN-AT-LOG` |Records the first sys irq rise for a stall of 0x40 rises; no compare
 |`CHK-SYSWIN-DISABLE-AFTER-TIMEOUT` |enable=0 after a timeout drops sys irq, bit 286, CTRL.irq for 0x80 held rises
 |`CHK-SYSWIN-IRQEN-CLEAR` |irq_en=0 after a timeout drops sys irq and bit 286 for 0x80 held rises, CTRL.irq 0
@@ -31859,7 +31865,7 @@ after a timeout and gate `irq_test` with each enable.
 
 *Pass Criteria*: `CHK-SYSWIN-BELOW` and `CHK-SYSWIN-BEYOND` hold: the SYS interrupt and raw bit 286
 stay 0 for the whole sub-threshold window, rise within 128 rises of the AR handshake for the
-past-threshold stall with the armed SEP and data interrupts 0 and `HANG_DET_SYS_AXI_CTRL.irq` = 1,
+past-threshold stall with the armed SEP and data interrupts 0 (each of those having read 1 alone under its own `irq_test` beforehand) and `HANG_DET_SYS_AXI_CTRL.irq` = 1,
 read 0 again within 128 rises of the release, and rise exactly 0x40 rises later when the threshold
 is 0x80. `CHK-SYSWIN-AT-LOG` records the measured rise without
 a compare. The five gating checkers hold: after a timeout, clearing `enable` or `irq_en` with the
@@ -41153,11 +41159,11 @@ tool Verilator (cocotb).
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the specified depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
+*Objective*: Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores until full, with the depth measured (no specification states it), RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 
 *Test Coverage*:
 
-* FMT and TX filled by software stores to the depth the specification gives (the OpenTitan I2C `FifoDepth` default of 64 that `hw/ip/i2c/doc/index.adoc` adopts, transcribed with the `periphs.adoc` override table in `fw/include/i2c_opentitan.h`) and reset; RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
+* FMT and TX filled by software stores until STATUS.FMTFULL / TXFULL asserts, then reset. No specification states their depth, so the firmware measures it. FMTLVL / TXLVL must equal the store count before every store. Full must assert at a non-zero level within the range of the RDL level field (`HOST_FIFO_STATUS.FMTLVL`, `TARGET_FIFO_STATUS.TXLVL`), with EMPTY clear. One more store into the full FIFO must leave the level and the full flag unchanged. RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
 * The cocotb `smc_i2c_fifo_full_test` covers the CSR-level full/empty flags only; this leaf is the one that fills RX and ACQ by transfers.
 * The wire, graded by the bench as on card 169.
 

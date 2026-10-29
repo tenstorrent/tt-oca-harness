@@ -2,12 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """A zero-size SEP or SMC aperture disables that aperture in the SMU crossbar.
 
-``hw/sys/smu/rtl/smu_axi_xbar.sv``: each aperture covers [base, base + size)
-and a zero size disables the aperture whatever its base; ``sep_out`` and
-``smc_out`` traffic matching neither aperture goes to ``ext_out``, and
-unmatched ``ext_in`` traffic gets a decode error. ``hw/sys/smu/doc/index.adoc``
-says the same of a region size of 0: no address hits the aperture and its
-requests take the miss column of the routing table. SEP BL0 writes
+``hw/sys/smu/doc/index.adoc``, "SMU aperture decode and routing" (lines
+119-146): each aperture covers [base, base + size), and a region size of 0
+disables its aperture, so no address hits it and its requests take the miss
+column of the routing table; ``sep_out`` and ``smc_out`` traffic matching
+neither aperture goes to ``ext_out``, ``sep_out`` traffic matching the SEP
+aperture and unmatched ``ext_in`` traffic get ``DECERR``, and the crossbar
+generates each ``DECERR`` itself without reaching a subordinate. SEP BL0 writes
 SEP_REGION_SIZE 0 around each DMA into ICCM
 (``hw/sys/sep/bootrom/prod/src/sep_dma.c``), so the zero size is a production
 state of the crossbar, not a corner.
@@ -168,11 +169,12 @@ class smu_xbar_zero_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         await self._dmi(jtag, SBCS_ADDR, SBCS_SBACCESS_32 | SBCS_SBERROR_W1C, DMI_OP_WRITE)
         await self._dmi(jtag, SBADDRESS0_ADDR, addr, DMI_OP_WRITE)
         await self._dmi(jtag, SBDATA0_ADDR, data, DMI_OP_WRITE)
-        sbcs = SBCS_SBBUSY
         for _ in range(SBA_POLLS):
             sbcs = await self._dmi(jtag, SBCS_ADDR, 0, DMI_OP_READ)
             if not sbcs & SBCS_SBBUSY:
                 break
+        else:
+            raise AssertionError(f"system-bus write 0x{addr:08x}: sbbusy never cleared")
         await self._dmi(jtag, SBCS_ADDR, SBCS_SBERROR_W1C, DMI_OP_WRITE)
         return (sbcs >> SBCS_SBERROR_SHIFT) & SBCS_SBERROR_MASK
 
