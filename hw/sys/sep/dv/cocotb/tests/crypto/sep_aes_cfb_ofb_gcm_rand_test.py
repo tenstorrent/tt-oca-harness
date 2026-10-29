@@ -49,8 +49,8 @@ Checkers (each logs mode, key size, direction and the first mismatched word):
                 part=tag: the DATA_OUT block after GCM_TAG equals the SP 800-38D tag.
   CHK-AES-GCM-PHASE-MAP  GCM only, after the tag: a drawn invalid PHASE value
                 (0 or more than one bit set) written to CTRL_GCM_SHADOWED reads
-                back GCM_INIT (upstream aes/doc/registers.md:525). Control: a
-                GCM_AAD write after it reads back GCM_AAD.
+                back GCM_INIT (upstream aes/doc/registers.md:525). Control: the
+                PHASE field reads GCM_TAG before that write.
 Controls (from the plan, before the first stimulus):
   CTRL-AES-OUT-NE-IN       every golden output block differs from its input block,
                            so a DUT that returns DATA_IN fails the check.
@@ -471,10 +471,16 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
         registers.md (CTRL_GCM_SHADOWED.PHASE): "Invalid input values, i.e., values
         with multiple bits set and value 6'b00_0000, are mapped to GCM_INIT". The
         unit is in GCM_TAG here, and GCM_INIT is a legal next phase, so only the
-        mapping decides the readback. Control: GCM_AAD written next reads GCM_AAD,
-        so the register takes writes.
+        mapping decides the readback. Control: the PHASE field reads GCM_TAG before
+        the write, so a GCM_INIT readback comes from the write.
         """
         before = await self._gcm_phase_rb()
+        self.chk.ctrl(
+            "AES-GCM-PHASE-MAP",
+            before == GCM_TAG,
+            before=f"0x{before:02x}",
+            want=f"0x{GCM_TAG:02x}",
+        )
         await self._gcm_phase(plan.bad_phase)
         mapped = await self._gcm_phase_rb()
         self.chk.ok(
@@ -485,9 +491,3 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
             phase=f"0x{mapped:02x}",
             want=f"0x{GCM_INIT:02x}",
         )
-        await self._gcm_phase(GCM_AAD)
-        aad = await self._gcm_phase_rb()
-        self.chk.ctrl(
-            "AES-GCM-PHASE-MAP", aad == GCM_AAD, phase=f"0x{aad:02x}", want=f"0x{GCM_AAD:02x}"
-        )
-        await self._gcm_phase(GCM_INIT)

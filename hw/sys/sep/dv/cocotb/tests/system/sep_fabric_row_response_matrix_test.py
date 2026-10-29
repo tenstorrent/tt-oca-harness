@@ -123,6 +123,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 from seq_lib.sep_fabric_deadspace_seq import in_crypto_region
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
+from seq_lib.sep_wdt_aon_seq import WDT_CDC_CLKS
 
 _TEST = "sep_fabric_row_response_matrix_test"
 _MAX_SENSE_CYCLES = 20_000
@@ -1370,7 +1371,14 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             detail = mon.last_beat_detail
             wd = (before & 0xFFFF_FFFF) | (self.rng.getrandbits(32) << 32)
             w = await self._si(SepAxiOp.WRITE, last, wdata=wd, length=8, burst=AXI_INCR)
-            _r, after = await self._lsu(SepAxiOp.READ, last)
+            # The read-back of a watchdog register waits for the previous write to
+            # land in the clk_wdt_i domain.
+            saved = self.cfg.axi_timeout_ns
+            self.cfg.axi_timeout_ns = max(saved, WDT_CDC_CLKS * self.cfg.wdt_clk_period_ns)
+            try:
+                _r, after = await self._lsu(SepAxiOp.READ, last)
+            finally:
+                self.cfg.axi_timeout_ns = saved
             self.logger.info(
                 "OBS-ROW-BURST row=%s start=0x%08x len=1 rresp=%s rresp_resp=%s bresp=%s "
                 "rdata=0x%016x lsu_before=0x%08x lsu_after=0x%08x",

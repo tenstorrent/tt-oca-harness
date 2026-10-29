@@ -55,7 +55,8 @@ pins: an error response still returns every beat of the burst with RLAST
 on the last beat only, each beat with RID equal to the ARID (AMBA AXI
 IHI 0022), and the filter answers DECERR on RRESP
 (``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions"). The ARID is
-drawn from 1 to 63, so an RID that drops to 0 fails.
+drawn from 1 to 62 (ARID 63 is the pre-sense read), so an RID that drops
+to 0 fails.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
@@ -104,9 +105,8 @@ import contextlib
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, NextTimeStep
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_lite_split_pass
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from env.sep_seeded_rng import SepSeededRng
@@ -137,7 +137,12 @@ from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 _TEST = "sep_fabric_inbound_filter_rule_matrix_test"
 # Separate stream for the denied-burst ARID, so the matrix draws keep their seed mapping.
 _BURST_ID_SALT = 0x4255_5253
-_M_AXI_ID_MAX = 63
+_M_AXI_ID_MAX = 62
+# ARID of the read sent before fuse sensing ends; no other read of this leaf uses it,
+# so an R beat that never comes leaves no later read of that ID to pair with.
+_PRESENSE_ARID = 63
+# clk_i cycles the pre-sense read is watched after sep_reset_n releases.
+_PRESENSE_WAIT = 256
 _MAX_SENSE_CYCLES = 20_000
 # Clocks the leaf keeps its coverage window open after a graded step, so the
 # sampler sees a pass label rise while the window is still open.
@@ -773,35 +778,59 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             [hex(a) for a in lite_ar],
         )
 
-    async def _obs_presense_si_read(self) -> None:
-        """One SI read of SRAM word 0 while fuse sense is still running."""
+    def _presense_si_read_start(self):
+        """Send one SI read of SRAM word 0 before fuse sensing ends; watch its handshakes."""
         dut = cocotb.top
         addr = sym("SEP_SRAM_MEM_BASE_ADDR")
-        before = self.rd_known(dut.sep_fuse_sense_done_o)
-        tap = SepFabricTap("PR-INFLT").start()
-        mark = tap.mark()
-        seq = SepAxiAccessSeq(
-            "infilt_presense_rd",
-            op=SepAxiOp.READ,
-            addr=addr,
-            length=4,
-            size=2,
-            allow_ungraded_read_resp=True,
-            allow_timeout=True,
+        rec: dict = {"stop": False}
+
+        async def _watch() -> None:
+            while not rec["stop"]:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if (
+                    "ar" not in rec
+                    and dut.m_axi_arvalid.value == 1
+                    and dut.m_axi_arready.value == 1
+                    and int(dut.m_axi_arid.value) == _PRESENSE_ARID
+                ):
+                    rec["ar"] = self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True)
+                if (
+                    dut.m_axi_rvalid.value == 1
+                    and dut.m_axi_rready.value == 1
+                    and int(dut.m_axi_rid.value) == _PRESENSE_ARID
+                ):
+                    rec["r"] = int(dut.m_axi_rresp.value)
+
+        watch = cocotb.start_soon(_watch())
+        vip = self.env.ext_axi_agent.driver.axi
+        read = cocotb.start_soon(
+            vip.read_bytes_result(
+                addr, 4, size=2, id=_PRESENSE_ARID, check_response=False, allow_timeout=True
+            )
         )
-        await self.start_ext_seq(seq)
-        after = self.rd_known(dut.sep_fuse_sense_done_o)
-        inflt = tap.count(mark, "ar")
-        await tap.stop()
+        return addr, rec, watch, read
+
+    async def _presense_si_read_log(self, addr: int, rec: dict, watch, read) -> None:
+        """OBS-SI-PRESENSE-READ: no line states what an SI read before sensing ends gets."""
+        dut = cocotb.top
+        while not self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
+            await RisingEdge(dut.clk_i)
+        await ClockCycles(dut.clk_i, _PRESENSE_WAIT)
+        rec["stop"] = True
+        await watch
+        self.env.ext_axi_monitor.forget_pending_reads(_PRESENSE_ARID)
         self.logger.info(
-            "OBS-INFILT-PRESENSE addr=0x%08x sense_done_before=%d sense_done_after=%d "
-            "resp=%s timed_out=%d pr_inflt_ar=%d",
+            "OBS-SI-PRESENSE-READ addr=0x%08x arid=%d accepted=%s sep_reset_n_at_accept=%s "
+            "response=%s rresp=%s window_clk_after_release=%d vip_done=%d",
             addr,
-            int(bool(before)),
-            int(bool(after)),
-            seq.resp_code,
-            int(bool(seq.timed_out)),
-            inflt,
+            _PRESENSE_ARID,
+            "y" if "ar" in rec else "n",
+            rec.get("ar", "na"),
+            "y" if "r" in rec else "n",
+            rec.get("r", "na"),
+            _PRESENSE_WAIT,
+            int(read.done()),
         )
 
     async def _obs_reserved_si_read(self) -> None:
@@ -826,8 +855,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # feat_ctrl_expected.
         self.write_efuse_image(image)
         await self.release_no_cpu_reset()
-        await self._obs_presense_si_read()
+        presense = self._presense_si_read_start()
         await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        await self._presense_si_read_log(*presense)
         # sec_dis is the one FEAT_CTRL golden input the DUT exposes
         # (lcc_security_disable_probe_o); the lifecycle and DIS inputs are the
         # values written into the fuse image above.

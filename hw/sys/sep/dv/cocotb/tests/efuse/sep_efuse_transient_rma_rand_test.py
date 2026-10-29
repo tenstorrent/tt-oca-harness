@@ -43,11 +43,13 @@ Leg B (TEST_DEV image with the enable at 0): a program of ``LC_STATE`` bit 1 wit
 only RMA_CHIPLET matched changes no bank bit and issues no program command; the
 same program with RMA_SIP matched lands. A program of bit 2 with only RMA_SIP
 matched is refused (a control of the open refusal, ``role=control``); with
-RMA_CHIPLET matched it lands. A program of bit 2 under the first RMA_CHIPLET match,
-before bit 1 is set, is logged only (``OBS-PROG-LC-ORDER``: the commands at the
-post-guard tap, the OTP word, ``efuse_req_error`` and ``program_status``; the
-specification states the order rule but not the response to a program out of
-order); it runs with the graded coverage window closed. After each resense the shadow byte is
+RMA_CHIPLET matched it lands.
+
+Last step, starts PROD and TEST_DEV without leg B: a program of bit 2 with RMA_CHIPLET
+matched and bit 1 clear changes no OTP bit and issues no program command within W
+(CHK-PROG-LC-ORDER; ``otp_fuse_controller.adoc``, row ``LC_STATE``: setting bit 2
+requires bit 1 in the pre-write state). It runs with the graded coverage window
+closed. After each resense the shadow byte is
 ``{~r, r}`` with r the raw nibble OR the programmed bit (``otp_fuse_controller.adoc``,
 sections Fuse Programming and RMA Authorization, Shadow Register Updates and
 Test-Mode Protection). Every match and mismatch go of leg B must reach its code
@@ -62,7 +64,8 @@ channel before the next cold reset. In leg A a CHIPLET match also ends before
 a later SIP step; leg S holds it on purpose.
 
 Checkers: CHK-TRANSIENT, CHK-TRANSIENT-NOBURN, CHK-TRANSIENT-RESET (every
-leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). A failing hook control
+leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B); CHK-PROG-LC-ORDER (starts
+PROD and TEST_DEV without leg B). A failing hook control
 logs ``CHK-HOOK FAIL`` and ends the leaf. A match that does not end with its
 Mismatch go before a cold reset ends the leaf at that control or check: the
 next sense would load the transient state, and the graded failure is the
@@ -574,8 +577,46 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         if leg_b:
             await self._leg_b(seed, staged_word)
         close_graded_window(self.logger)
+        await self._prog_order(raw0, staged_word, leg_b)
         await self.shim.stop()
         self.chk.finish()
+
+    async def _prog_order(self, raw0: int, staged_word: int, leg_b: bool) -> None:
+        """CHK-PROG-LC-ORDER: a program of bit 2 with RMA_CHIPLET matched and bit 1 clear.
+
+        ``otp_fuse_controller.adoc``, section Fuse Fields, row ``LC_STATE``: setting
+        bit 2 requires bit 1 to be set in the pre-write state. The bit stays 0 in the
+        OTP and no program command reaches the post-guard port within W. It runs last,
+        with the graded window closed, because a landed bit changes every later
+        state. It runs from PROD and TEST_DEV (bit 1 clear, a legal state); a leg-B
+        leaf has set bit 1 by then and logs ``INFO-PROG-LC-ORDER-SKIP``. The status
+        bits of the refusal are logged, not graded.
+        """
+        if leg_b or self.start not in (ST_PROD, ST_TEST_DEV) or (raw0 >> _LC_SIP_BIT) & 1:
+            self.chk.info("PROG-LC-ORDER-SKIP", start=self.start, leg_b=int(leg_b))
+            return
+        code = await self._match(CH_CHIPLET, "o.chp")
+        self._ctrl("PROG-LC-ORDER-MATCH", code == CODE_MATCH, chp_code=_hex2(code))
+        r = await self._program(_LC_BIT2)
+        end = await self._mismatch(CH_CHIPLET, "o.chp_end")
+        self._grade(
+            "PROG-LC-ORDER",
+            r["bit"] == 0 and r["cmd"] == 0 and r["cmd_all"] == 0 and r["word"] == staged_word,
+            start=self.start,
+            bit=2,
+            chp_code=_hex2(code),
+            shim_cmd=r["cmd"],
+            shim_cmd_all=r["cmd_all"],
+            w_cycles=self.w,
+            lc_otp_word=f"0x{r['word']:08x}",
+            exp_otp_word=f"0x{staged_word:08x}",
+            landed=r["bit"],
+            busy=r["busy"],
+            done=r["done"],
+            req_err=r["req_err"],
+            program_status=r["pstatus"],
+            chp_end=_hex2(end),
+        )
 
     async def _simul(self, raw0: int) -> None:
         """Leg S: an RMA_SIP match while an RMA_CHIPLET match is held.
@@ -733,20 +774,6 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         self._leg_b_code("b1.chp", await self._match(CH_CHIPLET, "b1.chp"), CODE_MATCH)
         ref1 = await self._program(_LC_BIT1)
         shadow_ref1 = await self.fd.rd(shadow_addr("LC_STATE"))
-        # Bit 2 under the same RMA_CHIPLET match, before bit 1 is set: logged only.
-        close_graded_window(self.logger)
-        early2 = await self._program(_LC_BIT2)
-        self._reopen_window()
-        log_line(
-            self.logger,
-            "OBS-PROG-LC-ORDER",
-            seed,
-            post_guard_cmds=early2["cmd_all"],
-            otp_word=f"0x{early2['word']:08x}",
-            req_err=early2["req_err"],
-            program_status=early2["pstatus"],
-            done=early2["done"],
-        )
         self._leg_b_code(
             "b1.chp_end", await self._mismatch(CH_CHIPLET, "b1.chp_end"), CODE_MISMATCH
         )

@@ -1065,7 +1065,15 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self._stop = False
         cocotb.start_soon(self._sampler())
         dut.mpc_reset_run_req.value = 0
-        ep, _mark = await self._cold_pulse()
+        # No mailbox read here: the PR-OUT tap samples across the sampler
+        # restart, so its liveness count does not match the sampler's.
+        await RisingEdge(dut.clk_i)
+        n = len(self.epochs)
+        dut.rst_ni.value = 0
+        ep = await self._new_epoch(n)
+        self._stage_sram()
+        await ClockCycles(dut.clk_i, RST_HOLD)
+        dut.rst_ni.value = 1
         for _ in range(self.rise_bound):
             if ep.rise_clk is not None:
                 break

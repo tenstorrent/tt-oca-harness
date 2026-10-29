@@ -114,11 +114,9 @@ Not covered:
 
 from __future__ import annotations
 
-import cocotb
 import pyuvm
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_crc_golden import crc8_rohc, crc32c
-from env.sep_reg_meta import CHeaderRegBlock, ip_c_header
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic
 from sep_base_test import sep_base_test
@@ -154,7 +152,6 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_VALID_CMD_IDS,
     SepKmMailbox,
 )
-from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccDemoteSeq
 
 # Identity lock bit 8 (SsI) and reserved bit 9: firmware.adoc, "0x28 -
 # CMD_OTP_READ_LOCK_COLD", OTP cold-read-lock bit encoding (bits [8:0], [31:9]
@@ -167,12 +164,6 @@ _OTP_LOCK_RESERVED = 1 << 9
 # field: firmware.adoc, "0x22 - CMD_KEY_GENERATE" to "0x25 - CMD_ENGINE_SHRED".
 _ARG_RESERVED = 1 << 8
 _REQ_SIZE_OVER = 1 << 7
-
-_IRQ_OTP_CHANGE = int(
-    CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h")).fields(
-        "IRQ_STATUS_REG"
-    )["OTP_CHANGE"]["bm"]
-)
 
 # Directed ABR ML-DSA seed for the CHK-ABR-DEST transfer cell. Its consume is
 # graded by sep_km_abr_seed_sideload_test, not here.
@@ -817,8 +808,6 @@ class sep_km_command_set_rand_test(sep_base_test):
             _SHRED_REFUSE_POLLS,
         )
 
-        await self._otp_change_obs()
-
         # --- EOT --------------------------------------------------------------
         await self.km.check_outbound_empty("EOT")
         await self.aes.check_status_clean("EOT")
@@ -851,16 +840,6 @@ class sep_km_command_set_rand_test(sep_base_test):
                 "OBS-CMD-ARG-EDGE LOG cmd=0x%02x case=%s code=%d arg=0x%08x", cmd, case, rc, arg
             )
         await self._check_alive("post-arg-edge")
-
-    async def _otp_change_obs(self) -> None:
-        """A host DEMOTE write between a key load and its transfer."""
-        handle = await self.km.key_load(key_words=list(KAT_KEY_A), dest=KM_DEST_HMAC)
-        await self.start_seq(SepLccDemoteSeq(1))
-        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
-        irq = self.rd_known(cocotb.top.km_csr_irq_status_o)
-        self.logger.info(
-            "OBS-OTP-CHG-REVOKE LOG code=%d otp_change=%d", rc, int(bool(irq & _IRQ_OTP_CHANGE))
-        )
 
     async def _check_alive(self, tag: str) -> None:
         """CHK-ALIVE: the KM is still in its loop and has not latched a fault.

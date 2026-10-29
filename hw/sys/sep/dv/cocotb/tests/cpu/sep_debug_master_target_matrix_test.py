@@ -248,6 +248,7 @@ from seq_lib.sep_outbound_remap_seq import (
     N_REGIONS,
     STEE_REGION_BASE,
 )
+from seq_lib.sep_wdt_aon_seq import WDT_CDC_CLKS
 
 TEST = "sep_debug_master_target_matrix_test"
 
@@ -392,9 +393,6 @@ LABEL_HOLD = 2  # clk_i cycles a pass label holds its value
 # the clk_wdt_i domain (5 us period on this bench), so its access waits for the
 # register CDC; 1024 reads of about 0.5 us each bound it with margin.
 SB_BUSY_READS = 1024
-# Bench-LSU timeout for a watchdog register access, in clk_wdt_i periods: the access
-# waits for the register CDC of the previous write (about 11 to 17 periods here).
-WDT_CDC_CLKS = 50
 UNCORE_ADDRS = (0x50, 0x7F)  # lowest and highest 7-bit DMI address at or above 0x50
 UNCORE_FIRST = UNCORE_ADDRS[0]
 # dmi_req_probe_o (tb/sep_tb_signal_list.svh): bit 8 dmi_en, bit 7 dmi_wr_en,

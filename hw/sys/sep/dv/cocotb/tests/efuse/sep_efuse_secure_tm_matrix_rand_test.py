@@ -86,7 +86,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_chk_log import SepChkLog
-from env.sep_efuse_bank_watch import SepShimCmdMonitor
+from env.sep_efuse_bank_watch import SepEfuseBank, SepShimCmdMonitor
 from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
@@ -364,7 +364,8 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         st = await self.fd.rd(STATUS_ADDR)
         if st & _REQ_ERR:
             await self.fd.wr(STATUS_ADDR, _REQ_ERR_CLEAR)
-        word = await direct_word(self, field_word(f) + k)
+        # The bank tap, not a read request: the read interface may refuse a digest word.
+        word = SepEfuseBank().read()[field_word(f) + k]
         self.chk.obs(
             "DIGEST-PROG-STATE",
             state=state,

@@ -313,6 +313,8 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             len(outs),
             _rname(seq.resp_code),
         )
+        # Clear valid first: a valid region with START 0 covers this register block.
+        await alias._wr64(ALIAS_BASE + k2 * ALIAS_STRIDE + ALIAS_ATTRS, 0)
         await alias.program(k2, 0, 0, 0, "overlap_clear")
 
     async def _class_pair(self, cls: str, *, write: bool, valid: bool, cache: int) -> None:

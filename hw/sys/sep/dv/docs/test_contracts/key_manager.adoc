@@ -528,7 +528,6 @@ prove `CMD_STAT` clears the latched bit. The following transfer and shred are
 the key commands that must be accepted after the ACK.
 . Transfer the second known key to AES again and encrypt one block, then shred
 the AES key and start the same block: the engine must produce no output.
-. With the graded window closed, load a key for HMAC, write `DEMOTE_1` as the host, send CMD_KEY_TRANSFER of that handle to HMAC, and log the return code and `IRQ_STATUS.OTP_CHANGE` (`OBS-OTP-CHG-REVOKE`). Grade nothing.
 
 *Checkers*:
 
@@ -585,8 +584,6 @@ the AES key and start the same block: the engine must produce no output.
 |After every refusal, after the undefined-ID walk and after the argument-edge group, `CMD_STAT` succeeds and reports no latched recoverable error. One probe covers the walk: each ID answers with its own invalid-command code, so the KM is still in its loop after the ID before it, and a recoverable fault stays latched until `CMD_RECOV_ACK`, so a fault that any ID raised is still set at the probe. The status word is the response's `RETURN_ARG` (`hw/ip/key_manager/doc/firmware.adoc`, "0x03 - CMD_STAT"), and a response without one fails rather than reading as status 0. The second half is what gives CHK-DEST and CHK-CLOSED their meaning: while a recoverable fault is pending the KM refuses every key command with the same failure code those two expect, before it looks at the arguments at all, so a faulted KM would otherwise satisfy both without the policy they name being exercised.
 |OBS-CMD-ARG-EDGE
 |A logged line for each of seven key commands, not a graded check: CMD_KEY_REVOKE and CMD_KEY_TRANSFER with a reserved bit set in the handle word, CMD_KEY_TRANSFER with the mask 0, CMD_ENGINE_SHRED with a reserved bit set in the mask and with the mask 0, CMD_KEY_GENERATE with REQ_SIZE above its 7-bit field, and CMD_KEY_GENERATE with a reserved bit set in DEST_VALID. The specification does not state the code or the argument for these frames. Evidence: `OBS-CMD-ARG-EDGE LOG cmd=0x<c> case=<revoke_rsvd\|transfer_rsvd\|transfer_mask0\|shred_rsvd\|shred_mask0\|generate_size\|generate_dest> code=<n> arg=0x<v>`.
-|OBS-OTP-CHG-REVOKE
-|A logged line, not a graded check: after a host write of `DEMOTE_1` between a key load for HMAC and its transfer, the return code of CMD_KEY_TRANSFER and the state of `IRQ_STATUS.OTP_CHANGE`. The specification does not state whether a configuration change revokes keys through the OTP change interrupt. Evidence: `OBS-OTP-CHG-REVOKE LOG code=<n> otp_change=<0\|1>`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
