@@ -44,6 +44,13 @@ typedef union {
 // reg - zeroer_ctrl::CTRL_STATUS
 // Any write to this register triggers the start of the zeroer, irrespective of WSTRB,
 // including a write with no byte lanes enabled. The start is ignored while SIZE is 0.
+// DEST_ADDR and SIZE are captured when a clear starts; later writes to them do not
+// affect the clear in progress. While a clear is still issuing write bursts, a write
+// to this register completes on the bus but does not start a clear. Once the last
+// burst of a clear has been issued, a write starts a new clear even while write
+// responses of the previous clear are outstanding; STATUS then reads 1 across both
+// clears, and the completion interrupt pulses once, when STATUS returns to 0.
+// Wait for STATUS to read 0 before writing this register again.
 // If enabled, an interrupt will be outputted once zeroer completes.
 #define ZEROER_CTRL__CTRL_STATUS__INT_EN_bm 0x1
 #define ZEROER_CTRL__CTRL_STATUS__INT_EN_bp 0
