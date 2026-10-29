@@ -50,7 +50,9 @@ interrupt.
 | 11:9 | `Reserved` | - | - a| Reserved
 | 8 | `TELEMETRY_TX_FLUSH` | RW | 0x0 a| Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry
 transmitter. The flushing is done via the ATB AF interface. This bit clears
-itself after the flush completes.
+itself when the transmitter acknowledges the flush. Writing `0` while a
+flush is pending withdraws the request, so other fields of this register
+must be updated with a read-modify-write while the bit is set.
 | 7:5 | `Reserved` | - | - a| Reserved
 | 4 | `TELEMETRY_RX_FLUSH` | W 1P | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
 pointer. Stored payload bytes are not cleared. In particular, a later short

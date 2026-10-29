@@ -26,6 +26,7 @@ so this suite fails loudly rather than silently weakening if the format moves it
 
 import struct
 
+import dv_env
 import oca_layout as L
 import pytest
 import shared
@@ -34,6 +35,8 @@ from sepvp.config import SimConfig
 pytestmark = pytest.mark.bootcode
 
 TIMEOUT = 180
+
+mm = dv_env.load("sep_manifest_mutate")
 
 
 # --- tamper helpers --------------------------------------------------------
@@ -58,10 +61,10 @@ def _primary_only(raw, fn):
 
 
 def _craft_bad_magic(raw):
-    def f(b, base):
-        b[base + L.OFF_MAGIC : base + L.OFF_MAGIC + 4] = b"XXXX"
-
-    return _both_slots(raw, f)
+    b = bytearray(raw)
+    for slot in ("primary", "backup"):
+        mm.break_magic(b, slot, b"XXXX")
+    return bytes(b)
 
 
 def _craft_pqc_magic(raw):

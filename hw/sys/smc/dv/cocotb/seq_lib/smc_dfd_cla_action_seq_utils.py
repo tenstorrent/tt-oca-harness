@@ -6,6 +6,12 @@ The pair is fired by sweeping `LogicalOp` until `CDbgEapStatus.Node0Eap0`
 reads 1 and quieted by selecting a relation value that did not fire, so the
 action stays selected while the relation is false. The W2C bit of the pair is
 pulsed through `CDbgEapStatus`.
+
+`dfd_cla.rdl` describes `Action0` only as "Select an Action" and `dfd.adoc`
+names the actions without codes, so the code that drives an action line is
+measured: `Action0` is walked over its RDL-declared range, each value fired
+from a quiet relation with the status cleared, and the first value after which
+the line reads 1 is the action code used by the release legs.
 """
 
 from __future__ import annotations
@@ -17,9 +23,6 @@ from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import pack_fields
 
-# cla_pkg.svh action encodings written into CDbgNode0Eap0.Action0.
-ACTION_CLOCK_HALT = 1
-ACTION_DEBUG_INTERRUPT = 2
 SETTLE_CYCLES = 8
 SAMPLE_CYCLES = 20
 _STATUS_POLLS = 4
@@ -88,23 +91,24 @@ class SmcDfdClaActionSeq(SmcCsrSeq):
         value = getattr(cocotb.top, name).value
         return int(value) if value.is_resolvable else -1
 
+    async def _poll_status(self, label: str) -> bool:
+        for _ in range(_STATUS_POLLS):
+            if await self._status_bit(label):
+                return True
+        return False
+
+    async def _arm(self, action: int, op: int, label: str) -> None:
+        await self._write(self._eap(), {"LogicalOp": op, "DestNode": 0, "Action0": action}, label)
+        await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+
     async def _fire(self, action: int, label: str) -> tuple[int, int]:
         """Sweep LogicalOp with one action; return (activating op, a quiet op)."""
-        eap = self._eap()
-        ops = range(1 << cla_field(eap, "LogicalOp").width)
+        ops = range(1 << cla_field(self._eap(), "LogicalOp").width)
         activating = None
         quiet = None
         for op in ops:
-            await self._write(
-                eap, {"LogicalOp": op, "DestNode": 0, "Action0": action}, f"{label}_op{op}"
-            )
-            await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
-            fired = False
-            for _ in range(_STATUS_POLLS):
-                if await self._status_bit(f"{label}_poll_op{op}"):
-                    fired = True
-                    break
-            if fired:
+            await self._arm(action, op, f"{label}_op{op}")
+            if await self._poll_status(f"{label}_poll_op{op}"):
                 activating = op
                 break
             quiet = op
@@ -115,7 +119,44 @@ class SmcDfdClaActionSeq(SmcCsrSeq):
             quiet = (activating + 1) % len(ops)
         return activating, quiet
 
+    async def _discover(self, pin: str, label: str) -> tuple[int, int, int]:
+        """Walk Action0 until `pin` rises; return (action code, activating op, quiet op).
+
+        The pair is left fired with the returned code selected.
+        """
+        before = self._pin(pin)
+        assert before == 0, f"{pin}={before} before any Action0 value was fired, want 0"
+        activating, quiet = await self._fire(0, f"{label}_a0")
+        width = cla_field(self._eap(), "Action0").width
+        for action in range(1 << width):
+            if action:
+                await self._quiet(action, quiet, f"{label}_q{action}")
+                await self._w2c(f"{label}_a{action}")
+                status = await self._status_bit(f"{label}_quiet_a{action}")
+                idle = self._pin(pin)
+                assert (status, idle) == (0, 0), (
+                    f"Action0={action} on quiet LogicalOp {quiet} after the W2C: "
+                    f"status={status} {pin}={idle}, want 0 0"
+                )
+                await self._arm(action, activating, f"{label}_fire_a{action}")
+                assert await self._poll_status(f"{label}_poll_a{action}"), (
+                    f"CDbgEapStatus.Node0Eap0 did not read 1 with Action0={action} on "
+                    f"LogicalOp {activating}"
+                )
+            await ClockCycles(cocotb.top.clk_smc_i, SAMPLE_CYCLES)
+            if self._pin(pin) == 1:
+                line = (
+                    f"OBS-CLA-ACTION-CODE pin={pin} Action0={action} LogicalOp={activating} "
+                    f"quiet_op={quiet}"
+                )
+                cocotb.log.info(line)
+                self.samples.append(line)
+                return action, activating, quiet
+        raise AssertionError(
+            f"{pin} never read 1 over every value of the {width}-bit Action0 field fired on "
+            f"LogicalOp {activating}"
+        )
+
     async def _quiet(self, action: int, op: int, label: str) -> None:
         """Hold the pair on a non-activating relation with the action still selected."""
-        await self._write(self._eap(), {"LogicalOp": op, "DestNode": 0, "Action0": action}, label)
-        await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+        await self._arm(action, op, label)

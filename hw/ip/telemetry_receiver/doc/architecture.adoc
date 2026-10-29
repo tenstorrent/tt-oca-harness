@@ -99,6 +99,9 @@ wrapper's upstream ATB crossing FIFO. Quiesce traffic when an empty receiver
 must remain empty after the pulse.
 
 `CTRL.TELEMETRY_TX_FLUSH` requests a flush from the upstream transmitter through
-`afvalid_o`. Hardware clears the request after `afvalid_o && afready_i`.
+`afvalid_o`. Hardware clears the request after `afvalid_o && afready_i`. The
+field is ordinary read-write storage: a `CTRL` write with bit 8 clear withdraws
+a pending request, and `afvalid_o` falls without an acknowledgement. Update
+other `CTRL` fields with a read-modify-write while a flush is pending.
 Completion depends on the producer's acknowledgement; this is separate from a
 local receiver flush.

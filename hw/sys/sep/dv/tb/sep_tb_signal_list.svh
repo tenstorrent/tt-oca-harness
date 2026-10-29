@@ -784,6 +784,13 @@
 // Sample clock of ESRC lane 0 after the source mux and the ripple divider
 // (u_generator_complex.u_sampler_clocks.sample_clk_o[0]). Read-only; no force.
 `SEP_TB_OUT(logic, esrc_sample_clk_lane0_o)
+// ESRC FIFO downsample count (downsample_count), the decorrelator stream strobe
+// after the boot gate (entropy_stream_valid_gated) and the divider count of
+// lane 0 (gen_ecmplx[0].u_generator.u_decorrelator.clk_divider). Read-only; no
+// force.
+`SEP_TB_OUT(logic [9:0], esrc_downsample_count_o)
+`SEP_TB_OUT(logic, esrc_stream_valid_gated_o)
+`SEP_TB_OUT(logic [19:0], esrc_decor_div_lane0_o)
 
 // drbg_axil64_lane_adapter channel-arbitration probes, one 6-bit vector per
 // lane, at the adapter's own AXI-Lite-64 port. The crossbar and

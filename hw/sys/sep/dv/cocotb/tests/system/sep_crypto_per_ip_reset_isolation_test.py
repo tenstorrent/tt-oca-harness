@@ -139,7 +139,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     within a bound), and the KMAC endpoint's
                     ``edn_ack`` is 0 on every gated-reset edge. An edge
                     with no KMAC ``edn_req`` outstanding is logged as
-                    OBS-EDN-EDGE-KMAC-IDLE; CHK-EDN-LEAD grades the KMAC
+                    INFO-EDN-EDGE-KMAC-IDLE; CHK-EDN-LEAD grades the KMAC
                     cancel on a live request.
   * CHK-EDN-LEAD  a software reset of KMAC, AES or OTBN cancels that
                     engine's EDN endpoints from the first cycle its paths
@@ -1343,7 +1343,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             else:
                 kmac_idle += 1
                 self.logger.info(
-                    "OBS-EDN-EDGE-KMAC-IDLE: %s no KMAC edn_req outstanding before the "
+                    "INFO-EDN-EDGE-KMAC-IDLE: %s no KMAC edn_req outstanding before the "
                     "reset edge %s, so this edge does not grade the KMAC cancel",
                     tag,
                     where,
@@ -1497,7 +1497,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "to URND before it, and URND was acknowledged again after it; "
                     "KMAC edn_ack was "
                     "0 on every edge. KMAC edn_req was outstanding on %d edges and "
-                    "idle on %d (OBS-EDN-EDGE-KMAC-IDLE); CHK-EDN-LEAD grades the "
+                    "idle on %d (INFO-EDN-EDGE-KMAC-IDLE); CHK-EDN-LEAD grades the "
                     "KMAC cancel on a live request",
                     tag,
                     steady + 1,
