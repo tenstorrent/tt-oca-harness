@@ -10,11 +10,11 @@ sampled on each clk_smc_i rise. The valid copies of step 5 are the positive cont
 no-data compares: a four-row 2D copy with the strides of the zero-length 2D command writes the
 whole 136-byte destination span, and a linear 16-byte copy writes its first row.
 
-The NEXT_ID_0 value a submit returns, DONE_0 before and after a no-data command and the bit 322
-pulse count are measured, not compared. dma.adoc (Linear and Two-Dimensional Copies) and
-dma_ctrl.rdl both state that every NEXT_ID_0 read retires a non-zero transfer ID, including one
-with no command set up; the two differ on DONE_0 (the most recently retired ID in dma.adoc, a
-cumulative count in the RDL).
+Every NEXT_ID_0 read of the leaf must return a non-zero transfer ID: dma.adoc (Linear and
+Two-Dimensional Copies) and dma_ctrl.rdl both state that every read returns one, including the
+reads that submit a command with no data to move. DONE_0 before and after a no-data command and
+the bit 322 pulse count are measured, not compared; the two documents differ on DONE_0 (the most
+recently retired ID in dma.adoc, a cumulative count in the RDL).
 """
 
 from __future__ import annotations
@@ -60,6 +60,9 @@ POLL_CYCLES = 50
 FURTHER_READS = 6
 IRQ_BIT = 322
 STATUS_MASK = 0x3FF
+NEXT_ID_MASK = 0xFFFF_FFFF
+# Legs that submit a command: ND_CLEAR, ZERO_LINEAR, ZERO_2D, COPY2D, COPY32, COPY64.
+EXPECTED_SUBMITS = 6
 
 LENGTH = 16
 SRC_STRIDE = 0x30
@@ -156,6 +159,7 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         self.chk_ids: list[str] = []
         self.sampler: _Sampler | None = None
         self.legs: dict[str, _Leg] = {}
+        self.next_ids: list[int] = []
 
     # -- plumbing ---------------------------------------------------------
 
@@ -252,9 +256,11 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
             await self.csr_read(f"{leg.name}_STATUS_BEFORE", DMA_CTRL_STATUS_0)
         ) & STATUS_MASK
         leg.ar0, leg.aw0, leg.irq0 = len(s.ar), len(s.aw), len(s.irq)
-        leg.next_id = await self.csr_read(
-            f"{leg.name}_NEXT_ID", DMA_CTRL_NEXT_ID_0, length=length_bytes
-        )
+        leg.next_id = (
+            await self.csr_read(f"{leg.name}_NEXT_ID", DMA_CTRL_NEXT_ID_0, length=length_bytes)
+        ) & NEXT_ID_MASK
+        assert leg.next_id != 0, f"{leg.name}: NEXT_ID_0 read returned transfer ID 0"
+        self.next_ids.append(leg.next_id)
 
     async def _poll(self, leg: _Leg) -> None:
         """Polls DONE_0 until it differs from its pre-command value or POLL_LIMIT reads pass."""
@@ -349,8 +355,8 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         irq = self._irq_window(leg)
         self._mark("S2")
         measured = (
-            f"measured {self._fmt(leg)} bit{IRQ_BIT} {irq}; "
-            f"relation of NEXT_ID_0 to DONE_0 and the pulse count are not compared"
+            f"measured {self._fmt(leg)} bit{IRQ_BIT} {irq}; DONE_0 before and after, its "
+            f"relation to NEXT_ID_0 and the pulse count are not compared"
         )
         assert leg.changed, (
             f"ND_CLEAR: DONE_0 still {leg.done_before} after {POLL_LIMIT} reads "
@@ -404,7 +410,8 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         measured = (
             f"measured linear {self._fmt(lin)} bit{IRQ_BIT} pulses {len(lin.widths)} "
             f"widths {lin.widths} cycles; "
-            f"2d {self._fmt(leg)} bit{IRQ_BIT} {irq}; post-conditions are not compared"
+            f"2d {self._fmt(leg)} bit{IRQ_BIT} {irq}; DONE_0, STATUS_0 and the pulse count are "
+            f"not compared"
         )
         return [
             ("CHK-DMA-ZEROLEN-MEASURED", measured),
@@ -513,6 +520,18 @@ class smc_dma_invalid_descriptor_test_seq(SmcCsrSeq):
         await ClockCycles(cocotb.top.clk_smc_i, 2)
         self._mark("S7")
         order.append("S7")
+        submitted = [leg.name for leg in self.legs.values()]
+        assert len(submitted) == EXPECTED_SUBMITS, f"{len(submitted)} legs submitted: {submitted}"
+        assert len(self.next_ids) == len(submitted), (
+            f"{len(self.next_ids)} NEXT_ID_0 reads for {len(submitted)} submitted legs"
+        )
+        assert all(self.next_ids), f"NEXT_ID_0 returned 0: {self.next_ids}"
+        self._chk(
+            "S7",
+            "CHK-DMA-NEXT-ID-NONZERO",
+            f"every NEXT_ID_0 read returned a non-zero transfer ID: "
+            f"{[hex(i) for i in self.next_ids]} for the {len(submitted)} submits {submitted}",
+        )
         self._nonvac(order)
 
     def _nonvac(self, order: list[str]) -> None:
