@@ -34,7 +34,8 @@ K_a, the HMAC software decoy key K_d and the AES software key K_s (K_h differs
 from K_a, K_d from K_h, and K_s differs from K_a in every 32-bit word), the
 message length (1 to 128 bytes) and bytes, the AES key size and mode of the
 software-key leg, the order of the 11 mismatched HMAC cells, the digest size of
-the Key_None leg and the AES ALERT_TEST bit of the alert control. The 14 keyed
+the Key_None leg, the AES ALERT_TEST bit of the alert control and the AES key
+size (128 or 192) of the sideload key-size leg. The 14 keyed
 HMAC cells, the Key_None leg, the AES legs and the two-engine leg run on every
 seed.
 
@@ -52,6 +53,10 @@ Checkers:
                             bit 32 (Crypto alert, source 33) and both AES alert
                             status bits 0. Controls: an AES ALERT_TEST write
                             pulses bit 32; sideload = 1 encrypts with K_a.
+  CHK-KEYSEL-AES-KEYLEN     sideload = 1 with a drawn AES-128 or AES-192 key size
+                            encrypts with the low 4 or 6 words of K_a
+                            (``crypto.adoc``:186-190; upstream aes
+                            ``programmers_guide.md``:31-32).
   CHK-KEYSEL-TWO            after back-to-back transfers, HMAC uses K_h and AES
                             (sideload = 1, AES_256) uses K_a.
   CHK-KEYSEL-AES-NOKEY      after CMD_ENGINE_SHRED of AES (return code 0), a
@@ -230,6 +235,7 @@ class Plan:
     mismatch_order: tuple[tuple[int, int], ...]
     none_sha: int
     alert_field: str  # an AES ALERT_TEST field name (aes.rdl ALERT_TEST)
+    side_bits: int = 128  # the AES key size of the graded sideload block (128 or 192)
 
     @staticmethod
     def words(row: int) -> list[int]:
@@ -241,7 +247,8 @@ class Plan:
             f"ks={KEY_ROWS[self.ks][0]} msg_len={len(self.msg)} msg={self.msg.hex()} "
             f"aes_keylen={self.aes_bits} aes_mode={self.aes_mode} "
             f"mismatch_order={','.join(f'{s}/{k}' for s, k in self.mismatch_order)} "
-            f"none_sha={self.none_sha} alert_test_field={self.alert_field}"
+            f"none_sha={self.none_sha} alert_test_field={self.alert_field} "
+            f"side_keylen={self.side_bits}"
         )
 
 
@@ -277,9 +284,10 @@ def draw_plan(seed: int) -> Plan:
     rng.shuffle(order)
     none_sha = rng.choice((256, 384, 512))
     alert_field = rng.choice(ALERT_TEST_FIELDS)
+    side_bits = rng.choice((128, 192))
     return Plan(
         seed, kh, ka, kd, ks, tuple(decoy), bytes(msg), aes_bits, aes_mode, tuple(order),
-        none_sha, alert_field,
+        none_sha, alert_field, side_bits,
     )  # fmt: skip
 
 
@@ -292,6 +300,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         "CHK-KEYSEL-HMAC-MISMATCH",
         "CHK-KEYSEL-HMAC-NONE",
         "CHK-KEYSEL-AES-SW",
+        "CHK-KEYSEL-AES-KEYLEN",
         "CHK-KEYSEL-TWO",
         "CHK-KEYSEL-AES-NOKEY",
     )
@@ -670,8 +679,8 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         self.aes_t_ov = self.vec.clk - t_in
         return [await self.aes._rd(AES_DATA_OUT[i]) for i in range(4)]
 
-    async def _aes_sideload_block(self) -> list[int] | None:
-        ctrl = build_aes_ctrl(sideload=True, mode=AES_MODE_ECB, key_len=AES_KEY_LEN_256)
+    async def _aes_sideload_block(self, key_len: int = AES_KEY_LEN_256) -> list[int] | None:
+        ctrl = build_aes_ctrl(sideload=True, mode=AES_MODE_ECB, key_len=key_len)
         try:
             return await self._aes_block(ctrl, None, None)
         except TrialTimeout as exc:
@@ -743,6 +752,28 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             fields["reason"] = reason
         ok = not reason and ct == g_ks and alert_cycles == 0 and status_err == 0 and ne != 0
         self.chk.ok("KEYSEL-AES-SW", ok, **fields)
+        await self._aes_keylen_leg(ka)
+
+    async def _aes_keylen_leg(self, ka: list[int]) -> None:
+        """A shorter sideload key size uses the low words of the delivered key.
+
+        Delivered word N carries key bits [32N+31:32N] (``crypto.adoc``:186-190), and
+        AES-128 / AES-192 use KEY_SHARE*_0..3 / _0..5 (``vendor/lowRISC/opentitan/
+        upstream/hw/ip/aes/doc/programmers_guide.md``:31-32), so the golden is the
+        ECB block under the low ``bits / 32`` words of K_a.
+        """
+        bits = self.plan.side_bits
+        golden = aes_encrypt_words("ecb", ka[: bits // 32], _le_words(AES_PT))
+        g_256 = aes_encrypt_words("ecb", ka, _le_words(AES_PT))
+        assert golden != g_256, f"the AES-{bits} and AES-256 goldens of K_a are equal"
+        side = await self._aes_sideload_block(AES_KEYLEN_CTRL[bits])
+        self.chk.ok(
+            "KEYSEL-AES-KEYLEN",
+            side == golden,
+            keylen=bits,
+            **{"ct==golden_low_words": int(side == golden), "ct==golden_256": int(side == g_256)},
+            timed_out=int(side is None),
+        )
 
     async def _aes_nokey_leg(self) -> None:
         """Shred the AES key, start a new sideload message and write one block.

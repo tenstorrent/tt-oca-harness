@@ -41,7 +41,9 @@ L (0 to 32 pairs) and the random pool operations (20 to 60).
 Checkers: CHK-SEL-RW, CHK-EXT-XFER, CHK-EXT-STRB, CHK-EXT-DROP, CHK-EXT-BP,
 CHK-EXT-IRQ, CHK-SEL-READY, CHK-SEL-HOLD, CHK-SEL-LOCK, CHK-SEL-LOCKFIRST,
 CHK-SEL-GLOBAL, CHK-POOL-DATA, CHK-EDN-FIFO-DEPTH (contracts in the docstring of
-each leg).
+each leg), and CHK-SEL-RESET: the first reads of the select and the lock return
+their RDL reset values (``EXT_TRNG_SRC_SEL.sel`` 0x7, ``EXT_TRNG_SRC_SEL_LOCK.lock``
+0x0, sep_cpu_ctrl.adoc).
 
 Logged only (no stated outcome): ``OBS-EXT-WITHDRAW`` when a source drops a beat it
 holds at the end of a leg: the held word, tready at the drop and the next word that
@@ -96,6 +98,7 @@ LOCK_ADDR = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL_LOCK")
 SEL_MASK = SEP_CPU_CTRL.field_mask("EXT_TRNG_SRC_SEL", "sel")
 SEL_RESET = SEP_CPU_CTRL.reset("EXT_TRNG_SRC_SEL")
 LOCK_MASK = SEP_CPU_CTRL.field_mask("EXT_TRNG_SRC_SEL_LOCK", "lock")
+LOCK_RESET = SEP_CPU_CTRL.reset("EXT_TRNG_SRC_SEL_LOCK") & LOCK_MASK
 
 # PIC source 17, the external TRNG interrupt (interrupts.adoc), on vector bit 16.
 VEC_EXT_IRQ = vec_bit(SRC_TIED)
@@ -480,6 +483,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         "CHK-SEL-GLOBAL",
         "CHK-POOL-DATA",
         "CHK-EDN-FIFO-DEPTH",
+        "CHK-SEL-RESET",
     )
 
     async def run_scenario(self) -> None:
@@ -501,7 +505,16 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
-        self.chk.obs("SEL-RESET", sel=f"0x{sel0 & SEL_MASK:x}", lock=lock0 & LOCK_MASK)
+        sel0 &= SEL_MASK
+        lock0 &= LOCK_MASK
+        self._grade(
+            "SEL-RESET",
+            sel0 == SEL_RESET and lock0 == LOCK_RESET,
+            sel=f"0x{sel0:x}",
+            lock=lock0,
+            want_sel=f"0x{SEL_RESET:x}",
+            want_lock=LOCK_RESET,
+        )
         self.aes = SepAes(self)
         self.pool = SepEntropyPool(self)
         self.trace = _Trace(dut).start()

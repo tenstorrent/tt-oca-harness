@@ -87,8 +87,10 @@ Checkers:
   CHK-AUX-REGWEN       REGWEN reads 0 after a 0 write, a new AUX pair does not
                        land, a 1 write leaves REGWEN at 0. Control: the same
                        AUX write lands before the lock.
-  CHK-AUX-RESET        after an AES reset the update error reads 0 with no X
-                       and both new AUX pairs land. Control: before the reset
+  CHK-AUX-RESET        after an AES reset the update error reads 0 with no X,
+                       CTRL_AUX_SHADOWED reads its reset value
+                       (``aes.adoc:126``, ``aes.adoc:131``) and both new AUX
+                       pairs land. Control: before the reset
                        the AUX register differs from its reset value and the
                        update error reads 1.
   CHK-ALERT-MALFORMED  per block: bit 32 stays 0 over a quiet window before,
@@ -1095,11 +1097,10 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         aux = await self.aes._rd(AES_AUX)
         st = await self.aes._rd(AES_STATUS)
         status_err = int(bool(st & AES_ST_ERR))
-        self.chk.obs(
-            "AUX-RESET",
-            aux=f"0x{aux & AES_AUX_MASK:x}",
-            status_rsvd=f"0x{st & ~AES_ST_FIELDS & 0xFFFF_FFFF:x}",
-        )
+        # CTRL_AUX_SHADOWED resets to the RDL value (aes.adoc CTRL_AUX_SHADOWED:
+        # FORCE_MASKS 0x0, KEY_TOUCH_FORCES_RESEED 0x1).
+        aux_reset = aux & AES_AUX_MASK == AES_AUX_RESET & AES_AUX_MASK
+        self.chk.obs("AUX-RESET", status_rsvd=f"0x{st & ~AES_ST_FIELDS & 0xFFFF_FFFF:x}")
         after_b = await self._aux_write(B_AUX)
         after_a = await self._aux_write(A_AUX)
         await tap.stop()
@@ -1114,8 +1115,10 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         lands = after_b == B_AUX and after_a == A_AUX
         if self._grade(
             "AUX-RESET",
-            status_err == 0 and x_free == 1 and lands,
+            status_err == 0 and x_free == 1 and lands and aux_reset,
             ctrl_aux_pre_reset=f"0x{aux_pre:x}",
+            aux=f"0x{aux & AES_AUX_MASK:x}",
+            aux_reset=f"0x{AES_AUX_RESET & AES_AUX_MASK:x}",
             ctrl_err_pre_reset=err_pre,
             status_err=status_err,
             x_free=x_free,

@@ -35,6 +35,16 @@ Checkers:
   CHK-REGWEN-RESET    after a TRNG reset ``REGWEN`` reads 1, the target reads its
                       RDL reset value with no X on the bus, and a write of B
                       lands. Control: ``REGWEN`` reads 0 before the reset.
+  CHK-REGWEN-ERRTEST  with the CSRNG ``REGWEN`` cleared, a write of the
+                      ``SFIFO_GENBITS_ERR`` bit number to ``ERR_CODE_TEST`` leaves
+                      ``ERR_CODE_TEST`` at its RDL reset value and ``ERR_CODE``
+                      unchanged for ``ERRTEST_WAIT_CLK`` clocks. ``ERR_CODE_TEST`` is
+                      bound to ``REGWEN`` (``csrng.hjson`` :793), and "When false,
+                      they become read-only." (``csrng.adoc`` :97-98); the write
+                      that would "force an error pulse" (``csrng.adoc`` :417-422)
+                      is not taken. Control ``CTRL-REGWEN-ERRTEST``: after the TRNG
+                      reset (``REGWEN`` 1) the same write sets ``SFIFO_GENBITS_ERR``
+                      within the same window. CSRNG targets only.
 ``INT_STATE_READ_ENABLE`` under the CSRNG ``REGWEN`` is logged only
 (``OBS-REGWEN-OWN``), and so are ``RESEED_INTERVAL`` and ``INT_STATE_NUM``
 under it (``OBS-REGWEN-OTHER``).
@@ -121,6 +131,13 @@ TARGETS = {
 REGWEN_RESET = {"csrng": CSRNG.reset("REGWEN"), "edn": EDN.reset("REGWEN")}
 ISRE_MASK = CSRNG.mask("INT_STATE_READ_ENABLE")
 ISRE_RESET = CSRNG.reset("INT_STATE_READ_ENABLE")
+# ERR_CODE_TEST under the CSRNG REGWEN: the forced source bit and its observation
+# window (bench timing; the control shows the forced bit lands within it).
+CSRNG_ERR_CODE = sym("CSRNG_ERR_CODE_REG_ADDR")
+CSRNG_ERR_CODE_TEST = sym("CSRNG_ERR_CODE_TEST_REG_ADDR")
+ERRTEST_BM = CSRNG.fields("ERR_CODE")["SFIFO_GENBITS_ERR"]["bm"]
+ERRTEST_BIT = ERRTEST_BM.bit_length() - 1
+ERRTEST_WAIT_CLK = 64
 
 # Outer cap of the TRNG reset waits (design rule: 20 x the clean value of the logs).
 TRNG_RESET_CAP = 4_000
@@ -279,6 +296,7 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
         "CHK-REGWEN-LOCK",
         "CHK-REGWEN-NOREARM",
         "CHK-REGWEN-RESET",
+        "CHK-REGWEN-ERRTEST",
     )
 
     async def run_scenario(self) -> None:
@@ -463,6 +481,21 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
                     wrote=f"0x{wrote:x}",
                     read=f"0x{read:x}",
                 )
+            err_before, err_after, test_rb = await self._err_code_test(isre_fill)
+            self.chk.ok(
+                "REGWEN-ERRTEST",
+                regwen_locked & rw_mask == 0
+                and test_rb == CSRNG.reset("ERR_CODE_TEST")
+                and err_after == err_before,
+                unit=unit,
+                reg=reg,
+                regwen=regwen_locked & rw_mask,
+                bit=ERRTEST_BIT,
+                errtest_read=f"0x{test_rb:x}",
+                err_code_before=f"0x{err_before:08x}",
+                err_code_after=f"0x{err_after:08x}",
+                wait_clk=ERRTEST_WAIT_CLK,
+            )
 
         # Step 8: r writes of 1 to the cleared REGWEN.
         after: list[int] = []
@@ -519,3 +552,32 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
             x_free=x_free,
             x_lanes=tap.lanes or "none",
         )
+        if unit == "csrng":
+            regwen_open = await self._rd(t.regwen) & rw_mask
+            err_before, err_after, _ = await self._err_code_test(post_fill)
+            self.chk.ctrl(
+                "REGWEN-ERRTEST",
+                regwen_open == REGWEN_RESET[unit]
+                and err_before & ERRTEST_BM == 0
+                and err_after & ERRTEST_BM != 0,
+                unit=unit,
+                reg=reg,
+                regwen=regwen_open,
+                bit=ERRTEST_BIT,
+                err_code_before=f"0x{err_before:08x}",
+                err_code_after=f"0x{err_after:08x}",
+                wait_clk=ERRTEST_WAIT_CLK,
+            )
+
+    async def _err_code_test(self, fill: int) -> tuple[int, int, int]:
+        """Write the forced bit number to CSRNG ``ERR_CODE_TEST``; return ``ERR_CODE``
+        before and ``ERRTEST_WAIT_CLK`` clocks after, and the ``ERR_CODE_TEST`` readback."""
+        err_mask = CSRNG.mask("ERR_CODE")
+        before = await self._rd(CSRNG_ERR_CODE) & err_mask
+        await self._wr(
+            CSRNG_ERR_CODE_TEST, CSRNG.value("ERR_CODE_TEST", ERR_CODE_TEST=ERRTEST_BIT), fill
+        )
+        await ClockCycles(cocotb.top.clk_i, ERRTEST_WAIT_CLK)
+        after = await self._rd(CSRNG_ERR_CODE) & err_mask
+        test_rb = await self._rd(CSRNG_ERR_CODE_TEST) & CSRNG.mask("ERR_CODE_TEST")
+        return before, after, test_rb

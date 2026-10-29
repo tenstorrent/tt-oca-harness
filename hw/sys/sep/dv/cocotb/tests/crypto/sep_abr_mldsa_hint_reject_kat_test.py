@@ -18,6 +18,9 @@ is the register contract: a signature verifies if and only if
 case passes when ``MLDSA_VERIFY_RES`` differs from c~. No spec states when the
 engine rejects relative to the message stream or what ``MLDSA_VERIFY_RES``
 holds after a reject, so the leaf logs both as OBS lines and grades neither.
+On the streamed cases the leaf also grades that ``MLDSA_VERIFY_RES`` reads ~c~
+once VERIFY is accepted: the accelerator preloads it then
+(``hw/sys/sep/bootrom/prod/doc/abr-mldsa-driver.adoc``).
 
 Case 0 is a pure-with-context signature that must verify, run first: the
 streamed message and the context are new to this aperture's DV, and a stream or
@@ -76,7 +79,12 @@ _REJECT_CLASS_HINT = 3
 class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
     """ML-DSA-87 VERIFY on the NIST malformed-hint cases, after one that must verify."""
 
-    required_evidence = ("CHK-HINT-VALID", "CHK-HINT-CONTROL", "CHK-HINT-REJECT")
+    required_evidence = (
+        "CHK-HINT-VALID",
+        "CHK-HINT-PRELOAD",
+        "CHK-HINT-CONTROL",
+        "CHK-HINT-REJECT",
+    )
 
     async def _wait_status(self, abr: SepAbr, mask: int, expect: int, *, what: str) -> int:
         for _ in range(_POLL_ITERS):
@@ -154,13 +162,17 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
                 await abr.wr32(ABR_CTX_CONFIG, case.ctx_bytes)
                 await abr.write_words(ABR_CTX, case.ctx)
                 await abr.wr32(ABR_CTRL, CMD_VERIFY | CTRL_STREAM_MSG)
-                # No hardware spec states what MLDSA_VERIFY_RES holds once VERIFY is
-                # accepted, so the value is logged, not graded.
+                # The accelerator preloads MLDSA_VERIFY_RES with ~c~ when it
+                # accepts VERIFY (bootrom/prod/doc/abr-mldsa-driver.adoc:70-72).
                 pre = await abr.read_words(ABR_VERIFY_RES, VERIFY_RES_WORDS)
+                assert pre == inverse, (
+                    f"CHK-HINT-PRELOAD FAIL: {what}: MLDSA_VERIFY_RES after VERIFY accept is "
+                    f"{'c~' if pre == c_tilde else ('0' if not any(pre) else 'other')}, "
+                    "want ~c~"
+                )
                 self.logger.info(
-                    "OBS-HINT-PRELOAD: %s: MLDSA_VERIFY_RES after VERIFY accept is %s",
+                    "CHK-HINT-PRELOAD PASS: %s: MLDSA_VERIFY_RES after VERIFY accept is ~c~",
                     what,
-                    "~c~" if pre == inverse else ("0" if not any(pre) else "other"),
                 )
                 streamed = await self._stream(abr, case.msg, case.msg_bytes, what=what)
 

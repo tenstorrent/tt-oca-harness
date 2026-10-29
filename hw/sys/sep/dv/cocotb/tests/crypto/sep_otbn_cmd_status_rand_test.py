@@ -113,6 +113,22 @@ Checkers:
                        determined by reading the FATAL_ALERT_CAUSE register. If
                        OTBN was running, this value will also be reflected in
                        the ERR_BITS register." (ToO:312-313).
+  CHK-OTBN-LOAD-CKSUM  at each compute staging (``LOAD_CHECKSUM`` written 0, the
+                       program words to IMEM, the three operand words to DMEM),
+                       ``LOAD_CHECKSUM`` reads the CRC-32-IEEE (``binascii.crc32``)
+                       of the stream of 48b records ``{imem, idx, wdata}``, one
+                       per write. "The CRC used is the 32-bit CRC-32-IEEE
+                       checksum. ... compatible with ... the crc32 function in
+                       the python 'binascii' module" (ToO:447-448); "The stream
+                       over which the checksum is computed is the stream of
+                       writes that have been seen since the last write to
+                       LOAD_CHECKSUM. Each write is treated as a 48b value,
+                       {imem, idx, wdata}." (ToO:449-450); ``imem`` is 1 for
+                       IMEM, ``idx`` the word index zero-extended to 15b,
+                       ``wdata`` the 32b word (ToO:451-453). The text does not
+                       state the byte order of a record, so the check accepts
+                       the little-endian and the big-endian 6-byte record and
+                       ``OBS-OTBN-CKSUM-ORDER`` logs which one matched.
   CHK-OTBN-LOCKED-HOLD a ``CMD`` = EXECUTE write at LOCKED leaves ``STATUS`` at
                        0xFF for 4 x t_cmd and ``FATAL_ALERT_CAUSE`` unchanged;
                        after an OTBN reset the probe shows 0x04 then 0x00 and
@@ -237,7 +253,8 @@ clean RND run, a chance outcome); ``OBS-OTBN-SWERR-KIND-CAUSE`` (the full
 ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of the drawn error: no sentence states the
 other bits); ``OBS-OTBN-ILLEGAL-BUS-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` at LOCKED, and the response code of the host read: no
-sentence states the code); ``OBS-OTBN-WIPE-MEM`` (two words of the wiped memory
+sentence states the code); ``OBS-OTBN-CKSUM-ORDER`` (the record byte order that
+``CHK-OTBN-LOAD-CKSUM`` matched: no sentence states it); ``OBS-OTBN-WIPE-MEM`` (two words of the wiped memory
 read after each SEC_WIPE command: the wipe leaves pseudo-random content, so no
 value is stated).
 
@@ -275,6 +292,7 @@ command leg (logged ``bound=``); later waits use multiples of t_cmd.
 
 from __future__ import annotations
 
+import binascii
 from dataclasses import dataclass
 
 import cocotb
@@ -412,6 +430,19 @@ VEC_OTBN_DONE = 29
 
 # DMEM layout of the compute program: [0] = a, [4] = b, [8] = result.
 DMEM_A, DMEM_B, DMEM_RES = 0x0, 0x4, 0x8
+
+# LOAD_CHECKSUM record byte orders: ToO:449-453 fixes the 48b layout, not the order.
+_CKSUM_ORDERS = ("little", "big")
+
+
+def load_checksum_golden(writes: list[tuple[int, int, int]], order: str) -> int:
+    """CRC-32-IEEE over 48b ``{imem, idx[14:0], wdata}`` records (ToO:447-453)."""
+    crc = 0
+    for imem, idx, wdata in writes:
+        rec = ((imem & 1) << 47) | ((idx & 0x7FFF) << 32) | (wdata & 0xFFFF_FFFF)
+        crc = binascii.crc32(rec.to_bytes(6, order), crc)
+    return crc
+
 
 # Native crypto EDN client of OTBN RND, bit 2 of crypto_edn_ack_o (trng.adoc:90-91).
 EDN_OTBN_RND = 2
@@ -571,6 +602,7 @@ _EXEC_LEG_CHECKS = (
     "CHK-OTBN-ERRCLR",
     "CHK-OTBN-BUSYWR-ERR",
     "CHK-OTBN-CMDIGN-ERR",
+    "CHK-OTBN-LOAD-CKSUM",
 )
 
 
@@ -597,6 +629,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         "CHK-OTBN-CMDIGN-ERR",
         "CHK-OTBN-IMEM-INTG",
         "CHK-OTBN-DMEM-INTG",
+        "CHK-OTBN-LOAD-CKSUM",
     )
 
     # ------------------------------------------------------------- helpers
@@ -713,10 +746,25 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         """Load ``prog``, stage the operands, pre-seed the result with ~golden."""
         p = self.plan
         golden = golden_result(p.op, p.opa, p.opb)
+        await self.otbn.wait_idle("cksum-clear")
+        await self.otbn.write_load_checksum(0)
         await self.otbn.load_program(prog)
-        await self.otbn.write_dmem(DMEM_A, p.opa)
-        await self.otbn.write_dmem(DMEM_B, p.opb)
-        await self.otbn.write_dmem(DMEM_RES, golden ^ 0xFFFF_FFFF)
+        dmem = ((DMEM_A, p.opa), (DMEM_B, p.opb), (DMEM_RES, golden ^ 0xFFFF_FFFF))
+        for off, val in dmem:
+            await self.otbn.write_dmem(off, val)
+        got = await self.otbn.read_load_checksum()
+        writes = [(1, i, w) for i, w in enumerate(prog)] + [(0, off // 4, val) for off, val in dmem]
+        want = {o: load_checksum_golden(writes, o) for o in _CKSUM_ORDERS}
+        match = [o for o in _CKSUM_ORDERS if want[o] == got]
+        self._grade(
+            "OTBN-LOAD-CKSUM",
+            bool(match),
+            writes=len(writes),
+            got=f"0x{got:08x}",
+            want_le=f"0x{want['little']:08x}",
+            want_be=f"0x{want['big']:08x}",
+        )
+        self.chk.obs("OTBN-CKSUM-ORDER", order=match[0] if match else "none")
         return golden
 
     def _line(self) -> int:

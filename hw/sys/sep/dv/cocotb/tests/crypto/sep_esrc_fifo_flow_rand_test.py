@@ -43,8 +43,11 @@ Checkers:
   CHK-FIFO-INTEG-PARITY  0 after the intact pop, 1 after the pop of the corrupted entry.
   CHK-FIFO-INTEG-PTR     1 within 16 x the clean pop time after a pointer-copy error.
   CHK-FIFO-INTEG-W1C     the parity trial bit reads 1, then 0 after the write-one clear.
+  CHK-FIFO-FLAGS-CLEAR   FIFO_OVERFLOW and FIFO_UNDERFLOW read 0 after their write-one
+                         clear (entropy_source.rdl FIFO_OVERFLOW, FIFO_UNDERFLOW);
+                         control: CTRL-FIFO-FLAGS sees both at 1 before the clear.
 Logged only: ``OBS-FIFO-STREAM-FULL`` (whether a discarded word reaches the stream is
-not stated), ``OBS-FIFO-FLAGS-CLEAR``, ``OBS-FIFO-PTR-W1C``,
+not stated), ``OBS-FIFO-PTR-W1C``,
 ``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
 names no partner for them).
 """
@@ -229,6 +232,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         "CHK-FIFO-INTEG-PARITY",
         "CHK-FIFO-INTEG-PTR",
         "CHK-FIFO-INTEG-W1C",
+        "CHK-FIFO-FLAGS-CLEAR",
     )
 
     async def run_scenario(self) -> None:
@@ -448,10 +452,13 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         await self._noerr("pop")
         await self._wr(ESRC_INTR_STATUS, INTR_FIFO_OVERFLOW | INTR_FIFO_UNDERFLOW)
         after = await self._rd(ESRC_INTR_STATUS)
-        self.chk.obs(
+        ovf_after = _get(after, "INTR_STATUS", "FIFO_OVERFLOW")
+        udf_after = _get(after, "INTR_STATUS", "FIFO_UNDERFLOW")
+        self.chk.ok(
             "FIFO-FLAGS-CLEAR",
-            overflow=_get(after, "INTR_STATUS", "FIFO_OVERFLOW"),
-            underflow=_get(after, "INTR_STATUS", "FIFO_UNDERFLOW"),
+            ovf_after == 0 and udf_after == 0,
+            overflow=ovf_after,
+            underflow=udf_after,
         )
 
     # --- resume leg (step 12) ---------------------------------------------------------

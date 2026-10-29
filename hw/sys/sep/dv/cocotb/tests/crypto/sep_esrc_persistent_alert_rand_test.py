@@ -35,7 +35,8 @@ both 5 and 7 (drawn without replacement, so every shard-3 seed trips at 5 and at
 the window of each threshold (256 or 512), the clean gap of the
 consecutive leg (2, 3 or 4 windows), the order of the two trips of each
 threshold, the masks and the permutation of ``balanced``, and the two counter
-bits of the ERR leg (two different bits of the 32-bit counter copy).
+bits of the ERR leg (two different bits of the 32-bit counter copy), and the
+illegal main-state encoding of the illegal-state leg.
 
 Shards (``env/sep_shard.py``): shard 1 is the reset leg and the threshold
 blocks; shard 2 is the reset leg and the ERR leg; shard 3 is the reset leg and
@@ -110,6 +111,16 @@ Checkers:
                   ERR at the next read. Logged, not graded: no text states
                   whether a write of 1 clears ERR while its cause persists.
                   Both OBS writes run with the coverage window closed.
+  CHK-SM-ILLEGAL  VCS only, after the ERR leg: ERR reads 0, then the leaf forces
+                  a drawn encoding outside the main state machine's state set
+                  on its state flops for 2 clocks and releases it; after
+                  SM_ERR_WAIT_CLKS clocks ERR reads 1 (entropy_source.rdl
+                  MAIN_SM_STATUS.ERR: "Latches an illegal state"). Under
+                  Verilator the state flops are not public:
+                  ``OBS-BLOCKED CHK-SM-ILLEGAL``.
+  OBS-SM-ILLEGAL-PF  INTR_STATUS.PERSISTENT_FAILURE after the illegal state.
+                  Logged, not graded: the RDL names a health-test failure or a
+                  counter error for it, not an illegal state.
   CHK-PF-RECOVER  W1C: both bits 0 and the output stays halted for H; a
                   MODULE_ENABLE cycle or a TRNG reset restarts the output
                   (BOOT_PHASE_DONE = 1, LEVEL rises); the reset clears both bits.
@@ -184,6 +195,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
+from cocotb.handle import Force, Release
 from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
@@ -268,6 +280,29 @@ M_BUSY, _ = _fm("SHA256_STATUS", "BUSY")
 M_ANY, _ = _fm("ALERT_SUMMARY_FAIL_COUNTS", "ANY_FAIL_COUNT")
 M_THR, _ = _fm("ALERT_THRESHOLD", "THRESHOLD")
 M_ERR, ERR_BP = _fm("MAIN_SM_STATUS", "ERR")
+M_STATE, _ = _fm("MAIN_SM_STATUS", "STATE")
+STATE_BITS = M_STATE.bit_length()
+# Stimulus only: the encodings of the main state machine, from
+# vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
+# (state_e). The illegal-state leg forces a value outside this set; the golden
+# (ERR reads 1) comes from entropy_source.rdl MAIN_SM_STATUS.ERR.
+MAIN_SM_ENCODINGS = frozenset(
+    (
+        0b011110101, 0b111010010, 0b101101110, 0b010001110, 0b000101100,
+        0b100000001, 0b110100101, 0b000010111, 0b001000000, 0b110100010,
+        0b011000011, 0b001011001, 0b100001111, 0b011111000, 0b010111111,
+        0b110011000, 0b111001101, 0b111111011, 0b001110011,
+    )
+)  # fmt: skip
+# The main state machine under SEP_ESRC (tb/tb_top.sv). The illegal-state leg
+# forces the state flop of u_state_regs and, where it exists, the state_q flop
+# that PRIM_FLOP_SPARSE_FSM adds beside it under SIMULATION, with one value, so
+# the two stay equal; both are variables and keep the value after the release
+# until the next clock edge loads the next state into both.
+MAIN_SM_PATH = "u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_main_sm"
+MAIN_SM_FLOPS = ("u_state_regs.u_state_flop.q_o", "state_q")
+# Clocks the illegal value is held on the state flop output.
+ILLEGAL_HOLD_CLKS = 2
 # Bits of the counter copy that the inject can flip: REPCNT_TOTAL_FAILS.FAIL_COUNT
 # is 32 bits (entropy_source.adoc:682).
 CNTR_BITS = ENTROPY_SOURCE.mask("REPCNT_TOTAL_FAILS").bit_length()
@@ -357,6 +392,7 @@ class Plan:
     trips: dict[int, tuple[str, str]]
     balanced: tuple[Balanced, ...]
     inj_bits: tuple[int, int]
+    illegal_state: int
 
     def describe(self) -> str:
         blocks = " ".join(
@@ -366,7 +402,8 @@ class Plan:
         )
         return (
             f"trip_thr={','.join(str(t) for t in self.trip_thr)} order={','.join(str(t) for t in self.order)} {blocks} "
-            f"{describe(self.balanced)} inj_bits={self.inj_bits[0]},{self.inj_bits[1]}"
+            f"{describe(self.balanced)} inj_bits={self.inj_bits[0]},{self.inj_bits[1]} "
+            f"illegal_state=0x{self.illegal_state:03x}"
         )
 
 
@@ -399,7 +436,20 @@ def draw_plan(seed: int, shard: int | None = None) -> Plan:
     balanced = tuple(balanced_lanes(rng))
     bit_a = rng.choice(range(CNTR_BITS))
     bit_b = rng.choice([b for b in range(CNTR_BITS) if b != bit_a])
-    return Plan(seed, tuple(trip_thr), tuple(order), window, gap, trips, balanced, (bit_a, bit_b))
+    illegal = rng.choice([v for v in range(1 << STATE_BITS) if v not in MAIN_SM_ENCODINGS])
+    return Plan(
+        seed, tuple(trip_thr), tuple(order), window, gap, trips, balanced, (bit_a, bit_b), illegal
+    )
+
+
+def _handle(path: str):
+    """The simulator handle at a dotted path below the tb top, or None."""
+    node = cocotb.top
+    for part in path.split("."):
+        node = getattr(node, part, None)
+        if node is None:
+            return None
+    return node
 
 
 class _Esrc(SepAxiRegDriver):
@@ -477,6 +527,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             close_graded_window(self.logger)
         if shard not in (1, 3):
             await self._sm_err_leg()
+            await self._sm_illegal_leg()
         close_graded_window(self.logger)
 
         await self.noise.stop()
@@ -1514,6 +1565,54 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self._ctrl("PF-DISABLE", ctrl_ok, ctrl_trip_thr=before, ctrl_trip_alert=int(ctrl_ok))
 
     # --- MAIN_SM_STATUS.ERR leg ------------------------------------------------------
+    async def _sm_illegal_leg(self) -> None:
+        """CHK-SM-ILLEGAL and OBS-SM-ILLEGAL-PF, after the ERR leg (VCS only).
+
+        Golden: entropy_source.rdl MAIN_SM_STATUS.ERR "Latches an illegal state
+        or health-test counter integrity error". The leaf forces the drawn
+        illegal encoding on the state flops (MAIN_SM_FLOPS) for ILLEGAL_HOLD_CLKS clocks,
+        releases it, waits SM_ERR_WAIT_CLKS clocks and reads ERR once. Control:
+        ERR reads 0 before the force (the ERR leg ended with a TRNG reset). The
+        main state machine stays in its error state until a reset, so this leg
+        is the last. Under Verilator the state flop is not public to cocotb and
+        the check is logged as blocked.
+        """
+        if "verilator" in str(getattr(cocotb, "SIM_NAME", "") or "").lower():
+            self.chk.blocked("SM-ILLEGAL", "verilator: the main state flop is not public")
+            return
+        flops = [_handle(f"{MAIN_SM_PATH}.{f}") for f in MAIN_SM_FLOPS]
+        if flops[0] is None:
+            self.chk.ok("SM-ILLEGAL", False, reason=f"no handle:{MAIN_SM_PATH}.{MAIN_SM_FLOPS[0]}")
+            return
+        close_graded_window(self.logger)
+        illegal = self.plan.illegal_state
+        err0, w0 = await self._err_read()
+        self._ctrl("SM-ILLEGAL", err0 == 0, err_before=err0, word_before=f"0x{w0:08x}")
+        flops = [h for h in flops if h is not None]
+        await RisingEdge(cocotb.top.clk_i)
+        for h in flops:
+            h.value = Force(illegal)
+        await self._clocks_wait(ILLEGAL_HOLD_CLKS)
+        for h in flops:
+            h.value = Release()
+        await self._clocks_wait(SM_ERR_WAIT_CLKS)
+        err1, w1 = await self._err_read()
+        pf1 = await self._pf_read()
+        await self._grade(
+            "SM-ILLEGAL",
+            err0 == 0 and err1 == 1,
+            0,
+            state_forced=f"0x{illegal:03x}",
+            flops_forced=len(flops),
+            hold_clk=ILLEGAL_HOLD_CLKS,
+            wait_clk=SM_ERR_WAIT_CLKS,
+            err_before=err0,
+            err=err1,
+            expect_err=1,
+            word=f"0x{w1:08x}",
+        )
+        self.chk.obs("SM-ILLEGAL-PF", state_forced=f"0x{illegal:03x}", pf=pf1)
+
     async def _err_read(self) -> tuple[int, int]:
         """One MAIN_SM_STATUS read: (the ERR field, the whole word)."""
         word = await self._rd(ESRC_MAIN_SM_STATUS)
@@ -1538,7 +1637,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         Golden: entropy_source.adoc:410 (ERR, RW1C, reset 0x0: it latches a
         health-test counter integrity error; a reset of the block clears it) and
         architecture.adoc:136 (the full entropy-source reset clears it). The main
-        state machine stays in its error state until the reset, so the leg is last.
+        state machine stays in its error state until the reset, so the ERR legs
+        run last.
         """
         bit_a, bit_b = self.plan.inj_bits
         close_graded_window(self.logger)

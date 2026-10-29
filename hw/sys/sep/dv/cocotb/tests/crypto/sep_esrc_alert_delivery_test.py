@@ -13,7 +13,9 @@ The same trip also reads the alert bookkeeping: ANY_FAIL_COUNT is denominated in
 failing windows, ALERT_FAIL_COUNTS attributes the trip to the repetition lane,
 HEALTH_TEST_STATUS latches the failing tests, and MAIN_SM_STATUS.ERR must stay 0
 so PERSISTENT_FAILURE is attributable to AlertHang rather than to a counter or
-state fault. An opening INTR_TEST sweep, before the trip, drives each interrupt
+state fault. ``OBS-HT-RSVD`` logs the reserved bits 1:2 and 6:7 of
+HEALTH_TEST_STATUS and of the per-generator status bytes: the RDL allocates them
+and states no value. An opening INTR_TEST sweep, before the trip, drives each interrupt
 source the RDL defines on its own. This proves the aggregate slot per source
 without a real failure.
 """
@@ -210,23 +212,19 @@ class sep_esrc_alert_delivery_test(sep_base_test):
 
         # HEALTH_TEST_STATUS latches which tests failed and is W1C. The RDL
         # allocates repetition [0], APT [3], Markov high [4] and Markov low [5];
-        # bits 1:2 and 6:7 are reserved and must never latch. The twelve
-        # per-generator status registers carry the same allocation.
+        # it states no value for bits 1:2 and 6:7, so they are logged only. The
+        # twelve per-generator status registers carry the same allocation.
         ht_status = await esrc.read_health_status()
         assert ht_status != 0, (
             "CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS.HEALTH_STATUS latched no failing test "
             "while the alert was asserted"
         )
-        assert (ht_status & HEALTH_RSVD_MASK) == 0, (
-            f"CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS=0x{ht_status:02x} latched a "
-            f"reserved bit (mask 0x{HEALTH_RSVD_MASK:02x})"
-        )
         gen_health = await esrc.read_generator_health()
-        for n, status in enumerate(gen_health):
-            assert (status & HEALTH_RSVD_MASK) == 0, (
-                f"CHK-GEN-HEALTH FAIL: GENERATOR_{n}_HEALTH_STATUS=0x{status:02x} "
-                f"latched a reserved bit (mask 0x{HEALTH_RSVD_MASK:02x})"
-            )
+        self.logger.info(
+            "OBS-HT-RSVD graded=0 ht_rsvd=0x%02x gen_rsvd=%s",
+            ht_status & HEALTH_RSVD_MASK,
+            [f"0x{v & HEALTH_RSVD_MASK:02x}" for v in gen_health],
+        )
         assert any(gen_health), (
             "CHK-GEN-HEALTH FAIL: no per-generator health-status register latched a "
             "failing lane while the aggregate HEALTH_TEST_STATUS reads "
@@ -234,7 +232,7 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
         self.logger.info(
             "CHK-GEN-HEALTH PASS: twelve per-generator health-status bytes %s latch "
-            "the failing lanes and no reserved bit",
+            "the failing lanes",
             [f"0x{v:02x}" for v in gen_health],
         )
         self.logger.info(
