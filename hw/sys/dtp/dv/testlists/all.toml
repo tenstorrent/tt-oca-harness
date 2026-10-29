@@ -75,7 +75,7 @@ tests = [
 
 [[groups]]
 name = "jtag2axi"
-expected_count = 80
+expected_count = 81
 tests = [
     "dtp_jtag2axi_smc_axi_single_write_test",
     "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
@@ -157,6 +157,7 @@ tests = [
     "dtp_jtag2axi_decode_error_mixed_test",
     "dtp_jtag2axi_series_corner_all_bridges_test",
     "dtp_jtag2axi_dbg_disable_matrix_test",
+    "dtp_jtag2axi_series_reprogram_held_read_test",
 ]
 
 [[groups]]
@@ -247,7 +248,7 @@ tests = [
 name = "all"
 # Exact nightly inventory; must match the VPLAN's scenario-expanded test-case
 # count. The loader errors when the list and this count diverge.
-expected_count = 156
+expected_count = 157
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -348,6 +349,7 @@ tests = [
     "dtp_jtag2axi_decode_error_decerr_read_test",
     "dtp_jtag2axi_decode_error_mixed_test",
     "dtp_jtag2axi_series_corner_all_bridges_test",
+    "dtp_jtag2axi_series_reprogram_held_read_test",
     "dtp_jtag_tmp_status_register_smoke_test",
     "dtp_jtag_tmp_status_chrst_n_in_persistence_test",
     "dtp_jtag_tmp_status_bypass_escape_test",
