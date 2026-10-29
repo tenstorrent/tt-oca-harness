@@ -1,0 +1,158 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smc-bl1]]
+= SMC BL1 Reference Bootloader
+:toc: left
+:toclevels: 3
+:sectnums:
+
+[WARNING]
+====
+The reference first-stage bootloaders are works in progress and are not ready for production
+use.
+====
+
+[[smc-bl1-overview]]
+== Overview
+
+SMC BL1 is the first mutable code SMC hart 0 runs. SEP BL1 copies its image into SMC SRAM,
+measures it, and restarts hart 0 at its entry point with a core reset pulse. SMC BL1 then
+proves that it is running by echoing a challenge from SEP BL1, and parks.
+
+The reference implementation is in `hw/sys/smc/bl1/`. It does nothing beyond its part of the
+SMU First-Stage Boot Contract, so it is also the template for a product's own SMC BL1. The
+contract, including the SEP BL1 side, is the SMU First-Stage Boot Contract appendix.
+
+[[smc-bl1-memory]]
+== Memory windows
+
+[[smc-bl1-memory-table]]
+.SMC BL1 memory windows, SMC-local
+[cols="2,2,4",options="header"]
+|===
+|Window |Range |Contents
+
+|Image
+|`0xC008_0000`–`0xC00B_FFFF`
+|Entry point at the base, then code, read-only data and the initial values of `.data`.
+SEP BL1 measures this range before the release and re-hashes it after the confirmation.
+
+|Writable
+|`0xC00C_0000`–`0xC015_AFFF`
+|`.data`, `.bss` and an 8 KiB stack.
+|===
+
+The linker script places every section explicitly and the link fails on any section it does
+not name, so a writable section cannot land in the image window. SMC BL1 never stores into
+the image window at run time.
+
+[[smc-bl1-startup]]
+== Start-up
+
+SEP BL1 restarts hart 0 at the image base, so nothing the SMC Boot ROM set up survives, and
+the ROM's start-up code does not run. SMC BL1, in order:
+
+. clears `HART0_PARKED` (scratch 9 bit 4) with a read-modify-write that keeps the other bits,
+  since hart 0 is no longer parked;
+. disables interrupts and sets its own trap vector;
+. parks any hart other than hart 0;
+. sets the global pointer and the stack pointer to the top of the writable window;
+. copies `.data` from the image window into the writable window and clears `.bss`.
+
+A trap at any point writes `SMC_BL1_ERR_TRAP` to the POST word and parks.
+
+SMC BL1 is built for `rv64imac` with the `lp64` ABI: `mstatus.FS` is off after the reset
+pulse, so it executes no floating-point instruction.
+
+[[smc-bl1-mailbox]]
+== Challenge and confirmation
+
+SMC BL1 reaches SEP mailbox 0's inbound port through the SEP aperture of the SMC address map,
+at the aperture base plus `0x10A0_0800`. The aperture base is set by the integrator;
+`SMU_BL1_SEP_APERTURE` defaults to `0x5000_0000`.
+
+. It programs SMC outbound filter entry 0 over the inbound port's 2 KiB block: read and
+  write, enabled, source ID 3.
+. It pops three entries from the port's `READ_DATA` register, waiting on `STATUS.EMPTY` for
+  each with a bounded poll: the tag `0x5345_5031` ("SEP1"), then challenge bits 31:0 and
+  63:32.
+. It pushes the tag `0x534D_4331` ("SMC1") and the two challenge words to the port's
+  `WRITE_DATA` register with 32-bit stores.
+
+[[smc-bl1-status]]
+== Status reporting
+
+SMC BL1 reports under firmware ID 4. `hw/sys/smc/bl1/include/smc_bl1_status.h` defines each
+value.
+
+[[smc-bl1-status-table]]
+.SMC BL1 status values
+[cols="1,3,4",options="header"]
+|===
+|Value |Name |Posted when
+
+|`0x0101` |`SMC_BL1_STARTED` |The C runtime is set up
+|`0x0102` |`SMC_BL1_PATH_OK` |The outbound filter entry is programmed
+|`0x0103` |`SMC_BL1_CHALLENGE_OK` |All three challenge entries arrived with the `SEP1` tag
+|`0x0104` |`SMC_BL1_CONFIRM_SENT` |The confirmation is pushed
+|`0x011F` |`SMC_BL1_DONE` |Before parking after a confirmation
+|`0x0180` |`SMC_BL1_ERR_NO_CHALLENGE` |A challenge entry did not arrive within the poll bound
+|`0x0181` |`SMC_BL1_ERR_BAD_TAG` |The first entry was not `SEP1`
+|`0x0182` |`SMC_BL1_ERR_TRAP` |A trap was taken
+|===
+
+Each value goes to two places:
+
+* **POST word** (scratch 1): the SMC Boot ROM's layout, with boot phase 8 in bits 31:28 and
+  the value in bits 15:0. The ROM uses phases 0 to 7.
+* **SMC status ring**: a status or, from `0x0180` up, an error word in the ring the SMC Boot
+  ROM keeps at the top of SMC SRAM. SMC BL1 uses the ring only if the ROM has set
+  `STATUS_BUFFER_READY` in scratch 9 and the header's entry count matches the ROM's. It
+  reads the write index once and keeps it, so a header changed later cannot redirect a
+  store, and it writes with 32-bit stores only. A trap writes the POST word only.
+
+Debug builds also print to the scratch 2 console. Release builds contain no console code.
+
+[[smc-bl1-reset-state]]
+== Hardware left at reset
+
+SMC BL1 programs only SMC outbound filter entry 0. It leaves the SMC inbound filter, the SMC
+DMA and the log engine in their reset state, and writes no SMC CPU control register other than
+its own scratch 1 (POST), scratch 2 (console) and the `HART0_PARKED` bit in scratch 9.
+
+[[smc-bl1-end-state]]
+== End state
+
+Whether it confirmed or failed, SMC BL1 ends with hart 0:
+
+* with `mie` and `mstatus.MIE` clear;
+* with its L1 D-cache written back and invalidated (`cflush.d.l1 x0`), so the status it wrote
+  reaches SRAM even if SEP BL1 then holds hart 0 in reset;
+* looping on `wfi`.
+
+[[smc-bl1-build]]
+== Building
+
+`make -C hw/sys/smc/bl1` builds the debug image at `build/debug/smc_bl1.{elf,bin,dis}`;
+`BUILD_TYPE=release` builds the release image, which defines `SMU_BL1_RELEASE`. The build runs
+in the OCAH toolchain container unless `RISCV_TOOLCHAIN` names a toolchain `bin` directory,
+and fails if the toolchain has no picolibc multilib for `rv64imac`/`lp64`.
+
+`make -C hw/sys/smu/bl1 fixtures` builds the test variants of SMC BL1 that the SEP BL1
+negative scenarios use. Each replaces `main.c` and links the same start-up, ring, POST and
+mailbox modules:
+
+[[smc-bl1-fixture-table]]
+.SMC BL1 test fixtures
+[cols="1,4",options="header"]
+|===
+|Fixture |Behaviour
+
+|`silent` |Takes the challenge and never confirms
+|`bad_tag` |Confirms under the tag `0x534D_4330` instead of `SMC1`
+|`wrong_challenge` |Confirms with challenge bit 0 flipped
+|`self_modify` |Confirms correctly, then changes one word inside its image window
+|===
+
+Release builds refuse every fixture.
