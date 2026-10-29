@@ -87,7 +87,7 @@ from env.sep_field_compare import field_compare
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from sep_reg_meta import INBOUND_FILTER_CTRL_0, sym
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0, sym
 from seq_lib.sep_fabric_csr_bank_seq import (
     F_ALLOW_BURST,
     F_ALLOW_NS,
@@ -142,7 +142,7 @@ PROG_FIELDS = (
     | F_WRITE_ALLOWED
     | F_ALLOW_BURST
     | F_ALLOW_NS
-    | INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "src_id")
+    | INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "src_id")
 )
 
 
@@ -485,16 +485,26 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
                 "START_ADDR",
                 cfg.start_addr_reg,
                 SRAM_BASE,
-                INBOUND_FILTER_CTRL_0.mask32("START_ADDR"),
+                INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask32("START_ADDR"),
             ),
             (
                 "START_ADDR_HI",
                 cfg.start_addr_reg + 4,
                 0,
-                INBOUND_FILTER_CTRL_0.mask("START_ADDR") >> 32,
+                INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask("START_ADDR") >> 32,
             ),
-            ("END_ADDR", cfg.end_addr_reg, SRAM_LAST, INBOUND_FILTER_CTRL_0.mask32("END_ADDR")),
-            ("END_ADDR_HI", cfg.end_addr_reg + 4, 0, INBOUND_FILTER_CTRL_0.mask("END_ADDR") >> 32),
+            (
+                "END_ADDR",
+                cfg.end_addr_reg,
+                SRAM_LAST,
+                INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask32("END_ADDR"),
+            ),
+            (
+                "END_ADDR_HI",
+                cfg.end_addr_reg + 4,
+                0,
+                INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask("END_ADDR") >> 32,
+            ),
         )
         parts = []
         for name, addr, want, mask in checks:

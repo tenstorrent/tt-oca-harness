@@ -976,7 +976,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|The same ordering walk driven from the SMN inbound master. m_axi reaches the same eleven IP blocks through the inbound filter, which denies by default, so the walk opens allow windows from the CPU-LSU side first. The sixteen `INBOUND_FILTER_CTRL` blocks are excluded and counted: those CSRs gate the access in flight, so writing them mid-walk would measure filter reprogramming rather than adapter ordering. Unlike the CPU-LSU splice, this path grants a W-first handshake.
+|The same ordering walk driven from the SMN inbound master. m_axi reaches the same eleven IP blocks through the inbound filter, which denies by default, so the walk opens allow windows from the CPU-LSU side first. The sixteen `INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL` blocks are excluded and counted: those CSRs gate the access in flight, so writing them mid-walk would measure filter reprogramming rather than adapter ordering. Unlike the CPU-LSU splice, this path grants a W-first handshake.
 |<<sep_drbg_axil_adapter_port_arbitration_test,`sep_drbg_axil_adapter_port_arbitration_test`>>
 |2
 |no_cpu, +skip_fuse_sense

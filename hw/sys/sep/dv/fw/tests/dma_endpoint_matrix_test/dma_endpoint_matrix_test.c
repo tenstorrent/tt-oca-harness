@@ -103,7 +103,7 @@ enum {
 
 // Committed defaults: a directed image that runs stand-alone.
 #define D_POOL SEP_TOP_ENTROPY_POOL_DATA_BASE_ADDR
-#define D_FIDX (SEP_TOP_INBOUND_FILTER_CTRL_NUM - 1u)
+#define D_FIDX (SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM - 1u)
 #define D_LOCK ((uint32_t)(FILTER_CTRL__FILTER_CONFIG__LOCKED_bm >> 32))
 volatile uint32_t g_p[P_COUNT] = {
     P_MAGIC_WORD, 0x3210u,     0x0u,        0x1234567u,  32u,     0x0000u, 0x0u,
@@ -137,15 +137,17 @@ volatile uint32_t g_p[P_COUNT] = {
 #define EXT_TOP_ALIAS ((uint32_t)SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR_reset + LOCAL_ALIAS_SPAN - 8u)
 #define AP_REGION SEP_TOP_AP_REGION_BASE_ADDR
 // Byte span of one AP output-remap region: the AP window over its regions.
-#define AP_SPAN (SEP_TOP_AP_REGION_SIZE / SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_NUM)
+#define AP_SPAN (SEP_TOP_AP_REGION_SIZE / SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM)
 #define ROM_BASE SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 #define DMA_CSR_WORD SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR
-#define FILT_IN0_CFG SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
-#define N_OUT_ENTRIES SEP_TOP_OUTBOUND_FILTER_CTRL_NUM
+#define FILT_IN0_CFG SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
+#define N_OUT_ENTRIES SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM
 #define STEE_REGION SEP_TOP_STEE_REGION_BASE_ADDR
 // Byte span of one STEE output-remap region: the STEE window over its regions.
-#define STEE_SPAN (SEP_TOP_STEE_REGION_SIZE / SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_NUM)
-#define STEE_ATTRS(i) SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i)
+#define STEE_SPAN \
+    (SEP_TOP_STEE_REGION_SIZE / SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM)
+#define STEE_ATTRS(i) \
+    SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(i)
 #define POOL_STATUS SEP_TOP_ENTROPY_POOL_STATUS_BASE_ADDR
 #define POOL_LEVEL(st) \
     (((st)&SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bm) >> SEP_ENTROPY_POOL__STATUS__FIFO_LEVEL_bp)
@@ -549,11 +551,11 @@ static uint32_t g_frb_bad, g_frb_rng, g_frb_sum, g_frb_idx, g_frb_c;
 // CONFIG goes first with the entry disabled, so START and END are written
 // under the final allow_burst granule, then CONFIG enables the entry.
 static void out_entry(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
-    wr(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i),
+    wr(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i),
        cfg & ~FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm);
-    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i), start);
-    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i), endv);
-    wr(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i), cfg);
+    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(i), start);
+    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(i), endv);
+    wr(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i), cfg);
 }
 // FILTER_CONFIG field bits of the low word (the locked bit is in the high word).
 #define CFG_FIELDS_LO \
@@ -568,10 +570,11 @@ static void out_entry(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
 // the host check them). The specification states no write-back timing for
 // START and END, so their read-back is counted and logged only.
 static void out_entry_check(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
-    uint32_t c = rd(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)) & CFG_FIELDS_LO;
-    uint64_t s = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i)) &
+    uint32_t c = rd(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)) &
+                 CFG_FIELDS_LO;
+    uint64_t s = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(i)) &
                  FILTER_CTRL__START_ADDR__START_ADDR_bm;
-    uint64_t e = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i)) &
+    uint64_t e = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(i)) &
                  FILTER_CTRL__END_ADDR__END_ADDR_bm;
     uint32_t want_c = (cfg | ((uint32_t)FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_reset
                               << FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp)) &
@@ -613,7 +616,8 @@ static uint64_t p64(int lo) {
 static void outbound_legs(void) {
     uint64_t ap_o = ap_out_addr();
     uint64_t smu = g_p[PSMU];
-    uint32_t attrs = SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0);
+    uint32_t attrs =
+        SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(0);
     uint64_t want = (((uint64_t)g_p[PAP_OFF_HI] << 32) | g_p[PAP_OFF_LO]) &
                     OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_bm;
     want |= OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm;
@@ -820,7 +824,8 @@ static void stack_leg(void) {
     end();
 
     // AP region 0 and the two STEE regions back to reset.
-    WRITE_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0), 0ull);
+    WRITE_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(0),
+                0ull);
     WRITE_REG64(STEE_ATTRS(STEE_W_IDX), 0ull);
     WRITE_REG64(STEE_ATTRS(STEE_R_IDX), 0ull);
 }
@@ -1217,9 +1222,9 @@ static void entropy_legs(void) {
 }
 
 // ---- Step 12: DMA writes of an inbound filter START_ADDR ----
-#define IN_CFG(i) SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)
-#define IN_START(i) SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i)
-#define IN_END(i) SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(i)
+#define IN_CFG(i) SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)
+#define IN_START(i) SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(i)
+#define IN_END(i) SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(i)
 
 // One 4-byte DMA write of `v` to the START_ADDR word `dst`; the LSU reads the
 // word back inside the leg.

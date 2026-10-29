@@ -72,7 +72,7 @@ from env.sep_spec_tables import mailbox_depth
 from sep_reg_meta import (
     EFUSE_INTERFACE_CTRL,
     EFUSE_MMR,
-    INBOUND_FILTER_CTRL_0,
+    INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
     SEP_CPU_CTRL,
     RegBlock,
     block_names,
@@ -215,9 +215,13 @@ TOKEN_MATCH_FAULT_MASK = EFUSE_MMR.mask32("TOKEN_MATCH_FAULT")
 TOKEN_MATCH_FAULT_RESET = EFUSE_MMR.reset32("TOKEN_MATCH_FAULT")
 
 _ARRAYS = (
-    ("local_master_alias_remap_ctrl", "LOCAL_MASTER_ALIAS_REMAP_CTRL", ALIAS_REGIONS),
-    ("outbound_filter_ctrl", "OUTBOUND_FILTER_CTRL", OUTFILT_ENTRIES),
-    ("inbound_filter_ctrl", "INBOUND_FILTER_CTRL", INFILT_ENTRIES),
+    (
+        "local_master_alias_remap_ctrl",
+        "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP",
+        ALIAS_REGIONS,
+    ),
+    ("outbound_filter_ctrl", "OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", OUTFILT_ENTRIES),
+    ("inbound_filter_ctrl", "INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", INFILT_ENTRIES),
 )
 
 
@@ -259,7 +263,7 @@ class SepUnmappedCfg:
 
     # --- remap / filter arrays --------------------------------------------
     def _build_arrays(self) -> None:
-        start_mask = INBOUND_FILTER_CTRL_0.mask32("START_ADDR")
+        start_mask = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask32("START_ADDR")
         for name, prefix, count in _ARRAYS:
             bases = [_slot_base(prefix, i) for i in range(count)]
             sizes = [_slot_size(prefix, i) for i in range(count)]
@@ -289,12 +293,16 @@ class SepUnmappedCfg:
                 # One distinct, non-zero programmed word per slot. The alias
                 # remap uses REGION_END (4 KB-aligned, valid stays clear); the
                 # filters use START_ADDR (entry_enabled stays clear).
-                if prefix == "LOCAL_MASTER_ALIAS_REMAP_CTRL":
+                if prefix == "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP":
                     addr = base + ALIAS_END
                     value = ((0x40 + i) << 12) & ALIAS_END_MASK
                 else:
                     addr = base + FILTER_START_ADDR
-                    tag = 0x0080_0000 if prefix == "OUTBOUND_FILTER_CTRL" else 0x0090_0000
+                    tag = (
+                        0x0080_0000
+                        if prefix == "OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL"
+                        else 0x0090_0000
+                    )
                     value = (tag | (i << 12)) & start_mask
                 self.live.append(LiveWord(f"{name}[{i}]", addr, value))
                 for w in slot_words[i]:
@@ -307,7 +315,7 @@ class SepUnmappedCfg:
                     )
             # The first word past the array aperture. It is a refusal point only
             # where no other RDL block owns it: the word past the alias-remap
-            # array is AP_OUTPUT_REMAP_CTRL[0], a live word.
+            # array is AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP[0], a live word.
             ap_end = bases[0] + total
             if _rdl_owner(ap_end) is None:
                 self.tails.append(
@@ -325,23 +333,23 @@ class SepUnmappedCfg:
     def _build_syscsr(self) -> None:
         g = GROUP_SYSCSR
         ap_last = REMAP_REGIONS - 1
-        ap_end = _slot_base("AP_OUTPUT_REMAP_CTRL", ap_last) + _slot_size(
-            "AP_OUTPUT_REMAP_CTRL", ap_last
+        ap_end = _slot_base("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last) + _slot_size(
+            "AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last
         )
-        stee_end = _slot_base("STEE_OUTPUT_REMAP_CTRL", ap_last) + _slot_size(
-            "STEE_OUTPUT_REMAP_CTRL", ap_last
+        stee_end = _slot_base("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last) + _slot_size(
+            "STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last
         )
         remap_img = ALIAS_BASE + _pow2_ceil(stee_end - ALIAS_BASE)
         out_last = OUTFILT_ENTRIES - 1
         out_img = OUTFILT_BASE + _pow2_ceil(
-            _slot_base("OUTBOUND_FILTER_CTRL", out_last)
-            + _slot_size("OUTBOUND_FILTER_CTRL", out_last)
+            _slot_base("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", out_last)
+            + _slot_size("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", out_last)
             - OUTFILT_BASE
         )
         in_last = INFILT_ENTRIES - 1
         in_img = INFILT_BASE + _pow2_ceil(
-            _slot_base("INBOUND_FILTER_CTRL", in_last)
-            + _slot_size("INBOUND_FILTER_CTRL", in_last)
+            _slot_base("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", in_last)
+            + _slot_size("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", in_last)
             - INFILT_BASE
         )
         cpu_base = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
@@ -356,13 +364,13 @@ class SepUnmappedCfg:
             ("ap_output_remap[0]", AP_BASE, 0x00A5_A000),
             (
                 f"ap_output_remap[{ap_last}]",
-                _slot_base("AP_OUTPUT_REMAP_CTRL", ap_last),
+                _slot_base("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last),
                 0x00C7_C000,
             ),
             ("stee_output_remap[0]", STEE_BASE, 0x00B6_B000),
             (
                 f"stee_output_remap[{ap_last}]",
-                _slot_base("STEE_OUTPUT_REMAP_CTRL", ap_last),
+                _slot_base("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", ap_last),
                 0x00D8_D000,
             ),
         ):

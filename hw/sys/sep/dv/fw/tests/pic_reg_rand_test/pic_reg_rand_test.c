@@ -117,11 +117,12 @@ static int g_err;
 
 static void mbx_window(uint32_t idx, uint32_t m) {
     volatile uint32_t *cfg =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(idx);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(
+            idx);
     volatile uint32_t *st =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(idx);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(idx);
     volatile uint32_t *en =
-        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(idx);
+        (volatile uint32_t *)SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(idx);
     uint32_t s =
         SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR + m * SEP_AXIL_MBOX_STRIDE;
     cfg[0] = 0u;

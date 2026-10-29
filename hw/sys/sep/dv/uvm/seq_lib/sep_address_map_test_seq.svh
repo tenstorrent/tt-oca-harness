@@ -263,11 +263,14 @@ class sep_address_map_test_seq extends sep_base_test_seq;
     rows.push_back('{"SEP_EFUSE_SHADOW", 64'(SEP_EFUSE_MAP_LC_STATE_REG_ADDR), 1'b0, 32'h0});
     rows.push_back('{"AXIL_MAILBOX", 64'(AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR), 1'b0,
                    32'h0});
-    rows.push_back('{"INBOUND_FILTER", 64'(INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR), 1'b1,
+    rows.push_back('{"INBOUND_FILTER",
+                   64'(INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR), 1'b1,
                    32'(FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT)});
-    rows.push_back('{"ALIAS_REMAP", 64'(LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR), 1'b0,
+    rows.push_back('{"ALIAS_REMAP",
+                   64'(LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR), 1'b0,
                    32'h0});
-    rows.push_back('{"AP_OUTPUT_REMAP", 64'(AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR), 1'b0, 32'h0
+    rows.push_back('{"AP_OUTPUT_REMAP",
+                   64'(AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR), 1'b0, 32'h0
                    });
     rows.push_back('{"OT_SPI_HOST", 64'(SPI_CONTROLLER_INTR_STATE_REG_ADDR), 1'b0, 32'h0});
   endfunction
