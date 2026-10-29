@@ -8,8 +8,8 @@
 //   M C <leg>                 a control, set-up or clean-up leg starts
 //   CHK-<NAME> PASS k=v ...   a check record (FAIL on a failed check)
 //   CTRL-<NAME> LOG k=v ...   a control record
-//   OBS-<NAME> LOG k=v ...    a logged value of a blocked check
-//   INFO-<NAME> LOG k=v ...   a bench record
+//   OBS-<NAME> LOG k=v ...    a DUT value whose golden no specification states
+//   INFO-<NAME> LOG k=v ...   a bench record: set-up, draw, reference or bookkeeping
 //   REQ <what> k=v ...        a request to the host
 //
 // A value prints as 0x<8 hex digits> (rec_hex) or in decimal (rec_dec). The

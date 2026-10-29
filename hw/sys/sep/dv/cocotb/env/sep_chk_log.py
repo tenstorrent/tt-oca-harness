@@ -28,8 +28,9 @@ there. Each FAIL and each missing control is also appended to
 
 A ``CHK-<NAME> PASS`` line is the evidence the base test counts
 (``_EvidenceFilter`` in ``tests/sep_base_test.py``); a FAIL, CTRL or OBS line
-is not. The prefix set is defined in ``docs/SEP_TB_ARCH.adoc``. Names are upper case: ``[A-Z0-9_-]``, with or without the ``CHK-``
-prefix. Field values print as given: ``bool`` as 0/1, ``int`` in decimal, a
+is not. The prefix set is defined in
+``hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc``, section "Log line prefixes".
+Names are upper case: ``[A-Z0-9_-]``, with or without the ``CHK-`` prefix. Field values print as given: ``bool`` as 0/1, ``int`` in decimal, a
 list as ``[a,b]``; pass a register value as a string, e.g. ``f"0x{v:08x}"``.
 """
 

@@ -557,7 +557,8 @@ Observation probe groups:
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), one bit and the
   register offset of each PIC register write; tied to 0 on the CPU stub
   build. Read-only copy of DUT nets; no force. Owner: `sep_pic_reg_rand_test`
-  (CHK-MEIP-WR-STORE, the count of PIC writes at the `meip[0]` offset).
+  (CHK-MEIP-WR-STORE, the count of PIC writes at the `meip[0]` offset;
+  CHK-PIC-STORE, the count at each hole, entry-0 and `meigwclr[N]` offset).
 * Bridge-fault pulse probe (`sep_cpu_ctrl_err_pulse_probe_o`): the set term
   and the `err_clr_i` pulse of the seven peripheral register-bridge latches
   and of the two DMA latches (`reg_path_err`, `host_path_err`). Owner:
@@ -1798,6 +1799,13 @@ through real sense.
 |Regression parsing |Global DV parser |Positive cocotb / `results.xml` evidence — exit 0 alone is not enough
 |===
 
+RTL SVA participation depends on the backend. Under Verilator, first-party
+and OpenTitan concurrent macros expand to nothing because those headers test
+`VERILATOR`. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`,
+so PULP `common_cells` inline assertions are off on every backend. The checks
+above are the checking layer the Verilator acceptance path relies on: nothing
+else is watching there for a checker miss.
+
 [[sep-log-prefixes]]
 ==== Log line prefixes
 
@@ -1820,13 +1828,6 @@ them.
 Machine records keep their own names: `RUN-IDENTITY*`, `EVIDENCE_SUMMARY`,
 `EVIDENCE-REQUIRED`, `FCOV-GATE`, `FCOV-QUIET`, `FW-CONSOLE`, `RESULT`, and
 the firmware `M G`, `M C` and `REQ` lines.
-
-RTL SVA participation depends on the backend. Under Verilator, first-party
-and OpenTitan concurrent macros expand to nothing because those headers test
-`VERILATOR`. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`,
-so PULP `common_cells` inline assertions are off on every backend. The checks
-above are the checking layer the Verilator acceptance path relies on: nothing
-else is watching there for a checker miss.
 
 === Coverage Strategy
 

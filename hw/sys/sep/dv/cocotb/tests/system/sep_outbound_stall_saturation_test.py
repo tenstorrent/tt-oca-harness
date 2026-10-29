@@ -116,6 +116,10 @@ Checkers (printed as ``CHK-<NAME>: <fields>`` after the exact comparison and
                     within its bound. Fixed windows (the hold and idle
                     windows, a delayed release) cannot expire and are logged
                     as INFO-WAIT only.
+
+A row of a checker that the leg cannot grade (a sysif access that never reaches
+the port, the DMA stall at a held crossbar stop) is logged as
+``OBS-BLOCKED CHK-<NAME> reason=<r>`` and earns no credit.
 """
 
 from __future__ import annotations
@@ -388,12 +392,14 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
         )
 
     def _delays_line(self, chan, delay, init, op, lat, base, done, total, reached) -> None:
-        emit = self._info_row if init == "sysif" and not reached else self._line
-        emit(
-            "CHK-DELAYS",
+        line = (
             f"chan={chan} delay_cycles={delay} init={init} latency_ns={lat:.1f} "
-            f"baseline_ns={base:.1f} completed={done}/{total} op={op} reached={int(reached)}",
+            f"baseline_ns={base:.1f} completed={done}/{total} op={op} reached={int(reached)}"
         )
+        if init == "sysif" and not reached:
+            self._blocked_row("CHK-DELAYS", "no_outbound_path", line)
+        else:
+            self._line("CHK-DELAYS", line)
 
     async def _s2_baseline(self) -> None:
         chk = "CHK-DELAYS"
@@ -850,22 +856,29 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                     name,
                 )
                 comp = int(all(t.done for t in extra))
-                note = " reached=0 no_outbound_path=1 not_graded=observation_only"
+                note = " reached=0"
             elif init == "dma":
                 comp = int(s.job.done)
-                note = " stall_src=not_observable_at_a_pin not_graded=observation_only"
+                note = ""
             else:
                 comp = int(all(t.done for t in extra))
                 note = ""
                 if not comp:
                     self._fail(chk, f"session={name} init=lsu held request never completed")
-            emit = self._line if graded and init == "lsu" else self._info_row
-            emit(
-                chk if graded else "CHAIN-HELD",
+            line = (
                 f"init={init} stall_cycles={stall} earlier_altered={alt_before} "
                 f"releases_to_admit={releases} released_beats={beats} completed={comp} "
-                f"session={name} drained={done}/{total}{note}",
+                f"session={name} drained={done}/{total}{note}"
             )
+            if not graded:
+                self._info_row("CHAIN-HELD", line)
+            elif init == "lsu":
+                self._line(chk, line)
+            else:
+                reason = (
+                    "no_outbound_path" if init == "sysif" else "stall_src_not_observable_at_a_pin"
+                )
+                self._blocked_row(chk, reason, line)
         if not graded:
             self._info_row(
                 "CHAIN-HELD",
@@ -984,8 +997,8 @@ class sep_outbound_stall_saturation_test(OutboundLeaf, sep_base_test):
                 r = await self._lone(init, op, chk)
                 key = f"{init}_{'w' if op == 'wr' else 'r'}"
                 if init == "sysif":
-                    self._info_row(
-                        chk, f"{key}={r.resp} reached={int(r.reached)} no_outbound_path=1"
+                    self._blocked_row(
+                        chk, "no_outbound_path", f"{key}={r.resp} reached={int(r.reached)}"
                     )
                     continue
                 if r.resp != RESP_OKAY:

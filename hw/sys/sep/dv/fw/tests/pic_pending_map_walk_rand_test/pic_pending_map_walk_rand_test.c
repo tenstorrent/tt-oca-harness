@@ -28,8 +28,8 @@
 //   GWCLR v=.. held=.. after=..   one value of the clear-value corner
 //   HOLD src=.. ...           the level hold
 //   CLRIDLE src=.. ...        the idle clear
-//   CTRL-AES-STATUS status=.. cfg_ok=.. ov=.. ct0..ct3=..  the AES STATUS, the
-//                             output-valid flag and DATA_OUT of the slotless encryption
+//   CTRL-AES-STATUS status=.. cfg_ok=.. valid=.. out0..3=..  the slotless encryption
+//   CTRL-MAP-STATE p=.. src=.. state=..  INTR_STATE of an event source after a map pass
 // A REQ is followed by a spin, so the host acts before the next bus access.
 
 #include <stdint.h>
@@ -509,7 +509,7 @@ static void write_enables(int pass) {
     }
 }
 
-static void ctl_fifo_empty(const char *tag) {
+static void obs_fifo_empty(const char *tag) {
     rec_obs("FIFO-EMPTY");
     rec_str("t", tag);
     rec_str("intr_state_hmac", "na");
@@ -536,7 +536,17 @@ static void map_assert(int pass) {
     req_tag_n("vec", "p", (uint32_t)pass);
     dump_meip(pass == 1 ? "p1" : "p2");
     if (pass == 1) {
-        ctl_fifo_empty("p1");
+        obs_fifo_empty("p1");
+    }
+    for (uint32_t i = 0; i < N_MAP; i++) {
+        const struct src *s = &k_map[i];
+        if (s->kind == K_EVT) {
+            rec_ctl("MAP-STATE");
+            rec_num("p", (uint32_t)pass);
+            rec_num("src", s->id);
+            rec_num("state", (rd(s->st) & s->bit) != 0u ? 1u : 0u);
+            rec_end();
+        }
     }
 }
 
@@ -561,7 +571,7 @@ static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit) {
     uint32_t w0b = pic_read_meip(0);
     uint32_t w1b = pic_read_meip(1);
     uint32_t before = meip_bit(src);
-    ctl_fifo_empty(ip);
+    obs_fifo_empty(ip);
     wr(en, rd(en) & ~bit);
     wait_clk(g_p[P_SETTLE]);
     req_tag("vec", ip[0] == 'h' ? "feh1" : "fek1");
@@ -637,14 +647,11 @@ static const uint32_t k_aes_key[4] = {0x03020100u, 0x07060504u, 0x0B0A0908u, 0x0
 static const uint32_t k_aes_iv[4] = {0u, 0u, 0u, 0u};
 static const uint32_t k_aes_pt[4] = {0x33221100u, 0x77665544u, 0xBBAA9988u, 0xFFEEDDCCu};
 
-// One encryption block. *cfg_ok is 1 when configure_aes() succeeds; *ov is 1
-// when STATUS.output_valid rose; out[] holds DATA_OUT (zero when *ov is 0).
-// Returns the STATUS read after the output is read and the unit is idle.
-static uint32_t aes_encrypt_one(uint32_t *cfg_ok, uint32_t *ov, uint32_t out[4]) {
-    for (uint32_t i = 0; i < 4u; i++) {
-        out[i] = 0u;
-    }
-    *ov = 0u;
+// One encryption block. *cfg_ok is 1 when configure_aes() succeeds and *valid
+// is 1 when output_valid rose; out holds DATA_OUT. Returns the STATUS read
+// after the output is read and the unit is idle.
+static uint32_t aes_encrypt_one(uint32_t *cfg_ok, uint32_t *valid, uint32_t out[4]) {
+    *valid = 0u;
     *cfg_ok = configure_aes(0x1u, 0x1u, k_aes_key, k_aes_iv) == 0 ? 1u : 0u;
     if (*cfg_ok == 0u) {
         return 0u;
@@ -653,7 +660,7 @@ static uint32_t aes_encrypt_one(uint32_t *cfg_ok, uint32_t *ov, uint32_t out[4])
     if (wait_for_output_valid() != 0) {
         return rd(SEP_TOP_AES_STATUS_BASE_ADDR);
     }
-    *ov = 1u;
+    *valid = 1u;
     read_data_out(out);
     (void)wait_for_idle();
     return rd(SEP_TOP_AES_STATUS_BASE_ADDR);
@@ -1108,17 +1115,17 @@ int main(void) {
     // Slotless blocks, with control source 24 asserted.
     rec_mark(1, "slotless");
     req_kv("win", "aes", 1u);
-    uint32_t aes_cfg_ok, aes_ov, aes_out[4];
-    uint32_t aes_st = aes_encrypt_one(&aes_cfg_ok, &aes_ov, aes_out);
+    uint32_t aes_cfg_ok, aes_valid, aes_out[4] = {0u, 0u, 0u, 0u};
+    uint32_t aes_st = aes_encrypt_one(&aes_cfg_ok, &aes_valid, aes_out);
     req_kv("win", "aes", 0u);
     rec_ctl("AES-STATUS");
     rec_hex("status", aes_st);
     rec_num("cfg_ok", aes_cfg_ok);
-    rec_num("ov", aes_ov);
-    rec_hex("ct0", aes_out[0]);
-    rec_hex("ct1", aes_out[1]);
-    rec_hex("ct2", aes_out[2]);
-    rec_hex("ct3", aes_out[3]);
+    rec_num("valid", aes_valid);
+    rec_hex("out0", aes_out[0]);
+    rec_hex("out1", aes_out[1]);
+    rec_hex("out2", aes_out[2]);
+    rec_hex("out3", aes_out[3]);
     rec_end();
     req_kv("win", "otp", 1u);
     uint32_t otp = rd(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);

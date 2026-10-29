@@ -231,9 +231,9 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
         self.logger.error(msg)
         raise AssertionError(msg)
 
-    def _grade(self, chk: str, ok: bool, line: str, *, ctl: bool = False) -> None:
-        """A CHK line, or a CTL line for an open-test cell (a CTL mismatch still fails)."""
-        if ctl:
+    def _grade(self, chk: str, ok: bool, line: str, *, ctrl: bool = False) -> None:
+        """A CHK- line, or a CTRL- line for an open-test cell (a CTRL- mismatch still fails)."""
+        if ctrl:
             name = "CTRL-" + chk[4:]
             if not ok:
                 self._fail(name, line)
@@ -405,7 +405,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                     f"rirqt={r.rirqt} wabove={_wab(st)} rabove={_rab(st)} "
                     f"exp_wabove={_wab(exp_st)} exp_rabove={_rab(exp_st)} "
                     f"rsvd=0x{st & ~FIELD['STATUS'] & M32:x} {self.ctx.tag()}",
-                    ctl=ctl_out,
+                    ctrl=ctl_out,
                 )
                 if self.ctx.leg != "flush_post":
                     ok = (st & EMPTY_FULL) == (exp_st & EMPTY_FULL)
@@ -438,7 +438,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                         f"exp_irqs=0x{ex['IRQS']:x} irqp=0x{irqp:x} exp_irqp=0x{ex['IRQP']:x} "
                         f"model_line={mb.line('out')} rsvd=0x{rsvd:x} {note}"
                     )
-                    self._grade("CHK-LINE-OUT", ok, line, ctl=ctl_out)
+                    self._grade("CHK-LINE-OUT", ok, line, ctrl=ctl_out)
         return cc
 
     def _line(self, cc: CC, m: int, port: str) -> int:
@@ -602,6 +602,10 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             self.ctx = Ctx("thresh", m, value=v, fifo=f)
             await self._wr(m, "out", "IRQEN", run["irqen"][0])
             await self._wr(m, "in", "IRQEN", run["irqen"][1])
+            # Threshold 0 first: a value write that does not land leaves 0, so
+            # the above bit at occupancy 1 differs from the model.
+            await self._wr(m, wp, "WIRQT", 0)
+            await self._wr(m, rp, "RIRQT", 0)
             await self._wr(m, wp, "WIRQT", v)
             await self._wr(m, rp, "RIRQT", v)
             seen: dict[int, tuple[int, int]] = {}
@@ -625,7 +629,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                     f"mbox={m} fifo={f} leg=thresh value={v} push={'64' if ph is None else f'32h{ph}'} "
                     f"read={'64' if half is None else f'32h{half}'} got=0x{got:x} "
                     f"exp=0x{exp if exp is not None else 0:x} occ_before={occ}",
-                    ctl=ctl,
+                    ctrl=ctl,
                 )
                 if not ctl:
                     self.half_cells.add((f, ph, half))
@@ -709,7 +713,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             cresp == RESP_OKAY and (ctrl & FIELD["CTRL"]) == 0,
             f"mbox={m} kind={kind} ctrl_read=0x{ctrl & FIELD['CTRL']:x} resp={resp_name(cresp)} "
             f"rsvd=0x{ctrl & ~FIELD['CTRL'] & M32:x}",
-            ctl=ctl,
+            ctrl=ctl,
         )
         self.ctx = Ctx("flush_post", m, kind=kind)
         cc = await self._check([m], "flush_post")
@@ -730,7 +734,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 ok,
                 f"mbox={m} fifo={other} half={'-' if half is None else half} got=0x{got:x} "
                 f"exp=0x{exp if exp is not None else 0:x} occ_before={occ} kind={kind}",
-                ctl=ctl,
+                ctrl=ctl,
             )
             cc = await self._check([m], f"flush_pop occ={mb.occ(other)}")
         end_empty = cc.r[(m, FIFO_READER[other])]["STATUS"] & ST_EMPTY
@@ -741,7 +745,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
             f"mbox={m} kind={kind.split('_')[0]} port={port} flushed={flushed} reader_status_empty={reader_empty} "
             f"pre_flush_reader_empty={int(bool(pre_empty))} other_occ={popped} exp_other_occ={n_other} "
             f"other_reader_empty_after_flush={other_empty} other_empty_after_pops={int(bool(end_empty))}",
-            ctl=ctl,
+            ctrl=ctl,
         )
         await self._wr(m, "out", "IRQS", IRQ_ALL)
         await self._wr(m, "in", "IRQS", IRQ_ALL)
@@ -779,7 +783,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 ok,
                 f"mbox={m} port={port} cause={cause} irqs=0x{irqs1:x} irqen=0x{r1['IRQEN'] & IRQ_ALL:x} "
                 f"irqp=0x{irqp1:x} line={l1} then irqen=0x{r2['IRQEN'] & IRQ_ALL:x} irqp=0x{irqp2:x} line={l2}",
-                ctl=ctl,
+                ctrl=ctl,
             )
             await self._pop(m, po)
             await self._wr(m, port, "IRQS", IRQ_ALL)
@@ -810,7 +814,12 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 await self._push(m, pu, d)
             occ_above = mb.occ(f)
             c4 = await self._check([m], f"ack_reabove cause={cause} port={port}")
-            await self._wr(m, port, "IRQS", bit)
+            resp = await self.ops[m].wr(port, "IRQS", bit)
+            self.mbx[m].write_reg(port, "IRQS", bit)
+            line = f"mbox={m} port={port} cause={cause} irqs_wr=0x{bit:x} resp={resp_name(resp)}"
+            if resp != RESP_OKAY:
+                self._fail("CTRL-W1C-ABOVE", line)
+            self.logger.info("CTRL-W1C-ABOVE LOG seed=%d %s", self.seed, line)
             c5 = await self._check([m], f"ack_w1c_above cause={cause} port={port}")
 
             def s(cc: CC) -> tuple[int, int]:
@@ -826,7 +835,7 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 f"below_before_ack=line{got[1][0]}_irqs0x{got[1][1]:x} "
                 f"w1c_below=line{got[2][0]}_irqs0x{got[2][1]:x} reabove=line{got[3][0]}_irqs0x{got[3][1]:x} "
                 f"w1c_above=line{got[4][0]}_irqs0x{got[4][1]:x}",
-                ctl=ctl,
+                ctrl=ctl,
             )
             while mb.occ(f):
                 await self._pop(m, po)

@@ -1177,7 +1177,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |cpu, +skip_fuse_sense
 |CPU FW, PIC register golden
-|Proves the PIC register map: reset to 0, read-back, entry 0 and holes read 0 and discard writes, and source 0 never takes an interrupt. Also proves that a write of 0 and of all ones to `meip[0]` with a held pending bit changes no bit (CHK-MEIP-WR) and that each store reaches the PIC as one write at the `meip[0]` offset on `pic_wr_probe_o` (CHK-MEIP-WR-STORE); the response of the write is logged (`OBS-PIC-MEIP-WR`). The reset X check samples `pic_rd_data_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
+|Proves the PIC register map: reset to 0, read-back, entry 0 and holes read 0 and discard writes, and source 0 never takes an interrupt. Also proves that a write of 0 and of all ones to `meip[0]` with a held pending bit changes no bit (CHK-MEIP-WR) and that each store reaches the PIC as one write at the `meip[0]` offset on `pic_wr_probe_o` (CHK-MEIP-WR-STORE); the response of the write is logged (`OBS-PIC-MEIP-WR`). The hole, entry-0, `meigwclr` and source-0 writes, which those checks grade by an unchanged or 0 read, are counted on the same strobe (CHK-PIC-STORE). The reset X check samples `pic_rd_data_probe_o`, an observation tap the test adds to the SEP_TB_ARCH observation-probe list.
 |<<sep_pic_external_access_refuse_test,`sep_pic_external_access_refuse_test`>>
 |3
 |cpu with external SMN master, real PROD fuse sense
@@ -4464,7 +4464,7 @@ The column "Tests that use it" names the entries whose checks read the tap.
 |`pic_wr_probe_o`
 |Read-only probe
 |A copy of the PIC register write strobe and offset (`picm_wren_ff`, `picm_waddr_ff[14:0]`) on each clock.
-|`sep_pic_reg_rand_test` (CHK-MEIP-WR-STORE)
+|`sep_pic_reg_rand_test` (CHK-MEIP-WR-STORE, CHK-PIC-STORE)
 |<<sep-vplan-phase3-mailbox-irq-pic,Mailbox, IRQ, PIC>>; <<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |`sep_cpu_ctrl_err_pulse_probe_o`
 |Read-only probe
