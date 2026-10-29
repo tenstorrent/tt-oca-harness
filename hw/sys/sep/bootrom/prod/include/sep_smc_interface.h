@@ -74,6 +74,9 @@ static inline uint32_t sep_get_smc_base(void) {
 #define SMC_SCRATCH_SEP_SAFE_SRAM_SIZE_IDX 14
 #define SMC_SCRATCH_MEM_REPAIR_STATUS_IDX 15
 
+// scratch[8] value an SMC publishes, with MANIFEST_READY, when it has no valid manifest.
+#define SMC_MANIFEST_OFFSET_INVALID 0xFFFFFFFFu
+
 // ---------------------------------------------------------------------------
 // SMC→SEP status flags (scratch[9] bitfield)
 // ---------------------------------------------------------------------------
