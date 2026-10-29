@@ -3655,3 +3655,19 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
+
+[[tests]]
+# After the hand-off progress codes the ROM adds execute to the one locked rule that holds BL1,
+# writes no other CSR, and jumps to the TOC entry through mepc, fence.i, fence and mret.
+name = "sep_rom_pmp_release_handoff_test"
+module = "rom_fw.sep_rom_pmp_release_handoff_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "cpu", "pmp", "handoff", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
