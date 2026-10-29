@@ -3755,3 +3755,76 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
+
+[[tests]]
+# SMC-050, secondary boot: scratch[8] publishes 0xFFFFFFFF; the single slot fails and the boot
+# halts. The wrapped source is also not 8-byte aligned, so this shows a failed slot, not a
+# dedicated 0xFFFFFFFF check; SMC SRAM reads are logged, since the ROM docs disagree on them.
+name = "sep_rom_smc_manifest_offset_invalid_test_ffffffff"
+module = "rom_fw.sep_rom_smc_manifest_offset_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "manifest", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=FFFFFFFF",
+]
+
+[[tests]]
+# SMC-050, secondary boot: scratch[8] publishes the offset of the first byte past the 1 MiB SMC
+# SRAM window; the single slot fails and the boot halts. SMC SRAM reads are logged, since the ROM
+# docs disagree on them. The scratch[13]/[14] payload clause is not covered.
+name = "sep_rom_smc_manifest_offset_invalid_test_window_end"
+module = "rom_fw.sep_rom_smc_manifest_offset_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "manifest", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=00100000",
+]
+
+[[tests]]
+# SMC-050, secondary boot: scratch[8] publishes an aligned offset 8 bytes below the end of the
+# 1 MiB SMC SRAM window, so the 4096 B manifest starts inside it and its end crosses it; the
+# single slot fails and the boot halts. SMC SRAM reads are logged, since the ROM docs disagree.
+name = "sep_rom_smc_manifest_offset_invalid_test_window_straddle"
+module = "rom_fw.sep_rom_smc_manifest_offset_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "manifest", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=000FFFF8",
+]
+
+[[tests]]
+# SMC-050, secondary boot: scratch[8] publishes an aligned offset 0xFF8 bytes below the end of
+# the 1 MiB SMC SRAM window, so the 4096 B manifest starts inside it and its end crosses it by
+# 8 bytes; the single slot fails and the boot halts. SMC SRAM reads are logged, since the ROM
+# docs disagree on them.
+name = "sep_rom_smc_manifest_offset_invalid_test_manifest_straddle"
+module = "rom_fw.sep_rom_smc_manifest_offset_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "manifest", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=000FF008",
+]
