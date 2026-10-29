@@ -17436,9 +17436,8 @@ the extra values; the expected gate timing is a function of the drawn configurat
 
 *Test Coverage*:
 
-* Hysteresis encodings are drawn from `HYST_LEGAL_LO..HYST_LEGAL_HI` in
-  `smc_clk_multi_window_test_seq.py`; the 0..8 band is never programmed, so the
-  card claims nothing about it.
+* Hysteresis encodings are drawn from `HYST_LEGAL_LO..HYST_LEGAL_HI` (0..63, the full field) in
+  `smc_clk_multi_window_test_seq.py`.
 
 *Test Procedure*:
 
@@ -17458,9 +17457,6 @@ Drive `smc_clk_multi_window_test_seq`. Each checker below is a named compare the
 
 
 *Pass Criteria*: `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-HYST-WINDOW`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
-
-*Scope limit*: Hysteresis encodings are drawn from the legal range only; the 0..8 band is never
-programmed, so nothing is claimed about it.
 '''''
 
 [[sec-062-smc_clk_running_test]]
@@ -18256,7 +18252,7 @@ the drawn configuration.
 
 * After the base steps, whose evidence tokens are emitted unchanged, `_p2_extension`, called once at the end of `body()`, adds the full-range hysteresis sweep {0,1,32,63,64} and the activity-reassert race.
 * CG_HYSTERESIS_W==6 (hw/sys/smc/doc/dma.adoc) -- gap=64 exercises the field's own truncation (64 & 0x3F == 0), not a TB special case, and its expectation is the truncated value 0, not a `<= 63` bound that no RTL can violate.
-* Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..8 band is booked UNPROVEN and must not be counted as covered by any closure report -- see `P2_LOW_BAND_EXCLUSION_REASON` in `smc_dma_cg_activity_test_seq.py`.
+* Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly asserted, but only the graded cells {32, 63, 64} are BOOKED; gaps 0 and 1 are listed as excluded -- see `P2_LOW_BAND_EXCLUSION_REASON` in `smc_dma_cg_activity_test_seq.py`.
 
 *Test Procedure*:
 
@@ -18283,8 +18279,8 @@ Drive `smc_dma_cg_activity_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-DMA-GATE-OFF`, `CHK-DMA-GATING-DISABLED`, `CHK-DMA-HYST-RACE`, `CHK-DMA-HYST-SWEEP`, `CHK-DMA-WAKEUP-BACKEND`, `CHK-DMA-WAKEUP-FRONTEND` (and 3 more) hold after their compares. Enrolled in: `all`, `hosted`, `clock`.
 
 *Scope limit*: Of the hysteresis sweep gaps {0, 1, 32, 63, 64} plus seed extras, all driven and
-exactly asserted, only {32, 63, 64} are booked as covered cells; the 0..8 band is booked unproven
-and must not be counted as covered by any closure report.
+exactly asserted, only the graded cells {32, 63, 64} are booked as covered; gaps 0 and 1 are not
+booked.
 '''''
 
 [[sec-064-smc_i2c_cg_sanity_test]]

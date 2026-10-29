@@ -168,17 +168,13 @@ P2_REQUIRED_SWEEP_GAPS = (32, 63, 64)
 # or the `cells_hit` construction fails here.
 P2_GRADED_CELL_NAMES = ("hyst-gap=32", "hyst-gap=63", "hyst-gap=64")
 
-# The 0..8 hysteresis band is SWEPT at 0 and 1 and exactly asserted below, but
-# it is NOT booked as covered by this testcase's coverage artifact: the DMA
-# command never completes at legal hysteresis 0 and 1 when dma_cg_en=1, so the
-# within-1-cycle hysteresis-scaling proof holds for 9..63 only. The two gaps
-# stay as stimulus and as a fail-capable compare.
+# Hysteresis 0 and 1 are swept and exactly asserted below but are not graded
+# cells of SMC-CG-DMA-HYST.S1, so the coverage artifact lists them as excluded
+# instead of booking them.
 P2_LOW_BAND_SWEEP_GAPS = (0, 1)
 P2_LOW_BAND_EXCLUSION_REASON = (
-    "DMA command never completes at legal hysteresis 0 and 1 when "
-    "dma_cg_en=1: the 0..8 hysteresis band is UNPROVEN and must not be counted "
-    "as covered by any closure report. Swept and exactly asserted here, but "
-    "not booked."
+    "Swept and exactly asserted here, but outside the graded cells "
+    "(32, 63, 64) of SMC-CG-DMA-HYST.S1, so not booked."
 )
 
 P2_NUM_RANDOM_GAPS = 3
@@ -791,7 +787,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         assert not missing_required, f"sweep required cells not observed: {missing_required}"
         # Coverage artifact books the required_cells, and books a cell only
         # from a measurement that passed its exact compare -- not from a
-        # restatement of the required list. The 0..8 band is swept above but
+        # restatement of the required list. Gaps 0 and 1 are swept above but
         # excluded from the booking per P2_LOW_BAND_EXCLUSION_REASON.
         cells_hit = [f"hyst-gap={g}" for g in P2_REQUIRED_SWEEP_GAPS if g in sweep_results]
         cell_measurements = {

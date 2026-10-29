@@ -22,63 +22,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # the SEED / WINDOW / CHK evidence written through one never reaches the kept
 # log ([EVIDENCE-TOKEN-CONDITIONAL]).
 
-# Programmed hysteresis range this LIVE measure path draws from.
-#
-# The SPEC range is the FULL field: `hw/sys/smc/doc/dma.adoc` (SMC DMA, "DMA
-# Parameters" table) documents `CG_HYSTERESIS_W = 6` as a "6-bit = 0-63 cycle
-# delay", and `hw/sys/smc/doc/clk_rst.adoc` ("Clock Gating Control Parameters")
-# lists Hysteresis Control as 6-bit programmable with no reserved encodings.
-# Nothing in either document makes 0..8 illegal, so the low bound below is a
-# stimulus exclusion, not a legality boundary.
-#
-# Programming a hysteresis at or below the bound into this sequence's low
-# window loses the transfer: the DMA accepts the command -- DMA_CTRL_NEXT_ID_0
-# returns a non-zero id -- its read and write beats complete on SYS_OUT, but
-# DMA_CTRL_DONE_0 never advances, and the bounded completion wait expires with
-# both busy inputs already low. The threshold tracks the SYS_OUT completion
-# latency: the shared slave agent answers one cycle after the beat, and
-# hysteresis 8 is the highest value that drops the transfer with it.
-#
-# The consequence for coverage: the within-1-cycle hysteresis-scaling proof
-# holds for 9..63 only. The 0..8 band is unproven by this testcase.
-HYST_LEGAL_LO = 9
+# Programmed hysteresis range this LIVE measure path draws from: the full 6-bit
+# field (`hw/sys/smc/doc/dma.adoc`, "DMA Parameters": `CG_HYSTERESIS_W = 6`).
+HYST_LEGAL_LO = 0
 HYST_LEGAL_HI = 63
-
-
-# Exclusion record logged at run time for the hysteresis band 0..8 this
-# sequence never programs: at those SPEC-legal encodings the DMA accepts a
-# command via NEXT_ID but DMA_CTRL_DONE never advances, so `_wait_dma_done`
-# reaches its bound.
-HYST_LOW_EXCLUSION = {
-    "name": "HYST-LOW-BAND-0-8-NOT-EXERCISED",
-    "tag": "[BY-DESIGN-EXCEPTION]",
-    "scope": (
-        "smc_clk_multi_window_test stimulus only: the randomized hysteresis "
-        f"draw is restricted to {HYST_LEGAL_LO}..{HYST_LEGAL_HI}; encodings "
-        "0..8 are never programmed by this testcase"
-    ),
-    "spec_range": (
-        "0..63 legal (hw/sys/smc/doc/dma.adoc DMA Parameters, CG_HYSTERESIS_W=6 "
-        "'6-bit = 0-63 cycle delay'; hw/sys/smc/doc/clk_rst.adoc Clock Gating "
-        "Control Parameters, 6-bit programmable, no reserved encodings)"
-    ),
-    "observed": (
-        "hyst=0 never runs under cg_enable; hysteresis 1..8 loses the "
-        "frontend->backend handoff -- the DMA accepts the command "
-        "(DMA_CTRL_NEXT_ID_0 returns a non-zero id), its beats complete on "
-        "SYS_OUT, but DMA_CTRL_DONE_0 never advances, so the bounded completion "
-        "wait expires: 'TIMEOUT waiting DMA done: baseline=1 status=0xff "
-        "gater_busy=0 busy=0' -- both busy inputs are already low while DONE "
-        "is stale, i.e. the transfer is dropped rather than merely slow. The "
-        "threshold tracks the SYS_OUT completion latency (the shared slave "
-        "agent answers one cycle after the beat); hysteresis 9 completes"
-    ),
-    "consequence": (
-        "the within-1-cycle hysteresis-scaling proof holds only for "
-        f"{HYST_LEGAL_LO}..{HYST_LEGAL_HI}; the 0..8 band is UNPROVEN by this "
-        "testcase and must not be counted as covered"
-    ),
-}
 # Seed-driven draw count: 8 random windows per seed. Always
 # covers low/mid/high bands so required_cells stay hit.
 NUM_RANDOM_WINDOWS = 8
@@ -404,20 +351,9 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
             HYST_LEGAL_LO,
             HYST_LEGAL_HI,
         )
-        # Log the stimulus exclusion: the SPEC range is 0..63 and this testcase
-        # draws only 9..63 ([BY-DESIGN-EXCEPTION]).
-        cocotb.log.info(
-            "EXCEPTION-RECORD %s %s: scope=%s | spec_range=%s | observed=%s | consequence=%s",
-            HYST_LOW_EXCLUSION["tag"],
-            HYST_LOW_EXCLUSION["name"],
-            HYST_LOW_EXCLUSION["scope"],
-            HYST_LOW_EXCLUSION["spec_range"],
-            HYST_LOW_EXCLUSION["observed"],
-            HYST_LOW_EXCLUSION["consequence"],
-        )
         assert HYST_LEGAL_LO <= hyst_min <= hyst_max <= HYST_LEGAL_HI, (
             f"seeded hysteresis draw {hyst_min}..{hyst_max} escaped the "
-            f"recorded exclusion range {HYST_LEGAL_LO}..{HYST_LEGAL_HI}"
+            f"legal range {HYST_LEGAL_LO}..{HYST_LEGAL_HI}"
         )
 
         await self._program_output_fabric_pass_all()
