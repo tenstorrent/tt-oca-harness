@@ -141,6 +141,7 @@ OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 # at a stride wider than one instance, and the maps state OKAY between instances.
 OCAH_REG_NO_ERR_BLOCKS ?= \
   alias_remap \
+  cross_trigger_port \
   filter_ctrl \
   gpio_intf
 
