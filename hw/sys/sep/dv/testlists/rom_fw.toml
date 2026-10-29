@@ -3866,3 +3866,22 @@ args = [
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
   "+sep_rom_ring_case=bad_header",
 ]
+
+[[tests]]
+# STAT-020, secondary boot refused at the manifest: an 8-entry status ring fills with INFO before
+# the WARN and ERRORs arrive; the ring holds expected_ring() of the offered statuses (INFO marker
+# at 3 free, WARN marker at 2, ERROR in the last slot). Partial STAT-020: no draining consumer,
+# no wrap, no WARN insert or drop in simulation.
+name = "sep_rom_status_ring_severity_test"
+module = "rom_fw.sep_rom_status_ring_severity_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "secondary", "smc", "status", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=00005000",
+]
