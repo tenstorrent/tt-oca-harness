@@ -349,8 +349,8 @@ class _Remap(SepAxiRegDriver):
         got = await self._rd(attrs) | (await self._rd(attrs + 4) << 32)
         fc = field_compare(got, word, REMAP_OFFSET_FIELD | REMAP_VALID_FIELD)
         line = f"{c.name} region={c.region} region_attrs {fc.fields()}"
-        assert fc.ok, f"REMAP-READBACK FAIL: {line}"
-        self.log.info("REMAP-READBACK LOG: %s", line)
+        assert fc.ok, f"CTRL-REMAP-READBACK FAIL: {line}"
+        self.log.info("CTRL-REMAP-READBACK LOG: %s", line)
 
 
 class _Alias(SepAxiRegDriver):
@@ -371,8 +371,8 @@ class _Alias(SepAxiRegDriver):
             got = await self._rd(ALIAS_BASE + off) | (await self._rd(ALIAS_BASE + off + 4) << 32)
             fc = field_compare(got, word, ALIAS_FIELDS[off])
             line = f"region=0 valid={int(valid)} off=0x{off:x} {fc.fields()}"
-            assert fc.ok, f"ALIAS-READBACK FAIL: {line}"
-            self.log.info("ALIAS-READBACK LOG: %s", line)
+            assert fc.ok, f"CTRL-ALIAS-READBACK FAIL: {line}"
+            self.log.info("CTRL-ALIAS-READBACK LOG: %s", line)
 
 
 class _SmuAperture(SepAxiRegDriver):
@@ -1210,7 +1210,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         assert self.n_expect > 0 and self.n_capture == self.n_expect, (
             f"CHK-OUT-CAPTURE FAIL: {line}"
         )
-        self.logger.info("OUT-CAPTURE-SUMMARY LOG: %s", line)
+        self.logger.info("INFO-OUT-CAPTURE-SUMMARY LOG: %s", line)
         why = self.src_grade.finish(min_nonzero_issued=2)
         self.logger.info("%s", self.src_grade.obs_line())
         assert why is None, f"CHK-OUT-CAPTURE FAIL: path=smu src_id {why}"

@@ -11,9 +11,21 @@ Each message is one last-flagged ATB packet on lane 0 whose probe id is in bits 
 header block is invalid and whose other blocks are all ones; the observed registers do not depend
 on the open block layout. Registers are read over JTAG2AXI. INTR_STATUS.BUFFER_THRESHOLD is
 sampled as a register readback only; interrupt delivery at the SMU boundary is not claimed.
+
+The queue fills to its depth of eight before the first pop in every run. The seed draws three
+thresholds (0 to 8, the queue depth) and where the second and third threshold writes fall among
+the sixteen fill and pop events; every INTR_STATUS.BUFFER_THRESHOLD compare expects
+``occupancy > threshold`` for the threshold in force and the number of messages queued. The
+first threshold and every threshold whose write precedes a fill are drawn below the depth, so the
+threshold in force at the write of 1 with eight queued is exceeded and that leg's source is live;
+only a threshold whose write precedes a pop may draw 8. The directed flip cell stays pinned beside
+the draws: with five queued after the third pop the threshold is written 3 (status 1), raised to 5
+(status 0, the queue unchanged), set back to 3 (status 1), then the drawn threshold is restored.
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 from cocotb.triggers import RisingEdge
@@ -63,8 +75,15 @@ ATB_ID = 0x2A
 ATB_READY_BOUND = 64
 
 QUEUE_DEPTH = 8
-THRESHOLD_LOW = 3
-THRESHOLD_HIGH = 5
+THRESHOLD_WRITES = 3
+# The pinned flip cell: after PINNED_POP pops (PINNED_OCCUPANCY queued) the threshold is written
+# PINNED_LOW, PINNED_HIGH and PINNED_LOW again, so the status is driven 1, 0 and 1 by the threshold
+# alone with the queue unchanged.
+PINNED_POP = 3
+PINNED_OCCUPANCY = QUEUE_DEPTH - PINNED_POP
+PINNED_LOW = 3
+PINNED_HIGH = 5
+EVENTS = 2 * QUEUE_DEPTH
 J2A_POLL_LIMIT = 128
 
 
@@ -91,6 +110,37 @@ class smu_telemetry_queue_threshold_test_seq:
         self.jtag = None
         self.j2a = 0
         self.sites: dict[str, dict] = {}
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.thresholds: list[int] = []
+        self.positions: list[int] = []
+        self.threshold = 0
+
+    def _draw(self) -> None:
+        """Three thresholds and the events the second and third writes precede (2..EVENTS).
+
+        The first threshold and every threshold whose write precedes a fill (an event at or
+        below QUEUE_DEPTH) are drawn below QUEUE_DEPTH, so the threshold in force at the write
+        of 1 with eight queued is exceeded; a write placed among the pops may draw QUEUE_DEPTH.
+        """
+        self.positions = sorted(self.rng.sample(range(2, EVENTS + 1), THRESHOLD_WRITES - 1))
+        tops = [QUEUE_DEPTH - 1] + [
+            QUEUE_DEPTH - 1 if position <= QUEUE_DEPTH else QUEUE_DEPTH
+            for position in self.positions
+        ]
+        self.thresholds = [self.rng.randint(0, top) for top in tops]
+        self._log(
+            f"SEED: RANDOM_SEED={self.seed} drawn thresholds={self.thresholds} "
+            f"positions={self.positions} (the first write precedes fill 1; an event is one of "
+            f"{QUEUE_DEPTH} fills then {QUEUE_DEPTH} pops; a threshold in force at or before "
+            f"fill {QUEUE_DEPTH} is drawn below {QUEUE_DEPTH})"
+        )
+
+    def _drawn(self, occupancy: int) -> str:
+        return f"drawn threshold={self.threshold} occupancy={occupancy}"
+
+    def _expect_intr(self, occupancy: int) -> int:
+        return 1 if occupancy > self.threshold else 0
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -205,16 +255,61 @@ class smu_telemetry_queue_threshold_test_seq:
         return 1 if value & INTR_THRESHOLD_BM else 0
 
     async def _set_threshold(self, threshold: int) -> None:
+        self.threshold = threshold
         self.ctrl = threshold << THRESHOLD_BP
         await self._wr(TEL_CTRL, self.ctrl, f"CTRL BUFFER_THRESHOLD={threshold}")
         self._cell(f"CTRL BUFFER_THRESHOLD={threshold}", TEL_CTRL, f"wrote=0x{self.ctrl:08x}")
+
+    async def _threshold_writes_before(self, event: int, occupancy: int) -> None:
+        """Write every drawn threshold whose position is this event, then compare the status."""
+        for write, position in enumerate(self.positions, start=1):
+            if position != event:
+                continue
+            await self._set_threshold(self.thresholds[write])
+            intr = await self._intr_threshold(f"after threshold write {write} before event {event}")
+            self.sb.expect_eq(
+                f"CHK-TELQ-THRESHOLD-CLEAR status follows threshold write {write} before event "
+                f"{event} {self._drawn(occupancy)}",
+                intr,
+                self._expect_intr(occupancy),
+                evidence="TELQ_THRESHOLD_CLEAR",
+            )
+
+    async def _pinned_flip(self) -> None:
+        """Drive the status 1, 0, 1 by the threshold alone with PINNED_OCCUPANCY queued."""
+        drawn = self.threshold
+        occupancy = PINNED_OCCUPANCY
+        for threshold, token, label in (
+            (PINNED_LOW, "TELQ_THRESHOLD_LIVE", "threshold 3 with 5 queued"),
+            (PINNED_HIGH, "TELQ_THRESHOLD_CLEAR", "threshold raised to 5 with 5 queued"),
+            (PINNED_LOW, "TELQ_THRESHOLD_LIVE", "threshold back to 3 with 5 queued"),
+        ):
+            await self._set_threshold(threshold)
+            intr = await self._intr_threshold(label)
+            self.sb.expect_eq(
+                f"CHK-{token.replace('_', '-')} {label} (pinned)",
+                intr,
+                self._expect_intr(occupancy),
+                evidence=token,
+            )
+        await self._set_threshold(drawn)
+        intr = await self._intr_threshold("drawn threshold restored with 5 queued")
+        self.sb.expect_eq(
+            f"CHK-TELQ-THRESHOLD-CLEAR drawn threshold restored with 5 queued "
+            f"{self._drawn(occupancy)}",
+            intr,
+            self._expect_intr(occupancy),
+            evidence="TELQ_THRESHOLD_CLEAR",
+        )
 
     async def run(self) -> None:
         sb = self.sb
         dut = self.dut
         self.ctrl = 0
         assert PROBE_ID_BITS == 5 and QUEUE_DEPTH < (1 << PROBE_ID_BITS)
+        assert PINNED_LOW < PINNED_OCCUPANCY <= PINNED_HIGH
 
+        self._draw()
         self._mark("S1", "SETUP: bring-up, IDCODE, J2A gate open, telemetry clock gate")
         await self.cfg.reset_done.wait()
         self.jtag = jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
@@ -253,9 +348,10 @@ class smu_telemetry_queue_threshold_test_seq:
             evidence="TELQ_POP_EMPTY",
         )
 
-        self._mark("S3", "BUFFER_THRESHOLD=3, eight messages, STATUS and INTR_STATUS after each")
-        await self._set_threshold(THRESHOLD_LOW)
+        self._mark("S3", "drawn thresholds, eight messages, STATUS and INTR_STATUS after each")
+        await self._set_threshold(self.thresholds[0])
         for p in range(1, QUEUE_DEPTH + 1):
+            await self._threshold_writes_before(p, p - 1)
             await self._send_message(p)
             status = await self._rd(TEL_STATUS, f"STATUS after message {p}")
             self._cell(f"message {p} STATUS", TEL_STATUS, f"value=0x{status:08x}")
@@ -273,75 +369,46 @@ class smu_telemetry_queue_threshold_test_seq:
                 evidence="TELQ_EMPTY_FULL",
             )
             sb.expect_eq(
-                f"CHK-TELQ-THRESHOLD-LIVE message {p} INTR_STATUS.BUFFER_THRESHOLD",
+                f"CHK-TELQ-THRESHOLD-LIVE message {p} INTR_STATUS.BUFFER_THRESHOLD "
+                f"{self._drawn(p)}",
                 intr,
-                1 if p > THRESHOLD_LOW else 0,
+                self._expect_intr(p),
                 evidence="TELQ_THRESHOLD_LIVE",
             )
 
-        self._mark("S4", "write 1 to INTR_STATUS, pop and re-threshold through the queue")
+        self._mark(
+            "S4", "write 1 to INTR_STATUS, pop, pinned flip and re-threshold through the queue"
+        )
         await self._wr(TEL_INTR_STATUS, INTR_THRESHOLD_BM, "INTR_STATUS write 1")
         intr = await self._intr_threshold("after write of 1 with eight queued")
+        # The threshold in force here is drawn below QUEUE_DEPTH, so the source is live and the
+        # status reads 1; the pinned 1 keeps this leg from passing on a cleared status.
         sb.expect_eq(
-            "CHK-TELQ-THRESHOLD-CLEAR write of 1 leaves INTR_STATUS.BUFFER_THRESHOLD at 1",
+            "CHK-TELQ-THRESHOLD-CLEAR write of 1 leaves INTR_STATUS.BUFFER_THRESHOLD live "
+            f"{self._drawn(QUEUE_DEPTH)}",
             intr,
             1,
             evidence="TELQ_THRESHOLD_CLEAR",
         )
-        for pop in range(1, 4):
+        for pop in range(1, QUEUE_DEPTH + 1):
+            occupancy = QUEUE_DEPTH - pop
+            await self._threshold_writes_before(QUEUE_DEPTH + pop, occupancy + 1)
             probe = await self._pop_and_probe(f"pop {pop}")
             intr = await self._intr_threshold(f"after pop {pop}")
-            sb.expect_eq(
-                f"CHK-TELQ-ORDER probe id after pop {pop}",
-                probe,
-                pop + 1,
-                evidence="TELQ_ORDER",
-            )
-            sb.expect_eq(
-                f"CHK-TELQ-THRESHOLD-LIVE after pop {pop} occupancy {QUEUE_DEPTH - pop}",
-                intr,
-                1,
-                evidence="TELQ_THRESHOLD_LIVE",
-            )
-        await self._set_threshold(THRESHOLD_HIGH)
-        intr = await self._intr_threshold("threshold 5 with 5 queued")
-        sb.expect_eq(
-            "CHK-TELQ-THRESHOLD-CLEAR threshold raised to 5 with 5 queued",
-            intr,
-            0,
-            evidence="TELQ_THRESHOLD_CLEAR",
-        )
-        await self._set_threshold(THRESHOLD_LOW)
-        intr = await self._intr_threshold("threshold back to 3 with 5 queued")
-        sb.expect_eq(
-            "CHK-TELQ-THRESHOLD-LIVE threshold 3 with 5 queued",
-            intr,
-            1,
-            evidence="TELQ_THRESHOLD_LIVE",
-        )
-        for pop in range(4, 6):
-            probe = await self._pop_and_probe(f"pop {pop}")
-            intr = await self._intr_threshold(f"after pop {pop}")
-            sb.expect_eq(
-                f"CHK-TELQ-ORDER probe id after pop {pop}",
-                probe,
-                pop + 1,
-                evidence="TELQ_ORDER",
-            )
-            sb.expect_eq(
-                f"CHK-TELQ-THRESHOLD-CLEAR after pop {pop} occupancy {QUEUE_DEPTH - pop}",
-                intr,
-                1 if QUEUE_DEPTH - pop > THRESHOLD_LOW else 0,
-                evidence="TELQ_THRESHOLD_CLEAR",
-            )
-        for pop in range(6, QUEUE_DEPTH + 1):
-            probe = await self._pop_and_probe(f"pop {pop}")
             sb.expect_eq(
                 f"CHK-TELQ-ORDER probe id after pop {pop}",
                 probe,
                 pop + 1 if pop < QUEUE_DEPTH else 0,
                 evidence="TELQ_ORDER",
             )
+            sb.expect_eq(
+                f"CHK-TELQ-THRESHOLD-LIVE after pop {pop} {self._drawn(occupancy)}",
+                intr,
+                self._expect_intr(occupancy),
+                evidence="TELQ_THRESHOLD_LIVE",
+            )
+            if pop == PINNED_POP:
+                await self._pinned_flip()
 
         self._mark("S5", "INTR_TEST.BUFFER_THRESHOLD force and release on the empty queue")
         await self._wr(TEL_INTR_TEST, INTR_TEST_THRESHOLD_BM, "INTR_TEST write 1")

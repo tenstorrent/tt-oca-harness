@@ -309,7 +309,7 @@ class sep_km_isolate_termination_test(sep_base_test):
         pre = (word >> 8) & 0xFF
         post = word & 0xFF
         self.logger.info(
-            "OBS-KM-ISO-LEG: dest=%s leg=%s seq=%d word0=0x%08x pre=0x%02x post=0x%02x b_events=%s",
+            "INFO-KM-ISO-LEG: dest=%s leg=%s seq=%d word0=0x%08x pre=0x%02x post=0x%02x b_events=%s",
             dest.name,
             tag,
             self.leg_no,
@@ -476,7 +476,7 @@ class sep_km_isolate_termination_test(sep_base_test):
         order = list(DESTS)
         SepSeededRng(self.random_seed()).shuffle(order)
         self.logger.info(
-            "OBS-KM-ISO-ORDER: seed=%d order=%s",
+            "INFO-KM-ISO-ORDER: seed=%d order=%s",
             self.random_seed(),
             [d.name for d in order],
         )

@@ -505,7 +505,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
                 cmds=ctl["cmd"],
                 cmds_all=ctl["cmd_all"],
             )
-        log_line(self.logger, "OBS-WINDOW-CTL", seed, w_cycles=self.w, landed=1)
+        log_line(self.logger, "INFO-WINDOW-CTL", seed, w_cycles=self.w, landed=1)
         spare_word = field_word(spare["field"]) + spare["word"]
         self.golden.words[spare_word] = ctl["word"]
         set_shadow_golden(self, self.golden)
@@ -513,7 +513,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         # ---------------------------------------------------------- leg A
         open_graded_window(_NAME, self.logger)
         base = await self._lc_and_feat()
-        self.chk.obs(
+        self.chk.info(
             "TRANSIENT-BASE",
             word=f"0x{base['word']:08x}",
             feat=f"0x{base['feat']:016x}",
@@ -566,7 +566,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             await self._simul(raw0)
             await self._twin_reset(raw0)
         else:
-            self.chk.obs("TRANSIENT-SIMUL-SKIP", en=en, start=start)
+            self.chk.info("TRANSIENT-SIMUL-SKIP", en=en, start=start)
         if leg_b:
             await self._leg_b(seed, staged_word)
         close_graded_window(self.logger)
@@ -807,7 +807,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         # Bit 2 with only RMA_SIP matched: refused (control of the open refusal).
         self._leg_b_code("b2.sip", await self._match(CH_SIP, "b2.sip"), CODE_MATCH)
         chp_held = await self.fd.match(CH_CHIPLET)
-        self.chk.obs("PROG-LC-CHP", chp_code=f"0x{chp_held:02x}")
+        self.chk.info("PROG-LC-CHP", chp_code=f"0x{chp_held:02x}")
         close_graded_window(self.logger)
         ref2 = await self._program(_LC_BIT2)
         self._reopen_window()

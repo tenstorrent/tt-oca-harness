@@ -940,7 +940,7 @@ class sep_dma_zero_fill_rand_test(sep_base_test):
             if busy_at_abort and st.aborted:
                 break
             self.logger.info(
-                "OBS-DMA-ZERO-ABORT-REDRAW attempt=%d frac=%d busy_at_abort=%s %s",
+                "INFO-DMA-ZERO-ABORT-REDRAW attempt=%d frac=%d busy_at_abort=%s %s",
                 attempt,
                 frac,
                 busy_at_abort,

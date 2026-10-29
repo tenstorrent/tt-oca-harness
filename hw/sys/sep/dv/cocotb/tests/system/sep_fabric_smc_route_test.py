@@ -245,7 +245,7 @@ class sep_fabric_smc_route_test(sep_base_test):
         for n in range(1, _FUSE_POLL_MAX + 1):
             v = await self.csr._rd(SMC_FUSE_STATUS)
             if v & SMC_FUSE_DONE:
-                self.logger.info("SMC-FUSE-DONE LOG: status=0x%08x reads=%d", v, n)
+                self.logger.info("INFO-SMC-FUSE-DONE LOG: status=0x%08x reads=%d", v, n)
                 self.fuse_done = int(bool(v & SMC_FUSE_DONE))
                 return n
             await ClockCycles(cocotb.top.clk_i, _FUSE_POLL_GAP)
@@ -438,10 +438,10 @@ class sep_fabric_smc_route_test(sep_base_test):
             ids = {i for _, i in seen}
             parts.append(f"{ch}: prot1={sorted(ns)} src_ids={sorted(ids)}")
             assert ns == {0, 1} and len(ids) >= 2, (
-                f"CTL-SMC-ATTR FAIL: {'; '.join(parts)}; each direction needs both AxPROT[1] "
+                f"CTRL-SMC-ATTR FAIL: {'; '.join(parts)}; each direction needs both AxPROT[1] "
                 "values and two source IDs"
             )
-        self.logger.info("CTL-SMC-ATTR LOG: %s", "; ".join(parts))
+        self.logger.info("CTRL-SMC-ATTR LOG: %s", "; ".join(parts))
 
     async def run_scenario(self) -> None:
         rng = SepSeededRng(self.random_seed())
@@ -455,7 +455,7 @@ class sep_fabric_smc_route_test(sep_base_test):
         self.required_evidence = (
             ("CHK-SMC-ROUTE", "CHK-SMC-STATIC-ROW") if cfg == "A" else ("CHK-SMC-FIRST-MATCH",)
         ) + ("CHK-SMC-ATTR",)
-        self.logger.info("CFG-SMC cfg=%s base=0x%08X size=0x%08X", cfg, base, SMC_SIZE)
+        self.logger.info("INFO-CFG-SMC cfg=%s base=0x%08X size=0x%08X", cfg, base, SMC_SIZE)
         drive_bh_smc(base, SMC_SIZE)
         close_graded_window()
 
@@ -485,8 +485,8 @@ class sep_fabric_smc_route_test(sep_base_test):
             f"smu_base=0x{self.smu_base:08x} smu_size=0x{smu_size:08x} "
             f"rdl_base=0x{SMU_BASE:08x} rdl_size=0x{SMU_SIZE:08x} cfg_b_inside={int(inside)}"
         )
-        assert smu_ok and inside, f"CTL-SMC-SMU-RESET FAIL: {line}"
-        self.logger.info("CTL-SMC-SMU-RESET LOG: %s", line)
+        assert smu_ok and inside, f"CTRL-SMC-SMU-RESET FAIL: {line}"
+        self.logger.info("CTRL-SMC-SMU-RESET LOG: %s", line)
         await self._wait_smc_fuse_done()
 
         if cfg == "A":

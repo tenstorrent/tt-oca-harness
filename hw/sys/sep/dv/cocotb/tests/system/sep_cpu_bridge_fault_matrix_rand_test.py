@@ -83,7 +83,7 @@ Checkers:
                   ``hw/sys/sep/doc/interrupts.adoc:242-245`` (source 43 is the
                   OR of the AES and watchdog bits). Control: a full-strobe
                   write of the RDL reset value to the same register before the
-                  leg answers OKAY and latches nothing (``CTL-FULL-STROBE``).
+                  leg answers OKAY and latches nothing (``CTRL-FULL-STROBE``).
   CHK-PARTIAL-CLR a write of that block's PERIPH_BUS_ERR_CLEAR bit returns the
                   status to 0 and vector bit 42 to 0.
   CHK-SRC41-EXCL, CHK-SRC42-EXCL, CHK-SRC43-EXCL
@@ -503,10 +503,10 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             )
             if resp != RESP_SLVERR:
                 close_graded_window(self.logger)
-                msg = f"CTL-RESP FAIL {line} expect=SLVERR"
+                msg = f"CTRL-RESP FAIL {line} expect=SLVERR"
                 self.logger.error(msg)
                 raise AssertionError(msg)
-            self.logger.info("CTL-RESP LOG %s", line)
+            self.logger.info("CTRL-RESP LOG %s", line)
         self.latched |= BIT[b]
         return resp
 
@@ -576,9 +576,9 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             f"resp={RESP_NAME.get(resp_c, resp_c)} status_before=0x{st0 & PERIPH_MASK:02x} "
             f"status_after=0x{st1 & PERIPH_MASK:02x} vec42={self._b(vec_c, 42)}"
         )
-        self.logger.info("CTL-FULL-STROBE LOG seed=%d %s", c.seed, ctl)
+        self.logger.info("CTRL-FULL-STROBE LOG seed=%d %s", c.seed, ctl)
         if resp_c != RESP_OKAY or st0 & PERIPH_MASK or st1 & PERIPH_MASK or self._b(vec_c, 42):
-            self._ctrl_missing(f"CTL-FULL-STROBE {ctl} expect=OKAY,status=0,vec42=0")
+            self._ctrl_missing(f"CTRL-FULL-STROBE {ctl} expect=OKAY,status=0,vec42=0")
         # The graded partial write.
         await self._open()
         mk = self.pulses.mark()
@@ -697,7 +697,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
     async def _dma_reg_fault(self) -> tuple[int, int]:
         resp, _ = await self._acc(SepAxiOp.READ, dma_reg_unmapped_addr())
         self.logger.info(
-            "CTL-RESP LOG seed=%d block=dma_reg op=rd addr=0x%08x resp=%s",
+            "CTRL-RESP LOG seed=%d block=dma_reg op=rd addr=0x%08x resp=%s",
             self.c.seed,
             dma_reg_unmapped_addr(),
             RESP_NAME.get(resp, resp),
@@ -710,7 +710,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         vec = await self._vec()
         self.ctrl_reg_path_err = int(bool(d & DMA_REG_PATH_BIT))
         self.logger.info(
-            "CTL-LATCH LOG seed=%d block=dma_reg resp=%s dma_status=0x%x vec40=%d",
+            "CTRL-LATCH LOG seed=%d block=dma_reg resp=%s dma_status=0x%x vec40=%d",
             self.c.seed,
             RESP_NAME.get(resp, resp),
             d & DMA_MASK,
@@ -718,7 +718,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         )
         if resp != RESP_SLVERR or (d & DMA_MASK) != DMA_REG_PATH_BIT or self._b(vec, 40) != 1:
             self._ctrl_missing(
-                f"CTL-LATCH dma_reg set-up resp={resp} dma_status=0x{d:x} vec40={self._b(vec, 40)}"
+                f"CTRL-LATCH dma_reg set-up resp={resp} dma_status=0x{d:x} vec40={self._b(vec, 40)}"
             )
         # Precondition read of PERIPH_BUS_ERR_STATUS, outside the owner window.
         p = await self._periph()
@@ -762,13 +762,13 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         d1 = await self._dma()
         v1 = await self._vec()
         self.logger.info(
-            "CTL-DMA-CLR LOG seed=%d write1=reg_path_clear reg_path_err=%d vec40=%d",
+            "CTRL-DMA-CLR LOG seed=%d write1=reg_path_clear reg_path_err=%d vec40=%d",
             self.c.seed,
             int(bool(d1 & DMA_REG_PATH_BIT)),
             self._b(v1, 40),
         )
         if d1 & DMA_REG_PATH_BIT or self._b(v1, 40):
-            self._ctrl_missing(f"CTL-DMA-CLR write of 1 did not clear: dma_status=0x{d1:x}")
+            self._ctrl_missing(f"CTRL-DMA-CLR write of 1 did not clear: dma_status=0x{d1:x}")
         line = (
             f"cell=reg_clear host_path_err={int(bool(d1 & DMA_HOST_PATH_BIT))} "
             f"vec41={self._b(v1, 41)}"
@@ -1122,7 +1122,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             sets, clrs = self.pulses.clocks(mk, sb), self.pulses.clocks(mk, cb)
             coin = sorted(set(sets) & set(clrs))
             self.logger.info(
-                "RACE-TRIAL LOG seed=%d kind=periph block=%s trial=%d offset=%d fault_clks=%s "
+                "INFO-RACE-TRIAL LOG seed=%d kind=periph block=%s trial=%d offset=%d fault_clks=%s "
                 "clear_clks=%s wr=%s rd=%s",
                 self.c.seed,
                 b,
@@ -1200,7 +1200,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             sets, clrs = self.pulses.clocks(mk, sb), self.pulses.clocks(mk, cb)
             coin = sorted(set(sets) & set(clrs))
             self.logger.info(
-                "RACE-TRIAL LOG seed=%d kind=dma trial=%d offset=%d fault_clks=%s clear_clks=%s "
+                "INFO-RACE-TRIAL LOG seed=%d kind=dma trial=%d offset=%d fault_clks=%s clear_clks=%s "
                 "error=%d",
                 self.c.seed,
                 trial,

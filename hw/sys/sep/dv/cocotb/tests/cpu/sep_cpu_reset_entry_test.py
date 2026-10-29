@@ -77,7 +77,7 @@ Checks:
                        ``sep_cpu_reset_n`` tap is low, in the same resets.
                        Control: every reset shows an ``ifu_req`` request
                        after the tap rise, and one reset a ``rom_req``.
-  CTL-RUNREQ         : (control) the first retirement falls inside the
+  CTRL-RUNREQ         : (control) the first retirement falls inside the
                        observation window after the tap rise, for the drawn
                        ``ext_boot_seq_done_i`` delay and for the zero delay.
   CHK-WDT-STORE-RESP : every write to a WDT register pair (``WKUP_THOLD_HI/LO``,
@@ -145,7 +145,7 @@ write-only, ``WKUP_CTRL`` and ``WDOG_CTRL`` start the counters,
 
 Fuse sense. The leaf reads the mode from the run: with ``+skip_fuse_sense``
 the RTL skips the sense, ``sep_fuse_sense_done_o`` carries no sensed state and
-is logged, not graded (``OBS-TRST-SCOPE-SENSE``). Without it the leaf stages
+is logged, not graded (``INFO-TRST-SCOPE-SENSE``). Without it the leaf stages
 the ``+sep_efuse_preload`` image (required), real sense runs at every cold
 reset, the leaf fails unless ``sep_fuse_sense_done_o`` reads 1 before the
 second cold reset, and CHK-TRST-SCOPE grades the port. The TAP reset reaches
@@ -910,7 +910,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         first_pc = ep.first_retire[1] if ep.first_retire else None
         if first_pc is None:
             raise AssertionError(
-                f"{what}: CTL-RUNREQ FAIL no instruction retired within {W_OBS} clk_i cycles "
+                f"{what}: CTRL-RUNREQ FAIL no instruction retired within {W_OBS} clk_i cycles "
                 "of the sep_cpu_reset_n rise"
             )
         if marker is None:
@@ -921,7 +921,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             entry.append(r.val)
         name = MARKER_NAME.get(marker.val, f"0x{marker.val:08x}")
         self.logger.info(
-            "OBS-ENTRY LOG %s epoch=%d kind=%s rise_clk=%d first_retire_clk=%d first_pc=0x%08x "
+            "INFO-ENTRY LOG %s epoch=%d kind=%s rise_clk=%d first_retire_clk=%d first_pc=0x%08x "
             "marker=%s entry=%s",
             what,
             ep.idx,
@@ -1045,7 +1045,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         while self.clk - ep.rise_clk < W_OBS:
             await RisingEdge(cocotb.top.clk_i)
         self.logger.info(
-            "CTL-RUNREQ: run_req=1 d=%d first_pc=0x%08x retired_in_window=%d window=%d",
+            "CTRL-RUNREQ: run_req=1 d=%d first_pc=0x%08x retired_in_window=%d window=%d",
             d,
             pc,
             ep.retired_in_window,
@@ -1246,7 +1246,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         start = await self._wait_rec(cur_mark, OFF_PASS, PASS_BOUND, f"scope {via} start")
         probe0 = self.rd(dut.scratch_cold_probe_o, mask=0xFFFF_FFFF)
         self.logger.info(
-            "OBS-TRST-SCOPE LOG via=%s tdr=%s start_pass=%d scratch_cold_probe0=0x%08x",
+            "INFO-TRST-SCOPE LOG via=%s tdr=%s start_pass=%d scratch_cold_probe0=0x%08x",
             via,
             tdr,
             start.val,
@@ -1280,7 +1280,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             sense_ok = True
             sense_text = " sense=skipped"
             self.logger.info(
-                "OBS-TRST-SCOPE-SENSE LOG via=%s tdr=%s sep_fuse_sense_done_low=%d of %d "
+                "INFO-TRST-SCOPE-SENSE LOG via=%s tdr=%s sep_fuse_sense_done_low=%d of %d "
                 "(not graded: +skip_fuse_sense skips the sense, so the port carries no "
                 "sensed state)",
                 via,
@@ -1393,7 +1393,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         # A cold reset from a sensed state drops fuse-sense done (real sense).
         self.control_sense_low = ep.sense_low
         self.logger.info(
-            "CTL-COLD-SENSE: cold2 sep_fuse_sense_done_low=%d sep_reset_n_low=%d sense=%s",
+            "CTRL-COLD-SENSE: cold2 sep_fuse_sense_done_low=%d sep_reset_n_low=%d sense=%s",
             ep.sense_low,
             ep.sep_low,
             "real" if self.real_sense else "skipped",
@@ -1456,7 +1456,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 "first boot, so the TAP reset scope cannot grade it"
             )
         self._check_efuse_shadow_after_sense()
-        self.logger.info("CTL-SENSE-DONE: sep_fuse_sense_done_o=1 before cold2 (real sense)")
+        self.logger.info("CTRL-SENSE-DONE: sep_fuse_sense_done_o=1 before cold2 (real sense)")
 
     async def _jtag_legs(self) -> None:
         dut = cocotb.top
@@ -1530,7 +1530,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 f"expected 0x{self.a2:08x} M2"
             )
         self.logger.info(
-            "CTL-TDR-ARM: vector=0x%08x first_pc=0x%08x marker=%s", self.a2, pc, marker
+            "CTRL-TDR-ARM: vector=0x%08x first_pc=0x%08x marker=%s", self.a2, pc, marker
         )
         await self._scope_leg("TLR", "programmed", mark)
 
@@ -1577,7 +1577,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         mark = len(self._mbx())
         mem = self._mem("sram")
         mem[(ST_FLAG - SRAM_BASE) // 8].value = 1
-        self.logger.info("CTL-STORE-LEG: flag set at 0x%08x", ST_FLAG)
+        self.logger.info("INFO-STORE-LEG: flag set at 0x%08x", ST_FLAG)
         await self._wait_rec(mark, OFF_ST_DONE, PASS_BOUND, "store routine end")
         await self._wait_b_drain()
         await ClockCycles(dut.clk_i, ST_SETTLE)
@@ -1592,7 +1592,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             x for x in self._writes(tap) if x[0].addr is not None and WDT_LO <= x[0].addr < WDT_HI
         ]
         self.logger.info(
-            "OBS-STORE-LEG LOG wdt_writes=%d readbacks=%d nmi=%s",
+            "INFO-STORE-LEG LOG wdt_writes=%d readbacks=%d nmi=%s",
             len(wdt),
             len(rds),
             " ".join(f"mcause=0x{c:08x}/mdseac=0x{a:08x}" for c, a in nmis) or "-",

@@ -829,7 +829,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
                     t_xfer = max(1, self.trace.clk - t_offer)
         t_fill = max(1, self.trace.clk - t_start)
         level_before = await self._status_settled()
-        self.chk.obs("XRST-FILL", t_xfer=t_xfer, t_fill=t_fill, level_before=level_before)
+        self.chk.info("XRST-FILL", t_xfer=t_xfer, t_fill=t_fill, level_before=level_before)
 
         # Step 4: restart stream 2 with the first beat of one pair only, so the pool
         # holds a half-packed word (and cannot fill) when the reset asserts at the offset.
@@ -1129,7 +1129,9 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             1 for c in range(len(CLIENTS)) for w in acked(later, c) if w in before_setup
         )  # fmt: skip
         if served:
-            self.chk.obs("XRST-SERVED", client=client, attempt=attempt, done=int(t_end is not None))
+            self.chk.info(
+                "XRST-SERVED", client=client, attempt=attempt, done=int(t_end is not None)
+            )
             if t_end is None:
                 _kill(task)
             if stale_served:
@@ -1219,7 +1221,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             self._start_feeder(1, self.sent_s)
             warm = await self._op_caught("kmac")
             await self._silence(1)
-            self.chk.obs("ADAPTER-CLEAR-WARMUP", client="kmac", golden_ok=int(warm["golden_ok"]))
+            self.chk.info("ADAPTER-CLEAR-WARMUP", client="kmac", golden_ok=int(warm["golden_ok"]))
             for client in AC_CLIENTS:
                 for d in AC_DELAYS:
                     results[client].append(await self._ac_trial(client, d, sentinel))
@@ -1312,7 +1314,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         close_graded_window(self.logger)
         pr = mon.disarm()
         phase = pr["phase"]
-        self.chk.obs(
+        self.chk.info(
             "ADAPTER-CLEAR-TRIAL", client=client, d=d, phase=_na(phase),
             latency_write_to_clear=_na(pr["latency"]), eff_d=_na(pr["eff_d"]),
             ack_period=_na(pr["ack_period"]), acks_before_clear=pr["acks_before_clear"],

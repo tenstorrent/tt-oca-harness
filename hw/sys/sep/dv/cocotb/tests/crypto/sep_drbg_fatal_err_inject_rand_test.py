@@ -373,7 +373,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         t0 = self._now()
         await self._rd(UNITS["csrng"].err_code)
         self.t_ref = max(1, self._now() - t0)
-        self.logger.info("T-REF t_ref=%d bound=%d", self.t_ref, LAT_FACTOR * self.t_ref)
+        self.logger.info("INFO-T-REF t_ref=%d bound=%d", self.t_ref, LAT_FACTOR * self.t_ref)
 
     async def _wait_err_bit(self, unit: Unit, bit_mask: int) -> tuple[bool, int, int]:
         """Read ERR_CODE until ``bit_mask`` is set, at most 16 x t_ref clocks."""
