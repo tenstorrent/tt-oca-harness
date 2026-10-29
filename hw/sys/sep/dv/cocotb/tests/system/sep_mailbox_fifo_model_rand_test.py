@@ -814,7 +814,12 @@ class sep_mailbox_fifo_model_rand_test(sep_base_test):
                 await self._push(m, pu, d)
             occ_above = mb.occ(f)
             c4 = await self._check([m], f"ack_reabove cause={cause} port={port}")
-            await self._wr(m, port, "IRQS", bit)
+            resp = await self.ops[m].wr(port, "IRQS", bit)
+            self.mbx[m].write_reg(port, "IRQS", bit)
+            line = f"mbox={m} port={port} cause={cause} irqs_wr=0x{bit:x} resp={resp_name(resp)}"
+            if resp != RESP_OKAY:
+                self._fail("CTRL-W1C-ABOVE", line)
+            self.logger.info("CTRL-W1C-ABOVE LOG seed=%d %s", self.seed, line)
             c5 = await self._check([m], f"ack_w1c_above cause={cause} port={port}")
 
             def s(cc: CC) -> tuple[int, int]:
