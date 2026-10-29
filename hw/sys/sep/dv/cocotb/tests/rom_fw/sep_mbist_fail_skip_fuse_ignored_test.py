@@ -22,7 +22,7 @@ import shutil
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_smc_mem import SMC_SCRATCH10_ADDR
@@ -160,6 +160,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
         last_log = 0
         for cycle in range(_MAX_RUN_CYCLES):
             await RisingEdge(dut.clk_i)
+            await ReadOnly()
             status = (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
             if status != last_status:
                 last_status = status
@@ -189,6 +190,7 @@ class sep_mbist_fail_skip_fuse_ignored_test(sep_firmware_mbist_fail_test):
         if halted:
             for _ in range(self.quiesce_cycles):
                 await RisingEdge(dut.clk_i)
+                await ReadOnly()
                 if self.rd(dut.cpu_trace_valid_o):
                     post_pcs.add(self.rd(dut.cpu_trace_addr_o))
                 status = (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
