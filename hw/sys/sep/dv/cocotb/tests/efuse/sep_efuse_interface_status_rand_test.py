@@ -440,10 +440,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         t_go = win["n"]
         await task
         t_sense = win["t_sense"]
+        await ClockCycles(dut.clk_i, self.w)
         landed = self._landed(
             "pre_sense", "EFUSE_PROGRAM_CTRL", go, await self._rd(PROGRAM_CTRL_ADDR)
         )
-        await ClockCycles(dut.clk_i, self.w)
         f = await self._flags()
         self.chk.obs(
             "IF-STATUS-FLAGS",
