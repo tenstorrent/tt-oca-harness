@@ -3722,3 +3722,19 @@ args = [
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+esrc_noise_force",
 ]
+
+[[tests]]
+# SMC-020 positive direction only: the ROM writes the four spec patterns to SMC scratch[7], reads
+# each back with matching data before the next write, and leaves scratch[7] at zero by the hand-off.
+name = "sep_rom_smc_scratch_sanity_test"
+module = "rom_fw.sep_rom_smc_scratch_sanity_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 5400
+tags = ["boot", "rom", "smc", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+]
