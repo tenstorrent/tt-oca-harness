@@ -620,17 +620,17 @@ module sep_uvm_top
         .dmi_uncore_addr              (),
         .dmi_uncore_wdata             (),
         .dmi_uncore_rdata             ('0),
-        .dmi_active                   (),
+        .dmi_active                   (dmi_active_probe_o),
 
         .sep_cpu_trace                (cpu_trace_w),
         // Direct reset-vector input.
         .rst_vec                      (rst_vec_i),
         .jtag_id                      (jtag_id_drive),
 
-        // Interrupts. timer_int and soft_int are tied to 0. The boundary PIC
-        // input is the top-port drive sep_ext_interrupts_i (0 unless a leaf
-        // drives it).
-        .timer_int                    (1'b0),
+        // Interrupts. soft_int is tied to 0. timer_int is the top-port drive
+        // timer_int_i and the boundary PIC input is the top-port drive
+        // sep_ext_interrupts_i (0 unless a leaf drives them).
+        .timer_int                    (timer_int_i === 1'b1),
         .soft_int                     (1'b0),
         .sep_ext_interrupts_i         (sep_ext_interrupts_i),
 
@@ -660,7 +660,7 @@ module sep_uvm_top
 
         // Wrapper status/debug outputs. Unconnected ports have no consumer
         // in this TB; the rest are real DUT outputs brought to tb ports.
-        .lc_state_o                   (),
+        .lc_state_o                   (lc_state_probe_o),
         .dbg_disable_o                (dbg_disable_w),
         .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
         .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
@@ -1698,6 +1698,12 @@ module sep_uvm_top
     // Read-only XMR.
     assign wdt_wdog_count_o =
         `SEP_CORE.u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q;
+    // Wakeup interrupt request of the AON timer core and the low word of the
+    // wakeup count it compares (clk_wdt_i domain). Read-only XMR.
+    assign aon_wkup_probe_o = {
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_aon_timer.u_core.wkup_intr_o,
+        `SEP_CORE.u_sep_wdt_wrap.u_wdt_aon_timer.u_core.wkup_count[31:0]
+    };
     // sep_reset_n override select on the SEP input port. Read-only XMR.
     assign jtag_sep_reset_n_ovrd_probe_o =
         `SEP_CORE.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd;
@@ -3566,6 +3572,7 @@ module sep_uvm_top
     assign esrc_compress_vld_o  = `SEP_ESRC.entropy_stream_vld_o;
     assign esrc_compress_data_o = `SEP_ESRC.entropy_stream_data_o;
     assign drbg_seed_valid_o    = `SEP_DRBG.u_csrng_seed_adapter.seed_queue_valid_o;
+    assign drbg_seed_word_ready_o = `SEP_DRBG.u_csrng_seed_adapter.csrng_word_ready_o;
     assign drbg_es_ack_o        = `SEP_DRBG.u_csrng.entropy_src_hw_if_i.es_ack;
     assign drbg_es_bits_o       = `SEP_DRBG.u_csrng.entropy_src_hw_if_i.es_bits;
     assign drbg_genbits_vld_o   = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
@@ -5686,6 +5693,7 @@ module sep_uvm_top
     assign otbn_intg_flip_mem_i      = 1'b0;
     assign otbn_intg_flip_bit_i      = '0;
     assign sep_ext_interrupts_i     = '0;
+    assign timer_int_i              = 1'b0;
     assign smn_outbound_resp_hold_i = 1'b0;
     assign smn_outbound_rd_slverr_i = 1'b0;
     assign smn_outbound_ready_stall_i = '0;

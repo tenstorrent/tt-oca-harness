@@ -43,6 +43,9 @@
 // The host draws n for each 4n + 2 fill and patches it into g_zero_params.
 // The words a rejected fill targets have no stated value: they are logged on
 // an OBS-ZERO-TCM-SPAN line and not graded.
+// For a 4-byte-wide fill of the DCCM buffer at a destination that is not
+// 4-byte aligned, STATUS, ERROR_CODE, DMA_BUS_ERR_STATUS and the first four
+// buffer words are logged on an OBS-ZERO-TCM-MISALIGN line and not graded.
 
 #include <stdint.h>
 
@@ -498,6 +501,38 @@ static int chk_zero_tcm_partial(void) {
     return e;
 }
 
+// Bytes of the misaligned 4-byte-wide DCCM fill.
+#define DCCM_MISALIGN_BYTES 8u
+
+static void obs_tcm_misalign(void) {
+    const uint32_t base = (uint32_t)(uintptr_t)dccm_buf;
+    for (uint32_t i = 0; i < NWORDS + 2u; i++) {
+        dccm_buf[i] = pattern(i);
+    }
+    __asm__ volatile("fence" ::: "memory");
+    const uint32_t st = zero_fill(base + 2u, DCCM_MISALIGN_BYTES, SEP_DMA_WIDTH_4B);
+    const uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    const uint32_t bus = rd(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR);
+    __asm__ volatile("fence" ::: "memory");
+    sep_mbx_puts("OBS-ZERO-TCM-MISALIGN status=");
+    sep_mbx_puthex(st);
+    sep_mbx_puts(" error_code=");
+    sep_mbx_puthex(err);
+    sep_mbx_puts(" bus_err_status=");
+    sep_mbx_puthex(bus);
+    sep_mbx_puts(" span=");
+    for (uint32_t i = 0; i < 4u; i++) {
+        sep_mbx_puthex(dccm_buf[i]);
+        sep_mbx_putc(i < 3u ? ',' : '\n');
+    }
+    // Leave the engine idle: clear both error registers, then run a 4-byte-wide
+    // fill of the aligned buffer start.
+    wr(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    (void)zero_fill(base, 4u, SEP_DMA_WIDTH_4B);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+}
+
 int main(void) {
     int errors = 0;
 
@@ -513,6 +548,7 @@ int main(void) {
     errors += chk_zero_iccm();
     errors += chk_zero_tcm_narrow();
     errors += chk_zero_tcm_partial();
+    obs_tcm_misalign();
 
     sep_mbx_puts(errors ? "DMA zero fill test FAILED\n" : "DMA zero fill test PASSED\n");
     return errors;

@@ -305,6 +305,9 @@
 // extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
 `SEP_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], sep_ext_interrupts_i)
+// Machine timer interrupt pin of sep (sep_wrapper timer_int, mip.MTIP). A value
+// other than 1 drives 0. Default 0 (top-port drive, docs/SEP_TB_ARCH.adoc).
+`SEP_TB_IN(logic, timer_int_i)
 // Outbound responder response control (tb/sep_outbound_mbx.sv), default 0.
 // smn_outbound_resp_hold_i=1 keeps the responder from raising a B or R
 // response; one already on offer completes, and the requests are still
@@ -737,6 +740,7 @@
 `SEP_TB_OUT(logic, esrc_compress_vld_o)  // CHK2: compressor output valid
 `SEP_TB_OUT(logic [31:0], esrc_compress_data_o)  // CHK2: compressor output word
 `SEP_TB_OUT(logic, drbg_seed_valid_o)  // seed accumulated/presented to CSRNG
+`SEP_TB_OUT(logic, drbg_seed_word_ready_o)  // seed packer ready for an entropy word
 `SEP_TB_OUT(logic, drbg_es_ack_o)  // CSRNG seed-handshake ack
 `SEP_TB_OUT(logic [383:0], drbg_es_bits_o)  // CHK4: 384-bit hardware seed
 `SEP_TB_OUT(logic, drbg_genbits_vld_o)  // CHK4: CTR_DRBG genbits valid
@@ -958,6 +962,9 @@
 // (u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q, clocked by clk_wdt_i).
 // Read-only.
 `SEP_TB_OUT(logic [31:0], wdt_wdog_count_o)
+// AON timer wakeup core (u_wdt_aon_timer.u_core): bit 32 wkup_intr_o, bits 31:0
+// the low word of the wakeup count it compares. clk_wdt_i domain. Read-only XMR.
+`SEP_TB_OUT(logic [32:0], aon_wkup_probe_o)
 // sep_reset_n override select at the SEP boundary
 // (u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd): the value SEP receives
 // after the pin-or-TDR mux.
@@ -972,6 +979,8 @@
 // mux (u_sep_cpu.u_el2_veer_wrapper): bit 8 dmi_en, bit 7 dmi_wr_en, bits 6:0
 // dmi_addr. Read-only. Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic [8:0], dmi_req_probe_o)
+// dmi_active output of sep (frontdoor DUT output).
+`SEP_TB_OUT(logic, dmi_active_probe_o)
 // Read source of SEP_CPU_CTRL.TIMEOUT_INTERRUPT.reserved (sw=r, hw=w, no storage):
 // the hwif_in value that the register block returns on a read, on each clock.
 `SEP_TB_OUT(logic, timeout_interrupt_probe_o)
@@ -1566,6 +1575,9 @@
 // The packed 64-bit sep_efuse_map_lc_disable_reg_t feature-control vector,
 // read-only XMR.
 `SEP_TB_OUT(logic [63:0], lcc_feat_ctrl_probe_o)
+// lc_state_o of sep: the differentially encoded lifecycle state (frontdoor DUT
+// output).
+`SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_state_probe_o)
 // Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
 // read these by name so a packed-struct reorder cannot swap two same-case
 // bits past the golden. The flattened vector stays for a width self-test.

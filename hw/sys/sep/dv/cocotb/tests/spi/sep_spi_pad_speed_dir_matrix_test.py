@@ -721,7 +721,9 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             self.logger.info("CHK-SPI-CELL PASS %s", line)
 
             if seg.is_rx:
-                rx_rows.append((seg, res["rx_read"], rxqd, drained))
+                all_rx = res["rx_words"] + drained_words
+                last_word = int(all_rx[-1]) if all_rx else 0
+                rx_rows.append((seg, res["rx_read"], rxqd, drained, last_word, st.byteorder))
             else:
                 nonrx_rxqd.append(rxqd)
                 if rxqd or drained:
@@ -745,8 +747,18 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 f"CTRL-MISSING seed={seed} CHK-SPI-RXCNT: graded Rx directions {sorted(dirs)}, "
                 f"non-Rx controls {len(nonrx_rxqd)}"
             )
-        for seg, in_seg, rxqd, drained in rx_rows:
+        for seg, in_seg, rxqd, drained, last_word, byteorder in rx_rows:
             nbytes = seg.len_field + 1
+            if nbytes % 4:
+                self.logger.info(
+                    "OBS-SPI-RX-PAD seed=%d speed=%d dir=%d bytes=%d last_word=0x%08x byteorder=%d",
+                    seed,
+                    seg.speed,
+                    seg.direction,
+                    nbytes,
+                    last_word,
+                    byteorder,
+                )
             words = in_seg + drained
             row = (
                 f"seed={seed} speed={seg.speed} dir={seg.direction} bytes={nbytes} "

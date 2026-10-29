@@ -1037,6 +1037,16 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 )
             idx = j + 3
         sizes = sorted({s for _a, s, _d in p.stores})
+        t0, t1 = self._marker_t(OFF_ST_B), self._marker_t(OFF_ST_E)
+        # rom.adoc states that a store receives a response, not which one, so the
+        # B beats on the LSU ROM port are logged.
+        b_beats = self._in(self.lsu_rom.beats, t0, t1, "b")
+        self.logger.info(
+            "OBS-ROM-STORE-RESP n_stores=%d b_beats=%d bresp=%s",
+            N_STORES,
+            len(b_beats),
+            ",".join("X" if b.resp is None else str(b.resp) for b in b_beats),
+        )
         self._grade(
             "CHK-ROM-STORE",
             not bad,
@@ -1045,7 +1055,6 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             + ("" if not bad else " " + "; ".join(bad[:4])),
         )
         # CHK-ROM-STORE-WE: macro requests at the store words in the store leg.
-        t0, t1 = self._marker_t(OFF_ST_B), self._marker_t(OFF_ST_E)
         exp_n = Counter((a - ROM_BASE) >> 3 for a, _s, _d in p.stores)
         exp_n = Counter({w: 4 * n for w, n in exp_n.items()})
         got_n = Counter(b.addr for b in self._in(self.macro.beats, t0, t1, "req"))

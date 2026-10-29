@@ -1384,21 +1384,16 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             "dma_csr_src": "nc_csr_src",
             "pool_src": "nc_pool_src",
         }
+        # The KM aperture and the PIC base as DMA sources are logged, not graded.
+        logged = {"km_src": "nc_km_src", "pic_src": "nc_pic_src"}
+        logged_seen = set()
         graded = 0
         for _leg_rec, r, text in self._recs("NC"):
             tgt = text.split("tgt=")[1].split()[0]
-            leg_i = self._leg_index(names[tgt])
+            leg_i = self._leg_index({**names, **logged}[tgt])
             end = {0: "done", 1: "error", 2: "timeout"}[r["end"]]
-            assert (r["pre"] & ST3) == 0, (
-                f"CHK-DMA-NOTCONN FAIL: {tgt} STATUS bits not clear before GO: {text}"
-            )
-            t_go, t_irq = self._go_and_irq(leg_i)
-            assert t_irq is not None, (
-                f"CHK-DMA-NOTCONN FAIL: {tgt} ended {end} with no DMA interrupt edge"
-            )
-            # No DMA path reaches the boot ROM, the DMA CSR port or the entropy
-            # pool; no spec sentence states the DMA outcome of such a request,
-            # so the end state is logged.
+            # No DMA path reaches these targets; no spec sentence states the DMA
+            # outcome of such a request, so the end state is logged.
             self.logger.info(
                 "OBS-DMA-NOTCONN-RESP: %s end=%s bus_error=%d dma_status=0x%08x error_code=0x%08x",
                 tgt,
@@ -1406,6 +1401,16 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 int(self._bus_error(r)),
                 r["st"],
                 r["ec"],
+            )
+            if tgt in logged:
+                logged_seen.add(tgt)
+                continue
+            assert (r["pre"] & ST3) == 0, (
+                f"CHK-DMA-NOTCONN FAIL: {tgt} STATUS bits not clear before GO: {text}"
+            )
+            t_go, t_irq = self._go_and_irq(leg_i)
+            assert t_irq is not None, (
+                f"CHK-DMA-NOTCONN FAIL: {tgt} ended {end} with no DMA interrupt edge"
             )
             if tgt == "pool_src":
                 self._chk_pool(leg_i, r, end, t_go)
@@ -1458,6 +1463,9 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             graded += 1
         assert graded == len(names), (
             f"CHK-DMA-NOTCONN FAIL: {graded} not-connected runs graded, expected {len(names)}"
+        )
+        assert logged_seen == set(logged), (
+            f"OBS-DMA-NOTCONN-RESP: records for {sorted(logged_seen)}, expected {sorted(logged)}"
         )
         self.logger.info("STEP not-connected: %d graded runs", graded)
 

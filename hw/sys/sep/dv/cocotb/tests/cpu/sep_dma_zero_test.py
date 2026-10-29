@@ -158,12 +158,6 @@ class sep_dma_zero_test(sep_base_test):
         for ln in lines:
             if ln.startswith("OBS-"):
                 self.logger.info("%s LOG (firmware)", ln)
-        self.logger.info(
-            "OBS-ZERO-TCM-MISALIGN LOG not_run: a 4-byte-wide fill to a TCM destination that is "
-            "not 4-byte aligned is not run; hw/sys/sep/doc/dma.adoc:118-121 states BUS_ERROR "
-            "for it, and vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:91 "
-            "asks DST_ADDR_LO aligned to the transfer width, with no stated error class"
-        )
         needles = list(_CHECKS)
         for chk, key, what in _CHECKS_N:
             needles.append((f"PASS: {chk} n=0x{n[key]:08x} ", chk, f"{what} (n={n[key]})"))

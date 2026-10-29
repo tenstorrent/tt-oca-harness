@@ -684,6 +684,13 @@ static void gw_cell(uint32_t g) {
     gw_assert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t a1 = meip_bit(id);
+    uint32_t lclr = 0u;
+    if (!(cell >> 1)) {
+        // A level cell takes a meigwclr write with its input asserted; the
+        // pending bit after it is logged.
+        pic_write_meigwclr(id, clr);
+        lclr = meip_bit(id);
+    }
     gw_deassert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t d1 = meip_bit(id);
@@ -710,6 +717,7 @@ static void gw_cell(uint32_t g) {
     rec_num("after_clr", c1);
     rec_num("reasserted", a2);
     rec_num("after_clr2", c2);
+    rec_num("lclr", lclr);
     rec_hex("clr_val", clr);
     rec_end();
     pic_set_gateway(id, 0u, 0u);
@@ -992,7 +1000,9 @@ int main(void) {
 
     // Single-source reads.
     rec_mark(1, "single");
+    req_tag("m", "s0");
     single_walk();
+    req_tag("m", "s1");
     wr(CS(ENABLE), CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bm);
 
     // Alert kinds, the no-write window and the pair trial.

@@ -229,6 +229,9 @@ from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_dma_ops import (
+    CFG_REGWEN as DMA_CFG_REGWEN,
+)
+from seq_lib.sep_dma_ops import (
     CONTROL as DMA_CONTROL,
 )
 from seq_lib.sep_dma_ops import (
@@ -240,6 +243,9 @@ from seq_lib.sep_dma_ops import (
     SepDmaOps,
     SepMemWords,
     asid_word,
+)
+from seq_lib.sep_dma_ops import (
+    STATUS as DMA_STATUS,
 )
 from seq_lib.sep_spi_host_csr_seq import (
     CONTROL as SPI_CONTROL,
@@ -1489,6 +1495,17 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             n_moved,
             n_tot,
             "".join(str(int(f)) for f in filled),
+        )
+        # Engine state while GO is 1 and the trigger is low: STATUS.BUSY,
+        # CFG_REGWEN and the DMA busy output, read before the re-trigger.
+        wait_st = DmaStatus(await self.dma.rd(DMA_STATUS))
+        wait_regwen = await self.dma.rd(DMA_CFG_REGWEN)
+        self.logger.info(
+            "OBS-DMA-HS-WAIT LOG seed=%d busy=%d cfg_regwen=0x%x busy_probe=%s",
+            cfg.seed,
+            wait_st.busy,
+            wait_regwen,
+            self.busy.level(),
         )
         # Re-trigger leg, GO still 1: the DMA drained RXQD below RX_WATERMARK, so
         # the trigger is low; a second segment of W+1 words raises it again and

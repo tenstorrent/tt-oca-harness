@@ -53,8 +53,11 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
 masked in every compare), ``OBS-GW-EL`` (the EL idle and asserted reads,
 whose values depend on the unstated edge direction), ``OBS-MASKED-VISIBLE``,
-``OBS-SRC34``, the source 12 latency and shape, the boundary source index,
-``OBS-VECTOR``, ``OBS-FIFO-EMPTY``, ``OBS-ALERT-MEIP`` and ``OBS-MASKED-CLEAR``.
+``OBS-SRC34``, ``OBS-SRC-SHAPE`` (the high clocks and rises of each source
+line over the single-source walk, and the source 12 latency and shape),
+``OBS-GWCLR-LEVEL`` (the pending bit after a meigwclr write to an asserted
+level cell), the boundary source index, ``OBS-VECTOR``, ``OBS-FIFO-EMPTY``,
+``OBS-ALERT-MEIP`` and ``OBS-MASKED-CLEAR``.
 
 The firmware brings the entropy stack up before the engine runs (AES masking
 and the OTBN URND draw from EDN); this test drives the raw noise of the ring
@@ -362,7 +365,13 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
     # ---- host requests ----
     def _on_mark(self, kv: dict) -> None:
         tag = kv["t"]
-        self.marks[tag] = (self.w.mark(), self.wa.mark(), self.w.level("b11"), self.w.level("b32"))
+        self.marks[tag] = (
+            self.w.mark(),
+            self.wa.mark(),
+            self.w.level("b11"),
+            self.w.level("b32"),
+            self.wv.mark(),
+        )
 
     async def _req_mark(self, kv: dict) -> None:
         self._on_mark(kv)
@@ -562,6 +571,22 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"exp0=0x{exp[0]:08x} exp1=0x{exp[1]:08x} "
                 f"rsvd_idle=0x{got[0] & idle[0]:08x},0x{got[1] & idle[1]:08x}",
             )
+        # No spec states whether a source line is a pulse or a level, so the
+        # shape of each line over the single-source walk is logged.
+        m0, m1 = self._mark("s0")[4], self._mark("s1")[4]
+        for kv in singles:
+            src = int(kv["src"])
+            bit = f"v{vec_bit(src)}"
+            self.wv.high_clocks_since(m1, bit)
+            high = m1.high[bit] - m0.high[bit]
+            rises = m1.rises[bit] - m0.rises[bit]
+            self.logger.info(
+                "OBS-SRC-SHAPE LOG src=%d high_clk=%d rises=%d shape=%s",
+                src,
+                high,
+                rises,
+                "pulse" if high == rises else "level",
+            )
 
     def _high_between(self, tag: str, bit: str) -> int:
         """High clocks of ``bit`` from the mark ``tag`` to the vector sample of the same tag."""
@@ -746,10 +771,16 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         rises = self.w.rise_clks_since(self._mark("d1")[0], "b11")
         lat = (rises[0] - self._mark("d1")[0].clk) if rises else -1
         shape = "pulse" if self._mark("d2")[2] == 0 else "level"
+        self.logger.info(
+            "OBS-SRC-SHAPE LOG src=12 kind=dma_alert high_clk=%d shape=%s latency_clk=%d",
+            hc,
+            shape,
+            lat,
+        )
         self._check(
             pre == 0 and pre_lvl == 0 and hc > 0,
             "CHK-ALERT12",
-            f"pre_window_src12={pre} src12_high_cycles={hc} shape={shape} latency_clk={lat}",
+            f"pre_window_src12={pre} src12_high_cycles={hc}",
         )
         return ctrl
 
@@ -861,6 +892,12 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                     f"clr_val=0x{kv['clr_val']:08x}",
                 )
                 continue
+            if cell[0] == "L":
+                # The meigwclr effect on a level cell is not stated, so the pending
+                # bit after a meigwclr write with the input asserted is logged.
+                self.logger.info(
+                    "OBS-GWCLR-LEVEL LOG src=%d cell=%s lclr=%d", src, cell, int(kv["lclr"])
+                )
             exp = CELL_MODEL[cell]
             ok = vals == exp
             text = (
@@ -1007,12 +1044,14 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             {f"a{i}": i for i in range(N_ALERT_IDX)},
             name="alert",
         )
+        self.wv = SepBitWatch(vec, {f"v{i}": i for i in range(NUM_VEC)}, name="vec_all")
         tasks = []
 
         async def _after_release() -> None:
             # The watchers start once the reset is released; the first REQ comes later.
             self.w.start()
             self.wa.start()
+            self.wv.start()
             tasks.append(cocotb.start_soon(self._rd_tap()))
 
         self.sb.expected_line = _BANNER
@@ -1046,6 +1085,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 t.cancel()
             await self.w.stop()
             await self.wa.stop()
+            await self.wv.stop()
             self.dut.sep_ext_interrupts_i.value = 0
             self.dut.hmac_fifo_drain_stall_i.value = 0
             self.dut.kmac_fifo_drain_stall_i.value = 0

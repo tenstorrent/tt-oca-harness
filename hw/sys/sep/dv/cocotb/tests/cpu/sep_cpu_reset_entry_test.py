@@ -101,6 +101,9 @@ Checks:
                        the watchdog request resets the memory interfaces; the
                        RTL resets them on ``sep_reset_n``. The contract is
                        open.
+  OBS-RUNREQ0-FETCH  : logged, not graded. After every grade, one more cold
+                       reset with ``mpc_reset_run_req`` 0: the retirements and
+                       the ``ifu_req`` cycles within W_obs of the tap rise.
 
 Every CPU reset is applied at a quiet point: after a pass-count store of the
 routine has its write response, while the core runs the routine spin loop in
@@ -530,6 +533,8 @@ class _Epoch:
     # The first PR-IFU AR request after the tap rise: (clk, addr, len, size);
     # a field that is not fully known is None.
     first_ifu_ar: tuple | None = None
+    # ifu_req cycles within W_OBS clk_i cycles of the tap rise.
+    ifu_req_in_window: int = 0
 
 
 @dataclass
@@ -734,6 +739,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
                         ep.retired_in_window += 1
                 if rom_req and ep.first_rom_fetch_clk is None:
                     ep.first_rom_fetch_clk = self.clk
+                if ifu_req and self.clk - ep.rise_clk < W_OBS:
+                    ep.ifu_req_in_window += 1
                 if ifu_req and ep.first_ifu_fetch_clk is None:
                     ep.first_ifu_fetch_clk = self.clk
                     ep.first_ifu_ar = (
@@ -1055,6 +1062,37 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-RSTVEC-DEFAULT", f"reset={label} ", ep, pc, marker, DEFAULT_RESET_PC, "M_ROM"
         )
 
+    async def _run_req0_leg(self) -> None:
+        """OBS-RUNREQ0-FETCH: one cold reset with run request 0, after every grade.
+
+        No spec states what the core fetches or retires when ``mpc_reset_run_req``
+        is 0 at the reset release, so the retirements and the PR-IFU requests of
+        the W_obs window after the tap rise are logged. The run request returns
+        to 1 after the window.
+        """
+        dut = cocotb.top
+        self._stop = False
+        cocotb.start_soon(self._sampler())
+        dut.mpc_reset_run_req.value = 0
+        ep, _mark = await self._cold_pulse()
+        for _ in range(self.rise_bound):
+            if ep.rise_clk is not None:
+                break
+            await RisingEdge(dut.clk_i)
+        if ep.rise_clk is not None:
+            while self.clk - ep.rise_clk < W_OBS:
+                await RisingEdge(dut.clk_i)
+        self.logger.info(
+            "OBS-RUNREQ0-FETCH retired_in_window=%d ifu_req_clk=%d window=%d rise=%s",
+            ep.retired_in_window,
+            ep.ifu_req_in_window,
+            W_OBS,
+            "none" if ep.rise_clk is None else "seen",
+        )
+        dut.mpc_reset_run_req.value = 1
+        self._stop = True
+        await ClockCycles(dut.clk_i, 2)
+
     async def _tap_reset(self, via: str) -> None:
         if via == "TRST":
             await self.dmi.trst_pulse(tck_cycles=self.trst_tck)
@@ -1366,6 +1404,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self._grade_no_early()
         # Graded last: every other check above has already run.
         self._grade_store_resp()
+        await self._run_req0_leg()
         if self.failures:
             raise AssertionError("; ".join(self.failures))
         self.result_pass(TEST, self.random_seed(), self.n_checks)

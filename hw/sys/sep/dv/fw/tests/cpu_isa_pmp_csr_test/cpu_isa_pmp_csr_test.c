@@ -21,7 +21,8 @@
 //   ROW i= op= r= / CROW i= op= r=         result of table row i (control rows after bset)
 //   ZBS traps= mcause= mepc= pc=           the bset step
 //   PMP0 r0..r15= / PMPC i= r0..r15=       pmpaddr readbacks after the drawn and the complement
-//   writes MSECCFG v= traps= MRAC j= v= rb= traps= mcause= mepc= rok= rden= INSTRET r1= r2= pc1=
+//   writes PMPX a= v= rb= traps= mcause=   pmpaddr16 and pmpaddr63 write/read of the drawn value
+//   MSECCFG v= traps= MRAC j= v= rb= traps= mcause= mepc= rok= rden= INSTRET r1= r2= pc1=
 //   pc2=
 
 #include <stdint.h>
@@ -41,15 +42,16 @@ enum {
     P_MAGIC = 0,
     P_SEED,
     P_NROW,
-    P_CTRL,                 // NCTRL row indices re-run after the bset trap
-    P_PMP = P_CTRL + NCTRL, // 16 drawn pmpaddr values
-    P_MRAC = P_PMP + NPMP,  // 4 drawn mrac values
-    P_AW = P_MRAC + NMRAC,  // 4 seeded words of the allowed region
-    P_DW = P_AW + NMRAC,    // 4 seeded words of the denied region
-    P_AREG = P_DW + NMRAC,  // allowed SRAM region base (4 KiB aligned)
-    P_DREG,                 // denied SRAM region base (4 KiB aligned)
-    P_ROWS,                 // NROW_MAX rows of {op, a, b, expected}
-    P_WORDS = P_ROWS + 4u * NROW_MAX,
+    P_CTRL,                          // NCTRL row indices re-run after the bset trap
+    P_PMP = P_CTRL + NCTRL,          // 16 drawn pmpaddr values
+    P_MRAC = P_PMP + NPMP,           // 4 drawn mrac values
+    P_AW = P_MRAC + NMRAC,           // 4 seeded words of the allowed region
+    P_DW = P_AW + NMRAC,             // 4 seeded words of the denied region
+    P_AREG = P_DW + NMRAC,           // allowed SRAM region base (4 KiB aligned)
+    P_DREG,                          // denied SRAM region base (4 KiB aligned)
+    P_ROWS,                          // NROW_MAX rows of {op, a, b, expected}
+    P_PMPX = P_ROWS + 4u * NROW_MAX, // drawn value for pmpaddr16 and pmpaddr63
+    P_WORDS,
 };
 
 volatile uint32_t g_prm[P_WORDS] = {
@@ -398,6 +400,29 @@ static void put_list(const uint32_t *r) {
     rec_end();
 }
 
+// Write then read pmpaddr16 (CSR 0x3C0) or pmpaddr63 (CSR 0x3EF). The readback
+// stays 0 when the read traps.
+#define PMPX_PROBE(csr) \
+    do { \
+        uint32_t rb_ = 0u; \
+        uint32_t n_ = g_ntrap; \
+        g_mcause = 0u; \
+        CSR_WRITE(csr, v); \
+        __asm__ volatile("csrr %0, " #csr : "+r"(rb_)::"memory"); \
+        sep_mbx_puts("PMPX"); \
+        rec_hex("a", csr); \
+        rec_hex("v", v); \
+        rec_hex("rb", rb_); \
+        rec_hex("traps", g_ntrap - n_); \
+        rec_hex("mcause", g_mcause); \
+        rec_end(); \
+    } while (0)
+
+static void pmpx_probe(uint32_t v) {
+    PMPX_PROBE(0x3C0);
+    PMPX_PROBE(0x3EF);
+}
+
 // NAPOT pmpaddr of a naturally aligned 4 KiB region.
 static uint32_t napot4k(uint32_t base) {
     return (base >> 2) | 0x1FFu;
@@ -483,6 +508,7 @@ int main(void) {
         rec_hex("i", i);
         put_list(rb);
     }
+    pmpx_probe(g_prm[P_PMPX]);
     n0 = g_ntrap;
     uint32_t msec = CSR_READ(0x747);
     sep_mbx_puts("MSECCFG");

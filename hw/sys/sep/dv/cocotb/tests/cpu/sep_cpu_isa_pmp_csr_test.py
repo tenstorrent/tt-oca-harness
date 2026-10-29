@@ -22,7 +22,9 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   i and leaves the other 15 readbacks unchanged, for every i; ``mseccfg``
   reads without a trap. Readbacks are logged and never compared with the
   drawn values or with each other: the implemented width and granularity are
-  not claimed.
+  not claimed. A further drawn word is written to ``pmpaddr16`` and
+  ``pmpaddr63``; the readback, trap count and ``mcause`` of each are logged
+  (``OBS-PMP16``) and not graded.
 * CHK-MRAC (host) for each drawn ``mrac`` value the CSR reads back the drawn
   value, the user-mode load from the PMP-denied SRAM region traps with
   ``mcause`` 5 and the denied word does not reach its register; the
@@ -252,6 +254,7 @@ class IsaCfg:
     aw: list[int] = field(default_factory=list)
     dw: list[int] = field(default_factory=list)
     ls_order: list[int] = field(default_factory=list)
+    pmpx: int = 0
 
     @classmethod
     def from_seed(cls, seed: int) -> "IsaCfg":
@@ -285,6 +288,7 @@ class IsaCfg:
         # does not move.
         cfg.ls_order = list(LS_VALUES)
         rng.shuffle(cfg.ls_order)
+        cfg.pmpx = rng.getrandbits(32)
         return cfg
 
     def words(self) -> list[int]:
@@ -295,6 +299,7 @@ class IsaCfg:
         for r in self.rows:
             out += list(r)
         out += [0] * (4 * (NROW_MAX - len(self.rows)))
+        out.append(self.pmpx)
         return out
 
     def draw_lines(self) -> list[str]:
@@ -309,6 +314,7 @@ class IsaCfg:
             + ",".join(f"0x{v:08x}" for v in self.dw)
             + f" allowed_region=0x{ALLOW_REG:08x} denied_region=0x{DENY_REG:08x}",
             "DRAW lockstep_order=" + ",".join(str(v) for v in self.ls_order),
+            f"DRAW pmpx=0x{self.pmpx:08x}",
         ]
         return out
 
@@ -454,6 +460,16 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             if cur[i] != prev[i] and not others:
                 entry_pass |= 1 << i
             prev = cur
+        for rec in self._recs("PMPX"):
+            kv = rec.kv
+            self.logger.info(
+                "OBS-PMP16 LOG a=0x%03x v=0x%08x rb=0x%08x traps=%d mcause=0x%08x",
+                int(kv["a"]),
+                int(kv["v"]),
+                int(kv["rb"]),
+                int(kv["traps"]),
+                int(kv["mcause"]),
+            )
         ms_traps = int(ms[0].kv["traps"])
         lst = ",".join(f"0x{v:08x}" for v in _list(p0[0].kv))
         body = (

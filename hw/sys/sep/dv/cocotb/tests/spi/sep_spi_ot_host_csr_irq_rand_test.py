@@ -195,6 +195,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_fcov_gate import (
     SPI_CSR_IRQ_FAM_CBZ,
     SPI_CSR_IRQ_FAM_CF,
@@ -227,6 +228,7 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic
 from env.sep_spi_pad_sampler import SepSpiPadSampler
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_spi_host_csr_seq import (
     CMD_DIR_TX,
     CMD_SPEED_RESERVED,
@@ -334,6 +336,16 @@ _FAM_SWRST = SPI_CSR_IRQ_FAM_SW | SPI_CSR_IRQ_FAM_DOM
 # SPIEN leg: CHK-SPI-SPIEN grades the hold and the run on the pads.
 _FAM_SPIEN = SPI_CSR_IRQ_FAM_SZ
 _R = SPI_CONTROLLER
+ALERT_TEST = _R.addr("ALERT_TEST")
+# Write-only registers read, and read-only registers written, by _obs_wo_ro.
+_WO_READS = (
+    ("COMMAND", COMMAND),
+    ("TXDATA", TXDATA),
+    ("INTR_TEST", INTR_TEST),
+    ("ALERT_TEST", ALERT_TEST),
+)
+_RO_WRITES = (("STATUS", STATUS), ("RXDATA", RXDATA))
+_WO_RO_SALT = 0x574F_524F
 _LEG_CHECKS = (
     "CHK-SPI-EVENT",
     "CHK-SPI-EVENT-SRC",
@@ -477,6 +489,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
         await self._chk_reset()
         await self._chk_reg_rw()
+        await self._obs_wo_ro()
         await self._chk_zero_strb()
         await self._chk_intr()
         await self._chk_err_w1c()
@@ -534,6 +547,56 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             len(RESET_VALUES),
             st,
         )
+        fields = {
+            f: (st & _R.field_mask("STATUS", f)) >> _R.field_lsb("STATUS", f)
+            for f in ("txstall", "rxstall", "txwm", "rxwm", "byteorder")
+        }
+        self.logger.info(
+            "OBS-SPI-STATUS-RESET status=0x%08x txstall=%d rxstall=%d txwm=%d rxwm=%d byteorder=%d",
+            st,
+            *fields.values(),
+        )
+
+    # ---- OBS-SPI-WO-RO-ACCESS ---------------------------------------------
+    async def _obs_wo_ro(self) -> None:
+        """Log the response and data of a read of each write-only register and of a
+        write to each read-only register, with ERROR_STATUS after each write."""
+        rng = SepSeededRng(self.random_seed() ^ _WO_RO_SALT)
+        for name, addr in _WO_READS:
+            seq = SepAxiAccessSeq(
+                f"spi_wo_rd_0x{addr:08x}",
+                op=SepAxiOp.READ,
+                addr=addr,
+                length=4,
+                allow_ungraded_read_resp=True,
+            )
+            await self.start_seq(seq)
+            self.logger.info(
+                "OBS-SPI-WO-RO-ACCESS reg=%s dir=R resp=%d data=0x%08x err_status=-",
+                name,
+                seq.resp_code,
+                seq.rdata & 0xFFFF_FFFF,
+            )
+        for name, addr in _RO_WRITES:
+            word = rng.getrandbits(32)
+            seq = SepAxiAccessSeq(
+                f"spi_ro_wr_0x{addr:08x}",
+                op=SepAxiOp.WRITE,
+                addr=addr,
+                wdata=word,
+                length=4,
+                allow_unverified_write_resp=True,
+            )
+            await self.start_seq(seq)
+            es = await self.spi.rd(ERROR_STATUS)
+            self.logger.info(
+                "OBS-SPI-WO-RO-ACCESS reg=%s dir=W resp=%d data=0x%08x err_status=0x%08x",
+                name,
+                seq.resp_code,
+                word,
+                es,
+            )
+        await self._clear_error_status()
 
     # ---- CHK-REG-RW (+ CHK-NONVAC) ---------------------------------------
     async def _chk_reg_rw(self) -> None:

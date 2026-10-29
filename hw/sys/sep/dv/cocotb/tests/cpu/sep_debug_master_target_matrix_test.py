@@ -18,7 +18,8 @@ EL2 debug module exists only in the full ``sep_cpu``:
   core is held by ``mpc_reset_run_req`` = 0 and the bench LSU master on the LSU
   force splice is the independent register path. Steps 1 to 8, the three
   local-alias legs, then the reset-controller and SPI host targets, the entropy
-  pool, the extension port, the boot ROM and ICCM, and the AP and STEE remaps.
+  pool, the extension port, the boot ROM and ICCM, the AP and STEE remaps, and
+  a logged leg of targets with no stated response (``OBS-DBG-SBA``).
 
 Checks:
   CHK-DMI-GATE  : a write of ``dmcontrol.dmactive`` = 1 with
@@ -175,8 +176,9 @@ the leaf draws, in this order: the reset-controller and CSID values, the pool
 write word, the extension word and its reply and write words, the ICCM word, the DMA
 probe word,
 the write words of the boot ROM and ICCM legs, and for AP then STEE the region,
-the word offset, the remap offset and the write word. Every leg runs on every
-seed.
+the word offset, the remap offset and the write word; then for the logged leg
+the hole word, the disabled inbound filter entry, the DEMOTE_2 rsvd bit and
+the write word of each target. Every leg runs on every seed.
 
 VCS only (``tools = ["vcs"]``), ``+skip_fuse_sense``. The leaf fails on a build
 without the full ``sep_cpu``.
@@ -223,7 +225,18 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, SEP_RESET_CTRL, RegBlock, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import SepDmaOps, SepMemWords
-from seq_lib.sep_fabric_csr_bank_seq import AP_BASE, REMAP_ATTRS, REMAP_STRIDE, STEE_BASE
+from seq_lib.sep_fabric_csr_bank_seq import (
+    AP_BASE,
+    F_ENTRY_ENABLED,
+    FILTER_CONFIG,
+    FILTER_START_ADDR,
+    FILTER_STRIDE,
+    INFILT_BASE,
+    INFILT_ENTRIES,
+    REMAP_ATTRS,
+    REMAP_STRIDE,
+    STEE_BASE,
+)
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_outbound_remap_seq import (
     AP_REGION_BASE,
@@ -320,6 +333,18 @@ ICCM_SIZE = sym("SEP_ICCM_MEM_SIZE")
 DMA_PROBE_SRC = SRAM_WORD + 0x100
 DMA_WORD_BYTES = 4
 DMA_WIDTH_ENC = 2  # TRANSFER_WIDTH: 4-byte beats
+
+# Targets of the logged debug-master leg. The specification states no response
+# for any of them.
+PIC_BASE = sym("PIC_REG_MAP_BASE_ADDR")
+HOLE_FIRST = 0x1080_4000  # unmapped words above the secure DMA register map
+HOLE_LAST = 0x108F_FFF8
+DMA_PAST = sym("SECURE_DMA_REG_MAP_BASE_ADDR") + sym("SECURE_DMA_REG_MAP_SIZE")
+HMAC_RST_FIELD = SEP_RESET_CTRL.field_mask("SW_RESET_N", "hmac_sw_rst_n")
+# DEMOTE_2 bits 63:2 are rsvd, sw=rw with onwrite=woset
+# (hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:42-47), so a
+# set bit stays set; that write is the last access of the leaf.
+DEMOTE_2 = sym("SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR")
 
 # AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:178-181, :314-315).
 REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
@@ -515,6 +540,11 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             if prev_cpu == 0 and cpu_tap == 1:
                 self.cpu_rises += 1
             prev_cpu = cpu_tap
+            if self.dtm_on:
+                act = self.rd(dut.dmi_active_probe_o)
+                self.dmi_act_high += act == 1
+                self.dmi_act_rises += self.prev_act == 0 and act == 1
+                self.prev_act = act
             if self.dtm_on and self.rd(dut.dmi_req_probe_o, DTM_EN):
                 req = self.rd(dut.dmi_req_probe_o)
                 self.dtm.append(
@@ -684,6 +714,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         dut.dmi_core_enable_i.value = 0
         await ClockCycles(dut.clk_i, 2)
         mark = len(self.dtm)
+        act_high, act_rises = self.dmi_act_high, self.dmi_act_rises
         await self.dmi.dmi_write(DM_DMCONTROL, DMCONTROL_DMACTIVE)
         gated_rd = await self.dmi.dmi_read(DM_DMCONTROL)
         await ClockCycles(dut.clk_i, SETTLE)
@@ -707,6 +738,14 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             f"enabled_rd_after={enabled_rd_after} control_wr=1 "
             f"control_rd={control_rd} gated_rd_obs=0x{gated_rd:08x} "
             f"dmcontrol_after=0x{after:08x} dmcontrol_control=0x{ctl:08x}",
+        )
+        # No spec states when dmi_active is high, so its level over the DMI
+        # requests of steps 2 to 4 is logged.
+        self.logger.info(
+            "OBS-DMI-ACTIVE requests=%d rises=%d high_clk=%d",
+            len(self.dtm) - mark,
+            self.dmi_act_rises - act_rises,
+            self.dmi_act_high - act_high,
         )
         await self._inst_close(dbg_sba_bits("enable0_core", "enable1_core") if ok else 0)
 
@@ -1367,6 +1406,78 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         )
         return live_rom, live_tcm
 
+    async def _sba_obs_leg(self) -> None:
+        """OBS-DBG-SBA: debug-master read and write of targets with no stated response.
+
+        One instance, so CHK-DBG-AXPROT grades its AR and AW beats. Each access
+        logs its PR-DBG-SB R or B beat, ``sberror``, the read data and, for the
+        two register targets, the bench-LSU readback after the write.
+        """
+        clk = cocotb.top.clk_i
+        hole = HOLE_FIRST + 8 * self.rng.randrange((HOLE_LAST - HOLE_FIRST) // 8 + 1)
+        disabled = []
+        for i in range(INFILT_ENTRIES):
+            cfg = await self._lsu(SepAxiOp.READ, INFILT_BASE + i * FILTER_STRIDE + FILTER_CONFIG)
+            if not cfg & F_ENTRY_ENABLED:
+                disabled.append(i)
+        if not disabled:
+            raise AssertionError("set-up: no disabled inbound filter entry")
+        filt = self.rng.choice(disabled)
+        filt_start = INFILT_BASE + filt * FILTER_STRIDE + FILTER_START_ADDR
+        demote_bit = 2 + self.rng.randrange(62)
+        targets = (
+            ("PIC_BASE", PIC_BASE, 4),
+            ("HOLE", hole, 8),
+            ("PAST", DMA_PAST, 4),
+            ("ISOLATED", _HMAC.addr("MSG_LENGTH_LOWER"), 4),
+            ("FILT_START", filt_start, 8),
+            ("LC_RSVD", DEMOTE_2, 8),
+        )
+        wvals = {
+            name: (1 << demote_bit) if name == "LC_RSVD" else self.rng.getrandbits(8 * size)
+            for name, _addr, size in targets
+        }
+        self.logger.info(
+            "DRAW sba_obs hole=0x%08x filt_entry=%d demote_bit=%d writes=%s",
+            hole,
+            filt,
+            demote_bit,
+            " ".join(f"{n}:0x{v:x}" for n, v in wvals.items()),
+        )
+        sw_rst = await self._lsu(SepAxiOp.READ, SW_RESET_N)
+        start_before = await self._lsu(SepAxiOp.READ, filt_start, length=8)
+        await self._inst_open()
+        for name, addr, size in targets:
+            if name == "ISOLATED":
+                await self._lsu(SepAxiOp.WRITE, SW_RESET_N, sw_rst & ~HMAC_RST_FIELD)
+            for d in ("r", "w"):
+                sm = self.sb_tap.mark()
+                if d == "r":
+                    data, err = await self.dmi.sba_read(addr, size=size)
+                else:
+                    data, err = None, await self.dmi.sba_write(addr, wvals[name], size=size)
+                await ClockCycles(clk, SETTLE)
+                rsp = self._beats(self.sb_tap, sm, d if d == "r" else "b")
+                lsu_rb = None
+                if d == "w" and name in ("FILT_START", "LC_RSVD"):
+                    lsu_rb = await self._lsu(SepAxiOp.READ, addr, length=8)
+                self.logger.info(
+                    "OBS-DBG-SBA target=%s dir=%s addr=0x%08x resp=%s sberror=%d data=%s lsu_rb=%s",
+                    name,
+                    d.upper(),
+                    addr,
+                    " ".join(_h(b.resp, 1) for b in rsp) or "-",
+                    err,
+                    "-" if d == "w" else _h(data),
+                    "-" if lsu_rb is None else _h(lsu_rb),
+                )
+            if name == "ISOLATED":
+                await self._lsu(SepAxiOp.WRITE, SW_RESET_N, sw_rst)
+            if name == "FILT_START":
+                await self._lsu(SepAxiOp.WRITE, filt_start, start_before & 0xFFFF_FFFF)
+                await self._lsu(SepAxiOp.WRITE, filt_start + 4, start_before >> 32)
+        await self._inst_close(0)
+
     async def _remap_program(self, csr_base: int, region: int, word: int) -> None:
         attrs = csr_base + region * REMAP_STRIDE + REMAP_ATTRS
         await self._lsu(SepAxiOp.WRITE, attrs, word & 0xFFFF_FFFF)
@@ -1484,6 +1595,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         await self._ext_leg()
         await self._nc_leg()
         await self._remap_leg()
+        await self._sba_obs_leg()
         await self.sb_tap.stop()
         await self.lx_tap.stop()
         await self.din_tap.stop()
@@ -1628,6 +1740,8 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         self.uncore_never = False
         self.dtm_on = False
         self.dtm: list[_DtmReq] = []
+        self.dmi_act_high = self.dmi_act_rises = 0
+        self.prev_act = None
         self.uncore_ctl = None
         self.never_cycles = self.never_en = self.never_wr = 0
         self.prev_en = self.prev_wr = 0

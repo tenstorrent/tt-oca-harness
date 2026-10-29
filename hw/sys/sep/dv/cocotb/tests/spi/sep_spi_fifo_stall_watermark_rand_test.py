@@ -507,6 +507,18 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             st.active,
         )
 
+    def _obs_txstall(self, st: SpiStatus, where: str) -> None:
+        self.logger.info(
+            "OBS-SPI-TXSTALL seed=%d where=%s txstall=%d active=%d txqd=%d rxqd=%d cs_low=%d",
+            self.seed,
+            where,
+            st.txstall,
+            st.active,
+            st.txqd,
+            st.rxqd,
+            int(self.pads.cs_low()),
+        )
+
     def _done_read(self, st: SpiStatus, mark, windows: int) -> bool:
         """True when ``st`` ends a segment: the windows are complete before the read."""
         wins = self.pads.windows_since(mark)
@@ -876,6 +888,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         fmark = self.sb.frame_mark()
         mark = self.pads.mark()
         await self.ops.issue_command(command_word(4 * m - 1, speed=self.speed, direction=DIR_TX))
+        self._obs_txstall(await self.ops.read_status(), "pre_push")
         for w in words[:m1]:
             await self.ops.push_tx(w)
         pre = 4 * m1 * 8 // lanes
@@ -884,6 +897,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         except AssertionError as exc:
             self._fail(chk, f"sck cycles of the first {m1} words: {exc}")
         st0 = await self._poll(lambda s: s.txstall == 1, self._seg_bound(4, 0), "TXSTALL=1", chk)
+        self._obs_txstall(st0, "tx_stall")
         await self._clocks(self._stall_win())
         st1 = await self.ops.read_status()
         edges = len(self.pads.sck_edges_between(st0.clk1, st1.clk0))
