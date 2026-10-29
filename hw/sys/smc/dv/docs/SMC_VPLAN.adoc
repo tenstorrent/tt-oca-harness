@@ -17570,6 +17570,73 @@ and `smc_cool_reset_recovery_test`, which stay until it lands.
 
 '''''
 
+[[sec-569-smc_wdt_timeout_zero_idle_test]]
+===== 569 `smc_wdt_timeout_zero_idle_test`
+
+*Phase*: 2
+
+*Area*: RESET
+
+*Source Module*: `smc_wdt_timeout_zero_idle_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN (`env.sys_axi_agent`; 4-byte reads and writes); bench
+probes `tb_top.tb_fuse_sense_done`, `tb_top.tb_wdt_first_timeout`, `tb_top.tb_wdt_second_timeout`
+(`smc_ras.wdt_second_timeout`) and `tb_top.tb_rst_warm_smc_clk_n`; CPU_CTRL `WDT_TIMEOUT`
+(`data` [31:0]).
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`; `run_modes` `smoke`;
+`timeout_sec` 1800; tags `ci`; seed 1; tool Verilator (cocotb).
+
+*Randomization*: RAND-NONE: directed, the write under test is 0 and the restore is the register
+reset `0x4000`.
+
+*Objective*: `WDT_TIMEOUT` written to 0 with no first-stage timeout leaves
+`smc_ras.wdt_second_timeout` low and the warm reset released.
+
+*Test Coverage*:
+
+* `WDT_TIMEOUT` reads its reset `0x4000` before the write (`cpu_ctrl.rdl`).
+* With `tb_wdt_first_timeout` low, a write of 0 leaves `tb_wdt_second_timeout` low and
+  `tb_rst_warm_smc_clk_n` high (`cpu_ctrl.rdl`: a value of 0 raises the 2nd stage timeout as soon as
+  the 1st stage timeout occurs, so an idle first stage leaves the second stage idle).
+* The register is restored to `0x4000` and reads that value back, with the second timeout low and
+  the warm reset high.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for `tb_fuse_sense_done` (bound 200000 `clk_smc_i` cycles), then wait 16 cycles.
+. Read `WDT_TIMEOUT` and compare with its reset `0x4000`. Require `tb_wdt_first_timeout` 0,
+  `tb_wdt_second_timeout` 0 and `tb_rst_warm_smc_clk_n` 1 before the write.
+. Write 0 to `WDT_TIMEOUT`. Watch `tb_wdt_second_timeout` for a rise for 300 `clk_smc_i` cycles,
+  then watch `tb_rst_warm_smc_clk_n` for a fall for 300 cycles, then wait 300 cycles and sample
+  `tb_wdt_first_timeout`, `tb_wdt_second_timeout` and `tb_rst_warm_smc_clk_n`.
+. Write `0x4000` back. Require `tb_rst_warm_smc_clk_n` high within 20000 cycles, wait 300 cycles,
+  read `WDT_TIMEOUT` back as `0x4000`, and require `tb_wdt_second_timeout` 0. Require the
+  first-stage sample from the previous step to be 0, then grade the zero-window samples.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WDT-TIMEOUT-ZERO-IDLE` |With no first-stage timeout, `WDT_TIMEOUT` written to 0 leaves
+  `tb_wdt_second_timeout` low through the 300-cycle rise watch and at the settle sample, and leaves
+  `tb_rst_warm_smc_clk_n` high through the 300-cycle fall watch and at the settle sample.
+|===
+
+*Pass Criteria*: `CHK-WDT-TIMEOUT-ZERO-IDLE` is emitted and the sequence asserts hold: the reset
+read of `WDT_TIMEOUT`, the idle first stage before the write and at the settle sample, the restore
+read-back `0x4000`, the second timeout low after the restore, and the warm reset high within 20000
+cycles of the restore. Enrolled in: `all`, `hosted`.
+
+*Scope limit*: The leaf leaves the first stage idle, so the grace after a first-stage timeout at
+`WDT_TIMEOUT` 0 is outside this entry. `smc_wdt_timeout_pin_test` grades the second stage after a
+first-stage timeout at the reset count `0x4000`. The restore write returns the register to its
+reset so the bench is left idle; the grade is the sample taken while the register held 0.
+
+'''''
+
 
 [[smc-vplan-area-clock]]
 ==== CLOCK
