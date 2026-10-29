@@ -12,10 +12,7 @@ rst_ni does. For every H > 0 the RCT cutoff is checked against the RDL formula
 C = 1 + ceil(20 / H), and the APT cutoff against the SP 800-90B 4.4.2 binomial
 cutoff for the 1024-sample window with the same alpha = 2^-20. At H = 0 neither
 cutoff has a stated value; the read is logged as OBS-REC-THRESH-H0 and not graded.
-The RDL requires a HEALTH_TEST_WINDOW_SIZE of at least 1024 for the lock but does
-not state the effect of a lock set over a smaller window: after the graded window
-closes, the test writes a drawn size below 1024, sets the lock and logs the B
-response, LOCK and the size readback as OBS-ESRC-LOCK-SMALL-WINDOW. Both observe-tap enables are writable before the lock and
+Both observe-tap enables are writable before the lock and
 frozen after it: one tap is held at 1 and rejects a clear, the other is held
 at 0 and rejects a set (CHK-OBS-ENABLE-LOCKED). NOISE_OBS_CTRL.LANE_SEL stays
 writable under the lock (CHK-OBS-LANE-SEL), and after rst_ni the tap held at 0
@@ -45,12 +42,10 @@ from env.sep_fabric_common import RESP_NAME, RESP_OKAY
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from sep_reg_meta import ENTROPY_SOURCE
-from seq_lib.sep_esrc_bringup_seq import ESRC_HEALTH_TEST_WINDOW_SIZE
 from seq_lib.sep_esrc_fips_lock_seq import (
     APT_WINDOW,
     CTRL_RSVD0_BIT,
     LOCK_BIT,
-    WINDOW_MASK,
     SepEsrcFipsLock,
     SepEsrcFipsLockCfg,
     apt_limit_golden,
@@ -190,24 +185,6 @@ class sep_esrc_fips_lock_test(sep_base_test):
             covered == want,
             f"walked {len(walked)} targets covering {len(covered)} of {len(want)} locked "
             f"fields; missing={sorted(want - covered)} extra={sorted(covered - want)}",
-        )
-        await self._lock_small_window(esrc, cfg)
-
-    async def _lock_small_window(self, esrc: SepEsrcFipsLock, cfg) -> None:
-        """OBS-ESRC-LOCK-SMALL-WINDOW: the lock set over a window below 1024."""
-        await esrc.write(
-            ESRC_HEALTH_TEST_WINDOW_SIZE,
-            ENTROPY_SOURCE.value("HEALTH_TEST_WINDOW_SIZE", SIZE=cfg.win_small),
-        )
-        resp = await esrc.set_lock()
-        lock = _lock_of(await esrc.read_lock_word())
-        window_rb = await esrc.read(ESRC_HEALTH_TEST_WINDOW_SIZE) & WINDOW_MASK
-        self.logger.info(
-            "OBS-ESRC-LOCK-SMALL-WINDOW: window_written=%d b_resp=%s lock=%d window_rb=%d",
-            cfg.win_small,
-            _resp(resp),
-            lock,
-            window_rb,
         )
 
     async def _graded(self, esrc: SepEsrcFipsLock, cfg) -> None:

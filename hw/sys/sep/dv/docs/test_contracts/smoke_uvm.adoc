@@ -363,13 +363,15 @@ not grade that rejection.
 |Checker |Contract
 |CHK-SENSE-DONE
 |The sense sequence completes rather than hanging.
+|CHK-SENSE-WORD-ORDER
+|The sense loads the shadow words in ascending word order, one word per response strobe, and `sep_fuse_sense_done_o` rises one clock after the strobe that stores word 255 (`hw/sys/sep/doc/otp_fuse_controller.adoc`, eFuse sensing). Over the words whose staged value differs from reset, the first clock on which each word changes at `efuse_shadow_probe_o` rises strictly with the word index; the done rise is one clock after the change of word 255, or after the last changed word when word 255 stays at reset. Fewer than two changed words fails the check.
 |CHK-IMAGE-MATCH
 |Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-SENSE` (`cocotb/tests/efuse/sep_efuse_sense_test.py`), covers CHK-SENSE-DONE and CHK-IMAGE-MATCH. The record refuses to pass under `+skip_fuse_sense`, which would skip the shadow compare. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock. No specification states the order in which the fields land, so it grades nothing.
+*Evidence*: one aggregate record, `CHK-SENSE` (`cocotb/tests/efuse/sep_efuse_sense_test.py`), covers CHK-SENSE-DONE and CHK-IMAGE-MATCH. The record refuses to pass under `+skip_fuse_sense`, which would skip the shadow compare. `CHK-SENSE-WORD-ORDER` is its own record. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock, and grades nothing.
 
 '''''
 

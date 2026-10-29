@@ -347,12 +347,12 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _EsrcRegs(self)
         self.p: int | None = None
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         # The testers and the window counter run from the TRNG reset release, so the
         # balanced noise runs before the first release and never stops.
         self.noise = SepEsrcPatternNoise(logger=self.logger)

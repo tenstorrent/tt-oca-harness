@@ -68,8 +68,8 @@ Checkers:
                   words from the start of window T - 1 (the alert bound of the
                   trip legs), the peak of ANY_FAIL_COUNT is T - 1, and
                   ANY_FAIL_COUNT reads 0 at the last read. Control: the trips
-                  of the same threshold reach the alert and the peak is
-                  non-zero.
+                  of the same threshold reach the alert, the peak is non-zero,
+                  and ALERT_THRESHOLD read back T after the start of the leg.
   CHK-PF-CONSEC   two bursts of T - 2 stuck windows with a clean gap: the peak
                   of ANY_FAIL_COUNT of each burst is at least T - 2, no alert
                   at any poll up to LAT_WINDOWS windows of words after the
@@ -78,7 +78,8 @@ Checkers:
                   zero run above REPETITION_LIMIT = 200 for its last
                   n x W - 200 > (n - 1) x W words, so at least n windows fail
                   in it, whatever its offset to the window wraps. Control: the
-                  trips of the same threshold reach the alert.
+                  trips of the same threshold reach the alert, and
+                  ALERT_THRESHOLD read back T after the start of the leg.
   CHK-PF-DISABLE  T = 0, ten stuck windows: no alert at any poll up to
                   LAT_WINDOWS windows of words after the burst, ANY_FAIL_COUNT
                   peak > 8, and after the burst the count clears by the wrap 2W
@@ -467,6 +468,8 @@ class _Block:
     consec: dict | None = None
     trip_alert: list[int] | None = None
     start_timeout: str | None = None
+    notrip_thr: int | None = None  # ALERT_THRESHOLD readback before the no-trip burst
+    consec_thr: int | None = None  # ALERT_THRESHOLD readback before the consecutive bursts
 
 
 @pyuvm.test()
@@ -512,6 +515,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.ctrl_absent = False
         self.disable_result: dict | None = None
         self.started = False
+        self.thr_rb: int | None = None
         self.trip_graded = False
         self.trip_hold: dict | None = None
         self.ungraded = SHARD3_UNGRADED if shard == 3 else ()
@@ -671,6 +675,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         close_graded_window(self.logger)
         mark = await self._trng_reset()
         await self._clean_start(win, thr, mark)
+        self.thr_rb = (await self._rd(ESRC_ALERT_THRESHOLD)) & M_THR
         boot, level = await self._boot_and_level(win, "start")
         if not (boot and level):
             what = f"start_boot{int(boot)}_level{int(level)}"
@@ -1214,6 +1219,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         if self.run_notrip:
             if not blk.start_timeout:
                 open_graded_window(TEST, self.logger)
+                blk.notrip_thr = self.thr_rb
                 blk.notrip = await self._exact_burst(win, thr - 1, trip=False)
                 close_graded_window(self.logger)
             self._ctrl_notrip(blk)
@@ -1226,6 +1232,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             open_graded_window(TEST, self.logger)
             try:
                 await self._ensure_clean(thr, win, "consec")
+                blk.consec_thr = self.thr_rb
                 blk.consec = await self._burst_and_settle(segs, win, split=len(first_burst))
             except TrialTimeout as exc:
                 blk.consec = {"timeout": f"timeout:{exc.what} bound={exc.bound}"}
@@ -1519,8 +1526,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         nt = blk.notrip or {}
         self._ctrl(
             "PF-NOTRIP",
-            tripped and nt.get("peak", 0) > 0,
+            tripped and nt.get("peak", 0) > 0 and blk.notrip_thr == blk.thr,
             thr=blk.thr,
+            thr_readback=blk.notrip_thr,
             ctrl_trip=int(tripped),
             any_fail_peak=nt.get("peak"),
         )
@@ -1528,7 +1536,16 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
     def _ctrl_consec(self, blk: _Block) -> None:
         """Control of CHK-PF-CONSEC: the trips of the block reach the alert."""
         tripped = self._tripped(blk.trip_alert)
-        self._ctrl("PF-CONSEC", tripped, thr=blk.thr, ctrl_single_burst_alert=int(tripped))
+        # A start that timed out leaves no readback; CHK-PF-CONSEC fails on its reason.
+        timed_out = bool(blk.start_timeout or (blk.consec or {}).get("timeout"))
+        thr_ok = blk.consec_thr == blk.thr or (blk.consec_thr is None and timed_out)
+        self._ctrl(
+            "PF-CONSEC",
+            tripped and thr_ok,
+            thr=blk.thr,
+            thr_readback=blk.consec_thr,
+            ctrl_single_burst_alert=int(tripped),
+        )
 
     async def _grade_disable(self) -> None:
         """CHK-PF-DISABLE at the end of the disable leg (its control follows the trips)."""

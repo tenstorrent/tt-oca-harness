@@ -60,12 +60,20 @@ Checkers:
                     command request stays valid while the response is withheld, so the tap
                     shows one command.
 
+  CHK-SENSE-STATUS-CTRLWORD  a last sense with the status bit on the response of a
+                    control word, drawn from shadow words 0 to 9 whose staged value
+                    differs from the RDL reset value: that word reads its RDL reset value
+                    at ``efuse_shadow_probe_o`` and ``sep_fuse_sense_done_o`` reads 1
+                    (same sensing-sequence source as CHK-SENSE-STATUS).
+
 Log-only: ``OBS-PROG-TIMEOUT`` (busy, done and status after m x T clocks of a held
 program with the timeout enabled; the specification does not state the report).
-``OBS-SENSE-STATUS-CTRLWORD`` (a last sense with the status bit on the response of a
-control word, drawn from shadow words 0 to 9 and 255: that shadow word,
-``sep_fuse_sense_done_o`` and ``lcc_feat_ctrl_probe_o``; the specification does not
-state the effect on a control word).
+``OBS-SENSE-STATUS-CTRLWORD`` (the same last sense when the drawn word is 255: that
+shadow word, ``sep_fuse_sense_done_o`` and ``lcc_feat_ctrl_probe_o``; the sensing
+sequence says both that a strobe with its status bit set leaves its word unwritten and
+that the strobe at counter 255 stores the last word). ``OBS-SENSE-STATUS-CTRLWORD-FEAT``
+(``lcc_feat_ctrl_probe_o`` after a graded control-word sense; no specification line
+states it).
 
 FCOV: the graded window is open over the second injected sense and the held program,
 each to its own grade. The control sense and the first injected sense are graded
@@ -109,7 +117,7 @@ from env.sep_fcov_gate import (
     set_ef_hold_tag,
 )
 from sep_base_test import sep_base_test
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym, word_reset
 
 TEST = T_SHIM_FAULT
 
@@ -670,7 +678,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         await ClockCycles(dut.clk_i, 64)
         await self._wr(PROGRAM_CTRL_ADDR, 0)
 
-        # Step 11: status bit on the sense response of one control word, logged only.
+        # Step 11: status bit on the sense response of one control word.
         cw = int(p.leg["ctrl_word"])
         dut.efuse_sense_status_word_i.value = cw
         dut.efuse_sense_status_inject_i.value = 1
@@ -678,17 +686,36 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         n = await clocks_to_sense(self, sense_bound, started=True)
         await ClockCycles(dut.clk_i, 20)
         await ReadOnly()
-        self.logger.info(
-            "OBS-SENSE-STATUS-CTRLWORD LOG seed=%d word=%d shadow=0x%08x staged=0x%08x "
-            "sense_done=%d t_sense=%s feat=0x%016x",
-            seed,
-            cw,
-            self._probe_words()[cw],
-            staged[cw],
-            self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True),
-            "none" if n is None else n,
-            self.rd(dut.lcc_feat_ctrl_probe_o, allow_unknown=True),
-        )
+        shadow = self._probe_words()[cw]
+        done_o = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        feat = self.rd(dut.lcc_feat_ctrl_probe_o, allow_unknown=True)
+        if cw == _N_WORDS - 1:
+            self.logger.info(
+                "OBS-SENSE-STATUS-CTRLWORD LOG seed=%d word=%d shadow=0x%08x staged=0x%08x "
+                "sense_done=%d t_sense=%s feat=0x%016x",
+                seed,
+                cw,
+                shadow,
+                staged[cw],
+                done_o,
+                "none" if n is None else n,
+                feat,
+            )
+        else:
+            want = word_reset(SHADOW_BASE + 4 * cw)
+            self._grade(
+                "SENSE-STATUS-CTRLWORD",
+                n is not None and done_o == 1 and staged[cw] != want and shadow == want,
+                word=cw,
+                shadow=f"0x{shadow:08x}",
+                want=f"0x{want:08x}",
+                staged=f"0x{staged[cw]:08x}",
+                sense_done=done_o,
+                t_sense="none" if n is None else n,
+            )
+            self.logger.info(
+                "OBS-SENSE-STATUS-CTRLWORD-FEAT LOG seed=%d word=%d feat=0x%016x", seed, cw, feat
+            )
         await RisingEdge(dut.clk_i)
         dut.efuse_sense_status_inject_i.value = 0
         self.chk.finish()

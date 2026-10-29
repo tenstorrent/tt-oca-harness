@@ -25,7 +25,14 @@ reset values + RW/W1C/RO field semantics
 block, which reggen derives from upstream spi_host.hjson).
 
 Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DUT):
-  CHK-RESET     : every control/status reg reads its documented reset value.
+  CHK-RESET     : every control reg reads its documented reset value; STATUS
+                  reads ACTIVE, TXFULL, RXFULL, TXQD, RXQD and CMDQD 0.
+  CHK-SPI-STATUS-RESET: STATUS reads TXSTALL, RXSTALL, TXWM and RXWM at their
+                  RDL reset value 0x0 (spi_controller.rdl, STATUS). READY,
+                  TXEMPTY, RXEMPTY and BYTEORDER are logged only
+                  (OBS-SPI-STATUS-RESET): the RDL gives reset 0x0, while the
+                  field text (an empty FIFO, the unmodified IP with ByteOrder
+                  1) gives 1; the open question is in SEP_VPLAN.
   CHK-REG-RW    : each RW reg write->readback exact; bits outside the writable
                   mask (RO/reserved) read 0.
   CHK-INTR      : INTR_STATE.ERROR is an Event latch -- INTR_TEST sets it with
@@ -482,6 +489,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
     required_evidence = (
         "CHK-RESET",
+        "CHK-SPI-STATUS-RESET",
         "CHK-REG-RW",
         "CHK-NONVAC",
         "CHK-ZERO-STRB",
@@ -496,7 +504,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.scfg = SepSpiHostCfg(self.random_seed())
         self.spi = SepSpiHost(self)
-        self.logger.info("SPI host CSR config: %s", self.scfg.summary())
+        self.logger.info("INFO-SPI-HOST-CFG: %s", self.scfg.summary())
 
         await self.bring_up_no_cpu()
         close_graded_window(self.logger)
@@ -546,12 +554,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         for name, (addr, exp) in RESET_VALUES.items():
             got = await self.spi.rd(addr)
             assert got == exp, f"CHK-RESET {name}@0x{addr:08x} 0x{got:08x} != 0x{exp:08x}"
-        # STATUS is RO/hw-driven: check the stable idle bits rather than a constant.
         st = await self.spi.rd(STATUS)
-        assert st & ST_READY, f"CHK-RESET STATUS.READY not set: 0x{st:08x}"
         assert not (st & ST_ACTIVE), f"CHK-RESET STATUS.ACTIVE set: 0x{st:08x}"
-        assert st & ST_TXEMPTY, f"CHK-RESET STATUS.TXEMPTY not set: 0x{st:08x}"
-        assert st & ST_RXEMPTY, f"CHK-RESET STATUS.RXEMPTY not set: 0x{st:08x}"
         assert not (st & ST_TXFULL), f"CHK-RESET STATUS.TXFULL set: 0x{st:08x}"
         assert not (st & ST_RXFULL), f"CHK-RESET STATUS.RXFULL set: 0x{st:08x}"
         assert not (st & (ST_TXQD | ST_RXQD | ST_CMDQD)), (
@@ -562,14 +566,20 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             len(RESET_VALUES),
             st,
         )
-        fields = {
-            f: (st & _R.field_mask("STATUS", f)) >> _R.field_lsb("STATUS", f)
-            for f in ("txstall", "rxstall", "txwm", "rxwm", "byteorder")
-        }
+
+        def field(f: str) -> int:
+            return (st & _R.field_mask("STATUS", f)) >> _R.field_lsb("STATUS", f)
+
+        graded = {f: field(f) for f in ("txstall", "rxstall", "txwm", "rxwm")}
+        text = " ".join(f"{f}={v}" for f, v in graded.items())
+        assert not any(graded.values()), (
+            f"CHK-SPI-STATUS-RESET FAIL: status=0x{st:08x} {text} expect 0 (RDL reset)"
+        )
+        self.logger.info("CHK-SPI-STATUS-RESET PASS: status=0x%08x %s expect=0", st, text)
         self.logger.info(
-            "OBS-SPI-STATUS-RESET status=0x%08x txstall=%d rxstall=%d txwm=%d rxwm=%d byteorder=%d",
+            "OBS-SPI-STATUS-RESET status=0x%08x ready=%d txempty=%d rxempty=%d byteorder=%d",
             st,
-            *fields.values(),
+            *(field(f) for f in ("ready", "txempty", "rxempty", "byteorder")),
         )
 
     # ---- OBS-SPI-WO-RO-ACCESS ---------------------------------------------
@@ -803,7 +813,19 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(INTR_STATE, INTR_STATE_MASK)
         pre = await self.spi.rd(INTR_STATE)
         await self.poll_internal_irq(_SPI_AGG, 0)
-        await self.spi.wr(ALERT_TEST, 1)
+        alert_wr = SepAxiAccessSeq(
+            "spi_alert_test_wr", op=SepAxiOp.WRITE, addr=ALERT_TEST, wdata=1, length=4
+        )
+        await self.start_seq(alert_wr)
+        if not alert_wr.resp_ok:
+            raise AssertionError(
+                f"CTRL-MISSING CHK-SPI-ALERT-TEST: ALERT_TEST write resp={alert_wr.resp_code}"
+            )
+        self.logger.info(
+            "CTRL-ALERT-WR seed=%d reg=ALERT_TEST data=0x1 bresp=%d",
+            self.random_seed(),
+            alert_wr.resp_code,
+        )
         high, _first, diff = await self._line_window()
         st = await self.spi.rd(INTR_STATE)
         self.logger.info(
@@ -1210,13 +1232,13 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     def _log_plan(self) -> None:
         d = self.draw
         self.logger.info(
-            "PLAN %s seed=%d legs=L1,L2,L3,L4 window_code=410 l1_states=F,T1,T2,T3,T4 "
+            "INFO-PLAN %s seed=%d legs=L1,L2,L3,L4 window_code=410 l1_states=F,T1,T2,T3,T4 "
             "passes=A,B walk_cells=16 kinds=5 strobe_cells=12",
             TEST,
             self.seed,
         )
         self.logger.info(
-            "DRAW seed=%d intr_en=%d state_ev={%s} walk_order=%s state_order=%s kind_order=%s "
+            "INFO-DRAW seed=%d intr_en=%d state_ev={%s} walk_order=%s state_order=%s kind_order=%s "
             "cmd_kind=%s depth=%d ud_order=%s clear_mask=0x%02x masked_kind=%s csid_v=0x%08x "
             "pair_order=%s strobe_order={%s} swrst={%s} spien_lens=%s",
             self.seed,
@@ -1241,7 +1263,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         for (off, strb), words in d["strb_data"].items():
             self.logger.info(
-                "DRAW seed=%d strb_data off=0x%02x strb=0x%02x lo=0x%08x hi=0x%08x",
+                "INFO-DRAW seed=%d strb_data off=0x%02x strb=0x%02x lo=0x%08x hi=0x%08x",
                 self.seed,
                 off,
                 strb,

@@ -81,6 +81,15 @@ the instance passed; the leaf drops the held samples at the start of each graded
 instance, so a logged or ungraded access fills no bin. The OTBN AxCACHE cells
 sample only on the release of an OTBN cache instance, after CHK-ROW-CACHE.
 
+CHK-ROW-FILTER-SRC: with inbound entry 0 set to a drawn non-zero ``src_id``,
+an SI read of the STEE remap ``ATTRS`` word whose AxUSER equals ``src_id``
+answers the same response and data as the read through the wildcard entry just
+before, and a read whose AxUSER differs answers DECERR. A foreign source ID
+does not match the entry, no other inbound entry is enabled, and unmatched
+inbound traffic is blocked with DECERR while SEP-scope debug is off
+(``hw/ip/axi_filter/doc/index.adoc``, Match, Then Permit and Blocked
+Transactions; the bring-up line records ``sep_debug=0``).
+
 Not graded: the Forwarded and adopter-defined rows; the response of a burst to
 a register region outside the crypto region and the SPI host extent (the
 specification states none); any AxSIZE 3 access except the pool ``STATUS``
@@ -262,6 +271,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-ROW-SPI-BURST",
         "CHK-ROW-SPI-BURST-CONTROL",
         "CHK-SI-ID-ECHO",
+        "CHK-ROW-FILTER-SRC",
     )
 
     # ------------------------------------------------------------------ access
@@ -1451,18 +1461,22 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 src = self.rng.randrange(1, 16)
                 miss = self.rng.choice([u for u in range(16) if u != src])
                 await self._program_entry(src_id=src)
+                got = {}
                 for kind, u in (("src_match", src), ("src_mismatch", miss)):
                     t = await self._si(SepAxiOp.READ, addr, user=u)
-                    self.logger.info(
-                        "OBS-ROW-FABRIC-CSR target=stee_attrs case=%s entry_src_id=%d "
-                        "axuser=0x%x si_resp=%s si_rdata=0x%08x",
-                        kind,
-                        src,
-                        u,
-                        _RN.get(t.resp_code),
-                        t.rdata & 0xFFFF_FFFF,
-                    )
+                    got[kind] = (t.resp_code, t.rdata & 0xFFFF_FFFF)
                 await self._program_entry()
+                wild = (s.resp_code, s.rdata & 0xFFFF_FFFF)
+                line = (
+                    f"target=stee_attrs entry_src_id={src} axuser_match=0x{src:x} "
+                    f"axuser_mismatch=0x{miss:x} wildcard={_RN.get(wild[0])}/0x{wild[1]:08x} "
+                    f"match={_RN.get(got['src_match'][0])}/0x{got['src_match'][1]:08x} "
+                    f"mismatch={_RN.get(got['src_mismatch'][0])}/0x{got['src_mismatch'][1]:08x}"
+                )
+                if got["src_match"] == wild and got["src_mismatch"][0] == RESP_DECERR:
+                    self.logger.info("CHK-ROW-FILTER-SRC PASS: %s", line)
+                else:
+                    self._fail("CHK-ROW-FILTER-SRC", line)
             await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
         _r, lsu_v = await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL)
         s = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)

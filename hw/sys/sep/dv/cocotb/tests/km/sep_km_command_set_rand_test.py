@@ -84,6 +84,11 @@ Checkers:
               between the two starts, so it reached the key rather than merely
               returning success. Run last, because an engine parked waiting
               for a key stays that way until its next valid key
+  CHK-GEN-ARG CMD_KEY_GENERATE with REQ_SIZE 128 returns RC_INVALID_ARG with
+              RETURN_ARG 0, and with a reserved bit in DEST_VALID returns
+              RC_INVALID_ARG with RETURN_ARG 1. The five other reserved-bit
+              and empty-mask frames are logged as OBS-CMD-ARG-EDGE (no spec
+              states their code or argument)
   CHK-ALIVE   after every rejection, and once after the undefined-ID walk,
               CMD_STAT succeeds AND reports no latched recoverable error. The
               second half is what gives the refusal checkers their meaning:
@@ -556,7 +561,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             rc,
         )
         await self._check_alive("post-revoked-transfer")
-        await self._arg_edge_obs(gen_handle)
+        await self._arg_edge(gen_handle)
 
         # --- CHK-NULL: the reserved handle is never a target ------------------
         # The specification gives two refusal codes, invalid_arg for an invalid
@@ -816,11 +821,12 @@ class sep_km_command_set_rand_test(sep_base_test):
         assert self.drbg_sb.report()
         self.logger.info("entropy alerts clear and DRBG scoreboard reports PASS")
 
-    async def _arg_edge_obs(self, revoked: int) -> None:
+    async def _arg_edge(self, revoked: int) -> None:
         """Key commands with a reserved argument bit, an empty mask or an
         out-of-range field. Each targets the revoked handle or the unused ML-KEM
         message engine, so a command the KM accepts changes no state a later
-        check reads."""
+        check reads. The two CMD_KEY_GENERATE frames are graded (CHK-GEN-ARG);
+        the others are logged (OBS-CMD-ARG-EDGE)."""
         cases = (
             ("revoke_rsvd", KM_CMD_KEY_REVOKE, [revoked | _ARG_RESERVED]),
             ("transfer_rsvd", KM_CMD_KEY_TRANSFER, [revoked | _ARG_RESERVED, KM_DEST_AES]),
@@ -834,11 +840,26 @@ class sep_km_command_set_rand_test(sep_base_test):
                 [GEN_KEY_WORDS[0] - 1, KM_DEST_ABR_MLKEM_MSG | _ARG_RESERVED],
             ),
         )
+        # firmware.adoc "0x22 - CMD_KEY_GENERATE" states RC_INVALID_ARG with the
+        # index of the invalid payload word: 0 for REQ_SIZE, 1 for DEST_VALID.
+        graded_arg = {"generate_size": 0, "generate_dest": 1}
         for case, cmd, payload in cases:
             rc, arg = await self.km.send_raw_expect_rc(cmd, payload)
-            self.logger.info(
-                "OBS-CMD-ARG-EDGE LOG cmd=0x%02x case=%s code=%d arg=0x%08x", cmd, case, rc, arg
+            if case not in graded_arg:
+                self.logger.info(
+                    "OBS-CMD-ARG-EDGE LOG cmd=0x%02x case=%s code=%d arg=0x%08x",
+                    cmd,
+                    case,
+                    rc,
+                    arg,
+                )
+                continue
+            exp_arg = graded_arg[case]
+            assert rc == KM_RC_INVALID_ARG and arg == exp_arg, (
+                f"CHK-GEN-ARG FAIL: case={case} code={rc} arg=0x{arg:08x}, expected "
+                f"code={KM_RC_INVALID_ARG} (RC_INVALID_ARG) arg=0x{exp_arg:08x}"
             )
+            self.logger.info("CHK-GEN-ARG PASS: case=%s code=%d arg=0x%08x", case, rc, arg)
         await self._check_alive("post-arg-edge")
 
     async def _check_alive(self, tag: str) -> None:

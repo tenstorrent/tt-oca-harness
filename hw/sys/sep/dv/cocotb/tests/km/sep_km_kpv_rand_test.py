@@ -93,8 +93,9 @@ erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
 ``INFO-KPV-RACE``, ``LOG err_o`` (PIC vector bit 30 at the wipe) and the
 second-key control of the cipher leg.
 
-Log only, not stated: ``OBS-KPV-ACCESS LOG``, a word read and write issued right
-after an erase write, and a KPV_SCRAMBLER_KEY read after the lock.
+Log only, not stated: ``OBS-KPV-ACCESS``, a word read and write issued right
+after an erase write, each with the erase bit of a CTRL read right after that
+access, and a KPV_SCRAMBLER_KEY read after the lock.
 """
 
 from __future__ import annotations
@@ -882,29 +883,29 @@ class sep_km_kpv_rand_test(sep_base_test):
     async def _step_scrambler(self) -> None:
         p = self.plan
         # A word read and write issued right after the erase write of a slot
-        # that this step erases again before use.
+        # that this step erases again before use. The CTRL read after each
+        # access shows whether the erase was still in flight when it completed.
         s0 = p.scr_slots[0]
         ca, wa = m.ctrl_addr(s0), m.word_addr(s0, 0)
         r = await self._access_obs(
             [
                 kp.wr(ca, m.ERASE),
                 kp.rd(wa),
+                kp.rd(ca),
                 kp.wr(wa, m.WORD),
                 kp.rd(ca),
                 kp.poll(ca, m.ERASE, 0, _ERASE_POLL),
             ]
         )
         self._erase_done(r, s0)
-        erase = int(bool(r[3].value & m.ERASE))
-        for case, x in (("erase_rd", r[1]), ("erase_wr", r[2])):
-            rdata = _h(x.value) if x.known else "X"
-            self.logger.info(
-                "OBS-KPV-ACCESS LOG case=%s slot=%d rdata=%s axi_slverr=%d erase=%d",
-                case,
-                s0,
-                rdata,
-                x.slv,
-                erase,
+        for case, x, c in (("erase_rd", r[1], r[2]), ("erase_wr", r[3], r[4])):
+            self.chk.obs(
+                "KPV-ACCESS",
+                case=case,
+                slot=s0,
+                rdata=_h(x.value) if x.known else "X",
+                axi_slverr=x.slv,
+                erase=int(bool(c.value & m.ERASE)) if c.known else "X",
             )
         cells = p.scr_cells
         d = p.scr_values
@@ -941,10 +942,12 @@ class sep_km_kpv_rand_test(sep_base_test):
             "before" if p.lock_before else "after",
         )
         key = (await self._access_obs([kp.rd(m.SCR_KEY)]))[0]
-        self.logger.info(
-            "OBS-KPV-ACCESS LOG case=scr_key_locked rdata=%s axi_slverr=%d erase=0",
-            _h(key.value) if key.known else "X",
-            key.slv,
+        self.chk.obs(
+            "KPV-ACCESS",
+            case="scr_key_locked",
+            rdata=_h(key.value) if key.known else "X",
+            axi_slverr=key.slv,
+            erase=0,
         )
 
     # Step 12.

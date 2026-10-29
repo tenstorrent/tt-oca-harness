@@ -46,7 +46,8 @@ Checkers:
   CHK-TUNE-IGNORED  with autotune on and clean noise the probe keeps p0 after
                     DETUNE = m3 and after DETUNE = m3c, and the edge record
                     shows zero probe changes from the p0 sample to the end of
-                    the leg (count logged). Control: the leg lasts at least as
+                    the leg (count logged), and the DETUNE readback after each
+                    write equals the written mask. Control: the leg lasts at least as
                     long as the latest first toggle of bit k after a burst
                     start (CHK-TUNE-TOGGLE), so a tune state machine that
                     toggles with no failure at the failing-noise rate changes
@@ -335,12 +336,12 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         dut = cocotb.top
         shard = sep_shard(self, SHARD_EVIDENCE)
         await self.bring_up_no_cpu(park=BASELINE_PARK)
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
         self.plan = plan
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _Esrc(self)
         self.clk = SepBitWatch(dut.rst_ni, {"rst_ni": 0}, name="clk_count").start()
@@ -573,16 +574,19 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         p0 = await self._probe()
         t_p0 = _now_ps()
         probes = []
+        readbacks = []
         try:
             for mask in (self.plan.m3, self.plan.m3c):
-                await self._write_detune(mask)
+                readbacks.append(await self._write_detune(mask))
                 await self._words(W, "ignored_window")
                 probes.append(await self._probe())
         except TrialTimeout as exc:
             out["reason"] = f"timeout:{exc.what} bound={exc.bound}"
         t_end = _now_ps()
         changes = [c for c in self.timer.since(t_p0, until_ps=t_end) if c.t_ps > t_p0]
-        out.update(p0=p0, probes=probes, changes=len(changes), span_ps=t_end - t_p0)
+        out.update(
+            p0=p0, probes=probes, readbacks=readbacks, changes=len(changes), span_ps=t_end - t_p0
+        )
         return out
 
     async def _auto_burst(self, i: int) -> int | None:
@@ -697,8 +701,11 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             span_ps=span_ps,
             first_toggle_ps=self.first_toggle_ps or "na",
         )
+        readbacks = ign["readbacks"]
+        written = (plan.m3, plan.m3c)
         fields = {
-            "detune_regs": f"0x{plan.m3:03x},0x{plan.m3c:03x}",
+            "detune_written": f"0x{plan.m3:03x},0x{plan.m3c:03x}",
+            "detune_regs": ",".join(f"0x{rb:03x}" for rb in readbacks) or "na",
             "p0": f"0x{p0:03x}",
             "probe": ",".join(f"0x{p:03x}" for p in probes) or "na",
             "changes_after_p0": changes,
@@ -708,7 +715,11 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         if ign["reason"]:
             fields["reason"] = ign["reason"]
         ok = (
-            not ign["reason"] and len(probes) == 2 and all(p == p0 for p in probes) and changes == 0
+            not ign["reason"]
+            and len(probes) == 2
+            and all(p == p0 for p in probes)
+            and changes == 0
+            and tuple(readbacks) == written
         )
         self._ok("TUNE-IGNORED", ok, **fields)
 

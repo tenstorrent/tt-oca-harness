@@ -39,8 +39,13 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 * CHK-SRC17, CHK-IDLE-BAND  source 17 and the band above 43 stay 0 with
                    ``meie`` and ``meipl`` armed; live source 24 reads 1.
 * CHK-SLOTLESS     an AES encryption, an OTP read and a life-cycle controller
-                   read move no vector bit; the AES status reads done after
-                   the encryption.
+                   read move no vector bit; the AES output-valid flag rises,
+                   DATA_OUT equals the FIPS-197 C.1 ciphertext and the AES
+                   status reads done after the encryption.
+* CHK-ALERT-MEIP   meip[1] bit 1 (edge source 33) reads 1 after each alert
+                   kind, before its meigwclr write.
+* CHK-MASKED-CLEAR the meip words equal the reset baseline after the masked
+                   report and the meigwclr writes to sources 12 and 33.
 * CHK-GW-CELL, CHK-EDGE-HOLD, CHK-HOLD, CHK-CLR-IDLE, CHK-GWCLR-VALUE,
   CHK-GW-NONVAC    the gateway cells LH, LL, EH and EL (EL: the hold after the
                    deassertion and the reassertion, and the clear), the edge
@@ -56,8 +61,7 @@ whose values depend on the unstated edge direction), ``OBS-MASKED-VISIBLE``,
 ``OBS-SRC34``, ``OBS-SRC-SHAPE`` (the high clocks and rises of each source
 line over the single-source walk, and the source 12 latency and shape),
 ``OBS-GWCLR-LEVEL`` (the pending bit after a meigwclr write to an asserted
-level cell), the boundary source index, ``OBS-VECTOR``, ``OBS-FIFO-EMPTY``,
-``OBS-ALERT-MEIP`` and ``OBS-MASKED-CLEAR``.
+level cell), the boundary source index, ``OBS-VECTOR`` and ``OBS-FIFO-EMPTY``.
 
 The firmware brings the entropy stack up before the engine runs (AES masking
 and the OTBN URND draw from EDN); this test drives the raw noise of the ring
@@ -193,6 +197,9 @@ AES_DONE_MASK = (
     | AES.field_mask("STATUS", "alert_fatal_fault")
 )
 AES_DONE_WANT = AES_IDLE | AES.field_mask("STATUS", "input_ready")
+# FIPS-197 Appendix C.1 AES-128 ciphertext of the firmware key and plaintext
+# (bytes 00..0f, 00112233..ff), packed little-endian per 32-bit word.
+AES_FIPS197_C1_CT = (0xD8E0C469, 0x30047B6A, 0x80B7CDD8, 0x5AC5B470)
 KMAC_FE_STATE = KMAC.field_mask("INTR_STATE", "fifo_empty")
 # meip word 0 offset in the PIC and the meip word stride (register export).
 MEIP0_OFF = sym("PIC_MEIP_0__REG_OFFSET")
@@ -335,6 +342,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         "CHK-SRC17",
         "CHK-IDLE-BAND",
         "CHK-SLOTLESS",
+        "CHK-ALERT-MEIP",
+        "CHK-MASKED-CLEAR",
         "CHK-GW-CELL",
         "CHK-EDGE-HOLD",
         "CHK-HOLD",
@@ -725,10 +734,15 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"block={blk} kind={kind} idx={','.join(map(str, sorted(idx))) or 'none'} "
                 f"range={lo}-{hi} pulse_vector=0x{pv:03x}",
             )
+        # Source 33 is an edge gateway: its pending bit holds after the alert
+        # pulse until the meigwclr write that follows each read.
         alerts = [kv for _, kv in self._lines("ALERT")]
-        self.logger.info(
-            "OBS-ALERT-MEIP LOG meip1_bit1=%s",
-            ",".join(str((kv["meip1"] >> 1) & 1) for kv in alerts),
+        bits = [(kv["meip1"] >> 1) & 1 for kv in alerts]
+        kinds = [int(kv["k"]) for kv in alerts]
+        self._check(
+            kinds == list(self.wc.alert_order) and all(b == 1 for b in bits),
+            "CHK-ALERT-MEIP",
+            f"kinds={','.join(map(str, kinds))} meip1_bit1={','.join(map(str, bits))} want=1",
         )
         # Pair trial.
         k1, k2 = self.wc.pair
@@ -857,10 +871,16 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 st = [kv for _, kv in self._lines("CTRL-AES-STATUS")]
                 assert len(st) == 1, f"expected one CTRL-AES-STATUS record, got {len(st)}"
                 status, cfg_ok = st[0]["status"], int(st[0]["cfg_ok"])
-                ok = ok and cfg_ok == 1 and status & AES_DONE_MASK == AES_DONE_WANT
+                ov = int(st[0]["ov"])
+                ct = tuple(int(st[0][f"ct{i}"]) for i in range(4))
+                ok = (
+                    ok and cfg_ok == 1 and ov == 1 and ct == AES_FIPS197_C1_CT
+                    and status & AES_DONE_MASK == AES_DONE_WANT
+                )  # fmt: skip
                 text += (
                     f" aes_status=0x{status:08x} field_mask=0x{AES_DONE_MASK:02x} "
-                    f"want=0x{AES_DONE_WANT:02x} cfg_ok={cfg_ok}"
+                    f"want=0x{AES_DONE_WANT:02x} cfg_ok={cfg_ok} output_valid_seen={ov} "
+                    f"ct={_hexw(ct)} want_ct={_hexw(AES_FIPS197_C1_CT)}"
                 )
             self._check(ok, "CHK-SLOTLESS", text)
 
@@ -1005,26 +1025,31 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         width = len(self.dut.sep_ext_interrupts_i)
         self.wc = WalkCfg.from_seed(self.random_seed(), width)
         c = self.wc
-        self.logger.info("SEED seed=%d", c.seed)
-        self.logger.info("DRAW order_pass1=%s", ",".join(str(MAP[i]) for i in c.ord1))
-        self.logger.info("DRAW order_pass2=%s", ",".join(str(MAP[i]) for i in c.ord2))
-        self.logger.info("DRAW gaps_pass1=%s", ",".join(map(str, c.gap1)))
-        self.logger.info("DRAW gaps_pass2=%s", ",".join(map(str, c.gap2)))
+        self.logger.info("INFO-SEED seed=%d", c.seed)
+        self.logger.info("INFO-DRAW order_pass1=%s", ",".join(str(MAP[i]) for i in c.ord1))
+        self.logger.info("INFO-DRAW order_pass2=%s", ",".join(str(MAP[i]) for i in c.ord2))
+        self.logger.info("INFO-DRAW gaps_pass1=%s", ",".join(map(str, c.gap1)))
+        self.logger.info("INFO-DRAW gaps_pass2=%s", ",".join(map(str, c.gap2)))
         self.logger.info(
-            "DRAW alert_order=%s", ",".join(f"{ALERTS[k][0]}.{ALERTS[k][1]}" for k in c.alert_order)
-        )
-        self.logger.info("DRAW alert_pair=%d,%d alert_gap=%d", c.pair[0], c.pair[1], c.pair_gap)
-        self.logger.info("DRAW alert_kind_pass1=%d pass2=%d single=%d masked=%d", *c.akind)
-        self.logger.info(
-            "DRAW native_order=%s", ",".join(str(NATIVE[n][0]) for n in c.native_order)
+            "INFO-DRAW alert_order=%s",
+            ",".join(f"{ALERTS[k][0]}.{ALERTS[k][1]}" for k in c.alert_order),
         )
         self.logger.info(
-            "DRAW enable_mask_pass1=%s", ",".join(f"{s}:{int(c.enabled(s, 1))}" for s in DRAWN)
+            "INFO-DRAW alert_pair=%d,%d alert_gap=%d", c.pair[0], c.pair[1], c.pair_gap
         )
-        self.logger.info("DRAW gateway=%s", ",".join(f"{s}:{c.cell(s)}" for s in GW_SRCS))
-        self.logger.info("DRAW gateway_order=%s", ",".join(str(GW_SRCS[g]) for g in c.gw_order))
-        self.logger.info("DRAW clear_value=0x%08x", c.clr_x)
-        self.logger.info("DRAW boundary_bit=%d boundary_pair=%d,%d width=%d", *c.ext, width)
+        self.logger.info("INFO-DRAW alert_kind_pass1=%d pass2=%d single=%d masked=%d", *c.akind)
+        self.logger.info(
+            "INFO-DRAW native_order=%s", ",".join(str(NATIVE[n][0]) for n in c.native_order)
+        )
+        self.logger.info(
+            "INFO-DRAW enable_mask_pass1=%s", ",".join(f"{s}:{int(c.enabled(s, 1))}" for s in DRAWN)
+        )
+        self.logger.info("INFO-DRAW gateway=%s", ",".join(f"{s}:{c.cell(s)}" for s in GW_SRCS))
+        self.logger.info(
+            "INFO-DRAW gateway_order=%s", ",".join(str(GW_SRCS[g]) for g in c.gw_order)
+        )
+        self.logger.info("INFO-DRAW clear_value=0x%08x", c.clr_x)
+        self.logger.info("INFO-DRAW boundary_bit=%d boundary_pair=%d,%d width=%d", *c.ext, width)
         patched = os.path.join(os.getcwd(), "sep_dtcm_pic_walk.hex")
         patch_param_block(_DTCM_HEX, patched, P_MAGIC_WORD, c.words())
 
@@ -1057,7 +1082,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.sb.expected_line = _BANNER
         self.con = SepFwConsole(self, graded_test=_TEST).start()
         self.con.on_mark(
-            lambda leg, kind: self.logger.info("LEG LOG %s %s clk=%d", kind, leg, self.con.clk)
+            lambda leg, kind: self.logger.info("INFO-LEG LOG %s %s clk=%d", kind, leg, self.con.clk)
         )
         self.con.on_request("m", self._req_mark)
         self.con.on_request("vec", self._req_vec)
@@ -1105,10 +1130,11 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self._chk_gateway()
         self._chk_ext()
         _, mc = self._meip("masked_clr")
-        self.logger.info(
-            "OBS-MASKED-CLEAR LOG baseline_equal=%d meip=%s",
-            int(meip_masked(mc) == meip_masked(self._meip("reset")[1])),
-            _hexw(mc),
+        base = self._meip("reset")[1]
+        self._check(
+            meip_masked(mc) == meip_masked(base),
+            "CHK-MASKED-CLEAR",
+            f"meip={_hexw(mc)} baseline={_hexw(base)} (unstated idle sources masked)",
         )
         n_eh = sum(1 for s in GW_SRCS if c.cell(s) == "EH")
         want = {
@@ -1125,6 +1151,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             "CHK-SRC17": 1,
             "CHK-IDLE-BAND": 1,
             "CHK-SLOTLESS": 3,
+            "CHK-ALERT-MEIP": 1,
+            "CHK-MASKED-CLEAR": 1,
             "CHK-GW-CELL": len(GW_SRCS),
             "CHK-EDGE-HOLD": n_eh,
             "CHK-HOLD": 1,

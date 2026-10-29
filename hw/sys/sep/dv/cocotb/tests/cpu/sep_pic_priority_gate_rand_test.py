@@ -9,13 +9,17 @@ run seed, patches them into the firmware parameter block, follows the console
 live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 
 * CHK-NONE-BEFORE-PROGRAM (firmware) no delivery with the reset meie and meipl.
+* CHK-LEVEL-SWEEP (firmware) each of the 16 ``meipl`` encodings written to the
+                 drawn sweep source reads back as written, in both priority
+                 orders (``el2_pic.adoc``: ``intpriority`` 3:0 is RW); the
+                 host requires the 32 records at the drawn source.
 * CHK-GATED      (firmware) no delivery through a closed gate (meie 0, never
                  priority, mstatus.MIE 0); opening the gate delivers the same
                  source once and no other. One more record, after the timer
                  legs: source 1 pending at an open PIC gate with mstatus.MIE 1
                  and ``mie.MEIE`` 0 does not deliver, and ``mie.MEIE`` 1
-                 delivers it once (``gate=mie_meie``; RISC-V privileged spec
-                 v1.12 section 3.1.9).
+                 delivers it once (``gate=mie_meie``; EL2 PRM section 8.6.1,
+                 named by ``hw/sys/sep/doc/cpu.adoc``).
 * CHK-WINNER     (host) the handlers after the mstatus.MIE gate step run in
                  effective-priority order: each one is the source of highest
                  effective priority among the sources not yet delivered,
@@ -76,12 +80,11 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  with ``mie.MTIE`` 1 one trap with ``mcause`` 0x8000_0007;
                  with the pin 0, ``mip.MTIP`` reads 0
                  (``hw/sys/sep/doc/interrupts.adoc:291``: the pin drives
-                 ``mip.MTIP``; RISC-V privileged spec v1.12 section 3.1.9 and
-                 table 3.6).
+                 ``mip.MTIP``; EL2 PRM tables 13.1 and 13.2 for ``mie.mtie``
+                 and ``mip.mtip``, table 13.3 for ``mcause`` 0x8000_0007).
 
 The host also checks that each record of the threshold, nesting and timer
-legs carries the drawn stimulus. Log only: ``OBS-LEVEL-SWEEP`` (window
-closed), ``OBS-NEVER-MEIP``, ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
+legs carries the drawn stimulus. Log only: ``OBS-NEVER-MEIP``, ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
 come from the drawn stimulus and the priority model, never from a DUT read. cpu run mode, ``+skip_fuse_sense``,
 Verilator and VCS.
 
@@ -380,6 +383,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         "CHK-INT-TIMER-HOLD",
         "CHK-INT-TIMER-TRAP",
         "CHK-TIMER-PIN",
+        "CHK-LEVEL-SWEEP",
     )
 
     def build_phase(self) -> None:
@@ -588,7 +592,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.tcfg = PrioCfg.from_seed(seed)
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         for line in self.tcfg.draw_lines():
             self.logger.info("%s", line)
         dtcm = os.path.join(os.getcwd(), "sep_dtcm_pic_prio.hex")
@@ -636,8 +640,16 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 "CHK-INT-TIMER-HOLD": 4,
                 "CHK-INT-TIMER-TRAP": 2,
                 "CHK-TIMER-PIN": 1,
+                "CHK-LEVEL-SWEEP": 32,
             }
         )
+        sweep = sorted(
+            (int(r.kv["src"]), int(r.kv["priord"]), int(r.kv["wrote"]))
+            for r in self.con.records("CHK-LEVEL-SWEEP")
+        )
+        want_sweep = [(self.tcfg.sweep, p, v) for p in range(2) for v in range(16)]
+        if sweep != want_sweep:
+            raise AssertionError(f"CHK-LEVEL-SWEEP FAIL host: cells {sweep} != drawn {want_sweep}")
         self._chk_legs()
         # The gate kinds of the CHK-GATED lines are the drawn ones, in the drawn order.
         exp = []

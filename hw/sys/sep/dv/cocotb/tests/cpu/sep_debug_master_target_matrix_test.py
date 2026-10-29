@@ -19,7 +19,8 @@ EL2 debug module exists only in the full ``sep_cpu``:
   force splice is the independent register path. Steps 1 to 8, the three
   local-alias legs, then the reset-controller and SPI host targets, the entropy
   pool, the extension port, the boot ROM and ICCM, the AP and STEE remaps, and
-  a logged leg of targets with no stated response (``OBS-DBG-SBA``).
+  a leg of six targets: an HMAC register in reset and two system registers
+  (graded), and three targets with no stated response (``OBS-DBG-SBA``).
 
 Checks:
   CHK-DTMCS     : the first ``dtmcs`` read after the TAP reset is 0x0000_0071:
@@ -152,6 +153,29 @@ Checks:
                   (``hw/sys/sep/doc/fabric.adoc:178-181``, ``:314-315``,
                   ``:320``). The responses come from the bench outbound responder
                   and are logged only.
+  CHK-DBG-SBA-ISO: (entry S) with ``hmac_sw_rst_n`` written 0, a debug-master
+                  4-byte read and write of HMAC ``MSG_LENGTH_LOWER`` each show
+                  one R or B beat on PR-DBG-SB that answers SLVERR, the R beat
+                  carries 0x1501A7ED in the 32-bit lane of the access, and
+                  ``sberror`` is not 0 (``hw/sys/sep/doc/reset_controller.adoc:139-141``:
+                  new transactions on an isolated path complete with SLVERR and
+                  that read data; the HMAC host path is isolated, ``:153``;
+                  the debug master reaches ``sep_crypto``,
+                  ``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:129``).
+  CHK-DBG-SBA-REG: (entry S) 64-bit debug-master read and write of
+                  ``START_ADDR`` of a disabled inbound filter entry and of
+                  ``DEMOTE_2``: each R or B beat answers OKAY and ``sberror``
+                  reads 0; the read returns in ``sbdata`` the value the bench LSU
+                  master read before the instance; after the write the bench LSU
+                  master reads the written value on the ``start_addr`` field,
+                  rounded to the granule only when START and END share one
+                  (``hw/ip/axi_filter/regs/filter_ctrl.rdl:94-102``), and for
+                  ``DEMOTE_2`` the value before OR the drawn bit (every field
+                  ``onwrite = woset``,
+                  ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:22-45``).
+                  The debug master reaches the system CSRs and ``sep_crypto``
+                  (``hw/sys/sep/doc/fabric.adoc:139-140``;
+                  ``sep_axi_connectivity.svg:129``, ``:136``).
   CHK-DBG-AXPROT: (entry S) every AR and AW of each debug-master instance on
                   PR-DBG-SB carries AxPROT 0b001
                   (``hw/sys/sep/doc/cpu.adoc``, table ``sep-cpu-axprot-table``).
@@ -159,8 +183,9 @@ Checks:
 The expected values are the drawn write values, the addresses of the generated
 register map and the rules of the specification; no expected value is read
 from the DUT except the independent-path reads of a live register. The
-responses of the accesses outside the moved window (OLD, BELOW) are logged
-only; the specification states no response for them.
+responses of the accesses outside the moved window (OLD, BELOW) and of the
+PIC base, the hole word and the word past the secure DMA map are logged only;
+the specification states no debug-master response for them.
 
 FCOV: each graded instance runs in its own owner window, opened before its
 first access. The cells of the debug points and of the DMI points that the
@@ -182,7 +207,9 @@ probe word,
 the write words of the boot ROM and ICCM legs, and for AP then STEE the region,
 the word offset, the remap offset and the write word; then for the logged leg
 the hole word, the disabled inbound filter entry, the DEMOTE_2 rsvd bit and
-the write word of each target. Every leg runs on every seed.
+the write word of each target. Every leg runs on every seed. Entry C uses
+only the uncore DMI write data, which no check grades; both entries run one
+seed per regression.
 
 VCS only (``tools = ["vcs"]``), ``+skip_fuse_sense``. The leaf fails on a build
 without the full ``sep_cpu``.
@@ -197,6 +224,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_common import (
+    FILTER_ADDR_MASK,
     OTHERS_SOURCE_ID,
     OUTBOUND_MBX_MAGIC,
     RESP_OKAY,
@@ -231,8 +259,12 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import SepDmaOps, SepMemWords
 from seq_lib.sep_fabric_csr_bank_seq import (
     AP_BASE,
+    DBW_LSB,
+    DBW_MASK,
+    F_ALLOW_BURST,
     F_ENTRY_ENABLED,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
     FILTER_START_ADDR,
     FILTER_STRIDE,
     INFILT_BASE,
@@ -339,15 +371,19 @@ DMA_PROBE_SRC = SRAM_WORD + 0x100
 DMA_WORD_BYTES = 4
 DMA_WIDTH_ENC = 2  # TRANSFER_WIDTH: 4-byte beats
 
-# Targets of the logged debug-master leg. The specification states no response
-# for any of them.
+# Targets of the step-21 leg. The specification states no debug-master response
+# for PIC_BASE, HOLE and PAST (the memory-map codes are stated at the inbound
+# port only), so those are logged; ISOLATED, FILT_START and LC_RSVD are graded.
 PIC_BASE = sym("PIC_REG_MAP_BASE_ADDR")
 HOLE_FIRST = 0x1080_4000  # unmapped words above the secure DMA register map
 HOLE_LAST = 0x108F_FFF8
 DMA_PAST = sym("SECURE_DMA_REG_MAP_BASE_ADDR") + sym("SECURE_DMA_REG_MAP_SIZE")
 HMAC_RST_FIELD = SEP_RESET_CTRL.field_mask("SW_RESET_N", "hmac_sw_rst_n")
-# DEMOTE_2 bits 63:2 are rsvd, sw=rw with onwrite=woset
-# (hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:42-47), so a
+# A new transaction on an isolated path completes SLVERR with this read data in
+# each 32-bit word (hw/sys/sep/doc/reset_controller.adoc:139-141).
+ISO_DATA = 0x1501_A7ED
+# Every DEMOTE_2 field is sw=rw with onwrite=woset
+# (hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:22-45), so a
 # set bit stays set; that write is the last access of the leaf.
 DEMOTE_2 = sym("SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR")
 
@@ -461,7 +497,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
     def _draw(self) -> None:
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         rng = self.rng
         targets = [n for n, _ in SRAM_TARGETS] + [n for n, _, _ in REG_TARGETS]
         rng.shuffle(targets)
@@ -478,19 +514,19 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         moved_sizes = [4, 8]
         rng.shuffle(moved_sizes)
         self.moved_sizes = moved_sizes
-        self.logger.info("DRAW target_order=%s", ",".join(targets))
+        self.logger.info("INFO-DRAW target_order=%s", ",".join(targets))
         self.logger.info(
-            "DRAW sram_sizes=%s",
+            "INFO-DRAW sram_sizes=%s",
             " ".join(f"{n}:{'/'.join(str(s) for s in v)}" for n, v in self.sram_sizes.items()),
         )
-        self.logger.info("DRAW sram_init=0x%016x", self.sram_init)
+        self.logger.info("INFO-DRAW sram_init=0x%016x", self.sram_init)
         self.logger.info(
-            "DRAW moved_base=0x%08x moved_sizes=%s",
+            "INFO-DRAW moved_base=0x%08x moved_sizes=%s",
             self.moved_base,
             "/".join(str(s) for s in moved_sizes),
         )
         self.logger.info(
-            "ENV tck_clks=%d trst_tck=%d retire_bound=%d pulse_clks=%d tap_bound=%d "
+            "INFO-ENV tck_clks=%d trst_tck=%d retire_bound=%d pulse_clks=%d tap_bound=%d "
             "rst_hold=%d settle=%d sb_busy_reads=%d uncore_addrs=%s",
             TCK_CLKS,
             TRST_TCK,
@@ -650,7 +686,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         mem = cocotb.top.u_dut.u_sep_ip_integration.u_sep_boot_rom.mem
         mem[0].value = (SPIN_LOOP << 32) | SPIN_LOOP
         self.logger.info(
-            "STAGE rom word0=0x%016x (jal x0, 0 at 0x%08x)", int(mem[0].value), ROM_BASE
+            "INFO-STAGE rom word0=0x%016x (jal x0, 0 at 0x%08x)", int(mem[0].value), ROM_BASE
         )
 
     async def _bring_up(self) -> None:
@@ -677,8 +713,10 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             await self.wait_fuse_sense()
         # The sampler counts the sep_reset_n tap low cycles until here.
         self.released = True
+        # Entry C grades the count in CHK-DBG-RST; entry S records it only.
         self.logger.info(
-            "CTRL-COLD: sep_reset_n tap low for %d clk_i cycles of the cold reset",
+            "%s: sep_reset_n tap low for %d clk_i cycles of the cold reset",
+            "CTRL-COLD" if self.entry_c else "INFO-COLD",
             self.cold_sep_low,
         )
 
@@ -835,7 +873,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         except DmiError:
             pin, pout = self._pair_since(pair_mark)
             self.logger.error(
-                "SBA-STALL FAIL: target=%s addr=0x%08x size=%d dbg_sb=%s dbg_in=%s dbg_out=%s",
+                "CHK-DBG-SBA FAIL: stall target=%s addr=0x%08x size=%d dbg_sb=%s dbg_in=%s dbg_out=%s",
                 acc.target,
                 acc.addr,
                 acc.size,
@@ -844,7 +882,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 pout,
             )
             self.logger.error(
-                "SBA-STALL FAIL: lsu_xbar=%s rvalid=%s rready=%s",
+                "CHK-DBG-SBA FAIL: stall lsu_xbar=%s rvalid=%s rready=%s",
                 " ".join(x.fmt() for x in self.lx_tap.since(lx_mark)) or "-",
                 cocotb.top.pr_dbg_sb_rvalid_o.value,
                 cocotb.top.pr_dbg_sb_rready_o.value,
@@ -1141,7 +1179,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         """CHK-DBG-POOL-RD and CHK-DBG-POOL-WR in one window."""
         clk = cocotb.top.clk_i
         wval = self.rng.getrandbits(64)
-        self.logger.info("DRAW pool_write=0x%016x", wval)
+        self.logger.info("INFO-DRAW pool_write=0x%016x", wval)
         await self._inst_open()
         before = await self._lsu(SepAxiOp.READ, POOL_STATUS, length=8)
         mark = self.sb_tap.mark()
@@ -1219,14 +1257,14 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             self.logger.error(msg)
             raise AssertionError(msg)
         word = EXT_FIRST + 8 * self.rng.randrange((EXT_LAST - EXT_FIRST) // 8 + 1)
-        self.logger.info("DRAW ext_word=0x%08x", word)
+        self.logger.info("INFO-DRAW ext_word=0x%08x", word)
         ext = SepFabricTap("PR-EXT").start()
         rsp = SepFabricTap("PR-EXT-RSP").start()
         for code in (RESP_OKAY, RESP_SLVERR):
             rword = self.rng.getrandbits(64)
             wword = self.rng.getrandbits(64)
             self.logger.info(
-                "DRAW ext_code=%d ext_reply=0x%016x ext_write=0x%016x", code, rword, wword
+                "INFO-DRAW ext_code=%d ext_reply=0x%016x ext_write=0x%016x", code, rword, wword
             )
             self._ext_program(code, rword)
             await self._inst_open()
@@ -1263,7 +1301,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 f"sbdata={_h(rd)}",
             )
             self.logger.info(
-                "CTRL-EXT-RSP-DRIVE: dir=R port_r=%s set_code=%d set_word=0x%016x",
+                "INFO-EXT-RSP-DRIVE: dir=R port_r=%s set_code=%d set_word=0x%016x",
                 " ".join(x.fmt() for x in p_r) or "-",
                 code,
                 rword,
@@ -1299,7 +1337,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 f"dbg_b={len(s_b)} dbg_bresp={_h(sb.resp if sb else None, 1)} sberror={werr}",
             )
             self.logger.info(
-                "CTRL-EXT-RSP-DRIVE: dir=W port_b=%s set_code=%d",
+                "INFO-EXT-RSP-DRIVE: dir=W port_b=%s set_code=%d",
                 " ".join(x.fmt() for x in p_b) or "-",
                 code,
             )
@@ -1312,13 +1350,13 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         """CHK-DBG-NC: the boot ROM base and an ICCM word, read and write."""
         clk = cocotb.top.clk_i
         iccm = ICCM_BASE + 8 * self.rng.randrange(ICCM_SIZE // 8)
-        self.logger.info("DRAW iccm_word=0x%08x", iccm)
+        self.logger.info("INFO-DRAW iccm_word=0x%08x", iccm)
         rom = SepFabricTap("PR-ROM").start()
         tcm = SepFabricTap("PR-XBAR-TCM").start()
         live_rom, live_tcm = await self._nc_live(rom, tcm, iccm)
         for name, addr, cell in (("ROM", ROM_BASE, "rom"), ("ICCM", iccm, "iccm")):
             wval = self.rng.getrandbits(64)
-            self.logger.info("DRAW nc_write target=%s value=0x%016x", name, wval)
+            self.logger.info("INFO-DRAW nc_write target=%s value=0x%016x", name, wval)
             await self._inst_open()
             passed = []
             for d in ("r", "w"):
@@ -1372,7 +1410,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         """
         clk = cocotb.top.clk_i
         word = self.rng.getrandbits(32)
-        self.logger.info("DRAW nc_probe_word=0x%08x", word)
+        self.logger.info("INFO-DRAW nc_probe_word=0x%08x", word)
         rm = rom.mark()
         await self.start_seq(
             SepAxiAccessSeq(
@@ -1416,22 +1454,30 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         return live_rom, live_tcm
 
     async def _sba_obs_leg(self) -> None:
-        """OBS-DBG-SBA: debug-master read and write of targets with no stated response.
+        """Step 21: debug-master read and write of six targets in one instance.
 
-        One instance, so CHK-DBG-AXPROT grades its AR and AW beats. Each access
-        logs its PR-DBG-SB R or B beat, ``sberror``, the read data and, for the
-        two register targets, the bench-LSU readback after the write.
+        CHK-DBG-AXPROT grades the AR and AW beats of the instance.
+        CHK-DBG-SBA-ISO grades both accesses of ISOLATED (HMAC in software
+        reset): the PR-DBG-SB R or B beat answers SLVERR, the R beat carries
+        ``0x1501A7ED`` in the 32-bit lane of the access, and ``sberror`` is not
+        0. CHK-DBG-SBA-REG grades the bench-LSU readback after the write to
+        FILT_START (the written value on the ``start_addr`` field, rounded only
+        when START and END share a granule) and to LC_RSVD (the value before
+        the write OR the written bit), and the debug-master read of each, which
+        returns the bench-LSU value read before the instance in ``sbdata``. The
+        R or B beat of all four register accesses answers OKAY and ``sberror``
+        reads 0. PIC_BASE, HOLE and PAST are logged as OBS-DBG-SBA.
         """
         clk = cocotb.top.clk_i
         hole = HOLE_FIRST + 8 * self.rng.randrange((HOLE_LAST - HOLE_FIRST) // 8 + 1)
-        disabled = []
+        disabled = {}
         for i in range(INFILT_ENTRIES):
             cfg = await self._lsu(SepAxiOp.READ, INFILT_BASE + i * FILTER_STRIDE + FILTER_CONFIG)
             if not cfg & F_ENTRY_ENABLED:
-                disabled.append(i)
+                disabled[i] = cfg
         if not disabled:
             raise AssertionError("set-up: no disabled inbound filter entry")
-        filt = self.rng.choice(disabled)
+        filt = self.rng.choice(list(disabled))
         filt_start = INFILT_BASE + filt * FILTER_STRIDE + FILTER_START_ADDR
         demote_bit = 2 + self.rng.randrange(62)
         targets = (
@@ -1447,7 +1493,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             for name, _addr, size in targets
         }
         self.logger.info(
-            "DRAW sba_obs hole=0x%08x filt_entry=%d demote_bit=%d writes=%s",
+            "INFO-DRAW sba_obs hole=0x%08x filt_entry=%d demote_bit=%d writes=%s",
             hole,
             filt,
             demote_bit,
@@ -1455,6 +1501,22 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         )
         sw_rst = await self._lsu(SepAxiOp.READ, SW_RESET_N)
         start_before = await self._lsu(SepAxiOp.READ, filt_start, length=8)
+        end_rb = await self._lsu(
+            SepAxiOp.READ, filt_start - FILTER_START_ADDR + FILTER_END_ADDR, length=8
+        )
+        lc_before = await self._lsu(SepAxiOp.READ, DEMOTE_2, length=8)
+        # START_ADDR write-back (hw/ip/axi_filter/regs/filter_ctrl.rdl:94-102): the
+        # granule is 4 KiB with allow_burst, else 2^data_bus_width bytes; hardware
+        # writes the rounded START back only when START and END share a granule.
+        cfg = disabled[filt]
+        gran = 0x1000 if cfg & F_ALLOW_BURST else 1 << ((cfg >> DBW_LSB) & DBW_MASK)
+        start_w = wvals["FILT_START"] & FILTER_ADDR_MASK
+        same = start_w // gran == (end_rb & FILTER_ADDR_MASK) // gran
+        before = {"FILT_START": start_before, "LC_RSVD": lc_before}
+        expect = {
+            "FILT_START": start_w & ~(gran - 1) if same else start_w,
+            "LC_RSVD": lc_before | wvals["LC_RSVD"],
+        }
         await self._inst_open()
         for name, addr, size in targets:
             if name == "ISOLATED":
@@ -1467,19 +1529,54 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     data, err = None, await self.dmi.sba_write(addr, wvals[name], size=size)
                 await ClockCycles(clk, SETTLE)
                 rsp = self._beats(self.sb_tap, sm, d if d == "r" else "b")
-                lsu_rb = None
-                if d == "w" and name in ("FILT_START", "LC_RSVD"):
-                    lsu_rb = await self._lsu(SepAxiOp.READ, addr, length=8)
-                self.logger.info(
-                    "OBS-DBG-SBA target=%s dir=%s addr=0x%08x resp=%s sberror=%d data=%s lsu_rb=%s",
-                    name,
-                    d.upper(),
-                    addr,
-                    " ".join(_h(b.resp, 1) for b in rsp) or "-",
-                    err,
-                    "-" if d == "w" else _h(data),
-                    "-" if lsu_rb is None else _h(lsu_rb),
-                )
+                codes = " ".join(_h(b.resp, 1) for b in rsp) or "-"
+                if name == "ISOLATED":
+                    lane = lane32(rsp[0].data, addr) if d == "r" and len(rsp) == 1 else None
+                    self._grade(
+                        "CHK-DBG-SBA-ISO",
+                        len(rsp) == 1
+                        and rsp[0].resp == RESP_SLVERR
+                        and err != 0
+                        and (d == "w" or lane == ISO_DATA),
+                        f"target=ISOLATED dir={d.upper()} addr=0x{addr:08x} beats={len(rsp)} "
+                        f"resp={codes} expect_resp=0x{RESP_SLVERR:x} sberror={err} "
+                        + (
+                            f"r_data={_h(rsp[0].data if rsp else None)} lane={_h(lane, 8)} "
+                            f"expect_lane=0x{ISO_DATA:08x}"
+                            if d == "r"
+                            else "expect_sberror=nonzero"
+                        ),
+                    )
+                elif name in expect:
+                    mask = FILTER_ADDR_MASK if name == "FILT_START" else (1 << 64) - 1
+                    if d == "r":
+                        got, exp = data, before[name]
+                    else:
+                        got, exp = await self._lsu(SepAxiOp.READ, addr, length=8), expect[name]
+                    fc = field_compare(got, exp, mask)
+                    self._grade(
+                        "CHK-DBG-SBA-REG",
+                        fc.ok and len(rsp) == 1 and rsp[0].resp == RESP_OKAY and err == 0,
+                        f"target={name} dir={d.upper()} addr=0x{addr:08x} "
+                        f"wr={'-' if d == 'r' else _h(wvals[name])} "
+                        f"{'sbdata' if d == 'r' else 'lsu_rb'}={_h(got)} expect={_h(exp)} "
+                        f"field_mask=0x{mask:x} resp={codes} sberror={err}"
+                        + (
+                            f" end={_h(end_rb)} granule=0x{gran:x} same_granule={int(same)}"
+                            if name == "FILT_START"
+                            else f" before={_h(lc_before)}"
+                        ),
+                    )
+                else:
+                    self.logger.info(
+                        "OBS-DBG-SBA target=%s dir=%s addr=0x%08x resp=%s sberror=%d data=%s",
+                        name,
+                        d.upper(),
+                        addr,
+                        codes,
+                        err,
+                        "-" if d == "w" else _h(data),
+                    )
             if name == "ISOLATED":
                 await self._lsu(SepAxiOp.WRITE, SW_RESET_N, sw_rst)
             if name == "FILT_START":
@@ -1517,7 +1614,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             translated = offset | (local & REGION_MASK)
             wval = self._draw_word()
             self.logger.info(
-                "DRAW remap path=%s region=%d local=0x%08x offset=0x%014x translated=0x%014x "
+                "INFO-DRAW remap path=%s region=%d local=0x%08x offset=0x%014x translated=0x%014x "
                 "write=0x%016x",
                 path,
                 region,
@@ -1772,6 +1869,8 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 "CHK-DBG-EXT",
                 "CHK-DBG-NC",
                 "CHK-DBG-REMAP",
+                "CHK-DBG-SBA-ISO",
+                "CHK-DBG-SBA-REG",
                 "CHK-DBG-AXPROT",
             )
         self.logger.info(

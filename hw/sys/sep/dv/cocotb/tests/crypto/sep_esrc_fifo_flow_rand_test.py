@@ -35,7 +35,9 @@ of the pointer trial.
 Checkers:
   CHK-FIFO-FILL          LEVEL rises to 64 and stays, FIFO_OVERFLOW = 1,
                          (WPTR - RPTR) mod 64 == LEVEL mod 64 at every sample.
-  CHK-FIFO-POP           each pop with the producer stopped: LEVEL - 1, RPTR + 1, WPTR kept.
+  CHK-FIFO-POP           each pop with the producer stopped: LEVEL - 1, RPTR + 1, WPTR kept;
+                         LEVEL and WPTR still kept after the stream port offers a word;
+                         control: CTRL-FIFO-POP offered >= 1 stream word in the window.
   CHK-FIFO-RESUME        LEVEL rises from 0 after ENABLE = 1.
   CHK-FIFO-ORDER         64 popped words == 64 consecutive stream words at one d in 0..8.
   CHK-FIFO-CHURN         w_k XOR w_(k-32) == C for k = 32..63; control: churn off, every word == C.
@@ -386,7 +388,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             )
             return False
         self.fill_clk = max(1, fill)
-        self.logger.info("FIFO fill clean=%d bound=%d", self.fill_clk, LAT_FACTOR * self.fill_clk)
+        self.chk.info("FIFO-FILL-REF", clean=self.fill_clk, bound=LAT_FACTOR * self.fill_clk)
         ok, intr, _ = await self._poll(
             ESRC_INTR_STATUS, lambda v: v & INTR_FIFO_OVERFLOW, bool, self._fill_bound()
         )
@@ -425,6 +427,7 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         plan = self.plan
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         l0, w0, r0 = _status(await self._rd(ESRC_FIFO_STATUS))
+        tap0 = self.tap.words
         prev = (l0, w0, r0)
         bad = 0
         for _ in range(plan.k):
@@ -432,6 +435,17 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             cur = _status(await self._rd(ESRC_FIFO_STATUS))
             bad += cur != (prev[0] - 1, prev[1], (prev[2] + 1) % PTR_MOD)
             prev = cur
+        # The stream port offers words whatever FIFO_CTRL.ENABLE is (architecture.adoc:150):
+        # the window stays open until one word is offered, and then LEVEL and WPTR must hold.
+        bound = self._word_bound()
+        t0 = self._now()
+        while self.tap.words == tap0 and self._now() - t0 <= bound:
+            await self._rd(ESRC_FIFO_STATUS)
+        offered = self.tap.words - tap0
+        cur = _status(await self._rd(ESRC_FIFO_STATUS))
+        bad += cur != prev
+        prev = cur
+        self.chk.ctrl("FIFO-POP", offered >= 1, offered=offered, wait_bound=bound)
         l1, w1, r1 = prev
         self.chk.ok(
             "FIFO-POP",

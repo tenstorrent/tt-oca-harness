@@ -1925,7 +1925,6 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             fired=fired,
             pending_seen=f"0x{watch.pend_seen:x}",
         )
-        self.chk.obs("CPU-TRAP-CODE", line=line, code=_hx(code))
         self.chk.ok(
             "CPU-TRAP",
             b0 == 0

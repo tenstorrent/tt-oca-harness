@@ -26,6 +26,11 @@ Case 0 is a pure-with-context signature that must verify, run first: the
 streamed message and the context are new to this aperture's DV, and a stream or
 context fault fails there on a known answer rather than reading as a reject.
 
+Before each VERIFY the leaf reads back the hint words of ``MLDSA_SIGNATURE``
+(``sw = rw``, abr_reg.rdl) and requires the written values
+(``CTRL-HINT-SIG-LOADED``), so a reject is graded only on a malformed hint that
+reached the engine.
+
 VALID is sticky and READY does not re-assert until a zeroize, so each command
 is preceded by one. no_cpu / +skip_fuse_sense; the vectors are fixed.
 """
@@ -73,6 +78,9 @@ TEST = "sep_abr_mldsa_hint_reject_kat_test"
 # FCOV stimulus label of sep_abr_completion_cg cp_verify_outcome for an ACVP
 # "modified signature - hint" row (env/sep_fcov_gate.py, set_abr_reject_class).
 _REJECT_CLASS_HINT = 3
+# FIPS 204 sigEncode for ML-DSA-87: c~ (64 bytes) || z (7 * 640 bytes) || h
+# (omega + k = 83 bytes), so the hint starts at byte 4544, word 1136.
+_HINT_WORD0 = (64 + 7 * 640) // 4
 
 
 @pyuvm.test()
@@ -152,6 +160,19 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
             await self._zeroize(abr, what=f"before {what}")
             await abr.write_words(ABR_PUBKEY, case.pk)
             await abr.write_words(ABR_SIGNATURE, case.sig)
+            hint = list(case.sig[_HINT_WORD0:])
+            hint_rb = await abr.read_words(ABR_SIGNATURE + 4 * _HINT_WORD0, len(hint))
+            assert hint_rb == hint, (
+                f"CTRL-MISSING HINT-SIG-LOADED: {what}: MLDSA_SIGNATURE hint words "
+                f"{_HINT_WORD0}..{_HINT_WORD0 + len(hint) - 1} read back "
+                f"{sum(a != b for a, b in zip(hint_rb, hint))} word(s) different from the written values"
+            )
+            self.logger.info(
+                "CTRL-HINT-SIG-LOADED: %s: MLDSA_SIGNATURE words %d..%d read back as written",
+                what,
+                _HINT_WORD0,
+                _HINT_WORD0 + len(hint) - 1,
+            )
             if label:
                 set_abr_reject_class(_REJECT_CLASS_HINT, self.logger)
             streamed = None
@@ -238,7 +259,7 @@ class sep_abr_mldsa_hint_reject_kat_test(sep_base_test):
             f"ran {n_control + n_pure + n_ext} of {len(NIST_HINT_CASES)} cases"
         )
         self.logger.info(
-            "CHK-HINT-REJECT: %d malformed-hint cases rejected, %d pure and %d external mu",
+            "INFO-HINT-CASES: %d malformed-hint cases rejected, %d pure and %d external mu",
             n_pure + n_ext,
             n_pure,
             n_ext,

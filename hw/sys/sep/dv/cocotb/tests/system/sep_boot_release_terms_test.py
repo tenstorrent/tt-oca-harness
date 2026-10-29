@@ -13,7 +13,8 @@ Contract (``hw/sys/sep/doc/reset_controller.adoc``, SEP Reset Controller;
   order, and rise after the last of the three terms.
 * ``SMC_FUSE_SENSE_STATUS`` follows the level of ``smc_fuse_sense_done_i``.
 * ``SEP_FUSE_SENSE_STATUS`` (``sep_fuse_sense_done``, R, reset 0x0) indicates the
-  fuse sense status of SEP: after sensing the field reads 1. The register
+  fuse sense status of SEP. No specification line states the field value after
+  sensing, so it is logged (``OBS-SENSE-STATUS-DONE``) and not graded. The register
   block is reset by ``sep_reset_n`` (``reset_controller.adoc``, ``sep_reset_no``
   resets the system peripherals), and no specification line states that it
   answers a read while sensing runs, so the leaf issues no read of it before
@@ -64,10 +65,10 @@ Checkers:
   CHK-SENSE-STATUS  after ``sep_fuse_sense_done_o`` has held 1 for
                     ``_REL_BOUND`` ``clk_i`` cycles, one 64-bit read of
                     ``SEP_FUSE_SENSE_STATUS`` per epoch and the final polls
-                    answer OKAY with ``sep_fuse_sense_done`` at 1, and the port
-                    reads 1 around each read. The reserved bits 63:1 have no
-                    stated reset value: they are logged (``obs_rsvd``), not
-                    graded.
+                    answer OKAY within the bound, and the port reads 1 around
+                    each read. The field ``sep_fuse_sense_done`` and the
+                    reserved bits 63:1 have no stated value after sensing:
+                    they are logged (``OBS-SENSE-STATUS-DONE``), not graded.
 
 Controls: in BOOT_FIRST, BOOT_WITH_RST and BOOT_MID the sensing is the last
 term, so those cells are controls of CHK-REL-GATE. The post-sense reads of
@@ -131,10 +132,6 @@ SMC_APERTURES = (0x4000_0000, 0x9000_0000)
 SMC_APERTURE_SIZE = 0x0100_0000
 SEP_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 SEP_FIELD = SEP_CPU_CTRL.field_mask("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
-SEP_LSB = SEP_CPU_CTRL.field_lsb("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
-# Golden of sep_fuse_sense_done in place after sensing. The reserved bits have
-# no stated reset and are logged.
-SEP_FIELD_POST = 1 << SEP_LSB
 
 BOOT_FIRST = "BOOT_FIRST"
 BOOT_WITH_RST = "BOOT_WITH_RST"
@@ -705,7 +702,9 @@ class sep_boot_release_terms_test(sep_base_test):
 
         The reads start after ``sep_fuse_sense_done_o`` held 1 on ``_REL_BOUND``
         consecutive ``clk_i`` edges; the port must read 1 before and after
-        every read.
+        every read, and every read must answer OKAY. No specification line
+        states the field value after sensing, so the 64-bit words are logged
+        as ``OBS-SENSE-STATUS-DONE``.
         """
         dut = cocotb.top
         for c in range(_REL_BOUND):
@@ -715,8 +714,7 @@ class sep_boot_release_terms_test(sep_base_test):
                 f"CHK-SENSE-STATUS FAIL: {tag} phase=post_sense sep_fuse_sense_done_o={level} "
                 f"at settle cycle {c}, expected 1 for {_REL_BOUND} cycles"
             )
-        exp = SEP_FIELD_POST
-        rsvd_all = []
+        words = []
         for i in range(n):
             before = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
             seq = SepAxiAccessSeq(
@@ -725,33 +723,26 @@ class sep_boot_release_terms_test(sep_base_test):
             await self.start_seq(seq)
             after = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
             word = self._status_data(seq)
-            got = word & SEP_FIELD
-            rsvd = word & ~SEP_FIELD & _M64
-            ok = (
-                before == 1
-                and after == 1
-                and not seq.timed_out
-                and seq.resp_code == RESP_OKAY
-                and got == exp
-            )
+            ok = before == 1 and after == 1 and not seq.timed_out and seq.resp_code == RESP_OKAY
             assert ok, (
                 f"CHK-SENSE-STATUS FAIL: {tag} phase=post_sense poll {i} "
                 f"resp={_RESP_NAME.get(seq.resp_code, seq.resp_code)} "
-                f"timed_out={int(seq.timed_out)} field=0x{got:x} exp=0x{exp:x} "
-                f"mask=0x{SEP_FIELD:x} obs_rsvd=0x{rsvd:016x} port_before={before} "
-                f"port_after={after}"
+                f"timed_out={int(seq.timed_out)} exp_resp=OKAY port_before={before} "
+                f"port_after={after} word=0x{word:016x}"
             )
-            rsvd_all.append(rsvd)
+            words.append(word)
         self.logger.info(
-            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d resp=OKAY field=0x%x exp=0x%x "
-            "mask=0x%x obs_rsvd=%s port=1 settle=%d",
+            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d resp=OKAY port=1 settle=%d",
             tag,
             n,
-            exp,
-            exp,
-            SEP_FIELD,
-            ",".join(f"0x{v:016x}" for v in sorted(set(rsvd_all))),
             _REL_BOUND,
+        )
+        self.logger.info(
+            "OBS-SENSE-STATUS-DONE: %s field_mask=0x%x field=%s word=%s (not scored)",
+            tag,
+            SEP_FIELD,
+            ",".join(f"0x{v:x}" for v in sorted({w & SEP_FIELD for w in words})),
+            ",".join(f"0x{v:016x}" for v in sorted(set(words))),
         )
 
     def _ensure_nonzero_word(self, rng: SepSeededRng, image) -> None:
@@ -863,9 +854,11 @@ class sep_boot_release_terms_test(sep_base_test):
         """OBS-SMC-PRESENSE-RESP: one LSU read inside the SMC aperture while the SMC input is 0.
 
         ``sep_cpu_ctrl.adoc`` tells software to wait for
-        ``smc_fuse_sense_done`` before a request to the SMC; no line states
-        the answer to a request made before it. The line logs the response
-        and the PR-SMC AR count and grades nothing.
+        ``smc_fuse_sense_done`` before a request to the SMC, and states that
+        such a request hangs; no line states whether SEP forwards it. The line
+        logs the PR-SMC AR count, a DUT value, and grades nothing. The
+        response and data come from the bench SMC responder and are not
+        logged.
         """
         dut = cocotb.top
         level = self.rd(dut.smc_fuse_sense_done_model, allow_unknown=True)
@@ -889,13 +882,9 @@ class sep_boot_release_terms_test(sep_base_test):
         n_ar = tap.count(mark, "ar")
         await tap.stop()
         self.logger.info(
-            "OBS-SMC-PRESENSE-RESP input=%s addr=0x%08x resp=%s rdata=0x%08x timed_out=%d "
-            "pr_smc_ar=%d",
+            "OBS-SMC-PRESENSE-RESP input=%s addr=0x%08x pr_smc_ar=%d",
             level,
             self.smc_word,
-            "none" if seq.timed_out else _RESP_NAME.get(seq.resp_code, seq.resp_code),
-            seq.rdata & 0xFFFF_FFFF,
-            int(seq.timed_out),
             n_ar,
         )
 

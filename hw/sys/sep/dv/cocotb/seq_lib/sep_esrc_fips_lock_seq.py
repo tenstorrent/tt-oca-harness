@@ -451,9 +451,6 @@ class SepEsrcFipsLockCfg:
         # every earlier draw keeps its seed-to-value mapping.
         self.h_mid = rng.randrange(H_MID_LO, H_MID_HI)
         self.rec_thresh_h = tuple(sorted(set(self.rec_thresh_h) | {self.h_mid}))
-        # A HEALTH_TEST_WINDOW_SIZE below the 1024 that the lock requires, written
-        # before a lock after rst_ni. Drawn last for the same reason as h_mid.
-        self.win_small = rng.randrange(1, 1024)
 
     def n_cells(self) -> int:
         return len(self.targets)
@@ -463,7 +460,6 @@ class SepEsrcFipsLockCfg:
         return (
             f"seed={self.seed} cells={self.n_cells()} obs_held={self.obs_held} "
             f"lane_pre={self.lane_pre} lane_post={self.lane_post} h_mid=0x{self.h_mid:02x} "
-            f"win_small={self.win_small} "
             f"rec_thresh_h={[f'0x{h:02x}' for h in self.rec_thresh_h]} {cells}"
         )
 

@@ -89,11 +89,11 @@ Logged only: ``OBS-BLOCKED CHK-OBS-MAIN`` (no stated rule that observe capture l
 the main chain rate unchanged); the main-chain leg logs its counts. ``OBS-OBS-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
 ``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-OBS-LANESEL-SAME`` logs
-LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (no stated flush rule
-for a write that keeps the effective lane). ``OBS-OBS-OVF-KEEP`` logs the overflow
-bit, LEVEL and the sequence bit index of the first and last popped word after
-FIFO_DEPTH_MAX + 2 words of a known sequence (no stated rule which word a full FIFO
-discards).
+LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (the ``LANE_SEL`` text
+flushes on a lane change, the ``FLUSH`` text on a ``LANE_SEL`` change; they disagree
+here). ``OBS-OBS-OVF-KEEP`` logs the overflow bit, LEVEL and the sequence bit index
+of the first and last popped word after FIFO_DEPTH_MAX + 2 words of a known sequence
+(no stated rule which word a full FIFO discards).
 """
 
 from __future__ import annotations

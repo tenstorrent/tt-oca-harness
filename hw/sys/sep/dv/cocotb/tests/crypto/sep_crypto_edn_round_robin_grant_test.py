@@ -268,7 +268,10 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             f"dual_grants={dual_grants})"
         )
         # An alternating prefix of two or more grants contains both clients by
-        # construction; the alternation floor above carries the claim.
+        # construction; the alternation floor above carries the claim. The
+        # round-robin arbiter fills a one-entry FIFO per client
+        # (hw/sys/sep/doc/trng.adoc), so the edn_ack order at the client ports
+        # is not the arbitration order and no text states it.
         self.logger.info(
             "OBS-EDN-GRANT-SEQ grants=%s dual_grants=%s", grants[:16], dual_grants[:12]
         )
@@ -413,7 +416,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             CHK5_pool=_POOL_MIN_BEATS,
         )
         self.logger.info(
-            "CHK-ROUTING floors: rnd>=%d (derived from stimulus); aes>=%d "
+            "INFO-ROUTING-FLOORS: rnd>=%d (derived from stimulus); aes>=%d "
             "urnd>=%d kmac>=%d pool>=%d (non-vacuity only, NOT starvation "
             "bounds). Diagnostic, not a floor: %d AES and %d URND grants were "
             "observed on crypto_edn_ack_o.",
@@ -441,8 +444,4 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             rr.matches,
             rk.matches,
             rp.matches,
-        )
-        self.logger.info(
-            "CHK1..CHK4 bit-exact + CHK5 ROUTING on all four adapter clients and "
-            "the entropy pool PASS"
         )

@@ -91,17 +91,23 @@ walked cells and the seed are logged).
     * CHK-TRANSIENT-INVALID  the transient path applies the same W1S and token
                              rules with no bus request, INVALID result included.
 
-Every leaf with a bus-write cell also runs CHK-UPPER-WRITE: two seed-derived
-[31:8] patterns with a unique bit each. LC_STATE[31:8] is sep_efuse_map.rdl's
-``rsvd`` field and takes a plain shadow write, so the second pattern replaces
-the first; a stale OR of the two fails. The set-only rule covers the lifecycle
-nibble alone (CHK-W1S-NO-CLEAR), not these bytes.
+Every cell grades LC_STATE[7:0] against ``{~raw, raw}`` of the golden state.
+Every write cell also carries, in LC_STATE[31:8], one bit that no earlier write
+or the sensed word set; ``CTRL-LC-WR-LANDED`` requires that bit in the readback,
+so a dropped write fails the leaf whether the bytes overwrite or OR-merge.
+Every leaf with a bus-write cell also writes a second seed-derived [31:8]
+pattern that differs from the first in both directions (a CHK-W1S-NO-CLEAR
+cell). ``CTRL-TOKEN-MATCH`` (each token match), ``CTRL-GATE-SIP-FAULT`` (the
+collapsed comparator code) and ``CTRL-TOKEN-SIP-HELD`` (the SIP match before
+CHK-INVALID-TERM) record the preconditions of the hold cells.
 
-Log-only, every cell: ``OBS-LC-STATE-PORT`` (the ``lc_state_o`` port, tap
-``lc_state_probe_o``, beside the ``LC_STATE`` shadow word at
-``efuse_shadow_probe_o``); every write cell: ``OBS-LC-WR-NIBBLE`` (bits [7:4] of the
-write data and of the readback word: the specification does not state how a write
-of the complement nibble acts).
+Log-only, every cell: ``OBS-LC-UPPER`` (LC_STATE[31:8] written, prior and read:
+the RDL gives ``rsvd`` as "Unused" and the fuse-field table gives LC_STATE as
+set-only, so no text states the readback after a write), ``OBS-LC-STATE-PORT``
+(the ``lc_state_o`` port, tap ``lc_state_probe_o``, beside the ``LC_STATE`` shadow
+word at ``efuse_shadow_probe_o``); every write cell: ``OBS-LC-WR-NIBBLE`` (bits
+[7:4] of the write data and of the readback word: the specification does not
+state how a write of the complement nibble acts).
 
 RANDCFG: the tokens and the byte [31:8] pattern come from the run seed
 (``SepLcTransitionCfg``). The two PROD_END leaves pin the exit with
@@ -212,6 +218,9 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._cur = lc_raw
         # Bytes [31:8] of the sensed LC word, before any shadow write.
         self._upper = image.shadow_word(LC_WORD_IDX) & LC_STATE_UPPER_MASK
+        # Every [31:8] bit written or sensed so far. A bit outside this set is
+        # absent from the readback whether the bytes overwrite or OR-merge.
+        self._upper_seen = self._upper | self.cfg_lc.nuisance | self.cfg_lc.nuisance2
         sec_dis = int(getattr(cocotb.top, "lcc_security_disable_probe_o").value) & 0x1
         assert sec_dis == 0, (
             "SEC_DIS is asserted, which forces FEAT_CTRL to all-ones and would "
@@ -249,7 +258,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             self._sip_match = True
         else:
             self._chiplet_match = True
-        self.logger.info("[lc-w1s] %s token matched", name)
+        self.logger.info("CTRL-TOKEN-MATCH LOG kind=%s code=0x%02x", name, seq.match_code)
 
     async def _match_under_fault(self, kind: int) -> int:
         """Present a good token with the comparator faulted; expect the error code.
@@ -294,27 +303,31 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
     ) -> int:
         """Run one cell; the expected next state comes from the chapter golden."""
         prev = self._cur
-        pattern = self.cfg_lc.nuisance if upper is None else upper
+        # One [31:8] bit no earlier write or sense set: its readback shows that
+        # this write reached the shadow (CTRL-LC-WR-LANDED).
+        free = LC_STATE_UPPER_MASK & ~self._upper_seen
+        mark = free & -free
+        pattern = (self.cfg_lc.nuisance if upper is None else upper) | mark
         full_wdata = (wdata & LC_STATE_BYTE_MASK) | pattern
         if do_write:
+            assert mark, f"CTRL-MISSING LC-WR-LANDED {tag}: no unused LC_STATE[31:8] bit left"
+            self._upper_seen |= pattern
             expected = lc_state_next(
                 prev,
                 wdata,
                 sip_match=self._sip_match,
                 chiplet_match=self._chiplet_match,
             )
-            expected_upper = pattern
         else:
             # Readback-only cell: the move was caused by something other than a
             # bus write, so the caller supplies the golden.
             assert expect is not None, "a readback-only cell needs an expected state"
             expected = expect
-            expected_upper = self._upper
 
         seq = SepLcShadowWriteSeq(
             full_wdata,
             expected,
-            expected_upper,
+            None,
             sip_dis=SIP_DIS,
             sys_dis=SYS_DIS,
             demote_1=self._demote_1,
@@ -350,24 +363,37 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             f"{tag}: DUT stepped {lc_state_name(prev)} -> {lc_state_name(observed)}, "
             "which the lifecycle does not permit"
         )
+        assert seq.observed_word is not None
+        word = seq.observed_word
+        assert word & LC_STATE_BYTE_MASK == lc_encode(expected), (
+            f"{tag}: LC_STATE[7:0] 0x{word & LC_STATE_BYTE_MASK:02x} != 0x{lc_encode(expected):02x}"
+        )
+        got_upper = word & LC_STATE_UPPER_MASK
         if do_write:
-            assert seq.observed_word is not None
-            assert (seq.observed_word & LC_STATE_UPPER_MASK) == expected_upper, (
-                f"CHK-UPPER-WRITE FAIL: {tag} LC_STATE[31:8] = "
-                f"0x{seq.observed_word & LC_STATE_UPPER_MASK:08x} want 0x{expected_upper:08x}"
+            assert got_upper & mark, (
+                f"CTRL-MISSING LC-WR-LANDED {tag}: unused bit 0x{mark:08x} written, "
+                f"LC_STATE[31:8] reads 0x{got_upper:08x}"
             )
-            assert seq.observed_word == (expected_upper | lc_encode(expected)), (
-                f"{tag}: LC_STATE word 0x{seq.observed_word:08x} != "
-                f"0x{(expected_upper | lc_encode(expected)):08x}"
+            self.logger.info(
+                "CTRL-LC-WR-LANDED LOG tag=%s mark=0x%08x upper=0x%08x",
+                tag,
+                mark,
+                got_upper,
             )
-            if tag == "CHK-UPPER-WRITE":
-                self.logger.info(
-                    "CHK-UPPER-WRITE PASS: LC_STATE[31:8]=0x%08x is the second "
-                    "pattern alone; the prior 0x%08x did not persist",
-                    expected_upper,
-                    self._upper,
-                )
-            self._upper = expected_upper
+        # LC_STATE[31:8]: the RDL gives ``rsvd`` as "Unused" and the fuse-field
+        # table gives LC_STATE as set-only, so no text states the readback after
+        # a write; logged as an open question.
+        self.logger.info(
+            "OBS-LC-UPPER LOG tag=%s wrote=0x%08x prior=0x%08x read=0x%08x "
+            "overwrite=%d or_merge=%d",
+            tag,
+            pattern if do_write else 0,
+            self._upper,
+            got_upper,
+            int(do_write and got_upper == pattern),
+            int(do_write and got_upper == (pattern | self._upper)),
+        )
+        self._upper = got_upper
         want_feat = feat_ctrl_expected(
             expected,
             SIP_DIS,
@@ -399,20 +425,13 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         return int(observed)
 
     async def _prove_upper_write(self) -> None:
-        """Second [31:8] write replaces the first: rsvd takes a plain shadow write."""
-        second = self.cfg_lc.nuisance2
-        # Non-vacuity: the two patterns must differ in both directions, so a
-        # DUT that OR-merged instead of replacing would fail this cell rather
-        # than land on the same value either way.
-        assert second & ~self._upper & LC_STATE_UPPER_MASK, (
-            "CHK-UPPER-WRITE FAIL: second pattern adds no new bits "
-            f"(prior=0x{self._upper:08x} second=0x{second:08x})"
-        )
-        assert self._upper & ~second & LC_STATE_UPPER_MASK, (
-            "CHK-UPPER-WRITE FAIL: second pattern covers every prior bit, so an "
-            f"OR would read the same (prior=0x{self._upper:08x} second=0x{second:08x})"
-        )
-        await self._cell(0x0, "CHK-UPPER-WRITE", upper=second)
+        """A second [31:8] pattern over the first; the readback is OBS-LC-UPPER.
+
+        The two patterns differ in both directions, so the logged readback tells
+        an overwrite from an OR-merge. The nibble cell is a write of 0
+        (CHK-W1S-NO-CLEAR).
+        """
+        await self._cell(0x0, "CHK-W1S-NO-CLEAR", upper=self.cfg_lc.nuisance2)
 
     # -- per-leaf walks ------------------------------------------------------
     async def _walk_prod(self) -> None:
@@ -441,6 +460,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             f"code 0x{TOKEN_ERROR:02x}, got 0x{code:02x}; the fail-closed cell "
             "below would otherwise pass for the wrong reason"
         )
+        self.logger.info("CTRL-GATE-SIP-FAULT LOG code=0x%02x", code)
         await self._cell(0x2, "CHK-GATE-SIP-FAULT")
         await self._set_token_inject(TOKEN_CMP_INJECT_OFF, TOKEN_CMP_SEL_SIP)
 
@@ -547,6 +567,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             f"0x{sip.match_code:02x} after the RMA_CHIPLET match, expected the match "
             f"code 0x{TOKEN_MATCH:02x}; the hold below would not be under test"
         )
+        self.logger.info("CTRL-TOKEN-SIP-HELD LOG code=0x%02x", sip.match_code)
         held = await self._cell(remaining, "CHK-INVALID-TERM")
         assert held == got, (
             f"CHK-INVALID-TERM: from INVALID 0x{got:x} a write of the remaining "

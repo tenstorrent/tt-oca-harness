@@ -48,7 +48,9 @@ Checks:
                        debug module: ``dmcontrol.dmactive``, written 1 over the
                        DMI before the pulse, reads 1 before the pulse and 0
                        after it (RISC-V External Debug Support 0.13.2,
-                       ``dmcontrol`` 0x10: ``dmactive`` resets to 0). The other
+                       ``dmcontrol`` 0x10: ``dmactive`` resets to 0; the EL2
+                       PRM cited at cpu.adoc:23, Debug Support, names that
+                       specification as the one the core conforms to). The other
                        ``dmcontrol`` bits are logged, not graded.
   CHK-RSTVEC-PERSIST-COLD: after an ``rst_ni`` cold reset (SRAM images written
                        again while it is low) the same three values hold.
@@ -60,13 +62,18 @@ Checks:
   CHK-RSTVEC-TAPRST  : after a TAP reset (``jtag_trst_ni`` or Test-Logic-Reset)
                        and a CPU reset the first retired PC is 0x1004_0000 and
                        the marker is ``M_ROM``, with the TDR at its default or
-                       holding ``A2`` before the TAP reset.
+                       holding ``A2`` before the TAP reset. Positive probe in
+                       the same line: the pins show the TAP reset (TRST: the
+                       ``jtag_trst_n_i`` pin reads 0 on a sample; TLR: five or
+                       more ``jtag_tck_i`` rises with ``jtag_tms_i`` 1 and
+                       ``jtag_trst_n_i`` never 0).
   CHK-TRST-SCOPE     : during each TAP reset the ``sep_reset_n`` and
                        ``sep_cpu_reset_n`` taps stay high, the routine reports
                        two more passes with all four compares true and
                        ``scratch_cold_probe_o`` word 0 does not change. With
                        real fuse sense ``sep_fuse_sense_done_o`` also stays
-                       high on every sample. Control: the CPU reset that
+                       high on every sample. The pins show the TAP reset, as
+                       in CHK-RSTVEC-TAPRST. Control: the CPU reset that
                        follows clears the warm scratch word, keeps the cold one
                        and moves the ``sep_cpu_reset_n`` tap; with real fuse
                        sense the second cold reset drops
@@ -101,9 +108,15 @@ Checks:
                        ``wdt_rst_ni`` resets the SEP CPU and the SEP watchdog
                        only (port_table.adoc ``wdt_rst_ni``). Control: both
                        read 0 on at least one cycle of a cold reset.
-  OBS-RUNREQ0-FETCH  : logged, not graded. After every grade, one more cold
-                       reset with ``mpc_reset_run_req`` 0: the retirements and
-                       the ``ifu_req`` cycles within W_obs of the tap rise.
+  CHK-RUNREQ0-HALT   : after every other grade, one more cold reset with
+                       ``mpc_reset_run_req`` 0: the ``sep_cpu_reset_n`` tap
+                       rises and no instruction retires within W_obs of the
+                       rise (EL2 PRM, Multi-Core Debug Control and Status
+                       Signals: 0 starts the core in Debug Mode halted).
+                       Control: CTRL-RUNREQ shows a retirement inside W_obs
+                       with run request 1.
+  OBS-RUNREQ0-FETCH  : logged, not graded: the ``ifu_req`` cycles within W_obs
+                       of the tap rise in that reset.
 
 Every CPU reset is applied at a quiet point: after a pass-count store of the
 routine has its write response, while the core runs the routine spin loop in
@@ -554,6 +567,26 @@ class _Scope:
 
 
 @dataclass
+class _TapWatch:
+    """TAP pin levels sampled during one TAP reset."""
+
+    # Samples with jtag_trst_n_i at 0.
+    trst_low: int = 0
+    # jtag_tck_i 0 -> 1 transitions sampled with jtag_tms_i at 1.
+    tms_high_rises: int = 0
+    tck_prev: int | None = None
+
+    def ok(self, via: str) -> bool:
+        """TRST: the pin went low. TLR: five TMS-high TCK rises with TRST high."""
+        if via == "TRST":
+            return self.trst_low > 0
+        return self.tms_high_rises >= 5 and self.trst_low == 0
+
+    def text(self) -> str:
+        return f"trst_low={self.trst_low} tms_high_tck_rises={self.tms_high_rises}"
+
+
+@dataclass
 class _LegWatch:
     """Pin levels sampled during one persistence leg."""
 
@@ -584,7 +617,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
     def _draw(self) -> None:
         seed = self.random_seed()
         rng = SepSeededRng(seed)
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         n = (VEC_HI - VEC_LO) // 2 + 1
         s1 = rng.randrange(n)
         self.a1 = VEC_LO + 2 * s1
@@ -601,22 +634,22 @@ class sep_cpu_reset_entry_test(sep_base_test):
         # period, the TRST width and d keep their values for a seed.
         self.dbg_w = DBG_W_MIN + rng.randrange(DBG_W_MAX - DBG_W_MIN + 1)
         self.persist_order = ("dbg", "cold") if rng.randrange(2) == 0 else ("cold", "dbg")
-        self.logger.info("DRAW A1=0x%08x", self.a1)
-        self.logger.info("DRAW A2=0x%08x image_bytes=%d", self.a2, ENTRY_BYTES)
+        self.logger.info("INFO-DRAW A1=0x%08x", self.a1)
+        self.logger.info("INFO-DRAW A2=0x%08x image_bytes=%d", self.a2, ENTRY_BYTES)
         self.logger.info(
-            "DRAW tck_period=%d clk_i periods (%d ps)",
+            "INFO-DRAW tck_period=%d clk_i periods (%d ps)",
             self.tck_clks,
             self.tck_period_ps,
         )
-        self.logger.info("DRAW trst_width=%d TCK cycles", self.trst_tck)
-        self.logger.info("DRAW d=%d clk_i cycles", self.d)
+        self.logger.info("INFO-DRAW trst_width=%d TCK cycles", self.trst_tck)
+        self.logger.info("INFO-DRAW d=%d clk_i cycles", self.d)
         self.logger.info(
-            "DRAW persist dbg_width=%d clk_i cycles order=%s",
+            "INFO-DRAW persist dbg_width=%d clk_i cycles order=%s",
             self.dbg_w,
             ",".join(self.persist_order),
         )
         self.logger.info(
-            "ENV W_obs=%d rst_hold=%d pass_bound=%d rise_bound=%d quiet=%d spin=%d routine=0x%08x "
+            "INFO-ENV W_obs=%d rst_hold=%d pass_bound=%d rise_bound=%d quiet=%d spin=%d routine=0x%08x "
             "store_routine=0x%08x st_settle=%d",
             W_OBS,
             RST_HOLD,
@@ -658,7 +691,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         for widx, word in sorted(img.items()):
             mem[widx].value = int.from_bytes(bytes(word), "little")
         self.logger.info(
-            "STAGE %s words=%d %s",
+            "INFO-STAGE %s words=%d %s",
             which,
             len(img),
             " ".join(f"0x{a:08x}+{len(d)}" for a, d in blobs.items()),
@@ -716,6 +749,13 @@ class sep_cpu_reset_entry_test(sep_base_test):
                     lw.dbg_run = max(lw.dbg_run, lw.cur_run)
                 else:
                     lw.cur_run = 0
+            if self.tapw is not None:
+                tw = self.tapw
+                tw.trst_low += self._rd_or_none(dut.jtag_trst_n_i) == 0
+                tck = self._rd_or_none(dut.jtag_tck_i)
+                if tw.tck_prev == 0 and tck == 1 and self._rd_or_none(dut.jtag_tms_i) == 1:
+                    tw.tms_high_rises += 1
+                tw.tck_prev = tck
             if self.scope is not None:
                 self.scope.samples += 1
                 self.scope.sep_low += sep_tap == 0
@@ -1054,12 +1094,14 @@ class sep_cpu_reset_entry_test(sep_base_test):
         )
 
     async def _run_req0_leg(self) -> None:
-        """OBS-RUNREQ0-FETCH: one cold reset with run request 0, after every grade.
+        """CHK-RUNREQ0-HALT: one cold reset with run request 0, after every grade.
 
-        No spec states what the core fetches or retires when ``mpc_reset_run_req``
-        is 0 at the reset release, so the retirements and the PR-IFU requests of
-        the W_obs window after the tap rise are logged. The run request returns
-        to 1 after the window.
+        The EL2 PRM (cpu.adoc:23; Multi-Core Debug Control and Status Signals)
+        states that ``mpc_reset_run_req`` 0 starts the core in Debug Mode
+        halted, so no instruction retires in the W_obs window after the tap
+        rise. No spec states the instruction fetch of a halted core, so the
+        PR-IFU request cycles are logged (OBS-RUNREQ0-FETCH). The run request
+        returns to 1 after the window.
         """
         dut = cocotb.top
         self._stop = False
@@ -1081,29 +1123,37 @@ class sep_cpu_reset_entry_test(sep_base_test):
         if ep.rise_clk is not None:
             while self.clk - ep.rise_clk < W_OBS:
                 await RisingEdge(dut.clk_i)
-        self.logger.info(
-            "OBS-RUNREQ0-FETCH retired_in_window=%d ifu_req_clk=%d window=%d rise=%s",
-            ep.retired_in_window,
-            ep.ifu_req_in_window,
-            W_OBS,
-            "none" if ep.rise_clk is None else "seen",
+        self._grade(
+            "CHK-RUNREQ0-HALT",
+            ep.rise_clk is not None and ep.retired_in_window == 0,
+            f"retired_in_window={ep.retired_in_window} window={W_OBS} "
+            f"rise={'none' if ep.rise_clk is None else 'seen'}",
         )
+        self.logger.info("OBS-RUNREQ0-FETCH ifu_req_clk=%d window=%d", ep.ifu_req_in_window, W_OBS)
         dut.mpc_reset_run_req.value = 1
         self._stop = True
         await ClockCycles(dut.clk_i, 2)
 
-    async def _tap_reset(self, via: str) -> None:
-        if via == "TRST":
-            await self.dmi.trst_pulse(tck_cycles=self.trst_tck)
-        else:
+    async def _tap_reset(self, via: str) -> _TapWatch:
+        """Apply the TAP reset; return the TRST and TMS-high TCK counts sampled at the pins."""
+        if via != "TRST":
             # Leave Test-Logic-Reset first (a TRST leaves the TAP there), so the
             # five TMS-high clocks make a real Test-Logic-Reset entry.
             await self.dmi.tap.step_tms(0)
+        self.tapw = _TapWatch()
+        if via == "TRST":
+            await self.dmi.trst_pulse(tck_cycles=self.trst_tck)
+        else:
             await self.dmi.tlr()
+        await RisingEdge(cocotb.top.clk_i)
+        tw, self.tapw = self.tapw, None
+        return tw
 
     async def _program(self, vector: int) -> None:
         cap = await self.dmi.shift_rstvec(vector)
-        self.logger.info("TDR shift IR=0x18 vector=0x%08x (capture 0x%08x not graded)", vector, cap)
+        self.logger.info(
+            "INFO-TDR-SHIFT IR=0x18 vector=0x%08x (capture 0x%08x not graded)", vector, cap
+        )
 
     async def _tap_then_cpu_reset(self, via: str, tdr: str) -> None:
         """Step 7: a TAP reset, then a CPU reset; the core starts at the ROM base.
@@ -1124,9 +1174,10 @@ class sep_cpu_reset_entry_test(sep_base_test):
         if via == "TLR":
             await self.dmi.tap.step_tms(0)
             await self.dmi.tap.shift_ir(IR_RSTVEC, IR_WIDTH, back_to_rti=True)
-        await self._tap_reset(via)
+        tw = await self._tap_reset(via)
+        extra = tw.text() + " "
         if via == "TLR":
-            extra = f"ir_before=0x{IR_RSTVEC:02x} dr_after=0x{self.a1:08x} dr_in_reset=1 "
+            extra += f"ir_before=0x{IR_RSTVEC:02x} dr_after=0x{self.a1:08x} dr_in_reset=1 "
 
             async def _stage() -> None:
                 self._stage_sram()
@@ -1143,6 +1194,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             marker,
             DEFAULT_RESET_PC,
             "M_ROM",
+            tw.ok(via),
         )
 
     async def _program_wide(self, vector: int) -> None:
@@ -1202,7 +1254,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
         Reach probe: ``dmcontrol.dmactive`` is written 1 over the DMI before the
         pulse and read before and after it. A pulse that reaches the debug
         module returns ``dmactive`` to its reset value 0 (RISC-V External Debug
-        Support 0.13.2, ``dmcontrol``). The DMI accesses run with
+        Support 0.13.2, ``dmcontrol``, which the EL2 PRM cited at cpu.adoc:23
+        names as the debug specification of the core). The DMI accesses run with
         ``dmi_core_enable_i`` at 1 and finish before the CPU reset.
         """
         from env.sep_jtag_dmi import DM_DMCONTROL, DMCONTROL_DMACTIVE
@@ -1290,7 +1343,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             probe0,
         )
         self.scope = _Scope()
-        await self._tap_reset(via)
+        tw = await self._tap_reset(via)
         end = len(self._mbx())
         p1 = await self._wait_rec(end, OFF_PASS, PASS_BOUND, f"scope {via} pass 1")
         p2 = await self._wait_rec(p1.seq + 1, OFF_PASS, PASS_BOUND, f"scope {via} pass 2")
@@ -1304,7 +1357,14 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ep, mark = await self._cpu_reset()
         pc, marker, entry = await self._entry(ep, mark, f"scope {via}")
         self._grade_vector(
-            "CHK-RSTVEC-TAPRST", f"via={via} tdr={tdr} ", ep, pc, marker, DEFAULT_RESET_PC, "M_ROM"
+            "CHK-RSTVEC-TAPRST",
+            f"via={via} tdr={tdr} {tw.text()} ",
+            ep,
+            pc,
+            marker,
+            DEFAULT_RESET_PC,
+            "M_ROM",
+            tw.ok(via),
         )
         warm_cleared = int(entry[1] == WARM_RESET and entry[0] == V_COLD and ep.tap_low > 0)
         if self.real_sense:
@@ -1334,11 +1394,12 @@ class sep_cpu_reset_entry_test(sep_base_test):
             and warm_cleared == 1
             and self.control_sep_low > 0
             and sense_ok
+            and tw.ok(via)
         )
         self._grade(
             "CHK-TRST-SCOPE",
             ok,
-            f"via={via} tdr={tdr} sep_reset_n_low={scope.sep_low} "
+            f"via={via} tdr={tdr} {tw.text()} sep_reset_n_low={scope.sep_low} "
             f"sep_cpu_reset_n_low={scope.cpu_low} regs_retained={retained}/4 "
             f"control_warm_cleared={warm_cleared} samples={scope.samples} "
             f"passes={start.val}->{p1.val}->{p2.val} probe0=0x{probe0:08x}->0x{probe1:08x} "
@@ -1354,6 +1415,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self._stop = False
         self.epochs: list[_Epoch] = []
         self.scope: _Scope | None = None
+        self.tapw: _TapWatch | None = None
         self.leg: _LegWatch | None = None
         self.recs: list[_Rec] = []
         self.failures: list[str] = []
@@ -1376,6 +1438,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             "CHK-TRST-SCOPE",
             "CHK-WDT-STORE-RESP",
             "CHK-MEMIF-WDT-RST",
+            "CHK-RUNREQ0-HALT",
         )
         self.st_rows: list[dict] = []
         self.st_errors: list[str] = []
@@ -1422,7 +1485,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         dut.jtag_trst_n_i.value = 1
         await ClockCycles(dut.clk_i, 2)
         self.logger.info(
-            "TAP jtag_trst_ni=%d tck=%d tms=%d (no TAP reset from here to step 7)",
+            "INFO-TAP jtag_trst_ni=%d tck=%d tms=%d (no TAP reset from here to step 7)",
             self.rd(dut.jtag_trst_n_i),
             self.rd(dut.jtag_tck_i),
             self.rd(dut.jtag_tms_i),
@@ -1433,7 +1496,8 @@ class sep_cpu_reset_entry_test(sep_base_test):
         # A cold reset from a sensed state drops fuse-sense done (real sense).
         self.control_sense_low = ep.sense_low
         self.logger.info(
-            "CTRL-COLD-SENSE: cold2 sep_fuse_sense_done_low=%d sep_reset_n_low=%d sense=%s",
+            "%s: cold2 sep_fuse_sense_done_low=%d sep_reset_n_low=%d sense=%s",
+            "CTRL-COLD-SENSE" if self.real_sense else "INFO-COLD-SENSE",
             ep.sense_low,
             ep.sep_low,
             "real" if self.real_sense else "skipped",
@@ -1468,7 +1532,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         self.rise_bound = RISE_BOUND_SENSE if self.real_sense else RISE_BOUND
         self.control_sense_low = 0
         if not self.real_sense:
-            self.logger.info("CFG fuse sense skipped (+skip_fuse_sense) rise_bound=%d", RISE_BOUND)
+            self.logger.info(
+                "INFO-CFG fuse sense skipped (+skip_fuse_sense) rise_bound=%d", RISE_BOUND
+            )
             return
         if "sep_efuse_preload" not in cocotb.plusargs:
             raise AssertionError(
@@ -1477,7 +1543,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
         image = self.select_efuse_image()
         self.write_efuse_image(image)
         self.logger.info(
-            "CFG fuse sense real lc_raw=0x%x rise_bound=%d", image.lc_raw(), RISE_BOUND_SENSE
+            "INFO-CFG fuse sense real lc_raw=0x%x rise_bound=%d", image.lc_raw(), RISE_BOUND_SENSE
         )
 
     async def _sense_done_before_cold2(self) -> None:
@@ -1488,7 +1554,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
         sense = self._rd_or_none(dut.sep_fuse_sense_done_o)
         await RisingEdge(dut.clk_i)
         if not self.real_sense:
-            self.logger.info("CFG sep_fuse_sense_done_o=%s before cold2 (sense skipped)", sense)
+            self.logger.info(
+                "INFO-CFG sep_fuse_sense_done_o=%s before cold2 (sense skipped)", sense
+            )
             return
         if sense != 1:
             raise AssertionError(
@@ -1564,13 +1632,18 @@ class sep_cpu_reset_entry_test(sep_base_test):
         ep, mark = await self._cpu_reset(_arm_a2)
         pc, marker, _ = await self._entry(ep, mark, "re-arm A2")
         # Precondition of the last sub-leg: the TDR holds A2 before its TAP reset.
-        if (pc, marker) != (self.a2, "M2") or not self._fetch_covers(ep, self.a2):
+        armed = (pc, marker) == (self.a2, "M2") and self._fetch_covers(ep, self.a2)
+        if not armed:
             self._fail(
                 f"re-arm precondition: {self._fetch_text(ep)} first_pc=0x{pc:08x} marker={marker}, "
                 f"expected 0x{self.a2:08x} M2"
             )
         self.logger.info(
-            "CTRL-TDR-ARM: vector=0x%08x first_pc=0x%08x marker=%s", self.a2, pc, marker
+            "%s: vector=0x%08x first_pc=0x%08x marker=%s",
+            "CTRL-TDR-ARM" if armed else "CTRL-MISSING TDR-ARM",
+            self.a2,
+            pc,
+            marker,
         )
         await self._scope_leg("TLR", "programmed", mark)
 

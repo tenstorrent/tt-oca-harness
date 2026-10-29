@@ -567,8 +567,8 @@ static void out_entry(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
                 FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm | FILTER_CTRL__FILTER_CONFIG__GROUP_ID_bm | \
                 FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm))
 // Read an entry back. The field bits of FILTER_CONFIG are graded (the sum lets
-// the host check them). The specification states no write-back timing for
-// START and END, so their read-back is counted and logged only.
+// the host check them). START and END that differ from the programmed values
+// are counted; the host grades the count.
 static void out_entry_check(uint32_t i, uint64_t start, uint64_t endv, uint32_t cfg) {
     uint32_t c = rd(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(i)) & CFG_FIELDS_LO;
     uint64_t s = READ_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(i)) &

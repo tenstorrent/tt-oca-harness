@@ -49,10 +49,12 @@ Checkers:
                       Control: four DATA_IN words start a block.
   CHK-AES-START-MANUAL  in manual mode, with block 1 written to DATA_IN, every
                       STATUS read of a 20 x t_blk window before the START write
-                      shows IDLE = 1 and OUTPUT_VALID = 0, and OUTPUT_VALID rises
-                      after the START write (aes.adoc:106, MANUAL_OPERATION: the
-                      unit "only starts to encrypt/decrypt after receiving a start
-                      trigger"). Control: in automatic mode the same DATA_IN write
+                      shows IDLE = 1, OUTPUT_VALID = 0 and INPUT_READY = 0, and
+                      OUTPUT_VALID rises after the START write (aes.adoc:106,
+                      MANUAL_OPERATION: the unit "only starts to encrypt/decrypt
+                      after receiving a start trigger"; aes.rdl STATUS.INPUT_READY:
+                      0 while the DATA_IN values are not loaded, so block 1 is
+                      shown to be in DATA_IN). Control: in automatic mode the same DATA_IN write
                       gives OUTPUT_VALID inside the window.
   CHK-AES-LOST        manual overwrite sets OUTPUT_LOST, DATA_OUT holds block
                       2, OUTPUT_LOST stays 1 after the full DATA_OUT read, and a
@@ -435,11 +437,11 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         await self.bring_up_entropy(strict=True, score_km=False)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.aes = SepAes(self)
@@ -467,7 +469,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         s0 = self.rd_known(dut.sep_internal_interrupts_probe_o)
         vec = SepEdgeTimer(dut.sep_internal_interrupts_probe_o, name="vector").start()
         t0_ps = get_sim_time("ps")
-        self.logger.info("S0 vector=0x%011x", s0)
+        self.logger.info("INFO-S0-VECTOR vector=0x%011x", s0)
 
         for s in plan.streams:
             await self._stream(s)
@@ -888,11 +890,12 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             "AES-START-MANUAL", 0 <= auto_clk < window, auto_start_clk=auto_clk, window_clk=window
         )
         pre = self.manual_pre
-        pre_bad = [st for _, st in pre if not st & ST_IDLE or st & ST_OV]
+        pre_bad = [st for _, st in pre if not st & ST_IDLE or st & ST_OV or st & ST_IR]
         start_fields = {
             "pre_samples": len(pre),
             "pre_idle": 0 if any(not st & ST_IDLE for st in pre_bad) else 1,
             "pre_output_valid": 1 if any(st & ST_OV for st in pre_bad) else 0,
+            "pre_input_ready": 1 if any(st & ST_IR for st in pre_bad) else 0,
             "run_clk": self.manual_run_clk,
             "window_clk": window,
             "auto_start_clk": auto_clk,

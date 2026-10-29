@@ -49,7 +49,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 # sep_reg_meta puts regs/gen/py on sys.path, so it comes before sep_reg.
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, EFUSE_MMR, SEP_LIFECYCLE_CTRL, RegBlock, sym
+from sep_reg_meta import (
+    EFUSE_INTERFACE_CTRL,
+    EFUSE_MMR,
+    SEP_LIFECYCLE_CTRL,
+    RegBlock,
+    sym,
+    word_reset,
+)
 
 # isort: split
 import sep_reg  # noqa: E402
@@ -913,9 +920,11 @@ class SepEfusePlan:
         }
         fields = {k: _fmt(v) for k, v in seed_fields.items()}
         fields.update({k: str(v) for k, v in plan_fields.items() if k not in fields})
-        head = " ".join([f"SEED seed={self.seed}", *(f"{k}={v}" for k, v in fields.items())])
+        head = " ".join([f"INFO-SEED seed={self.seed}", *(f"{k}={v}" for k, v in fields.items())])
         lines = [head]
-        lines += [f"DRAW seed={self.seed} name={k} value={_fmt(v)}" for k, v in self.draws.items()]
+        lines += [
+            f"INFO-DRAW seed={self.seed} name={k} value={_fmt(v)}" for k, v in self.draws.items()
+        ]
         if self.setup_fail:
             lines.append(f"SETUP FAIL seed={self.seed} reason={self.setup_fail}")
         return lines
@@ -2150,7 +2159,8 @@ _SHIM_CLASSES = (("edge_10", 2), ("edge_254", 2), ("revoke", 1), ("inner", 1))
 SHIM_HOLD_BUDGET = 120_000
 SHIM_T_MIN = 2_000
 SHIM_M_MAX = 4
-# Shadow words outside the graded word range 10..254 (control and lock words).
+# Shadow words outside the graded word range 10..254 (control and lock words). The plan
+# draws only those whose staged value differs from the RDL reset value.
 SHIM_CTRL_WORDS = (*range(10), 255)
 
 
@@ -2160,7 +2170,8 @@ def plan_shim_response_fault(seed: int) -> SepEfusePlan:
     Order: word class (10 and 254 weight 2, the ``CHIPLET_PUBK_REVOKE`` word and an
     inner 256-bit word weight 1); the inner word (11..253, in a 256-bit field); the
     three spare bits; T in [SHIM_T_MIN, SHIM_HOLD_BUDGET // SHIM_M_MAX]; m in
-    [2, SHIM_M_MAX]; the logged control word (one of ``SHIM_CTRL_WORDS``).
+    [2, SHIM_M_MAX]; the control word (one of ``SHIM_CTRL_WORDS`` whose staged value
+    differs from its RDL reset value).
     """
     d = SepEfuseDraws(seed)
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=FIXED_SIP_DIS, sys_dis=FIXED_SYS_DIS)
@@ -2186,7 +2197,10 @@ def plan_shim_response_fault(seed: int) -> SepEfusePlan:
     ]
     t = d.randrange("timeout_cycles_T", SHIM_T_MIN, SHIM_HOLD_BUDGET // SHIM_M_MAX + 1)
     m = d.randrange("hold_multiple_m", 2, SHIM_M_MAX + 1)
-    ctrl_word = d.choice("ctrl_word", SHIM_CTRL_WORDS)
+    ctrl_word = d.choice(
+        "ctrl_word",
+        [k for k in SHIM_CTRL_WORDS if img.words[k] != word_reset(SHADOW_BASE + 4 * k)],
+    )
     leg = {
         "word_class": cls,
         "word": w,

@@ -313,11 +313,11 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         await self.bring_up_entropy(strict=True, score_km="observe", score_sinks={"aes": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.digest_order = SepDigestOrder()
@@ -366,7 +366,10 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         for line in mismatch:
             self.chk.ok("KEYSEL-HMAC-MISMATCH", line.pop("_ok"), **line)
         await self._decoy_ctrl()
+        # The mid-operation shred grades nothing, so its run fills no owner bin.
+        close_graded_window(self.logger)
         await self._shred_midop(h_h, kh)
+        open_graded_window(TEST, self.logger)
 
         await self._aes_legs(ka)
         await self._aes_nokey_leg()
@@ -447,7 +450,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             digest, _ = await self._hmac_run(sha, keylen)
             return digest
         except TrialTimeout as exc:
-            self.logger.info("HMAC run sha=%d keylen=%d: %s", sha, keylen, exc)
+            self.logger.info("INFO-HMAC-RUN sha=%d keylen=%d: %s", sha, keylen, exc)
             return None
 
     async def _matched_cells(self, g_kh: dict[int, bytes]) -> dict[int, list[int] | None]:
@@ -684,7 +687,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         try:
             return await self._aes_block(ctrl, None, None)
         except TrialTimeout as exc:
-            self.logger.info("AES sideload block: %s", exc)
+            self.logger.info("INFO-AES-SIDELOAD-BLOCK: %s", exc)
             return None
 
     async def _aes_legs(self, ka: list[int]) -> None:

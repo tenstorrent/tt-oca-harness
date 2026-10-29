@@ -26,6 +26,9 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-CSR-STATUS    each IRQ_STATUS bit is sticky; a W1C of the other bits and a write
                     of 0 keep it; its own W1C clears only it; bits [31:12] read 0
   CHK-CSR-SET       IRQ_SET sets exactly the mask bits
+  CHK-CSR-SET-READ  a read of the write-only IRQ_SET returns 0
+  CHK-CSR-RO        a write of the complement to CTRL, DEBUG, OTP_LIFE_CYCLE and
+                    OTP_DEMOTION_STATE (sw = r) leaves the readback unchanged
   CHK-CSR-ENABLE    the CPU IRQ line 3 handler enters once when S AND E is non-zero and
                     never when it is zero; a masked bit still sets
   CHK-CSR-ENTRY     IRQ_ENTRY_ADDR resets to 0x10, takes any value while unlocked, keeps
@@ -61,10 +64,9 @@ on ``s_axi_aw*``. The first PARK uses the largest W and gives the fall delay and
 the AW latency that time the shorter holds; the leaf logs the measured W of
 every PARK and records a missed W as a missing control.
 
-Logged only (no register text states them): ``OBS-KMCSR-ACCESS``, a read of
-IRQ_SET and of each virtual UART and testbench word, and a write of the
-complement to each read-only register (CTRL, DEBUG, OTP_LIFE_CYCLE,
-OTP_DEMOTION_STATE) with its readback.
+Logged only (no register text states them): ``OBS-KMCSR-ACCESS``, the AXI
+response of the IRQ_SET read and of each read-only register write, and the
+response and data of each virtual UART and testbench word read.
 """
 
 from __future__ import annotations
@@ -561,14 +563,21 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             self.chk.obs("REAL-CAUSE", cause=name, irq_status=_h(irq), rose=rose or "none")
 
     async def _access_obs(self) -> None:
-        """Log the response and data of each access no register text states."""
+        """Log each response no register text states; grade the stated data.
+
+        The error responses set the sticky IRQ_STATUS.AXI_SLVERR, so the step ends
+        with an IRQ_STATUS clear and the IRQ_SET step starts clean.
+        """
         reads = await self._run([kp.rd(a) for _, a in pl.OBS_READS], allow_unknown=True)
         for (reg, _), x in zip(pl.OBS_READS, reads):
             rdata = _h(x.value) if x.known else "X"
             self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata, axi_slverr=x.slv)
+            if reg == "IRQ_SET":
+                self.chk.ok("CSR-SET-READ", x.known and x.value == 0, rdata=rdata, golden=_h(0))
         for reg, a in pl.OBS_RO_WRITES:
             before = (await self._run([kp.rd(a, raw=True)]))[0].value
-            wr, rd = await self._run([kp.wr(a, ~before & pl.WORD_MASK), kp.rd(a, raw=True)])
+            wr_val = ~before & pl.WORD_MASK
+            wr, rd = await self._run([kp.wr(a, wr_val), kp.rd(a, raw=True)])
             self.chk.obs(
                 "KMCSR-ACCESS",
                 reg=reg,
@@ -577,6 +586,15 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 rdata=_h(rd.value),
                 axi_slverr=wr.slv,
             )
+            self.chk.ok(
+                "CSR-RO",
+                rd.value == before,
+                reg=reg,
+                wr_val=_h(wr_val),
+                rdata=_h(rd.value),
+                golden=_h(before),
+            )
+        await self._run([self._raw_clear_irq()])
 
     # ---------------------------------------------------------- step 6: IRQ_SET masks
 

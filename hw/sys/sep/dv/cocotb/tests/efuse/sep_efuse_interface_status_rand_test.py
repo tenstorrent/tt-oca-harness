@@ -555,7 +555,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             "staged": int(p.image.words[idx]),
         }
         for k, v in list(p.draws.items())[n0:]:
-            self.logger.info("DRAW seed=%d name=%s value=%s", self.seed, k, v)
+            self.logger.info("INFO-DRAW seed=%d name=%s value=%s", self.seed, k, v)
 
     async def _jtag_program_twin(self) -> bool:
         """Post-sense JTAG program of the twin bit: the JTAG program path works.

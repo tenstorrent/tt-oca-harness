@@ -435,13 +435,13 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         rng = SepSeededRng(seed)
         c = rng.randrange(8, 201)
-        self.logger.info("DRAW c=%d", c)
+        self.logger.info("INFO-DRAW c=%d", c)
         order = list(_EVENTS)
         rng.shuffle(order)
-        self.logger.info("DRAW event_order=%s", ",".join(order))
+        self.logger.info("INFO-DRAW event_order=%s", ",".join(order))
         vcs = "vcs" in str(getattr(cocotb, "SIM_NAME", "") or "").lower()
         self.full_cpu = self.full_cpu_build()
         # The full-CPU testlist entry passes +sep_require_full_cpu: there the
@@ -454,7 +454,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         graded = [e for e in events if self.full_cpu or e != "dbg_rstb_i"]
         ungraded = "" if graded == events else " ungraded=dbg_rstb_i(stub: no load)"
         self.logger.info(
-            "CFG H=%d rst_low=%d pulse=%d ovrd=%d full_cpu=%d events_run=%s%s%s",
+            "INFO-CFG H=%d rst_low=%d pulse=%d ovrd=%d full_cpu=%d events_run=%s%s%s",
             _HOLD,
             _RST_LOW,
             _PULSE,

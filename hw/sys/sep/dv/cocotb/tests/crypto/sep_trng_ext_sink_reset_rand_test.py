@@ -50,11 +50,16 @@ clocks, so the sweep places the clear at every phase of one acknowledge period.
 The phase of a trial is the clocks from the last adapter acknowledge of the client
 to the rise of ``trng_reset_active_probe_o``.
 
-Logged only: ``OBS-XRST-POOL-DATA-INFLIGHT`` (after the pool leg, outside the
-graded window): one pool DATA read started together with the TRNG reset write, with
-one word in the pool. It logs the response, the data, the clocks from the read
-address handshake to the reset rise and from the rise to the response (no stated
-outcome for a pool read in flight when the TRNG reset asserts).
+Pool read in flight (after the pool leg, outside the graded window): one pool DATA
+read started together with the TRNG reset write, with one word in the pool.
+``CHK-XRST-POOL-INFLIGHT`` grades the stated outcome: the responder is not reset and
+stays responsive (``reset_controller.adoc``), so the read completes; a DATA read pops
+the word or, on an empty pool, returns SLVERR (``entropy_pool.adoc``), so the response
+is SLVERR or OKAY with the sent pair. Control: one word in the pool, the read address
+handshake at or before the reset rise and the response not before it.
+``OBS-XRST-POOL-DATA-INFLIGHT`` logs which of the two outcomes occurs, the data and the
+clocks from the read address handshake to the reset rise and from the rise to the
+response (no text states which outcome wins the race).
 
 Checkers:
   CHK-XRST-POOL    a pool STATUS read issued and answered inside the clear returns
@@ -128,6 +133,7 @@ from seq_lib.sep_entropy_pool_seq import (
     POOL_POP,
     POOL_STATUS,
     RESP_OKAY,
+    RESP_SLVERR,
     SepEntropyPool,
     pool_level,
 )
@@ -584,6 +590,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         "CHK-XRST-PAUSE",
         "CHK-XRST-RESUME",
         "CHK-XRST-STALE",
+        "CHK-XRST-POOL-INFLIGHT",
         "CHK-XRST-CLIENT",
         "CHK-XRST-OTBN",
         "CHK-ADAPTER-CLEAR-HOLD",
@@ -1039,6 +1046,21 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         seq = await pop
         _kill(watcher)
+        t_ar = ar.get("clk")
+        self.chk.ctrl(
+            "XRST-POOL-INFLIGHT",
+            level == 1 and t_ar is not None and t_ar <= t_rise
+            and (t_resp is None or t_resp >= t_rise),
+            level_before=level, ar_to_rise_clk=t_rise - t_ar if t_ar is not None else "na",
+        )  # fmt: skip
+        pair = (w << 32) | w
+        data = (seq.rdata or 0) & 0xFFFF_FFFF_FFFF_FFFF
+        self.chk.ok(
+            "XRST-POOL-INFLIGHT",
+            not seq.timed_out
+            and (seq.resp_code == RESP_SLVERR or (seq.resp_code == RESP_OKAY and data == pair)),
+            timed_out=int(seq.timed_out), resp=seq.resp_code, legal="SLVERR|OKAY+sent_pair",
+        )  # fmt: skip
         self.chk.obs(
             "XRST-POOL-DATA-INFLIGHT",
             level_before=level,

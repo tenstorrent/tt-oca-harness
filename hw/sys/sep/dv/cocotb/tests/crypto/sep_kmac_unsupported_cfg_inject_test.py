@@ -61,7 +61,12 @@ Checkers:
                      kmac_err still set. The control is the 0 read before the start
                      (CHK-KMAC-UNSUP ``pre_code``, reset value at line 343).
   CHK-KMAC-UNSUP-EN  en bit 1, unsupported strength: STATUS.sha3_absorb=1 after
-                     CMD.start. kmac_err is logged only.
+                     CMD.start. kmac_err is logged only. The mode 2'b01 cell
+                     with en bit 1 is graded the same way, with its
+                     CFG_SHADOWED readback, after the owner window closes
+                     (kmac.adoc lines 114-115: "SW may set this field for KMAC
+                     to move forward with unsupported Keccak Mode and Strength
+                     configurations").
   CHK-KMAC-ERRPROC   after err_processed and the W1C: kmac_err=0, sha3_idle=1;
                      the next SHA3-256 digest equals the golden and kmac_err
                      still reads 0.
@@ -70,10 +75,10 @@ Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
 kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
 (SHA3-256 with the en bit 0 reaches absorb with no kmac_err; its start time
 joins t_clean before the SHA3-128 cell). ``OBS-KMAC-UNSUP-EN-ERR`` logs
-kmac_err of the enabled group. ``OBS-KMAC-MODE01`` logs one mode 2'b01 run with
-the drawn strength and ``en_unsupported_modestrength`` = 1 (start, message,
-process): no text states that this pair absorbs, so it is not graded and runs
-after the owner window closes.
+kmac_err of the enabled group. ``OBS-KMAC-MODE01`` logs the rest of the mode 2'b01
+run with ``en_unsupported_modestrength`` = 1 (message, process): ``kmac_done``,
+``kmac_err``, ``ERR_CODE``, ``STATUS`` and four ``STATE`` words, which no text
+states.
 
 Time bounds: t_clean is the longest clean start time of the supported group,
 measured from the ``CMD.start`` write to the read that shows absorb. The
@@ -398,7 +403,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         blocked_absorb = await self._blocked_group(seed, plan, t_clean)
         await self._sha3_cell(seed, plan, t_clean)
         await self._enabled_group(seed, plan, t_clean, blocked_absorb)
-        await self._rsvd_enabled_cell(seed, plan, t_clean)
+        await self._rsvd_enabled_cell(plan, t_clean)
 
         self._graded = False
         close_graded_window()
@@ -665,13 +670,31 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         close_graded_window()
         await self._reset_kmac()
 
-    async def _rsvd_enabled_cell(self, seed: int, plan: Plan, t_clean: int) -> None:
-        """Mode 2'b01, drawn strength, en bit 1: start, message, process; logged only."""
+    async def _rsvd_enabled_cell(self, plan: Plan, t_clean: int) -> None:
+        """Mode 2'b01, drawn strength, en bit 1: CHK-KMAC-UNSUP-EN grades absorb; the rest is logged.
+
+        Runs after the owner window closed: no FCOV bin owns this cell.
+        """
         bound = _ERR_BOUND_MULT * t_clean
-        await self._arm_cell(_MODE_RSVD, plan.rsvd_strength, 1)
+        _, _, cfg_rb = await self._arm_cell(_MODE_RSVD, plan.rsvd_strength, 1)
+        cfg_exp = _cfg_word(_MODE_RSVD, plan.rsvd_strength, 1) & _CFG_CELL_MASK
         t0 = self._now_clk()
         await self._wr(KMAC_CMD, KMAC_CMD_START)
-        absorb_seen, _, absorb_clk = await self._poll(KMAC_STATUS, _ABSORB, t0, bound)
+        absorb_seen, status, absorb_clk = await self._poll(KMAC_STATUS, _ABSORB, t0, bound)
+        self._grade(
+            "KMAC-UNSUP-EN",
+            absorb_seen and (cfg_rb & _CFG_CELL_MASK) == cfg_exp,
+            mode=_MODE_RSVD,
+            mode_code=KMAC_MODE_RSVD,
+            kstrength=plan.rsvd_strength,
+            en_unsup=1,
+            cfg=f"0x{cfg_rb & _CFG_CELL_MASK:08x}",
+            cfg_exp=f"0x{cfg_exp:08x}",
+            absorb=_bits(status, _ABSORB),
+            absorb_clk=absorb_clk,
+            bound=bound,
+            **({} if absorb_seen else {"reason": "timeout"}),
+        )
         if absorb_seen:
             await self.kmac._push_msg_bytes(plan.rsvd_msg)
         t1 = self._now_clk()
@@ -683,13 +706,10 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         state = await self.kmac.read_digest(4)
         self.chk.obs(
             "KMAC-MODE01",
-            seed=seed,
             mode_code=KMAC_MODE_RSVD,
             kstrength=plan.rsvd_strength,
             en_unsup=1,
             len=len(plan.rsvd_msg),
-            absorb_seen=int(absorb_seen),
-            absorb_clk=absorb_clk,
             done=_bits(intr, _DONE),
             kmac_err=_bits(intr, _ERR),
             end_seen=int(end_seen),

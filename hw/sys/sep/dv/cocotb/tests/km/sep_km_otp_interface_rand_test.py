@@ -48,7 +48,9 @@ Checks (anchor):
                          OTP_CHANGE, no OTP_SIGINT (POKE readback); on the held
                          point the readout word after the flip release equals the
                          word before the flip, with no KM reset between
-                         (``km_csr.adoc``: "Read-through from OTP port; no reset")
+                         (``km_csr.adoc``: "Read-through from OTP port; no reset");
+                         control CTRL-OTP-CHG-READOUT: the held field is unlocked
+                         and the word before the flip equals its golden
 
 Logged only (no verdict): ``OBS-OTP-BOOT-SIGINT`` (IRQ_STATUS.OTP_SIGINT right
 after each KM reset; the leaf clears it with a write of 1 before any graded
@@ -1182,15 +1184,33 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             twin_change=int(twin),
         )
         # Step 13: a two-rail flip well after the reboot with both demotions held.
-        await self._run([kp.delay(QUIET)])
+        locks = await self._run([kp.delay(QUIET), kp.rd(m.A_READ_LOCK), kp.rd(m.A_READ_LOCK_COLD)])
         hp = self.rep.held
         if hp.f == m.F_LC:
-            rd_addr = m.A_LIFE_CYCLE
+            rd_addr, slot = m.A_LIFE_CYCLE, (m.F_LC, "reg", 0)
+            want_rd = m.lc_encode(self.fp.lc_raw)
         elif hp.f == m.F_DEM:
-            rd_addr = m.A_DEMOTION
+            rd_addr, slot = m.A_DEMOTION, (m.F_DEM, "reg", 0)
+            want_rd = self.dem_b.dem & m.DEM_FIELDS
         else:
-            rd_addr = m.word_addr(hp.f, "val", hp.word)
+            rd_addr, slot = m.word_addr(hp.f, "val", hp.word), (hp.f, "val", hp.word)
+            want_rd = m.staged_word(self.otp_fields, hp.f, hp.word)
         leg = await self._leg(f"chg.held.{hp.text()}", [hp], single=False, rd_addr=rd_addr)
+        lock_bits = (locks[1].value | locks[2].value) & m.LOCK_FIELDS
+        pre_field = None if leg.pre_rd is None else self._field_bits(slot, leg.pre_rd)
+        # The read-through check sees the field only when it is unlocked and the
+        # word before the flip is the staged value, not a locked zero.
+        self.chk.ctrl(
+            "OTP-CHG-READOUT",
+            all(_ok(x) for x in locks if x.op.reports)
+            and not (lock_bits >> hp.f) & 1
+            and pre_field == want_rd,
+            field=_FN[hp.f],
+            lock=_h(locks[1].value),
+            lock_cold=_h(locks[2].value),
+            readout_pre=_h(pre_field or 0),
+            readout_want=_h(want_rd),
+        )
         both = (leg.pre_dem & m.DEM_FIELDS) == (self.dem_b.dem & m.DEM_FIELDS)
         self.chk.ctrl(
             "OTP-CHG-PRE",

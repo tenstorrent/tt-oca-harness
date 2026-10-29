@@ -24,10 +24,14 @@ sections Token Matching Mechanism and Attack Countermeasures, Token Submission;
 ``hw/sys/sep/doc/security_disable.adoc``, sections Token Activation, Reset
 Persistence, Implementation Requirements; ``hw/ip/efuse/regs/gen/adoc/efuse_mmr.adoc``).
 
-No graded step writes two go bits in one ``TOKEN_EOP`` write, and every SEC_DIS go
-runs with ``secure_tm_req_i`` at 0. After the last check, one write sets the go bits
-of a drawn channel pair; it is logged only (``OBS-TOKEN-MULTI-GO``: per channel the
-code after the write and the clocks to the verdict on the comparator rails). Every graded go starts from a held code other than
+Every SEC_DIS go runs with ``secure_tm_req_i`` at 0. After CHK-TOKEN-CODES, with the
+FCOV window closed, each channel of a drawn pair is settled to Mismatch and takes its
+right token (CTRL-TOKEN-MULTI-GO), and one ``TOKEN_EOP`` write sets both go bits.
+CHK-TOKEN-MULTI-GO grades a fresh Match on the rails and at the frontdoor of each
+channel: each go bit starts its own lane (``hw/ip/efuse/regs/efuse_mmr.rdl``,
+``TOKEN_EOP``; ``token_processing.adoc``, one token array, go bit, SHA-256 engine and
+comparator per lane). ``OBS-TOKEN-MULTI-GO`` logs the clocks from the write to each
+verdict. Every graded go starts from a held code other than
 its expected final code, so a go that has no effect fails. The one exception is
 the second go of the go-while-busy leg, which is written to a busy channel.
 
@@ -58,8 +62,8 @@ control ``CTRL-TOKEN-DIGEST-LAYOUT`` of the hold, idle-first and later legs, whi
 need that held Match.
 
 Checkers: CHK-BIND, CHK-TOKEN, CHK-TOKEN-CODES, CHK-TOKEN-HOLD, CHK-TOKEN-INDEP,
-CHK-NORESET, CHK-TOKEN-RETAIN, CHK-TOKEN-PRESENSE, CHK-TOKEN-GWB, CHK-TOKEN-HMAC.
-A failing hook control logs ``CHK-HOOK FAIL`` and ends the leaf.
+CHK-NORESET, CHK-TOKEN-RETAIN, CHK-TOKEN-PRESENSE, CHK-TOKEN-GWB, CHK-TOKEN-HMAC,
+CHK-TOKEN-MULTI-GO. A failing hook control logs ``CHK-HOOK FAIL`` and ends the leaf.
 
 FCOV owner window (``env/sep_fcov_gate.py``): open from the no-reset cell to
 CHK-TOKEN-CODES, closed by the first FAIL or missing control, and not reopened
@@ -325,6 +329,7 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         "CHK-TOKEN-PRESENSE",
         "CHK-TOKEN-GWB",
         "CHK-TOKEN-HMAC",
+        "CHK-TOKEN-MULTI-GO",
     )
 
     # ------------------------------------------------------------------ grading
@@ -1096,14 +1101,30 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         self.chk.finish()
 
     async def _multi_go(self) -> None:
-        """One ``TOKEN_EOP`` write with the go bits of a drawn channel pair, logged only.
+        """One ``TOKEN_EOP`` write with the go bits of a drawn channel pair.
 
-        ``OBS-TOKEN-MULTI-GO``: per channel of the pair, the code after the write and
-        the clocks from the write to the verdict on the comparator rails. The
-        specification does not state the result of two go bits in one write.
+        Each channel of the pair is settled to Mismatch, takes its right token and
+        holds Mismatch (CTRL-TOKEN-MULTI-GO). One write then sets both go bits.
+        CHK-TOKEN-MULTI-GO: per channel the rails clear and then show Match, and the
+        frontdoor code reads Match. ``OBS-TOKEN-MULTI-GO`` logs the clocks from the
+        write to the verdict of each channel.
         """
         pairs = [(a, b) for i, a in enumerate(CHANNELS) for b in CHANNELS[i + 1 :]]
         pair = self.plan.draw.choice("multi_go.pair", pairs)
+        held: dict = {}
+        for ch in pair:
+            name = _CH_NAME[ch]
+            settled = await self._settle(ch, TOKEN_OTHER, CODE_MISMATCH, f"multi_go.{name}.settle")
+            await self._write(ch, RIGHT_TOKEN[ch], f"multi_go.{name}.go")
+            held[ch] = await self._code(ch) if settled == CODE_MISMATCH else None
+        self._ctrl(
+            "TOKEN-MULTI-GO",
+            all(v == CODE_MISMATCH for v in held.values()),
+            **{
+                f"{_CH_NAME[ch]}_held": "none" if v is None else f"0x{v:02x}"
+                for ch, v in held.items()
+            },
+        )
         watches = {ch: _RailWatch(ch) for ch in pair}
         for w in watches.values():
             w.start()
@@ -1112,12 +1133,17 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         bits = GO_MASK[pair[0]] | GO_MASK[pair[1]]
         await self.fd.wr(TOKEN_EOP_ADDR, bits)
         fields: dict = {"bits": f"0x{bits:x}"}
+        cycles: dict = {"bits": f"0x{bits:x}"}
+        ok = True
         for ch, w in watches.items():
-            v_cyc, _v = await w.wait_verdict(start[ch], _GWB_BOUND)
-            code, _n = await poll_code(self.fd.rd, ch, max_reads=_RUN_READS)
+            v_cyc, rail = await w.wait_verdict(start[ch], _GWB_BOUND)
+            code, _n = await poll_code(self._rd, ch, max_reads=_RUN_READS)
             name = _CH_NAME[ch]
+            ok = ok and rail == CODE_MATCH and code == CODE_MATCH
+            fields[f"{name}_rails"] = "none" if rail is None else f"0x{rail:02x}"
             fields[f"{name}_final"] = "none" if code is None else f"0x{code:02x}"
-            fields[f"{name}_cycles"] = "none" if v_cyc is None else v_cyc - start[ch]
+            cycles[f"{name}_cycles"] = "none" if v_cyc is None else v_cyc - start[ch]
         for w in watches.values():
             w.stop()
-        self.chk.obs("TOKEN-MULTI-GO", **fields)
+        self._grade("TOKEN-MULTI-GO", ok, exp="0x15", **fields)
+        self.chk.obs("TOKEN-MULTI-GO", **cycles)

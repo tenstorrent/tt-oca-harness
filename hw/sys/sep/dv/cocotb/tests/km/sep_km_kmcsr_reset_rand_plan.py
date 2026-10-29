@@ -66,8 +66,8 @@ A_ENTRY_LOCK = _csr("IRQ_ENTRY_LOCK")
 A_DEBUG = _csr("DEBUG")
 A_OTP_LOCK = _csr("OTP_READ_LOCK")
 A_OTP_LOCK_COLD = _csr("OTP_READ_LOCK_COLD")
-# Logged-only accesses: reads of the write-only IRQ_SET and of the virtual UART
-# and testbench words, and writes to the read-only registers.
+# Accesses whose AXI response is logged only: reads of the write-only IRQ_SET and
+# of the virtual UART and testbench words, and writes to the read-only registers.
 OBS_READS = tuple(
     (reg, _csr(reg))
     for reg in (

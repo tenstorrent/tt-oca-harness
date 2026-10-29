@@ -32,7 +32,8 @@ OR-merged with the writes of the leaf).
                     ``sep_lifecycle_ctrl.rdl`` DEMOTE_1/2 ``rsvd``) and ``FEAT_CTRL``
                     equals the row of the cumulative demotion (``rsvd`` is "Not
                     used"). The random sequence draws ``rsvd.<k>`` writes of one
-                    bit k in [63:2].
+                    bit k in [63:2]. Each step after a write also requires the
+                    write response OKAY (``wr_resp=0``).
                     A write of both bits while ``lock`` is 0 has no stated demote
                     golden: its demote bit is logged (``OBS-DEMOTE-LOCK-ONE-WRITE``,
                     every both-bits write) and the model takes the readback; the lock
@@ -379,10 +380,12 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             "DEMOTE-STEP",
             all((got[r] ^ exp[r]) & ~ungraded[r] == 0 for r in (1, 2))
             and feat == row.value
-            and probe == row.value,
+            and probe == row.value
+            and (op is None or self._wr_resp == 0),
             step=step,
             reg=reg if reg is not None else "na",
             op=OP_NAME.get(op, op) if op else "none",
+            wr_resp=self._wr_resp if op else "na",
             reg_exp=f"0x{exp[reg or 1]:x}",
             reg_got=f"0x{got[reg or 1]:x}",
             other_exp=f"0x{exp[3 - (reg or 1)]:x}",
@@ -420,7 +423,11 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             self.otp_bad.append(f"{step}:lc=0x{lcw:x},diff={diff_log(diff)},progs={len(progs)}")
 
     async def _write_demote(self, reg: int, op: str) -> None:
-        await self.fd.wr64(DEMOTE_ADDR[reg], _op_value(op))
+        # The write response is graded in the CHK-DEMOTE-STEP line that follows,
+        # so an injected write that has no effect still shows that it was answered.
+        self._wr_resp = await self.fd.wr_graded_by_readback(
+            DEMOTE_ADDR[reg], _op_value(op), length=8
+        )
         self._apply_op(reg, op)
 
     async def _reset_check(self, stage: str) -> None:

@@ -273,28 +273,13 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
             await self._untranslated("CHK-ALIAS-WALK-VALID", p, staged)
             counts["VALID"] += 1
 
-            # END miss: START matches and valid is set, but the source address is
-            # at END (non-inclusive), so only the END compare keeps the beat
-            # local. A translated beat lands at T2, which the outbound entry still
+            # END miss: START == END == source page and valid is set; the source
+            # address is at END (non-inclusive), so only the END compare keeps
+            # the beat local. A translated beat lands at T2, which the outbound entry still
             # admits, and returns the responder's data, not the staged word.
             await alias.program(r, p.hit_start, SRC_PAGE, p.o2, True)
             await self._untranslated("CHK-ALIAS-WALK-MISS", p, staged)
             counts["END_MISS"] += 1
-
-            # Empty region: START == END == source page, valid set.
-            await alias.program(r, p.hit_start, SRC_PAGE, p.o2, True)
-            resp, data, n_out = await self._obs_read(SRC_ADDR)
-            self.logger.info(
-                "OBS-ALIAS-EMPTY region=%d start=end=0x%014x src=0x%08x resp=%d rdata=0x%08x "
-                "data_eq_staged=%d pr_out_ar=%d",
-                r,
-                SRC_PAGE,
-                SRC_ADDR,
-                resp,
-                data,
-                int(data == staged),
-                n_out,
-            )
 
             for s in (p.miss_start, ~p.miss_start & START_MASK):
                 assert (s >> IDX_START) > SRC_PG

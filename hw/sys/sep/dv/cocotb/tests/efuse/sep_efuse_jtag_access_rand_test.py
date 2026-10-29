@@ -15,8 +15,9 @@ program of p, so the p read at the end grades a refused burn in every leaf.
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
 builds the same plan. JTAG and frontdoor accesses never overlap, except one
 frontdoor read and one JTAG read of the shadow word of p, started on the same clock
-at the end of the leaf and logged only (``OBS-EF-ARB-CONCURRENT``: the responses, the
-data, the clock each completes on and the command count at the post-guard tap).
+at the end of the leaf. CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the
+frontdoor read OKAY with the staged word; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
+the clock each read completes on and the command count at the post-guard tap.
 
 Contract (``hw/sys/sep/doc/otp_fuse_controller.adoc``, section Shadow Register and
 JTAG Access Control; ``hw/sys/sep/doc/lifecycle_controller.adoc``, row SEP OTP
@@ -51,6 +52,8 @@ Mechanism and Token Submission):
   CHK-JTAG-TOKEN    with every DBG_1 and DBG_2 bit of ``FEAT_CTRL`` at 0 (register and
                     probe), a JTAG write of ``TOKEN_T1`` into the SIP array and a go
                     give the SIP match 0x15 at a frontdoor read.
+  CHK-JTAG-CONCURRENT  the concurrent pair at the end of the leaf: JTAG response not
+                    OKAY, frontdoor response OKAY with the staged word.
 
 The plan draws the result of the go (Match or Mismatch, equal weight) and builds the
 array content that gives it, so the go golden varies over seeds. The other value
@@ -141,7 +144,7 @@ def _field_bits(addr: int) -> int:
 class sep_efuse_jtag_access_rand_test(sep_base_test):
     """PROD and RMA_SIP JTAG reaches only the token block; denied accesses change nothing."""
 
-    required_evidence = ("CHK-JTAG", "CHK-JTAG-TOKEN")
+    required_evidence = ("CHK-JTAG", "CHK-JTAG-TOKEN", "CHK-JTAG-CONCURRENT")
 
     # -- helpers -------------------------------------------------------------
 
@@ -420,11 +423,16 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 after=f"0x{after & mask:08x}",
             )
 
-    async def _concurrent_read(self, word: int) -> None:
+    async def _concurrent_read(self, word: int, ignore_mask: int) -> None:
         """A frontdoor read and a JTAG read of one shadow word, started on the same clock.
 
-        Logged only (``OBS-EF-ARB-CONCURRENT``): the specification does not state the
-        arbitration of the two masters.
+        CHK-JTAG-CONCURRENT: the JTAG read answers a response that is not OKAY
+        (``otp_fuse_controller.adoc``, Shadow Register and JTAG Access Control), and the
+        frontdoor read answers OKAY with the staged word, outside ``ignore_mask`` (the
+        bit c when it shares the word). ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
+        the clock each read completes on and the command count at the post-guard tap:
+        the specification does not state the arbitration of the two masters or the data
+        of a denied read.
         """
         dut = cocotb.top
         addr = SHADOW_BASE + 4 * word
@@ -455,15 +463,26 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         jtag_resp, jtag_data = await jtag_task
         counter.cancel()
         await ClockCycles(dut.clk_i, 2)
+        fd_rdata = fd_seq.rdata & M32
+        staged = self.p.image.words[word]
+        keep = ~ignore_mask & M32
+        self.chk.ok(
+            "JTAG-CONCURRENT",
+            jtag_resp != OKAY and fd_seq.resp_code == OKAY and fd_rdata & keep == staged & keep,
+            state=self.state,
+            word=word,
+            jtag_resp=jtag_resp,
+            fd_resp=fd_seq.resp_code,
+            fd_rdata=f"0x{fd_rdata:08x}",
+            staged=f"0x{staged:08x}",
+            ignore=f"0x{ignore_mask:08x}",
+        )
         self.chk.obs(
             "EF-ARB-CONCURRENT",
             state=self.state,
             word=word,
-            fd_resp=fd_seq.resp_code,
-            fd_rdata=f"0x{fd_seq.rdata & M32:08x}",
-            fd_done_clk=done["fd"],
-            jtag_resp=jtag_resp,
             jtag_rdata=f"0x{jtag_data:08x}",
+            fd_done_clk=done["fd"],
             jtag_done_clk=done["jtag"],
             shim_cmds=len(self.shim.commands_since(mark)),
         )
@@ -648,6 +667,10 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             )
             self.last_result[ch] = CODE_MISMATCH
         await self._deny_write_controls(w)
-        await self._concurrent_read(field_word(p_bit["field"]) + p_bit["word"])
+        p_word_idx = field_word(p_bit["field"]) + p_bit["word"]
+        c_word_idx = field_word(c_bit["field"]) + c_bit["word"]
+        await self._concurrent_read(
+            p_word_idx, (1 << c_bit["bit"]) if c_word_idx == p_word_idx else 0
+        )
         await self.shim.stop()
         self.chk.finish(f" state={self.state}")

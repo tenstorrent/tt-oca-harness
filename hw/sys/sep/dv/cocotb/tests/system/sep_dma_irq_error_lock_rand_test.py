@@ -1254,10 +1254,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         await self._obs_lock_nonmubi()
 
     async def _obs_lock_nonmubi(self) -> None:
-        """RANGE_REGWEN after a first write of a non-MuBi4 value, and whether RANGE_BASE then takes a write."""
+        """RANGE_REGWEN around a first non-MuBi4 write, and whether RANGE_BASE then takes a write."""
         c = self.cfg_t
         ops = self.ops
         await self._cold_reset()
+        regwen_pre = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
         resp_rw = await self._wr_log(RANGE_REGWEN, c.nonmubi << _REGWEN_LSB)
         regwen = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
         base_pre = await ops.rd(RANGE_BASE)
@@ -1265,9 +1266,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         resp_b = await self._wr_log(RANGE_BASE, nb)
         base = await ops.rd(RANGE_BASE)
         self.logger.info(
-            "OBS-DMA-REGWEN-NONMUBI seed=%d written=0x%x regwen=0x%x write_resp=%d "
+            "OBS-DMA-REGWEN-NONMUBI seed=%d regwen_before=0x%x written=0x%x regwen=0x%x "
+            "write_resp=%d "
             "base_before=0x%08x base_written=0x%08x base=0x%08x base_resp=%d base_landed=%d",
             c.seed,
+            regwen_pre,
             c.nonmubi,
             regwen,
             resp_rw,

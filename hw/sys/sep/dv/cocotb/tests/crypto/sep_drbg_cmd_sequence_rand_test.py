@@ -666,7 +666,9 @@ class _InstSeedWatch:
                     seed_hs = 0
                     if self.hold_x is None:
                         self.hold_x = self.clk
-                        self.t.logger.info("INST-SEED hold read at clock %d: %s", self.clk, exc)
+                        self.t.logger.info(
+                            "INFO-INST-SEED-HOLD read at clock %d: %s", self.clk, exc
+                        )
             else:
                 seed_hs = 0
                 if rd(dut.drbg_seed_valid_o, allow_unknown=True):
@@ -710,10 +712,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac", "abr"))
         self.reg = _Reg(self)
         await self.reg._wr(EXT_TRNG_SRC_SEL, 0)
-        self.logger.info("BASELINE sw_reset_n=0x%02x ext_trng_src_sel=0x0", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x ext_trng_src_sel=0x0", self.swrst.value)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self._seq_mark = 0
@@ -816,7 +818,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await self.swrst.release("trng")
         fall = await self._wait_probe(dut.trng_reset_active_probe_o, True, "trng reset fall")
         await RisingEdge(dut.clk_i)
-        self.logger.info("TRNG reset: rise_clk=%d fall_clk=%d cap=%d", rise, fall, TRNG_RESET_CAP)
+        self.logger.info(
+            "INFO-TRNG-RESET: rise_clk=%d fall_clk=%d cap=%d", rise, fall, TRNG_RESET_CAP
+        )
 
     async def _clean_start(self, group: str) -> int:
         """TRNG reset, bring-up without the EDN step, CSRNG enable. Returns bit 14."""

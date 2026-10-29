@@ -28,8 +28,15 @@ uninitialized" is the state after a TRNG reset with no bring-up after it: EDN
 does not answer, which is the starvation of the timer leg.
 
 Checkers:
-  CHK-KMAC-SWSEED          six seeds -> absorb in bound; SHA3-256 == golden.
+  CHK-KMAC-SWSEED          sw mode, six seeds -> absorb in bound; SHA3-256 ==
+                           golden. ``CTRL-KMAC-SWSEED part=program`` reads
+                           ``entropy_mode`` sw and ``entropy_ready`` 1 before
+                           the seeds. The check does not show that the six
+                           seeds are needed: that is CHK-KMAC-SWSEED-NEG.
   CHK-KMAC-MODE-LOCK       reset mode 0; a late write changes only the readback;
+                           ``CTRL-KMAC-MODE-LOCK part=program`` reads the locked
+                           ``entropy_mode`` and ``entropy_ready`` 1 before the
+                           late write;
                            with EDN locked, the late write to sw leaves the
                            module in EDN mode: after the hash, ``CMD.entropy_req``
                            gives >= 1 acknowledge on ``crypto_edn_ack_o[1]``
@@ -351,6 +358,21 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             await self._wait_clocks(POLL_EVERY)
         return None
 
+    async def _ctrl_cfg(self, check: str, mode: str, **fields) -> bool:
+        """Read CFG_SHADOWED after ``program``; control: ``entropy_mode`` and ``entropy_ready`` hold the written values."""
+        cfg = await self.kmac.read(KMAC_CFG)
+        got = (cfg & CFG_MODE_MASK) >> CFG_MODE_LSB
+        ready = int(bool(cfg & CFG_READY))
+        return self.chk.ctrl(
+            check,
+            got == ENTROPY_MODE[mode] and ready == 1,
+            part="program",
+            **fields,
+            exp_mode=ENTROPY_MODE[mode],
+            cfg_mode=got,
+            cfg_ready=ready,
+        )
+
     async def _hold_no_absorb(self, window: int) -> tuple[int, int]:
         """Read STATUS for ``window`` clocks; return (reads, reads with absorb 1)."""
         t0 = self._clk()
@@ -473,6 +495,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         await self._reset_kmac()
         self._open()
         await self.kmac.program(entropy_mode="sw", keyed=False)
+        await self._ctrl_cfg("KMAC-SWSEED", "sw")
         seed_words = SEED_ROW
         for word in seed_words[:6]:
             await self.kmac.seed(word)
@@ -540,6 +563,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             reset_mode = (await self.kmac.read(KMAC_CFG) & CFG_MODE_MASK) >> CFG_MODE_LSB
             req_m, ack_m = self.w_req.mark(), self.w_ack.mark()
             await self.kmac.program(entropy_mode=locked, keyed=False)
+            await self._ctrl_cfg("KMAC-MODE-LOCK", locked, locked=locked)
             late = self.plan.late_sw if locked == "sw" else "sw"
             await self.kmac.write_cfg(
                 self.kmac.cfg_word(entropy_mode=late, ready=True, keyed=False)

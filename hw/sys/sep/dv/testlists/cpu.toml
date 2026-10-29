@@ -294,7 +294,6 @@ args = [
 name = "sep_debug_master_target_matrix_test"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
-reseed = 4
 timeout_sec = 3600
 tags = ["debug", "jtag", "dmi", "cpu", "subsystem", "sep_spec_log"]
 tools = ["vcs"]

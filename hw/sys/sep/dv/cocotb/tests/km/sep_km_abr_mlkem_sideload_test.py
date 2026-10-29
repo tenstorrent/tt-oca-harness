@@ -351,15 +351,15 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
 
         await self.swrst.release("km")
         await self.km.wait_km_ready()
-        self.logger.info("CHK0 PASS: rom_main booted, RESP_KM_READY over the mailbox")
+        self.logger.info("CHK-KM-READY PASS: rom_main booted, RESP_KM_READY over the mailbox")
 
-        # Logged for the record, not graded: abr_reg.rdl declares NAME sw=r
-        # with no reset, and no SEP document gives its value. A dead decode
-        # reads both reference keys as zero and fails CHK-KEM-SEED-REF.
+        # Not graded: abr_reg.rdl declares NAME sw=r with no reset, and no SEP
+        # document gives its value. A dead decode reads both reference keys as
+        # zero and fails CHK-KEM-SEED-REF.
         name0 = await kem.rd32(MLKEM_NAME0)
         name1 = await kem.rd32(MLKEM_NAME1)
         self.logger.info(
-            "ABR ML-KEM identity words (information only): NAME0=0x%08x NAME1=0x%08x",
+            "OBS-ABR-MLKEM-NAME LOG name0=0x%08x name1=0x%08x",
             name0,
             name1,
         )
@@ -450,10 +450,16 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         # Reference first on the OTHER message, so the register holds _M_REF
         # when the sideload leg runs.
         ct_alt, sk_alt = await self._encaps(kem, ek_alt, _M_ALT, what="CHK-KEM-MSG-REF alt")
-        self.logger.info(
-            "CTRL-KEM-SK-READBACK LOG words_nonzero=%d",
-            int(any(w != 0 for w in sk_alt)),
+        # Control of OBS-KEM-SK-CONFIDENTIAL: the shared-key registers return a
+        # non-zero key after a register-driven ENCAPS of fixed inputs, so an
+        # all-zero read after the vault-sourced ENCAPS is not a dead read path.
+        sk_alt_nonzero = int(any(w != 0 for w in sk_alt))
+        assert sk_alt_nonzero == 1, (
+            "CTRL-MISSING KEM-SK-READBACK: the shared key of the register-driven "
+            "ENCAPS read all zero, so OBS-KEM-SK-CONFIDENTIAL cannot tell a "
+            "withheld key from a dead read path"
         )
+        self.logger.info("CTRL-KEM-SK-READBACK seen: words_nonzero=%d", sk_alt_nonzero)
         await self._zeroize(kem, what="after alt encaps")
         ct_ref, _ = await self._encaps(kem, ek_alt, _M_REF, what="CHK-KEM-MSG-REF ref")
         assert ct_alt != ct_ref, (

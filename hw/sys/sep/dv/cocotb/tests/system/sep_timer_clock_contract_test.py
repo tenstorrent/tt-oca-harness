@@ -141,9 +141,10 @@ edges in (t0, t1].
   enable read-back, where an unpetted run bites; the bark status
   (``INTR_STATE.wdog_timer_bark``, rw1c, ``doc/registers.md:224``) stays 1
   until its write-1-to-clear and reads 0 after it. Bite threshold
-  ``WDOG_BARK_THOLD + PET_BITE_GAP``. Controls: the bark is set before the pet,
-  and the count read before the pet is below ``WDOG_BITE_THOLD - A``
-  (CTRL-MISSING otherwise).
+  ``WDOG_BARK_THOLD + PET_BITE_GAP``. Controls: CTRL-WDT-PET-BITE, both
+  thresholds of the run read back as written before the enable; the bark is
+  set before the pet, and the count read before the pet is below
+  ``WDOG_BITE_THOLD - A`` (CTRL-MISSING otherwise).
 * CHK-WDT-THOLD-ZERO. "If the timer is enabled, there is a "bark" on every AON
   clock tick when the count is at least WDOG_BARK_THOLD." (``<aon>/README.md:55``).
   With ``WDOG_BARK_THOLD`` = 0 the bark status is 1 at the status read issued
@@ -2526,6 +2527,19 @@ class sep_timer_clock_contract_test(sep_base_test):
         pd = pb + PET_BITE_GAP
         a = COUNT_ALLOW
         await self._wdt_baseline(pb, pd, 0)
+        # Each threshold reads back once it lands in the clk_wdt_i domain.
+        rb = {}
+        for name, addr, want in (
+            ("WDOG_BARK_THOLD", WDOG_BARK_THOLD, pb),
+            ("WDOG_BITE_THOLD", WDOG_BITE_THOLD, pd),
+        ):
+            rb[name] = await self._poll_eq(name, addr, want, AON[name][1], "CTRL-WDT-PET-BITE")
+        self.logger.info(
+            "CTRL-WDT-PET-BITE LOG: seed=%d bark_thold_rb=0x%x bite_thold_rb=0x%x",
+            seed,
+            rb["WDOG_BARK_THOLD"] & AON["WDOG_BARK_THOLD"][1],
+            rb["WDOG_BITE_THOLD"] & AON["WDOG_BITE_THOLD"][1],
+        )
         req = SepBitWatch(dut.wdt_timer_rst_req_o, name="wdt_timer_rst_req_o").start()
         await self._wr(WDOG_CTRL, WDOG_EN)
         await self._poll_eq("WDOG_CTRL", WDOG_CTRL, WDOG_EN, WDOG_CTRL_FIELDS, "CHK-WDT-PET-BITE")
@@ -2562,7 +2576,9 @@ class sep_timer_clock_contract_test(sep_base_test):
         await req.stop()
         bark_end = int(bool(st_end & BARK_BIT))
         line = (
-            f"seed={seed} bark_thold={pb} bite_thold={pd} count_at_bark_read=0x{cnt:x} "
+            f"seed={seed} bark_thold={pb} bite_thold={pd} "
+            f"bite_thold_rb={rb['WDOG_BITE_THOLD'] & AON['WDOG_BITE_THOLD'][1]} "
+            f"count_at_bark_read=0x{cnt:x} "
             f"window_periods={end} rst_req_rises={rises} rst_req_high_clk={high} "
             f"bark_at_window_end={bark_end} bark_after_w1c={int(bool(st_clr & BARK_BIT))}"
         )
@@ -2573,8 +2589,11 @@ class sep_timer_clock_contract_test(sep_base_test):
     async def _bite_first(self) -> None:
         """OBS-WDT-BITE-FIRST: one run with the bite threshold below the bark threshold.
 
-        No line states the bark status when the bite comes first. The run logs
-        the bark status and the clk_i edges of the bite request and the bark line.
+        ``watchdog.adoc`` and the aon_timer README state two separate
+        thresholds, but ``watchdog.adoc`` also calls the bite the second stage
+        that fires after an unanswered bark, so the bark status when the bite
+        comes first is an open question. The run logs the bark status and the
+        clk_i edges of the bite request and the bark line.
         """
         dut = cocotb.top
         was = await self._ungraded()

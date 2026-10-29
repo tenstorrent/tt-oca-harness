@@ -11,7 +11,8 @@ Health-test quality stays out of scope.
 
 The same trip also reads the alert bookkeeping: ANY_FAIL_COUNT is denominated in
 failing windows, ALERT_FAIL_COUNTS attributes the trip to the repetition lane,
-HEALTH_TEST_STATUS latches the failing tests, and MAIN_SM_STATUS.ERR must stay 0
+HEALTH_TEST_STATUS and every per-generator status byte latch bit 0
+(repetition; every lane is held at 0), and MAIN_SM_STATUS.ERR must stay 0
 so PERSISTENT_FAILURE is attributable to AlertHang rather than to a counter or
 state fault. ``OBS-HT-RSVD`` logs the reserved bits 1:2 and 6:7 of
 HEALTH_TEST_STATUS and of the per-generator status bytes: the RDL allocates them
@@ -39,6 +40,8 @@ from seq_lib.sep_esrc_alert_seq import (
 )
 
 _TRIP_TIMEOUT_CYCLES = 80_000
+# entropy_source.rdl HEALTH_TEST_STATUS and GENERATOR_k_HEALTH_STATUS: repetition is bit 0.
+_REP_BIT = 0x1
 _TRIP_POLL_EVERY = 64
 
 
@@ -214,10 +217,13 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         # allocates repetition [0], APT [3], Markov high [4] and Markov low [5];
         # it states no value for bits 1:2 and 6:7, so they are logged only. The
         # twelve per-generator status registers carry the same allocation.
+        # Every lane is held at 0, so every generator fails the repetition test
+        # (CHK-FAIL-ATTRIB, REPCNT > 0): bit 0 must latch in the aggregate and in
+        # each generator byte.
         ht_status = await esrc.read_health_status()
-        assert ht_status != 0, (
-            "CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS.HEALTH_STATUS latched no failing test "
-            "while the alert was asserted"
+        assert ht_status & _REP_BIT, (
+            "CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS.HEALTH_STATUS bit 0 (repetition) not "
+            f"latched while the alert was asserted (0x{ht_status:02x})"
         )
         gen_health = await esrc.read_generator_health()
         self.logger.info(
@@ -225,18 +231,19 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             ht_status & HEALTH_RSVD_MASK,
             [f"0x{v & HEALTH_RSVD_MASK:02x}" for v in gen_health],
         )
-        assert any(gen_health), (
-            "CHK-GEN-HEALTH FAIL: no per-generator health-status register latched a "
-            "failing lane while the aggregate HEALTH_TEST_STATUS reads "
-            f"0x{ht_status:02x} and the alert is asserted"
+        missing = [i for i, v in enumerate(gen_health) if not v & _REP_BIT]
+        assert len(gen_health) == 12 and not missing, (
+            "CHK-GEN-HEALTH FAIL: generator(s) "
+            f"{missing} did not latch bit 0 (repetition) with every lane held at 0 "
+            f"(bytes {[f'0x{v:02x}' for v in gen_health]}, aggregate 0x{ht_status:02x})"
         )
         self.logger.info(
             "CHK-GEN-HEALTH PASS: twelve per-generator health-status bytes %s latch "
-            "the failing lanes",
+            "bit 0 (repetition)",
             [f"0x{v:02x}" for v in gen_health],
         )
         self.logger.info(
-            "CHK-HT-STATUS latched 0x%02x during the alert; W1C is proven after "
+            "INFO-HT-STATUS-LATCHED 0x%02x during the alert, bit 0 set; W1C is proven after "
             "AlertHang is left, where no new failure can re-latch it",
             ht_status,
         )

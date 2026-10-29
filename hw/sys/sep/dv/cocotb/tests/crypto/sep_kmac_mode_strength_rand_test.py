@@ -32,8 +32,10 @@ Checkers:
   CHK-DONE-RW1C  per cell (sep_kmac_seq.run_family): INTR_STATE.kmac_done set ->
                  W1C -> reads 0; CMD DONE returns to idle
   CHK-ERR        per cell: ERR_CODE == 0 and INTR_STATE.kmac_err == 0
-  CHK1..CHK4     bit-exact entropy golden (strict scoreboard report)
-  CHK5_kmac      post-adapter KMAC beats == AXIS1 in order (single live crypto sink)
+  CHK1..CHK4     bit-exact entropy golden (strict scoreboard report); PASS line
+                 ``CHK-ENTROPY-CHAIN`` with the match/mismatch count per stage
+  CHK5_kmac      post-adapter KMAC beats == AXIS1 in order (single live crypto sink);
+                 PASS line ``CHK-KMAC-ROUTING`` with the beat counts (floor 3)
   CHK-RAND-REP   every discrete cell produced its own golden-matching digest,
                  and all digests are distinct (seed logged)
 
@@ -105,6 +107,8 @@ _CMD_ERR_PROCESSED = KMAC.field_mask("CMD", "err_processed")
 # Outer limit, in clk_i cycles, of the squeeze-or-error wait of the undefined KEY_LEN run.
 _UNDEF_BOUND_CLK = 80_000
 _POLL_CLK = 20
+# Minimum scored CHK5_kmac beats of the walk (see the set_min_matches call).
+_CHK5_KMAC_MIN = 3
 
 
 @pyuvm.test()
@@ -121,14 +125,14 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         # walk scores about six routed beats where the AES sweep scores over a
         # hundred. 3 sits well above the default floor of 1 and keeps margin if a
         # later seed or reseed shifts the draw count.
-        self.drbg_sb.set_min_matches(CHK5_kmac=3)
+        self.drbg_sb.set_min_matches(CHK5_kmac=_CHK5_KMAC_MIN)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
         self.kmac = SepKmac(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("KMAC mode x strength breadth: seed=%d", seed)
+        self.logger.info("INFO-KMAC-SEED seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
         # output, not on the loop's own trip count. Distinct results additionally
@@ -155,7 +159,24 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
-        self.logger.info("CHK1..CHK4 bit-exact + CHK5_kmac ROUTING (KMAC==AXIS1) PASS")
+        res = self.drbg_sb.results
+        self.logger.info(
+            "CHK-ENTROPY-CHAIN PASS: seed=%d %s",
+            seed,
+            " ".join(
+                f"{k}=match{res[k].matches}/mismatch{res[k].mismatches}"
+                for k in ("CHK1_decor", "CHK2_compress", "CHK3_seed", "CHK4_genbits")
+            ),
+        )
+        route = res["CHK5_kmac"]
+        self.logger.info(
+            "CHK-KMAC-ROUTING PASS: seed=%d dut_items=%d match=%d mismatch=%d min=%d",
+            seed,
+            route.dut_items,
+            route.matches,
+            route.mismatches,
+            _CHK5_KMAC_MIN,
+        )
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells (%s) in one "
             "invocation (seed=%d); message/key randomized per cell; entropy clean",

@@ -55,7 +55,21 @@ model of the staged data and the fabric taps:
                   CTRL-DMA-POOL-PRE); so the leg shows its DMA read on the DMA
                   master tap, keeps its staged SRAM word, and the level after
                   the run equals the level before the GO. The end state
-                  (STATUS and ERROR_CODE) is logged as OBS-DMA-NOTCONN-RESP.
+                  (STATUS and ERROR_CODE) is logged as OBS-DMA-NOTCONN-RESP;
+                  the PIC base as a source is logged the same way.
+* CHK-DMA-KM-SRC  the DMA copy from the Key Manager mailbox STATUS word: the DMA
+                  reaches ``sep_crypto``, which holds the mailbox
+                  (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:130``,
+                  ``hw/sys/sep/doc/fabric.adoc:91``), so the run ends DONE with
+                  no error, raises the DMA interrupt, and the destination holds
+                  the STATUS word the CPU read before the GO.
+* CHK-DMA-FILT-RANGE every outbound filter entry of the out_setup and stack
+                  legs is programmed as [a, a + 7] with a 8-byte aligned and
+                  allow_burst 0, so START and END share one 8-byte granule and
+                  the rounded values that hardware writes back equal the
+                  programmed ones (``hw/ip/axi_filter/regs/filter_ctrl.rdl:94-102``,
+                  ``:48``): the firmware counts entries whose START or END read
+                  back differs, and every count is 0.
 * CHK-DMA-FILT-WR the DMA writes of an inbound filter START_ADDR: the low and the
                   high word of the unlocked entry read back as written, then,
                   with the entry locked, the write answers DECERR, the DMA
@@ -474,6 +488,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         "CHK-DMA-REMAP",
         "CHK-DMA-SMC-CPU",
         "CHK-DMA-FILT-WR",
+        "CHK-DMA-FILT-RANGE",
+        "CHK-DMA-KM-SRC",
     )
 
     def build_phase(self) -> None:
@@ -552,7 +568,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             self.pool_feed_err = self.pool_feed_err or str(exc)
         self.pool_ext = None
         self.logger.info(
-            "POOL-FEED stream=%d words=%d pairs=%d transferred=%d done_ps=%s",
+            "INFO-POOL-FEED stream=%d words=%d pairs=%d transferred=%d done_ps=%s",
             POOL_STREAM,
             len(words),
             self.ep.p["pool_pairs"],
@@ -882,7 +898,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         )
         self._recovery_after("alias_ext_top")
         self.logger.info(
-            "CTRL-DMA-ALIAS LOG: alias_ext_top later_beats=%s port_resp=DECERR replies=%d "
+            "OBS-DMA-ALIAS-LATER: alias_ext_top later_beats=%s port_resp=DECERR replies=%d "
             "dma_status=0x%08x error_code=0x%08x",
             [hex(b.addr) if b.addr is not None else "X" for b in aws[1:]],
             len(rep),
@@ -898,8 +914,8 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
     def _filter_sum(self, entries) -> int:
         """FNV over the FILTER_CONFIG field bits as written (data_bus_width reads 3).
 
-        START and END are not in the sum: the specification states no
-        write-back timing for them, so the firmware logs their read-back only.
+        START and END are not in the sum; CHK-DMA-FILT-RANGE grades their
+        read-back from the firmware's difference counts.
         """
         dbw = DBW_RO_VAL << DBW_LSB
         return fnv([(cfg | dbw) & CFG_FIELDS for cfg, _start, _end in entries])
@@ -933,8 +949,13 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             "OBS-STEE-ATTRS-RSVD: bits outside offset and valid=%s (logged)",
             [hex(w & ~stee_fields & ((1 << 64) - 1)) for w in stee_word],
         )
+        assert r["rng_diff"] == 0, (
+            f"CHK-DMA-FILT-RANGE FAIL: out_setup START/END read-back differences="
+            f"{r['rng_diff']}; expected 0"
+        )
         self.logger.info(
-            "OBS-FILTER-RANGE: out_setup START/END read-back differences=%d (logged)", r["rng_diff"]
+            "CHK-DMA-FILT-RANGE PASS: leg=out_setup entries=8 differences=%d expect=0",
+            r["rng_diff"],
         )
         assert (
             r["rb_bad"] == 0
@@ -958,8 +979,13 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         exp2 = self._filter_sum(
             [(rw_en | ns | (i + 1) << F_SRC_ID_LSB, smu, smu + 7) for i in range(15)]
         )
+        assert r["rng1_diff"] == 0 and r["rng2_diff"] == 0, (
+            f"CHK-DMA-FILT-RANGE FAIL: stack START/END read-back differences="
+            f"{r['rng1_diff']}, after the flip={r['rng2_diff']}; expected 0 and 0"
+        )
         self.logger.info(
-            "OBS-FILTER-RANGE: stack START/END read-back differences=%d, after the flip=%d (logged)",
+            "CHK-DMA-FILT-RANGE PASS: leg=stack entries=32 differences=%d flip_entries=15 "
+            "flip_differences=%d expect=0",
             r["rng1_diff"],
             r["rng2_diff"],
         )
@@ -1384,23 +1410,31 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             "dma_csr_src": "nc_csr_src",
             "pool_src": "nc_pool_src",
         }
-        # The KM aperture and the PIC base as DMA sources are logged, not graded.
-        logged = {"km_src": "nc_km_src", "pic_src": "nc_pic_src"}
+        # The PIC base as a DMA source is logged, not graded.
+        logged = {"pic_src": "nc_pic_src"}
         logged_seen = set()
+        km_seen = False
         graded = 0
         for _leg_rec, r, text in self._recs("NC"):
             tgt = text.split("tgt=")[1].split()[0]
-            leg_i = self._leg_index({**names, **logged}[tgt])
+            leg_i = self._leg_index({**names, **logged, "km_src": "nc_km_src"}[tgt])
             end = {0: "done", 1: "error", 2: "timeout"}[r["end"]]
+            if tgt == "km_src":
+                self._chk_km_src(leg_i, r, end, text)
+                km_seen = True
+                continue
             # No DMA path reaches these targets; no spec sentence states the DMA
             # outcome of such a request, so the end state is logged.
             self.logger.info(
-                "OBS-DMA-NOTCONN-RESP: %s end=%s bus_error=%d dma_status=0x%08x error_code=0x%08x",
+                "OBS-DMA-NOTCONN-RESP: %s end=%s bus_error=%d dma_status=0x%08x error_code=0x%08x "
+                "dst=0x%08x src_v=%s",
                 tgt,
                 end,
                 int(self._bus_error(r)),
                 r["st"],
                 r["ec"],
+                r["dst"],
+                f"0x{r['src_v']:08x}" if "src_v" in r else "-",
             )
             if tgt in logged:
                 logged_seen.add(tgt)
@@ -1467,7 +1501,33 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         assert logged_seen == set(logged), (
             f"OBS-DMA-NOTCONN-RESP: records for {sorted(logged_seen)}, expected {sorted(logged)}"
         )
-        self.logger.info("STEP not-connected: %d graded runs", graded)
+        assert km_seen, "CHK-DMA-KM-SRC FAIL: no km_src record"
+        self.logger.info("INFO-STEP not-connected: %d graded runs", graded)
+
+    def _chk_km_src(self, leg_i: int, r: dict, end: str, text: str) -> None:
+        """CHK-DMA-KM-SRC: the DMA copies the Key Manager mailbox STATUS word.
+
+        The DMA reaches ``sep_crypto`` (hw/sys/sep/doc/assets/sep_axi_connectivity.svg:130),
+        which holds the Key Manager mailbox (hw/sys/sep/doc/fabric.adoc:91), so the
+        run ends DONE with no error and the destination, staged at the
+        complement, holds the word that the CPU read from STATUS before the GO.
+        """
+        _t_go, t_irq = self._go_and_irq(leg_i)
+        ok = t_irq is not None and self._done_ok(r) and "src_v" in r and r["dst"] == r["src_v"]
+        assert ok, (
+            f"CHK-DMA-KM-SRC FAIL: {text}; expected DONE with no error, a DMA interrupt and the "
+            "destination equal to the CPU read of STATUS"
+        )
+        self.logger.info(
+            "CHK-DMA-KM-SRC PASS: target=km_src end=%s dma_status=0x%08x error_code=0x%08x "
+            "src_value=0x%08x dst_value=0x%08x irq=1",
+            end,
+            r["st"],
+            r["ec"],
+            r["src_v"],
+            r["dst"],
+        )
+        self._recovery_after("nc_km_src")
 
     def _chk_pool(self, leg_i: int, r: dict, end: str, t_go: int) -> None:
         """CHK-DMA-NOTCONN, target pool_src: the DMA does not reach the entropy pool.
@@ -1642,7 +1702,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         patched = os.path.join(os.getcwd(), "sep_dtcm_dma_ep.hex")
         patch_param_block(_DTCM_HEX, patched, P_MAGIC_WORD, self.ep.words())
         self.logger.info(
-            "DMA endpoint RAND seed=%d params=%s",
+            "INFO-DMA-EP-RAND seed=%d params=%s",
             self.random_seed(),
             " ".join(f"{k}=0x{v:x}" for k, v in self.ep.p.items()),
         )

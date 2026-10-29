@@ -12,8 +12,9 @@ Two value checks per write, both exact-value (so a broken next state fails here
 rather than merely "no X"):
 
   * the LC_STATE shadow word reads back the differentially encoded ``{~raw, raw}``
-    for the expected next state, in bytes [7:0], with bytes [31:8] OR-merged as
-    ordinary set-only shadow bytes, and
+    for the expected next state in bytes [7:0] (the caller grades it from
+    ``observed_word``; bytes [31:8] are compared only when ``expected_upper`` is
+    given), and
   * the lifecycle controller's FEAT_CTRL decodes that same next state, which is
     what proves the write reached the LCC rather than only the shadow storage.
 
@@ -43,7 +44,7 @@ class SepLcShadowWriteSeq(uvm_sequence):
         self,
         wdata: int,
         expected_raw: int,
-        expected_upper: int,
+        expected_upper: int | None,
         *,
         sip_dis: int,
         sys_dis: int,
@@ -56,7 +57,9 @@ class SepLcShadowWriteSeq(uvm_sequence):
         super().__init__(name)
         self.wdata = wdata & 0xFFFF_FFFF
         self.expected_raw = expected_raw & 0xF
-        self.expected_upper = expected_upper & LC_STATE_UPPER_MASK
+        self.expected_upper = (
+            None if expected_upper is None else expected_upper & LC_STATE_UPPER_MASK
+        )
         self.sip_dis = sip_dis
         self.sys_dis = sys_dis
         self.demote_1 = demote_1
@@ -90,7 +93,11 @@ class SepLcShadowWriteSeq(uvm_sequence):
         return int(item.rdata)
 
     async def body(self) -> None:
-        expected_word = self.expected_upper | lc_encode(self.expected_raw)
+        expected_word = (
+            None
+            if self.expected_upper is None
+            else self.expected_upper | lc_encode(self.expected_raw)
+        )
         feat = feat_ctrl_expected(
             self.expected_raw,
             self.sip_dis,

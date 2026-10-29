@@ -49,12 +49,18 @@ Legs:
 
 Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTRL-FILTER-RAND (stimulus
 completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-ARMED,
-CHK-RESET-DENY-CONTROL, CHK-GRANULE. CTRL-FILTER-ACTIVE is the bring-up
+CHK-RESET-DENY-CONTROL, CHK-GRANULE, CHK-FILT-GROUP. CHK-FILT-GROUP: one
+inbound entry that covers a staged SRAM word with a drawn non-zero
+``src_id``, read with AxUSER[3:0] = ``src_id`` and AxUSER[11:4] equal to and
+different from the entry ``group_id``, admits both reads (OKAY, a target
+handshake and the staged data): group ID matching is disabled on every
+filter instance, so ``group_id`` has no effect
+(``hw/ip/axi_filter/doc/index.adoc``, Instances). CTRL-FILTER-ACTIVE is the bring-up
 precondition. The inbound cells that open tests grade run as controls and log
 CTRL-FILTER-CELL / CTRL-RESET-DENY lines. Every admitted outbound probe must
 show PR-OUT handshakes only at its predicted outbound address.
 
-Not graded here: ``group_id`` (random value, logged), the ``locked`` bit, the
+Not graded here: the ``locked`` bit, the
 filter register storage, the SEP debug bypass, the response of the
 extension-window and ``0x4000_0100`` reset-state probes (logged), and the
 START_ADDR / END_ADDR read-back after a write (logged).
@@ -214,6 +220,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         "CHK-RESET-DENY-ARMED",
         "CHK-RESET-DENY-CONTROL",
         "CHK-GRANULE",
+        "CHK-FILT-GROUP",
     )
 
     # ------------------------------------------------------------------
@@ -1448,7 +1455,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._clear("out")
 
     # ------------------------------------------------------------------
-    # Logged legs: group_id on AxUSER[11:4], first probe after the entry write
+    # Legs after the graded window: group_id against AxUSER[11:4], first probe
+    # after the entry write
     # ------------------------------------------------------------------
     async def _obs_si_read(self, p: Probe) -> tuple[int, int, int]:
         """One SI read of ``p``: (resp, PR-INFLT AR count, PR-XEXT/PR-CSR AR count)."""
@@ -1459,27 +1467,28 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         self._obs_dbg(p, dm, seq.resp_code)
         return seq.resp_code, self.taps["PR-INFLT"].count(mf, "ar"), self._seen(mark, p)[0]
 
-    async def _obs_group(self) -> None:
+    async def _group_leg(self) -> None:
+        """CHK-FILT-GROUP: the transaction group bits never change the verdict."""
         idx = self.rng.randrange(self.inb.n)
         s = self.rng.randrange(1, 16)
         p = self._p_in("sram", False, self.rng.getrandbits(1), user=s)
         e = self._entry(p, self._cover(p, False), src=s)
         await self._load("in", {idx: e})
         other = self.rng.choice([g for g in range(256) if g != e.group_id])
+        self._chk = "CHK-FILT-GROUP"
         for kind, g in (("equal", e.group_id), ("differ", other)):
             q = replace(p, user=(g << 4) | s, fuser=s)
-            resp, inflt, seen = await self._obs_si_read(q)
+            r = await self._run(q)
             self.logger.info(
-                "OBS-FILT-GROUP entry=%d group_id=%d src_id=%d axuser=0x%03x kind=%s "
-                "resp=%s pr_inflt_ar=%d target_ar=%d",
+                "CHK-FILT-GROUP PASS: entry=%d group_id=%d src_id=%d axuser=0x%03x kind=%s "
+                "expect=OKAY got=%s target_ar=%d",
                 idx,
                 e.group_id,
                 s,
                 q.user,
                 kind,
-                _RESP.get(resp),
-                inflt,
-                seen,
+                _RESP.get(r.resp),
+                r.target_seen,
             )
         await self._clear("in")
 
@@ -1595,7 +1604,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._leg2()
         await self._leg4()
         close_graded_window(self.logger)
-        await self._obs_group()
+        await self._group_leg()
         await self._obs_write_to_use()
 
         for inst in ("in", "out"):

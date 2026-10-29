@@ -158,8 +158,8 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define MIP_MEIP (1u << 11)
 #define MIE_WRITE (MIE_MEIE | MIE_MTIE | MIE_MSIE)
 #define MCAUSE_IRQ 0x80000000u
-#define MCAUSE_ECALL_M 11u // RISC-V privileged spec: environment call from M-mode
-// RISC-V privileged spec v1.12 table 3.6: machine timer interrupt.
+#define MCAUSE_ECALL_M 11u // EL2 PRM table 13.3: environment call from M-mode
+// EL2 PRM table 13.3 (named by hw/sys/sep/doc/cpu.adoc): machine timer interrupt.
 #define MCAUSE_MTI (MCAUSE_IRQ | 7u)
 #define LOG_MAX 64u
 #define SRC_CTRL 1u
@@ -1068,10 +1068,10 @@ static int wait_mtip(uint32_t want) {
     return 0;
 }
 
-// mie.MEIE gate (RISC-V privileged spec v1.12 section 3.1.9: interrupt i traps
-// only when mip[i], mie[i] and mstatus.MIE are all 1): the source pending at an
-// open PIC gate with mstatus.MIE 1 and mie.MEIE 0 does not deliver; mie.MEIE 1
-// delivers it once.
+// mie.MEIE gate (EL2 PRM section 8.6.1, named by hw/sys/sep/doc/cpu.adoc: an
+// external interrupt is taken once one is pending and the meie bit of mie and
+// the mie bit of mstatus are set): the source pending at an open PIC gate with
+// mstatus.MIE 1 and mie.MEIE 0 does not deliver; mie.MEIE 1 delivers it once.
 static void leg_mie_meie(void) {
     uint32_t s = SRC_CTRL;
     mstatus_mie(0);
@@ -1107,7 +1107,8 @@ static void leg_mie_meie(void) {
 }
 
 // Timer pin (hw/sys/sep/doc/interrupts.adoc:291: the timer_int pin drives
-// mip.MTIP; RISC-V privileged spec v1.12 section 3.1.9 and table 3.6). The
+// mip.MTIP; EL2 PRM tables 13.1 and 13.2: mie.mtie enables and mip.mtip
+// reports the machine timer interrupt; table 13.3: mcause 0x8000_0007). The
 // host drives timer_int_i on each REQ tint line.
 static void leg_timer_pin(void) {
     mstatus_mie(0);
@@ -1207,20 +1208,23 @@ int main(void) {
     rec_num("raised", raised);
     chk_end(pass);
 
-    // Encoding sweep (log only, window closed).
+    // Encoding sweep: meipl.intpriority is RW, so each value reads back as
+    // written in either priority order (window closed, no source pending).
     rec_mark(0, "sweep");
     uint32_t sw = g_prm[P_SWEEP];
     for (uint32_t p = 0; p < 2u; p++) {
         set_order(p);
         for (uint32_t v = 0; v < 16u; v++) {
             pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), v);
-            rec_obs("LEVEL-SWEEP");
+            uint32_t rb =
+                pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
+            pass = rb == v;
+            rec_chk("LEVEL-SWEEP", pass);
             rec_num("src", sw);
             rec_num("priord", p);
             rec_num("wrote", v);
-            rec_num("read",
-                    pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm);
-            rec_end();
+            rec_num("read", rb);
+            chk_end(pass);
         }
     }
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), 0u);
