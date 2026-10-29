@@ -508,7 +508,7 @@ static void write_enables(int pass) {
     }
 }
 
-static void ctl_fifo_empty(const char *tag) {
+static void obs_fifo_empty(const char *tag) {
     rec_obs("FIFO-EMPTY");
     rec_str("t", tag);
     rec_str("intr_state_hmac", "na");
@@ -535,7 +535,7 @@ static void map_assert(int pass) {
     req_tag_n("vec", "p", (uint32_t)pass);
     dump_meip(pass == 1 ? "p1" : "p2");
     if (pass == 1) {
-        ctl_fifo_empty("p1");
+        obs_fifo_empty("p1");
     }
 }
 
@@ -560,7 +560,7 @@ static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit) {
     uint32_t w0b = pic_read_meip(0);
     uint32_t w1b = pic_read_meip(1);
     uint32_t before = meip_bit(src);
-    ctl_fifo_empty(ip);
+    obs_fifo_empty(ip);
     wr(en, rd(en) & ~bit);
     wait_clk(g_p[P_SETTLE]);
     req_tag("vec", ip[0] == 'h' ? "feh1" : "fek1");
