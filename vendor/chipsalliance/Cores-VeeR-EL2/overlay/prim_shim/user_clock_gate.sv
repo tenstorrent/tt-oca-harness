@@ -7,13 +7,15 @@
 // common_defines.vh already names this module via `USER_EC_RV_ICG; the
 // TECH_SPECIFIC_EC_RV_ICG define set in this package's Bender.yml is what makes
 // beh_lib.sv skip its own behavioural `TEC_RV_ICG gate and instantiate this
-// instead. Replaces upstream/testbench/user_cells.sv, whose example cell used an
-// initial block and was simulation-only.
+// instead. Declared through the macro, as beh_lib.sv declares `TEC_RV_ICG, so a
+// packaged release that prefixes module and macro names keeps the two the same.
+// Replaces upstream/testbench/user_cells.sv, whose example cell used an initial
+// block and was simulation-only.
 //
 // Port set must match what rvclkhdr/rvoclkhdr expect: they bind EN/CK/Q by name
 // and pick up SE through `.*`, so scan enable reaches the ICG test-enable pin -
 // which upstream's example cell, lacking an SE port, silently dropped.
-module user_clock_gate (
+module `USER_EC_RV_ICG (
   input  logic SE,
   input  logic EN,
   input  logic CK,
