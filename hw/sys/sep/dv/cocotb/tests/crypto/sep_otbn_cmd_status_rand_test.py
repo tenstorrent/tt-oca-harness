@@ -232,7 +232,7 @@ than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
 fatal index or the repeat period), ``OBS-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of each integrity run: "a non-zero value that describes the
 error", ToO:186, does not fix the other bits; also the alert high clocks in a fixed
-window after the OTBN reset); ``OBS-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
+window after the OTBN reset); ``INFO-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
 clean RND run, a chance outcome); ``OBS-OTBN-SWERR-KIND-CAUSE`` (the full
 ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of the drawn error: no sentence states the
 other bits); ``OBS-OTBN-ILLEGAL-BUS-CAUSE`` (the full ``ERR_BITS`` and
@@ -1401,7 +1401,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             bound=_OUTER_CLK,
         )
         # Bit 6 (two equal EDN words) is a chance outcome: logged, not graded.
-        self.chk.obs(
+        self.chk.info(
             "OTBN-RND-CLEAN-RNDREP", seed=seed, rnd_rep_chk_fail=int(bool(err & M_ERR_RND_REP))
         )
 

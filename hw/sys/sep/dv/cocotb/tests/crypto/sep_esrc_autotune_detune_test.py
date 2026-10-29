@@ -405,7 +405,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         all passed, so a run with any FAIL or missing control samples none of them.
         """
         failures = self.chk.failures
-        self.chk.obs("TUNE-BIN-RELEASE", released=failures == 0, failures=failures)
+        self.chk.info("TUNE-BIN-RELEASE", released=failures == 0, failures=failures)
         if failures:
             return
         set_esrc_tune_pass(True, self.logger)
@@ -725,7 +725,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         # The spec does not name the enable that disables a generator; the leg
         # clears both and logs them here, ungraded.
         rd = self.esrc._rd
-        self.chk.obs(
+        self.chk.info(
             "SCLK-DISABLE",
             v=v,
             module_enable=int(bool(await rd(A_CTRL) & M_MODULE_ENABLE)),

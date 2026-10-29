@@ -1461,7 +1461,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     f"wdata={_h(wval) if d == 'w' else 'na'}",
                 )
                 self.logger.info(
-                    "OBS-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
+                    "INFO-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
                     path,
                     d.upper(),
                     err,

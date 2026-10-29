@@ -48,7 +48,7 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   the port or retired too few instructions fails. No cited specification
   states which bit holds which control, so the check names the bits by
   position and the layout is logged (``OBS-LOCKSTEP-LAYOUT``). Verilator does not take a cocotb
-  write of that variable: the leg is skipped there with an ``OBS-LOCKSTEP-SKIP``
+  write of that variable: the leg is skipped there with an ``INFO-LOCKSTEP-SKIP``
   line and the check is required evidence on VCS only.
 
 Expected values come from the drawn stimulus and the ISA model, never from a
@@ -687,7 +687,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             tasks.append(cocotb.start_soon(self._lockstep_walk()))
         else:
             self.logger.info(
-                "OBS-LOCKSTEP-SKIP LOG simulator=%s: the lockstep_ctrl_i leg runs on VCS only "
+                "INFO-LOCKSTEP-SKIP LOG simulator=%s: the lockstep_ctrl_i leg runs on VCS only "
                 "(the Verilator build takes no cocotb write of that tb_top variable)",
                 sim,
             )

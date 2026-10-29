@@ -1095,7 +1095,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             self.logger.info("CHK-DMA-REMAP PASS: %s done=1", line)
             if d == "r":
                 self.logger.info(
-                    "OBS-REMAP-REPLY: leg=%s port_resp=%s (bench responder, logged)",
+                    "INFO-REMAP-REPLY: leg=%s port_resp=%s (bench responder, logged)",
                     leg,
                     [b.resp for b in self._beats("PR-OUT-RSP", leg_i, "r")],
                 )

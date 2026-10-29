@@ -309,7 +309,7 @@ class sep_km_isolate_termination_test(sep_base_test):
         pre = (word >> 8) & 0xFF
         post = word & 0xFF
         self.logger.info(
-            "OBS-KM-ISO-LEG: dest=%s leg=%s seq=%d word0=0x%08x pre=0x%02x post=0x%02x b_events=%s",
+            "INFO-KM-ISO-LEG: dest=%s leg=%s seq=%d word0=0x%08x pre=0x%02x post=0x%02x b_events=%s",
             dest.name,
             tag,
             self.leg_no,
@@ -381,7 +381,7 @@ class sep_km_isolate_termination_test(sep_base_test):
         await self._set_reset(dest.rst_bit, held=True, tag=f"{dest.name}_park")
         waited = await self._await_bit(km_iso, 1, f"{dest.name} km path isolated")
         self.logger.info(
-            "OBS-KM-ISO-PARK: dest=%s km path isolated %d clocks after the SW_RESET_N readback",
+            "INFO-KM-ISO-PARK: dest=%s km path isolated %d clocks after the SW_RESET_N readback",
             dest.name,
             waited,
         )
@@ -476,7 +476,7 @@ class sep_km_isolate_termination_test(sep_base_test):
         order = list(DESTS)
         SepSeededRng(self.random_seed()).shuffle(order)
         self.logger.info(
-            "OBS-KM-ISO-ORDER: seed=%d order=%s",
+            "INFO-KM-ISO-ORDER: seed=%d order=%s",
             self.random_seed(),
             [d.name for d in order],
         )

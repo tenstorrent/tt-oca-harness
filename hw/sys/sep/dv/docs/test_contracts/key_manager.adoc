@@ -262,7 +262,7 @@ recovery. <<sep-vplan-scope>> lists them.
 
 *BFM / Model*: ocah_axi_vip, KM CPU image
 
-*Randomization*: `SepSeededRng` from the run seed. One draw: the order of the five destinations (a shuffle). The leaf logs `OBS-KM-ISO-ORDER: seed=<S> order=[..]`. All five destinations and the KM reset leg run on every seed, so the seed changes only the order. No coverage bin depends on the seed.
+*Randomization*: `SepSeededRng` from the run seed. One draw: the order of the five destinations (a shuffle). The leaf logs `INFO-KM-ISO-ORDER: seed=<S> order=[..]`. All five destinations and the KM reset leg run on every seed, so the seed changes only the order. No coverage bin depends on the seed.
 
 *Objective*: What a Key Manager master transaction receives when its own AXI-Lite path to a destination is isolated. The KM CPU reaches the `km_*` paths; the SEP host port reaches only the `host_*` paths. The KM CPU image is a store server: for each inbound mailbox word it stores 0 to the KM bus address in the word, and it publishes the `IRQ_STATUS` AXI error bits read before and after the store. For each of the five destinations (AES, KMAC, OTBN, HMAC and the Adams Bridge key aperture), the host runs a store while the engine is released, two stores while the engine is held in reset, and a store after release. A last leg resets the Key Manager itself and requires that the KM gated reset falls only after all six KM paths report isolated.
 
