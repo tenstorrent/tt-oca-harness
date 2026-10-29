@@ -40,7 +40,7 @@ extern "C" {
 #define WDT__CTRL__RSVD1_bp 10
 #define WDT__CTRL__RSVD1_bw 2
 #define WDT__CTRL__RSVD1_reset 0x0
-// Enable WDT to always count. This has priority over wdogcoreawake
+// Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.
 #define WDT__CTRL__WDOGENALWAYS_bm 0x1000
 #define WDT__CTRL__WDOGENALWAYS_bp 12
 #define WDT__CTRL__WDOGENALWAYS_bw 1
@@ -78,7 +78,7 @@ typedef union {
         uint32_t wdogzerocmp :1;
         // Reserved
         uint32_t rsvd1 :2;
-        // Enable WDT to always count. This has priority over wdogcoreawake
+        // Enable WDT to always count. This has priority over wdogcoreawake. With this field and wdogcoreawake both clear, COUNT does not increment and holds its value.
         uint32_t wdogenalways :1;
         // Enable WDT to only count when the core is not in reset
         uint32_t wdogcoreawake :1;

@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import pyuvm
 from env import sep_manifest_mutate as mm
+from env.sep_secure_boot_cases import CASES
 from rom_fw.sep_firmware_cntl_secure_boot_flow_test import (
     _SBOOT_DIS_SET,
     sep_firmware_cntl_secure_boot_flow_test,
 )
 
-MANIFEST_ERR_SECURE_BOOT_INVARIANT = mm.boot_err("OCA_FAIL_SECURE_BOOT_INVARIANT")
+_CASE = CASES["flag_cleared_signed"]
 
 
 @pyuvm.test()
@@ -32,9 +33,9 @@ class sep_firmware_sboot_flag_cleared_signed_refuse_test(sep_firmware_cntl_secur
     """PROD + enforced bit cleared on a signed manifest -> both slots refused."""
 
     # The invariant prints no token of its own, so the error code is the marker.
-    backup_defect_marker = f"MANIFEST_ERR=0x{MANIFEST_ERR_SECURE_BOOT_INVARIANT:08x}"
-    expected_error = MANIFEST_ERR_SECURE_BOOT_INVARIANT
-    primary_expected_error = MANIFEST_ERR_SECURE_BOOT_INVARIANT
+    backup_defect_marker = f"MANIFEST_ERR=0x{_CASE.boot_error:08x}"
+    expected_error = _CASE.boot_error
+    primary_expected_error = _CASE.boot_error
     extra_forbidden = (
         "PUBK_SEL=",
         "RSA_EXEC",
@@ -45,13 +46,14 @@ class sep_firmware_sboot_flag_cleared_signed_refuse_test(sep_firmware_cntl_secur
 
     def mutate_slot(self, buf: bytearray, slot: str) -> None:
         before = mm.secure_boot_control(buf, slot)
-        assert before & mm.SECURE_BOOT_ENFORCED_BIT, (
-            f"{slot} manifest already has secure_boot=0 (secure_boot_control=0x{before:02x})"
+        _CASE.mutate(buf, slot)
+        after = mm.secure_boot_control(buf, slot)
+        assert not after & mm.SECURE_BOOT_ENFORCED_BIT, (
+            f"{slot} secure_boot_control is still enforced (0x{after:02x})"
         )
         assert mm.signature_type(buf, slot) != mm.SIG_TYPE_NO_SIGNATURE, (
-            f"{slot} carries no signature, so the invariant has nothing to refuse"
+            f"{slot} lost its signature, so the invariant has nothing to refuse"
         )
-        after = mm.set_secure_boot_enforced(buf, slot, False)
         mm.verify_layout(buf, slot)
         self.logger.info(
             "CHK-MUTATION: %s secure_boot_control 0x%02x -> 0x%02x, signing fields kept, %s",

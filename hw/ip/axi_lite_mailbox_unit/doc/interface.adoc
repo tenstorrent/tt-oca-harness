@@ -47,8 +47,8 @@ endif::backend-html5[]
 .Mailbox access results
 |===
 |Access |Result
-|Read `READ_DATA` while empty |`SLVERR`, data `0xFEEDDEAD`; sets the read-error
-flag and `IRQS[2]`.
+|Read `READ_DATA` while empty |`SLVERR`, data `0x0000_0000_FEED_DEAD`; sets the
+read-error flag and `IRQS[2]`.
 |Write `WRITE_DATA` while full |`SLVERR`; data discarded; sets the write-error
 flag and `IRQS[2]`.
 |Read write-only `WRITE_DATA` |`OKAY`, data `0xFEEDC0DE`; no FIFO access or error flag.
@@ -64,7 +64,10 @@ endif::backend-pdf[]
 |Read `ERROR_FLAGS` |Returns and clears both detailed error flags. A new error
 in the same cycle is retained.
 |Write `CTRL` flush bits |Pulses the selected FIFO flush; the bits are not stored
-configuration and read back as zero.
+configuration and read back as zero. The flush empties the FIFO at the end of
+the cycle in which the write is accepted. A `WRITE_DATA` push into that FIFO
+accepted in that cycle or earlier is discarded, and one accepted in a later
+cycle is kept. A `READ_DATA` pop from it accepted in that cycle returns its word.
 |===
 
 === Sending and Receiving

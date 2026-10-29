@@ -1081,7 +1081,10 @@ Regeneration rule: after any change to the DTP RTL file set, the list is
 regenerated from the merged database of a fresh `all` regression, and an
 accepted entry that stimulus reaches or that does not map onto the changed
 design is removed. A regenerated list takes design review before its entry
-changes, and the review accepts no entry that stimulus can reach.
+changes, and the review accepts no entry that stimulus can reach. A condition
+or line that holds only inside one simulation time step, while an
+`always_comb` block evaluates before its inputs settle, is not reached:
+coverage credits that evaluation, but no settled state of the design holds it.
 
 [[dtp-fcov-waiver-list]]
 ==== Waiver list

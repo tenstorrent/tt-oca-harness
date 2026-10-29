@@ -35,6 +35,9 @@ message after hardware cleared it.
 
 from __future__ import annotations
 
+import os
+import random
+
 import cocotb
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
@@ -84,6 +87,17 @@ _MAX_LEN = LOG_LEN & ~0x7
 # there (see the module docstring).
 _TAG_IS_OFFSET_END = 0x100
 
+# Drawn region sizes (RANDCFG), one per class beside the pinned ones: an aligned size (a multiple
+# of 0x80 other than the pinned 0x80 and 0x200), an unaligned size in (0x80, 0x200) that is no
+# multiple of 0x80 and none of the pinned four, and a zero-capacity size in [1, 0x7F]. The slots
+# of each drawn size are drawn (up to four at the aligned and unaligned sizes, three at the
+# zero-capacity size) among those whose every message ends at or below offset 0x100 (start
+# (size // 16) * i plus the delivered length), so the compares keep their golden; the slot
+# submission order of every leg is drawn.
+_ALIGNED_DRAW = (0x100, 0x180)
+_DRAWN_SLOTS_MAX = 4
+_ZERO_CAPACITY_SLOTS = 3
+
 # Polls of LSR allowed per expected byte; expiry is a failure.
 _RX_POLLS_PER_BYTE = 400
 # Reads of one LOG_CTRL element allowed before its hardware clear is declared absent.
@@ -131,6 +145,50 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
         self.window = 0
         self.messages = 0
         self.byte_order_checked = 0
+        self.seed = int(os.environ.get("RANDOM_SEED", "1"), 0)
+        rng = random.Random(self.seed)
+        self.size_aligned = rng.choice(_ALIGNED_DRAW)
+        self.size_unaligned = rng.choice(
+            [
+                n
+                for n in range(_SIZE_MIN + 1, _SIZE_MID)
+                if n % _SIZE_MIN and n not in _UNALIGNED_SIZES
+            ]
+        )
+        self.size_zero = rng.randint(1, _SIZE_MIN - 1)
+        self.slots_aligned = self._draw_slots(rng, self.size_aligned, _MIN_LEN)
+        self.slots_unaligned = self._draw_slots(
+            rng, self.size_unaligned, _capacity(self.size_unaligned)
+        )
+        self.slots_zero = rng.sample(_MIN_SLOTS, _ZERO_CAPACITY_SLOTS)
+        self.order_min = rng.sample(_MIN_SLOTS, len(_MIN_SLOTS))
+        self.order_mid = rng.sample(_MID_SLOTS, len(_MID_SLOTS))
+        self.order_unaligned = rng.sample(_UNALIGNED_SLOTS, len(_UNALIGNED_SLOTS))
+        cocotb.log.info(
+            "RAND-SEED: %d; RAND-DRAW: aligned size 0x%x slots %s; unaligned size %d (capacity "
+            "%d) slots %s; zero-capacity size %d slots %s; slot order min %s mid %s unaligned %s",
+            self.seed,
+            self.size_aligned,
+            self.slots_aligned,
+            self.size_unaligned,
+            _capacity(self.size_unaligned),
+            self.slots_unaligned,
+            self.size_zero,
+            self.slots_zero,
+            self.order_min,
+            self.order_mid,
+            self.order_unaligned,
+        )
+
+    @staticmethod
+    def _draw_slots(rng: random.Random, size: int, length: int) -> list[int]:
+        """Draw up to _DRAWN_SLOTS_MAX slots whose message of ``length`` ends at or below 0x100."""
+        legal = [
+            i for i in _MIN_SLOTS if (size // NUM_LOG_ENTRIES) * i + length <= _TAG_IS_OFFSET_END
+        ]
+        assert legal, f"size {size}: no slot keeps a {length}-byte message at or below 0x100"
+        picked = rng.sample(legal, min(_DRAWN_SLOTS_MAX, len(legal)))
+        return sorted(picked, key=lambda _i: rng.random())
 
     # -- fence -----------------------------------------------------------
 
@@ -243,25 +301,33 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
 
     # -- steps -----------------------------------------------------------
 
-    async def _s2(self) -> None:
-        await self._set_size(_SIZE_MIN)
-        stride = _SIZE_MIN // NUM_LOG_ENTRIES
-        for slot in _MIN_SLOTS:
-            got, _, status = await self._message(f"MIN_S{slot}", slot, _MIN_LEN)
+    async def _aligned_leg(self, size: int, slots: list[int], tag: str) -> str:
+        await self._set_size(size)
+        stride = size // NUM_LOG_ENTRIES
+        for slot in slots:
+            got, _, status = await self._message(f"{tag}_S{slot}", slot, _MIN_LEN)
             want = [_tag(stride * slot + j) for j in range(_MIN_LEN)]
             assert got == want, (
-                f"size 0x{_SIZE_MIN:x} slot {slot}: delivered {_hex(got)}, slot start "
+                f"size 0x{size:x} slot {slot}: delivered {_hex(got)}, slot start "
                 f"LOG_REGION_ADDR + {stride * slot} gives {_hex(want)}"
             )
-            assert status == 0, f"size 0x{_SIZE_MIN:x} slot {slot}: INTR_STATUS 0x{status:x}"
+            assert status == 0, f"size 0x{size:x} slot {slot}: INTR_STATUS 0x{status:x}"
             self.byte_order_checked += 1
+        return (
+            f"LOG_REGION_SIZE 0x{size:x}: slots {slots} delivered 8 bytes equal to "
+            f"f({stride}*i + j), first bytes {[f'{_tag(stride * s):02x}' for s in slots]}, "
+            f"INTR_STATUS read 0 after each"
+        )
+
+    async def _s2(self) -> None:
+        pinned = await self._aligned_leg(_SIZE_MIN, self.order_min, "MIN")
+        drawn = await self._aligned_leg(self.size_aligned, self.slots_aligned, "ALIGNED")
         self._mark("S2")
         self._chk(
             "S2",
             "CHK-LOGENG-REGION-SLOT-START-MIN",
-            f"LOG_REGION_SIZE 0x{_SIZE_MIN:x}: all {len(_MIN_SLOTS)} slots delivered 8 bytes "
-            f"equal to f(8*i + j), slot stride {stride}, first bytes "
-            f"{[f'{_tag(stride * s):02x}' for s in _MIN_SLOTS]}, INTR_STATUS read 0 after each",
+            f"{pinned} (all {len(_MIN_SLOTS)} slots in the drawn order); drawn=seed {self.seed} "
+            f"{drawn}",
         )
 
     async def _s3(self) -> None:
@@ -269,7 +335,7 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
         stride = _SIZE_MID // NUM_LOG_ENTRIES
         firsts = []
         first_zero = None
-        for slot in _MID_SLOTS:
+        for slot in self.order_mid:
             got, _, status = await self._message(f"MID_S{slot}", slot, _MID_LEN)
             want = [_tag(stride * slot + j) for j in range(_MID_LEN)]
             assert got == want, (
@@ -284,10 +350,10 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
         self._chk(
             "S3",
             "CHK-LOGENG-REGION-SLOT-START-MID",
-            f"LOG_REGION_SIZE 0x{_SIZE_MID:x}: slots {list(_MID_SLOTS)} first bytes "
+            f"LOG_REGION_SIZE 0x{_SIZE_MID:x}: slots {self.order_mid} (drawn order) first bytes "
             f"{[f'{b:02x}' for b in firsts]} equal f({stride}*i) = "
-            f"{[f'{_tag(stride * s):02x}' for s in _MID_SLOTS]}, all {_MID_LEN} bytes of each "
-            f"slot equal f({stride}*i + j), INTR_STATUS read 0 after each",
+            f"{[f'{_tag(stride * s):02x}' for s in self.order_mid]}, all {_MID_LEN} bytes of "
+            f"each slot equal f({stride}*i + j), INTR_STATUS read 0 after each",
         )
         again, polls, status = await self._message("MID_S0_AGAIN", 0, _MID_LEN)
         assert again == first_zero, (
@@ -304,19 +370,23 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
         self._chk(
             "S3",
             "CHK-LOGENG-REGION-BYTE-ORDER",
-            f"{self.byte_order_checked} slots at 0x{_SIZE_MIN:x} and {len(_MID_SLOTS)} at "
-            f"0x{_SIZE_MID:x} each delivered exactly LOG_LEN bytes (8 or {_MID_LEN}) in "
-            f"increasing window-offset order and LSR.DR read 0 under the idle rule after them",
+            f"{self.byte_order_checked} slots at 0x{_SIZE_MIN:x} and 0x{self.size_aligned:x} "
+            f"(drawn) and {len(_MID_SLOTS)} at 0x{_SIZE_MID:x} each delivered exactly LOG_LEN "
+            f"bytes (8 or {_MID_LEN}) in increasing window-offset order and LSR.DR read 0 under "
+            f"the idle rule after them; drawn=seed {self.seed} aligned size "
+            f"0x{self.size_aligned:x} slots {self.slots_aligned}",
         )
 
     async def _s4(self) -> None:
         capacity_rows = []
         below_rows = []
         start_rows = []
-        for size in _UNALIGNED_SIZES:
+        legs = [(size, self.order_unaligned) for size in _UNALIGNED_SIZES]
+        legs.append((self.size_unaligned, self.slots_unaligned))
+        for size, slots in legs:
             cap = _capacity(size)
             await self._set_size(size)
-            for slot in _UNALIGNED_SLOTS:
+            for slot in slots:
                 for kind, length, want_count in (
                     ("BELOW", _MIN_LEN, _MIN_LEN),
                     ("CAP", cap + 8, cap),
@@ -349,13 +419,18 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
             "S4",
             "CHK-LOGENG-REGION-UNALIGNED-CAPACITY",
             "LOG_LEN = capacity + 8 and 0x%x (the largest multiple of eight the field holds) "
-            "delivered exactly the capacity and LOG_LEN read 0 afterwards: %s; INTR_STATUS read 0"
+            "delivered exactly the capacity and LOG_LEN read 0 afterwards: %s; INTR_STATUS read "
+            "0; drawn=seed %d unaligned size %d (capacity %d) slots %s"
             % (
                 _MAX_LEN,
                 "; ".join(
                     f"size {s} slot {sl} len 0x{ln:x} -> {len(g)}/{w}"
                     for s, sl, ln, w, g, _ in capacity_rows
                 ),
+                self.seed,
+                self.size_unaligned,
+                _capacity(self.size_unaligned),
+                self.slots_unaligned,
             ),
         )
         for size, slot, length, want_count, got, status in below_rows:
@@ -367,7 +442,8 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
             "S4",
             "CHK-LOGENG-REGION-UNALIGNED-BELOW-CAP",
             f"LOG_LEN = {_MIN_LEN} delivered exactly {_MIN_LEN} bytes at sizes "
-            f"{list(_UNALIGNED_SIZES)} on slots {list(_UNALIGNED_SLOTS)} "
+            f"{list(_UNALIGNED_SIZES)} on slots {self.order_unaligned} (drawn order) and at the "
+            f"drawn size {self.size_unaligned} on slots {self.slots_unaligned} "
             f"({len(below_rows)} messages), nothing beyond them",
         )
         self._chk(
@@ -381,25 +457,32 @@ class smc_log_engine_region_size_test_seq(SmcCsrSeq):
             f"consecutive window offsets ending at or below offset 0x{_TAG_IS_OFFSET_END:x}",
         )
 
-    async def _s5(self) -> None:
-        await self._set_size(_SIZE_ZERO_CAPACITY)
-        assert _capacity(_SIZE_ZERO_CAPACITY) == 0
+    async def _zero_leg(self, size: int, slots: list[int], tag: str) -> list[tuple[int, int]]:
+        await self._set_size(size)
+        assert _capacity(size) == 0
         rows = []
-        for slot in _UNALIGNED_SLOTS:
-            got, polls, status = await self._message(f"ZERO_S{slot}", slot, _MIN_LEN)
-            assert got == [], f"slot {slot} at size {_SIZE_ZERO_CAPACITY}: delivered {_hex(got)}"
-            lsr = await self.csr_read(f"LSR_ZERO_S{slot}", uart_reg(WRAP, "LSR"))
+        for slot in slots:
+            got, polls, status = await self._message(f"{tag}_S{slot}", slot, _MIN_LEN)
+            assert got == [], f"slot {slot} at size {size}: delivered {_hex(got)}"
+            lsr = await self.csr_read(f"LSR_{tag}_S{slot}", uart_reg(WRAP, "LSR"))
             assert lsr & LSR_DR == 0 and lsr & LSR_TEMT, f"LSR reads 0x{lsr:x} after the idle rule"
-            assert status == 0, f"slot {slot} at size {_SIZE_ZERO_CAPACITY}: INTR 0x{status:x}"
+            assert status == 0, f"slot {slot} at size {size}: INTR 0x{status:x}"
             rows.append((slot, polls))
+        return rows
+
+    async def _s5(self) -> None:
+        rows = await self._zero_leg(_SIZE_ZERO_CAPACITY, self.order_unaligned, "ZERO")
+        drawn = await self._zero_leg(self.size_zero, self.slots_zero, "ZERO_DRAWN")
         self._mark("S5")
         self._chk(
             "S5",
             "CHK-LOGENG-REGION-ZERO-CAPACITY",
             f"LOG_REGION_SIZE {_SIZE_ZERO_CAPACITY}: LOG_LEN {_MIN_LEN} on slots "
-            f"{list(_UNALIGNED_SLOTS)} read 0 after {[p for _, p in rows]} LOG_CTRL read(s) "
+            f"{self.order_unaligned} read 0 after {[p for _, p in rows]} LOG_CTRL read(s) "
             f"(bound {_HWCLR_POLLS}), no byte reached RBR (LSR.DR = 0, TEMT = 1 under the "
-            f"idle rule), INTR_STATUS bits read 0",
+            f"idle rule), INTR_STATUS bits read 0; drawn=seed {self.seed} size {self.size_zero} "
+            f"on slots {self.slots_zero}: LOG_LEN read 0 after {[p for _, p in drawn]} read(s), "
+            f"no byte reached RBR",
         )
 
     async def _s6(self) -> None:

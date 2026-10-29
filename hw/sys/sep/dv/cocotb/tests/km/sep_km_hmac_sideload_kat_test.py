@@ -192,7 +192,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             f"{[hex(w) for w in pub if w]}"
         )
         self.logger.info(
-            "PUB-OBSERVATION HMAC public KEY frontdoor reads zero after sideload. "
+            "INFO-PUB-OBSERVATION HMAC public KEY frontdoor reads zero after sideload. "
             "Asserted, but hmac.hjson declares KEY swaccess=wo, so this read alone "
             "cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,

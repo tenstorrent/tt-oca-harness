@@ -22,7 +22,7 @@ Transactions", "Locking a Filter Entry";
 
 The verdict classes of the filter are graded by the fabric tests. Here the
 response of every external write is a precondition: a response that differs
-from the expected one prints ``CTL-RESP FAIL`` and fails the leaf.
+from the expected one prints ``CTRL-RESP FAIL`` and fails the leaf.
 
 The external SMN master (``m_axi``) drives the inbound half; the source ID
 travels on AxUSER[3:0] and the NS value on AxPROT[1] (the driver of
@@ -192,10 +192,10 @@ class sep_mailbox_filter_type_matrix_test(sep_base_test):
     def _ctl_resp(self, what: str, got: int, want: int) -> None:
         line = f"seed={self.c.seed} {what} resp={resp_name(got)} expect={resp_name(want)}"
         if got != want:
-            msg = f"CTL-RESP FAIL {line}"
+            msg = f"CTRL-RESP FAIL {line}"
             self.logger.error(msg)
             raise AssertionError(msg)
-        self.logger.info("CTL-RESP LOG %s", line)
+        self.logger.info("CTRL-RESP LOG %s", line)
 
     # ---- DUT observation -----------------------------------------------------
     async def _lines(self) -> int:

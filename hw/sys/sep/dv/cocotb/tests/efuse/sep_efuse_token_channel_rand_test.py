@@ -863,7 +863,7 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
                 CH_SEC_DIS: await self._settle(CH_SEC_DIS, sdis_tok, sdis_code, f"ind.{c}.sdis"),
             }
             held = {ch: await self._code(ch) for ch in CHANNELS}
-            self.chk.obs(
+            self.chk.info(
                 "INDEP-HELD",
                 go=_CH_NAME[c],
                 held=",".join(f"{_CH_NAME[ch]}:0x{v:02x}" for ch, v in held.items()),

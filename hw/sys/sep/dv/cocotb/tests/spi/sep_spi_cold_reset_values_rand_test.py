@@ -413,7 +413,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         for name, (_, rst, mask) in _REGS.items():
             fc = field_compare(after[name], rst, mask)
             self.logger.info(
-                "COLDRST-REG LOG seed=%d trial=%s reg=%s armed=0x%08x %s",
+                "INFO-COLDRST-REG LOG seed=%d trial=%s reg=%s armed=0x%08x %s",
                 self.seed,
                 trial,
                 name,
@@ -459,7 +459,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
             self._ctrl_missing(f"trial=idle registers at reset before rst_ni: {not_armed}")
         rst = await self.pulse_rst_ni(release_bound=_RELEASE_BOUND)
         after = await self._read_regs()
-        self.logger.info("COLDRST-RST LOG seed=%d trial=idle %s", self.seed, rst)
+        self.logger.info("INFO-COLDRST-RST LOG seed=%d trial=idle %s", self.seed, rst)
         clean = await self._clean_command(draw["idle_clean_len"])
         self._grade("idle", before, armed, after, 0, clean, draw["idle_clean_len"])
 
@@ -497,7 +497,7 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
         edges = await self.pads.wait_leading_edges(d["t"], mark, _SEG_BOUND_CLKS)
         cs_low = int(self.pads.cs_low())
         self.logger.info(
-            "COLDRST-POINT LOG seed=%d width=x%d t=%d edges=%d cs_low=%d clk=%d",
+            "INFO-COLDRST-POINT LOG seed=%d width=x%d t=%d edges=%d cs_low=%d clk=%d",
             self.seed,
             width,
             d["t"],
@@ -518,7 +518,9 @@ class sep_spi_cold_reset_values_rand_test(sep_base_test):
             await oe.stop()
         self._grade_oe_reset(width, oe, rst)
         after = await self._read_regs()
-        self.logger.info("COLDRST-RST LOG seed=%d trial=midseg width=x%d %s", self.seed, width, rst)
+        self.logger.info(
+            "INFO-COLDRST-RST LOG seed=%d trial=midseg width=x%d %s", self.seed, width, rst
+        )
 
         # Clean commands after the release, with the monitor and a scoreboard.
         sb = SepSpiScoreboard(self.wire, None, self.logger, seed=self.seed)
