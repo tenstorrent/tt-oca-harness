@@ -49,21 +49,31 @@ Legs:
 
 Checkers: CHK-FILTER-CELL, CHK-FILTER-SRC, CTRL-FILTER-RAND (stimulus
 completeness, no DUT claim), CHK-RESET-DENY, CHK-RESET-DENY-ARMED,
-CHK-RESET-DENY-CONTROL, CHK-GRANULE, CHK-FILT-GROUP. CHK-FILT-GROUP: one
+CHK-RESET-DENY-CONTROL, CHK-RESET-DENY-SI, CHK-GRANULE, CHK-FILT-GROUP.
+CHK-RESET-DENY-SI: in the reset and the armed state, the System Interface
+reads of the extension window and of ``0x4000_0100`` answer DECERR, because
+no enabled entry matches and a blocked transaction ends in DECERR
+(``hw/ip/axi_filter/doc/index.adoc``, Blocked Transactions). CHK-GRANULE
+also grades the START_ADDR / END_ADDR read-back after the entry write: the
+rounded values when both ends land in one granule, otherwise the programmed
+values (``filter_ctrl.rdl``, ``START_ADDR``). CHK-FILT-GROUP: one
 inbound entry that covers a staged SRAM word with a drawn non-zero
 ``src_id``, read with AxUSER[3:0] = ``src_id`` and AxUSER[11:4] equal to and
 different from the entry ``group_id``, admits both reads (OKAY, a target
 handshake and the staged data): group ID matching is disabled on every
 filter instance, so ``group_id`` has no effect
-(``hw/ip/axi_filter/doc/index.adoc``, Instances). CTRL-FILTER-ACTIVE is the bring-up
+(``hw/ip/axi_filter/doc/index.adoc``, Instances). The ``differ`` group is
+never 0, which matches any ``group_id``. CTRL-FILT-USER shows the issued
+AxUSER, bits 11:4 included, on PR-INFLT at the filter output for the
+``equal``, ``differ`` and ``upper_bits`` probes. CTRL-FILTER-ACTIVE is the bring-up
 precondition. The inbound cells that open tests grade run as controls and log
 CTRL-FILTER-CELL / CTRL-RESET-DENY lines. Every admitted outbound probe must
-show PR-OUT handshakes only at its predicted outbound address.
+show PR-OUT handshakes only at its predicted outbound address
+(CTRL-PR-OUT-ADDR).
 
 Not graded here: the ``locked`` bit, the
-filter register storage, the SEP debug bypass, the response of the
-extension-window and ``0x4000_0100`` reset-state probes (logged), and the
-START_ADDR / END_ADDR read-back after a write (logged).
+filter register storage, the SEP debug bypass, and the response of the
+extension-window read that the wide control entry admits (OBS-WIDE-CTRL).
 
 Run mode: no_cpu, real PROD fuse sense with SEC_DIS 0 and fixed SIP_DIS and
 SYS_DIS whose DBG_1 bit 0 is clear, so the inbound filter is active.
@@ -207,6 +217,7 @@ class Result:
     readback: int | None
     verdict: FilterVerdict
     perm: int
+    inflt_user: tuple = ()  # AxUSER of each PR-INFLT beat of an inbound probe
 
 
 @pyuvm.test()
@@ -221,6 +232,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         "CHK-RESET-DENY-CONTROL",
         "CHK-GRANULE",
         "CHK-FILT-GROUP",
+        "CHK-RESET-DENY-SI",
     )
 
     # ------------------------------------------------------------------
@@ -393,6 +405,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         mark = self._target_mark()
         data = None
         readback = None
+        inflt_user: tuple = ()
         if p.inst == "in":
             nb = p.nbytes * (p.axlen + 1)
             mem_ok = p.cls in ("sram", "scratch")
@@ -402,7 +415,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             seq = await self._si(p, wdata)
             resp = seq.resp_code
             target_seen, out_seen = self._seen(mark, p)
-            inflt = self.taps["PR-INFLT"].count(mf, "aw" if p.write else "ar")
+            inflt_beats = self.taps["PR-INFLT"].since(mf, "aw" if p.write else "ar")
+            inflt = len(inflt_beats)
+            inflt_user = tuple(b.user for b in inflt_beats)
             if not p.write:
                 data = seq.rdata
             if mem_ok:
@@ -476,12 +491,14 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     f"{self._chk} FAIL: probe {tag}: PR-OUT addr={shown}, expected the remap "
                     f"target 0x{p.faddr:x}"
                 )
-                self.logger.info("probe %s PR-OUT addr=%s target=0x%x", tag, shown, p.faddr)
+                self.logger.info(
+                    "CTRL-PR-OUT-ADDR: probe %s PR-OUT addr=%s target=0x%x", tag, shown, p.faddr
+                )
             else:
                 assert out_seen == 0, (
                     f"{self._chk} FAIL: probe {tag}: refused but {out_seen} PR-OUT handshake(s)"
                 )
-        return Result(resp, data, target_seen, out_seen, readback, v, perm)
+        return Result(resp, data, target_seen, out_seen, readback, v, perm, inflt_user)
 
     # ------------------------------------------------------------------
     # Entry programming
@@ -760,16 +777,17 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                 m = self.taps["PR-EXT"].mark()
                 seq = await self._si(p, allow_timeout=True)
                 ext = self.taps["PR-EXT"].count(m, "ar")
-                self.logger.info(
-                    "%s LOG: si_read cls=%s addr=0x%08x prot1=%d resp=%s timed_out=%s pr_ext=%d",
-                    label,
-                    cls,
-                    p.addr,
-                    prot1,
-                    _RESP.get(seq.resp_code),
-                    seq.timed_out,
-                    ext,
+                # No entry is enabled, so the inbound filter blocks the read: DECERR
+                # (hw/ip/axi_filter/doc/index.adoc, Blocked Transactions).
+                line = (
+                    f"round={label} si_read cls={cls} addr=0x{p.addr:08x} prot1={prot1} "
+                    f"resp={_RESP.get(seq.resp_code)} timed_out={seq.timed_out} pr_ext={ext} "
+                    "expect=DECERR"
                 )
+                assert not seq.timed_out and seq.resp_code == RESP_DECERR, (
+                    f"CHK-RESET-DENY-SI FAIL: {line}"
+                )
+                self.logger.info("CHK-RESET-DENY-SI PASS: %s", line)
                 if cls == "ext":
                     st["ext_seen"] += ext
         return st
@@ -875,7 +893,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     seq = await self._si(p, allow_timeout=True)
                     addrs = self.taps["PR-EXT"].addrs(m, "ar")
                     self.logger.info(
-                        "INFO-WIDE-CTRL LOG: ext read addr=0x%08x prot1=%d resp=%s pr_ext=%s",
+                        "OBS-WIDE-CTRL: ext read addr=0x%08x prot1=%d resp=%s pr_ext=%s",
                         p.addr,
                         prot1,
                         _RESP.get(seq.resp_code),
@@ -1213,10 +1231,27 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
     # ------------------------------------------------------------------
     # Leg 2: source ID
     # ------------------------------------------------------------------
+    def _ctrl_user(self, p: Probe, r: Result, kind: str) -> None:
+        """CTRL-FILT-USER: the issued AxUSER, upper bits included, reaches the inbound filter.
+
+        The filter passes an admitted request unchanged, so AxUSER on PR-INFLT is
+        the AxUSER the filter decoded.
+        """
+        line = (
+            f"kind={kind} dir={p.dir} issued=0x{p.user:03x} "
+            f"pr_inflt_user={['X' if u is None else hex(u) for u in r.inflt_user]}"
+        )
+        if not r.inflt_user or any(u != p.user for u in r.inflt_user):
+            self.logger.error("CTRL-MISSING FILT-USER: %s", line)
+            raise AssertionError(f"CTRL-MISSING FILT-USER: {line}")
+        self.logger.info("CTRL-FILT-USER: %s", line)
+
     async def _src_pair(self, inst, p_cell, p_ctl, entries, ctl_entries, cls_name, src_cfg) -> None:
         self._gate(True)
         await self._load(inst, entries)
         r1 = await self._run(p_cell)
+        if cls_name == "upper_bits":
+            self._ctrl_user(p_cell, r1, cls_name)
         if ctl_entries is not entries:
             await self._load(inst, ctl_entries)
         r2 = await self._run(p_ctl)
@@ -1421,9 +1456,17 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     f"CHK-GRANULE FAIL: word 0x{a:08x} read 0x{got:08x} != 0x{self.mem[a]:08x}"
                 )
         assert allow == 6 and block == 4, f"CHK-GRANULE FAIL: allow={allow} block={block}"
+        # filter_ctrl.rdl, START_ADDR: the rounded values are written back only when
+        # START and END land in one granule; otherwise the programmed values read back.
+        exp_s, exp_e = (wb, wt) if start // gran == end // gran else (start, end)
+        assert (rb_s, rb_e) == (exp_s, exp_e), (
+            f"CHK-GRANULE FAIL: inst={inst} gran={gran} shape={shape} rb_start=0x{rb_s:x} "
+            f"rb_end=0x{rb_e:x} expect=0x{exp_s:x},0x{exp_e:x}"
+        )
         self.logger.info(
             "CHK-GRANULE PASS: inst=%s gran=%d shape=%s start=0x%x end=0x%x rb_start=0x%x rb_end=0x%x "
-            "admitted=[0x%x,0x%x] probes=%d allow=%d block=%d refused_seen=0 control_seen=%d",
+            "expect_rb=0x%x,0x%x admitted=[0x%x,0x%x] probes=%d allow=%d block=%d refused_seen=0 "
+            "control_seen=%d",
             inst,
             gran,
             shape,
@@ -1431,6 +1474,8 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
             end,
             rb_s,
             rb_e,
+            exp_s,
+            exp_e,
             wb,
             wt,
             allow + block,
@@ -1475,10 +1520,14 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         e = self._entry(p, self._cover(p, False), src=s)
         await self._load("in", {idx: e})
         other = self.rng.choice([g for g in range(256) if g != e.group_id])
+        if other == 0:
+            # A transaction group of 0 matches any group_id (filter_ctrl.adoc, group_id).
+            other = 0xFF if e.group_id != 0xFF else 0xFE
         self._chk = "CHK-FILT-GROUP"
         for kind, g in (("equal", e.group_id), ("differ", other)):
             q = replace(p, user=(g << 4) | s, fuser=s)
             r = await self._run(q)
+            self._ctrl_user(q, r, kind)
             self.logger.info(
                 "CHK-FILT-GROUP PASS: entry=%d group_id=%d src_id=%d axuser=0x%03x kind=%s "
                 "expect=OKAY got=%s target_ar=%d",

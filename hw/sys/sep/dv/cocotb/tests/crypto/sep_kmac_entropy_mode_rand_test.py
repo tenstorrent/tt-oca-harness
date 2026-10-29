@@ -64,7 +64,10 @@ Checkers:
   CHK-KMAC-TIMER0          wait timer 0 -> no kmac_err, ERR_CODE 0, request pending.
   CHK-KMAC-HASHCNT         counter 1..N, 0 after hash_cnt_clr, 1, 0 after
                            entropy_req, which adds an acknowledge.
-  CHK-KMAC-AUTORESEED      threshold R, M hashes -> acknowledge >= 1, counter < M.
+  CHK-KMAC-AUTORESEED      threshold R, M hashes -> acknowledge >= 1, and the
+                           counter after hash i reads i mod R (``kmac.hjson``
+                           :806-810: a counter that "hits (GTE)" the threshold
+                           requests a seed and is reset).
   CHK-KMAC-AUTORESEED-OFF  threshold 0, M hashes -> no acknowledge, counter == M.
 
 Log-only (``OBS-BLOCKED``): CHK-KMAC-SWSEED-NEG (five or zero seeds -> no
@@ -209,7 +212,7 @@ class Plan:
 
     def line(self, seed: int) -> str:
         return (
-            f"PLAN seed={seed} legs={','.join(self.legs)} seed_counts="
+            f"INFO-PLAN seed={seed} legs={','.join(self.legs)} seed_counts="
             f"{','.join(map(str, self.seed_counts))} lock_order={','.join(self.lock_order)} "
             f"late_when_sw={self.late_sw} late_when_edn=sw prescaler_order="
             f"{','.join(self.prescaler_order)} T={self.t} P={self.p} N={self.n} R={self.r} "
@@ -410,7 +413,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         await self.swrst.release("kmac")
         self.chain = "up"
-        self.logger.info("CHAIN up (bring-up %d)", self.bringups)
+        self.logger.info("INFO-CHAIN up (bring-up %d)", self.bringups)
         self.bringups += 1
 
     async def _retire_scoreboard(self) -> None:
@@ -429,7 +432,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         await self.swrst.release("trng")
         await self.swrst.release("kmac")
         self.chain = "uninit"
-        self.logger.info("CHAIN uninitialized (TRNG reset, no bring-up)")
+        self.logger.info("INFO-CHAIN uninitialized (TRNG reset, no bring-up)")
 
     async def _need_chain_up(self) -> None:
         if self.chain != "up":
@@ -486,7 +489,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             req_clk = await self.w_req.wait_rise(req_mark, BOUND_CLK)
             ack_clk = await self.w_ack.wait_rise(ack_mark, BOUND_CLK)
         except BitWatchTimeout as exc:
-            self.logger.info("t_reseed not measured: %s", exc)
+            self.logger.info("INFO-T-RESEED not measured: %s", exc)
             return None
         return max(ack_clk - req_clk, 1)
 
@@ -875,7 +878,6 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         clr_r = await self.kmac.read(KMAC_HASH_CNT) & HASH_CNT_MASK
         ack_m = self.w_ack.mark()
         status, cnts = await self._keyed_run(m)
-        cnt_r = cnts[-1] if cnts else None
         if status == "ok":
             await self._wait_clocks(settle)
             try:
@@ -883,8 +885,9 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             except BitWatchTimeout:
                 status = "req_low_timeout"
         acks_r = self.w_ack.high_clocks_since(ack_m)
-        self.chk.obs("KMAC-HASHCNT-SEQ", thr=r, n=m, cnts=",".join(map(str, cnts)))
-        r_ok = status == "ok" and clr_r == 0 and acks_r >= 1 and cnt_r is not None and cnt_r < m
+        # kmac.hjson:806-810: the counter is reset when it reaches the threshold.
+        exp_cnts = [i % r for i in range(1, m + 1)]
+        r_ok = status == "ok" and clr_r == 0 and acks_r >= 1 and cnts == exp_cnts
         self.chk.ok(
             "KMAC-AUTORESEED",
             r_ok,
@@ -892,8 +895,8 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             n=m,
             clr=clr_r,
             acks=acks_r,
-            cnt_after=cnt_r,
-            cnt_below_n=int(cnt_r is not None and cnt_r < m),
+            cnts=",".join(map(str, cnts)),
+            exp_cnts=",".join(map(str, exp_cnts)),
             settle_clk=settle,
             stage=status,
         )
@@ -977,7 +980,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         self.bringups = 0
 
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "abr"))
-        self.logger.info("BASELINE SW_RESET_N=0x%08x", await self.swrst.read_back())
+        self.logger.info("INFO-BASELINE SW_RESET_N=0x%08x", await self.swrst.read_back())
         dut = cocotb.top
         self.w_req = SepBitWatch(dut.crypto_edn_req_o, {"req": EDN_CLIENT_KMAC}).start()
         self.w_ack = SepBitWatch(dut.crypto_edn_ack_o, {"ack": EDN_CLIENT_KMAC}).start()
@@ -994,7 +997,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             "reseed": self._leg_reseed,
         }
         for leg in self.plan.legs:
-            self.logger.info("LEG %s", leg)
+            self.logger.info("INFO-LEG %s", leg)
             await runners[leg]()
         await self._leg_msgmask()
 

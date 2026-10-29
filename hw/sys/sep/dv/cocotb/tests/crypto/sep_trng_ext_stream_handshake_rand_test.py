@@ -49,7 +49,14 @@ CHK-EXT-NOSRC-POP: after the back-pressure leg, with stream 2 external and no be
 offered, one DATA pop after the second level read answers SLVERR when that level is
 0 and OKAY otherwise, with no timeout (``entropy_pool.adoc``, Access Policy).
 
-Logged only (no stated outcome): ``OBS-EXT-WITHDRAW`` when a source drops a beat it
+CHK-SEL-READY0: in the ready leg, when the select read back has bit 0 clear, the
+external stream 0 input sees ``tready`` 1 on every clock it holds ``tvalid`` 1
+(``trng.adoc``: an unselected external input receives ready high). Control:
+stream 0 held ``tvalid`` 1 on at least one clock of the leg. Graded only on the
+passes whose s has bit 0 clear, so it is not in ``required_evidence``.
+
+Logged only (no stated outcome): ``OBS-SEL-READY0`` when bit 0 is set (no text
+states when the Key Manager sink lowers ready); ``OBS-EXT-WITHDRAW`` when a source drops a beat it
 holds at the end of a leg: the held word, tready at the drop and the next word that
 completes at that port. ``OBS-EXT-NOSRC`` in the same step: the pool fifo_level before
 and after a hold of ``DRAIN_WINDOW`` clocks, and the data of the pop.
@@ -1050,7 +1057,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         stream 1 an AES PRNG reseed after the fall completes the pending beat. A pass of
         stream 1 releases the held crypto stall cell."""
         h = self.plan.hold
-        await self._sel(sp.s)
+        got = await self._sel(sp.s)
         await self._trng_reset()
         graded = [j for j in (1, 2) if sp.s >> j & 1]
         self._open()
@@ -1067,12 +1074,17 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             r = await self._until(lambda: self.trace.ext_xfers[1] > base, TRNG_RESET_CAP)
             rise[1] = int(r is not None)
         s0 = [_bit(r.er, 0) for r in rows if _bit(r.ev, 0) == 1]
-        self.chk.obs(
-            "SEL-READY0",
-            sel_bit=sp.s & 1,
-            tvalid_clk=len(s0),
-            tready_low_clk=sum(1 for v in s0 if v == 0),
-        )
+        ready0 = {
+            "sel": f"0x{got:x}",
+            "sel_bit": got & 1,
+            "tvalid_clk": len(s0),
+            "tready_low_clk": sum(1 for v in s0 if v == 0),
+        }
+        if got & 1:
+            self.chk.obs("SEL-READY0", **ready0)
+        else:
+            self._ctrl("SEL-READY0", len(s0) >= 1, **ready0)
+            self._grade("SEL-READY0", ready0["tready_low_clk"] == 0, **ready0)
         for j in graded:
             # The fall is the start of the stall that ends the leg: the last run of
             # clocks with tvalid 1 and tready 0 that reaches the end of the record and

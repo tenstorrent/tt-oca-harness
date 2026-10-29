@@ -34,7 +34,9 @@ Checks (anchor):
                          ``secure_tm_o``)
   CHK-OTP-DEM            a DEMOTE write sets OTP_CHANGE_STATUS.demotion and
                          IRQ_STATUS.OTP_CHANGE and changes one group (POKE readback)
-  CHK-OTP-SUPP           no change after a KM warm reset with a demotion held
+  CHK-OTP-SUPP           no change after a KM warm reset with a demotion held;
+                         control CTRL-OTP-SUPP-PARK: OTP_READ_LOCK, set to 0x1FF
+                         before PARK, reads 0 after it (warm reset domain)
   CHK-OTP-COLD           a SEP cold reset restores the first-boot demotion state
   CHK-OTP-NOTKM          shadow writes of REQUIRED_ALGS / REQUIRED_SIGNERS leave
                          the KM OTP words and status unchanged (POKE + host readback)
@@ -51,14 +53,17 @@ Checks (anchor):
                          (``km_csr.adoc``: "Read-through from OTP port; no reset");
                          control CTRL-OTP-CHG-READOUT: the held field is unlocked
                          and the word before the flip equals its golden
+  CHK-OTP-BOOT-SIGINT    IRQ_STATUS.OTP_SIGINT reads 0 right after each KM reset
+                         (``km_csr.adoc`` IRQ_STATUS reset 0x0, complementary
+                         rails)
+  CHK-OTP-RSVD           the reserved bits of OTP_LIFE_CYCLE, OTP_DEMOTION_STATE,
+                         the two lock registers, OTP_CHANGE_STATUS and IRQ_STATUS
+                         read 0 in every readout (RDL ``rsvd`` R 0x0)
 
-Logged only (no verdict): ``OBS-OTP-BOOT-SIGINT`` (IRQ_STATUS.OTP_SIGINT right
-after each KM reset; the leaf clears it with a write of 1 before any graded
-OTP_SIGINT read), ``OBS-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a single-rail
+Logged only (no verdict): ``OBS-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a single-rail
 flip, not stated), ``OBS-OTP-DEM-GROUP`` (which group a DEMOTE register drives,
 not stated), ``OBS-OTP-LOCK-RESP`` (the response of a locked-field read, not
-stated; only its zero data is graded), ``OBS-OTP-RSVD`` (reserved bits of the read
-registers).
+stated; only its zero data is graded).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
@@ -269,6 +274,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         "CHK-OTP-NOTKM-CLASS",
         "CHK-OTP-SIG",
         "CHK-OTP-CHG",
+        "CHK-OTP-BOOT-SIGINT",
+        "CHK-OTP-RSVD",
     )
 
     # --- small helpers ------------------------------------------------------
@@ -347,19 +354,21 @@ class sep_km_otp_interface_rand_test(sep_base_test):
                 f"{fp.identity()}; the prestage registry entry of {TEST} did not run"
             )
 
-    def _rsvd(self, reg: str, value: int, fields: int) -> None:
-        if value & ~fields & WORD_MASK:
-            self.chk.obs("OTP-RSVD", reg=reg, value=_h(value), mask=_h(~fields & WORD_MASK))
+    @staticmethod
+    def _rsvd(reg: str, value: int, fields: int) -> str | None:
+        """``reg=value`` when a reserved bit (RDL ``rsvd``, R, reset 0x0) reads 1."""
+        return f"{reg}={_h(value)}" if value & ~fields & WORD_MASK else None
 
     # --- boots and resets ---------------------------------------------------------
 
     async def _km_boot(self, boot: str) -> None:
         """Release the KM, wait for the POKE start marker, then clear OTP_SIGINT.
 
-        A KM reset can leave IRQ_STATUS.OTP_SIGINT at 1 before any inject. The
-        leaf logs that value and writes 1 to OTP_SIGINT only, so every graded
-        OTP_SIGINT read starts from a cleared bit, and OTP_CHANGE stays as the
-        reset left it (CHK-OTP-SUPP and CHK-OTP-COLD read it).
+        CHK-OTP-BOOT-SIGINT grades IRQ_STATUS.OTP_SIGINT as 0 after the reset
+        (``km_csr.adoc`` IRQ_STATUS reset 0x0; the staged rails are
+        complementary). The leaf then writes 1 to OTP_SIGINT only, so every
+        later graded OTP_SIGINT read starts from a cleared bit, and OTP_CHANGE
+        stays as the reset left it (CHK-OTP-SUPP and CHK-OTP-COLD read it).
         """
         await self.poke.release()
         await self.poke.wait_boot()
@@ -370,8 +379,9 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             [kp.rd(m.A_IRQ_STATUS), kp.wr(m.A_IRQ_STATUS, m.IRQ_OTP_SIGINT), kp.rd(m.A_IRQ_STATUS)]
         )
         pre, post = r[0].value, r[2].value
-        self.chk.obs(
+        self.chk.ok(
             "OTP-BOOT-SIGINT",
+            _ok(r[0]) and not pre & m.IRQ_OTP_SIGINT,
             boot=boot,
             irq_pre=_h(pre),
             sigint_pre=int(bool(pre & m.IRQ_OTP_SIGINT)),
@@ -476,12 +486,19 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             slot_resp,
             resp_only,
         )
-        self._rsvd("OTP_LIFE_CYCLE", words[(m.F_LC, "reg", 0)], m.LC_FIELDS)
-        self._rsvd("OTP_DEMOTION_STATE", words[(m.F_DEM, "reg", 0)], m.DEM_FIELDS)
-        self._rsvd("OTP_READ_LOCK", ro.lock, m.LOCK_FIELDS)
-        self._rsvd("OTP_READ_LOCK_COLD", ro.lock_cold, m.LOCK_FIELDS)
-        self._rsvd("OTP_CHANGE_STATUS", ro.change, m.CHANGE_FIELDS)
-        self._rsvd("IRQ_STATUS", ro.irq, m.IRQ_FIELDS)
+        rsvd = [
+            x
+            for x in (
+                self._rsvd("OTP_LIFE_CYCLE", words[(m.F_LC, "reg", 0)], m.LC_FIELDS),
+                self._rsvd("OTP_DEMOTION_STATE", words[(m.F_DEM, "reg", 0)], m.DEM_FIELDS),
+                self._rsvd("OTP_READ_LOCK", ro.lock, m.LOCK_FIELDS),
+                self._rsvd("OTP_READ_LOCK_COLD", ro.lock_cold, m.LOCK_FIELDS),
+                self._rsvd("OTP_CHANGE_STATUS", ro.change, m.CHANGE_FIELDS),
+                self._rsvd("IRQ_STATUS", ro.irq, m.IRQ_FIELDS),
+            )
+            if x
+        ]
+        self.chk.ok("OTP-RSVD", not rsvd, readout=label, regs=6, nonzero=",".join(rsvd) or "none")
         return ro
 
     def _bad_under(self, ro: Readout, eff: int) -> list[str]:
@@ -1159,12 +1176,30 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         db = 3 - da
         self.dem_a = await self._demote(da)
         g_a = self._grade_dem(self.dem_a, None)
+        # OTP_READ_LOCK is in the warm reset domain (architecture.adoc, "Cleared by
+        # warm or cold reset"): set before PARK, it reads 0 only after a real reset.
+        lk = await self._run([kp.wr(m.A_READ_LOCK, m.LOCK_FIELDS), kp.rd(m.A_READ_LOCK)])
         await self._park()
         r = await self._run(
-            [kp.delay(QUIET), kp.rd(m.A_CHANGE), kp.rd(m.A_IRQ_STATUS), kp.rd(m.A_DEMOTION)]
+            [
+                kp.delay(QUIET),
+                kp.rd(m.A_CHANGE),
+                kp.rd(m.A_IRQ_STATUS),
+                kp.rd(m.A_DEMOTION),
+                kp.rd(m.A_READ_LOCK),
+            ]
         )
         supp_change, supp_irq, supp_dem = r[1].value, r[2].value, r[3].value
         supp_bad = [x for x in r if x.op.reports and not _ok(x)]
+        self.chk.ctrl(
+            "OTP-SUPP-PARK",
+            _ok(lk[1])
+            and lk[1].value & m.LOCK_FIELDS == m.LOCK_FIELDS
+            and _ok(r[4])
+            and not r[4].value & m.LOCK_FIELDS,
+            lock_before_park=_h(lk[1].value),
+            lock_after_park=_h(r[4].value),
+        )
         self.dem_b = await self._demote(db)
         self._grade_dem(self.dem_b, g_a)
         held = (supp_dem & m.DEM_FIELDS) == (self.dem_a.dem & m.DEM_FIELDS)

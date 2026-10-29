@@ -65,15 +65,20 @@ Checkers:
                     differs from the RDL reset value: that word reads its RDL reset value
                     at ``efuse_shadow_probe_o`` and ``sep_fuse_sense_done_o`` reads 1
                     (same sensing-sequence source as CHK-SENSE-STATUS).
+  CHK-SENSE-STATUS-CTRLWORD-FEAT  the same last sense, every drawn word (255 included):
+                    ``lcc_feat_ctrl_probe_o`` equals the profile row of the sensed
+                    ``LC_STATE``, ``SIP_DIS`` and ``SYS_DIS`` shadows, with the drawn word
+                    at its RDL reset value (``hw/sys/sep/doc/lifecycle_controller.adoc``,
+                    Debug and Functional Feature Control and Per-LC-state Feature
+                    Control Profile; an unwritten ``LC_STATE`` word decodes as INVALID,
+                    which disables every feature). Word 255 is no profile input.
 
 Log-only: ``OBS-PROG-TIMEOUT`` (busy, done and status after m x T clocks of a held
 program with the timeout enabled; the specification does not state the report).
 ``OBS-SENSE-STATUS-CTRLWORD`` (the same last sense when the drawn word is 255: that
 shadow word, ``sep_fuse_sense_done_o`` and ``lcc_feat_ctrl_probe_o``; the sensing
 sequence says both that a strobe with its status bit set leaves its word unwritten and
-that the strobe at counter 255 stores the last word). ``OBS-SENSE-STATUS-CTRLWORD-FEAT``
-(``lcc_feat_ctrl_probe_o`` after a graded control-word sense; no specification line
-states it).
+that the strobe at counter 255 stores the last word).
 
 FCOV: the graded window is open over the second injected sense and the held program,
 each to its own grade. The control sense and the first injected sense are graded
@@ -99,6 +104,8 @@ from env.sep_efuse_plan import (
     PROGRAM_CTRL_ADDR,
     STATUS_ADDR,
     T_SHIM_FAULT,
+    feat_ctrl_profile,
+    field_word,
     plan,
     program_ctrl_word,
 )
@@ -226,7 +233,7 @@ class _SenseRec:
 class sep_efuse_shim_response_fault_test(sep_base_test):
     """Sense status bit on one word; program lifecycle with a withheld shim response."""
 
-    required_evidence = ("CHK-SENSE-STATUS", "CHK-PROG-LIFE")
+    required_evidence = ("CHK-SENSE-STATUS", "CHK-PROG-LIFE", "CHK-SENSE-STATUS-CTRLWORD-FEAT")
 
     async def _rd(self, addr: int) -> int:
         return await self.fd.rd(addr)
@@ -483,7 +490,7 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         poll_bound = _POLL_BOUND_MULT * t_sense
         hold_win = _HOLD_MULT * t_sense
         self.logger.info(
-            "SHIM PARAM seed=%d t_sense=%d sense_bound=%d hold_win=%d hold_reads=%d "
+            "INFO-SHIM-PARAM seed=%d t_sense=%d sense_bound=%d hold_win=%d hold_reads=%d "
             "poll_bound=%d rel_settle=%d",
             seed,
             t_sense,
@@ -689,6 +696,25 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
         shadow = self._probe_words()[cw]
         done_o = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
         feat = self.rd(dut.lcc_feat_ctrl_probe_o, allow_unknown=True)
+        want = word_reset(SHADOW_BASE + 4 * cw)
+        sensed = list(staged)
+        sensed[cw] = want
+        sip_w, sys_w = field_word("SIP_DIS"), field_word("SYS_DIS")
+        row = feat_ctrl_profile(
+            sensed[field_word("LC_STATE")] & 0xF,
+            sensed[sip_w] | sensed[sip_w + 1] << 32,
+            sensed[sys_w] | sensed[sys_w + 1] << 32,
+        )
+        self._grade(
+            "SENSE-STATUS-CTRLWORD-FEAT",
+            done_o == 1 and feat == row.value,
+            word=cw,
+            feat=f"0x{feat:016x}",
+            exp=f"0x{row.value:016x}",
+            state=row.state,
+            row=row.row,
+            sense_done=done_o,
+        )
         if cw == _N_WORDS - 1:
             self.logger.info(
                 "OBS-SENSE-STATUS-CTRLWORD LOG seed=%d word=%d shadow=0x%08x staged=0x%08x "
@@ -702,7 +728,6 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
                 feat,
             )
         else:
-            want = word_reset(SHADOW_BASE + 4 * cw)
             self._grade(
                 "SENSE-STATUS-CTRLWORD",
                 n is not None and done_o == 1 and staged[cw] != want and shadow == want,
@@ -712,9 +737,6 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
                 staged=f"0x{staged[cw]:08x}",
                 sense_done=done_o,
                 t_sense="none" if n is None else n,
-            )
-            self.logger.info(
-                "OBS-SENSE-STATUS-CTRLWORD-FEAT LOG seed=%d word=%d feat=0x%016x", seed, cw, feat
             )
         await RisingEdge(dut.clk_i)
         dut.efuse_sense_status_inject_i.value = 0

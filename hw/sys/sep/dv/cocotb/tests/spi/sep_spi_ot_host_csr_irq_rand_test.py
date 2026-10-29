@@ -156,8 +156,14 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
   L3 CHK-SPI-STRB   : an 8-byte write with strobe 0x0F, 0xF0 or 0xFF at the
                       pairs 0x00, 0x18, 0x28 and 0x30 returns OKAY, lands the
                       strobed half by its register type and keeps the other
-                      half. ACCESSINVAL is logged only (OBS-SPI-STRB-ACCESSINVAL)
-                      at every cell except the empty TXDATA half below.
+                      half.
+  L3 CHK-SPI-STRB-ACCESSINVAL : at every cell except the 0x30 pair and the
+                      empty TXDATA half below, ERROR_STATUS.ACCESSINVAL reads 0
+                      after the write. A half with no strobes is completed by
+                      the bridge with no TL-UL request (hw/sys/sep/doc/spi.adoc:54-58),
+                      and only a TXDATA write with no bytes enabled sets the
+                      bit (spi_host.hjson ERROR_STATUS.ACCESSINVAL). Control:
+                      ACCESSINVAL reads 0 before the write, else CTRL-MISSING.
   L3 CHK-SPI-STRB-EMPTY : the 8-byte write at the TXDATA pair (0x28) with strobe
                       0xF0 leaves the TXDATA half without strobes. The bridge
                       completes that half locally with OKAY and sends no
@@ -378,6 +384,7 @@ _LEG_CHECKS = (
     "CHK-SPI-STRB-EMPTY",
     "CHK-SPI-STRB-TX",
     "CHK-SPI-STRB-CTRL",
+    "CHK-SPI-STRB-ACCESSINVAL",
     "CHK-SPI-SWRST",
     "CHK-SPI-SPIEN",
 )
@@ -2184,9 +2191,18 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 )
         lo_data, hi_data = self.draw["strb_data"][(off, strb)]
         empty = tx and strb == _STRB_HIGH_ONLY
+        acc_cell = not empty and off != _OFF_ERR_STATUS
         pre = (0, 0)
         if empty:
             pre = await self._strobe_empty_entry()
+        elif acc_cell:
+            es0 = await self.ops.rd(ERROR_STATUS)
+            if es0 & ERR_ACCESSINVAL:
+                self._ctrl_missing(
+                    f"CHK-SPI-STRB-ACCESSINVAL off=0x{off:02x} strb=0x{strb:02x} "
+                    f"ERROR_STATUS=0x{es0 & ERR_STATUS_MASK:02x} before the write, "
+                    "ACCESSINVAL expected 0"
+                )
         self._window(True)
         resp = await self.ops.wr_strobed64(_SPI_BASE + off, (hi_data << 32) | lo_data, strb)
         lo_new = None if tx else await self.ops.rd(lo_addr)
@@ -2225,14 +2241,14 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 f"{hi_name.lower()}_before=0x{hi_old & hi_mask:08x}",
                 st0.txqd,
             )
-        elif off != _OFF_ERR_STATUS:
+        elif acc_cell:
             es = await self.ops.rd(ERROR_STATUS)
-            self.logger.info(
-                "OBS-SPI-STRB-ACCESSINVAL seed=%d off=0x%02x strb=0x%02x accessinval=%d",
-                self.seed,
-                off,
-                strb,
-                int(bool(es & ERR_ACCESSINVAL)),
+            acc = int(bool(es & ERR_ACCESSINVAL))
+            self._grade(
+                "CHK-SPI-STRB-ACCESSINVAL",
+                acc == 0,
+                f"off=0x{off:02x} strb=0x{strb:02x} accessinval={acc} expect_accessinval=0 "
+                f"control_accessinval_before=0 err_status=0x{es & ERR_STATUS_MASK:02x}",
             )
         txqd_after = None
         if tx:

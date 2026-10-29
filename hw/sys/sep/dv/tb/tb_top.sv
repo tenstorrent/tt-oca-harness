@@ -2176,9 +2176,11 @@ module sep_uvm_top
     assign pr_inflt_awvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw_valid;
     assign pr_inflt_awready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.aw_ready;
     assign pr_inflt_awaddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw.addr[55:0];
+    assign pr_inflt_awuser_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.aw.user;
     assign pr_inflt_arvalid_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar_valid;
     assign pr_inflt_arready_o = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_resp.ar_ready;
     assign pr_inflt_araddr_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.addr[55:0];
+    assign pr_inflt_aruser_o  = `SEP_CORE.u_sep_system_peripherals.smn_inbound_filtered_axi_req.ar.user;
     // PR-CPU: AxPROT of the raw CPU LSU and IFU requests, before any remap.
 `ifndef SEP_CPU_STUB
     assign pr_cpu_lsu_awvalid_o = `SEP_CORE.u_sep_cpu.lsu_axi_req_raw.aw_valid;

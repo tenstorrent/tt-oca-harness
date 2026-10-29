@@ -403,6 +403,11 @@ _CANCEL_ISO_MASK = {
 _EDN_DISCARD_WATCH_CYCLES = 2_000
 
 
+def _info_name(tag: str) -> str:
+    """The ``INFO-`` record name for a bench line printed under check ``tag``."""
+    return "INFO-" + tag.removeprefix("CHK-")
+
+
 def sha256_digest_words(msg_words: list[int]) -> list[int]:
     """hashlib golden: msg words pushed little-endian per word (msg_be=0); DIGEST
     word i == big-endian word i of the standard SHA-256 (digest_swap=0)."""
@@ -466,7 +471,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await self.rst.release_resets()
         await self._wait_gated_rst(rst_bit, 1, "reset pulse release")
         await ClockCycles(cocotb.top.clk_i, 40)
-        self.logger.info("reset pulse landed: %s fell and released", _GATED_RST_PROBE[rst_bit])
+        self.logger.info("INFO-RESET-PULSE %s fell and released", _GATED_RST_PROBE[rst_bit])
 
     async def _obs_trng_iso_resp(self) -> None:
         """OBS-TRNG-ISO-RESP: one CSR read of each entropy-complex IP inside its reset.
@@ -694,7 +699,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 outstanding = {id(e) for e in drain if not e.is_set()}
                 arrival = axi.init_read(address=addr, length=4, size=2, arid=_ARRIVAL_ARID)
                 self.logger.info(
-                    "%s drain window open at %.2f ns (req=%d host_iso=%d km_iso=%d "
+                    "INFO-DRAIN-WINDOW %s drain window open at %.2f ns (req=%d host_iso=%d km_iso=%d "
                     "gated=%d); %d of %d drain reads unretired; arrival read "
                     "issued with ARID %d",
                     name,
@@ -1416,7 +1421,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "acknowledged to URND %d cycles before the edge; with the KMAC "
                     "reset asserted, the next URND acknowledge came %d cycles after "
                     "the edge with 0x%08x",
-                    tag,
+                    _info_name(tag),
                     where,
                     pre_u["bus"],
                     dist,
@@ -1443,7 +1448,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 raise AssertionError(
                     f"{tag} FAIL: URND acknowledge period {steady} is not walkable"
                 )
-            self.logger.info("%s: steady URND edn_ack gap %d cycles", tag, steady)
+            self.logger.info("%s: steady URND edn_ack gap %d cycles", _info_name(tag), steady)
             self._urnd_period = steady
             urnd_completions = 0
             for offset in range(steady):
@@ -1469,7 +1474,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     urnd_completions += 1
                 self.logger.info(
                     "%s offset %d: KMAC edn_ack=%d bus=0x%08x; URND edn_ack=%d bus 0x%08x->0x%08x",
-                    tag,
+                    _info_name(tag),
                     offset,
                     int(snap["kmac"]["ack"]),
                     snap["kmac"]["bus"],
@@ -1490,7 +1495,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             self.logger.info(
                 "%s suppress: KMAC pre-edge req=%d ack=%d bus=0x%08x; on the "
                 "edge req=%d ack=%d bus=0x%08x",
-                tag,
+                _info_name(tag),
                 int(pre_k["req"]) if pre_k else 0,
                 int(pre_k["ack"]) if pre_k else 0,
                 pre_k["bus"] if pre_k else 0,
@@ -1695,7 +1700,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                         "arm; the pop of the word acknowledged to URND %d cycles before "
                         "the edge; after the KMAC reset release, the next URND "
                         "acknowledge came %d cycles after the edge with 0x%08x",
-                        tag,
+                        _info_name(tag),
                         attempt,
                         gap_pre["bus"],
                         dist,
@@ -1708,7 +1713,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                         "%s attempt %d (offset %d): not the arm; URND before the "
                         "KMAC reset edge req=%d ack=%d bus=0x%08x, on the edge "
                         "req=%d ack=%d bus=0x%08x",
-                        tag,
+                        _info_name(tag),
                         attempt,
                         attempt % _EDN_HOLD_STEP,
                         int(ep["req"]),
@@ -1732,7 +1737,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             self.logger.info(
                 "%s armed: URND staged bus=0x%08x fips=%d before the KMAC "
                 "reset edge; on the edge bus=0x%08x fips=%d",
-                tag,
+                _info_name(tag),
                 pre["bus"],
                 pre["fips"],
                 cur["bus"],
@@ -1926,7 +1931,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "cancel window and on all %d asserted-reset cycles; request live at "
             "the cancel %s; committed and not yet acknowledged at the cancel "
             "start %s%s; graded window %s",
-            tag,
+            _info_name(tag),
             eng.name,
             delay,
             res["lead"],
@@ -2197,7 +2202,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "%s: committed-word walk ran %d OTBN trial(s) over a %d-cycle URND "
             "acknowledge period; %d word(s) committed and not yet acknowledged on "
             "the cycle before a cancel start",
-            tag,
+            _info_name(tag),
             walk,
             period,
             len(self._edn_committed),
@@ -2854,7 +2859,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
 
         self.logger.info(
-            "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
+            "INFO-SUMMARY per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
             "(HMAC<->AES, KMAC, OTBN; TRNG neighbours HMAC DIGEST and AES DATA_OUT; "
             "SW_RESET_N=0x%08x; entropy-backed: CHK5_aes/kmac beats reported)",
             sw_final,

@@ -47,7 +47,7 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     reaches the shadow registers outside PROD and RMA_SIP, and the
                     four targets are set-only in every state. PROD and RMA_SIP restrict
                     JTAG to the token block and log
-                    ``CHK-STM-JTAG N/A ... reason=lifecycle_gate``.
+                    ``OBS-BLOCKED CHK-STM-JTAG reason=lifecycle_gate``.
   INFO-STM-STATE     logs the drawn state and ``jtag_leg`` (1 when CHK-STM-JTAG runs)
                     of the seed. A control line, not a check.
   CTRL-STM-WRITE-ISSUED  each target write returns a response from the DUT; a
@@ -276,7 +276,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             "at_sense": rec[-1],
             "after": after,
         }
-        self.logger.info("EPOCH strap=%d %s", strap, out)
+        self.logger.info("INFO-EPOCH strap=%d %s", strap, out)
         return out
 
     async def _target_write(self, t: dict, src: str) -> dict:
@@ -389,7 +389,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             await self.fd.wr(PROGRAM_CTRL_ADDR, 0)
             cmds[cls] = self.shim.programs_since(mark)
             self.logger.info(
-                "PROGRAM strap=%d class=%s field=%s word=%d bit=%d addr=0x%x status=0x%08x "
+                "INFO-PROGRAM strap=%d class=%s field=%s word=%d bit=%d addr=0x%x status=0x%08x "
                 "program_cmds=%d",
                 self._strap,
                 cls,
@@ -430,7 +430,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         targets = p.leg["targets"]
         progs = p.leg["programs"]
         row = feat_ctrl_profile(p.lc_raw, p.sip_dis, p.sys_dis)
-        self.logger.info("GOLDEN feat %s value=0x%016x", row.log(), row.value)
+        self.logger.info("INFO-GOLDEN feat %s value=0x%016x", row.log(), row.value)
 
         await chk_bind(self.chk)
         self.write_efuse_image(p.image)
@@ -439,7 +439,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         e1 = await self._epoch_start(1, first=True)
         w_prog = W_PROG_MULT * e1["sense_clks"]
         self.logger.info(
-            "W_PROG clocks=%d sense_clks=%d mult=%d", w_prog, e1["sense_clks"], W_PROG_MULT
+            "INFO-W-PROG clocks=%d sense_clks=%d mult=%d", w_prog, e1["sense_clks"], W_PROG_MULT
         )
         self.shim = SepShimCmdMonitor().start()
         feat1 = await self._feat()
@@ -577,7 +577,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                     await self._credit(r, 1)
             await self._release(_TAG_JTAG, jtag_ok)
         else:
-            self.logger.info("CHK-STM-JTAG N/A seed=%d state=%s reason=lifecycle_gate", seed, state)
+            self.chk.blocked("STM-JTAG", "lifecycle_gate")
         self._close()
 
         # Bank read before any strap-0 program, then the strap-0 programs.

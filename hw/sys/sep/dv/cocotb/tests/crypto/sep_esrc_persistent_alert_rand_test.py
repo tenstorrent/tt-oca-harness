@@ -41,8 +41,8 @@ illegal main-state encoding of the illegal-state leg.
 Shards (``env/sep_shard.py``): shard 1 is the reset leg and the threshold
 blocks; shard 2 is the reset leg and the ERR leg; shard 3 is the reset leg and
 the threshold blocks 0, 5 and 7, with no no-trip leg, and it does not grade
-CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD: it logs the CHK-PF-TRIP-HOLD values as
-``INFO-PF-TRIP-HOLD`` and releases no cell by them. Shard 1 and the entry
+CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD: it logs ``OBS-BLOCKED CHK-PF-TRIP-HOLD``
+at each trip, with the reason, and releases no cell by them. Shard 1 and the entry
 without ``+sep_shard`` grade both. The entry without
 ``+sep_shard`` runs every leg, the ERR leg last.
 
@@ -112,16 +112,25 @@ Checkers:
                   ERR at the next read. Logged, not graded: no text states
                   whether a write of 1 clears ERR while its cause persists.
                   Both OBS writes run with the coverage window closed.
-  CHK-SM-ILLEGAL  VCS only, after the ERR leg: ERR reads 0, then the leaf forces
-                  a drawn encoding outside the main state machine's state set
-                  on its state flops for 2 clocks and releases it; after
-                  SM_ERR_WAIT_CLKS clocks ERR reads 1 (entropy_source.rdl
-                  MAIN_SM_STATUS.ERR: "Latches an illegal state"). Under
-                  Verilator the state flops are not public:
-                  ``OBS-BLOCKED CHK-SM-ILLEGAL``.
+  OBS-SM-ILLEGAL  VCS only, after the ERR leg: ERR reads 0 (control
+                  CTRL-SM-ILLEGAL), then the leaf forces a drawn encoding
+                  outside the state set of the main state machine design
+                  package on its state flops for 2 clocks and releases it; after
+                  SM_ERR_WAIT_CLKS clocks ERR is logged. Logged, not graded: no
+                  .adoc or RDL lists the legal encodings of MAIN_SM_STATUS.STATE,
+                  so no specification makes the forced value an illegal state.
+                  Under Verilator the state flops are not public and the leg
+                  logs ``INFO-SM-ILLEGAL-SKIP``.
   OBS-SM-ILLEGAL-PF  INTR_STATUS.PERSISTENT_FAILURE after the illegal state.
                   Logged, not graded: the RDL names a health-test failure or a
                   counter error for it, not an illegal state.
+  CHK-PIC16       every trip that ends by a MODULE_ENABLE cycle, once ALERT
+                  reads 1: vector bit 15 of ``sep_internal_interrupts_probe_o``
+                  (PIC source 16, the entropy-source interrupt;
+                  ``hw/sys/sep/doc/interrupts.adoc:23``, ``:109-111``) reads 1,
+                  with INTR_ENABLE.PERSISTENT_FAILURE set by the clean start
+                  (``entropy_source.adoc:164``). Control: PERSISTENT_FAILURE
+                  read 1 (CTRL-PIC16).
   CHK-PF-RECOVER  W1C: both bits 0 and the output stays halted for H; a
                   MODULE_ENABLE cycle or a TRNG reset restarts the output
                   (BOOT_PHASE_DONE = 1, LEVEL rises); the reset clears both bits.
@@ -172,8 +181,7 @@ that the later windows hold no failure. Before the consecutive leg and before
 the first trip of a block, a leg that left ALERT, PF or ANY_FAIL_COUNT set is
 followed by a restart (``INFO-PF-LEG-RESTART``). CHK-PF-TRIP-HOLD and
 CHK-PF-NOTRIP grade the peak of ANY_FAIL_COUNT as exactly n, so a misplaced
-switch fails a check and never passes one. Vector bit 15 of
-``sep_internal_interrupts_probe_o`` is logged as ``OBS-PIC16``.
+switch fails a check and never passes one.
 
 Coverage: each leg runs in its own graded window. Every cell that this leaf
 fills from a DUT event is held by the sampler and released by the pass label
@@ -283,10 +291,10 @@ M_THR, _ = _fm("ALERT_THRESHOLD", "THRESHOLD")
 M_ERR, ERR_BP = _fm("MAIN_SM_STATUS", "ERR")
 M_STATE, _ = _fm("MAIN_SM_STATUS", "STATE")
 STATE_BITS = M_STATE.bit_length()
-# Stimulus only: the encodings of the main state machine, from
+# Stimulus of an OBS leg only: the encodings of the main state machine, from
 # vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
-# (state_e). The illegal-state leg forces a value outside this set; the golden
-# (ERR reads 1) comes from entropy_source.rdl MAIN_SM_STATUS.ERR.
+# (state_e). No .adoc or RDL lists them, so OBS-SM-ILLEGAL, which forces a value
+# outside this set, grades nothing.
 MAIN_SM_ENCODINGS = frozenset(
     (
         0b011110101, 0b111010010, 0b101101110, 0b010001110, 0b000101100,
@@ -349,6 +357,7 @@ SHARD_EVIDENCE = {
         "CHK-PF-DISABLE",
         "CHK-PF-HALT",
         "CHK-PF-RECOVER",
+        "CHK-PIC16",
     ),
     2: ("CHK-PF-RESET", "CHK-SM-ERR"),
     3: (
@@ -358,6 +367,7 @@ SHARD_EVIDENCE = {
         "CHK-PF-DISABLE",
         "CHK-PF-HALT",
         "CHK-PF-RECOVER",
+        "CHK-PIC16",
     ),
 }
 # Checks that shard 3 does not grade: it runs no no-trip leg, and it logs the
@@ -485,6 +495,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         "CHK-PF-DISABLE",
         "CHK-PF-HALT",
         "CHK-PF-RECOVER",
+        "CHK-PIC16",
         "CHK-SM-ERR",
     )
 
@@ -611,6 +622,18 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
     def _pic16(self) -> int:
         v = self.rd(cocotb.top.sep_internal_interrupts_probe_o, allow_unknown=True)
         return (v >> 15) & 1
+
+    async def _grade_pic16(self, thr: int, pf: int) -> None:
+        """CHK-PIC16 after a trip: vector bit 15 (PIC source 16) reads 1.
+
+        PIC source 16 is the entropy-source interrupt on vector bit 15
+        (interrupts.adoc:23, :109-111), and INTR_ENABLE.PERSISTENT_FAILURE, set by
+        the clean start, enables the persistent-failure interrupt
+        (entropy_source.adoc:18, :164). Control: PERSISTENT_FAILURE read 1.
+        """
+        pic = self._pic16()
+        self._ctrl("PIC16", pf == 1, thr=thr, pf=pf)
+        await self._grade("PIC16", pic == 1, 0, thr=thr, value=pic, expect_value=1)
 
     # --- reset and start -----------------------------------------------------------
     async def _trng_reset(self) -> int:
@@ -1098,14 +1121,12 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             **reason,
         }
 
-    def _not_graded(self, name: str, **fields) -> bool:
-        """In shard 3, log the values of an ungraded check as INFO and return True."""
+    def _not_graded(self, name: str) -> bool:
+        """In shard 3, log an ungraded check as OBS-BLOCKED and return True."""
         if name not in self.ungraded:
             return False
-        self.logger.info(
-            "INFO-%s not graded in shard 3 (shard 1 and the entry without +sep_shard grade it): %s",
-            name,
-            " ".join(f"{k}={v}" for k, v in fields.items()),
+        self.chk.blocked(
+            name, "shard 3 does not grade it; shard 1 and the entry without +sep_shard grade it"
         )
         return True
 
@@ -1115,7 +1136,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.trip_hold = None
         if th is None:
             return
-        if self._not_graded("PF-TRIP-HOLD", cond=int(th["cond"]), **th["fields"]):
+        if self._not_graded("PF-TRIP-HOLD"):
             return
         self.chk.ctrl("PF-TRIP-HOLD", th["ctrl"], **th["ctrl_fields"])
         self.chk.ok("PF-TRIP-HOLD", th["cond"], **th["fields"])
@@ -1263,8 +1284,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         """Trip ended by a MODULE_ENABLE cycle; grades HALT and RECOVER (enable_cycle)."""
         open_graded_window(TEST, self.logger)
         res = await self._trip(thr, win)
-        pic = self._pic16()
-        self.chk.obs("PIC16", value=pic, thr=thr)
+        if res["alert"]:
+            await self._grade_pic16(thr, res["pf"])
         if not res["alert"]:
             close_graded_window(self.logger)
             self.chk.ok("PF-HALT", False, thr=thr, reason="timeout:alert", bound=res["bound"])
@@ -1467,7 +1488,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             fields["reason"] = nt["reason"]
             if nt.get("bound") is not None:
                 fields["bound"] = nt["bound"]
-        if self._not_graded("PF-NOTRIP", **fields):
+        if self._not_graded("PF-NOTRIP"):
             return
         await self._grade(
             "PF-NOTRIP",
@@ -1583,28 +1604,31 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
 
     # --- MAIN_SM_STATUS.ERR leg ------------------------------------------------------
     async def _sm_illegal_leg(self) -> None:
-        """CHK-SM-ILLEGAL and OBS-SM-ILLEGAL-PF, after the ERR leg (VCS only).
+        """OBS-SM-ILLEGAL and OBS-SM-ILLEGAL-PF, after the ERR leg (VCS only).
 
-        Golden: entropy_source.rdl MAIN_SM_STATUS.ERR "Latches an illegal state
-        or health-test counter integrity error". The leaf forces the drawn
-        illegal encoding on the state flops (MAIN_SM_FLOPS) for ILLEGAL_HOLD_CLKS clocks,
-        releases it, waits SM_ERR_WAIT_CLKS clocks and reads ERR once. Control:
-        ERR reads 0 before the force (the ERR leg ended with a TRNG reset). The
-        main state machine stays in its error state until a reset, so this leg
-        is the last. Under Verilator the state flop is not public to cocotb and
-        the check is logged as blocked.
+        Logged, not graded: no .adoc or RDL lists the legal encodings of
+        MAIN_SM_STATUS.STATE (entropy_source.rdl: "sparse-encoded"), so no
+        specification makes the forced value an illegal state. The leaf forces the
+        drawn encoding on the state flops (MAIN_SM_FLOPS) for ILLEGAL_HOLD_CLKS
+        clocks, releases it, waits SM_ERR_WAIT_CLKS clocks and reads ERR once.
+        Control: ERR reads 0 before the force (the ERR leg ended with a TRNG
+        reset). The main state machine stays in its error state until a reset, so
+        this leg is the last. Under Verilator the state flop is not public to
+        cocotb and the leg is skipped (INFO-SM-ILLEGAL-SKIP).
         """
         if "verilator" in str(getattr(cocotb, "SIM_NAME", "") or "").lower():
-            self.chk.blocked("SM-ILLEGAL", "verilator: the main state flop is not public")
+            self.chk.info("SM-ILLEGAL-SKIP", reason="verilator: the main state flop is not public")
             return
         flops = [_handle(f"{MAIN_SM_PATH}.{f}") for f in MAIN_SM_FLOPS]
         if flops[0] is None:
-            self.chk.ok("SM-ILLEGAL", False, reason=f"no handle:{MAIN_SM_PATH}.{MAIN_SM_FLOPS[0]}")
+            self.chk.ctrl(
+                "SM-ILLEGAL", False, reason=f"no handle:{MAIN_SM_PATH}.{MAIN_SM_FLOPS[0]}"
+            )
             return
         close_graded_window(self.logger)
         illegal = self.plan.illegal_state
         err0, w0 = await self._err_read()
-        self._ctrl("SM-ILLEGAL", err0 == 0, err_before=err0, word_before=f"0x{w0:08x}")
+        self.chk.ctrl("SM-ILLEGAL", err0 == 0, err_before=err0, word_before=f"0x{w0:08x}")
         flops = [h for h in flops if h is not None]
         await RisingEdge(cocotb.top.clk_i)
         for h in flops:
@@ -1615,17 +1639,14 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         await self._clocks_wait(SM_ERR_WAIT_CLKS)
         err1, w1 = await self._err_read()
         pf1 = await self._pf_read()
-        await self._grade(
+        self.chk.obs(
             "SM-ILLEGAL",
-            err0 == 0 and err1 == 1,
-            0,
             state_forced=f"0x{illegal:03x}",
             flops_forced=len(flops),
             hold_clk=ILLEGAL_HOLD_CLKS,
             wait_clk=SM_ERR_WAIT_CLKS,
             err_before=err0,
             err=err1,
-            expect_err=1,
             word=f"0x{w1:08x}",
         )
         self.chk.obs("SM-ILLEGAL-PF", state_forced=f"0x{illegal:03x}", pf=pf1)

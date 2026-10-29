@@ -1126,6 +1126,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             None if b.addr is None else b.addr >> 3 for b in self._in(self.rom.beats, t0, t1, "req")
         }
         req_ok = rq_words == set(exp_reads)
+        r_resp = [b.resp for b in self._in(self.lsu_rom.beats, t0, t1, "r")]
         for x, v in reads:
             exp = p.img.flipped(x, flipped[x]) if x in flipped else p.img.word(x)
             if v != exp:
@@ -1146,13 +1147,16 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             and nmi == 0
             and self.flip_stored == len(p.flips)
             and req_ok
+            and len(r_resp) >= len(exp_reads)
+            and all(c == 0 for c in r_resp)
         )
         self._grade(
             "CHK-ROM-NOECC",
             ok,
             f"instance=first flips1={n1}/{N_FLIP1} flips2={n2}/{N_FLIP2} "
             f"data={'stored' if not bad else 'mismatch'} "
-            f"resp={'OKAY' if c2 == c1 and nmi == 0 else 'ERR'} traps={c2 - c1 + nmi} "
+            f"lsu_rom_r_beats={len(r_resp)} lsu_rom_r_okay={sum(c == 0 for c in r_resp)} "
+            f"traps={c2 - c1 + nmi} "
             f"neighbours_exact={neigh} control_ecall_traps={c1 - c0} "
             f"probe_macro_flipped={self.flip_stored}/{len(p.flips)} "
             f"probe_rom_req_words={len(rq_words)}/{len(set(exp_reads))} "
@@ -1204,6 +1208,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             None if b.addr is None else b.addr >> 3 for b in self._in(self.rom.beats, t0, t1, "req")
         }
         req_ok = rq_words == set(exp_reads)
+        r_resp = [b.resp for b in self._in(self.lsu_rom.beats, t0, t1, "r")]
         labelled = len(self.label_hits)
         ok = (
             not bad
@@ -1214,13 +1219,16 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             and self.flip_stored == len(p.flips)
             and req_ok
             and labelled == len(p.flips)
+            and len(r_resp) >= len(exp_reads)
+            and all(c == 0 for c in r_resp)
         )
         self._grade(
             "CHK-ROM-NOECC",
             ok,
             f"instance=repeat flips1={n1}/{N_FLIP1} flips2={n2}/{N_FLIP2} "
             f"data={'stored' if not bad else 'mismatch'} "
-            f"resp={'OKAY' if c3 == c2 and nmi == 0 else 'ERR'} traps={c3 - c2 + nmi} "
+            f"lsu_rom_r_beats={len(r_resp)} lsu_rom_r_okay={sum(c == 0 for c in r_resp)} "
+            f"traps={c3 - c2 + nmi} "
             f"probe_macro_flipped={self.flip_stored}/{len(p.flips)} "
             f"probe_rom_req_words={len(rq_words)}/{len(exp_reads)} "
             f"probe_rom_req_exact={int(req_ok)} probe_label_words={labelled}/{len(p.flips)}"

@@ -31,14 +31,8 @@ Mechanism and Token Submission):
                     golden of its last go (Match 0x15, Mismatch 0x2a). A shadow word or
                     interface-control access answers a response that is not OKAY and
                     the target reads the same at the frontdoor before and after; the
-                    bit p reads 0 at the direct read at the end. The PROD read of
-                    ``SEC_DISABLE_TOKEN_MATCH`` after a go grades its code, and the PROD
-                    read of a shadow word or ``EFUSE_PROGRAM_CTRL`` grades the target
-                    unchanged; both log their response (``resp_graded=0``). The PROD
-                    token word read and write and the PROD read of
-                    ``SEC_DISABLE_TOKEN_MATCH`` with no go compare nothing: they log
-                    ``OBS-JTAG-LOGGED`` with the response and print no PASS token.
-                    No program command reaches
+                    bit p reads 0 at the direct read at the end. PROD and RMA_SIP
+                    grade the same way. No program command reaches
                     ``efuse_shim_command_req_o`` after a denied write. Controls: the
                     frontdoor program of c sets bit c at the same direct read and shows
                     one program command at the tap (else ``CHK-HOOK FAIL``); the read
@@ -80,7 +74,6 @@ from env.sep_efuse_bank_watch import SepShimCmdMonitor
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
     CH_CHIPLET,
-    CH_SEC_DIS,
     CH_SIP,
     CODE_IDLE,
     CODE_MATCH,
@@ -173,7 +166,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         reg = await self.fd.rd64(FEAT_CTRL)
         return reg, self.rd_known(cocotb.top.lcc_feat_ctrl_probe_o)
 
-    def _jtag_line(self, ok: bool, acc: dict, exp: str, resp: int, graded: bool, **extra) -> None:
+    def _jtag_line(self, ok: bool, acc: dict, exp: str, resp: int, **extra) -> None:
         self.chk.ok(
             "JTAG",
             ok,
@@ -183,21 +176,6 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             addr=f"0x{acc['addr']:08x}",
             exp=exp,
             resp=resp,
-            resp_graded=int(graded),
-            **extra,
-        )
-
-    def _jtag_logged(self, acc: dict, exp: str, resp: int, **extra) -> None:
-        """Log an access that compares nothing: an observation, never a PASS token."""
-        self.chk.obs(
-            "JTAG-LOGGED",
-            state=self.state,
-            op=acc["op"],
-            tgt=acc["cls"],
-            addr=f"0x{acc['addr']:08x}",
-            exp=exp,
-            resp=resp,
-            resp_graded=0,
             **extra,
         )
 
@@ -219,18 +197,12 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         else:
             resp, _data = await self._jrd(addr)
         after = await self.fd.rd(addr)
-        logged = (
-            self.state == "PROD"
-            and acc["op"] == "rd"
-            and (acc["cls"] == "shadow" or acc.get("reg") == "EFUSE_PROGRAM_CTRL")
-        )
         unchanged = before & mask == after & mask
         self._jtag_line(
-            unchanged and (logged or resp != OKAY),
+            unchanged and resp != OKAY,
             acc,
             "deny",
             resp,
-            not logged,
             data_ok="na",
             target_unchanged=int(unchanged),
             before=f"0x{before & mask:08x}",
@@ -242,41 +214,33 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
     # -- token block ---------------------------------------------------------
 
     async def _token_access(self, acc: dict) -> None:
-        prod = self.state == "PROD"
         if acc["cls"] == "token_word" and acc["op"] == "wr":
             resp = await self._jwr(acc["addr"], acc["data"])
             self.last_wr[(acc["channel"], acc["index"])] = acc["data"]
-            ids = {"channel": acc["channel"], "index": acc["index"], "vector": acc["vector"]}
-            if prod:
-                self._jtag_logged(acc, "allow", resp, **ids)
-            else:
-                self._jtag_line(
-                    resp == OKAY,
-                    acc,
-                    "allow",
-                    resp,
-                    True,
-                    data_ok="na",
-                    target_unchanged="na",
-                    **ids,
-                )
+            self._jtag_line(
+                resp == OKAY,
+                acc,
+                "allow",
+                resp,
+                data_ok="na",
+                target_unchanged="na",
+                channel=acc["channel"],
+                index=acc["index"],
+                vector=acc["vector"],
+            )
         elif acc["cls"] == "token_word":
             resp, data = await self._jrd(acc["addr"])
             last = self.last_wr[(acc["channel"], acc["index"])]
-            extra = {"data": f"0x{data:08x}", "last_wr": f"0x{last:08x}"}
-            if prod:
-                self._jtag_logged(acc, "allow", resp, **extra)
-            else:
-                self._jtag_line(
-                    resp == OKAY and data == last,
-                    acc,
-                    "allow",
-                    resp,
-                    True,
-                    data_ok=int(data == last),
-                    target_unchanged="na",
-                    **extra,
-                )
+            self._jtag_line(
+                resp == OKAY and data == last,
+                acc,
+                "allow",
+                resp,
+                data_ok=int(data == last),
+                target_unchanged="na",
+                data=f"0x{data:08x}",
+                last_wr=f"0x{last:08x}",
+            )
         elif acc["cls"] == "eop":
             ch = acc["channel"]
             content = [self.last_wr[(ch, k)] for k in range(8)]
@@ -299,7 +263,6 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 acc,
                 "allow",
                 resp,
-                True,
                 data_ok=int(code == golden),
                 target_unchanged="na",
                 channel=ch,
@@ -313,15 +276,13 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             ch = acc["channel"]
             resp, data = await self._jrd(acc["addr"])
             code = data & MATCH_STATUS_MASK
-            logged = prod and ch == CH_SEC_DIS
             if ch in self.last_result:
                 want = self.last_result[ch]
                 self._jtag_line(
-                    (logged or resp == OKAY) and code == want,
+                    resp == OKAY and code == want,
                     acc,
                     "allow",
                     resp,
-                    not logged,
                     data_ok=int(code == want),
                     target_unchanged="na",
                     channel=ch,
@@ -330,19 +291,15 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 )
             else:
                 self.chk.obs("JTAG-MATCH-NOGO", state=self.state, channel=ch, data=f"0x{code:02x}")
-                if logged:
-                    self._jtag_logged(acc, "allow", resp, channel=ch)
-                else:
-                    self._jtag_line(
-                        resp == OKAY,
-                        acc,
-                        "allow",
-                        resp,
-                        True,
-                        data_ok="na",
-                        target_unchanged="na",
-                        channel=ch,
-                    )
+                self._jtag_line(
+                    resp == OKAY,
+                    acc,
+                    "allow",
+                    resp,
+                    data_ok="na",
+                    target_unchanged="na",
+                    channel=ch,
+                )
 
     async def _status_clear_control(self, w: int) -> None:
         """Control of "target unchanged" for the denied status write: the same clear,
@@ -526,7 +483,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         w = W_MULT * sense_clks
         stm = bit(self, "secure_tm_o")
         self.logger.info(
-            "WINDOW W=%d sense_clks=%d mult=%d secure_tm_o=%d", w, sense_clks, W_MULT, stm
+            "INFO-WINDOW W=%d sense_clks=%d mult=%d secure_tm_o=%d", w, sense_clks, W_MULT, stm
         )
         self.chk.ctrl("JTAG-STM", stm == 0, secure_tm_o=stm)
 

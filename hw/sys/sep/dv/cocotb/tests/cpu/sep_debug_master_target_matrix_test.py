@@ -685,9 +685,18 @@ class sep_debug_master_target_matrix_test(sep_base_test):
     def _stage_rom(self) -> None:
         mem = cocotb.top.u_dut.u_sep_ip_integration.u_sep_boot_rom.mem
         mem[0].value = (SPIN_LOOP << 32) | SPIN_LOOP
-        self.logger.info(
-            "INFO-STAGE rom word0=0x%016x (jal x0, 0 at 0x%08x)", int(mem[0].value), ROM_BASE
-        )
+        self.logger.info("INFO-STAGE rom word0 <- 0x%016x", (SPIN_LOOP << 32) | SPIN_LOOP)
+
+    def _check_rom_stage(self) -> None:
+        """CTRL-STAGE-ROM: the staged spin loop is in the ROM array after the bring-up."""
+        word = int(cocotb.top.u_dut.u_sep_ip_integration.u_sep_boot_rom.mem[0].value)
+        want = (SPIN_LOOP << 32) | SPIN_LOOP
+        line = f"rom word0=0x{word:016x} expect=0x{want:016x} (jal x0, 0 at 0x{ROM_BASE:08x})"
+        if word != want:
+            self.logger.error("CTRL-MISSING STAGE-ROM: %s", line)
+            self.failures.append(f"CTRL-MISSING STAGE-ROM: {line}")
+        else:
+            self.logger.info("CTRL-STAGE-ROM: %s", line)
 
     async def _bring_up(self) -> None:
         """Step 1: cold reset with dbg_rstb_i low until the rst_ni release."""
@@ -699,6 +708,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 cocotb.start_soon(self._sampler())
 
             await self.bring_up_cpu_boot(0, pre_reset_hook=_hook)
+            self._check_rom_stage()
         else:
             self.drive_idle_defaults(dut, cpu_run=False)
             await self.assert_cold_reset(dut)
@@ -1554,10 +1564,18 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     else:
                         got, exp = await self._lsu(SepAxiOp.READ, addr, length=8), expect[name]
                     fc = field_compare(got, exp, mask)
+                    # The request address on PR-DBG-SB: a read that reaches another
+                    # word that also reads 0 cannot pass on the data alone.
+                    ax = [b.addr for b in self._beats(self.sb_tap, sm, "ar" if d == "r" else "aw")]
                     self._grade(
                         "CHK-DBG-SBA-REG",
-                        fc.ok and len(rsp) == 1 and rsp[0].resp == RESP_OKAY and err == 0,
+                        fc.ok
+                        and len(rsp) == 1
+                        and rsp[0].resp == RESP_OKAY
+                        and err == 0
+                        and ax == [addr],
                         f"target={name} dir={d.upper()} addr=0x{addr:08x} "
+                        f"pr_dbg_sb_{'ar' if d == 'r' else 'aw'}={[_h(a) for a in ax]} "
                         f"wr={'-' if d == 'r' else _h(wvals[name])} "
                         f"{'sbdata' if d == 'r' else 'lsu_rb'}={_h(got)} expect={_h(exp)} "
                         f"field_mask=0x{mask:x} resp={codes} sberror={err}"
@@ -1678,7 +1696,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     f"wdata={_h(wval) if d == 'w' else 'na'}",
                 )
                 self.logger.info(
-                    "INFO-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
+                    "OBS-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
                     path,
                     d.upper(),
                     err,
@@ -1748,7 +1766,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         self.uncore_ctl = None
         dut.dmi_uncore_enable_i.value = 0
         await ClockCycles(dut.clk_i, 2)
-        self.logger.info("INFO-UNCORE-CTL-RD: rdata=0x%08x (bench holds 0)", rd)
+        self.logger.info("OBS-UNCORE-CTL-RD: rdata=0x%08x (bench holds 0)", rd)
         return res
 
     def _grade_uncore(self, ctl: dict[str, int]) -> bool:

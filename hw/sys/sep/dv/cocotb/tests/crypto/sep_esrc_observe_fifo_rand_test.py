@@ -59,7 +59,9 @@ Checkers:
                     with the sample clock stopped across a FLUSH, LEVEL reads 0 right
                     after the FLUSH (entropy_source.adoc:827: it discards the buffered
                     words). A lane change lowers LEVEL.
-  CHK-OBS-OVERFLOW  plateau D, overflow bit 1, LEVEL D after two fill times, W1C clears.
+  CHK-OBS-OVERFLOW  plateau D = 64, overflow bit 1, LEVEL D after two fill times, W1C
+                    clears. D: the observe FIFOs use the same FIFO as the 64-entry
+                    output FIFO (architecture.adoc:189, :146).
                     Control: the overflow bit reads 0 before the leg and 1 after
                     the drain, before the write-one.
   CHK-OBS-LOCK      locked at 1: L + 2 words delivered, last two noise words equal the
@@ -171,6 +173,9 @@ DRAW_TRIES = 16
 # leaf. The RDL LEVEL field is 7 bits (6:0).
 FIFO_DEPTH_MAX = 64
 ALL_ONES = 0xFFFF_FFFF
+# Observe FIFO depth: the observe FIFOs use the same FIFO as the output FIFO
+# (hw/ip/entropy_source/doc/architecture.adoc:189), which holds 64 entries (:146).
+OBS_FIFO_DEPTH = 64
 # Words of the overflow sequence: two more than the drain bound.
 OVF_SEQ_WORDS = FIFO_DEPTH_MAX + 2
 
@@ -770,6 +775,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             fields = {
                 "fifo": fifo,
                 "depth": depth[fifo],
+                "expect_depth": OBS_FIFO_DEPTH,
                 "overflow": int(seen[fifo]),
                 "level_after_two_fills": later[fifo],
                 "w1c": w1c[fifo],
@@ -780,7 +786,10 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
                 fields["reason"] = "timeout:overflow"
             self.chk.ok(
                 "OBS-OVERFLOW",
-                seen[fifo] and depth[fifo] > 0 and later[fifo] == depth[fifo] and w1c[fifo] == 0,
+                seen[fifo]
+                and depth[fifo] == OBS_FIFO_DEPTH
+                and later[fifo] == depth[fifo]
+                and w1c[fifo] == 0,
                 **fields,
             )
 

@@ -34796,12 +34796,10 @@ module sep_fcov (
     cp_resp: coverpoint s.rp iff (s.rp_v) {bins okay = {1'b0}; bins not_okay = {1'b1};}
     // Class-op 0 token word read, 1 token word write, 2 TOKEN_EOP write,
     // 3 match read (allowed, OKAY); 4 shadow read, 5 shadow write, 6 control
-    // read, 7 control write (denied, not OKAY). (PROD, token word read) and
-    // (PROD, token word write) are ignored.
+    // read, 7 control write (denied, not OKAY).
     x_state_class_op: coverpoint s.so iff (s.so_v) {
-      bins cells[] = {[6'd2 : 6'd23]};
-      ignore_bins prod_token_word = {6'd0, 6'd1, 6'd32, 6'd33};
-      illegal_bins wrong_response = {[6'd34 : 6'd55]};
+      bins cells[] = {[6'd0 : 6'd23]};
+      illegal_bins wrong_response = {[6'd32 : 6'd55]};
     }
     cp_gate_independent_of_feat: coverpoint s.gi iff (s.gi_v) {
       bins prod = {1'b0}; bins rma_sip = {1'b1};
@@ -35315,7 +35313,7 @@ module sep_fcov (
     end
     ill = '0;
     // x_state_class_op, x_jtag_rlock and x_jtag_presense illegal_bins.
-    if (e.so_v && (e.so inside {[6'd34 : 6'd55]})) begin
+    if (e.so_v && (e.so inside {[6'd32 : 6'd55]})) begin
       ill.so = e.so;
       ill.so_v = 1'b1;
       e.so_v = 1'b0;
@@ -39473,7 +39471,7 @@ module sep_fcov (
       bins sram_burst_before_err_out = {2'd3};
     }
     cp_fr_wipe_predicate: coverpoint v[0] iff (pt == 5'd5) {
-      bins predicate_on_both_shreds = {1'b0}; bins predicate_off_keys_stay = {1'b1};
+      bins predicate_on_both_shreds = {1'b0}; bins predicate_off_hw_wipe_only = {1'b1};
     }
     cp_fr_rec_code: coverpoint v[1:0] iff (pt == 5'd6) {
       bins key_slot_crc = {2'd0}; bins rx_buff_oflow = {2'd1}; bins flushed_by_sep = {2'd2};
@@ -39562,13 +39560,14 @@ module sep_fcov (
       bins key_load[] = {[6'b011_000 : 6'b011_111]};
     }
     // {DEST_VALID bit (0 HMAC, 1 KMAC, 2 AES, 3 OTBN, 4 ABR ML-DSA seed),
-    // size against the share width (0 below, 1 equal, 2 above)}.
+    // size against the share width (0 below, 1 equal, 2 above)}. The below
+    // cells are blocked on a Planned check (docs/SEP_FCOV.adoc) and not declared.
     cp_km_size_vs_width: coverpoint v[4:0] iff (pt == 5'd3) {
-      bins hmac[] = {5'b000_00, 5'b000_01, 5'b000_10};
-      bins kmac[] = {5'b001_00, 5'b001_01, 5'b001_10};
-      bins aes[] = {5'b010_00, 5'b010_01, 5'b010_10};
-      bins otbn[] = {5'b011_00, 5'b011_01, 5'b011_10};
-      bins mldsa_seed[] = {5'b100_00, 5'b100_01, 5'b100_10};
+      bins hmac[] = {5'b000_01, 5'b000_10};
+      bins kmac[] = {5'b001_01, 5'b001_10};
+      bins aes[] = {5'b010_01, 5'b010_10};
+      bins otbn[] = {5'b011_01, 5'b011_10};
+      bins mldsa_seed[] = {5'b100_01, 5'b100_10};
     }
     // A shred of a bank: 0 the KEY_CTRL write first, 1 at least 2 x width
     // share-word writes, 2 a bank that held no key.
@@ -43223,11 +43222,14 @@ module sep_fcov (
 
     // ---- fatal episode (cp_fr_flow_order, cp_fr_wipe_predicate,
     // cp_vw_isr_flow) ----
-    if (!kq_ep_on && !kq_held && !kq_unrec &&
+    // An episode lasts one KM boot. A fault source that rises before the
+    // report restarts it and keeps the key_valid set seen so far, so a source
+    // that rose at the boot does not hide the keys of a later fatal point.
+    if ((!kq_ep_on || !kq_ep_rep) && !kq_held && !kq_unrec &&
         ((km_wipe_i[1] === 1'b1) || ((st & ~kq_st_q & ranked) != 12'h0))) begin
       kq_ep_on <= 1'b1;
-      kq_ep_wipe <= (km_wipe_i[1] === 1'b1);
-      kq_ep_kv0 <= kv;
+      kq_ep_wipe <= (km_wipe_i[1] === 1'b1) || (kq_ep_on && kq_ep_wipe);
+      kq_ep_kv0 <= kv | (kq_ep_on ? kq_ep_kv0 : 9'h0);
       kq_ep_kvclr <= 1'b0;
       kq_ep_fl <= 1'b0;
       kq_ep_rep <= 1'b0;
@@ -43259,7 +43261,9 @@ module sep_fcov (
           if (kq_ep_rep && (kq_ep_kvclr || (kv == 9'h0)) && (kq_ep_kv0 != 9'h0) &&
               (kq_ep_sr >= 16'(KqShredWords)))
             u_sep_km_fault_report_cg.sample(5'd5, 16'd0);
-          if (kq_ep_rep && (kq_ep_kv0 != 9'h0) && (kv == kq_ep_kv0))
+          // Predicate off: the wipe pulse alone clears the keys, and the SRAM
+          // write count after the report stays below one SRAM (no shred).
+          if (kq_ep_wipe && kq_ep_rep && kq_ep_kv_rep && (kq_ep_sr < 16'(KqShredWords)))
             u_sep_km_fault_report_cg.sample(5'd5, 16'd1);
           if (kq_ep_wipe) begin
             if (kq_ep_rep && kq_ep_kv_rep) u_sep_km_vault_wipe_cg.sample(5'd4, 16'd0);
@@ -43270,6 +43274,7 @@ module sep_fcov (
         end
       end
     end
+    if (kq_held) kq_ep_on <= 1'b0;
 
     // ---- handover (sep_km_handover_cg, cp_nx_epoch_secret,
     // cp_csr_entry_lock, cp_vw_handover_shred) ----

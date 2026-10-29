@@ -82,13 +82,22 @@ instance, so a logged or ungraded access fills no bin. The OTBN AxCACHE cells
 sample only on the release of an OTBN cache instance, after CHK-ROW-CACHE.
 
 CHK-ROW-FILTER-SRC: with inbound entry 0 set to a drawn non-zero ``src_id``,
-an SI read of the STEE remap ``ATTRS`` word whose AxUSER equals ``src_id``
-answers the same response and data as the read through the wildcard entry just
-before, and a read whose AxUSER differs answers DECERR. A foreign source ID
+an SI read of the inbound filter entry 1 ``START_ADDR`` word whose AxUSER
+equals ``src_id`` answers OKAY with the LSU read-back, as the read through the
+wildcard entry just before does, and a read whose AxUSER differs answers
+DECERR. A foreign source ID
 does not match the entry, no other inbound entry is enabled, and unmatched
 inbound traffic is blocked with DECERR while SEP-scope debug is off
 (``hw/ip/axi_filter/doc/index.adoc``, Match, Then Permit and Blocked
 Transactions; the bring-up line records ``sep_debug=0``).
+
+CHK-ROW-FABRIC-CSR: the SI read of the inbound filter ``START_ADDR`` word and of
+the alias remap ``START`` word answers OKAY with the value the LSU staged, and
+the SI read of both halves of ``FEAT_CTRL`` answers OKAY with the bring-up golden
+(``hw/sys/sep/doc/fabric.adoc``, Fabric Topology: the inbound crossbar reaches
+the system CSRs; ``hw/sys/sep/doc/memory_map.adoc``, Units Unreachable from the
+Inbound Port). The AP and STEE remap ``ATTRS`` words are logged
+(``OBS-ROW-FABRIC-CSR``).
 
 Not graded: the Forwarded and adopter-defined rows; the response of a burst to
 a register region outside the crypto region and the SPI host extent (the
@@ -272,6 +281,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-ROW-SPI-BURST-CONTROL",
         "CHK-SI-ID-ECHO",
         "CHK-ROW-FILTER-SRC",
+        "CHK-ROW-FABRIC-CSR",
     )
 
     # ------------------------------------------------------------------ access
@@ -476,6 +486,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         # The image carries no SEC_DIS token, so the golden takes SEC_DIS 0 from
         # the image, not from the DUT.
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
+        self.feat_golden = feat
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
         self.logger.info(
@@ -1167,7 +1178,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         ):
             await self._lsu_write_reg(a, v, f"SPI {tag} stage")
         self.logger.info(
-            "ROW-SPI-STAGE LOG: csid=0x%08x error_enable=0x%02x event_enable=0x%02x",
+            "INFO-ROW-SPI-STAGE LOG: csid=0x%08x error_enable=0x%02x event_enable=0x%02x",
             self.regval[SPI_CSID],
             self.regval[SPI_ERROR_ENABLE],
             self.regval[SPI_EVENT_ENABLE],
@@ -1436,58 +1447,86 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
 
     async def _fabric_csr_leg(self) -> None:
-        """SI reads of fabric CSRs that the LSU staged, and of FEAT_CTRL."""
+        """SI reads of fabric CSRs that the LSU staged, and of FEAT_CTRL.
+
+        CHK-ROW-FABRIC-CSR: the inbound crossbar reaches the system CSRs, which
+        program the inbound filter entries and the remaps (``fabric.adoc``, Fabric
+        Topology), and forwards the other addresses below ``0x4000_0000`` to the
+        local crossbar (``memory_map.adoc``, Units Unreachable from the Inbound
+        Port), so an SI read of the inbound filter START word, of the alias remap
+        START word and of ``FEAT_CTRL`` answers OKAY with the staged value or the
+        bring-up golden. The AP and STEE remap words are logged
+        (``OBS-ROW-FABRIC-CSR``): ``memory_map.adoc`` lists the AP/STEE remap
+        regions as unreachable from the inbound port.
+        """
         targets = (
             ("infilt_start", INFILT_BASE + FILTER_STRIDE + FILTER_START_ADDR, 0xFFFF_FFF8),
             ("alias_start", ALIAS_BASE + ALIAS_STRIDE + ALIAS_START, ALIAS_START_MASK),
             ("ap_attrs", AP_BASE + REMAP_STRIDE + REMAP_ATTRS, REMAP_OFFSET_LO_MASK),
             ("stee_attrs", STEE_BASE + REMAP_ATTRS, REMAP_OFFSET_LO_MASK),
         )
+        src_addr = targets[0][1]
         for name, addr, mask in targets:
             _r, cur = await self._lsu(SepAxiOp.READ, addr)
             staged = self.rng.getrandbits(32) & mask
             await self._lsu(SepAxiOp.WRITE, addr, wdata=staged)
             _r, lsu_rb = await self._lsu(SepAxiOp.READ, addr)
             s = await self._si(SepAxiOp.READ, addr)
-            self.logger.info(
-                "OBS-ROW-FABRIC-CSR target=%s addr=0x%08x lsu_rb=0x%08x si_resp=%s si_rdata=0x%08x",
-                name,
-                addr,
-                lsu_rb & 0xFFFF_FFFF,
-                _RN.get(s.resp_code),
-                s.rdata & 0xFFFF_FFFF,
+            line = (
+                f"target={name} addr=0x{addr:08x} staged=0x{staged:08x} "
+                f"lsu_rb=0x{lsu_rb & 0xFFFF_FFFF:08x} si_resp={_RN.get(s.resp_code)} "
+                f"si_rdata=0x{s.rdata & 0xFFFF_FFFF:08x}"
             )
+            if name in ("ap_attrs", "stee_attrs"):
+                self.logger.info("OBS-ROW-FABRIC-CSR %s", line)
+            elif s.resp_code == RESP_OKAY and (s.rdata & 0xFFFF_FFFF) == staged:
+                self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s expect=OKAY/staged", line)
+            else:
+                self._fail("CHK-ROW-FABRIC-CSR", f"{line} expect=OKAY/staged")
             if name == "stee_attrs":
                 src = self.rng.randrange(1, 16)
                 miss = self.rng.choice([u for u in range(16) if u != src])
+                # Probed on the inbound filter START word of entry 1, which the SI
+                # reaches; entry 0 (the probe's entry) leaves it unchanged.
+                _r, ref = await self._lsu(SepAxiOp.READ, src_addr)
+                ref &= 0xFFFF_FFFF
+                w = await self._si(SepAxiOp.READ, src_addr)
                 await self._program_entry(src_id=src)
                 got = {}
                 for kind, u in (("src_match", src), ("src_mismatch", miss)):
-                    t = await self._si(SepAxiOp.READ, addr, user=u)
+                    t = await self._si(SepAxiOp.READ, src_addr, user=u)
                     got[kind] = (t.resp_code, t.rdata & 0xFFFF_FFFF)
                 await self._program_entry()
-                wild = (s.resp_code, s.rdata & 0xFFFF_FFFF)
+                wild = (w.resp_code, w.rdata & 0xFFFF_FFFF)
                 line = (
-                    f"target=stee_attrs entry_src_id={src} axuser_match=0x{src:x} "
+                    f"target=infilt_start entry_src_id={src} axuser_match=0x{src:x} "
                     f"axuser_mismatch=0x{miss:x} wildcard={_RN.get(wild[0])}/0x{wild[1]:08x} "
                     f"match={_RN.get(got['src_match'][0])}/0x{got['src_match'][1]:08x} "
-                    f"mismatch={_RN.get(got['src_mismatch'][0])}/0x{got['src_mismatch'][1]:08x}"
+                    f"mismatch={_RN.get(got['src_mismatch'][0])}/0x{got['src_mismatch'][1]:08x} "
+                    f"expect=OKAY/0x{ref:08x},OKAY/0x{ref:08x},DECERR"
                 )
-                if got["src_match"] == wild and got["src_mismatch"][0] == RESP_DECERR:
+                if (
+                    wild == (RESP_OKAY, ref)
+                    and got["src_match"] == wild
+                    and got["src_mismatch"][0] == RESP_DECERR
+                ):
                     self.logger.info("CHK-ROW-FILTER-SRC PASS: %s", line)
                 else:
                     self._fail("CHK-ROW-FILTER-SRC", line)
             await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
         _r, lsu_v = await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL)
-        s = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)
-        self.logger.info(
-            "OBS-ROW-FABRIC-CSR target=lc_feat_ctrl addr=0x%08x lsu_rb=0x%08x si_resp=%s "
-            "si_rdata=0x%08x",
-            LCC_FEAT_CTRL,
-            lsu_v & 0xFFFF_FFFF,
-            _RN.get(s.resp_code),
-            s.rdata & 0xFFFF_FFFF,
+        lo = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)
+        hi = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL + 4)
+        got = ((hi.rdata & 0xFFFF_FFFF) << 32) | (lo.rdata & 0xFFFF_FFFF)
+        line = (
+            f"target=lc_feat_ctrl addr=0x{LCC_FEAT_CTRL:08x} lsu_rb=0x{lsu_v & 0xFFFF_FFFF:08x} "
+            f"si_resp={_RN.get(lo.resp_code)},{_RN.get(hi.resp_code)} si_rdata=0x{got:016x} "
+            f"expect=OKAY/0x{self.feat_golden:016x}"
         )
+        if lo.resp_code == hi.resp_code == RESP_OKAY and got == self.feat_golden:
+            self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s", line)
+        else:
+            self._fail("CHK-ROW-FABRIC-CSR", line)
 
     async def _graded_legs(self) -> None:
         """Every graded leg; each opens the window only around its graded accesses."""
@@ -1547,7 +1586,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             close_graded_window(self.logger)
             set_row_pass(ROW_PASS_DROP, self.logger)
             raise
-        self.logger.info("ROW-PASS LOG: releases=%d fails=%d", self.released, len(self.fails))
+        self.logger.info("INFO-ROW-PASS LOG: releases=%d fails=%d", self.released, len(self.fails))
         if self.si_id_ok == 0:
             self._fail("CHK-SI-ID-ECHO", "no SI access answered, nothing graded")
         elif not self.si_id_bad:

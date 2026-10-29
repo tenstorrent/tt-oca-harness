@@ -61,7 +61,10 @@ whose values depend on the unstated edge direction), ``OBS-MASKED-VISIBLE``,
 ``OBS-SRC34``, ``OBS-SRC-SHAPE`` (the high clocks and rises of each source
 line over the single-source walk, and the source 12 latency and shape),
 ``OBS-GWCLR-LEVEL`` (the pending bit after a meigwclr write to an asserted
-level cell), the boundary source index, ``OBS-VECTOR`` and ``OBS-FIFO-EMPTY``.
+level cell), the boundary source index and ``OBS-FIFO-EMPTY`` (the KMAC
+``INTR_STATE`` read-back). ``CTRL-VECTOR`` (control, fails the leaf on a
+mismatch): in each map pass the level-source vector equals the expected OR
+vector of the enabled sources.
 
 The firmware brings the entropy stack up before the engine runs (AES masking
 and the OTBN URND draw from EDN); this test drives the raw noise of the ring
@@ -563,19 +566,18 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"meip1=0x{got[1]:08x} exp0=0x{exp[0]:08x} exp1=0x{exp[1]:08x} "
                 f"meip2_7={_hexw(got[2:])} src12_high_clk={h11} src33_high_clk={h32}",
             )
-            # Logged, not graded: the vector against the expected vector for the level sources.
+            # Control: the level-source vector feeding the PIC equals the
+            # expected OR vector, so a meip compare is not met by a dead line.
             vec, xm, _, _ = self._vec(tag)
             lvl_mask = VEC_GRADED & ~vec_mask(PULSE)
             exp_vec = vec_mask(srcs - set(PULSE)) & lvl_mask
-            self.logger.info(
-                "OBS-VECTOR LOG pass=%d probe_equal=%d vec=0x%011x exp=0x%011x mask=0x%011x xz=0x%x",
-                pas,
-                int((vec & lvl_mask) == exp_vec),
-                vec,
-                exp_vec,
-                lvl_mask,
-                xm,
+            body = (
+                f"pass={pas} probe_equal={int((vec & lvl_mask) == exp_vec)} vec=0x{vec:011x} "
+                f"exp=0x{exp_vec:011x} mask=0x{lvl_mask:011x} xz=0x{xm:x}"
             )
+            if (vec & lvl_mask) != exp_vec or xm & lvl_mask:
+                raise AssertionError(f"CTRL-MISSING CTRL-VECTOR seed={self.wc.seed} {body}")
+            self.logger.info("CTRL-VECTOR LOG %s", body)
         # Single-source reads: each source alone sets its own bit and no other
         # bit of meip[0] and meip[1], so a swap or an extra mapping fails.
         singles = [kv for _, kv in self._lines("SINGLE")]

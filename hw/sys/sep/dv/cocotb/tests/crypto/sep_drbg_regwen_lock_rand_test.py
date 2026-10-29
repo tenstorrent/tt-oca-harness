@@ -48,9 +48,10 @@ write of 1 to ``REGWEN``) carries its B response on the check line
 (``wr_resp``); a response other than OKAY fails the leaf at the write.
 ``INT_STATE_READ_ENABLE`` under the CSRNG ``REGWEN`` is logged only
 (``OBS-REGWEN-OWN``), and so are ``RESEED_INTERVAL`` and ``INT_STATE_NUM``
-under it (``OBS-REGWEN-OTHER``): the ``csrng.rdl`` ``REGWEN`` text makes "all
-writeable registers" read-only when it is false, and the DUT takes these
-writes, so the difference is under RTL review and is not graded here.
+under it (``OBS-REGWEN-OTHER``): the ``csrng.rdl`` ``REGWEN`` text ("all
+writeable registers ... become read-only") names no register, and the upstream
+``regwen`` binding locks only ``CTRL``, ``FIPS_FORCE`` and ``ERR_CODE_TEST``.
+The two texts differ for these two registers, so no golden is stated.
 """
 
 from __future__ import annotations

@@ -50,8 +50,10 @@ only the shadow storage -- and for a state outside the named set it must read 0
 produces under these disable vectors.
 
 Checkers, by leaf (``+lc_start`` value). Every leaf starts with CHK-START-SENSED
-(the sensed LC_STATE equals the staged start state) and ends with CHK-LEAF (the
-walked cells and the seed are logged).
+(the sensed LC_STATE equals the staged start state), except the demoted and
+transient leaves, and ends with ``INFO-LEAF`` (the walk, the seed and the
+required checks; it grades nothing). Each walk names its required checks
+(``_REQUIRED``), and a leaf that misses one fails.
 
   1 (PROD)
     * CHK-W1S-NO-CLEAR   a write of 0 clears nothing.
@@ -120,6 +122,8 @@ Every other cell within a leaf is fixed.
 
 from __future__ import annotations
 
+from functools import partial
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
@@ -171,6 +175,34 @@ _PROD_END_EXIT_SALT = 0x5052_4F44_454E_4400
 # LC_STATE bits kept out of the seeded [31:8] patterns, so CTRL-LC-WR-LANDED has
 # an unused bit for each write cell. Eight bits cover the longest walk (six writes).
 _MARK_POOL = 0xFF00_0000
+# Checks each walk emits; a leaf that misses one fails its evidence gate.
+_REQUIRED = {
+    "prod-gates": (
+        "CHK-START-SENSED",
+        "CHK-W1S-NO-CLEAR",
+        "CHK-GATE-SIP",
+        "CHK-GATE-CHIP-ORD",
+        "CHK-GATE-SIP-FAULT",
+        "CHK-SIP-ADVANCE",
+    ),
+    "prod-demoted": ("CHK-DEMOTE-OPEN", "CHK-W1S-NO-CLEAR", "CHK-DEMOTE-NO-BLOCK"),
+    "rma-sip + invalid-reach": (
+        "CHK-START-SENSED",
+        "CHK-RMA-BIT0",
+        "CHK-W1S-NO-CLEAR",
+        "CHK-GATE-CHIP-TOK",
+        "CHK-CHIP-ADVANCE",
+        "CHK-INVALID-REACH",
+    ),
+    "rma-chiplet": ("CHK-START-SENSED", "CHK-RMA-BIT0", "CHK-W1S-NO-CLEAR"),
+    "prod-end": (
+        "CHK-START-SENSED",
+        "CHK-PROD-END-INVALID",
+        "CHK-W1S-NO-CLEAR",
+        "CHK-INVALID-TERM",
+    ),
+    "transient-rma": ("CHK-TRANSIENT-NO-TOKEN", "CHK-TRANSIENT-INVALID", "CHK-W1S-NO-CLEAR"),
+}
 
 
 @pyuvm.test()
@@ -243,7 +275,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             "does not match this leaf's +lc_start"
         )
         self.logger.info(
-            "[lc-w1s] leaf start %s sensed from OTP (transient_rma=%d)",
+            "INFO-LC-START leaf start %s sensed from OTP (transient_rma=%d)",
             lc_state_name(lc_raw),
             int(transient_rma),
         )
@@ -614,7 +646,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         transient = self._flag("lc_transient_rma")
         prod_end_exit = self._prod_end_exit() if start == LC_PROD_END and not transient else None
         self.logger.info(
-            "lc W1S leaf: start=%s demote=%d transient_rma=%d RANDCFG: %s%s",
+            "INFO-LC-LEAF start=%s demote=%d transient_rma=%d RANDCFG: %s%s",
             lc_state_name(start),
             int(demote),
             int(transient),
@@ -622,36 +654,32 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             f" prod_end_exit={prod_end_exit}" if prod_end_exit else "",
         )
 
-        await self._sense(start, transient_rma=transient)
-
         if transient:
             assert start == LC_PROD_END, (
                 "+lc_transient_rma is defined only from PROD_END here, where the "
                 "transient result is outside the named set"
             )
-            await self._walk_transient()
-            walked = "transient-rma"
+            walked, walk = "transient-rma", self._walk_transient
+        elif start == LC_PROD and demote:
+            walked, walk = "prod-demoted", self._walk_prod_demoted
         elif start == LC_PROD:
-            if demote:
-                await self._walk_prod_demoted()
-                walked = "prod-demoted"
-            else:
-                await self._walk_prod()
-                walked = "prod-gates"
+            walked, walk = "prod-gates", self._walk_prod
         elif start == LC_RMA_SIP_0:
-            await self._walk_rma_sip()
-            walked = "rma-sip + invalid-reach"
+            walked, walk = "rma-sip + invalid-reach", self._walk_rma_sip
         elif start == LC_RMA_CHIP_0:
-            await self._walk_rma_chiplet()
-            walked = "rma-chiplet"
+            walked, walk = "rma-chiplet", self._walk_rma_chiplet
         else:
-            await self._walk_prod_end(prod_end_exit)
-            walked = f"prod-end ({prod_end_exit} exit)"
+            walked, walk = "prod-end", partial(self._walk_prod_end, prod_end_exit)
+        self.required_evidence = _REQUIRED[walked]
+
+        await self._sense(start, transient_rma=transient)
+        await walk()
 
         self.logger.info(
-            "CHK-LEAF PASS: walked %s from a sensed %s (tokens and LC_STATE[31:8] "
-            "pattern from seed %d)",
+            "INFO-LEAF walked=%s exit=%s start=%s seed=%d required=%s",
             walked,
+            prod_end_exit or "na",
             lc_state_name(start),
             self.cfg_lc.seed,
+            ",".join(self.required_evidence),
         )

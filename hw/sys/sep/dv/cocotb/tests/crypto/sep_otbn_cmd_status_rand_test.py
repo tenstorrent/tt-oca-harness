@@ -494,7 +494,7 @@ class Plan:
 
     def line(self, seed: int) -> str:
         return (
-            f"PLAN seed={seed} seq={','.join(f'0x{c:02x}' for c in self.seq)} "
+            f"INFO-PLAN seed={seed} seq={','.join(f'0x{c:02x}' for c in self.seq)} "
             f"gaps={','.join(map(str, self.gaps))} op={self.op} opa=0x{self.opa:08x} "
             f"opb=0x{self.opb:08x} a={self.a} b={self.b} "
             f"en_order={','.join(map(str, self.en_order))} k={self.k} "
@@ -826,7 +826,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         await self._bring_up_chain(sinks)
         baseline = await self.swrst.read_back()
         self.swrst.value = baseline
-        self.logger.info("BASELINE SW_RESET_N=0x%08x ext_trng_src_sel=internal", baseline)
+        self.logger.info("INFO-BASELINE SW_RESET_N=0x%08x ext_trng_src_sel=internal", baseline)
 
         seed = self.random_seed()
         self.plan = plan = draw_plan(seed)
@@ -1023,7 +1023,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             if end_ok:
                 await self._pass_label(OTBN_CMD_PASS_CMD_END)
         self.t_cmd = max(counts) if counts else _OUTER_CLK
-        self.logger.info("OTBN t_cmd=%d clocks (bound=%d)", self.t_cmd, _OUTER_CLK)
+        self.logger.info("INFO-T-CMD t_cmd=%d clocks (bound=%d)", self.t_cmd, _OUTER_CLK)
         return any_pass
 
     # ---------------------------------------------------------- INSN_CNT leg
@@ -1066,7 +1066,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             got = await self.otbn.read_dmem(DMEM_RES)
             res_ok[name] = got == golden
             self.logger.info(
-                "OTBN INSN run=%s k=%d insn_cnt=%d result=0x%08x golden=0x%08x",
+                "INFO-INSN-RUN run=%s k=%d insn_cnt=%d result=0x%08x golden=0x%08x",
                 name,
                 k,
                 cnt[name],

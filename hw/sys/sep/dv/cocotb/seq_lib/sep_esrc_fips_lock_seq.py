@@ -579,8 +579,10 @@ def apt_limit_golden(h: int) -> int | None:
     entropy_source.rdl derives RECOMMENDED_THRESHOLDS per SP 800-90B, and
     APT_LIMIT is the cutoff "derived for a 1024-sample window". 4.4.2 defines C
     as the smallest integer with Pr[X >= C] <= alpha, X ~ Binomial(W, 2^-H).
-    alpha = 2^-20 is the false-positive rate of the RCT_LIMIT field formula
-    C = 1 + ceil(20 / H) (4.4.1). H = h / 16 exactly (Q4.4), so no rounding
+    alpha = 2^-20: SP 800-90B (January 2018) 4.4 sets "alpha = 2^-20; this value
+    will be used in all the calculations in the rest of this section", which
+    covers 4.4.1 and 4.4.2, and the RCT_LIMIT field formula C = 1 + ceil(20 / H)
+    uses the same alpha. H = h / 16 exactly (Q4.4), so no rounding
     enters. The tail is summed from the top in log space. H = 0 gives p = 1 and
     no stated cutoff, so this returns None; the caller logs that read as OBS.
     """

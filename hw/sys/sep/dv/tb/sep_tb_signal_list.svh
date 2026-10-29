@@ -1213,13 +1213,15 @@
 `SEP_TB_OUT(logic, pr_dmacsr_arready_o)
 `SEP_TB_OUT(logic [31:0], pr_dmacsr_araddr_o)
 // PR-INFLT: the request out of the inbound filter (u_inbound_filter), before
-// the global-to-local remap; it carries the global address.
+// the global-to-local remap; it carries the global address and AxUSER.
 `SEP_TB_OUT(logic, pr_inflt_awvalid_o)
 `SEP_TB_OUT(logic, pr_inflt_awready_o)
 `SEP_TB_OUT(logic [55:0], pr_inflt_awaddr_o)
+`SEP_TB_OUT(logic [11:0], pr_inflt_awuser_o)
 `SEP_TB_OUT(logic, pr_inflt_arvalid_o)
 `SEP_TB_OUT(logic, pr_inflt_arready_o)
 `SEP_TB_OUT(logic [55:0], pr_inflt_araddr_o)
+`SEP_TB_OUT(logic [11:0], pr_inflt_aruser_o)
 // PR-CPU: AxPROT of the raw CPU LSU (AR, AW) and IFU (AR) requests, before any
 // remap (u_sep_cpu lsu_axi_req_raw, ifu_axi_req_raw); tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic, pr_cpu_lsu_awvalid_o)

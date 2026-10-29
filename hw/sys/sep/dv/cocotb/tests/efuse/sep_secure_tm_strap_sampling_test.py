@@ -50,8 +50,8 @@ Checkers:
                    ends past the leg-D windows, which the sense-done level
                    alone does not show).
   CHK-STM-CLEAR    with ``rst_ni`` low and the strap at 1, ``secure_tm_o`` reads 0
-                   at the last ``clk_i`` edge before the release. Control: it
-                   reads 1 before the reset.
+                   on every ``clk_i`` edge from the first edge with ``rst_ni`` low
+                   to the release. Control: it reads 1 before the reset.
   CHK-STM-LATE     in leg E, with no match at the boot, ``secure_tm_o`` stays 0
                    after the strap rises and the ``SEC_DIS`` token matches.
                    Control: leg D shows the early capture to 1.
@@ -232,7 +232,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._edge()
         self._check_efuse_shadow_after_sense()
         self.logger.info(
-            "BOOT %s strap=%d release=%d sense_done=%d (T=%d)",
+            "INFO-BOOT %s strap=%d release=%d sense_done=%d (T=%d)",
             label,
             strap,
             rel,
@@ -475,7 +475,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"test bug: SEC_DIS word 0x{feat_sd.value:016x} control word 0x{feat_d0.value:016x}"
         )
         self.logger.info(
-            "GOLDEN feat no_match %s value=0x%016x; sec_dis %s value=0x%016x",
+            "INFO-GOLDEN feat no_match %s value=0x%016x; sec_dis %s value=0x%016x",
             feat_d0.log(),
             feat_d0.value,
             feat_sd.log(),
@@ -505,7 +505,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         except AssertionError as exc:
             raise AssertionError(f"CHK-STM-CLEAR FAIL: control: {exc}") from None
         self.logger.info(
-            "CTRL-STM-LEGA: strap=1 secure_tm_o=1 at sample %d (sense %d)", a_one, sense
+            "CTRL-STM-LEGA seen: strap=1 secure_tm_o=1 at sample %d (sense %d)", a_one, sense
         )
 
         open_graded_window(TEST, self.logger)
@@ -514,15 +514,16 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         low = self._window(a, rel - 1)
         strap_low = self._window(a, rel - 1, "strap")
         assert all(s == 1 for s in strap_low), f"leg A: strap not 1 during the reset: {strap_low}"
-        assert low[-1] == 0, (
-            f"CHK-STM-CLEAR FAIL: strap=1 rst_ni low, secure_tm_o={low[-1]} at the last clk_i "
-            f"edge (sample {rel - 1}) before the release"
+        # Sample a is the edge on which rst_ni falls: no clk_i edge has seen it low yet.
+        late = [a + 1 + i for i, v in enumerate(low[1:]) if v != 0]
+        assert len(low) >= 2 and not late, (
+            f"CHK-STM-CLEAR FAIL: strap=1 rst_ni low, secure_tm_o not 0 at samples {late[:4]} "
+            f"(first clk_i edge with rst_ni low: {a + 1}, release: {rel})"
         )
         self.logger.info(
-            "CHK-STM-CLEAR PASS: rst_ni low -> secure_tm_o=0 at cycle %d strap=1 edges_low=%d "
-            "ones_while_low=%d control_legA=1",
-            rel - 1 - a,
-            len(low),
+            "CHK-STM-CLEAR PASS: rst_ni low -> secure_tm_o=0 from the first clk_i edge with "
+            "rst_ni low to the release, strap=1 edges_low=%d ones_while_low=%d control_legA=1",
+            len(low) - 1,
             sum(1 for v in low if v == 1),
         )
         sense = await self._wait_sample("done", 1, _SENSE_BOUND, "leg A resense")

@@ -468,40 +468,42 @@ def draw_plan(seed: int) -> Plan:
 
 
 def plan_draw_lines(p: Plan) -> list[str]:
-    """One ``DRAW`` line per drawn dimension, in draw order."""
+    """One ``INFO-DRAW`` line per drawn dimension, in draw order."""
     h = lambda v: f"0x{v:08x}"  # noqa: E731
     out = [
-        f"DRAW version_wr={h(p.ver_wr)}",
-        "DRAW irq_walk=" + ",".join(f"{i}/{j}" for i, j in p.walk),
-        "DRAW irq_set_masks=" + ",".join(f"0x{m:03x}" for m in p.set_masks),
-        "DRAW en_order=" + ",".join(p.en_order),
-        f"DRAW en_a e=0x{p.en_a.e:03x} s=0x{p.en_a.s:03x}",
-        f"DRAW en_b e=0x{p.en_b.e:03x} s=0x{p.en_b.s:03x}",
-        "DRAW en_c=" + ",".join(f"src{c.src}:e=0x{c.e:03x}:s=0x{c.s:03x}" for c in p.en_c),
-        f"DRAW en_d e=0x{p.en_d.e:03x} s=0x{p.en_d.s:03x}",
-        f"DRAW scrambler_key k={h(p.scr_k)} k2={h(p.scr_k2)}",
-        f"DRAW irq_entry aligned={h(p.entry_aligned)} unaligned={h(p.entry_unaligned)} "
+        f"INFO-DRAW version_wr={h(p.ver_wr)}",
+        "INFO-DRAW irq_walk=" + ",".join(f"{i}/{j}" for i, j in p.walk),
+        "INFO-DRAW irq_set_masks=" + ",".join(f"0x{m:03x}" for m in p.set_masks),
+        "INFO-DRAW en_order=" + ",".join(p.en_order),
+        f"INFO-DRAW en_a e=0x{p.en_a.e:03x} s=0x{p.en_a.s:03x}",
+        f"INFO-DRAW en_b e=0x{p.en_b.e:03x} s=0x{p.en_b.s:03x}",
+        "INFO-DRAW en_c=" + ",".join(f"src{c.src}:e=0x{c.e:03x}:s=0x{c.s:03x}" for c in p.en_c),
+        f"INFO-DRAW en_d e=0x{p.en_d.e:03x} s=0x{p.en_d.s:03x}",
+        f"INFO-DRAW scrambler_key k={h(p.scr_k)} k2={h(p.scr_k2)}",
+        f"INFO-DRAW irq_entry aligned={h(p.entry_aligned)} unaligned={h(p.entry_unaligned)} "
         f"v2={h(p.entry_v2)}",
-        "DRAW size_addrs=" + ",".join(f"0x{a:04x}" for a in p.size_addrs),
-        "DRAW size_tags=" + ",".join(h(t) for t in p.size_tags),
-        "DRAW park_w=" + ",".join(str(w) for w in p.park_w) + " first=max(fall-delay reference)",
+        "INFO-DRAW size_addrs=" + ",".join(f"0x{a:04x}" for a in p.size_addrs),
+        "INFO-DRAW size_tags=" + ",".join(h(t) for t in p.size_tags),
+        "INFO-DRAW park_w="
+        + ",".join(str(w) for w in p.park_w)
+        + " first=max(fall-delay reference)",
     ]
     for r in p.sram_rounds:
         out.append(
-            f"DRAW sram_round={r.index} lock=0x{r.lock:08x} m=0x{r.m:08x} m2=0x{r.m2:08x} "
+            f"INFO-DRAW sram_round={r.index} lock=0x{r.lock:08x} m=0x{r.m:08x} m2=0x{r.m2:08x} "
             f"rel=0x{r.rel_addr:04x}/{h(r.rel_val)}"
         )
         out.append(
-            f"DRAW sram_round={r.index} stores="
+            f"INFO-DRAW sram_round={r.index} stores="
             + ",".join(f"0x{a:04x}:{h(r.init[a])}>{h(r.store[a])}" for a in r.addrs)
             + " r31="
             + ",".join(f"0x{a:04x}:{h(r.init[a])}>{h(r.store[a])}" for a in R31_FIXED)
         )
-    out.append("DRAW wrong_codes=" + ",".join(h(c) for c in p.wrong_codes))
-    out.append("DRAW reset_order=" + ",".join(w.kind for w in p.rounds))
+    out.append("INFO-DRAW wrong_codes=" + ",".join(h(c) for c in p.wrong_codes))
+    out.append("INFO-DRAW reset_order=" + ",".join(w.kind for w in p.rounds))
     for k, w in enumerate(p.rounds):
         out.append(
-            f"DRAW witness round={k} kind={w.kind} otp_cold_bit={w.otp_cold_bit} "
+            f"INFO-DRAW witness round={k} kind={w.kind} otp_cold_bit={w.otp_cold_bit} "
             f"otp_bit={w.otp_bit} sram_lock=0x{w.sram_lock:08x} mbox={h(w.mbox_word)} sram="
             + ",".join(f"0x{a:04x}:{h(v)}" for a, v in w.sram)
         )

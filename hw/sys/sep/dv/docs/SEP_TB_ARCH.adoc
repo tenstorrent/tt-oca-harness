@@ -143,7 +143,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
 |Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
 |JTAG ID |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `jtag_id` (`jtag_id_i[31:1]` of `sep`) from the TB input `jtag_id_i`; an undriven or unknown value drives 0. Readback: `jtag_id_probe_o`. Owner: `sep_efuse_field_layout_rand_test` (CHK-JTAGID).
-|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`.
+|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_lsu_demux_underflow_waive` turns off the CPU LSU demux assertions from each `wdt_rst_ni_i` fall to the next `rst_ni` fall: the watchdog reset does not drain transactions, and the cold reset that follows every watchdog timeout clears that state (`doc/trm/src/reset.adoc:44-53`). Full-CPU build only; user `sep_cpu_reset_retention_test` (both entries; the stub entry runs the full-CPU build on VCS). `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar ports for `OcahSpiFlash` and `OcahSpiMonitor`: `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o` (`sep_io_spi_req_o.sd[0]`) and `spi_miso_i` (`sep_io_spi_rsp_i.sd[1]`). Monitor-only taps of the DUT output struct `sep_io_spi_req_o`: `spi_sd_o[3:0]` (`sd`), `spi_sd_oe_o[3:0]` (`sd_oe`), `spi_cs_oe_o` (`cs_oe`) and `spi_sck_oe_o` (`sck_oe`); `env/sep_spi_wire_monitor.py` attaches them to `OcahSpiMonitor`, which grades the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment"). SEP top-port drive: `spi_sd_i[3:0]` drives all four response lanes of `sep_io_spi_rsp_i.sd` in a run with `+sep_spi_four_lane`; otherwise lane 1 is `spi_miso_i` and lanes 0, 2 and 3 are 0. `sep_base_test` holds `spi_sd_i` at 0. Monitor-only tap `spi_sd_rsp_o[3:0]`: the four lanes the DUT receives, which `env/sep_spi_wire_monitor.py` gives the monitor as its input lanes.
@@ -674,9 +674,11 @@ Observation probe groups:
    `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-INFLT (`pr_inflt_*`): the request out of the inbound filter
    (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
-   global-to-local remap: AW and AR address, global. Owners:
+   global-to-local remap: AW and AR address, global, and AxUSER (the filter
+   passes the request unchanged, so AxUSER at its output is the AxUSER it
+   decoded). Owners:
    `sep_fabric_inbound_rebase_test`,
-   `sep_fabric_filter_match_priority_rand_test`,
+   `sep_fabric_filter_match_priority_rand_test` (also AxUSER, CTRL-FILT-USER),
    `sep_outbound_contention_rand_test` (CHK-SYSIF-NO-OUTBOUND-PATH),
    `sep_outbound_stall_saturation_test` (CHK-SYSIF-NO-OUTBOUND-PATH).
 ** PR-CPU (`pr_cpu_lsu_*`, `pr_cpu_ifu_*`): AxPROT of the raw CPU LSU (AR, AW)
@@ -855,13 +857,12 @@ Exceptions (a closed set):
   state flops (`u_main_sm.u_state_regs.u_state_flop.q_o` and the parallel
   `u_main_sm.state_q`) for 2 clocks after a clock edge, then releases them.
   Software cannot put the state machine in an undefined state, so the
-  illegal-state error has no frontdoor. The legal encodings only select the
-  stimulus; the golden is `MAIN_SM_STATUS.ERR`
-  (`hw/ip/entropy_source/regs/entropy_source.rdl:650`). VCS only: the flops
-  are not public under Verilator, and the leaf logs
-  `OBS-BLOCKED CHK-SM-ILLEGAL`. `MAIN_SM_STATUS` and `INTR_STATUS` stay
-  frontdoor. Users: the ESRC persistent-alert entry of the crypto and
-  entropy area (CHK-SM-ILLEGAL).
+  illegal-state error has no frontdoor. The encodings come from the design
+  package because no .adoc or RDL lists them, so the leg logs `ERR` after the
+  force (`OBS-SM-ILLEGAL`) and grades nothing. VCS only: the flops are not
+  public under Verilator, and the leaf logs `INFO-SM-ILLEGAL-SKIP`.
+  `MAIN_SM_STATUS` and `INTR_STATUS` stay frontdoor. Users: the ESRC
+  persistent-alert entry of the crypto and entropy area (OBS-SM-ILLEGAL).
 * *Crypto alert sender inject* — while `crypto_alert_inject_i` is 1, the alert
   pair (`alert_p`, `alert_n`) at the input of crypto alert receiver
   `crypto_alert_inject_idx_i` (0 to 10, the index order of

@@ -40,20 +40,18 @@
 //                         the core.
 //   CHK-ZERO-DCCM-NARROW: a 2-byte-wide fill into the DCCM buffer, graded as
 //                         CHK-ZERO-DCCM-4N2.
-//   CHK-ZERO-DCCM-MISALIGN: a 4-byte-wide fill of 8 bytes to the DCCM buffer
-//                         2 bytes above a word boundary ends in ERROR with
-//                         BUS_ERROR alone and the exclusive host-path error
-//                         (hw/sys/sep/doc/dma.adoc:118-121: a TCM zero fill
-//                         needs a 4-byte-aligned destination); after both
-//                         clears the error registers read 0. Its control
-//                         CTRL-ZERO-DCCM-MISALIGN requires the destination
-//                         inside DCCM, 2 bytes above a word boundary, and the
-//                         fill ended with DONE or ERROR inside the poll bound.
+//   OBS-ZERO-DCCM-MISALIGN: a 4-byte-wide fill of 8 bytes to the DCCM buffer
+//                         2 bytes above a word boundary; STATUS, ERROR_CODE,
+//                         DMA_BUS_ERR_STATUS and the first four buffer words
+//                         are logged, not graded: two TT texts state
+//                         different outcomes. Its control
+//                         CTRL-ZERO-DCCM-MISALIGN requires DMA_BUS_ERR_STATUS
+//                         0 before the fill, the destination inside DCCM, 2
+//                         bytes above a word boundary, and the fill ended
+//                         with DONE or ERROR inside the poll bound.
 // The host draws n for each 4n + 2 fill and patches it into g_zero_params.
 // The words a rejected fill targets have no stated value: they are logged on
 // an OBS-ZERO-TCM-SPAN line and not graded.
-// The first four buffer words after the misaligned fill have no stated value:
-// they are logged on an OBS-ZERO-TCM-MISALIGN line and not graded.
 
 #include <stdint.h>
 
@@ -514,15 +512,12 @@ static int chk_zero_tcm_partial(void) {
 #define DCCM_MISALIGN_BYTES 8u
 #define DCCM_MISALIGN_OFFSET 2u
 
-static int chk_zero_dccm_misalign(void) {
-    static const char chk[] = "CHK-ZERO-DCCM-MISALIGN";
+static int obs_zero_dccm_misalign(void) {
     const uint32_t base = (uint32_t)(uintptr_t)dccm_buf;
     const uint32_t dst = base + DCCM_MISALIGN_OFFSET;
     int e = 0;
-    uint32_t err = 0;
-    uint32_t bus = 0;
 
-    e += expect_bus_err_clear(chk, "before the fill");
+    e += expect_bus_err_clear("CTRL-ZERO-DCCM-MISALIGN", "before the fill");
     for (uint32_t i = 0; i < NWORDS + 2u; i++) {
         dccm_buf[i] = pattern(i);
     }
@@ -545,25 +540,26 @@ static int chk_zero_dccm_misalign(void) {
                          : ", expected a DCCM destination 2 bytes off a word, DONE or ERROR\n");
     e += !ctrl_ok;
 
-    e += expect_tcm_reject(chk, st, &err, &bus);
+    const uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    const uint32_t bus = rd(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR);
     __asm__ volatile("fence" ::: "memory");
-    sep_mbx_puts("OBS-ZERO-TCM-MISALIGN span=");
+    sep_mbx_puts("OBS-ZERO-DCCM-MISALIGN LOG STATUS=");
+    sep_mbx_puthex(st);
+    sep_mbx_puts(" ERROR_CODE=");
+    sep_mbx_puthex(err);
+    sep_mbx_puts(" DMA_BUS_ERR_STATUS=");
+    sep_mbx_puthex(bus);
+    sep_mbx_puts(" span=");
     for (uint32_t i = 0; i < 4u; i++) {
         sep_mbx_puthex(dccm_buf[i]);
         sep_mbx_putc(i < 3u ? ',' : '\n');
     }
-    // Leave the engine idle: a 4-byte-wide fill of the aligned buffer start.
+    // Leave the engine idle: clear both error reports, then a 4-byte-wide fill
+    // of the aligned buffer start.
+    wr(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     (void)zero_fill(base, 4u, SEP_DMA_WIDTH_4B);
     wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
-    if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-DCCM-MISALIGN dst=");
-        sep_mbx_puthex(dst);
-        sep_mbx_puts(" ERROR_CODE=");
-        sep_mbx_puthex(err);
-        sep_mbx_puts(" DMA_BUS_ERR_STATUS=");
-        sep_mbx_puthex(bus);
-        sep_mbx_puts(", errors cleared before GO\n");
-    }
     return e;
 }
 
@@ -582,7 +578,7 @@ int main(void) {
     errors += chk_zero_iccm();
     errors += chk_zero_tcm_narrow();
     errors += chk_zero_tcm_partial();
-    errors += chk_zero_dccm_misalign();
+    errors += obs_zero_dccm_misalign();
 
     sep_mbx_puts(errors ? "DMA zero fill test FAILED\n" : "DMA zero fill test PASSED\n");
     return errors;

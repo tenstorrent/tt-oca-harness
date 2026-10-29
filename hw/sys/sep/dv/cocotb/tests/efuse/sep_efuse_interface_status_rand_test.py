@@ -28,7 +28,11 @@ no early exit), then reads of ``EFUSE_INTERFACE_CTRL_STATUS``, ``EFUSE_READ_CTRL
 Checkers:
   CHK-IF-STATUS    the error flags and ``read_status`` of each refusal case equal the
                    case golden; each clear bit clears its flag only.
-  CHK-IF-CMD       the data-0 program leaves the bank unchanged; no read command at
+  CHK-IF-CMD       the data-0 program leaves the bank unchanged; the program of a 0 bit
+                   of the write-locked field leaves the bank unchanged
+                   (``efuse_program_go``: ignored when the lock bit is set;
+                   ``hw/sys/sep/doc/otp_fuse_controller.adoc``: a write-lock blocks
+                   fuse programming); no read command at
                    ``efuse_shim_command_req_o`` for the lock-blocked read (go to end of
                    W) and the both-enables read (go to the cold reset assertion); the
                    accepted read twin of each shows its read command.
@@ -74,7 +78,7 @@ event outside a graded step is dropped.
 
 Log-only: the flags of the pre-sense, data-0 and both-enables cases
 (``OBS-IF-STATUS-FLAGS``), the other flags and data of the lock-blocked read, the bank
-diff after the out-of-range and lock-blocked program cases (``OBS-IF-CMD``), the
+diff after the out-of-range program cases (``OBS-IF-CMD``), the
 count of post-guard commands (``efuse_shim_cmd_*_o``) of each out-of-range read and
 program (``OBS-IF-OOB-CMD``).
 Two points the contract leaves open are logged, not graded: the out-of-range program
@@ -798,18 +802,21 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         bit = self.lock_prog["addr"]
         snap = await self._frame("lock_program")
         tag = self._step()
+        pre_bit = (snap[bit >> 5] >> (bit & 31)) & 1
         f = await self._run_program(bit)
         diff = self.bank.diff_since(snap)
-        self.logger.info(
-            "OBS-IF-CMD LOG seed=%d case=prog_wlocked addr=%d otp_diff=%s",
-            self.seed,
-            bit,
-            "none" if not diff else diff_log(diff),
+        ok_cmd = self._grade(
+            "IF-CMD",
+            pre_bit == 0 and not diff,
+            case="prog_wlocked",
+            addr=bit,
+            pre_bit=pre_bit,
+            otp_diff="none" if not diff else diff_log(diff),
         )
         fc = await self._clear(_M_CLR_RE)
         ok_clear = self._s4(fc) == "0b0000"
         ok = self._status("lock_program", bit, f, "0b0001", int(ok_clear), ok_clear)
-        await self._pass(tag, ok)
+        await self._pass(tag, ok and ok_cmd)
         twin = self.progs["lock_twin"]["addr"]
         tag = self._step()
         snap = self.bank.read()

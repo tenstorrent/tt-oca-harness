@@ -512,10 +512,7 @@ static void write_enables(int pass) {
 static void obs_fifo_empty(const char *tag) {
     rec_obs("FIFO-EMPTY");
     rec_str("t", tag);
-    rec_str("intr_state_hmac", "na");
-    rec_hex("intr_enable_hmac", rd(HM(ENABLE)));
     rec_hex("intr_state_kmac", rd(KM(STATE)));
-    rec_hex("intr_enable_kmac", rd(KM(ENABLE)));
     rec_end();
 }
 

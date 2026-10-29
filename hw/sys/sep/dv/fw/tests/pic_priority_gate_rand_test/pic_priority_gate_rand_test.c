@@ -9,12 +9,13 @@
 // never source) and the sweep source from the run seed and patches them into
 // g_prm. Each leg starts with an M line (sep_console_rec.h). The firmware
 // prints one CHK line per check; the host grades CHK-WINNER and CHK-FLIP from
-// the ORDER lines.
+// the INFO-ORDER lines.
 //
 //   CHK-NONE-BEFORE-PROGRAM  no delivery with the reset meie and meipl
 //   CHK-GATED                no delivery through a closed gate (meie 0, never
 //                            priority, mstatus.MIE 0, mie.MEIE 0); opening it
-//                            delivers once
+//                            delivers once; a source behind meie 0 reads 1
+//                            in meip (closed_meip), with CTRL-PICIO the control
 //   CHK-STAY-PENDING         a waiting source keeps its meip bit while the
 //                            winner handler runs
 //   CHK-NEVER                the never value does not deliver; effective 1 does
@@ -174,6 +175,10 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define CSR_MITCNT1 0x7D5
 #define CSR_MITB1 0x7D6
 #define CSR_MITCTL1 0x7D7
+// mcgc and its picio bit (VeeR EL2 PRM table 12.2, reset 1). With picio 1 the
+// meipX registers report a disabled source that is pending (PRM 8.9, 8.12.3).
+#define CSR_MCGC 0x7F8
+#define MCGC_PICIO (1u << 9)
 #define MITCTL_ENABLE 1u       // mitctl.enable, bit 0
 #define MITB_RESET 0xFFFFFFFFu // mitb reset value
 // hw/sys/sep/doc/interrupts.adoc:294-298: pending and enable bits, cause codes.
@@ -611,7 +616,7 @@ static void run_round(uint32_t r) {
     for (uint32_t i = 0; i < n; i++) {
         setmask |= 1u << rprm(r, R_SRC + i);
     }
-    sep_mbx_puts("ROUND");
+    rec_info("ROUND");
     rec_num("r", r);
     rec_num("priord", p);
     put_list("srcs", r, R_SRC);
@@ -638,8 +643,25 @@ static void run_round(uint32_t r) {
     }
     (void)hold();
     uint32_t gated_runs = g_total - t0;
+    uint32_t mcgc;
+    __asm__ volatile("csrr %0, %1" : "=r"(mcgc) : "i"(CSR_MCGC));
+    uint32_t picio = (mcgc & MCGC_PICIO) ? 1u : 0u;
+    rec_ctl("PICIO");
+    rec_hex("mcgc", mcgc);
+    rec_num("picio", picio);
+    rec_end();
+    if (!picio) {
+        sep_mbx_puts("CTRL-MISSING PICIO mcgc.picio=0: meip need not report a disabled source");
+        rec_end();
+        g_err++;
+    }
+    uint32_t closed_meip[S_MAX];
     for (uint32_t i = 0; i < n; i++) {
-        meip_obs(rprm(r, R_SRC + i));
+        uint32_t s = rprm(r, R_SRC + i);
+        closed_meip[i] = meip_bit(s);
+        if (rprm(r, R_GATE + i) != GATE_MEIE0) {
+            meip_obs(s);
+        }
     }
     for (uint32_t j = 0; j < n; j++) {
         uint32_t i = rprm(r, R_ORDER + j);
@@ -657,6 +679,9 @@ static void run_round(uint32_t r) {
         uint32_t own = g_runs[s] - own0;
         uint32_t other = (g_total - before) - own;
         int pass = gated_runs == 0u && raised == n && own == 1u && other == 0u;
+        if (g == GATE_MEIE0) {
+            pass = pass && closed_meip[i] == 1u;
+        }
         rec_chk("GATED", pass);
         rec_num("src", s);
         rec_str("gate", g == GATE_MEIE0 ? "meie0" : "never");
@@ -664,6 +689,9 @@ static void run_round(uint32_t r) {
         rec_num("then_open_runs", own);
         rec_num("other_runs", other);
         rec_num("raised", raised);
+        if (g == GATE_MEIE0) {
+            rec_num("closed_meip", closed_meip[i]);
+        }
         chk_end(pass);
     }
 
@@ -692,7 +720,7 @@ static void run_round(uint32_t r) {
     (void)hold();
     uint32_t open_runs = g_total - t0;
     uint32_t first = g_log[0];
-    sep_mbx_puts("ORDER");
+    rec_info("ORDER");
     rec_str("corner", "winner");
     rec_num("r", r);
     rec_num("priord", p);
@@ -761,7 +789,7 @@ static void run_round(uint32_t r) {
     mstatus_mie(1);
     (void)wait_total(t0 + n);
     (void)hold();
-    sep_mbx_puts("ORDER");
+    rec_info("ORDER");
     rec_str("corner", "flip");
     rec_num("r", r);
     rec_num("priord_from", p);
@@ -1152,7 +1180,7 @@ int main(void) {
         sep_mbx_puts("FAIL: parameter block not patched\n");
         return 1;
     }
-    sep_mbx_puts("PARAMS");
+    rec_info("PARAMS");
     rec_hex("seed", g_prm[P_SEED]);
     rec_num("rounds", nr);
     rec_num("sweep", g_prm[P_SWEEP]);

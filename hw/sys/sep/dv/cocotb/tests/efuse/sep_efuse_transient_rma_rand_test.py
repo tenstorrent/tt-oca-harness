@@ -28,9 +28,12 @@ RMA_SIP already set, so the SIP match does not fall through: after W the
 ``LC_STATE`` shadow, its probe and ``FEAT_CTRL`` keep the start state, with both
 channels at Match before and after W (``otp_fuse_controller.adoc``, row
 ``TRANSIENT_RMA_EN``). The script ends both matches. A lone SIP match right
-after it is logged and not graded (``OBS-TRANSIENT-AFTER-BLOCK``): no
-specification line states whether the block of a simultaneous match outlives
-the matches without a reset. A cold reset follows; the twin then presents the
+after it lands RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK): the update
+follows each token match (``otp_fuse_controller.adoc:232-238``) and the block
+covers only a SIP match made while the chiplet match is held. The DUT keeps the
+start state, so this check is expected to fail until the RTL ticket on the
+once-per-reset transient update flags is fixed (Issue: pending). A cold reset
+follows; the twin then presents the
 SIP match alone from the sensed start state and lands RMA_SIP, and a second
 cold reset restores the sensed state. The lone SIP match and the cold reset
 after it run with the graded coverage window closed.
@@ -255,9 +258,15 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         return self.chk.ctrl(name, cond, **fields)
 
     def _grade_transient(
-        self, step: int | str, ch: str, code: int | None, raw: int, got: dict[str, int | None]
+        self,
+        step: int | str,
+        ch: str,
+        code: int | None,
+        raw: int,
+        got: dict[str, int | None],
+        name: str = "TRANSIENT",
     ) -> bool:
-        """CHK-TRANSIENT: Match code, whole LC_STATE word, its probe and FEAT_CTRL for ``raw``."""
+        """CHK-<name>: Match code, whole LC_STATE word, its probe and FEAT_CTRL for ``raw``."""
         p = self.plan
         exp_word = _lc_word(raw)
         exp_feat = feat_ctrl_profile(raw, p.sip_dis, p.sys_dis)
@@ -270,7 +279,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             and got["probe_feat"] == exp_feat.value
         )
         return self._grade(
-            "TRANSIENT",
+            name,
             ok,
             en=self.en,
             start=self.start,
@@ -450,7 +459,11 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         if leg_b:
             self.required_evidence = (*type(self).required_evidence, "CHK-PROG-LC")
         if leg_s:
-            self.required_evidence = (*type(self).required_evidence, "CHK-TRANSIENT-SIMUL")
+            self.required_evidence = (
+                *type(self).required_evidence,
+                "CHK-TRANSIENT-SIMUL",
+                "CHK-TRANSIENT-AFTER-BLOCK",
+            )
         self.logger.info("EVIDENCE-REQUIRED seed=%d ids=%s", seed, ",".join(self.required_evidence))
 
         raw0 = p.lc_raw & _LC_RAW_MASK
@@ -697,10 +710,9 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _twin_reset(self, raw0: int) -> None:
         """SIP match alone, then a cold reset, graded by CHK-TRANSIENT-RESET.
 
-        First, right after the simultaneous script, a lone SIP match is logged
-        (``OBS-TRANSIENT-AFTER-BLOCK``) and not graded: no specification line
-        states whether the block outlives the matches without a reset. Its
-        Mismatch go must reach its code (CTRL-TRANSIENT-AFTER-BLOCK-END; a
+        First, right after the simultaneous script, a lone SIP match must land
+        RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK,
+        ``otp_fuse_controller.adoc:232-238``). Its Mismatch go must reach its code (CTRL-TRANSIENT-AFTER-BLOCK-END; a
         missing end ends the leaf there), and a cold reset follows, both with
         the window closed. The window opens again after that reset. Then the
         twin SIP match lands RMA_SIP from the sensed start state (CHK-TRANSIENT
@@ -714,14 +726,13 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         obs_sip = await self._match(CH_SIP, f"{tag}.obs_sip")
         await ClockCycles(dut.clk_i, self.w)
         obs = await self._lc_and_feat()
-        self.chk.obs(
-            "TRANSIENT-AFTER-BLOCK",
-            start=self.start,
-            code=_hex2(obs_sip),
-            w_cycles=self.w,
-            got_word=f"0x{obs['word']:08x}",
-            probe_lc="x" if obs["probe_lc"] is None else f"0x{obs['probe_lc']:02x}",
-            got_feat=f"0x{obs['feat']:016x}",
+        self._grade_transient(
+            "after_block",
+            CH_SIP,
+            obs_sip,
+            _transient_next(raw0, CH_SIP, 1),
+            obs,
+            name="TRANSIENT-AFTER-BLOCK",
         )
         obs_end = await self._mismatch(CH_SIP, f"{tag}.obs_sip_end")
         if not self._ctrl(

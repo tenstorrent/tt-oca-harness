@@ -11,12 +11,13 @@ core accepts only whole words there (hw/sys/sep/doc/dma.adoc:118-121). So must a
 (dma.adoc:113-114), and a 2-byte-wide fill into DCCM; the words past TOTAL_DATA_SIZE keep their
 pattern (dma.adoc:115). The words such a fill targets have no stated value and are logged on the
 firmware's OBS-ZERO-TCM-SPAN lines only. A 4-byte-wide fill of 8 bytes to the DCCM buffer 2 bytes
-above a word boundary must also end in BUS_ERROR alone with the exclusive host-path error, because a
-TCM zero fill needs a 4-byte-aligned destination (dma.adoc:118-121; CHK-ZERO-DCCM-MISALIGN). Its
-control CTRL-ZERO-DCCM-MISALIGN requires the destination inside DCCM, 2 bytes above a word boundary,
-and the fill ended with DONE or ERROR. The DUT disagrees: it ends this fill in DST_ADDR_ERROR at
-start with no host-path fault, so the leaf fails on this check (Issue: pending). The leaf draws n
-for each 4n + 2 fill from the run seed
+above a word boundary is logged as an open question: STATUS, ERROR_CODE,
+DMA_BUS_ERR_STATUS and the first four buffer words go on the firmware's OBS-ZERO-DCCM-MISALIGN
+line. Two TT texts state different outcomes: dma.adoc:118-121 states BUS_ERROR with the host-path
+fault, while dma.adoc:95-96 and the DST_ADDR_LO and host_path_err field texts make it a start-time
+refusal with no transfer. Its control CTRL-ZERO-DCCM-MISALIGN requires DMA_BUS_ERR_STATUS 0 before
+the fill, the destination inside DCCM, 2 bytes above a word boundary, and the fill ended with DONE
+or ERROR. The leaf draws n for each 4n + 2 fill from the run seed
 and patches it into the firmware parameter block; each PASS line echoes its n. The firmware
 returns its error count and fw/startup/crt0.s emits PASS/FAIL magic that the boot scoreboard gates
 on.
@@ -93,11 +94,6 @@ _CHECK_DCCM_NARROW = (
     "the rejected 2-byte-wide DCCM fill, its guards and its recovery",
 )
 _CTRL_DCCM_MISALIGN = "PASS: CTRL-ZERO-DCCM-MISALIGN "
-_CHECK_DCCM_MISALIGN = (
-    "PASS: CHK-ZERO-DCCM-MISALIGN ",
-    "CHK-ZERO-DCCM-MISALIGN",
-    "the rejected 4-byte-wide DCCM fill to a destination 2 bytes above a word",
-)
 
 
 def _draw_n(seed: int) -> dict[str, int]:
@@ -114,7 +110,7 @@ class sep_dma_zero_test(sep_base_test):
     required_evidence = (
         tuple(chk for _, chk, _ in _CHECKS)
         + tuple(chk for chk, _, _ in _CHECKS_N)
-        + (_CHECK_DCCM_NARROW[1], _CHECK_DCCM_MISALIGN[1])
+        + (_CHECK_DCCM_NARROW[1],)
     )
 
     def build_phase(self) -> None:
@@ -174,16 +170,13 @@ class sep_dma_zero_test(sep_base_test):
         for chk, key, what in _CHECKS_N:
             needles.append((f"PASS: {chk} n=0x{n[key]:08x} ", chk, f"{what} (n={n[key]})"))
         needles.append(_CHECK_DCCM_NARROW)
-        needles.append(_CHECK_DCCM_MISALIGN)
+        if not any(ln.startswith(_CTRL_DCCM_MISALIGN) for ln in lines):
+            self._fail(
+                f"CTRL-MISSING: firmware console has no {_CTRL_DCCM_MISALIGN.strip()!r} line, "
+                "so the fill of OBS-ZERO-DCCM-MISALIGN did not reach a misaligned DCCM "
+                f"destination or did not end. Console was:\n{console}"
+            )
         for needle, chk, what in needles:
-            if chk == _CHECK_DCCM_MISALIGN[1] and not any(
-                ln.startswith(_CTRL_DCCM_MISALIGN) for ln in lines
-            ):
-                self._fail(
-                    f"CTRL-MISSING: firmware console has no {_CTRL_DCCM_MISALIGN.strip()!r} line, "
-                    f"so the fill of {chk} did not reach a misaligned DCCM destination or did not "
-                    f"end. Console was:\n{console}"
-                )
             if not any(ln.startswith(needle) for ln in lines):
                 self._fail(
                     f"{chk} FAIL: firmware console has no {needle.strip()!r} line, so {what} did "

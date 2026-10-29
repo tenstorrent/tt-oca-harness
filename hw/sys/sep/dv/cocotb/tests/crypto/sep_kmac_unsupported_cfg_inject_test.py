@@ -61,8 +61,13 @@ Checkers:
                      kmac_err still set. The control is the 0 read before the start
                      (CHK-KMAC-UNSUP ``pre_code``, reset value at line 343).
   CHK-KMAC-UNSUP-EN  en bit 1, unsupported strength: STATUS.sha3_absorb=1 after
-                     CMD.start. kmac_err is logged only. The mode 2'b01 cell
-                     with en bit 1 is graded the same way, with its
+                     CMD.start, and on the reads after absorb kmac_err=1 and
+                     ERR_CODE[31:24] = 0x06. The error text (lines 784-785)
+                     names no condition on the en bit, and kmac.adoc lines
+                     180-181 say another SHAKE or cSHAKE strength "will result
+                     error when hashing starts". The control is the 0 read of
+                     kmac_err and ERR_CODE before the start. The mode 2'b01
+                     cell with en bit 1 is graded the same way, with its
                      CFG_SHADOWED readback, after the owner window closes
                      (kmac.adoc lines 114-115: "SW may set this field for KMAC
                      to move forward with unsupported Keccak Mode and Strength
@@ -74,8 +79,7 @@ Checkers:
 Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
 kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
 (SHA3-256 with the en bit 0 reaches absorb with no kmac_err; its start time
-joins t_clean before the SHA3-128 cell). ``OBS-KMAC-UNSUP-EN-ERR`` logs
-kmac_err of the enabled group. ``OBS-KMAC-MODE01`` logs the rest of the mode 2'b01
+joins t_clean before the SHA3-128 cell). ``OBS-KMAC-MODE01`` logs the rest of the mode 2'b01
 run with ``en_unsupported_modestrength`` = 1 (message, process): ``kmac_done``,
 ``kmac_err``, ``ERR_CODE``, ``STATUS`` and four ``STATE`` words, which no text
 states.
@@ -376,7 +380,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         baseline = await self.swrst.read_back()
-        self.logger.info("SW_RESET_N baseline=0x%08x", baseline)
+        self.logger.info("INFO-BASELINE SW_RESET_N=0x%08x", baseline)
 
         seed = self.random_seed()
         self.kmac = SepKmac(self)
@@ -386,7 +390,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         ).start()
         plan = draw_plan(seed)
         self.logger.info(
-            "PLAN seed=%d supported=%s blocked=%s enabled=%s msg_len=%s rsvd_kstrength=%d "
+            "INFO-PLAN seed=%d supported=%s blocked=%s enabled=%s msg_len=%s rsvd_kstrength=%d "
             "rsvd_len=%d",
             seed,
             ",".join(f"{m}{s}/e{e}" for m, s, e in plan.supported),
@@ -402,7 +406,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         self._graded = True
         blocked_absorb = await self._blocked_group(seed, plan, t_clean)
         await self._sha3_cell(seed, plan, t_clean)
-        await self._enabled_group(seed, plan, t_clean, blocked_absorb)
+        await self._enabled_group(plan, t_clean, blocked_absorb)
         await self._rsvd_enabled_cell(plan, t_clean)
 
         self._graded = False
@@ -441,7 +445,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         # fail the leaf; the outer limit then stands in for t_clean.
         t_clean = max(starts) if starts else _OUTER_CLK
         self.logger.info(
-            "t_clean seed=%d t_clean=%d starts=%s", seed, t_clean, ",".join(map(str, starts))
+            "INFO-T-CLEAN seed=%d t_clean=%d starts=%s", seed, t_clean, ",".join(map(str, starts))
         )
         return t_clean
 
@@ -637,7 +641,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         )
         await self._reset_kmac()
 
-    async def _enabled_group(self, seed: int, plan: Plan, t_clean: int, blocked_absorb: dict):
+    async def _enabled_group(self, plan: Plan, t_clean: int, blocked_absorb: dict):
         """Step 7: each unsupported cell with en bit 1 reaches absorb."""
         bound = _ERR_BOUND_MULT * t_clean
         for mode, strength in plan.enabled:
@@ -646,10 +650,15 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             await self._wr(KMAC_CMD, KMAC_CMD_START)
             seen, status, clk = await self._poll(KMAC_STATUS, _ABSORB, t0, bound)
             intr = await self._rd(KMAC_INTR_STATE)
+            code = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
+            exp = EXP_ERR_UNEXPECTED_MODE_STRENGTH
             en_ok = self._grade(
                 "KMAC-UNSUP-EN",
-                seen,
-                seed=seed,
+                seen
+                and (pre_intr & _ERR) == 0
+                and (pre_code & _ERR_CODE_MASK) == 0
+                and _bits(intr, _ERR) == 1
+                and _code(code) == exp,
                 mode=mode,
                 kstrength=strength,
                 en_unsup=1,
@@ -658,11 +667,11 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
                 bound=bound,
                 pre_err=_bits(pre_intr, _ERR),
                 pre_code=f"0x{pre_code & _ERR_CODE_MASK:x}",
+                err=_bits(intr, _ERR),
+                code=f"0x{_code(code):02x}",
+                expected=f"0x{exp:02x}",
                 ctrl_absorb=blocked_absorb.get((mode, strength), "na"),
                 **({} if seen else {"reason": "timeout"}),
-            )
-            self.chk.obs(
-                "KMAC-UNSUP-EN-ERR", seed=seed, mode=mode, kstrength=strength, err=_bits(intr, _ERR)
             )
             if en_ok:
                 await self._passed(PASS_ENABLED)
@@ -676,14 +685,22 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         Runs after the owner window closed: no FCOV bin owns this cell.
         """
         bound = _ERR_BOUND_MULT * t_clean
-        _, _, cfg_rb = await self._arm_cell(_MODE_RSVD, plan.rsvd_strength, 1)
+        pre_intr, pre_code, cfg_rb = await self._arm_cell(_MODE_RSVD, plan.rsvd_strength, 1)
         cfg_exp = _cfg_word(_MODE_RSVD, plan.rsvd_strength, 1) & _CFG_CELL_MASK
         t0 = self._now_clk()
         await self._wr(KMAC_CMD, KMAC_CMD_START)
         absorb_seen, status, absorb_clk = await self._poll(KMAC_STATUS, _ABSORB, t0, bound)
+        start_intr = await self._rd(KMAC_INTR_STATE)
+        start_code = await self._rd(KMAC_ERR_CODE) & _ERR_CODE_MASK
+        exp = EXP_ERR_UNEXPECTED_MODE_STRENGTH
         self._grade(
             "KMAC-UNSUP-EN",
-            absorb_seen and (cfg_rb & _CFG_CELL_MASK) == cfg_exp,
+            absorb_seen
+            and (cfg_rb & _CFG_CELL_MASK) == cfg_exp
+            and (pre_intr & _ERR) == 0
+            and (pre_code & _ERR_CODE_MASK) == 0
+            and _bits(start_intr, _ERR) == 1
+            and _code(start_code) == exp,
             mode=_MODE_RSVD,
             mode_code=KMAC_MODE_RSVD,
             kstrength=plan.rsvd_strength,
@@ -693,6 +710,11 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
             absorb=_bits(status, _ABSORB),
             absorb_clk=absorb_clk,
             bound=bound,
+            pre_err=_bits(pre_intr, _ERR),
+            pre_code=f"0x{pre_code & _ERR_CODE_MASK:x}",
+            err=_bits(start_intr, _ERR),
+            code=f"0x{_code(start_code):02x}",
+            expected=f"0x{exp:02x}",
             **({} if absorb_seen else {"reason": "timeout"}),
         )
         if absorb_seen:

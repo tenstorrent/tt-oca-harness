@@ -29,7 +29,11 @@ the exempt cell 1, the order cell 2 and the chain leg 2.
 Checkers:
   CHK-LOCK-CELL     lock leg and single-bit image, one line per read slot: the
                     sensed-shadow output equals the staged words (the sense ignores
-                    locks); an unlocked frontdoor read equals them; a read-interface
+                    locks); an unlocked frontdoor read equals them; a frontdoor read
+                    of a read-locked field returns no word equal to its non-zero
+                    staged word (``otp_fuse_controller.adoc:108-109``: a read-lock
+                    blocks software reads of the shadow; the response code is
+                    logged in ``OBS-LOCK-READ``, not graded); a read-interface
                     request on a read-locked field sets ``efuse_req_error`` from 0
                     (read before the go) and the write-one clear returns it to 0, on an
                     unlocked twin it ends with ``read_done`` 1, ``read_status`` 0 and
@@ -91,7 +95,8 @@ leaf, sampled in the same window by the same sampler, shows valid and ``psel`` 1
 at least one edge (``CTRL-GUARD-NOPULSE-LIVE``, one line per request kind); an
 unlocked shadow-write field is the twin of a blocked shadow write (``CTRL-LOCK-CELL-WR-TWIN``; the plan trap filter leaves at
 least one of slots 3, 4, 21 and 22 without a write-lock in every lock leaf); the single-bit image has its own
-twin slot; the exempt cell has the ``CLASS_KEY`` blocked request and the ``LOCKS``
+twin slot; the exempt cell has the ``CLASS_KEY`` blocked request (read interface and
+frontdoor read, the frontdoor read graded as in CHK-LOCK-CELL) and the ``LOCKS``
 accepted request (``CTRL-LOCK-EXEMPT-RL``, ``CTRL-LOCK-EXEMPT-TWIN``); the order cell
 has a control write on a second slot (``CTRL-LOCK-ORDER-PATH``) and the third bit
 absent before its write (``CTRL-LOCK-ORDER-THIRD``); the chain compares all 256
@@ -335,17 +340,26 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             bad |= 0 if seq.resp_ok else max(seq.resp_code, 1)
         return words, bad
 
-    async def _fd_locked(self, slot: int, name: str) -> None:
-        """Frontdoor read of a read-locked field: logged, not graded."""
+    async def _fd_locked(self, slot: int, name: str) -> bool:
+        """Frontdoor read of a read-locked field: True when no word returns its non-zero
+        staged value. The response code is logged, not graded: no specification states it.
+        """
+        w0 = field_word(name)
+        ok = True
         for k in range(field_n_words(name)):
+            staged = self.plan.image.words[w0 + k] & _WORD
             seq = await self._rd(shadow_addr(name, k), blocked=True)
+            rdata = seq.rdata & _WORD
+            ok &= staged != 0 and (seq.timed_out or rdata != staged)
             self.chk.obs(
                 "LOCK-READ",
                 slot=slot,
                 word=k,
                 resp="timeout" if seq.timed_out else (0 if seq.resp_ok else seq.resp_code),
-                rdata=f"0x{seq.rdata & _WORD:08x}",
+                rdata=f"0x{rdata:08x}",
+                staged=f"0x{staged:08x}",
             )
+        return ok
 
     async def _sense(self, check: str, *, first: bool = False) -> int:
         """Release (first) or pulse ``rst_ni``, wait for sense done, return the sense time.
@@ -531,7 +545,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         await self._pass(tag, True)
         self.w = _W_MULT * sense
         self.logger.info(
-            "WINDOW seed=%d sense_clks=%d w_mult=%d w=%d", seed, sense, _W_MULT, self.w
+            "INFO-WINDOW seed=%d sense_clks=%d w_mult=%d w=%d", seed, sense, _W_MULT, self.w
         )
         self.bank = SepEfuseBank()
         # The post-guard command tap anchors the lock leg and the single-bit image (pulse
@@ -588,8 +602,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         if not fd_read:
             f["read"] = "na"
         elif rl:
-            await self._fd_locked(slot, name)
-            f["read"] = "logged"
+            blocked = await self._fd_locked(slot, name)
+            f["read"] = "blocked" if blocked else "staged_returned"
+            ok &= blocked
         else:
             words, bad = await self._fd_words(name)
             f["read"] = _hexw(words)
@@ -914,11 +929,13 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         close_graded_window(self.logger)
         ck = await self._read_if(leg["class_key_bit"]["addr"])
         lk = await self._read_if(leg["locks_bit"]["addr"])
+        ck_fd = await self._fd_locked(7, "CLASS_KEY")
         ctl_rl = (
             ck["pre_req_err"] == 0
             and ck["req_err"] == 1
             and ck["clr_req_err"] == 0
             and ck["busy"] == 0
+            and ck_fd
         )
         ctl_twin = lk["busy"] == 0 and lk["done"] == 1 and lk["status"] == 0 and lk["req_err"] == 0
         self._control(
@@ -930,6 +947,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             req_err=ck["req_err"],
             clr_req_err=ck["clr_req_err"],
             busy=ck["busy"],
+            fd_read="blocked" if ck_fd else "staged_returned",
         )
         self._control(
             "LOCK-EXEMPT-TWIN",
@@ -940,7 +958,6 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             status=lk["status"],
             req_err=lk["req_err"],
         )
-        await self._fd_locked(7, "CLASS_KEY")
         self._open_window()
         locks_all = all(w == _WORD for w in got["LOCKS"][0])
         ok = self._control("LOCK-EXEMPT-ALL-BURNED", locks_all, locks=_hexw(got["LOCKS"][0]))

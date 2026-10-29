@@ -532,7 +532,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         baseline = await self.swrst.read_back()
-        self.logger.info("SW_RESET_N baseline=0x%08x", baseline)
+        self.logger.info("INFO-BASELINE SW_RESET_N=0x%08x", baseline)
 
         seed = self.random_seed()
         self.kmac = SepKmac(self)

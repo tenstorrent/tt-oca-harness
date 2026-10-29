@@ -15,7 +15,12 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  host requires the 32 records at the drawn source.
 * CHK-GATED      (firmware) no delivery through a closed gate (meie 0, never
                  priority, mstatus.MIE 0); opening the gate delivers the same
-                 source once and no other. One more record, after the timer
+                 source once and no other. A source held behind ``meie`` 0
+                 reads 1 in ``meip`` (``closed_meip``; EL2 PRM section 8.12.3:
+                 disabled requests are reported, with ``mcgc.picio`` at its
+                 reset value 1, section 8.9 and table 12.2). Control:
+                 ``CTRL-PICIO`` reads ``picio=1``, else ``CTRL-MISSING PICIO``.
+                 One more record, after the timer
                  legs: source 1 pending at an open PIC gate with mstatus.MIE 1
                  and ``mie.MEIE`` 0 does not deliver, and ``mie.MEIE`` 1
                  delivers it once (``gate=mie_meie``; EL2 PRM section 8.6.1,
@@ -84,7 +89,7 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  and ``mip.mtip``, table 13.3 for ``mcause`` 0x8000_0007).
 
 The host also checks that each record of the threshold, nesting and timer
-legs carries the drawn stimulus. Log only: ``OBS-NEVER-MEIP``, ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
+legs carries the drawn stimulus. Log only: ``OBS-NEVER-MEIP`` (the never-priority sources), ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
 come from the drawn stimulus and the priority model, never from a DUT read. cpu run mode, ``+skip_fuse_sense``,
 Verilator and VCS.
 
@@ -277,17 +282,17 @@ class PrioCfg:
         return out
 
     def draw_lines(self) -> list[str]:
-        out = [f"DRAW rounds={len(self.rounds)} sweep_src={self.sweep}"]
+        out = [f"INFO-DRAW LOG rounds={len(self.rounds)} sweep_src={self.sweep}"]
         for i, rd in enumerate(self.rounds):
             out.append(
-                f"DRAW round={i} priord={rd.priord} srcs={rd.srcs} raws={rd.raws} "
+                f"INFO-DRAW LOG round={i} priord={rd.priord} srcs={rd.srcs} raws={rd.raws} "
                 f"eff={[effective(x, rd.priord) for x in rd.raws]} "
                 f"gates={['meie0' if g == GATE_MEIE0 else 'never' for g in rd.gates]} "
                 f"open_order={[rd.srcs[k] for k in rd.order]} never_src={rd.srcs[rd.never_idx]}"
             )
-        out.append(f"DRAW tie round={self.tie_round} srcs={list(self.tie_srcs)}")
+        out.append(f"INFO-DRAW LOG tie round={self.tie_round} srcs={list(self.tie_srcs)}")
         out.append(
-            f"DRAW legs thr_src={self.thr_src} thr_t={self.thr_t} nest_a={self.nest_a} "
+            f"INFO-DRAW LOG legs thr_src={self.thr_src} thr_t={self.thr_t} nest_a={self.nest_a} "
             f"nest_b={self.nest_b} nest_pl={self.nest_pl} it_first={self.it_first} "
             f"it_bound={self.it_bound}"
         )
@@ -391,7 +396,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         self.sb = SepBootScoreboard("sb", self)
 
     def _order_lines(self, corner: str) -> list[dict]:
-        return [parse_kv(t) for t in self.con.text_lines("ORDER") if f"corner={corner}" in t]
+        return [parse_kv(t) for t in self.con.text_lines("INFO-ORDER") if f"corner={corner}" in t]
 
     def _winner_verdict(self, i: int, ids: list[int]) -> tuple[bool, str, list[int]]:
         """CHK-WINNER of round ``i``: (pass, body, expected order)."""
@@ -433,7 +438,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         nr = len(self.tcfg.rounds)
         if len(wins) != nr or len(flips) != nr:
             raise AssertionError(
-                f"CHK-WINNER FAIL seed={seed}: {len(wins)} winner and {len(flips)} flip ORDER lines, "
+                f"CHK-WINNER FAIL seed={seed}: {len(wins)} winner and {len(flips)} flip INFO-ORDER lines, "
                 f"expected {nr} each"
             )
         n = 0
@@ -462,13 +467,13 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         try:
             got = (int(kv["priord"]), _ids(kv["srcs"]), _ids(kv["raws"]), _ids(kv["gates"]))
         except (KeyError, ValueError) as exc:
-            return f"round {i}: ROUND line unreadable ({exc})"
+            return f"round {i}: INFO-ROUND line unreadable ({exc})"
         if got != (rd.priord, rd.srcs, rd.raws, rd.gates):
             return f"round {i}: firmware ran {got}, drew {rd}"
         return None
 
     def _chk_echo(self) -> None:
-        rows = [parse_kv(t) for t in self.con.text_lines("ROUND")]
+        rows = [parse_kv(t) for t in self.con.text_lines("INFO-ROUND")]
         if len(rows) != len(self.tcfg.rounds):
             raise AssertionError(f"firmware ran {len(rows)} rounds, drew {len(self.tcfg.rounds)}")
         for i, kv in enumerate(rows):
@@ -487,7 +492,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
     # ---- pass label ----
     def _round_passed(self, i: int, recs: list[ConsoleRec], lines: list[str]) -> bool:
         """Every check of round ``i`` passed: the firmware checks of the round
-        and the host checks on its ROUND and ORDER lines (the compares of
+        and the host checks on its INFO-ROUND and INFO-ORDER lines (the compares of
         CHK-WINNER and CHK-FLIP)."""
         rd = self.tcfg.rounds[i]
         chk = [r for r in recs if r.name.startswith("CHK-")]
@@ -498,9 +503,9 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             return False
         kinds = [(int(r.kv["src"]), r.kv["gate"]) for r in gated if r.kv.get("gate") != "mie0"]
         exp = [(rd.srcs[k], "meie0" if rd.gates[k] == GATE_MEIE0 else "never") for k in rd.order]
-        rounds = [parse_kv(t) for t in lines if t.startswith("ROUND")]
-        wins = [parse_kv(t) for t in lines if t.startswith("ORDER") and "corner=winner" in t]
-        flips = [parse_kv(t) for t in lines if t.startswith("ORDER") and "corner=flip" in t]
+        rounds = [parse_kv(t) for t in lines if t.startswith("INFO-ROUND")]
+        wins = [parse_kv(t) for t in lines if t.startswith("INFO-ORDER") and "corner=winner" in t]
+        flips = [parse_kv(t) for t in lines if t.startswith("INFO-ORDER") and "corner=flip" in t]
         if kinds != exp or len(rounds) != 1 or len(wins) != 1 or len(flips) != 1:
             return False
         if self._round_echo(i, rounds[0]) is not None:
@@ -560,7 +565,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 if leg == "round":
                     lines = [t for c, t in con.lines if c >= leg_clk]
                     if new_line and any(
-                        t.startswith("ORDER") and "corner=flip" in t for t in lines
+                        t.startswith("INFO-ORDER") and "corner=flip" in t for t in lines
                     ):
                         leg_done = True
                         try:
@@ -618,7 +623,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             set_pic_fw_pass(0, self.logger)
             cocotb.top.timer_int_i.value = 0
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
-        prm = self.con.text_lines("PARAMS")
+        prm = self.con.text_lines("INFO-PARAMS")
         want = f"seed=0x{seed & 0xFFFF_FFFF:08x} rounds={len(self.tcfg.rounds)}"
         if not prm or want not in prm[0]:
             raise AssertionError(f"firmware did not run the patched block: {prm} (want {want})")

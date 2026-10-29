@@ -87,6 +87,10 @@ Checks:
   CTRL-RUNREQ         : (control) the first retirement falls inside the
                        observation window after the tap rise, for the drawn
                        ``ext_boot_seq_done_i`` delay and for the zero delay.
+  CTRL-TAPRST-IR      : (control) in step 7, the data register scan under IR
+                       0x18 before the Test-Logic-Reset captures the TDR
+                       content 0x1004_0000, so 0x18 is selected as the reset
+                       starts.
   CHK-WDT-STORE-RESP : every write to a WDT register pair (``WKUP_THOLD_HI/LO``,
                        ``WKUP_COUNT_HI/LO``, ``WDOG_BARK/BITE_THOLD``) ends with
                        BRESP OKAY and the written value reads back: (a) one
@@ -1165,19 +1169,38 @@ class sep_cpu_reset_entry_test(sep_base_test):
         0x18 redirects to A1). Test-Logic-Reset restores the default
         instruction, so that shift does not reach the TDR and the core starts at
         the ROM base. A TAP that keeps 0x18 loads A1 and the core starts at A1.
+        CTRL-TAPRST-IR: before the Test-Logic-Reset, a 32-bit DR scan under the
+        IR 0x18 shift shifts in the ROM base and captures the ROM base, the TDR
+        content after the TRST leg. A scan through BYPASS or IDCODE captures a
+        different word, so the line shows that 0x18 is selected as the reset
+        starts. The scan writes the value the TDR already holds.
         """
         from env.sep_jtag_dmi import IR_RSTVEC, IR_WIDTH, RSTVEC_BITS
 
         await self._quiet_point()
         extra = ""
         during = None
+        ir_ok = True
         if via == "TLR":
             await self.dmi.tap.step_tms(0)
-            await self.dmi.tap.shift_ir(IR_RSTVEC, IR_WIDTH, back_to_rti=True)
+            await self.dmi.tap.shift_ir(IR_RSTVEC, IR_WIDTH, back_to_rti=False)
+            cap = int(await self.dmi.tap.shift_dr(DEFAULT_RESET_PC, RSTVEC_BITS, back_to_rti=True))
+            ir_ok = cap == DEFAULT_RESET_PC
+            line = (
+                f"ir=0x{IR_RSTVEC:02x} dr_in=0x{DEFAULT_RESET_PC:08x} capture=0x{cap:08x} "
+                f"expect=0x{DEFAULT_RESET_PC:08x}"
+            )
+            tag = "CTRL-TAPRST-IR" if ir_ok else "CTRL-MISSING TAPRST-IR"
+            self.logger.info("%s: %s", tag, line)
+            if not ir_ok:
+                self._fail(f"{tag}: {line}")
         tw = await self._tap_reset(via)
         extra = tw.text() + " "
         if via == "TLR":
-            extra += f"ir_before=0x{IR_RSTVEC:02x} dr_after=0x{self.a1:08x} dr_in_reset=1 "
+            extra += (
+                f"ir_before=0x{IR_RSTVEC:02x} ir_capture=0x{cap:08x} dr_after=0x{self.a1:08x} "
+                "dr_in_reset=1 "
+            )
 
             async def _stage() -> None:
                 self._stage_sram()
@@ -1194,7 +1217,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             marker,
             DEFAULT_RESET_PC,
             "M_ROM",
-            tw.ok(via),
+            tw.ok(via) and ir_ok,
         )
 
     async def _program_wide(self, vector: int) -> None:

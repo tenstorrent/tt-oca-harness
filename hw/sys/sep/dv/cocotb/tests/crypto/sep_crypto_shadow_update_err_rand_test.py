@@ -482,11 +482,11 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         await self.swrst.release("kmac")
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.aes = SepAes(self)

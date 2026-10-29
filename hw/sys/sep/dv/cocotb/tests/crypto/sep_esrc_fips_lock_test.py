@@ -10,7 +10,8 @@ post-lock reject is not a stuck register. Write-0 leaves LOCK=1.
 Reserved CTRL.RSVD0 is RAZ/WI before the lock and does not clear it after;
 rst_ni does. For every H > 0 the RCT cutoff is checked against the RDL formula
 C = 1 + ceil(20 / H), and the APT cutoff against the SP 800-90B 4.4.2 binomial
-cutoff for the 1024-sample window with the same alpha = 2^-20. At H = 0 neither
+cutoff for the 1024-sample window with the same alpha = 2^-20 (SP 800-90B 4.4:
+alpha = 2^-20 is used in all the calculations of that section). At H = 0 neither
 cutoff has a stated value; the read is logged as OBS-REC-THRESH-H0 and not graded.
 Both observe-tap enables are writable before the lock and
 frozen after it: one tap is held at 1 and rejects a clear, the other is held

@@ -42,8 +42,13 @@ Checkers:
                   readback, and ``scratch_cold_probe_o`` for the cold bank);
                   in the high-half-first order also after the high-half
                   write, against the value before it.
+  CHK-SCR-RESET   both banks after each reset event, against the write model:
+                  a ``wdt_rst_ni`` pulse clears the warm bank and the cold
+                  bank retains its data; a cold reset clears both
+                  (``cpu.adoc``, Dual Scratch Register Banks). Both banks hold
+                  non-reset words before each event.
 Controls (not counted): CTRL-NMI-STORE, CTRL-SCR-NEIGHBOUR.
-Records: INFO-SCR-SEQ. Observations: OBS-CC-RSVD, OBS-TIMEOUT, OBS-CC-TIMEOUT-RD.
+Observations: OBS-CC-RSVD, OBS-TIMEOUT, OBS-CC-TIMEOUT-RD.
 
 The graded window (owner code of this test) is open around the graded
 writes and their readbacks only. The first reads, the writes before the lock,
@@ -95,6 +100,13 @@ SCR_META = RegBlock("SEP_SCRATCH_COLD")
 SCR_FIELD = SCR_META.field_mask("SCRATCH_0_", "data")
 SCR_RESET = SCR_META.reset("SCRATCH_0_") & SCR_FIELD
 BANKS = {"cold": SCRATCH_COLD_ADDRS, "warm": SCRATCH_WARM_ADDRS}
+# CHK-SCR-RESET golden per reset event (hw/sys/sep/doc/cpu.adoc, Dual Scratch Register
+# Banks): sep_cpu_reset_n clears the warm bank and the cold bank retains its data;
+# sep_reset_n clears both.
+SCR_RESET_EXPECT = {
+    "WDT_PULSE": {"warm": "cleared", "cold": "retained"},
+    "COLD": {"warm": "cleared", "cold": "cleared"},
+}
 
 N_WRITES = 8  # writes per register class (fixed by the entry)
 LANES = ("64", "lo", "hi")
@@ -273,6 +285,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         "CHK-NMI-LOCK",
         "CHK-CC-INERT",
         "CHK-SCR-SHAPE",
+        "CHK-SCR-RESET",
     )
 
     # -- access primitives --------------------------------------------------
@@ -382,7 +395,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
 
         # Step 5: lock (control: the readback shows both values).
         lk0 = await self._read64(NMI_LOCK)
-        fc0 = field_compare(lk0, 0, LOCK_FIELD)
+        fc0 = field_compare(lk0, SEP_CPU_CTRL.reset("SEP_NMI_VEC_LOCK") & LOCK_FIELD, LOCK_FIELD)
         assert fc0.ok, f"CHK-NMI-LOCK FAIL: lock before the set {fc0.fields()}"
         await self._write(NMI_LOCK, 1, "64", tolerant=False)
         lk1 = await self._read64(NMI_LOCK)
@@ -640,7 +653,9 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
             dut.wdt_rst_ni_i.value = 1
             n = await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
-            self.logger.info("WDT_PULSE: low=%d sep_cpu_reset_n_o high after %d", PULSE_CYCLES, n)
+            self.logger.info(
+                "INFO-WDT-PULSE: low=%d sep_cpu_reset_n_o high after %d", PULSE_CYCLES, n
+            )
         else:
             await self.pulse_rst_ni(hold_cycles=PULSE_CYCLES, release_bound=RESET_BOUND)
         rb = await self._read_all()
@@ -649,10 +664,23 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             cleared = all((rb[(b, i)] & SCR_FIELD) == SCR_RESET for i in range(SCRATCH_N))
             retained = all((rb[(b, i)] & SCR_FIELD) == before[(b, i)] for i in range(SCRATCH_N))
             cls[b] = "cleared" if cleared else ("retained" if retained else "mixed")
-        self.logger.info(
-            "INFO-SCR-SEQ: step=%d event=%s warm=%s cold=%s", step, ev, cls["warm"], cls["cold"]
+        exp = SCR_RESET_EXPECT[ev]
+        # Every word written since the last reset event differs from the reset value,
+        # so a cleared bank and a retained bank read differently.
+        armed = sum(int(v != SCR_RESET) for v in before.values())
+        line = (
+            f"step={step} event={ev} warm={cls['warm']} cold={cls['cold']} "
+            f"expect_warm={exp['warm']} expect_cold={exp['cold']} armed_words={armed}/{len(before)}"
         )
-        self.snapshot = {k: v & SCR_FIELD for k, v in rb.items()}
+        assert (cls["warm"], cls["cold"]) == (exp["warm"], exp["cold"]) and armed == len(before), (
+            f"CHK-SCR-RESET FAIL: {line}"
+        )
+        self.logger.info("CHK-SCR-RESET PASS: %s", line)
+        self.snapshot = {
+            (b, i): (SCR_RESET if exp[b] == "cleared" else before[(b, i)])
+            for b in ("cold", "warm")
+            for i in range(SCRATCH_N)
+        }
 
     async def _scratch(self) -> None:
         cfg = self.tcfg
@@ -672,33 +700,35 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.tcfg = cfg = _Cfg(seed)
         self.responses = 0
         self.scr_shape_lines = 0
-        self.logger.info("DRAW ver=%s", " ".join(f"0x{v:016x}/{lane}" for v, lane in cfg.ver))
+        self.logger.info("INFO-DRAW ver=%s", " ".join(f"0x{v:016x}/{lane}" for v, lane in cfg.ver))
         self.logger.info(
-            "DRAW nmi_pre=%s", " ".join(f"0x{v:016x}/{lane}" for v, lane in cfg.nmi_pre)
+            "INFO-DRAW nmi_pre=%s", " ".join(f"0x{v:016x}/{lane}" for v, lane in cfg.nmi_pre)
         )
         self.logger.info(
-            "DRAW nmi_post=%s",
+            "INFO-DRAW nmi_post=%s",
             " ".join(f"hi=0x{h:08x}/lo=0x{lo:08x}/{lane}" for h, lo, lane in cfg.nmi_post),
         )
         self.logger.info(
-            "DRAW lock_writes=%s", " ".join(f"0x{k:x}/{lane}" for k, lane in cfg.lock_writes)
+            "INFO-DRAW lock_writes=%s", " ".join(f"0x{k:x}/{lane}" for k, lane in cfg.lock_writes)
         )
         for name, vals in cfg.timeout.items():
-            self.logger.info("DRAW %s=%s", name, " ".join(f"0x{v:016x}/{lane}" for v, lane in vals))
+            self.logger.info(
+                "INFO-DRAW %s=%s", name, " ".join(f"0x{v:016x}/{lane}" for v, lane in vals)
+            )
         self.logger.info(
-            "DRAW sense_upper=%s sense_lane=%s",
+            "INFO-DRAW sense_upper=%s sense_lane=%s",
             {k: hex(v) for k, v in cfg.sense_upper.items()},
             cfg.sense_lane,
         )
-        self.logger.info("DRAW events=%s", ",".join(cfg.events))
+        self.logger.info("INFO-DRAW events=%s", ",".join(cfg.events))
         for step, ev in enumerate(cfg.events):
             if ev.startswith("WRITE_BANK"):
                 self.logger.info(
-                    "DRAW step=%d %s perm=%s shape=%s half_order=%s values=%s",
+                    "INFO-DRAW step=%d %s perm=%s shape=%s half_order=%s values=%s",
                     step,
                     ev,
                     cfg.perm[step],
