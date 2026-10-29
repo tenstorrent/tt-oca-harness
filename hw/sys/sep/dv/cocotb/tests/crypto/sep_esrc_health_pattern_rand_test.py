@@ -82,6 +82,8 @@ Checkers:
                    instance); controls: APT_PROPORTION_LO reads back 0,
                    APT_LO_TOTAL_FAILS does not change over the ones windows, and
                    APT_HI_TOTAL_FAILS reads 0 after the constant-zero leg.
+Logged only: OBS-ESRC-HT-TOTALS, the five total-fail counters after each limit
+trial (no text states how the totals count the per-generator failures).
 """
 
 from __future__ import annotations
@@ -684,6 +686,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         self.chk.ctrl("NOISE-BYTES", m1 == m0 and c1 > c0, compared=c1 - c0, mismatched=m1 - m0)
         words[trial] = self.noise.words_since(mark)
         out[trial] = await self._gen_statuses()
+        _, totals, _ = await self._top_regs()
+        self.chk.obs("ESRC-HT-TOTALS", tester=trial, windows=2, **totals)
         close_graded_window(self.logger)
         for addr, s in zip(A_GEN_STATUS, out[trial]):
             if s:

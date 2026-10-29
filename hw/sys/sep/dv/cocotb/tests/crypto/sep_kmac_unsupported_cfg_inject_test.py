@@ -70,7 +70,10 @@ Controls and observations: ``CTRL-KMAC-UNSUP`` per supported cell (no
 kmac_err, absorb reached; its start time sets t_clean). ``CTRL-KMAC-UNSUP-SHA3``
 (SHA3-256 with the en bit 0 reaches absorb with no kmac_err; its start time
 joins t_clean before the SHA3-128 cell). ``OBS-KMAC-UNSUP-EN-ERR`` logs
-kmac_err of the enabled group.
+kmac_err of the enabled group. ``OBS-KMAC-MODE01`` logs one mode 2'b01 run with
+the drawn strength and ``en_unsupported_modestrength`` = 1 (start, message,
+process): no text states that this pair absorbs, so it is not graded and runs
+after the owner window closes.
 
 Time bounds: t_clean is the longest clean start time of the supported group,
 measured from the ``CMD.start`` write to the read that shows absorb. The
@@ -395,6 +398,7 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
         blocked_absorb = await self._blocked_group(seed, plan, t_clean)
         await self._sha3_cell(seed, plan, t_clean)
         await self._enabled_group(seed, plan, t_clean, blocked_absorb)
+        await self._rsvd_enabled_cell(seed, plan, t_clean)
 
         self._graded = False
         close_graded_window()
@@ -659,4 +663,39 @@ class sep_kmac_unsupported_cfg_inject_test(sep_base_test):
                 await self._passed(PASS_ENABLED)
         self._graded = False
         close_graded_window()
+        await self._reset_kmac()
+
+    async def _rsvd_enabled_cell(self, seed: int, plan: Plan, t_clean: int) -> None:
+        """Mode 2'b01, drawn strength, en bit 1: start, message, process; logged only."""
+        bound = _ERR_BOUND_MULT * t_clean
+        await self._arm_cell(_MODE_RSVD, plan.rsvd_strength, 1)
+        t0 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        absorb_seen, _, absorb_clk = await self._poll(KMAC_STATUS, _ABSORB, t0, bound)
+        if absorb_seen:
+            await self.kmac._push_msg_bytes(plan.rsvd_msg)
+        t1 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
+        end_seen, _, end_clk = await self._poll(KMAC_INTR_STATE, _DONE | _ERR, t1, _OUTER_CLK)
+        intr = await self._rd(KMAC_INTR_STATE)
+        code = await self._rd(KMAC_ERR_CODE)
+        status = await self._rd(KMAC_STATUS)
+        state = await self.kmac.read_digest(4)
+        self.chk.obs(
+            "KMAC-MODE01",
+            seed=seed,
+            mode_code=KMAC_MODE_RSVD,
+            kstrength=plan.rsvd_strength,
+            en_unsup=1,
+            len=len(plan.rsvd_msg),
+            absorb_seen=int(absorb_seen),
+            absorb_clk=absorb_clk,
+            done=_bits(intr, _DONE),
+            kmac_err=_bits(intr, _ERR),
+            end_seen=int(end_seen),
+            end_clk=end_clk,
+            err_code=f"0x{code & _ERR_CODE_MASK:08x}",
+            status=f"0x{status & _STAGE_MASK:x}",
+            state=":".join(f"{w:08x}" for w in state),
+        )
         await self._reset_kmac()

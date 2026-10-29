@@ -237,7 +237,9 @@ clean RND run, a chance outcome); ``OBS-OTBN-SWERR-KIND-CAUSE`` (the full
 ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of the drawn error: no sentence states the
 other bits); ``OBS-OTBN-ILLEGAL-BUS-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` at LOCKED, and the response code of the host read: no
-sentence states the code).
+sentence states the code); ``OBS-OTBN-WIPE-MEM`` (two words of the wiped memory
+read after each SEC_WIPE command: the wipe leaves pseudo-random content, so no
+value is stated).
 
 Shards (``env/sep_shard.py``): ``+sep_shard=1`` runs every leg except RND clean
 and sw kind; ``+sep_shard=2`` runs only RND clean and sw kind, with no
@@ -923,6 +925,15 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             err = await self._rd(A_ERR_BITS, M_ERR_BITS)
             fatal = await self._rd(A_FATAL, M_FATAL)
             cleared = await self._clear_done()
+            if cmd != CMD_EXECUTE:
+                if cmd == CMD_SEC_WIPE_DMEM:
+                    mem, addrs = "dmem", (OTBN_DMEM_BASE + DMEM_A, OTBN_DMEM_BASE + DMEM_RES)
+                else:
+                    mem, addrs = "imem", (OTBN_IMEM_BASE, OTBN_IMEM_BASE + 4)
+                words = [f"0x{await self._rd(a):08x}" for a in addrs]
+                self.chk.obs(
+                    "OTBN-WIPE-MEM", seed=seed, idx=idx, cmd=f"0x{cmd:02x}", mem=mem, words=words
+                )
             cond = (
                 pre == ST_IDLE
                 and done_before == 0

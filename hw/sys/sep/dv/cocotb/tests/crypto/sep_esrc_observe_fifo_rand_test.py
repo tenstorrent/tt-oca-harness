@@ -29,7 +29,9 @@ Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the order of the 16 ``LANE_SEL`` values (every write changes the
 effective lane), z per lane change (both values, z = 1 at least once), the flush
 lane, its z and the words f before the flush, the words k at the lock moment,
-z of each lock pass, and the lane and bits of the sample-clock sequence leg.
+z of each lock pass, the lane and bits of the sample-clock sequence leg, the
+lane-0 ``LANE_SEL`` value 12 to 15 of the same-lane write, and the bits of the
+overflow sequence.
 
 Sample-clock sequence leg (``hw/ip/entropy_source/doc/architecture.adoc:75``: a
 flop on the sampling clock, then a two-stage synchronizer into ``clk_i``). The
@@ -86,7 +88,12 @@ Checkers:
 Logged only: ``OBS-BLOCKED CHK-OBS-MAIN`` (no stated rule that observe capture leaves
 the main chain rate unchanged); the main-chain leg logs its counts. ``OBS-OBS-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
-``2 x clk_i + 2 ps`` (no stated maximum sample rate).
+``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-OBS-LANESEL-SAME`` logs
+LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (no stated flush rule
+for a write that keeps the effective lane). ``OBS-OBS-OVF-KEEP`` logs the overflow
+bit, LEVEL and the sequence bit index of the first and last popped word after
+FIFO_DEPTH_MAX + 2 words of a known sequence (no stated rule which word a full FIFO
+discards).
 """
 
 from __future__ import annotations
@@ -164,6 +171,8 @@ DRAW_TRIES = 16
 # leaf. The RDL LEVEL field is 7 bits (6:0).
 FIFO_DEPTH_MAX = 64
 ALL_ONES = 0xFFFF_FFFF
+# Words of the overflow sequence: two more than the drain bound.
+OVF_SEQ_WORDS = FIFO_DEPTH_MAX + 2
 
 # Sample-clock sequence leg (test parameters).
 SCLK = "entropy_rosc_sample_clk_i"
@@ -242,6 +251,8 @@ class Plan:
     seq_lane: int
     seq: tuple[int, ...]
     fast: tuple[int, ...]
+    same_sel: int
+    ovf_seq: tuple[int, ...]
 
     def describe(self) -> str:
         return (
@@ -249,7 +260,7 @@ class Plan:
             f"flush_z={self.flush_z} f={self.f} k={self.k} z_lock={list(self.z_lock)} "
             f"{describe(self.balanced)} seq_lane={self.seq_lane} "
             f"seq={[f'0x{w:08x}' for w in _words(self.seq)]} "
-            f"fast={[f'0x{w:08x}' for w in _words(self.fast)]}"
+            f"fast={[f'0x{w:08x}' for w in _words(self.fast)]} same_sel={self.same_sel}"
         )
 
 
@@ -333,6 +344,8 @@ def draw_plan(seed: int) -> Plan:
     seq_lane = rng.randrange(NUM_LANES)
     seq = _draw_seq(rng, SEQ_WORDS)
     fast = tuple(rng.getrandbits(1) for _ in range(FAST_BITS))
+    same_sel = rng.choice(LANE_SEL_SAME_AS_0[1:])
+    ovf_seq = _draw_seq(rng, OVF_SEQ_WORDS)
     return Plan(
         seed,
         tuple(order),
@@ -346,6 +359,8 @@ def draw_plan(seed: int) -> Plan:
         seq_lane,
         seq,
         fast,
+        same_sel,
+        ovf_seq,
     )
 
 
@@ -591,6 +606,25 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             cur = v
         await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, cur))
         close_graded_window(self.logger)
+        await self._lane_same_obs()
+
+    async def _lane_same_obs(self) -> None:
+        """LEVEL around a LANE_SEL write that keeps lane 0 selected."""
+        sel = self.plan.same_sel
+        await self._pop_to_empty("noise")
+        self._drive(0, 0)
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
+        b4 = self._bound("obs_4", WORDS_BEFORE_CHANGE * OBS_WORD_CAP * 20)
+        ok4, _, _ = await self._poll_level("noise", lambda x: x >= WORDS_BEFORE_CHANGE, b4)
+        before = await self._level("noise")
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, sel))
+        after = await self._level("noise")
+        await self._wr(ESRC_NOISE_OBS_CTRL, _noise_ctrl(0, sel))
+        await self._pop_to_empty("noise")
+        fields = {"sel": sel, "level_before": before, "level_after": after}
+        if not ok4:
+            fields["reason"] = f"timeout:level_before bound={b4}"
+        self.chk.obs("OBS-LANESEL-SAME", **fields)
 
     def _grade_lane(self, v, cur, z, ok4, ok8, before, after, words, b4, b8) -> None:
         expect = _word(z)
@@ -1030,6 +1064,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         self._grade_seq(lane, plan.seq, slow)
         fast = await self._seq_window(lane, plan.fast, FAST_PERIOD_CLK, depth=False)
         close_graded_window(self.logger)
+        await self._ovf_keep_obs(lane)
         self.restart_clock(SCLK, self.cfg.entropy_clk_period_ns)
         self._release_stuck()
         got = [(w >> j) & 1 for w in fast["words"] for j in range(32)]
@@ -1047,6 +1082,32 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             words=[f"0x{w:08x}" for w in fast["words"]],
             expect=[f"0x{w:08x}" for w in _words(plan.fast)],
             **fast["pre"],
+        )
+
+    async def _ovf_keep_obs(self, lane: int) -> None:
+        """Which words a full noise observe FIFO keeps, from a known sample sequence."""
+        bits = self.plan.ovf_seq
+        await self._wr(ESRC_INTR_STATUS, NOISE_OVF)
+        res = await self._seq_window(lane, bits, SEQ_PERIOD_CLK, depth=False)
+        ovf = int(bool(await self._rd(ESRC_INTR_STATUS) & NOISE_OVF))
+        await self._wr(ESRC_INTR_STATUS, NOISE_OVF)
+        text = "".join(map(str, bits))
+
+        def at(word: int) -> int | str:
+            i = text.find("".join(str((word >> j) & 1) for j in range(32)))
+            return i if i >= 0 else "none"
+
+        words = res["words"]
+        self.chk.obs(
+            "OBS-OVF-KEEP",
+            lane=lane,
+            seq_words=OVF_SEQ_WORDS,
+            edges=res["edges"],
+            overflow=ovf,
+            level=res["level"],
+            popped=len(words),
+            first_at_bit=at(words[0]) if words else "none",
+            last_at_bit=at(words[-1]) if words else "none",
         )
 
     async def _seq_window(self, lane: int, bits, period_clk: int, *, depth: bool) -> dict:

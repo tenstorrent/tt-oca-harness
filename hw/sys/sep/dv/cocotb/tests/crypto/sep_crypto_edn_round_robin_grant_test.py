@@ -270,12 +270,12 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         # An alternating prefix of two or more grants contains both clients by
         # construction; the alternation floor above carries the claim.
         self.logger.info(
+            "OBS-EDN-GRANT-SEQ grants=%s dual_grants=%s", grants[:16], dual_grants[:12]
+        )
+        self.logger.info(
             "CHK-GRANT-ALT PASS: %d consecutive post-adapter grant pairs "
-            "strictly alternate between AES and OTBN URND (grants=%s "
-            "dual_grants=%s)",
+            "strictly alternate between AES and OTBN URND",
             alt_pairs,
-            grants[:16],
-            dual_grants[:12],
         )
 
         # --- OTBN RND, the third adapter client ------------------------------

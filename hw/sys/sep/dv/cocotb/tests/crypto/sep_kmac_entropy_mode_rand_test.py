@@ -22,7 +22,8 @@ Legs: a six-seed leg first (gives t_ctrl, the clean start time), then in drawn
 order: seed count (5 and 0 words), mode lock (sw first and edn first), timer
 (prescaler 0 and P, wait timers T, 2T, 8, then 0), counter (N hashes,
 ``hash_cnt_clr``, ``entropy_req``) and reseed (threshold R, then 0 on the same
-KMAC). "Chain up" is the state after the ESRC, CSRNG and EDN bring-up. "Chain
+KMAC). A ``msg_mask`` leg runs last and is logged only (``OBS-KMAC-MSGMASK``).
+"Chain up" is the state after the ESRC, CSRNG and EDN bring-up. "Chain
 uninitialized" is the state after a TRNG reset with no bring-up after it: EDN
 does not answer, which is the starvation of the timer leg.
 
@@ -134,6 +135,8 @@ ST_SQUEEZE = KMAC.field_mask("STATUS", "sha3_squeeze")
 CFG_MODE_MASK = KMAC.field_mask("CFG_SHADOWED", "entropy_mode")
 CFG_MODE_LSB = KMAC.field_lsb("CFG_SHADOWED", "entropy_mode")
 CFG_READY = KMAC.field_mask("CFG_SHADOWED", "entropy_ready")
+CFG_MSG_MASK = KMAC.field_mask("CFG_SHADOWED", "msg_mask")
+CFG_FAST_PROCESS = KMAC.field_mask("CFG_SHADOWED", "entropy_fast_process")
 CMD_ENTROPY_REQ = KMAC.field_mask("CMD", "entropy_req")
 CMD_HASH_CNT_CLR = KMAC.field_mask("CMD", "hash_cnt_clr")
 HASH_CNT_MASK = KMAC.field_mask("ENTROPY_REFRESH_HASH_CNT", "hash_cnt")
@@ -446,6 +449,15 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             cnts.append(await self.kmac.read(KMAC_HASH_CNT) & HASH_CNT_MASK)
         return "ok", cnts
 
+    async def _keyed_digest(self) -> tuple[str, list[int]]:
+        """One keyed KMAC-256 hash; returns (status, digest) as ``_sha3_hash`` does."""
+        if await self._poll(ST_IDLE, BOUND_CLK) is None:
+            return "idle_timeout", []
+        await self.kmac.cmd(KMAC_CMD_START)
+        if await self._poll(ST_ABSORB, BOUND_CLK) is None:
+            return "absorb_timeout", []
+        return await self._sha3_hash(self.msg + right_encode(KMAC_KEYED_OUT_BITS))
+
     async def _measure_t_reseed(self, req_mark, ack_mark) -> int | None:
         """Clocks from the crypto_edn_req_o[1] rise to the next ack rise (window closed)."""
         try:
@@ -693,6 +705,8 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             reason="ok" if all_clean else "timeout_or_no_error",
         )
 
+        self.chk.obs("KMAC-TIMER-CLK", t=t, p=self.plan.p, p0_err_clk=clks(p0), p_err_clk=clks(pp))
+
         def err_code(run: dict) -> int | None:
             return (run["code"] >> ERR_CODE_LSB) & 0xFF if "code" in run else None
 
@@ -845,6 +859,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
             except BitWatchTimeout:
                 status = "req_low_timeout"
         acks_r = self.w_ack.high_clocks_since(ack_m)
+        self.chk.obs("KMAC-HASHCNT-SEQ", thr=r, n=m, cnts=",".join(map(str, cnts)))
         r_ok = status == "ok" and clr_r == 0 and acks_r >= 1 and cnt_r is not None and cnt_r < m
         self.chk.ok(
             "KMAC-AUTORESEED",
@@ -885,6 +900,46 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         self._close()
         await self._reset_kmac()
 
+    async def _leg_msgmask(self) -> None:
+        """Keyed EDN-mode hashes with ``msg_mask``, then with ``msg_mask`` and
+        ``entropy_fast_process``, beside one hash with neither; logged only, window closed."""
+        await self._need_chain_up()
+        self._close()
+        variants = (
+            ("none", 0),
+            ("msg_mask", CFG_MSG_MASK),
+            ("msg_mask+fast_process", CFG_MSG_MASK | CFG_FAST_PROCESS),
+        )
+        ref: list[int] | None = None
+        for name, flag in variants:
+            await self._reset_kmac()
+            await self.kmac.set_threshold(0)
+            await self.kmac.write_keyed_regs(self.key)
+            await self.kmac.write_cfg(
+                self.kmac.cfg_word(entropy_mode="edn", ready=False, keyed=True) | flag
+            )
+            req_m, ack_m = self.w_req.mark(), self.w_ack.mark()
+            await self.kmac.write_cfg(
+                self.kmac.cfg_word(entropy_mode="edn", ready=True, keyed=True) | flag
+            )
+            await self._measure_t_reseed(req_m, ack_m)
+            req_m = self.w_req.mark()
+            t0 = self._clk()
+            status, digest = await self._keyed_digest()
+            clk = self._clk() - t0
+            if ref is None:
+                ref = digest
+                continue
+            self.chk.obs(
+                "KMAC-MSGMASK",
+                flag=name,
+                stage=status,
+                **{"digest==unflagged_digest": int(bool(digest) and digest == ref)},
+                start_to_done_clk=clk,
+                edn_req_rises=self.w_req.rises_since(req_m),
+            )
+        await self._reset_kmac()
+
     # -------------------------------------------------------------- scenario
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -917,6 +972,7 @@ class sep_kmac_entropy_mode_rand_test(sep_base_test):
         for leg in self.plan.legs:
             self.logger.info("LEG %s", leg)
             await runners[leg]()
+        await self._leg_msgmask()
 
         self._close()
         if self.chain == "up":

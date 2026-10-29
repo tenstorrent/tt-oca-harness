@@ -118,8 +118,9 @@ bit and the reserved bits of CTRL_GCM_SHADOWED after each GCM pair, for the same
 reason. Every KMAC result
 (``CFG_SHADOWED`` and ``ENTROPY_REFRESH_THRESHOLD_SHADOWED``) is logged as
 ``OBS-SHADOW-KMAC`` and not graded: no KMAC text defines the update-error write
-sequence of those registers; the ALERT_TEST write of each block is the
-timing reference ``INFO-ALERT-REF``.
+sequence of those registers; one equal CFG_SHADOWED pair with a read between
+the writes is logged as ``OBS-SHADOW-KMAC-RDGAP`` for the same reason; the
+ALERT_TEST write of each block is the timing reference ``INFO-ALERT-REF``.
 """
 
 from __future__ import annotations
@@ -1005,6 +1006,36 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         t1, t2 = plan.thr
         await self._kmac_pair_obs("kmac_thr", KMAC_THR, t1, t2, plan.gaps["thr_mis"], c_err)
         await self._kmac_pair_obs("kmac_thr", KMAC_THR, t1, t1, 0, c_err)
+        await self._kmac_rdgap_obs(a, c_err)
+
+    async def _kmac_rdgap_obs(self, value: int, c_err: int) -> None:
+        """One equal CFG_SHADOWED pair with a CFG_SHADOWED read between the writes.
+
+        No text states whether a read between the two writes of a shadowed pair
+        restarts the pair, so the stored value and the error bit are logged as
+        OBS-SHADOW-KMAC-RDGAP.
+        """
+        try:
+            await self._pulse("kmac")
+            await self._kmac_idle()
+            await self.kmac._wr(KMAC_CFG_SHADOWED, value)
+            mid = await self.kmac._rd(KMAC_CFG_SHADOWED)
+            m2 = self.vec.mark()
+            await self.kmac._wr(KMAC_CFG_SHADOWED, value)
+            await self._until(m2, WINDOW_FACTOR * c_err)
+            st = await self.kmac._rd(KMAC_STATUS)
+            stored = await self.kmac._rd(KMAC_CFG_SHADOWED)
+            self.chk.obs(
+                "SHADOW-KMAC-RDGAP",
+                written=f"0x{value:x}",
+                read_between=f"0x{mid:x}",
+                stored=f"0x{stored:x}",
+                err=int(bool(st & KMAC_ST_ERR)),
+                fatal=int(bool(st & KMAC_ST_FATAL)),
+                c_err=self._first_rise(m2),
+            )
+        except TrialTimeout as exc:
+            self.chk.obs("SHADOW-KMAC-RDGAP", reason=f"timeout:{exc.what}", bound=exc.bound)
 
     # --- AUX lock and AES reset --------------------------------------------------------
     async def _aux_write(self, value: int) -> int:

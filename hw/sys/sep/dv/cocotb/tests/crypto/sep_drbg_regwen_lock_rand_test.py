@@ -36,7 +36,8 @@ Checkers:
                       RDL reset value with no X on the bus, and a write of B
                       lands. Control: ``REGWEN`` reads 0 before the reset.
 ``INT_STATE_READ_ENABLE`` under the CSRNG ``REGWEN`` is logged only
-(``OBS-REGWEN-OWN``).
+(``OBS-REGWEN-OWN``), and so are ``RESEED_INTERVAL`` and ``INT_STATE_NUM``
+under it (``OBS-REGWEN-OTHER``).
 """
 
 from __future__ import annotations
@@ -66,6 +67,12 @@ MUBI = (MUBI_TRUE, MUBI_FALSE)
 CSRNG_REGWEN = sym("CSRNG_REGWEN_REG_ADDR")
 EDN_REGWEN = sym("EDN_REGWEN_REG_ADDR")
 CSRNG_INT_STATE_READ_ENABLE = sym("CSRNG_INT_STATE_READ_ENABLE_REG_ADDR")
+# Writeable CSRNG registers with no ``regwen`` binding: the REGWEN text says "all
+# writeable registers" become read-only, the register map binds neither. Logged only.
+CSRNG_OTHER = (
+    ("RESEED_INTERVAL", sym("CSRNG_RESEED_INTERVAL_REG_ADDR")),
+    ("INT_STATE_NUM", sym("CSRNG_INT_STATE_NUM_REG_ADDR")),
+)
 
 
 @dataclass(frozen=True)
@@ -440,6 +447,22 @@ class sep_drbg_regwen_lock_rand_test(sep_base_test):
                 wrote=f"0x{tp.isre:x}",
                 read=f"0x{isre & ISRE_MASK:x}",
             )
+            # The complement of the readback, so a landed write always reads back
+            # changed.
+            for name, addr in CSRNG_OTHER:
+                mask = CSRNG.mask(name)
+                before = await self._rd(addr) & mask
+                wrote = ~before & mask
+                await self._wr(addr, wrote, isre_fill)
+                read = await self._rd(addr) & mask
+                self.chk.obs(
+                    "REGWEN-OTHER",
+                    reg=name,
+                    regwen=regwen_locked & rw_mask,
+                    before=f"0x{before:x}",
+                    wrote=f"0x{wrote:x}",
+                    read=f"0x{read:x}",
+                )
 
         # Step 8: r writes of 1 to the cleared REGWEN.
         after: list[int] = []

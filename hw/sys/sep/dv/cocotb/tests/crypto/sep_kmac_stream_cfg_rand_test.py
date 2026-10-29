@@ -85,6 +85,10 @@ Observations: ``OBS-KMAC-DONE-FALL`` logs bit 20 after the write-one clear.
 after the gated writes (registers.md lines 724-725 say an update while hashing
 reports an error and state no code). ``OBS-KMAC-REGWEN-GATED-RSVD`` logs the
 ENTROPY_PERIOD reserved bits, which have no stated value.
+``OBS-KMAC-REGWEN-SQUEEZE`` logs ``CFG_REGWEN`` in squeeze and at idle after
+``CMD.done`` of each cell. ``OBS-KMAC-FE-INTRTEST`` logs ``INTR_STATE.fifo_empty``
+after a write to ``INTR_TEST.fifo_empty`` at idle, after the cells, with the
+window closed.
 
 FCOV gate: the leaf opens the graded window of its owner code before the cells.
 The first FAIL or missing control closes the window before it is recorded, and
@@ -160,6 +164,9 @@ _KMAC_ERR = KMAC.field_mask("INTR_STATE", "kmac_err")
 _FIFO_DEPTH = KMAC.field_mask("STATUS", "fifo_depth")
 _FIFO_DEPTH_LSB = KMAC.field_lsb("STATUS", "fifo_depth")
 _FIFO_EMPTY = KMAC.field_mask("STATUS", "fifo_empty")
+_KMAC_INTR_TEST = KMAC.addr("INTR_TEST")
+_INTR_TEST_FIFO_EMPTY = KMAC.field_mask("INTR_TEST", "fifo_empty")
+_INTR_FIFO_EMPTY = KMAC.field_mask("INTR_STATE", "fifo_empty")
 _FIFO_FULL = KMAC.field_mask("STATUS", "fifo_full")
 _KMAC_ENTROPY_PERIOD = KMAC.addr("ENTROPY_PERIOD")
 _EP_PRESCALER_LSB = KMAC.field_lsb("ENTROPY_PERIOD", "prescaler")
@@ -208,6 +215,9 @@ _FILL_BYTES = 16
 # on which the sampler sees the rise.
 _LABEL_EDGES = 2
 _OUTER_CLK = 20_000
+# Clocks from the INTR_TEST write to the second INTR_STATE read of
+# OBS-KMAC-FE-INTRTEST. A testbench timing, not a spec value.
+_FE_SETTLE_CLK = 64
 _RESET_EDGE_CLK = 200
 
 
@@ -560,6 +570,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
                 self._open()
         self._close()
 
+        await self._fe_intrtest_obs(seed)
         await self._narrow_lane_leg(seed)
 
         await self.vec.stop()
@@ -762,6 +773,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         done_status = await self._rd(KMAC_STATUS)
         ctrl_process_squeeze = _bits(done_status, _SQUEEZE)
         self._grade_fifo_done(tag, cell, done_status, written, fill)
+        squeeze_regwen = _bits(await self._rd(_KMAC_CFG_REGWEN), _REGWEN_EN)
 
         # Step 12: write-one clear of kmac_done; the line fall is logged only.
         await self._wr(KMAC_INTR_STATE, _DONE)
@@ -811,6 +823,15 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         )
         await self._wr(KMAC_INTR_STATE, _DONE)
         cleared = _bits(await self._rd(KMAC_INTR_STATE), _DONE) == 0
+        self.chk.obs(
+            "KMAC-REGWEN-SQUEEZE",
+            seed=seed,
+            cell=cell.index,
+            squeeze=ctrl_process_squeeze,
+            squeeze_regwen=squeeze_regwen,
+            idle_after_done=int(done_idle),
+            done_regwen=_bits(await self._rd(_KMAC_CFG_REGWEN), _REGWEN_EN),
+        )
 
         # Step 15b: the ENTROPY_PERIOD write in absorb, read back at idle.
         if rg_ep is not None:
@@ -1072,6 +1093,28 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             squeeze=squeeze,
         )
         return False
+
+    async def _fe_intrtest_obs(self, seed: int) -> None:
+        """A software write to ``INTR_TEST.fifo_empty`` at idle, window closed; logged only."""
+        await self._reset_kmac()
+        before = _bits(await self._rd(KMAC_INTR_STATE), _INTR_FIFO_EMPTY)
+        await self._wr(_KMAC_INTR_TEST, _INTR_TEST_FIFO_EMPTY)
+        await ClockCycles(cocotb.top.clk_i, 1)
+        st_1 = _bits(await self._rd(KMAC_INTR_STATE), _INTR_FIFO_EMPTY)
+        await ClockCycles(cocotb.top.clk_i, _FE_SETTLE_CLK)
+        st_settle = _bits(await self._rd(KMAC_INTR_STATE), _INTR_FIFO_EMPTY)
+        await self._wr(KMAC_INTR_STATE, _INTR_FIFO_EMPTY)
+        st_w1c = _bits(await self._rd(KMAC_INTR_STATE), _INTR_FIFO_EMPTY)
+        self.chk.obs(
+            "KMAC-FE-INTRTEST",
+            seed=seed,
+            state_before=before,
+            state_1clk=st_1,
+            state_settle=st_settle,
+            settle_clk=_FE_SETTLE_CLK,
+            state_after_w1c=st_w1c,
+        )
+        await self._reset_kmac()
 
     async def _narrow_lane_leg(self, seed: int) -> None:
         """CHK-KMAC-NARROW-WRITE: the fixed message at byte lanes 1 to 3, SHA3-256.

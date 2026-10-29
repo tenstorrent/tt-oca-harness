@@ -15,6 +15,11 @@ runs the same plan shape in drawn orders:
     2 fifo_empty legs a FIFO that was full, and a FIFO that never reaches full
     1 wipe leg        ``WIPE_SECRET`` overwrites the digest and the secret key; the graded
                       FCOV window is open from the ``WIPE_SECRET`` write to its check
+    1 busy-wipe leg   ``WIPE_SECRET`` written halfway through a keyed message, window closed;
+                      logged only (``OBS-HMAC-WIPE-BUSY``)
+
+The not-full fifo_empty leg ends with a write to ``INTR_TEST.fifo_empty`` with the window
+closed; the ``INTR_STATE`` reads that follow are logged only (``OBS-HMAC-FE-INTRTEST``).
 
 The drain stall is the bench input ``hmac_fifo_drain_stall_i``: it holds the read side of the
 message FIFO idle (``tb/tb_top.sv``, HMAC message-FIFO drain stall).
@@ -158,7 +163,10 @@ ST_FIELDS = ST_IDLE | ST_EMPTY | ST_FULL | ST_DEPTH
 ST_RESET_IDLE = HMAC.field_reset("STATUS", "hmac_idle")
 ST_RESET_EMPTY = HMAC.field_reset("STATUS", "fifo_empty")
 INTR_FIFO_EMPTY = HMAC.field_mask("INTR_STATE", "fifo_empty")
-INTR_FIELDS = HMAC_INTR_DONE | INTR_FIFO_EMPTY | HMAC.field_mask("INTR_STATE", "hmac_err")
+INTR_HMAC_ERR = HMAC.field_mask("INTR_STATE", "hmac_err")
+HMAC_INTR_TEST = HMAC.addr("INTR_TEST")
+INTR_TEST_FIFO_EMPTY = HMAC.field_mask("INTR_TEST", "fifo_empty")
+INTR_FIELDS = HMAC_INTR_DONE | INTR_FIFO_EMPTY | INTR_HMAC_ERR
 
 # Length cells (bytes) per digest size. The SHA-256 block is 64 bytes and the SHA-384/512
 # block is 128 bytes; the lengths sit on, below and above the padding and block edges.
@@ -286,6 +294,7 @@ class Plan:
     fe_full: FeLeg
     fe_notfull: FeLeg
     wipe: WipeLeg
+    wipe_busy_w: int
 
 
 def _unique_msg(rng: SepSeededRng, nbytes: int) -> bytes:
@@ -344,7 +353,8 @@ def draw_plan(seed: int) -> Plan:
         w = int.from_bytes(bytes(rng.sample(range(256), 4)), "big")
         if w not in d1:
             break
-    return Plan(cells, stall, fe_full, fe_notfull, WipeLeg(wh, msg1, msg2, w))
+    wipe_busy_w = rng.getrandbits(32)
+    return Plan(cells, stall, fe_full, fe_notfull, WipeLeg(wh, msg1, msg2, w), wipe_busy_w)
 
 
 class _TrialTimeout(Exception):
@@ -423,6 +433,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         if d_full is not None:
             await self._trial(self._fe_notfull_leg(plan.fe_notfull, d_full), leg="notfull")
         await self._trial(self._wipe_leg(plan.wipe), leg="wipe")
+        await self._wipe_busy_leg(plan.wipe, plan.wipe_busy_w)
 
         # Cross-sample relation: a depth read with fifo_full = 0 never exceeds a depth read
         # with fifo_full = 1 (hmac.adoc:157-159).
@@ -1064,6 +1075,24 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             digest0=f"0x{digest[0]:08x}",
             golden0=f"0x{self.digest_order.expected(golden)[0]:08x}",
         )
+        # A software write to INTR_TEST.fifo_empty; the window is closed so the forced
+        # bit reaches no FCOV sample.
+        close_graded_window(self.logger)
+        await self._wr(HMAC_INTR_TEST, INTR_TEST_FIFO_EMPTY)
+        await ClockCycles(dut.clk_i, 1)
+        st_1 = await self._rd(HMAC_INTR_STATE) & INTR_FIFO_EMPTY
+        await ClockCycles(dut.clk_i, FQ_SETTLE_CLK)
+        st_settle = await self._rd(HMAC_INTR_STATE) & INTR_FIFO_EMPTY
+        await self._wr(HMAC_INTR_STATE, INTR_FIFO_EMPTY)
+        st_w1c = await self._rd(HMAC_INTR_STATE) & INTR_FIFO_EMPTY
+        self.chk.obs(
+            "HMAC-FE-INTRTEST",
+            state_before=state,
+            state_1clk=int(bool(st_1)),
+            state_settle=int(bool(st_settle)),
+            settle_clk=FQ_SETTLE_CLK,
+            state_after_w1c=int(bool(st_w1c)),
+        )
 
     async def _wipe_leg(self, leg: WipeLeg) -> None:
         """CHK-HMAC-WIPE on the values of ``leg``.
@@ -1125,3 +1154,49 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         if ok:
             await self._pass(PASS_HASH | HMAC_FIFO_PASS_WIPE_DIGEST | HMAC_FIFO_PASS_WIPE_KEY)
         close_graded_window(self.logger)
+
+    async def _wipe_busy_leg(self, leg: WipeLeg, w2: int) -> None:
+        """A ``WIPE_SECRET`` write while a keyed hash is in progress; logged, not graded.
+
+        The window stays closed. The hash writes half of the message, then ``w2`` to
+        ``WIPE_SECRET``, then the rest of the message, then hash_process.
+        """
+        h = leg.h
+        n_words = HMAC_DIGEST_WORDS[h.sha]
+        await self._reset_hmac()
+        await self._setup(h)
+        ch = chunks(leg.msg2, "burst")
+        half = len(ch) // 2
+        for n, v in ch[:half]:
+            await self._wr_chunk(n, v)
+        st = await self._rd(HMAC_STATUS)
+        await self._wr(HMAC_WIPE_SECRET, w2)
+        for n, v in ch[half:]:
+            await self._wr_chunk(n, v)
+        await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+        t0 = self._now_clk()
+        intr = 0
+        while not (intr & (HMAC_INTR_DONE | INTR_HMAC_ERR)):
+            if self._now_clk() - t0 > DONE_BOUND:
+                break
+            await ClockCycles(self.dut.clk_i, 10)
+            intr = await self._rd(HMAC_INTR_STATE)
+        digest = [await self._rd(HMAC_DIGEST_0 + 4 * i) for i in range(n_words)]
+        golden = golden_digest(h.sha, True, KEY_ROWS[h.key_row], h.key_bits, leg.msg2)
+        w2_read = self.digest_order.expected(w2.to_bytes(4, "big") * n_words)
+        self.chk.obs(
+            "HMAC-WIPE-BUSY",
+            sha=h.sha,
+            klen=h.key_bits,
+            w2=f"0x{w2:08x}",
+            words_before=half,
+            words_total=len(ch),
+            status_at_wipe=f"0x{st:08x}",
+            idle_at_wipe=int(bool(st & ST_IDLE)),
+            done=int(bool(intr & HMAC_INTR_DONE)),
+            hmac_err=int(bool(intr & INTR_HMAC_ERR)),
+            **{"digest==golden_key": int(self.digest_order.match(digest, golden)[0])},
+            digest_all_w2=int(self.digest_order.order is not None and digest == w2_read),
+            digest0=f"0x{digest[0]:08x}",
+        )
+        await self._reset_hmac()

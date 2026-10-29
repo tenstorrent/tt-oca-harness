@@ -455,13 +455,18 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             err_code_before=f"0x{err0 & unit.err_mask:08x}",
             fatal_state_before=int(bool(st0 & unit.fatal_bm)),
         )
+        self.chk.obs(
+            "DRBG-ERRCODE-FIELDS",
+            unit=unit.name,
+            bit=bit,
+            other_src=f"0x{other:08x}",
+            type=f"0x{typ:08x}",
+        )
         fields = {
             "unit": unit.name,
             "bit": bit,
             **self._err_fields(unit, err),
             "source_bit_set": int(bool(err & src)),
-            "OBS-other-src": f"0x{other:08x}",
-            "OBS-type": f"0x{typ:08x}",
             "fatal_state": fatal_state,
             "enable": enabled,
             "vec": vec_level,

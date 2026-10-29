@@ -75,6 +75,9 @@ The digest of a mismatched length above 128 bits has no stated value:
 ``hmac.adoc`` (OCAH Modifications) calls it "wrong but repeatable" but does not
 state the padding below the delivered key. Its compare with the matching-length
 digest and the decoy golden is logged as ``OBS-KEYSEL-MISMATCH``.
+No text states which key an HMAC run uses when CMD_ENGINE_SHRED of HMAC lands
+between hash_start and hash_process; that run is logged as
+``OBS-KEYSEL-SHRED-MIDOP``.
 
 DIGEST byte order: ``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson``:465-469 (DIGEST)
 gives digest[511:0] = {DIGEST0, DIGEST1, ...} for the SHA-2 hash value, which FIPS 180-4
@@ -354,6 +357,7 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         for line in mismatch:
             self.chk.ok("KEYSEL-HMAC-MISMATCH", line.pop("_ok"), **line)
         await self._decoy_ctrl()
+        await self._shred_midop(h_h, kh)
 
         await self._aes_legs(ka)
         await self._aes_nokey_leg()
@@ -487,6 +491,61 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
             rc_shred=rc,
             **{"digest==golden_decoy": int(hit)},
         )
+
+    async def _shred_midop(self, handle: int, kh: list[int]) -> None:
+        """CMD_ENGINE_SHRED of HMAC between hash_start and hash_process of one run.
+
+        The delivered key K_h is transferred again, the run starts with key_length 256
+        and the first half of the message, the shred lands, and the rest of the message
+        and hash_process follow. No text states which key the run uses after a shred
+        in mid-operation, so the result is logged as OBS-KEYSEL-SHRED-MIDOP.
+        """
+        msg = self.plan.msg
+        half = (len(msg) // 2) & ~3
+        rc_t, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
+        rc = -1
+        busy = -1
+        err = -1
+        d: list[int] | None = None
+        reason = ""
+        try:
+            await self._poll_hmac(
+                HMAC_STATUS, HMAC_STATUS_IDLE, HMAC_STATUS_IDLE, WAIT_LIMIT, "hmac_idle"
+            )
+            for i, w in enumerate(self.plan.decoy):
+                await self.hmac._wr(HMAC_KEY[i], w)
+            await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR | HMAC_INTR_DONE)
+            await self.hmac._wr(
+                HMAC.addr("CFG"), build_cfg(hmac_en=True, sha_bits=256, key_bits=256)
+            )
+            await self.hmac._wr(HMAC_CMD, HMAC_CMD_HASH_START)
+            await self._push_msg(msg[:half])
+            rc, _ = await self.km.engine_shred(dest=KM_DEST_HMAC)
+            busy = int(not await self.hmac._rd(HMAC_STATUS) & HMAC_STATUS_IDLE)
+            await self._push_msg(msg[half:])
+            await self.hmac._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
+            await self._poll_hmac(
+                HMAC_INTR_STATE, HMAC_INTR_DONE, HMAC_INTR_DONE, WAIT_LIMIT, "hmac_done"
+            )
+            d = await self._read_digest(256)
+            err = int(bool(await self.hmac._rd(HMAC_INTR_STATE) & HMAC_INTR_ERR))
+            await self.hmac._wr(HMAC_INTR_STATE, HMAC_INTR_ERR | HMAC_INTR_DONE)
+        except TrialTimeout as exc:
+            reason = f"timeout:{exc.what} bound={exc.bound}"
+        g_kh = hmac_golden(_sideload_key_bytes(kh), msg, 256)
+        g_decoy = hmac_golden(_sw_key_bytes(list(self.plan.decoy)[:8]), msg, 256)
+        fields = {
+            "rc_transfer": rc_t,
+            "rc_shred": rc,
+            "status_busy_at_rc": busy,
+            "hmac_err": err,
+            "split_bytes": half,
+            "digest==golden_kh": int(d is not None and digest_order(d, g_kh) is not None),
+            "digest==golden_decoy": int(d is not None and digest_order(d, g_decoy) is not None),
+        }
+        if reason:
+            fields["reason"] = reason
+        self.chk.obs("KEYSEL-SHRED-MIDOP", **fields)
 
     async def _mismatched_cells(
         self, kh: list[int], matched: dict[int, list[int] | None]

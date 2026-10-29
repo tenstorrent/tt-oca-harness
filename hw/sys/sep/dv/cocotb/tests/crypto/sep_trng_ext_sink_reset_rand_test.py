@@ -50,6 +50,12 @@ clocks, so the sweep places the clear at every phase of one acknowledge period.
 The phase of a trial is the clocks from the last adapter acknowledge of the client
 to the rise of ``trng_reset_active_probe_o``.
 
+Logged only: ``OBS-XRST-POOL-DATA-INFLIGHT`` (after the pool leg, outside the
+graded window): one pool DATA read started together with the TRNG reset write, with
+one word in the pool. It logs the response, the data, the clocks from the read
+address handshake to the reset rise and from the rise to the response (no stated
+outcome for a pool read in flight when the TRNG reset asserts).
+
 Checkers:
   CHK-XRST-POOL    a pool STATUS read issued and answered inside the clear returns
                    OKAY and fifo_level 0. Control: fifo_level = N before the reset.
@@ -994,6 +1000,54 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             stale_pairs=stale, order_ok=int(pops == expect), bad_resp=bad_resp,
             pre_reset_level=pre_reset_level,
         )  # fmt: skip
+        await self._pool_inflight_obs()
+
+    async def _pool_inflight_obs(self) -> None:
+        """A pool DATA read started with the TRNG reset write; its response is logged."""
+        dut = cocotb.top
+        w = self._next_word()
+        self.ext.send(2, [w, w])
+        if not await self._settle(2, 2, SETTLE_CAP):
+            raise AssertionError(f"in-flight pair not taken in {SETTLE_CAP}")
+        await self._until(lambda: self.trace.pool_quiet >= POOL_QUIET, SETTLE_CAP)
+        level = pool_level(await self.pool.status())
+        ar: dict[str, int] = {}
+
+        async def watch_ar() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if (
+                    self.rd(dut.s_axi_arvalid, allow_unknown=True) == 1
+                    and self.rd(dut.s_axi_arready, allow_unknown=True) == 1
+                    and self.rd(dut.s_axi_araddr, allow_unknown=True) == POOL_POP
+                ):
+                    ar["clk"] = self.trace.clk
+                    return
+
+        watcher = cocotb.start_soon(watch_ar())
+        pop = cocotb.start_soon(self.pool.access(POOL_POP, allow_timeout=True))
+        rise = cocotb.start_soon(self._wait_probe(1, "trng reset rise"))
+        await self.swrst.park("trng")
+        await rise
+        t_rise = self.trace.clk
+        await self._until(lambda: pop.done(), SETTLE_CAP)
+        t_resp = self.trace.clk if pop.done() else None
+        await RisingEdge(dut.clk_i)
+        await self.swrst.release("trng")
+        await self._wait_probe(0, "trng reset fall")
+        await RisingEdge(dut.clk_i)
+        seq = await pop
+        _kill(watcher)
+        self.chk.obs(
+            "XRST-POOL-DATA-INFLIGHT",
+            level_before=level,
+            resp=seq.resp_code,
+            rdata=f"0x{(seq.rdata or 0) & 0xFFFF_FFFF_FFFF_FFFF:016x}",
+            timed_out=int(seq.timed_out),
+            ar_to_rise_clk=t_rise - ar["clk"] if "clk" in ar else "na",
+            rise_to_resp_clk=t_resp - t_rise if t_resp is not None else "na",
+        )
 
     # --- consumer trials ----------------------------------------------------------------
     async def _trials(self) -> None:

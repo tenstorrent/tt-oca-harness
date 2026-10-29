@@ -44,7 +44,9 @@ Checkers:
   CHK-FIFO-INTEG-PTR     1 within 16 x the clean pop time after a pointer-copy error.
   CHK-FIFO-INTEG-W1C     the parity trial bit reads 1, then 0 after the write-one clear.
 Logged only: ``OBS-FIFO-STREAM-FULL`` (whether a discarded word reaches the stream is
-not stated), ``OBS-FIFO-FLAGS-CLEAR``, ``OBS-FIFO-PTR-W1C``.
+not stated), ``OBS-FIFO-FLAGS-CLEAR``, ``OBS-FIFO-PTR-W1C``,
+``OBS-FIFO-CHURN-FIRST32`` (the first 32 churned words XOR C: the churn rule
+names no partner for them).
 """
 
 from __future__ import annotations
@@ -543,6 +545,11 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
             for k in range(CHURN_DISTANCE, DEPTH):
                 pairs += 1
                 bad += (on[k] ^ on[k - CHURN_DISTANCE]) != c
+            self.chk.obs(
+                "FIFO-CHURN-FIRST32",
+                c=f"0x{c:08x}",
+                words_xor_c=",".join(f"0x{on[k] ^ c:08x}" for k in range(CHURN_DISTANCE)),
+            )
         ctrl_ok = off is not None and all(w == c for w in off)
         self.chk.ctrl("FIFO-CHURN", ctrl_ok, ctrl_churn_off_words_equal_c=ctrl_ok)
         fields = {

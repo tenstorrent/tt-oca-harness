@@ -108,6 +108,8 @@ Checkers:
   OUTPUT_LOST is not graded in automatic mode (aes.rdl STATUS.OUTPUT_LOST:
   "not meaningful if MANUAL_OPERATION=0"); its value is logged.
 Vector bits 36 and 37 (entropy pool sources) are logged as ``OBS-POOL-VEC``.
+OUTPUT_VALID after each word of the first DATA_OUT read that the streams make
+word by word is logged as ``OBS-AES-OV-PARTIAL``.
 ``aes.rdl`` is ``vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl``; the two ``.md``
 files are under ``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/``; ``aes.hjson`` is
 ``vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson``.
@@ -446,6 +448,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         # Clock count of the leaf: the clk of a watcher that samples every rising edge.
         self.clk = SepBitWatch(cocotb.top.rst_ni, {"rst_ni": 0}, name="clk_count").start()
         self.t_blk: int | None = None
+        self.ov_partial_done = False
         self.auto_start_clk = -1
         self.quiet = False
         self.idle_busy = 0
@@ -632,7 +635,24 @@ class sep_aes_stream_status_rand_test(sep_base_test):
             return None
         if s.out_gap[i]:
             await ClockCycles(cocotb.top.clk_i, s.out_gap[i])
+        if not self.ov_partial_done:
+            self.ov_partial_done = True
+            return await self._read_out_partial(s.mode, i)
         return await self._read_out()
+
+    async def _read_out_partial(self, mode: str, i: int) -> list[int]:
+        """DATA_OUT read word by word with a STATUS read after each word.
+
+        No text states OUTPUT_VALID after a read of only some DATA_OUT words, so the
+        four values are logged as OBS-AES-OV-PARTIAL.
+        """
+        out: list[int] = []
+        ov_after: list[int] = []
+        for k in range(4):
+            out.append(await self.aes._rd(AES_DATA_OUT[k]))
+            ov_after.append(int(bool(await self.aes._rd(AES_STATUS) & ST_OV)))
+        self.chk.obs("AES-OV-PARTIAL", mode=mode, block=i, ov_after=ov_after)
+        return out
 
     # --- streams ------------------------------------------------------------------
     async def _stream(self, s: StreamPlan) -> None:

@@ -43,6 +43,12 @@ CHK-EXT-IRQ, CHK-SEL-READY, CHK-SEL-HOLD, CHK-SEL-LOCK, CHK-SEL-LOCKFIRST,
 CHK-SEL-GLOBAL, CHK-POOL-DATA, CHK-EDN-FIFO-DEPTH (contracts in the docstring of
 each leg).
 
+Logged only (no stated outcome): ``OBS-EXT-WITHDRAW`` when a source drops a beat it
+holds at the end of a leg: the held word, tready at the drop and the next word that
+completes at that port. ``OBS-EXT-NOSRC`` after the back-pressure leg: with stream 2
+external and no beat offered, the pool fifo_level before and after a hold of
+``DRAIN_WINDOW`` clocks and one DATA pop (response and data).
+
 Coverage gate: a FAIL closes the graded window and keeps it closed for the rest of
 the leaf. The sampler holds the cells of the external beats, the external stalls,
 the pool pops and the endpoint FIFO depth, and samples a held cell only when the
@@ -602,9 +608,37 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _drop_source(self, *streams: int) -> None:
         """End of a leg: the source drops whatever it still holds or queues."""
+        dut = cocotb.top
         for i in streams:
             if self.ext.pending(i):
+                tvalid = _bit(_known(dut.ext_trng_tvalid_o), i)
+                tready = _bit(_known(dut.ext_trng_tready_o), i)
+                held = _word(_known(dut.ext_trng_tdata_o), i) if tvalid == 1 else None
                 await self.ext.source_reset(i)
+                if held is not None:
+                    cocotb.start_soon(self._withdraw_obs(i, held, tready))
+
+    async def _withdraw_obs(self, i: int, held: int, tready: int | None) -> None:
+        """The next word that completes at port ``i`` after a source drops a held beat."""
+        dut = cocotb.top
+        nxt = None
+        for _ in range(SETTLE_CAP):
+            await FallingEdge(dut.clk_i)
+            await ReadOnly()
+            if (
+                _bit(_known(dut.ext_trng_tvalid_o), i) == 1
+                and _bit(_known(dut.ext_trng_tready_o), i) == 1
+            ):
+                nxt = _word(_known(dut.ext_trng_tdata_o), i)
+                break
+        self.chk.obs(
+            "EXT-WITHDRAW",
+            stream=i,
+            held=f"0x{held:08x}",
+            tready_at_drop=tready if tready is not None else "x",
+            next="none" if nxt is None else f"0x{nxt:08x}",
+            next_eq_held=int(nxt == held),
+        )
 
     async def _settle_pairs(self, stream: int, target: int, bound: int) -> int | None:
         """Wait until ``target`` beats completed at port ``stream`` since the counter
@@ -947,6 +981,28 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             await self._release(XHS_PASS_STALL[1] | XHS_PASS_POOL_POP)
         close_graded_window(self.logger)
         await self._drop_source(2)
+        await self._no_source_obs()
+
+    async def _no_source_obs(self) -> None:
+        """Pool STATUS and one DATA pop with stream 2 external and no beat offered."""
+        old = await self.reg._rd(SEL_ADDR) & SEL_MASK
+        sel = await self._sel(old | 1 << 2)
+        level0 = pool_level(await self.pool.status())
+        await self._clocks(DRAIN_WINDOW)
+        level1 = pool_level(await self.pool.status())
+        seq = await self.pool.access(POOL_POP, allow_timeout=True)
+        await self._sel(old)
+        self.chk.obs(
+            "EXT-NOSRC",
+            sel=f"0x{sel:x}",
+            pending=self.ext.pending(2),
+            wait_clk=DRAIN_WINDOW,
+            level_before=level0,
+            level_after=level1,
+            resp=seq.resp_code,
+            rdata=f"0x{(seq.rdata or 0) & 0xFFFF_FFFF_FFFF_FFFF:016x}",
+            timed_out=int(seq.timed_out),
+        )
 
     async def _ready_leg(self, sp: StreamPlan) -> None:
         """CHK-SEL-READY: for a selected stream 1 or 2 with no sink draining, tready
