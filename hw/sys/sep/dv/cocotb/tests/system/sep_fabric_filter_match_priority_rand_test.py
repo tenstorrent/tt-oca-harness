@@ -69,7 +69,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+import cocotb
 import pyuvm
+from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_common import (
     RESP_DECERR,
@@ -104,6 +106,9 @@ TEST = "sep_fabric_filter_match_priority_rand_test"
 AXI_BURST_INCR = 1
 M32 = 0xFFFF_FFFF
 M64 = (1 << 64) - 1
+# ext_debug_bus_o[191:160]: outbound filter hit lane [191:176] and inbound
+# filter hit lane [175:160] (hw/sys/sep/rtl/sep.sv, debug bus assembly).
+DBG_FILTER_LSB = 160
 
 # Pinned image: PROD, SEC_DIS 0, DBG_1 bit 0 clear in both disable vectors.
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0E
@@ -332,8 +337,48 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         out = self.taps["PR-OUT"].count(mark[2], ch)
         return xe + cs, out
 
+    async def _dbg_sampler(self) -> None:
+        """Record each change of ext_debug_bus_o[191:160]; None when X or Z."""
+        sig = cocotb.top.ext_debug_bus_o
+        last: int | None = -1
+        while self._dbg_on:
+            await RisingEdge(cocotb.top.clk_i)
+            await ReadOnly()
+            try:
+                v: int | None = (int(sig.value) >> DBG_FILTER_LSB) & M32
+            except ValueError:
+                v = None
+            if v != last:
+                self._dbg_hist.append(v)
+                last = v
+
+    def _dbg_mark(self) -> int:
+        return len(self._dbg_hist)
+
+    def _dbg_since(self, m: int) -> str:
+        """The lane value at mark ``m`` and every change after it."""
+        vals = self._dbg_hist[max(0, m - 1) :]
+        return ",".join("X" if x is None else f"0x{x:08x}" for x in vals) or "none"
+
+    def _obs_dbg(self, p: Probe, m: int, resp: int | None) -> None:
+        self.logger.info(
+            "OBS-DBG-FILTER-HIT inst=%s cls=%s dir=%s addr=0x%08x resp=%s lane_191_160=%s",
+            p.inst,
+            p.cls,
+            p.dir,
+            p.addr,
+            _RESP.get(resp),
+            self._dbg_since(m),
+        )
+
     async def _run(self, p: Probe) -> Result:
         """Run one probe and grade it against the model. Returns the evidence."""
+        dm = self._dbg_mark()
+        r = await self._run_graded(p)
+        self._obs_dbg(p, dm, r.resp)
+        return r
+
+    async def _run_graded(self, p: Probe) -> Result:
         v = self._verdict(p)
         perm = int(
             v.winner is not None and self._bank(p.inst).model.entries[v.winner].permits(p.write)
@@ -1403,6 +1448,93 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._clear("out")
 
     # ------------------------------------------------------------------
+    # Logged legs: group_id on AxUSER[11:4], first probe after the entry write
+    # ------------------------------------------------------------------
+    async def _obs_si_read(self, p: Probe) -> tuple[int, int, int]:
+        """One SI read of ``p``: (resp, PR-INFLT AR count, PR-XEXT/PR-CSR AR count)."""
+        mark = self._target_mark()
+        mf = self.taps["PR-INFLT"].mark()
+        dm = self._dbg_mark()
+        seq = await self._si(p)
+        self._obs_dbg(p, dm, seq.resp_code)
+        return seq.resp_code, self.taps["PR-INFLT"].count(mf, "ar"), self._seen(mark, p)[0]
+
+    async def _obs_group(self) -> None:
+        idx = self.rng.randrange(self.inb.n)
+        s = self.rng.randrange(1, 16)
+        p = self._p_in("sram", False, self.rng.getrandbits(1), user=s)
+        e = self._entry(p, self._cover(p, False), src=s)
+        await self._load("in", {idx: e})
+        other = self.rng.choice([g for g in range(256) if g != e.group_id])
+        for kind, g in (("equal", e.group_id), ("differ", other)):
+            q = replace(p, user=(g << 4) | s, fuser=s)
+            resp, inflt, seen = await self._obs_si_read(q)
+            self.logger.info(
+                "OBS-FILT-GROUP entry=%d group_id=%d src_id=%d axuser=0x%03x kind=%s "
+                "resp=%s pr_inflt_ar=%d target_ar=%d",
+                idx,
+                e.group_id,
+                s,
+                q.user,
+                kind,
+                _RESP.get(resp),
+                inflt,
+                seen,
+            )
+        await self._clear("in")
+
+    async def _obs_write_to_use(self) -> None:
+        """Program one entry without the read-back and probe right after its last B."""
+        await self._clear("in")
+        idx = self.rng.randrange(self.inb.n)
+        p = self._p_in("sram", False, self.rng.getrandbits(1))
+        await self.inb.program(idx, self._entry(p, self._cover(p, False)), check=False)
+        self.used["in"] = {idx}
+        resp, inflt, seen = await self._obs_si_read(p)
+        self.logger.info(
+            "OBS-FILT-WRITE-TO-USE inst=in entry=%d addr=0x%08x resp=%s pr_inflt_ar=%d target_ar=%d",
+            idx,
+            p.addr,
+            _RESP.get(resp),
+            inflt,
+            seen,
+        )
+        await self.inb.check_entry(idx, "write_to_use")
+        await self._clear("in")
+
+        await self._clear("out")
+        idx = self.rng.randrange(self.outb.n)
+        p = self._p_out("smu", False, self.rng.getrandbits(1))
+        await self.outb.program(idx, self._entry(p, self._cover(p, False)), check=False)
+        self.used["out"] = {idx}
+        mark = self.taps["PR-OUT"].mark()
+        dm = self._dbg_mark()
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        seq = SepAxiAccessSeq(
+            "fmp_lsu_w2u",
+            op=SepAxiOp.READ,
+            addr=p.addr,
+            length=4,
+            size=2,
+            prot=p.prot1 << 1,
+            allow_ungraded_read_resp=True,
+        )
+        await self.start_seq(seq)
+        if seq.resp_code != RESP_DECERR:
+            mon.release_expected_decerr(1)
+        self._obs_dbg(p, dm, seq.resp_code)
+        self.logger.info(
+            "OBS-FILT-WRITE-TO-USE inst=out entry=%d addr=0x%08x resp=%s pr_out_ar=%d",
+            idx,
+            p.addr,
+            _RESP.get(seq.resp_code),
+            self.taps["PR-OUT"].count(mark, "ar"),
+        )
+        await self.outb.check_entry(idx, "write_to_use")
+        await self._clear("out")
+
+    # ------------------------------------------------------------------
     async def run_scenario(self) -> None:
         self.rng = SepSeededRng(self.random_seed())
         self.mem: dict[int, int] = {}
@@ -1429,6 +1561,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         self.inb = SepFilterBank(self, "in")
         self.outb = SepFilterBank(self, "out")
         self.taps = start_taps("PR-XEXT", "PR-CSR", "PR-OUT", "PR-EXT", "PR-SRAM", "PR-INFLT")
+        self._dbg_hist: list[int | None] = []
+        self._dbg_on = True
+        cocotb.start_soon(self._dbg_sampler())
 
         # Step 2: stage the SRAM pair and the cold scratch word.
         self.s0 = SRAM_BASE + 0x1000 + 16 * self.rng.randrange(0, (SRAM_SIZE - 0x2000) // 16)
@@ -1459,6 +1594,9 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         await self._leg1()
         await self._leg2()
         await self._leg4()
+        close_graded_window(self.logger)
+        await self._obs_group()
+        await self._obs_write_to_use()
 
         for inst in ("in", "out"):
             s = self.stats[inst]
@@ -1475,4 +1613,5 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
         close_graded_window(self.logger)
         await self._remap(AP_BASE, 0, False)
         await self._remap(STEE_BASE, 0, False)
+        self._dbg_on = False
         await stop_taps(self.taps)

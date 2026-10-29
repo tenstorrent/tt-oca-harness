@@ -415,8 +415,15 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         irqs = await self._rd(m, p, "IRQS")
         lo, hi = data & M32, (data >> 32) & M32
         txt = (
-            f"mbox={m} port={p} resp={resp_name(resp)} data=0x{lo:08X} data_hi=0x{hi:08x} "
+            f"mbox={m} port={p} resp={resp_name(resp)} data=0x{lo:08X} "
             f"read_err={first & ERR_READ and 1} irqs=0x{irqs:x} exp_irqs=0x{exp_irqs:x}"
+        )
+        self.logger.info(
+            "OBS-MBX-DATA-HI seed=%d mbox=%d port=%s check=ERR-RD data_hi=0x%08x",
+            self.seed,
+            m,
+            p,
+            hi,
         )
         if (
             resp != RESP_SLVERR
@@ -820,7 +827,6 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         for m in range(8):
             for p in ("out", "in"):
                 await self._clear_port(m, p)
-        his = []
         n = 0
         for m in range(8):
             for p in ("out", "in"):
@@ -847,10 +853,9 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                 st = await self._rd(m, p, "STATUS")
                 lo = got[0][1] & M32
                 hi = got[1][1] & M32
-                his.append(hi)
                 txt = (
                     f"mbox={m} port={p} first_half={first} resp_lo={resp_name(got[0][0])} "
-                    f"resp_hi={resp_name(got[1][0])} data_lo=0x{lo:08X} data_hi=0x{hi:08x} "
+                    f"resp_hi={resp_name(got[1][0])} data_lo=0x{lo:08X} "
                     f"status_before=0x{s0[0]:x}/0x{s0[1]:x} status_after=0x{s1[0]:x}/0x{s1[1]:x} "
                     f"flags=0x{flags:x} pop=0x{pg:016x} exp=0x{pe:016x} empty_after={int(bool(st & ST_EMPTY))}"
                 )
@@ -866,13 +871,20 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
                     and st & ST_EMPTY
                 )
                 self.logger.info("INFO-WO-READ LOG seed=%d %s", self.seed, txt)
+                self.logger.info(
+                    "OBS-MBX-DATA-HI seed=%d mbox=%d port=%s check=WO-READ data_hi=0x%08x",
+                    self.seed,
+                    m,
+                    p,
+                    hi,
+                )
                 if not ok:
                     self._fail("CHK-WO-READ", txt)
                 n += 1
         self._pass(
             "CHK-WO-READ",
             f"apertures={n} resp=OKAY data_lo=0x{WRITE_DATA_RD_SENTINEL:08X} "
-            f"data_hi={','.join(f'0x{h:x}' for h in sorted(set(his)))} status_same={n} flags=0x0",
+            f"status_same={n} flags=0x0",
         )
 
     async def _induce(self, m: int, p: str, kind: str) -> tuple[int, int, list[int]]:

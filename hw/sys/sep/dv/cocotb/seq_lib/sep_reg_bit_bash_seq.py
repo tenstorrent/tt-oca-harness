@@ -36,6 +36,7 @@ from collections import defaultdict
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import AXI_BUS_BYTES
+from pyuvm import ConfigDB
 from sep_reg_meta import (
     INBOUND_FILTER_CTRL_0,
     KM_MAILBOX_SEP,
@@ -641,6 +642,36 @@ class SepRegBitBash:
         # bits [2:0] are pinned by that model compare, not by the move, so
         # they are not full-mask CHK-WRITE-LANDS evidence.
         self.lands_upper_ok = 0
+        # Response USER per block: the s_axi monitor logs (cycle, chan, user)
+        # of each response handshake, and each block entry records its start
+        # cycle so resp_user_by_block() can split the log.
+        self.mon = ConfigDB().get(test, "", "sep_axi_monitor_s_axi")
+        self.mon.resp_user_log = []
+        self._block_starts: list[tuple[int, str]] = []
+
+    def _mark(self, info: RegInfo) -> None:
+        if not self._block_starts or self._block_starts[-1][1] != info.block:
+            self._block_starts.append((self.mon.cycles, info.block))
+
+    def resp_user_by_block(self) -> dict[str, dict[str, set]]:
+        """Distinct RUSER and BUSER values seen per block, in walk order.
+
+        A response belongs to the last block whose start cycle + 1 is below
+        the response cycle: a block's first R or B comes at least two cycles
+        after its start, and the previous block's last one at most one cycle
+        after it, whichever coroutine the clock edge wakes first.
+        """
+        out: dict[str, dict[str, set]] = {}
+        starts = self._block_starts
+        i = -1
+        for cyc, chan, user in self.mon.resp_user_log or []:
+            while i + 1 < len(starts) and starts[i + 1][0] + 1 < cyc:
+                i += 1
+            if i < 0:
+                continue
+            per = out.setdefault(starts[i][1], {"R": set(), "B": set()})
+            per[chan].add(user)
+        return out
 
     async def _rd(self, addr: int, *, name: str) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
@@ -675,6 +706,7 @@ class SepRegBitBash:
         if not needs_gen_off(info):
             yield
             return
+        self._mark(info)
         en = self.gen_enable
         wr = await self._wr(en.addr, 0, name=f"gen_off_{info.name}")
         assert wr == 0, f"{en.block}.{en.name} disable write resp={wr}"
@@ -686,6 +718,7 @@ class SepRegBitBash:
         self.gen_off_windows += 1
 
     async def check_reset(self, info: RegInfo) -> str | None:
+        self._mark(info)
         resp, got = await self._rd(info.addr, name=f"{info.block}_{info.name}")
         if resp != 0:
             return (
@@ -715,6 +748,7 @@ class SepRegBitBash:
         return None
 
     async def bash_write(self, info: RegInfo, *, ones_first: bool) -> None:
+        self._mark(info)
         tag = f"{info.block}_{info.name}"
         resp, before = await self._rd(info.addr, name=tag)
         assert resp == 0, f"{info.block}.{info.name} @0x{info.addr:08x} resp={resp} before write"
@@ -824,6 +858,7 @@ class SepRegBitBash:
         the next), so ``inbound_addr_expected`` is the readback contract. A
         raw ``x`` compare would fail on the RTL widen of bits [2:0].
         """
+        self._mark(info)
         tag = f"touch_{info.block}_{info.name}"
         mask = write_mask(info)
         shadowed = "SHADOWED" in info.name

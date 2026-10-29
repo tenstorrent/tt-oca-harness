@@ -202,6 +202,7 @@ from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import draw_source_words
+from env.sep_dma_tap import SepDmaTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
 from env.sep_lcc_golden import LC_PROD
@@ -358,6 +359,12 @@ class _Cfg:
         self.post_err = self._range_pair(rng)
         while any(self.post_err[0] == b or self.post_err[1] == lim for b, lim in taken):
             self.post_err = self._range_pair(rng)
+        # Logged trials: a first RANGE_REGWEN write that is neither MuBi4 value,
+        # and a copy whose size is 2 bytes past a whole number of 4-byte beats.
+        self.nonmubi = rng.choice(
+            [v for v in range(_REGWEN_ALL + 1) if v not in (REGWEN_TRUE, REGWEN_FALSE)]
+        )
+        self.edge_size = 4 * rng.randrange(4, MAX_BYTES // 4) + 2
 
     def _place(self, rng, size: int) -> tuple[int, int]:
         span = size + 2 * self.guard
@@ -389,6 +396,7 @@ class _Cfg:
             + f" l4_size={self.hi_size} "
             + " ".join(f"l4_{s}_hi=0x{self.addr_hi[s]:08x}" for s in HI_SIDES)
             + f" post_err=0x{self.post_err[0]:08x}/0x{self.post_err[1]:08x}"
+            + f" nonmubi=0x{self.nonmubi:x} edge_size={self.edge_size}"
         )
 
 
@@ -699,6 +707,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             self._pass("CHK-DMA-INTR-RELEASE", line)
         for event in RELEASE_EVENTS:
             await self._release_trial(event)
+        await self._obs_size_edge()
 
     async def _release_trial(self, event: str) -> None:
         """A write of 1 to STATUS.DONE or STATUS.CHUNK_DONE releases its interrupt."""
@@ -1111,6 +1120,67 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         await self._grade_l3_outside()
         await self._l3_lock("idle")
         await self._l3_lock("after_error")
+        await self._obs_lock_nonmubi()
+
+    async def _obs_lock_nonmubi(self) -> None:
+        """RANGE_REGWEN after a first write of a non-MuBi4 value, and whether RANGE_BASE then takes a write."""
+        c = self.cfg_t
+        ops = self.ops
+        await self._cold_reset()
+        resp_rw = await self._wr_log(RANGE_REGWEN, c.nonmubi << _REGWEN_LSB)
+        regwen = (await ops.rd(RANGE_REGWEN) & REGWEN_MASK) >> _REGWEN_LSB
+        base_pre = await ops.rd(RANGE_BASE)
+        nb = c.lock_vals[0][0]
+        resp_b = await self._wr_log(RANGE_BASE, nb)
+        base = await ops.rd(RANGE_BASE)
+        self.logger.info(
+            "OBS-DMA-REGWEN-NONMUBI seed=%d written=0x%x regwen=0x%x write_resp=%d "
+            "base_before=0x%08x base_written=0x%08x base=0x%08x base_resp=%d base_landed=%d",
+            c.seed,
+            c.nonmubi,
+            regwen,
+            resp_rw,
+            base_pre,
+            nb,
+            base,
+            resp_b,
+            int(base == nb and base_pre != nb),
+        )
+
+    async def _obs_size_edge(self) -> None:
+        """A copy of 4k+2 bytes at width encoding 2: ERROR_CODE, the last WSTRB and the destination footprint."""
+        c = self.cfg_t
+        ops = self.ops
+        size = c.edge_size
+        await self._cold_reset()
+        await self._base_config(MAX_BYTES // 4)
+        tap = SepDmaTap().start()
+        await ClockCycles(cocotb.top.clk_i, 1)
+        m = tap.mark()
+        await ops.program_transfer(src=c.src, dst=c.dst, total=size, chunk=size, width_enc=2)
+        await ops.go(opcode=OP_COPY, initial=1)
+        st, ended = await self._poll_end(size)
+        ecode = await ops.rd(ERROR_CODE)
+        ev = tap.since(m)
+        await tap.stop()
+        img = await self.mem.read(c.dst, (MAX_BYTES + c.guard) // 4)
+        data = b"".join(w.to_bytes(4, "little") for w in img)
+        changed = [i for i, x in enumerate(data) if x != c.sentinel]
+        self.logger.info(
+            "OBS-DMA-SIZE-EDGE seed=%d size=%d width_enc=2 ended=%d done=%d error=%d "
+            "error_code=0x%x aw=%d w=%d last_wstrb=%s footprint_bytes=%d last_changed_byte=%s",
+            c.seed,
+            size,
+            int(ended),
+            st.done,
+            st.error,
+            ecode,
+            len(ev.aw),
+            len(ev.w),
+            "-" if not ev.w or ev.w[-1].strb is None else f"0x{ev.w[-1].strb:x}",
+            len(changed),
+            "-" if not changed else str(changed[-1]),
+        )
 
     # ---- L5 ------------------------------------------------------------------
     async def _l5_copy(self, asid: int) -> tuple[DmaStatus, int | None, int, int]:

@@ -315,6 +315,9 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             "secdis": _bit(sig_bits(dut.lcc_security_disable_probe_o)),
             "dvalid": _bit(sig_bits(dut.token_digest_sdis_valid_o)),
             "digest": _int(sig_bits(dut.token_digest_sdis_sticky_o)),
+            "km_rlock": _int(sig_bits(dut.km_csr_otp_read_lock_o)),
+            "km_rlock_cold": _int(sig_bits(dut.km_csr_otp_read_lock_cold_o)),
+            "km_chg": _int(sig_bits(dut.km_csr_otp_change_status_o)),
         }
 
     async def _sampler(self, rec: list, stop: dict) -> None:
@@ -533,6 +536,17 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             len(win),
             " ".join(f"{k}={v}" for k, v in moved.items()),
             ",".join(feats[:4]),
+        )
+        km = ("km_rlock", "km_rlock_cold", "km_chg")
+        self.logger.info(
+            "OBS-SCAN-KM-COPY: leg=%s strap=%d before %s; samples=%d moved %s; during %s; last %s",
+            leg,
+            strap,
+            " ".join(f"{k}={_hex(base[k], 3)}" for k in km),
+            len(win),
+            " ".join(f"{k}={sum(1 for x in win if x[k] != base[k])}" for k in km),
+            " ".join(f"{k}={','.join(sorted({_hex(x[k], 3) for x in win}))}" for k in km),
+            " ".join(f"{k}={_hex(win[-1][k], 3)}" for k in km),
         )
 
     def _obs_class1_names(self) -> None:

@@ -218,6 +218,9 @@ PAIR_STEE_INV = (20, 21)
 PAIR_SMU_MOVED = (22, 23)
 PAIR_OVL_LOCAL = (24, 25)
 PAIR_OVL_TRANSLATED = (26, 27)
+PAIR_LOWADDR = (28, 29)
+# The external row below the local units (memory_map.adoc, "SEP External").
+LOWADDR_HI = 0x0FFF_FFFF
 SMU_BASE_FIELD = SEP_CPU_CTRL.field_mask("SMU_GLOBAL_BASE_ADDR", "addr")
 SMU_SIZE_FIELD = SEP_CPU_CTRL.field_mask("SMU_REGION_SIZE", "size")
 # The moved SMU pair: base and size are software fields (sw = rw,
@@ -700,6 +703,47 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             )
             self.logger.info("CHK-OUT-ROUTE PASS: %s", line)
         await self._pair_enable(PAIR_SMU, True)
+
+    async def _lowaddr_leg(self) -> None:
+        """One LSU read and write of a drawn word below 0x1000_0000 behind an enabled pair."""
+        cfg = self.tcfg
+        while True:
+            word = 8 * cfg.rng.randrange(0, (LOWADDR_HI + 1) // 8)
+            if not any(b <= word < b + sz for b, sz in _smc_apertures()):
+                break
+        lo, hi = granule8(word)
+        await self._program_pair(PAIR_LOWADDR, lo, hi)
+        smc = SepFabricTap("PR-SMC").start()
+        mon = self.env.axi_monitor
+        for write in cfg.dirs():
+            mo, ms = self.out.mark(), smc.mark()
+            mon.arm_expected_decerr(1)
+            seq = SepAxiAccessSeq(
+                "out_lowaddr",
+                op=SepAxiOp.WRITE if write else SepAxiOp.READ,
+                addr=word,
+                wdata=cfg.wdata() if write else 0,
+                length=8,
+                size=3,
+                prot=cfg.prot(1),
+                allow_ungraded_read_resp=not write,
+                allow_unverified_write_resp=write,
+            )
+            await self.start_seq(seq)
+            if seq.resp_code != RESP_DECERR:
+                mon.release_expected_decerr(1)
+            ch = "aw" if write else "ar"
+            self.logger.info(
+                "OBS-OUT-LOWADDR dir=%s addr=0x%08x resp=%s pr_out=%s pr_smc=%s",
+                "W" if write else "R",
+                word,
+                _rname(seq.resp_code),
+                _join_addrs(self.out.since(mo, ch)),
+                _join_addrs(smc.since(ms, ch)),
+            )
+        await smc.stop()
+        for idx in PAIR_LOWADDR:
+            await self.filt.restore_reset(idx)
 
     async def _remap_leg(self, c: _Cls, pair: tuple[int, int]) -> None:
         """Steps 9 to 11 for one remapped class (13 for STEE)."""
@@ -1205,6 +1249,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._smu_moved_leg()
         await self._smu_over_ap_leg()
         close_graded_window(self.logger)
+        await self._lowaddr_leg()
         await self.out.stop()
         line = f"captures={self.n_capture} admitted={self.n_expect}"
         assert self.n_expect > 0 and self.n_capture == self.n_expect, (
@@ -1235,6 +1280,10 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             "0 and 1 for each bit-55 value"
         )
         self.logger.info("CHK-OUT-HIBIT PASS: %s", line)
+
+
+def _join_addrs(beats: list) -> str:
+    return ",".join(_hx(b.addr) for b in beats) or "none"
 
 
 def _hx(v) -> str:

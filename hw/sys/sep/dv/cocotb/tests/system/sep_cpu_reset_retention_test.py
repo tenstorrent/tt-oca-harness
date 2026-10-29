@@ -163,6 +163,8 @@ from seq_lib.sep_irq_aggregator_seq import (
     kmac_reg_unmapped_addr,
     otbn_reg_unmapped_addr,
 )
+from seq_lib.sep_mailbox_walk_seq import MAILBOX_COUNT
+from seq_lib.sep_mbox_port_ops import REG_OFFSETS, port_base
 from seq_lib.sep_reset_mid_transfer_seq import PROBES, ResetProbe, SepResetProbeDriver, other_value
 from seq_lib.sep_scratch_reset_seq import (
     SCRATCH_COLD_ADDRS,
@@ -172,6 +174,13 @@ from seq_lib.sep_scratch_reset_seq import (
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N, SW_RESET_N_BIT
 
 TEST = "sep_cpu_reset_retention_test"
+# Logged-only state: a mailbox word and a non-reset SEP_NMI_VEC, drawn from a
+# separate stream so the Plan draws keep their seed mapping.
+OBS_SALT = 0x4D42_5852
+NMI_VEC = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
+NMI_MASK = SEP_CPU_CTRL.mask32("SEP_NMI_VEC")
+NMI_RESET = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
+REFCNT = SEP_CPU_CTRL.addr("REFERENCE_COUNTER")
 RESP_OKAY, RESP_SLVERR = 0, 2
 RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
 ISO_DATA = 0x1501_A7ED  # reset_controller.adoc, Isolation and Reset Sequencing, step 2
@@ -548,6 +557,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await self._latch_faults(f"{cls} sequence")
                 await self._sequence(cls)
                 await self._retention_reads(cls)
+                await self._obs_cpurst(cls)
             # Every DMA run, the DBG runs too, comes before the overlap leg.
             for cls in self.classes:
                 for mode in self.plan.dma_modes:
@@ -696,6 +706,75 @@ class sep_cpu_reset_retention_test(sep_base_test):
             fc = field_compare(got, self.armed[p.name], p.mask)
             if not fc.ok or (self.armed[p.name] & p.mask) == (p.reset & p.mask):
                 raise AssertionError(f"arm readback {p.name}: {fc.fields()}")
+        await self._arm_obs()
+
+    # ---- logged-only state across the CPU resets --------------------------------
+    def _mbx(self, port: str, reg: str) -> int:
+        return port_base(self.mbx_m, port) + REG_OFFSETS[reg]
+
+    async def _acc64(self, op: SepAxiOp, addr: int, data: int = 0) -> SepAxiAccessSeq:
+        seq = SepAxiAccessSeq(
+            f"ret64_{op.value}_0x{addr:08x}",
+            op=op,
+            addr=addr,
+            wdata=data,
+            length=8,
+            size=3,
+            allow_unverified_write_resp=op is SepAxiOp.WRITE,
+            allow_ungraded_read_resp=op is SepAxiOp.READ,
+        )
+        await self.start_seq(seq)
+        if seq.timed_out:
+            raise AssertionError(f"{op.value} @0x{addr:08x} got no response")
+        return seq
+
+    async def _arm_obs(self) -> None:
+        """Arm one mailbox word with WIRQT set, and a non-reset SEP_NMI_VEC (lock 0)."""
+        xr = SepSeededRng(self.seed ^ OBS_SALT)
+        self.mbx_m = xr.randrange(MAILBOX_COUNT)
+        self.mbx_word = xr.getrandbits(64) | 1
+        self.nmi_armed = other_value(xr, NMI_MASK, (NMI_RESET,))
+        self.logger.info(
+            "INFO-OBS-ARM mbox=%d word=0x%016x nmi_vec=0x%08x",
+            self.mbx_m,
+            self.mbx_word,
+            self.nmi_armed,
+        )
+        await self._wr(self._mbx("out", "WIRQT"), 1)
+        await self._acc64(SepAxiOp.WRITE, self._mbx("out", "WRITE_DATA"), self.mbx_word)
+        await self._wr(NMI_VEC, self.nmi_armed)
+
+    async def _obs_cpurst(self, event: str, *, mbox: bool = True) -> None:
+        """OBS-MBX-CPURST and OBS-RST-CPUCTRL-KEEP after a reset event.
+
+        No line states whether a CPU-only reset keeps the mailbox FIFO, SEP_NMI_VEC
+        or REFERENCE_COUNTER. The mailbox read pops the word, and the word is
+        pushed again so the next event starts from the same state.
+        """
+        if mbox:
+            st = await self._acc(SepAxiOp.READ, self._mbx("in", "STATUS"))
+            rd = await self._acc64(SepAxiOp.READ, self._mbx("in", "READ_DATA"))
+            self.logger.info(
+                "OBS-MBX-CPURST event=%s mbox=%d status=0x%x status_resp=%s data=0x%x "
+                "data_resp=%s armed=0x%016x",
+                event,
+                self.mbx_m,
+                int(st.rdata) & 0xFFFF_FFFF,
+                RESP_NAME[st.resp_code],
+                int(rd.rdata),
+                RESP_NAME[rd.resp_code],
+                self.mbx_word,
+            )
+            await self._acc64(SepAxiOp.WRITE, self._mbx("out", "WRITE_DATA"), self.mbx_word)
+        nmi = await self._rd(NMI_VEC)
+        ref = await self._acc64(SepAxiOp.READ, REFCNT)
+        self.logger.info(
+            "OBS-RST-CPUCTRL-KEEP event=%s nmi_vec=0x%x armed=0x%x refcnt=0x%x",
+            event,
+            nmi & NMI_MASK,
+            self.nmi_armed,
+            int(ref.rdata),
+        )
 
     async def _write_banks(self, warm_only: bool = False) -> None:
         banks = (
@@ -1563,6 +1642,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         pst = await self._rd(PERIPH_STATUS_ADDR)
         swv = await self._rd(SW)
         self.logger.info("INFO-SWRST-COLD-UNMOVED: fields=km,otbn,aes,kmac,trng,abr")
+        await self._obs_cpurst("COLD", mbox=False)
         # Control of CHK-RETAIN: every armed register reads its RDL default.
         defaults = 0
         regs = (*self._armed_probes(), *RANGE_PROBES)

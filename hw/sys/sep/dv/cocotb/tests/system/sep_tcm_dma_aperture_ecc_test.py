@@ -45,7 +45,10 @@ Checkers:
                  differs from the written word in the two flipped bits.
 Observations (not graded): OBS-TCM-EXCL (whether the other memory's clock-enable
 tap rose), OBS-TCM-DBG (``ext_debug_bus_o[367:364]`` during each DMA read),
-OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read).
+OBS-TCM-SBE-STATUS (``DMA_BUS_ERR_STATUS`` after a corrected read),
+OBS-TCM-SUBWORD (STATUS, ERROR_CODE, ``DMA_BUS_ERR_STATUS`` and the word read
+back after a 1- or 2-byte DMA copy into, and out of, one drawn word of each
+memory; it runs after CHK-TCM-CLEAN).
 
 Bench: the TCM bit-flip hook (error inject, ``env/sep_tcm_flip.py``) XORs a mask
 into the stored 39-bit word (bits 31:0 data, 38:32 ECC). Flips land only on
@@ -92,6 +95,8 @@ SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SRC_STAGE = SRAM_BASE + 0x0_8000
 FLIP_STAGE = SRAM_BASE + 0x0_9000
 RB_STAGE = SRAM_BASE + 0x1_0000
+# Source and readback words of the logged sub-word copies.
+SUB_STAGE = SRAM_BASE + 0x0_A000
 
 MEMS = {
     "ICCM": (sym("SEP_ICCM_MEM_BASE_ADDR"), sym("SEP_ICCM_MEM_SIZE")),
@@ -200,6 +205,15 @@ class _Cfg:
                 addr = rng.choice(self.apert[mem])[0]
                 self.dbe.append((mem, a, b, addr, uniq32()))
 
+        # Sub-word copies (logged): per memory a word, a width (1 or 2 bytes)
+        # and a width-aligned byte offset in the word.
+        self.sub: dict[str, tuple[int, int, int, int]] = {}
+        for mem in MEMS:
+            enc = rng.randrange(2)
+            nbytes = 1 << enc
+            off = nbytes * rng.randrange(WORD_BYTES // nbytes)
+            self.sub[mem] = (rng.choice(self.apert[mem])[0], enc, off, uniq32())
+
     def draw_lines(self) -> list[str]:
         out = []
         for mem, rows in self.apert.items():
@@ -208,6 +222,9 @@ class _Cfg:
                 + ",".join(f"0x{a:08x}" for a, _ in rows[2 + self.bits[mem] :])
             )
         out.append("sbe=" + " ".join(f"{m}/k={k}/@0x{a:08x}" for m, k, a, _ in self.sbe))
+        out.append(
+            "sub=" + " ".join(f"{m}/enc={e}/@0x{a + o:08x}" for m, (a, e, o, _) in self.sub.items())
+        )
         out.append(
             "dbe="
             + " ".join(
@@ -606,6 +623,54 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
         await self.dma.clean_state()
         await self._clear_bus_err()
 
+    # ---- logged: sub-word copies ------------------------------------------------------
+    async def _sub_copy(self, src: int, dst: int, nbytes: int, enc: int) -> tuple:
+        """One DMA copy of ``nbytes`` at TRANSFER_WIDTH ``enc``; returns (STATUS, ERROR_CODE, bus err)."""
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+        await self.dma.program_transfer(src=src, dst=dst, total=nbytes, chunk=nbytes, width_enc=enc)
+        await self.dma.go()
+        st = await self.dma.poll_status(
+            lambda s: bool(s.done or s.error), self.dma.done_bound(WORD_BYTES), "sub-word copy"
+        )
+        ecode = await self.dma.rd(_D.addr("ERROR_CODE"))
+        return st, ecode, await self._bus_err()
+
+    async def _subword(self) -> None:
+        for mem, (addr, enc, off, data) in self.plan.sub.items():
+            nbytes = 1 << enc
+            src, rb = SUB_STAGE, SUB_STAGE + 0x10
+            await self.mem.fill(src, [data])
+            for direction, s_a, d_a in (("write", src, addr + off), ("read", addr + off, rb)):
+                await self.mem.fill(rb, [~data & M32])
+                st, ecode, berr = await self._sub_copy(s_a, d_a, nbytes, enc)
+                rb_sub = (await self.mem.read(rb, 1))[0]
+                wst, _, wberr = await self._sub_copy(addr, rb, WORD_BYTES, 2)
+                word = (await self.mem.read(rb, 1))[0]
+                self.logger.info(
+                    "OBS-TCM-SUBWORD: mem=%s dir=%s addr=0x%08x bytes=%d enc=%d done=%d "
+                    "error=%d error_code=0x%x dma_bus_err_status=0x%x staging=0x%08x "
+                    "word_read_done=%d word_read_error=%d word_read_bus_err=0x%x word=0x%08x "
+                    "src_word=0x%08x",
+                    mem,
+                    direction,
+                    addr + off,
+                    nbytes,
+                    enc,
+                    st.done,
+                    st.error,
+                    ecode,
+                    berr,
+                    rb_sub,
+                    wst.done,
+                    wst.error,
+                    wberr,
+                    word,
+                    data,
+                )
+        await self.dma.clean_state()
+        await self._clear_bus_err()
+
     # ---- scenario ---------------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -654,6 +719,7 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
             self._fail("CHK-TCM-CLEAN", f"{line} first: {self.clean_bad[:4]}")
         self.logger.info("CHK-TCM-CLEAN PASS: %s", line)
         self.n_checks += 1
+        await self._subword()
 
         self.sampler.stop()
         await self.tcm_tap.stop()

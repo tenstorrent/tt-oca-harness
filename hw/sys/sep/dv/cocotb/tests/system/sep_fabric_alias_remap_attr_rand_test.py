@@ -142,6 +142,11 @@ class _Cfg:
                 raise RuntimeError(f"class {cls}: translated 0x{t:x} is not in [2^32, 2^56)")
             if src < REGION_FLOOR or src > SMU_HI:
                 raise RuntimeError(f"class {cls}: source 0x{src:x} leaves the SMU window")
+        # A second region over the same pages with an offset that differs in
+        # bit 33 only, so both translations stay in [2^32, 2^56).
+        others = [r for r in range(N_REGIONS) if r != self.region]
+        self.overlap_region = rng.choice(others) if others else None
+        self.overlap_offset = self.offset ^ (1 << 33)
 
     def src(self, cls: str) -> int:
         return {
@@ -219,7 +224,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         self, addr: int, *, write: bool, cache: int, expect_okay: bool
     ) -> tuple[int, object, object]:
         """One 1-byte LSU probe (AxSIZE 0, AxLEN 0). Returns (resp, in beat, out beat)."""
-        mi, mo = self.tap_in.mark(), self.tap_out.mark()
+        mi, mo, mp = self.tap_in.mark(), self.tap_out.mark(), self.tap_pr_out.mark()
         if not expect_okay:
             self.env.axi_monitor.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
@@ -250,7 +255,65 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             f"PR-ALIAS output shows no {ch} request at or after the input handshake "
             f"for 0x{addr:x} (t_in={ins[0].t_ps} ps)"
         )
+        if seq.resp_code == RESP_OKAY:
+            pr = next((b for b in self.tap_pr_out.since(mp, ch) if b.t_ps >= out.t_ps), None)
+            self.logger.info(
+                "OBS-ALIAS-OUT-CACHE dir=%s src=0x%x alias_out_addr=%s alias_out_cache=%s "
+                "pr_out_addr=%s pr_out_cache=%s",
+                "W" if write else "R",
+                addr,
+                _hx(out.addr),
+                _hx(out.cache),
+                _hx(pr.addr) if pr is not None else "none",
+                _hx(pr.cache) if pr is not None else "none",
+            )
         return seq.resp_code, ins[0], out
+
+    async def _overlap_probe(self, alias: _AliasRegion) -> None:
+        """Two valid regions over the same pages with different offsets: one read."""
+        cfg = self.tcfg
+        k2 = cfg.overlap_region
+        if k2 is None:
+            self.logger.info("OBS-ALIAS-OVERLAP skipped=1 regions=%d", N_REGIONS)
+            return
+        mid = cfg.src("mid")
+        await alias.program(
+            k2,
+            cfg.start,
+            cfg.end,
+            attrs_word(cfg.overlap_offset, cfg.cacheable, True),
+            "overlap",
+        )
+        await self.filt.program(cfg.entry, self._entry(translate(mid, cfg.offset)))
+        mo = self.tap_out.mark()
+        self.env.axi_monitor.arm_expected_decerr(1)
+        seq = SepAxiAccessSeq(
+            "alias_overlap",
+            op=SepAxiOp.READ,
+            addr=mid,
+            length=1,
+            size=0,
+            allow_ungraded_read_resp=True,
+            prot=PROBE_PROT,
+            attrs={"cache": cfg.axcache},
+        )
+        await self.start_seq(seq)
+        if seq.resp_code != RESP_DECERR:
+            self.env.axi_monitor.release_expected_decerr(1)
+        outs = self.tap_out.since(mo, "ar")
+        self.logger.info(
+            "OBS-ALIAS-OVERLAP region_a=%d offset_a=0x%014x region_b=%d offset_b=0x%014x "
+            "src=0x%x alias_out_addr=%s n_out=%d resp=%s",
+            cfg.region,
+            cfg.offset,
+            k2,
+            cfg.overlap_offset,
+            mid,
+            ",".join(_hx(b.addr) for b in outs) or "none",
+            len(outs),
+            _rname(seq.resp_code),
+        )
+        await alias.program(k2, 0, 0, 0, "overlap_clear")
 
     async def _class_pair(self, cls: str, *, write: bool, valid: bool, cache: int) -> None:
         """Steps 5 to 7 of one class and direction."""
@@ -336,6 +399,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
 
         self.tap_in = SepFabricTap("PR-ALIAS-IN").start()
         self.tap_out = SepFabricTap("PR-ALIAS-OUT").start()
+        self.tap_pr_out = SepFabricTap("PR-OUT").start()
         self.filt = SepFilterBank(self, "out")
         alias = _AliasRegion(self)
         k = cfg.region
@@ -347,6 +411,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         for cls in CLASSES:
             for write in cfg.dirs():
                 await self._class_pair(cls, write=write, valid=True, cache=cfg.axcache)
+        await self._overlap_probe(alias)
 
         # Step 9: AxCACHE corners on the middle-page hit probe.
         mid = cfg.src("mid")
@@ -409,6 +474,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         await self.filt.restore_reset(cfg.entry)
         await self.tap_in.stop()
         await self.tap_out.stop()
+        await self.tap_pr_out.stop()
 
         line = (
             f"seed={cfg.seed} hits={self.n_hit} misses={self.n_miss} "

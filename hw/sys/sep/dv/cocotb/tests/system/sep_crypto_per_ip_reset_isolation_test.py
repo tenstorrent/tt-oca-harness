@@ -195,12 +195,13 @@ import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge, with_timeout
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_axi_agent import SepAxiOp
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_iprst_edn_pass
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_reset_taps import ISO_BENCH
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from sep_reg_meta import register_fields, word_reset
+from sep_reg_meta import register_fields, sym, word_reset
 from seq_lib.sep_abr_mlkem_seq import MLKEM_STATUS
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
@@ -211,6 +212,7 @@ from seq_lib.sep_aes_seq import (
     SepAes,
     build_aes_ctrl,
 )
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_crypto_reset_iso_seq import (
     ENG_AES,
     ENG_HMAC,
@@ -260,6 +262,13 @@ AES_PT = [0xAABBCCDD, 0x11223344, 0x55667788, 0x99001122]
 KMAC_MSG = [0x6A6F6232, 0xDEADBEEF]
 OTBN_CHECKSUM_MARK = 0xA11CED01
 OTBN_DMEM_MARK = 0xD3E00D3E
+# First CSR word of each entropy-complex IP, read inside the TRNG reset.
+TRNG_ISO_CSR = (
+    ("esrc", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR")),
+    ("csrng", sym("CSRNG_REG_MAP_BASE_ADDR")),
+    ("edn", sym("EDN_REG_MAP_BASE_ADDR")),
+)
+_RESP_DECERR = 3
 # KMAC STATUS after its own SW_RESET_N pulse, read off the IP-XACT. The spec
 # gives sha3_idle (1), fifo_empty (1) and the two alert bits (0) a reset value
 # (vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson:707, :737, :745,
@@ -450,6 +459,36 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await self._wait_gated_rst(rst_bit, 1, "reset pulse release")
         await ClockCycles(cocotb.top.clk_i, 40)
         self.logger.info("reset pulse landed: %s fell and released", _GATED_RST_PROBE[rst_bit])
+
+    async def _obs_trng_iso_resp(self) -> None:
+        """OBS-TRNG-ISO-RESP: one CSR read of each entropy-complex IP inside its reset.
+
+        No line states the response of a host access to the entropy complex
+        while its reset is held. The line logs it and grades nothing.
+        """
+        mon = self.env.axi_monitor
+        for ip, addr in TRNG_ISO_CSR:
+            mon.arm_expected_decerr(1)
+            seq = SepAxiAccessSeq(
+                f"trng_iso_{ip}",
+                op=SepAxiOp.READ,
+                addr=addr,
+                length=4,
+                size=2,
+                allow_ungraded_read_resp=True,
+                allow_timeout=True,
+            )
+            await self.start_seq(seq)
+            if seq.timed_out or seq.resp_code != _RESP_DECERR:
+                mon.release_expected_decerr(1)
+            self.logger.info(
+                "OBS-TRNG-ISO-RESP ip=%s addr=0x%08x resp=%s rdata=0x%08x timed_out=%d",
+                ip,
+                addr,
+                "none" if seq.timed_out else seq.resp_code,
+                seq.rdata & 0xFFFF_FFFF,
+                int(seq.timed_out),
+            )
 
     async def _run_hmac(self) -> list[int]:
         """Run SHA-256 -> DIGEST holds the golden digest; value-check it."""
@@ -2678,6 +2717,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "results were read, so "
             "they were not sampled inside the reset"
         )
+        await self._obs_trng_iso_resp()
         await trng_rst.release("trng")
         self.logger.info(
             "CHK-TRNG-NEIGHBORS PASS: idle HMAC DIGEST and AES DATA_OUT survived "

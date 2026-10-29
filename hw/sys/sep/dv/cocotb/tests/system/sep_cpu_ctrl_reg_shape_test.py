@@ -38,7 +38,7 @@ Checkers:
                   in the high-half-first order also after the high-half
                   write, against the value before it.
 Controls (not counted): CTRL-NMI-DEFAULT, CTRL-NMI-STORE, CTRL-SCR-NEIGHBOUR.
-Records: INFO-SCR-SEQ. Observations: OBS-CC-RSVD, OBS-TIMEOUT.
+Records: INFO-SCR-SEQ. Observations: OBS-CC-RSVD, OBS-TIMEOUT, OBS-CC-TIMEOUT-RD.
 
 The graded window (owner code of this test) is open around the graded
 writes and their readbacks only. The first reads, the writes before the lock,
@@ -74,6 +74,7 @@ NMI_LOCK = SEP_CPU_CTRL.addr("SEP_NMI_VEC_LOCK")
 LOCK_FIELD = SEP_CPU_CTRL.field_mask("SEP_NMI_VEC_LOCK", "lock")
 TIMEOUT_CLEAR = SEP_CPU_CTRL.addr("TIMEOUT_CLEAR")
 TIMEOUT_MODE = SEP_CPU_CTRL.addr("TIMEOUT_MODE")
+RESP_DECERR = 3
 TIMEOUT_INTERRUPT = SEP_CPU_CTRL.addr("TIMEOUT_INTERRUPT")
 SENSE_REGS = {
     "SEP_FUSE_SENSE_STATUS": (
@@ -437,6 +438,27 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         self.logger.info(
             "OBS-TIMEOUT: timeout_interrupt=0x%x after TIMEOUT_CLEAR and TIMEOUT_MODE writes", ti
         )
+        # No line states the read response of TIMEOUT_CLEAR and TIMEOUT_MODE.
+        mon = self.env.axi_monitor
+        for name, addr in (("TIMEOUT_CLEAR", TIMEOUT_CLEAR), ("TIMEOUT_MODE", TIMEOUT_MODE)):
+            mon.arm_expected_decerr(1)
+            seq = SepAxiAccessSeq(
+                "ccshape_to_rd",
+                op=SepAxiOp.READ,
+                addr=addr,
+                length=8,
+                size=3,
+                allow_ungraded_read_resp=True,
+            )
+            await self.start_seq(seq)
+            if seq.timed_out or seq.resp_code != RESP_DECERR:
+                mon.release_expected_decerr(1)
+            self.logger.info(
+                "OBS-CC-TIMEOUT-RD reg=%s resp=%s rdata=0x%016x",
+                name,
+                "timeout" if seq.timed_out else seq.resp_code,
+                seq.rdata & M64,
+            )
 
         # Step 9: status registers.
         base: dict[str, int] = {}

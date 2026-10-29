@@ -101,7 +101,9 @@ import pyuvm
 from cocotb.triggers import Event, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
+from env.sep_bh_smc import drive_bh_smc
 from env.sep_efuse_image import SHADOW_BASE
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_rel_terms_pass
 from env.sep_field_compare import field_compare
 from env.sep_lcc_golden import (
@@ -124,6 +126,9 @@ _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 SMC_STATUS = SEP_CPU_CTRL.addr("SMC_FUSE_SENSE_STATUS")
 SMC_FIELD = SEP_CPU_CTRL.field_mask("SMC_FUSE_SENSE_STATUS", "smc_fuse_sense_done")
+# BH-SMC apertures: the static SMC row base and a base inside the reset SMU window.
+SMC_APERTURES = (0x4000_0000, 0x9000_0000)
+SMC_APERTURE_SIZE = 0x0100_0000
 SEP_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 SEP_FIELD = SEP_CPU_CTRL.field_mask("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
 SEP_LSB = SEP_CPU_CTRL.field_lsb("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
@@ -854,6 +859,46 @@ class sep_boot_release_terms_test(sep_base_test):
         )
         await self._sense_status_post("final", self.n_polls)
 
+    async def _obs_smc_presense(self) -> None:
+        """OBS-SMC-PRESENSE-RESP: one LSU read inside the SMC aperture while the SMC input is 0.
+
+        ``sep_cpu_ctrl.adoc`` tells software to wait for
+        ``smc_fuse_sense_done`` before a request to the SMC; no line states
+        the answer to a request made before it. The line logs the response
+        and the PR-SMC AR count and grades nothing.
+        """
+        dut = cocotb.top
+        level = self.rd(dut.smc_fuse_sense_done_model, allow_unknown=True)
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        tap = SepFabricTap("PR-SMC").start()
+        mark = tap.mark()
+        seq = SepAxiAccessSeq(
+            "smc_presense",
+            op=SepAxiOp.READ,
+            addr=self.smc_word,
+            length=4,
+            size=2,
+            allow_ungraded_read_resp=True,
+            allow_timeout=True,
+        )
+        await self.start_seq(seq)
+        if seq.timed_out or _RESP_NAME.get(seq.resp_code) != "DECERR":
+            mon.release_expected_decerr(1)
+        await RisingEdge(dut.clk_i)
+        n_ar = tap.count(mark, "ar")
+        await tap.stop()
+        self.logger.info(
+            "OBS-SMC-PRESENSE-RESP input=%s addr=0x%08x resp=%s rdata=0x%08x timed_out=%d "
+            "pr_smc_ar=%d",
+            level,
+            self.smc_word,
+            "none" if seq.timed_out else _RESP_NAME.get(seq.resp_code, seq.resp_code),
+            seq.rdata & 0xFFFF_FFFF,
+            int(seq.timed_out),
+            n_ar,
+        )
+
     # -- scenario --------------------------------------------------------------
 
     async def run_scenario(self) -> None:
@@ -876,6 +921,16 @@ class sep_boot_release_terms_test(sep_base_test):
         self.write_efuse_image(image)
 
         self._ensure_nonzero_word(rng, image)
+        if hold:
+            smc_base = rng.choice(SMC_APERTURES)
+            self.smc_word = smc_base + 4 * rng.randrange(SMC_APERTURE_SIZE // 4)
+            self.logger.info(
+                "INFO-SMC-APERTURE base=0x%08x size=0x%08x word=0x%08x",
+                smc_base,
+                SMC_APERTURE_SIZE,
+                self.smc_word,
+            )
+            drive_bh_smc(smc_base, SMC_APERTURE_SIZE)
         t_cal = await self._calibrate()
 
         open_graded_window(TEST, self.logger)
@@ -892,6 +947,8 @@ class sep_boot_release_terms_test(sep_base_test):
                 await self._sense_status_post(f"epoch={ep.kind}", 1)
 
             await self._sense_status(hold)
+            if hold:
+                await self._obs_smc_presense()
             set_rel_terms_pass(0, self.logger)
         except AssertionError:
             # The first FAIL closes the graded window before it fails the leaf.

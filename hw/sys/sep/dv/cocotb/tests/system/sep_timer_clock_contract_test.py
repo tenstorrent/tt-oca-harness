@@ -293,6 +293,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge, with_timeout
 from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
+from env.sep_bit_watch import SepBitWatch
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
 from env.sep_fcov_gate import (
     TIMER_CONTRACT_PASS_DROP,
@@ -393,6 +394,7 @@ POLL_READS = 200  # bound on the poll reads of one register write
 REFCNT_ARM_REF = 200  # clk_ref_i cycles bound of the 2^40 arm poll
 REFCNT_POLL = 400  # bound on the reads of the reload poll
 WDT_WAIT = 64  # clk_wdt_i periods of the wait in the controls and leg L
+SRC13_WINDOW = 4 * P_W * 16  # clk_i cycles of the PIC source 13 sample after ALERT_TEST
 RESET_BOUND = 4_000  # clk_i cycles for a reset tap to read 1
 OVRD_CYCLES = 24  # clk_i cycles the sep_reset_n override holds the reset
 PULSE_CYCLES = 16  # clk_i cycles of a wdt_rst_ni or dbg_rstb_i pulse
@@ -404,6 +406,8 @@ TWO40 = 1 << 40
 FAR = 1 << 33  # least distance of a reload value from the count before its write
 WDOG_FAR_BARK = 0xFFFF_0000  # bark threshold far above every count of leg P
 WDOG_FAR_BITE = 0xFFFF_FFF0  # bite threshold far above every count of leg P
+BITE_FIRST_BITE = 0x40  # bite threshold of the bite-before-bark run
+BITE_FIRST_BARK = 0x400  # bark threshold of the bite-before-bark run
 PRESC_MAX = 0xFFF  # largest 12-bit WKUP_CTRL.prescaler
 PRESC_EARLY = 64  # clk_wdt_i periods before an expected count step that a poll starts
 PRESC_LATE = 512  # clk_wdt_i periods after an expected count step that a poll gives up
@@ -674,6 +678,16 @@ class sep_timer_clock_contract_test(sep_base_test):
             await ReadOnly()
             if dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1:
                 return self.rd(sig_a), self.rd(sig_b)
+
+    async def _wdt_phase_at_ar(self) -> tuple[int, int]:
+        """clk_i periods since the last clk_wdt_i rise, and the clk_i count, at the next AR."""
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if dut.s_axi_arvalid.value == 1 and dut.s_axi_arready.value == 1:
+                last = self.pins.edges["clk_wdt_i"][-1]
+                return (self._now() - last) // self.sys_ps, self.pins.count["clk_i"]
 
     def _gate(self, on: bool) -> None:
         self._win = on
@@ -1130,8 +1144,19 @@ class sep_timer_clock_contract_test(sep_base_test):
             seen = take_handshake(task)
             assert seen is not None, f"{chk} FAIL: no AR handshake seen for the INTR_STATE read"
             bite, line = seen
+            xing = cocotb.start_soon(self._wdt_phase_at_ar())
             cnt = await self._rd(WDOG_COUNT)
             t_c = self._now()
+            seen_x = take_handshake(xing)
+            if seen_x is not None:
+                phase, ci_ar = seen_x
+                self.logger.info(
+                    "OBS-WDT-XING-LAT run=%s wdt_phase_clk=%d ar_to_r_clk=%d count=0x%x",
+                    chk,
+                    phase,
+                    self.pins.count["clk_i"] - ci_ar,
+                    cnt,
+                )
             passes.append(
                 {
                     "bark": int(bool(st & BARK_BIT)),
@@ -1459,6 +1484,10 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._wr(WDOG_CTRL, 0)
         v0 = await self._poll_eq("WDOG_CTRL", WDOG_CTRL, 0, WDOG_CTRL_FIELDS, "CTRL-WDT-PAUSE")
         self.logger.info("CTRL-WDT-PAUSE: write1_read=0x%x write0_read=0x%x", v1, v0)
+        src13 = SepBitWatch(
+            cocotb.top.sep_internal_interrupts_probe_o, {"src13": 12}, name="src13"
+        ).start()
+        m13 = src13.mark()
         seq = SepAxiAccessSeq(
             "alert_test",
             op=SepAxiOp.WRITE,
@@ -1472,6 +1501,15 @@ class sep_timer_clock_contract_test(sep_base_test):
         if seq.timed_out:
             raise AssertionError("CHK-WDT-ALERT-ACCESS FAIL: no response")
         self.logger.info("CHK-WDT-ALERT-ACCESS PASS: response=%d", seq.resp_code)
+        # No line states the shape of PIC source 13 after an ALERT_TEST write.
+        await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
+        self.logger.info(
+            "OBS-SRC-SHAPE src=13 kind=wdt_alert_test rises=%d high_clk=%d window_clk=%d",
+            src13.rises_since(m13),
+            src13.high_clocks_since(m13),
+            SRC13_WINDOW,
+        )
+        await src13.stop()
         # No spec sentence states the BRESP code of a backed register write, so the
         # code is logged and not graded.
         self.logger.info(
@@ -1716,6 +1754,13 @@ class sep_timer_clock_contract_test(sep_base_test):
         cause = await self._rd(WKUP_CAUSE)
         assert cause & CAUSE_FIELD, (
             f"CTRL-WKUP-CAUSE FAIL: WKUP_CAUSE=0x{cause:x} after the wakeup expiries"
+        )
+        # The wakeup request and the wakeup interrupt of the timer have no stated
+        # consumer: the internal interrupt vector is logged at the cause read.
+        self.logger.info(
+            "OBS-WKUP-CONSUMER wkup_cause=0x%x sep_internal_interrupts=0x%x",
+            cause & CAUSE_FIELD,
+            self.rd(cocotb.top.sep_internal_interrupts_probe_o, allow_unknown=True),
         )
         t_clear = self._now()
         await self._wr(WKUP_CAUSE, 0)
@@ -2461,10 +2506,46 @@ class sep_timer_clock_contract_test(sep_base_test):
         # clears it (reset_controller.adoc:56-58).
         await self._bite_clear("thold_below")
 
+    async def _bite_first(self) -> None:
+        """OBS-WDT-BITE-FIRST: one run with the bite threshold below the bark threshold.
+
+        No line states the bark status when the bite comes first. The run logs
+        the bark status and the clk_i edges of the bite request and the bark line.
+        """
+        dut = cocotb.top
+        was = await self._ungraded()
+        await self._wdt_baseline(BITE_FIRST_BARK, BITE_FIRST_BITE, 0)
+        watch = SepBitWatch(dut.wdt_timer_rst_req_o, name="wdt_timer_rst_req_o").start()
+        bark = SepBitWatch(dut.wdt_bark_probe_o, name="wdt_bark_probe_o").start()
+        mw, mb = watch.mark(), bark.mark()
+        await self._wr(WDOG_CTRL, WDOG_EN)
+        bound = (BITE_FIRST_BITE + 64) * P_W * 4
+        for _ in range(bound):
+            await RisingEdge(dut.clk_i)
+            if watch.rises_since(mw):
+                break
+        st = await self._rd(INTR_STATE)
+        self.logger.info(
+            "OBS-WDT-BITE-FIRST bite_thold=0x%x bark_thold=0x%x bite_rise_clk=%s "
+            "bark_rise_clk=%s bark_status=%d",
+            BITE_FIRST_BITE,
+            BITE_FIRST_BARK,
+            watch.rise_clks_since(mw)[:1] or "none",
+            bark.rise_clks_since(mb)[:1] or "none",
+            int(bool(st & BARK_BIT)),
+        )
+        await watch.stop()
+        await bark.stop()
+        await self._wr(WDOG_CTRL, 0)
+        if self.rd(dut.wdt_timer_rst_req_o):
+            await self._bite_clear("bite_first")
+        await self._regraded(was)
+
     async def _leg_p(self) -> None:
         await self._pet()
         await self._thold_zero()
         await self._thold_below()
+        await self._bite_first()
 
     # -- leg K ------------------------------------------------------------------
 

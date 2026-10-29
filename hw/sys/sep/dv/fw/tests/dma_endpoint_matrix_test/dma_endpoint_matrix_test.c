@@ -140,6 +140,8 @@ volatile uint32_t g_p[P_COUNT] = {
 #define AP_SPAN (SEP_TOP_AP_REGION_SIZE / SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_NUM)
 #define ROM_BASE SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 #define DMA_CSR_WORD SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR
+#define KM_SRC_WORD SEP_TOP_KM_MAILBOX_SEP_SEP_STATUS_BASE_ADDR
+#define PIC_SRC_WORD SEP_TOP_PIC_BASE_ADDR
 #define FILT_IN0_CFG SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
 #define N_OUT_ENTRIES SEP_TOP_OUTBOUND_FILTER_CTRL_NUM
 #define STEE_REGION SEP_TOP_STEE_REGION_BASE_ADDR
@@ -1166,6 +1168,31 @@ static void nc_legs(void) {
             timed_out = 1;
         else
             recovery("nc_pool_src");
+    }
+
+    // The KM mailbox STATUS word and the PIC base as sources. The record
+    // carries the CPU read of the source word next to the destination word.
+    if (!timed_out) {
+        uint32_t km0 = rd(KM_SRC_WORD);
+        wr(d, ~km0);
+        mark('G', "nc_km_src");
+        e = nc_run(KM_SRC_WORD, d);
+        nc_rec("km_src", e, 1, km0, rd(d));
+        if (e == 2u)
+            timed_out = 1;
+        else
+            recovery("nc_km_src");
+    }
+    if (!timed_out) {
+        uint32_t pic0 = rd(PIC_SRC_WORD);
+        wr(d, ~pic0);
+        mark('G', "nc_pic_src");
+        e = nc_run(PIC_SRC_WORD, d);
+        nc_rec("pic_src", e, 1, pic0, rd(d));
+        if (e == 2u)
+            timed_out = 1;
+        else
+            recovery("nc_pic_src");
     }
 
     pic_disable_interrupts();

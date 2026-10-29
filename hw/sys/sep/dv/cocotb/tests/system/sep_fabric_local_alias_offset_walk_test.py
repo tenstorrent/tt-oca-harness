@@ -48,6 +48,7 @@ from __future__ import annotations
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_common import outbound_ns
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -199,6 +200,23 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         await self.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
 
+    async def _obs_read(self, addr: int) -> tuple[int, int, int]:
+        """One LSU read whose response no document states: (resp, rdata, PR-OUT AR count)."""
+        mark = self.tap_out.mark()
+        self.env.axi_monitor.arm_expected_decerr(1)
+        seq = SepAxiAccessSeq(
+            "aliaswalk_obs_rd",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=4,
+            size=2,
+            allow_ungraded_read_resp=True,
+        )
+        await self.start_seq(seq)
+        if seq.resp_code != RESP_DECERR:
+            self.env.axi_monitor.release_expected_decerr(1)
+        return seq.resp_code, seq.rdata & 0xFFFF_FFFF, self.tap_out.count(mark, "ar")
+
     async def _hit(self, p: _Plan, target: int, win) -> None:
         resp, _ = await self._read(SRC_ADDR, deny=False)
         assert resp == RESP_OKAY, (
@@ -235,6 +253,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         got = await alias._rd(SRC_ADDR)
         assert got == staged, f"staged 0x{SRC_ADDR:08x}=0x{got:08x} != 0x{staged:08x}"
         counts = dict.fromkeys(("HIT", "MISS", "END_MISS", "VALID"), 0)
+        self.tap_out = SepFabricTap("PR-OUT").start()
 
         for p in plans:
             r, e = p.region, p.entry
@@ -262,6 +281,21 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
             await self._untranslated("CHK-ALIAS-WALK-MISS", p, staged)
             counts["END_MISS"] += 1
 
+            # Empty region: START == END == source page, valid set.
+            await alias.program(r, p.hit_start, SRC_PAGE, p.o2, True)
+            resp, data, n_out = await self._obs_read(SRC_ADDR)
+            self.logger.info(
+                "OBS-ALIAS-EMPTY region=%d start=end=0x%014x src=0x%08x resp=%d rdata=0x%08x "
+                "data_eq_staged=%d pr_out_ar=%d",
+                r,
+                SRC_PAGE,
+                SRC_ADDR,
+                resp,
+                data,
+                int(data == staged),
+                n_out,
+            )
+
             for s in (p.miss_start, ~p.miss_start & START_MASK):
                 assert (s >> IDX_START) > SRC_PG
                 end = p.rng.randrange(s >> IDX_START, PG_MASK + 1) << IDX_START
@@ -272,6 +306,29 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
             await alias.program(r, 0, ALIAS_END_RESET, 0, False)
             await outf.restore(e)
             self.logger.info("alias %s", p.summary())
+
+        # Hit whose target page sits below the source page: the page sum
+        # carries out of bit 55. The target is the cold scratch page.
+        p = plans[0]
+        tgt_pg = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR") >> IDX_START
+        carry_off = ((tgt_pg - SRC_PG) & PG_MASK) << IDX_START
+        tgt = remapped_addr(carry_off, SRC_ADDR)
+        await alias.program(p.region, p.hit_start, p.hit_end, carry_off, True)
+        resp, data, n_out = await self._obs_read(SRC_ADDR)
+        self.logger.info(
+            "OBS-ALIAS-CARRY region=%d offset=0x%014x src=0x%08x stim_target=0x%014x resp=%d "
+            "rdata=0x%08x data_eq_staged=%d pr_out_ar=%d",
+            p.region,
+            carry_off,
+            SRC_ADDR,
+            tgt,
+            resp,
+            data,
+            int(data == staged),
+            n_out,
+        )
+        await alias.program(p.region, 0, ALIAS_END_RESET, 0, False)
+        await self.tap_out.stop()
 
         n = len(plans)
         self.logger.info(

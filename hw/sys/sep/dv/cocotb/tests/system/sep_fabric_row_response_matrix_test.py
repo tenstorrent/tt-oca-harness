@@ -94,12 +94,26 @@ from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, RESP_SLVERR
 from env.sep_fabric_common import RESP_NAME as _RN
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
 from env.sep_filter_model import FilterEntry
-from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected
+from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC, OTBN, sep_reg
 from seq_lib import sep_row_response_seq as rr
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
+from seq_lib.sep_fabric_csr_bank_seq import (
+    ALIAS_BASE,
+    ALIAS_START,
+    ALIAS_START_MASK,
+    ALIAS_STRIDE,
+    AP_BASE,
+    FILTER_START_ADDR,
+    FILTER_STRIDE,
+    INFILT_BASE,
+    REMAP_ATTRS,
+    REMAP_OFFSET_LO_MASK,
+    REMAP_STRIDE,
+    STEE_BASE,
+)
 from seq_lib.sep_fabric_deadspace_seq import in_crypto_region
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
@@ -158,6 +172,26 @@ OKAY, DECERR, SLVERR = RESP_OKAY, RESP_DECERR, RESP_SLVERR
 AXI_INCR = 1
 # The inbound entry admits the whole SEP Local region of the CPU logical map.
 _SEP_LOCAL = logical_region("logical:sep_local")
+# Last register word of the rows whose 2-beat SI burst runs one beat past the extent.
+BURST_PAST_ROWS = (
+    ("dma", rr.ROW_BASE["dma"]),
+    ("wdt", rr.ROW_BASE["wdt"]),
+    ("cpu_ctrl", sep_reg.SEP_CPU_CTRL_REG_MAP_BASE_ADDR),
+)
+# Sub-word LSU targets: (name, word address, whether a changed value is written
+# and the word restored after). A target without restore takes its own value.
+SUBWORD_TARGETS = (
+    ("scratch", sep_reg.SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR, True),
+    ("wdt_wkup_thold_lo", sep_reg.WDT_TIMER_WKUP_THOLD_LO_REG_ADDR, True),
+    ("cpu_ctrl_nmi_vec", sep_reg.SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR, True),
+    ("spi_csid", sep_reg.SPI_CONTROLLER_CSID_REG_ADDR, True),
+    ("spi_configopts", sep_reg.SPI_CONTROLLER_CONFIGOPTS_REG_ADDR, True),
+    ("km_mbox_irq_enable", rr.KM_IRQ_ENABLE, True),
+    ("otbn_imem", sep_reg.OTBN_IMEM_MEM_BASE_ADDR, True),
+    ("efuse_shadow", sep_reg.SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, False),
+    ("efuse_program_ctrl", sep_reg.EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR, False),
+    ("sw_reset_n", rr.SW_RESET_N, False),
+)
 
 
 def _kmac_prefix_count() -> int:
@@ -280,6 +314,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         wdata: int = 0,
         length: int | None = None,
         burst: int | None = None,
+        prot: int = SI_PROT,
+        user: int = 0,
+        attrs: dict[str, int] | None = None,
     ) -> SepAxiAccessSeq:
         """One SI access through inbound entry 0 with a drawn non-zero AxID."""
         length = (1 << size) if length is None else length
@@ -294,7 +331,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             length=length,
             size=size,
             burst=burst,
-            prot=SI_PROT,
+            prot=prot,
+            user=user,
+            attrs=attrs,
             axi_id=self.rng.randrange(1, 64),
             allow_unverified_write_resp=op is SepAxiOp.WRITE,
         )
@@ -418,7 +457,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             ctl.sep_debug,
         )
 
-    async def _program_entry(self) -> None:
+    async def _program_entry(self, src_id: int = 0) -> None:
         bank = SepFilterBank(self, "in")
         await bank.program(
             0,
@@ -430,6 +469,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 write_allowed=True,
                 allow_ns=bool((SI_PROT >> 1) & 1),
                 allow_burst=True,
+                src_id=src_id,
             ),
         )
 
@@ -771,9 +811,27 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         mask = reg.word_mask(a)
         exp = self._expect_reg(a)
         _r, lsu_b = await self._lsu(SepAxiOp.READ, a)
-        s = await self._si(SepAxiOp.READ, a)
+        prot = SI_PROT | (self.rng.getrandbits(1) << 2)
+        user = self.rng.getrandbits(12)
+        attrs = {
+            "cache": self.rng.getrandbits(4),
+            "qos": self.rng.getrandbits(4),
+            "region": self.rng.getrandbits(4),
+            "lock": self.rng.getrandbits(1),
+        }
+        attr_txt = f"prot=0x{prot:x} user=0x{user:03x} " + " ".join(
+            f"{k}=0x{v:x}" for k, v in attrs.items()
+        )
+        s = await self._si(SepAxiOp.READ, a, prot=prot, user=user, attrs=attrs)
         _r, lsu_a = await self._lsu(SepAxiOp.READ, a)
         got = s.rdata & 0xFFFF_FFFF
+        self.logger.info(
+            "OBS-ROW-ATTR row=%s attrs=[%s] resp=%s rdata=0x%08x",
+            key,
+            attr_txt,
+            _RN.get(s.resp_code),
+            got,
+        )
         pre_ok = (lsu_b & mask) == (exp & mask) and (lsu_a & mask) == (exp & mask)
         nonzero_ok = key not in rr.NONZERO_LIVE or (exp & mask) != 0
         ok = s.resp_code == OKAY and (got & mask) == (exp & mask) and pre_ok and nonzero_ok
@@ -782,7 +840,8 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             f"row={key} kind=live init=SI dir=R size=2 addr=0x{a:08x} wdata=na "
             f"resp={_RN.get(s.resp_code)} rdata=0x{got & mask:08x} expect=OKAY/0x{exp & mask:08x} "
             f"field_mask=0x{mask:08x} lsu_before=0x{lsu_b & mask:08x} "
-            f"lsu_after=0x{lsu_a & mask:08x} rsvd=0x{got & ~mask & 0xFFFF_FFFF:08x} reg={reg.name}",
+            f"lsu_after=0x{lsu_a & mask:08x} rsvd=0x{got & ~mask & 0xFFFF_FFFF:08x} reg={reg.name} "
+            f"attrs=[{attr_txt}]",
         )
         self._walk(key, "live", "R", "SI")
         return ok
@@ -1280,6 +1339,117 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 await self._spi_cross(op, start)
 
     # ---------------------------------------------------------------- scenario
+    # ------------------------------------------------------------ logged legs
+    async def _burst_past_leg(self) -> None:
+        """A 2-beat SI INCR burst from the last register word of a non-crypto row."""
+        mon = self.env.ext_axi_monitor
+        for name, base in BURST_PAST_ROWS:
+            row = rr.map_row(base)
+            last = row.base + row.extent - 4
+            _r, before = await self._lsu(SepAxiOp.READ, last)
+            mon.start_beat_capture()
+            r = await self._si(SepAxiOp.READ, last, length=8, burst=AXI_INCR)
+            mon.take_beat_capture()
+            detail = mon.last_beat_detail
+            wd = (before & 0xFFFF_FFFF) | (self.rng.getrandbits(32) << 32)
+            w = await self._si(SepAxiOp.WRITE, last, wdata=wd, length=8, burst=AXI_INCR)
+            _r, after = await self._lsu(SepAxiOp.READ, last)
+            self.logger.info(
+                "OBS-ROW-BURST row=%s start=0x%08x len=1 rresp=%s rresp_resp=%s bresp=%s "
+                "rdata=0x%016x lsu_before=0x%08x lsu_after=0x%08x",
+                name,
+                last,
+                ",".join(_RN.get(b[0], "X") for b in detail) or "none",
+                _RN.get(r.resp_code),
+                _RN.get(w.resp_code),
+                r.rdata,
+                before & 0xFFFF_FFFF,
+                after & 0xFFFF_FFFF,
+            )
+
+    async def _subword_leg(self) -> None:
+        """LSU AxSIZE 0 and 1 reads and writes to registers and memories."""
+        for name, addr, restore in SUBWORD_TARGETS:
+            if name == "otbn_imem":
+                # A memory word holds a written value before its first read.
+                await self._lsu(SepAxiOp.WRITE, addr, wdata=self.rng.getrandbits(32))
+            _r, cur = await self._lsu(SepAxiOp.READ, addr)
+            cur &= 0xFFFF_FFFF
+            for size, off in ((0, 1), (1, 2)):
+                mask = (1 << (8 << size)) - 1
+                old = (cur >> (8 * off)) & mask
+                wv = (~old & mask) if restore else old
+                rd_resp, rdata = await self._lsu(SepAxiOp.READ, addr + off, size=size, expect="any")
+                wr_resp, _w = await self._lsu(
+                    SepAxiOp.WRITE, addr + off, size=size, wdata=wv, expect="any"
+                )
+                _r, rb = await self._lsu(SepAxiOp.READ, addr)
+                self.logger.info(
+                    "OBS-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "
+                    "wr_resp=%s wdata=0x%x word_before=0x%08x word_after=0x%08x",
+                    name,
+                    addr + off,
+                    size,
+                    _RN.get(rd_resp),
+                    rdata & mask,
+                    _RN.get(wr_resp),
+                    wv,
+                    cur,
+                    rb & 0xFFFF_FFFF,
+                )
+                if restore:
+                    await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
+
+    async def _fabric_csr_leg(self) -> None:
+        """SI reads of fabric CSRs that the LSU staged, and of FEAT_CTRL."""
+        targets = (
+            ("infilt_start", INFILT_BASE + FILTER_STRIDE + FILTER_START_ADDR, 0xFFFF_FFF8),
+            ("alias_start", ALIAS_BASE + ALIAS_STRIDE + ALIAS_START, ALIAS_START_MASK),
+            ("ap_attrs", AP_BASE + REMAP_STRIDE + REMAP_ATTRS, REMAP_OFFSET_LO_MASK),
+            ("stee_attrs", STEE_BASE + REMAP_ATTRS, REMAP_OFFSET_LO_MASK),
+        )
+        for name, addr, mask in targets:
+            _r, cur = await self._lsu(SepAxiOp.READ, addr)
+            staged = self.rng.getrandbits(32) & mask
+            await self._lsu(SepAxiOp.WRITE, addr, wdata=staged)
+            _r, lsu_rb = await self._lsu(SepAxiOp.READ, addr)
+            s = await self._si(SepAxiOp.READ, addr)
+            self.logger.info(
+                "OBS-ROW-FABRIC-CSR target=%s addr=0x%08x lsu_rb=0x%08x si_resp=%s si_rdata=0x%08x",
+                name,
+                addr,
+                lsu_rb & 0xFFFF_FFFF,
+                _RN.get(s.resp_code),
+                s.rdata & 0xFFFF_FFFF,
+            )
+            if name == "stee_attrs":
+                src = self.rng.randrange(1, 16)
+                miss = self.rng.choice([u for u in range(16) if u != src])
+                await self._program_entry(src_id=src)
+                for kind, u in (("src_match", src), ("src_mismatch", miss)):
+                    t = await self._si(SepAxiOp.READ, addr, user=u)
+                    self.logger.info(
+                        "OBS-ROW-FABRIC-CSR target=stee_attrs case=%s entry_src_id=%d "
+                        "axuser=0x%x si_resp=%s si_rdata=0x%08x",
+                        kind,
+                        src,
+                        u,
+                        _RN.get(t.resp_code),
+                        t.rdata & 0xFFFF_FFFF,
+                    )
+                await self._program_entry()
+            await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
+        _r, lsu_v = await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL)
+        s = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)
+        self.logger.info(
+            "OBS-ROW-FABRIC-CSR target=lc_feat_ctrl addr=0x%08x lsu_rb=0x%08x si_resp=%s "
+            "si_rdata=0x%08x",
+            LCC_FEAT_CTRL,
+            lsu_v & 0xFFFF_FFFF,
+            _RN.get(s.resp_code),
+            s.rdata & 0xFFFF_FFFF,
+        )
+
     async def _graded_legs(self) -> None:
         """Every graded leg; each opens the window only around its graded accesses."""
         self._open()
@@ -1299,6 +1469,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         await self._pool_leg()
         await self._spi_leg()
         self._close()
+        await self._burst_past_leg()
+        await self._fabric_csr_leg()
+        await self._subword_leg()
 
     async def run_scenario(self) -> None:
         self.rng = SepSeededRng(self.random_seed())

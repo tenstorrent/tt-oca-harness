@@ -100,9 +100,14 @@ import contextlib
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep
+from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_lite_split_pass
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
+from seq_lib import sep_row_response_seq as rr
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_BURST, FILTER_RW_MASK
 from seq_lib.sep_inbound_filter_rule_seq import (
     FILTER_LOCKED_HI_BIT,
@@ -188,6 +193,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         allow leg proves readable.
         """
         resp, data = await self._ext_read(addr, user=user)
+        self.logger.info(
+            "OBS-FILT-DENY-RDATA addr=0x%08x user=0x%x resp=%d rdata=0x%08x", addr, user, resp, data
+        )
         assert resp == RESP_DECERR, f"{tag}: ext read 0x{addr:08x} resp={resp}, expected DECERR"
         if staged is not None:
             assert data != staged & 0xFFFF_FFFF, (
@@ -725,6 +733,49 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             [hex(a) for a in lite_ar],
         )
 
+    async def _obs_presense_si_read(self) -> None:
+        """One SI read of SRAM word 0 while fuse sense is still running."""
+        dut = cocotb.top
+        addr = sym("SEP_SRAM_MEM_BASE_ADDR")
+        before = self.rd_known(dut.sep_fuse_sense_done_o)
+        tap = SepFabricTap("PR-INFLT").start()
+        mark = tap.mark()
+        seq = SepAxiAccessSeq(
+            "infilt_presense_rd",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=4,
+            size=2,
+            allow_ungraded_read_resp=True,
+            allow_timeout=True,
+        )
+        await self.start_ext_seq(seq)
+        after = self.rd_known(dut.sep_fuse_sense_done_o)
+        inflt = tap.count(mark, "ar")
+        await tap.stop()
+        self.logger.info(
+            "OBS-INFILT-PRESENSE addr=0x%08x sense_done_before=%d sense_done_after=%d "
+            "resp=%s timed_out=%d pr_inflt_ar=%d",
+            addr,
+            int(bool(before)),
+            int(bool(after)),
+            seq.resp_code,
+            int(bool(seq.timed_out)),
+            inflt,
+        )
+
+    async def _obs_reserved_si_read(self) -> None:
+        """One SI read of a Reserved row through an allow entry over it."""
+        addr = rr.RESERVED_BASES[0]
+        await self.filt.disable_all()
+        cell = SepInboundFilterCfg(entry=0, allow_addr=addr, allow_value=0)
+        await self.filt.program_rule(cell, read_allowed=True, write_allowed=False)
+        resp, data = await self._ext_read(addr)
+        self.logger.info(
+            "OBS-FILT-DENY-RDATA row=reserved addr=0x%08x resp=%d rdata=0x%08x", addr, resp, data
+        )
+        await self.filt.disable_all()
+
     async def _bring_up_prod_filter_active(self) -> None:
         """Real-sense a PROD image -> sep_debug=0 (inbound filter active)."""
         image = self.select_efuse_image(
@@ -734,7 +785,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # PROD took effect is the FEAT_CTRL read below, value-checked against
         # feat_ctrl_expected.
         self.write_efuse_image(image)
-        await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        await self.release_no_cpu_reset()
+        await self._obs_presense_si_read()
+        await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         # sec_dis is the one FEAT_CTRL golden input the DUT exposes
         # (lcc_security_disable_probe_o); the lifecycle and DIS inputs are the
         # values written into the fuse image above.
@@ -931,6 +984,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
 
         await self._check_burst_dimension(mcfg)
+        await self._obs_reserved_si_read()
 
         # Restore entry 0 / window A / rw for the ownership checks.
         await self.filt.disable_all()
