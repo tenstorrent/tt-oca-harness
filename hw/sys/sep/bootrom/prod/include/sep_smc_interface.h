@@ -66,6 +66,7 @@ static inline uint32_t sep_get_smc_base(void) {
 
 #define SMC_SCRATCH_POST_CODE_IDX 1
 #define SMC_SCRATCH_VIRT_CONSOLE_IDX 2
+#define SMC_SCRATCH_PARK_REQ_IDX 3
 #define SMC_SCRATCH_MANIFEST_ADDR_IDX 8
 #define SMC_SCRATCH_STATUS_TO_SEP_IDX 9
 #define SMC_SCRATCH_MBIST_FAILURE_IDX 10
@@ -85,6 +86,11 @@ static inline uint32_t sep_get_smc_base(void) {
 #define SMC_SEP_STATUS_MANIFEST_READY (1u << 1)
 #define SMC_SEP_STATUS_BUFFER_READY (1u << 2)
 #define SMC_SEP_STATUS_SRAM_PROTECTED (1u << 3)
+#define SMC_SEP_STATUS_HART0_PARKED (1u << 4)
+
+// Scratch 3 value that asks the SMC ROM to park hart 0. The SEP ROM does not
+// issue it; a later boot stage does, before it resets hart 0.
+#define SMC_PARK_REQ_VALUE 0x50524B31u
 
 // ---------------------------------------------------------------------------
 // MEM_REPAIR status values (scratch[15])

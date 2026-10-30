@@ -184,7 +184,7 @@ A green regression proves only the sections that the traceability matrix credits
 |===
 |Group |Role
 |`sanity` |Dual-SMC bring-up: `smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test` (`expected_count = 3`)
-|`occp_rom` |The ROM regression: 33 tests (`expected_count = 33`). `smc_occp_ring_buffer_stress_test` is left out for its runtime and runs by name
+|`occp_rom` |The ROM regression: 35 tests (`expected_count = 35`). `smc_occp_ring_buffer_stress_test` is left out for its runtime and runs by name
 |`all` |Not a member. It belongs to <<smc-vplan>>
 |===
 
@@ -219,23 +219,24 @@ the procedure groups whose tests map to the section. *Tests* counts those tests.
 |`memory-security.adoc`, Lifecycle handling |Lifecycle validation and the secure-state limits |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |3
 |`memory-security.adoc`, OCCP memory-access policy |Permitted windows, alignment and image-address checks |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |13
 |`occp-processing.adoc`, Failed-frame cleanup |Recovery after a rejected frame |<<smc-rom-vplan-malformed>> |4
-|`occp-processing.adoc`, Polling and latching |Interface latch and unlatch rules |<<smc-rom-vplan-latch>> |2
+|`occp-processing.adoc`, Polling and latching |Interface latch and unlatch rules |<<smc-rom-vplan-latch>>, <<smc-rom-vplan-park>> |3
 |`occp-processing.adoc`, Receive and dispatch |Command dispatch |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>> |2
 |`occp-processing.adoc`, Terminal commands |ExecuteImage and AuthenticateImage end OCCP service |<<smc-rom-vplan-handoff>> |3
 |`occp-protocol.adoc`, Applications and commands |Command set |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>> |2
 |`occp-protocol.adoc`, Error responses |Error codes in the response header |<<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-latch>>, <<smc-rom-vplan-lifecycle>> |14
 |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage |Jump and manifest hand-off |<<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |9
 |`occp-protocol.adoc`, GetStatus |Status IDs and ring-buffer reads |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-latch>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |16
-|`occp-protocol.adoc`, GetVersion |Protocol version response |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |6
+|`occp-protocol.adoc`, GetVersion |Protocol version response |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |8
 |`occp-protocol.adoc`, I2C and I3C transport binding |Frame transport and length rules on the bus |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |7
 |`occp-protocol.adoc`, Integrity checks |Header and body CRC |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |12
 |`occp-protocol.adoc`, Packet format |Header layout and maximum body size |<<smc-rom-vplan-occp-command>> |1
 |`occp-protocol.adoc`, ReadData |Memory read command |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |11
-|`occp-protocol.adoc`, WriteData |Memory write command |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>> |13
+|`occp-protocol.adoc`, WriteData |Memory write command |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |15
+|`status-coordination.adoc`, Hart 0 park interlock |Park request, D-cache write-back and HART0_PARKED |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |4
 |`status-coordination.adoc`, POST word |POST phase and error fields |<<smc-rom-vplan-lifecycle>>, <<smc-rom-vplan-handoff>> |2
 |`status-coordination.adoc`, Ring buffers |SMC and SEP ring-buffer layout and order |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-status-ring>> |7
 |`status-coordination.adoc`, Ring-buffer status values |Status codes that the ROM records |<<smc-rom-vplan-memory-policy>>, <<smc-rom-vplan-malformed>>, <<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-lifecycle>> |8
-|`status-coordination.adoc`, Scratch registers |Scratch-register contract with the SEP and the host |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-dft-gate>>, <<smc-rom-vplan-handoff>> |8
+|`status-coordination.adoc`, Scratch registers |Scratch-register contract with the SEP and the host |<<smc-rom-vplan-status-ring>>, <<smc-rom-vplan-dft-gate>>, <<smc-rom-vplan-handoff>>, <<smc-rom-vplan-park>> |9
 |`status-coordination.adoc`, Software OCCP status word |Interface-status and command-count fields |<<smc-rom-vplan-occp-command>>, <<smc-rom-vplan-latch>> |2
 |===
 
@@ -334,7 +335,7 @@ Procedure: <<smc-rom-vplan-lifecycle>>.
 |===
 |Test |Expected outcome
 |`smc_occp_jump_rejection_test` |Each ExecuteImage returns an error response with code 0x00000002 (Invalid_Msgid) and no jump occurs; GET_VERSION before and after succeeds; with status reporting on, the SMC ring holds a 0x0F030201 (JUMP_SECURITY) entry; controller scratch0 = 0xACAFACA1.
-|`smc_rom_invalid_lc_state_test` |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1.
+|`smc_rom_invalid_lc_state_test` |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`.
 |===
 
 ==== Early DFT gate
@@ -358,8 +359,19 @@ Procedure: <<smc-rom-vplan-handoff>>.
 |Test |Expected outcome
 |`smc_occp_random_jump_test` |Target scratch0 = 0xACAFACA1, written by the payload, within the poll budget; neither scratch0 reads 0xFFFFFFFF during polling; at least one I3C channel shows new SCL activity.
 |`smc_occp_validate_boot_test` |TEST_PASS in either scratch0 (only the controller writes it); target scratch 9 bit 1 (MANIFEST_READY) set; target scratch 8 = sent address - 0xC0060000; target hart-0 PC parked (at most 2 distinct PCs over 20000 cycles).
-|`smc_occp_secure_boot_test` |Target scratch 9 bit 1 set; target scratch 8 = target_addr + entry_offset - 0xC0060000; target SRAM at target_addr equals the payload; after the TB reboot the payload writes 0xACAFACA1 to target scratch0; no TEST_FAIL before MANIFEST_READY.
+|`smc_occp_secure_boot_test` |Target scratch 9 bits 1 and 4 (MANIFEST_READY, HART0_PARKED) set, with hart 0 inside `smc_park_hart0` before the TB reboot; target scratch 8 = target_addr + entry_offset - 0xC0060000; target SRAM at target_addr equals the payload; after the TB reboot the payload writes 0xACAFACA1 to target scratch0; no TEST_FAIL before MANIFEST_READY.
 |`smc_occp_dual_unsecure_boot_test` |Target POST reaches phase 5 without phase 7 and the POST error field stays 0; payload first and last words land at target_addr; target PC enters the payload; target scratch0 = 0xACAFACA1; controller scratch0 never 0xFFFFFFFF; I3C SCL and START seen.
+|===
+
+==== Hart 0 park interlock
+
+Procedure: <<smc-rom-vplan-park>>.
+
+[cols="3,4",options="header"]
+|===
+|Test |Expected outcome
+|`smc_rom_park_request_test` |After the controller's WriteData, part of the written block is still missing from the SRAM array; the park request in target scratch 3 then sets target scratch 9 bit 4; hart 0 retires only the park loop; all 256 written bytes are in the SRAM array by backdoor; a probe the live target answered goes unanswered after the park.
+|`smc_rom_park_entry_clear_test` |With the park request in target scratch 3 at reset, the ROM clears scratch 3, never sets scratch 9 bit 4, never enters `smc_park_hart0`, and services the controller's GET_VERSION and its write of 0xACAFACA1 to target scratch0.
 |===
 
 [[smc-rom-vplan-procedures]]
@@ -787,7 +799,7 @@ verdict and every checker in its member row pass.
 
 . Bring up the target with the lifecycle value from `+lc_state` or from the run seed.
 . For ExecuteImage: the controller sends ExecuteImage requests and expects the security refusal.
-. For the illegal lifecycle: poll the target POST word until the ERROR phase with the lifecycle error code.
+. For the illegal lifecycle: poll the target POST word until the ERROR phase with the lifecycle error code, then require hart 0 parked.
 
 *Checkers:*
 
@@ -795,6 +807,7 @@ verdict and every checker in its member row pass.
 |===
 |Checker |Contract
 |`CHK-ROM-INVALID-LC` |`smc_rom_invalid_lc_state_test`: the target POST word reaches the ERROR phase with the invalid-security-mode error code before the poll budget ends.
+|`CHK-ROM-PARK-ON-HALT` |`smc_rom_invalid_lc_state_test`: after the halt, target scratch 9 bit 4 (HART0_PARKED) is set and hart 0 retires only inside `smc_park_hart0`.
 |`CHK-OCCP-SANITY` |`TEST_PASS` (`0xACAFACA1`) appears in scratch 0 of either instance before the poll budget ends, and `TEST_FAIL` appears in neither. The production ROM has no writer for this code, so it comes from the controller firmware.
 |===
 
@@ -808,7 +821,7 @@ verdict and every checker in its member row pass.
 |===
 |Test |Stimulus |Expected |Checkers |Specification
 |`smc_occp_jump_rejection_test` |{plus}lc_state=1 sets target lifecycle PROD (secure). Controller firmware (I3C): 10 random commands; GET_VERSION; 4 ExecuteImage to random addresses in [0xC0066400, 0xC0157000); GET_VERSION; drain GetStatus 0x8001 to 0; 5 random commands. STATUS_RPT_DISABLE random. DV shortcut: TB drives the target lc_state pins. |Each ExecuteImage returns an error response with code 0x00000002 (Invalid_Msgid) and no jump occurs; GET_VERSION before and after succeeds; with status reporting on, the SMC ring holds a 0x0F030201 (JUMP_SECURITY) entry; controller scratch0 = 0xACAFACA1. |`fw: jump-rejected-invalid-msgid`, `fw: get-version-around-jump`, `fw: jump-security-in-ring`, `fw: random-command-result` |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, Error responses; `memory-security.adoc`, OCCP memory-access policy; `memory-security.adoc`, Lifecycle handling; `status-coordination.adoc`, Ring-buffer status values; `occp-protocol.adoc`, GetStatus
-|`smc_rom_invalid_lc_state_test` |TB drives the target lc_state to a well-formed but undefined value (0x9 to 0xF with complementary halves; 0xA for seed 1) before cold reset. No controller command is checked. DV shortcut: TB drives the target lc_state pins to the illegal value. |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1. |`tb: post-error-invalid-sec-mode`, `tb: no-pass-on-illegal-lifecycle`, `tb: illegal-value-guard` |`memory-security.adoc`, Lifecycle handling; `boot-flow.adoc`, C boot phases; `status-coordination.adoc`, POST word
+|`smc_rom_invalid_lc_state_test` |TB drives the target lc_state to a well-formed but undefined value (0x9 to 0xF with complementary halves; 0xA for seed 1) before cold reset. No controller command is checked. DV shortcut: TB drives the target lc_state pins to the illegal value. |Target POST word shows boot phase 0x7 (ERROR) and error 0x5 (INVALID_SEC_MODE) within {plus}rom_test_timeout; target scratch0 never equals 0xACAFACA1; target scratch 9 bit 4 (HART0_PARKED) sets and hart 0 then retires only inside `smc_park_hart0`. |`tb: post-error-invalid-sec-mode`, `tb: no-pass-on-illegal-lifecycle`, `tb: illegal-value-guard`, `CHK-ROM-PARK-ON-HALT` |`memory-security.adoc`, Lifecycle handling; `boot-flow.adoc`, C boot phases; `status-coordination.adoc`, POST word; `status-coordination.adoc`, Hart 0 park interlock
 |===
 
 *Checker contracts:*
@@ -823,6 +836,7 @@ verdict and every checker in its member row pass.
 |`smc_rom_invalid_lc_state_test` |`tb: post-error-invalid-sec-mode` |POST boot phase == 0x7 and POST error == 0x5 within {plus}rom_test_timeout.
 |`smc_rom_invalid_lc_state_test` |`tb: no-pass-on-illegal-lifecycle` |Target scratch0 must not equal 0xACAFACA1.
 |`smc_rom_invalid_lc_state_test` |`tb: illegal-value-guard` |A named {plus}lc_state outside 0x9 to 0xF is rejected, so the test cannot run on a legal state.
+|`smc_rom_invalid_lc_state_test` |`CHK-ROM-PARK-ON-HALT` |Target scratch 9 bit 4 sets within 50000 cycles of the halt being observed; then, after a 200-cycle settle, every hart-0 retired PC sampled every 50 cycles over 4000 cycles is one of the two park-loop addresses, `smc_park_hart0_wfi` and `smc_park_hart0_wfi` + 4, taken from `prod_rom.sym`.
 |===
 
 [[smc-rom-vplan-dft-gate]]
@@ -903,6 +917,7 @@ verdict and every checker in its member row pass.
 |`CHK-OCCP-RANDOM-JUMP` |`smc_occp_random_jump_test`: target `TEST_PASS` from the payload after ExecuteImage, with I3C activity since staging.
 |`CHK-OCCP-VALIDATE-BOOT` |`smc_occp_validate_boot_test`: MANIFEST_READY set, the manifest address matches, and the target halts.
 |`CHK-OCCP-SECURE-BOOT` |`smc_occp_secure_boot_test`: the image lands in target SRAM, MANIFEST_READY is set with the matching address, and the payload reports `TEST_PASS` after the SEP-side reboot.
+|`CHK-OCCP-PARK-ON-AUTH` |`smc_occp_secure_boot_test`: after AuthenticateImage, HART0_PARKED is set and hart 0 is inside `smc_park_hart0` before the SEP-side reboot.
 |`CHK-OCCP-TARGET-READY`, `CHK-OCCP-PRECONDITION`, `CHK-OCCP-PAYLOAD-STAGED`, `CHK-OCCP-HOST-PROTOCOL`, `CHK-OCCP-TRANSFER-LANDED`, `CHK-OCCP-CONTROLLER-NO-FAIL`, `CHK-OCCP-BUS-ACTIVITY`, `CHK-OCCP-JUMP-EXECUTED`, `CHK-OCCP-PAYLOAD-EXECUTED` |`smc_occp_dual_unsecure_boot_test`: every listed ID is required; together they prove target readiness, the transfer, the jump and the payload verdict.
 |===
 
@@ -917,7 +932,7 @@ verdict and every checker in its member row pass.
 |Test |Stimulus |Expected |Checkers |Specification
 |`smc_occp_random_jump_test` |TB places hello_world at a seed-random 8-byte-aligned SRAM address and puts base and entry offset in target scratch 4 and 5. Controller firmware (I3C) reads them with ReadData and sends ExecuteImage to base+offset. DV shortcut: payload written into target SRAM by TB AXI; controller GPIO58 forced low while staging. |Target scratch0 = 0xACAFACA1, written by the payload, within the poll budget; neither scratch0 reads 0xFFFFFFFF during polling; at least one I3C channel shows new SCL activity. |`tb: payload-axi-readback`, `tb: pass-fail-poll`, `tb: i3c-activity`, `fw: readdata-and-jump-response` |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-processing.adoc`, Terminal commands; `occp-protocol.adoc`, ReadData; `memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, Integrity checks
 |`smc_occp_validate_boot_test` |Controller firmware (I3C): 10 random commands (GetVersion, GetStatus, ReadData, WriteData with a read-back scoreboard), then AuthenticateImage at a random 4-byte-aligned address in [0xC0066400, 0xC0160000-7), recorded in controller scratch 8. No payload is sent. DV shortcut: none beyond the shared harness. |TEST_PASS in either scratch0 (only the controller writes it); target scratch 9 bit 1 (MANIFEST_READY) set; target scratch 8 = sent address - 0xC0060000; target hart-0 PC parked (at most 2 distinct PCs over 20000 cycles). |`tb: completion-poll`, `tb: manifest-ready`, `tb: manifest-address-echo`, `tb: halt-check`, `tb: i3c-activity`, `fw: random-commands-and-authenticate` |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-processing.adoc`, Terminal commands; `status-coordination.adoc`, Scratch registers; `memory-security.adoc`, OCCP memory-access policy; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, GetStatus; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ReadData; `occp-protocol.adoc`, Integrity checks
-|`smc_occp_secure_boot_test` |{plus}lc_state=1 sets target lifecycle PROD. Controller firmware (I3C): 5 random commands, hello_world in 248-byte WriteData chunks to a random address, AuthenticateImage at target+entry. DV shortcut: TB stages the payload in controller SRAM, drives lc_state, and after MANIFEST_READY sets RESET_VECTOR and pulses core reset. |Target scratch 9 bit 1 set; target scratch 8 = target_addr + entry_offset - 0xC0060000; target SRAM at target_addr equals the payload; after the TB reboot the payload writes 0xACAFACA1 to target scratch0; no TEST_FAIL before MANIFEST_READY. |`tb: lifecycle-plusarg`, `tb: controller-staging-readback`, `tb: manifest-ready-poll`, `tb: manifest-address-echo`, `tb: transferred-image`, `tb: payload-pass-after-reboot`, `tb: i3c-activity`, `fw: writedata-authenticate-responses` |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, WriteData; `memory-security.adoc`, OCCP memory-access policy; `memory-security.adoc`, Lifecycle handling; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, Integrity checks
+|`smc_occp_secure_boot_test` |{plus}lc_state=1 sets target lifecycle PROD. Controller firmware (I3C): 5 random commands, hello_world in 248-byte WriteData chunks to a random address, AuthenticateImage at target+entry. DV shortcut: TB stages the payload in controller SRAM, drives lc_state, and after MANIFEST_READY sets RESET_VECTOR and pulses core reset. |Target scratch 9 bits 1 and 4 (MANIFEST_READY, HART0_PARKED) set, with hart 0 inside `smc_park_hart0` before the TB reboot; target scratch 8 = target_addr + entry_offset - 0xC0060000; target SRAM at target_addr equals the payload; after the TB reboot the payload writes 0xACAFACA1 to target scratch0; no TEST_FAIL before MANIFEST_READY. |`tb: lifecycle-plusarg`, `tb: controller-staging-readback`, `tb: manifest-ready-poll`, `tb: manifest-address-echo`, `CHK-OCCP-PARK-ON-AUTH`, `tb: transferred-image`, `tb: payload-pass-after-reboot`, `tb: i3c-activity`, `fw: writedata-authenticate-responses` |`occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-protocol.adoc`, WriteData; `memory-security.adoc`, OCCP memory-access policy; `memory-security.adoc`, Lifecycle handling; `status-coordination.adoc`, Scratch registers; `status-coordination.adoc`, Hart 0 park interlock; `occp-protocol.adoc`, Integrity checks
 |`smc_occp_dual_unsecure_boot_test` |TB releases the target, waits for POST phase 5, then the controller. Controller firmware sends hello_world in 1024-byte WriteData chunks to a random address, then ExecuteImage to target+entry. The controller interface is drawn from the seed. DV shortcut: TB AXI stages payload and scratch 5-8 in the controller; target SRAM backdoor peek. |Target POST reaches phase 5 without phase 7 and the POST error field stays 0; payload first and last words land at target_addr; target PC enters the payload; target scratch0 = 0xACAFACA1; controller scratch0 never 0xFFFFFFFF; I3C SCL and START seen. |`CHK-OCCP-TARGET-READY`, `CHK-OCCP-PRECONDITION`, `CHK-OCCP-PAYLOAD-STAGED`, `CHK-OCCP-HOST-PROTOCOL`, `tb: post-error-zero`, `CHK-OCCP-TRANSFER-LANDED`, `tb: target-pass-poll`, `CHK-OCCP-CONTROLLER-NO-FAIL`, `CHK-OCCP-BUS-ACTIVITY`, `CHK-OCCP-JUMP-EXECUTED`, `fw: writedata-jump-responses` |`boot-flow.adoc`, C boot phases; `status-coordination.adoc`, POST word; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, ExecuteImage and AuthenticateImage; `occp-processing.adoc`, Terminal commands; `occp-protocol.adoc`, I2C and I3C transport binding; `occp-protocol.adoc`, Integrity checks; `memory-security.adoc`, OCCP memory-access policy
 |===
 
@@ -940,6 +955,7 @@ verdict and every checker in its member row pass.
 |`smc_occp_secure_boot_test` |`tb: controller-staging-readback` |Controller SRAM readback equals the payload (TB staging self-check).
 |`smc_occp_secure_boot_test` |`tb: manifest-ready-poll` |Fails on TEST_FAIL in either scratch0 before ready, or if target scratch 9 bit 1 never sets.
 |`smc_occp_secure_boot_test` |`tb: manifest-address-echo` |Target scratch 8 + 0xC0060000 equals target_addr + entry_offset.
+|`smc_occp_secure_boot_test` |`CHK-OCCP-PARK-ON-AUTH` |Target scratch 9 bit 4 sets within 50000 cycles of MANIFEST_READY; hart-0 retired PCs then stay on the two park-loop addresses as in `CHK-ROM-PARK-ON-HALT`.
 |`smc_occp_secure_boot_test` |`tb: transferred-image` |Target SRAM at target_addr equals the payload byte for byte.
 |`smc_occp_secure_boot_test` |`tb: payload-pass-after-reboot` |Target scratch0 reaches 0xACAFACA1 after the TB core-reset pulse; TEST_FAIL or timeout fails.
 |`smc_occp_secure_boot_test` |`tb: i3c-activity` |At least one I3C channel shows SCL activity after the baseline.
@@ -957,6 +973,59 @@ verdict and every checker in its member row pass.
 |`smc_occp_dual_unsecure_boot_test` |`fw: writedata-jump-responses` |Controller writes TEST_FAIL if a WriteData chunk or the ExecuteImage response fails header CRC or error checks.
 |===
 
+[[smc-rom-vplan-park]]
+==== Hart 0 park interlock
+
+*Tests:* 2.
+
+*Base:* `hw/sys/smc/dv/cocotb/tests/smc_rom_park_request_test.py`, `hw/sys/smc/dv/cocotb/tests/smc_rom_park_entry_clear_test.py`, `hw/sys/smc/dv/cocotb/tests/smc_rom_park_defs.py`.
+
+*Objective:* Between OCCP commands the ROM parks hart 0 when the SEP writes the park request to scratch 3: it writes back its D-cache, sets HART0_PARKED and services nothing further. A request left in scratch 3 across a reset is discarded.
+
+*Procedure:*
+
+. Bring up both instances with `boot_stall` held. For the entry-clear case, write the park request value to target scratch 3 after the firmware seed and before `boot_stall` drops, and read it back.
+. Release the target and the controller.
+. For the request: wait for the controller to report an answered probe and then its WriteData, require the written block to be at least partly missing from the SRAM array, write the park request to target scratch 3, require HART0_PARKED and the park loop, require the whole block in the SRAM array, then release the controller's second probe and require it unanswered.
+. For the entry clear: wait for the controller's TEST_PASS in target scratch0, then read target scratch 3 and 9.
+
+*Checkers:*
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|`CHK-ROM-PARK-REQUEST` |`smc_rom_park_request_test`: HART0_PARKED sets after the request, hart 0 stays in `smc_park_hart0`, the SRAM array holds the written bytes, and the later command goes unanswered.
+|`CHK-ROM-PARK-ENTRY-CLEAR` |`smc_rom_park_entry_clear_test`: the ROM clears the stale request, does not park, and completes the controller's OCCP exchange.
+|===
+
+*Anti-vacuity:* The SRAM checks read the array through the backdoor peek, which bypasses the CPU D-cache. The block must be at least partly missing from the array before the park and wholly present after it, so the run shows the park routine's write-back rather than an earlier eviction. The live target must answer a probe with the same 2000-poll timeout before the park, so the unanswered probe after it is not a timeout too short to succeed; the second probe is released only after HART0_PARKED, so an answer means the ROM serviced a command after parking. In the entry-clear case the controller's TEST_PASS needs the ROM to service two OCCP commands, which it cannot do once parked.
+
+*Observation:* Target scratch 0, 3 and 9, controller scratch 0, 5, 6 and 7, the target SRAM array, and the target hart 0 retired PC.
+
+*Members:*
+
+[cols="3,4,4,3,3",options="header"]
+|===
+|Test |Stimulus |Expected |Checkers |Specification
+|`smc_rom_park_request_test` |Controller firmware `occp_park_test` (I2C): GET_VERSION, GET_VERSION with a 2000-poll timeout, then a 256-byte WriteData to 0xC0080000 as the last command before the park; it writes 0x50415231 to controller scratch 6 and waits for 0x474F2121 in controller scratch 7, then sends the same probe again and records its return code in scratch 5 and the outcome in scratch 6. TB writes 0x50524B31 to target scratch 3 over SEP_IN AXI. DV shortcut: target SRAM backdoor peek. |Before the park, at least one written word is missing from the SRAM array; target scratch 9 bit 4 sets; hart 0 stays on the park loop; the SRAM array at 0xC0080000 then holds all 256 written bytes; controller scratch 6 = 0x50415233 (second probe unanswered); hart 0 still on the park loop afterwards. |`CHK-ROM-PARK-REQUEST`, `fw: write-before-park`, `tb: dirty-before-park`, `tb: parked`, `tb: sram-written-back`, `tb: no-service-after-park` |`status-coordination.adoc`, Hart 0 park interlock; `occp-processing.adoc`, Polling and latching; `occp-protocol.adoc`, WriteData; `occp-protocol.adoc`, GetVersion
+|`smc_rom_park_entry_clear_test` |TB writes 0x50524B31 to target scratch 3 after the firmware seed and before `boot_stall` drops. Controller firmware `occp_sanity` (I2C): GET_VERSION, then a write of 0xACAFACA1 to target scratch 0. |Target scratch0 = 0xACAFACA1 within the poll budget; then target scratch 3 = 0, target scratch 9 bit 4 clear, and hart 0 not inside `smc_park_hart0`. |`CHK-ROM-PARK-ENTRY-CLEAR`, `tb: occp-serviced`, `tb: not-parked`, `tb: request-cleared` |`status-coordination.adoc`, Hart 0 park interlock; `status-coordination.adoc`, Scratch registers; `occp-protocol.adoc`, GetVersion; `occp-protocol.adoc`, WriteData
+|===
+
+*Checker contracts:*
+
+[cols="3,2,5",options="header"]
+|===
+|Test |Checker |Contract
+|`smc_rom_park_request_test` |`fw: write-before-park` |The controller reports 0x5041523F (setup failure) or TEST_FAIL if the first GET_VERSION, the WriteData, or the 2000-poll probe to the live target fails; the TB fails on either.
+|`smc_rom_park_request_test` |`tb: dirty-before-park` |After the controller reports and before the park request, at least one of the 32 backdoor words at 0xC0080000 differs from the written pattern.
+|`smc_rom_park_request_test` |`tb: parked` |Target scratch 9 bit 4 sets within 50000 cycles of the request; then every hart-0 retired PC sampled every 50 cycles over 4000 cycles is `smc_park_hart0_wfi` or `smc_park_hart0_wfi` + 4.
+|`smc_rom_park_request_test` |`tb: sram-written-back` |Each of the 32 backdoor 64-bit words at 0xC0080000 equals the written pattern (byte i = 0x11 + 0x5B * i mod 256).
+|`smc_rom_park_request_test` |`tb: no-service-after-park` |After the release, controller scratch 6 reaches 0x50415233; 0x50415232 (answered) fails.
+|`smc_rom_park_entry_clear_test` |`tb: occp-serviced` |Target scratch0 reaches 0xACAFACA1 within the budget; TEST_FAIL in either scratch0 fails.
+|`smc_rom_park_entry_clear_test` |`tb: not-parked` |After the exchange, target scratch 9 bit 4 is clear and the hart-0 retired PC is not on the park loop. A park before then would have left the exchange incomplete.
+|`smc_rom_park_entry_clear_test` |`tb: request-cleared` |The preload reads back 0x50524B31 before `boot_stall` drops, and target scratch 3 reads 0 once the exchange completes.
+|===
+
 [[smc-rom-vplan-regression-groups]]
 === Regression Groups
 
@@ -964,7 +1033,7 @@ verdict and every checker in its member row pass.
 |===
 |Group |Members |Use
 |`sanity` |`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test` |Dual-SMC bring-up gate
-|`occp_rom` |33 tests: every entry except the two harness tests and `smc_occp_ring_buffer_stress_test` |ROM regression
+|`occp_rom` |35 tests: every entry except the two harness tests and `smc_occp_ring_buffer_stress_test` |ROM regression
 |By name |`smc_occp_ring_buffer_stress_test` |Long-running stress, run on demand
 |===
 
