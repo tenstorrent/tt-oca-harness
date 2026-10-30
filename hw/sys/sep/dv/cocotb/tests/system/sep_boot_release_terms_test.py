@@ -612,7 +612,7 @@ class sep_boot_release_terms_test(sep_base_test):
             and rec[ctl_cyc]["sep"] == 0
         )
         assert c_ok, (
-            f"CHK-PRESENSE FAIL: epoch={ep.kind} path control EFUSE_INTERFACE_CTRL_STATUS "
+            f"CTRL-PRESENSE-PATH FAIL: epoch={ep.kind} path control EFUSE_INTERFACE_CTRL_STATUS "
             f"@0x{IF_STATUS_ADDR:08x} resp={_RESP_NAME.get(c['resp'], c['resp'])} at "
             f"sample {ctl_cyc} sense_done={rec[ctl_cyc]['done']} sep_reset_n={rec[ctl_cyc]['sep']}; "
             "expected OKAY inside the pre-sense window"
