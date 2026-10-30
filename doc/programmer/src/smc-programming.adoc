@@ -1738,9 +1738,17 @@ on wrap, so keep every row inside the permitted range.
 For a linear copy, set `CONFIG.ENABLED_ND`, `NUM_REPETITIONS_LO = 1` and
 `NUM_REPETITIONS_HI = 0`. For a 2D copy, also program the source and destination
 strides and the row count. The length must be nonzero. A command with zero
-repetitions, including one with `ENABLED_ND` clear, retires a transfer ID
-without copying any data, so a retired ID alone does not prove the copy
-happened.
+repetitions, including one with `ENABLED_ND` clear, retires without copying any
+data, so a retirement alone does not prove the copy happened.
+
+`DONE_0` counts retirements: it resets to 1 and adds 1 for each one. Every
+command retires once, except that a command with `ENABLED_ND` set, a length of
+0 and N repetitions (N of 1 or more) retires N times, still without copying
+any data. The counter never reads 0; it reads 1 from the cycle after it reaches
+`0xFFFFFFFF`, so it cycles through 2^32^ - 2 counts. To confirm that a set of
+commands has retired, sum their retirements R and wait for `DONE_0` to read
+((D - 1 + R) mod (2^32^ - 2)) + 1, where D is its value before the first
+submission, accepting `0xFFFFFFFF` where that gives 1.
 
 To run a transfer:
 
@@ -1752,18 +1760,22 @@ To run a transfer:
 . Make the configuration writes visible, then read `NEXT_ID_0` exactly once and
   record the returned transfer ID. The read can be backpressured until the
   frontend accepts the request.
-. Track retirement with `DONE_0`, the most recently retired ID. With a single
-  outstanding command, wait for its ID; with several, keep an ordered software
-  record so a later retirement does not leave an equality test on an earlier
-  ID waiting forever. IDs start at 2 (`DONE_0` resets to 1) and skip zero on
-  wrap, so comparisons must be wrap-aware.
+. Track retirement with `DONE_0`. While every command submitted since reset
+  has retired once, the returned ID is the value `DONE_0` reaches when that
+  command retires. With a single outstanding command, wait for its ID; with
+  several, keep an ordered software record so a later retirement does not
+  leave an equality test on an earlier ID waiting forever. IDs start at 2
+  (`DONE_0` resets to 1) and wrap as `DONE_0` does, so comparisons must be
+  wrap-aware. A zero-length command with N repetitions leaves `DONE_0` N - 1
+  counts ahead of the returned IDs from then on; count retirements instead of
+  comparing IDs once one has been submitted.
 . Apply the platform's completion-ordering and cache rules before consuming the
   destination. Treat a timeout as a recovery decision: there is no abort
   register.
 
 Neither frontend readiness in `STATUS_0` nor a zero `STATUS` value indicates
 completion. `STATUS_0[8]` falls when the backend accepts the last row, which
-can be before `DONE_0` reaches the transfer ID. The DMA interrupt (PLIC ID 323) is a pulse on the falling edge of
+can be before the command retires. The DMA interrupt (PLIC ID 323) is a pulse on the falling edge of
 the engine's busy state, not one interrupt per transfer; use it as a hint to
 poll `DONE_0`.
 
