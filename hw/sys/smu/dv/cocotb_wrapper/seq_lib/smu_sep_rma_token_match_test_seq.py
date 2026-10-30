@@ -59,6 +59,10 @@ SB_ACCESS_32 = 2
 T_SIP = 0x11111111_22222222_33333333_44444444_55555555_66666666_77777777_88888888
 T_CHIP = 0xA1A2A3A4_B1B2B3B4_C1C2C3C4_D1D2D3D4_E1E2E3E4_F1F2F3F4_01020304_05060708
 T_CHIP_ONE_BIT_OFF = T_CHIP ^ 1
+# Left in the SIP words for the chiplet legs: a SIP hash started by TOKEN_EOP bit 8 reads mismatch
+# instead of holding the match of T_SIP, since writing the words alone keeps the previous result
+# (token_processing.adoc, "Token Submission").
+T_SIP_ONE_BIT_OFF = T_SIP ^ 1
 
 
 def _digest(token: int) -> int:
@@ -183,6 +187,7 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         chiplet_idle = await self._read(jtag, CHIPLET_MATCH) & STATUS_MASK
         await self._mark("S5", f"chiplet result while the SIP result holds 0x{chiplet_idle:02x}")
 
+        await self._write_token(jtag, SIP_TOKEN_WORDS, T_SIP_ONE_BIT_OFF)
         await self._write_token(jtag, CHIPLET_TOKEN_WORDS, T_CHIP_ONE_BIT_OFF)
         await self._write(jtag, TOKEN_EOP, CHIPLET_GO)
         sip_at_chiplet_start = await self._read(jtag, SIP_MATCH) & STATUS_MASK
@@ -191,7 +196,8 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         )
         await self._mark(
             "S6",
-            f"chiplet token one bit off, SIP result at the start 0x{sip_at_chiplet_start:02x}, "
+            f"SIP and chiplet words one bit off, SIP result at the chiplet start "
+            f"0x{sip_at_chiplet_start:02x}, "
             f"chiplet result 0x{chiplet_mismatch:02x}",
         )
 
@@ -242,10 +248,11 @@ class smu_sep_rma_token_match_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         self._log(
             f"CHK-SEP-RMA-START: chiplet result read right after TOKEN_EOP 0x{SIP_GO:x}="
             f"0x{got[0]:02x} expected=0x{want[0]:02x}; SIP result read right after TOKEN_EOP "
-            f"0x{CHIPLET_GO:x}=0x{got[1]:02x} expected=0x{want[1]:02x}"
+            f"0x{CHIPLET_GO:x} with the SIP words one bit off=0x{got[1]:02x} "
+            f"expected=0x{want[1]:02x}"
         )
         sb.expect_eq(
-            "CHK-SEP-RMA-START each TOKEN_EOP bit leaves the other lane's result unchanged",
+            "CHK-SEP-RMA-START each TOKEN_EOP bit starts its own lane only",
             got,
             want,
             evidence="CHK-SEP-RMA-START",
