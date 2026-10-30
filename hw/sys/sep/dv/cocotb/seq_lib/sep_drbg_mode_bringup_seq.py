@@ -4,8 +4,9 @@
 
 ``drbg_bring_up`` runs the first part of ``SepBaseTest.bring_up_entropy``: the
 DRBG scoreboard noise, ``SepEsrcConfigSeq`` (TRNG reset, ESRC configuration with
-the generators off, CSRNG enable, EDN commands staged), ``SepEsrcEnableGeneratorsSeq``
-and the wait for the first seed. Then it writes EDN ``CTRL`` once with the value
+the generators off, CSRNG enable, EDN commands staged), CHK-CHK1-RO-ENABLE at
+``ENABLE`` = 0, ``SepEsrcEnableGeneratorsSeq``, the wait for the first seed and
+CHK-CHK1-RO-ENABLE at ``ENABLE`` = 0xFFF (``SepDrbgScoreboard.grade_ro_enable``). Then it writes EDN ``CTRL`` once with the value
 that the leaf passes, or not at all with ``edn_ctrl=None``. It writes no
 ``FIPS_LOCK``.
 
@@ -27,6 +28,8 @@ from pyuvm import uvm_sequence
 from sep_reg_meta import sym
 
 from seq_lib.sep_esrc_bringup_seq import (
+    GENERATORS_OFF,
+    GENERATORS_ON,
     SepEntropyCfg,
     SepEsrcConfigSeq,
     SepEsrcEnableGeneratorsSeq,
@@ -76,12 +79,13 @@ async def drbg_bring_up(
     sb.start()
     await test.assert_noise_force_active()
     await test.start_seq(SepEsrcConfigSeq("esrc_config", cfg=cfg))
+    await sb.grade_ro_enable(test, GENERATORS_OFF)
     await test.start_seq(SepEsrcEnableGeneratorsSeq("esrc_enable_gens"))
     if not await test.wait_seed_ready():
         await test.report_entropy_stall()
         sb.stop()
         raise AssertionError("DRBG-BRING-UP: ESRC never produced a seed (drbg_seed_valid_o)")
-    await sb.grade_ro_enable(test)
+    await sb.grade_ro_enable(test, GENERATORS_ON)
     if edn_ctrl is not None:
         await test.start_seq(SepEdnCtrlWriteSeq("edn_ctrl_write", value=edn_ctrl))
     test.logger.info(

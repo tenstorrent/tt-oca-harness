@@ -506,7 +506,12 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         chk = [r for r in recs if r.name.startswith("CHK-")]
         gated = [r for r in chk if r.name == "CHK-GATED"]
         names = sorted(r.name for r in chk)
-        want = sorted(["CHK-GATED"] * (len(rd.srcs) + 1) + ["CHK-STAY-PENDING", "CHK-NEVER"])
+        n_meip = 1 + sum(g == GATE_NEVER for g in rd.gates)
+        want = sorted(
+            ["CHK-GATED"] * (len(rd.srcs) + 1)
+            + ["CHK-STAY-PENDING", "CHK-NEVER"]
+            + ["CHK-NEVER-MEIP"] * n_meip
+        )
         if names != want or any(r.verdict != "PASS" for r in chk):
             return False
         kinds = [(int(r.kv["src"]), r.kv["gate"]) for r in gated if r.kv.get("gate") != "mie0"]

@@ -714,11 +714,11 @@ class sep_tcm_dma_aperture_ecc_test(sep_base_test):
     # ---- scenario ---------------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         plan = _Cfg(seed)
         self.plan = plan
         for line in plan.draw_lines():
-            self.logger.info("DRAW %s", line)
+            self.logger.info("INFO-DRAW %s", line)
 
         await self.bring_up_no_cpu()
         full = self.full_cpu_build()

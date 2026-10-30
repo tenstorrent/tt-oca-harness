@@ -103,6 +103,9 @@ Checkers:
                     enabled outbound pair covers it. With the reset pair
                     restored, the moved first and last words answer DECERR
                     with no PR-OUT capture while an enabled pair covers them.
+                    Each such address is at or above 0x4000_0000 and outside
+                    every window, so it returns to the peripheral crossbar,
+                    which answers DECERR (fabric.adoc:145-146, :181-182).
   CHK-OUT-SMU-FIRST with the SMU window over AP region 0 (valid, offset not
                     the identity), LSU reads and writes of an AP region 0 word
                     leave once on PR-OUT untranslated, with SEP's ID and NS 1.
@@ -401,8 +404,8 @@ class _SmuAperture(SepAxiRegDriver):
             got = await self._rd(addr) | (await self._rd(addr + 4) << 32)
             fc = field_compare(got, word, mask)
             line = f"reg=0x{addr:x} {fc.fields()}"
-            assert fc.ok, f"SMU-READBACK FAIL: {line}"
-            self.log.info("SMU-READBACK LOG: %s", line)
+            assert fc.ok, f"CTRL-SMU-READBACK FAIL: {line}"
+            self.log.info("CTRL-SMU-READBACK LOG: %s", line)
 
 
 def _smc_apertures() -> list[tuple[int, int]]:
@@ -652,7 +655,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         assert sec_dis == 0, f"bring-up: SEC_DIS={sec_dis}; the pinned image needs SEC_DIS 0"
         feat = await self._rd64(LCC_FEAT_CTRL)
         self.logger.info(
-            "FEAT_CTRL LOG: lc=%s sec_dis=%d feat_ctrl=0x%016x sep_debug=%d",
+            "INFO-FEAT-CTRL lc=%s sec_dis=%d feat_ctrl=0x%016x sep_debug=%d",
             lc_state_name(image.lc_raw()),
             sec_dis,
             feat,
@@ -661,7 +664,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         base = await self._rd64(SMU_BASE_REG)
         size = await self._rd64(SMU_SIZE_REG)
         self.logger.info(
-            "SMU aperture LOG: SMU_GLOBAL_BASE_ADDR=0x%x SMU_REGION_SIZE=0x%x", base, size
+            "INFO-SMU-APERTURE SMU_GLOBAL_BASE_ADDR=0x%x SMU_REGION_SIZE=0x%x", base, size
         )
 
     async def _rd64(self, addr: int) -> int:
@@ -949,7 +952,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 local_seen += seen
                 n_local += 1
                 self.logger.info(
-                    "local read LOG: %s addr=0x%x resp=%s data[31:0]=0x%08x data[63:32]=0x%08x "
+                    "INFO-LOCAL-READ %s addr=0x%x resp=%s data[31:0]=0x%08x data[63:32]=0x%08x "
                     "out_seen=%d",
                     name,
                     addr,
@@ -993,7 +996,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         seq = SepAxiAccessSeq(f"si_{tag}", op=SepAxiOp.READ, addr=addr, length=4, size=2)
         await self.start_ext_seq(seq)
         self.logger.info(
-            "SI read LOG: %s addr=0x%x resp=%s data=0x%08x",
+            "INFO-SI-READ %s addr=0x%x resp=%s data=0x%08x",
             tag,
             addr,
             _rname(seq.resp_code),
@@ -1004,13 +1007,13 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
     async def _nobypass_leg(self) -> None:
         """Steps 20 to 24."""
         feat0 = await self._rd64(LCC_FEAT_CTRL)
-        self.logger.info("FEAT_CTRL LOG: before DEMOTE_1 feat_ctrl=0x%016x", feat0)
+        self.logger.info("INFO-FEAT-CTRL before DEMOTE_1 feat_ctrl=0x%016x", feat0)
         await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_before_demote")
         demote = SepLccDemoteSeq(1)
         await self.start_seq(demote)
-        self.logger.info("DEMOTE_1 LOG: demote=%s lock=%s", demote.demote, demote.lock)
+        self.logger.info("INFO-DEMOTE demote=%s lock=%s", demote.demote, demote.lock)
         feat1 = await self._rd64(LCC_FEAT_CTRL)
-        self.logger.info("FEAT_CTRL LOG: after DEMOTE_1 feat_ctrl=0x%016x", feat1)
+        self.logger.info("INFO-FEAT-CTRL after DEMOTE_1 feat_ctrl=0x%016x", feat1)
         pre = await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_after_demote")
         if pre != RESP_OKAY:
             self.logger.error("CHK-OUT-NOBYPASS FAIL: bypass_not_established")
@@ -1062,7 +1065,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             ("drawn", base + 8 * rng.randrange(1, size // 8 - 1)),
         )
         self.logger.info(
-            "SMU moved LOG: base=0x%x size=0x%x words=%s",
+            "INFO-DRAW SMU moved base=0x%x size=0x%x words=%s",
             base,
             size,
             ",".join(f"{n}:0x{a:x}" for n, a in words),
@@ -1143,7 +1146,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         """The SMU window over AP region 0, then the reset pair restored."""
         c = self._draw_region0()
         self.logger.info(
-            "SMU over AP LOG: smu_base=0x%x smu_size=0x%x ap_region=0 O_ap=0x%014x "
+            "INFO-DRAW SMU over AP smu_base=0x%x smu_size=0x%x ap_region=0 O_ap=0x%014x "
             "ap_local=0x%x ap_pred=0x%014x",
             SMU_OVL_BASE,
             SMU_OVL_SIZE,
@@ -1235,7 +1238,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         self.tcfg = cfg = _Cfg(self.random_seed())
-        self.logger.info("outbound route attr: %s", cfg.summary())
+        self.logger.info("INFO-CFG outbound route attr: %s", cfg.summary())
         self.n_capture = 0
         self.n_expect = 0
         self.n_cell = 0

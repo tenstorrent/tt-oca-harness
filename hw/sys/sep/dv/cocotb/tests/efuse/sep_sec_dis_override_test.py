@@ -22,7 +22,17 @@ the override returns both probes to 0.
 The evidence is the two reset probes and ``FEAT_CTRL``. The test drives
 ``jtag_sep_reset_n_ovrd_i`` and ``jtag_sep_reset_n_val_i``. A read of a
 block that reset holds, and a shift of the IC_RESET TDR, are
-``sep_sec_dis_reset_reach_test``. JTAG ``TOKEN_EOP`` activate is not claimed.
+``sep_sec_dis_reset_reach_test``.
+
+Until sensing completes the SEP core is held in reset
+(hw/sys/sep/doc/reset_controller.adoc), so the core load path issues nothing
+then. The test uses the masters that exist in that state: the OTP JTAG port
+presents the stopped-sense tokens (the match and the CHK-DROP mismatch) and
+makes every eFuse access of the retained window, and each frontdoor read of
+``FEAT_CTRL`` or the shadow map while sense stays stopped runs inside a release
+by the IC_RESET override, which security_disable.adoc names as the release of
+a part whose sense does not complete. Each such release ends with both probes
+back at 0 before the next step.
 
 While SEC_DIS is active and sensing is still open, a read of the
 ``LC_STATE`` shadow-map word must return AXI OKAY.
@@ -67,7 +77,8 @@ OBS-SECDIS-SHADOW-WR and OBS-SECDIS-DBG-BUS are log lines):
   CHK-RETAIN-LC-RESET    after that rst_ni the LC_STATE word reads its reset value
                          0x0F (control: the word read a sensed value before it)
   CHK-SECDIS-LC-WR       a JTAG write of PROD to that INVALID word under SEC_DIS
-                         leaves it at 0x0000000f
+                         leaves it at 0x0000000f (JTAG readback)
+  CTRL-SECDIS-JTAG-REACH every JTAG read of that window answers AXI OKAY
   CHK-DROP               a mismatch drops SEC_DIS
   CHK-SENSE-CONTROL      a healthy sense finishes inside each stuck window
   CHK-MISMATCH, CHK-NO-OVERRIDE  mismatch code and the fail-closed PROD FEAT_CTRL
@@ -211,14 +222,32 @@ class _CountedTokenSeq(SepRmaTokenMatchSeq):
     comparison reads Idle until the new digest is available. A poll that reads
     Idle at least once shows that this go, and not a result kept from an earlier
     one, gave the code it returns.
+
+    With ``jtag`` set, every access goes through that JTAG AXI-Lite op instead
+    of the LSU sequencer, and each non-OKAY response is kept in ``bad_resp``.
     """
 
-    def __init__(self, kind: int, token: int) -> None:
+    def __init__(self, kind: int, token: int, jtag=None) -> None:
         super().__init__(kind, token)
         self.idle_reads = 0
+        self._jtag = jtag
+        self.bad_resp: list[tuple[str, int, int]] = []
+
+    async def _write(self, addr: int, data: int, label: str) -> None:
+        if self._jtag is None:
+            await super()._write(addr, data, label)
+            return
+        resp, _ = await self._jtag(write=True, addr=addr, wdata=data)
+        if resp != _AXI_OKAY:
+            self.bad_resp.append((label, addr, resp))
 
     async def _read(self, addr: int, label: str) -> int:
-        raw = await super()._read(addr, label)
+        if self._jtag is None:
+            raw = await super()._read(addr, label)
+        else:
+            resp, raw = await self._jtag(write=False, addr=addr)
+            if resp != _AXI_OKAY:
+                self.bad_resp.append((label, addr, resp))
         if label == "token_match" and (raw & _STATUS_MASK) >> _STATUS_LSB == 0:
             self.idle_reads += 1
         return raw
@@ -231,6 +260,23 @@ class sep_sec_dis_override_test(sep_base_test):
     async def _present(self, token: int) -> _CountedTokenSeq:
         seq = _CountedTokenSeq(TOKEN_SEC_DISABLE, token)
         await self.start_seq(seq)
+        return seq
+
+    async def _present_jtag(self, token: int, label: str) -> _CountedTokenSeq:
+        """Present a SEC_DIS token over the OTP JTAG port while the core is held in reset.
+
+        otp_fuse_controller.adoc, Shadow Register and JTAG Access Control: JTAG
+        reaches the token block in every lifecycle state, and the held INVALID
+        state before sense is not one of the restricted states. The token
+        inputs, ``TOKEN_EOP`` and the match status have no lock or regwen rule,
+        so every access must answer AXI OKAY.
+        """
+        seq = _CountedTokenSeq(TOKEN_SEC_DISABLE, token, jtag=self.jtag_axil_op)
+        await seq.body()
+        assert not seq.bad_resp, (
+            f"{label} FAIL: JTAG token access not OKAY (label, addr, resp): "
+            + ", ".join(f"({lb}, 0x{a:08x}, {r})" for lb, a, r in seq.bad_resp)
+        )
         return seq
 
     async def _check_feat(self, sec_dis: int, label: str) -> int:
@@ -402,6 +448,23 @@ class sep_sec_dis_override_test(sep_base_test):
             label,
         )
 
+    async def _released(self, label: str, step: Awaitable[int | None]) -> int | None:
+        """Run a frontdoor ``step`` while the IC_RESET override releases the SEP reset.
+
+        The LSU master is the SEP core, which does not run while
+        ``sep_cpu_reset_n`` is held (reset_controller.adoc: ``sep_reset_n`` holds
+        every IP in reset until sensing completes). With sense stopped by
+        SEC_DIS, the override is what releases it (security_disable.adoc), so
+        each frontdoor access of the stopped-sense window runs inside one
+        override release; both probes read 0 again before the next step.
+        """
+        self._drive_sep_reset_override(1, 1)
+        await self._wait_resets(1, label, sec_dis=1)
+        result = await step
+        self._drive_sep_reset_override(0, 0)
+        await self._wait_resets(0, label, sec_dis=1)
+        return result
+
     async def _read_shadow_map(self, label: str) -> int:
         """Require an OKAY read of the LC_STATE shadow word while sense is open.
 
@@ -560,24 +623,24 @@ class sep_sec_dis_override_test(sep_base_test):
             want,
         )
 
-    async def _fd_read_word(self, label: str, addr: int, what: str) -> int:
-        """Frontdoor 32-bit read of a shadow word while sense is stopped; OKAY required."""
+    async def _jtag_read_word(self, addr: int, what: str) -> int:
+        """CTRL-SECDIS-JTAG-REACH: JTAG 32-bit read of a shadow word while sense is stopped.
+
+        The held INVALID state is not PROD or RMA_SIP, so the JTAG port has the
+        access of the fuse field table (otp_fuse_controller.adoc, Shadow Register
+        and JTAG Access Control), and ``LC_STATE`` and ``REQUIRED_SIGNERS`` are
+        SW readable with no read lock that applies here. The read is legal, so
+        it must answer AXI OKAY; a refused or dead JTAG port fails here.
+        """
+        label = "CTRL-SECDIS-JTAG-REACH"
         self._require_sense_open(label, sec_dis=1)
-        seq = SepAxiAccessSeq(
-            f"sec_dis_{what}_rd",
-            op=SepAxiOp.READ,
-            addr=addr,
-            size=2,
-            allow_ungraded_read_resp=True,
-        )
-        await self.start_seq(seq)
+        resp, data = await self.jtag_axil_op(write=False, addr=addr)
         self._require_sense_open(label, sec_dis=1)
-        assert seq.resp_ok and not seq.timed_out, (
-            f"{label} FAIL: sec_dis=1 sense_done=0 {what} @0x{addr:08x} "
-            f"resp_ok={int(seq.resp_ok)} resp={seq.resp_code} "
-            f"timed_out={int(seq.timed_out)}, want AXI OKAY"
+        assert resp == _AXI_OKAY, (
+            f"{label} FAIL: sec_dis=1 sense_done=0 JTAG rd {what} @0x{addr:08x} "
+            f"resp={resp}, want AXI OKAY"
         )
-        return seq.rdata & _M32
+        return data & _M32
 
     async def _watch_quiet(self, cycles: int) -> _BusChangeWatch:
         """Watch the debug bus for ``cycles`` with no eFuse access; the result is logged."""
@@ -620,15 +683,21 @@ class sep_sec_dis_override_test(sep_base_test):
           INVALID encoding is "permanent" (lifecycle_controller.adoc:87, :90),
           and raw 4'b1111 has no bit left to set; "Invalid lifecycle encodings
           are terminal" (otp_fuse_controller.adoc:220-224). CHK-SECDIS-LC-WR
-          grades the frontdoor readback after the write as the RDL reset word
+          grades the JTAG readback after the write as the RDL reset word
           0x0000000f. No text states the JTAG write response, so
           OBS-SECDIS-LC-WR logs it without a verdict.
 
+        The core is held in reset in this window, so every read here goes
+        through the same JTAG port as the writes. CTRL-SECDIS-JTAG-REACH: each of
+        the four reads (both words before and after the writes) answers AXI OKAY,
+        because the table gives JTAG read access to both words in this state. A
+        filter that refuses the port, or a dead port, fails it, so the unchanged
+        LC_STATE word of CHK-SECDIS-LC-WR comes from a port that reaches the map.
+
         CTRL-SECDIS-SHADOW-WR: before the write the REQUIRED_SIGNERS shadow reads
-        its reset value at the frontdoor (OKAY, "A read of the eFuse shadow map
-        over the SEP bus completes with OKAY", security_disable.adoc) and sense
-        stays stopped. OBS-SECDIS-SHADOW-WR logs the frontdoor readback after the
-        JTAG write and the JTAG write response, without a verdict.
+        its RDL reset value and sense stays stopped. OBS-SECDIS-SHADOW-WR logs the
+        readback after the JTAG write and the JTAG write response, without a
+        verdict.
 
         No specification puts eFuse state on ``ext_debug_bus_o``
         (port_table.adoc names the port only), so OBS-SECDIS-DBG-BUS logs the
@@ -654,15 +723,15 @@ class sep_sec_dis_override_test(sep_base_test):
         lc_new = lc_encode(LC_PROD)
         assert is_invalid_lc(_WITHHELD_LC) and lc_new != lc_invalid
 
-        rs_pre = await self._fd_read_word("CTRL-SECDIS-SHADOW-WR", rs_addr, "required_signers")
+        rs_pre = await self._jtag_read_word(rs_addr, "required_signers")
         assert rs_pre == rs_reset, (
             f"CTRL-SECDIS-SHADOW-WR FAIL: REQUIRED_SIGNERS @0x{rs_addr:08x} "
             f"pre=0x{rs_pre:08x} want RDL reset 0x{rs_reset:08x} -- the shadow did "
             "not keep its reset value after the reset with the match kept"
         )
-        lc_pre = await self._fd_read_word("CHK-RETAIN-MAP-OPEN", lc_addr, "lc_state")
+        lc_pre = await self._jtag_read_word(lc_addr, "lc_state")
 
-        # The frontdoor reads above are the last eFuse accesses before the
+        # The JTAG reads above are the last eFuse accesses before the
         # first quiet window.
         await ClockCycles(dut.clk_i, _DBG_SETTLE_CYCLES)
         pre_quiet = await self._watch_quiet(_DBG_QUIET_CYCLES)
@@ -678,9 +747,9 @@ class sep_sec_dis_override_test(sep_base_test):
 
         post_quiet = await self._watch_quiet(max(_DBG_QUIET_CYCLES, 2 * event.edges))
 
-        rs_post = await self._fd_read_word("CTRL-SECDIS-SHADOW-WR", rs_addr, "required_signers")
+        rs_post = await self._jtag_read_word(rs_addr, "required_signers")
         # No SEP specification line states whether a JTAG shadow write lands before
-        # sense under SEC_DIS, so the frontdoor readback is logged without a verdict.
+        # sense under SEC_DIS, so the readback is logged without a verdict.
         self.logger.info(
             "OBS-SECDIS-SHADOW-WR: sec_dis=1 sense_done=0 JTAG wr REQUIRED_SIGNERS "
             "@0x%08x bit=%d resp=%d pre=0x%08x post=0x%08x landed=%d",
@@ -695,7 +764,18 @@ class sep_sec_dis_override_test(sep_base_test):
         # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f, which
         # is terminal, so the write leaves the word at its reset value. The write
         # response has no golden and is logged.
-        lc_post = await self._fd_read_word("CHK-RETAIN-MAP-OPEN", lc_addr, "lc_state")
+        lc_post = await self._jtag_read_word(lc_addr, "lc_state")
+        self.logger.info(
+            "CTRL-SECDIS-JTAG-REACH PASS: sec_dis=1 sense_done=0 JTAG rd REQUIRED_SIGNERS "
+            "@0x%08x pre=0x%08x post=0x%08x, LC_STATE @0x%08x pre=0x%08x post=0x%08x, "
+            "all resp=OKAY",
+            rs_addr,
+            rs_pre,
+            rs_post,
+            lc_addr,
+            lc_pre,
+            lc_post,
+        )
         self.logger.info(
             "OBS-SECDIS-LC-WR: sec_dis=1 sense_done=0 JTAG wr LC_STATE @0x%08x "
             "wdata=0x%08x resp=%d",
@@ -754,35 +834,34 @@ class sep_sec_dis_override_test(sep_base_test):
 
         await self.release_no_cpu_reset()
         await self._check_override_alone()
-        pre = await self._present(_MATCH_TOKEN)
+        # Until sense completes the core is held in reset, so the OTP JTAG port is
+        # the master that presents the token, and every frontdoor access while
+        # sense stays stopped runs inside an override release (_released).
+        pre = await self._present_jtag(_MATCH_TOKEN, "CHK-SENSE-GATED-RESET")
         assert pre.match_code == TOKEN_MATCH, (
             f"CHK-SENSE-GATED-RESET FAIL: zero token code=0x{(pre.match_code or 0):02x} "
             f"want MATCH 0x{TOKEN_MATCH:02x} before sense-done"
         )
         self._check_reset_stays_sense_gated()
-        await self._check_window_feat(1, "CHK-FEAT-PRESENSE")
-        cpu_rst = self.rd_known(cocotb.top.sep_cpu_reset_n_o)
-        fabric_rst = self.rd_known(cocotb.top.dbg_sep_reset_n_o)
-        assert cpu_rst == 0 and fabric_rst == 0, (
-            f"CHK-FEAT-PRESENSE FAIL: feature control opened but the reset moved "
-            f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 0/0"
-        )
+        await self._released("CHK-FEAT-PRESENSE", self._check_window_feat(1, "CHK-FEAT-PRESENSE"))
         await self._graded(self._check_override_after_match("CHK-OVR-AFTER"), OVR_PASS_ALONE_OPEN)
-        lc_pre_reset = await self._read_shadow_map("CHK-MAP-OPEN")
+        lc_pre_reset = await self._released("CHK-MAP-OPEN", self._read_shadow_map("CHK-MAP-OPEN"))
         await self._check_sense_stuck("CHK-SENSE-STUCK")
 
         # Recovery flow: reset with the token kept.
         await self._pulse_rst()
         await ClockCycles(cocotb.top.clk_i, 2)
-        await self._check_window_feat(1, "CHK-RETAIN-FEAT")
         self._check_reset_stays_sense_gated("CHK-RETAIN-RESET")
-        lc_post_reset = await self._read_shadow_map("CHK-RETAIN-MAP-OPEN")
+        await self._released("CHK-RETAIN-FEAT", self._check_window_feat(1, "CHK-RETAIN-FEAT"))
+        lc_post_reset = await self._released(
+            "CHK-RETAIN-MAP-OPEN", self._read_shadow_map("CHK-RETAIN-MAP-OPEN")
+        )
         self._check_lc_reset_after_pulse(lc_pre_reset, lc_post_reset)
         await self._check_jtag_writes_under_sec_dis()
         await self._check_override_after_match("CHK-RETAIN-OVR")
         await self._check_sense_stuck("CHK-RETAIN-STUCK")
 
-        drop = await self._present(_MISMATCH_TOKEN)
+        drop = await self._present_jtag(_MISMATCH_TOKEN, "CHK-DROP")
         observed = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         assert drop.match_code == TOKEN_MISMATCH and observed == 0, (
             f"CHK-DROP FAIL: token=1 code=0x{(drop.match_code or 0):02x} "

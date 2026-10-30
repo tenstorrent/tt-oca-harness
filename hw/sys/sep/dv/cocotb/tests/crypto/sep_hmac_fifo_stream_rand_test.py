@@ -400,7 +400,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         self._fcov_dead = False
         self.digest_order = SepDigestOrder()
         self.logger.info(
-            "PLAN seed=%d cells=[%s] stalled=[%s] fe_full=%s fe_notfull=%s wipe=%s/w=0x%08x/"
+            "INFO-PLAN seed=%d cells=[%s] stalled=[%s] fe_full=%s fe_notfull=%s wipe=%s/w=0x%08x/"
             "len1=%d/len2=%d",
             seed,
             ",".join(
@@ -423,7 +423,7 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         self.swrst = SepSwReset(self)
         self.swrst.value = SW_RESET_BASELINE
         await self.swrst.release("hmac")
-        self.logger.info("SW_RESET_N baseline=0x%02x", SW_RESET_BASELINE)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", SW_RESET_BASELINE)
         self.dut.hmac_fifo_drain_stall_i.value = 0
 
         self.samples: list[tuple[str, int, int, int]] = []

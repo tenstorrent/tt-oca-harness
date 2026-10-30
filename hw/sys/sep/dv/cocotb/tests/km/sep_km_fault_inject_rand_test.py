@@ -34,8 +34,8 @@ the delivered key, ``none`` when no OUTPUT_VALID comes within ``aes_w_clk``
 (8 x the first AES read of the leaf). After the wipe the sideload KEY_VALID is
 0, and an automatic-mode AES starts only with a valid sideload key
 (``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/theory_of_operation.md``,
-"Side-Loaded Key"), so the post-wipe AES result is graded ``none``, with the
-control CTRL-AES-NOKEY-INPUT (every STATUS sample of that read shows
+"System Key-Manager Interface"), so the post-wipe AES result is graded
+``none``, with the control CTRL-AES-NOKEY-INPUT (every STATUS sample of that read shows
 INPUT_READY = 0). A non-key AES result where a key is expected, and an HMAC
 digest that matches neither golden, are miss diagnostics of the witness checks
 (``INFO-AES-OTHER``, ``INFO-HMAC-DIGEST``).
@@ -88,6 +88,8 @@ Checks (HOST-UNREC unless marked):
   CHK-GATE-AFTER     the fault repeats after CMD_RECOV_ACK; a sibling is gated.
   CHK-RESIDUE        a flip past the key end raises no fault.
   CHK-CPU-TRAP       CPU lines 1 and 2 report -9 and -10 and rank above KMCSR.
+                     (control CTRL-CPU-TRAP-CSR-SET: the KMCSR source of the
+                     shared clock latched its IRQ_STATUS bit.)
   CHK-MAINCTX-FATAL  a bad image CRC sends one 0xFFFFFFF2 frame and holds bit 30.
   CHK-DRBG-STALL     (HOST) a stopped KM entropy stream reports -8.
   CHK-KEYPATH-FATAL  (HOST) a key write to a reset HMAC is fatal with -7.
@@ -1564,7 +1566,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             # this point cannot tell the ROM shred apart. CHK-SHRED-FIRST at
             # the HK-IRQSET points grades the ROM shred. With KEY_VALID 0 an
             # automatic-mode AES does not start (OT aes theory_of_operation.md,
-            # "Side-Loaded Key"), so it gives no output within aes_w_clk.
+            # "System Key-Manager Interface"), so it gives no output within
+            # aes_w_clk.
             self.chk.ok(
                 "SHRED-WITNESS",
                 pre.hmac == "key"
@@ -1592,8 +1595,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             # The wipe pulse clears both shares and KEY_VALID of the AES
             # sideload block (architecture.adoc, "Wipe State"), and an
             # automatic-mode AES starts only with a valid sideload key (OT aes
-            # theory_of_operation.md, "Side-Loaded Key"): no output within
-            # aes_w_clk.
+            # theory_of_operation.md, "System Key-Manager Interface"): no output
+            # within aes_w_clk.
             self.chk.ok(
                 "NOSHRED-HOST-AES",
                 pre.aes == "key" and aes_after == "none",
@@ -2041,6 +2044,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         watch = _FatalWatch(self)
         watch.start()
         await RisingEdge(top.clk_i)
+        status_before = self._csr_status()
         top.km_cpuirq_lines_i.value = lines
         if csr_src is not None:
             top.km_irqset_mask_i.value = pl.set_mask((csr_src,))
@@ -2053,6 +2057,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await ClockCycles(top.clk_i, 16)
         await ReadOnly()
         b1 = self._b30()
+        status = self._csr_status()
         await RisingEdge(top.clk_i)
         watch.stop()
         top.km_cpuirq_arm_i.value = 0
@@ -2070,6 +2075,22 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             fired=fired,
             pending_seen=f"0x{watch.pend_seen:x}",
         )
+        if csr_src is not None:
+            # Control: the KMCSR source of the shared clock latched its sticky
+            # IRQ_STATUS bit. The CPU trap sets WIPE_STATE itself
+            # (architecture.adoc, "Wipe State"), so that bit cannot show it.
+            src_bit = pl.set_mask((csr_src,)) & ~(1 << pl.IRQ_BIT["wipe_state"])
+            if src_bit:
+                self.chk.ctrl(
+                    "CPU-TRAP-CSR-SET",
+                    csr_fired == 1 and not (status_before & src_bit) and (status & src_bit) != 0,
+                    with_csr=csr_src,
+                    bit=f"0x{src_bit:03x}",
+                    status_before=f"0x{status_before:03x}",
+                    status=f"0x{status:03x}",
+                )
+            else:
+                self.chk.info("CPU-TRAP-CSR-SET", with_csr=csr_src, anchor="km_irqset_fired_o")
         self.chk.ok(
             "CPU-TRAP",
             b0 == 0

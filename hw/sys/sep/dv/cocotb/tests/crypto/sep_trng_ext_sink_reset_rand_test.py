@@ -617,11 +617,11 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         self.reg = _Reg(self)
         await self.reg._wr(SEL_ADDR, SEL_EXT_12)
         self.logger.info(
-            "BASELINE sw_reset_n=0x%02x ext_trng_src_sel=0x%x", self.swrst.value, SEL_EXT_12
+            "INFO-BASELINE sw_reset_n=0x%02x ext_trng_src_sel=0x%x", self.swrst.value, SEL_EXT_12
         )
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.aes = SepAes(self)

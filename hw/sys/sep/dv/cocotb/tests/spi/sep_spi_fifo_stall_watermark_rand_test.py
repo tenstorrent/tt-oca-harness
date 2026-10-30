@@ -83,7 +83,10 @@ Checkers:
                    (0 and R), and after the extra 4-byte Rx segment behind the
                    full RX FIFO (0 and R: no RXDATA read and no TXDATA write
                    since, and a full FIFO of RxDepth words takes no more;
-                   spi_host.hjson:98-101). RXQD/TXQD give "how many unread/unsent 32-bit
+                   spi_host.hjson:98-101). A segment that stalls on the full
+                   FIFO holds ACTIVE=1, so that read is graded only when the
+                   segment ended with ACTIVE=0; INFO-SPI-QD-EXTRA logs per
+                   width whether it was graded. RXQD/TXQD give "how many unread/unsent 32-bit
                    words are currently in the RX/TX FIFO"; only "When active"
                    may they under- or overestimate (spi_host.hjson:322-333).
                    A read with ACTIVE=1 is logged as OBS-SPI-QD. At least one
@@ -523,11 +526,11 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
             st.active,
         )
 
-    def _chk_qd_idle(self, st: SpiStatus, where: str, tx: int, rx: int) -> None:
-        """Grade TXQD/RXQD against the known FIFO content when ACTIVE=0."""
+    def _chk_qd_idle(self, st: SpiStatus, where: str, tx: int, rx: int) -> bool:
+        """Grade TXQD/RXQD against the known FIFO content when ACTIVE=0; True when graded."""
         if st.active:
             self._obs_qd(st, where)
-            return
+            return False
         line = (
             f"seed={self.seed} where={where} txqd={st.txqd} expect_txqd={tx} "
             f"rxqd={st.rxqd} expect_rxqd={rx} active=0"
@@ -535,6 +538,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         if st.txqd != tx or st.rxqd != rx:
             self._fail("CHK-SPI-QD-IDLE", line)
         self.logger.info("CHK-SPI-QD-IDLE PASS %s", line)
+        return True
 
     def _obs_txstall(self, st: SpiStatus, where: str) -> None:
         self.logger.info(
@@ -1474,7 +1478,15 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         if ended == "timeout":
             self._fail(chk, "extra Rx segment: neither chip select high nor a quiet stall window")
         st_x = await self.ops.read_status()
-        self._chk_qd_idle(st_x, f"rx_full_idle extra segment ended={ended}", 0, r)
+        graded = self._chk_qd_idle(st_x, f"rx_full_idle extra segment ended={ended}", 0, r)
+        self.logger.info(
+            "INFO-SPI-QD-EXTRA seed=%d width=%s graded=%d active=%d ended=%s",
+            self.seed,
+            self._w,
+            int(graded),
+            st_x.active,
+            ended,
+        )
         if st_x.rxqd > r:
             self._fail(chk, f"rxqd_after_extra={st_x.rxqd} max={r}")
         words = 0

@@ -34,7 +34,7 @@ bits. The value rail of a demotion group is its bit 0 and the complement rail
 its bit 1.
 
 Seed plan. ``draw_rep`` turns one ``SepSeededRng`` into every RAND-REP value of
-the integrity and change legs and returns the ``DRAW`` lines the leaf logs.
+the integrity and change legs and returns the ``INFO-DRAW`` lines the leaf logs.
 """
 
 from __future__ import annotations

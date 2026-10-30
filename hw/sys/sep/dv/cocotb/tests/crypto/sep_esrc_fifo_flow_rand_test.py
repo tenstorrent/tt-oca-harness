@@ -260,14 +260,14 @@ class sep_esrc_fifo_flow_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _EsrcRegs(self)
         self.p: int | None = None
         self.fill_clk: int | None = None
         self.noerr_legs = 0
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self._release_injects()
         self.noise = SepEsrcPatternNoise(logger=self.logger)
         self.noise.start(plan.balanced)

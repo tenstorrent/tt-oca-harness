@@ -1397,12 +1397,12 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.op_i = 0
         self.latched = 0
         self.ctrl_reg_path_err = 0
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         for d in c.draw_lines():
-            self.logger.info("DRAW %s", d)
+            self.logger.info("INFO-DRAW %s", d)
         self.cfg.wdt_clk_period_ns = WDT_CLK_RATIO * self.cfg.sys_clk_period_ns
         self.logger.info(
-            "WDT sim-timing knob: clk_wdt=%s ns (%dx core)",
+            "INFO-WDT-CLK clk_wdt=%s ns (%dx core)",
             self.cfg.wdt_clk_period_ns,
             WDT_CLK_RATIO,
         )

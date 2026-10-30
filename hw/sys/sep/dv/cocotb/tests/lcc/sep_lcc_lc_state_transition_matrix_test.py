@@ -128,7 +128,10 @@ CHK-INVALID-TERM) record the preconditions of the hold cells.
 Log-only, every cell: ``OBS-LC-UPPER`` (LC_STATE[31:8] written, prior and read:
 the RDL gives ``lc_state`` and ``rsvd`` as sw = r and ``rsvd`` as "Unused", and
 the fuse-field table gives LC_STATE as SW writable set-only; the texts disagree);
-every write cell: ``OBS-LC-WR-NIBBLE`` (bits
+every hold cell whose write a token gate or the terminal rule refuses (the
+CHK-GATE-* cells and CHK-INVALID-TERM): ``OBS-LC-WR-REFUSED-RESP`` (the write
+response; no text states the response of a refused write, so the scoreboard
+does not grade it); every write cell: ``OBS-LC-WR-NIBBLE`` (bits
 [7:4] of the write data and of the readback word: the specification does not
 state how a write of the complement nibble acts).
 
@@ -395,6 +398,10 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             f"CTRL-MISSING LC-CELL-KIND {tag}: golden {lc_state_name(expected)} from "
             f"{lc_state_name(prev)}; a CHK- cell must hold and an advance cell must move"
         )
+        # A hold cell whose write sets a lifecycle bit that is still 0 is a write
+        # that a token gate or the terminal rule refuses. No text states the
+        # response of a refused write, so it is logged (OBS-LC-WR-REFUSED-RESP).
+        refused = do_write and not advance and bool(wdata & 0xF & ~prev)
         seq = SepLcShadowWriteSeq(
             full_wdata,
             None if advance else expected,
@@ -404,9 +411,18 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             demote_1=self._demote_1,
             demote_2=self._demote_2,
             do_write=do_write,
+            refused=refused,
             name=f"lc_w1s_{tag}",
         )
         await self.start_seq(seq)
+        if refused:
+            self.logger.info(
+                "OBS-LC-WR-REFUSED-RESP tag=%s prev=%s wdata=0x%08x resp=%s",
+                tag,
+                lc_state_name(prev),
+                full_wdata,
+                seq.write_resp,
+            )
         observed = seq.observed_lc_raw
         assert observed is not None, "sequence did not publish an observed LC code"
         assert seq.observed_feat is not None, "sequence did not publish a FEAT_CTRL value"

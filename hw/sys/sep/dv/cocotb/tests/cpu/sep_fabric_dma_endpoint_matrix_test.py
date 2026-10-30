@@ -46,7 +46,9 @@ model of the staged data and the fabric taps:
                   the read-back are the stored word.
 * CHK-DMA-NOTCONN the boot ROM base, a DMA CSR word and the entropy pool DATA
                   word are not reached, and each transfer ends with a DMA
-                  interrupt. The pool leg needs STATUS.fifo_level 1 or more
+                  interrupt. The DMA master tap shows the DMA request at the
+                  target of each run (AR at the source, AW at the boot ROM
+                  destination), so a DMA that never issues it cannot pass. The pool leg needs STATUS.fifo_level 1 or more
                   and below the pool depth before the GO (an empty pool also
                   refuses a read; at the depth a pop leaves the level
                   unchanged). Stream 2, the pool fill, selects the external
@@ -218,6 +220,9 @@ POOL_FEED_BOUND = 4096
 # SW_RESET_N reset value (RDL) and the field bits of the register.
 SW_RESET_N_RESET = RegBlock("SEP_RESET_CTRL").reset("SW_RESET_N")
 FILT_IN0_CFG = sym("INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR")
+# The not-connected targets of the firmware (ROM_BASE, DMA_CSR_WORD).
+NC_ROM = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
+NC_DMA_CSR = SECURE_DMA.addr("ENABLED_MEMORY_RANGE_LIMIT")
 IRQ_DONE = agg_from_pic(PIC_DMA_DONE)
 IRQ_ERROR = agg_from_pic(PIC_DMA_ERROR)
 # STEE output remap (generated map; the region span is the one of the AP
@@ -1450,29 +1455,45 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 graded += 1
                 continue
             rom_win = [b for b in self._beats("PR-ROM", leg_i, "req") if t_go < b.t_ps <= t_irq]
+            # The DMA master issued the request at the target: AR for a
+            # source, AW for the destination (DMA master tap, this leg).
+            ch, tgt_addr = {
+                "rom_src": ("ar", NC_ROM),
+                "rom_dst": ("aw", NC_ROM),
+                "dma_csr_src": ("ar", NC_DMA_CSR),
+            }[tgt]
+            at_tgt = [b for b in getattr(self._dma_ev(leg_i), ch) if b.addr == tgt_addr]
+            assert at_tgt, (
+                f"CHK-DMA-NOTCONN FAIL: {tgt}: no DMA {ch.upper()} at 0x{tgt_addr:08x} on the DMA "
+                f"master tap: {text}"
+            )
             self._recovery_after(names[tgt])
             if tgt == "rom_src":
                 ok = r["dst"] != r["src_v"] and r["src_v"] == c0["rom"]
                 assert ok, f"CHK-DMA-NOTCONN FAIL: {text}: the destination holds the boot ROM word"
                 self.logger.info(
                     "CHK-DMA-NOTCONN PASS: target=rom_src src_value=0x%08x dst_value=0x%08x end=%s "
-                    "dma_status=0x%08x control_value=0x%08x recovery_ok=1 rom_seen=%d",
+                    "dma_status=0x%08x control_value=0x%08x recovery_ok=1 rom_seen=%d "
+                    "dma_ar_at_tgt=%d",
                     r["src_v"],
                     r["dst"],
                     end,
                     r["st"],
                     c0["rom"],
                     len(rom_win),
+                    len(at_tgt),
                 )
             elif tgt == "rom_dst":
                 assert not rom_win, (
                     f"CHK-DMA-NOTCONN FAIL: PR-ROM shows {len(rom_win)} handshakes between GO and the interrupt"
                 )
                 self.logger.info(
-                    "CHK-DMA-NOTCONN PASS: target=rom_dst rom_seen=0 rom_ctrl_seen=%d end=%s dma_status=0x%08x recovery_ok=1",
+                    "CHK-DMA-NOTCONN PASS: target=rom_dst rom_seen=0 rom_ctrl_seen=%d end=%s "
+                    "dma_status=0x%08x recovery_ok=1 dma_aw_at_tgt=%d",
                     len(rom_ctl),
                     end,
                     r["st"],
+                    len(at_tgt),
                 )
             else:
                 csr = self._beats("PR-DMACSR", leg_i, "aw") + self._beats("PR-DMACSR", leg_i, "ar")
@@ -1485,13 +1506,15 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 )
                 self.logger.info(
                     "CHK-DMA-NOTCONN PASS: target=dma_csr_src src_value=0x%08x dst_value=0x%08x end=%s "
-                    "dma_status=0x%08x control_value=0x%08x recovery_ok=1 csr_seen=0 csr_ctrl_seen=%d",
+                    "dma_status=0x%08x control_value=0x%08x recovery_ok=1 csr_seen=0 csr_ctrl_seen=%d "
+                    "dma_ar_at_tgt=%d",
                     r["src_v"],
                     r["dst"],
                     end,
                     r["st"],
                     c0["csr"],
                     len(ctrl),
+                    len(at_tgt),
                 )
             graded += 1
         assert graded == len(names), (

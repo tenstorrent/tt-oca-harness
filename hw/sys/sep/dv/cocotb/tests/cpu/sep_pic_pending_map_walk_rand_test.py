@@ -45,14 +45,15 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 * CHK-ALERT-MEIP   meip[1] bit 1 (edge source 33) reads 1 after each alert
                    kind, before its meigwclr write.
 * CHK-MASKED-VISIBLE the held edge bits of sources 12 and 33 read 1 in
-                   ``meip`` with ``meie`` 0 and ``meipl`` 0 (VeeR EL2 PRM
+                   ``meip`` with ``meie`` 0 and ``meipl`` 0, both read back
+                   for each source (VeeR EL2 PRM
                    ``docs/source/interrupts.md:504`` at the Bender pin:
                    disabled requests are reported by default; ``:159``,
                    step 5 before the priority and enable steps). Control:
                    ``CTRL-PICIO`` reads ``picio=1`` (``:343``), else
                    ``CTRL-MISSING PICIO``.
 * CHK-MASKED-CLEAR the held edge bits of sources 12 and 33 read 1 with
-                   ``meie`` and ``meipl`` back at 1, and the meip words equal
+                   ``meie`` and ``meipl`` read back at 1, and the meip words equal
                    the reset baseline after the meigwclr writes to both.
 * CHK-GW-CELL, CHK-EDGE-HOLD, CHK-HOLD, CHK-CLR-IDLE, CHK-GWCLR-VALUE,
   CHK-GW-NONVAC    the gateway cells LH, LL, EH and EL (EL: the hold after the
@@ -347,6 +348,10 @@ def _value_bits(sig) -> tuple[int, int]:
 
 def _hexw(words) -> str:
     return ",".join(f"0x{w:08x}" for w in words)
+
+
+def _arm_fields(kv) -> tuple[int, int, int, int]:
+    return tuple(int(kv[k]) for k in ("meie12", "pri12", "meie33", "pri33"))
 
 
 @pyuvm.test()
@@ -937,10 +942,12 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         assert len(mv) == 1, f"expected one MASKED line, got {len(mv)}"
         m = mv[0]
         b33, b12 = int(m["meip1_bit1"]), int(m["src12_bit"])
+        arm = _arm_fields(m)
         self._check(
-            b33 == 1 and b12 == 1 and int(m["meie"]) == 0 and int(m["pri"]) == 0,
+            b33 == 1 and b12 == 1 and arm == (0, 0, 0, 0),
             "CHK-MASKED-VISIBLE",
-            f"meie=0 meipl=0 meip1_bit1={b33} src12_bit={b12} want=1,1",
+            f"meie12,pri12,meie33,pri33={arm} want=(0, 0, 0, 0) "
+            f"meip1_bit1={b33} src12_bit={b12} want=1,1",
         )
 
     def _chk_gateway(self) -> None:
@@ -1195,13 +1202,17 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self._chk_gateway()
         self._chk_ext()
         self._chk_masked_visible()
+        um = [kv for _, kv in self._lines("UNMASKED")]
+        assert len(um) == 1, f"expected one UNMASKED line, got {len(um)}"
+        arm = _arm_fields(um[0])
         _, ms = self._meip("masked_set")
         held = [(ms[s // 32] >> (s % 32)) & 1 for s in (SRC_DMA_ALERT, SRC_CRYPTO_ALERT)]
         _, mc = self._meip("masked_clr")
         base = self._meip("reset")[1]
         self._check(
-            held == [1, 1] and meip_masked(mc) == meip_masked(base),
+            arm == (1, 1, 1, 1) and held == [1, 1] and meip_masked(mc) == meip_masked(base),
             "CHK-MASKED-CLEAR",
+            f"meie12,pri12,meie33,pri33={arm} want=(1, 1, 1, 1) "
             f"held_src12={held[0]} held_src33={held[1]} meip={_hexw(mc)} "
             f"baseline={_hexw(base)} (unstated idle sources masked)",
         )

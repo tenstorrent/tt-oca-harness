@@ -7,7 +7,7 @@ no_cpu / lsu_stub_all_live / real fuse sense / +esrc_noise_force /
 with the shipped defaults ``KM_BOOT_WIPE=1 KM_UNREC_WIPE=1``). RAND-REP:
 ``SepSeededRng`` from the run seed draws the reset points and their order, the
 point parameters c, j and r, the stale word count w, the stale and partial words
-and the spin image; every draw is logged as ``DRAW``. Contract: VPLAN 7.26,
+and the spin image; every draw is logged as ``INFO-DRAW``. Contract: VPLAN 7.26,
 ``docs/test_contracts/key_manager.adoc``.
 
 The testbench LSU master is the SEP host. It reaches the KM only through the
@@ -224,7 +224,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.plan = pl.BootResetPlan(seed)
         for line in self.plan.draw_lines():
             self.logger.info(line)
@@ -429,7 +429,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             for _ in range(out_d):
                 words.append(await self._rd(KM_MBOX_READ_DATA))
         if words:
-            self.logger.info("LOG %s popped=%d words=%s", tag, len(words), [_a(w) for w in words])
+            self.logger.info(
+                "INFO-POPPED %s popped=%d words=%s", tag, len(words), [_a(w) for w in words]
+            )
         return words
 
     # ---------------------------------------------------------- frame reader
@@ -545,7 +547,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             scr_count0=scr0,
         )
         self.logger.info(
-            "LOG boot=%s kind=%s boot_clk=%d bound_clk=%d ready_depth=%d word=%s ready=%d",
+            "INFO-BOOT boot=%s kind=%s boot_clk=%d bound_clk=%d ready_depth=%d word=%s ready=%d",
             tag,
             kind,
             b.boot_clk,
@@ -674,7 +676,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             raise _Stop(
                 f"[{tag}] the first frame after RESP_KM_READY is {[_a(w) for w in f.words]}"
             )
-        self.logger.info("LOG %s cold_boot_done_after=%d control=1", tag, await self._cbd())
+        self.logger.info(
+            "INFO-CBD-AFTER %s cold_boot_done_after=%d control=1", tag, await self._cbd()
+        )
         await self._scr_keep(b)
 
     async def _warm_leg(self, k: int, d: pl.PointDraw) -> None:
@@ -791,7 +795,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         popped = await self._pop_all(f"{tag} after the handover")
         stored = confirm and flushed == 1 and not popped
         self.logger.info(
-            "LOG %s n=%d confirm_code=%d confirm_arg=%s flushed=%d popped=%d stored=%d control=1",
+            "INFO-HANDOVER %s n=%d confirm_code=%d confirm_arg=%s flushed=%d popped=%d stored=%d control=1",
             tag,
             n,
             code,
@@ -810,7 +814,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         self.drbg_sb.stop()
         rec = await self.pulse_rst_ni(release_bound=SEP_RESET_BOUND)
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
-        self.logger.info("LOG %s release_clks=%d", tag, rec["release_clks"])
+        self.logger.info("INFO-RELEASE %s release_clks=%d", tag, rec["release_clks"])
         await self._entropy_up()
         await self._graded(True)
         return await self._cbd()
@@ -904,7 +908,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             held_rst_n=held["rst_n"],
         )
         self.swrst.value = SW_RESET_N_RESET_DEFAULT
-        self.logger.info("LOG %s release_clks=%d", tag, rec["release_clks"])
+        self.logger.info("INFO-RELEASE %s release_clks=%d", tag, rec["release_clks"])
 
     async def _cold_domain_leg(self) -> None:
         """Steps 15 to 20 without the CMD_OTP_READ_LOCK_COLD commands."""
@@ -926,7 +930,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             stored=int(stored),
         )
         warm_exec, warm_arg = await self._cmd(pl.CMD_SRAM_EXEC, (), f"{tag} CMD_SRAM_EXEC")
-        self.logger.info("LOG %s warm_exec=%d arg=%s control=1", tag, warm_exec, _a(warm_arg))
+        self.logger.info(
+            "INFO-WARM-EXEC %s warm_exec=%d arg=%s control=1", tag, warm_exec, _a(warm_arg)
+        )
         await self._pop_all(f"{tag} after CMD_SRAM_EXEC")
 
         # Step 18: cold reset.
@@ -935,7 +941,9 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         b = await self._boot(ctag, "cold", 0)
         self._boot_order(b, held)
         self._ready_or_stop(b)
-        self.logger.info("LOG %s cold_boot_done_after=%d control=1", ctag, await self._cbd())
+        self.logger.info(
+            "INFO-CBD-AFTER %s cold_boot_done_after=%d control=1", ctag, await self._cbd()
+        )
 
         # Step 19.
         cold_exec, cold_arg = await self._cmd(pl.CMD_SRAM_EXEC, (), f"{ctag} CMD_SRAM_EXEC")

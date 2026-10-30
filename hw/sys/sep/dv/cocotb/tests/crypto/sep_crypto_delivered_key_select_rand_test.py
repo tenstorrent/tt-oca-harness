@@ -75,7 +75,9 @@ Checkers:
                             sideload key is marked as valid."). Controls: the
                             sideload = 1 block with a valid key gives the golden of
                             K_a in t_side clocks; STATUS before the block reads
-                            OUTPUT_VALID = 0 and IDLE = 1.
+                            OUTPUT_VALID = 0, IDLE = 1 and INPUT_READY = 1, and
+                            every STATUS read after the DATA_IN writes reads
+                            INPUT_READY = 0 (``aes.hjson`` STATUS.INPUT_READY).
 The digest of a mismatched length above 128 bits has no stated value:
 ``hmac.adoc`` (OCAH Modifications) calls it "wrong but repeatable" but does not
 state the padding below the delivered key. Its compare with the matching-length
@@ -812,7 +814,9 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         close_graded_window(self.logger)
-        base_ok = base >= 0 and bool(base & ST_IDLE) and not base & ST_OV
+        base_ok = (
+            base >= 0 and bool(base & ST_IDLE) and bool(base & ST_IN_READY) and not base & ST_OV
+        )
         self.chk.ctrl("KEYSEL-AES-NOKEY-BASE", base_ok, status=f"0x{max(base, 0):x}")
         ov_bad = sum(1 for st in samples if int(bool(st & ST_OV)) != EXP_NOKEY_OV)
         # Control: the DATA_IN writes landed and were not loaded, so INPUT_READY reads 0

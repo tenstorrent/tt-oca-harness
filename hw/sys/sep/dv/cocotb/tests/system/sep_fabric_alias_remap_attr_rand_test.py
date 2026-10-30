@@ -36,6 +36,10 @@ Checkers:
   CHK-ALIAS-CLASS  per class, direction and run (valid 1 and valid 0): the
                    admitted address of the pair of probes is the model address.
   CHK-ALIAS-CACHE  per probe: the AxCACHE at the alias remap output.
+  CTRL-ALIAS-CACHE-IN per probe: the AxCACHE at the alias remap input equals
+                   the issued AxCACHE, so the override and miss cells run on
+                   the drawn input (stimulus control; no spec states the
+                   LSU-to-remap pass-through).
   CHK-ALIAS-OVERLAP with a second valid region over the same pages, whose
                    offset differs in bit 33 and whose index the seed draws
                    above or below ``k``, a read of the middle page leaves the
@@ -225,7 +229,7 @@ def attrs_word(offset: int, cacheable: int, valid: bool) -> int:
 class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
     """Alias remap boundary classes, AxCACHE override and valid gate."""
 
-    required_evidence = ("CHK-ALIAS-CLASS", "CHK-ALIAS-CACHE")
+    required_evidence = ("CHK-ALIAS-CLASS", "CHK-ALIAS-CACHE", "CHK-ALIAS-OVERLAP")
 
     async def _probe(
         self, addr: int, *, write: bool, cache: int, expect_okay: bool
@@ -287,8 +291,9 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         cfg = self.tcfg
         k2 = cfg.overlap_region
         if k2 is None:
-            self.logger.info("OBS-ALIAS-OVERLAP skipped=1 regions=%d", N_REGIONS)
-            return
+            raise AssertionError(
+                f"CHK-ALIAS-OVERLAP FAIL: the map has {N_REGIONS} alias region(s); the leg needs two"
+            )
         mid = cfg.src("mid")
         await alias.program(
             k2,
@@ -386,7 +391,8 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             f"expect={'0x%x' % cfg.cacheable if hit else _hx(ci)} hit={int(hit)}"
         )
         assert ci is not None and co is not None, f"CHK-ALIAS-CACHE FAIL: X/Z AxCACHE: {line}"
-        assert ci == issued, f"CHK-ALIAS-CACHE FAIL: remap input differs from issued: {line}"
+        assert ci == issued, f"CTRL-ALIAS-CACHE-IN FAIL: remap input differs from issued: {line}"
+        self.n_cache_in += 1
         want = cfg.cacheable if hit else ci
         assert co == want, f"CHK-ALIAS-CACHE FAIL: {line}"
         if hit and (ci ^ cfg.cacheable) != 0xF:
@@ -397,8 +403,8 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         self.tcfg = cfg = _Cfg(self.random_seed())
-        self.logger.info("alias remap attr: %s", cfg.summary())
-        self.n_hit = self.n_miss = self.n_override = 0
+        self.logger.info("INFO-CFG alias remap attr: %s", cfg.summary())
+        self.n_hit = self.n_miss = self.n_override = self.n_cache_in = 0
 
         # Step 1.
         await self.bring_up_no_cpu()
@@ -409,7 +415,7 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             )
             await self.start_seq(rd)
             feat |= (rd.rdata & 0xFFFF_FFFF) << (32 * half)
-        self.logger.info("FEAT_CTRL LOG: value=0x%016x", feat)
+        self.logger.info("INFO-FEAT-CTRL value=0x%016x", feat)
 
         self.tap_in = SepFabricTap("PR-ALIAS-IN").start()
         self.tap_out = SepFabricTap("PR-ALIAS-OUT").start()
@@ -490,6 +496,12 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
         await self.tap_out.stop()
         await self.tap_pr_out.stop()
 
+        assert self.n_cache_in >= 1, "CTRL-ALIAS-CACHE-IN FAIL: no AxCACHE probe ran"
+        self.logger.info(
+            "CTRL-ALIAS-CACHE-IN PASS: probes=%d; the remap input AxCACHE equals the issued "
+            "AxCACHE on every probe",
+            self.n_cache_in,
+        )
         line = (
             f"seed={cfg.seed} hits={self.n_hit} misses={self.n_miss} "
             f"cache_override={self.n_override}"

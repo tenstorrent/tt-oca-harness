@@ -25,11 +25,14 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   not claimed.
 * CHK-PMP16 (host) a further drawn word is written to ``pmpaddr16`` and
   ``pmpaddr63`` (CSR 0x3C0 and 0x3EF, beyond the 16 implemented entries); the
-  read after the write returns 0 for each (RISC-V Privileged Architecture
-  20211203, section 3.7.1: "All PMP CSR fields are WARL and may be read-only
-  zero"; the VeeR EL2 PRM ``physical-memory-protection.md:3`` defers to that
-  section). A read that traps leaves 0 in the firmware register; the trap
-  count and ``mcause`` are logged on the line and not graded. The check runs
+  read after the write returns 0 for each. RISC-V Privileged Architecture
+  20211203, section 3.7.1: "Implementations may implement zero, 16, or 64
+  PMP CSRs; the lowest-numbered PMP CSRs must be implemented first." With 16
+  entries (``hw/sys/sep/doc/cpu.adoc``) the core implements CSRs 0 to 15 only,
+  so an access to 16 or 63 either traps or reads 0; the VeeR EL2 PRM
+  ``physical-memory-protection.md:3`` defers to that section. A read that
+  traps leaves 0 in the firmware register; the trap count and ``mcause`` are
+  logged on the line and not graded. The check runs
   after every other check of the leaf.
 * CHK-MRAC (host) for each drawn ``mrac`` value the CSR reads back the drawn
   value, the user-mode load from the PMP-denied SRAM region traps with
@@ -673,9 +676,9 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
     async def run_scenario(self) -> None:
         seed = self.random_seed()
         self.tcfg = cfg = IsaCfg.from_seed(seed)
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         for line in cfg.draw_lines():
-            self.logger.info("%s", line)
+            self.logger.info("INFO-%s", line)
         sy = load_symbols(_FW_DIR)
         need = ("isa_r1", "isa_r2", "isa_bset", "umode_stub", "trap_entry")
         missing = [n for n in need if n not in sy]

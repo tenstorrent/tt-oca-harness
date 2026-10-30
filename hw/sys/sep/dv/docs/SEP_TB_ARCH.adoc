@@ -549,7 +549,8 @@ Observation probe groups:
   a fixed delay from this tap to the lane. Users: the ESRC conditioning entry
   of the crypto and entropy area (the lane enable clock of the period walk), and
   `SepDrbgScoreboard`, which compares it with the `RING_OSC_ENABLE.ENABLE`
-  readback after every entropy bring-up (CHK-CHK1-RO-ENABLE).
+  readback twice in every entropy bring-up, with the generators off (0) and on
+  (0xFFF) (CHK-CHK1-RO-ENABLE).
 * PIC read-data probe (`pic_rd_data_probe_o`): `picm_rd_data` of the VeeR
   EL2 PIC with the registered read strobe and read address
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;
@@ -1837,7 +1838,9 @@ Machine records keep their own names: `RUN-IDENTITY*`, `EVIDENCE_SUMMARY`,
 `EVIDENCE-REQUIRED`, `FCOV-GATE`, `FCOV-QUIET`, `FW-CONSOLE`, `RESULT`, the
 firmware `M G`, `M C` and `REQ` lines, and the firmware data records of
 `sep_pic_pending_map_walk_rand_test` (`MEIP`, `PARAMS`, `PARAMS2`, `FILL`, `FE`,
-`SINGLE`, `ALERT`, `GW`, `GWCLR`, `HOLD`, `CLRIDLE`, `IDLE-STATUS`). A data
+`SINGLE`, `ALERT`, `GW`, `GWCLR`, `HOLD`, `CLRIDLE`, `IDLE-STATUS`, `MASKED`,
+`UNMASKED`) and of `sep_cpu_isa_pmp_csr_test` (`SEED`, `PARAMS`, `ROW`, `CROW`,
+`ZBS`, `PMP0`, `PMPC`, `PMPX`, `MSECCFG`, `MRAC`, `INSTRET`). A data
 record carries register reads and parameter echoes that the host parses and
 grades in its own `CHK-` and `CTRL-` lines.
 

@@ -45,10 +45,13 @@ Checkers:
   CHK-IF-CTRL      every case starts with clean flags (case frame), and each refusal
                    case has an accepted twin that completes (program twins change the
                    bank by exactly their bit at ``otp_bank_probe_o``).
-  CHK-IF-PRESENSE  a program go issued before sense done changes no bank bit and sends
-                   no program command from reset release to the sense-done rise; the
-                   post-sense twin lands with its command. ``CHK-HOOK FAIL`` when
-                   ``t_go + t_land`` is not shorter than ``t_sense``.
+  CHK-IF-PRESENSE  a JTAG program go issued before sense done changes no bank bit and
+                   sends no program command from reset release to the sense-done rise;
+                   the post-sense twin lands with its command. ``CHK-HOOK FAIL`` when
+                   ``t_go + t_land`` is not shorter than ``t_sense``. The core is held
+                   in reset until sensing completes (``hw/sys/sep/doc/reset_controller.adoc``),
+                   so the go runs on the OTP JTAG port; its response is logged in
+                   ``OBS-IF-STATUS-FLAGS`` (``go_resp``).
   CHK-IF-PRESENSE-JTAG  from the reset release to the sense-done rise, a JTAG read
                    of a shadow-map word is not OKAY and does not return the staged
                    word, and a JTAG program go sends no program command and changes
@@ -433,8 +436,10 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         task, win = self._start_presense_monitor(self.bank.read())
         dut.rst_ni.value = 1
         # First access after the release: one write with enable, data 1, address, go.
+        # The core is held in reset until sensing completes, so the go runs on
+        # the OTP JTAG port, the master that exists then.
         go = program_ctrl_word(bit, data=1)
-        await self._wr(PROGRAM_CTRL_ADDR, go)
+        go_resp, _ = await self.jtag_axil_op(write=True, addr=PROGRAM_CTRL_ADDR, wdata=go)
         sense_at_go = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
         t_go = win["n"]
         await task
@@ -448,6 +453,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             "IF-STATUS-FLAGS",
             case="pre_sense",
             addr=bit,
+            go_resp=RESP_NAME.get(go_resp, go_resp),
             status=self._s4(f),
             pg_done=f["pg_done"],
             pg_busy=f["pg_busy"],

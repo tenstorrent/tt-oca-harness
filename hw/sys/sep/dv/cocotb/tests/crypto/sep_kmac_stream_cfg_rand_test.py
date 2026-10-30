@@ -953,9 +953,15 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             )
 
     async def _wr_resp(self, addr: int, data: int) -> int:
-        """One 32-bit register write; returns its AXI response code."""
+        """One refused 32-bit register write; returns its AXI response code, not graded."""
         seq = SepAxiAccessSeq(
-            "kmac_rg_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data, length=4, size=_AXSIZE[4]
+            "kmac_rg_wr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            length=4,
+            size=_AXSIZE[4],
+            allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
         return seq.resp_code

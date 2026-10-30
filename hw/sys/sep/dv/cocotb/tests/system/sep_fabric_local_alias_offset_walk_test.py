@@ -258,7 +258,10 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         staged = (rng.getrandbits(32) | 0x8) & 0xFFFF_FFF8
         plans = [_Plan(rng, r) for r in range(N_REGIONS)]
         self.logger.info(
-            "alias walk: %d regions, src=0x%08x staged=0x%08x", len(plans), SRC_ADDR, staged
+            "INFO-CFG alias walk: %d regions, src=0x%08x staged=0x%08x",
+            len(plans),
+            SRC_ADDR,
+            staged,
         )
         await self.bring_up_no_cpu()
         alias = SepAliasRegionDriver(self)
@@ -306,7 +309,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
 
             await alias.program(r, 0, ALIAS_END_RESET, 0, False)
             await outf.restore(e)
-            self.logger.info("alias %s", p.summary())
+            self.logger.info("INFO-PLAN alias %s", p.summary())
 
         # Hit whose target page sits below the source page: the page sum
         # carries out of bit 55 and is discarded. The target page is the cold

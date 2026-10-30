@@ -31,7 +31,10 @@
 //   CTRL-AES-STATUS status=.. cfg_ok=.. valid=.. out0..3=..  the slotless encryption
 //   CTRL-MAP-STATE p=.. src=.. state=..  INTR_STATE of an event source after a map pass
 //   CTRL-PICIO mcgc=.. picio=..          mcgc read before the masked report
-//   MASKED src=33 meie=0 pri=0 meip1_bit1=.. src12_bit=..  the masked report read
+//   MASKED src=33 meie12=.. pri12=.. meie33=.. pri33=.. meip1_bit1=.. src12_bit=..
+//                             the masked report read, with the meie and meipl
+//                             readbacks of sources 12 and 33
+//   UNMASKED meie12=.. pri12=.. meie33=.. pri33=..  the readbacks after re-arming
 //   INFO-FIFO-EMPTY t=.. intr_state_kmac=..  KMAC INTR_STATE after a FIFO-empty step
 // A REQ is followed by a spin, so the host acts before the next bus access.
 
@@ -292,6 +295,14 @@ static void dump_meip(const char *tag) {
         rec_hex(k[i], w[i]);
     }
     rec_end();
+}
+
+// The meie and meipl fields of the masked-report sources, read back.
+static void pic_rec_arm(void) {
+    rec_num("meie12", pic_read_source_enable(12u) & EL2_PIC__MEIE__INTEN_bm);
+    rec_num("pri12", pic_read_priority(12u) & EL2_PIC__MEIPL__INTPRIORITY_bm);
+    rec_num("meie33", pic_read_source_enable(33u) & EL2_PIC__MEIE__INTEN_bm);
+    rec_num("pri33", pic_read_priority(33u) & EL2_PIC__MEIPL__INTPRIORITY_bm);
 }
 
 static uint32_t meip_bit(uint32_t src) {
@@ -1074,8 +1085,7 @@ int main(void) {
     uint32_t m0 = pic_read_meip(0), m1 = pic_read_meip(1);
     sep_mbx_puts("MASKED");
     rec_num("src", 33u);
-    rec_num("meie", 0u);
-    rec_num("pri", 0u);
+    pic_rec_arm();
     rec_num("meip1_bit1", (m1 >> 1) & 1u);
     rec_num("src12_bit", (m0 >> 12) & 1u);
     rec_end();
@@ -1083,6 +1093,9 @@ int main(void) {
     pic_set_priority(12u, 1u);
     pic_enable_source(33u);
     pic_set_priority(33u, 1u);
+    sep_mbx_puts("UNMASKED");
+    pic_rec_arm();
+    rec_end();
     dump_meip("masked_set");
     pic_write_meigwclr(12u, 0u);
     pic_write_meigwclr(33u, 0u);

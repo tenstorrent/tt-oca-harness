@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Each inbound-filter entry admits only the traffic its rule allows; all other traffic is DECERR.
 
-OCAH provenance: ``sep_inbound_filter_blockbydefault_test`` checks default
-denial, ``sep_inbound_filter_programming_ownership_test`` checks programming
-ownership, and ``sep_inbound_id_remap_test`` checks source-ID remapping.
-
 With the SEP inbound filter active (feat_ctrl.sep_debug=0, real PROD fuse), the
 CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the external SMN
 master (m_axi, the only path through u_inbound_filter) proves per-entry rule
@@ -524,7 +520,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             [hex(a) for a in lite_aw],
         )
         self.logger.info(
-            "CHK-BURST-WALK PASS: allow_burst deny + allow walked on AR and AW "
+            "CTRL-BURST-WALK PASS: allow_burst deny + allow walked on AR and AW "
             "of the scratch window"
         )
 
@@ -681,7 +677,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await program_widen()
         cfg_lo = await self.filt.read_cpu(cell.cfg_addr)
         assert cfg_lo & F_ALLOW_BURST, (
-            f"CHK-CONFIG-LOCK: allow_burst not set before the lock "
+            f"CHK-CONFIG-LOCK FAIL: allow_burst not set before the lock "
             f"(FILTER_CONFIG lo 0x{cfg_lo:08x})"
         )
         await self.filt.lock_entry(wcfg.entry)
@@ -739,7 +735,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             hi_after & rsvd,
         )
         self.logger.info(
-            "CHK-CONFIG-LOCK entry %d locked FILTER_CONFIG writes: lo resp=%d, hi resp=%d "
+            "INFO-CONFIG-LOCK entry %d locked FILTER_CONFIG writes: lo resp=%d, hi resp=%d "
             "(spec DECERR=%d)",
             wcfg.entry,
             resp_lo,
@@ -761,7 +757,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         self._expect_lite_split(lite_ar, start=probe_addr, nbeats=2, tag="CHK-CONFIG-LOCK burst AR")
         self.logger.info(
-            "CHK-CONFIG-LOCK entry %d 2-beat INCR at 0x%08x under the lock: resp=%d "
+            "INFO-CONFIG-LOCK entry %d 2-beat INCR at 0x%08x under the lock: resp=%d "
             "rdata=0x%08x, Lite AR %s",
             wcfg.entry,
             probe_addr,
@@ -902,11 +898,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"sep_debug must be 0 (filter active) in PROD, got {ctl.sep_debug} "
             f"(FEAT_CTRL=0x{ctl.feat_ctrl:016x})"
         )
-        self.logger.info("inbound filter ACTIVE: %s sep_debug=0", lc_state_name(image.lc_raw()))
+        self.logger.info("INFO-FILTER-ACTIVE %s sep_debug=0", lc_state_name(image.lc_raw()))
 
     async def run_scenario(self) -> None:
         mcfg = SepInboundFilterMatrixCfg.from_seed(self.random_seed())
-        self.logger.info("inbound-filter matrix: %s", mcfg.summary())
+        self.logger.info("INFO-CFG inbound-filter matrix: %s", mcfg.summary())
 
         await self._bring_up_prod_filter_active()
         self.filt = SepInboundFilter(self)
@@ -1075,10 +1071,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             first = False
 
         assert walked == mcfg.n_cells(), (
-            f"CHK-RAND-REP FAIL: walked {walked} cells, n_cells()={mcfg.n_cells()}"
+            f"CTRL-RAND-REP FAIL: walked {walked} cells, n_cells()={mcfg.n_cells()}"
         )
         self.logger.info(
-            "CHK-RAND-REP PASS: walked all %d discrete cells "
+            "CTRL-RAND-REP PASS: walked all %d discrete cells "
             "(entries %s x %d windows x rw/r/w match-all + "
             "entry0/window0 x rw/r/w match + 1 mismatch)",
             walked,
@@ -1156,7 +1152,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
 
         self.logger.info(
-            "CHK-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)"
+            "CTRL-NONVAC PASS: allow + block both observed with filter active (sep_debug=0)"
         )
 
         await self._check_page_widen(mcfg)

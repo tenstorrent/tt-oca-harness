@@ -60,8 +60,9 @@ CHK-FLAGS-CLEAR, CHK-FLAGS-BOTH, CHK-ERR-LINE, CHK-WO-READ, CHK-TWIN,
 CHK-MBX-ERR-UPPER-CLEAR.
 Controls: CTRL-RESP (K6), CTRL-UPPER-CLEAR, CTRL-MISSING when a K4/K5 live value
 reads 0.
-Log only: the high 32 bits of the empty-read and ``WRITE_DATA`` read data,
-and ``ERROR_FLAGS``/``IRQS`` after a hole access (``OBS-HOLE-FLAGS``).
+Log only: the high 32-bit word of the ``WRITE_DATA`` read data, and
+``ERROR_FLAGS``/``IRQS`` after a hole access (``OBS-HOLE-FLAGS``). CHK-ERR-RD
+grades the high 32 bits of the empty read as 0.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``, RAND-REP:
 every draw comes from ``SepSeededRng`` and the run seed. The base set (K1 and
@@ -359,7 +360,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         r.shuffle(base)
         self.injections = base
         for i, inj in enumerate(base):
-            self.logger.info("DRAW inj%d %s", i, inj.line())
+            self.logger.info("INFO-DRAW inj%d %s", i, inj.line())
         # Two-flag corner: any port but outbound mailbox 0.
         while True:
             m, p = r.randrange(0, 8), r.choice(["out", "in"])
@@ -377,13 +378,13 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             r.choice([("rd", "wr"), ("wr", "rd")]),
         )
         self.logger.info(
-            "DRAW upper_clear mbox=%d port=%s order=%s",
+            "INFO-DRAW upper_clear mbox=%d port=%s order=%s",
             self.upper[0],
             self.upper[1],
             ",".join(self.upper[2]),
         )
         self.logger.info(
-            "DRAW n_extra=%d interior=0x%x both_mbox=%d both_port=%s line_mbox=%d",
+            "INFO-DRAW n_extra=%d interior=0x%x both_mbox=%d both_port=%s line_mbox=%d",
             n_extra,
             interior,
             m,
@@ -391,7 +392,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
             self.line_mbox,
         )
         self.logger.info(
-            "DRAW wo_first_half=%s",
+            "INFO-DRAW wo_first_half=%s",
             ",".join(f"{mm}{pp}:{h}" for (mm, pp), h in sorted(self.wo_first_half.items())),
         )
 
@@ -989,7 +990,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         self.n_checks = 0
         self.rng = SepSeededRng(self.seed)
         self.used: set[int] = set()
-        self.logger.info("SEED seed=%d", self.seed)
+        self.logger.info("INFO-SEED seed=%d", self.seed)
         self._draw()
         close_graded_window(self.logger)
 
@@ -1016,7 +1017,7 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
 
         open_graded_window(TEST, self.logger)
         for i, inj in enumerate(self.injections):
-            self.logger.info("INJ LOG seed=%d idx=%d %s", self.seed, i, inj.line())
+            self.logger.info("INFO-INJ LOG seed=%d idx=%d %s", self.seed, i, inj.line())
             if inj.kind == "K1":
                 await self._k1(inj)
             elif inj.kind == "K2":

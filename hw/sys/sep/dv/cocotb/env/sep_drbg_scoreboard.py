@@ -13,9 +13,10 @@ for the decorrelator SR-fill / enable-edge transient.
 CHK1 records a pair on every cycle the DUT decor output changes and on every cycle the
 golden sample divider fires, so a decor output that stops updating (or updates off
 the sample cadence) is compared against the sample the golden takes on that cycle.
-CHK-CHK1-RO-ENABLE (``grade_ro_enable``, called by every bring-up after the generators
-are on): the per-lane ring-oscillator enable at the generators (``esrc_ro_enable_o``)
-equals the ``RING_OSC_ENABLE.ENABLE`` readback, with no X/Z. ENABLE "Enables each
+CHK-CHK1-RO-ENABLE (``grade_ro_enable``, called by every bring-up once with the
+generators off, ENABLE = 0, and once after they are on, ENABLE = 0xFFF): the
+``RING_OSC_ENABLE.ENABLE`` readback is the value written, and the per-lane
+ring-oscillator enable at the generators (``esrc_ro_enable_o``) equals it, with no X/Z. ENABLE "Enables each
 generator noise ring oscillator" (``hw/ip/entropy_source/regs/entropy_source.rdl``:563,565);
 "the lane ring oscillator, enabled by RING_OSC_ENABLE[i]"
 (``hw/ip/entropy_source/doc/assets/entropy-source-rosc-complex.svg``:6).
@@ -1069,9 +1070,10 @@ class SepDrbgScoreboard:
             self.log.info("CHK2 frontdoor: drained %d FIFO_RDATA words", len(words))
 
     # ----------------------------------------------------------------- report
-    async def grade_ro_enable(self, test) -> None:
-        """CHK-CHK1-RO-ENABLE: ``esrc_ro_enable_o`` equals the ``RING_OSC_ENABLE.ENABLE``
-        readback on the clock after the read completes. Raises on a FAIL."""
+    async def grade_ro_enable(self, test, expect: int) -> None:
+        """CHK-CHK1-RO-ENABLE: the ``RING_OSC_ENABLE.ENABLE`` readback is ``expect``, the
+        value last written, and ``esrc_ro_enable_o`` equals it on the clock after the read
+        completes. Raises on a FAIL."""
         from sep_reg_meta import ENTROPY_SOURCE, sym
         from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -1092,10 +1094,11 @@ class SepDrbgScoreboard:
         await ReadOnly()
         probe = _safe_int(self.dut.esrc_ro_enable_o)
         line = (
+            f"seed={test.random_seed()} expect=0x{expect:03x} "
             f"esrc_ro_enable_o={'X/Z' if probe is None else f'0x{probe:03x}'} "
             f"ring_osc_enable=0x{field:03x} resp_ok={int(seq.resp_ok)}"
         )
-        if not seq.resp_ok or probe != field:
+        if not seq.resp_ok or field != expect or probe != field:
             raise AssertionError(f"CHK-CHK1-RO-ENABLE FAIL: {line}")
         self.log.info("CHK-CHK1-RO-ENABLE PASS: %s", line)
 

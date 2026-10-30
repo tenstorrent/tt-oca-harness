@@ -18241,6 +18241,11 @@ module sep_fcov (
   logic [31:0] mr_pw_addr[16] = '{default: '0};
   logic [15:0] mr_pw_v = '0;
   logic [3:0] mr_pw_wp = '0;
+  // cp_presense_window: the window probes run on the OTP JTAG port, because
+  // the core is held in reset until sensing completes; the read-back after
+  // the release runs on the core load path.
+  logic [31:0] mr_j_ar = '0;
+  wire mr_j_r = (jtag_resp_i.r_valid === 1'b1) && (jtag_req_i.r_ready === 1'b1);
   logic mr_ff_arm = 1'b0;
   logic mr_ta_on = 1'b0;
   logic mr_ta_clean = 1'b0;
@@ -18271,8 +18276,23 @@ module sep_fcov (
       u_sep_boot_milestone_cg.sample(e);
     end
     // cp_presense_window
+    if ((jtag_req_i.ar_valid === 1'b1) && (jtag_resp_i.ar_ready === 1'b1))
+      mr_j_ar <= 32'(jtag_req_i.ar.addr);
     if (!mr_rst) mr_pw_v <= '0;
-    else if (mr_own_rel && r_any && !mr_secdis && in_blk(
+    else if (mr_own_rel && mr_j_r && !mr_secdis && !mr_fuse && in_blk(
+            mr_j_ar, SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, SEP_EFUSE_MAP_REG_MAP_SIZE
+        )) begin
+      mr_boot_t e;
+      e      = '0;
+      e.pw   = (jtag_resp_i.r.resp == 2'b10) ? 2'd0 : 2'd2;
+      e.pw_v = (jtag_resp_i.r.resp == 2'b10) || (jtag_resp_i.r.resp == AxiOkay);
+      if (e.pw_v) u_sep_boot_milestone_cg.sample(e);
+      if (jtag_resp_i.r.resp == 2'b10) begin
+        mr_pw_addr[mr_pw_wp] <= mr_j_ar;
+        mr_pw_v[mr_pw_wp]    <= 1'b1;
+        mr_pw_wp             <= mr_pw_wp + 4'd1;
+      end
+    end else if (mr_own_rel && r_any && !mr_secdis && in_blk(
             ar_addr_q, SEP_EFUSE_MAP_REG_MAP_BASE_ADDR, SEP_EFUSE_MAP_REG_MAP_SIZE
         )) begin
       logic hit;
@@ -38077,6 +38097,11 @@ module sep_fcov (
           je.jp = (ef_jp_cmd || ef_cmd_pg) ? 2'd3 : 2'd1;
           je.jp_v = 1'b1;
           ef_put_jtg(je);
+          // The core is held in reset until sensing completes, so a pre-sense
+          // program go comes from JTAG: it is also the pre_sense_prog case of
+          // cp_case and x_case_cmd.
+          ef_ifs(0, 7'd0);
+          ef_ifs(3, {4'd0, 2'd0, ef_jp_cmd || ef_cmd_pg});
         end
         ef_jp_arm <= 1'b0;
       end else if (in_reset) begin
