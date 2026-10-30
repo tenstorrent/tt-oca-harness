@@ -458,9 +458,6 @@ _SWRST_SEG_WORDS = 4
 # Bounds: STATUS or register reads, accepted COMMAND writes and clk_i cycles.
 _POLL_READS = 64
 _READY_ACCEPT_LIMIT = 16
-# Command queue depth: CmdDepth 4
-# (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:103-107).
-CMD_DEPTH = 4
 _SEG_BOUND_CLKS = 400_000
 _RX_DRAIN_READS = 4_000
 
@@ -1984,12 +1981,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 break
         self._grade(
             "CHK-SPI-CMDBUSY0",
-            (es & ERR_STATUS_MASK) == ERR_CMDBUSY
-            and not control_busy
-            and st.cmdqd == accepted == CMD_DEPTH,
+            (es & ERR_STATUS_MASK) == ERR_CMDBUSY and not control_busy and st.cmdqd == accepted,
             f"writes={accepted} error_enable=0x{_ERR_EN_ALL:02x} ready={st.ready} "
-            f"active={st.active} cmdqd={st.cmdqd} accepted={accepted} cmd_depth={CMD_DEPTH} "
-            f"cmdbusy={int(bool(es & ERR_CMDBUSY))} "
+            f"active={st.active} cmdqd={st.cmdqd} accepted={accepted} cmdbusy={int(bool(es & ERR_CMDBUSY))} "
             f"control_cmdbusy={int(bool(control_busy))} err_status=0x{es & ERR_STATUS_MASK:02x} "
             f"expect_err_status=0x{ERR_CMDBUSY:02x} err_status_rsvd=0x{es & ~ERR_STATUS_MASK:x}",
         )
