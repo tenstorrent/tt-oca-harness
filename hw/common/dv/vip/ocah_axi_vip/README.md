@@ -512,3 +512,54 @@ override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`
 ("Template Contract") — the reference implementation for all OCAH SV-UVM
 VIPs.
+
+## Response-dependency assertion selftests
+
+The `sva_dependencies` group drives the existing wire harness directly into
+`ocah_axi_sva`, for AXI4 and AXI4-Lite. It contains two legal controls and
+20 expected-failure controls. The legal controls also belong to `smoke` and
+`all` in the cocotb view; fault leaves stay outside `smoke`, `all` and `ci`.
+
+Legal controls exercise W-before-AW, READY backpressure, the earliest legal
+response and reset recovery. The AXI4 control also exercises multiple IDs
+and interleaved read bursts. Fault controls present VALID with READY low:
+no accepted request, incomplete write requests, a request accepted on the
+same edge, a response after reset, and an unmatched response ID on AXI4.
+
+```bash
+python3 tools/dv/run_dv.py --dut ocah_axi_vip --framework cocotb --tool vcs \
+    --items sva_dependencies --regress --sim-jobs 2
+```
+
+Each fault leaf uses `expect_fail`: an observed failure grades PASS, and an
+observed pass grades FAIL. This does not establish which assertion fired.
+The current runner obtains cocotb match evidence from framework XML, which
+does not carry simulator assertion failures when the Python test passes.
+The negative leaves therefore omit `expect_fail_match`. An unrelated
+failure, including a Python error graded FAIL, can satisfy `expect_fail`;
+this remains a regression limitation until simulator failure messages are
+available to the matcher.
+
+For each fault run, inspect the actual `[ASSERT FAILED]` reports against
+the tool-specific rule set below. Rule names in the table have the prefix
+`OCAH_AXI_`. VCS can report both failing checks on the same edge; Verilator
+stops at the first assertion failure, so later checks are not reported.
+
+| Fault cases | VCS reports | Verilator reports |
+|---|---|---|
+| AXI4 `b_no_request`, `b_aw_only`, `b_w_only`, `b_same_w`, `b_same_aw`, `b_after_reset` | `B_NOT_BEFORE_AW` and `B_ID_OUTSTANDING` | `B_NOT_BEFORE_AW` |
+| AXI4 `b_wrong_id` | `B_ID_OUTSTANDING` | `B_ID_OUTSTANDING` |
+| AXI4 `r_no_request`, `r_same_ar`, `r_after_reset`, `r_wrong_id` | `R_ID_OUTSTANDING` and `R_NOT_BEFORE_AR` | `R_ID_OUTSTANDING` |
+| AXI4-Lite write faults | `B_NOT_BEFORE_AW` | `B_NOT_BEFORE_AW` |
+| AXI4-Lite read faults | `R_NOT_BEFORE_AR` | `R_NOT_BEFORE_AR` |
+
+ID-specific cases do not apply to AXI4-Lite. Legal controls must report no
+assertion failure. For another simulator, establish its failure-reporting
+behavior before applying an allowlist.
+Other assertion reports or Python/build failures require investigation;
+manual log review validates that run, not future regressions.
+These tests validate checker behavior; they do not report defects in a DUT.
+
+`+OCAH_AXI_SVA_CASE=<case>` selects the selftest mode. Unknown case names are
+rejected before stimulus, and the ID-specific modes explicitly reject
+AXI4-Lite. Selecting these leaves under the UVM framework is unsupported.

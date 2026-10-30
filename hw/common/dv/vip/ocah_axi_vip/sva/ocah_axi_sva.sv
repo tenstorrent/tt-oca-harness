@@ -41,7 +41,7 @@
 //                LEN_FIXED_MAX16 / LEN_WRAP_LEGAL (A3.4.1 burst length),
 //                WRAP_ALIGNED (A3.4.1 wrapping bursts), 4KB_BOUNDARY (A3.4.1)
 //   W          : LAST_POSITION (A3.4.1 burst length), STRB_IN_LANES (A3.4.3)
-//   B/R        : NOT_BEFORE_AW / NOT_BEFORE_AR (A3.3 dependencies),
+//   B/R        : NOT_BEFORE_AW / NOT_BEFORE_AR (A3.3.1, checked on VALID),
 //                ID_OUTSTANDING (A5.2 transaction ID ordering),
 //                RESP_EXOKAY_EXCL (A7.2 exclusive access responses),
 //                AXIL_{B,R}_RESP_LEGAL (B1.1.1: no EXOKAY on AXI4-Lite)
@@ -287,9 +287,9 @@ module ocah_axi_sva #(
 `ifdef SIMULATION
     // --------------------------------------------------------------
     // Stateful burst/ID tracking (simulation-only). Ordering within the
-    // procedural block is load-bearing: W is processed before B and AR
-    // before R, so a same-cycle completion is visible to the dependent
-    // check. All state flushes on reset.
+    // procedural block is load-bearing: response VALID is checked before
+    // accepting this edge's requests (IHI 0022 A3.3.1). Only a response
+    // handshake consumes pending state. All state flushes on reset.
     // --------------------------------------------------------------
     typedef struct {
       logic [ID_WIDTH-1:0]   id;
@@ -360,6 +360,40 @@ module ocah_axi_sva #(
         rd_q.delete();
         r_beat_idx.delete();
       end else if (en_i === 1'b1) begin
+        // -- Write response ----------------------------------------
+        if (bvalid === 1'b1) begin
+          wr_match_idx = -1;
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW, (wr_done_q.size() > 0))
+          foreach (wr_done_q[i]) begin
+            if (wr_match_idx == -1 && wr_done_q[i].id === bid) wr_match_idx = i;
+          end
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_ID_OUTSTANDING, (wr_match_idx != -1))
+          if (bready === 1'b1 && wr_match_idx != -1) begin
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_RESP_EXOKAY_EXCL,
+                               ((bresp !== RespExokay) || (wr_done_q[wr_match_idx].lock === 1'b1)))
+            wr_done_q.delete(wr_match_idx);
+          end
+        end
+
+        // -- Read data beats ---------------------------------------
+        if (rvalid === 1'b1) begin
+          rd_id_known = rd_q.exists(rid) && (rd_q[rid].size() > 0);
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_ID_OUTSTANDING, rd_id_known)
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, rd_id_known)
+          if (rready === 1'b1 && rd_id_known) begin
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_LAST_POSITION,
+                               (rlast === (r_beat_idx[rid] == int'(rd_q[rid][0].len))))
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_RESP_EXOKAY_EXCL,
+                               ((rresp !== RespExokay) || (rd_q[rid][0].lock === 1'b1)))
+            if (rlast === 1'b1) begin
+              void'(rd_q[rid].pop_front());
+              r_beat_idx[rid] = 0;
+            end else begin
+              r_beat_idx[rid]++;
+            end
+          end
+        end
+
         // -- Write address acceptance -------------------------------
         if (awvalid === 1'b1 && awready === 1'b1) begin
           if (early_wburst_len_q.size() > 0) begin
@@ -403,44 +437,10 @@ module ocah_axi_sva #(
           end
         end
 
-        // -- Write response ----------------------------------------
-        if (bvalid === 1'b1 && bready === 1'b1) begin
-          wr_match_idx = -1;
-          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW, (wr_done_q.size() > 0))
-          foreach (wr_done_q[i]) begin
-            if (wr_match_idx == -1 && wr_done_q[i].id === bid) wr_match_idx = i;
-          end
-          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_ID_OUTSTANDING, (wr_match_idx != -1))
-          if (wr_match_idx != -1) begin
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_RESP_EXOKAY_EXCL,
-                               ((bresp !== RespExokay) || (wr_done_q[wr_match_idx].lock === 1'b1)))
-            wr_done_q.delete(wr_match_idx);
-          end
-        end
-
         // -- Read address acceptance -------------------------------
         if (arvalid === 1'b1 && arready === 1'b1) begin
           rd_q[arid].push_back('{len: arlen, lock: arlock});
           if (!r_beat_idx.exists(arid)) r_beat_idx[arid] = 0;
-        end
-
-        // -- Read data beats ---------------------------------------
-        if (rvalid === 1'b1 && rready === 1'b1) begin
-          rd_id_known = rd_q.exists(rid) && (rd_q[rid].size() > 0);
-          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_ID_OUTSTANDING, rd_id_known)
-          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, rd_id_known)
-          if (rd_id_known) begin
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_LAST_POSITION,
-                               (rlast === (r_beat_idx[rid] == int'(rd_q[rid][0].len))))
-            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_RESP_EXOKAY_EXCL,
-                               ((rresp !== RespExokay) || (rd_q[rid][0].lock === 1'b1)))
-            if (rlast === 1'b1) begin
-              void'(rd_q[rid].pop_front());
-              r_beat_idx[rid] = 0;
-            end else begin
-              r_beat_idx[rid]++;
-            end
-          end
         end
 
         // -- Outstanding-depth sanity (checker capacity, not AXI) --
@@ -461,7 +461,7 @@ module ocah_axi_sva #(
                    (en_i && rvalid && rready) |-> (rresp != RespExokay), aclk, !aresetn)
 
 `ifdef SIMULATION
-    // Response-ordering counters (same same-cycle ordering note as AXI4).
+    // VALID dependencies use pre-edge counts; handshakes alone consume them.
     int unsigned lite_wr_addr_cnt = 0;
     int unsigned lite_wr_data_cnt = 0;
     int unsigned lite_rd_cnt      = 0;
@@ -472,19 +472,21 @@ module ocah_axi_sva #(
         lite_wr_data_cnt = 0;
         lite_rd_cnt      = 0;
       end else if (en_i === 1'b1) begin
+        if (bvalid === 1'b1) begin
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW,
+                             (lite_wr_addr_cnt > 0 && lite_wr_data_cnt > 0))
+          if (bready === 1'b1) begin
+            if (lite_wr_addr_cnt > 0) lite_wr_addr_cnt--;
+            if (lite_wr_data_cnt > 0) lite_wr_data_cnt--;
+          end
+        end
+        if (rvalid === 1'b1) begin
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, (lite_rd_cnt > 0))
+          if (rready === 1'b1 && lite_rd_cnt > 0) lite_rd_cnt--;
+        end
         if (awvalid === 1'b1 && awready === 1'b1) lite_wr_addr_cnt++;
         if (wvalid === 1'b1 && wready === 1'b1) lite_wr_data_cnt++;
         if (arvalid === 1'b1 && arready === 1'b1) lite_rd_cnt++;
-        if (bvalid === 1'b1 && bready === 1'b1) begin
-          `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW,
-                             (lite_wr_addr_cnt > 0 && lite_wr_data_cnt > 0))
-          if (lite_wr_addr_cnt > 0) lite_wr_addr_cnt--;
-          if (lite_wr_data_cnt > 0) lite_wr_data_cnt--;
-        end
-        if (rvalid === 1'b1 && rready === 1'b1) begin
-          `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, (lite_rd_cnt > 0))
-          if (lite_rd_cnt > 0) lite_rd_cnt--;
-        end
       end
     end
 `endif  // SIMULATION
