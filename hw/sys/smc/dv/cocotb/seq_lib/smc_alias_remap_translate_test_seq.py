@@ -67,7 +67,9 @@ ACCESS_FLOOR = 123
 
 
 def _reg(kind: str, region: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", region)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", region
+    )
 
 
 class smc_alias_remap_translate_test_seq(SmcCsrSeq):

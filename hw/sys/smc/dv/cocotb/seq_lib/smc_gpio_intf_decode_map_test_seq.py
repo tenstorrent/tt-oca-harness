@@ -15,22 +15,22 @@ from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_regblock_field_sweep_utils import SmcRegblockFieldSweepSeq, reg_instances
 
 _ACCESS_FILTER = (
-    "gpio_intf/ACCESS_FILTER",
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_NUM",
-    "GPIO_INTF_{index}__ACCESS_FILTER_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/ACCESS_FILTER",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__ACCESS_FILTER_REG_ADDR",
 )
 _DATA_CTRL_ENABLE = (
-    "gpio_intf/DATA_CTRL_ENABLE",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL_ENABLE",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
 )
 _DATA_CTRL = (
-    "gpio_intf/DATA_CTRL",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 
 _INSTANCES = 65
@@ -253,16 +253,24 @@ class smc_gpio_intf_decode_map_test_seq(SmcRegblockFieldSweepSeq):
         for pin in _PG_PINS:
             base = _PG_BASE + pin * _PG_STRIDE
             for sym, off, reg_addr in (
-                ("DATA_CTRL", 0x0, smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pin)),
+                (
+                    "DATA_CTRL",
+                    0x0,
+                    smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pin),
+                ),
                 (
                     "DATA_CTRL_ENABLE",
                     0x4,
-                    smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pin),
+                    smc_indexed_addr(
+                        "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pin
+                    ),
                 ),
                 (
                     "ACCESS_FILTER",
                     0x8,
-                    smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", pin),
+                    smc_indexed_addr(
+                        "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", pin
+                    ),
                 ),
             ):
                 assert base + off == reg_addr, (

@@ -8,7 +8,7 @@ refused -- DECERR or SLVERR. Truncating the address, wrapping it onto a live
 register and answering OKAY is what this sequence exists to catch.
 
 Every block window except TRNG has a past-extent response in
-``hw/sys/sep/regs/sep.rdl``: ``<unit>->ocah_past_extent_resp``, with no path
+``hw/sys/sep/regs/include/sep_memory_map.rdl``: ``<unit>->ocah_past_extent_resp``, with no path
 qualifier. Each probe there is graded exactly against it: a read answers the
 RDL ``rresp`` with the RDL ``rdata`` word, and a write answers the RDL
 ``bresp``. For every one of these windows that is DECERR, ``0xBADCAB1E`` /
@@ -79,7 +79,7 @@ RESP_DECERR = 3
 
 # Specification of record for the past-extent response of every non-adopter
 # window.
-RDL_REF = "hw/sys/sep/regs/sep.rdl (ocah_past_extent_resp)"
+RDL_REF = "hw/sys/sep/regs/include/sep_memory_map.rdl (ocah_past_extent_resp)"
 
 # Watch-list names that pop a FIFO or fire a trigger. Snapshotting them
 # is a side effect, so they are not part of the no-alias compare.
@@ -517,7 +517,7 @@ class SepDeadspace:
         extent that does not end on a 4 KB boundary breaks that: a burst begun in
         the last live words is routed wholly to this block, and its later beats
         land past ``REG_MAP_SIZE`` -- the Past Extent span, which no register
-        backs and for which ``hw/sys/sep/regs/sep.rdl`` (``ocah_past_extent_resp``)
+        backs and for which ``hw/sys/sep/regs/include/sep_memory_map.rdl`` (``ocah_past_extent_resp``)
         gives the error answer.
 
         ``start`` overrides the first address, for a window with no burst that
@@ -742,7 +742,7 @@ class SepDeadspace:
         """Return failure strings. Empty means this probe matched the spec.
 
         A non-adopter window is graded exactly against the Past Extent response
-        of its ``hw/sys/sep/regs/sep.rdl`` row (``ocah_past_extent_resp``): a
+        of its ``hw/sys/sep/regs/include/sep_memory_map.rdl`` row (``ocah_past_extent_resp``): a
         read must answer the RDL ``rresp`` with the RDL ``rdata`` word, and a
         write the RDL ``bresp``. The adopter (TRNG) window has no such
         response; the caller grades its code, and this method fails it on OKAY

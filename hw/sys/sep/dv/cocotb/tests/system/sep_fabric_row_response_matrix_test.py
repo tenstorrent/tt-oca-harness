@@ -9,7 +9,7 @@ AxID (non-zero) and the burst start and AxLEN.
 
 The expected cells come from ``hw/sys/sep/regs/gen/adoc/memory_map.adoc`` (Hole
 in Extent and Past Extent columns, through ``env.sep_decode_resp``), the
-``ocah_*`` annotations of ``hw/sys/sep/regs/sep.rdl`` and the register
+``ocah_*`` annotations of ``hw/sys/sep/regs/include/sep_memory_map.rdl`` and the register
 allocation of the generated IP-XACT (``seq_lib.sep_row_response_seq``). The
 table states each cell for a 32-bit access at the inbound AXI port, so every
 graded single beat uses AxSIZE 2 in both halves of the 64-bit data bus; an

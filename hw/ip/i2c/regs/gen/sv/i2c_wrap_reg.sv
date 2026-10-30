@@ -248,17 +248,20 @@ module i2c_wrap_reg (
         automatic logic is_valid_rw;
         automatic logic is_external;
         is_external = '0;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         for(int i0=0; i0<3; i0++) begin
             decoded_reg_strb.i2c[i0] = cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h200) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h200 + 12'h83);
             is_external |= cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h200) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h200 + 12'h83);
+            is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h200) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h200 + 12'h83);
             is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 12'h0 + (12)'(i0) * 12'h200) & (cpuif_addr <= 12'h0 + (12)'(i0) * 12'h200 + 12'h83);
         end
         decoded_reg_strb.i2c_ctrl_regs = cpuif_req_masked & (cpuif_addr >= 12'he00) & (cpuif_addr <= 12'he00 + 12'hb);
         is_external |= cpuif_req_masked & (cpuif_addr >= 12'he00) & (cpuif_addr <= 12'he00 + 12'hb);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 12'he00) & (cpuif_addr <= 12'he00 + 12'hb);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 12'he00) & (cpuif_addr <= 12'he00 + 12'hb);
-        decoded_err = '0;
+        is_valid_addr = cpuif_addr < 12'he0c;
+        decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
     logic external_wr_ack;
@@ -321,7 +324,7 @@ module i2c_wrap_reg (
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -369,7 +372,7 @@ module i2c_wrap_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign external_rd_ack = readback_external_rd_ack;

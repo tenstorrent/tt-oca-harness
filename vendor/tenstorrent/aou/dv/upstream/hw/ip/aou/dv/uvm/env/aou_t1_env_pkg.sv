@@ -71,12 +71,9 @@ package aou_t1_env_pkg;
   // How the remote die sizes its WriteReqs (aou_t1_remote_mgr_driver).
   typedef enum int {AOU_RWREQ_AWSIZE, AOU_RWREQ_UPSIZE, AOU_RWREQ_DUT_LIKE} aou_t1_rwreq_e;
 
-  // AXI_PEER_DIE_MAX_DATA_WD in bytes (Makefile CONFIG: AOU_PEER_MAX_W, default 1024)
-`ifdef AOU_PEER_MAX_W
-  localparam int AOU_T1_PEER_MAX_BYTES = `AOU_PEER_MAX_W / 8;
-`else
+  // The widest AoU data message, 1024 bits (the DUT's AXI_PEER_DIE_MAX_DATA_WD, a
+  // localparam): the remote die model is never wider than this.
   localparam int AOU_T1_PEER_MAX_BYTES = 128;
-`endif
 
   function automatic int unsigned aou_t1_rp_bytes(int unsigned r);
     case (r)
@@ -128,7 +125,7 @@ package aou_t1_env_pkg;
   // Who starts activation or deactivation.
   typedef enum {
     AOU_T1_BY_APB,     // DUT: AOU_INIT.ACTIVATE_START / DEACTIVATE_START
-    AOU_T1_BY_PIN,     // DUT: I_SW_ACTIVATE_START / I_SW_DEACTIVATE_START
+    AOU_T1_BY_PIN,     // DUT: I_SW_ACTIVATE_START (deactivation: the register, as BY_APB)
     AOU_T1_BY_REMOTE,  // remote die: L3 ActivateReq / DeactivateReq
     AOU_T1_BY_BOTH,    // APB and L3, ordered by aou_t1_order_e
     AOU_T1_BY_RANDOM
@@ -161,6 +158,7 @@ package aou_t1_env_pkg;
 
   `uvm_analysis_imp_decl(_dbg_mport)
   `uvm_analysis_imp_decl(_dbg_remote)
+  `uvm_analysis_imp_decl(_dbg_remote_req)
 
   `include "aou_t1_traffic_cfg.svh"
   `include "aou_t1_feature_cfg.svh"
@@ -178,16 +176,17 @@ package aou_t1_env_pkg;
   `include "aou_t1_field_seq.svh"
   `include "aou_t1_reads_seq.svh"
   `include "aou_t1_sw_isr.svh"
-  `include "aou_t1_orphan_chk.svh"
   `include "aou_t1_axi4pc_ctl.svh"
   `include "aou_t1_mo_fc_bins.svh"
   `include "aou_t1_mo_chk.svh"
   `include "aou_t1_sw_reset_chk.svh"
+  `include "aou_t1_lp_cfg_chk.svh"
   `include "aou_t1_dbg_fifo_chk.svh"
   `include "aou_t1_env_fc_bins.svh"
   `include "aou_t1_crd_flow_chk.svh"
   `include "aou_t1_crd_rr_chk.svh"
   `include "aou_t1_early_tbl_chk.svh"
+  `include "aou_t1_wdt_chk.svh"
   `include "aou_t1_xfer_cov.svh"
   `include "aou_t1_attr_chk.svh"
   `include "aou_t1_rx_fifo_chk.svh"

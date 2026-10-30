@@ -67,10 +67,7 @@ all configurations and the naming legend are in README "Build configurations"
 | 1x256-sp32 | 1 | 256 | SP_32B | narrowest RP and FDI (the RTL defaults' FDI) |
 | 2xmix-tp64_128 | 2 | 512, 1024 | TP_64B_128B (TWO_PHY) | two-PHY FDI, 2 RPs, mixed widths |
 | 2x512-tp32_64 | 2 | 512 | TP_32B_64B (TWO_PHY) | two-PHY FDI with a 256-bit PHY0, 2 RPs at one width |
-| 1x512-sp64-p512 | 1 | 512 | SP_64B | AXI_PEER_DIE_MAX_DATA_WD 512 (remote die at most 512 bits) |
 | 1x512-sp64-nxt | 1 | 512 | SP_64B | TX_NXT_PACKING_EN 1 (registered TX packer output stage) |
-| 4xmix4211-sp128-p512 | 4 | 1024, 512, 256, 256 | SP_128B | AXI_PEER_DIE_MAX_DATA_WD 512 with a 1024-bit RP (remote die at most 512 bits; the DUT's own reads still get ReadData1024) |
-| 4xmix4211-sp128-p256 | 4 | 1024, 512, 256, 256 | SP_128B | AXI_PEER_DIE_MAX_DATA_WD 256 below the 1024- and 512-bit RPs (remote die at most 256 bits) |
 | 2xmix-sp64-rxf | 2 | 1024, 256 | SP_64B | non-default RX FIFO depths, RX FIFO register slices off |
 
 The configurations are a pairwise set rather than a cross product: every pair
@@ -108,6 +105,7 @@ not instantiated.
 | `status` | `aou_status_if` | interrupts, FSM state, SW pins |
 | `irq` | `aou_irq_if` | the same interrupts and activation status, clocked (T1 status watcher) |
 | `rst` | `aou_rst_if` | T1 reset agent: mid-test I_RESETN/I_PRESETN (ANDed with the top's power-on reset) |
+| `wdt` | `aou_wdt_if` | write-watchdog checker: per-RP AW/B handshakes at the early-response controller, the SFR's watchdog fields and its APB port (white-box taps) |
 | `fdi_chk` | `aou_fdi_checker_if` | AOU_FDI_CHECKER status ports (`aou_fdi_chk_adapter`) |
 
 One parameterization per interface type (widest width, with the real width in
@@ -148,24 +146,33 @@ count, `+remote_rp_count`), `env.outstanding(why)`, and in the base vseq `inject
 originated, as this document defines it), not the remote model's responses.
 
 Reset contract as implemented: `env.reset_flush(which, bus_reset)`. I_PRESETN alone
-only cancels the software ISR (the core and link keep running). I_RESETN (bus_reset
-= 1): AXI managers drop queued and in-flight items and restart idle once the reset
-is over, subordinates drop requests, monitors forget in-flight transactions.
-AOU_SW_RESET (`sw_reset()`, bus_reset = 0): the AXI ports are not reset, so a burst
-already on the bus is still completed; only items that never reached the bus are
-dropped. In both cases the managers' outstanding transactions end with
-`aou_axi_txn.aborted = 1` (sequences continue) and `sb.abort()` counts them and
-marks the bytes an aborted write strobes unknown: each may hold its old value or the
-write's until a checked write defines it again. `sw_reset()` also brackets the APB
-write that requests AOU_SW_RESET with `env.sw_reset_window()`: the S-port monitors
-mark every transaction on the bus at the request `reset_outstanding`, and the
-scoreboard counts such a transaction that ends with SLVERR as aborted too (BUGS/015
-interim; any other response is checked as usual, and SLVERR on any later
-transaction is still an error). Whether the DUT
-still answers aborted requests is unspecified, so for `stale_window` (10 us) a
-response on an ID with an aborted request is taken as the stale one and new
-requests on that ID wait; later, a stale count only absorbs a response nothing else
-matches. The remote die (L3 `reset_flush()`: queues, credits, responder; L1 pump and
+only cancels the software ISR (the core and link keep running). I_RESETN and
+AOU_SW_RESET (`sw_reset()`; both bus_reset = 1): the local AXI agents are on the
+DUT's AXI-port reset (`tb_top.axi_port_rst_n`, the core reset read from the DUT), as
+the SoC's AXI peers must be (MAS 7.3.6, integration guide 3.1.1: either reset loses
+every AXI transaction in flight or queued in AOU_CORE, and the attached managers and
+subordinates are reset with it or recover on their own). AXI managers drop queued
+and in-flight items and restart idle once the reset is over, subordinates drop
+requests, monitors forget in-flight transactions. `abort_traffic()` (bus_reset = 0,
+no reset) only stops waiting: a burst already on the bus is still completed. The
+managers' outstanding transactions end with `aou_axi_txn.aborted = 1` (sequences
+continue) and `sb.abort()` counts them and marks the bytes an aborted write strobes
+unknown: each may hold its old value or the write's until a checked write defines
+it again. `sw_reset()` also brackets the request with `env.sw_reset_window()`, from
+the APB write that requests AOU_SW_RESET to the core reset: the S-port monitors
+mark every transaction on the bus in the window `reset_outstanding`; a write that
+completes in it is lost or landed whatever its response (the reset loses writes
+queued in the core, early-acknowledged ones included, 7.2.5), so the scoreboard
+treats it like an aborted write, and a read that ends with SLVERR counts as aborted
+too (BUGS/015 interim; any other response is checked as usual, and SLVERR on any
+later transaction is still an error). The DUT sends no response for a
+transaction the reset lost (its RX FIFOs reset with the core), but the managers
+tolerate one: for `stale_window` (10 us) a response on an ID with an aborted
+request is taken as the stale one and new requests on that ID wait; later, a stale
+count only absorbs a response nothing else matches. The subordinate agents'
+monitors use no window (the responder is the bench's own driver, reset with the
+port). The remote die (L3
+`reset_flush()`: queues, credits, responder; L1 pump and
 PL driver: flits built before the reset) always drops everything. `traffic()` and
 `wait_traffic()` are bounded by `cfg.drain_timeout` (T1-V08, then `stop_traffic()`).
 
@@ -186,9 +193,9 @@ reports any reset asserted otherwise. A test that resets mid-access on purpose p
   for driving, and timestamps. The L1 driver takes flits from a sequencer. The L1
   monitor publishes `ap_tx` (flits the DUT sent, after cancel rollback) and `ap_rx`
   (flits delivered to the DUT).
-- **L2:** `aou_lsm_cfg` holds the encoding map `fdi_enc = RTL|SPEC` (default
-  `RTL` until BUGS/001 is fixed) and the latency ranges. The agent publishes state
-  changes, and L1 only drives while L2 reports Active.
+- **L2:** `aou_lsm_cfg` holds the latency ranges; states are encoded as in UCIe
+  r1.1 Table 8-2. The agent publishes state changes, and L1 only drives while L2
+  reports Active.
 - **L3 ↔ L4a:** L3 publishes decoded messages from the DUT (`aou_msg` subclasses)
   and accepts messages to send through `aou_l3_agent.send(aou_msg)`. Credits,
   packing and activation are L3's job. L4a's remote AXI model turns the DUT's
@@ -347,7 +354,7 @@ this API goes through the integrator, because every ported test depends on it.
 
 | Handle | Type |
 |---|---|
-| `cfg` | `aou_t1_env_cfg`: RP count and per-RP data bytes, `spec_rev`, `fdi_enc`, L1/L2/L3/AXI agent configs, timing profiles, check enables |
+| `cfg` | `aou_t1_env_cfg`: RP count and per-RP data bytes, `spec_rev`, L1/L2/L3/AXI agent configs, timing profiles, check enables |
 | `s_mgr[r]`, `m_sub[r]` | `aou_axi_mgr_agent` on the DUT's S port, `aou_axi_sub_agent` on its M port, per RP |
 | `fdi[p]`, `lsm` | L1 agent per PHY, L2 link-state agent |
 | `l3`, `remote` | `aou_l3_agent` (remote die protocol layer), `aou_remote_axi_model` (remote AXI side, behind the L4a adapter) |
@@ -356,6 +363,7 @@ this API goes through the integrator, because every ported test depends on it.
 | `sb`, `status`, `fdi_chk`, `expect` | scoreboard, interrupt/status watcher, FDI checker adapter, expectation registry |
 | `dbg_chk` | `aou_t1_dbg_fifo_chk`: predicts each RP's response error debug FIFO and checks every debug-window read and pop |
 | `crd_rr`, `early_tbl` | `aou_t1_crd_rr_chk`: round-robin MsgCredit order in a window a test opens (T1-C03); `aou_t1_early_tbl_chk`: early-table backpressure on RPs with EARLY_BRESP_EN (FEAT-R15/R16) |
+| `wdt_chk` | `aou_t1_wdt_chk`: the write-transaction watchdog of every RP, from a model of its count (FEAT-R23 to R28) |
 | `crd_chk` | `aou_t1_crd_flow_chk`: an RP with credit and queued work is not held back by another RP without credit (T1-C01), and the DUT uses the credit it holds (T1-C02) |
 | `vseqr` | `aou_t1_vseqr`: sequencer handles for all of the above, plus `env` |
 
@@ -365,7 +373,7 @@ Every test's virtual sequence extends this and composes these tasks:
 
 | Task | Meaning |
 |---|---|
-| `link_up()` | L2 bringup to Active (per `fdi_enc`) |
+| `link_up()` | L2 bringup to Active |
 | `activate(who, order)` | AoU activation: DUT-, remote- or both-initiated (APB `activate_start`, SW pin, or L3), with ordering and timing randomization |
 | `deactivate(who, force, credit_manage)` | orderly or forced deactivation from either side; waits for DISABLED |
 | `program(feature_cfg)` | DUT configuration through the register sequences (split, aggregator, early response, QoS, DEST_RP, LP mode, interrupt masks, error info, time-outs, credit_manage) |
@@ -373,11 +381,11 @@ Every test's virtual sequence extends this and composes these tasks:
 | `pause_traffic()` / `resume_traffic()` | quiesce or resume all traffic sources |
 | `drain(timeout)` | wait until nothing is outstanding anywhere |
 | `link_event(kind)` | PL-initiated Retrain, LinkError, L1 entry/exit, Reset, inband_pres drop, clk_req wake |
-| `lp_mode(en, threshold)` | TX low-power mode |
+| `lp_mode(en, threshold)` | TX low-power mode; static configuration, only while the DUT is DISABLED (T1-LP03) |
 | `hold_tx()` / `release_tx()` | back-pressure on the DUT's TX: L1 holds pl_trdy low from the next flit boundary (`aou_fdi_cfg.tx_hold`), so requests back up behind the DUT's ring buffer and arbiters |
 | `hold_remote_tx()` / `release_remote_tx()` | the remote die's counterpart: L3 holds back credited messages (`pol.hold_credited`), then packs the backlog densely |
 | `inject(kind, args)` | L3 error injection (bad type, reserved bits, credit violations, out-of-state Activate/Deactivate, MsgStart, placement, over-grant, ...) and AXI error responses from memories |
-| `sw_reset()` | `AOU_SW_RESET`, then reprogram and re-activate (BUGS/007 interim expectation) |
+| `sw_reset()` | `AOU_SW_RESET` (every SFR, the activation state and the RX FIFOs reset, MAS 7.3.6), then reprogram and re-activate |
 | `hard_reset(which)` | assert `I_RESETN` and/or `I_PRESETN` mid-test, flush the environment, bring up again |
 | `expect_event(id, min, max)` | declare an error, interrupt or rule hit the scenario is supposed to cause |
 

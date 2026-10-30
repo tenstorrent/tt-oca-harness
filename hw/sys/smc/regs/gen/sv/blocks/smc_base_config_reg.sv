@@ -250,19 +250,30 @@ module smc_base_config_reg (
     always_comb begin
         automatic logic is_valid_addr;
         automatic logic is_valid_rw;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.GLOBAL_BASE = cpuif_req_masked & (cpuif_addr == 7'h0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h0);
         decoded_reg_strb.LOCAL_BASE = cpuif_req_masked & (cpuif_addr == 7'h8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h8);
         decoded_reg_strb.REGION_SIZE = cpuif_req_masked & (cpuif_addr == 7'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h10);
         decoded_reg_strb.CLOCK_GATE_CONTROL = cpuif_req_masked & (cpuif_addr == 7'h18);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h18);
         decoded_reg_strb.HANG_DET_SYS_AXI_CTRL = cpuif_req_masked & (cpuif_addr == 7'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h20);
         decoded_reg_strb.HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD = cpuif_req_masked & (cpuif_addr == 7'h28);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h28);
         decoded_reg_strb.HANG_DET_SEP_AXI_CTRL = cpuif_req_masked & (cpuif_addr == 7'h30);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h30);
         decoded_reg_strb.HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD = cpuif_req_masked & (cpuif_addr == 7'h38);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h38);
         decoded_reg_strb.HANG_DET_DATA_ACCEL_CTRL = cpuif_req_masked & (cpuif_addr == 7'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h40);
         decoded_reg_strb.HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD = cpuif_req_masked & (cpuif_addr == 7'h48);
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 7'h48);
+        is_valid_addr = cpuif_addr < 7'h4c;
+        decoded_err = ~is_valid_addr & decoded_req;
     end
 
     // Pass down signals to next stage
@@ -1196,7 +1207,7 @@ module smc_base_config_reg (
     //--------------------------------------------------------------------------
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -1266,7 +1277,7 @@ module smc_base_config_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign cpuif_rd_ack = readback_done;

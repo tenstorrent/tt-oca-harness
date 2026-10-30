@@ -11,13 +11,12 @@
 #include <stdint.h>
 #include "smc_prod_rom.h"
 #include "smc_occp_error_codes.h"
+#include "smc_park.h"
 
 /* picolibc exit() calls _exit(); provide a bare-metal stub that never returns. */
 __attribute__((noreturn)) void _exit(int code) {
     (void)code;
-    while (1) {
-        __asm__ volatile("wfi");
-    }
+    smc_park_hart0();
 }
 
 int main(void) {
@@ -67,9 +66,7 @@ int main(void) {
         smc_post_code_set_error(POST_CODE_ERROR_INVALID_SEC_MODE);
         smc_status_report(SMC_STATUS_TYPE_ERROR,
                           SMC_STATUS_INVALID_SEC_MODE); /* Invalid security mode detected */
-        while (true) {
-            __asm__("wfi");
-        }
+        smc_park_hart0();
     }
 
     uint8_t security_decisions = 0;
@@ -103,9 +100,7 @@ int main(void) {
             simputs("\n");
             smc_post_code_set_boot_phase(POST_CODE_BOOT_PHASE_ERROR);
             smc_post_code_set_error(POST_CODE_ERROR_INTERFACE);
-            while (true) {
-                __asm__("wfi");
-            }
+            smc_park_hart0();
         }
     } else {
         simputs("[MAIN] BL0_PLLCLK strap deasserted - using reference clock\n");
@@ -142,9 +137,7 @@ int main(void) {
         smc_post_code_set_error(POST_CODE_ERROR_INTERFACE);
         smc_status_report(SMC_STATUS_TYPE_ERROR,
                           SMC_STATUS_OCCP_INIT_FAILED); /* OCCP init failed */
-        while (true) {
-            __asm__("wfi");
-        }
+        smc_park_hart0();
     }
     smc_post_code_set_boot_phase(POST_CODE_BOOT_PHASE_OCCP_READY);
 
@@ -161,9 +154,5 @@ int main(void) {
 
     /* Should never reach here */
     smc_status_report(SMC_STATUS_TYPE_ERROR, SMC_STATUS_UNEXPECTED_EXIT); /* Unexpected exit */
-    while (true) {
-        __asm__("wfi");
-    }
-
-    return 0;
+    smc_park_hart0();
 }

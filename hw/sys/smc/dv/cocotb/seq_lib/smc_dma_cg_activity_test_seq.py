@@ -169,16 +169,13 @@ P2_REQUIRED_SWEEP_GAPS = (32, 63, 64)
 P2_GRADED_CELL_NAMES = ("hyst-gap=32", "hyst-gap=63", "hyst-gap=64")
 
 # The 0..8 hysteresis band is SWEPT at 0 and 1 and exactly asserted below, but
-# it is NOT booked as covered by this testcase's coverage artifact: the DMA
-# command never completes at legal hysteresis 0 and 1 when dma_cg_en=1, so the
+# it is NOT booked as covered by this testcase's coverage artifact: the
 # within-1-cycle hysteresis-scaling proof holds for 9..63 only. The two gaps
 # stay as stimulus and as a fail-capable compare.
 P2_LOW_BAND_SWEEP_GAPS = (0, 1)
 P2_LOW_BAND_EXCLUSION_REASON = (
-    "DMA command never completes at legal hysteresis 0 and 1 when "
-    "dma_cg_en=1: the 0..8 hysteresis band is UNPROVEN and must not be counted "
-    "as covered by any closure report. Swept and exactly asserted here, but "
-    "not booked."
+    "The 0..8 hysteresis band is UNPROVEN and must not be counted as covered "
+    "by any closure report. Swept and exactly asserted here, but not booked."
 )
 
 P2_NUM_RANDOM_GAPS = 3

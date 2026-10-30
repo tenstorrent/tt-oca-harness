@@ -126,11 +126,11 @@ _PROBES = {"out": "tb_core2pad_o", "en": "tb_core2pad_en_o", "ie": "tb_pad2core_
 
 
 def _data_ctrl(pad: int) -> int:
-    return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
+    return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
 
 
 def _data_ctrl_enable(pad: int) -> int:
-    return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
+    return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
 
 
 class smc_gpio_pad_enable_walk_test_seq(SmcCsrSeq):
