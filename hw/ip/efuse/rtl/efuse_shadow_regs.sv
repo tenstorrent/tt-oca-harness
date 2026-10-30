@@ -392,6 +392,8 @@ module efuse_shadow_regs
 
   logic [LcStateWidth-1:0] lc_state_cur;
   logic [LcStateWidth-1:0] lc_state_candidate;
+  logic chiplet_rma_update;
+  logic sip_rma_update;
 
   // Combinationally compute the next raw LC_STATE value for each write path,
   // then feed it through the differential encoder so the always_ff can store
@@ -400,6 +402,8 @@ module efuse_shadow_regs
       lc_state_raw_d = '0;
       lc_state_candidate = '0;
       lc_state_cur = '0;
+      chiplet_rma_update = 1'b0;
+      sip_rma_update = 1'b0;
       if (HAS_LC_STATE) begin
           lc_state_raw_d = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
           lc_state_candidate = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
@@ -417,8 +421,6 @@ module efuse_shadow_regs
               // token gates: bit 1 (RMA_SIP) needs a SIP token match, and bit 2 (RMA_CHIPLET)
               // needs a chiplet token match with bit 1 already set. An invalid encoding is
               // terminal.
-
-            // bug: if you try a chiplet token and then a sip token with rma enabled, the lc bit 1 will not be set.
               lc_state_cur = shadow_efuse.values[efuse_pkg::ShadowIdxLcState][LcStateWidth-1:0];
 
               if (efuse_pkg::is_invalid_lc_state(lc_state_cur)) begin
@@ -440,16 +442,15 @@ module efuse_shadow_regs
                       lc_state_raw_d = lc_state_candidate;
                   end
               end else if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
-                  // Transient RMA applies the same token gates as the APB path.
-
-                  // check if we have a chiplet token match first, then check if we have a sip token match.
-                  // So if  rma_chiplet_token_match_i == TOKEN_MATCH_CODE is true but bit 1 is not set, we dont do anything 
-                  // --> this is correct but, then we never check rma_sip_token_match_i. So the chiplet token match GATES the sip token match
-                  if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE && lc_state_cur[1]) begin
+                  // A chiplet match without RMA_SIP established changes nothing and blocks a
+                  // simultaneous SIP match.
+                  chiplet_rma_update = (rma_chiplet_token_match_i == TOKEN_MATCH_CODE) &&
+                                       lc_state_cur[1];
+                  sip_rma_update = (rma_chiplet_token_match_i != TOKEN_MATCH_CODE) &&
+                                   (rma_sip_token_match_i == TOKEN_MATCH_CODE);
+                  if (chiplet_rma_update) begin
                       lc_state_raw_d[2] = 1'b1;
-                  end 
-                  // FIX: check sip token match regardless of chiplet token match
-                  if (rma_sip_token_match_i == TOKEN_MATCH_CODE) begin
+                  end else if (sip_rma_update) begin
                       lc_state_raw_d[1] = 1'b1;
                   end
               end
@@ -633,18 +634,12 @@ module efuse_shadow_regs
       end else if (!shadow_reg_access) begin : transient_rma_en
         if (HAS_LC_STATE) begin
           if (shadow_efuse.values[efuse_pkg::ShadowIdxTransientRmaEn][0] == 1'b1) begin
-            // if is true, but lc_state_diff_d did not change so we actually dont update anything. 
-            // but this sets chiplet_state_change_completed_n0_scan to 1, so on the next cycle this will evalulate to false
-            priority if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE &&
-                         !chiplet_state_change_completed_n0_scan) begin
+            priority if (chiplet_rma_update && !chiplet_state_change_completed_n0_scan) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
               chiplet_state_change_completed_n0_scan <= 1'b1;
-
-            // on next cycle we will check this is will be true, but lc_state_diff_d was not updated so we dont update anything. BUG
-            end else if (rma_sip_token_match_i == TOKEN_MATCH_CODE &&
-                         !sop_state_change_completed_n0_scan) begin
+            end else if (sip_rma_update && !sop_state_change_completed_n0_scan) begin
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   efuse_pkg::ShadowIdxLcState)][2*LcStateWidth-1:0] <= lc_state_diff_d;
@@ -653,9 +648,8 @@ module efuse_shadow_regs
           end
         end else begin
           // No chiplet state change in the SMC instance.
-          // TODO: I feel like SMC should have these set to 0
-          chiplet_state_change_completed_n0_scan <= 1'b0;
-          sop_state_change_completed_n0_scan <= 1'b0;
+          chiplet_state_change_completed_n0_scan <= 1'b1;
+          sop_state_change_completed_n0_scan <= 1'b1;
         end
       end
     end
