@@ -30,7 +30,7 @@ typedef union {
 } alias_remap__remap_region__REGION_START_t;
 
 // reg - alias_remap::remap_region::REGION_END
-// End of remap region (non-inclusive).
+// End of remap region (non-inclusive). A region whose end is at or below its start contains no address and never remaps.
 #define ALIAS_REMAP__REMAP_REGION__REGION_END__END_ADDR_bm 0xfffffffffff000
 #define ALIAS_REMAP__REMAP_REGION__REGION_END__END_ADDR_bp 12
 #define ALIAS_REMAP__REMAP_REGION__REGION_END__END_ADDR_bw 44
@@ -38,7 +38,7 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t :12;
-        // End of remap region (non-inclusive).
+        // End of remap region (non-inclusive). A region whose end is at or below its start contains no address and never remaps.
         uint64_t end_addr :44;
         uint64_t :8;
     } f;
@@ -46,7 +46,7 @@ typedef union {
 } alias_remap__remap_region__REGION_END_t;
 
 // reg - alias_remap::remap_region::REGION_ATTRS
-// The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.
+// The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The addition is modulo 2^44, so a carry out of bit 55 is discarded. The lower 12 bits of the address are preserved unchanged. When more than one valid region contains the address, the lowest-numbered region applies.
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bm 0xfffffffffff000
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bp 12
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bw 44
@@ -64,7 +64,7 @@ typedef union {
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t :12;
-        // The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.
+        // The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The addition is modulo 2^44, so a carry out of bit 55 is discarded. The lower 12 bits of the address are preserved unchanged. When more than one valid region contains the address, the lowest-numbered region applies.
         uint64_t offset :44;
         // Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.
         uint64_t cacheable :4;

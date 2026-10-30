@@ -145,6 +145,8 @@ The `jtag_axi_in` interface provides debug access through JTAG mechanisms. This
 interface uses reduced 2-bit transaction IDs and connects to your JTAG debug
 infrastructure.
 
+Every SMC AXI interface carries 12-bit user fields on all five channels.
+
 [[gpio-pad-integration]]
 == GPIO Pad Integration
 
