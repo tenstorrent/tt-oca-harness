@@ -238,9 +238,9 @@ memory-technology SHIMs, and similar adopter-owned blocks are typical examples.
 The SMC decodes the aperture and forwards the transaction; what lives behind it
 is entirely adopter-defined.
 
-The window starts at `BASE + 0x040_0000` (`0xC040_0000` with `LOCAL_BASE`),
-and its size is the extent of the adopter's `smc_external` register map. The
-SMC forwards every access in the window to `smc_external_req_o` except the eFuse SHIM range at its base
+The window starts at `BASE + 0x040_0000` (`0xC040_0000` with `LOCAL_BASE`)
+and spans a fixed 4 MiB, whatever the extent of the adopter's `smc_external`
+register map. The SMC forwards every access in the window to `smc_external_req_o` except the eFuse SHIM range at its base
 (see <<smc-external-mandatory>>); the adopter decodes everything else.
 
 The window is split into two regions. Apart from the eFuse SHIM control block
@@ -374,8 +374,8 @@ The SHIM must follow these rules for this window:
 Accesses past it go to the external port and never reach the SHIM.
 * *Describe the registers in the external map.* Place the SHIM control block
 at offset `0x0` of the adopter's `smc_external` and `sep_external` register
-maps. The open SMC map reserves the whole window as opaque memory. SEP takes
-the window base from the `efuse_shim_ctrl` instance in `sep_external`, so an
+maps. Both open maps place an `efuse_shim_ctrl` instance there. SEP takes
+the window base from the instance in `sep_external`, so an
 adopter map that replaces it must keep an instance of that name at offset
 `0x0`.
 
