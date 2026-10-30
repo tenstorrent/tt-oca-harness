@@ -60,6 +60,12 @@ defines them and their codes.
 An address between unit apertures reaches no unit. A read there answers `DECERR`
 with data `0xBADCAB1E`, and a write answers `DECERR`.
 
+The local crossbar routes a burst by its start address, so a burst that starts
+between unit apertures answers `DECERR` for every beat. A write burst to a
+register unit is split into single-beat writes. Its write response is that of
+the last beat when the last beat answers `SLVERR` or `DECERR`; otherwise it is
+`SLVERR` when an earlier beat answered an error, and `OKAY` when none did.
+
 An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
@@ -142,6 +148,28 @@ ifdef::backend-html5[]
 </div>
 ++++
 endif::backend-html5[]
+
+[[smc-generated-register-blocks]]
+==== Generated Register Blocks
+
+`smc_reset_unit`, `smc_misc_wrap` (scratch, chip configuration and NDM reset),
+`dfx_ctrl`, `smc_base_config`, the alias, M-mode and Xvisor remap tables, the
+inbound and outbound filter controls, and `smc_cpu_ctrl` are generated from
+their SystemRDL descriptions. An access to one of their registers behaves as
+follows:
+
+* Bits that belong to no field read 0, and writes to them have no effect,
+  whatever the byte strobes. The exception is `smc_cpu_ctrl` `RESET_CTRL`,
+  which stores bits `[23:9]` and `[63:25]` as written and returns them on
+  read.
+* A write to a read-only register, or to the read-only fields of a register,
+  answers `OKAY` and has no effect on those bits. It sets no error flag and
+  raises no interrupt.
+* Exclusive access is not supported. The AXI-to-AXI-Lite conversion in front
+  of each block discards `AxLOCK`, so an exclusive read or write is performed
+  as a normal access and answers `OKAY`, never `EXOKAY`.
+
+Other units, such as the mailbox, state their own responses.
 
 === Access Control and Security
 

@@ -5,8 +5,7 @@
 //
 // T1 top (tb_top, no ports): AOU_TOP as u_dut against layered models. Build
 // configuration comes from defines (aou_sim_cfg.toml targets; Makefile CONFIG): AOU_RP_COUNT, AOU_RP<n>_DATA_W (per RP; default
-// AOU_RP_DATA_W), AOU_FDI_CONFIG, AOU_PEER_MAX_W (AXI_PEER_DIE_MAX_DATA_WD, default
-// 1024), AOU_TX_NXT_PACKING (TX_NXT_PACKING_EN, default 0), TWO_PHY for the
+// AOU_RP_DATA_W), AOU_FDI_CONFIG, AOU_TX_NXT_PACKING (TX_NXT_PACKING_EN, default 0), TWO_PHY for the
 // two-PHY FDI configurations, and
 // AOU_RX_FIFO_ALT for non-default RX FIFO depths with the register slices off
 // (aou_t1_env_pkg::AOU_T1_RX_DEPTH). Every interface is registered in
@@ -37,9 +36,6 @@
 `ifndef AOU_FDI_CONFIG
 `define AOU_FDI_CONFIG 1
 `endif
-`ifndef AOU_PEER_MAX_W
-`define AOU_PEER_MAX_W 1024
-`endif
 `ifndef AOU_TX_NXT_PACKING
 `define AOU_TX_NXT_PACKING 0
 `endif
@@ -61,7 +57,6 @@ module tb_top;
     return (r == 0) ? RPW0 : (r == 1) ? RPW1 : (r == 2) ? RPW2 : RPW3;
   endfunction
   localparam int FDI_CFG    = `AOU_FDI_CONFIG;
-  localparam int PEER_W     = `AOU_PEER_MAX_W;
   localparam int NXT_PACK   = `AOU_TX_NXT_PACKING;
   localparam int BUS_W      = 1024;
   localparam int AXI_W      = 1024;
@@ -153,6 +148,11 @@ module tb_top;
       !u_dut.u_aou_core_top.u_async_apb_bridge.u_async_apb_bridge_mi.r_mi_done_clkm &&
       !u_dut.u_aou_core_top.u_async_apb_bridge.u_async_apb_bridge_mi.w_si_req_clkm;
   assign rst.rx_w_pend = 8'(u_dut.u_aou_core_top.w_aou_rx_wlast_gen_wvalid);
+  assign rst.rx_pend = 8'(u_dut.u_aou_core_top.w_aou_rx_wlast_gen_awvalid) |
+                       8'(u_dut.u_aou_core_top.w_aou_rx_wlast_gen_wvalid) |
+                       8'(u_dut.u_aou_core_top.w_aou_rx_axi_mm_arvalid) |
+                       8'(u_dut.u_aou_core_top.w_aou_rx_axi_s_rvalid) |
+                       8'(u_dut.u_aou_core_top.w_early_bresp_ctrl_bvalid);
   assign rst.rx_msgcrdt_valid = u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_valid;
   assign rst.rx_msgcrdt = {u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_rp,
                            u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_wrespcred,
@@ -160,42 +160,21 @@ module tb_top;
                            u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_wdatacred,
                            u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_rreqcred,
                            u_dut.u_aou_core_top.u_aou_core.w_rxcore_msgcrdt_wreqcred};
-  // With the BUGS/021 guard the S-port pins belong to the guard, not the core,
-  // from the core reset to the end of the guard's drain.
-  for (genvar r = 0; r < 8; r++) begin : g_port_iso
-`ifdef AOU_DUT_SW_RESET_GUARD
-    if (r < RP_COUNT) begin : g_guard
-      assign rst.port_iso[r] =
-          u_dut.u_aou_core_top.gen_aou_fifo_rp[r].u_aou_axi_sw_reset_guard.w_iso;
-    end else begin : g_none
-      assign rst.port_iso[r] = 1'b0;
-    end
-`else
-    assign rst.port_iso[r] = 1'b0;
-`endif
-  end
-
-  // The reset of the DUT's AXI port logic (AOU_CORE: every S and M port pin except
-  // the S-port R payload, which AOU_FIFO_RP holds on I_RESETN): the core reset,
-  // I_RESETN and AOU_SW_RESET. With the BUGS/021 guard the pins see I_RESETN only.
-`ifdef AOU_DUT_SW_RESET_GUARD
-  wire axi_port_rst_n = rst_n;
-`else
+  // The reset of the DUT's AXI port logic (AOU_CORE and the RX FIFOs, every S and
+  // M port pin): the core reset, I_RESETN and AOU_SW_RESET. Either reset loses the AXI transactions in flight
+  // or queued in the core (MAS 7.3.6, integration guide 3.1.1), and the SoC must
+  // reset the AXI managers and subordinates on the AoU ports with it or let them
+  // recover. The bench models the reset: the local AXI agents and Arm's Axi4PC on
+  // the DUT's ports share this reset, so a software reset is a bus reset to them.
   wire axi_port_rst_n = rst.core_rst_n;
-`endif
   aou_axi4pc_ctl_if axi4pc_ctl (.clk(clk));
   initial axi4pc_ctl.chk_scope = $sformatf("%m.g_axi4pc");
-`ifdef AOU_DUT_SW_RESET_GUARD
-  assign axi4pc_ctl.guard = 1'b1;
-`else
-  assign axi4pc_ctl.guard = 1'b0;
-`endif
 
   // ---------------------------------------------------------------------------
   // Interfaces
   // ---------------------------------------------------------------------------
-  aou_axi_bus_if #(.DATA_W(AXI_W)) s_axi [RP_COUNT] (.clk(clk), .resetn(rst_n));
-  aou_axi_bus_if #(.DATA_W(AXI_W)) m_axi [RP_COUNT] (.clk(clk), .resetn(rst_n));
+  aou_axi_bus_if #(.DATA_W(AXI_W)) s_axi [RP_COUNT] (.clk(clk), .resetn(axi_port_rst_n));
+  aou_axi_bus_if #(.DATA_W(AXI_W)) m_axi [RP_COUNT] (.clk(clk), .resetn(axi_port_rst_n));
   aou_fdi_mb_if  #(.DATA_W(BUS_W)) fdi_mb0 (.clk(clk), .rst_n(rst_n));
 `ifdef TWO_PHY
   aou_fdi_mb_if  #(.DATA_W(BUS_W)) fdi_mb1 (.clk(clk), .rst_n(rst_n));
@@ -357,13 +336,10 @@ module tb_top;
   // interface. AOU_TOP keeps the activation state and LinkReset request
   // internal, so they are read from its wires.
   assign fdi_lsm.int_req_linkreset = u_dut.w_aou_req_linkreset;
-`ifndef AOU_DUT_LP_LINKERROR
-  // AOU_TOP has no lp_linkerror output (BUGS/002).
-  assign fdi_lsm.lp_linkerror      = 1'b0;
-`endif
-  assign fdi_lsm.act_st_disabled   = u_dut.w_aou_activate_st_disabled;
-  assign fdi_lsm.int_activate_start   = status.int_activate_start;
-  assign fdi_lsm.int_deactivate_start = status.int_deactivate_start;
+  assign fdi_lsm.act_st_disabled   = status.activate_st_disabled;
+  assign fdi_lsm.sw_reset          = u_dut.w_sw_reset;
+  assign fdi_lsm.int_activate_start = status.int_activate_start;
+  assign fdi_lsm.int_fdi_link_down  = status.int_fdi_link_down;
   assign status.activate_st_disabled = u_dut.w_aou_activate_st_disabled;
   assign status.activate_st_enabled  = u_dut.w_aou_activate_st_enabled;
   assign status.o_aou_req_linkreset  = u_dut.w_aou_req_linkreset;
@@ -376,10 +352,50 @@ module tb_top;
   assign irq.int_early_wdt_err    = status.int_early_wdt_err;
   assign irq.int_activate_start   = status.int_activate_start;
   assign irq.int_deactivate_start = status.int_deactivate_start;
+  assign irq.int_fdi_link_down    = status.int_fdi_link_down;
   assign irq.act_st_disabled      = status.activate_st_disabled;
   assign irq.act_st_enabled       = status.activate_st_enabled;
   assign irq.slv_rid_agg          = u_dut.u_aou_core_top.u_aou_core.O_AXI_SLV_RID_MISMATCH_ERROR;
   assign irq.slv_bid_agg          = u_dut.u_aou_core_top.u_aou_core.O_AXI_SLV_BID_MISMATCH_ERROR;
+
+  // Write-transaction watchdog taps (aou_wdt_if): each RP's early-response
+  // controller ports, the SFR's watchdog outputs and status registers, and the
+  // SFR's core-clock APB port.
+`define AOU_WDT_SFR u_dut.u_aou_core_top.u_aou_core.u_aou_core_sfr
+`define AOU_WDT_CTRL(R) \
+    u_dut.u_aou_core_top.u_aou_core.gen_aou_core_rp[R].u_aou_core_rp.u_aou_early_bresp_s_ctrl
+  aou_wdt_if wdt (.clk(clk));
+  assign wdt.core_rst_n = rst.core_rst_n;
+  assign wdt.rst_n      = rst_n;
+  for (genvar r = 0; r < 4; r++) begin : g_wdt
+    if (r < RP_COUNT) begin : g_rp
+      assign wdt.aw_hs[r] = `AOU_WDT_CTRL(r).I_AXI_S_AWVALID & `AOU_WDT_CTRL(r).O_AXI_S_AWREADY;
+      assign wdt.b_hs[r]  = `AOU_WDT_CTRL(r).I_AXI_M_BVALID & `AOU_WDT_CTRL(r).O_AXI_M_BREADY;
+    end else begin : g_none
+      assign wdt.aw_hs[r] = 1'b0;
+      assign wdt.b_hs[r]  = 1'b0;
+    end
+  end
+  assign wdt.en = {`AOU_WDT_SFR.O_WRITE_EARLY_RESPONSE_RP3_WDT_EN,
+                   `AOU_WDT_SFR.O_WRITE_EARLY_RESPONSE_RP2_WDT_EN,
+                   `AOU_WDT_SFR.O_WRITE_EARLY_RESPONSE_RP1_WDT_EN,
+                   `AOU_WDT_SFR.O_WRITE_EARLY_RESPONSE_RP0_WDT_EN};
+  assign wdt.thr  = `AOU_WDT_SFR.O_WRITE_EARLY_RESPONSE_WDT_THRESHOLD;
+  assign wdt.mask = `AOU_WDT_SFR.O_AOU_INTERRUPT_MASK_INT_EARLY_WDT_MASK;
+  assign wdt.status = {`AOU_WDT_SFR.r_write_early_response_rp3_wdt_trans_timeout_err,
+                       `AOU_WDT_SFR.r_write_early_response_rp2_wdt_trans_timeout_err,
+                       `AOU_WDT_SFR.r_write_early_response_rp1_wdt_trans_timeout_err,
+                       `AOU_WDT_SFR.r_write_early_response_rp0_wdt_trans_timeout_err};
+  assign wdt.pin     = status.int_early_wdt_err;
+  assign wdt.psel    = `AOU_WDT_SFR.I_PSEL;
+  assign wdt.penable = `AOU_WDT_SFR.I_PENABLE;
+  assign wdt.pwrite  = `AOU_WDT_SFR.I_PWRITE;
+  assign wdt.paddr   = `AOU_WDT_SFR.I_PADDR[15:0];
+  assign wdt.pwdata  = `AOU_WDT_SFR.I_PWDATA;
+  assign wdt.prdata  = `AOU_WDT_SFR.O_PRDATA;
+  assign wdt.pready  = `AOU_WDT_SFR.O_PREADY;
+`undef AOU_WDT_SFR
+`undef AOU_WDT_CTRL
 
   AOU_TOP #(
       .RP_COUNT       (RP_COUNT),
@@ -388,7 +404,6 @@ module tb_top;
       .RP1_AXI_DATA_WD(RPW1),
       .RP2_AXI_DATA_WD(RPW2),
       .RP3_AXI_DATA_WD(RPW3),
-      .AXI_PEER_DIE_MAX_DATA_WD(PEER_W),
       .TX_NXT_PACKING_EN(NXT_PACK)
 `ifdef AOU_RX_FIFO_ALT
       ,
@@ -509,13 +524,9 @@ module tb_top;
       .O_LP_WAKE_REQ         (fdi_lsm.lp_wake_req),
       .O_LP_CLK_ACK          (fdi_lsm.lp_clk_ack),
       .O_LP_RX_ACTIVE_STS    (fdi_lsm.lp_rx_active_sts),
-`ifdef AOU_DUT_LP_LINKERROR
       .O_LP_LINKERROR        (fdi_lsm.lp_linkerror),
-`endif
 
       .I_SW_ACTIVATE_START   (fdi_lsm.sw_activate_start),
-      .I_SW_DEACTIVATE_START (fdi_lsm.sw_deactivate_start),
-      .I_SW_RETRAIN_REQ      (fdi_lsm.sw_retrain_req),
       .I_SW_LINKERROR_INJECT (fdi_lsm.sw_linkerror_inject),
       .O_FDI_FSM_STATE       (fdi_lsm.fdi_fsm_state),
       .O_FDI_LINK_UP         (fdi_lsm.fdi_link_up),
@@ -527,6 +538,7 @@ module tb_top;
       .INT_EARLY_WDT_ERR     (status.int_early_wdt_err),
       .INT_ACTIVATE_START    (status.int_activate_start),
       .INT_DEACTIVATE_START  (status.int_deactivate_start),
+      .INT_FDI_LINK_DOWN     (status.int_fdi_link_down),
 
       .TIEL_DFT_MODESCAN        (rst.dft_modescan)
   );
@@ -638,6 +650,7 @@ module tb_top;
     uvm_config_db #(virtual aou_apb_if #(.ADDR_W(32), .DATA_W(32)))::set(null, "*", "apb", apb);
     uvm_config_db #(virtual aou_status_if)::set(null, "*", "status", status);
     uvm_config_db #(virtual aou_irq_if)::set(null, "*", "irq", irq);
+    uvm_config_db #(virtual aou_wdt_if)::set(null, "*", "wdt", wdt);
     uvm_config_db #(virtual aou_rst_if)::set(null, "*", "rst", rst);
     uvm_config_db #(virtual aou_axi4pc_ctl_if)::set(null, "*", "axi4pc_ctl", axi4pc_ctl);
     uvm_config_db #(virtual aou_fdi_checker_if)::set(null, "*", "fdi_chk", fdi_chk);

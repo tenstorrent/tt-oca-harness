@@ -215,7 +215,8 @@ module smu #(
   input  logic [smc_config_pkg::NumTelemetryReceivers-1:0]  telemetry_afready_i,  // ATB flush ready from telemetry sources.
 
   output smc_pkg::smc_ras_t  smc_ras_o,        // SMC error, watchdog, AXI hang and lifecycle
-                                               // integrity levels for chip-level RAS aggregation.
+                                               // integrity indications for chip-level RAS
+                                               // aggregation.
   output sep_pkg::sep_ras_t  sep_ras_o,        // SEP error, watchdog and hang indications for
                                                // chip-level RAS aggregation; zero when CFG.SEP
                                                // is 0.

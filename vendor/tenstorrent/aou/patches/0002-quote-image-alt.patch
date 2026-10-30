@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+diff --git a/DOC/MAS/architecture.adoc b/DOC/MAS/architecture.adoc
+index 1fee29b..e817899 100644
+--- a/DOC/MAS/architecture.adoc
++++ b/DOC/MAS/architecture.adoc
+@@ -328,7 +328,7 @@ The pending counter [.monospaced]#++r_aw_cnt++# is [.monospaced]#++PENDING_CNT_W
+ 
+ A write-transaction watchdog ([.monospaced]#++AOU_WRITE_TRANS_WDT++#, one per RP inside the controller) serves as the diagnostic for system-hang detection. When [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WDT_EN = 1++#, it counts I_CLK cycles in which the RP has writes outstanding ([.monospaced]#++r_aw_cnt != 0++#) and neither an AW nor a B handshake occurs; either handshake restarts the count. When the count reaches [.monospaced]#++WRITE_EARLY_RESPONSE_WDT_CTL.WDT_THRESHOLD++# (shared by all RPs, reset 0xC3500 = 800000 cycles) the sticky status bit [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WDT_TRANS_TIMEOUT_ERR++# is set and the [.monospaced]#++INT_EARLY_WDT_ERR++# interrupt is raised unless masked by [.monospaced]#++AOU_INTERRUPT_MASK.INT_EARLY_WDT_MASK++#. Software clears the status bit (W1C); the count restarts only on a handshake, so a hung remote die keeps the bit set. See xref:aou-4-interrupt[Section 4].
+ 
+-image::write-outstanding-backpressure.svg[Write-outstanding queue filling, stalling, and draining as early-table entries free up]
++image::write-outstanding-backpressure.svg["Write-outstanding queue filling, stalling, and draining as early-table entries free up"]
+ 
+ [[aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id]]
+ ==== 3.7.6. Mixed Ordering \-- Bufferable Before Non-Bufferable (Same ID)
+diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
+index a336cb0..7be30f3 100644
+--- a/DOC/MAS/software-operation.adoc
++++ b/DOC/MAS/software-operation.adoc
+@@ -627,7 +627,7 @@ The sequences below show, for each way the FDI link comes up, goes down or pause
+ 
+ image::fdi-seq-01-bringup-local.svg[Bring-up requested locally (I_SW_ACTIVATE_START or INT_ACTIVATE_START)]
+ 
+-image::fdi-seq-02-bringup-clk-req.svg[Bring-up requested by the D2D adapter (pl_clk_req), remote die activates first]
++image::fdi-seq-02-bringup-clk-req.svg["Bring-up requested by the D2D adapter (pl_clk_req), remote die activates first"]
+ 
+ *Deactivation.* Deactivation is an AoU message exchange only: the link stays Active, the bringup controller does nothing, and SW does nothing on the UCIe controller. A remote DeactivateReq reaches SW as [.monospaced]#++INT_DEACTIVATE_START++#; SW answers by writing [.monospaced]#++DEACTIVATE_START++# (xref:aou-733-deactivation-start[Section 7.3.3]).
+ 
+@@ -637,7 +637,7 @@ image::fdi-seq-04-deactivate-remote.svg[Deactivation started by the remote die]
+ 
+ *Link down with AoU DISABLED.* The PM entry and LinkDisable sequences of xref:aou-736-pm-entry--linkreset--linkdisabled-sequence[Section 7.3.6] deactivate AoU first. The bringup controller follows the adapter to LINKDOWN and then RESET, drives NOP and requests nothing; [.monospaced]#++I_INT_FSM_IN_ACTIVE++# falls with the activation FSM already DISABLED and no ActivateReq outstanding, so no [.monospaced]#++INT_FDI_LINK_DOWN++# is raised. An [.monospaced]#++ACTIVATE_START++# written while the link is down waits in AOU_CORE until SW restarts the link on the UCIe controller.
+ 
+-image::fdi-seq-05-sw-link-disable.svg[Link Disable by SW with AoU deactivated, then restart]
++image::fdi-seq-05-sw-link-disable.svg["Link Disable by SW with AoU deactivated, then restart"]
+ 
+ *Link down with AoU in use.* When the adapter or the remote die takes the link down (LinkReset, Disabled, or a LinkError the adapter entered on its own) while the activation FSM is in ACTIVATE, ENABLED or DEACTIVATE (or in DISABLED with an ActivateReq already sent or received), [.monospaced]#++I_INT_FSM_IN_ACTIVE++# falls, the activation FSM returns to DISABLED, [.monospaced]#++AOU_INIT.INT_FDI_LINK_DOWN++# is set and [.monospaced]#++INT_FDI_LINK_DOWN++# is raised unless masked (xref:aou-4-interrupt[Section 4]). SW runs the LinkReset sequence of Section 7.3.6. After a LinkError the bringup controller also holds the link down until [.monospaced]#++AOU_SW_RESET++# has been written.
+ 
+@@ -653,4 +653,4 @@ image::fdi-seq-07-aou-linkerror.svg[LinkError requested by AOU_CORE on an AoU er
+ 
+ image::fdi-seq-09-retrain.svg[Retrain with AoU ENABLED and traffic in flight]
+ 
+-image::fdi-seq-10-l1-and-wake.svg[L1 entry with AoU deactivated, and the ways out]
++image::fdi-seq-10-l1-and-wake.svg["L1 entry with AoU deactivated, and the ways out"]

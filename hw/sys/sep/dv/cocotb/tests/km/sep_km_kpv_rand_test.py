@@ -89,8 +89,8 @@ Checkers:
 
 Log only: OBS-BLOCKED CHK-KPV-ERASE-RET and ``OBS-KPV-ERASE-RET LOG`` (the
 erase fill is not stated), ``OBS-KPV-ERASE-FILL LOG``, ``OBS-KSCR-COLD LOG``
-(KPV cells after a cold reset are not stated), ``OBS-KPV-RACE-REDRAW`` and
-``OBS-KPV-RACE``, ``LOG err_o`` (PIC vector bit 30 at the wipe) and the
+(KPV cells after a cold reset are not stated), ``INFO-KPV-RACE-REDRAW`` and
+``INFO-KPV-RACE``, ``LOG err_o`` (PIC vector bit 30 at the wipe) and the
 second-key control of the cipher leg.
 
 Not sent: a key access during an erase (not defined), a KPV_SCRAMBLER_KEY read
@@ -783,12 +783,12 @@ class sep_km_kpv_rand_test(sep_base_test):
                 graded = (s, after_seal, final)
                 break
             self.logger.info(
-                "OBS-KPV-RACE-REDRAW slot=%d case=finished ctrl_after_seal=%s ctrl_final=%s",
+                "INFO-KPV-RACE-REDRAW slot=%d case=finished ctrl_after_seal=%s ctrl_final=%s",
                 s,
                 _h(after_seal),
                 _h(final),
             )
-        self.logger.info("OBS-KPV-RACE graded=%d tries=%d", int(graded is not None), n)
+        self.logger.info("INFO-KPV-RACE graded=%d tries=%d", int(graded is not None), n)
 
         self._gate(False)
         cs = p.race_extra[4]

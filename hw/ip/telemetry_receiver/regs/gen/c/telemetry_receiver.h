@@ -33,7 +33,9 @@ extern "C" {
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_reset 0x0
 // Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry
 // transmitter. The flushing is done via the ATB AF interface. This bit clears
-// itself after the flush completes.
+// itself when the transmitter acknowledges the flush. Writing `0` while a
+// flush is pending withdraws the request, so other fields of this register
+// must be updated with a read-modify-write while the bit is set.
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bm 0x100
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bp 8
 #define TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bw 1
@@ -63,7 +65,9 @@ typedef union {
         uint32_t :3;
         // Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry
         // transmitter. The flushing is done via the ATB AF interface. This bit clears
-        // itself after the flush completes.
+        // itself when the transmitter acknowledges the flush. Writing `0` while a
+        // flush is pending withdraws the request, so other fields of this register
+        // must be updated with a read-modify-write while the bit is set.
         uint32_t TELEMETRY_TX_FLUSH :1;
         uint32_t :3;
         // Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is

@@ -739,9 +739,6 @@ module efuse_interface_controller #(
 
     .TOKEN_MATCH_CODE    (TokenMatchCode),
 
-    .addr_t              (addr_t),
-    .data_t              (data_t),
-    .efuse_apb_req_t     (efuse_apb_req_t),
     .efuse_apb_resp_t    (efuse_apb_resp_t),
 
     .efuse_addr_t        (efuse_addr_t),
@@ -756,7 +753,6 @@ module efuse_interface_controller #(
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
 
-    .test_en_i            (test_en_i),
     .security_disable_i   (security_disable_i),
 
     .secure_tm_i          (secure_tm_i),
@@ -765,7 +761,6 @@ module efuse_interface_controller #(
 
     // APB interface - shadow registers
     .apb_req_paddr_i         (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].paddr[EfuseMapRegMapWidth-1:0]),
-    .apb_req_pprot_i         (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pprot),
     .apb_req_psel_i          (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].psel),
     .apb_req_penable_i       (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].penable),
     .apb_req_pwrite_i        (apb_endpoint_reqs[efuse_pkg::SHADOW_REG_MAP].pwrite),
@@ -834,9 +829,6 @@ module efuse_interface_controller #(
 
       .TOKEN_MATCH_CODE     (TokenMatchCode),
 
-      .addr_t               (addr_t),
-      .data_t               (data_t),
-      .efuse_apb_req_t      (efuse_apb_req_t),
       .efuse_apb_resp_t     (efuse_apb_resp_t),
 
       .efuse_addr_t         (efuse_addr_t),
@@ -850,7 +842,6 @@ module efuse_interface_controller #(
       .clk_i                (clk_i),
       .rst_ni               (rst_ni),
 
-      .test_en_i            (test_en_i),
       .security_disable_i   (security_disable_i),
 
       .secure_tm_i          (secure_tm_i),
@@ -858,7 +849,6 @@ module efuse_interface_controller #(
       .efuse_field_map_i    (adopter_field_map_i),
 
       .apb_req_paddr_i      (adopter_paddr[AdopterRegAddrWidth-1:0]),
-      .apb_req_pprot_i      (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].pprot),
       .apb_req_psel_i       (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].psel),
       .apb_req_penable_i    (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].penable),
       .apb_req_pwrite_i     (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].pwrite),

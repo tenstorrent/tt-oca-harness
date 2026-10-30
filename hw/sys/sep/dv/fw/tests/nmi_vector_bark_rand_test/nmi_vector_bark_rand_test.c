@@ -22,7 +22,7 @@
 // bytes.
 //
 // Records: CHK-NMI-STUB (the reset-vector bark runs the stub once);
-// CHK-NMI-ENTRY (each locked-copy bark enters the copy once; the CTL-MIE-AT-BARK
+// CHK-NMI-ENTRY (each locked-copy bark enters the copy once; the CTRL-MIE-AT-BARK
 // read of mstatus.MIE before the bark is the stated value of the leg, and the
 // mstatus.MPIE value at the NMI entry is logged as OBS-NMI-MPIE, not graded);
 // CHK-NMI-NOPIC (the bark moves no bit of
@@ -324,7 +324,7 @@ static uint32_t copy_addr(uint32_t k) {
 
 // One bark through the locked trampoline; prints the CHK-NMI-ENTRY record: one
 // NMI entry, at the locked copy. Before the bark it reads mstatus.MIE back
-// (CTL-MIE-AT-BARK), and CHK-NMI-ENTRY needs that read equal to mie_at_bark.
+// (CTRL-MIE-AT-BARK), and CHK-NMI-ENTRY needs that read equal to mie_at_bark.
 // No cited specification states mstatus.MPIE at an NMI entry, so the value the
 // handler reads is logged (OBS-NMI-MPIE) and not graded. The host grades the
 // same entry with the CPU trace (CHK-NMI-TAKEN).

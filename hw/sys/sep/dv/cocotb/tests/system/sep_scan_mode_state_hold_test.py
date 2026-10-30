@@ -51,7 +51,7 @@ Contract:
   hash completion.
 
 Checkers:
-  CTL-SCAN-REACH        each pulse drives all 14 replaced reset nets low on
+  CTRL-SCAN-REACH        each pulse drives all 14 replaced reset nets low on
                         every clk_i edge with scan_rst_ni low (the nets of
                         sep_scan_reset_override_test, all high before).
   CHK-SCAN-TM-HOLD      secure_tm_o keeps the leg strap value (0 and 1) on
@@ -62,11 +62,11 @@ Checkers:
   CHK-SCAN-SECRET-ZERO  at strap 1 the 32 secret shadow words read 0 on every
                         sample of the session. Control: at strap 0 they read
                         the staged words before the session.
-  CTL-SECDIS-SET        security_disable_o goes 0 to 1 at the SEC_DIS go with
+  CTRL-SECDIS-SET        security_disable_o goes 0 to 1 at the SEC_DIS go with
                         the token whose digest tb_top binds.
   CHK-SCAN-SECDIS-HOLD  security_disable_o, the SEC_DIS digest and its valid
                         bit keep their values on every sample of the session.
-  CTL-SCAN-N0-STAGED    after the first sense, the two shadow storage arrays
+  CTRL-SCAN-N0-STAGED    after the first sense, the two shadow storage arrays
                         (shadow_efuse_values and shadow_efuse_values_n0_scan)
                         together hold the 256 staged shadow words, as a
                         multiset.
@@ -475,11 +475,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         not_low = [(s["t"], [names[i] for i, v in enumerate(s["nets"]) if v != 0]) for s in during]
         not_low = [x for x in not_low if x[1]]
         assert len(during) == cfg.w and not not_low, (
-            f"CTL-SCAN-REACH FAIL: leg={leg} edges_low={len(during)} expected={cfg.w}: "
+            f"CTRL-SCAN-REACH FAIL: leg={leg} edges_low={len(during)} expected={cfg.w}: "
             f"nets not low with scan_rst_ni=0 test_en_i=1: {not_low[:4]}"
         )
         self.logger.info(
-            "CTL-SCAN-REACH: leg=%s nets_low=%d/%d on %d edges w=%d phase=%d scan_rst_ni "
+            "CTRL-SCAN-REACH: leg=%s nets_low=%d/%d on %d edges w=%d phase=%d scan_rst_ni "
             "fell t=%d rose t=%d",
             leg,
             N_NETS,
@@ -497,7 +497,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             f"on {flipped} samples"
         )
         for line in self.strap_flips[-3:]:
-            self.logger.info("STRAP-FLIP LOG: %s", line)
+            self.logger.info("INFO-STRAP-FLIP LOG: %s", line)
         return {"pre": pre, "win": win, "t_rise": t_rise, "flipped": flipped}
 
     # -- logged items ----------------------------------------------------------
@@ -574,7 +574,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
 
     async def _n0_scan_check(self) -> None:
-        """CTL-SCAN-N0-STAGED, CHK-SCAN-N0-CLASS1 and OBS-SCAN-N0-COMPLETE after a sense."""
+        """CTRL-SCAN-N0-STAGED, CHK-SCAN-N0-CLASS1 and OBS-SCAN-N0-COMPLETE after a sense."""
         dut: Any = cocotb.top
         img = self.n0_img
         h: Any = dut
@@ -601,13 +601,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
 
         got = sorted(v if v is not None else -1 for v in n0 + nm)
         assert got == sorted(staged), (
-            f"CTL-SCAN-N0-STAGED FAIL: the two storage arrays (n0_scan={len(n0)} "
+            f"CTRL-SCAN-N0-STAGED FAIL: the two storage arrays (n0_scan={len(n0)} "
             f"normal={len(nm)} entries) do not hold the {NUM_FUSE_WORDS} staged words: "
             f"extra={sorted(set(got) - set(staged))[:4]} "
             f"missing={sorted(set(staged) - set(got))[:4]}"
         )
         self.logger.info(
-            "CTL-SCAN-N0-STAGED: n0_scan=%d normal=%d entries hold the %d staged words",
+            "CTRL-SCAN-N0-STAGED: n0_scan=%d normal=%d entries hold the %d staged words",
             len(n0),
             len(nm),
             NUM_FUSE_WORDS,
@@ -735,8 +735,8 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             and after["dvalid"] == 1
             and bound is not None
             and after["digest"] == bound
-        ), f"CTL-SECDIS-SET FAIL: {line}"
-        self.logger.info("CTL-SECDIS-SET: %s", line)
+        ), f"CTRL-SECDIS-SET FAIL: {line}"
+        self.logger.info("CTRL-SECDIS-SET: %s", line)
         s = await self._session(leg, 0)
         self._obs_hold(leg, 0, s)
         win = s["win"]
@@ -833,7 +833,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             "test bug: a non-Class-1 word is 0 or holds a Class-1 value"
         )
         self.logger.info(
-            "N0-STAGE LOG: class1_words=%d class1_values=%d non_class1_words=%d distinct=%d "
+            "INFO-N0-STAGE LOG: class1_words=%d class1_values=%d non_class1_words=%d distinct=%d "
             "stepped=%d",
             len(CLASS1_IDX),
             len(c1_vals),

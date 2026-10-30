@@ -292,7 +292,7 @@ module smc #(
                                                                                                                       // source.
 
   output smc_pkg::smc_ras_t smc_ras_o,  // Error, watchdog, AXI hang and lifecycle
-                                        // integrity levels for chip-level RAS aggregation.
+                                        // integrity indications for chip-level RAS aggregation.
 
   output smc_pkg::smc_axi_addr_t        smc_global_base_o,  // SMC global base address
                                                             // from the smc_base

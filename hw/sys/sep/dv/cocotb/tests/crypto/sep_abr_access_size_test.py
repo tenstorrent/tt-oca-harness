@@ -356,14 +356,14 @@ class sep_abr_access_size_test(sep_base_test):
         self, addr: int, nbytes: int = 4, size: int = 2, *, expect: int = RESP_OKAY
     ) -> AbrAccess:
         acc = await self._one(AbrAccess(BUS, "rd", addr, nbytes, size), expect)
-        self.logger.info("ABR-SIZE %s", acc.describe())
+        self.logger.info("INFO-ABR-SIZE %s", acc.describe())
         return acc
 
     async def _wr(
         self, addr: int, data: int, nbytes: int = 4, size: int = 2, *, expect: int = RESP_OKAY
     ) -> AbrAccess:
         acc = await self._one(AbrAccess(BUS, "wr", addr, nbytes, size, wdata=data), expect)
-        self.logger.info("ABR-SIZE %s strb=0x%02x", acc.describe(), _strobe(addr, nbytes))
+        self.logger.info("INFO-ABR-SIZE %s strb=0x%02x", acc.describe(), _strobe(addr, nbytes))
         return acc
 
     async def _rd_beat(
@@ -411,7 +411,7 @@ class sep_abr_access_size_test(sep_base_test):
         try:
             entry = {reg.addr: await self._word(reg) for reg in RW_WORDS}
             self.logger.info(
-                "ABR-SIZE entry values: %s",
+                "INFO-ABR-SIZE entry values: %s",
                 " ".join(f"{r.name}=0x{entry[r.addr]:08x}" for r in RW_WORDS),
             )
 
@@ -760,7 +760,7 @@ class sep_abr_access_size_test(sep_base_test):
         for reg in RW_WORDS:
             await self._set(reg, primes[reg.addr])
         self.logger.info(
-            "ABR-UNPOP live control: %d read-write registers primed and read back; "
+            "INFO-ABR-UNPOP live control: %d read-write registers primed and read back; "
             "probing %d dead words past +0x%x (%s)",
             len(RW_WORDS),
             len(dead),
@@ -832,7 +832,7 @@ class sep_abr_access_size_test(sep_base_test):
                 moved = await self._live_image(primes)
                 cells += 1
                 self.logger.info(
-                    "ABR-UNPOP-PARTIAL %d-byte write at 0x%08x WSTRB=0x%02x -> %s",
+                    "INFO-ABR-UNPOP-PARTIAL %d-byte write at 0x%08x WSTRB=0x%02x -> %s",
                     nbytes,
                     addr,
                     _strobe(addr, nbytes),

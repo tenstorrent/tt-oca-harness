@@ -50,6 +50,9 @@ configurations for the trigger levels are:
 * `0x9` - 1024 characters
 * `0xA` - 2048 characters
 * `0xB` - 4096 characters
+The Received Data Ready interrupt asserts while the receive FIFO holds
+at least the selected number of characters. A level above the receive
+FIFO depth, and any combined value above `0xB`, never asserts it.
 | 5:4 | `Reserved` | - | - a| Reserved
 | 3 | `DMA_MODE_SELECT` | W | 0x0 a| DMA mode select:
 * `0` - DMA Mode 0
