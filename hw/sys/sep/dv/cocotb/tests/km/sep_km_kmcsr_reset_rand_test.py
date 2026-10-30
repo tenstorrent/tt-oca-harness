@@ -73,7 +73,9 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
                     RX_VALID 0 and RSVD 0 (RDL reset); PRINT_ENABLE reads the
                     testbench drive ("Set by testbench", km_csr.rdl:980): 1 with
                     ``+VUART_PRINT``, else 0. Every bit is read on its own and a
-                    field with an unknown bit logs ``X``
+                    field with an unknown bit logs ``X``. Control
+                    CTRL-KMCSR-VUART-DRIVE fails the leaf without
+                    ``+VUART_PRINT``, so bit 2 is graded at drive 1
 
 Controls: the VERSION read before the write; the W1C of the other bits next to
 the own W1C; E = 0 next to case (c), which raises the line for each of the 12
@@ -706,6 +708,12 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             known |= 1 << b
             value |= bit
         driven = int("VUART_PRINT" in cocotb.plusargs)
+        if not driven:
+            raise AssertionError(
+                "CTRL-KMCSR-VUART-DRIVE FAIL: +VUART_PRINT is absent, so the bench drives "
+                "PRINT_ENABLE to 0 and an unrouted bit 2 cannot fail"
+            )
+        self.logger.info("CTRL-KMCSR-VUART-DRIVE PASS: +VUART_PRINT drives PRINT_ENABLE to 1")
         for name, mask, lsb_f, reset in pl.VUART_STATUS_FIELDS:
             field_known = known & mask == mask
             got = (value & mask) >> lsb_f

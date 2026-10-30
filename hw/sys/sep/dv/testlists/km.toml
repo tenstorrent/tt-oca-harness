@@ -340,7 +340,7 @@ target = "lsu_stub_all_live"
 # routed to the register reads 0 and fails.
 args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000", "+VUART_PRINT"]
 [tests.overrides.uvm]
-args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex", "+VUART_PRINT"]
 
 [[tests]]
 # KPV slot states, CTRL rules, neighbours, KPV scrambler across resets, wipe and cipher. POKE image.
