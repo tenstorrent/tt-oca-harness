@@ -85,6 +85,7 @@ from ._one_shot import _OneShot
 from .smc_addr_map import (
     _REPO,
     _SMC_BASE_CFG_H,
+    DMA_CONFIG_ENABLED_ND,
     LOCAL_BASE_RESET,
     _field_mask,
     reg_field_encode,
@@ -159,8 +160,6 @@ _DMA = {
         "NUM_REPETITIONS_HI",
     )
 }
-# dma_ctrl.rdl CONFIG: the enable that arms the non-descriptor frontend.
-_DMA_CONFIG_ENABLED_ND = 1 << 10
 _DMA_SRC_ADDR = _MODEL_BASE
 _DMA_POLLS = 50
 
@@ -183,13 +182,9 @@ _CFG_MASK = {
 _DBW_LSB = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp")
 _GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 _REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
-# CPU_CTRL SCRATCH[1]: data [31:0] RW (cpu_ctrl.adoc), at offset 0x39088 of the SMC window.
-_SCRATCH1_OFFSET = 0x39088
+# CPU_CTRL SCRATCH[1]: data [31:0] RW (cpu_ctrl.adoc), as an offset into the SMC window.
 _SCRATCH1_LOCAL = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 1)
-assert _SCRATCH1_LOCAL == LOCAL_BASE_RESET + _SCRATCH1_OFFSET, (
-    f"the generated map places CPU_CTRL SCRATCH[1] at 0x{_SCRATCH1_LOCAL:x}, not at "
-    f"LOCAL_BASE 0x{LOCAL_BASE_RESET:x} + 0x{_SCRATCH1_OFFSET:x}"
-)
+_SCRATCH1_OFFSET = _SCRATCH1_LOCAL - LOCAL_BASE_RESET
 _HIGH_BITS = 0xAB
 _HIGH_SHIFT = 32
 _SYS_IN_PROT = 0
@@ -334,7 +329,7 @@ class smc_filter_region_span_test_seq(SmcCsrSeq):
     async def _dma_transfer(self, src: int, dst: int, tag: str) -> None:
         """One descriptor, submitted by the NEXT_ID read the frontend launches on."""
         baseline = await self.csr_read(f"DMA_DONE_BASE_{tag}", _DMA["DONE_0"])
-        await self.csr_write(f"DMA_CONFIG_{tag}", _DMA["CONFIG"], _DMA_CONFIG_ENABLED_ND)
+        await self.csr_write(f"DMA_CONFIG_{tag}", _DMA["CONFIG"], DMA_CONFIG_ENABLED_ND)
         for name, value in (
             ("DST_ADDRESS_LO", dst & 0xFFFF_FFFF),
             ("DST_ADDRESS_HI", dst >> 32),

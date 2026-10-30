@@ -207,7 +207,7 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         cfg = await self.csr_read("LSIO_CFG_RMW", AVS_CONFIG)
         await self.csr_write("LSIO_CFG_CLEAR", AVS_CONFIG, cfg & ~GPIO_ENABLE_BM)
         cleared = await self._read_okay("LSIO_CFG_CLEAR_RB", AVS_CONFIG)
-        assert cleared == 0x0, (
+        assert cleared == 0, (
             f"AVS_CONFIG reads 0x{cleared:08x} after clearing AVS_GPIO_ENABLE, expected 0x0"
         )
         before = {pad: self._pad_levels(pad) for _, pad in PADS}
@@ -239,8 +239,9 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         restore = await self.csr_read("LSIO_CFG_RESTORE_RMW", AVS_CONFIG)
         await self.csr_write("LSIO_CFG_RESTORE", AVS_CONFIG, restore | GPIO_ENABLE_BM)
         restored = await self._read_okay("LSIO_CFG_RESTORE_RB", AVS_CONFIG)
-        assert restored == 0x1, (
-            f"AVS_CONFIG reads 0x{restored:08x} after restoring AVS_GPIO_ENABLE, expected 0x1"
+        assert restored == GPIO_ENABLE_BM, (
+            f"AVS_CONFIG reads 0x{restored:08x} after restoring AVS_GPIO_ENABLE, "
+            f"expected 0x{GPIO_ENABLE_BM:x}"
         )
         pads = "/".join(str(p) for _, p in PADS)
         return (

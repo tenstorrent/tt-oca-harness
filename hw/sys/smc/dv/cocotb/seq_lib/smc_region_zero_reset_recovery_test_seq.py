@@ -17,7 +17,7 @@ from env.smc_reset_item import SmcResetItem, SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import generated_window, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import (
     INBOUND0_END,
@@ -116,52 +116,54 @@ _K_TERM_STEP = {
     "RESET": "S7",
 }
 
-# Probe-eligible units of the SMC Component Address Map: (name, first offset, last offset,
-# register at the first offset or None). The harts-only units (Debug Module Hart Interface,
-# cluster error device) and the forwarded regions (dtp_ctrl_reg, mmode_region, xvisor_region)
-# are not probed.
-_UNITS = (
-    ("WDT0", 0x0, 0x3FF, "smc_cluster_core0_wdt/CTRL"),
-    ("WDT1", 0x400, 0x7FF, "smc_cluster_core1_wdt/CTRL"),
-    ("WDT2", 0x800, 0xBFF, "smc_cluster_core2_wdt/CTRL"),
-    ("WDT3", 0xC00, 0xFFF, "smc_cluster_core3_wdt/CTRL"),
-    ("RESET_UNIT", 0x2000, 0x27FF, None),
-    ("MISC_WRAP", 0x2800, 0x2FFF, "smc_misc_wrap/scratch_cold/SCRATCH[0]"),
-    ("GPIO", 0x3000, 0x3FFF, "gpio_intf/DATA_CTRL"),
-    ("AVSBUS", 0x4000, 0x4FFF, "smc_avsbus_controller/AVS_CMD"),
-    ("I2C", 0x5000, 0x5FFF, "smc_i2c_wrap/i2c/INTR_STATE"),
-    ("UART", 0x6000, 0x6FFF, "smc_uart_wrap/uart_log_engine_wrap/uart_log_engine_ctrl/CTRL"),
-    ("EFUSE_MAP", 0x7000, 0x7FFF, "smc_efuse_map/LOCKS"),
-    ("EFUSE_IF", 0x8000, 0x8FFF, "efuse_interface_ctrl/EFUSE_INTERFACE_CTRL_STATUS"),
-    ("TELEMETRY", 0x9000, 0x9FFF, "smc_telemetry_receiver_wrap/telemetry_receiver/CTRL"),
-    ("OCTS_TIMER", 0xA000, 0xAFFF, "smc_system_timer_octs/TIMER_START"),
-    ("DFX", 0xB800, 0xBFFF, "dfx_ctrl/STATUS_SMU"),
-    ("BASE_CONFIG", 0x1_0000, 0x1_1FFF, "smc_base_config/GLOBAL_BASE"),
-    ("ALIAS_REMAP", 0x1_2000, 0x1_2FFF, "smc_alias_remap/REGION/region_start"),
-    ("MMODE_REMAP", 0x1_3000, 0x1_3FFF, "smc_mmode_remap/REGION/region_attrs"),
-    ("XVISOR_REMAP", 0x1_4000, 0x1_4FFF, "smc_xvisor_remap/REGION/region_attrs"),
-    ("INBOUND_FILTER", 0x1_5000, 0x1_5FFF, "smc_inbound_filter_ctrl/FILTER_CONFIG"),
-    ("OUTBOUND_FILTER", 0x1_6000, 0x1_6FFF, "smc_outbound_filter_ctrl/FILTER_CONFIG"),
-    ("MAILBOX", 0x1_8000, 0x3_7FFF, "smc_mailbox/outbound_mailbox_0/WRITE_DATA"),
-    ("IDMA", 0x3_8000, 0x3_81FF, "dma_ctrl/CONFIG"),
-    ("ZEROER", 0x3_8200, 0x3_82FF, "zeroer_ctrl/DEST_ADDR"),
-    ("CPU_CTRL", 0x3_9000, 0x3_9FFF, "smc_cpu_ctrl/RESET_VECTOR[0]"),
-    ("I3C", 0x3_A000, 0x3_FFFF, "oca_i3c_wrap/i3c_csr/I3CBase/HCI_VERSION"),
-    ("SPM_ROM", 0x4_0000, 0x5_FFFF, None),
-    ("SPM_RAM", 0x6_0000, 0x15_FFFF, None),
-    ("CLA", 0x16_0000, 0x16_3FFF, "smc_cla/dst_sink/Trdstramcontrol"),
+# Probe-eligible units of the SMC Component Address Map: (name, smc_top instance, register at
+# the first offset or None). _UNITS adds each unit's first and last offset from the generated
+# map. The harts-only units (Debug Module Hart Interface, cluster error device) and the
+# forwarded regions (dtp_ctrl_reg, mmode_region, xvisor_region) are not probed.
+_PROBE_UNITS = (
+    ("WDT0", "smc_cluster_core0_wdt", "smc_cluster_core0_wdt/CTRL"),
+    ("WDT1", "smc_cluster_core1_wdt", "smc_cluster_core1_wdt/CTRL"),
+    ("WDT2", "smc_cluster_core2_wdt", "smc_cluster_core2_wdt/CTRL"),
+    ("WDT3", "smc_cluster_core3_wdt", "smc_cluster_core3_wdt/CTRL"),
+    ("RESET_UNIT", "smc_reset_unit", None),
+    ("MISC_WRAP", "smc_misc_wrap", "smc_misc_wrap/scratch_cold/SCRATCH[0]"),
+    ("GPIO", "gpio_intf", "gpio_intf/DATA_CTRL"),
+    ("AVSBUS", "smc_avsbus_controller", "smc_avsbus_controller/AVS_CMD"),
+    ("I2C", "smc_i2c_wrap", "smc_i2c_wrap/i2c/INTR_STATE"),
+    ("UART", "smc_uart_wrap", "smc_uart_wrap/uart_log_engine_wrap/uart_log_engine_ctrl/CTRL"),
+    ("EFUSE_MAP", "smc_efuse_map", "smc_efuse_map/LOCKS"),
+    ("EFUSE_IF", "efuse_interface_ctrl", "efuse_interface_ctrl/EFUSE_INTERFACE_CTRL_STATUS"),
     (
-        "EXTERNAL",
-        0x40_0000,
-        0x40_6547,
-        "smc_external/mandatory/efuse_shim_ctrl/EFUSE_BANK_INIT_TIME",
+        "TELEMETRY",
+        "smc_telemetry_receiver_wrap",
+        "smc_telemetry_receiver_wrap/telemetry_receiver/CTRL",
     ),
-    ("PLIC", 0x400_0000, 0x7FF_FFFF, "smc_cluster_plic/PRIORITY[0]"),
-    ("CLINT", 0x800_0000, 0x800_FFFF, "smc_cluster_clint/MSIP[0]"),
-    ("BEU0", 0x801_0000, 0x801_0FFF, "smc_cluster_core0_beu/CAUSE"),
-    ("BEU1", 0x801_1000, 0x801_1FFF, "smc_cluster_core1_beu/CAUSE"),
-    ("BEU2", 0x801_2000, 0x801_2FFF, "smc_cluster_core2_beu/CAUSE"),
-    ("BEU3", 0x801_3000, 0x801_3FFF, "smc_cluster_core3_beu/CAUSE"),
+    ("OCTS_TIMER", "smc_system_timer_octs", "smc_system_timer_octs/TIMER_START"),
+    ("DFX", "dfx_ctrl", "dfx_ctrl/STATUS_SMU"),
+    ("BASE_CONFIG", "smc_base_config", "smc_base_config/GLOBAL_BASE"),
+    ("ALIAS_REMAP", "smc_alias_remap", "smc_alias_remap/REGION/region_start"),
+    ("MMODE_REMAP", "smc_mmode_remap", "smc_mmode_remap/REGION/region_attrs"),
+    ("XVISOR_REMAP", "smc_xvisor_remap", "smc_xvisor_remap/REGION/region_attrs"),
+    ("INBOUND_FILTER", "smc_inbound_filter_ctrl", "smc_inbound_filter_ctrl/FILTER_CONFIG"),
+    ("OUTBOUND_FILTER", "smc_outbound_filter_ctrl", "smc_outbound_filter_ctrl/FILTER_CONFIG"),
+    ("MAILBOX", "smc_mailbox", "smc_mailbox/outbound_mailbox_0/WRITE_DATA"),
+    ("IDMA", "dma_ctrl", "dma_ctrl/CONFIG"),
+    ("ZEROER", "zeroer_ctrl", "zeroer_ctrl/DEST_ADDR"),
+    ("CPU_CTRL", "smc_cpu_ctrl", "smc_cpu_ctrl/RESET_VECTOR[0]"),
+    ("I3C", "oca_i3c_wrap", "oca_i3c_wrap/i3c_csr/I3CBase/HCI_VERSION"),
+    ("SPM_ROM", "spm_rom_memory", None),
+    ("SPM_RAM", "spm_memory", None),
+    ("CLA", "smc_cla", "smc_cla/dst_sink/Trdstramcontrol"),
+    ("EXTERNAL", "smc_external", "smc_external/mandatory/efuse_shim_ctrl/EFUSE_BANK_INIT_TIME"),
+    ("PLIC", "smc_cluster_plic", "smc_cluster_plic/PRIORITY[0]"),
+    ("CLINT", "smc_cluster_clint", "smc_cluster_clint/MSIP[0]"),
+    ("BEU0", "smc_cluster_core0_beu", "smc_cluster_core0_beu/CAUSE"),
+    ("BEU1", "smc_cluster_core1_beu", "smc_cluster_core1_beu/CAUSE"),
+    ("BEU2", "smc_cluster_core2_beu", "smc_cluster_core2_beu/CAUSE"),
+    ("BEU3", "smc_cluster_core3_beu", "smc_cluster_core3_beu/CAUSE"),
+)
+_UNITS = tuple(
+    (name, *generated_window(instance), register) for name, instance, register in _PROBE_UNITS
 )
 _UNIT_BY_NAME = {u[0]: u for u in _UNITS}
 # Units whose register reset values the contract pins for the BELOW compare.

@@ -27,7 +27,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr
+from .smc_addr_map import _REPO, _field_mask, reg_field_encode, reg_reset_word, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_octs_sync_bfm import (
     count_rising_edges,
@@ -43,13 +43,27 @@ _OCTS_COUNT_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADD
 _OCTS_COUNT_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR")
 _OCTS_TIMER_GPIO_ENABLE = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR")
 
-# CTRL: CREDIT_VAL=0x10, PULSE_WIDTH=0x02, STEP=0x01.
-_OCTS_CTRL_VAL = 0x0001_0210
+_OCTS_H = _REPO / "hw" / "ip" / "system_timer_octs" / "regs" / "gen" / "c" / "system_timer_octs.h"
+
 _OCTS_CREDIT_VAL = 0x10
 _OCTS_PULSE_WIDTH = 0x02
+_OCTS_STEP = 0x01
+_OCTS_CTRL_VAL = reg_field_encode(
+    _OCTS_H,
+    "SYSTEM_TIMER_OCTS",
+    "CTRL",
+    credit_val=_OCTS_CREDIT_VAL,
+    pulse_width=_OCTS_PULSE_WIDTH,
+    step=_OCTS_STEP,
+)
 _OCTS_PRESET_VAL = 0x1000
-_OCTS_STATUS_MODE = 0x1
-_OCTS_STATUS_RUNNING = 0x10
+_OCTS_STATUS_MODE = _field_mask(_OCTS_H, "SYSTEM_TIMER_OCTS__STATUS__MODE_bm")
+_OCTS_STATUS_RUNNING = _field_mask(_OCTS_H, "SYSTEM_TIMER_OCTS__STATUS__RUNNING_bm")
+_OCTS_START = _field_mask(_OCTS_H, "SYSTEM_TIMER_OCTS__TIMER_START__START_bm")
+_OCTS_GPIO_ENABLE = _field_mask(_OCTS_H, "SYSTEM_TIMER_OCTS__TIMER_GPIO_ENABLE__GPIO_ENABLE_bm")
+_OCTS_COUNT_RESET = (
+    reg_reset_word(_OCTS_H, "SYSTEM_TIMER_OCTS", "TIMER_COUNT_HI") << 32
+) | reg_reset_word(_OCTS_H, "SYSTEM_TIMER_OCTS", "TIMER_COUNT_LO")
 _OCTS_PRIMARY_WAIT = 256
 # COUNT lands a few ticks past PRESET by the time the reload read returns.
 _OCTS_RELOAD_SLACK = 0x100
@@ -159,27 +173,38 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         edge_task = cocotb.start_soon(
             count_rising_edges(dut.tb_octs_sync_load_from_dut, clk, _OCTS_PRIMARY_WAIT)
         )
+        level_task = cocotb.start_soon(
+            _high_times(dut.tb_octs_sync_load_from_dut, clk, _OCTS_PRIMARY_WAIT)
+        )
         # The response to a SECONDARY START write is not stated (SF-028); it is
         # measured and logged, not compared.
-        bresp = await self.csr_write("OCTS_TIMER_START_SEC", _OCTS_TIMER_START, 1, allow_error=True)
+        bresp = await self.csr_write(
+            "OCTS_TIMER_START_SEC", _OCTS_TIMER_START, _OCTS_START, allow_error=True
+        )
         count_after = await self._read_count()
         status = await self.csr_read("OCTS_STATUS_SEC_START", _OCTS_STATUS)
         start_rb = await self.csr_read("OCTS_TIMER_START_SEC_RB", _OCTS_TIMER_START)
         sync_edges = await edge_task
+        _, _, sec_unresolved = await level_task
         self._sec_sync_edges = sync_edges
 
-        assert count_before == 0, (
-            f"OCTS COUNT before the SECONDARY TIMER_START is 0x{count_before:x}, expected 0"
+        assert count_before == _OCTS_COUNT_RESET, (
+            f"OCTS COUNT before the SECONDARY TIMER_START is 0x{count_before:x}, expected "
+            f"0x{_OCTS_COUNT_RESET:x}"
         )
-        assert count_after == 0, (
+        assert count_after == _OCTS_COUNT_RESET, (
             f"OCTS SECONDARY TIMER_START changed COUNT 0x{count_before:x} -> "
             f"0x{count_after:x}; in SECONDARY mode the write has no effect"
         )
         assert (status & _OCTS_STATUS_RUNNING) == 0, (
             f"OCTS STATUS.RUNNING set after a SECONDARY TIMER_START (STATUS=0x{status:08x})"
         )
-        assert (start_rb & 0x1) == 0, (
+        assert (start_rb & _OCTS_START) == 0, (
             f"OCTS TIMER_START.START reads 1 after the write (1P self-clears): 0x{start_rb:08x}"
+        )
+        assert sec_unresolved == 0, (
+            f"OCTS pad55 sync_load unresolvable on {sec_unresolved} of {_OCTS_PRIMARY_WAIT} "
+            "samples after the SECONDARY TIMER_START"
         )
         assert sync_edges == 0, (
             f"OCTS SECONDARY TIMER_START drove {sync_edges} sync_load rising edges on pad55 "
@@ -193,8 +218,8 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
             "CHK-OCTS-SEC-START-IGNORED",
             f"PRESET 0x{_OCTS_SEC_PRESET_HI:x}_{_OCTS_PRESET_VAL:08x}, COUNT 0x{count_before:x}"
             f"->0x{count_after:x}, RUNNING=0 (STATUS=0x{status:08x}), TIMER_START rb="
-            f"{start_rb & 0x1}, sync_load edges={sync_edges} over {_OCTS_PRIMARY_WAIT} "
-            f"clk_smc_i, BRESP={bresp} (LINKED-ISSUE SF-028, logged), PRESET_HI restored "
+            f"{start_rb & _OCTS_START}, sync_load edges={sync_edges} unresolved="
+            f"{sec_unresolved} over {_OCTS_PRIMARY_WAIT} clk_smc_i, BRESP={bresp} (LINKED-ISSUE SF-028, logged), PRESET_HI restored "
             f"0x{preset_hi:x}",
         )
         self._stamp("S3")
@@ -261,7 +286,7 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         await ClockCycles(clk, 8)
 
         await self.csr_write("OCTS_CTRL", _OCTS_CTRL, _OCTS_CTRL_VAL)
-        await self.csr_write("OCTS_TIMER_GPIO_ENABLE", _OCTS_TIMER_GPIO_ENABLE, 1)
+        await self.csr_write("OCTS_TIMER_GPIO_ENABLE", _OCTS_TIMER_GPIO_ENABLE, _OCTS_GPIO_ENABLE)
         await self.csr_write("OCTS_PRESET_LO", _OCTS_PRESET_LO, _OCTS_PRESET_VAL)
         await self.csr_write("OCTS_PRESET_HI", _OCTS_PRESET_HI, 0)
         self._stamp("S1")
@@ -321,7 +346,7 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         )
 
         await self.csr_write("OCTS_CTRL", _OCTS_CTRL, _OCTS_CTRL_VAL)
-        await self.csr_write("OCTS_TIMER_GPIO_ENABLE", _OCTS_TIMER_GPIO_ENABLE, 1)
+        await self.csr_write("OCTS_TIMER_GPIO_ENABLE", _OCTS_TIMER_GPIO_ENABLE, _OCTS_GPIO_ENABLE)
         await self.csr_write("OCTS_PRESET_LO", _OCTS_PRESET_LO, _OCTS_PRESET_VAL)
         await self.csr_write("OCTS_PRESET_HI", _OCTS_PRESET_HI, 0)
 
@@ -338,7 +363,7 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         # secondary phase. TIMER_START reloads it, so the reload -- not the
         # absolute value -- is what this write can be shown to have caused.
         count_before_start = await self._read_count()
-        await self.csr_write("OCTS_TIMER_START", _OCTS_TIMER_START, 1)
+        await self.csr_write("OCTS_TIMER_START", _OCTS_TIMER_START, _OCTS_START)
         count_reloaded = await self._read_count()
         status_pri = await self.csr_read("OCTS_STATUS_PRI_START", _OCTS_STATUS)
 

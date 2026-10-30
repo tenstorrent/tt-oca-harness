@@ -219,14 +219,11 @@ _REF_COUNTER_SETTLE = 64
 
 # The straps block belongs to the open integration, not to smc.sv; the SMC map
 # places it in the mandatory region of the adopter external window, and
-# straps.rdl makes both `sw = r; hw = w`: STRAPS_LO @0x0 straps[31:0],
-# STRAPS_HI @0x4 straps[28:0]. What they hold is whatever the integration
-# latched from the bonded pads at cold reset, so the value is read once and
-# held against the write, not predicted.
-_STRAPS_REGS = (
-    ("STRAPS_LO", 0x0, 0xFFFF_FFFF),
-    ("STRAPS_HI", 0x4, 0x1FFF_FFFF),
-)
+# straps.rdl makes both `sw = r; hw = w`. What they hold is whatever the
+# integration latched from the bonded pads at cold reset, so the value is read
+# once and held against the write, not predicted.
+_STRAPS_BLOCK = "smc_external/mandatory/straps"
+_STRAPS_REGS = ("STRAPS_LO", "STRAPS_HI")
 _STRAPS_WRITE_PATTERN = 0xFFFF_FFFF
 
 # A software load of REFERENCE_COUNTER crosses into the reference-clock domain
@@ -236,9 +233,9 @@ _STRAPS_WRITE_PATTERN = 0xFFFF_FFFF
 # readbacks fails.
 _REF_COUNTER_LOAD_POLLS = 16
 
-# chip_config.adoc: VERSION_LO / VERSION_HI are `R` with these values, and the
-# documented resets of CHIP_ID / LC_STATE, which are logged only (SF-023).
-_VERSION_DOC = {"VERSION_LO": 0x0001_00A0, "VERSION_HI": 0x0000_0000}
+# VERSION_LO / VERSION_HI are `R` and read their RDL reset; the documented
+# resets of CHIP_ID / LC_STATE are logged only (SF-023).
+_VERSION_REGS = ("VERSION_LO", "VERSION_HI")
 _CHIPCFG_RESET_DOC = {"CHIP_ID": 0x0, "LC_STATE": 0xF}
 
 _LANES = 4
@@ -511,8 +508,10 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
     async def _straps_window(self) -> None:
         base = _straps_base()
         captured: dict[str, int] = {}
-        for label, offset, declared in _STRAPS_REGS:
-            addr = base + offset
+        for label in _STRAPS_REGS:
+            reg = rdl_register(f"{_STRAPS_BLOCK}/{label}")
+            addr = reg.addr
+            declared = reg.declared_mask
             value = await self.csr_read(f"{label}:capture", addr)
             captured[label] = value
             outside = value & ~declared & 0xFFFF_FFFF
@@ -625,14 +624,15 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
         pre: dict[str, int] = {}
         bresp: list[int] = []
         start = self.strobe_compares
+        reset: dict[str, int] = {}
         for reg in regs:
             name = reg.path.rsplit("/", 1)[-1]
+            reset[name] = reg.reset_word
             pre[name] = await self._read(f"{name}:pre", reg.addr)
             bresp.append(await self._ro_write_unchanged(reg, "ones", 0xFFFF_FFFF, 0xF, pre[name]))
-        for name, doc in _VERSION_DOC.items():
-            assert pre[name] == doc, (
-                f"chip_config/{name}: reads 0x{pre[name]:08x}, chip_config.adoc documents "
-                f"0x{doc:08x}"
+        for name in _VERSION_REGS:
+            assert pre[name] == reset[name], (
+                f"chip_config/{name}: reads 0x{pre[name]:08x}, its RDL reset is 0x{reset[name]:08x}"
             )
             self.value_checks += 1
             self.strobe_compares += 1

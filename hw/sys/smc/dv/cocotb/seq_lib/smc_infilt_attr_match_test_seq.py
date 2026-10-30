@@ -21,7 +21,14 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import _REPO, _field_mask, reg_reset_word, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _REPO,
+    _field_mask,
+    reg_field_encode,
+    reg_reset_word,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
@@ -29,17 +36,21 @@ _ENTRY_ENABLED = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABL
 _READ_ALLOWED = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm")
 _WRITE_ALLOWED = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm")
 _ALLOW_BURST = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm")
+_ALLOW_NS = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm")
 _SRC_ID = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__SRC_ID_bm")
 _RESET_CFG = reg_reset_word(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG")
 _RESET_START = reg_reset_word(_FILTER_H, "FILTER_CTRL", "START_ADDR")
 _RESET_END = reg_reset_word(_FILTER_H, "FILTER_CTRL", "END_ADDR")
 
 # Register words; the read-back adds data_bus_width 3.
-_PERMIT_NS0 = 0x0000_0000_0100_0013
-_PERMIT_NS1 = 0x0000_0000_0100_0113
-_DENY_NS0 = 0x0000_0000_0100_0010
-_PERMIT_SRC5 = 0x0000_0000_0105_0013
-_PERMIT_GRP10 = 0x0000_0000_01A0_0013
+_RW_BURST = _ENTRY_ENABLED | _READ_ALLOWED | _WRITE_ALLOWED | _ALLOW_BURST
+_PERMIT_NS0 = _RW_BURST
+_PERMIT_NS1 = _RW_BURST | _ALLOW_NS
+_DENY_NS0 = _ENTRY_ENABLED | _ALLOW_BURST
+_PERMIT_SRC5 = _RW_BURST | reg_field_encode(_FILTER_H, "FILTER_CTRL", "FILTER_CONFIG", src_id=5)
+_PERMIT_GRP10 = _RW_BURST | reg_field_encode(
+    _FILTER_H, "FILTER_CTRL", "FILTER_CONFIG", group_id=0xA
+)
 _READBACK_BITS = _RESET_CFG
 _PAGE = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR") + 0x5_0000
 _PAGE_END = _PAGE + 0xFFF
@@ -61,10 +72,6 @@ _Q_DENY = _Q + 0x100
 _BURSTS = ((1, _Q + 0x1000), (3, _Q + 0x1100), (7, _Q + 0x1200), (15, _Q + 0x1400))
 _E15 = 15
 _E15_HIT = 1 << _E15
-_RW_BURST = _ENTRY_ENABLED | _READ_ALLOWED | _WRITE_ALLOWED | _ALLOW_BURST
-_CONTRACT_START = 0x0
-_CONTRACT_END = 0x7
-_CONTRACT_CFG = 0x3000
 _NEW_TERMS = (
     "PAGE-WALK",
     "PAGE-OUTSIDE",
@@ -531,9 +538,9 @@ class smc_infilt_attr_match_test_seq(SmcCsrSeq):
 
     async def _restore_entry(self, entry: int) -> None:
         for reg, val in (
-            ("FILTER_CONFIG", _CONTRACT_CFG),
-            ("START_ADDR", _CONTRACT_START),
-            ("END_ADDR", _CONTRACT_END),
+            ("FILTER_CONFIG", _RESET_CFG),
+            ("START_ADDR", _RESET_START),
+            ("END_ADDR", _RESET_END),
         ):
             await self.csr_restore(f"IB{entry}_{reg}", _reg(reg, entry), val)
 
@@ -580,7 +587,7 @@ class smc_infilt_attr_match_test_seq(SmcCsrSeq):
             cfg = await self.csr_read(f"IB{entry}_QUIET", _reg("FILTER_CONFIG", entry), length=8)
             assert not cfg & _ENTRY_ENABLED, f"inbound {entry} enabled: 0x{cfg:x}"
         for entry in _PAGE_ENTRIES:
-            await self._range_readback(entry, _CONTRACT_START, _CONTRACT_END)
+            await self._range_readback(entry, _RESET_START, _RESET_END)
         seeded = [
             (_page(e) + off, _page_seed(e, k))
             for e in _PAGE_ENTRIES

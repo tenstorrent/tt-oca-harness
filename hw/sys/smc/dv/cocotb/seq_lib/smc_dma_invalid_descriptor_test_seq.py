@@ -23,8 +23,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 
-from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_dma_sanity_test_seq import (
+from .smc_addr_map import (
     DMA_CONFIG_ENABLED_ND,
     DMA_CTRL_CONFIG,
     DMA_CTRL_DONE_0,
@@ -42,6 +41,9 @@ from .smc_dma_sanity_test_seq import (
     DMA_CTRL_SRC_STRIDE_HI,
     DMA_CTRL_SRC_STRIDE_LO,
     DMA_CTRL_STATUS_0,
+)
+from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_dma_sanity_test_seq import (
     INBOUND0_END,
     INBOUND0_FILTER_CONFIG,
     INBOUND0_START,

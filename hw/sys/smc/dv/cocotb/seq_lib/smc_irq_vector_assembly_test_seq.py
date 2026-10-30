@@ -22,17 +22,13 @@ from .smc_addr_map import (
     ZEROER_CTRL_STATUS,
 )
 from .smc_mailbox_multi_instance_test_seq import (
-    _CTRL_OFFSET,
     _CTRL_WFLUSH,
-    _INBOUND_MAILBOX_BASE,
+    _INBOUND_PFX,
     _IRQ_PATTERN,
-    _IRQEN_OFFSET,
     _IRQEN_WTIRQ,
-    _IRQS_OFFSET,
     _IRQS_WTIRQ,
     _MAILBOX_CG_EN,
-    _MAILBOX_STRIDE,
-    _WRITE_DATA_OFFSET,
+    _reg,
 )
 from .smc_output_fabric_vip_utils import output_fabric_pass_all_cfg_seq
 from .smc_zeroer_dma_timeout_test_seq import ZEROER_CTRL_STATUS_START
@@ -159,21 +155,19 @@ class smc_irq_vector_assembly_test_seq(output_fabric_pass_all_cfg_seq):
         )
 
     async def _mailbox(self, idx: int, level: int) -> None:
-        base = _INBOUND_MAILBOX_BASE + idx * _MAILBOX_STRIDE
+        pfx = _INBOUND_PFX.format(idx)
         await self.csr_write(
-            f"MBOX_IN_{idx}_IRQEN", base + _IRQEN_OFFSET, _IRQEN_WTIRQ * level, length=8
+            f"MBOX_IN_{idx}_IRQEN", _reg(pfx, "IRQEN"), _IRQEN_WTIRQ * level, length=8
         )
         if level:
             await self.csr_write(
-                f"MBOX_IN_{idx}_WRITE_DATA", base + _WRITE_DATA_OFFSET, _IRQ_PATTERN, length=8
+                f"MBOX_IN_{idx}_WRITE_DATA", _reg(pfx, "WRITE_DATA"), _IRQ_PATTERN, length=8
             )
 
     async def _mailbox_clear(self, idx: int) -> None:
-        base = _INBOUND_MAILBOX_BASE + idx * _MAILBOX_STRIDE
-        await self.csr_write(f"MBOX_IN_{idx}_WFLUSH", base + _CTRL_OFFSET, _CTRL_WFLUSH, length=8)
-        await self.csr_write(
-            f"MBOX_IN_{idx}_IRQS_CLEAR", base + _IRQS_OFFSET, _IRQS_WTIRQ, length=8
-        )
+        pfx = _INBOUND_PFX.format(idx)
+        await self.csr_write(f"MBOX_IN_{idx}_WFLUSH", _reg(pfx, "CTRL"), _CTRL_WFLUSH, length=8)
+        await self.csr_write(f"MBOX_IN_{idx}_IRQS_CLEAR", _reg(pfx, "IRQS"), _IRQS_WTIRQ, length=8)
 
     async def _act(self, src: str, level: int) -> None:
         if src in _PINS:

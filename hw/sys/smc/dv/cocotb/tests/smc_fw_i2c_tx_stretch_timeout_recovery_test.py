@@ -12,8 +12,8 @@ the automatic STOP recovery, reinitialises both, and checks a 16-byte write.
 Bench observation: the transfer has to cross the pads. A passive decoder on
 tb_i2c0_scl/sda records every START, address byte, direction, acknowledge,
 data byte and STOP, and after the PASS word the sequence requires
-an acknowledged read frame to 0x10 (the stretched read) and an acknowledged
-write frame to 0x10 carrying at least the 16 recovery bytes.
+an acknowledged read frame to 0x10 (the stretched read) closed by a STOP,
+and an acknowledged write frame to 0x10 carrying at least the 16 recovery bytes.
 The firmware's FIFO-level and byte-compare checks stay the firmware's; the
 wire is what the bench vouches for.
 
@@ -55,8 +55,9 @@ class smc_fw_i2c_tx_stretch_timeout_recovery_test(smc_base_test):
             # 5 ns clk_smc_i); 50_000 is ~10x that.
             poll_iterations=50_000,
             floors=(
-                # The read the empty target TX FIFO stretches until the controller times out.
-                WireFloor(TARGET_ADDR, read=True, min_frames=1),
+                # The read the empty target TX FIFO stretches until the controller
+                # times out; a STOP closes it.
+                WireFloor(TARGET_ADDR, read=True, min_frames=1, stop_closed=True),
                 # The 16-byte write after both sides were reinitialised.
                 WireFloor(TARGET_ADDR, read=False, min_frames=1, min_data_bytes=16),
             ),

@@ -6,10 +6,14 @@ Sources hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl.rdl (CTRL.UART
 hw/ip/uart/uart_16550/regs/uart_16550_main.rdl (LSR.THRE, LSR.TEMT), the integrator GPIO pad table
 (pad 12 = UART[0].TX) and hw/ip/gpio/regs/gpio_intf.rdl (DATA_CTRL).
 
-The documents do not state the pad 12 behaviour with UART_EN clear: the frames the pad VIP decodes
-and the pad level in that state are measured and never compared. The frames of the two UART_EN = 1
-legs are the positive controls of the clear leg: they prove the THR write, the transmitter and the
-pad decoder work.
+The documents do not state the pad 12 behaviour with UART_EN clear and DATA_CTRL at its saved
+value: the frames the pad VIP decodes and the pad level in that state are measured and never
+compared. The frames of the two UART_EN = 1 legs are the positive controls of the clear leg: they
+prove the THR write, the transmitter and the pad decoder work.
+
+With UART_EN clear and DATA_CTRL.interface_enable set, gpio_intf.rdl (DATA_CTRL.interface_enable:
+"Setting this chooses register values to drive the PAD") makes core2pad the pad level, so S4
+compares the pad against core2pad 1 then 0.
 """
 
 from __future__ import annotations
@@ -65,6 +69,7 @@ DC_FIELDS = (
 FRAME_BITS = 10
 WINDOW_FRAMES = 3
 POLL_CYCLES = 64
+PAD_BOUND = 64
 STEP_ORDER = ("S1", "S2", "S3", "S4", "S5", "S6")
 CHK_ORDER = (
     ("S2", "CHK-UART-PADMUX-FRAME-ON"),
@@ -246,6 +251,17 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
             f"samples={len(self.levels)} level_min={min(self.levels)} level_max={max(self.levels)}",
         )
 
+    async def _await_pad(self, label: str, want: int) -> int:
+        """clk_smc_i cycles until pad 12 reads ``want``; expiry raises."""
+        for cycle in range(PAD_BOUND):
+            await RisingEdge(cocotb.top.clk_smc_i)
+            if self._pad_level() == want:
+                return cycle + 1
+        raise AssertionError(
+            f"{label}: pad {TX_PAD} still {self._pad_level()} {PAD_BOUND} clk_smc_i cycles "
+            f"after DATA_CTRL.core2pad = {want} with interface_enable = 1"
+        )
+
     async def _s4(self) -> None:
         write_words = (
             DC_INTERFACE_ENABLE | DC_ENABLE_RX_TX_LSB | DC_CORE2PAD,
@@ -254,12 +270,18 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
         samples: list[str] = []
         parts: list[str] = []
         for tag, word in zip(("core2pad1", "core2pad0"), write_words):
+            want = int(bool(word & DC_CORE2PAD))
             await self.csr_write(f"GPIO_DC_{tag}", GPIO_DATA_CTRL, word)
-            await RisingEdge(cocotb.top.clk_smc_i)
-            samples.append(f"{tag}_after_write={self._pad_level()}")
+            cycles = await self._await_pad(f"GPIO_DC_{tag}", want)
+            samples.append(f"{tag}_after_write={self._pad_level()} in {cycles} cycles")
             got = await self.csr_read(f"GPIO_DC_{tag}_RB", GPIO_DATA_CTRL)
             await RisingEdge(cocotb.top.clk_smc_i)
-            samples.append(f"{tag}_after_read={self._pad_level()}")
+            level = self._pad_level()
+            assert level == want, (
+                f"pad {TX_PAD} reads {level} after the DATA_CTRL read-back, core2pad = {want} "
+                f"with interface_enable = 1 ({tag})"
+            )
+            samples.append(f"{tag}_after_read={level}")
             for fname, mask in DC_FIELDS:
                 assert got & mask == word & mask, (
                     f"DATA_CTRL pad {TX_PAD} {fname} reads 0x{got & mask:x} after writing "
@@ -278,7 +300,8 @@ class smc_uart_pad_mux_enable_test_seq(SmcCsrSeq):
         self._chk(
             "S4",
             "CHK-UART-PADMUX-GPIO-LEVEL-MEASURED",
-            f"measured pad {TX_PAD} level {' '.join(samples)} (UART_EN=0, not compared); "
+            f"pad {TX_PAD} level compared equal to core2pad with UART_EN=0 and "
+            f"interface_enable=1: {' '.join(samples)}; "
             f"DATA_CTRL read-backs compared equal to the written values: {'; '.join(parts)}; "
             f"restore read back equal to the saved value",
         )

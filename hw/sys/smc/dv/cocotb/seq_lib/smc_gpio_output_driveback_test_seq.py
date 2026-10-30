@@ -41,7 +41,7 @@ from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import gpio_intf_u32, smc_indexed_addr
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_pad_table import gpio_pad_count, pad_index
@@ -49,9 +49,12 @@ from .smc_regblock_field_sweep_utils import reg_instances
 
 GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
-_CORE2PAD = 1 << 0
-_TX_ENABLE = 1 << 4  # enable_rx_tx = 2'b01
-_IF_ENABLE = 1 << 16  # interface_enable
+_CORE2PAD = gpio_intf_u32("GPIO_INTF__DATA_CTRL__CORE2PAD_bm")
+# enable_rx_tx = 2'b01, TX enabled.
+_TX_ENABLE = 1 << gpio_intf_u32("GPIO_INTF__DATA_CTRL__ENABLE_RX_TX_bp")
+_IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
+# clk_smc_i cycles the wrap-0 leg waits for the pad bus to reach the programmed state.
+_PAD_BOUND = 64
 
 OUT_DRIVE_HIGH = _IF_ENABLE | _TX_ENABLE | _CORE2PAD
 OUT_DRIVE_LOW = _IF_ENABLE | _TX_ENABLE
@@ -127,6 +130,19 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         ch = bits[-1 - bit] if bit < len(bits) else "?"
         assert ch in "01", f"GPIO wrap0 pad[{bit}] {what} reads {ch!r}, not a driven 0/1"
 
+    async def _await_pad(self, dut, predicate, label: str) -> int:
+        """Per-cycle poll of (core2pad_en_o, core2pad_o) until ``predicate``; expiry raises."""
+        en = val = 0
+        for cycle in range(1, _PAD_BOUND + 1):
+            await ClockCycles(dut.clk_smc_i, 1)
+            en, val = self._en_vec(dut), self._val_vec(dut)
+            if predicate(en, val):
+                return cycle
+        raise AssertionError(
+            f"{label}: the pad bus did not reach the programmed state within {_PAD_BOUND} "
+            f"clk_smc_i cycles (last core2pad_en_o=0x{en:x} core2pad_o=0x{val:x})"
+        )
+
     async def _wrap0_leg(self) -> None:
         dut = cocotb.top
 
@@ -142,7 +158,13 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
         # 1) Enable TX + drive value high. Exactly one output-enable bit (the
         #    pad owned by GPIO wrap 0) must newly assert, and its value = 1.
         await self.csr_write("GPIO0_TX_HIGH", GPIO0_DATA_CTRL, OUT_DRIVE_HIGH)
-        await ClockCycles(dut.clk_smc_i, 8)
+        await self._await_pad(
+            dut,
+            lambda en, val: (en & ~base_en & mask & val) != 0,
+            "GPIO0_TX_HIGH",
+        )
+        # A second enable rising up to _PAD_BOUND cycles after the owned pad is in the sample.
+        await ClockCycles(dut.clk_smc_i, _PAD_BOUND)
         newly_en = self._en_vec(dut) & (~base_en & mask)
         assert newly_en != 0, (
             "programming GPIO wrap0 as TX asserted no new pad output-enable "
@@ -161,7 +183,7 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
 
         # 2) Keep TX enabled, drive value low -> value clears, enable stays.
         await self.csr_write("GPIO0_TX_LOW", GPIO0_DATA_CTRL, OUT_DRIVE_LOW)
-        await ClockCycles(dut.clk_smc_i, 8)
+        await self._await_pad(dut, lambda en, val: (val & pad_bit) == 0, "GPIO0_TX_LOW")
         self._require_resolved(dut.tb_core2pad_en_o, pad_idx, "output-enable")
         self._require_resolved(dut.tb_core2pad_o, pad_idx, "value")
         en_low = self._en_vec(dut)
@@ -175,7 +197,7 @@ class smc_gpio_output_driveback_test_seq(SmcCsrSeq):
 
         # 3) Disable the register interface -> pad output released.
         await self.csr_write("GPIO0_DISABLE", GPIO0_DATA_CTRL, OUT_DISABLE)
-        await ClockCycles(dut.clk_smc_i, 8)
+        await self._await_pad(dut, lambda en, val: (en & pad_bit) == 0, "GPIO0_DISABLE")
         self._require_resolved(dut.tb_core2pad_en_o, pad_idx, "output-enable")
         en_off = self._en_vec(dut)
         assert (en_off & pad_bit) == 0, (

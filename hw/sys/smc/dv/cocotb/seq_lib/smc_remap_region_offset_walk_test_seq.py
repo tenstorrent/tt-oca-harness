@@ -36,7 +36,15 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import LOCAL_BASE_RESET, smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    _ALIAS_REMAP_H,
+    _REPO,
+    LOCAL_BASE_RESET,
+    _field_mask,
+    reg_reset_word,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_output_fabric_vip_utils import output_responder_counts
 
@@ -52,14 +60,26 @@ RESP_DECERR = 3
 FUSE_BOUND = 200_000
 _ENTRIES = range(8)
 
-# alias_remap.adoc:26, :37, :47, :49, :50.
-ALIAS_ADDR_FIELD = ((1 << 56) - 1) & ~((1 << 12) - 1)
-ALIAS_VALID = 1 << 63
-ALIAS_CACHEABLE = 0xF << 56
-ALIAS_ATTRS_FIELDS = ALIAS_VALID | ALIAS_CACHEABLE | ALIAS_ADDR_FIELD
-# output_remap.adoc:23, :25.
-ORMP_VALID = 1 << 63
-ORMP_OFFSET = (1 << 56) - 1
+_ALIAS_BLOCK = "ALIAS_REMAP__REMAP_REGION"
+_ORMP_BLOCK = "OUTPUT_REMAP__OUTPUT_REMAP_REGION"
+_OUTPUT_REMAP_H = _REPO / "hw" / "ip" / "output_remap" / "regs" / "gen" / "c" / "output_remap.h"
+
+
+def _alias_bm(reg: str, field: str) -> int:
+    return _field_mask(_ALIAS_REMAP_H, f"{_ALIAS_BLOCK}__REGION_{reg}__{field}_bm")
+
+
+def _ormp_bm(field: str) -> int:
+    return _field_mask(_OUTPUT_REMAP_H, f"{_ORMP_BLOCK}__REGION_ATTRS__{field}_bm")
+
+
+# START_ADDR, END_ADDR and the ATTRS offset share one address field.
+ALIAS_ADDR_FIELD = _alias_bm("START", "START_ADDR")
+ALIAS_VALID = _alias_bm("ATTRS", "VALID")
+ALIAS_CACHEABLE = _alias_bm("ATTRS", "CACHEABLE")
+ALIAS_ATTRS_FIELDS = ALIAS_VALID | ALIAS_CACHEABLE | _alias_bm("ATTRS", "OFFSET")
+ORMP_VALID = _ormp_bm("VALID")
+ORMP_OFFSET = _ormp_bm("OFFSET")
 ORMP_FIELDS = ORMP_VALID | ORMP_OFFSET
 
 # fabric.adoc:78-80: the M-mode and Xvisor windows sit 0x0100_0000 and
@@ -135,6 +155,19 @@ ORMP_REGS = tuple(
     for e in _ENTRIES
 )
 ALL_REGS = ALIAS_REGS + ORMP_REGS
+# Address -> reset word of each remap register.
+RESET_WORDS = {
+    **{
+        _alias(kind, e): reg_reset_word(_ALIAS_REMAP_H, _ALIAS_BLOCK, f"REGION_{kind}")
+        for e in _ENTRIES
+        for kind in ("START", "END", "ATTRS")
+    },
+    **{
+        _ormp(table, e): reg_reset_word(_OUTPUT_REMAP_H, _ORMP_BLOCK, "REGION_ATTRS")
+        for table in ("MMODE", "XVISOR")
+        for e in _ENTRIES
+    },
+}
 assert len(ALIAS_REGS) == 24 and len(ORMP_REGS) == 16
 assert len({a for _l, a, _m in ALL_REGS}) == 40, "two remap registers share an address"
 
@@ -281,9 +314,10 @@ class smc_remap_region_offset_walk_test_seq(SmcCsrSeq):
         )
         for label, addr, mask in first + ALL_REGS:
             got = await self._rd(f"{label}_RESET", addr)
-            assert got & mask == 0, (
+            want = RESET_WORDS[addr] & mask
+            assert got & mask == want, (
                 f"{label} at 0x{addr:x} reads 0x{got:016x} at reset; its documented fields "
-                f"(mask 0x{mask:016x}) reset to 0"
+                f"(mask 0x{mask:016x}) reset to 0x{want:x}"
             )
             self._note_reserved("reset", got, mask)
         self._mark("RESET-READ", len(first) + len(ALL_REGS))
