@@ -64,7 +64,7 @@ Checkers:
                    profile word of the staged disable vectors, which is not all
                    ones.
 
-``OBS-STM-CAPTURE0`` logs ``secure_tm_o`` of the strap-0 boot of leg D (the
+``INFO-STM-CAPTURE0`` logs ``secure_tm_o`` of the strap-0 boot of leg D (the
 cold-reset clear gives the same 0, so it is not graded as a capture). The
 sampling at fuse-sense completion is a control here.
 
@@ -77,7 +77,7 @@ Run mode: no_cpu (``lsu_stub_all_live``), real fuse sense,
 ``+sep_edn_jtag_reset_waive`` for the ``sep_reset_n`` override pulse of leg B.
 Verilator and VCS; the ``dbg_rstb_i`` event of leg B runs on VCS only. On the
 CPU stub build no approved probe shows its reach, so it runs ungraded
-(``OBS-STM-DBG-REACH``). The full-CPU entry (``--target default``,
+(``INFO-STM-DBG-REACH``). The full-CPU entry (``--target default``,
 ``+sep_require_full_cpu``) grades it: with ``mpc_reset_run_req`` at 1 the
 ``mpc_run_sync_probe_o`` tap reads 0 inside the pulse. RAND-REP:
 the seed draws ``c`` (8 to 200) and the order of the leg B events.
@@ -257,7 +257,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"in the pulse window (samples {w0}..{w1 - 1}), so the event did not happen"
         )
         self.logger.info(
-            "LEG-B wdt_rst_ni pulse reached sep_cpu_reset_n: low on %d of samples %d..%d",
+            "INFO-LEG-B wdt_rst_ni pulse reached sep_cpu_reset_n: low on %d of samples %d..%d",
             low,
             w0,
             w1 - 1,
@@ -271,7 +271,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             await self._until(self._now() + _PULSE)
             dut.dbg_rstb_i.value = 1
             self.logger.info(
-                "OBS-STM-DBG-REACH: dbg_rstb_i low for %d cycles; reach not shown (the CPU "
+                "INFO-STM-DBG-REACH: dbg_rstb_i low for %d cycles; reach not shown (the CPU "
                 "stub build has no debug module or run-request synchronizer for a probe to read)",
                 _PULSE,
             )
@@ -301,7 +301,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"in the pulse window (samples {d0}..{d1 - 1}), so the event did not happen"
         )
         self.logger.info(
-            "LEG-B dbg_rstb_i pulse reached the debug reset domain: mpc_run_sync low on %d of "
+            "INFO-LEG-B dbg_rstb_i pulse reached the debug reset domain: mpc_run_sync low on %d of "
             "samples %d..%d control_high_at=%d high_again_at=%d",
             low,
             d0,
@@ -345,7 +345,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"in the override window (samples {o0}..{o1 - 1}), so the event did not happen"
         )
         self.logger.info(
-            "LEG-B sep_reset_n override reached sep_reset_n: low on %d of samples %d..%d",
+            "INFO-LEG-B sep_reset_n override reached sep_reset_n: low on %d of samples %d..%d",
             low,
             o0,
             o1 - 1,
@@ -364,7 +364,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"{chk} FAIL: {label}: security_disable read 0 at samples "
             f"{[a + i for i, v in enumerate(vals) if v != 1][:8]} (match_present=0 at this boot)"
         )
-        self.logger.info("LEG-D %s match_present=1 on samples %d..%d", label, a, b)
+        self.logger.info("INFO-LEG-D %s match_present=1 on samples %d..%d", label, a, b)
 
     async def _present_sec_dis(self, token: int = _SEC_DIS_TOKEN) -> int:
         """Present the SEC_DIS token over j_axi; return the settled match code."""
@@ -402,7 +402,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         # dbg_rstb_i event is graded, so a stub build fails the leaf.
         if "sep_require_full_cpu" in cocotb.plusargs and not self.full_cpu:
             raise AssertionError(
-                "CTL-FULL-CPU FAIL: +sep_require_full_cpu and the build has the CPU stub"
+                "CTRL-FULL-CPU FAIL: +sep_require_full_cpu and the build has the CPU stub"
             )
         events = [e for e in order if vcs or e != "dbg_rstb_i"]
         graded = [e for e in events if self.full_cpu or e != "dbg_rstb_i"]
@@ -459,7 +459,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         except AssertionError as exc:
             raise AssertionError(f"CHK-STM-CLEAR FAIL: control: {exc}") from None
         self.logger.info(
-            "CTL-STM-LEGA: strap=1 secure_tm_o=1 at sample %d (sense %d)", a_one, sense
+            "CTRL-STM-LEGA: strap=1 secure_tm_o=1 at sample %d (sense %d)", a_one, sense
         )
 
         open_graded_window(TEST, self.logger)
@@ -506,7 +506,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                 e1 = await self._hold()
                 vals = self._window(e0, e1 - 1)
                 self.logger.info(
-                    "OBS-STM-UNGRADED: event=%s samples=%d..%d secure_tm_o_ones=%d/%d",
+                    "INFO-STM-UNGRADED: event=%s samples=%d..%d secure_tm_o_ones=%d/%d",
                     ev,
                     e0,
                     e1 - 1,
@@ -523,7 +523,9 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                 f"CHK-STM-RETAIN FAIL: leg=B event={ev} strap=0 secure_tm_o left 1 at samples "
                 f"{[e0 + i for i, v in enumerate(vals) if v != 1][:8]}"
             )
-            self.logger.info("LEG-B event=%s strap=0 samples=%d..%d secure_tm_o=1", ev, e0, e1 - 1)
+            self.logger.info(
+                "INFO-LEG-B event=%s strap=0 samples=%d..%d secure_tm_o=1", ev, e0, e1 - 1
+            )
         b1 = self._now() - 1
         strap_b = self._window(b0, b1, "strap")
         assert all(s == 0 for s in strap_b), "leg B: the strap did not stay at 0"
@@ -580,7 +582,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"samples {[d0_rel + i for i, v in enumerate(pre) if v != 0][:8]}"
         )
         self.logger.info(
-            "CTL-STM-D0: match_present=0 strap=1 secure_tm_o=0 from release %d to sense %d, 1 at "
+            "CTRL-STM-D0: match_present=0 strap=1 secure_tm_o=0 from release %d to sense %d, 1 at "
             "%d; T_sense=%d",
             d0_rel,
             d0_sense,
@@ -597,7 +599,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
                 f"(last {'X' if last is None else f'0x{last:016x}'})"
             ) from None
         self.logger.info(
-            "CTL-STM-D0-FEAT: match_present=0 strap=1 FEAT_CTRL=0x%016x at sample %d",
+            "CTRL-STM-D0-FEAT: match_present=0 strap=1 FEAT_CTRL=0x%016x at sample %d",
             feat_d0.value,
             d0_feat_at,
         )
@@ -606,7 +608,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         _rel, sense = await self._cold_boot(0, "leg E")
         await self._until(sense + _STM_BOUND)
         assert self.rec[-1]["stm"] == 0, "leg E: secure_tm_o is not 0 after a strap-0 sense"
-        self.logger.info("LEG-E match_present=0 (sense completed at sample %d)", sense)
+        self.logger.info("INFO-LEG-E match_present=0 (sense completed at sample %d)", sense)
         open_graded_window(TEST, self.logger)
         await self._edge()
         dut.test_en_strap_i.value = 1
@@ -625,7 +627,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"CHK-STM-LATE FAIL: match_present=0 strap=1 SEC_DIS late: secure_tm_o left 0 at "
             f"samples {[e0 + i for i, v in enumerate(late) if v != 0][:8]}"
         )
-        self.logger.info("LEG-E strap rise %d token matched by %d hold end %d", e0, tok, e1)
+        self.logger.info("INFO-LEG-E strap rise %d token matched by %d hold end %d", e0, tok, e1)
 
         # Leg D, strap 1: early capture with the match present.
         _a, rel = await self._cold_reset()
@@ -698,7 +700,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         await self._until(rel + c)
         obs = self.rec[-1]
         self.logger.info(
-            "OBS-STM-CAPTURE0: match_present=1 strap=0 secure_tm_o=%s sense_done=%s at release+%d",
+            "INFO-STM-CAPTURE0: match_present=1 strap=0 secure_tm_o=%s sense_done=%s at release+%d",
             obs["stm"],
             obs["done"],
             c - 1,

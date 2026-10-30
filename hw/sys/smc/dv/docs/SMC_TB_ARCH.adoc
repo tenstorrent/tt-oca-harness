@@ -581,7 +581,10 @@ run_modes = ["smoke"]
 |Check Type |Component |Description
 |Scratch CSR readback (SV-UVM) |`smc_scratch_csr_ref_model` into `smc_scoreboard`, feature `scratch_csr` |Always on: the reference model rebuilds a strobed write shadow, cleared on cold reset, and publishes the expected value of every OKAY `SCRATCH_COLD*` read; the scoreboard pairs it with the SEP_IN monitor's observed read; a required feature with zero comparisons fails; `+SMC_CSR_SCOREBOARD_NEGATIVE` corrupts the prediction so the run must FAIL
 |Scenario evidence (SV-UVM) |`smc_base_test_seq` over `ocah_checker` |Named `CHK-*` lines with required IDs per scenario, finalized once per pass (`CHECKER_SUMMARY name=smc_csr`)
-|SEP_IN protocol (SV-UVM) |`ocah_axi_sva` in the harness |AXI4 rule checker on the flat `s_axi_*` nets, gated by `smc_tb_if.axi_sva_en`
+|Inbound AXI4 protocol (SYS_IN, JTAG_IN, SEP_IN) |`ocah_axi_sva` in `tb_top`: `u_sys_in_axi_sva`, `u_jtag_in_axi_sva`, `u_sep_in_axi_sva` |AXI4 reset, handshake, X, burst, ID and response rules on the packed `sys_axi_in_req` / `_resp`, `jtag_axi_in_req` / `_resp` and `sep_axi_in_req` / `_resp` links between the TB masters and `smc`. The bench master lines are top-level inputs that stay X or Z until a cocotb agent drives them, so each checker arms on the first edge where its master's AW, W and AR valids and B and R readies are known and stays armed. Each tracks up to 32 outstanding writes (`MAX_OUTSTANDING` 16), above the 24 writes the backpressure sequences hold open. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once that reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM; the rules grade on VCS only (the Verilator targets pass no `--assert`). On VCS a test with `+axi_sva_need_<sys_in|jtag_in|sep_in>` fails when that checker graded no AW or AR handshake, and the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` for each instance. Protocol only, not data.
+|SYS_OUT egress AXI4 protocol |`ocah_axi_sva` in `tb_top`: `u_sys_out_axi_sva` |AXI4 reset, handshake, X, burst, ID and response rules on `output_axi_req` / `output_axi_resp`, the `smc` egress master. The TB responder answers B and R, so the checker also grades the responder. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once that reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM; the rules grade on VCS only (the Verilator targets pass no `--assert`). On VCS a test with `+axi_sva_need_<sys_out>` fails when that checker graded no AW or AR handshake, and the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` for each instance. Protocol only, not data.
+|CPU port AXI4 protocol |`ocah_axi_sva` in `tb_top`: `u_cpu_front_axi_sva`, `u_cpu_mmio_axi_sva` |AXI4 reset, handshake, X, burst, ID and response rules on the fabric master into the CPU front port (`u_dut.u_smc.cpu_axi_front_port_req` / `_resp`) and on the CPU MMIO master into the fabric (`u_dut.u_smc.cpu_axi_mmio_port_req` / `_resp`), both read hierarchically. `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once that reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM; the rules grade on VCS only (the Verilator targets pass no `--assert`). On VCS a test with `+axi_sva_need_<cpu_front|cpu_mmio>` fails when that checker graded no AW or AR handshake, and the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` for each instance. Protocol only, not data.
+|AXI4-Lite protocol |`ocah_axi_sva` (`IS_LITE`) in `tb_top`: `u_otp_jtag_axil_sva`, `u_dtp_csr_axil_sva`, `u_log_engine_axil_sva`, `u_periph_axil_sva` |AXI4-Lite reset, handshake, X and response rules on the JTAG-side OTP link (`ej_axi_req` / `_resp`, TB master, armed like the inbound ports), the DTP CSR link (`axil_dtp_csr_req` / `_resp`; no responder on `smc_wrapper`, so no AW or AR handshake occurs), and, read hierarchically inside `smc`, the log-engine link (`axil_log_engine_req` / `_resp`) and the peripherals link (`axil_peripherals_req` / `_resp`). `aclk` is `clk_smc` and `aresetn` is the primary SMC reset `rst_primary_smc_clk_no`. Enabled in every single-instance build and run mode once that reset is known, ANDed with `smc_tb_if.axi_sva_en` under SV-UVM; the rules grade on VCS only (the Verilator targets pass no `--assert`). On VCS a test with `+axi_sva_need_<otp_jtag|dtp_csr|log_engine|periph>` fails when that checker graded no AW or AR handshake, and the final block prints `CHK-AXI-SVA-<PORT>: aw_ar_handshakes=<n>` for each instance. Protocol only, not data.
 |SAMPLE idle / resolvable |`SmcScoreboard` |i2c/reset/clk/irq/gpio/axil items: no X/Z, type idle invariants
 |AXI response |`SmcScoreboard._check_sys_axi` |OKAY by default; `expected_resp` / `expected` when set
 |Negative-path AXI |`expect_error` via `csr_read_err_signature` |Fails on OKAY and on timeout
@@ -590,6 +593,17 @@ run_modes = ["smoke"]
 |Non-vacuity |`SmcScoreboard.check_phase` |Total evidence `> 0`
 |Regression parsing |Global DV parser |Positive cocotb evidence in `results.xml`
 |===
+The `ocah_axi_sva` instances sit in the single-instance body of `tb_top`; the `SMC_DUAL`
+body has none. A CPU-only reset from `smc_reset_unit` is outside `aresetn`: no reset rule
+grades it, and a transaction open at that reset stays in the checker's outstanding
+tracking until the next primary reset. The force-mode CPU reset that
+`smc_cpu_l2_read_wedge_test` provokes withdraws the R beat the CPU presents without
+`ready`; that leaf's `+smc_front_port_r_arb_assertoff` holds `u_cpu_front_axi_sva` and
+`u_cpu_mmio_axi_sva` off, as it holds the front-port R arbiter assertion off, so no
+other leaf loses those checkers. `u_sys_in_axi_sva` stays on in that leaf: the stale R
+the isolate flush leaves on SYS_IN is graded there and the leaf is RED on it; the
+Known Limitations table of `SMC_VPLAN.adoc` names the issue that records that beat.
+
 RTL and vendor-IP SVA participate only on commercial simulators, matching
 SEP. OpenTitan / PeakRDL / OCAH assertion macros compile and run under
 VCS and Xcelium (`SYNTHESIS` is not set on the SMC target). The shared
@@ -609,10 +623,11 @@ that is not a DUT contract.
 [[coverage-strategy]]
 === Coverage Strategy
 
-Verilator does not support SystemVerilog covergroups. The SMC open-source path
-collects Python-side functional observations in `SmcScoreboard`
-(`FUNC_COV_VALUE` bins) and relies on commercial simulators for SV covergroups,
-assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
+Every simulator compiles the SV covergroups in `cov/sv/`, which use only the
+constructs Verilator supports. The SMC open-source path collects them, the
+Python-side functional observations in `SmcScoreboard` (`FUNC_COV_VALUE` bins)
+and line, branch and expression coverage, and relies on commercial simulators
+for condition, FSM, toggle and assertion coverage. See `SMC_FCOV.adoc`.
 
 [[canonical-rtl-selection]]
 === Canonical RTL Selection
@@ -677,9 +692,9 @@ shared between both realizations. The bare `+define+UVM` (set by the native
 profile's `[frameworks.uvm]` overlay) switches its shape: without it the
 module exposes the cocotb pin port list; with it the ports become internal TB
 signals, the `pll_wrap` clocks free-run, and an in-module harness adds the
-shared AXI VIP interface instances on the SEP_IN ingress,
-the protocol SVA, quiescent tie-offs for every other cocotb-driven pin at the
-idle value `smc_base_test._bring_up` uses, the `uvm_config_db` publication of
+shared AXI VIP interface instances on the SEP_IN ingress, quiescent
+tie-offs for every other cocotb-driven pin at the idle value
+`smc_base_test._bring_up` uses, the `uvm_config_db` publication of
 every virtual interface, and `run_test()`. The class library mirrors the
 cocotb conventions under `uvm/` with identical basenames, one class per file,
 on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
@@ -702,6 +717,10 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
   bound for assertion and release, and checks every SMC-cycle sample in its
   hold window. It also requires the cluster-boundary isolation tap low at
   baseline.
+  The watchdog second-stage scenario requires every core reset released at
+  baseline and after each warm reset before recovery CSR access, and observes
+  them asserted together at a sample during each warm reset. The core-reset
+  vector also participates in the watcher's unknown-value check.
 . `uvm/env/smc_env_pkg.sv` — `smc_types` (SEP_IN geometry, the scratch CSR
   windows from the generated `smc_top_addrmap_pkg`, 32-bit-CSR lane helpers
   for the 64-bit bus), `smc_test_cfg`, `smc_env_cfg`,

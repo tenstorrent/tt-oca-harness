@@ -15,8 +15,16 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   the common handler once through the drawn trampoline copy: the firmware
   entry address and run count, and the first retired PC after the wait loop
   on ``cpu_trace_addr_o``, equal the programmed vector. Bark 1 runs with
-  mstatus.MIE 0, bark 2 with mstatus.MIE 1. ``wdt_timer_rst_req_o`` at the
-  handler entry is logged (``OBS-BITE-REQ``).
+  mstatus.MIE 0, bark 2 with mstatus.MIE 1: the firmware reads mstatus back
+  before each bark (``CTRL-MIE-AT-BARK``), and the check needs that read equal
+  to the value of the leg. ``wdt_timer_rst_req_o`` at the handler entry is
+  logged (``OBS-BITE-REQ``).
+* CHK-NMI-STUB (firmware) the reset-vector bark runs the stub at the
+  SEP_NMI_VEC reset value once. CHK-NMI-ENTRY (firmware) each locked-copy bark
+  enters the drawn copy once, with the ``CTRL-MIE-AT-BARK`` read equal to the
+  value of the leg: the firmware copy of the CHK-NMI-TAKEN compare without the
+  trace term. No cited specification states ``mstatus.MPIE`` at an NMI entry,
+  so the value the handler reads is logged (``OBS-NMI-MPIE``) and not graded.
 * CHK-NMI-NOPIC (firmware) each of the eight meip words read in the NMI
   handler equals the same word read before the bark, with the six excluded
   idle bits masked; the pending source
@@ -25,6 +33,24 @@ boot, follows the console live (``env/sep_fw_console``: graded window on
   PC after the loop is 0xC000_0100 and the stub prints ``M0`` (control leg);
   after the cold reset, with ``A`` programmed and locked, it is ``A``, ``Hk``
   prints ``Mk`` and ``M0`` does not appear.
+* CHK-NMI-IN-EXT (firmware) a bark fired while the external handler of the
+  pending source waits is taken inside that handler: the source delivers
+  once, one NMI enters the locked trampoline copy (firmware entry address
+  equals the programmed vector) while the handler waits, the handler flag
+  reads 1 at the NMI entry, and no other NMI enters in the leg (``interrupts.adoc``: no
+  ``mstatus.MIE`` or PIC setting suppresses the NMI; VeeR EL2 PRM section
+  3.16). The return path to the external handler is not graded.
+
+The sampler holds the owner-324 bark cells of each graded leg; the test raises
+the ``pic_fw_pass`` bits of the leg (``RELEASE``) once every firmware check of
+that leg passed: ``PIC_FW_PASS_NMI_BARK`` for the bark cells and, in the
+external-handler leg, ``PIC_FW_PASS_NMI_IN_EXT`` for ``cp_nmi_in_ext_handler``.
+The test writes bit ``PIC_FW_PASS_DROP_324`` at every ``M G`` line and on
+every FAIL line; its rise, the next window open of the owner and a reset (the
+cold reset between the boots too) drop them, so a cell of a failed leg never
+samples on the pass of a later leg. The ``cp_nmi_target`` cells are held from both boots and
+sample when the test raises ``PIC_FW_PASS_NMI_TARGET`` once, after every
+check of the run passed, CHK-NMI-TAKEN and CHK-BARK-VEC included.
 
 The expected vectors come from the RDL reset (``sep_reg_meta``), the image
 layout (the firmware symbol listing) and the drawn ``A``, never from a DUT
@@ -44,7 +70,14 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import parse_hex_cells, patch_param_block, place_words
-from env.sep_fcov_gate import close_graded_window
+from env.sep_fcov_gate import (
+    PIC_FW_PASS_DROP_324,
+    PIC_FW_PASS_NMI_BARK,
+    PIC_FW_PASS_NMI_IN_EXT,
+    PIC_FW_PASS_NMI_TARGET,
+    close_graded_window,
+    set_pic_fw_pass,
+)
 from env.sep_fw_console import SepFwConsole
 from env.sep_pic_map import meip_idle_mask_words, never_value
 from env.sep_seeded_rng import SepSeededRng
@@ -142,6 +175,18 @@ def load_symbols(fw_dir: str) -> dict[str, int]:
     return out
 
 
+# Graded firmware leg -> (checks that release its held cells, pic_fw_pass bits).
+_BARK = 1 << PIC_FW_PASS_NMI_BARK
+RELEASE: dict[str, tuple[tuple[str, ...], int]] = {
+    "reset_vector": (("CHK-NMI-STUB",), _BARK),
+    "case_a": (("CHK-NMI-ENTRY", "CHK-NMI-NOPIC"), _BARK),
+    "case_b": (("CHK-NMI-ENTRY", "CHK-NMI-NOPIC"), _BARK),
+    "case_c": (("CHK-NMI-ENTRY", "CHK-NMI-NOPIC"), _BARK),
+    "case_d": (("CHK-NMI-ENTRY", "CHK-NMI-NOPIC"), _BARK),
+    "nest": (("CHK-NMI-IN-EXT",), _BARK | (1 << PIC_FW_PASS_NMI_IN_EXT)),
+}
+
+
 @dataclass(frozen=True)
 class NmiCfg:
     """The seeded stimulus. A pure function of the run seed (and the image extent)."""
@@ -154,6 +199,7 @@ class NmiCfg:
     raw: int
     barks: tuple[int, int, int, int]
     a: int
+    nest_bark: int
 
     @classmethod
     def from_seed(cls, seed: int, image_end: int) -> "NmiCfg":
@@ -173,7 +219,8 @@ class NmiCfg:
         a = lo + 2 * rng.randrange((hi - lo) // 2)
         while a % 0x100 == 0:
             a = lo + 2 * rng.randrange((hi - lo) // 2)
-        return cls(seed, copy, case, src, priord, raw, barks, a)
+        nest_bark = rng.randrange(1, N_BARK + 1)
+        return cls(seed, copy, case, src, priord, raw, barks, a, nest_bark)
 
     def words(self, leg: int) -> list[int]:
         return [
@@ -190,13 +237,14 @@ class NmiCfg:
             WAIT_ITERS,
             HOLD_ITERS,
             *meip_idle_mask_words(),
+            self.nest_bark,
         ]
 
     def draw_line(self) -> str:
         return (
             f"DRAW copy={self.copy} case={CASES[self.case]} src={self.src} priord={self.priord} "
             f"raw={self.raw} bark_thold={','.join(str(b) for b in self.barks)} A=0x{self.a:08x} "
-            f"H={4 * len(hk_words())} n_bark={N_BARK}"
+            f"H={4 * len(hk_words())} n_bark={N_BARK} nest_bark_thold={self.nest_bark}"
         )
 
 
@@ -205,7 +253,14 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
     """The WDT bark NMI reaches the vector that holds, unmasked, and leaves the PIC pending state."""
 
     build_env = False
-    required_evidence = ("CHK-NMI-TAKEN", "CHK-NMI-NOPIC", "CHK-BARK-VEC")
+    required_evidence = (
+        "CHK-NMI-TAKEN",
+        "CHK-NMI-NOPIC",
+        "CHK-BARK-VEC",
+        "CHK-NMI-IN-EXT",
+        "CHK-NMI-ENTRY",
+        "CHK-NMI-STUB",
+    )
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -233,6 +288,59 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             if in_loop:
                 self.trans.append((self.con.clk, pc, str(dut.wdt_timer_rst_req_o.value)))
                 in_loop = False
+
+    async def _pass_label(self) -> None:
+        """Raise the ``pic_fw_pass`` bits of this test: release and drop.
+
+        Follows the console lines in order, after each rising edge (a write is
+        legal there). A ``M G`` line starts a leg and writes the drop bit
+        (``PIC_FW_PASS_DROP_324``), so the bark cells still held from an
+        earlier leg never sample in the new one; each CHK record counts toward
+        the last graded leg. When every check of ``RELEASE`` for the leg
+        printed one PASS line and no CHK line of the leg failed, the bits of
+        the leg are written. Any FAIL line writes the drop bit. Each write is
+        held two clocks and written 0, in the order of the console lines. The
+        free-address leg of the second boot has no firmware check; its held
+        bark cells are never released.
+        """
+        dut = cocotb.top
+        drop = 1 << PIC_FW_PASS_DROP_324
+        seen = 0
+        leg = None
+        passed: set[str] = set()
+        failed = released = False
+        while True:
+            await RisingEdge(dut.clk_i)
+            lines = self.con.lines
+            acts: list[int] = []
+            while seen < len(lines):
+                text = lines[seen][1]
+                seen += 1
+                if text.startswith("M G "):
+                    leg = text.split(None, 2)[2]
+                    passed = set()
+                    failed = released = False
+                    acts.append(drop)
+                    continue
+                if not text.startswith("CHK-"):
+                    continue
+                name, _, rest = text.partition(" ")
+                if rest.startswith("FAIL"):
+                    failed = True
+                    acts.append(drop)
+                    continue
+                if leg not in RELEASE:
+                    continue
+                if rest.startswith("PASS"):
+                    passed.add(name)
+                checks, bits = RELEASE[leg]
+                if not failed and not released and set(checks) <= passed:
+                    released = True
+                    acts.append(bits)
+            for bits in acts:
+                set_pic_fw_pass(bits, self.logger)
+                await ClockCycles(dut.clk_i, 2)
+                set_pic_fw_pass(0, self.logger)
 
     def _leg(self, name: str) -> tuple[int, int]:
         legs = self.con.legs
@@ -291,14 +399,15 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             raise AssertionError(
                 f"CHK-NMI-TAKEN FAIL: copies not in four consecutive 256-byte slots: {slots}"
             )
-        vs = self._one("CTL-VEC-SET", boot=1)
+        vs = self._one("CTRL-VEC-SET", boot=1)
         if (vs.kv["vec"] & VEC_MASK) != vec or (vs.kv["lock"] & LOCK_MASK) != 1:
             raise AssertionError(
                 f"CHK-NMI-TAKEN FAIL: vector or lock not set before the barks: {vs.text}"
             )
         legs = ("case_a", f"case_{CASES[cfg.case]}")
         for bark, (leg, mie) in enumerate(zip(legs, (0, 1), strict=True), start=1):
-            rec = self._one("CTL-NMI-ENTRY", bark=bark)
+            rec = self._one("CHK-NMI-ENTRY", bark=bark)
+            ctl = self._one("CTRL-MIE-AT-BARK", bark=bark)
             t = self._first_trans(leg)
             pc = t[1] if t else None
             bite = t[2] if t else "na"
@@ -308,18 +417,21 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
                 kv.get("entry") == vec
                 and int(kv.get("copy", -1)) == cfg.copy
                 and int(kv.get("handler_runs", -1)) == 1
-                and int(kv.get("mie", -1)) == mie
+                and int(ctl.kv.get("mie", -1)) == mie
                 and int(kv.get("timeout", 1)) == 0
                 and pc == vec
             )
             body = (
-                f"seed={cfg.seed} copy={cfg.copy} bark={bark} mie={kv.get('mie')} vec=0x{vec:08x} "
+                f"seed={cfg.seed} copy={cfg.copy} bark={bark} mie_at_bark={ctl.kv.get('mie')} "
+                f"mie_exp={mie} vec=0x{vec:08x} "
                 f"handler_runs={kv.get('handler_runs')} entry=0x{kv.get('entry', 0):08x} "
                 f"retired_pc={'0x%08x' % pc if pc is not None else 'none'}"
             )
             if not ok:
                 raise AssertionError(f"CHK-NMI-TAKEN FAIL {body} exc={self.exc_events[-4:]}")
             self.logger.info("CHK-NMI-TAKEN PASS %s", body)
+        for r in self.con.records("OBS-NMI-MPIE"):
+            self.logger.info("%s (firmware, not graded)", r.text)
         return 2
 
     def _chk_bark_vec(self, sy: dict[str, int], boot2_clk: int) -> int:
@@ -329,8 +441,8 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             raise AssertionError(
                 f"CHK-BARK-VEC FAIL: image stub at 0x{stub:08x}, reset vector 0x{VEC_RESET:08x}"
             )
-        r1 = self._one("CTL-VEC-RESET", boot=1)
-        st = self.con.records("CTL-STUB")
+        r1 = self._one("CTRL-VEC-RESET", boot=1)
+        st = self.con.records("CHK-NMI-STUB")
         t = self._first_trans("reset_vector")
         pc0 = t[1] if t else None
         lo, hi = self._leg("reset_vector")
@@ -350,8 +462,8 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if not ok:
             raise AssertionError(f"CHK-BARK-VEC FAIL {body} stub={st[0].text if st else None}")
         self.logger.info("CHK-BARK-VEC PASS %s", body)
-        r2 = self._one("CTL-VEC-RESET", boot=2)
-        vs = self._one("CTL-VEC-SET", boot=2)
+        r2 = self._one("CTRL-VEC-RESET", boot=2)
+        vs = self._one("CTRL-VEC-SET", boot=2)
         t = self._first_trans("programmed")
         pc = t[1] if t else None
         mk = [c for c, txt in self.con.lines if txt == "Mk" and c >= boot2_clk]
@@ -403,7 +515,9 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         self.exc_events: list[tuple[int, int]] = []
         self.con = SepFwConsole(self, graded_test=TEST).start()
         tr = cocotb.start_soon(self._trace())
+        lbl = cocotb.start_soon(self._pass_label())
         close_graded_window(self.logger)
+        set_pic_fw_pass(0, self.logger)
         try:
             await self.boot_firmware(
                 self.sb,
@@ -413,9 +527,9 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
             )
-            assert self.sb.fw_done and self.sb.fw_pass, (
-                "boot 1: firmware did not complete with PASS"
-            )
+            if not (self.sb.fw_done and self.sb.fw_pass):
+                self.con.relay_chk()
+                raise AssertionError("boot 1: firmware did not complete with PASS")
             if not self.con.text_lines("BOOT1-END"):
                 raise AssertionError("boot 1 ended without its end-of-boot marker")
             close_graded_window(self.logger)
@@ -425,6 +539,7 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
             await self._second_boot(itcm, dtcm2)
         finally:
             tr.cancel()
+            lbl.cancel()
             await self.con.stop()
         assert self.sb.fw_done and self.sb.fw_pass, "boot 2: Hk did not write the PASS magic"
         lay = self.con.text_lines("LAYOUT")
@@ -438,9 +553,21 @@ class sep_nmi_vector_bark_rand_test(sep_base_test):
         if not lay or f"stub=0x{sy['nmivb_stub']:08x}" not in lay[0]:
             raise AssertionError(f"firmware layout {lay} disagrees with the symbol listing")
         n_fw = self.con.relay_chk()
-        self.con.require_counts({"CHK-NMI-NOPIC": 2})
+        self.con.require_counts(
+            {"CHK-NMI-NOPIC": 2, "CHK-NMI-IN-EXT": 1, "CHK-NMI-ENTRY": 2, "CHK-NMI-STUB": 1}
+        )
         cases = [r.kv.get("case") for r in self.con.records("CHK-NMI-NOPIC")]
         if cases != ["a", CASES[cfg.case]]:
             raise AssertionError(f"CHK-NMI-NOPIC FAIL: cases {cases}, drawn a,{CASES[cfg.case]}")
         n_host = self._chk_taken(sy) + self._chk_bark_vec(sy, boot2_clk)
+        await self._release_targets()
         self.result_pass(TEST, seed, n_fw + n_host)
+
+    async def _release_targets(self) -> None:
+        """Raise ``PIC_FW_PASS_NMI_TARGET`` once, after every check of the run passed."""
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_pic_fw_pass(1 << PIC_FW_PASS_NMI_TARGET, self.logger)
+        await ClockCycles(clk, 2)
+        set_pic_fw_pass(0, self.logger)
+        await RisingEdge(clk)

@@ -52,7 +52,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   ``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson:222-224``
   (CONTROL.OUTPUT_EN): "Enable the SPI host output buffers for the sck, csb,
   and sd lines." Control: before the bring-up CONTROL write sets OUTPUT_EN,
-  both enables read 0 (``doc/integrator/src/smu-sep.adoc:275-276``: the host
+  both enables read 0 (``doc/integrator/src/smu-sep.adoc:291-292``: the host
   "drives no pad until software sets its ``CONTROL.OUTPUT_EN``"), else
   CTRL-MISSING.
 * CHK-SPI-PERIOD: every sck period of the graded pair is 2*(CLKDIV+1) clocks.
@@ -70,7 +70,7 @@ Checks (one PASS line per mode cell, each with ``mode=<cpol><cpha><fullcyc>``):
   bounds: "These settings are all minimum bounds, and delays in the FSM
   implementation may create more margin in each of these timing constraints."
   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:287``). So the minimum is
-  graded, and ``OBS-SPI-CSN-EXACT`` logs the lead and trail excess over each
+  graded, and ``INFO-SPI-CSN-EXACT`` logs the lead and trail excess over each
   minimum. The chip-select and clock output enables in the frames and the gap
   are CHK-SPI-CTRL-OE. Control: the idle minimum is above g0 of the control
   pair.
@@ -491,7 +491,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         ctrl = None
         for _ in range(MAX_DOUBLINGS + 1):
             ctrl = await self._pair(
-                c.cfg(clkdiv=c.a, csnidle=0), c.cpol, tx_bytes, w, tag="CTL-SPI-QUEUE"
+                c.cfg(clkdiv=c.a, csnidle=0), c.cpol, tx_bytes, w, tag="INFO-SPI-QUEUE"
             )
             if ctrl is not None:
                 break
@@ -505,7 +505,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
         cmark, cwins = ctrl
         g0 = cwins[1].start - cwins[0].end
         self.logger.info(
-            "CTL-SPI-CSN LOG seed=%d mode=%s width=x%d clkdiv=%d tx_bytes=%d control_gap=%d "
+            "CTRL-SPI-CSN LOG seed=%d mode=%s width=x%d clkdiv=%d tx_bytes=%d control_gap=%d "
             "windows=%s",
             seed,
             c.mode,
@@ -646,7 +646,7 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             # CSNLEAD, CSNTRAIL and CSNIDLE are minimum bounds that FSM delays
             # may exceed (spi_host theory_of_operation.md:287); the excess is logged.
             self.logger.info(
-                "OBS-SPI-CSN-EXACT seed=%d mode=%s clkdiv=%d half=%d lead_excess=%d,%d "
+                "INFO-SPI-CSN-EXACT seed=%d mode=%s clkdiv=%d half=%d lead_excess=%d,%d "
                 "trail_excess=%d,%d idle_gap=%d csnidle_plus_one=%d width=x%d",
                 seed,
                 c.mode,
@@ -879,10 +879,10 @@ class sep_spi_pad_timing_cfg_rand_test(sep_base_test):
             err0 = field_compare(await self._err_status(), 0, ERR_STATUS_MASK)
             if not err0.ok:
                 raise AssertionError(
-                    f"CTL-SPI-BRINGUP FAIL seed={self.seed} error_status {err0.fields()}"
+                    f"CTRL-SPI-BRINGUP FAIL seed={self.seed} error_status {err0.fields()}"
                 )
             self.logger.info(
-                "CTL-SPI-BRINGUP LOG seed=%d control=0x%08x error_status=0x%02x fcov=%d",
+                "CTRL-SPI-BRINGUP LOG seed=%d control=0x%08x error_status=0x%02x fcov=%d",
                 self.seed,
                 ctrl,
                 err0.got & err0.mask,

@@ -422,7 +422,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         # MODULE_ENABLE = 0 here, so the immediate change applies stuck0 from the first sample.
         self.noise.set_lanes([Stuck(0)] * NUM_LANES, immediate=True)
         pre = self.noise.words_since(mark)
-        self.logger.info("ESRC-BAD-START %s pre_clean_strobes=%d", lim.describe(), pre)
+        self.logger.info("INFO-ESRC-BAD-START %s pre_clean_strobes=%d", lim.describe(), pre)
         if pre > PRE_CLEAN_MAX:
             raise AssertionError(f"pre_clean_strobes={pre} above {PRE_CLEAN_MAX}")
         wm, vm = self.whiten.mark(), self.vld.mark()
@@ -483,7 +483,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         self.ctrl_vld = self.vld.high_clocks_since(vm)
         self.ctrl_fifo_max, self.ctrl_biw_max = fifo_max, biw_max
         self.logger.info(
-            "CLEAN-START t_boot=%d t_fill=%d polls=%d whiten_push=%d stream_vld=%d",
+            "INFO-CLEAN-START t_boot=%d t_fill=%d polls=%d whiten_push=%d stream_vld=%d",
             self.t_boot,
             self.t_fill,
             polls,

@@ -5,9 +5,9 @@
 == Architecture
 
 The AVSBus Controller implements an Adaptive Voltage Scaling Bus (AVSBus)
-1.3.1 controller for dynamic voltage and frequency scaling (DVFS) in
-single-target systems, communicating with one AVS target device over a
-two-wire protocol interface.
+controller, as specified in PMBus Specification Version 1.3, Part III, for
+dynamic voltage and frequency scaling (DVFS) in single-target systems,
+communicating with one AVS target device over a two-wire protocol interface.
 
 The design is a register file, a pair of asynchronous FIFOs that carry
 commands and responses between the register and AVS clock domains, a protocol
@@ -41,7 +41,9 @@ also fails, the failing response is delivered to software and
 `MAX_RETRIES_ATTEMPTED_INT` is raised. Setting `MAX_RETRIES` to 0 suppresses
 both the retries and that interrupt; the failing response is delivered to
 software instead. A reply whose frame valid bit is set means the target did not
-respond at all and raises `SLAVE_UNRESPONSIVE_INT`. There is no separate
+respond at all and raises `SLAVE_UNRESPONSIVE_INT`. That reply is retried in the
+same way, and a reply delivered to software with the bit still set reads 1 in
+`AVS_READBACK` bit 29. There is no separate
 programmable response timeout.
 
 The master also issues periodic slave resync operations. The FSM stays in
@@ -80,8 +82,11 @@ clocks.
 The selected source passes through an anti-glitch mux and then a programmable
 divider, whose ratio and duty cycle are both 8-bit values in `AVS_CFG_1`. Out
 of reset the controller runs on `clk_ref_i` divided by 4 at a 50% duty cycle.
-Both divider fields reset to 0, which is a sentinel: the divider keeps its
-hardware defaults until software writes a non-zero value.
+Both divider fields reset to 0, and the divider keeps its hardware defaults
+until software changes either field. A change to either field loads both into
+the divider, so software writes the numerator (0x80 for 50%) together with the
+ratio. Writing `CLK_DIVIDER_VALUE` alone applies a numerator of 0, which is
+treated as 1 and gives a high pulse of one source-clock cycle.
 
 Changing the clock configuration is not glitch-free on its own. Set
 `AVS_CFG_1.TURN_OFF_ALL_PREMUX_CLOCKS` to gate both source clocks before
@@ -96,7 +101,13 @@ slave resync.
 === CRC Verification Engine
 
 The `avsbus_crc3` module computes a 3-bit CRC combinationally over a 32-bit
-subframe. Two instances are used. The generate instance is fed the outgoing
+subframe. The generator polynomial, defined by the PMBus Specification
+Version 1.3, Part III (Adaptive Voltage Scaling Bus, AVSBus), is
+_g_(_x_) = _x_^3^ + _x_ + 1, with a zero initial value and no final XOR.
+Bit 31 of the subframe, the first bit on the wire, is the highest-order
+coefficient, so the transmitted CRC is the remainder of _M_(_x_) · _x_^3^
+divided by _g_(_x_), where _M_(_x_) is subframe bits [31:3]. Two instances
+are used. The generate instance is fed the outgoing
 master subframe with its CRC field zeroed, and its output becomes the three
 bits shifted out last. The check instance is fed the received slave subframe
 intact, including the CRC the target sent, and reports a good check when the
@@ -141,8 +152,11 @@ lose the responses to commands already on the bus.
 === Reset and Initialization
 
 The controller takes three resets. `rst_clk_div_ni` resets the programmable
-clock divider, `rst_reg_ni` resets the register file and the protocol logic,
-and `rst_ref_ni` resets the `clk_ref_i` leg of the anti-glitch clock mux.
+clock divider, `rst_reg_ni` resets the `clk_reg_i` leg of the anti-glitch
+clock mux, the register file and the protocol logic, and `rst_ref_ni` resets
+the `clk_ref_i` leg of the mux. Because each mux leg takes its reset directly,
+`rst_reg_ni` and `rst_ref_ni` must each assert asynchronously and deassert
+synchronously to their own clock.
 
 *`rst_clk_div_ni` must be deasserted before `rst_reg_ni`*. The divider has to
 be producing a clock before the logic it feeds leaves reset, otherwise the AVS

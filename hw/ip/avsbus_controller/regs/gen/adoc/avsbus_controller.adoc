@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-avsbus_controller]
 == AVSBus Controller Address Map
 
-Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.
+Command, readback, status, and interrupt registers for the AVSBus (PMBus V1.3 Part III) controller.
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -91,7 +91,7 @@ Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0
 [*]0x2: Bad CRC received - hardware will retry
 [*]0x3: Good CRC received but bad data, data type or selector - no hardware retry
 [/list]
-| 29 | `CONST0` | R RMOD | 0x0 a| Always 0
+| 29 | `CONST0` | R RMOD | 0x0 a| Frame-valid bit of the slave response sub-frame: 0 in a valid frame, 1 when the slave did not respond
 | 28:24 | `STATUS_RESPONSE` | R RMOD | 0x0 a| 5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]
 [*]bit 4: VDone - AND of all VDone bits of active rails
 [*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details
@@ -133,7 +133,7 @@ Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `AVS_SLAVE_SUBFRAME` | R | 0xFFFF a| The most recently received AVS slave response sub-frame
+| 31:0 | `AVS_SLAVE_SUBFRAME` | R | 0x0 a| The most recently received AVS slave response sub-frame
 |===
 
 [#reg-{regmap-instance}-avsbus_controller-AVS_NORMAL_STATUS]
@@ -276,13 +276,13 @@ retries and MAX_RETRIES_ATTEMPTED_INT.
 | 31:24 | `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR` | RW | 0x0 a| Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).
 This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,
 it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,
-a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)
-by matching the FF default in the resynced version of the signal.
+a value of 1 will be assumed. Out of reset the divider uses a numerator of 0x80 (50%), not this field's reset value of 0. A write that
+changes this field or clk_divider_value loads both fields into the divider, so program both together.
 | 23:16 | `CLK_DIVIDER_VALUE` | RW | 0x0 a| Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).
 The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%
 duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of
-2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings
-(divider=0x4) by matching the FF default in the resynced version of the signal.
+2 - for lower values, 2 will be assumed. Out of reset the divider uses a ratio of 4, not this field's reset value of 0. A write that
+changes this field or clk_divider_duty_cycle_numerator loads both fields into the divider, so program both together.
 | 15:11 | `Reserved` | - | - a| Reserved
 | 10 | `TURN_OFF_ALL_PREMUX_CLOCKS` | RW | 0x0 a| Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards
 | 9 | `FORCE_SLAVE_RESYNC_OPERATION` | RW 1P | 0x0 a| Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.

@@ -15,20 +15,22 @@ schema_version = 1
 #     grades (the observed FAIL is PASS, an observed PASS is FAIL with the
 #     reason "the defect is gone"), and `expect_fail_match`, the regex the
 #     failure message must match so a leaf failing for another reason is FAIL.
-#     The weekly tier runs the group on its own row (.github/workflows/
-#     regress.yml), green while the defects stand and red the week one is
-#     fixed; the leaf then moves back to its feature testlist without the
-#     `expect_fail` pair. No `ci` tag: a graded expected failure must never
-#     count in the hosted set. One test per defect.
+#     While the group has a member the weekly tier runs it on its own row
+#     (.github/workflows/regress.yml), green while the defects stand and red
+#     the week one is fixed; the leaf then moves back to its feature testlist
+#     without the `expect_fail` pair, and the row goes with the last member.
+#     No `ci` tag: a graded expected failure must never count in the hosted
+#     set. One test per defect.
 #   * `occp_boot` -- held out on runtime. The production ROM's whole
 #     reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) runs on
 #     demand. The hours-long dual-SMC boot case belongs to `occp_rom`.
-#   * `held_out` -- leaves whose comparison the RTL and the specification
-#     disagree on, and leaves blocked by a filed RTL defect; each entry's
-#     comment states the disagreement or the defect in words.
-#     smc_ref_clock_timer_rate_test compares the OCTS system timer rate against
-#     clk_rst.adoc, which places the timer in the reference clock domain, while
-#     the RTL clocks it from clk_smc_i.
+#   * `held_out` -- leaves whose comparison the specification does not support,
+#     and leaves blocked by a filed RTL defect; each entry's comment states the
+#     disagreement or the defect in words. An observation leaf waiting on a
+#     specification ruling belongs here too: it passes, logs `OBS-*` lines for
+#     the disputed value and grades nothing about it; its comment states the
+#     open question in words and the VPLAN held-out table names the issue that
+#     holds the ruling.
 #   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
 #     `hosted` because those groups do not run the UVM framework. Each group is
 #     named for the verification scope it exercises (`csr_uvm_extended`,
@@ -38,17 +40,61 @@ schema_version = 1
 # it.
 
 [[tests]]
-# ISOLATE_REQ_SMC_REG clears its FLR-latched request on any write with a byte
-# enable anywhere in the register, whatever the data (smc_cool_reset_wrap.sv);
-# reset_unit.rdl makes the request a sw=rw field at bit 0.
-name = "smc_isolate_req_smc_lane_test"
-module = "smc_isolate_req_smc_lane_test"
+# CPU_CTRL.WDT_TIMEOUT written to 0 with no first-stage timeout raises
+# smc_ras_o.wdt_second_timeout on the next clock and holds the warm domain in
+# reset (smc_cpu_ctrl_wrap.sv flags the second timeout whenever the reloaded
+# counter reads 0); cpu_ctrl.rdl gives the field no range and defines no 0.
+name = "smc_wdt_timeout_zero_idle_test"
+module = "smc_wdt_timeout_zero_idle_test"
 seed = 1
 timeout_sec = 1800
 tags = ["rtl_issue"]
 run_modes = ["smoke"]
-expect_fail = "ISOLATE_REQ_SMC_REG: a write outside bit 0's byte lane clears the FLR-latched request"
-expect_fail_match = "cleared the FLR-latched request from a byte lane the field does not"
+expect_fail = "WDT_TIMEOUT=0 raises the second-stage timeout with no first-stage timeout"
+expect_fail_match = "CHK-WDT-TIMEOUT-ZERO-IDLE FAIL"
+
+[[tests]]
+# A SCRATCH_COLD_WARM read while the warm reset is asserted is accepted by the
+# primary-domain axi_lite_demux and never answered (smc_misc_wrap.sv has no
+# isolation on the warm-domain leg), so the peripheral crossbar's read channel
+# hangs after the release. The in-reset response is recorded, not graded;
+# cpu.adoc states the isolation rule only for the CPU cluster's own ports.
+name = "smc_warm_domain_access_during_reset_test"
+module = "smc_warm_domain_access_during_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "a SCRATCH_COLD_WARM read during the warm reset hangs the peripheral crossbar after the release"
+expect_fail_match = "CHK-WARM-DOMAIN-ACCESS-IN-RESET FAIL"
+
+[[tests]]
+# The CLA debug interrupt stays asserted after the CDbgEapStatus W2C write
+# (cla_node_eap.sv feeds the interrupt flop back without consulting the
+# status; core_logic_analyzer.sv gives the set priority over the clear);
+# dfd_cla.rdl names the W2C as the ISR's acknowledge.
+name = "smc_dfd_cla_irq_w2c_release_test"
+module = "smc_dfd_cla_irq_w2c_release_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "the CLA debug interrupt is not released by the EapStatus W2C write"
+expect_fail_match = "CHK-CLA-IRQ-W2C-RELEASE FAIL"
+
+[[tests]]
+# The CLA global clock-halt request is a set-only flop (cla_action_gen.sv)
+# cleared by the SMC primary reset alone; the W2C, EnableEap and
+# DisableGlobalClockHalt do not reach it, where the wrapper port, dfd.adoc and
+# dfd_cla.rdl describe a level that follows the action.
+name = "smc_dfd_cla_clock_halt_release_test"
+module = "smc_dfd_cla_clock_halt_release_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "the CLA clock-halt request stays asserted after the action drops and DisableGlobalClockHalt is set"
+expect_fail_match = "CHK-CLA-CLOCK-HALT-RELEASE FAIL"
 
 [[tests]]
 name = "smc_prod_rom_occp_ready_test"
@@ -67,11 +113,41 @@ args = [
 ]
 
 [[tests]]
-name = "smc_ref_clock_timer_rate_test"
-module = "smc_ref_clock_timer_rate_test"
+# Observation leaf: a CTRL_STATUS trigger while the zeroer is busy
+# is dropped during issue and accepted while responses drain, with one
+# completion interrupt for two jobs; zeroer.adoc and zeroer_ctrl.rdl state
+# no rule for it. The OBS-ZEROER-BUSY lines record both windows; the CHK line
+# grades liveness only.
+name = "smc_zeroer_busy_trigger_obs_test"
+module = "smc_zeroer_busy_trigger_obs_test"
 seed = 1
 timeout_sec = 1800
-tags = ["clock"]
+tags = ["zeroer"]
+run_modes = ["smoke"]
+
+[[tests]]
+# Observation leaf: the FLR pre-delay is N+1 clk_ref_i cycles, the
+# hold is M, and an edge during a running sequence is ignored; reset_unit.rdl
+# names neither the clock nor the offset. The OBS-FLR lines record each
+# (N, M) leg; the CHK line grades liveness only.
+name = "smc_flr_counter_timing_obs_test"
+module = "smc_flr_counter_timing_obs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+# Observation leaf: the merged BRESP of a split two-beat write
+# whose beats answer differently has no stated rule. The OBS-BRESP lines
+# record every declared past-extent and gap write beside its DECERR
+# declaration and the OBS-BURST lines the merged response; the CHK lines
+# grade the table counts and that live words are unchanged.
+name = "smc_bresp_evidence_obs_test"
+module = "smc_bresp_evidence_obs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "decode"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -135,6 +211,22 @@ tools = ["vcs"]
 tags = ["uvm", "clock"]
 run_modes = ["smoke"]
 
+[[tests]]
+# A launch with LENGTH 0 and ENABLED_ND set advances DONE_0 by the drawn
+# NUM_REPETITIONS, where dma.adoc ("still retire[s] a transfer ID") and the
+# dma_ctrl.rdl NEXT_ID description ("still retires an ID without copying any
+# data") retire one; every other launch advances it by one. The leaf runs the
+# smc_dma_transfer_matrix_rand_test draw (its twelve copies and the ENABLED_ND
+# clear are the arm leg) and asserts DONE_0 equal to the returned ID.
+name = "smc_dma_zero_length_done_id_test"
+module = "smc_dma_zero_length_done_id_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "DONE_0 after a LENGTH 0 launch advances by NUM_REPETITIONS, not to the one returned ID (#3509)"
+expect_fail_match = "CHK-DXM-ZERO-LENGTH-DONE FAIL"
+
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
 name = "cg_uvm_extended"
@@ -192,9 +284,13 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 1
+expected_count = 5
 tests = [
-    "smc_isolate_req_smc_lane_test",
+    "smc_wdt_timeout_zero_idle_test",
+    "smc_warm_domain_access_during_reset_test",
+    "smc_dfd_cla_irq_w2c_release_test",
+    "smc_dfd_cla_clock_halt_release_test",
+    "smc_dma_zero_length_done_id_test",
 ]
 
 [[groups]]
@@ -205,9 +301,12 @@ tests = [
 ]
 
 [[groups]]
-# Leaves whose comparison the RTL and the specification disagree on; run on demand.
+# Leaves whose comparison the specification does not support, and the
+# observation leaves waiting on a specification ruling; run on demand.
 name = "held_out"
-expected_count = 1
+expected_count = 3
 tests = [
-    "smc_ref_clock_timer_rate_test",
+    "smc_zeroer_busy_trigger_obs_test",
+    "smc_flr_counter_timing_obs_test",
+    "smc_bresp_evidence_obs_test",
 ]

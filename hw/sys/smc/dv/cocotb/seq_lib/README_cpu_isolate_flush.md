@@ -111,7 +111,6 @@ the whole reset timeout, which means a hung or severely stalled fabric-side
 master or response path. Resetting the CPU does not recover that master, so
 the system already needs a wider reset, such as a cold reset, to recover it.
 
-
 ## Harness tests
 
 The shared scenarios are implemented in

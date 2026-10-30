@@ -521,7 +521,7 @@ partition "Hand-off ([S28]-[S29])" {
 detection *before any DCCM access* |<<sec:cpu_init>>, <<sec:warm_reset>>
 |[S02] |PMP programming |Execution fences installed before any C code runs |<<sec:pmp>>
 |[S03] |DFT / MEM_REPAIR gate |Memory-repair and MBIST results checked in `vector.S`, before
-the DCCM scrub; bypassable by strap |<<sec:smc_sync>>
+the DCCM scrub; a strap skips a check, a failed check halts |<<sec:smc_sync>>
 |[S04] |Runtime init + entry checks |DCCM scrub, `.data`/`.bss` init, runtime self-check, SMC
 scratch round-trip sanity |<<sec:cpu_init>>
 |[S05] |ROM identity |Version string + build-time ROM SHA-256 reported |<<sec:boot_measurement>>
@@ -661,7 +661,7 @@ start
 :disable interrupts (mie, mstatus.MIE);
 :program PMP fences;
 :MEM_REPAIR / MBIST gate [S03]
-(strap-bypassable);
+(strap skips a check; failure halts);
 :DCCM scrub (DCCM_SCRUB_BYTES);
 :.data ROM->DCCM copy, .bss zero;
 :status 'runtime init OK';
@@ -1226,8 +1226,8 @@ restored to 0 afterwards.
 `0xFFFFFFFF` = invalid.
 |9 |`STATUS_TO_SEP` |SMC |Bitfield: bit 0 `SRAM_INIT`, bit 1 `MANIFEST_READY`, bit 2
 `BUFFER_READY`, bit 3 `SRAM_PROTECTED`.
-|10 |`MBIST_FAILURE` |SEP |Raw `DFX_CTRL_STATUS_SMU` value dumped on a memory-repair gate
-failure.
+|10 |`MBIST_FAILURE` |SEP |Raw `DFX_CTRL_STATUS_SMU` value dumped when a memory-repair or
+MBIST check fails at [S03].
 |11 |`STATUS_BUFFER_ADDR` |SMC |Offset of the status ring buffer in SMC SRAM.
 |13 |`SEP_SAFE_SRAM_START` |SMC |Offset of the SMC-SRAM region the SEP may write (payload
 staging).
@@ -1245,12 +1245,13 @@ skinparam sequenceMessageAlign center
 participant "SMC ROM" as SMC
 participant "SMC scratch\n+ SMC SRAM" as SHM
 participant "SEP ROM" as SEP
+SEP -> SHM : [S03] read DFX_CTRL_STATUS_SMU\n(repair / MBIST gate, before the C runtime)
+note right of SEP : check failed: raw status -> scratch10, halt
 SMC -> SHM : init SRAM, set scratch9.SRAM_INIT
 SMC -> SHM : status ring offset -> scratch11,\nset scratch9.BUFFER_READY
 SEP -> SHM : scratch7 write/read-back sanity
 SEP -> SHM : poll scratch9.SRAM_INIT / BUFFER_READY
 SEP -> SHM : init status ring (producer)
-SEP -> SHM : read DFX_CTRL_STATUS_SMU (repair gate)
 group recovery / secondary boot only
   SMC -> SHM : stage manifest+payload in SMC SRAM\n(offset -> scratch8)
   SMC -> SHM : set scratch9.MANIFEST_READY
@@ -1270,12 +1271,22 @@ success.
 
 === Memory-Repair / DFT Gate ([S03])
 
-[[req-SEP-ROM-SMC-030]]*[SEP-ROM-SMC-030]* The ROM shall not proceed past [S03] unless memory
-repair completed successfully: `DFX_CTRL_STATUS_SMU` (SMC window offset `0xB800`) bit 1
-(`mem_repair_success`) set. On failure the ROM shall dump the raw status to scratch[10], emit
-a `MBIST_FAIL` warning, and then fail fatally (`ROM_ERR_DFT_GATE_BLOCKED`, `0xD001`) *unless*
-the `mem_repair_bypass` strap (`STRAPS_LO[13]`) is set, in which case boot continues with the
-warning recorded.
+[[req-SEP-ROM-SMC-030]]*[SEP-ROM-SMC-030]* The ROM shall not proceed past [S03] unless every
+memory check that runs passes. Both checks read `DFX_CTRL_STATUS_SMU` (SMC window offset
+`0xB800`):
+
+. *Memory repair.* When the `mem_repair_bypass` strap (`STRAPS_LO[13]`) is 1, repair did not
+  run and the ROM skips this check. Otherwise bit 1 (`mem_repair_success`) shall be 1.
+. *MBIST.* When the `mbist_bypass` strap (`STRAPS_HI[22]`) is 1, the ROM skips this check.
+  Otherwise the ROM waits for bit 4 (`mbist_done`) for at most `MBIST_DONE_WAIT_ITERS` status
+  reads. Bit 12 (`mbist_abort`) or the end of the wait is a failure. After `mbist_done`, bit 8
+  (`mbist_pass`) shall be 1.
+
+On a failed check (repair failure, MBIST abort, MBIST timeout or MBIST failure) the ROM shall
+write the raw `DFX_CTRL_STATUS_SMU` value to scratch[10], write the `MBIST_FAIL` warning
+(`0x08010219`) and then `ROM_ERR_DFT_GATE_BLOCKED` (`0x0F01D001`) to `cold_scratch[1]`, and
+halt in a `wfi` loop. A bypass strap only stops its check from running; no strap or fuse lets
+boot continue past a check that ran and failed.
 
 === Status Ring Buffer
 
@@ -1330,8 +1341,8 @@ the SEP↔SMC interface contract.
 |*Strap* |*Bit* |*Effect on BL0*
 |`primary_chiplet` |`STRAPS_LO[25]` |1 = primary chiplet: mutable software loads from SPI
 NOR flash. 0 = secondary: manifest+payload delivered by the SMC (I3C → SMC SRAM).
-|`mem_repair_bypass` |`STRAPS_LO[13]` |Permits boot to continue past a memory-repair gate
-failure (<<sec:smc_sync>>).
+|`mem_repair_bypass` |`STRAPS_LO[13]` |1 = repair did not run; skip the memory-repair check at
+the pre-C memory-health gate (<<sec:smc_sync>>).
 |`status_report_disable` |`STRAPS_LO[21]` |1 = skip status ring-buffer initialization;
 status codes still go to `cold_scratch[1]`.
 |`boot_recovery` |`STRAPS_LO[19]` |1 = recovery mode: even a primary chiplet ignores SPI and
@@ -1841,7 +1852,18 @@ without a reset.
 [[req-SEP-ROM-ENT-030]]*[SEP-ROM-ENT-030]* The ROM shall lock the ESRC configuration
 (`FIPS_LOCK`) after the startup health test passes and *before* any entropy reaches a
 consumer. Locking earlier freezes a configuration that has not proved itself; locking later
-exposes entropy from a still-mutable source. `DEBUG_CTRL` stays outside this lock by design.
+exposes entropy from a still-mutable source. The lock also freezes `DEBUG_CTRL`, the
+observe-tap enables and `FIFO_CTRL.ENABLE` at their current values. Before setting the lock,
+the ROM therefore closes the `FIFO_RDATA` read path to the DRBG seed words:
+
+. Clear `FIFO_CTRL.ENABLE` and keep every other `FIFO_CTRL` field as configured.
+. Read `FIFO_RDATA` until `FIFO_STATUS.LEVEL` is zero, bounded by the 64-entry FIFO depth
+  plus a final level check.
+. Set `FIPS_LOCK`.
+
+If the FIFO does not empty within that bound, entropy bring-up fails
+(<<req-SEP-ROM-ENT-020,SEP-ROM-ENT-020>>). While `ENTROPY_DBG` disables FIFO access the FIFO
+captures nothing, so `FIFO_STATUS.LEVEL` stays zero and the drain completes immediately.
 
 [[req-SEP-ROM-ENT-040]]*[SEP-ROM-ENT-040]* The ROM shall lock the TRNG source selection
 (`EXT_TRNG_SRC_SEL_LOCK`) once bring-up completes, so later software cannot move the
@@ -1850,6 +1872,7 @@ crypto-block entropy stream to a different source after BL0's own crypto has run
 Both locks are one-way until reset and are applied by default. Each has a build-time defer
 switch (`SEP_ENTROPY_DEFER_FIPS_LOCK`, `SEP_ENTROPY_DEFER_SRC_SEL_LOCK`) for builds that
 intend BL1 to own the configuration; a production build shall leave both locks enabled.
+Deferring `FIPS_LOCK` also leaves the FIFO close step to BL1.
 
 === External TRNG Seam
 
@@ -2987,7 +3010,7 @@ STATUS_ENCODE(type, value) = (type & 0xFF) << 24    // message type
 |===
 |*Type* |*Value* |*Use*
 |`INFO` |`0x01` |Stage progress (mirrored to the ring).
-|`WARN` |`0x08` |Recoverable anomaly (e.g. repair-gate bypass).
+|`WARN` |`0x08` |Recoverable anomaly (e.g. `PLL_FUSES_BLANK`).
 |`ERROR` |`0x0F` |Fatal; last word before the ROM parks.
 |`DEBUG` |`0x80` |Scratch-only progress (not mirrored to the ring).
 |`INFO_EXT` |`0x81` |16-bit payload word following the preceding status (frequencies, IDs,
@@ -3068,7 +3091,7 @@ already reported its own status.
 |`ROM_ERR_RUNTIME_INIT_FAILED` |`0xB001` |`.data`/`.bss` init self-check failed
 (<<sec:cpu_init>>).
 |`ROM_ERR_SMC_COORD_NOT_READY` |`0xC001` |SMC coordination unavailable.
-|`ROM_ERR_DFT_GATE_BLOCKED` |`0xD001` |Memory-repair gate failed, no bypass
+|`ROM_ERR_DFT_GATE_BLOCKED` |`0xD001` |Memory-repair or MBIST check failed; always terminal
 (<<sec:smc_sync>>).
 |`ROM_ERR_SPI_INIT_FAILED` |`0xE001` |SPI bring-up failed (informational; non-fatal by
 itself, SEP-ROM-STRAP-020).
@@ -3159,8 +3182,8 @@ the lock poll (unbounded; hang is the failure mode)
 |[S11] lifecycle |`FUSE_LC_STATE` → `INFO_EXT` (state); `LIFECYCLE_VALID`
 |`LIFECYCLE_INVALID` (ERROR) + `ROM_ERR_LIFECYCLE_INVALID`
 |[S12] chip ID |`CHIP_ID_CHECK` (DEBUG) → `INFO_EXT` (ID) |—
-|[S03] repair gate |`DFT_GATE_CHECK` (DEBUG) |`MBIST_FAIL` (WARN), then
-`ROM_ERR_DFT_GATE_BLOCKED` unless bypassed
+|[S03] repair gate |— |`MBIST_FAIL` (WARN), then `ROM_ERR_DFT_GATE_BLOCKED`; always
+terminal
 |periph reset |`PERIPH_BUS_RESET_CHECK` (DEBUG) |—
 |[S14] crypto self-test |`CRYPTO_INIT_CHECK` (DEBUG) |`ROM_ERR_CRYPTO_SELFTEST_FAILED`
 |[C9a/b] memory clear |`ICCM_CLEAR_START` / `ICCM_CLEAR_DONE` (+ SRAM-clear codes) |—
@@ -3227,8 +3250,8 @@ the governing "shall".
 SMC-020
 |LC validity |`LC_STATE` fuse |value ∈ closed set |`LIFECYCLE_INVALID` + `0xA002`, SMC cores
 reset |Before any policy decision. FUSE-020
-|Memory-repair gate |`DFX_CTRL_STATUS_SMU`, bypass strap |`mem_repair_success` or bypass
-|`0xD001` |Before memory use. SMC-030
+|Memory-repair / MBIST gate |`DFX_CTRL_STATUS_SMU`, bypass straps |each check not skipped by
+its strap passes |`0xD001` |Before memory use. SMC-030
 |SHA-256 self-test |NIST "abc" vector |digest match |`0xF002` |Before any hash-based
 decision. CPU-090
 |Flash read bounds |offset/len/dst |within slot window ∧ dst in SRAM; doubled evaluation
@@ -3492,7 +3515,8 @@ post-self-check |<<sec:pmp>>
 |<<sec:smc_sync>>
 |<<req-SEP-ROM-SMC-020,SEP-ROM-SMC-020>> |Scratch round-trip sanity, fatal on mismatch
 |<<sec:smc_sync>>
-|<<req-SEP-ROM-SMC-030,SEP-ROM-SMC-030>> |Memory-repair gate (strap-bypassable)
+|<<req-SEP-ROM-SMC-030,SEP-ROM-SMC-030>> |Memory-repair / MBIST gate; a strap skips a check, a
+failed check halts
 |<<sec:smc_sync>>
 |<<req-SEP-ROM-SMC-040,SEP-ROM-SMC-040>> |Wait MANIFEST_READY before scratch[8]
 |<<sec:smc_sync>>

@@ -57,7 +57,7 @@ start order with OTBN last. HMAC and KMAC hold their process write, and AES hold
 two blocks with DATA_OUT unread (a stall), until every member is started. A busy
 window runs from the start write response to the last status read that shows busy
 (CTRL-CONC-OVERLAP takes it from DUT status reads only; the process write response of
-HMAC and KMAC is logged as OBS-CONC-PROCESS-WRITE). The PLAN and LEG lines log the
+HMAC and KMAC is logged as INFO-CONC-PROCESS-WRITE). The PLAN and LEG lines log the
 effective start order. In a group
 without an HMAC member, HMAC holds a finished SHA-256 digest (the bystander) and a
 further task reads its DIGEST words while the peers run. The EDN words acked on
@@ -69,11 +69,11 @@ generate budget of the open boot Generate (CTRL-CONC-BUDGET).
                    member and CTRL-CONC-OVERLAP > 0 for every pair of the group.
   CHK-CONC-HOLD    every bystander DIGEST read equals the bystander golden; control:
                    at least one read completes while a peer is busy.
-An HMAC DIGEST readback (member and bystander) equals its golden when every word is the
-big-endian or every word is the little-endian read of digest bytes 4n..4n+3, with one
-order for every readback of the leg (env/sep_hmac_golden.py SepDigestOrder): the register
-text settles the register order and the digest_swap swap (hmac.adoc:116-117), not the byte
-order at digest_swap = 0. The order is logged as OBS-HMAC-DIGEST-ORDER.
+An HMAC DIGEST readback (member and bystander) equals its golden only when every word is
+the big-endian read of digest bytes 4n..4n+3 (env/sep_hmac_golden.py SepDigestOrder): at
+digest_swap = 0 DIGEST word n is that read (hmac.hjson:465-469, DIGEST, over the FIPS 180-4
+hash value H0 || H1 || ...). The order the first readback matches is logged as
+OBS-HMAC-DIGEST-ORDER.
 The specification implies the independence of the engines (separate host paths,
 hw/sys/sep/doc/crypto.adoc; per-domain resets, hw/sys/sep/doc/reset_controller.adoc)
 and states no direct rule, so both checks grade the implied contract.
@@ -105,6 +105,7 @@ from env.sep_hmac_golden import SepDigestOrder, hmac_sha2_bytes, sha2_bytes
 from env.sep_kmac_golden import kmac_family_words, sha3, shake
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import EDN
 from seq_lib.sep_aes_seq import (
     AES_CTRL_SHADOWED,
     AES_DATA_IN_0,
@@ -254,11 +255,13 @@ class CryptoEdnMultisinkCfg:
 _TEST_NAME = "sep_crypto_edn_multisink_arbitration_test"
 
 # Generate budget of the leg, in 32-bit EDN words. The open test writes no
-# EDN.BOOT_GEN_CMD, so EDN issues the boot Generate with the reset word 0xFFF003
-# (vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc, BOOT_GEN_CMD):
-# GLEN 0xFFF blocks of 128 bits = 16380 words. Half of it is the budget; the other
-# half covers the words the endpoint FIFOs of the other clients buffer.
-_EDN_BUDGET_WORDS = 8190
+# EDN.BOOT_GEN_CMD, so EDN issues the boot Generate with the RDL reset word of
+# BOOT_GEN_CMD. GLEN is command-header bits 23:12, in blocks of 128 bits
+# (vendor/lowRISC/opentitan/upstream/hw/ip/csrng/doc/theory_of_operation.md:180-183).
+# Half of the generated words is the budget; the other half covers the words the
+# endpoint FIFOs of the other clients buffer.
+_EDN_BOOT_GLEN = (EDN.reset("BOOT_GEN_CMD") >> 12) & 0xFFF
+_EDN_BUDGET_WORDS = _EDN_BOOT_GLEN * (128 // 32) // 2
 
 # crypto_edn_*_o client index per engine: 0 AES, 1 KMAC, 2 OTBN RND, 3 OTBN URND.
 _EDN_CLIENTS = {"aes": (0,), "kmac": (1,), "otbn": (2, 3), "hmac": ()}
@@ -777,9 +780,14 @@ class LegKmac(_LegAccess, SepKmac, _LegMember):
             digest.append((s0 ^ s1) & 0xFFFF_FFFF)
         # kmac.hjson CMD.done: the engine goes back to idle.
         await self._wr(KMAC_CMD, KMAC_CMD_DONE)
-        await self._leg_poll(
-            _TaskResult(start_clk=self.clk()), bound, lambda v: v & KMAC_STATUS_IDLE
-        )
+        if (
+            await self._leg_poll(
+                _TaskResult(start_clk=self.clk()), bound, lambda v: v & KMAC_STATUS_IDLE
+            )
+            is None
+        ):
+            res.timeout = True
+            return res
         res.result = digest
         return res
 
@@ -1246,7 +1254,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         for eng in _CFG_ORDER:
             if eng in g.members:
                 readback = await drivers[eng].configure_op(ops[eng])
-                chk.obs("CONC-CFG", group=g.name, engine=eng, readback=f"0x{readback:08x}")
+                chk.info("CONC-CFG", group=g.name, engine=eng, readback=f"0x{readback:08x}")
 
         records: dict[str, list] = {eng: [] for eng in g.members}
         for eng in g.members:
@@ -1324,7 +1332,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
 
         for eng in g.members:
             if results[eng].process_clk >= 0:
-                chk.obs(
+                chk.info(
                     "CONC-PROCESS-WRITE",
                     group=g.name,
                     engine=eng,

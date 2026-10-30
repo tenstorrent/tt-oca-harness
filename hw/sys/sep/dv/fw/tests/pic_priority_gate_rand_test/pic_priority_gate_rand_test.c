@@ -24,6 +24,21 @@
 //                            mcause.interrupt set, and one ecall enters
 //                            trap_dispatch through mtvec and is counted
 //                            (control)
+//   CHK-THRESHOLD            a source at effective priority P == T (meipt)
+//                            stays pending with no delivery; at P == T + 1 it
+//                            delivers once
+//   CHK-NEST                 in a handler that copies meicidpl into meicurpl
+//                            and sets mstatus.MIE, a source at the same level
+//                            stays pending with no entry; one level higher it
+//                            nests once
+//   CHK-INT-TIMER-HOLD       internal timer k pending (mip.MITIPk 1) with
+//                            mie.MITIEk 0 takes no trap, with mie.MTIE and
+//                            mie.MSIE both 0 or both 1; then mie.MITIEk 1
+//                            takes one trap with the timer's mcause
+//   CHK-INT-TIMER-TRAP       internal timer k armed from mitcnt 0 with bound B
+//                            traps once with the timer's mcause, not before B
+//                            core clocks; stopped with mitcnt B - 1 it takes
+//                            no trap, stopped with mitcnt B it traps once
 //
 // Source drive recipe. A mailbox source k + 1 is driven by one CPU push into
 // the inbound WRITE_DATA of mailbox k with IRQEN.wtirq 1, WIRQT 0 and an
@@ -38,7 +53,22 @@
 // control leg takes one ecall through mtvec, so a trap on that path is shown to
 // reach the counters that CHK-NO-TIMER-TRAP reads. The
 // priority threshold CSRs (meipt, meicurpl) are set to the pass-all value of
-// the current order, so only meie, meipl and mstatus.MIE gate delivery.
+// the current order, so only meie, meipl and mstatus.MIE gate delivery, except
+// in the threshold and nesting legs, which run in standard order and change
+// meipt and meicurpl only with mstatus.MIE 0.
+//
+// Internal timers. The interrupt chapter of the SEP spec
+// (hw/sys/sep/doc/interrupts.adoc:294-299) states mip.MITIP0 bit 29 and
+// mip.MITIP1 bit 28, the enables mie.MITIE0 and mie.MITIE1 at the same bits,
+// the cause codes 0x1D and 0x1C with the interrupt bit, and that mie.MTIE and
+// mie.MSIE do not enable them. The CSRs and their behaviour come from the
+// VeeR EL2 Programmer's Reference Manual (cited at
+// hw/sys/sep/doc/cpu.adoc:22-23), chapter 6: mitcnt0/mitb0/mitctl0 at
+// 0x7D2-0x7D4 and mitcnt1/mitb1/mitctl1 at 0x7D5-0x7D7; the timer counts core
+// clocks while mitctl.enable (bit 0) is 1 and signals its interrupt while
+// mitcnt >= mitb; mitb resets to 0xFFFF_FFFF. A bound of 0 keeps the timer
+// pending on every clock. trap_dispatch clears both mie.MITIE bits on an
+// internal-timer entry, so each arming takes one trap.
 
 #include <stdint.h>
 
@@ -75,13 +105,38 @@ enum {
     R_ORDER = R_GATE + S_MAX,
     R_WORDS = R_ORDER + S_MAX
 };
-#define P_WORDS (P_ROUND + R_MAX * R_WORDS)
+#define P_EXT (P_ROUND + R_MAX * R_WORDS)
+// Threshold, nesting and internal-timer legs, after the rounds.
+enum {
+    P_THR_SRC = P_EXT,
+    P_THR_MEIPT,    // meipt written (T)
+    P_THR_PL_HELD,  // source level of the held step (T)
+    P_THR_PL_OPEN,  // source level of the delivered step (T + 1)
+    P_NEST_A,       // first source, level P_NEST_PL_A
+    P_NEST_B,       // second source, raised inside the first handler
+    P_NEST_PL_A,    // level of A; the handler copies meicidpl into meicurpl
+    P_NEST_PL_SAME, // level of B while blocked (that of A)
+    P_NEST_PL_HIGH, // level of B when it nests (one above)
+    P_IT_FIRST,     // internal timer of the first timer legs (0 or 1)
+    P_IT_MITB0,     // mitb written for the timer 0 trap leg
+    P_IT_MITB1,     // mitb written for the timer 1 trap leg
+    P_IT_BOUND0,    // core clocks that the timer 0 trap must not precede
+    P_IT_BOUND1,    // core clocks that the timer 1 trap must not precede
+    P_IT_HOLD_MITB, // mitb of the hold legs (0: pending on every clock)
+    P_LEG_HOLD,     // loop iterations of the hold window of these legs
+    P_EXT_END
+};
+#define P_WORDS P_EXT_END
 
 volatile uint32_t g_prm[P_WORDS] = {
     [P_MAGIC] = PRM_MAGIC,
-    [P_HOLD] = 3000u,
-    [P_WAIT] = 200000u,
+    [P_HOLD] = 1500u,
+    [P_WAIT] = 20000u,
+    [P_LEG_HOLD] = 16u,
 };
+// The threshold, nesting and internal-timer hold windows last at least this
+// many core clocks (mcycle); a shorter window fails the check of the leg.
+#define LEG_HOLD_MIN_CLK 32u
 
 #define GATE_MEIE0 0u
 #define GATE_NEVER 1u
@@ -97,6 +152,29 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define MCAUSE_ECALL_M 11u // RISC-V privileged spec: environment call from M-mode
 #define LOG_MAX 64u
 #define SRC_CTRL 1u
+
+// meicidpl, the priority level of the claimed source (VeeR EL2 PRM section
+// 8.12.9, cited at hw/sys/sep/doc/cpu.adoc:22-23).
+#define CSR_MEICIDPL 0xBCB
+// Internal timer CSRs (VeeR EL2 PRM chapter 6, cited at hw/sys/sep/doc/cpu.adoc:22-23).
+#define CSR_MITCNT0 0x7D2
+#define CSR_MITB0 0x7D3
+#define CSR_MITCTL0 0x7D4
+#define CSR_MITCNT1 0x7D5
+#define CSR_MITB1 0x7D6
+#define CSR_MITCTL1 0x7D7
+#define MITCTL_ENABLE 1u       // mitctl.enable, bit 0
+#define MITB_RESET 0xFFFFFFFFu // mitb reset value
+// hw/sys/sep/doc/interrupts.adoc:294-298: pending and enable bits, cause codes.
+#define MIP_MITIP0 (1u << 29)
+#define MIP_MITIP1 (1u << 28)
+#define MIE_MITIE0 (1u << 29)
+#define MIE_MITIE1 (1u << 28)
+#define MCAUSE_ITMR0 (MCAUSE_IRQ | 0x1Du)
+#define MCAUSE_ITMR1 (MCAUSE_IRQ | 0x1Cu)
+#define IT_CNT 0u
+#define IT_B 1u
+#define IT_CTL 2u
 
 #define MBOX_OUT_RD0 SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR
 #define MBOX_OUT_ST0 SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
@@ -135,6 +213,12 @@ static volatile uint32_t g_first_meip0;
 static volatile uint32_t g_cls_ext, g_cls_timer, g_cls_sw, g_cls_other;
 static volatile uint32_t g_last_mcause;
 static int g_err;
+// Internal-timer entries per timer, the mcause and mcycle of the latest one.
+static volatile uint32_t g_it_n[2], g_it_mc[2], g_it_cyc[2];
+// Nesting leg: first source, in-handler flag, and what its handler saw.
+static volatile uint32_t g_nest_a, g_nest_in, g_nest_done;
+static volatile uint32_t g_nest_cidpl, g_nest_blocked, g_nest_bmeip, g_nest_nested;
+static volatile uint32_t g_nest_b_in_a, g_nest_b_raised, g_nest_hclk;
 
 // ---- Inbound filter allow window over the inbound port of mailbox m ----
 // The source drive recipe opens one read and write window per inbound mailbox
@@ -161,7 +245,7 @@ static void mbx_window(uint32_t idx, uint32_t m) {
     en[1] = 0u;
     cfg[0] = FILT_CFG_RW_EN;
     __asm__ volatile("fence" ::: "memory");
-    rec_ctl("MBX-WINDOW");
+    rec_info("MBX-WINDOW");
     rec_num("mbox", m);
     rec_hex("FILTER_CONFIG", cfg[0]);
     rec_hex("START_ADDR", st[0]);
@@ -330,18 +414,79 @@ static inline uint32_t claim_id(void) {
     return idx < SEP_TOP_PIC_MEIE_NUM ? idx : 0u;
 }
 
+static uint32_t hold(void);
+static uint32_t leg_hold(void);
+static int wait_runs(uint32_t s, uint32_t want);
+
+static inline uint32_t meip_bit(uint32_t s) {
+    return (pic_read_meip(s >> 5) >> (s & 31u)) & 1u;
+}
+
+// The handler of the first nesting source: release it, copy meicidpl into
+// meicurpl, save mepc and mstatus, raise the second source at the same level
+// with mstatus.MIE 1 (it must stay pending), then move it one level higher (it
+// must nest once). mstatus.MIE goes back to 0 before meicurpl, mepc and
+// mstatus are restored.
+static void nest_body(uint32_t a) {
+    uint32_t b = g_prm[P_NEST_B];
+    uint32_t epc, mst, cur0, cid;
+    g_nest_in = 1u;
+    src_handler(a);
+    __asm__ volatile("csrr %0, mepc" : "=r"(epc));
+    __asm__ volatile("csrr %0, mstatus" : "=r"(mst));
+    __asm__ volatile("csrr %0, %1" : "=r"(cur0) : "i"(CSR_MEICURPL));
+    __asm__ volatile("csrr %0, %1" : "=r"(cid) : "i"(CSR_MEICIDPL));
+    __asm__ volatile("csrw %0, %1" ::"i"(CSR_MEICURPL), "r"(cid));
+    g_nest_cidpl = cid;
+    uint32_t b0 = g_runs[b];
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(b), g_prm[P_NEST_PL_SAME]);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(b), EL2_PIC__MEIE__INTEN_bm);
+    g_nest_b_raised = src_raise(b);
+    mstatus_mie(1);
+    g_nest_hclk = leg_hold();
+    g_nest_blocked = g_runs[b] - b0;
+    g_nest_bmeip = meip_bit(b);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(b), g_prm[P_NEST_PL_HIGH]);
+    (void)wait_runs(b, b0 + g_nest_blocked + 1u);
+    (void)leg_hold();
+    g_nest_nested = g_runs[b] - b0 - g_nest_blocked;
+    mstatus_mie(0);
+    __asm__ volatile("csrw %0, %1" ::"i"(CSR_MEICURPL), "r"(cur0));
+    __asm__ volatile("csrw mepc, %0" ::"r"(epc));
+    __asm__ volatile("csrw mstatus, %0" ::"r"(mst));
+    g_nest_in = 0u;
+    g_nest_done = 1u;
+}
+
 void __attribute__((interrupt("machine"))) ext_dispatch(void) {
     uint32_t mc;
     __asm__ volatile("csrr %0, mcause" : "=r"(mc));
     classify(mc);
-    src_handler(claim_id());
+    uint32_t id = claim_id();
+    if (g_nest_in != 0u && id == g_prm[P_NEST_B]) {
+        g_nest_b_in_a++;
+    }
+    if (g_nest_a != 0u && id == g_nest_a && g_nest_in == 0u) {
+        nest_body(id);
+        return;
+    }
+    src_handler(id);
 }
 
 void __attribute__((interrupt("machine"), aligned(4))) trap_dispatch(void) {
     uint32_t mc, epc;
+    uint32_t cyc = mcycle();
     __asm__ volatile("csrr %0, mcause" : "=r"(mc));
     classify(mc);
-    if ((mc & MCAUSE_IRQ) == 0u) {
+    if (mc == MCAUSE_ITMR0 || mc == MCAUSE_ITMR1) {
+        // Internal timer: count it and clear both enables, so one arming
+        // takes one trap.
+        uint32_t k = (mc == MCAUSE_ITMR0) ? 0u : 1u;
+        g_it_cyc[k] = cyc;
+        g_it_mc[k] = mc;
+        g_it_n[k]++;
+        __asm__ volatile("csrc mie, %0" ::"r"(MIE_MITIE0 | MIE_MITIE1));
+    } else if ((mc & MCAUSE_IRQ) == 0u) {
         __asm__ volatile("csrr %0, mepc" : "=r"(epc));
         epc += 4u;
         __asm__ volatile("csrw mepc, %0" ::"r"(epc));
@@ -354,6 +499,16 @@ void __attribute__((interrupt("machine"), aligned(4))) trap_dispatch(void) {
 static uint32_t hold(void) {
     uint32_t t0 = mcycle();
     for (volatile uint32_t i = 0; i < g_prm[P_HOLD]; i++) {
+    }
+    return mcycle() - t0;
+}
+
+// The hold window of the threshold, nesting and internal-timer legs: the
+// check of the leg needs the returned core clocks to be LEG_HOLD_MIN_CLK or
+// more.
+static uint32_t leg_hold(void) {
+    uint32_t t0 = mcycle();
+    for (volatile uint32_t i = 0; i < g_prm[P_LEG_HOLD]; i++) {
     }
     return mcycle() - t0;
 }
@@ -386,6 +541,14 @@ static void zero_set(uint32_t r) {
         uint32_t s = rprm(r, R_SRC + i);
         pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
         pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 0u);
+    }
+}
+
+// Inside a round: meie 0 for every source of the set and no meipl write, so
+// the graded round window holds only the meipl writes that its checks grade.
+static void disable_set(uint32_t r) {
+    for (uint32_t i = 0; i < rprm(r, R_N); i++) {
+        pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(rprm(r, R_SRC + i)), 0u);
     }
 }
 
@@ -437,8 +600,6 @@ static void run_round(uint32_t r) {
     for (uint32_t i = 0; i < n; i++) {
         setmask |= 1u << rprm(r, R_SRC + i);
     }
-    zero_set(r);
-    set_order(p);
     sep_mbx_puts("ROUND");
     rec_num("r", r);
     rec_num("priord", p);
@@ -546,7 +707,7 @@ static void run_round(uint32_t r) {
     chk_end(pass);
 
     // Never corner.
-    zero_set(r);
+    disable_set(r);
     uint32_t ni = rprm(r, R_NEVER);
     uint32_t sn = rprm(r, R_SRC + ni);
     uint32_t own0 = g_runs[sn];
@@ -572,7 +733,7 @@ static void run_round(uint32_t r) {
     chk_end(pass);
 
     // Flip corner: opposite order, mirrored priorities.
-    zero_set(r);
+    disable_set(r);
     mstatus_mie(0);
     set_order(p ^ 1u);
     for (uint32_t i = 0; i < n; i++) {
@@ -597,8 +758,288 @@ static void run_round(uint32_t r) {
     rec_num("n", g_log_n);
     put_ids("ids", 0u, g_log_n);
     rec_end();
-    zero_set(r);
+}
+
+static int wait_flag(volatile uint32_t *f) {
+    for (uint32_t i = 0; i < g_prm[P_WAIT]; i++) {
+        if (*f != 0u) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Threshold leg (standard order): meipt = T, the source at level T is pending
+// with mstatus.MIE 1 and must not deliver; at level T + 1 it delivers once.
+static void leg_threshold(void) {
+    uint32_t s = g_prm[P_THR_SRC];
+    uint32_t t = g_prm[P_THR_MEIPT];
+    mstatus_mie(0);
     set_order(0u);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), g_prm[P_THR_PL_HELD]);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
+    __asm__ volatile("csrw %0, %1" ::"i"(CSR_MEIPT), "r"(t));
+    uint32_t t_rd;
+    __asm__ volatile("csrr %0, %1" : "=r"(t_rd) : "i"(CSR_MEIPT));
+    rec_mark(1, "threshold");
+    uint32_t own0 = g_runs[s], t0 = g_total;
+    uint32_t raised = src_raise(s);
+    mstatus_mie(1);
+    uint32_t hclk = leg_hold();
+    uint32_t held = g_total - t0;
+    uint32_t pend = meip_bit(s);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), g_prm[P_THR_PL_OPEN]);
+    (void)wait_runs(s, own0 + held + 1u);
+    (void)leg_hold();
+    mstatus_mie(0);
+    uint32_t open = g_runs[s] - own0 - held;
+    uint32_t other = (g_total - t0) - (g_runs[s] - own0);
+    rec_mark(0, "threshold_restore");
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 0u);
+    set_order(0u);
+    int pass = raised == 1u && held == 0u && pend == 1u && hclk >= LEG_HOLD_MIN_CLK && open == 1u &&
+               other == 0u;
+    rec_chk("THRESHOLD", pass);
+    rec_num("src", s);
+    rec_num("meipt", t);
+    rec_num("pl_held", g_prm[P_THR_PL_HELD]);
+    rec_num("pl_open", g_prm[P_THR_PL_OPEN]);
+    rec_num("raised", raised);
+    rec_num("held_runs", held);
+    rec_num("held_meip", pend);
+    rec_num("hold_clk", hclk);
+    rec_num("open_runs", open);
+    rec_num("other_runs", other);
+    rec_num("meipt_rd", t_rd);
+    chk_end(pass);
+}
+
+// Nesting leg (standard order, meipt 0): source A at level L; its handler
+// runs nest_body.
+static void leg_nest(void) {
+    uint32_t a = g_prm[P_NEST_A], b = g_prm[P_NEST_B];
+    mstatus_mie(0);
+    set_order(0u);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(a), 0u);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(b), 0u);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(b), 0u);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(a), g_prm[P_NEST_PL_A]);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(a), EL2_PIC__MEIE__INTEN_bm);
+    g_nest_done = 0u;
+    g_nest_b_in_a = 0u;
+    g_nest_blocked = 0u;
+    g_nest_nested = 0u;
+    g_nest_bmeip = 0u;
+    g_nest_b_raised = 0u;
+    g_nest_cidpl = 0u;
+    g_nest_hclk = 0u;
+    uint32_t a0 = g_runs[a], b0 = g_runs[b], t0 = g_total;
+    g_nest_a = a;
+    rec_mark(1, "nest");
+    uint32_t raised = src_raise(a);
+    mstatus_mie(1);
+    int done = wait_flag(&g_nest_done);
+    (void)leg_hold();
+    mstatus_mie(0);
+    g_nest_a = 0u;
+    uint32_t aruns = g_runs[a] - a0, bruns = g_runs[b] - b0;
+    uint32_t other = (g_total - t0) - aruns - bruns;
+    uint32_t cur_rd;
+    __asm__ volatile("csrr %0, %1" : "=r"(cur_rd) : "i"(CSR_MEICURPL));
+    rec_mark(0, "nest_restore");
+    for (uint32_t i = 0; i < 2u; i++) {
+        uint32_t s = i ? b : a;
+        pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
+        pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 0u);
+    }
+    set_order(0u);
+    int pass = done && raised == 1u && aruns == 1u && g_nest_cidpl == g_prm[P_NEST_PL_A] &&
+               g_nest_b_raised == 1u && g_nest_blocked == 0u && g_nest_bmeip == 1u &&
+               g_nest_hclk >= LEG_HOLD_MIN_CLK && g_nest_nested == 1u && g_nest_b_in_a == 1u &&
+               other == 0u;
+    rec_chk("NEST", pass);
+    rec_num("a", a);
+    rec_num("b", b);
+    rec_num("pl_a", g_prm[P_NEST_PL_A]);
+    rec_num("pl_same", g_prm[P_NEST_PL_SAME]);
+    rec_num("pl_high", g_prm[P_NEST_PL_HIGH]);
+    rec_num("done", (uint32_t)done);
+    rec_num("a_runs", aruns);
+    rec_num("meicidpl", g_nest_cidpl);
+    rec_num("b_raised", g_nest_b_raised);
+    rec_num("blocked_runs", g_nest_blocked);
+    rec_num("blocked_meip", g_nest_bmeip);
+    rec_num("hold_clk", g_nest_hclk);
+    rec_num("nested_runs", g_nest_nested);
+    rec_num("b_in_a", g_nest_b_in_a);
+    rec_num("other_runs", other);
+    rec_num("meicurpl_after", cur_rd);
+    chk_end(pass);
+}
+
+static void it_csrw(uint32_t k, uint32_t reg, uint32_t v) {
+    if (k == 0u) {
+        if (reg == IT_CNT) {
+            __asm__ volatile("csrw %0, %1" ::"i"(CSR_MITCNT0), "r"(v));
+        } else if (reg == IT_B) {
+            __asm__ volatile("csrw %0, %1" ::"i"(CSR_MITB0), "r"(v));
+        } else {
+            __asm__ volatile("csrw %0, %1" ::"i"(CSR_MITCTL0), "r"(v));
+        }
+    } else {
+        if (reg == IT_CNT) {
+            __asm__ volatile("csrw %0, %1" ::"i"(CSR_MITCNT1), "r"(v));
+        } else if (reg == IT_B) {
+            __asm__ volatile("csrw %0, %1" ::"i"(CSR_MITB1), "r"(v));
+        } else {
+            __asm__ volatile("csrw %0, %1" ::"i"(CSR_MITCTL1), "r"(v));
+        }
+    }
+}
+
+static uint32_t it_cnt(uint32_t k) {
+    uint32_t v;
+    if (k == 0u) {
+        __asm__ volatile("csrr %0, %1" : "=r"(v) : "i"(CSR_MITCNT0));
+    } else {
+        __asm__ volatile("csrr %0, %1" : "=r"(v) : "i"(CSR_MITCNT1));
+    }
+    return v;
+}
+
+static inline uint32_t it_mitie(uint32_t k) {
+    return k ? MIE_MITIE1 : MIE_MITIE0;
+}
+
+static inline uint32_t it_mcause(uint32_t k) {
+    return k ? MCAUSE_ITMR1 : MCAUSE_ITMR0;
+}
+
+static int wait_it(uint32_t k, uint32_t want) {
+    for (uint32_t i = 0; i < g_prm[P_WAIT]; i++) {
+        if (g_it_n[k] >= want) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Hold leg: timer k pending (bound P_IT_HOLD_MITB) with mie.MITIEk 0 and
+// mstatus.MIE 1; mie.MTIE and mie.MSIE both 1 (mtsi 1) or both 0. No
+// internal-timer trap may be taken. Then mie.MITIEk 1 takes one trap.
+static void leg_it_hold(uint32_t k, uint32_t mtsi) {
+    uint32_t mie_v = MIE_MEIE | (mtsi ? (MIE_MTIE | MIE_MSIE) : 0u);
+    mstatus_mie(0);
+    __asm__ volatile("csrw mie, %0" ::"r"(mie_v));
+    it_csrw(k, IT_CTL, MITCTL_ENABLE);
+    it_csrw(k, IT_B, g_prm[P_IT_HOLD_MITB]);
+    uint32_t n0 = g_it_n[0] + g_it_n[1];
+    uint32_t k0 = g_it_n[k];
+    rec_mark(1, "itimer_hold");
+    mstatus_mie(1);
+    uint32_t hclk = leg_hold();
+    uint32_t mip = read_mip();
+    uint32_t mie_rd;
+    __asm__ volatile("csrr %0, mie" : "=r"(mie_rd));
+    uint32_t held = g_it_n[0] + g_it_n[1] - n0;
+    __asm__ volatile("csrs mie, %0" ::"r"(it_mitie(k)));
+    (void)wait_it(k, k0 + held + 1u);
+    (void)leg_hold();
+    mstatus_mie(0);
+    uint32_t twin = g_it_n[k] - k0 - held;
+    uint32_t twin_mc = g_it_mc[k];
+    rec_mark(0, "itimer_restore");
+    it_csrw(k, IT_B, MITB_RESET);
+    __asm__ volatile("csrw mie, %0" ::"r"(MIE_WRITE));
+    uint32_t pend = (mip & (k ? MIP_MITIP1 : MIP_MITIP0)) ? 1u : 0u;
+    uint32_t mt_ms = mie_rd & (MIE_MTIE | MIE_MSIE);
+    int pass = held == 0u && pend == 1u && hclk >= LEG_HOLD_MIN_CLK &&
+               (mie_rd & (MIE_MITIE0 | MIE_MITIE1)) == 0u &&
+               mt_ms == (mtsi ? (MIE_MTIE | MIE_MSIE) : 0u) && twin == 1u &&
+               twin_mc == it_mcause(k);
+    rec_chk("INT-TIMER-HOLD", pass);
+    rec_num("timer", k);
+    rec_num("mtie_msie", mtsi);
+    rec_hex("mitb", g_prm[P_IT_HOLD_MITB]);
+    rec_hex("mie", mie_rd);
+    rec_num("mip_mitip", pend);
+    rec_num("held_traps", held);
+    rec_num("hold_clk", hclk);
+    rec_num("twin_traps", twin);
+    rec_hex("twin_mcause", twin_mc);
+    chk_end(pass);
+}
+
+// Trap leg: timer k stopped, mitcnt 0, mitb written, mie.MITIEk 1 and
+// mstatus.MIE 1, then enabled. One trap with the timer's mcause, taken at
+// least P_IT_BOUNDk core clocks after the enable. Then the bound itself with
+// the timer stopped, so mitcnt holds the written value: mitcnt written to
+// P_IT_BOUNDk - 1 takes no trap for a hold window, reads back the written
+// value and leaves mip.MITIPk 0; mitcnt written to P_IT_BOUNDk takes one trap
+// with the timer's mcause.
+static void leg_it_trap(uint32_t k) {
+    mstatus_mie(0);
+    __asm__ volatile("csrw mie, %0" ::"r"(MIE_MEIE | it_mitie(k)));
+    it_csrw(k, IT_CTL, 0u);
+    it_csrw(k, IT_CNT, 0u);
+    it_csrw(k, IT_B, g_prm[P_IT_MITB0 + k]);
+    uint32_t cnt0 = it_cnt(k);
+    uint32_t k0 = g_it_n[k], o0 = g_it_n[k ^ 1u];
+    rec_mark(1, "itimer_trap");
+    mstatus_mie(1);
+    uint32_t t_arm = mcycle();
+    it_csrw(k, IT_CTL, MITCTL_ENABLE);
+    int fired = wait_it(k, k0 + 1u);
+    (void)leg_hold();
+    mstatus_mie(0);
+    uint32_t n = g_it_n[k] - k0;
+    uint32_t mc = g_it_mc[k];
+    uint32_t delta = g_it_cyc[k] - t_arm;
+    uint32_t bound = g_prm[P_IT_BOUND0 + k];
+    // Bound step: timer k stopped, mitcnt one below the bound.
+    it_csrw(k, IT_CTL, 0u);
+    uint32_t below = bound - 1u;
+    it_csrw(k, IT_CNT, below);
+    __asm__ volatile("csrs mie, %0" ::"r"(it_mitie(k)));
+    uint32_t kb = g_it_n[k];
+    mstatus_mie(1);
+    uint32_t bclk = leg_hold();
+    uint32_t mip_b = read_mip();
+    uint32_t cnt_b = it_cnt(k);
+    uint32_t n_below = g_it_n[k] - kb;
+    it_csrw(k, IT_CNT, bound);
+    int fired_at = wait_it(k, kb + n_below + 1u);
+    (void)leg_hold();
+    mstatus_mie(0);
+    uint32_t n_at = g_it_n[k] - kb - n_below;
+    uint32_t mc_at = g_it_mc[k];
+    uint32_t other = g_it_n[k ^ 1u] - o0;
+    uint32_t pend_b = (mip_b & (k ? MIP_MITIP1 : MIP_MITIP0)) ? 1u : 0u;
+    rec_mark(0, "itimer_restore");
+    it_csrw(k, IT_B, MITB_RESET);
+    __asm__ volatile("csrw mie, %0" ::"r"(MIE_WRITE));
+    int pass = cnt0 == 0u && fired && n == 1u && other == 0u && mc == it_mcause(k) &&
+               delta >= bound && n_below == 0u && cnt_b == below && pend_b == 0u &&
+               bclk >= LEG_HOLD_MIN_CLK && fired_at && n_at == 1u && mc_at == it_mcause(k);
+    rec_chk("INT-TIMER-TRAP", pass);
+    rec_num("timer", k);
+    rec_num("mitb", g_prm[P_IT_MITB0 + k]);
+    rec_num("bound", bound);
+    rec_num("mitcnt_armed", cnt0);
+    rec_num("traps", n);
+    rec_num("other_timer_traps", other);
+    rec_hex("mcause", mc);
+    rec_num("trap_clk", delta);
+    rec_num("below_mitcnt", below);
+    rec_num("below_mitcnt_rd", cnt_b);
+    rec_num("below_traps", n_below);
+    rec_num("below_mip_mitip", pend_b);
+    rec_num("below_hold_clk", bclk);
+    rec_num("at_bound_traps", n_at);
+    rec_hex("at_bound_mcause", mc_at);
+    chk_end(pass);
 }
 
 int main(void) {
@@ -685,12 +1126,21 @@ int main(void) {
     set_order(0u);
 
     for (uint32_t r = 0; r < nr; r++) {
+        zero_set(r);
+        set_order(rprm(r, R_PRIORD));
         rec_mark(1, "round");
         run_round(r);
+        rec_mark(0, "round_end");
+        zero_set(r);
+        set_order(0u);
     }
 
-    // Idle window: no PIC source enabled, MIE, MTIE and MSIE set.
+    // Idle window: no PIC source enabled, MIE, MTIE and MSIE set. MIE goes to 0
+    // before the marker and to 1 inside the window, so the hold window of the
+    // idle leg starts inside the graded window.
+    mstatus_mie(0);
     rec_mark(1, "idle");
+    mstatus_mie(1);
     uint32_t tt0 = g_cls_timer, ts0 = g_cls_sw;
     hclk = hold();
     uint32_t idle_t = g_cls_timer - tt0, idle_s = g_cls_sw - ts0;
@@ -774,6 +1224,22 @@ int main(void) {
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(SRC_CTRL), 0u);
     for (uint32_t i = 0; i < N_OT; i++) {
         wr32(k_ot[i].enable, 0u);
+    }
+
+    // Threshold, nesting and internal-timer legs. Each leg prints its graded
+    // marker after its set-up and a control marker before its clean-up.
+    rec_mark(0, "threshold_setup");
+    leg_threshold();
+    rec_mark(0, "nest_setup");
+    leg_nest();
+    for (uint32_t j = 0; j < 2u; j++) {
+        uint32_t k = (g_prm[P_IT_FIRST] & 1u) ^ j;
+        for (uint32_t mtsi = 0; mtsi < 2u; mtsi++) {
+            rec_mark(0, "itimer_setup");
+            leg_it_hold(k, mtsi);
+        }
+        rec_mark(0, "itimer_setup");
+        leg_it_trap(k);
     }
 
     rec_mark(0, "end");

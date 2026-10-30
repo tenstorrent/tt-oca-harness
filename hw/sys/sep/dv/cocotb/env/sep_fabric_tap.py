@@ -55,8 +55,9 @@ PR-LSU-    ``pr_lsu_xbar``  as PR-LSU-ROM (LSU demux local crossbar port)
 XBAR
 PR-XBAR-   ``pr_xbar_tcm``  as PR-LSU-ROM, 6-bit ID (crossbar cpu_tcm target,
 TCM                         net cpu_tcm_axi_req; contract name xbar_tcm_req)
-PR-DBG-SB  ``pr_dbg_sb``    as PR-LSU-ROM plus w data and r data (debug-module
-                            system-bus master after its alias remap)
+PR-DBG-SB  ``pr_dbg_sb``    as PR-LSU-ROM plus aw, ar prot, w data and r data
+                            (debug-module system-bus master after its alias
+                            remap)
 PR-DBG-IN  ``pr_dbg_in``    aw, ar: addr (debug-module system-bus master before
                             its local alias remap; 0 on the CPU-stub build)
 PR-DBG-OUT ``pr_dbg_out``   aw, ar: addr (the same master after the remap)
@@ -168,7 +169,13 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-XBAR-TCM": ("pr_xbar_tcm", dict(_AXI_PORT), "axi"),
     "PR-DBG-SB": (
         "pr_dbg_sb",
-        {**_AXI_PORT, "w": ("data", "strb", "last"), "r": ("data", "resp", "id", "last")},
+        {
+            **_AXI_PORT,
+            "aw": (*_AXI_SHAPE, "prot"),
+            "ar": (*_AXI_SHAPE, "prot"),
+            "w": ("data", "strb", "last"),
+            "r": ("data", "resp", "id", "last"),
+        },
         "axi",
     ),
     "PR-DBG-IN": ("pr_dbg_in", {"aw": ("addr",), "ar": ("addr",)}, "axi"),

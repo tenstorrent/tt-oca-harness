@@ -11,12 +11,24 @@
 //   CHK-RESET   every PIC field reads its RDL reset value before the first PIC
 //               write
 //   CHK-HOLE    a hole or past-extent access reads 0, traps nothing and lands in
-//               no armed decoded register
+//               no armed decoded register; the armed fields read 0 after
+//               their restore
 //   CHK-RW      each implemented field holds the written value
 //   CHK-ENTRY0  entry 0 of the four arrays reads 0 after an all-ones write, and
 //               the write does not land in entry 1
-//   CHK-GWCLR0  meigwclr reads 0 after a write with the clear bit 1
+//   CHK-GWCLR0  meigwclr reads 0 after a write with the clear bit 1, and the
+//               meigwctrl write before it holds the written value
+//   CHK-MEIP-WR a store of 0 and a store of all ones to meip[0] leave the word
+//               unchanged while a held edge source keeps one bit pending
 //   CHK-SRC0    source 0 never sets and never takes a handler
+//
+// The response to the meip store (trap or not) is not stated; the firmware
+// logs it as OBS-PIC-MEIP-WR and grades only the register state.
+//
+// A graded leg (M G) holds only accesses that one of its CHK lines grades;
+// set-up and restore writes run in control legs (M C). The host releases the
+// held PIC register-map coverage of a graded leg after every CHK line of that
+// leg passed.
 //
 // Every compare covers the RDL field bits only; the PASS line logs the other
 // bits as rsvd. The six excluded idle bits of meip come in the parameter block.
@@ -120,7 +132,7 @@ static void mbx_window(uint32_t idx, uint32_t m) {
     en[1] = 0u;
     cfg[0] = FILT_CFG_RW_EN;
     __asm__ volatile("fence" ::: "memory");
-    rec_ctl("MBX-WINDOW");
+    rec_info("MBX-WINDOW");
     rec_num("mbox", m);
     rec_hex("FILTER_CONFIG", cfg[0]);
     rec_hex("START_ADDR", st[0]);
@@ -351,6 +363,16 @@ static int armed_same(const uint32_t *addr, const uint32_t *val, const uint32_t 
     return same;
 }
 
+static int armed_zero(const uint32_t *addr, const uint32_t *mask) {
+    int zero = 1;
+    for (uint32_t j = 0; j < N_ARM; j++) {
+        if ((pic_rd32(addr[j]) & mask[j]) != 0u) {
+            zero = 0;
+        }
+    }
+    return zero;
+}
+
 static void leg_hole(void) {
     for (uint32_t h = 0; h < N_HOLE; h++) {
         uint32_t ha = g_prm[P_HOLE + h];
@@ -373,7 +395,10 @@ static void leg_hole(void) {
         for (uint32_t j = 0; j < N_ARM; j++) {
             pic_wr32(addr[j], 0u);
         }
-        int pass = ctl && rd0 == 0u && rd1 == 0u && rd2 == 0u && same0 && same1 && traps == 0u;
+        // The restore writes are graded too: each armed field reads 0 again.
+        int zero = armed_zero(addr, mask);
+        int pass =
+            ctl && rd0 == 0u && rd1 == 0u && rd2 == 0u && same0 && same1 && traps == 0u && zero;
         rec_chk("HOLE", pass);
         rec_hex("addr", ha);
         rec_num("k", k);
@@ -384,6 +409,7 @@ static void leg_hole(void) {
         rec_num("armed_ctl", (uint32_t)ctl);
         rec_num("armed_same_after_wr0", (uint32_t)same0);
         rec_num("armed_same_after_wr1", (uint32_t)same1);
+        rec_num("armed_zero_after_restore", (uint32_t)zero);
         rec_num("trap", traps);
         if (traps) {
             rec_hex("mcause", g_trap_mcause);
@@ -437,14 +463,22 @@ static void leg_array(uint32_t ne) {
             uint32_t raw = pic_rd32(a_grp(g, n));
             rw_line(k_grp[g], n, v, raw, m, 1, inv, raw_inv);
         }
-        pic_wr32(a_meipl(n), 0u);
-        pic_wr32(a_meie(n), 0u);
-        pic_wr32(a_gw(n), 0u);
     }
     pic_wr32(SEP_TOP_PIC_MPICCFG_BASE_ADDR, 1u);
     rw_line("mpiccfg", 0u, 1u, pic_read_mpiccfg(), CFG_BM, 0, 0, 0u);
     pic_wr32(SEP_TOP_PIC_MPICCFG_BASE_ADDR, 0u);
     rw_line("mpiccfg", 0u, 0u, pic_read_mpiccfg(), CFG_BM, 0, 0, 0u);
+}
+
+// The drawn entries back to 0 (control leg, after the array corner). Each
+// drawn entry is distinct, so every array-corner cell starts from 0.
+static void array_restore(uint32_t ne) {
+    for (uint32_t i = 0; i < ne; i++) {
+        uint32_t n = g_prm[P_ENT + i];
+        pic_wr32(a_meipl(n), 0u);
+        pic_wr32(a_meie(n), 0u);
+        pic_wr32(a_gw(n), 0u);
+    }
 }
 
 // ---- step 5: entry 0 corner ----
@@ -472,9 +506,6 @@ static void leg_entry0(void) {
     uint32_t c_ie = pic_rd32(a_meie(1)) & MEIE_BM;
     uint32_t c_gw = pic_rd32(a_gw(1)) & GW_BM;
     int ctl = c_pl == MEIPL_BM && c_ie == MEIE_BM && c_gw == GW_BM;
-    pic_wr32(a_meie(1), 0u);
-    pic_wr32(a_meipl(1), 0u);
-    pic_wr32(a_gw(1), 0u);
     int z = (r_pl & MEIPL_BM) == 0u && (r_ie & MEIE_BM) == 0u && (r_gw & GW_BM) == 0u &&
             (r_gc & GWCLR_BM) == 0u;
     int pass = z && e1_same && ctl;
@@ -490,14 +521,28 @@ static void leg_entry0(void) {
     chk_end(pass);
 }
 
+static void entry0_restore(void) {
+    pic_wr32(a_meie(1), 0u);
+    pic_wr32(a_meipl(1), 0u);
+    pic_wr32(a_gw(1), 0u);
+}
+
 // ---- steps 6 and 7: meigwclr corner and its control ----
-static void leg_gwclr(uint32_t ne, uint32_t *rd) {
+// The meigwctrl write of each entry is read back (gw[i]) and graded with the
+// clear; the entries go back to 0 in the control leg (gwclr_restore).
+static void leg_gwclr(uint32_t ne, uint32_t *rd, uint32_t *gw) {
     for (uint32_t i = 0; i < ne; i++) {
         uint32_t n = g_prm[P_ENT + i];
         pic_wr32(a_gw(n), GW_EDGE_HIGH);
+        gw[i] = pic_rd32(a_gw(n));
         pic_write_meigwclr(n, g_prm[P_GWCLR + i]);
         rd[i] = pic_read_meigwclr(n);
-        pic_wr32(a_gw(n), 0u);
+    }
+}
+
+static void gwclr_restore(uint32_t ne) {
+    for (uint32_t i = 0; i < ne; i++) {
+        pic_wr32(a_gw(g_prm[P_ENT + i]), 0u);
     }
 }
 
@@ -514,6 +559,61 @@ static void gwclr_ctrl(uint32_t *before, uint32_t *after, int *ok) {
     pic_wr32(a_gw(SRC_CTRL), 0u);
     pic_wr32(a_meie(SRC_CTRL), 0u);
     pic_wr32(a_meipl(SRC_CTRL), 0u);
+}
+
+// ---- meip write corner ----
+// meip is read-only (el2_pic.adoc meip Access R, field intpend R): a store to
+// meip[0] leaves the word unchanged. Source 1 (edge, active high) is raised and
+// released, so its pending bit stays set until meigwclr; that bit is the
+// non-zero state that a write of 0 would clear.
+#define MEIP0_ADDR SEP_TOP_PIC_MEIP_BASE_ADDR(0)
+
+static uint32_t meip0_graded(uint32_t v) {
+    return v & EL2_PIC__MEIP__INTPEND_bm & ~g_prm[P_IDLE + 0];
+}
+
+// Returns 1 when meip[0] bit 1 reads 1 after the raise and the release.
+static uint32_t meip_wr_hold(void) {
+    pic_wr32(a_gw(SRC_CTRL), GW_EDGE_HIGH);
+    pic_wr32(a_meie(SRC_CTRL), 1u);
+    pic_wr32(a_meipl(SRC_CTRL), 1u);
+    src1_raise();
+    uint32_t ok = (uint32_t)wait_meip1(1u);
+    src1_release();
+    return ok;
+}
+
+// One 4-byte store of wv to meip[0]. The read before the store must hold the
+// source 1 bit and no other graded bit, else the store is not issued and the
+// check fails. The read after the store must equal the read before it.
+static void leg_meip_wr(uint32_t held, uint32_t wv) {
+    uint32_t pre = pic_read_meip(0);
+    int pre_ok = held == 1u && meip0_graded(pre) == (1u << SRC_CTRL);
+    uint32_t post = 0u;
+    if (pre_ok) {
+        hole_wr(MEIP0_ADDR, wv);
+        post = pic_read_meip(0);
+    }
+    int pass = pre_ok && meip0_graded(post) == meip0_graded(pre);
+    rec_chk("MEIP-WR", pass);
+    rec_hex("wr", wv);
+    rec_hex("before", meip0_graded(pre));
+    rec_hex("after", meip0_graded(post));
+    rec_hex("exp", 1u << SRC_CTRL);
+    rec_num("written", (uint32_t)pre_ok);
+    rec_hex("idle_mask0", g_prm[P_IDLE + 0]);
+    chk_end(pass);
+}
+
+static void meip_wr_release(void) {
+    pic_write_meigwclr(SRC_CTRL, GWCLR_BM);
+    uint32_t after = (pic_read_meip(0) >> SRC_CTRL) & 1u;
+    pic_wr32(a_gw(SRC_CTRL), 0u);
+    pic_wr32(a_meie(SRC_CTRL), 0u);
+    pic_wr32(a_meipl(SRC_CTRL), 0u);
+    rec_ctl("MEIP-WR-CLEAR");
+    rec_num("meip_bit1", after);
+    rec_end();
 }
 
 int main(void) {
@@ -549,14 +649,21 @@ int main(void) {
     rec_mark(1, "array");
     leg_array(ne);
 
+    rec_mark(0, "array_restore");
+    array_restore(ne);
+
     rec_mark(1, "entry0");
     leg_entry0();
 
+    rec_mark(0, "entry0_restore");
+    entry0_restore();
+
     rec_mark(1, "gwclr");
-    uint32_t gwrd[NE_MAX];
-    leg_gwclr(ne, gwrd);
+    uint32_t gwrd[NE_MAX], gwrb[NE_MAX];
+    leg_gwclr(ne, gwrd, gwrb);
 
     rec_mark(0, "gwclr_ctrl");
+    gwclr_restore(ne);
     uint32_t cb = 0, ca = 0;
     int cok = 0;
     gwclr_ctrl(&cb, &ca, &cok);
@@ -569,17 +676,41 @@ int main(void) {
     for (uint32_t i = 0; i < ne; i++) {
         // The graded bit must be written 1, so a meigwclr that reads back the
         // written value cannot read 0 there.
-        int pass = (g_prm[P_GWCLR + i] & GWCLR_BM) != 0u && (gwrd[i] & GWCLR_BM) == 0u && ctl_ok;
+        // The meigwctrl write before the clear holds the written value.
+        int gw_ok = (gwrb[i] & GW_BM) == GW_EDGE_HIGH;
+        int pass =
+            (g_prm[P_GWCLR + i] & GWCLR_BM) != 0u && (gwrd[i] & GWCLR_BM) == 0u && gw_ok && ctl_ok;
         rec_chk("GWCLR0", pass);
         rec_num("src", g_prm[P_ENT + i]);
         rec_hex("wr", g_prm[P_GWCLR + i]);
         rec_hex("rd", gwrd[i] & GWCLR_BM);
         rec_hex("rsvd", gwrd[i] & ~GWCLR_BM);
         rec_hex("gwctrl", GW_EDGE_HIGH);
+        rec_hex("gwctrl_rd", gwrb[i] & GW_BM);
         rec_num("ctrl_meip_before", cb);
         rec_num("ctrl_meip_after", ca);
         chk_end(pass);
     }
+
+    rec_mark(0, "meip_wr_setup");
+    uint32_t held = meip_wr_hold();
+    rec_ctl("MEIP-WR-HOLD");
+    rec_num("held", held);
+    rec_end();
+
+    rec_mark(1, "meip_wr");
+    uint32_t t_mw = g_traps;
+    leg_meip_wr(held, 0u);
+    leg_meip_wr(held, 0xFFFFFFFFu);
+    uint32_t mw_traps = g_traps - t_mw;
+
+    rec_mark(0, "meip_wr_end");
+    rec_obs("PIC-MEIP-WR");
+    rec_num("writes", 2u);
+    rec_num("trap", mw_traps);
+    rec_hex("mcause", mw_traps ? g_trap_mcause : 0u);
+    rec_end();
+    meip_wr_release();
 
     // Step 8: the source 0 cell on idle source 1 (level, active low) is pending.
     rec_mark(0, "src0_cell_ctrl");
@@ -619,9 +750,6 @@ int main(void) {
     hold();
     m0 = pic_read_meip(0);
     uint32_t runs_l = g_count_runs + g_ctrl_runs;
-    pic_wr32(a_gw(0), 0u);
-    pic_wr32(a_meie(0), 0u);
-    pic_wr32(a_meipl(0), 0u);
     int pass_l = (m0 & 1u) == 0u && runs_l == 0u && cell1 == 1u;
     rec_chk("SRC0", pass_l);
     rec_str("leg", "lowlevel");
@@ -632,6 +760,9 @@ int main(void) {
 
     // Step 11: the source 1 handler control.
     rec_mark(0, "src0_handler_ctrl");
+    pic_wr32(a_gw(0), 0u);
+    pic_wr32(a_meie(0), 0u);
+    pic_wr32(a_meipl(0), 0u);
     g_ctrl_active = 1u;
     pic_wr32(a_meie(SRC_CTRL), 1u);
     pic_wr32(a_meipl(SRC_CTRL), 1u);

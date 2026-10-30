@@ -670,7 +670,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             polls += 1
             await ClockCycles(cocotb.top.clk_i, _REARM_QUIET_GAP)
         self.logger.info(
-            "KEM-SK-REARM frame order (logged, not graded): %s; notification latency "
+            "INFO-KEM-SK-REARM frame order (logged, not graded): %s; notification latency "
             "%.0f ns after ENCAPS VALID; quiet window %d polls",
             order,
             latency_ns,

@@ -83,7 +83,12 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
             label="pre-program VERSION_LO DECERR",
         )
         self.s1_ok = True
-        sb.expect_eq("CHK-FILTER-SHRINK-PRE-DECERR", pre, RESP_DECERR)
+        sb.expect_eq(
+            "CHK-FILTER-SHRINK-PRE-DECERR",
+            pre,
+            RESP_DECERR,
+            evidence="CHK-FILTER-SHRINK-PRE-DECERR",
+        )
 
         await program_inbound0_window(jtag, 0, PASS_ALL_END, scoreboard=sb, tag="WIDE")
         data_w, resp_w = await await_smn_resp(
@@ -107,8 +112,12 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         )
         self.s2_ok = True
         self._log("CHK-FILTER-SHRINK-WIDE VERSION_LO+WDT OKAY")
-        sb.expect_eq("CHK-FILTER-SHRINK-WIDE-VER", resp_w, RESP_OKAY)
-        sb.expect_eq("CHK-FILTER-SHRINK-WIDE-WDT", resp_wdt, RESP_OKAY)
+        sb.expect_eq(
+            "CHK-FILTER-SHRINK-WIDE-VER", resp_w, RESP_OKAY, evidence="CHK-FILTER-SHRINK-WIDE-VER"
+        )
+        sb.expect_eq(
+            "CHK-FILTER-SHRINK-WIDE-WDT", resp_wdt, RESP_OKAY, evidence="CHK-FILTER-SHRINK-WIDE-WDT"
+        )
 
         await program_inbound0_window(jtag, NARROW_START, NARROW_END, scoreboard=sb, tag="NARROW")
         _, resp_n = await await_smn_resp(
@@ -130,8 +139,18 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
             "CHK-FILTER-SHRINK-NARROW VERSION_LO OKAY WDT DECERR "
             f"data=0x{int(wdt_data) & 0xFFFF_FFFF:08x}"
         )
-        sb.expect_eq("CHK-FILTER-SHRINK-NARROW-VER", resp_n, RESP_OKAY)
-        sb.expect_eq("CHK-FILTER-SHRINK-NARROW-WDT", resp_wdt2, RESP_DECERR)
+        sb.expect_eq(
+            "CHK-FILTER-SHRINK-NARROW-VER",
+            resp_n,
+            RESP_OKAY,
+            evidence="CHK-FILTER-SHRINK-NARROW-VER",
+        )
+        sb.expect_eq(
+            "CHK-FILTER-SHRINK-NARROW-WDT",
+            resp_wdt2,
+            RESP_DECERR,
+            evidence="CHK-FILTER-SHRINK-NARROW-WDT",
+        )
 
         await clear_inbound0_config(jtag, scoreboard=sb)
         clr_data, resp_clr = await await_smn_resp(

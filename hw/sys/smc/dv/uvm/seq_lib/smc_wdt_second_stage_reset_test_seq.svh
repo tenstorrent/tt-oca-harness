@@ -47,6 +47,7 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
   bit negative;
   bit watch_ready, watch_done, watch_stop;
   bit first_seen, second_seen, wdt_reset_seen, warm_seen, warm_released;
+  bit cores_held_seen;
   bit first_broken, wrong_source, primary_seen, unknown_seen;
   real first_at, second_at, wdt_at, warm_at, release_at;
   real last_start, last_return, maximum_gap;
@@ -79,6 +80,7 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
                 tb_vif.wdt_second_timeout,
                 tb_vif.wdt_timeout_core,
                 tb_vif.rst_primary_smc_clk_n,
+                tb_vif.cpu_core_resets_n,
                 tb_vif.rst_wdt_smc_clk_n,
                 tb_vif.rst_warm_smc_clk_n
               }
@@ -107,6 +109,8 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
         warm_assertions++;
         warm_at = smc_cycle_time();
       end
+      if (tb_vif.rst_warm_smc_clk_n === 1'b0 && tb_vif.cpu_core_resets_n === '0)
+        cores_held_seen = 1;
       if (warm_seen && !warm_released && tb_vif.rst_warm_smc_clk_n === 1'b1) begin
         warm_released = 1;
         release_at = smc_cycle_time();
@@ -127,6 +131,7 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
     wdt_reset_seen = 0;
     warm_seen = 0;
     warm_released = 0;
+    cores_held_seen = 0;
     first_broken = 0;
     wrong_source = 0;
     primary_seen = 0;
@@ -316,13 +321,14 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
                       "selected first timeout remains high");
     require_condition(ChkRecovery,
                       second_seen && wdt_reset_seen && warm_seen && warm_released &&
+                      cores_held_seen &&
                       wdt_at >= second_at && warm_at >= second_at &&
                       warm_at <= second_at + WarmAssertBoundCycles &&
                       release_at <= warm_at + WarmReleaseBoundCycles,
                       "WDT and warm reset assert and release", negative && !wrong_leg, $sformatf(
                       {
                         "core=%0d leg=%s second_seen=%0b wdt_seen=%0b warm_seen=%0b ",
-                        "released=%0b wdt_delay=%0f warm_delay=%0f warm_duration=%0f"
+                        "released=%0b cores_held=%0b wdt_delay=%0f warm_delay=%0f warm_duration=%0f"
                       },
                       core,
                       wrong_leg ? "C" : "B",
@@ -330,6 +336,7 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
                       wdt_reset_seen,
                       warm_seen,
                       warm_released,
+                      cores_held_seen,
                       wdt_at - second_at,
                       warm_at - second_at,
                       release_at - warm_at
@@ -350,6 +357,10 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
                       fuse_ready_at,
                       fuse_ready_at - release_at
                       ));
+    require_condition(
+        ChkScope, tb_vif.cpu_core_resets_n === '1, "all cores released after warm reset", 1'b0,
+        $sformatf(
+        "core=%0d leg=%s resets_n=%b", core, wrong_leg ? "C" : "B", tb_vif.cpu_core_resets_n));
     rebaseline_after_warm(wrong_leg ? "C" : "B");
   endtask
 
@@ -374,8 +385,12 @@ class smc_wdt_second_stage_reset_test_seq extends smc_wdt_base_test_seq;
     service_pulses = 0;
     wrong_pulses = 0;
     maximum_gap = 0;
+    require_condition(ChkScope, tb_vif.cpu_core_resets_n === '1,
+                      "all cores released before watchdog CSR access", 1'b0, $sformatf(
+                      "resets_n=%b", tb_vif.cpu_core_resets_n));
     require_condition(ChkScope, tb_vif.cpu_cluster_isolate === 1'b0,
-                      "all cores released before watchdog CSR access");
+                      "cluster boundary open before watchdog CSR access", 1'b0, $sformatf(
+                      "isolate=%b", tb_vif.cpu_cluster_isolate));
     clean_watchdogs();
     csr_read(TimeoutAddr, baseline, "WDT_TIMEOUT baseline");
     csr_write(TimeoutAddr, Stage2Cycles, "WDT_TIMEOUT configure");

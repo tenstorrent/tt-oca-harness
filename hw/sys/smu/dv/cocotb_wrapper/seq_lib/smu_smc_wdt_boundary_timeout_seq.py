@@ -10,18 +10,29 @@ watchdog does not drive the SMU boundary.
 This leaf sets WDOGRSTEN as well and follows the timeout out to the two
 wrapper outputs:
 
-S1  With the watchdog disarmed, both ``smc_wdt_first_timeout_o`` and
-    ``smc_wdt_second_timeout_o`` read low and ``WDOGIP0`` is clear -- a
+S1  With the watchdog disarmed, both ``smc_ras_o.wdt_first_timeout`` and
+    ``smc_ras_o.wdt_second_timeout`` read low and ``WDOGIP0`` is clear -- a
     starting point the checks below can move away from.
 
-S2  ``smc_wdt_first_timeout_o`` is the CPU cluster watchdog's first timeout
+S2  ``smc_ras_o.wdt_first_timeout`` is the CPU cluster watchdog's first timeout
     (``hw/sys/smc/doc/port_table.adoc``), so arming CORE0 with WDOGRSTEN has
-    to raise it, and ``WDOGIP0`` has to be set at the same time.
+    to raise it, and ``WDOGIP0`` has to be set at the same time. The compare
+    ``CMP.wdogcmp0`` is drawn from the seed over the whole 16-bit field
+    (1 to 0xFFFF; ``wdt.rdl``), written after the KEY unlock and read back
+    masked to the field. ``hw/sys/smc/doc/watchdog.adoc`` ("Hardware sets it
+    on every cycle the scaled count is at or above ``CMP``") with ``wdogscale``
+    at its reset 0 puts the first timeout ``cmp`` ``clk_smu`` cycles after the
+    arming write lands in the watchdog, so the pin is polled every ``clk_smu``
+    from the AW handshake of the arming write on the DTP's SMC debug port (the
+    bench counter ``dtp_smc_dbg_aw_count_o``) and the cycles to its rise have
+    to lie in [cmp, cmp + FIRST_TIMEOUT_SLACK], 16 ``clk_smu``, which covers
+    the write's path from the DTP to the watchdog register and the watchdog's
+    pending-bit and sticky-reset registers.
 
 S3  The second stage times out at the cycle count in ``CPU_CTRL.WDT_TIMEOUT``
     (``cpu_ctrl.rdl``: "Cycle count value that 2nd stage watchdog timer
     timeout should occur at"), so with the first timeout held
-    ``smc_wdt_second_timeout_o`` has to rise. A watchdog timeout is a warm
+    ``smc_ras_o.wdt_second_timeout`` has to rise. A watchdog timeout is a warm
     reset source (``hw/sys/smc/doc/clk_rst.adoc``, "Watchdog Timeout":
     "Internal or external watchdog expiration"; ``hw/sys/smc/doc/cpu.adoc``:
     "a Warm Reset from a watchdog timeout"), so the SMC warm reset has to
@@ -37,8 +48,10 @@ S4  The warm reset covers the per-core watchdog timers (``clk_rst.adoc``,
 
 from __future__ import annotations
 
+import random
+
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import _CPU_CTRL_H, c_header_u32, cpu_ctrl_bm, smc_addr, wdt_bm
@@ -55,7 +68,7 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
     wdt_unlock,
 )
-from seq_lib.smu_tb_pins import smu_scope
+from seq_lib.smu_tb_pins import smu_scope, tb_pin
 
 WDT_CTRL = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR")
 WDT_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
@@ -68,18 +81,21 @@ WDT_RSTEN_BM = wdt_bm("WDT__CTRL__WDOGRSTEN_bm")
 WDT_CMP_BM = wdt_bm("WDT__CMP__WDOGCMP0_bm")
 WDT_TIMEOUT_BM = cpu_ctrl_bm("CPU_CTRL__WDT_TIMEOUT__DATA_bm")
 
-CMP_SMALL = 0x10
 # Second-stage count at a 5 ns sys clock, the register's reset value; scaled to
 # the period in use so the window between the two timeouts keeps its length
 # and the JTAG read of the pending bit lands inside it.
 WDT_TIMEOUT_5NS_CYCLES = 16384
 WDT_TIMEOUT_RESET = c_header_u32(_CPU_CTRL_H, "CPU_CTRL__WDT_TIMEOUT__DATA_reset")
-# smu_smc_wdt_timeout_irq_test needs up to ~17k clk_smu to see the same
-# watchdog reach its pending bit, so the bound here is well past that and the
-# poll steps in blocks: both outputs are levels, not pulses.
-POLL_STEP = 32
-# Bound on the first timeout, in time; the wait converts it to clk_smu cycles.
+# Bound on the first timeout, in time; the poll converts it to clk_smu cycles.
+# It covers the JTAG round trip of the arming write and the largest compare.
 FIRST_TIMEOUT_BOUND_NS = 650_000
+# The first timeout is expected cmp to cmp + FIRST_TIMEOUT_SLACK clk_smu after
+# the AW handshake of the arming write on the DTP's SMC debug port: the write
+# crosses the SMU and SMC fabrics into the cluster, the count starts on the
+# cycle the register takes it, and the pending bit and the sticky reset are
+# one register each.
+FIRST_TIMEOUT_SLACK = 16
+AW_COUNT_PIN = "dtp_smc_dbg_aw_count_o"
 # Bound on the second timeout, in time; the wait converts it to clk_smu cycles.
 SECOND_TIMEOUT_BOUND_NS = 330_000
 WARM_RESET_PATH = "u_smc.rst_warm_smc_clk_n"
@@ -96,6 +112,11 @@ class smu_smc_wdt_boundary_timeout_seq:
         self.cfg = test.cfg
         self.log = test.logger
         self.sb = test.env.scoreboard
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        # The whole field; a compare of 0 raises the timeout on the arming
+        # write, a leg the checkers do not have.
+        self.cmp = self.rng.randint(1, WDT_CMP_BM)
 
     def _bit(self, name: str) -> int:
         pin = getattr(self.dut, name, None)
@@ -141,18 +162,24 @@ class smu_smc_wdt_boundary_timeout_seq:
                 out.append(f"{leaf}=<{exc}>")
         return " ".join(out)
 
-    async def _wait_pin(self, name: str, want: int, bound: int, what: str) -> int:
-        for cycle in range(0, bound, POLL_STEP):
-            if self._bit(name) == want:
-                return cycle
-            await ClockCycles(self.dut.clk_smu_i, POLL_STEP)
-        raise AssertionError(
-            f"TIMEOUT {what}: {name} stayed {1 - want} for {bound} clk_smu cycles; "
-            f"{self._cpu_state()}"
-        )
+    async def _time_first_timeout(self, bound: int) -> tuple[int | None, int | None]:
+        """Poll every clk_smu: the cycle of the next AW handshake on the DTP's SMC
+        debug port (the arming write) and the cycle smc_ras_o.wdt_first_timeout rises."""
+        aw_count = tb_pin(self.dut, AW_COUNT_PIN)
+        aw_before = sample(aw_count, AW_COUNT_PIN)
+        armed_at = None
+        for cycle in range(bound):
+            await RisingEdge(self.dut.clk_smu_i)
+            if armed_at is None and sample(aw_count, AW_COUNT_PIN) != aw_before:
+                armed_at = cycle
+            if armed_at is not None and self._bit("tb_smc_wdt_first_timeout"):
+                return armed_at, cycle
+        return armed_at, None
 
     async def run(self) -> None:
         dut = self.dut
+        drawn = f"drawn wdogcmp0=0x{self.cmp:04x}"
+        self.log.info("SEED: RANDOM_SEED=%d %s", self.seed, drawn)
         await self.cfg.reset_done.wait()
         self.jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await self.jtag.reset_tap()
@@ -174,13 +201,13 @@ class smu_smc_wdt_boundary_timeout_seq:
             evidence="CHK-SMU-WDT-FIRST",
         )
         self.sb.expect_eq(
-            "smc_wdt_first_timeout_o low before the watchdog is armed",
+            "smc_ras_o.wdt_first_timeout low before the watchdog is armed",
             self._bit("tb_smc_wdt_first_timeout"),
             0,
             evidence="CHK-SMU-WDT-FIRST",
         )
         self.sb.expect_eq(
-            "smc_wdt_second_timeout_o low before the watchdog is armed",
+            "smc_ras_o.wdt_second_timeout low before the watchdog is armed",
             self._bit("tb_smc_wdt_second_timeout"),
             0,
             evidence="CHK-SMU-WDT-SECOND",
@@ -203,17 +230,19 @@ class smu_smc_wdt_boundary_timeout_seq:
         status = await wdt_unlock(self.jtag)
         if status != J2A_STATUS_SUCCESS:
             raise AssertionError(f"WDT unlock status={status}")
-        await self._wr32(WDT_CMP, CMP_SMALL, "CORE0 WDT CMP")
+        await self._wr32(WDT_CMP, self.cmp, "CORE0 WDT CMP")
         cmp_rb = await self._rd32(WDT_CMP, "CORE0 WDT CMP")
         self.sb.expect_eq(
-            "the compare value holds",
+            f"the compare value holds {drawn}",
             cmp_rb & WDT_CMP_BM,
-            CMP_SMALL,
+            self.cmp,
             evidence="CHK-SMU-WDT-FIRST",
         )
         status = await wdt_unlock(self.jtag)
         if status != J2A_STATUS_SUCCESS:
             raise AssertionError(f"WDT unlock status={status}")
+        first_bound = int(FIRST_TIMEOUT_BOUND_NS / self.cfg.smu_clk_period_ns)
+        timer = cocotb.start_soon(self._time_first_timeout(first_bound))
         await self._wr32(WDT_CTRL, WDT_ALWAYS_BM | WDT_ZEROCMP_BM | WDT_RSTEN_BM, "CORE0 WDT CTRL")
         armed = await self._rd32(WDT_CTRL, "CORE0 WDT CTRL")
         self.log.info(
@@ -229,22 +258,41 @@ class smu_smc_wdt_boundary_timeout_seq:
             WDT_ALWAYS_BM | WDT_ZEROCMP_BM | WDT_RSTEN_BM,
             evidence="CHK-SMU-WDT-FIRST",
         )
-        cycles = await self._wait_pin(
-            "tb_smc_wdt_first_timeout",
-            1,
-            int(FIRST_TIMEOUT_BOUND_NS / self.cfg.smu_clk_period_ns),
-            "first watchdog timeout",
+        armed_at, rose_at = await timer
+        if armed_at is None:
+            raise AssertionError(
+                f"TIMEOUT first watchdog timeout: no AW handshake on {AW_COUNT_PIN} within "
+                f"{first_bound} clk_smu cycles of the arming write"
+            )
+        if rose_at is None:
+            raise AssertionError(
+                f"TIMEOUT first watchdog timeout: tb_smc_wdt_first_timeout stayed 0 for "
+                f"{first_bound} clk_smu cycles; {self._cpu_state()}"
+            )
+        cycles = rose_at - armed_at
+        self.log.info(
+            "OBSERVATION smc_ras_o.wdt_first_timeout rose %d clk_smu after the AW handshake of the "
+            "arming write (cmp + %d) %s",
+            cycles,
+            cycles - self.cmp,
+            drawn,
         )
-        self.log.info("smc_wdt_first_timeout_o rose %d clk_smu after arming", cycles)
         self.sb.expect_eq(
-            "arming CORE0 with WDOGRSTEN raises smc_wdt_first_timeout_o",
+            f"the first timeout lands cmp to cmp + {FIRST_TIMEOUT_SLACK} clk_smu after the "
+            f"arming write's AW handshake ({cycles} clk_smu) {drawn}",
+            self.cmp <= cycles <= self.cmp + FIRST_TIMEOUT_SLACK,
+            True,
+            evidence="CHK-SMU-WDT-FIRST",
+        )
+        self.sb.expect_eq(
+            f"arming CORE0 with WDOGRSTEN raises smc_ras_o.wdt_first_timeout {drawn}",
             self._bit("tb_smc_wdt_first_timeout"),
             1,
             evidence="CHK-SMU-WDT-FIRST",
         )
         ctrl = await self._rd32(WDT_CTRL, "CORE0 WDT CTRL")
         self.sb.expect_eq(
-            "the same timeout shows as the watchdog's pending bit",
+            f"the same timeout shows as the watchdog's pending bit {drawn}",
             ctrl & WDT_IP0_BM,
             WDT_IP0_BM,
             evidence="CHK-SMU-WDT-FIRST",
@@ -276,19 +324,19 @@ class smu_smc_wdt_boundary_timeout_seq:
                 f"in {second_bound} clk_smu cycles; {self._cpu_state()}"
             )
         self.log.info(
-            "OBSERVATION smc_wdt_second_timeout_o rose %s and the SMC warm reset fell %s "
+            "OBSERVATION smc_ras_o.wdt_second_timeout rose %s and the SMC warm reset fell %s "
             "clk_smu after the first timeout was confirmed",
             second_cycle,
             warm_cycle,
         )
         self.sb.expect_eq(
-            "the held first timeout runs the second stage out",
+            f"the held first timeout runs the second stage out {drawn}",
             second_cycle is not None,
             True,
             evidence="CHK-SMU-WDT-SECOND",
         )
         self.sb.expect_eq(
-            "the watchdog timeout drops the SMC warm reset",
+            f"the watchdog timeout drops the SMC warm reset {drawn}",
             warm_cycle is not None,
             True,
             evidence="CHK-SMU-WDT-SECOND",
@@ -316,7 +364,7 @@ class smu_smc_wdt_boundary_timeout_seq:
             wdt_reset_low,
         )
         self.sb.expect_eq(
-            "CHK-SMU-WDT-RELEASE the warm reset clears the first timeout",
+            f"CHK-SMU-WDT-RELEASE the warm reset clears the first timeout {drawn}",
             first_dropped,
             True,
             evidence="CHK-SMU-WDT-RELEASE",

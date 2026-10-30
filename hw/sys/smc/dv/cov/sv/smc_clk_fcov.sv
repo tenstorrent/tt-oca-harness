@@ -389,15 +389,14 @@ module smc_clk_fcov #(
   `OCAH_FCOV_COVER(c_activity_detected_clock_restored, activity_restores_clock_e, clk_smc_i,
                    in_reset)
 
-`ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the crosses a flat cover-property
-  // list cannot express, plus a bucketed view of the domain ratios. A bucket
-  // is the domain's edge count per reference edge in quarters; the classes
-  // are the relations the clock tree distinguishes (a stalled, slower, equal,
-  // faster or much faster domain), not the ratio values themselves. Values
-  // above eight times the reference fall in the default bin and are not
-  // graded.
+  // Covergroups: the combinations a flat cover-property list cannot express,
+  // over a bucketed view of the domain ratios and the clock-gate terms. A
+  // bucket is the domain's edge count per reference edge in quarters; the
+  // classes are the relations the clock tree distinguishes (a stalled,
+  // slower, equal, faster or much faster domain), not the ratio values
+  // themselves. Values above eight times the reference fall in the default
+  // bin and are not graded.
   // ------------------------------------------------------------------
   covergroup cg_clk_ratio with function sample (
       logic [31:0] ref_edges, logic [31:0] smc_edges, logic [31:0] periph_edges
@@ -409,11 +408,12 @@ module smc_clk_fcov #(
     // testlists/clock.toml pin the other periods, one leaf per cell of the
     // cross below, so every slower, same, faster and much_faster bin of both
     // coverpoints and every cell of their cross has a driver and is graded.
-    // The stalled bins are out: clk_rst.adoc defines no mode in which an input
-    // clock stops (the stalled-window cover points are Phase 2), and a clock
-    // the clock gates stop is the cg_clk_gate group's subject.
+    // The stalled bucket, 0, is ignored: clk_rst.adoc defines no mode in which
+    // an input clock stops (the stalled-window cover points are Phase 2), and
+    // a clock the clock gates stop is the cg_clk_gate group's subject. No bin
+    // lists it: on Verilator, a value that a bin and an ignore_bins both list
+    // counts in the bin.
     cp_smc_bucket: coverpoint (smc_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
-      bins stalled = {0};
       bins slower = {[1 : 3]};
       bins same = {4};
       bins faster = {[5 : 8]};
@@ -422,7 +422,6 @@ module smc_clk_fcov #(
       ignore_bins smc_stalled = {0};
     }
     cp_periph_bucket: coverpoint (periph_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
-      bins stalled = {0};
       bins slower = {[1 : 3]};
       bins same = {4};
       bins faster = {[5 : 8]};
@@ -438,12 +437,17 @@ module smc_clk_fcov #(
     cp_cg_en: coverpoint cg_en {bins bypassed = {1'b0}; bins gating = {1'b1};}
     cp_busy: coverpoint busy {bins idle = {1'b0}; bins busy = {1'b1};}
     cp_toggling: coverpoint clk_toggling {bins held = {1'b0}; bins running = {1'b1};}
-    // cg_enable_i low bypasses the gate and a busy block keeps its clock
-    // (dma.adoc and zeroer.adoc, Clock Gating), so the clock is not held while
-    // either holds.
-    x_gate_contract: cross cp_cg_en, cp_busy, cp_toggling{
-      ignore_bins held_while_bypassed = binsof (cp_cg_en.bypassed) && binsof (cp_toggling.held);
-      ignore_bins held_while_busy = binsof (cp_busy.busy) && binsof (cp_toggling.held);
+    // {cg_en, busy, clk_toggling}: cg_enable_i low bypasses the gate and a
+    // busy block keeps its clock (dma.adoc and zeroer.adoc, Clock Gating), so
+    // the clock is not held while either holds.
+    cp_gate_contract: coverpoint {
+      cg_en, busy, clk_toggling
+    } {
+      bins bypassed_idle_running = {3'b001};
+      bins bypassed_busy_running = {3'b011};
+      bins gating_idle_held = {3'b100};
+      bins gating_idle_running = {3'b101};
+      bins gating_busy_running = {3'b111};
     }
   endgroup
 
@@ -456,7 +460,7 @@ module smc_clk_fcov #(
   end
 
   // A clock movement seen at one sample is the gated edge of the previous
-  // cycle, so the gate terms are crossed one sample late.
+  // cycle, so the gate terms are taken one sample late.
   logic gate_dma_cg_en_q, gate_dma_busy_q, gate_zeroer_cg_en_q, gate_zeroer_busy_q;
   always_ff @(posedge clk_smc_i) begin
     gate_dma_cg_en_q <= dma_cg_en_i;
@@ -471,6 +475,5 @@ module smc_clk_fcov #(
       u_cg_zeroer_gate.sample(gate_zeroer_cg_en_q, gate_zeroer_busy_q, zeroer_axi_clk_toggling);
     end
   end
-`endif
 
 endmodule : smc_clk_fcov

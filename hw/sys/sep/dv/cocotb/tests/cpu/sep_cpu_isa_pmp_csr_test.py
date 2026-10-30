@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The core runs RV32 M, C, Zba, Zbb and Zbc, traps Zbs, keeps 16 distinct pmpaddr registers, and mrac grants no permission.
+"""The core runs RV32 M, C, Zba, Zbb and Zbc, traps Zbs, keeps 16 distinct pmpaddr registers, mrac grants no permission, and lockstep_status_o stays 0 under every lockstep_ctrl_i value.
 
 Firmware ``cpu_isa_pmp_csr_test`` is built for RV32I. Its only M, C, Zba, Zbb,
 Zbc or Zbs encodings are the explicit instruction words of the table rows and
@@ -35,9 +35,33 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
 * CHK-TRACE-INSTRET (host) the ``minstret`` delta over the straight-line block
   equals the retirements that the trace monitor counts from the first
   ``minstret`` read up to the second.
+* CHK-LOCKSTEP-INERT (host, VCS) while the instruction rows run inside the
+  graded window, the bench drives the ``tb_top`` variable ``lockstep_ctrl_i``
+  (wired to the ``sep_wrapper`` port) through all four values in a drawn
+  order and holds each value for at least ``LS_MIN_RETIRED`` retired
+  instructions; ``lockstep_status_o`` reads 0 on every ``clk_i`` of the run
+  (``hw/sys/sep/doc/port_table.adoc``: the status reads 0 unless the core is
+  built with ``RV_LOCKSTEP_ENABLE``; ``hw/sys/sep/doc/cpu.adoc``: lockstep is
+  disabled in the checked-in configuration). The line logs the retired count
+  of each held value, the retirements with each control bit (bit 0, bit 1) at
+  1 and the rises of each bit at the variable, so a walk that did not reach
+  the port or retired too few instructions fails. No cited specification
+  states which bit holds which control, so the check names the bits by
+  position and the layout is logged (``OBS-LOCKSTEP-LAYOUT``). Verilator does not take a cocotb
+  write of that variable: the leg is skipped there with an ``INFO-LOCKSTEP-SKIP``
+  line and the check is required evidence on VCS only.
 
 Expected values come from the drawn stimulus and the ISA model, never from a
 DUT read. cpu run mode, ``+skip_fuse_sense``, Verilator and VCS.
+
+FCOV pass label ``isa_pmp_pass`` (``env/sep_fcov_gate.set_isa_pmp_pass``): the
+sampler holds the ``cp_pmp_entry``, ``cp_mrac_no_perm``, ``cp_lockstep_inert``,
+``cp_instr_class`` and ``cp_traced_event`` (taken trap) cells of this owner as
+pending while the firmware runs, because the host grades the console only
+after the run. The leaf writes the bits after every check of the run passes:
+bit i of ``cp_pmp_entry`` for an entry i that CHK-PMP passed, the ``mrac`` bit
+for CHK-MRAC, the lockstep bits for CHK-LOCKSTEP-INERT, the class and trap
+bits for CHK-ISA and CHK-MRAC. A FAIL closes the window and writes 0.
 """
 
 from __future__ import annotations
@@ -49,10 +73,18 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ReadOnly, RisingEdge
+from cocotb.triggers import Event, ReadOnly, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import parse_hex_cells, patch_param_block
-from env.sep_fcov_gate import close_graded_window
+from env.sep_fcov_gate import (
+    ISA_PMP_PASS_ICLS,
+    ISA_PMP_PASS_LS_BIT0,
+    ISA_PMP_PASS_LS_BIT1,
+    ISA_PMP_PASS_MRAC,
+    ISA_PMP_PASS_TRAP,
+    close_graded_window,
+    set_isa_pmp_pass,
+)
 from env.sep_fw_console import SepFwConsole
 from env.sep_rv_isa_golden import evaluate
 from env.sep_seeded_rng import SepSeededRng
@@ -91,6 +123,24 @@ DENY_REG = _SRAM_BASE + _SRAM_SIZE - 0x1000
 # RISC-V cause codes (Privileged Architecture, mcause table).
 MCAUSE_ILLEGAL = 2
 MCAUSE_LOAD_FAULT = 5
+
+# lockstep_ctrl_i bits. hw/sys/sep/doc/port_table.adoc:58 names two controls
+# (disable corruption detection, error-injection enable) but states no bit
+# position, so the leaf names the bits by position only and walks all four
+# values; no check or bin depends on which bit holds which control. The layout
+# is logged (OBS-LOCKSTEP-LAYOUT).
+LS_BIT0 = 1 << 0
+LS_BIT1 = 1 << 1
+LS_VALUES = (0, LS_BIT0, LS_BIT1, LS_BIT0 | LS_BIT1)
+# lockstep_status_o.corruption_detected reads 0 in the checked-in configuration
+# (hw/sys/sep/doc/port_table.adoc, lockstep_status_o row: "Reads 0 unless the
+# core is built with RV_LOCKSTEP_ENABLE"; hw/sys/sep/doc/cpu.adoc, Dual Core
+# Lock Step row: "Disabled in the checked-in SEP configuration").
+LS_STATUS_GOLDEN = 0
+# Retired instructions held at each control value, and the clock bound of one
+# hold. Choices of the bench; the specification states no count.
+LS_MIN_RETIRED = 64
+LS_MAX_HOLD_CLOCKS = 200_000
 
 
 def _r_type(f7: int, f3: int, op: int = 0x33) -> int:
@@ -201,6 +251,7 @@ class IsaCfg:
     mrac: list[int] = field(default_factory=list)
     aw: list[int] = field(default_factory=list)
     dw: list[int] = field(default_factory=list)
+    ls_order: list[int] = field(default_factory=list)
 
     @classmethod
     def from_seed(cls, seed: int) -> "IsaCfg":
@@ -230,6 +281,10 @@ class IsaCfg:
                 dw = rng.getrandbits(32) | 1
             cfg.aw.append(aw)
             cfg.dw.append(dw)
+        # Appended after every earlier draw, so the staged image of a seed
+        # does not move.
+        cfg.ls_order = list(LS_VALUES)
+        rng.shuffle(cfg.ls_order)
         return cfg
 
     def words(self) -> list[int]:
@@ -253,6 +308,7 @@ class IsaCfg:
             + " denied_words="
             + ",".join(f"0x{v:08x}" for v in self.dw)
             + f" allowed_region=0x{ALLOW_REG:08x} denied_region=0x{DENY_REG:08x}",
+            "DRAW lockstep_order=" + ",".join(str(v) for v in self.ls_order),
         ]
         return out
 
@@ -269,7 +325,7 @@ def _list(kv: dict) -> list[int]:
 
 @pyuvm.test()
 class sep_cpu_isa_pmp_csr_test(sep_base_test):
-    """RV32 M/C/Zba/Zbb/Zbc results, the Zbs trap, pmpaddr non-aliasing, mrac and minstret."""
+    """RV32 M/C/Zba/Zbb/Zbc results, the Zbs trap, pmpaddr non-aliasing, mrac, minstret and inert lockstep."""
 
     build_env = False
     required_evidence = ("CHK-ISA", "CHK-PMP", "CHK-MRAC", "CHK-TRACE-INSTRET")
@@ -316,7 +372,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         if missing:
             raise AssertionError(f"instruction image lacks the encodings of {missing}")
         self.logger.info(
-            "CTL-ISA-ENC LOG encodings_in_image=%d/%d (independent encoder)",
+            "CTRL-ISA-ENC LOG encodings_in_image=%d/%d (independent encoder)",
             len(OPS) + 1,
             len(OPS) + 1,
         )
@@ -378,6 +434,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         changed = 0
         unchanged = 0
         aliases = []
+        entry_pass = 0
         for i, rec in enumerate(pc):
             if int(rec.kv["i"]) != i:
                 raise AssertionError(f"CHK-PMP FAIL: PMPC line {i} has i={rec.kv['i']}")
@@ -394,6 +451,8 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
                 aliases.append((i, others))
             else:
                 unchanged += 1
+            if cur[i] != prev[i] and not others:
+                entry_pass |= 1 << i
             prev = cur
         ms_traps = int(ms[0].kv["traps"])
         lst = ",".join(f"0x{v:08x}" for v in _list(p0[0].kv))
@@ -405,6 +464,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         if changed != NPMP or unchanged != NPMP or aliases or ms_traps != 0:
             raise AssertionError(f"CHK-PMP FAIL: {body} alias_detail={aliases}")
         self.logger.info("CHK-PMP PASS: %s; mseccfg read ok", body)
+        self.pmp_entry_pass = entry_pass
         return 1
 
     def _chk_mrac(self) -> int:
@@ -461,6 +521,114 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         self.logger.info("CHK-TRACE-INSTRET PASS: %s", body)
         return 1
 
+    @staticmethod
+    def _retired(dut) -> bool:
+        """A retired instruction on the CPU trace at this clock (no exception,
+        no interrupt record)."""
+        v = dut.cpu_trace_valid_o.value
+        if not v.is_resolvable or not int(v):
+            return False
+        e = dut.dbg_cpu_trace_exc_o.value
+        i = dut.cpu_trace_interrupt_o.value
+        return e.is_resolvable and i.is_resolvable and not int(e) and not int(i)
+
+    def _on_mark(self, leg: str, kind: str) -> None:
+        """Note the console clock of the first ``M G isa`` and ``M C end``
+        markers, and start the lockstep walk at ``M G isa``."""
+        if kind == "G" and leg == "isa" and self.ls_open_clk is None:
+            self.ls_open_clk = self.con.clk
+            self._isa_open.set()
+        if kind == "C" and leg == "end" and self.ls_close_clk is None:
+            self.ls_close_clk = self.con.clk
+
+    async def _lockstep_walk(self) -> None:
+        """Drive ``lockstep_ctrl_i`` through the drawn order. Each value is held
+        until ``LS_MIN_RETIRED`` instructions retire with the variable at that
+        value, bounded by ``LS_MAX_HOLD_CLOCKS``; then the variable returns
+        to 0."""
+        dut = cocotb.top
+        await self._isa_open.wait()
+        # The graded window opens on the clk_i edge after the marker line.
+        await RisingEdge(dut.clk_i)
+        await RisingEdge(dut.clk_i)
+        self.ls_walk_start = self.con.clk
+        for v in self.tcfg.ls_order:
+            dut.lockstep_ctrl_i.value = v
+            n = 0
+            clocks = 0
+            while n < LS_MIN_RETIRED and clocks < LS_MAX_HOLD_CLOCKS:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                clocks += 1
+                cv = dut.lockstep_ctrl_i.value
+                if cv.is_resolvable and int(cv) == v and self._retired(dut):
+                    n += 1
+            self.ls_holds.append((v, n, clocks))
+            await RisingEdge(dut.clk_i)
+            if n < LS_MIN_RETIRED:
+                break
+        dut.lockstep_ctrl_i.value = 0
+        self.ls_walk_end = self.con.clk
+
+    async def _lockstep_mon(self) -> None:
+        """On every clk_i: ``lockstep_status_o`` against the golden, the rises
+        of each control bit at the ``lockstep_ctrl_i`` variable and the
+        retirements with each control bit at 1."""
+        dut = cocotb.top
+        st = self.ls_stat
+        prev = 0
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            st["clocks"] += 1
+            sv = dut.lockstep_status_o.value
+            if not sv.is_resolvable or int(sv) != LS_STATUS_GOLDEN:
+                st["status_bad"] += 1
+                if st["first_bad"] is None:
+                    st["first_bad"] = f"{sv}@clk{self.con.clk}"
+            cv = dut.lockstep_ctrl_i.value
+            ctrl = int(cv) if cv.is_resolvable else 0
+            ret = self._retired(dut)
+            for bit, key in ((LS_BIT0, "b0"), (LS_BIT1, "b1")):
+                if ctrl & bit and not prev & bit:
+                    st[f"{key}_rises"] += 1
+                if ctrl & bit and ret:
+                    st[f"{key}_retired"] += 1
+            prev = ctrl
+
+    def _chk_lockstep(self) -> int:
+        st = self.ls_stat
+        order = [v for v, _n, _c in self.ls_holds]
+        held = order == self.tcfg.ls_order and all(
+            n >= LS_MIN_RETIRED for _v, n, _c in self.ls_holds
+        )
+        marks = (self.ls_open_clk, self.ls_walk_start, self.ls_walk_end, self.ls_close_clk)
+        inside = None not in marks and marks[0] < marks[1] and marks[2] < marks[3]
+        body = (
+            f"order={','.join(str(v) for v in self.tcfg.ls_order)} "
+            f"holds(value:retired/clocks)={','.join(f'{v}:{n}/{c}' for v, n, c in self.ls_holds)} "
+            f"min_retired={LS_MIN_RETIRED} retired_bit0_1={st['b0_retired']} "
+            f"retired_bit1_1={st['b1_retired']} bit0_rises={st['b0_rises']} "
+            f"bit1_rises={st['b1_rises']} status_clocks={st['clocks']} "
+            f"status_not_golden_clocks={st['status_bad']} golden={LS_STATUS_GOLDEN} "
+            f"first_not_golden={st['first_bad']} walk_clk={marks[1]}-{marks[2]} "
+            f"window_clk={marks[0]}-{marks[3]}"
+        )
+        ok = (
+            held
+            and inside
+            and st["clocks"] > 0
+            and st["status_bad"] == 0
+            and st["b0_rises"] >= 1
+            and st["b1_rises"] >= 1
+            and st["b0_retired"] >= 2 * LS_MIN_RETIRED
+            and st["b1_retired"] >= 2 * LS_MIN_RETIRED
+        )
+        if not ok:
+            raise AssertionError(f"CHK-LOCKSTEP-INERT FAIL: {body}")
+        self.logger.info("CHK-LOCKSTEP-INERT PASS: %s", body)
+        return 1
+
     def _recs(self, prefix: str):
         from env.sep_fw_console import ConsoleRec, parse_kv
 
@@ -487,8 +655,42 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         dtcm = os.path.join(os.getcwd(), "sep_dtcm_isa_pmp.hex")
         patch_param_block(_DTCM_HEX, dtcm, P_MAGIC, cfg.words())
         self.sb.expected_line = _BANNER
-        self.con = SepFwConsole(self, graded_test=TEST).start()
-        tr = cocotb.start_soon(self._trace(sy["isa_r1"], sy["isa_r2"]))
+        dut = cocotb.top
+        sim = str(getattr(cocotb, "SIM_NAME", "") or "")
+        ls_leg = "verilator" not in sim.lower()
+        self.ls_stat = {
+            "clocks": 0,
+            "status_bad": 0,
+            "first_bad": None,
+            "b0_rises": 0,
+            "b1_rises": 0,
+            "b0_retired": 0,
+            "b1_retired": 0,
+        }
+        self.ls_holds: list[tuple[int, int, int]] = []
+        self.ls_open_clk = self.ls_close_clk = None
+        self.ls_walk_start = self.ls_walk_end = None
+        self._isa_open = Event()
+        set_isa_pmp_pass(0, self.logger)
+        self.con = SepFwConsole(self, graded_test=TEST)
+        self.con.on_mark(self._on_mark)
+        self.con.start()
+        tasks = [cocotb.start_soon(self._trace(sy["isa_r1"], sy["isa_r2"]))]
+        self.logger.info(
+            "OBS-LOCKSTEP-LAYOUT LOG ctrl_width=%d bit_roles=not_stated: port_table.adoc:58 "
+            "names the two controls and no bit position; the walk drives all four values",
+            len(dut.lockstep_ctrl_i),
+        )
+        if ls_leg:
+            self.required_evidence = type(self).required_evidence + ("CHK-LOCKSTEP-INERT",)
+            tasks.append(cocotb.start_soon(self._lockstep_mon()))
+            tasks.append(cocotb.start_soon(self._lockstep_walk()))
+        else:
+            self.logger.info(
+                "INFO-LOCKSTEP-SKIP LOG simulator=%s: the lockstep_ctrl_i leg runs on VCS only "
+                "(the Verilator build takes no cocotb write of that tb_top variable)",
+                sim,
+            )
         close_graded_window(self.logger)
         try:
             await self.boot_firmware(
@@ -500,11 +702,36 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
                 no_boot_cycles=_NO_BOOT_CYCLES,
             )
         finally:
-            tr.cancel()
+            for t in tasks:
+                t.cancel()
             await self.con.stop()
+            if ls_leg:
+                dut.lockstep_ctrl_i.value = 0
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         seeds = self.con.text_lines("SEED")
         if not seeds or f"seed=0x{seed & _M32:08x}" not in seeds[0]:
             raise AssertionError(f"firmware did not run the patched block: {seeds}")
-        n = self._chk_isa(sy) + self._chk_pmp() + self._chk_mrac() + self._chk_instret(sy)
+        try:
+            n = self._chk_isa(sy) + self._chk_pmp() + self._chk_mrac() + self._chk_instret(sy)
+            if ls_leg:
+                n += self._chk_lockstep()
+        except AssertionError:
+            close_graded_window(self.logger)
+            set_isa_pmp_pass(0, self.logger)
+            raise
+        # Every check of the run passed: release the held cells.
+        mask = (
+            self.pmp_entry_pass
+            | (1 << ISA_PMP_PASS_MRAC)
+            | (1 << ISA_PMP_PASS_ICLS)
+            | (1 << ISA_PMP_PASS_TRAP)
+        )
+        if ls_leg:
+            mask |= (1 << ISA_PMP_PASS_LS_BIT0) | (1 << ISA_PMP_PASS_LS_BIT1)
+        await RisingEdge(dut.clk_i)
+        set_isa_pmp_pass(mask, self.logger)
+        await RisingEdge(dut.clk_i)
+        await RisingEdge(dut.clk_i)
+        set_isa_pmp_pass(0, self.logger)
+        await RisingEdge(dut.clk_i)
         self.result_pass(TEST, seed, n)

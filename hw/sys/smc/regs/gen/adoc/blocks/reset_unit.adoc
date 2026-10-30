@@ -173,7 +173,9 @@ cannot be written to again
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `isolate_req_smc_reg` | RW | 0x0 a| Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw
+| 0 | `isolate_req_smc_reg` | RW1C | 0x0 a| Isolate request smc. Set by a rising edge of cfg_flr_pf_active; software writes 1
+to clear. A write of 0, or a write whose byte strobes do not select this field,
+leaves it unchanged; a rising edge in the same cycle as a clearing write wins.
 |===
 
 [#reg-{regmap-instance}-reset_unit-ISOLATE_REQ_SMCEN_REG]

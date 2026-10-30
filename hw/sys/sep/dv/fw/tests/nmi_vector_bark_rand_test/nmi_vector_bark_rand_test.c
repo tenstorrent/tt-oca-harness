@@ -21,11 +21,18 @@
 // not in the image: the host places it in the ICCM image outside the image
 // bytes.
 //
-// Records: CHK-NMI-NOPIC (the bark moves no bit of any of the eight meip
-// words, masked by the excluded idle bits; the pending source delivers once
-// after its gate opens); the NMI entry, run count and vector reads print as
-// CTL lines for the host, which grades CHK-NMI-TAKEN and CHK-BARK-VEC with the
-// CPU trace.
+// Records: CHK-NMI-STUB (the reset-vector bark runs the stub once);
+// CHK-NMI-ENTRY (each locked-copy bark enters the copy once; the CTRL-MIE-AT-BARK
+// read of mstatus.MIE before the bark is the stated value of the leg, and the
+// mstatus.MPIE value at the NMI entry is logged as OBS-NMI-MPIE, not graded);
+// CHK-NMI-NOPIC (the bark moves no bit of
+// any of the eight meip words, masked by the excluded idle bits; the pending
+// source delivers once after its gate opens); CHK-NMI-IN-EXT (a bark fired
+// while the external handler of the pending source waits enters the locked
+// trampoline copy once, inside that handler; the return path is not graded).
+// The vector reads print as CTL lines. The host grades CHK-NMI-TAKEN and
+// CHK-BARK-VEC with the CPU trace. The host releases the held NMI coverage of
+// a graded leg after every CHK line of that leg passed.
 
 #include <stdint.h>
 
@@ -52,8 +59,9 @@ enum {
     P_BARK, // 4 words: bark thresholds of the reset-vector, bark 1, bark 2, programmed barks
     P_WAIT = P_BARK + 4,
     P_HOLD,
-    P_IDLE, // 8 words: the excluded idle bits of meip
-    P_WORDS = P_IDLE + 8,
+    P_IDLE,              // 8 words: the excluded idle bits of meip
+    P_NEST = P_IDLE + 8, // bark threshold of the bark inside the external handler
+    P_WORDS,
 };
 
 volatile uint32_t g_prm[P_WORDS] = {
@@ -120,10 +128,19 @@ static volatile uint32_t g_nmi_runs;
 static volatile uint32_t g_nmi_entry;
 static volatile uint32_t g_nmi_copy;
 static volatile uint32_t g_nmi_mpie;
+// mstatus.MIE read back right before the last bark of bark_nmi().
+static volatile uint32_t g_mie_rd;
 #define N_MEIP 8u
 static volatile uint32_t g_nmi_meip[N_MEIP];
 static volatile uint32_t g_ext_runs;
 static volatile uint32_t g_ext_id;
+// External-handler leg: g_in_ext is 1 while the external handler waits for the
+// bark; the NMI handler copies it to g_nmi_in_ext at its entry.
+static volatile uint32_t g_nest_mode;
+static volatile uint32_t g_in_ext;
+static volatile uint32_t g_nmi_in_ext;
+static volatile uint32_t g_nest_nmi_runs;
+static volatile uint32_t g_nest_timeout;
 static int g_err;
 
 struct ot_src {
@@ -206,6 +223,7 @@ void nmivb_stub_c(void) {
 }
 
 void nmivb_common_c(uint32_t entry, uint32_t copy) {
+    g_nmi_in_ext = g_in_ext;
     uint32_t mst;
     __asm__ volatile("csrr %0, mstatus" : "=r"(mst));
     for (uint32_t w = 0; w < N_MEIP; w++) {
@@ -229,6 +247,30 @@ static inline uint32_t claim_id(void) {
     return idx < SEP_TOP_PIC_MEIE_NUM ? idx : 0u;
 }
 
+// The bark inside the external handler. The NMI overwrites mepc and mstatus
+// (VeeR EL2 PRM section 3.16), so the handler saves both before the bark and
+// writes them back before its mret. The handler waits on g_flag in nmivb_wait,
+// a bounded wait, and clears the bark itself when no NMI comes.
+static void nest_bark(void) {
+    uint32_t epc, mst;
+    __asm__ volatile("csrr %0, mepc" : "=r"(epc));
+    __asm__ volatile("csrr %0, mstatus" : "=r"(mst));
+    g_nest_mode = 0u;
+    uint32_t r0 = g_nmi_runs;
+    uint32_t f0 = g_flag;
+    g_in_ext = 1u;
+    bark_arm(g_prm[P_NEST]);
+    uint32_t left = nmivb_wait(&g_flag, f0, g_prm[P_WAIT]);
+    g_in_ext = 0u;
+    g_nest_nmi_runs = g_nmi_runs - r0;
+    g_nest_timeout = left == 0u;
+    if (left == 0u) {
+        bark_clear();
+    }
+    __asm__ volatile("csrw mstatus, %0" ::"r"(mst));
+    __asm__ volatile("csrw mepc, %0" ::"r"(epc));
+}
+
 void __attribute__((interrupt("machine"))) ext_isr(void) {
     uint32_t id = claim_id();
     g_ext_id = id;
@@ -245,6 +287,9 @@ void __attribute__((interrupt("machine"))) ext_isr(void) {
         if (meip_bit(id) == 0u) {
             break;
         }
+    }
+    if (g_nest_mode) {
+        nest_bark();
     }
     rec_spin(8u);
 }
@@ -277,23 +322,49 @@ static uint32_t copy_addr(uint32_t k) {
     }
 }
 
-// One bark through the locked trampoline; prints the CTL-NMI-ENTRY record.
+// One bark through the locked trampoline; prints the CHK-NMI-ENTRY record: one
+// NMI entry, at the locked copy. Before the bark it reads mstatus.MIE back
+// (CTRL-MIE-AT-BARK), and CHK-NMI-ENTRY needs that read equal to mie_at_bark.
+// No cited specification states mstatus.MPIE at an NMI entry, so the value the
+// handler reads is logged (OBS-NMI-MPIE) and not graded. The host grades the
+// same entry with the CPU trace (CHK-NMI-TAKEN).
 static int bark_nmi(uint32_t n, uint32_t thold, uint32_t mie_at_bark) {
     uint32_t r0 = g_nmi_runs;
     uint32_t f0 = g_flag;
+    uint32_t mst;
+    __asm__ volatile("csrr %0, mstatus" : "=r"(mst));
+    uint32_t mie_rd = (mst & MSTATUS_MIE) != 0u;
+    g_mie_rd = mie_rd;
+    rec_ctl("MIE-AT-BARK");
+    rec_num("bark", n);
+    rec_num("mie", mie_rd);
+    rec_num("mie_exp", mie_at_bark);
+    rec_end();
     bark_arm(thold);
     uint32_t left = nmivb_wait(&g_flag, f0, g_prm[P_WAIT]);
     hold();
-    rec_ctl("NMI-ENTRY");
+    uint32_t vec = copy_addr(g_prm[P_COPY]);
+    int pass = left != 0u && g_nmi_runs - r0 == 1u && g_nmi_entry == vec &&
+               g_nmi_copy == g_prm[P_COPY] && mie_rd == mie_at_bark;
+    rec_chk("NMI-ENTRY", pass);
     rec_num("bark", n);
     rec_num("copy", g_nmi_copy);
     rec_hex("entry", g_nmi_entry);
     rec_hex("vec", nmi_read_vector_reg());
     rec_num("handler_runs", g_nmi_runs - r0);
-    rec_num("mie", g_nmi_mpie);
+    rec_num("mie_at_bark", mie_rd);
     rec_num("mie_exp", mie_at_bark);
+    rec_hex("vec_exp", vec);
     rec_num("timeout", left == 0u);
     rec_end();
+    rec_obs("NMI-MPIE");
+    rec_num("bark", n);
+    rec_num("mpie", g_nmi_mpie);
+    rec_num("mie_at_bark", mie_rd);
+    rec_end();
+    if (!pass) {
+        g_err++;
+    }
     return left != 0u && g_nmi_runs - r0 == 1u;
 }
 
@@ -369,10 +440,17 @@ static int boot1(void) {
     bark_arm(g_prm[P_BARK + 0]);
     uint32_t left = nmivb_wait(&g_flag, f0, g_prm[P_WAIT]);
     hold();
-    rec_ctl("STUB");
+    // The stub sits at the SEP_NMI_VEC reset value (checked in main), so one
+    // stub run is one NMI at the reset vector.
+    int pass_s = g_stub_runs == 1u && left != 0u;
+    rec_chk("NMI-STUB", pass_s);
     rec_num("stub_runs", g_stub_runs);
+    rec_hex("stub", (uint32_t)(uintptr_t)nmivb_stub);
     rec_num("timeout", left == 0u);
     rec_end();
+    if (!pass_s) {
+        g_err++;
+    }
 
     // Lock the drawn trampoline copy.
     rec_mark(0, "lock");
@@ -401,7 +479,7 @@ static int boot1(void) {
     meip_snap(before);
     uint32_t e0 = g_ext_runs;
     int ok1 = bark_nmi(1u, g_prm[P_BARK + 1], 0u);
-    int pre = ((before[s >> 5] >> (s & 31u)) & 1u) == 1u && g_ext_runs == e0 && g_nmi_mpie == 0u;
+    int pre = ((before[s >> 5] >> (s & 31u)) & 1u) == 1u && g_ext_runs == e0 && g_mie_rd == 0u;
     mstatus_mie(1);
     uint32_t dlv = wait_ext(e0);
     int clr = 0;
@@ -436,17 +514,63 @@ static int boot1(void) {
     e0 = g_ext_runs;
     meip_snap(before);
     int ok2 = bark_nmi(2u, g_prm[P_BARK + 2], 1u);
-    pre = prep && g_ext_runs == e0 && g_nmi_mpie == 1u;
+    pre = prep && g_ext_runs == e0 && g_mie_rd == 1u;
     if (cs == CASE_B) {
         pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 1u);
     } else if (cs == CASE_C) {
         pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), raw);
     }
-    dlv = wait_ext(e0);
+    if (cs == CASE_D) {
+        // No source is pending: the hold window is the no-delivery window, so
+        // the case does not run the bounded delivery wait to its end.
+        hold();
+        dlv = g_ext_runs - e0;
+    } else {
+        dlv = wait_ext(e0);
+    }
     if (cs == CASE_D) {
         nopic_line("d", before, ok2, 0xFFu, dlv == 0u, pre);
     } else {
         nopic_line(cs == CASE_B ? "b" : "c", before, ok2, dlv, dlv == 1u && g_ext_id == s, pre);
+    }
+
+    // Bark inside the external handler of s: one NMI, taken while the handler
+    // waits (interrupts.adoc: no mstatus.MIE or PIC setting holds the NMI).
+    rec_mark(0, "nest_setup");
+    mstatus_mie(0);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), raw);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
+    wr32(o->enable, rd32(o->enable) | o->bit);
+    rec_mark(1, "nest");
+    e0 = g_ext_runs;
+    uint32_t n0 = g_nmi_runs;
+    g_nest_nmi_runs = 0u;
+    g_nmi_in_ext = 0u;
+    g_nmi_entry = 0u;
+    g_nest_timeout = 1u;
+    g_nest_mode = 1u;
+    wr32(o->test, o->bit);
+    mstatus_mie(1);
+    dlv = wait_ext(e0);
+    mstatus_mie(0);
+    uint32_t n_all = g_nmi_runs - n0;
+    int pass_n = dlv == 1u && g_ext_id == s && g_nest_nmi_runs == 1u && g_nmi_in_ext == 1u &&
+                 g_nest_timeout == 0u && n_all == 1u && g_nmi_entry == vec &&
+                 g_nmi_copy == g_prm[P_COPY];
+    rec_chk("NMI-IN-EXT", pass_n);
+    rec_num("src", s);
+    rec_num("ext_runs", dlv);
+    rec_num("ext_id", g_ext_id);
+    rec_num("nmi_in_handler", g_nest_nmi_runs);
+    rec_num("nmi_total", n_all);
+    rec_num("flag_at_entry", g_nmi_in_ext);
+    rec_hex("entry", g_nmi_entry);
+    rec_hex("vec", vec);
+    rec_num("copy", g_nmi_copy);
+    rec_num("timeout", g_nest_timeout);
+    rec_end();
+    if (!pass_n) {
+        g_err++;
     }
 
     rec_mark(0, "boot1_end");

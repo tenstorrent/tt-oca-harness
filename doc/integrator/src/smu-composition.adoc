@@ -102,6 +102,10 @@ through `smu_axi_out`, every `smu_axi_in` transaction targets the SMC, and the
 aperture rules below do not apply. The `smu_axi_in` / `smu_axi_out` port types
 are the same in both configurations.
 
+The SMU AXI ports and crossbar carry 12-bit user fields on all five channels.
+The crossbar presents 6-bit transaction IDs to the SEP and SMC inbound
+subordinates.
+
 ifdef::backend-html5[]
 Connectivity is described in
 xref:ocah-docs:ROOT:architecture.adoc#smu-axi-crossbar[SMU AXI Crossbar];
@@ -794,15 +798,13 @@ the SEP-to-SMC dedicated AXI connection.
 |`telemetry_afready_i` |input |[NumTelemetryReceivers-1:0] |SMU external port
 |===
 
-=== DED/WDT
+=== RAS
 
 [cols="<30%,<10%,<15%,<45%",options="header"]
 |===
 |Port |Direction |Width |SMU Connection
 
-|`smc_cluster_ded_o` |output |1 |SMU external port
-|`smc_wdt_first_timeout_o` |output |1 |SMU external port
-|`smc_wdt_second_timeout_o` |output |1 |SMU external port
+|`smc_ras_o` |output |`smc_pkg::smc_ras_t` |SMU external port
 |===
 
 === Region Size
@@ -854,7 +856,7 @@ the SEP-to-SMC dedicated AXI connection.
 |Port |Direction |Width |SMU Connection
 
 |`lc_state_o` |output |[2*LcStateWidth-1:0] |SEP lifecycle state when `CFG.SEP=1`, else `8'hf0`; ported through SMU
-|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface.
+|`lc_sigint_err_o` |output |1 |Differential encoding error reported by the SEP (when `CFG.SEP=1`) or the SMC efuse interface: the OR of `sep_ras_o.lc_sigint_err` and `smc_ras_o.lc_sigint_err`.
 |===
 
 === Mailbox Interrupts

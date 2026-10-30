@@ -172,6 +172,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_axi_alias_remap_manager_scope_test": [
         (
+            "CHK-ALIAS-REMAP-J2A-READY",
+            "CHK-ALIAS-REMAP-J2A-READY",
+            "JTAG2AXI bring-up IDCODE reads 0x1",
+        ),
+        (
             "CHK-ALIAS-REMAP-SCOPE-S3",
             "CHK-ALIAS-REMAP-SCOPE-S3",
             "jtag2axi alias_remapped write/readback",
@@ -189,6 +194,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<PASS after leave-TLR"),
     ],
     "smu_axi_filter_allow_ns_test": [
+        (
+            "CHK-SMU-ALLOW-NS-J2A-READY",
+            "CHK-SMU-ALLOW-NS-J2A-READY",
+            "JTAG2AXI bring-up IDCODE reads 0x1",
+        ),
         ("CHK-SMU-ALLOW-NS-S1", "CHK-SMU-ALLOW-NS-S1", "allow_ns=0 secure OKAY / NS DECERR"),
         ("CHK-SMU-ALLOW-NS-S2", "CHK-SMU-ALLOW-NS-S2", "dual-slot admits secure and NS"),
         ("CHK-SMU-ALLOW-NS-S3", "CHK-SMU-ALLOW-NS-S3", "clear returns DECERR for both"),
@@ -228,6 +238,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-AXIOUT-WRITE",
             "one SMC write above the shrunk local aperture crosses smu_axi_out, the bench "
             "responder holds the word and the B response returns OKAY",
+        ),
+        (
+            "CHK-SMCMAP-SIZE",
+            "CHK-SMCMAP-SIZE",
+            "REGION_SIZE regrown to its reset value reaches smc_region_size_o and reads back over "
+            "JTAG2AXI",
         ),
     ],
     "smu_aperture_map_walk_test": [
@@ -384,8 +400,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OCTSR-SECONDARY-HOLD",
             "OCTSR_SECONDARY_HOLD",
-            "SECONDARY ignores TIMER_START: STATUS.RUNNING 0 and timer_count_o 0 for 1024 cycles; "
-            "a PRIMARY START sets RUNNING and moves timer_count_o within 1024 cycles",
+            "with the seed-drawn preset written, SECONDARY ignores TIMER_START: STATUS.RUNNING 0 "
+            "and timer_count_o 0 for 1024 cycles; a PRIMARY START sets RUNNING, loads the drawn "
+            "preset into timer_count_o and moves it within 1024 cycles, the moved count between "
+            "the preset and the preset plus the clk_smu_i edges counted from the START write",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -1220,27 +1238,36 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-LC-SIGINT-RAISED",
             "CHK-LC-SIGINT-RAISED",
-            "with the n rail of LC_STATE bit 0 inverted at the SMC's LC_STATE input, "
-            "lc_sigint_err_o is 1",
+            "in the pinned window (the n rail of LC_STATE bit 0, a drive of 1, hold 0, on every "
+            "seed) and with the seed-drawn rail of the seed-drawn LC_STATE bit inverted at the "
+            "SMC's LC_STATE input, lc_sigint_err_o is 1 when the inject takes, and in the drawn "
+            "window still 1 at the end of the seed-drawn hold",
         ),
         (
             "CHK-LC-SIGINT-SMC-OTP-CLOSED",
             "CHK-LC-SIGINT-SMC-OTP-CLOSED",
-            "under the broken pair the SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, "
-            "the write is refused, and the JTAG_PUBLIC_IDENTITY read is refused",
+            "in the pinned window (the n rail of LC_STATE bit 0, hold 0, on every seed) and under "
+            "the drawn broken pair the SMC OTP read of SPARE[0] is refused with 0xBADCAB1E, the "
+            "write is refused, and the JTAG_PUBLIC_IDENTITY read is refused; the three refusals "
+            "are the integrity error's under an n-rail flip and under a p-rail flip of bit 2 or 3 "
+            "(a nibble outside the state table, PROD_END: Other States, all three accesses "
+            "allowed), and the identity read's refusal is the integrity error's under a p-rail "
+            "flip of bit 0 or 1 (PROD, RMA_SIP_0)",
         ),
         (
             "CHK-LC-SIGINT-SEP-OTP-OPEN",
             "CHK-LC-SIGINT-SEP-OTP-OPEN",
-            "under the broken pair a SEP OTP read of SPARE0 returns SUCCESS with the "
-            "pattern written in S1 while lc_sigint_err_o is still 1",
+            "in the pinned window (the n rail of LC_STATE bit 0, hold 0, on every seed) and under "
+            "the drawn broken pair a SEP OTP read of SPARE0 returns SUCCESS with the pattern "
+            "written in S1 while lc_sigint_err_o is still 1",
         ),
         (
             "CHK-LC-SIGINT-RELEASED",
             "CHK-LC-SIGINT-RELEASED",
-            "with the legal pair restored lc_sigint_err_o is 0, SPARE[0] reads back the "
-            "pattern written before the fault, JTAG_PUBLIC_IDENTITY returns SUCCESS, and "
-            "SEP SPARE0 still reads the S1 pattern",
+            "with the legal pair restored after the pinned window (hold 0) and after the "
+            "seed-drawn hold, lc_sigint_err_o is 0, SPARE[0] reads back the pattern written before "
+            "the fault, JTAG_PUBLIC_IDENTITY returns SUCCESS, and SEP SPARE0 still reads the S1 "
+            "pattern",
         ),
     ],
     "smu_smc_fabric_test": [
@@ -1273,25 +1300,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-AXIIN-DEPTH",
             "CHK-AXIIN-DEPTH",
             "the inbound port accepts at least two address handshakes before it returns "
-            "the first response, on the read train and on the write train, and every "
-            "read returns the VERSION_LO RDL reset value with OKAY",
+            "the first response, on the read train under the seed-drawn distinct ARIDs and on "
+            "each write train under a pinned AWID, wherever the seed places the unsupported "
+            "bursts, and every read returns the VERSION_LO RDL reset value with OKAY",
         ),
         (
             "CHK-AXIIN-DEPTH-ORDER",
             "CHK-AXIIN-DEPTH-ORDER",
-            "sixty-four inbound writes in flight under one AWID leave the last value "
-            "written in SCRATCH_COLD",
+            "sixty-four inbound writes in flight under one AWID, the all-zero and then the "
+            "all-ones ID, leave the last value written in SCRATCH_COLD each time",
         ),
         (
             "CHK-AXIIN-BURST",
             "CHK-AXIIN-BURST",
-            "INCR bursts at the register targets are OKAY and a WRAP burst read of the same "
-            "shape is refused with SLVERR",
+            "INCR bursts of the seed-drawn two or four beats at the register targets are OKAY "
+            "and a WRAP burst read of the same shape is refused with SLVERR",
         ),
         (
             "CHK-AXIIN-BURST-FIXED",
             "CHK-AXIIN-BURST-FIXED",
-            "an inbound multi-beat FIXED burst write at a register target is refused with SLVERR",
+            "an inbound FIXED burst write of the seed-drawn two or four beats at a register "
+            "target is refused with SLVERR",
         ),
     ],
     "smu_axi_in_random_id_stress_test": [
@@ -1339,12 +1368,22 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_axi_filter_in_instance_matrix_test": [
         (
+            "CHK-FILTER-IN-J2A-READY",
+            "CHK-FILTER-IN-J2A-READY",
+            "JTAG2AXI bring-up IDCODE reads 0x1",
+        ),
+        (
             "CHK-FILTER-IN-INSTANCES-S1",
             "CHK-FILTER-IN-INSTANCES-S1",
             "inbound filter instances 0,1,7,14,15 programmed and read back at their indexed bases",
         ),
     ],
     "smu_axi_filter_out_instance_matrix_test": [
+        (
+            "CHK-FILTER-OUT-J2A-READY",
+            "CHK-FILTER-OUT-J2A-READY",
+            "JTAG2AXI bring-up IDCODE reads 0x1",
+        ),
         (
             "CHK-FILTER-OUT-INSTANCES-S1",
             "CHK-FILTER-OUT-INSTANCES-S1",
@@ -1360,6 +1399,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_axi_prot_encoding_decode_test": [
+        ("CHK-SMU-PROT-J2A-READY", "CHK-SMU-PROT-J2A-READY", "JTAG2AXI bring-up IDCODE reads 0x1"),
         (
             "CHK-SMU-PROT-S9-MATRIX",
             "CHK-SMU-PROT-S9-MATRIX",
@@ -1585,25 +1625,152 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_dtp_bsr_ijtag_scan_test": [
+        (
+            "CHK-DTP-BSR-IJTAG-JTAG-READY",
+            "CHK-DTP-BSR-IJTAG-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-DTP-BSR-IDLE-SELECT",
+            "CHK-DTP-BSR-IDLE-SELECT",
+            "tb_bsr_select reads 0 in idle Run-Test/Idle",
+        ),
+        (
+            "CHK-DTP-BSR-UNSEL-IDCODE",
+            "CHK-DTP-BSR-UNSEL-IDCODE",
+            "an IDCODE scan with the BSR unselected gives it no TCK",
+        ),
         ("CHK-DTP-BSR-EXTEST-SELECT", "CHK-DTP-BSR-EXTEST-SELECT", "EXTEST selects BSR TCK"),
+        (
+            "CHK-DTP-BSR-SAMPLE-PRELOAD-SELECT",
+            "CHK-DTP-BSR-SAMPLE-PRELOAD-SELECT",
+            "SAMPLE/PRELOAD selects the BSR for the expected TCK count",
+        ),
     ],
     "smu_dtp_io_stap_smoke_test": [
+        (
+            "CHK-DTP-IO-STAP-JTAG-READY",
+            "CHK-DTP-IO-STAP-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-DTP-IO-STAP-IDLE",
+            "CHK-DTP-IO-STAP-IDLE",
+            "IO STAP host TCK edges while idle stay at or under the idle bound",
+        ),
         ("CHK-DTP-IO-STAP-SCAN", "CHK-DTP-IO-STAP-SCAN", "IO STAP host TCK observe"),
+        (
+            "CHK-DTP-IO-STAP-SCAN-PAYLOAD",
+            "CHK-DTP-IO-STAP-SCAN-PAYLOAD",
+            "BYPASS IR plus non-zero DR payload shows at least MIN_TCK_EDGES IO STAP TCK edges, "
+            "more than idle",
+        ),
     ],
     "smu_dtp_jtag2axi_back_to_back_error_ok_test": [
+        (
+            "CHK-B2B-JTAG-READY",
+            "CHK-B2B-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-B2B-GATE-OPEN",
+            "CHK-B2B-GATE-OPEN",
+            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+        ),
+        ("CHK-B2B-ALLOW", "CHK-B2B-ALLOW", "VERSION_LO reads its reset value over JTAG2AXI"),
         ("CHK-J2A-B2B", "J2A_B2B_OK", "DECERR then immediate SUCCESS"),
+        (
+            "CHK-B2B-WR-DECERR",
+            "CHK-B2B-WR-DECERR",
+            "the unmapped write returns DECERR and VERSION_LO still reads its reset value",
+        ),
+        (
+            "CHK-B2B-STICKY",
+            "CHK-B2B-STICKY",
+            "the sticky status reads SUCCESS after the error-then-success pair",
+        ),
     ],
     "smu_dtp_jtag2axi_smc_error_path_test": [
+        (
+            "CHK-J2A-ERROR-JTAG-READY",
+            "CHK-J2A-ERROR-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-J2A-ERROR-GATE-OPEN",
+            "CHK-J2A-ERROR-GATE-OPEN",
+            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+        ),
+        (
+            "CHK-J2A-ERROR-ALLOW",
+            "CHK-J2A-ERROR-ALLOW",
+            "VERSION_LO reads its reset value on the allowed path",
+        ),
         ("CHK-J2A-DECERR", "J2A_DECERR_POISON", "unmapped access returns DECERR"),
         ("CHK-J2A-RECOVERY", "J2A_RECOVERY_OK", "VERSION_LO SUCCESS after error"),
+        (
+            "CHK-J2A-ERROR-SERIES-INCR",
+            "CHK-J2A-ERROR-SERIES-INCR",
+            "the SERIES_DATA_INCR readback equals the written series",
+        ),
     ],
     "smu_dtp_jtag2axi_smc_rw_matrix_test": [
+        (
+            "CHK-J2A-MATRIX-JTAG-READY",
+            "CHK-J2A-MATRIX-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-J2A-MATRIX-GATE-OPEN",
+            "CHK-J2A-MATRIX-GATE-OPEN",
+            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+        ),
+        (
+            "CHK-J2A-WSTRB-WIDTH",
+            "CHK-J2A-WSTRB-WIDTH",
+            "1/2/4/8-byte WSTRB writes on SPM read back the strobed bytes only",
+        ),
         ("CHK-J2A-RW-MATRIX", "J2A_RW_MATRIX_OK", "partial WSTRB 0x55/0xAA merge"),
+        (
+            "CHK-J2A-MATRIX-STICKY",
+            "CHK-J2A-MATRIX-STICKY",
+            "the sticky status reads SUCCESS and VERSION_LO its reset value after the matrix",
+        ),
     ],
     "smu_dtp_jtag2axi_wstrb_partial_sticky_test": [
+        (
+            "CHK-J2A-WSTRB-JTAG-READY",
+            "CHK-J2A-WSTRB-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-J2A-WSTRB-GATE-OPEN",
+            "CHK-J2A-WSTRB-GATE-OPEN",
+            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+        ),
+        (
+            "CHK-J2A-WSTRB-SEED",
+            "CHK-J2A-WSTRB-SEED",
+            "both seed words read back as written before the partial writes",
+        ),
         ("CHK-J2A-WSTRB-NBR", "J2A_WSTRB_NEIGHBOR", "partial merge; neighbor intact"),
+        (
+            "CHK-J2A-WSTRB-STICKY",
+            "CHK-J2A-WSTRB-STICKY",
+            "the sticky status reads SUCCESS after the partial writes",
+        ),
     ],
     "smu_dtp_jtag_smc_cpu_register_test": [
+        (
+            "CHK-CPU-REG-JTAG-READY",
+            "CHK-CPU-REG-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-CPU-REG-GATE-OPEN",
+            "CHK-CPU-REG-GATE-OPEN",
+            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+        ),
         ("CHK-JTAG2AXI-RW", "JTAG2AXI_RW_OK", "SCRATCH_15 two-pattern R/W"),
         ("CHK-CPU-REG-STALL", "CPU_REG_STALL", "DEBUG_CONTROL boot_stall hold"),
     ],
@@ -1623,23 +1790,110 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<PASS"),
     ],
     "smu_dtp_otp_smc_complete_rw_test": [
+        (
+            "CHK-OTP-COMPLETE-JTAG-READY",
+            "CHK-OTP-COMPLETE-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-OTP-COMPLETE-GATE-OPEN",
+            "CHK-OTP-COMPLETE-GATE-OPEN",
+            "the OTP J2A gate reads 0 with LC state NO_LCC and no sigint",
+        ),
         ("CHK-OTP-MAP-RW", "OTP_MAP_RW_OK", "OTP+fabric+shadow match on RESERVED"),
+        (
+            "CHK-OTP-MAP-ISOLATE",
+            "CHK-OTP-MAP-ISOLATE",
+            "RESERVED[0] rewrite reads back and RESERVED[1..] keep their patterns",
+        ),
     ],
     "smu_dtp_otp_smc_map_rw_test": [
+        (
+            "CHK-OTP-SMC-MAP-JTAG-READY",
+            "CHK-OTP-SMC-MAP-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        ("CHK-OTP-SMC-MAP-GATE-OPEN", "CHK-OTP-SMC-MAP-GATE-OPEN", "the OTP J2A gate reads 0"),
+        (
+            "CHK-OTP-SMC-MAP-CAPS",
+            "CHK-OTP-SMC-MAP-CAPS",
+            "SMC OTP JTAG2AXI CAPS equals the expected geometry",
+        ),
         ("CHK-OTP-SMC-MAP-RW", "CHK-OTP-SMC-MAP-RW", "SMC OTP MAP SPARE[0] R/W"),
+        (
+            "CHK-OTP-SMC-MAP-ALLOW-PATH",
+            "CHK-OTP-SMC-MAP-ALLOW-PATH",
+            "the allowed-path readback equals the written pattern",
+        ),
     ],
     "smu_dtp_otp_smc_series_error_test": [
         (
+            "CHK-OTP-SMC-SERIES-JTAG-READY",
+            "CHK-OTP-SMC-SERIES-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-OTP-SMC-SERIES-GATE-OPEN",
+            "CHK-OTP-SMC-SERIES-GATE-OPEN",
+            "the OTP J2A gate reads 0",
+        ),
+        (
+            "CHK-OTP-SMC-SERIES-RW",
+            "CHK-OTP-SMC-SERIES-RW",
+            "the series write then readback returns the written word",
+        ),
+        (
+            "CHK-OTP-SMC-SINGLE-OP-ALLOW",
+            "CHK-OTP-SMC-SINGLE-OP-ALLOW",
+            "a SINGLE_OP on the allowed path reads back the expected word",
+        ),
+        (
             "CHK-OTP-SMC-DECODE-SLVERR",
             "CHK-OTP-SMC-DECODE-SLVERR",
-            "OTP decode hole returns SLVERR",
+            "the gap's first word and every further seed-drawn OTP decode-hole word, read in the "
+            "drawn order, return SLVERR",
+        ),
+        (
+            "CHK-OTP-SMC-SPARE-STABLE",
+            "CHK-OTP-SMC-SPARE-STABLE",
+            "SPARE reads the same word after each decode-hole error",
         ),
     ],
     "smu_dtp_smc_stap_smoke_test": [
         (
+            "CHK-DTP-SMC-STAP-JTAG-READY",
+            "CHK-DTP-SMC-STAP-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-DTP-SMC-STAP-TRST",
+            "CHK-DTP-SMC-STAP-TRST",
+            "PTAP TRST is seen asserted then released on tb_stap_smc_trst_n",
+        ),
+        (
+            "CHK-DTP-SMC-STAP-UNSEL",
+            "CHK-DTP-SMC-STAP-UNSEL",
+            "an IDCODE scan with the SMC STAP unselected moves its TMS not at all",
+        ),
+        (
+            "CHK-DTP-SMC-STAP-UNSEL-OEN",
+            "CHK-DTP-SMC-STAP-UNSEL-OEN",
+            "an IDCODE scan with the SMC STAP unselected drives tdo_oen on no TCK",
+        ),
+        (
             "CHK-DTP-SMC-STAP-IDCODE",
             "CHK-DTP-SMC-STAP-IDCODE",
             "selected SMC STAP sees the same TMS edge count as the PTAP during IDCODE",
+        ),
+        (
+            "CHK-DTP-SMC-STAP-IDCODE-OEN",
+            "CHK-DTP-SMC-STAP-IDCODE-OEN",
+            "the selected IDCODE scan drives tdo_oen for the expected shift TCKs",
+        ),
+        (
+            "CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH",
+            "CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH",
+            "the selected IDCODE scan shows no SMC STAP TMS mismatch against the PTAP",
         ),
         (
             "CHK-DTP-SMC-STAP-TRST-DESEL",
@@ -1647,8 +1901,33 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "after TRST and before any re-select, an IDCODE scan leaves SMC STAP TMS and "
             "tdo_oen quiet",
         ),
+        (
+            "CHK-DTP-SMC-STAP-IDCODE-BFM",
+            "CHK-DTP-SMC-STAP-IDCODE-BFM",
+            "the re-selected payload scan gives the SMC STAP the PTAP TMS edge count",
+        ),
+        (
+            "CHK-DTP-SMC-STAP-PAYLOAD-OEN",
+            "CHK-DTP-SMC-STAP-PAYLOAD-OEN",
+            "the payload scan drives tdo_oen for the expected shift TCKs",
+        ),
+        (
+            "CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH",
+            "CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH",
+            "the payload scan shows no SMC STAP TMS mismatch against the PTAP",
+        ),
     ],
     "smu_dtp_sep_dm_dmi_test": [
+        (
+            "CHK-SEP-DMI-JTAG-READY",
+            "CHK-SEP-DMI-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-SEP-DMI-STAP-SEL",
+            "CHK-SEP-DMI-STAP-SEL",
+            "selected SEP STAP host TMS edge count equals the PTAP TMS edge count",
+        ),
         (
             "CHK-SEP-DMI-DMSTATUS",
             "CHK-SEP-DMI-DMSTATUS",
@@ -1952,12 +2231,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SBA-OUT-SWEEP",
             "CHK-SEP-SBA-OUT-SWEEP",
-            "every size, offset and free SMU-aperture address bit is held by the responder and reads back",
+            "every size, offset and free SMU-aperture address bit, the bits walked in the "
+            "seed-drawn order, is held by the responder and reads back",
         ),
         (
             "CHK-SEP-SBA-REMAP-HIGH",
             "CHK-SEP-SBA-REMAP-HIGH",
-            "an alias region offset of each power of two from 2^32 to 2^55 reaches the responder there",
+            "an alias region offset of each power of two from 2^32 to 2^55, walked in the "
+            "seed-drawn order, reaches the responder there",
         ),
         (
             "CHK-SEP-SBA-REMAP-CACHEABLE",
@@ -1982,12 +2263,14 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SBA-SMC-WINDOW",
             "CHK-SEP-SBA-SMC-WINDOW",
-            "every size, offset and SPM address bit reads back through the SEP view of the SMC window",
+            "every size, offset and SPM address bit, the bits walked in the seed-drawn order, "
+            "reads back through the SEP view of the SMC window",
         ),
         (
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "CHK-SEP-SBA-EXTERNAL-DECERR",
-            "every external-aperture and TRNG-window access returns a system-bus error",
+            "every external-aperture and TRNG-window access, the address bits walked in the "
+            "seed-drawn order, returns a system-bus error",
         ),
     ],
     "smu_sep_external_irq_pins_test": [
@@ -2166,32 +2449,36 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-RMA-CHIP-MISMATCH",
             "CHK-SEP-RMA-CHIP-MISMATCH",
-            "the chiplet token one bit off, written and started, reads 0x2a, having read 0x00 "
-            "before",
+            "the chiplet token with bit 0 flipped (pinned, every seed), written and started first, "
+            "reads 0x2a, having read 0x00 before it; the chiplet token with the seed-drawn bit 1 "
+            "to 255 flipped, written and started after the correct token, reads 0x2a, having read "
+            "0x15 in the leg before",
         ),
         (
             "CHK-SEP-RMA-CHIP-MATCH",
             "CHK-SEP-RMA-CHIP-MATCH",
-            "the correct chiplet token written and started reads 0x15, having read 0x2a in the "
-            "leg before",
+            "the correct chiplet token written and started after the pinned mismatch leg reads "
+            "0x15, having read 0x2a in the leg before",
         ),
         (
             "CHK-SEP-RMA-INDEP",
             "CHK-SEP-RMA-INDEP",
-            "the SIP result reads 0x15 again after the chiplet mismatch and match legs while the "
-            "chiplet result changed",
+            "the SIP result reads 0x15 again after the chiplet mismatch, match and mismatch legs "
+            "while the chiplet result changed",
         ),
         (
             "CHK-NONVAC",
             "CHK-NONVAC",
-            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10; the PASS stamp is two "
-            "clk_smu_i cycles after S9",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<S10<S11 (S6 the pinned "
+            "mismatch leg, S7 the correct-token leg, S8 the drawn mismatch leg); the PASS stamp is "
+            "two clk_smu_i cycles after S10",
         ),
         (
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
-            "three bounded result polls, one each for the SIP match, the chiplet mismatch and the "
-            "chiplet match, none expired, with the poll bound, polls used and last value recorded",
+            "four bounded result polls, one for the SIP match and, in leg order, one for the "
+            "pinned chiplet mismatch, one for the chiplet match and one for the drawn chiplet "
+            "mismatch, none expired, with the poll bound, polls used and last value recorded",
         ),
     ],
     "smu_sep_sba_peripheral_test": [
@@ -2312,6 +2599,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_fabric_reg_bar_wr_test": [
         (
+            "CHK-SUB-AXIL-LOCAL-J2A-READY",
+            "CHK-SUB-AXIL-LOCAL-J2A-READY",
+            "JTAG2AXI bring-up IDCODE reads 0x1",
+        ),
+        (
             "CHK-SUB-AXIL-LOCAL-S2",
             "CHK-SUB-AXIL-LOCAL-S2",
             "fabric config CSR write/readback held at every listed destination",
@@ -2368,19 +2660,23 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-UNMAP-BETWEEN",
             "CHK-UNMAP-BETWEEN",
-            "between-unit ext_in reads answer DECERR/0xBADCAB1E and writes DECERR",
+            "under the seed-drawn REGION_SIZE, between-unit ext_in reads at the gap's pinned "
+            "first word and at two drawn words of the gap answer DECERR/0xBADCAB1E and writes "
+            "there DECERR, in the drawn order",
         ),
         (
             "CHK-UNMAP-PAST-EXTENT",
             "CHK-UNMAP-PAST-EXTENT",
-            "past-extent reads answer DECERR/0xBADCAB1E and DECERR-declared writes answer DECERR; "
-            "the writes the RDL and memmap declare SLVERR are logged and answered DECERR in this "
-            "run, a mismatch recorded for the owner",
+            "under the seed-drawn REGION_SIZE, past-extent reads answer DECERR/0xBADCAB1E and "
+            "DECERR-declared writes answer DECERR, in the drawn order; the writes the RDL and "
+            "memmap declare SLVERR are logged and answered DECERR in this run, a mismatch "
+            "recorded for the owner",
         ),
         (
             "CHK-UNMAP-MMODE-XVISOR",
             "CHK-UNMAP-MMODE-XVISOR",
-            "M-mode and Xvisor window reads and writes from ext_in answer DECERR",
+            "M-mode and Xvisor window reads and writes from ext_in at a seed-drawn word of each "
+            "window answer DECERR, in the drawn order",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -2433,6 +2729,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_i3c_mem_port_connectivity_test": [
         (
+            "CHK-SUB-AXIL-LOCAL-J2A-READY",
+            "CHK-SUB-AXIL-LOCAL-J2A-READY",
+            "JTAG2AXI bring-up IDCODE reads 0x1",
+        ),
+        (
             "CHK-SUB-AXIL-LOCAL-S1",
             "CHK-SUB-AXIL-LOCAL-S1",
             "every local peripheral destination answered SUCCESS over JTAG2AXI",
@@ -2462,9 +2763,28 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_jtag2axi_vs_smn_same_csr_race_test": [
+        ("CHK-J2ASMN-GATE-OPEN", "CHK-J2ASMN-GATE-OPEN", "the SMC J2A gate reads 0"),
+        ("CHK-J2ASMN-CLEAR", "CHK-J2ASMN-CLEAR", "the pre-race scratch clear returns SUCCESS"),
+        ("CHK-J2ASMN-WR-J", "CHK-J2ASMN-WR-J", "the racing J2A write returns SUCCESS"),
+        ("CHK-J2ASMN-WR-S", "CHK-J2ASMN-WR-S", "the racing SMN write returns OKAY"),
+        (
+            "CHK-J2ASMN-OVERLAP",
+            "CHK-J2ASMN-OVERLAP",
+            "SMN AW accepted inside the J2A write's AW..B window at the debug port",
+        ),
         ("CHK-RACE-J2A-SMN", "RACE_J2A_SMN", "coherent dual-agent winner"),
+        (
+            "CHK-J2ASMN-VERSION",
+            "CHK-J2ASMN-VERSION",
+            "VERSION_LO reads its reset value after the race",
+        ),
     ],
     "smu_jtag_chain_enhanced_test": [
+        (
+            "CHK-JTAG-CHAIN-READY",
+            "CHK-JTAG-CHAIN-READY",
+            "PTAP IDCODE reads the default DTP IDCODE at the default TCK period",
+        ),
         (
             "CHK-JTAG-IDCODE",
             "JTAG_IDCODE_OK",
@@ -2712,6 +3032,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_otp_vs_fabric_map_race_test": [
+        (
+            "CHK-OTPFAB-GATE-OPEN",
+            "CHK-OTPFAB-GATE-OPEN",
+            "the OTP and fabric J2A gates both read 0",
+        ),
+        (
+            "CHK-OTPFAB-B2B-ISSUED",
+            "CHK-OTPFAB-B2B-ISSUED",
+            "OTP write completed, then the fabric write completed",
+        ),
+        (
+            "CHK-OTPFAB-B2B-COHERENT",
+            "CHK-OTPFAB-B2B-COHERENT",
+            "OTP-bridge and fabric-bridge readbacks both equal the later (fabric) pattern",
+        ),
+        ("CHK-OTPFAB-B2B-SHADOW", "CHK-OTPFAB-B2B-SHADOW", "shadow-map word equals that readback"),
+        (
+            "CHK-OTPFAB-PINGPONG",
+            "CHK-OTPFAB-PINGPONG",
+            "after the ping-pong writes the word reads the last writer's pattern",
+        ),
         ("CHK-RACE-OTP-FAB", "RACE_OTP_FABRIC", "shadow == last writer"),
     ],
     "smu_out_filter_rule_matrix_test": [
@@ -3146,15 +3487,19 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-COOL-PIN-DEGLITCH",
             "CHK-SMU-COOL-PIN-DEGLITCH",
-            "a 28-clk_ref rst_cool_n_from_pin_i pulse leaves the SMC primary reset "
-            "released, during the pulse and after it",
+            "a pinned 31 clk_ref rst_cool_n_from_pin_i pulse driven right after a clk_ref edge, as "
+            "the hold is, on every seed (31 low samples, so a 31-sample de-glitcher fails), and a "
+            "seed-drawn 1 to 31 clk_ref pulse each leave the SMC primary reset released, during "
+            "the pulse and the 128 clk_ref after it",
         ),
         (
             "CHK-SMU-COOL-PIN-RESET",
             "CHK-SMU-COOL-PIN-RESET",
-            "rst_cool_n_from_pin_i held past that pulse asserts the SMC primary reset no "
-            "earlier than 28 clk_ref, holds it while low, and the SMC leaves reset after "
-            "the pin releases",
+            "rst_cool_n_from_pin_i, held low until a seed-drawn 32 to 94 clk_ref past the "
+            "observed assertion, asserts the SMC primary reset no earlier than 32 and no later "
+            "than 33 clk_ref, the de-glitcher's 32 samples plus the "
+            "obs_smc_rst_n_o observation, holds it on every clk_ref sample through the hold, is "
+            "still asserted when the pin releases, and the SMC leaves reset after the pin releases",
         ),
         (
             "CHK-SMU-DFT-DONE-STATUS",
@@ -3204,7 +3549,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
     ],
     "smu_smc_dtp_jtag2axi_smoke_test": [
+        (
+            "CHK-JTAG2AXI-SMOKE-JTAG-READY",
+            "CHK-JTAG2AXI-SMOKE-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE after the TAP reset",
+        ),
+        (
+            "CHK-JTAG2AXI-SMOKE-GATE-OPEN",
+            "CHK-JTAG2AXI-SMOKE-GATE-OPEN",
+            "the SMC J2A gate reads 0 and SMC_JTAG2AXI_CAPS equals the expected geometry",
+        ),
         ("CHK-JTAG2AXI-SMOKE-SCRATCH", "CHK-JTAG2AXI-SMOKE-SCRATCH", "J2A scratch write/readback"),
+        (
+            "CHK-JTAG2AXI-SMOKE-SPM",
+            "CHK-JTAG2AXI-SMOKE-SPM",
+            "SINGLE_OP 64-bit write and readback of the SPM base word, data equal",
+        ),
+        (
+            "CHK-JTAG2AXI-SMOKE-SERIES-INCR",
+            "CHK-JTAG2AXI-SMOKE-SERIES-INCR",
+            "SERIES_DATA_INCR write then readback at SPM+0x40, data equal",
+        ),
     ],
     "smu_smc_mailbox_aperture_layout_test": [
         (
@@ -3246,7 +3611,19 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_smc_mailbox_sanity_test": [
+        (
+            "CHK-MBX-JTAG-READY",
+            "CHK-MBX-JTAG-READY",
+            "PTAP IDCODE reads the default DTP IDCODE and the SMC J2A gate reads 0",
+        ),
+        (
+            "CHK-MBX-STATUS",
+            "CHK-MBX-STATUS",
+            "outbound-0 STATUS reads idle (EMPTY set, FULL and thresholds clear)",
+        ),
+        ("CHK-MBX-ERR-FLAGS", "CHK-MBX-ERR-FLAGS", "outbound-0 ERROR_FLAGS reads 0"),
         ("CHK-MBX-IRQEN", "SMC_MBX_CSR_OK", "outbound-0 IRQEN write/readback"),
+        ("CHK-MBX-IRQEN-CLR", "CHK-MBX-IRQEN-CLR", "outbound-0 IRQEN reads 0 after the clear"),
     ],
     "smu_smc_mailbox_status_error_test": [
         (
@@ -3257,12 +3634,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-MBX-STATUS-LEVELS",
             "MBX_STATUS_LEVELS",
-            "STATUS reads 0x5 after one push and 0x7 after two (depth 2)",
+            "STATUS reads 0x5 after the first and 0x7 after the second seed-drawn push word "
+            "(depth 2), STATUS read after each of the first two pushes; the two words read "
+            "back through the pair-0 inbound aperture's READ_DATA equal the drawn words, a "
+            "third inbound READ_DATA read is SLVERR with 0xFEEDDEAD, and the refill completes "
+            "with SUCCESS with STATUS 0x7 again",
         ),
         (
             "CHK-MBX-ERR-WRITE-FULL",
             "MBX_ERR_WRITE_FULL",
-            "write to the full FIFO is SLVERR, ERROR_FLAGS 0x2, IRQS bit 2 set, STATUS 0x7",
+            "the seed-drawn third word written to the full FIFO is SLVERR, ERROR_FLAGS 0x2, "
+            "IRQS bit 2 set, STATUS 0x7",
         ),
         (
             "CHK-MBX-ERR-CLEAR-ON-READ",
@@ -3484,8 +3866,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SECURE-TM-NO-EARLY-FOLLOW",
             "SEP_SECURE_TM_NO_EARLY_FOLLOW",
-            "a strap pulse between response strobes 100 and 180 and the strap at 0 after done "
-            "leave secure_tm_o at 0",
+            "a strap pulse between two seed-drawn response strobe counts below 255 and the strap "
+            "at 0 after done leave secure_tm_o at 0",
         ),
         (
             "CHK-TIMEOUT-PATHS",
@@ -3499,8 +3881,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-RESET-REASSERT",
             "SEP_RESET_REASSERT",
             "sep_reset_n_o reads 0 on every sample while the cold reset is re-asserted after done "
-            "and after response words 0 and 128, and near 255 when that fall lands before the "
-            "256th strobe",
+            "and after response words 0 and 128, near 255 when that fall lands before the 256th "
+            "strobe, and at the seed-drawn word",
         ),
         (
             "CHK-SEP-DONE-COLD-CLEAR",
@@ -3511,15 +3893,16 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SENSE-ABORT-RESTART",
             "SEP_SENSE_ABORT_RESTART",
-            "an aborted sense leaves done at 0 with no rise and the final sense restarts and "
-            "delivers at least 256 strobes before its single done rise",
+            "an aborted sense leaves done at 0 with no rise, the seed-drawn abort's fall lands "
+            "before the 256th strobe, and the final sense restarts and delivers at least 256 "
+            "strobes before its single done rise",
         ),
         (
             "CHK-TIMEOUT-PATHS",
             "CHK_TIMEOUT_PATHS",
             "bounded done/strobe/cold-reset/TAP waits with last state",
         ),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S8<PASS"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered sim-time fence S1<...<S9<PASS"),
     ],
     "smu_sep_secure_tm_test": [
         (
@@ -3628,26 +4011,51 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-WDT-RELEASE",
             "CHK-SMU-WDT-RELEASE",
-            "the warm reset clears the first watchdog timeout",
+            "after the warm reset at the seed-drawn compare, smc_ras_o.wdt_first_timeout falls",
         ),
         (
             "CHK-SMU-WDT-FIRST",
             "CHK-SMU-WDT-FIRST",
-            "CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP "
-            "raises smc_wdt_first_timeout_o, with WDOGIP0 set at the same time "
-            "and both clear beforehand",
+            "CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP, its "
+            "CMP.wdogcmp0 the seed-drawn 1 to 0xFFFF written after the KEY unlock and read "
+            "back, raises smc_ras_o.wdt_first_timeout between cmp and cmp + 16 clk_smu (the "
+            "measured path of 11 with a margin of 5) after the arming write's AW handshake on "
+            "the DTP SMC debug port, with WDOGIP0 set at the same time and both clear "
+            "beforehand",
         ),
         (
             "CHK-SMU-WDT-SECOND",
             "CHK-SMU-WDT-SECOND",
-            "the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out "
-            "to smc_wdt_second_timeout_o, and the SMC warm reset drops",
+            "the held first timeout at the seed-drawn compare runs the CPU_CTRL.WDT_TIMEOUT "
+            "counter out to smc_ras_o.wdt_second_timeout, and the SMC warm reset, released "
+            "before, drops within the same window",
         ),
     ],
     "smu_smc_wdt_sanity_test": [
+        ("CHK-WDT-SANITY-GATE-OPEN", "CHK-WDT-SANITY-GATE-OPEN", "the SMC J2A gate reads 0"),
+        ("CHK-WDT-CMP-DEFAULT", "CHK-WDT-CMP-DEFAULT", "WDT CMP reads its default value"),
+        (
+            "CHK-WDT-CTRL-LOCKED",
+            "CHK-WDT-CTRL-LOCKED",
+            "the CTRL scale field stays 0 while the WDT is locked",
+        ),
+        (
+            "CHK-WDT-KEY-UNLOCKED",
+            "CHK-WDT-KEY-UNLOCKED",
+            "KEY reads the unlocked value after the unlock",
+        ),
+        (
+            "CHK-WDT-CTRL-UNLOCKED",
+            "CHK-WDT-CTRL-UNLOCKED",
+            "the CTRL scale field takes the programmed value once unlocked",
+        ),
         ("CHK-WDT-UNLOCK", "WDT_UNLOCK_OK", "WDT unlock SUCCESS"),
     ],
     "smu_smc_wdt_timeout_irq_test": [
+        ("CHK-WDT-TO-GATE-OPEN", "CHK-WDT-TO-GATE-OPEN", "the SMC J2A gate reads 0"),
+        ("CHK-WDT-TO-CMP", "CHK-WDT-TO-CMP", "WDT CMP reads back the small compare value"),
+        ("CHK-WDT-TO-IP0-PRE", "CHK-WDT-TO-IP0-PRE", "WDOGIP0 is clear before the enable"),
+        ("CHK-WDT-TO-EN", "CHK-WDT-TO-EN", "CTRL reads ALWAYS and ZEROCMP set after the enable"),
         ("CHK-WDT-IP0", "WDT_WDOGIP0", "WDOGIP0 sets after enable+CMP"),
     ],
     "smu_ss_config_lane_drive_test": [
@@ -3675,9 +4083,50 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_sys_in_filter_program_jtag_test": [
+        ("CHK-FILTER-PROG-GATE-OPEN", "CHK-FILTER-PROG-GATE-OPEN", "the SMC J2A gate reads 0"),
+        (
+            "CHK-FILTER-PROG-PRE-DECERR",
+            "CHK-FILTER-PROG-PRE-DECERR",
+            "the SMN probe returns DECERR before the window is programmed",
+        ),
+        (
+            "CHK-FILTER-PROG-WINDOW",
+            "CHK-FILTER-PROG-WINDOW",
+            "the programmed window config reads back as written",
+        ),
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "after program window OKAY"),
+        (
+            "CHK-FILTER-PROG-OUT-DECERR",
+            "CHK-FILTER-PROG-OUT-DECERR",
+            "an SMN probe outside the window returns DECERR",
+        ),
     ],
     "smu_sys_in_filter_reprogram_shrink_test": [
+        (
+            "CHK-FILTER-SHRINK-PRE-DECERR",
+            "CHK-FILTER-SHRINK-PRE-DECERR",
+            "the SMN probe returns DECERR before the window is programmed",
+        ),
+        (
+            "CHK-FILTER-SHRINK-WIDE-VER",
+            "CHK-FILTER-SHRINK-WIDE-VER",
+            "VERSION_LO returns OKAY under the wide window",
+        ),
+        (
+            "CHK-FILTER-SHRINK-WIDE-WDT",
+            "CHK-FILTER-SHRINK-WIDE-WDT",
+            "the WDT returns OKAY under the wide window",
+        ),
+        (
+            "CHK-FILTER-SHRINK-NARROW-VER",
+            "CHK-FILTER-SHRINK-NARROW-VER",
+            "VERSION_LO still returns OKAY under the narrow window",
+        ),
+        (
+            "CHK-FILTER-SHRINK-NARROW-WDT",
+            "CHK-FILTER-SHRINK-NARROW-WDT",
+            "the WDT returns DECERR under the narrow window",
+        ),
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BLOCK_BY_DEFAULT"),
     ],
     "smu_sys_in_filter_src_id_rule_test": [
@@ -3758,10 +4207,31 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_sys_in_filter_window_edge_test": [
+        ("CHK-FILTER-EDGE-GATE-OPEN", "CHK-FILTER-EDGE-GATE-OPEN", "the SMC J2A gate reads 0"),
         (
             "CHK-AXI-FILTER-OKAY",
             "AXI_FILTER_OKAY",
             "VERSION_LO inside the programmed page returns OKAY",
+        ),
+        (
+            "CHK-FILTER-EDGE-SCRATCH",
+            "CHK-FILTER-EDGE-SCRATCH",
+            "the scratch word inside the page returns OKAY",
+        ),
+        (
+            "CHK-FILTER-EDGE-BELOW",
+            "CHK-FILTER-EDGE-BELOW",
+            "the probe one page below the window returns DECERR",
+        ),
+        (
+            "CHK-FILTER-EDGE-ABOVE",
+            "CHK-FILTER-EDGE-ABOVE",
+            "the probe one page above the window returns DECERR",
+        ),
+        (
+            "CHK-FILTER-EDGE-START-ADJ",
+            "CHK-FILTER-EDGE-START-ADJ",
+            "VERSION_LO returns DECERR one page below the adjusted START",
         ),
     ],
     "smu_telemetry_atb_capture_test": [
@@ -3814,7 +4284,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TELQ-THRESHOLD-LIVE",
             "TELQ_THRESHOLD_LIVE",
-            "INTR_STATUS.BUFFER_THRESHOLD is 0 up to three queued and 1 above the threshold",
+            "after every fill and every pop INTR_STATUS.BUFFER_THRESHOLD is 1 when the number "
+            "queued is above the seed-drawn threshold in force and 0 otherwise, and reads 1 with "
+            "the threshold at 3 and five queued before and after the pinned raise to 5",
         ),
         (
             "CHK-TELQ-ORDER",
@@ -3824,7 +4296,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-TELQ-THRESHOLD-CLEAR",
             "TELQ_THRESHOLD_CLEAR",
-            "a write of 1 leaves the status at 1; draining to the threshold or raising it reads 0",
+            "a write of 1 to the status with eight queued and each seed-drawn threshold write "
+            "leave INTR_STATUS.BUFFER_THRESHOLD at the live value, 1 only when the number queued "
+            "is above the threshold; raising the threshold to 5 with five queued reads 0, and "
+            "restoring the drawn threshold reads the live value",
         ),
         (
             "CHK-TELQ-THRESHOLD-TEST",
@@ -3852,6 +4327,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
     ],
     "smu_system_timer_octs_test": [
+        ("CHK-OCTS-J2A-READY", "CHK-OCTS-J2A-READY", "JTAG2AXI bring-up IDCODE reads 0x1"),
         (
             "CHK-OCTS-PRIMARY-STRAP",
             "CHK-OCTS-PRIMARY-STRAP",
@@ -3867,6 +4343,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-OCTS-CSR-COUNT",
             "TIMER_COUNT_{HI,LO} read over J2A lands between the tb_timer_count "
             "samples taken either side of the read",
+        ),
+        (
+            "CHK-OCTS-PRESET-RELOAD",
+            "CHK-OCTS-PRESET-RELOAD",
+            "after the reload PRESET the pin count sits between the preset and the preset plus the "
+            "slack",
+        ),
+        (
+            "CHK-OCTS-PRESET-RELOAD-ADVANCE",
+            "CHK-OCTS-PRESET-RELOAD-ADVANCE",
+            "the pin count advances after the reload preset",
         ),
         (
             "CHK-OCTS-PRESET-EXTREMES",
@@ -3989,9 +4476,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-BOOT-SHADOW-SAMPLES",
             "BOOT_SHADOW_SAMPLES",
-            "sampled SMC eFuse map words read over JTAG2AXI and the stream words of the same "
-            "index equal the words of the eFuse image the run loads, and the map words equal "
-            "the stream words",
+            "the sixteen sampled SMC eFuse map words (the six named element words and word 255, "
+            "the last word of the bank, pinned, nine drawn from the seed), read over JTAG2AXI in "
+            "the drawn order, and the stream words of the same indices equal the words of the "
+            "eFuse image the run loads, and the map words equal the stream words",
         ),
         (
             "CHK-BOOT-SHADOW-ELEMENTS",
@@ -4055,8 +4543,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "with smc_disable_sram_auto_init_i high the zeroing sweep never "
             "starts and no zeroing write reaches the scratch RAM, and "
             "smc_init_mem_done_o reads low while the cold reset is asserted; "
-            "what it read beforehand and how it behaves after the release is "
-            "recorded, not compared",
+            "what it read beforehand is recorded",
+        ),
+        (
+            "CHK-SMU-MEMINIT-BYPASS-DONE",
+            "CHK-SMU-MEMINIT-BYPASS-DONE",
+            "with the sweep held off smc_init_mem_done_o rises within twice the "
+            "cold-reset release pipeline under +skip_fuse_sense after the release "
+            "and reads high on "
+            "every sampled cycle from the rise to the end of the window",
         ),
     ],
     "smu_sram_auto_init_done_test": [
@@ -4252,8 +4747,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CTP-CFG-STRETCH-RW",
             "CHK-CTP-CFG-STRETCH-RW",
-            "port 3 CONFIG reads back 0x7 and 0x0 and STRETCH_MULT reads back 0, 1 and 0xFFFF as "
-            "written",
+            "the seed-drawn storage port reads back CONFIG 0x7, its drawn CONFIG value and then "
+            "0x0, and STRETCH_MULT 0, 0xFFFF and its drawn value as written",
         ),
         (
             "CHK-CTP-STATUS-WRITE-IGNORED",
@@ -4263,13 +4758,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CTP-WINDOW-INDEPENDENCE",
             "CHK-CTP-WINDOW-INDEPENDENCE",
-            "each of 16 ports reads back its own STRETCH_MULT and ports 0 and 15 their own CONFIG",
+            "each of 16 ports reads back its own seed-drawn STRETCH_MULT and the two drawn end "
+            "ports their own distinct drawn CONFIG",
         ),
         (
             "CHK-CTN-SERIALISED-ACCESS",
             "CHK-CTN-SERIALISED-ACCESS",
-            "interleaved CT_SRC and CTP accesses over JTAG2AXI return the values last written to "
-            "each register",
+            "interleaved accesses to the seed-drawn CT_SRC indices and end ports over JTAG2AXI "
+            "return the nonzero drawn mask and STRETCH_MULT values last written to each register "
+            "and 0 from the CT_SRC never written",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK_TIMEOUT_PATHS", "bounded J2A waits with last state"),
     ],
@@ -4614,22 +5111,23 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DBG-RATIO-COMPLETE-4P0",
             "CHK-DBG-RATIO-COMPLETE-4P0",
-            "at TCK 40 ns the four-word series write raises the AW and B counters by 4 and the "
-            "four single-load series reads return the four words with op 0 after every load; "
-            "the AR delta is measured and logged only",
+            "at the seed-drawn TCK period of 40 to 47 ns the four-word series write raises the "
+            "AW and B counters by 4 and the four single-load series reads return the four "
+            "words with op 0 after every load; the AR delta is measured and logged only",
         ),
         (
             "CHK-DBG-RATIO-COMPLETE-4P8",
             "CHK-DBG-RATIO-COMPLETE-4P8",
-            "at TCK 48 ns the four-word series write raises the AW and B counters by 4 and the "
-            "four single-load series reads return the four words with op 0 after every load",
+            "at the seed-drawn TCK periods of 48 to 69 ns and of 70 to 100 ns the four-word "
+            "series write raises the AW and B counters by 4 and the four single-load series "
+            "reads return the four words with op 0 after every load",
         ),
         (
             "CHK-DBG-RATIO-OP3-RULE",
             "CHK-DBG-RATIO-OP3-RULE",
-            "every SERIES_CTRL.op capture of the 3.2 and 2.0 legs is 0 or 3 and never 1 or 2, "
-            "and the integration legs read 0; a leg that never reads 3 is reported as "
-            "NOT-EXERCISED for that branch",
+            "every SERIES_CTRL.op capture of the seed-drawn 20 to 39 ns leg and of the 20 ns leg "
+            "run in every seed is 0 or 3 and never 1 or 2, and the graded legs read 0; a leg that "
+            "never reads 3 is reported as NOT-EXERCISED for that branch",
         ),
         (
             "CHK-DBG-RATIO-RECOVERY",
@@ -4641,14 +5139,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-NONVAC",
             "CHK-NONVAC",
-            "ordered sim-time fence S1<...<S8<PASS, the pass point is stamped after the last "
-            "step and every scanning step has a nonzero access count",
+            "ordered sim-time fence S1<...<S9<PASS, the pass point is stamped after the last step, "
+            "every scanning step has a nonzero access count, and each checker token registered its "
+            "stated number of compares (the 48 to 69 and 70 to 100 ns legs two under one token, "
+            "the op code rule over the two logged legs one)",
         ),
         (
             "CHK-TIMEOUT-PATHS",
             "CHK-TIMEOUT-PATHS",
-            "the gate wait, the op polls, the B counter waits and the two retry loops finish "
-            "inside their bounds with a recorded last state and the stated site count per kind",
+            "the gate wait, the op polls, the B counter waits and the retry loops of the two "
+            "logged legs finish inside their bounds with a recorded last state and the stated site "
+            "count per kind",
         ),
     ],
     "smu_dtp_smc_dm_dmi_test": [

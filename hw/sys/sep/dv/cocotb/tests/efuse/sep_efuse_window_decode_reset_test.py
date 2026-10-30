@@ -27,7 +27,7 @@ word w).
 Checkers:
   CHK-CSR-RESET   the five interface-control registers read their reset values after
                   sense done and answer OKAY. Zero-reset rows count on a four-state
-                  simulator only; on Verilator they log ``OBS-CSR-RESET LOG``.
+                  simulator only; on Verilator they log ``INFO-CSR-RESET LOG``.
   CHK-CSR-RW      ``EFUSE_PROGRAM_CTRL`` and ``EFUSE_READ_CTRL`` read back the drawn
                   pattern; a write of 0x71 to the status register leaves 0x1.
   CHK-TOKEN-RW    each token array reads back the eight words written in drawn order.
@@ -265,7 +265,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             cmp = field_compare(got, _RESET_EXP[name], mask)
             if _RESET_EXP[name] == 0 and not four_state:
                 self._log(
-                    "OBS-CSR-RESET",
+                    "INFO-CSR-RESET",
                     reg=name,
                     exp=f"0x{_RESET_EXP[name]:08x}",
                     got=f"0x{got & mask:08x}",

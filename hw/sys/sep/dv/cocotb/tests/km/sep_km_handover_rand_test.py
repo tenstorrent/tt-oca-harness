@@ -21,7 +21,7 @@ Policy Vault (KPV)", "Key Manager CPU Interrupt Processing") and the generated
 Key Manager register map.
 
 Probes: ``HOST-MBX`` (``SEP_STATUS``, ``SEP_READ_DATA``, ``SEP_IRQ_STATUS``),
-``PIC-IRQ`` bit 30 (``km_unrecoverable_err_o``), ``KM-COUNT``
+``PIC-IRQ`` bit 30 (``sep_ras_o.km_uncorrectable``), ``KM-COUNT``
 (``km_sram_write_count_o``), and the read-only taps ``KM-BUS``
 (``km_key_aw_*``) and ``KM-VALID`` (``km_engine_key_valid_o``,
 ``km_abr_sk_valid_o``, ``km_abr_sk_key_o``). No inject: the flipped image bit
@@ -72,7 +72,7 @@ words are non-zero before the handover. The cells that ``sep_km_handover_test`` 
 0, CMD_SRAM_EXEC after a good load) run here as controls with ``control=1``.
 
 Logged only: the response to the mid size (``OBS-SIZE-MID``), the shared-key
-words at the jump of each pass (``OBS-HO-SK-WORDS``), the VAL_0 reads of the OTP fields, the
+words at the jump of each pass (``INFO-HO-SK-WORDS``), the VAL_0 reads of the OTP fields, the
 SRAM store and violation readbacks, the demotion lock bit and the full CPU IRQ
 mask. CHK-HO-NOIRQ and CHK-HO-SK-WORDS can fail on this DUT (contract, "Known
 limitation").
@@ -635,7 +635,7 @@ class sep_km_handover_rand_test(sep_base_test):
                 if fr is not None:
                     frames.append(fr)
             await ClockCycles(cocotb.top.clk_i, 32)
-        self.chk.obs(
+        self.chk.info(
             "LOAD-GOOD",
             control=1,
             n=p.n1,
@@ -653,7 +653,7 @@ class sep_km_handover_rand_test(sep_base_test):
         await self._warm("after the good load")
         seq = await self.km.send_command(KM_CMD_SRAM_EXEC, [])
         rc, _ = await self.km.recv_resp_cmd(KM_CMD_SRAM_EXEC, seq)
-        self.chk.obs("EXEC-AFTER-LOAD", control=1, code=rc)
+        self.chk.info("EXEC-AFTER-LOAD", control=1, code=rc)
         await self._warm("after CMD_SRAM_EXEC")
 
     async def _fwcrc_leg(self) -> None:
@@ -720,7 +720,7 @@ class sep_km_handover_rand_test(sep_base_test):
 
         # Step 6. A warm reset ends the fatal halt.
         await self._warm("after the fw_crc fault")
-        self.chk.obs("FWCRC-RESET", control=1, pic30=self._pic30())
+        self.chk.info("FWCRC-RESET", control=1, pic30=self._pic30())
 
     async def _size_rej(self, words: int, *, zero: bool, boot: bool) -> None:
         """Steps 7 and 8: a refused FW_WORDS, then CMD_STAT as the next frame."""
@@ -816,7 +816,7 @@ class sep_km_handover_rand_test(sep_base_test):
             ok, f = md.grade_sk_words(sk_words, exp)
             self.chk.ok("HO-SK-WORDS", ok, **f)
         self.logger.info(
-            "OBS-HO-SK-WORDS LOG pass=%d seed=%d words=%s",
+            "INFO-HO-SK-WORDS LOG pass=%d seed=%d words=%s",
             exp.no,
             self.plan.seed,
             ",".join(_hx(w) for w in sk_words),
@@ -977,7 +977,7 @@ class sep_km_handover_rand_test(sep_base_test):
         await SepOtbn(self).wait_idle("post-release")
 
         self.logger.info(
-            "FW-PROVENANCE img_h=cocotb/tests/%s sha256=%s words=%d",
+            "INFO-FW-PROVENANCE img_h=cocotb/tests/%s sha256=%s words=%d",
             imgh.IMAGE_PATH.name,
             hashlib.sha256(imgh.IMAGE_PATH.read_bytes()).hexdigest(),
             len(imgh.read_image()),

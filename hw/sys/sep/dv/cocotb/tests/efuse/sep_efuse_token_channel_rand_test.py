@@ -47,8 +47,8 @@ HMAC-SHA256 starts with a drawn key and two message blocks are pushed, then the
 token go runs with ``STATUS.hmac_idle`` 0 before the go and after the verdict
 (CTRL-TOKEN-HMAC-BUSY). The rest of the message is pushed, processed, and the
 DIGEST words equal HMAC-SHA256 (RFC 2104 over FIPS 180-4) of the key and the
-message in one byte order (``env/sep_hmac_golden.py``, ``SepDigestOrder``
-rule). The same go with HMAC idle gives the same code (CTRL-TOKEN-HMAC-IDLE).
+message in the big-endian read of each word (``digest_swap`` = 0;
+``env/sep_hmac_golden.py``, ``DSWAP_ORDER``). The same go with HMAC idle gives the same code (CTRL-TOKEN-HMAC-IDLE).
 
 Checkers: CHK-BIND, CHK-TOKEN, CHK-TOKEN-CODES, CHK-TOKEN-HOLD, CHK-TOKEN-INDEP,
 CHK-NORESET, CHK-TOKEN-RETAIN, CHK-TOKEN-PRESENSE, CHK-TOKEN-GWB, CHK-TOKEN-HMAC.
@@ -121,7 +121,7 @@ from env.sep_fcov_gate import (
     set_ef_hold_tag,
     set_tch_overlap_pass,
 )
-from env.sep_hmac_golden import digest_order, hmac_sha2_bytes
+from env.sep_hmac_golden import DSWAP_ORDER, digest_order, hmac_sha2_bytes
 from sep_base_test import sep_base_test
 from seq_lib.sep_hmac_seq import (
     HMAC_CMD,
@@ -661,14 +661,16 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
         err = await self.hmac._rd(HMAC_ERR_CODE)
         # KEY_0 first, each KEY word big-endian (CFG.key_swap 0); each MSG_FIFO
         # word added little-endian (CFG.endian_swap 0)
-        # (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc:111-120).
+        # (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc:111-120);
+        # key[1023:0] = {KEY0, KEY1, ...} puts KEY_0 first
+        # (vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/registers.md:352).
         key_bytes = b"".join(w.to_bytes(4, "big") for w in key)
         msg_bytes = b"".join(w.to_bytes(4, "little") for w in msg)
         mac = hmac_sha2_bytes(key_bytes, msg_bytes, 256)
         order = digest_order(digest, mac)
         ok = self._grade(
             "TOKEN-HMAC",
-            tok_ok and order is not None and err == 0,
+            tok_ok and order == DSWAP_ORDER[0] and err == 0,
             ch=_CH_NAME[ch],
             exp=f"0x{exp:02x}",
             got="none" if run.final is None else f"0x{run.final:02x}",
@@ -861,7 +863,7 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
                 CH_SEC_DIS: await self._settle(CH_SEC_DIS, sdis_tok, sdis_code, f"ind.{c}.sdis"),
             }
             held = {ch: await self._code(ch) for ch in CHANNELS}
-            self.chk.obs(
+            self.chk.info(
                 "INDEP-HELD",
                 go=_CH_NAME[c],
                 held=",".join(f"{_CH_NAME[ch]}:0x{v:02x}" for ch, v in held.items()),

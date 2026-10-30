@@ -115,7 +115,7 @@ class smu_sys_in_filter_window_edge_test_seq:
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         self.s1_ok = True
-        sb.expect_eq("CHK-FILTER-EDGE-GATE-OPEN", gate, 0)
+        sb.expect_eq("CHK-FILTER-EDGE-GATE-OPEN", gate, 0, evidence="CHK-FILTER-EDGE-GATE-OPEN")
 
         master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         await program_inbound0_window(jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="EDGE")
@@ -150,7 +150,9 @@ class smu_sys_in_filter_window_edge_test_seq:
             RESP_OKAY,
             evidence="AXI_FILTER_OKAY",
         )
-        sb.expect_eq("CHK-FILTER-EDGE-SCRATCH", resp_s, RESP_OKAY)
+        sb.expect_eq(
+            "CHK-FILTER-EDGE-SCRATCH", resp_s, RESP_OKAY, evidence="CHK-FILTER-EDGE-SCRATCH"
+        )
 
         lo_data, resp_lo = await await_smn_resp(
             master,
@@ -174,8 +176,12 @@ class smu_sys_in_filter_window_edge_test_seq:
             f"data=0x{lo_word:08x} above=0x{above:08x} (+1 page) "
             f"data=0x{hi_word:08x} DECERR"
         )
-        sb.expect_eq("CHK-FILTER-EDGE-BELOW", resp_lo, RESP_DECERR)
-        sb.expect_eq("CHK-FILTER-EDGE-ABOVE", resp_hi, RESP_DECERR)
+        sb.expect_eq(
+            "CHK-FILTER-EDGE-BELOW", resp_lo, RESP_DECERR, evidence="CHK-FILTER-EDGE-BELOW"
+        )
+        sb.expect_eq(
+            "CHK-FILTER-EDGE-ABOVE", resp_hi, RESP_DECERR, evidence="CHK-FILTER-EDGE-ABOVE"
+        )
 
         await program_inbound0_window(
             jtag, ADJ_WINDOW_START, ADJ_WINDOW_END, scoreboard=sb, tag="EDGE_ADJ"
@@ -194,4 +200,6 @@ class smu_sys_in_filter_window_edge_test_seq:
             f"[0x{page_lo:08x},0x{page_hi:08x}] then DECERR data=0x{adj_word:08x} under "
             f"[0x{adj_lo:08x},0x{adj_hi:08x}]; START resolved to {page_bytes} bytes"
         )
-        sb.expect_eq("CHK-FILTER-EDGE-START-ADJ", resp_adj, RESP_DECERR)
+        sb.expect_eq(
+            "CHK-FILTER-EDGE-START-ADJ", resp_adj, RESP_DECERR, evidence="CHK-FILTER-EDGE-START-ADJ"
+        )

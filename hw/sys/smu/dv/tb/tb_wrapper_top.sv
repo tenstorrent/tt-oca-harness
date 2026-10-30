@@ -203,23 +203,28 @@ module smu_wrapper_uvm_top
   // The SEP eFuse shadow regenerates {~raw, raw} from the raw nibble, so no
   // eFuse image presents a broken pair to the SMC eFuse wrapper's decoder and
   // lc_sigint_err_o has no frontdoor stimulus. Under +lc_sigint_inject, while
-  // lc_sigint_inject_i is high, smu's sep_lc_state -- the pair the SEP exports
-  // to the SMC eFuse wrapper and to lc_state_o -- holds the value it carried
-  // the clock before the inject with the n rail of bit 0 inverted. The two
-  // rails of bit 0 then match, which is an integrity error, and the p rails,
-  // which are the decoded state, do not move, so a response the leaf observes
-  // comes from the integrity error and not from a state change. The SEP's own
-  // decoder reads its shadow registers, not this net.
+  // lc_sigint_inject_i[0] is high, smu's sep_lc_state -- the pair the SEP
+  // exports to the SMC eFuse wrapper and to lc_state_o -- holds the value it
+  // carried the clock before the inject with one rail of one bit inverted:
+  // bits [2:1] select the LC_STATE bit and bit 3 the rail, 0 the n rail (pair
+  // bits [7:4]) and 1 the p rail (pair bits [3:0]). The two rails of that bit
+  // then match, which is an integrity error. An n-rail flip leaves the p
+  // rails, which are the decoded state, in place, so a response the leaf
+  // observes comes from the integrity error and not from a state change; a
+  // p-rail flip moves the decoded nibble as well. The SEP's own decoder reads
+  // its shadow registers, not this net.
   //
   // Re-issued every clock because Verilator snapshots a force RHS; released
   // when the input drops, so the legal pair returns.
-  localparam logic [7:0] LcSigintInjectFlip = 8'h10;
   logic lc_sigint_inject_armed;
   logic [7:0] lc_state_pre_inject;
+  logic [7:0] lc_sigint_inject_flip;
   initial lc_sigint_inject_armed = $test$plusargs("lc_sigint_inject") != 0;
+  assign lc_sigint_inject_flip =
+      8'h01 << ({1'b0, lc_sigint_inject_i[2:1]} + (lc_sigint_inject_i[3] ? 3'd0 : 3'd4));
   always @(posedge clk_smu) begin
-    if (lc_sigint_inject_armed && lc_sigint_inject_i === 1'b1) begin
-      force u_dut.u_smu.sep_lc_state = lc_state_pre_inject ^ LcSigintInjectFlip;
+    if (lc_sigint_inject_armed && lc_sigint_inject_i[0] === 1'b1) begin
+      force u_dut.u_smu.sep_lc_state = lc_state_pre_inject ^ lc_sigint_inject_flip;
     end else begin
       lc_state_pre_inject <= u_dut.u_smu.sep_lc_state;
       release u_dut.u_smu.sep_lc_state;
@@ -422,7 +427,9 @@ module smu_wrapper_uvm_top
   logic [SmuCfg.NUM_INT_TO_SMC-1:0] smc_ext_interrupts_w;
   logic [smc_config_pkg::CpuClusterCount-1:0] ndmreset_process_w;
   logic [31:0] isolate_req_w;
-  logic sync_irq_w, cluster_ded_w, wdt_first_timeout_w, wdt_second_timeout_w;
+  logic sync_irq_w;
+  smc_pkg::smc_ras_t smc_ras_w;
+  sep_pkg::sep_ras_t sep_ras_w;
   logic secure_tm_w;
   logic [smc_pkg::NumGpioWraps-1:0]   gpio_interrupt_w;
   logic [smc_config_pkg::NumUart-1:0] uart_interrupt_w;
@@ -437,9 +444,9 @@ module smu_wrapper_uvm_top
   assign tb_ss_config              = ss_config_w;
   assign tb_sync_irq               = sync_irq_w;
   assign tb_skip_mem_repair        = skip_mem_repair_w;
-  assign tb_smc_cluster_ded        = cluster_ded_w;
-  assign tb_smc_wdt_first_timeout  = wdt_first_timeout_w;
-  assign tb_smc_wdt_second_timeout = wdt_second_timeout_w;
+  assign tb_smc_cluster_ded        = smc_ras_w.cluster_ded;
+  assign tb_smc_wdt_first_timeout  = smc_ras_w.wdt_first_timeout;
+  assign tb_smc_wdt_second_timeout = smc_ras_w.wdt_second_timeout;
   assign tb_gpio_interrupt         = gpio_interrupt_w;
   assign tb_uart_interrupt         = uart_interrupt_w;
 
@@ -1507,9 +1514,8 @@ module smu_wrapper_uvm_top
     .telemetry_afvalid_o (tel_afvalid_w),
     .telemetry_afready_i (tel_afready_w),
 
-    .smc_cluster_ded_o (cluster_ded_w),
-    .smc_wdt_first_timeout_o (wdt_first_timeout_w),
-    .smc_wdt_second_timeout_o (wdt_second_timeout_w),
+    .smc_ras_o (smc_ras_w),
+    .sep_ras_o (sep_ras_w),
 
     .smc_global_base_o (smc_global_base_o),
     .smc_region_size_o (smc_region_size_o),
@@ -1876,6 +1882,302 @@ module smu_wrapper_uvm_top
   );
 
 
+  // ------------------------------------------------------------------
+  // Shared AXI4 protocol checkers (ocah_axi_sva) on the SMU AXI links: the
+  // three crossbar initiator ports (SEP SMN outbound, SMC outbound, external
+  // inbound), the three crossbar target ports (SEP, SMC, external outbound),
+  // the two SMU boundary links, the SEP-to-SMC dedicated port that bypasses
+  // the crossbar, and the DTP JTAG2AXI port into the SMC fabric. On the two
+  // boundary links the bench is one side of the link, so those checkers also
+  // grade the bench master (smu_axi_in) and the bench responder behind
+  // u_axi_out_cut (smu_axi_out).
+  //
+  // aresetn is the primary SMC-clock reset rst_primary_smc_clk_n_o on every
+  // link: the reset of the crossbar, the DTP and the SEP system logic. The
+  // SMC watchdog and reset-unit domains, the SEP watchdog and sep_reset_n,
+  // and the DTP power-on reset are outside aresetn: no reset rule grades
+  // them, and a transaction open at one of them stays in the checker's
+  // outstanding tracking until the next primary reset. Held off while
+  // aresetn is X, before the first reset drive, and until the first clk_ref
+  // edge that samples the DTP power-on reset (powergood_stable) low: aresetn
+  // is already low before that edge, but the SEP reset passes through the
+  // IC_RESET override, whose control the DTP loads only at its power-on
+  // reset, so the SEP-driven VALIDs are X until then.
+  //
+  // MAX_OUTSTANDING on the inbound path (u_smu_in_axi_sva,
+  // u_xbar_ext_in_axi_sva, u_xbar_smc_in_axi_sva, u_xbar_sep_in_axi_sva)
+  // sizes the checker's write tracking, which holds 2 * MAX_OUTSTANDING open
+  // writes: the inbound window sweep keeps up to 34 writes open on the
+  // external inbound port, and the SEP aperture leaf up to 36 on the
+  // crossbar SEP port.
+  //
+  // The rules grade on VCS only: both Verilator targets pass ASSERTS_OFF and
+  // no --assert. The handshake counters below count the AW and AR handshakes
+  // each checker graded; a test that names a port with
+  // +axi_sva_need_<port> fails when that count is zero.
+  //
+  // This checks PROTOCOL, not data: a read that returns wrong data breaks no
+  // rule here.
+
+`define SMU_AXI_SVA_PORTS(REQ, RSP)                                         \
+    .aclk    (clk_smu_i),                                                   \
+    .aresetn (rst_primary_smc_clk_n_o),                                     \
+    .awid    (REQ.aw.id),                                                   \
+    .awaddr  (REQ.aw.addr),                                                 \
+    .awlen   (REQ.aw.len),                                                  \
+    .awsize  (REQ.aw.size),                                                 \
+    .awburst (REQ.aw.burst),                                                \
+    .awlock  (REQ.aw.lock),                                                 \
+    .awprot  (REQ.aw.prot),                                                 \
+    .awvalid (REQ.aw_valid),                                                \
+    .awready (RSP.aw_ready),                                                \
+    .wdata   (REQ.w.data),                                                  \
+    .wstrb   (REQ.w.strb),                                                  \
+    .wlast   (REQ.w.last),                                                  \
+    .wvalid  (REQ.w_valid),                                                 \
+    .wready  (RSP.w_ready),                                                 \
+    .bid     (RSP.b.id),                                                    \
+    .bresp   (RSP.b.resp),                                                  \
+    .bvalid  (RSP.b_valid),                                                 \
+    .bready  (REQ.b_ready),                                                 \
+    .arid    (REQ.ar.id),                                                   \
+    .araddr  (REQ.ar.addr),                                                 \
+    .arlen   (REQ.ar.len),                                                  \
+    .arsize  (REQ.ar.size),                                                 \
+    .arburst (REQ.ar.burst),                                                \
+    .arlock  (REQ.ar.lock),                                                 \
+    .arprot  (REQ.ar.prot),                                                 \
+    .arvalid (REQ.ar_valid),                                                \
+    .arready (RSP.ar_ready),                                                \
+    .rid     (RSP.r.id),                                                    \
+    .rdata   (RSP.r.data),                                                  \
+    .rresp   (RSP.r.resp),                                                  \
+    .rlast   (RSP.r.last),                                                  \
+    .rvalid  (RSP.r_valid),                                                 \
+    .rready  (REQ.r_ready)
+
+`define SMU_AXI_HS(REQ, RSP) \
+    (((REQ.aw_valid && RSP.aw_ready) || (REQ.ar_valid && RSP.ar_ready)) === 1'b1)
+
+`define SMU_AXI_XBAR u_dut.u_smu.gen_sep.u_smu_axi_xbar
+
+`ifdef UVM
+`define SMU_AXI_SVA_ON \
+    (obs_powergood_stable_low_seen_q && !$isunknown(rst_primary_smc_clk_n_o) && u_tb_if.axi_sva_en)
+`else
+`define SMU_AXI_SVA_ON (obs_powergood_stable_low_seen_q && !$isunknown(rst_primary_smc_clk_n_o))
+`endif
+
+  ocah_axi_sva #(
+    .IS_LITE         (1'b0),
+    .ADDR_WIDTH      (56),
+    .DATA_WIDTH      (64),
+    .MAX_OUTSTANDING (32),
+    .ID_WIDTH        (8)
+  ) u_smu_in_axi_sva (                // SMU inbound boundary, bench master into the SMU
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(smu_axi_in_req,
+                       smu_axi_in_resp)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b0),
+    .ADDR_WIDTH (56),
+    .DATA_WIDTH (64),
+    .ID_WIDTH   (10)
+  ) u_smu_out_axi_sva (               // SMU outbound boundary, SMU into the bench responder
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(smu_axi_out_req,
+                       smu_axi_out_resp)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b0),
+    .ADDR_WIDTH (56),
+    .DATA_WIDTH (64),
+    .ID_WIDTH   (8)
+  ) u_xbar_sep_out_axi_sva (          // crossbar initiator port: SEP SMN outbound
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.sep_out_req_i,
+                       `SMU_AXI_XBAR.sep_out_resp_o)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b0),
+    .ADDR_WIDTH (56),
+    .DATA_WIDTH (64),
+    .ID_WIDTH   (8)
+  ) u_xbar_smc_out_axi_sva (          // crossbar initiator port: SMC outbound
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.smc_out_req_i,
+                       `SMU_AXI_XBAR.smc_out_resp_o)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE         (1'b0),
+    .ADDR_WIDTH      (56),
+    .DATA_WIDTH      (64),
+    .MAX_OUTSTANDING (32),
+    .ID_WIDTH        (8)
+  ) u_xbar_ext_in_axi_sva (           // crossbar initiator port: external inbound
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.ext_in_req_i,
+                       `SMU_AXI_XBAR.ext_in_resp_o)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE         (1'b0),
+    .ADDR_WIDTH      (56),
+    .DATA_WIDTH      (64),
+    .MAX_OUTSTANDING (32),
+    .ID_WIDTH        (10)
+  ) u_xbar_sep_in_axi_sva (           // crossbar target port: SEP
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.sep_in_req_o,
+                       `SMU_AXI_XBAR.sep_in_resp_i)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE         (1'b0),
+    .ADDR_WIDTH      (56),
+    .DATA_WIDTH      (64),
+    .MAX_OUTSTANDING (16),
+    .ID_WIDTH        (10)
+  ) u_xbar_smc_in_axi_sva (           // crossbar target port: SMC
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.smc_in_req_o,
+                       `SMU_AXI_XBAR.smc_in_resp_i)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b0),
+    .ADDR_WIDTH (56),
+    .DATA_WIDTH (64),
+    .ID_WIDTH   (10)
+  ) u_xbar_ext_out_axi_sva (          // crossbar target port: external outbound
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(`SMU_AXI_XBAR.ext_out_req_o,
+                       `SMU_AXI_XBAR.ext_out_resp_i)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b0),
+    .ADDR_WIDTH (56),
+    .DATA_WIDTH (64),
+    .ID_WIDTH   (6)
+  ) u_sep_to_smc_axi_sva (            // SEP dedicated SMC port, outside the crossbar
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(u_dut.u_smu.sep_ext_to_smc_axi_req,
+                       u_dut.u_smu.sep_ext_to_smc_axi_resp)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b0),
+    .ADDR_WIDTH (56),
+    .DATA_WIDTH (64),
+    .ID_WIDTH   (2)
+  ) u_dtp_smc_dbg_axi_sva (           // DTP JTAG2AXI port into the SMC fabric
+    .en_i (`SMU_AXI_SVA_ON),
+    `SMU_AXI_SVA_PORTS(u_dut.u_smu.dtp_axi_smc_dbg_req,
+                       u_dut.u_smu.dtp_axi_smc_dbg_resp)
+  );
+
+  int unsigned axi_hs_smu_in, axi_hs_smu_out;
+  int unsigned axi_hs_xbar_sep_out, axi_hs_xbar_smc_out, axi_hs_xbar_ext_in;
+  int unsigned axi_hs_xbar_sep_in, axi_hs_xbar_smc_in, axi_hs_xbar_ext_out;
+  int unsigned axi_hs_sep_to_smc, axi_hs_dtp_dbg;
+  always_ff @(posedge clk_smu_i) begin
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(smu_axi_in_req,
+                                       smu_axi_in_resp))
+      axi_hs_smu_in <= axi_hs_smu_in + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(smu_axi_out_req,
+                                       smu_axi_out_resp))
+      axi_hs_smu_out <= axi_hs_smu_out + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.sep_out_req_i,
+                                       `SMU_AXI_XBAR.sep_out_resp_o))
+      axi_hs_xbar_sep_out <= axi_hs_xbar_sep_out + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.smc_out_req_i,
+                                       `SMU_AXI_XBAR.smc_out_resp_o))
+      axi_hs_xbar_smc_out <= axi_hs_xbar_smc_out + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.ext_in_req_i,
+                                       `SMU_AXI_XBAR.ext_in_resp_o))
+      axi_hs_xbar_ext_in <= axi_hs_xbar_ext_in + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.sep_in_req_o,
+                                       `SMU_AXI_XBAR.sep_in_resp_i))
+      axi_hs_xbar_sep_in <= axi_hs_xbar_sep_in + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.smc_in_req_o,
+                                       `SMU_AXI_XBAR.smc_in_resp_i))
+      axi_hs_xbar_smc_in <= axi_hs_xbar_smc_in + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(`SMU_AXI_XBAR.ext_out_req_o,
+                                       `SMU_AXI_XBAR.ext_out_resp_i))
+      axi_hs_xbar_ext_out <= axi_hs_xbar_ext_out + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.sep_ext_to_smc_axi_req,
+                                       u_dut.u_smu.sep_ext_to_smc_axi_resp))
+      axi_hs_sep_to_smc <= axi_hs_sep_to_smc + 1;
+    if (`SMU_AXI_SVA_ON && `SMU_AXI_HS(u_dut.u_smu.dtp_axi_smc_dbg_req,
+                                       u_dut.u_smu.dtp_axi_smc_dbg_resp))
+      axi_hs_dtp_dbg <= axi_hs_dtp_dbg + 1;
+  end
+`ifndef VERILATOR
+  final begin
+    $display("CHK-AXI-SVA-SMU-IN: aw_ar_handshakes=%0d instance=u_smu_in_axi_sva",
+             axi_hs_smu_in);
+    $display("CHK-AXI-SVA-SMU-OUT: aw_ar_handshakes=%0d instance=u_smu_out_axi_sva",
+             axi_hs_smu_out);
+    $display("CHK-AXI-SVA-XBAR-SEP-OUT: aw_ar_handshakes=%0d instance=u_xbar_sep_out_axi_sva",
+             axi_hs_xbar_sep_out);
+    $display("CHK-AXI-SVA-XBAR-SMC-OUT: aw_ar_handshakes=%0d instance=u_xbar_smc_out_axi_sva",
+             axi_hs_xbar_smc_out);
+    $display("CHK-AXI-SVA-XBAR-EXT-IN: aw_ar_handshakes=%0d instance=u_xbar_ext_in_axi_sva",
+             axi_hs_xbar_ext_in);
+    $display("CHK-AXI-SVA-XBAR-SEP-IN: aw_ar_handshakes=%0d instance=u_xbar_sep_in_axi_sva",
+             axi_hs_xbar_sep_in);
+    $display("CHK-AXI-SVA-XBAR-SMC-IN: aw_ar_handshakes=%0d instance=u_xbar_smc_in_axi_sva",
+             axi_hs_xbar_smc_in);
+    $display("CHK-AXI-SVA-XBAR-EXT-OUT: aw_ar_handshakes=%0d instance=u_xbar_ext_out_axi_sva",
+             axi_hs_xbar_ext_out);
+    $display("CHK-AXI-SVA-SEP-TO-SMC: aw_ar_handshakes=%0d instance=u_sep_to_smc_axi_sva",
+             axi_hs_sep_to_smc);
+    $display("CHK-AXI-SVA-DTP-DBG: aw_ar_handshakes=%0d instance=u_dtp_smc_dbg_axi_sva",
+             axi_hs_dtp_dbg);
+    if ($test$plusargs("axi_sva_need_smu_in") && axi_hs_smu_in == 0)
+      $error("u_smu_in_axi_sva: +axi_sva_need_smu_in, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_smu_out") && axi_hs_smu_out == 0)
+      $error("u_smu_out_axi_sva: +axi_sva_need_smu_out, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_xbar_sep_out") && axi_hs_xbar_sep_out == 0)
+      $error("u_xbar_sep_out_axi_sva: +axi_sva_need_xbar_sep_out, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_xbar_smc_out") && axi_hs_xbar_smc_out == 0)
+      $error("u_xbar_smc_out_axi_sva: +axi_sva_need_xbar_smc_out, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_xbar_ext_in") && axi_hs_xbar_ext_in == 0)
+      $error("u_xbar_ext_in_axi_sva: +axi_sva_need_xbar_ext_in, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_xbar_sep_in") && axi_hs_xbar_sep_in == 0)
+      $error("u_xbar_sep_in_axi_sva: +axi_sva_need_xbar_sep_in, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_xbar_smc_in") && axi_hs_xbar_smc_in == 0)
+      $error("u_xbar_smc_in_axi_sva: +axi_sva_need_xbar_smc_in, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_xbar_ext_out") && axi_hs_xbar_ext_out == 0)
+      $error("u_xbar_ext_out_axi_sva: +axi_sva_need_xbar_ext_out, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_sep_to_smc") && axi_hs_sep_to_smc == 0)
+      $error("u_sep_to_smc_axi_sva: +axi_sva_need_sep_to_smc, ",
+             "but no AW or AR handshake was graded");
+    if ($test$plusargs("axi_sva_need_dtp_dbg") && axi_hs_dtp_dbg == 0)
+      $error("u_dtp_smc_dbg_axi_sva: +axi_sva_need_dtp_dbg, ",
+             "but no AW or AR handshake was graded");
+  end
+`endif
+
+`undef SMU_AXI_XBAR
+`undef SMU_AXI_SVA_ON
+`undef SMU_AXI_HS
+`undef SMU_AXI_SVA_PORTS
+
 `ifdef UVM
   // ------------------------------------------------------------------
   // SV-UVM harness (`--dut smu --framework uvm`): clocks, the shared JTAG
@@ -2047,7 +2349,7 @@ module smu_wrapper_uvm_top
   // ESRC raw noise quiet (no entropy scenario in this shape).
   assign esrc_noise_ext_i = '0;
   // No LC_STATE pair fault.
-  assign lc_sigint_inject_i = 1'b0;
+  assign lc_sigint_inject_i = '0;
 
   // External SMN AXI4 ingress: no initiator attached, request side idle
   // (single-beat INCR shape, no valids, no readies).

@@ -7,7 +7,7 @@
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2 id="regmap-avsbus_controller">AVSBus Controller Address Map</h2>
-<p>Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</p>
+<p>Command, readback, status, and interrupt registers for the AVSBus (PMBus V1.3 Part III) controller.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -41,7 +41,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:30</td><td>SLAVE_ACK</td><td>R RMOD</td><td>0x0</td><td>Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]<br>[*]0x0: Action Performed<br>[*]0x1: Good CRC received but resource unavailable - hardware will retry<br>[*]0x2: Bad CRC received - hardware will retry<br>[*]0x3: Good CRC received but bad data, data type or selector - no hardware retry<br>[/list]</td></tr>
-<tr><td>29</td><td>CONST0</td><td>R RMOD</td><td>0x0</td><td>Always 0</td></tr>
+<tr><td>29</td><td>CONST0</td><td>R RMOD</td><td>0x0</td><td>Frame-valid bit of the slave response sub-frame: 0 in a valid frame, 1 when the slave did not respond</td></tr>
 <tr><td>28:24</td><td>STATUS_RESPONSE</td><td>R RMOD</td><td>0x0</td><td>5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]<br>[*]bit 4: VDone - AND of all VDone bits of active rails<br>[*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details<br>[*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.<br>[*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific<br>[*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific<br>[/list]</td></tr>
 <tr><td>23:8</td><td>CMD_DATA</td><td>R RMOD</td><td>0x0</td><td>Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]<br>[*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV<br>[*]Transition Rate (cmd_code 0x1): [list]<br>[*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us<br>[*]LSByte: Fall Rate, 8-bit unsigned int, 1LSB=1mV/us [/list]<br>[*]Current (cmd_mode 0x2): 16-bit unsigned, 1LSB=10mA<br>[*]Temperature (cmd_code 0x3): 16-bit signed, 1LSB=0.1degC<br>[*]Power Mode (cmd_code 0x5): 3-bits, LSB aligned: [list]<br>[*]0x0 - Maximum Efficiency<br>[*]0x3 - Maximum Power<br>[*]0x4-0x7 - Manufacturer-specific  [/list]<br>[*]AVSBus Status (cmd_code 0xe): 16-bits, encoded per AVS Spec<br>[*]AVSBus Version (cmd_code 0xf): 4 bits encoded per AVS Spec, LSB-aligned<br>[*]If master issued a write (rw!=0x3) in previous master subframe, this field is 0xffff<br>[/list]</td></tr>
 <tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -55,7 +55,7 @@
 <h3 id="AVS_LATEST_SLAVE_SUBFRAME">AVS_LATEST_SLAVE_SUBFRAME</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>AVS_SLAVE_SUBFRAME</td><td>R</td><td>0xFFFF</td><td>The most recently received AVS slave response sub-frame</td></tr>
+<tr><td>31:0</td><td>AVS_SLAVE_SUBFRAME</td><td>R</td><td>0x0</td><td>The most recently received AVS slave response sub-frame</td></tr>
 </table>
 <h3 id="AVS_NORMAL_STATUS">AVS_NORMAL_STATUS</h3>
 <table>
@@ -142,8 +142,8 @@
 <h3 id="AVS_CFG_1">AVS_CFG_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:24</td><td>CLK_DIVIDER_DUTY_CYCLE_NUMERATOR</td><td>RW</td><td>0x0</td><td>Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).<br>This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,<br>it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,<br>a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)<br>by matching the FF default in the resynced version of the signal.</td></tr>
-<tr><td>23:16</td><td>CLK_DIVIDER_VALUE</td><td>RW</td><td>0x0</td><td>Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).<br>The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%<br>duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of<br>2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings<br>(divider=0x4) by matching the FF default in the resynced version of the signal.</td></tr>
+<tr><td>31:24</td><td>CLK_DIVIDER_DUTY_CYCLE_NUMERATOR</td><td>RW</td><td>0x0</td><td>Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).<br>This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,<br>it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,<br>a value of 1 will be assumed. Out of reset the divider uses a numerator of 0x80 (50%), not this field&#x27;s reset value of 0. A write that<br>changes this field or clk_divider_value loads both fields into the divider, so program both together.</td></tr>
+<tr><td>23:16</td><td>CLK_DIVIDER_VALUE</td><td>RW</td><td>0x0</td><td>Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).<br>The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%<br>duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of<br>2 - for lower values, 2 will be assumed. Out of reset the divider uses a ratio of 4, not this field&#x27;s reset value of 0. A write that<br>changes this field or clk_divider_duty_cycle_numerator loads both fields into the divider, so program both together.</td></tr>
 <tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>10</td><td>TURN_OFF_ALL_PREMUX_CLOCKS</td><td>RW</td><td>0x0</td><td>Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards</td></tr>
 <tr><td>9</td><td>FORCE_SLAVE_RESYNC_OPERATION</td><td>RW 1P</td><td>0x0</td><td>Force master to issue a slave resync (35 AVS clock cycles of holding the mdata signal high) at the next possible opportunity. The request crosses a 3-stage AVS clock synchronizer before the master sees it.</td></tr>

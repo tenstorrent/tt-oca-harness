@@ -19,8 +19,14 @@ compared; absolute values are printed as measured.
 * Set A2: set A with T_R and T_F raised. Set A3: set A with TSU_STA, THD_STA and TSU_STO
   raised. Set A4: set A with only T_BUF raised.
 
-Standard-mode full-rate SCL is not run. The minimum set (THIGH = TLOW = 2, every other field 1)
-is a liveness run of transfer Y.
+Standard-mode full-rate SCL is not run. The minimum set (THIGH = TLOW = 4, every other field 1)
+is a liveness run of transfer Y at the smallest setting the leaf grades: i2c.rdl states THIGH and
+TLOW "Must be >= 2", so 4 is legal whichever way the open ruling on the smallest legal value
+(#3404) lands, and a controller that hangs or never raises HOSTIDLE and CMD_COMPLETE at small
+field values fails CHK-I2C-WIRE-MIN-SET-RUN. Whether 2 is legal or the description has to follow
+the controller is that ruling, so the RDL minimum (THIGH = TLOW = 2, every other field 1) runs
+transfer Y once more after the graded minimum set and is logged as OBS-I2C-WIRE-RDL-MIN,
+completed or not, with nothing graded on it. Values between 2 and 4 are not run.
 """
 
 from __future__ import annotations
@@ -90,6 +96,14 @@ FM_PLUS_NS = {
     "t_buf": 500,
 }
 THD_DAT_MIN = 1
+#: The smallest THIGH and TLOW the leaf grades: legal under i2c.rdl TIMING0 ("Must be >= 2")
+#: whichever way the I2C owner rules on the smallest legal value (#3404).
+MIN_THIGH = 4
+MIN_TLOW = 4
+#: The RDL's stated minimum (i2c.rdl TIMING0: "Must be >= 2"); observed, not graded, until the
+#: I2C owner rules whether 2 is legal or the description has to follow the controller (#3404).
+RDL_MIN_THIGH = 2
+RDL_MIN_TLOW = 2
 FAST_RATIO = 4
 SCALE_C = 10
 RISE_FALL_RAISE = 6
@@ -385,7 +399,8 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
                 for k, v in a.items()
             },
             "A4": {k: v + START_STOP_RAISE if k == "t_buf" else v for k, v in a.items()},
-            "MIN": {**dict.fromkeys(FIELDS, 1), "thigh": 2, "tlow": 2},
+            "MIN": {**dict.fromkeys(FIELDS, 1), "thigh": MIN_THIGH, "tlow": MIN_TLOW},
+            "RDL_MIN": {**dict.fromkeys(FIELDS, 1), "thigh": RDL_MIN_THIGH, "tlow": RDL_MIN_TLOW},
         }
         for name, prog in self.sets.items():
             cocotb.log.info(
@@ -565,10 +580,59 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         assert status & I2C_STATUS_HOSTIDLE, f"MIN: HOSTIDLE not set (STATUS=0x{status:08x})"
         parse_edges("MIN", rec.events, False)
         return (
-            f"THIGH=2 TLOW=2 and every other field 1: START, address write acknowledged "
+            f"THIGH={MIN_THIGH} TLOW={MIN_TLOW} and every other field 1 (legal under i2c.rdl "
+            f"TIMING0, which states >= 2): START, address write acknowledged "
             f"(target acks={seen[2]}), exactly {rec.stops} STOP on the pads, STATUS=0x{status:08x} "
             f"HOSTIDLE set, INTR_STATE=0x{intr:08x} CMD_COMPLETE set again after being "
             f"0x{before:08x}"
+        )
+
+    async def _rdl_min_observe(self) -> None:
+        """Transfer Y at the RDL's stated minimum, logged and not graded.
+
+        Programs THIGH = TLOW = 2 with every other field 1, queues transfer Y and
+        waits the same bound as the graded sets. The outcome (a STOP on the pads
+        with HOSTIDLE and CMD_COMPLETE, or no STOP within the bound) is logged as
+        OBS-I2C-WIRE-RDL-MIN; no check reads it. The leg runs last so a controller
+        left mid-transfer at this setting touches no graded step.
+        """
+        prog = self.sets["RDL_MIN"]
+        assert self.slave is not None
+        await self._program("RDL_MIN", prog)
+        await self.csr_write("RDL_MIN_INTR_CLR", I2C0_INTR_STATE, ALL_ONES)
+        base = (self.slave.starts, self.slave.stops, self.slave.acks)
+        rec = WireRecorder()
+        rec.start()
+        outcome = "completed"
+        try:
+            await self._queue("RDL_MIN", False)
+            await self._wait_stops("RDL_MIN", rec, 1, prog)
+            await self._wait_hostidle("RDL_MIN", rec)
+        except AssertionError as exc:
+            outcome = f"did not complete: {exc}"
+        finally:
+            rec.stop()
+        intr = await self.csr_read("RDL_MIN_INTR_AFTER", I2C0_INTR_STATE)
+        status = await self.csr_read("RDL_MIN_STATUS_AFTER", I2C0_STATUS)
+        seen = (
+            self.slave.starts - base[0],
+            self.slave.stops - base[1],
+            self.slave.acks - base[2],
+        )
+        cocotb.log.info(
+            "OBS-I2C-WIRE-RDL-MIN: THIGH=%d TLOW=%d and every other field 1 (i2c.rdl states "
+            "THIGH and TLOW must be >= 2; the smallest setting graded is %d): transfer Y %s; pads "
+            "saw %d START and %d STOP, target counted starts/stops/acks %s, INTR_STATE=0x%08x "
+            "STATUS=0x%08x; not graded until the I2C owner rules on the minimum (#3404)",
+            RDL_MIN_THIGH,
+            RDL_MIN_TLOW,
+            MIN_THIGH,
+            outcome,
+            rec.starts,
+            rec.stops,
+            seen,
+            intr,
+            status,
         )
 
     def _delta(self, metric: str, tag: str, key: int | None = None) -> int:
@@ -637,6 +701,7 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         min_text = await self._min_run()
         await ClockCycles(cocotb.top.clk_smc_i, 2)
         self._step_done("S7")
+        await self._rdl_min_observe()
 
         s = self.sets
         d = {t: {f: s[t][f] - s["A"][f] for f in FIELDS} for t in ("B", "C", "A3", "A4")}

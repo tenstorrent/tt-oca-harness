@@ -711,7 +711,7 @@ tests = [
     "sep_bl1_entry_invalid_test",
     "sep_decryption_failure_terminal_test",
     "sep_decryption_failure_failover_test",
-    "sep_mbist_fail_continue_test",
+    "sep_mbist_fail_skip_fuse_ignored_test",
     "sep_warm_reset_invalid_hang_test",
     "sep_warm_reset_below_range_hang_test",
     "sep_warm_reset_unarmed_cold_boot_test",
