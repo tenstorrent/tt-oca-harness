@@ -2854,6 +2854,23 @@ args = [
 ]
 
 [[tests]]
+# Secondary chiplet: READY with scratch[8] = 0xFFFFFFFF; the ROM rejects the invalid-offset marker
+# before it forms an SMC SRAM address or attempts a manifest slot.
+name = "sep_firmware_secondary_manifest_offset_invalid_test"
+module = "rom_fw.sep_firmware_secondary_manifest_offset_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "secondary", "strap", "manifest", "offset", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_smc_scratch8=ffffffff",
+]
+
+[[tests]]
 # Secondary chiplet: scratch[8] points at an invalid manifest; the one-slot SMC path is terminal.
 name = "sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test"
 module = "rom_fw.sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test"
