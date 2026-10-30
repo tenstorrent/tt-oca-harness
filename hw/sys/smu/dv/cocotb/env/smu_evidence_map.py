@@ -5298,6 +5298,324 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "bound, cycles used and last state recorded, no unresolved probe sample",
         ),
     ],
+    "smu_ext_in_error_inject_rand_test": [
+        (
+            "CHK-EXTERR-RESP",
+            "CHK-EXTERR-RESP",
+            "a responder SLVERR or DECERR on the single beat of a JTAG2AXI read or write at the "
+            "cell's address reads op 1 or op 2 at the bridge, and on a SEP system-bus read or "
+            "write reads sbcs.sberror 2, on each pinned and drawn bridge and SEP cell",
+        ),
+        (
+            "CHK-EXTERR-BEAT",
+            "CHK-EXTERR-BEAT",
+            "the u_axi_out_if tap shows the armed code on the chosen beat only: the one R or B of "
+            "a single access, the R beat k of the iDMA read burst with OKAY on its other beats, "
+            "or the one B of the iDMA write burst whose W beat k lies at the armed word; the "
+            "inject is consumed",
+        ),
+        (
+            "CHK-EXTERR-NOXBAR",
+            "CHK-EXTERR-NOXBAR",
+            "with the hook disarmed the same access answers OKAY at the initiator with the bytes "
+            "the responder holds, its address phases reach u_axi_out_if and every R and B beat "
+            "there is OKAY (the iDMA copy retires its id with the source bytes)",
+        ),
+        (
+            "CHK-EXTERR-RECOVER",
+            "CHK-EXTERR-RECOVER",
+            "after the injection a write and a read at the injected word answer OKAY, the read "
+            "returns the bytes written and the responder holds them (the iDMA cells recover "
+            "through the JTAG2AXI bridge)",
+        ),
+        (
+            "CHK-EXTERR-INBOUND",
+            "CHK-EXTERR-INBOUND",
+            "a read inject armed at the word of an ext_in read outside both apertures is still "
+            "armed after that read and is consumed by the next JTAG2AXI read there, which reads "
+            "op 1 or op 2 with the code on the tap",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "the steps in the order of the plan (S1, per cell CTRL, ERR, REC, INB, SEP, PASS), "
+            "every cell injected and recovered, SLVERR and DECERR both injected; the step "
+            "stamps are logged, not compared",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI poll, system-bus wait, iDMA DONE poll and external-response wait "
+            "records its use in the unit of its bound (polls, clk_smu_i cycles, ns) and finishes "
+            "inside it with a recorded last state, four tap waits per cell plus one; the iDMA "
+            "DONE window after an errored copy is logged, its expiry not graded",
+        ),
+    ],
+    "smu_reset_retention_matrix_rand_test": [
+        (
+            "CHK-RETMX-CLEARED",
+            "CHK-RETMX-CLEARED",
+            "each register of a bank in the drawn kind's reset domain, read back as its drawn "
+            "pattern before the reset, reads its reset value after it: WDT_TIMEOUT after the cool "
+            "and cold kinds and SS_WARM_RESET_N after the cold kind on every simulator, the "
+            "all-zero reset values on a four-state simulator only (printed on Verilator)",
+        ),
+        (
+            "CHK-RETMX-KEPT",
+            "CHK-RETMX-KEPT",
+            "each register outside the drawn kind's reset domain reads its drawn pattern after "
+            "the reset: the isolation bank across the cool kind and every register across the "
+            "warm kind, WDT_TIMEOUT there at the arming count the leaf programmed",
+        ),
+        (
+            "CHK-RETMX-ISOLATE-ALIVE",
+            "CHK-RETMX-ISOLATE-ALIVE",
+            "the drawn set ISOLATE_REQ_REG bit holds tb_isolate_req at 1 on every clk_smu_i edge "
+            "through the cool reset and after it, and reads the reset-value OR, 0, after the cold "
+            "reset; the ss_reset_ctrl_o lane is logged only",
+        ),
+        (
+            "CHK-RETMX-RESETVAL",
+            "CHK-RETMX-RESETVAL",
+            "SS_WARM_RESET_N reads all ones after the cold kind, away from its drawn pattern; "
+            "SS_COLD_RESET_N 0 after the cool and cold kinds on a four-state simulator only",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "one primary reset assertion in the cool and the cold clk_smu_i trace, one warm reset "
+            "assertion and no primary assertion in the warm trace; the registers programmed and "
+            "read per kind are logged, not compared",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every reset-assertion, reset-release, watchdog-event and re-init wait finishes "
+            "inside its bound with its clk_smu_i cycles and last state recorded and none expires; "
+            "the JTAG2AXI record carries the most status polls one access used against the "
+            "128-poll limit",
+        ),
+    ],
+    "smu_jtag2axi_access_matrix_rand_test": [
+        (
+            "CHK-J2AMX-ADDR",
+            "CHK-J2AMX-ADDR",
+            "every pinned and drawn adopter and DTP CSR offset (a read and a zero-strobe write) "
+            "arrives on its far-end link at the issued offset, every drawn OTP register word "
+            "reads op 0 and arrives on its DTP-to-OTP link as issued, every outside address "
+            "leaves on u_axi_out_if AW and AR exactly as issued, and the SPM and SCRATCH_COLD "
+            "word at the issued address reads back the merged payload after a write with op 0",
+        ),
+        (
+            "CHK-J2AMX-SIZE",
+            "CHK-J2AMX-SIZE",
+            "AxSIZE of the AW and AR of every outside cell equals min(size field, data size 3), "
+            "the four sizes on every seed",
+        ),
+        (
+            "CHK-J2AMX-WSTRB",
+            "CHK-J2AMX-WSTRB",
+            "the W strobe of every outside cell equals the drawn strobe with the responder "
+            "doublewords on either side unchanged, and every SPM doubleword holds the strobe "
+            "merge of the payload over its complement with both neighbours intact, a full and a "
+            "partial strobe on every seed",
+        ),
+        (
+            "CHK-J2AMX-DATA",
+            "CHK-J2AMX-DATA",
+            "every SPM, SCRATCH_COLD and outside write and read completes with op 0, the read at "
+            "the issued address returns the merged payload on the selected lanes and the word "
+            "held equals the merge; adopter and DTP CSR responses are measured and logged only",
+        ),
+        (
+            "CHK-J2AMX-SERIES",
+            "CHK-J2AMX-SERIES",
+            "every series write reads status 0 after the reset, its address list is A + k x 2^E "
+            "on the SMC external bus tap or u_axi_out_if and the B counter moves by the count; "
+            "outside both apertures AxSIZE is E, the responder holds every word and the status "
+            "reads 0 after it; the status after an adopter-window series is logged only",
+        ),
+        (
+            "CHK-J2AMX-STICKY-DRAWN",
+            "CHK-J2AMX-STICKY-DRAWN",
+            "the series status reads 0 after a reset, 2 after a failed read at the first drawn "
+            "address between unit apertures, still 2 after a read of the SPM word the pinned "
+            "full-strobe cell wrote whose error-status bit reads 0 with the modelled low word, "
+            "still 2 after a second failure at the second drawn address, and 0 after "
+            "AXI_SERIES_CTRL.reset",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "a graded cell per bridge and per cell kind and all four sizes on the outbound tap; "
+            "the step stamps and the seed are logged, not compared",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI poll and counter wait finishes inside its bound with a recorded last "
+            "state and none expires; sites per kind equal the number the drawn cells make",
+        ),
+    ],
+    "smu_filter_match_priority_rand_test": [
+        (
+            "CHK-FMATCH-ADMIT",
+            "CHK-FMATCH-ADMIT",
+            "on each instance the lower drawn entry with every term satisfied and both permissions "
+            "set over the higher drawn entry denying both on one window admits an AW then an AR at "
+            "both window edges with the written bytes read back, and every programmed START_ADDR, "
+            "END_ADDR and FILTER_CONFIG field reads back the value written, or the granule edges "
+            "the write-back sets where START_ADDR and END_ADDR shared one granule",
+        ),
+        (
+            "CHK-FMATCH-TERMS",
+            "CHK-FMATCH-TERMS",
+            "with the lower drawn entry alone, entry_enabled 0 and the range one granule up and "
+            "down at both granules (and on SYS_IN allow_ns, src_id and allow_burst) each broken "
+            "alone give the unmatched verdict of the instance (blocked on SYS_IN and SEP "
+            "outbound, admitted on SMC outbound) and the restored term the entry's verdict; an "
+            "iDMA copy lands under allow_burst 0 and no AW of it reaches the denied page under "
+            "allow_burst 1",
+        ),
+        (
+            "CHK-FMATCH-PRIORITY",
+            "CHK-FMATCH-PRIORITY",
+            "on each instance the lower drawn entry clearing the drawn channel's permission over "
+            "the higher drawn entry permitting both blocks that channel and admits the other, "
+            "programmed lower-first and higher-first",
+        ),
+        (
+            "CHK-FMATCH-PERM",
+            "CHK-FMATCH-PERM",
+            "on each instance read_allowed 0 with write_allowed 1 blocks AR and admits AW, and the "
+            "reverse pair blocks AW and admits AR, at the lower drawn entry",
+        ),
+        (
+            "CHK-FMATCH-WILDCARD",
+            "CHK-FMATCH-WILDCARD",
+            "src_id 0 at the lower drawn SYS_IN entry admits AxUSER[3:0] 0, 15 and two drawn "
+            "values; src_id 0 entries match the bridge and the iDMA (SMC outbound refusals) and "
+            "the SEP system bus (SEP outbound admits)",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "an access in each of S2..S13 and an admitted and a blocked access per instance; the "
+            "step stamps and the seed are logged, not compared",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI, iDMA DONE, system-bus busy, responder-observation and external "
+            "response wait records its use in the unit of its bound and finishes inside it with a "
+            "recorded last state; only the refused iDMA copy's DONE poll expires, as its measured "
+            "outcome; six labels",
+        ),
+    ],
+    "smu_remap_attr_rand_test": [
+        (
+            "CHK-RMAPA-TRANSLATE",
+            "CHK-RMAPA-TRANSLATE",
+            "the access at start_addr of the drawn valid alias region, at the pinned and at the "
+            "drawn cacheable value, leaves on AW and AR at the input address plus the drawn offset "
+            "with the low 12 bits kept, the responder holds the written bytes there and the read "
+            "returns them; with valid cleared after programming it leaves at its own address",
+        ),
+        (
+            "CHK-RMAPA-CACHE",
+            "CHK-RMAPA-CACHE",
+            "alias hits carry AW and AR AxCACHE equal to the pinned or drawn cacheable value, each "
+            "differing from the reference AxCACHE; the misses at the drawn edges and the "
+            "valid-cleared access carry the AW and AR AxCACHE of the reference access",
+        ),
+        (
+            "CHK-RMAPA-EDGE",
+            "CHK-RMAPA-EDGE",
+            "one granule below end_addr hits and end_addr and one granule below start_addr miss on "
+            "the drawn alias region; the last word inside each drawn output window hits and the "
+            "first word past it leaves at its own address",
+        ),
+        (
+            "CHK-RMAPA-OUTPUT",
+            "CHK-RMAPA-OUTPUT",
+            "the drawn word of each drawn AP and STEE region leaves at the drawn offset plus its "
+            "19 in-window bits, held by the responder and read back; with valid cleared it leaves "
+            "unchanged, graded at an index other than 7 (a drawn 7 is logged)",
+        ),
+        (
+            "CHK-RMAPA-READBACK",
+            "CHK-RMAPA-READBACK",
+            "alias START, END and ATTRS (pinned cacheable, drawn cacheable, valid cleared) and "
+            "each output ATTRS (valid set and cleared) read back the drawn values",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "39 JTAG2AXI and 32 system-bus accesses, an access in each of S1..S10, at least one "
+            "hit, one miss and one graded valid-cleared output cell; the step stamps are logged, "
+            "not compared",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every JTAG2AXI poll, system-bus busy poll, responder observation and logged-cell wait "
+            "records its use in the unit of its bound and finishes inside it with a recorded last "
+            "state, none expires, four labels",
+        ),
+    ],
+    "smu_lc_disable_vector_matrix_test": [
+        (
+            "CHK-LCVEC-FEAT",
+            "CHK-LCVEC-FEAT",
+            "lcc_feat_ctrl_o equals the profile-table word of the file's image and SIP_DIS / "
+            "SYS_DIS pair read from the file: TEST_DEV ~(SIP_DIS | SYS_DIS) in every group, PROD "
+            "the debug groups 0 and Function ~(SIP_DIS | SYS_DIS)",
+        ),
+        (
+            "CHK-LCVEC-READBACK",
+            "CHK-LCVEC-READBACK",
+            "under sep_efuse_shadow_lc_test_dev.preload LC_STATE and the two words of SIP_DIS and "
+            "SYS_DIS read over the SEP debug system bus equal the file's words; under every other "
+            "file the read-back's request scans over the shut SEP debug STAP reach no SEP TAP: no "
+            "host TMS edge, host TMS parked at 0, no TDO-enable high, the PTAP TMS moving",
+        ),
+        (
+            "CHK-LCVEC-SHUT",
+            "CHK-LCVEC-SHUT",
+            "the set of walked paths that admit nothing (I/O STAP, SMC fabric bridge, SEP debug "
+            "STAP, secure DFT SIB) equals the set the profile and DTP path feature-gates tables "
+            "shut for the file, all four paths classified",
+        ),
+        (
+            "CHK-LCVEC-OPEN",
+            "CHK-LCVEC-OPEN",
+            "the set of walked paths that admit equals the set the tables open; where it is empty "
+            "(TEST_DEV every-bit file, every PROD file) the DBG_1 and DBG_2 bits of "
+            "lcc_feat_ctrl_o are all 0",
+        ),
+        (
+            "CHK-LCVEC-IMAGE",
+            "CHK-LCVEC-IMAGE",
+            "on the last clk_smu_i edge before sep_fuse_sense_done_o rises lc_state_o reads the "
+            "INVALID word 0x0F and lcc_feat_ctrl_o 0; after the sense lc_state_o equals the "
+            "file's image word (0xF0 TEST_DEV, 0xE1 PROD) and lc_sigint_err_o reads 0",
+        ),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "four paths classified, a shut path on every file but the TEST_DEV no-bit file and an "
+            "open path on every TEST_DEV file whose pair leaves a group open; the step stamps are "
+            "logged, not compared",
+        ),
+        (
+            "CHK-TIMEOUT-PATHS",
+            "CHK-TIMEOUT-PATHS",
+            "every sense, STAP-window, iJTAG-window, read-back-window and system-bus wait "
+            "finishes inside its bound with a recorded last state, none expired; the two fabric "
+            "windows are fixed observation windows, expiry not applicable; the recorded labels "
+            "the set the file's steps name",
+        ),
+    ],
 }
 
 
