@@ -1315,7 +1315,9 @@ For the recovery and secondary boot modes, the manifest+payload arrive via the S
 over I3C by the platform, per the SMC ROM specification):
 
 1. [[req-SEP-ROM-SMC-040]]*[SEP-ROM-SMC-040]* The ROM shall wait (unbounded poll) for
-   `scratch9.MANIFEST_READY` before consuming scratch[8].
+   `scratch9.MANIFEST_READY` before consuming scratch[8]. READY only announces that scratch[8]
+   has been published; the marker and bounds checks of SEP-ROM-SMC-050 decide whether the
+   offset is usable.
 2. [[req-SEP-ROM-SMC-050]]*[SEP-ROM-SMC-050]* The ROM shall reject a manifest offset of
    `0xFFFFFFFF` and shall bounds-check the staged manifest and any payload region announced
    via scratch[13]/[14] against the 1 MiB SMC SRAM window before reading.

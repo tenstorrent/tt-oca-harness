@@ -1661,7 +1661,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Unused</ipxact:description>
+            <ipxact:description>Reserved; hardware ignores these bits. A read returns whatever the fuse word or the last write left in them, so software masks reads to lc_state.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

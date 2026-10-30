@@ -21,9 +21,8 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 # Enable threshold and hysteresis control are the same programmable field.
-# Lowest hysteresis whose DMA completion survives the gater with the SYS_OUT
-# slave agent's one-cycle response latency; 8 and below drop the transfer
-# (smc_clk_multi_window_test_seq.HYST_LOW_EXCLUSION records the band).
+# smc_clk_multi_window_test_seq.HYST_LOW_EXCLUSION records the 0..8 band this
+# sequence does not exercise.
 THRESH_MIN = 9
 THRESH_MAX = 63
 HYST_IDLE = 8

@@ -65,8 +65,8 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-FIFO/holding-register data and FIFO pointers have parity protection. An internal
-parity failure drives `err_o` and can raise the separately enabled FIFO-error
+FIFO and holding-register data have parity protection, and the FIFO pointers
+are redundancy-checked. An internal parity or pointer failure drives `err_o` and can raise the separately enabled FIFO-error
 interrupt. This is different from parity in a received serial frame.
 
 [[uart-serial-communication-errors-table]]
@@ -80,7 +80,7 @@ interrupt. This is different from parity in a received serial frame.
 |`BI` |Break: the received frame remained low.
 |===
 
-In the current RTL, overwriting an unread non-FIFO RBR does not set OE.
+Overwriting an unread non-FIFO RBR does not set OE.
 These error fields clear on an LSR read. Capture the status once for the
 character being serviced; repeated diagnostic reads can consume error evidence.
 The generated map specifies the status fields and their access side effects.

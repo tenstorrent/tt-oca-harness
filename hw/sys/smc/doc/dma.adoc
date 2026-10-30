@@ -146,7 +146,8 @@ between consecutive row starts; source and destination increments are independen
 The frontend casts register values to these effective widths: upper bits are
 discarded, not validated as an out-of-range access. Program unused upper bits
 as zero and ensure all row addresses and lengths fit the permitted address
-range. Address stepping uses the effective address width.
+range. Row start addresses are formed modulo 2^56^: a row whose start address
+passes 2^56^ is issued at the wrapped address, with no error.
 
 === Linear and Two-Dimensional Copies
 
@@ -209,7 +210,11 @@ of the Programmer's Guide gives the submission and completion sequence.
 |Indication |Meaning
 |`STATUS_0[7:0]` |Eight copies of frontend request readiness: `0xFF` means
 room to accept a command. These are not per-channel backend busy bits.
-|`STATUS_0[8]` / `[9]` |Bit 8 is the midend activity indication; bit 9 is zero.
+|`STATUS_0[8]` / `[9]` |Bit 8 is the midend activity indication. It reads 1
+while a submitted command waits in the request FIFO or is being expanded into
+rows, and falls when the backend accepts the last row of the last queued
+command. The backend can still be moving that row, so bit 8 can fall before
+`DONE_0` reaches the command's transfer ID. Bit 9 is zero.
 |`DONE_0` |Most recently retired transfer ID. No byte-progress or classified
 software error-status register is provided.
 |DMA interrupt |One-cycle pulse on a falling edge of combined frontend/backend

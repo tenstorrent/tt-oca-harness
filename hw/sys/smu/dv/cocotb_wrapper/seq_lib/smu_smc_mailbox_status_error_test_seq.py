@@ -10,10 +10,19 @@ Outbound mailbox 0 over the SMC fabric JTAG2AXI bridge: STATUS live flags agains
 the empty-read and full-write SLVERR responses with their error flags, ERROR_FLAGS clear on read,
 the error interrupt enable and acknowledge on lane 0 of smc_ext_mailbox_interrupts_o, and SLVERR
 on writes to STATUS, READ_DATA, ERROR_FLAGS and IRQP. The lane-n = mailbox-n mapping is proven by
-smu_smc_mailbox_int_test.
+smu_smc_mailbox_int_test. The three push words are drawn from the seed; STATUS is read after
+each of the first two pushes, so both levels are read in every run. After the full-write
+error the two pushed words are read back through the pair-0 inbound aperture's READ_DATA
+(architecture.adoc, Paired FIFOs: within a pair the inbound aperture reads the FIFO the
+outbound aperture writes) and compared, a third read answers the empty-read SLVERR with
+0xFEEDDEAD, so the refused third word was not enqueued, then the two words are pushed again
+and STATUS read full, so the flush later discards a full FIFO; the third word's value is
+printed.
 """
 
 from __future__ import annotations
+
+import random
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -40,6 +49,8 @@ IRQS = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR")
 IRQEN = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR")
 IRQP = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR")
 CTRL = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_BASE_ADDR")
+# The inbound aperture of pair 0 reads the FIFO the outbound aperture writes.
+INBOUND_READ_DATA = smc_addr("SMC_TOP_SMC_MAILBOX_INBOUND_MAILBOX_0_READ_DATA_BASE_ADDR")
 
 ST_EMPTY = mailbox_u32("AXIL_MAILBOX__STATUS__EMPTY_bm")
 ST_FULL = mailbox_u32("AXIL_MAILBOX__STATUS__FULL_bm")
@@ -47,6 +58,7 @@ ST_WTHRESH = mailbox_u32("AXIL_MAILBOX__STATUS__WRITE_LEVEL_ABOVE_THRESH_bm")
 IRQ_EIRQ = mailbox_u32("AXIL_MAILBOX__IRQS__EIRQ_bm")
 
 EMPTY_READ_DATA = 0xFEED_DEAD
+FIFO_DEPTH = 2
 J2A_POLL = 128
 LANE_BOUND = 2000
 MASK32 = 0xFFFF_FFFF
@@ -65,6 +77,10 @@ class smu_smc_mailbox_status_error_test_seq:
         self.j2a_last = "none"
         self.j2a_expired = False
         self.sites: list[tuple[str, str, str, str]] = []
+        self.seed = test.random_seed()
+        self.rng = random.Random(self.seed)
+        self.words = [self.rng.getrandbits(32) for _ in range(FIFO_DEPTH + 1)]
+        self.drawn = f"drawn words={[f'0x{w:08x}' for w in self.words]}"
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -144,6 +160,7 @@ class smu_smc_mailbox_status_error_test_seq:
         sb = self.test.env.scoreboard
 
         # S1 SETUP
+        self._log(f"SEED: RANDOM_SEED={self.seed} {self.drawn}")
         await self.cfg.reset_done.wait()
         self._mark("S1", "SETUP: reset_done, primary reset released, TAP reset, IDCODE, J2A gate")
         primary = smc_primary_reset(dut)
@@ -179,18 +196,16 @@ class smu_smc_mailbox_status_error_test_seq:
             evidence="MBX_ERR_READ_EMPTY",
         )
 
-        # S3 first push
-        self._mark("S3", "write WRITE_DATA = 0x11111111, read STATUS")
-        st_w1 = await self._wr("one_word_status.WRITE_DATA", WRITE_DATA, 0x1111_1111)
-        _, status1 = await self._rd("one_word_status.STATUS", STATUS)
-
-        # S4 second push
-        self._mark("S4", "write WRITE_DATA = 0x22222222, read STATUS")
-        st_w2 = await self._wr("two_words_full.WRITE_DATA", WRITE_DATA, 0x2222_2222)
-        _, status2 = await self._rd("two_words_full.STATUS", STATUS)
+        # S3, S4: the first two drawn words, STATUS read after each push
+        levels = []
+        for n, word in enumerate(self.words[:FIFO_DEPTH], 1):
+            cell = "one_word_status" if n == 1 else "two_words_full"
+            self._mark(f"S{n + 2}", f"push {n}: write WRITE_DATA = 0x{word:08x}, read STATUS")
+            levels.append(await self._wr(f"{cell}.WRITE_DATA", WRITE_DATA, word))
+            levels.append((await self._rd(f"{cell}.STATUS", STATUS))[1])
         sb.expect_eq(
-            "CHK-MBX-STATUS-LEVELS (push1 status, STATUS, push2 status, STATUS)",
-            (st_w1, status1, st_w2, status2),
+            f"CHK-MBX-STATUS-LEVELS (push1 status, STATUS, push2 status, STATUS) {self.drawn}",
+            tuple(levels),
             (
                 J2A_STATUS_SUCCESS,
                 ST_EMPTY | ST_WTHRESH,
@@ -201,20 +216,49 @@ class smu_smc_mailbox_status_error_test_seq:
         )
 
         # S5 write to full
-        self._mark("S5", "write WRITE_DATA = 0x33333333 to the full FIFO")
-        st_w3 = await self._wr("write_while_full.WRITE_DATA", WRITE_DATA, 0x3333_3333)
+        self._mark("S5", f"write WRITE_DATA = 0x{self.words[FIFO_DEPTH]:08x} to the full FIFO")
+        st_w3 = await self._wr("write_while_full.WRITE_DATA", WRITE_DATA, self.words[FIFO_DEPTH])
         _, err5 = await self._rd("write_while_full.ERROR_FLAGS", ERROR_FLAGS)
         _, irqs5 = await self._rd("write_while_full.IRQS", IRQS)
         _, status5 = await self._rd("write_while_full.STATUS", STATUS)
         sb.expect_eq(
-            "CHK-MBX-ERR-WRITE-FULL (status, error_flags, irqs_eirq, STATUS)",
+            f"CHK-MBX-ERR-WRITE-FULL (status, error_flags, irqs_eirq, STATUS) {self.drawn}",
             (st_w3, err5, (irqs5 & IRQ_EIRQ) != 0, status5),
             (J2A_STATUS_SLVERR, 0x2, True, ST_EMPTY | ST_FULL | ST_WTHRESH),
             evidence="MBX_ERR_WRITE_FULL",
         )
 
-        # S6 clear on read
-        self._mark("S6", "read ERROR_FLAGS a second time, read IRQS")
+        # S6 the pushed words through the inbound aperture, the empty read, then the refill
+        self._mark("S6", "read inbound READ_DATA three times: the pushed words, then empty; refill")
+        back = []
+        for n in (1, 2, 3):
+            back.extend(await self._rd(f"inbound_readback.READ_DATA_{n}", INBOUND_READ_DATA))
+        # The third read meets a drained FIFO; its answer is the empty-read result of
+        # interface.adoc, Access Results.
+        refill = []
+        for n, word in enumerate(self.words[:FIFO_DEPTH], 1):
+            refill.append(await self._wr(f"refill.WRITE_DATA_{n}", WRITE_DATA, word))
+        _, status6 = await self._rd("refill.STATUS", STATUS)
+        sb.expect_eq(
+            f"CHK-MBX-STATUS-LEVELS (inbound READ_DATA status, word, status, word, status, "
+            f"data; refill status 1, 2; STATUS) {self.drawn}",
+            (*back, *refill, status6),
+            (
+                J2A_STATUS_SUCCESS,
+                self.words[0],
+                J2A_STATUS_SUCCESS,
+                self.words[1],
+                J2A_STATUS_SLVERR,
+                EMPTY_READ_DATA,
+                J2A_STATUS_SUCCESS,
+                J2A_STATUS_SUCCESS,
+                ST_EMPTY | ST_FULL | ST_WTHRESH,
+            ),
+            evidence="MBX_STATUS_LEVELS",
+        )
+
+        # S7 clear on read
+        self._mark("S7", "read ERROR_FLAGS a second time, read IRQS")
         _, err6 = await self._rd("error_flags_read_clears.ERROR_FLAGS", ERROR_FLAGS)
         _, irqs6 = await self._rd("error_flags_read_clears.IRQS", IRQS)
         sb.expect_eq(
@@ -224,14 +268,14 @@ class smu_smc_mailbox_status_error_test_seq:
             evidence="MBX_ERR_CLEAR_ON_READ",
         )
 
-        # S7 error IRQ enable and acknowledge
-        self._mark("S7", "write IRQEN = 0x4, lane 0 rise, acknowledge IRQS, lane 0 fall")
+        # S8 error IRQ enable and acknowledge
+        self._mark("S8", "write IRQEN = 0x4, lane 0 rise, acknowledge IRQS, lane 0 fall")
         await self._wr("error_irq_ack_lane_drops.IRQEN", IRQEN, IRQ_EIRQ)
         _, irqp = await self._rd("error_irq_ack_lane_drops.IRQP", IRQP)
-        rose = await self._wait_lane(1, "S7_lane0_rise")
+        rose = await self._wait_lane(1, "S8_lane0_rise")
         await self._wr("error_irq_ack_lane_drops.IRQS_ack", IRQS, IRQ_EIRQ)
         _, irqs7 = await self._rd("error_irq_ack_lane_drops.IRQS", IRQS)
-        fell = await self._wait_lane(0, "S7_lane0_fall")
+        fell = await self._wait_lane(0, "S8_lane0_fall")
         sb.expect_eq(
             "CHK-MBX-ERR-IRQ-ACK (irqp_bit2, lane_rose, irqs_eirq_after, lane_fell)",
             ((irqp >> 2) & 1, rose, (irqs7 & IRQ_EIRQ) != 0, fell),
@@ -239,8 +283,8 @@ class smu_smc_mailbox_status_error_test_seq:
             evidence="MBX_ERR_IRQ_ACK",
         )
 
-        # S8 flush
-        self._mark("S8", "write CTRL = 0x1 (wflush), read STATUS, read IRQS")
+        # S9 flush
+        self._mark("S9", "write CTRL = 0x1 (wflush), read STATUS, read IRQS")
         await self._wr("flush_status_0x1_irqs_latched.CTRL", CTRL, 0x1)
         _, status8 = await self._rd("flush_status_0x1_irqs_latched.STATUS", STATUS)
         _, irqs8 = await self._rd("flush_status_0x1_irqs_latched.IRQS", IRQS)
@@ -251,13 +295,13 @@ class smu_smc_mailbox_status_error_test_seq:
             evidence="MBX_STATUS_FLUSH",
         )
 
-        # S9 write STATUS
-        self._mark("S9", "write STATUS = 0xF, read STATUS")
+        # S10 write STATUS
+        self._mark("S10", "write STATUS = 0xF, read STATUS")
         st9 = await self._wr("status_write_slverr.STATUS", STATUS, 0xF)
         _, status9 = await self._rd("status_write_slverr.STATUS_rb", STATUS)
 
-        # S10 other read-only writes
-        self._mark("S10", "write READ_DATA, ERROR_FLAGS, IRQP; read ERROR_FLAGS, IRQP")
+        # S11 other read-only writes
+        self._mark("S11", "write READ_DATA, ERROR_FLAGS, IRQP; read ERROR_FLAGS, IRQP")
         st10a = await self._wr("ro_writes_slverr.READ_DATA", READ_DATA, 0x1)
         st10b = await self._wr("ro_writes_slverr.ERROR_FLAGS", ERROR_FLAGS, 0x3)
         st10c = await self._wr("ro_writes_slverr.IRQP", IRQP, 0x7)
@@ -279,8 +323,8 @@ class smu_smc_mailbox_status_error_test_seq:
             evidence="MBX_RO_WRITES",
         )
 
-        # S11 timeout inventory
-        self._mark("S11", "TIMEOUT: bounded waits with last state")
+        # S12 timeout inventory
+        self._mark("S12", "TIMEOUT: bounded waits with last state")
         self.sites.insert(
             0,
             (
@@ -301,9 +345,9 @@ class smu_smc_mailbox_status_error_test_seq:
         sb.expect_eq(
             "CHK-TIMEOUT-PATHS sites",
             names,
-            ["j2a", "S7_lane0_rise", "S7_lane0_fall"],
+            ["j2a", "S8_lane0_rise", "S8_lane0_fall"],
         )
-        sb.expect_eq("CHK-TIMEOUT-PATHS j2a accesses", self.j2a_count, 27)
+        sb.expect_eq("CHK-TIMEOUT-PATHS j2a accesses", self.j2a_count, 33)
 
         # final state
         lane0 = self._sample(dut.ext_mailbox_interrupts_o, "ext_mailbox_interrupts_o") & 1

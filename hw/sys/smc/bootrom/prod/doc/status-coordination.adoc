@@ -68,6 +68,9 @@ It deliberately preserves register 15.
 |3 |SRAM protected |Defined by the interface but not set by the current ROM.
 |===
 
+Manifest ready means that register 8 has been published; it does not certify the offset.
+An invalid publication carries `0xFFFFFFFF`, and the SEP must reject that marker before it uses the offset.
+
 The published SRAM addresses are offsets from `0xC0060000`.
 The normal values in registers 13 and 14 describe `0xC0066400` through `0xC015AFFF`.
 

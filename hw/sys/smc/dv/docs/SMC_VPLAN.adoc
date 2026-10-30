@@ -36827,13 +36827,13 @@ that were changed.
 * Raising `T_R` and `T_F`, and the hold of the first START, are measured and printed with no
   expectation. Full-rate Standard-mode SCL is not run.
 * With `THIGH` and `TLOW` at 4 and every other field at 1 a transfer of START, address write and
-  STOP completes with one acknowledge and one STOP; four is the controller's floor, since its
-  stretch predictor needs `THIGH` of at least four and SCL low must outlast the output flop plus
-  the two-flop input synchronizer by a cycle before the controller releases SCL.
-* `i2c.rdl` states `THIGH` and `TLOW` "Must be `>= 2`". Whether 2 is legal or the description
-  has to follow the controller is an open ruling for the I2C owner, so transfer Y at `THIGH` and
-  `TLOW` of 2 runs after the graded minimum set and is logged (`OBS-I2C-WIRE-RDL-MIN`), completed
-  or not; nothing is graded on it until the ruling lands.
+  STOP completes with one acknowledge and one STOP. That setting is legal under `i2c.rdl`, which
+  states `THIGH` and `TLOW` "Must be `>= 2`", whichever way the open ruling on the smallest legal
+  value (#3404) lands, so it is the smallest setting the leaf grades; values between 2 and 4 are
+  not run.
+* Whether 2 is legal or the description has to follow the controller is that ruling, so transfer
+  Y at `THIGH` and `TLOW` of 2 runs after the graded minimum set and is logged
+  (`OBS-I2C-WIRE-RDL-MIN`), completed or not; nothing is graded on it until the ruling lands.
 
 *Test Procedure*:
 
@@ -36853,7 +36853,9 @@ that were changed.
 . Program set A3 (`TSU_STA`, `THD_STA` and `TSU_STO` raised by 8) and repeat, then program set A4
   (only `T_BUF` raised by 8) and repeat.
 . Program the minimum set, clear `INTR_STATE`, run transfer Y alone and require the START, the
-  acknowledge, exactly one STOP, `STATUS.HOSTIDLE` and `INTR_STATE.CMD_COMPLETE`.
+  acknowledge, exactly one STOP, `STATUS.HOSTIDLE` and `INTR_STATE.CMD_COMPLETE`; then program
+  `THIGH` and `TLOW` of 2 with every other field 1, run transfer Y alone and log the outcome
+  without a compare.
 . Compare the deltas against set A in order, print the checker lines, the ordered-fence line and
   the bounded waits.
 

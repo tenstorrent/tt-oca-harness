@@ -102,6 +102,10 @@ through `smu_axi_out`, every `smu_axi_in` transaction targets the SMC, and the
 aperture rules below do not apply. The `smu_axi_in` / `smu_axi_out` port types
 are the same in both configurations.
 
+The SMU AXI ports and crossbar carry 12-bit user fields on all five channels.
+The crossbar presents 6-bit transaction IDs to the SEP and SMC inbound
+subordinates.
+
 ifdef::backend-html5[]
 Connectivity is described in
 xref:ocah-docs:ROOT:architecture.adoc#smu-axi-crossbar[SMU AXI Crossbar];

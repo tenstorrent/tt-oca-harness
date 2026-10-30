@@ -104,7 +104,10 @@ import packet_def_pkg::*;
     parameter   RP2_AXI_DATA_WD             = 512,
     parameter   RP3_AXI_DATA_WD             = 512,
 
-    parameter   AXI_PEER_DIE_MAX_DATA_WD    = 1024,
+    // The widest data message AoU defines (WriteData1024/ReadData1024). The receiver
+    // cannot know the remote die's AXI width, so the RX data path is sized for the
+    // maximum and this is not an integration parameter.
+    localparam  AXI_PEER_DIE_MAX_DATA_WD    = 1024,
 
     parameter   APB_ADDR_WD                 = 32,
     parameter   APB_DATA_WD                 = 32,
@@ -306,6 +309,7 @@ import packet_def_pkg::*;
 `endif
     //Interface for Error Handler
     output                                          INT_REQ_LINKRESET,
+    output                                          INT_FDI_LINK_DOWN,
 
     output                                          INT_SI0_ID_MISMATCH,
     output                                          INT_MI0_ID_MISMATCH,
@@ -321,6 +325,9 @@ import packet_def_pkg::*;
     output                                          O_AOU_ACTIVATE_ST_DISABLED,
     output                                          O_AOU_ACTIVATE_ST_ENABLED,
     output                                          O_AOU_REQ_LINKRESET,
+    // AOU_CON0.AOU_SW_RESET in effect: AOU_CORE is held in reset this cycle.
+    // The FDI bringup controller releases a LinkError hold on it.
+    output                                          O_SW_RESET,
 
     //DFT signal
     input                                           TIEL_DFT_MODESCAN
@@ -438,6 +445,7 @@ import packet_def_pkg::*;
 
     logic                                   w_int_early_resp_err;
     logic                                   w_int_early_wdt_err;
+    logic                                   w_int_fdi_link_down;
     logic                                   w_int_activate_start_level;
     logic                                   w_int_deactivate_start_level;
 
@@ -540,8 +548,6 @@ import packet_def_pkg::*;
         .RP1_AGG_WCH_FIFO_DEPTH     ( RP1_AGG_WCH_FIFO_DEPTH    ), 
         .RP2_AGG_WCH_FIFO_DEPTH     ( RP2_AGG_WCH_FIFO_DEPTH    ), 
         .RP3_AGG_WCH_FIFO_DEPTH     ( RP3_AGG_WCH_FIFO_DEPTH    ),
-
-        .AXI_PEER_DIE_MAX_DATA_WD   ( AXI_PEER_DIE_MAX_DATA_WD  ),
 
         .APB_ADDR_WD                ( APB_ADDR_WD               ),
         .APB_DATA_WD                ( APB_DATA_WD               ),
@@ -755,6 +761,7 @@ import packet_def_pkg::*;
 
         .O_INT_ACTIVATE_START               ( w_int_activate_start_level        ),
         .O_INT_DEACTIVATE_START             ( w_int_deactivate_start_level      ),
+        .O_INT_FDI_LINK_DOWN                ( w_int_fdi_link_down               ),
 
         .I_INT_FSM_IN_ACTIVE                ( I_INT_FSM_IN_ACTIVE               ),
         .O_AOU_ACTIVATE_ST_DISABLED         ( O_AOU_ACTIVATE_ST_DISABLED        ),
@@ -767,6 +774,12 @@ import packet_def_pkg::*;
         .O_AOU_RX_AXI_S_RVALID_BLOCKED      ( O_AOU_RX_AXI_S_RVALID             )
     );
 //----------------------------------------------------------------------------
+    // The RX FIFOs share the core reset (I_RESETN and AOU_SW_RESET). Every
+    // message they hold belongs to a transaction the core tracks, so a reset
+    // that clears the core must clear them too: an entry kept across
+    // AOU_SW_RESET would hold I_AOU_RX_FIFO_PENDING and block the next
+    // activation, be presented on an AXI port as part of the wrong
+    // transaction, and return credit on top of the full re-advertisement.
     genvar i;
     generate
         for(i = 0; i < RP_COUNT; i++) begin : gen_aou_fifo_rp
@@ -795,7 +808,7 @@ import packet_def_pkg::*;
             ) u_aou_fifo_rp
             (
                 .I_CLK                              ( I_CLK                                 ),
-                .I_RESETN                           ( I_RESETN                              ),
+                .I_RESETN                           ( w_DFTED_sw_resetn                     ),
 
                 .I_WR_REQ_FIFO_SVALID               ( w_wr_req_fifo_svalid[i]               ),
                 .I_WR_REQ_FIFO_SDATA                ( w_wr_req_fifo_sdata[i]                ),
@@ -852,9 +865,11 @@ import packet_def_pkg::*;
     assign INT_ACTIVATE_START   = w_int_activate_start_level;
     assign INT_EARLY_RESP_ERR   = w_int_early_resp_err;
     assign INT_EARLY_WDT_ERR    = w_int_early_wdt_err;
+    assign INT_FDI_LINK_DOWN    = w_int_fdi_link_down;
     assign INT_REQ_LINKRESET    = w_int_aou_req_linkreset;
     assign INT_SI0_ID_MISMATCH  = w_axi_slv_rid_mismatch_error || w_axi_slv_bid_mismatch_error;
     assign INT_MI0_ID_MISMATCH  = w_err_info_rid_mismatch_err || w_err_info_split_bid_mismatch_err;
     assign O_AOU_REQ_LINKRESET  = w_int_aou_req_linkreset;
+    assign O_SW_RESET           = r_sw_reset;
 
 endmodule
