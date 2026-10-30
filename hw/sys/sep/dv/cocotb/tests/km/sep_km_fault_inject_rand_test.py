@@ -1508,6 +1508,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         frames = await self._drain()
         high, answered, _wf = await self._trap_window(pre.w_clk)
         status = self._csr_status()
+        # "Interrupt Priority": only sources with status and enable set rank.
+        enable = self.rd_known(top.km_csr_irq_enable_o) & mask
         words_nz, words_unk, ctrl_nz = self._kpv()
         watch.stop()
         await RisingEdge(top.clk_i)
@@ -1527,9 +1529,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             frames=len(frames),
             control_err_o=control_err,
             fired=fired,
+            enable=f"0x{enable:03x}",
         )
         ok = (
             fired == 1
+            and enable == mask
             and pre.quiet_high == 0
             and one
             and frames[0].is_fault(KM_RESP_UNRECOVERABLE_FAULT, exp)
@@ -2152,14 +2156,16 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         watch.start()
         await self._send(KM_CMD_KEY_GENERATE, [DRBG_REQ_WORDS - 1, KEYGEN_DEST])
         rose = await self._wait_rise(watch, "DRBG stall")
-        # Control: AXI_SLVERR is pending with DRBG_ERR, so the reported code
-        # shows that drbg_err ranks above axi_slverr.
+        # Control: AXI_SLVERR is pending and enabled with DRBG_ERR, so the
+        # reported code shows that drbg_err ranks above axi_slverr.
         both = drbg_bit | (1 << pl.IRQ_BIT["axi_slverr"])
         irq_fault = self._csr_status()
+        irq_en = self.rd_known(top.km_csr_irq_enable_o)
         self.chk.ctrl(
             "DRBG-STALL-BOTH",
-            rose and irq_fault & both == both,
+            rose and irq_fault & both == both and irq_en & both == both,
             irq_status=_hx(irq_fault),
+            irq_enable=_hx(irq_en),
             required=_hx(both),
             err_o=int(rose),
         )
