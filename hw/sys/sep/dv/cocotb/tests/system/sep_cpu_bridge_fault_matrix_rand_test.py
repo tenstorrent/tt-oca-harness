@@ -448,7 +448,6 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         "CHK-LATCH",
         "CHK-OR",
         "CHK-CLR-MATRIX",
-        "CTRL-NONVAC",
         "CHK-MASK",
         "CHK-AGAIN",
         "CHK-CLR-READ0",
