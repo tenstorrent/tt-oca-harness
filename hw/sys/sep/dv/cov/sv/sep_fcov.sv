@@ -10685,9 +10685,11 @@ module sep_fcov (
   // the pending cells of the other families. A FAIL or CTRL-MISSING line
   // writes bit ScpDrop, which drops the pending cells; a reset drops them
   // too. A window close keeps them: the leaf closes the window for its
-  // housekeeping steps inside an instance. cp_ready_x_active and
-  // cp_depth_counter are not credited under owner 410 (no check of that leaf
-  // owns them). It gates a sample; it is never a DUT value and drives nothing.
+  // housekeeping steps inside an instance. Under owner 410,
+  // cp_ready_x_active and the CMDQD cells of cp_depth_counter take the
+  // {READY, ACTIVE, CMDQD} of the last graded STATUS read before the release
+  // (families ScpFQf and ScpFQd); no other owner-410 state samples them. It
+  // gates a sample; it is never a DUT value and drives nothing.
   int unsigned spi_csr_irq_pass = 0;
   // Graded-read mark of owner 410. The leaf writes 1 immediately before a
   // read whose value a check of the instance compares and 0 after that read.
@@ -10719,7 +10721,9 @@ module sep_fcov (
   localparam int ScpFCbz = 14;  // cp_cmdbusy_cell
   localparam int ScpFSz = 15;  // cp_spien0_cmd_write and cp_spien_hold_run
   localparam int ScpFDom = 16;  // cp_sw_rst_domain and cp_sw_rst_hold
-  wire [16:0] scp_fam = 17'(spi_csr_irq_pass >> ScpFam);
+  localparam int ScpFQf = 17;  // cp_ready_x_active and the CMDQD cell of cp_depth_counter
+  localparam int ScpFQd = 18;  // the CMDQD cell of cp_depth_counter
+  wire [18:0] scp_fam = 19'(spi_csr_irq_pass >> ScpFam);
   logic [1:0]  scp_q = '0;
   logic [23:0] scp_sec = '0;    // cp_event_src_x_en_x_cond {source, enable, level}
   logic [15:0] scp_ies = '0;    // cp_intr_en_x_state {INTR_ENABLE, INTR_STATE}
@@ -10741,6 +10745,8 @@ module sep_fcov (
   logic [1:0]  scp_hr = '0;     // cp_spien_hold_run
   logic [2:0]  scp_dom = '0;    // cp_sw_rst_domain
   logic [1:0]  scp_hold = '0;   // cp_sw_rst_hold
+  logic        scp_qs_v = 1'b0; // a graded STATUS read is held in scp_qs
+  logic [3:0]  scp_qs = '0;     // {READY, ACTIVE, CMDQD occupancy class} of that read
   // A source level change and an SPI_EVENT edge wait for the next graded
   // read: a STATUS read for a source cell, an INTR_STATE read for an edge
   // cell. That read holds the cells whose level it shows in scp_sec / scp_ea
@@ -10828,6 +10834,7 @@ module sep_fcov (
       scp_hr = '0;
       scp_dom = '0;
       scp_hold = '0;
+      scp_qs_v = 1'b0;
     end else if (spi_csr_irq_pass[ScpRelease] && !scp_q[ScpRelease]) begin
       for (int v = 0; v < 32; v++) begin
         if (scp_fam[ScpFSec] && v < 24 && scp_sec[v])
@@ -10883,6 +10890,12 @@ module sep_fcov (
                                          1'b0, 1'b1);
       if (scp_fam[ScpFSz] && scp_sz)
         u_sep_spi_illegal_access_cg.sample(4'd0, 1'b0, 1'b0, 1'b0, 1'b1);
+      if (scp_fam[ScpFQf] && scp_qs_v)
+        u_sep_spi_fifo_status_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, scp_qs[3:2], 1'b1, 1'b0, 1'b0, 1'b0,
+                                        1'b0, 3'd0, 1'b0, 5'd0, 1'b0);
+      if ((scp_fam[ScpFQf] || scp_fam[ScpFQd]) && scp_qs_v)
+        u_sep_spi_fifo_status_cg.sample(3'd0, 1'b0, 2'd0, 1'b0, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,
+                                        3'd0, 1'b0, {2'd0, scp_qs[2], scp_qs[1:0]}, 1'b1);
       sec_chg = '0;
       ea_pend = '0;
       uf_pend = 1'b0;
@@ -10905,6 +10918,7 @@ module sep_fcov (
       scp_hr = '0;
       scp_dom = '0;
       scp_hold = '0;
+      scp_qs_v = 1'b0;
     end
   end
 
@@ -11028,6 +11042,12 @@ module sep_fcov (
       // only when no other source that EVENT_ENABLE selects reads high, so
       // SPI_EVENT at that read depends on the cell's source alone.
       if (sr_status && scp_rd && own_spi_csr) begin
+        scp_qs_v = 1'b1;
+        scp_qs = {(sr_status_d & SPI_CONTROLLER_STATUS_READY_MASK) != 32'h0,
+                  (sr_status_d & SPI_CONTROLLER_STATUS_ACTIVE_MASK) != 32'h0,
+                  occ_cls(8'((sr_status_d & SPI_CONTROLLER_STATUS_CMDQD_MASK) >>
+                             SPI_CONTROLLER_STATUS_CMDQD_SHIFT),
+                          (sr_status_d & SPI_CONTROLLER_STATUS_READY_MASK) == 32'h0)};
         for (int i = 0; i < 6; i++) begin
           if (sec_chg[i] && ((sr_src & s_evten & ~(6'd1 << i)) == 6'd0))
             scp_sec[{3'(i), s_evten[i], sr_src[i]}] = 1'b1;
@@ -42809,7 +42829,10 @@ module sep_fcov (
   logic kq_prev_ff = 1'b0;  // the last frame that passed the sequence check had 0xFF
   logic [7:0] kq_prev_hseq = '0;  // the last RESP_CMD header sequence
   logic kq_prev_hv = 1'b0;
-  logic kq_boot_cold = 1'b1;  // the KM reset in progress or last released is a cold reset
+  // The KM reset in progress or last released is a cold reset. A cold reset
+  // holds the warm reset low past the cold release, so only a warm fall with
+  // the cold reset high marks a warm boot.
+  logic kq_boot_cold = 1'b1;
   logic kq_rel_first = 1'b0;  // no outbound header read since the KM release
   logic [7:0] kq_scr_wr = '0;  // SCRAMBLER_KEY writes since the KM release
   logic kq_cr_arm = 1'b0;  // a counter-reset cause waits for its first accepted command
@@ -42841,6 +42864,11 @@ module sep_fcov (
   logic [10:0] kq_sil = '0;  // clocks of silence after a frame sent while bit 30 is high
   logic kq_unrec_q = 1'b0;
   logic [11:0] kq_st_q = '0;
+  // IRQ_STATUS on the clock bit 30 rises. The halt trap sets wipe_state
+  // (rank 0) one clock later, so the winner of an unrecoverable report is
+  // decoded from this copy, not from the status at the host read. A report
+  // that ends before the clock after the rise decodes the live status.
+  logic [11:0] kq_st_rep = '0;
   // Fatal episode: a wipe edge or a fatal IRQ_STATUS rise, to the bit 30
   // rise.
   logic kq_ep_on = 1'b0, kq_ep_wipe = 1'b0, kq_ep_kvclr = 1'b0, kq_ep_fl = 1'b0;
@@ -42874,7 +42902,7 @@ module sep_fcov (
     logic has_arg, valid, rcmd, jump, gw, ofd;
     logic [2:0] ff, cls;
     logic [3:0] pr, r, rb;
-    logic [11:0] st, hi_m, lo_m, ranked;
+    logic [11:0] st, sw, hi_m, lo_m, ranked;
     logic [8:0] kv;
     logic [7:0] aw, awc;
     logic [9:0] off;
@@ -42886,6 +42914,7 @@ module sep_fcov (
     {awc, aw} = kq_bank_aw(km_key_aw_valid_i, km_key_aw_ready_i, km_key_aw_addr_i);
     kq_unrec_q <= kq_unrec;
     kq_st_q <= st;
+    if (!kq_unrec_q && kq_unrec) kq_st_rep <= st;
     kq_rec_q <= kq_recov;
     kq_mbx_fl_q <= km_mbx_flush_i;
     jump = 1'b0;
@@ -42895,7 +42924,7 @@ module sep_fcov (
     if (!km_rst_cold_n) begin
       kq_boot_cold <= 1'b1;
       kq_loaded <= 1'b0;
-    end else if (!km_rst_warm_n) kq_boot_cold <= 1'b0;
+    end else if (km_warm_fall) kq_boot_cold <= 1'b0;
     if (km_warm_fall) kq_rec_pre <= kq_rec_q;
     if (kq_held) begin
       kq_rel_first <= 1'b1;
@@ -42953,13 +42982,15 @@ module sep_fcov (
         if ((kq_ev_rid == KqRespReady) && (kq_ev_plen == 8'd0))
           u_sep_km_command_cg.sample(5'd2, 16'd4);
       end
+      // Every return code (cp_ret_code). CMD_RESP echoes the command ID, and
+      // the invalid-command code answers an ID that maps to no command, so
+      // this sample takes every ID.
+      if (km_own_cp && rcmd && (kq_ev_w2[31:8] == 24'h0)) u_sep_km_command_cg.sample(5'd1, 16'(rc));
       if (rcmd && kq_id_valid(id) && (kq_ev_w2[31:8] == 24'h0)) begin
-        // Every command by outcome (cp_cmd_x_outcome), every return code
-        // (cp_ret_code), the CMD_STAT word (cp_stat_recov) and the response
+        // Every command by outcome (cp_cmd_x_outcome), the CMD_STAT word (cp_stat_recov) and the response
         // length of the key commands (cp_nx_resp_payload).
         if (km_own_cp || km_own_ho || km_own_br)
           u_sep_km_command_cg.sample(5'd0, 16'({kq_id_idx(id), rc != 8'h00}));
-        if (km_own_cp) u_sep_km_command_cg.sample(5'd1, 16'(rc));
         if ((km_own_cp || km_own_fi) && (id == KqCmdStat) && (rc == 8'h00) && has_arg &&
             (arg[31:1] == 31'h0))
           u_sep_km_command_cg.sample(5'd3, 16'(arg[0]));
@@ -43185,8 +43216,9 @@ module sep_fcov (
             if (k < r) hi_m[rb] = 1'b1;
             if (k > r) lo_m[rb] = 1'b1;
           end
-          if (st[kq_rank_bit(r)] && ((st & hi_m) == 12'h0))
-            u_sep_km_kmcsr_status_cg.sample(5'd9, 16'({r, (st & lo_m) != 12'h0}));
+          sw = kq_unrec_q ? kq_st_rep : st;
+          if (sw[kq_rank_bit(r)] && ((sw & hi_m) == 12'h0))
+            u_sep_km_kmcsr_status_cg.sample(5'd9, 16'({r, (sw & lo_m) != 12'h0}));
           if (kq_unrec && st[kq_rank_bit(r)]) u_sep_km_fault_report_cg.sample(5'd9, 16'(r));
         end
         if (km_own_ho && kq_ho_pend && !kq_ho_path && !kq_ho_rcmd) begin
@@ -43198,12 +43230,13 @@ module sep_fcov (
       // The shared-key notice while the KM runs (cp_fr_isr_disposition).
       if (km_own_fi && (kq_ev_rid == KqRespSkReady) && (kq_ev_plen == 8'd0) && !kq_unrec)
         u_sep_km_fault_report_cg.sample(5'd9, 16'd11);
-      // OTP-change informational handler. The owner writes km_otp_chg_pass
-      // only after the sticky bit has cleared and the main loop answers.
-      if (km_own_oc && (km_otp_chg_pass != 0) && !kq_otp_chg_q)
-        u_sep_km_fault_report_cg.sample(5'd9, 16'd12);
-      kq_otp_chg_q <= (km_otp_chg_pass != 0);
     end
+
+    // OTP-change informational handler. The owner writes km_otp_chg_pass
+    // only after the sticky bit has cleared and the main loop answers.
+    if (km_own_oc && (km_otp_chg_pass != 0) && !kq_otp_chg_q)
+      u_sep_km_fault_report_cg.sample(5'd9, 16'd12);
+    kq_otp_chg_q <= (km_otp_chg_pass != 0);
 
     // ---- host side: SEP_WRITE_DATA accepted (cp_nx_permitted_channel) ----
     if (km_own_cp && kq_wr_data) u_sep_km_secret_nonexposure_cg.sample(5'd3, 16'd0);
@@ -43268,6 +43301,9 @@ module sep_fcov (
       kq_ep_sr_pre <= '0;
       kq_ep_sr <= '0;
     end else if (kq_ep_on) begin
+      // Firmware cleared every ranked source with bit 30 low: the episode was
+      // not fatal (the fatal path ends in the halt), so it ends with no sample.
+      if (!kq_unrec && ((kq_st_q & ranked) != 12'h0) && ((st & ranked) == 12'h0)) kq_ep_on <= 1'b0;
       if ((kq_ep_kv0 != 9'h0) && (kv == 9'h0)) kq_ep_kvclr <= 1'b1;
       if (!kq_mbx_fl_q[0] && (km_mbx_flush_i[0] === 1'b1)) kq_ep_fl <= 1'b1;
       if (!kq_ep_rep && kq_ep_fl && (km_mbx_flush_i[0] !== 1'b1) && ofd) begin

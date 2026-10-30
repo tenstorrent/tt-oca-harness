@@ -23,7 +23,7 @@ its shadow"; ``hw/ip/efuse/doc/architecture.adoc`` (Access Permissions and Secur
 states that lock state is enforced by the eFuse guard.
 
 The seed draws one leaf kind and its t=0 image through ``sep_efuse_plan.plan``
-(the pre-sim hook stages the same image): the lock leg 4, the single-bit image 1,
+(the pre-sim hook stages the same image): the lock leg 6, the single-bit image 1,
 the exempt cell 1, the order cell 2 and the chain leg 2.
 
 Checkers:
@@ -76,7 +76,12 @@ Checkers:
                     ``sep_efuse_map.adoc`` ``LC_STATE``).
   CHK-LOCK-ORDER    order cell: a shadow write lands only before the lock, the lock bit
                     survives a write of 0 to ``LOCKS``, a later write of a third bit
-                    leaves the shadow unchanged.
+                    leaves the shadow unchanged. The specification names no response
+                    class for a blocked field write or a zero write to ``LOCKS``, so
+                    the line logs each response as context only. The AXI driver
+                    fails the test when a write does not complete
+                    (``hw/common/dv/vip/ocah_axi_vip/cocotb/ocah_axi_master_sequence.py``
+                    raises on a write timeout).
   CHK-LOCK-SLOT0-STORE order cell, after CHK-LOCK-ORDER: a write of ``LOCKS`` bits [1:0]
                     (slot 0, ``LC_STATE``) reads both bits 1, and a later write of 0
                     leaves both 1 (``sep_efuse_map.rdl`` ``LOCKS``, woset). The effect
@@ -123,9 +128,9 @@ the second JTAG read pair (issued only after the first pair passed with the wind
 closed) after its own CHK-LOCK-JTAG-RD line. An event outside a graded step is
 dropped.
 
-Seed-dependent kinds: the plan draws one kind per seed (lock leg 4, single bit 1,
-exempt 1, order 2, chain 2 of 10). Seed 5 draws the order cell, seed 8 and seed 47
-the exempt cell (``LC_STATE`` bit 3 and bit 0).
+Seed-dependent kinds: the plan draws one kind per seed (lock leg 6, single bit 1,
+exempt 1, order 2, chain 2 of 12). Seed 2 draws the lock leg, seed 3 the order cell,
+seed 44 and seed 50 the exempt cell (``LC_STATE`` bit 3 and bit 0).
 
 Draws appended to the plan stream after ``plan`` (no earlier draw or staged value
 moves): ``jtag_rlock_twin``, ``jtag_rlock_locked``, ``uid_rlock_slot`` and
@@ -193,6 +198,7 @@ from env.sep_efuse_test_lib import (
     probe_words,
     set_shadow_golden,
 )
+from env.sep_fabric_common import resp_name
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -1106,11 +1112,16 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         ok = True
         trace = []
 
+        blocked_resps: list[int] = []
+        zero_resps: list[int] = []
+
         async def _write_field(word: int, bit: int) -> None:
             value = list(staged)
             value[word] |= 1 << bit
             for k in range(n):
-                await self._wr(shadow_addr(name, k), value[k], shadow=True)
+                resp = await self._wr(shadow_addr(name, k), value[k], shadow=True)
+                if locked:
+                    blocked_resps.append(resp)
 
         for action in perm:
             if action == "lock":
@@ -1133,8 +1144,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                 trace.append(f"shadow={_hexw(shadow)}/exp={_hexw(gold)}/locks=0x{locks:016x}")
 
         # Step 11: a zero write to LOCKS keeps the lock; a third-bit write is blocked.
-        await self._wr(shadow_addr("LOCKS", 0), 0, shadow=True)
-        await self._wr(shadow_addr("LOCKS", 1), 0, shadow=True)
+        for k in range(2):
+            zero_resps.append(await self._wr(shadow_addr("LOCKS", k), 0, shadow=True))
         locks_after = await self._locks()
         lock_after_zero = (locks_after >> lock_bit) & 1
         before_c = self._probe(name)
@@ -1162,6 +1173,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             lock_bit=lock_bit,
             bits=f"a={wa}.{ba},b={wb}.{bb},c={wc}.{bc}",
             trace=",".join(trace),
+            blocked_wr_resp="/".join(resp_name(r) for r in blocked_resps),
+            locks_zero_resp="/".join(resp_name(r) for r in zero_resps),
         )
         await self._pass(tag, ok)
         await self._slot0_store(locks_after)

@@ -403,7 +403,7 @@ firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
 timeout_sec = 5400
-tags = ["km", "efuse", "crossbar", "subsystem"]
+tags = ["km", "efuse", "crossbar", "subsystem", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # The leaf resets the KM while its CPU polls the bus. The raised Verilator error
@@ -513,7 +513,7 @@ firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 1
 timeout_sec = 10800
-tags = ["km", "mailbox", "recovery", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "mailbox", "recovery", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
@@ -601,7 +601,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_default" }
 seed = 1
 reseed = 3
 timeout_sec = 10800
-tags = ["km", "mailbox", "reset", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "mailbox", "reset", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_default.rom.parhex", "+verilator+error+limit+10000"]
@@ -615,7 +615,7 @@ firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 1
 timeout_sec = 7200
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex", "+verilator+error+limit+10000"]
@@ -627,7 +627,7 @@ module = "km.sep_km_otp_change_irq_test"
 firmware = { name = "rom_main", mode = "km_rom_main_otp_change" }
 seed = 1
 timeout_sec = 7200
-tags = ["km", "irq", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "irq", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_otp_change.rom.parhex", "+verilator+error+limit+10000"]
@@ -656,7 +656,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=1"]
@@ -670,7 +670,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]
@@ -684,7 +684,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=3"]
@@ -698,7 +698,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=4"]
@@ -712,7 +712,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=5"]
@@ -726,7 +726,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=6"]
@@ -740,7 +740,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=7"]
@@ -754,7 +754,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=8"]
@@ -768,7 +768,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=9"]
@@ -782,7 +782,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=10"]
@@ -796,7 +796,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=11"]
@@ -810,7 +810,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=12"]
@@ -824,7 +824,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=13"]
@@ -838,7 +838,7 @@ firmware = { name = "rom_main", mode = "km_rom_main_unrec" }
 seed = 1
 reseed = 1
 timeout_sec = 14400
-tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "fault", "vault", "rand", "subsystem", "entropy", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main_unrec.rom.parhex", "+verilator+error+limit+10000", "+sep_shard=14"]

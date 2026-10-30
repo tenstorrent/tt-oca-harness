@@ -1097,7 +1097,7 @@ so a shortened list cannot pass the routing compare silently.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Functional coverage*: `sep_axi_decode_cg.cp_id_return`, owner window 759 from after CHK-ID-PRIME to CHK-ID-TOP. A FAIL closes the window before the leaf fails. `rid_matches_word_out_of_order` is not graded (see OBS-ID-RETURN-ORDER).
+*Functional coverage*: `sep_axi_decode_cg.cp_id_return`, owner window 759 from after CHK-ID-PRIME to CHK-ID-TOP. A FAIL closes the window before the leaf fails. `rid_matches_word_out_of_order` is graded and stays at 0: the reads of the owner all go to one in-order AXI4-Lite target, and no specification text states whether SEP may return responses on different IDs out of AR order, so no stimulus targets it (see OBS-ID-RETURN-ORDER).
 
 *Scope*: the SEP slave port only, whose `AxID` is three bits wide. The wider
 inbound port and write-response (`BID`) routing are not claimed here.

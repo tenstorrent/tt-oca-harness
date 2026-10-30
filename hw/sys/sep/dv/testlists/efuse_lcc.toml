@@ -391,7 +391,7 @@ module = "lcc.sep_lcc_feat_ctrl_state_matrix_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem", "sep_spec_log"]
+tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -453,7 +453,7 @@ module = "efuse.sep_efuse_lock_slot_matrix_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log"]
+tags = ["efuse", "lock", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
