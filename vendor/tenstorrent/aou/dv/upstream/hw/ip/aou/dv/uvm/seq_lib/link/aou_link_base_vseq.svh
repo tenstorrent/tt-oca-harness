@@ -159,12 +159,12 @@ class aou_link_base_vseq extends aou_base_test_seq;
       `uvm_error(get_type_name(), "T1-L06: no INT_DEACTIVATE_START after a remote DeactivateReq")
   endtask
 
-  // A deactivation can leave the DUT's bringup controller waiting for the
-  // adapter to reset the link (BUGS/011); the adapter does so before the
-  // next activation the test starts by hand.
+  // The link before an activation the test starts by hand. A deactivation
+  // leaves the FDI link Active (the bringup model checks that); a link an
+  // earlier event left down is brought back by the adapter.
   task ensure_link();
     if (link_is_up()) return;
-    `uvm_info(get_type_name(), "link down after deactivation: adapter LinkReset", UVM_LOW)
+    `uvm_info(get_type_name(), "link down before activation: adapter LinkReset", UVM_LOW)
     relink();
   endtask
 
@@ -202,7 +202,7 @@ class aou_link_base_vseq extends aou_base_test_seq;
   // down (`down`: LinkError, its answer to the DUT's LinkReset request, or
   // LinkReset; pl_inband_pres may also drop meanwhile); sw_reset() then
   // resets AOU_CORE while the link is in Reset, brings the link back and
-  // software reprograms (BUGS/007) and activates again. Passing through
+  // software reprograms (the reset cleared every SFR) and activates again. Passing through
   // Reset also starts a new epoch in AOU_FDI_CHECKER, which has no other way
   // to learn that both sides forgot their activation state.
   task recover(aou_t1_feature_cfg reprogram = null, bit reactivate = 1'b1,
