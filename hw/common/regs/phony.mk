@@ -14,6 +14,7 @@
 ## @param OCAH_REG_BLOCKS Registered block roots to regenerate
 ## @param TARGET=smc Optional register block basename to regenerate
 ## @param OCAH_REG_RDL_PARAMS_<block>=NAME=VALUE Optional PeakRDL addrmap overrides for that block
+## @param OCAH_REG_ADDR_WIDTH_<rdl>=N Optional regblock CPU address width for that RDL
 .PHONY: ocah-regen-regs
 ocah-regen-regs: $(OCAH_REGEN_ALL) $(OCAH_REGEN_REG_STAMPS)
 

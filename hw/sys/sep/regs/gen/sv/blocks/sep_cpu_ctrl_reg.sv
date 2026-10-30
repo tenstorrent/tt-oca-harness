@@ -274,43 +274,78 @@ module sep_cpu_ctrl_reg (
     always_comb begin
         automatic logic is_valid_addr;
         automatic logic is_valid_rw;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.CLOCK_GATE_CTRL = cpuif_req_masked & (cpuif_addr == 13'h8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h8);
         decoded_reg_strb.REFERENCE_COUNTER = cpuif_req_masked & (cpuif_addr == 13'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h10);
         decoded_reg_strb.TIMEOUT_INTERRUPT = cpuif_req_masked & (cpuif_addr == 13'h18) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h18);
         decoded_reg_strb.PKA_CTRL = cpuif_req_masked & (cpuif_addr == 13'h20);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h20);
         decoded_reg_strb.TIMEOUT_COUNT_DMA = cpuif_req_masked & (cpuif_addr == 13'h28);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h28);
         decoded_reg_strb.TIMEOUT_COUNT_SYS_IN = cpuif_req_masked & (cpuif_addr == 13'h30);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h30);
         decoded_reg_strb.TIMEOUT_COUNT_MAILBOX_INBOUND = cpuif_req_masked & (cpuif_addr == 13'h38);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h38);
         decoded_reg_strb.TIMEOUT_COUNT_MAILBOX_OUTBOUND = cpuif_req_masked & (cpuif_addr == 13'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h40);
         decoded_reg_strb.TIMEOUT_COUNT_ENTROPY_WRITE = cpuif_req_masked & (cpuif_addr == 13'h48);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h48);
         decoded_reg_strb.TIMEOUT_COUNT_ENTROPY_READ = cpuif_req_masked & (cpuif_addr == 13'h50);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h50);
         decoded_reg_strb.TIMEOUT_COUNT_FILTER_OUT = cpuif_req_masked & (cpuif_addr == 13'h58);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h58);
         decoded_reg_strb.TIMEOUT_COUNT_ALIAS_REMAP = cpuif_req_masked & (cpuif_addr == 13'h60);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h60);
         decoded_reg_strb.TIMEOUT_ENABLE = cpuif_req_masked & (cpuif_addr == 13'h68);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h68);
         decoded_reg_strb.TIMEOUT_CLEAR = cpuif_req_masked & (cpuif_addr == 13'h70) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h70);
         decoded_reg_strb.TIMEOUT_MODE = cpuif_req_masked & (cpuif_addr == 13'h78) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h78);
         decoded_reg_strb.SEP_TEST_CTRL = cpuif_req_masked & (cpuif_addr == 13'hb0) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'hb0);
         decoded_reg_strb.SEP_GLOBAL_BASE_ADDR = cpuif_req_masked & (cpuif_addr == 13'hc0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'hc0);
         decoded_reg_strb.SEP_LOCAL_BASE_ADDR = cpuif_req_masked & (cpuif_addr == 13'hc8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'hc8);
         decoded_reg_strb.SEP_REGION_SIZE = cpuif_req_masked & (cpuif_addr == 13'hd0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'hd0);
         decoded_reg_strb.SMU_GLOBAL_BASE_ADDR = cpuif_req_masked & (cpuif_addr == 13'h100);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h100);
         decoded_reg_strb.SMU_REGION_SIZE = cpuif_req_masked & (cpuif_addr == 13'h110);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h110);
         decoded_reg_strb.SMC_FUSE_SENSE_STATUS = cpuif_req_masked & (cpuif_addr == 13'h140) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h140);
         decoded_reg_strb.SEP_FUSE_SENSE_STATUS = cpuif_req_masked & (cpuif_addr == 13'h150) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h150);
         decoded_reg_strb.SEP_SW_DEBUG = cpuif_req_masked & (cpuif_addr == 13'h178);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h178);
         decoded_reg_strb.SEP_NMI_VEC = cpuif_req_masked & (cpuif_addr == 13'h180);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h180);
         decoded_reg_strb.SEP_NMI_VEC_LOCK = cpuif_req_masked & (cpuif_addr == 13'h188);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h188);
         decoded_reg_strb.EXT_TRNG_SRC_SEL = cpuif_req_masked & (cpuif_addr == 13'h190);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h190);
         decoded_reg_strb.EXT_TRNG_SRC_SEL_LOCK = cpuif_req_masked & (cpuif_addr == 13'h198);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h198);
         decoded_reg_strb.KM_WIPE_CTRL = cpuif_req_masked & (cpuif_addr == 13'h1a0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1a0);
         decoded_reg_strb.DMA_BUS_ERR_STATUS = cpuif_req_masked & (cpuif_addr == 13'h1a8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1a8);
         decoded_reg_strb.DMA_BUS_ERR_CLEAR = cpuif_req_masked & (cpuif_addr == 13'h1b0) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1b0);
         decoded_reg_strb.PERIPH_BUS_ERR_STATUS = cpuif_req_masked & (cpuif_addr == 13'h1b8) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1b8);
         decoded_reg_strb.PERIPH_BUS_ERR_CLEAR = cpuif_req_masked & (cpuif_addr == 13'h1c0) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1c0);
         decoded_reg_strb.SEP_VERSION_ID = cpuif_req_masked & (cpuif_addr == 13'h1000) & !cpuif_req_is_wr;
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 13'h1000);
+        is_valid_addr = cpuif_addr < 13'h1008;
+        decoded_err = ~is_valid_addr & decoded_req;
     end
 
     // Pass down signals to next stage
@@ -1527,7 +1562,7 @@ module sep_cpu_ctrl_reg (
     //--------------------------------------------------------------------------
     assign cpuif_wr_ack = decoded_req & decoded_req_is_wr;
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -1649,7 +1684,7 @@ module sep_cpu_ctrl_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign cpuif_rd_ack = readback_done;

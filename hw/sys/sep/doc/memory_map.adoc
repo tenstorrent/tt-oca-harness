@@ -75,6 +75,10 @@ ifdef::backend-pdf[]
 endif::backend-pdf[]
 defines them and their codes.
 
+A unit's generated register block answers `SLVERR` to an access that reaches it
+past the end of its last register. This includes a 64-bit access to the last
+register of a block with 32-bit registers.
+
 The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
 does not decode offsets inside that window, so every access reaches the external
 TRNG slave. Intra-aperture decode is then an integrator constraint: when an
