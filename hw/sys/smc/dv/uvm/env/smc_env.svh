@@ -40,6 +40,7 @@ class smc_env extends ocah_env;
   // SEP_IN observation: shared VIP passive env, monitor only.
   ocah_axi_config m_sep_in_axi_cfg;
   ocah_axi_env    m_sep_in_axi_env;
+  smc_sep_in_reset_monitor m_sep_in_reset_monitor;
 
   // SYS_OUT egress: the shared VIP responder on the ocah_axi_if the struct
   // bridge feeds in tb_top.
@@ -77,6 +78,12 @@ class smc_env extends ocah_env;
 
     build_sep_in_master();
     build_sep_in_passive();
+    if (cfg.enable_sep_in_reset_monitor) begin
+      m_sep_in_reset_monitor =
+          smc_sep_in_reset_monitor::type_id::create("m_sep_in_reset_monitor", this);
+      m_sep_in_reset_monitor.vif = m_sep_in_axi_cfg.vif;
+      m_sep_in_reset_monitor.tb_vif = tb_vif;
+    end
     build_sys_out_slave();
 
     m_scratch_csr_ref_model =

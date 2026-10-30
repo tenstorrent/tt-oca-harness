@@ -2,19 +2,22 @@
 // SPDX-FileCopyrightText: 2026 VNCHIP LABS
 //
 // Counts single-beat SEP_IN requests and responses across one reset epoch.
-class smc_ingress_reset_observer extends uvm_object;
-  `uvm_object_utils(smc_ingress_reset_observer)
+class smc_sep_in_reset_monitor extends uvm_component;
+  `uvm_component_utils(smc_sep_in_reset_monitor)
   virtual ocah_axi_if vif;
   virtual smc_tb_if tb_vif;
-  bit ready, stop, stopped, reset_seen, phase_valid, sva_disabled, write_cell;
+  bit armed, reset_seen, phase_valid, sva_disabled, write_cell;
+  bit master_ready_low;
+  logic sampled_bready, sampled_rready;
+  int unsigned sample_count, extra_resets;
   bit request_idle, held_response;
   int unsigned aw, w, ar, b, r, write_complete, pending_read;
   int unsigned orphan_b, orphan_r, shape_errors, stale_b, stale_r;
   int unsigned b_valid_with_pending, r_valid_with_pending, held_valid, abandoned;
   string phase_context;
 
-  function new(string name = "smc_ingress_reset_observer");
-    super.new(name);
+  function new(string name = "smc_sep_in_reset_monitor", uvm_component parent = null);
+    super.new(name, parent);
   endfunction
 
   function int unsigned pending_write();
@@ -30,9 +33,40 @@ class smc_ingress_reset_observer extends uvm_object;
     r = 0;
     write_complete = 0;
     pending_read = 0;
+    held_valid = 0;
+  endfunction
+
+  function void arm(bit is_write);
+    if (armed || vif == null || vif.aresetn !== 1'b1) begin
+      `uvm_fatal(get_type_name(), "Reset monitor must be idle and out of reset before arm")
+    end
+    write_cell = is_write;
+    reset_seen = 0;
+    phase_valid = 0;
+    phase_context = "";
+    abandoned = 0;
+    extra_resets = 0;
+    sva_disabled = 0;
+    stale_b = 0;
+    stale_r = 0;
+    orphan_b = 0;
+    orphan_r = 0;
+    shape_errors = 0;
+    b_valid_with_pending = 0;
+    r_valid_with_pending = 0;
+    request_idle = 0;
+    held_response = 0;
+    master_ready_low = 0;
+    clear_counts();
+    armed = 1;
+  endfunction
+
+  function void disarm();
+    armed = 0;
   endfunction
 
   protected function void reset_epoch();
+    int unsigned held_before = held_valid;
     phase_context = $sformatf(
         "request_idle=%0b held_response=%0b aw=%0d w=%0d ar=%0d b=%0d r=%0d held_valid=%0d",
         request_idle, held_response, aw, w, ar, b, r, held_valid);
@@ -40,6 +74,7 @@ class smc_ingress_reset_observer extends uvm_object;
         (write_cell ? aw == 2 && w == 2 && ar == 0 : ar == 2 && aw == 0 && w == 0);
     abandoned = pending_write() + pending_read;
     clear_counts();
+    held_valid = held_before;
     reset_seen = 1;
   endfunction
 
@@ -48,7 +83,7 @@ class smc_ingress_reset_observer extends uvm_object;
         {
           "aw=%0d w=%0d ar=%0d b=%0d r=%0d pending_write=%0d pending_read=%0d ",
           "b_valid_with_pending=%0d r_valid_with_pending=%0d ",
-          "stale_b=%0d stale_r=%0d orphan_b=%0d orphan_r=%0d shape_errors=%0d"
+          "stale_b=%0d stale_r=%0d orphan_b=%0d orphan_r=%0d shape_errors=%0d extra_resets=%0d"
         },
         aw,
         w,
@@ -63,20 +98,26 @@ class smc_ingress_reset_observer extends uvm_object;
         stale_r,
         orphan_b,
         orphan_r,
-        shape_errors
+        shape_errors,
+        extra_resets
     );
   endfunction
 
   protected task sample_path();
     forever begin
       @(vif.mon_cb);
-      if (tb_vif.axi_sva_en !== 1'b1) sva_disabled = 1;
-      if (vif.aresetn !== 1'b1) continue;
+      sample_count++;
       request_idle = vif.mon_cb.awvalid === 1'b0 && vif.mon_cb.wvalid === 1'b0 &&
           vif.mon_cb.arvalid === 1'b0;
+      sampled_bready = vif.mon_cb.bready;
+      sampled_rready = vif.mon_cb.rready;
+      master_ready_low = sampled_bready === 1'b0 && sampled_rready === 1'b0;
       held_response = write_cell ?
-          vif.mon_cb.bvalid === 1'b1 && vif.mon_cb.bready === 1'b0 :
-          vif.mon_cb.rvalid === 1'b1 && vif.mon_cb.rready === 1'b0;
+          vif.mon_cb.bvalid === 1'b1 && sampled_bready === 1'b0 :
+          vif.mon_cb.rvalid === 1'b1 && sampled_rready === 1'b0;
+      if (!armed) continue;
+      if (tb_vif.axi_sva_en !== 1'b1) sva_disabled = 1;
+      if (vif.aresetn !== 1'b1) continue;
       if (!reset_seen && held_response) held_valid++;
       if (reset_seen && vif.mon_cb.bvalid === 1'b1) begin
         if (pending_write() == 0) stale_b++;
@@ -114,18 +155,21 @@ class smc_ingress_reset_observer extends uvm_object;
     end
   endtask
 
-  task watch();
-    ready = 1;
+  task run_phase(uvm_phase phase);
+    if (vif == null || tb_vif == null) begin
+      `uvm_fatal(get_type_name(), "Reset monitor interfaces are not connected")
+    end
     fork
       sample_path();
-      begin
+      forever begin
         @(negedge vif.aresetn);
-        reset_epoch();
+        if (!armed) continue;
+        if (!reset_seen) reset_epoch();
+        else begin
+          extra_resets++;
+          clear_counts();
+        end
       end
-      wait (stop);
-    join_any
-    if (!stop) wait (stop);
-    disable fork;
-    stopped = 1;
+    join
   endtask
-endclass : smc_ingress_reset_observer
+endclass : smc_sep_in_reset_monitor

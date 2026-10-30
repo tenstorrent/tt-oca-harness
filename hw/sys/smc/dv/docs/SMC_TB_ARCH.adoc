@@ -843,15 +843,24 @@ for the same output tap. Readback is compared against a shadow computed from
 the issued data and strobes, independently of DUT readback. No shared
 scoreboard feature is added.
 
-`smc_ingress_reset_observer` samples SEP_IN through `mon_cb`, counts AW/W/AR
-and B/R handshakes and tracks pending traffic separately for each direction.
+`smc_sep_in_reset_monitor` is an env component, enabled only by the ingress
+reset leaf. The env supplies its SEP_IN VIP interface and `smc_tb_if`; the
+thin test passes the component handle to the scenario. The scenario queries
+sampled state and calls `arm`, `clear_counts` and `disarm`, without accessing
+the VIP virtual interface. The monitor samples through `mon_cb`, counts
+AW/W/AR and B/R handshakes and tracks pending work separately by direction.
 Response predicates use pending state from before the current sample.
-One effective primary-reset edge snapshots the held-response phase and
-abandons pending traffic; post-reset counters detect response VALID without
-pending work, including cycles with READY low. Recovery provides positive
-controls for both response directions. Orphan handshakes do not underflow
-pending counters. The sequence owns the observer and waits with bounds for
-startup and shutdown.
+
+Before arm and after disarm it updates phase levels without counting traffic
+or recording resets. Arm clears all cell evidence and requires reset high;
+the scenario waits for a new sample before baseline traffic. The first
+armed primary-reset edge snapshots the held-response phase and abandons
+pending work. Further reset edges are counted and fail the epoch prerequisite.
+Post-reset counters detect response VALID without pending work, including
+cycles with READY low. Recovery provides controls for both response directions.
+Orphan handshakes do not underflow pending counters. The scenario waits with
+a bound for sampled request-idle and both response READY levels low before
+recovery, then disarms after grading the cell's evidence.
 
 The ingress-reset scenario uses two accepted, single-beat requests awaiting
 responses. The AXI master driver does not guarantee reset cancellation;
