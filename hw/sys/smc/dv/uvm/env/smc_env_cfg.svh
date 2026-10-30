@@ -19,6 +19,9 @@ class smc_env_cfg extends ocah_env_cfg;
   real periph_clk_period_ns = 5.0;
   // SEP_IN master handshake watchdog (smc-clock cycles per wait).
   int unsigned axi_timeout_cycles = 10_000;
+  // Scenario-specific passive phase monitor.
+  bit enable_sep_in_reset_monitor;
+
   // Scoreboard negative hooks, one per feature predictor: corrupt the
   // predicted scratch readback / the predicted catalogued default.
   bit csr_scoreboard_negative;
@@ -37,6 +40,7 @@ class smc_env_cfg extends ocah_env_cfg;
   bit wdt_csr_scoreboard_negative;
   bit mailbox_reset_sequence_negative;
   bit extreg_lane_sequence_negative;
+  bit ingress_reset_sequence_negative;
   bit mailbox_fifo_scoreboard_negative;
   // Backing memory of the SYS_OUT responder, in bytes (addresses wrap).
   int unsigned sys_out_mem_bytes = 32'h8000_0000;
@@ -67,6 +71,8 @@ class smc_env_cfg extends ocah_env_cfg;
     c.wdt_csr_scoreboard_negative = t.wdt_csr_scoreboard_negative;
     c.mailbox_reset_sequence_negative = t.mailbox_reset_sequence_negative;
     c.extreg_lane_sequence_negative = t.extreg_lane_sequence_negative;
+    c.enable_sep_in_reset_monitor = t.enable_sep_in_reset_monitor;
+    c.ingress_reset_sequence_negative = t.ingress_reset_sequence_negative;
     c.mailbox_fifo_scoreboard_negative = t.mailbox_fifo_scoreboard_negative;
     c.required_features       = t.required_features;
     return c;
