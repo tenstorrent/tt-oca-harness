@@ -816,7 +816,7 @@ reset pair stay on the checker; this group samples `sep_cpu_reset_n` only.
 |===
 |Coverpoint |Bins
 |`cp_state` |TEST_DEV, PROD, PROD_END, and the RMA states as one bin
-|`cp_demote_1` / `cp_demote_2` |clear, set (from the differential `{~demote, demote}` probes)
+|`cp_demote_1` / `cp_demote_2` |clear, set (set: the probe pair differs from the pair it held while `rst_ni` was low; no specification states which level of the pair is demoted)
 |`x_demote` |4 cells
 |===
 
