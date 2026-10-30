@@ -49,6 +49,7 @@ xref:smu.adoc#sep-integration[SEP Integration]
 |Lint, CDC/RDC, constraint, and integration-test reports archived
 |xref:prim.adoc#prim-cell-replacement[Prim Cell Replacement],
 xref:cdc.adoc#cdc-timing-constraints[CDC Timing Constraints],
+https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smu/dv/README.md[SMU Integration Testbench],
 xref:ocah-home::motivation.adoc[Why Open Chiplet Atlas Harness]
 
 |[ ]
@@ -93,6 +94,7 @@ ifdef::backend-pdf[]
 |Apply technology-mapping and CDC constraints; run integration-level verification
 |Lint, CDC/RDC, constraint, and integration-test reports archived
 |<<prim-cell-replacement,Prim Cell Replacement>>, <<cdc-timing-constraints,CDC Timing Constraints>>,
+https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smu/dv/README.md[SMU Integration Testbench],
 OCA Standard Compliance (see Home: Why Open Chiplet Atlas Harness)
 
 |[ ]
