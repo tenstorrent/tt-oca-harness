@@ -171,9 +171,9 @@ class SepResetTaps:
     def log_map(log) -> None:
         """Log the bench index tables the leaf uses."""
         for x in range(ISO_WIDTH):
-            log.info("OBS-ISO-MAP: x=%d path=%s", x, ISO_BENCH[x])
+            log.info("INFO-ISO-MAP: x=%d path=%s", x, ISO_BENCH[x])
         for i, port in enumerate(IP_RST_PORTS):
-            log.info("OBS-IPRST-MAP: i=%d engine=%s port=%s", i, IP_RST_NAMES[i], port)
+            log.info("INFO-IPRST-MAP: i=%d engine=%s port=%s", i, IP_RST_NAMES[i], port)
 
 
 def _bench_now(sig) -> int | None:

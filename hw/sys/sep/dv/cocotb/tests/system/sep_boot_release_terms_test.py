@@ -60,7 +60,7 @@ Checkers:
                     not a DUT read). Words staged 0 stay graded, and each epoch
                     compares at least one word with a nonzero staged value, so
                     a dead read that returns 0 fails; the zero-valued words are
-                    logged in ``CTL-PRESENSE-WORDS``.
+                    logged in ``CTRL-PRESENSE-WORDS``.
   CHK-SENSE-STATUS  after ``sep_fuse_sense_done_o`` has held 1 for
                     ``_REL_BOUND`` ``clk_i`` cycles, one 64-bit read of
                     ``SEP_FUSE_SENSE_STATUS`` per epoch and the final polls
@@ -301,14 +301,14 @@ class sep_boot_release_terms_test(sep_base_test):
         self.lat = max(cal_lat)
         self.cutoff = t - 1 - self.lat
         self.logger.info(
-            "CAL-BOOT LOG: W=%d T=%d clk_i cycles (release to sep_fuse_sense_done_o); taps high "
+            "INFO-CAL-BOOT LOG: W=%d T=%d clk_i cycles (release to sep_fuse_sense_done_o); taps high "
             "at cycle %d",
             _CAL_W,
             t,
             cyc,
         )
         self.logger.info(
-            "CAL-LATENCY LOG: probe latencies=%s clk_i cycles L=%d cutoff=T-1-L=%d (environment "
+            "INFO-CAL-LATENCY LOG: probe latencies=%s clk_i cycles L=%d cutoff=T-1-L=%d (environment "
             "choice: the last pre-release probe issues by release+cutoff, each earlier cap L "
             "cycles before the next cap)",
             cal_lat,
@@ -610,7 +610,7 @@ class sep_boot_release_terms_test(sep_base_test):
             "expected OKAY inside the pre-sense window"
         )
         self.logger.info(
-            "CTL-PRESENSE-PATH: epoch=%s FEAT_CTRL @0x%08x resp=OKAY data=0x%08x issued=%d "
+            "CTRL-PRESENSE-PATH: epoch=%s FEAT_CTRL @0x%08x resp=OKAY data=0x%08x issued=%d "
             "resp_cyc=%d done_at_resp=0 sep_reset_n_at_resp=0",
             ep.kind,
             LCC_FEAT_CTRL,
@@ -635,7 +635,7 @@ class sep_boot_release_terms_test(sep_base_test):
                 f"{cyc}, not before the sep_reset_n rise {ep.t['sep_rise']} (L={self.lat})"
             )
             self.logger.info(
-                "PLACE-CHECK epoch=%s probe%d issued=%d resp=%d lat=%d sep_rise=%d",
+                "INFO-PLACE-CHECK epoch=%s probe%d issued=%d resp=%d lat=%d sep_rise=%d",
                 ep.kind,
                 i,
                 p["issued"],
@@ -646,7 +646,7 @@ class sep_boot_release_terms_test(sep_base_test):
             p["done_at_resp"] = rec[cyc]["done"]
             if rec[cyc]["done"] != 0:
                 self.logger.info(
-                    "OBS-PRESENSE-LATE: epoch=%s probe%d word=%d cyc=%d resp=%s done_at_resp=%s "
+                    "INFO-PRESENSE-LATE: epoch=%s probe%d word=%d cyc=%d resp=%s done_at_resp=%s "
                     "(not scored)",
                     ep.kind,
                     i,
@@ -805,7 +805,7 @@ class sep_boot_release_terms_test(sep_base_test):
                 got,
             )
         self.logger.info(
-            "CTL-PRESENSE-WORDS: epoch=%s words=%d nonzero_expected=%s zero_expected=%s",
+            "CTRL-PRESENSE-WORDS: epoch=%s words=%d nonzero_expected=%s zero_expected=%s",
             ep.kind,
             len(ep.words),
             nonzero_words,

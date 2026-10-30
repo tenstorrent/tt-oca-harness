@@ -20,16 +20,13 @@ compared; absolute values are printed as measured.
   raised. Set A4: set A with only T_BUF raised.
 
 Standard-mode full-rate SCL is not run. The minimum set (THIGH = TLOW = 4, every other field 1)
-is a liveness run of transfer Y at the controller's floor: the stretch predictor needs THIGH of at
-least four to see a target holding SCL low, and SCL low must outlast the round trip of the output
-flop plus the two-flop input synchronizer (three clk_i cycles with no external delay) by a cycle,
-or the controller releases SCL before it has seen its own falling edge and reads that late edge as
-another controller pulling SCL low (i2c_core.sv RoundTripCycles, i2c_controller_fsm.sv).
-
-i2c.rdl states THIGH and TLOW "Must be >= 2". Whether 2 is a legal value or the description has
-to follow the controller is an open ruling for the I2C owner, so the RDL minimum (THIGH = TLOW =
-2, every other field 1) runs transfer Y once more after the graded minimum set and is logged as
-OBS-I2C-WIRE-RDL-MIN, completed or not, with nothing graded on it.
+is a liveness run of transfer Y at the smallest setting the leaf grades: i2c.rdl states THIGH and
+TLOW "Must be >= 2", so 4 is legal whichever way the open ruling on the smallest legal value
+(#3404) lands, and a controller that hangs or never raises HOSTIDLE and CMD_COMPLETE at small
+field values fails CHK-I2C-WIRE-MIN-SET-RUN. Whether 2 is legal or the description has to follow
+the controller is that ruling, so the RDL minimum (THIGH = TLOW = 2, every other field 1) runs
+transfer Y once more after the graded minimum set and is logged as OBS-I2C-WIRE-RDL-MIN,
+completed or not, with nothing graded on it. Values between 2 and 4 are not run.
 """
 
 from __future__ import annotations
@@ -99,14 +96,12 @@ FM_PLUS_NS = {
     "t_buf": 500,
 }
 THD_DAT_MIN = 1
-#: The controller's floor: the stretch predictor needs THIGH of at least four, and SCL low must
-#: outlast the round trip of the output flop plus the two-flop input synchronizer (three clk_i
-#: cycles with no external delay) so the controller sees its own falling edge before it releases
-#: SCL (i2c_core.sv RoundTripCycles, i2c_controller_fsm.sv CLOCK_PULSE).
+#: The smallest THIGH and TLOW the leaf grades: legal under i2c.rdl TIMING0 ("Must be >= 2")
+#: whichever way the I2C owner rules on the smallest legal value (#3404).
 MIN_THIGH = 4
 MIN_TLOW = 4
 #: The RDL's stated minimum (i2c.rdl TIMING0: "Must be >= 2"); observed, not graded, until the
-#: I2C owner rules whether the description or the controller's floor holds.
+#: I2C owner rules whether 2 is legal or the description has to follow the controller (#3404).
 RDL_MIN_THIGH = 2
 RDL_MIN_TLOW = 2
 FAST_RATIO = 4
@@ -585,8 +580,8 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         assert status & I2C_STATUS_HOSTIDLE, f"MIN: HOSTIDLE not set (STATUS=0x{status:08x})"
         parse_edges("MIN", rec.events, False)
         return (
-            f"THIGH={MIN_THIGH} TLOW={MIN_TLOW} and every other field 1: START, address write "
-            f"acknowledged "
+            f"THIGH={MIN_THIGH} TLOW={MIN_TLOW} and every other field 1 (legal under i2c.rdl "
+            f"TIMING0, which states >= 2): START, address write acknowledged "
             f"(target acks={seen[2]}), exactly {rec.stops} STOP on the pads, STATUS=0x{status:08x} "
             f"HOSTIDLE set, INTR_STATE=0x{intr:08x} CMD_COMPLETE set again after being "
             f"0x{before:08x}"
@@ -626,9 +621,9 @@ class smc_i2c_wire_timing_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "OBS-I2C-WIRE-RDL-MIN: THIGH=%d TLOW=%d and every other field 1 (i2c.rdl states "
-            "THIGH and TLOW must be >= 2; the controller's floor is %d): transfer Y %s; pads saw "
-            "%d START and %d STOP, target counted starts/stops/acks %s, INTR_STATE=0x%08x "
-            "STATUS=0x%08x; not graded until the I2C owner rules on the description",
+            "THIGH and TLOW must be >= 2; the smallest setting graded is %d): transfer Y %s; pads "
+            "saw %d START and %d STOP, target counted starts/stops/acks %s, INTR_STATE=0x%08x "
+            "STATUS=0x%08x; not graded until the I2C owner rules on the minimum (#3404)",
             RDL_MIN_THIGH,
             RDL_MIN_TLOW,
             MIN_THIGH,

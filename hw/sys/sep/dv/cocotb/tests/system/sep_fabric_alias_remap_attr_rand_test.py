@@ -36,7 +36,7 @@ Checkers:
   CHK-ALIAS-CLASS  per class, direction and run (valid 1 and valid 0): the
                    admitted address of the pair of probes is the model address.
   CHK-ALIAS-CACHE  per probe: the AxCACHE at the alias remap output.
-  CTL-ALIAS-RAND   stimulus completeness: at least one hit, one miss and one
+  CTRL-ALIAS-RAND   stimulus completeness: at least one hit, one miss and one
                    AxCACHE override ran (no DUT claim).
 """
 
@@ -197,8 +197,8 @@ class _AliasRegion(SepAxiRegDriver):
         ):
             fc = field_compare(await self._rd64(base + off), want, mask)
             line = f"region={k} {tag} {name} {fc.fields()}"
-            assert fc.ok, f"ALIAS-READBACK FAIL: {line}"
-            self.log.info("ALIAS-READBACK LOG: %s", line)
+            assert fc.ok, f"CTRL-ALIAS-READBACK FAIL: {line}"
+            self.log.info("CTRL-ALIAS-READBACK LOG: %s", line)
 
 
 def attrs_word(offset: int, cacheable: int, valid: bool) -> int:
@@ -415,9 +415,9 @@ class sep_fabric_alias_remap_attr_rand_test(sep_base_test):
             f"cache_override={self.n_override}"
         )
         assert self.n_hit >= 1 and self.n_miss >= 1 and self.n_override >= 1, (
-            f"CTL-ALIAS-RAND FAIL: {line}"
+            f"CTRL-ALIAS-RAND FAIL: {line}"
         )
-        self.logger.info("CTL-ALIAS-RAND LOG: %s", line)
+        self.logger.info("CTRL-ALIAS-RAND LOG: %s", line)
 
 
 def _hx(v) -> str:

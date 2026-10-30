@@ -16,7 +16,7 @@ endif::backend-html5[]
 The UART provides a 16550-style programming interface over 32-bit AXI4-Lite.
 It transmits and receives serial characters, buffers them in independently
 sized FIFOs, and reports line, modem and FIFO-integrity events. Extensions
-include larger FIFO depths, FIFO data/pointer parity protection, extended
+include larger FIFO depths, FIFO data parity and redundant pointer checking, extended
 receive thresholds and a FIFO-error interrupt.
 
 The TX and RX FIFOs default to 16 entries each. Software selects FIFO or

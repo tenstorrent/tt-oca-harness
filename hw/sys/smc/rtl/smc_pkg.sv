@@ -498,10 +498,13 @@ package smc_pkg;
   // RAS //
   /////////
 
-  // SMC error and hang levels for chip-level RAS aggregation, all on the SMC clock.
+  // SMC error and hang indications for chip-level RAS aggregation, all on the SMC clock.
   // The AXI hang bits are the detector timeouts, independent of the hang interrupt enables.
   typedef struct packed {
-    logic cluster_ded;         // CPU cluster uncorrectable ECC.
+    logic cluster_ded;         // CPU cluster uncorrectable ECC, not held: one cycle per
+                               // uncorrectable data-cache tag access or writeback beat; an
+                               // uncorrectable scratchpad read holds it until a later read of
+                               // that bank is free of uncorrectable errors.
     logic wdt_first_timeout;   // OR of the per-core watchdog first timeouts.
     logic wdt_second_timeout;  // Watchdog second timeout; also the watchdog reset.
     logic axi_hang_sys;        // Hang: system AXI stalled past its threshold.

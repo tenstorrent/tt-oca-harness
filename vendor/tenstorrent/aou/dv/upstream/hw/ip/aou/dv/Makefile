@@ -58,9 +58,6 @@ TEST ?= $(TEST_DEFAULT_$(TB))
 SEED ?= 1
 # Extra run-time plusargs, e.g. PLUSARGS=+L3_POLICY=sparse
 PLUSARGS ?=
-# FDI_ENC=SPEC|RTL forces the L2 state encoding of every test (+FDI_ENC).
-FDI_ENC ?=
-override PLUSARGS += $(if $(FDI_ENC),+FDI_ENC=$(FDI_ENC))
 # The build configuration, echoed in perf.json (docs/PERF_JSON.md).
 override PLUSARGS += $(if $(filter t1,$(TB)),+aou_config=$(CONFIG))
 # WAVES=1 dumps waves into the run directory with no rebuild: FSDB on VCS (UCLI
@@ -107,27 +104,21 @@ ifeq ($(wildcard $(AXI4PC_DIR)/Axi4PC.sv),)
 $(error AXI4PC=1 but there is no Axi4PC.sv in AXI4PC_DIR=$(AXI4PC_DIR))
 endif
 endif
-# ESCAPE=<id> builds against a copy of RTL/ with escape/<id>.patch applied,
-# re-introducing a bug fixed on main (bug-escape suite, testlists/escape.toml).
-# The copy lives in the build directory; the source tree is never modified.
-ESCAPE ?=
-# RTL_PATCH=<absolute path> applies any patch the same way (candidate RTL fixes during
-# triage, kept outside the repository); the build is named -fix-<RTL_PATCH_NAME>.
+# RTL_PATCH=<absolute path> builds against a copy of RTL/ with that patch applied
+# (candidate RTL fixes during triage, kept outside the repository); the build is named
+# -fix-<RTL_PATCH_NAME>. The copy lives in the build directory; the source tree is never
+# modified.
 RTL_PATCH ?=
 RTL_PATCH_NAME ?= $(basename $(notdir $(RTL_PATCH)))
-ifneq ($(and $(ESCAPE),$(RTL_PATCH)),)
-$(error ESCAPE and RTL_PATCH are exclusive)
-endif
-ESCAPE_PATCH := $(if $(RTL_PATCH),$(RTL_PATCH),$(UVM_ROOT)/escape/$(ESCAPE).patch)
-ifneq ($(ESCAPE)$(RTL_PATCH),)
-ifeq ($(wildcard $(ESCAPE_PATCH)),)
-$(error no patch $(ESCAPE_PATCH))
+ifneq ($(RTL_PATCH),)
+ifeq ($(wildcard $(RTL_PATCH)),)
+$(error no patch $(RTL_PATCH))
 endif
 endif
-BUILD_NAME := $(SIM)-$(TB)$(if $(filter t1 reg,$(TB)),-$(CONFIG))$(if $(and $(filter t1,$(TB)),$(filter 0,$(T1_AXI))),-noaxi)$(if $(filter 1,$(COV)),-cov$(if $(filter 1,$(COV_FSM_RESET)),-fsmrst))$(if $(XPROP),-xprop-$(XPROP))$(if $(filter 1,$(RTL_ASSERT)),-assert)$(if $(AXI4PC_ON),-axi4pc)$(if $(filter 0,$(WAVES_BUILD)),-nowaves)$(if $(ESCAPE),-esc-$(ESCAPE))$(if $(RTL_PATCH),-fix-$(RTL_PATCH_NAME))
+BUILD_NAME := $(SIM)-$(TB)$(if $(filter t1 reg,$(TB)),-$(CONFIG))$(if $(and $(filter t1,$(TB)),$(filter 0,$(T1_AXI))),-noaxi)$(if $(filter 1,$(COV)),-cov$(if $(filter 1,$(COV_FSM_RESET)),-fsmrst))$(if $(XPROP),-xprop-$(XPROP))$(if $(filter 1,$(RTL_ASSERT)),-assert)$(if $(AXI4PC_ON),-axi4pc)$(if $(filter 0,$(WAVES_BUILD)),-nowaves)$(if $(RTL_PATCH),-fix-$(RTL_PATCH_NAME))
 BUILD_DIR ?= $(UVM_ROOT)/build/$(BUILD_NAME)
-# Where RTL/ comes from: the repository, or the escape build's patched copy.
-RTL_HOME := $(if $(ESCAPE)$(RTL_PATCH),$(BUILD_DIR)/rtl,$(ROOT))
+# Where RTL/ comes from: the repository, or the RTL_PATCH build's patched copy.
+RTL_HOME := $(if $(RTL_PATCH),$(BUILD_DIR)/rtl,$(ROOT))
 COV_DIR := $(BUILD_DIR)/cov
 # Each run gets its own directory outside build/, named like ttem's:
 #   out/<build>/<test>.rid.<RID>.seed.<SEED>.time.<timestamp>.uid.<uid>/
@@ -159,8 +150,8 @@ LSF_SITE_OPTS ?=
 LSF_VCS_BUILD_OPTS ?=
 LSF_VERILATOR_BUILD_OPTS ?=
 # LSF_EXTRA_OPTS: the user's own bsub options, added to every build and run after the site's,
-# e.g. LSF_EXTRA_OPTS='-R "select[hname!=hostA]"'. Exported so scripts/escape.py and
-# scripts/run_list.py hand it on to the makes they start.
+# e.g. LSF_EXTRA_OPTS='-R "select[hname!=hostA]"'. Exported so scripts/run_list.py
+# hands it on to the makes it starts.
 LSF_EXTRA_OPTS ?=
 export LSF_EXTRA_OPTS
 # Scheduler settings scripts/run_list.py passes per job: JOB_QUEUE and JOB_PRIORITY (bsub
@@ -234,13 +225,6 @@ DEFINES += AOU_WAVES_TOP=$(TOP)
 # overlay defines the same); this bench has no other framework.
 DEFINES += UVM
 DEFINES += $(if $(AXI4PC_ON),AOU_AXI4PC AOU_AXI4PC_MAXBURSTS=$(AXI4PC_MAXBURSTS))
-# AOU_TOP with an lp_linkerror output (BUGS/002), in RTL/ or added by RTL_PATCH.
-DEFINES += $(if $(shell grep -ls 'O_LP_LINKERROR' $(ROOT)/RTL/AOU_TOP.sv; \
-  $(if $(RTL_PATCH),grep -ls '^+.*O_LP_LINKERROR' $(RTL_PATCH))),AOU_DUT_LP_LINKERROR)
-# AOU_AXI_SW_RESET_GUARD (BUGS/021 fix), in RTL/ or added by RTL_PATCH: T1-L28 then
-# follows the guard's port isolation instead of the raw core reset.
-DEFINES += $(if $(shell grep -ls '^module AOU_AXI_SW_RESET_GUARD' $(ROOT)/RTL/*.sv; \
-  $(if $(RTL_PATCH),grep -ls '^+module AOU_AXI_SW_RESET_GUARD' $(RTL_PATCH))),AOU_DUT_SW_RESET_GUARD)
 UVM_DPI_DIR := $(UVM_CORE_ROOT)/src/dpi
 
 # COV=1 also binds the AXI4 functional coverage monitors to the DUT, whose text
@@ -248,7 +232,9 @@ UVM_DPI_DIR := $(UVM_CORE_ROOT)/src/dpi
 # bin counts to fc.json (cov/sv/aou_fc_pkg.sv); fc_report union-merges both.
 ifeq ($(COV),1)
 DEFINES += AOU_AXI4_FC_COV_EN
-FLISTS += $(UVM_ROOT)/cov/sv/aou_axi4_fc_pkg.sv $(UVM_ROOT)/cov/sv/aou_axi4_coverage_mod.sv $(UVM_ROOT)/cov/sv/aou_axi4_cov_bind.sv
+# The incdir is for aou_axi4_coverage_mod.sv's `include; the register bench's sim
+# config, unlike T1's, has no cov/sv incdir of its own.
+FLISTS += +incdir+$(UVM_ROOT)/cov/sv $(UVM_ROOT)/cov/sv/aou_axi4_fc_pkg.sv $(UVM_ROOT)/cov/sv/aou_axi4_coverage_mod.sv $(UVM_ROOT)/cov/sv/aou_axi4_cov_bind.sv
 FC_RUN = +AXI4_FC_RPT_DIR=$(RUN_DIR) +AXI4_FC_RUN_NAME=$(RUN_ID) +aou_fc_json=$(RUN_DIR)/fc.json
 endif
 
@@ -409,10 +395,10 @@ endef
 # start time; make run warns when a source below is newer or the defines differ.
 # STALE_CHECK=0 skips it (run_list.py checks once, then runs with it off).
 STALE_CHECK ?= 1
-STALE_SOURCES = $(ROOT)/RTL $(ROOT)/csr/aou-core.rdl $(UVM_ROOT) $(SIM_CFG_FILE) $(if $(ESCAPE)$(RTL_PATCH),$(ESCAPE_PATCH)) \
+STALE_SOURCES = $(ROOT)/RTL $(ROOT)/csr/aou-core.rdl $(UVM_ROOT) $(SIM_CFG_FILE) $(RTL_PATCH) \
   $(if $(filter 1,$(COV)),$(subst +, ,$(COV_HIER)))
 STALE_REBUILD = make build SIM=$(SIM) TB=$(TB)$(if $(filter t1 reg,$(TB)), CONFIG=$(CONFIG))$(if $(filter 1,$(COV)), COV=1)$(if $(filter 1,$(RTL_ASSERT)), RTL_ASSERT=1)$(if $(AXI4PC_ON),,$(if $(AXI4PC_DIR),$(if $(filter t1,$(TB)), AXI4PC=0)))$(if \
-  $(filter 0,$(WAVES_BUILD)), WAVES_BUILD=0)$(if $(filter 0,$(T1_AXI)), T1_AXI=0)$(if $(ESCAPE), ESCAPE=$(ESCAPE))$(if $(RTL_PATCH), RTL_PATCH=$(RTL_PATCH))
+  $(filter 0,$(WAVES_BUILD)), WAVES_BUILD=0)$(if $(filter 0,$(T1_AXI)), T1_AXI=0)$(if $(RTL_PATCH), RTL_PATCH=$(RTL_PATCH))
 STALE_CMD = python3 -I $(UVM_ROOT)/scripts/stale_build.py --build-dir $(BUILD_DIR) --simv '$(SIMV)' \
   --defines '$(DEFINES)' --rebuild '$(STALE_REBUILD)' $(STALE_SOURCES)
 
@@ -420,7 +406,7 @@ STALE_CMD = python3 -I $(UVM_ROOT)/scripts/stale_build.py --build-dir $(BUILD_DI
 TB_SOURCES = $(shell find $(UVM_ROOT) -path $(UVM_ROOT)/.deps -prune -o -path $(UVM_ROOT)/build -prune -o -path $(UVM_ROOT)/out -prune \
                -o -path $(UVM_ROOT)/uvm/env/gen -prune -o -type f \( -name '*.sv' -o -name '*.svh' \) -print | sort)
 
-.PHONY: help configs setup ral docs build run test cov_report fc_report check-config lint clean clean-out check-public plan_status compare escape rule_inventory perf_report perf_targets perf_check job-hooks stale-check build-name
+.PHONY: help configs setup ral docs build run test cov_report fc_report check-config lint clean clean-out check-public plan_status compare rule_inventory perf_report perf_targets perf_check job-hooks stale-check build-name
 help:
 	@printf '%s\n' \
 	  'make setup                 Fetch the pinned UVM-core, OCAH library, z3, PeakRDL, pywellen' \
@@ -439,20 +425,18 @@ help:
 	  'TB=t1|reg [CONFIG=<name>]  T1 / register bench build configuration, a [targets.<name>]' \
 	  '                           of aou_sim_cfg.toml (default $(shell $(SIM_CFG) default-target))' \
 	  'make configs               List the build configurations (CONFIG names and parameters)' \
-	  'make cov_report            Merge and summarise coverage from COV=1 runs (runs fc_report)' \
+	  'make cov_report            Merge and summarise coverage from COV=1 runs (runs fc_report; COV_RID=<rid>: one regression)' \
 	  'make fc_report             Functional coverage of the passing COV=1 runs (merged/fc/)' \
 	  'make plan_status           Test-plan status from the testlists and out/ (out/plan_status.md)' \
 	  'make compare BASELINE=<d>  Compare the results*.csv under out/ with those under <d>' \
 	  '                           (out/compare.md; exit 1 on a degradation)' \
-	  'make escape                Bug-escape suite: re-introduce each fixed bug, report caught/escaped' \
 	  'make rule_inventory        Checker inventory from rules.csv and the runs (docs/checker_inventory.md)' \
-	  'make build ESCAPE=<id>     Build against RTL/ with escape/<id>.patch applied' \
 	  'make build RTL_PATCH=<abs> Build against RTL/ with any patch applied (triage fixes)' \
 	  'make perf_report           Performance data of passing aou_perf_test runs (out/perf_report.md)' \
 	  'make perf_targets          Regenerate uvm/env/perf/aou_perf_targets.svh (needs D2D_COMPARE)' \
 	  'make perf_check            Judge out/**/perf.json against the targets (out/perf_check.md)' \
 	  'make stale-check           Warn if the build is older than its sources or defines' \
-	  'make check-config          Sim configs, testlists, rules, bug citations, RAL and docs freshness (no simulator)' \
+	  'make check-config          Sim configs, testlists, rules, bug citations, RAL, plan items and docs freshness (no simulator)' \
 	  'make lint                  check-config, then Verible and Verilator lint of the testbench' \
 	  'make check-public          List internal references before a public push' \
 	  'make clean / clean-out     Remove build/ / remove run results in out/' \
@@ -492,8 +476,8 @@ build:
 	@mkdir -p $(BUILD_DIR) $(COV_DIR)$(shell mkdir -p $(BUILD_DIR))
 	$(if $(filter-out vcs,$(SIM)),$(file >$(BUILD_DIR)/aou_waves_bind.sv,bind $(TOP) aou_waves u_aou_waves();))
 	$(if $(XPROP),$(file >$(BUILD_DIR)/xprop.cfg,merge = $(XPROP);$(newline)instance {$(TOP).u_dut} {xpropOn};))
-	$(if $(ESCAPE)$(RTL_PATCH),@rm -rf $(RTL_HOME) && mkdir -p $(RTL_HOME) && cp -r $(ROOT)/RTL $(RTL_HOME)/ && \
-	  patch -d $(RTL_HOME) -p1 -s --no-backup-if-mismatch < $(ESCAPE_PATCH) && echo "Patch $(ESCAPE_PATCH) applied to $(RTL_HOME)/RTL")
+	$(if $(RTL_PATCH),@rm -rf $(RTL_HOME) && mkdir -p $(RTL_HOME) && cp -r $(ROOT)/RTL $(RTL_HOME)/ && \
+	  patch -d $(RTL_HOME) -p1 -s --no-backup-if-mismatch < $(RTL_PATCH) && echo "Patch $(RTL_PATCH) applied to $(RTL_HOME)/RTL")
 	$(file >$(BUILD_DIR)/build.sh,set -e$(newline)$(BUILD_CMD))
 	@printf '%s\n' $(DEFINES) > $(BUILD_DIR)/build.stamp.new
 	$(call submit,build,$(BUILD_NAME),$(LSF_BUILD_RES),$(BUILD_DIR)/build.sh,$(BUILD_DIR)/build.lsf)
@@ -529,14 +513,14 @@ job-hooks:
 LINT_CFG = python3 -I $(UVM_ROOT)/scripts/sim_cfg.py --tb $(1)
 LINT_FLIST = $(if $(filter t1 reg,$(1)),-f $(ROOT)/RTL/filelist.f) +incdir+$(UVM_CORE_ROOT)/src \
   $(UVM_CORE_ROOT)/src/uvm_pkg.sv $(shell $(call LINT_CFG,$(1)) filelist)
-LINT_DEFINES = $(shell $(call LINT_CFG,$(1)) defines) AOU_WAVES_TOP=$(shell $(call LINT_CFG,$(1)) top) UVM \
-  $(if $(filter t1 reg,$(1)),$(filter AOU_DUT_%,$(DEFINES)))
+LINT_DEFINES = $(shell $(call LINT_CFG,$(1)) defines) AOU_WAVES_TOP=$(shell $(call LINT_CFG,$(1)) top) UVM
 # The configuration checks need Python (and PeakRDL from make setup) but no
 # simulator or linter; CI's smoke workflow runs them before building.
 check-config:
 	python3 -I $(UVM_ROOT)/scripts/sim_cfg.py check
 	./scripts/regen_ral.sh --check
 	python3 -I $(UVM_ROOT)/scripts/gen_dv_docs.py --check
+	python3 -I $(UVM_ROOT)/scripts/gen_plan_items.py --check
 	python3 -I $(UVM_ROOT)/scripts/check_rules.py
 	python3 -I $(UVM_ROOT)/scripts/check_testlists.py
 	python3 -I $(UVM_ROOT)/scripts/check_bug_refs.py
@@ -565,16 +549,19 @@ check-public:
 	python3 -I $(UVM_ROOT)/scripts/check_public.py --range $(PUBLIC_BASE)..HEAD
 
 # Coverage merges passing runs only (verdict.txt says PASS); see AGENTS.md.
-PASSING = python3 $(UVM_ROOT)/scripts/passing_runs.py $(OUT_DIR)
+# COV_RID=<rid> merges only that regression's runs (default: every run in out/<build>/).
+COV_RID ?=
+COV_RID_OPT = $(if $(COV_RID),--rid $(COV_RID))
+PASSING = python3 $(UVM_ROOT)/scripts/passing_runs.py $(OUT_DIR) $(COV_RID_OPT)
 # T1 reports also take the register bench's passing runs from the same SIM/CONFIG and the
-# same RTL (ESCAPE/RTL_PATCH build suffix), so the DUT parameters match (VCS maps them onto
+# same RTL (RTL_PATCH build suffix), so the DUT parameters match (VCS maps them onto
 # COV_MAP_MODULE). The report stops if that build has no runs; COV_WITH= leaves it out.
 COV_WITH ?= $(if $(filter t1,$(TB)),reg)
 COV_MAP_MODULE ?= AOU_CORE_TOP
-COV_WITH_BUILD = $(SIM)-$(COV_WITH)-$(CONFIG)-cov$(if $(ESCAPE),-esc-$(ESCAPE))$(if $(RTL_PATCH),-fix-$(RTL_PATCH_NAME))
+COV_WITH_BUILD = $(SIM)-$(COV_WITH)-$(CONFIG)-cov$(if $(RTL_PATCH),-fix-$(RTL_PATCH_NAME))
 COV_WITH_OUT = $(if $(COV_WITH),$(wildcard $(UVM_ROOT)/out/$(COV_WITH_BUILD)))
 COV_WITH_VDB = $(UVM_ROOT)/build/$(COV_WITH_BUILD)/cov/simv.vdb
-PASSING_WITH = python3 $(UVM_ROOT)/scripts/passing_runs.py $(COV_WITH_OUT)
+PASSING_WITH = python3 $(UVM_ROOT)/scripts/passing_runs.py $(COV_WITH_OUT) $(COV_RID_OPT)
 cov_report:
 	$(if $(and $(COV_WITH),$(if $(COV_WITH_OUT),,1)),@echo "cov_report: no $(COV_WITH) bench runs in out/$(COV_WITH_BUILD); run that build's list or set COV_WITH=" >&2; exit 1)
 	@mkdir -p $(REPORT_DIR)
@@ -586,7 +573,7 @@ cov_report:
 # Functional coverage (every testbench covergroup and the AXI4 monitors), bins
 # union-merged over the passing runs: out/<build>/merged/fc/ (scripts/fc_report.py).
 fc_report:
-	python3 $(UVM_ROOT)/scripts/fc_report.py $(OUT_DIR) -o $(REPORT_DIR)/fc
+	python3 $(UVM_ROOT)/scripts/fc_report.py $(OUT_DIR) -o $(REPORT_DIR)/fc $(COV_RID_OPT)
 
 # Reads files only (no LSF): run lists, run verdicts under PLAN_OUT and the plan items.
 # PLAN_STATUS_OPTS=--judge also judges runs that have no verdict.txt.
@@ -606,12 +593,6 @@ compare:
 # Checker inventory: rules.csv against the rule ledgers of the runs under out/.
 rule_inventory:
 	python3 $(UVM_ROOT)/scripts/rule_inventory.py --out-dir $(PLAN_OUT)
-
-# Bug-escape suite (testlists/escape.toml): clean and ESCAPE=<id> builds,
-# each entry run on both; ESCAPE_OPTS="--escape pr28 --no-build" narrows it.
-ESCAPE_OPTS ?=
-escape:
-	python3 $(UVM_ROOT)/scripts/escape.py --sim $(SIM) $(ESCAPE_OPTS)
 
 # Performance data (plan 2.10) from passing aou_perf_test runs; reads files only.
 perf_report:
