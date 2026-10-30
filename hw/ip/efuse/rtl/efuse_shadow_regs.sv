@@ -447,9 +447,9 @@ module efuse_shadow_regs
                   // --> this is correct but, then we never check rma_sip_token_match_i. So the chiplet token match GATES the sip token match
                   if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE && lc_state_cur[1]) begin
                       lc_state_raw_d[2] = 1'b1;
-                  end else if (rma_chiplet_token_match_i == TOKEN_MATCH_CODE) begin
-                      // A chiplet match without RMA_SIP established changes nothing.
-                  end else if (rma_sip_token_match_i == TOKEN_MATCH_CODE) begin
+                  end 
+                  // FIX: check sip token match regardless of chiplet token match
+                  if (rma_sip_token_match_i == TOKEN_MATCH_CODE) begin
                       lc_state_raw_d[1] = 1'b1;
                   end
               end
@@ -653,8 +653,9 @@ module efuse_shadow_regs
           end
         end else begin
           // No chiplet state change in the SMC instance.
-          chiplet_state_change_completed_n0_scan <= 1'b1;
-          sop_state_change_completed_n0_scan <= 1'b1;
+          // TODO: I feel like SMC should have these set to 0
+          chiplet_state_change_completed_n0_scan <= 1'b0;
+          sop_state_change_completed_n0_scan <= 1'b0;
         end
       end
     end
