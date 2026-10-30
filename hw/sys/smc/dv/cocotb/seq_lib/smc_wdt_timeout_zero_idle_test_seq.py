@@ -2,21 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """WDT_TIMEOUT written to 0 with no first-stage timeout leaves the second stage idle.
 
-`cpu_ctrl.rdl` describes `WDT_TIMEOUT.data` as the cycle count at which the
-second-stage watchdog timeout occurs, with no range and no meaning given to 0.
-The second stage times the interval after a core's first-stage timeout, so
-with no first-stage timeout raised a write of 0 must leave
-`smc_ras_o.wdt_second_timeout` low and the warm reset released.
-
-`smc_cpu_ctrl_wrap.sv` reloads each core's stage-2 counter from WDT_TIMEOUT
-while that core's first-stage timeout is low and flags the second timeout
-whenever the counter reads 0, so a write of 0 raises the timeout on the next
-clock and `smc_reset_ctrl.sv` folds it into the warm reset. The register block
-sits on the primary reset, so the value survives the warm reset it causes and
-only a non-zero write over the inbound port releases the domain.
+`cpu_ctrl.rdl` describes `WDT_TIMEOUT.data` as the number of cycles after a
+core's first-stage watchdog timeout at which the second-stage timeout occurs,
+and a 0 raises the second stage as soon as the first stage does. The second
+stage therefore follows a first-stage timeout: with none raised, a write of 0
+leaves `smc_ras_o.wdt_second_timeout` low and the warm reset released.
 
 The sequence samples the timeout pin and the warm reset after the write, then
-writes the reset value back and waits for the warm domain to return before it
+writes the reset value back and confirms the warm domain is up before it
 grades the samples, so the bench is recovered whichever way the leaf ends.
 """
 

@@ -183,13 +183,6 @@ _EXCLUDED: dict[str, str] = {
     "smc_reset_unit/ISOLATE_REQ_FLR_RESET_COUNTER_VALUE": "driven by smc_flr_sanity_test",
 }
 
-# Low pattern per register. Default 0. CPU_CTRL.WDT_TIMEOUT is the max_count of
-# the second watchdog stage (smc_cpu_ctrl_wrap.sv max_count): while the cluster
-# watchdog is idle the counter reloads max_count every clock, so a 0 makes
-# cycle_count 0 and asserts wdt_second_timeout_o. Its low leg writes the RDL
-# reset instead, which is also what the restore leg puts back.
-_LOW_IS_RESET: frozenset[str] = frozenset({"smc_cpu_ctrl/WDT_TIMEOUT"})
-
 # Signature for element i of a register array: a fixed marker, the index, and
 # the index again inverted, so element i cannot be satisfied by element j's
 # value and a zeroed or tied-off element cannot be satisfied at all.
@@ -393,7 +386,7 @@ class smc_rdl_field_sweep_test_seq(SmcCsrSeq):
                     await self._read_check(reg, "reset", reg.reset_word)
                     self.registers_swept += 1
                 continue
-            await self._granule_cycle(head, head.reset_word if path in _LOW_IS_RESET else 0)
+            await self._granule_cycle(head, 0)
             self.registers_swept += 1
             if len(regs) > 1:
                 await self._array_pass(regs)
