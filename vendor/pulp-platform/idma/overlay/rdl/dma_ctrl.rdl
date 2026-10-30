@@ -96,7 +96,7 @@ addrmap dma_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.";
+            desc="Repetition enable. 1: the copy is performed NUM_REPETITIONS times, with SRC_STRIDE and DST_STRIDE added to the addresses between rows, modulo 2^56 and without an error when a row address wraps; set it for every transfer, including a linear copy with NUM_REPETITIONS = 1. 0: the repetition count is forced to zero, so the command completes with an error response, moves no data, and still retires its transfer ID.";
         } ENABLED_ND[10:10] = 0x0;
     };
 
@@ -104,7 +104,7 @@ addrmap dma_ctrl {
         field {
             sw=r;
             hw=w;
-            desc="Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 indicates midend activity, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.";
+            desc="Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 reads 1 while a submitted command is queued or still being expanded into rows and falls when the backend accepts the last row of the last queued command, and bit 9 is zero. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.";
         } BUSY [9:0] = 0x0;
     };
 
