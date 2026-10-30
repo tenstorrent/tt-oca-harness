@@ -157,10 +157,10 @@ addrmap smc_base_config {
     };
 
     reg HANG_DET_TIMEOUT_THRESHOLD {
-        desc = "Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.";
+        desc = "Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.";
         field {
             sw = rw; hw = r;
-            desc = "Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.";
+            desc = "Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.";
         } value[19:0] = 0x1000;
     };
 

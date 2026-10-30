@@ -213,15 +213,15 @@ typedef union {
 } smc_base_config__HANG_DET_CTRL_t;
 
 // reg - smc_base_config::HANG_DET_TIMEOUT_THRESHOLD
-// Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.
-// Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+// Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.
+// Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bm 0xfffff
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bp 0
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_bw 20
 #define SMC_BASE_CONFIG__HANG_DET_TIMEOUT_THRESHOLD__VALUE_reset 0x1000
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
+        // Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.
         uint32_t value :20;
         uint32_t :12;
     } f;
