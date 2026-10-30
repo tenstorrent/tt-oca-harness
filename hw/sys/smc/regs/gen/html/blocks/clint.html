@@ -30,11 +30,11 @@
 <h3 id="MTIMECMP_4_">MTIMECMP[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Timer compare value. The core&#x27;s machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.</td></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Timer compare value. The core&#x27;s machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME. This register has no reset: its value, and therefore the level of the machine timer interrupt, is undefined until software writes it. Write it before enabling the machine timer interrupt.</td></tr>
 </table>
 <h3 id="MTIME">MTIME</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>count</td><td>RW</td><td>-</td><td>Cycle count (time) value</td></tr>
+<tr><td>63:0</td><td>count</td><td>RW</td><td>0x0</td><td>Machine time. Increments by one every 1000 CPU-cluster cbus clock cycles. A software write takes precedence over an increment in the same cycle.</td></tr>
 </table>
 </div>

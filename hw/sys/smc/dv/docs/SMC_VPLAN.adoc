@@ -36827,13 +36827,13 @@ that were changed.
 * Raising `T_R` and `T_F`, and the hold of the first START, are measured and printed with no
   expectation. Full-rate Standard-mode SCL is not run.
 * With `THIGH` and `TLOW` at 4 and every other field at 1 a transfer of START, address write and
-  STOP completes with one acknowledge and one STOP; four is the controller's floor, since its
-  stretch predictor needs `THIGH` of at least four and SCL low must outlast the output flop plus
-  the two-flop input synchronizer by a cycle before the controller releases SCL.
-* `i2c.rdl` states `THIGH` and `TLOW` "Must be `>= 2`". Whether 2 is legal or the description
-  has to follow the controller is an open ruling for the I2C owner, so transfer Y at `THIGH` and
-  `TLOW` of 2 runs after the graded minimum set and is logged (`OBS-I2C-WIRE-RDL-MIN`), completed
-  or not; nothing is graded on it until the ruling lands.
+  STOP completes with one acknowledge and one STOP. That setting is legal under `i2c.rdl`, which
+  states `THIGH` and `TLOW` "Must be `>= 2`", whichever way the open ruling on the smallest legal
+  value (#3404) lands, so it is the smallest setting the leaf grades; values between 2 and 4 are
+  not run.
+* Whether 2 is legal or the description has to follow the controller is that ruling, so transfer
+  Y at `THIGH` and `TLOW` of 2 runs after the graded minimum set and is logged
+  (`OBS-I2C-WIRE-RDL-MIN`), completed or not; nothing is graded on it until the ruling lands.
 
 *Test Procedure*:
 
@@ -36853,7 +36853,9 @@ that were changed.
 . Program set A3 (`TSU_STA`, `THD_STA` and `TSU_STO` raised by 8) and repeat, then program set A4
   (only `T_BUF` raised by 8) and repeat.
 . Program the minimum set, clear `INTR_STATE`, run transfer Y alone and require the START, the
-  acknowledge, exactly one STOP, `STATUS.HOSTIDLE` and `INTR_STATE.CMD_COMPLETE`.
+  acknowledge, exactly one STOP, `STATUS.HOSTIDLE` and `INTR_STATE.CMD_COMPLETE`; then program
+  `THIGH` and `TLOW` of 2 with every other field 1, run transfer Y alone and log the outcome
+  without a compare.
 . Compare the deltas against set A in order, print the checker lines, the ordered-fence line and
   the bounded waits.
 
@@ -50310,21 +50312,28 @@ as a watchdog/warm-reset source and distinguishes it from primary reset.
 cluster uncore reset, which resets the four watchdogs. Their CTRL, COUNT
 and CMP defaults come from `wdt.rdl`. CPU control registers, including
 WDT_TIMEOUT, are on primary reset and retain their values across warm reset.
+`clk_rst.adoc`, Reset Architecture, also states that warm reset holds the
+cores in reset and they follow RESET_CTRL again after release. `cpu.adoc`,
+Drain Handshake, states that core resets do not isolate the cluster boundary.
 Addresses, masks and core count come from the existing generated collateral
 and SMC types. Timing allowances below are bench measurement bounds, not new
 software-visible register semantics.
 
-*Test Procedure*: Require all cores released and WDTs in reset state. Save and
-program WDT_TIMEOUT. Before each arm, read back COUNT=0 and CMP=0x800,
+*Test Procedure*: Require all core resets released, an open cluster boundary
+and WDTs in reset state. Save and program WDT_TIMEOUT. Before each arm,
+read back COUNT=0 and CMP=0x800,
 distinct from CMP reset, while counting is disabled. These are configuration
 prerequisites, not a precise first-stage timing check. Program and read back
 the same non-reset CMP marker on each other, disabled watchdog. Start the bounded
 watcher before enabling the selected WDT and service it periodically. Require no expiry
 during service, then stop CSR traffic and observe expiry and recovery. Re-arm
 and service a different core, requiring expiry at the unserviced deadline.
-Check reset scope. After each recovery, require WDT_TIMEOUT to retain the
-programmed value and check watchdog CTRL, COUNT and CMP defaults, then explicitly configure and
-verify idle CTRL, COUNT and CMP readbacks on every core. Reprogram the timeout
+Require a recovery sample with all core resets asserted together during each
+warm reset. Check reset scope. After warm release and fuse readiness, require
+all core resets released before further CSR access. Require WDT_TIMEOUT to
+retain the programmed value and check watchdog CTRL, COUNT and CMP defaults,
+then explicitly configure and verify idle CTRL, COUNT and CMP readbacks on
+every core. Reprogram the timeout
 before the wrong-core leg; restore the timeout and check exact CSR-access
 accounting.
 
@@ -50339,8 +50348,8 @@ accounting.
 |`CHK-WDT-STAGE2-HELD` |No second timeout or reset occurs during correct-core service
 |`CHK-WDT-STAGE2-EXPIRES` |Second timeout falls within the configured interval and sampling allowance
 |`CHK-WDT-STAGE2-WRONG-CORE` |A different core is serviced and cannot defer selected-core expiry
-|`CHK-WDT-STAGE2-RECOVERY` |WDT/warm reset assert and release within bounds; fuse/warm readiness precedes further CSR access
-|`CHK-WDT-STAGE2-SCOPE` |No primary reset, unknown observable or initially isolated core; timeout taps are idle and resets released after explicit rebaseline
+|`CHK-WDT-STAGE2-RECOVERY` |WDT/warm reset assert and release within bounds; all core resets are observed asserted together during each warm reset; fuse/warm readiness precedes further CSR access
+|`CHK-WDT-STAGE2-SCOPE` |No primary reset or unknown observable; core resets are released and the boundary is open at baseline; all core resets released after warm reset before rebaseline; timeout taps idle and resets released after explicit rebaseline
 |`CHK-WDT-STAGE2-WDT-RESET` |CTRL, COUNT and CMP match RDL defaults on every core after each warm reset, before reconfiguration
 |`CHK-WDT-STAGE2-TIMEOUT-RETAINED` |WDT_TIMEOUT reads the programmed 0x1800 after each warm reset, before reprogramming
 |`CHK-WDT-STAGE2-SCOREBOARD` |The pass adds no watchdog model mismatch
@@ -50351,7 +50360,10 @@ accounting.
 |===
 
 *Known Limitations*: CPU execution and interrupt delivery are outside this
-scenario. No core is held in software reset. Timeout taps are sampled on SMC
+scenario. No core is held in software reset. Core resets are not checked
+continuously across the warm-reset window. The baseline cluster-boundary
+level is a prerequisite; the isolation tap has no same-run positive control.
+Timeout taps are sampled on SMC
 clock negedges; sub-cycle transitions are not graded. The unserviced timing
 allowance is two cycles; the serviced allowance is two cycles after the last
 write response. Recovery bounds of 4096 assertion and 16384 release cycles are

@@ -34,7 +34,7 @@ TLB Registers for address remapping and attribute tagging
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
-| 55:12 | `end_addr` | RW | 0x0 a| End of remap region (non-inclusive).
+| 55:12 | `end_addr` | RW | 0x0 a| End of remap region (non-inclusive). A region whose end is at or below its start contains no address and never remaps.
 | 11:0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -47,6 +47,6 @@ TLB Registers for address remapping and attribute tagging
 | 63 | `valid` | RW | 0x0 a| If set, this remap will be active
 | 62:60 | `Reserved` | - | - a| Reserved
 | 59:56 | `cacheable` | RW | 0x0 a| Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.
-| 55:12 | `offset` | RW | 0x0 a| The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.
+| 55:12 | `offset` | RW | 0x0 a| The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The addition is modulo 2^44, so a carry out of bit 55 is discarded. The lower 12 bits of the address are preserved unchanged. When more than one valid region contains the address, the lowest-numbered region applies.
 | 11:0 | `Reserved` | - | - a| Reserved
 |===

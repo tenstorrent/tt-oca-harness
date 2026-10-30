@@ -108,15 +108,19 @@ addrmap smc_top #(
     ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     smc_cluster_core0_wdt->ocah_aperture_size = 0x400;
     smc_cluster_core0_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core0_wdt->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core0_wdt->desc = "Core 0 watchdog timer.";
     smc_cluster_core1_wdt->ocah_aperture_size = 0x400;
     smc_cluster_core1_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core1_wdt->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core1_wdt->desc = "Core 1 watchdog timer.";
     smc_cluster_core2_wdt->ocah_aperture_size = 0x400;
     smc_cluster_core2_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core2_wdt->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core2_wdt->desc = "Core 2 watchdog timer.";
     smc_cluster_core3_wdt->ocah_aperture_size = 0x400;
     smc_cluster_core3_wdt->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core3_wdt->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core3_wdt->desc = "Core 3 watchdog timer.";
     debug_module->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     debug_module->ocah_hole_note = "Only the harts of the CPU cluster reach this unit. An access from outside the cluster answers the same at every address in its aperture.";
@@ -177,7 +181,9 @@ addrmap smc_top #(
     smc_external->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::ADOPTER, rdata: 0x0, bresp: ocah_resp_e::ADOPTER};
 `endif
 
-    // Core-local resources below are reachable only by the SMC cluster's own harts
+    // The SMC harts reach the cluster resources below inside the CPU cluster.
+    // Inbound initiators reach the PLIC, CLINT and bus-error units only while
+    // REGION_SIZE covers them, and never reach the error device.
 `ifndef EXCLUDE_CORE_LOCAL_RESOURCES
     plic                           smc_cluster_plic            @BASE_ADDR + 0x400_0000;
 
@@ -193,21 +199,27 @@ addrmap smc_top #(
 `ifdef OCAH_DOC_MEMORY_MAP
     smc_cluster_plic->ocah_aperture_size = 0x4000000;
     smc_cluster_plic->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_plic->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_plic->desc = "Platform-Level Interrupt Controller.";
     smc_cluster_clint->ocah_aperture_size = 0x10000;
     smc_cluster_clint->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_clint->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_clint->desc = "Core-Local Interruptor.";
     smc_cluster_core0_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core0_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core0_beu->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core0_beu->desc = "Core 0 bus-error unit.";
     smc_cluster_core1_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core1_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core1_beu->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core1_beu->desc = "Core 1 bus-error unit.";
     smc_cluster_core2_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core2_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core2_beu->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core2_beu->desc = "Core 2 bus-error unit.";
     smc_cluster_core3_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core3_beu->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
+    smc_cluster_core3_beu->ocah_past_extent_note = "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.";
     smc_cluster_core3_beu->desc = "Core 3 bus-error unit.";
     smc_cluster_error_device->desc = "Error responder for unmapped cluster-bus accesses.";
     smc_cluster_error_device->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
