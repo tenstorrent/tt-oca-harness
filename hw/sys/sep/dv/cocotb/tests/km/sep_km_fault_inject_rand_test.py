@@ -2244,7 +2244,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         """Select the external input for the KM stream with the KM held, feed the
         boot, load and transfer key 0 of the plan, and stop the stream with no
         beat waiting. Returns the coroutine function that restores the internal
-        source while the KM is held, and the KM-VALID sample after the transfer.
+        source while the KM is held, the key handle, and the KM-VALID samples
+        before and after the transfer.
 
         A key write draws DRBG words (``firmware.adoc``, "Crypto Engine
         Drivers"), so the transfer runs while the bench still feeds the stream
@@ -2269,13 +2270,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         kv_pre = self._kv()
         await self._transfer_pre(handle, key.dest)
         kv = self._kv()
-        self.chk.info(
-            "DRBG-STALL-KEY",
-            handle=_h2(handle),
-            dest=_h2(key.dest),
-            keyvalid_pre=_h2(kv_pre),
-            keyvalid=_h2(kv),
-        )
+        self.chk.info("DRBG-STALL-KEY", dest=_h2(key.dest))
         offered = await feed.stop()
         self.chk.info(
             "DRBG-STALL-STOP",
@@ -2291,11 +2286,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", sel)
             await ext.stop()
 
-        return restore, kv
+        return restore, handle, kv_pre, kv
 
     async def _drbg_stall_point(self) -> None:
         top = cocotb.top
-        restore, kv_xfer = await self._drbg_stall_stop()
+        restore, handle, kv_pre, kv_xfer = await self._drbg_stall_stop()
         drbg_bit = 1 << pl.IRQ_BIT["drbg_err"]
         seen = 0
         for _ in range(TVALID_WINDOW):
@@ -2322,7 +2317,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             "DRBG-STALL-KEYED",
             kv & dest == dest,
             dest=_h2(dest),
+            handle=_h2(handle),
             keyvalid_before=_h2(kv),
+            keyvalid_pre=_h2(kv_pre),
             keyvalid_xfer=_h2(kv_xfer),
         )
         watch = _FatalWatch(self)

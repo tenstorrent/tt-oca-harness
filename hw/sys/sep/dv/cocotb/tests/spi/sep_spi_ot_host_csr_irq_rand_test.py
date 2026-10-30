@@ -2152,7 +2152,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             st = await self._graded_status()
             if not st.ready and not st.active:
                 if accepted < 1:
-                    self._ctrl_missing(f"READY=0 before any accepted COMMAND write ({st.fmt()})")
+                    self._ctrl_missing(
+                        "CTRL-SPI-CMDBUSY0",
+                        f"READY=0 before any accepted COMMAND write ({st.fmt()})",
+                    )
                 break
             if not st.ready:
                 self._ctrl_missing(

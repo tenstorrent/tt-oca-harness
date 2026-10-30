@@ -42,7 +42,9 @@ Checkers:
                     bit change and no program command at the post-guard tap, on an
                     unlocked field it lands exactly its bit with one program command
                     at its address; a shadow write is
-                    blocked under a write-lock and ORs the new bit without one.
+                    blocked under a write-lock and ORs the new bit without one, and
+                    the unlocked write answers OKAY (a legal access: ``sw = rw`` in
+                    ``sep_efuse_map.rdl``; AMBA AXI IHI0022 ``OKAY``).
   CHK-GUARD-NOPULSE lock leg and single-bit image, one line per blocked request (a
                     read-interface request on a read-locked field, a program on a
                     write-locked field): from the go write to the disable write, the
@@ -76,15 +78,16 @@ Checkers:
                     ``sep_efuse_map.adoc`` ``LC_STATE``).
   CHK-LOCK-ORDER    order cell: a shadow write lands only before the lock, the lock bit
                     survives a write of 0 to ``LOCKS``, a later write of a third bit
-                    leaves the shadow unchanged. The specification names no response
-                    class for a blocked field write or a zero write to ``LOCKS``, so
-                    the line logs each response as context only. The AXI driver
-                    fails the test when a write does not complete
-                    (``hw/common/dv/vip/ocah_axi_vip/cocotb/ocah_axi_master_sequence.py``
-                    raises on a write timeout).
+                    leaves the shadow unchanged. Every legal write of the cell (a
+                    field write before the lock, the lock write, the zero writes to
+                    ``LOCKS``) answers OKAY: each is a ``sw = rw`` access in
+                    ``sep_efuse_map.rdl`` that no lock covers (AMBA AXI IHI0022
+                    ``OKAY``). The specification names no response class for a field
+                    write that the lock blocks, so ``OBS-LOCK-ORDER-RESP`` logs it.
   CHK-LOCK-SLOT0-STORE order cell, after CHK-LOCK-ORDER: a write of ``LOCKS`` bits [1:0]
                     (slot 0, ``LC_STATE``) reads both bits 1, and a later write of 0
-                    leaves both 1 (``sep_efuse_map.rdl`` ``LOCKS``, woset). The effect
+                    leaves both 1 (``sep_efuse_map.rdl`` ``LOCKS``, woset); both writes
+                    are legal and answer OKAY. The effect
                     on ``LC_STATE`` is not graded. Control: both bits read 0 before.
   CHK-PROG-ROUND    chain leg, per round: the frontdoor word is unchanged after the
                     program and the bank gains exactly the bit; after the resense all
@@ -138,7 +141,9 @@ moves): ``jtag_rlock_twin``, ``jtag_rlock_locked``, ``uid_rlock_slot`` and
 ``exempt_prog_bit`` (exempt cell).
 
 Observations: ``OBS-LOCK-READ`` logs the response and data of a frontdoor read that a
-read-lock blocks; the specification states neither, so they are not graded. At the end
+read-lock blocks; the specification states neither, so they are not graded.
+``OBS-LOCK-CELL-WR-RESP`` and ``OBS-LOCK-ORDER-RESP`` log the response of a shadow write
+that a write-lock blocks, which the specification does not state. At the end
 of the lock leg, ``OBS-UID-RDLOCK-PROG`` logs a program of a 0 bit of one UID field
 whose slot had no lock and now has its read-lock alone (programmed into ``LOCKS``,
 then a resense): ``efuse_req_error``, the program commands at the post-guard tap and
@@ -322,8 +327,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         return await self.fd.rd(addr)
 
     async def _wr(self, addr: int, data: int, *, shadow: bool = False) -> int:
-        """One 32-bit frontdoor write. A shadow write is graded by its effect, not its
-        response, so its response is returned and logged only."""
+        """One 32-bit frontdoor write. A shadow write passes the scoreboard with any
+        response; its response is returned for the caller to grade or log."""
         seq = await self.fd.access(SepAxiOp.WRITE, addr, data & _WORD, unverified_write=shadow)
         if shadow:
             await ClockCycles(cocotb.top.clk_i, _WR_SETTLE)
@@ -693,12 +698,14 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             f["shadow_wr"] = "blocked" if wl else "or"
             f["shadow_exp"] = _hexw(exp)
             f["shadow_got"] = _hexw(after)
-            f["wr_resp"] = resp
             ok &= after == exp
-            if not wl:
-                self.or_writes += int(after == exp)
-            else:
+            if wl:
+                self.chk.obs("LOCK-CELL-WR-RESP", slot=slot, field=name, resp=resp_name(resp))
                 self.blocked_writes += 1
+            else:
+                f["wr_resp"] = resp_name(resp)
+                ok &= resp == _RESP_OKAY
+                self.or_writes += int(after == exp)
         return {"ok": ok, "fields": f}
 
     def _reset_twin_counts(self) -> None:
@@ -1113,6 +1120,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         trace = []
 
         blocked_resps: list[int] = []
+        legal_resps: list[int] = []
         zero_resps: list[int] = []
 
         async def _write_field(word: int, bit: int) -> None:
@@ -1120,12 +1128,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             value[word] |= 1 << bit
             for k in range(n):
                 resp = await self._wr(shadow_addr(name, k), value[k], shadow=True)
-                if locked:
-                    blocked_resps.append(resp)
+                (blocked_resps if locked else legal_resps).append(resp)
 
         for action in perm:
             if action == "lock":
-                await self._wr(
+                lock_resp = await self._wr(
                     shadow_addr("LOCKS", lock_bit // 32), 1 << (lock_bit % 32), shadow=True
                 )
                 locked = True
@@ -1160,6 +1167,12 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         final = self._probe(name)
         third = (final[wc] >> bc) & 1
         ok &= lock_after_zero == 1 and locks_after == (1 << lock_bit) and final == gold
+        ok &= all(r == _RESP_OKAY for r in (*legal_resps, lock_resp, *zero_resps))
+        self.chk.obs(
+            "LOCK-ORDER-RESP",
+            field=name,
+            blocked_wr_resp="/".join(resp_name(r) for r in blocked_resps),
+        )
         ok = self._grade(
             "LOCK-ORDER",
             ok,
@@ -1173,7 +1186,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             lock_bit=lock_bit,
             bits=f"a={wa}.{ba},b={wb}.{bb},c={wc}.{bc}",
             trace=",".join(trace),
-            blocked_wr_resp="/".join(resp_name(r) for r in blocked_resps),
+            field_wr_resp="/".join(resp_name(r) for r in legal_resps),
+            lock_wr_resp=resp_name(lock_resp),
             locks_zero_resp="/".join(resp_name(r) for r in zero_resps),
         )
         await self._pass(tag, ok)
@@ -1184,19 +1198,24 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
         ``sep_efuse_map.rdl`` ``LOCKS``: ``LC_STATE_WRITE_LOCK`` [0] and
         ``LC_STATE_READ_LOCK`` [1] are ``sw = rw; onwrite = woset``, reset 0. A write of
-        both bits sets them; a later write of 0 clears neither. Their effect on
+        both bits sets them; a later write of 0 clears neither. Both writes are legal
+        accesses and answer OKAY. Their effect on
         ``LC_STATE`` is not graded (the specification and the RDL text disagree).
         Control: both bits read 0 before the write.
         """
         slot0 = (1 << write_lock_bit(0)) | (1 << read_lock_bit(0))
         self._control("LOCK-SLOT0-PRE", not locks_before & slot0, locks=f"0x{locks_before:016x}")
-        await self._wr(shadow_addr("LOCKS", 0), slot0, shadow=True)
+        set_resp = await self._wr(shadow_addr("LOCKS", 0), slot0, shadow=True)
         after_set = await self._locks()
-        await self._wr(shadow_addr("LOCKS", 0), 0, shadow=True)
+        zero_resp = await self._wr(shadow_addr("LOCKS", 0), 0, shadow=True)
         after_zero = await self._locks()
         self._grade(
             "LOCK-SLOT0-STORE",
-            after_set & slot0 == slot0 and after_zero & slot0 == slot0,
+            after_set & slot0 == slot0
+            and after_zero & slot0 == slot0
+            and set_resp == zero_resp == _RESP_OKAY,
+            set_resp=resp_name(set_resp),
+            zero_resp=resp_name(zero_resp),
             bits_after_set=f"0b{(after_set & slot0):02b}",
             bits_after_zero=f"0b{(after_zero & slot0):02b}",
             locks_after_set=f"0x{after_set:016x}",

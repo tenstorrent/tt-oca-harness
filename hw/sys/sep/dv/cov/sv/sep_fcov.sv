@@ -117,7 +117,7 @@ module sep_fcov (
   input wire [1:0]  efuse_program_state_i,  // efuse_program_interface FSM
   input wire        secure_tm_i,
   input wire        sec_dis_i,
-  input wire [1:0]  demote_1_i,          // {~demote, demote}: 2'b10 clear, 2'b01 set
+  input wire [1:0]  demote_1_i,          // differential pair; see ef_demoted
   input wire [1:0]  demote_2_i,
   input wire        cpu_reset_n_i,
   input wire        sep_reset_n_i,        // sep_reset_n, the SEP subsystem reset
@@ -3047,8 +3047,26 @@ module sep_fcov (
   // state a leaf never reads frontdoor before transitioning.
   wire [3:0] lc_sensed = efuse_lc_raw_i;
 
-  wire       demote_1_set = (demote_1_i == 2'b01);
-  wire       demote_2_set = (demote_2_i == 2'b01);
+  // A DEMOTE output pair reads as demoted when it differs from the pair it held
+  // in the last reset: cold reset clears `demote` (sep_lifecycle_ctrl.rdl, reset
+  // 0; lifecycle_controller.adoc, "Reset Behavior"), and no specification states
+  // which level of the pair is demoted. An X or Z bit in the pair gives an
+  // unknown result. Before the first known reset pair, no pair reads as demoted.
+  logic [1:0] ef_dclr1 = '0, ef_dclr2 = '0;
+  logic ef_dclr_v = 1'b0;
+  always @(posedge clk_i) begin
+    if (in_reset && !$isunknown({demote_1_i, demote_2_i})) begin
+      ef_dclr1  <= demote_1_i;
+      ef_dclr2  <= demote_2_i;
+      ef_dclr_v <= 1'b1;
+    end
+  end
+  function automatic logic ef_demoted(logic [1:0] pair, logic [1:0] clr, logic clr_v);
+    return clr_v ? (pair != clr) : 1'b0;
+  endfunction
+
+  wire       demote_1_set = ef_demoted(demote_1_i, ef_dclr1, ef_dclr_v);
+  wire       demote_2_set = ef_demoted(demote_2_i, ef_dclr2, ef_dclr_v);
 
   // --- Lifecycle ---------------------------------------------------------
   wire       lc_read = rd_ev && (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
@@ -34892,8 +34910,8 @@ module sep_fcov (
   wire ef_sd = (sec_dis_i === 1'b1);
   wire ef_sig = (lc_sigint_i === 1'b1);
   wire [2:0] ef_lc = ef_cls(efuse_lc_raw_i);
-  wire ef_d1 = (demote_1_i == 2'b01);
-  wire ef_d2 = (demote_2_i == 2'b01);
+  wire ef_d1 = demote_1_set;
+  wire ef_d2 = demote_2_set;
   wire [1:0] ef_dm = {ef_d1, ef_d2};
   wire [63:0] ef_locks = efuse_shadow_i[32*EfWLocks+:64];
   wire [31:0] ef_locks_sp = efuse_shadow_i[32*EfWLocksSp+:32];
@@ -34945,7 +34963,7 @@ module sep_fcov (
   // State at the AW handshake of each write, before the write takes effect.
   logic [EfFuseBits-1:0] ef_aw_shadow = '0;
   logic [63:0] ef_aw_feat = '0;
-  logic [1:0] ef_aw_d1 = 2'b10, ef_aw_d2 = 2'b10;
+  logic [1:0] ef_aw_d1 = '0, ef_aw_d2 = '0;
   logic ef_aw_l1 = 1'b0, ef_aw_l2 = 1'b0;
   logic [2:0] ef_aw_fault = '0;
   logic [2:0] ef_aw_flags = '0;  // {read_addr, program_addr, req} errors
@@ -35038,7 +35056,7 @@ module sep_fcov (
   logic ef_fs_v = 1'b0;
   logic [2:0] ef_fs_lc = '0;
   logic ef_fs_sd = 1'b0, ef_fs_sig = 1'b0;
-  logic [1:0] ef_fs_d1 = 2'b10, ef_fs_d2 = 2'b10;
+  logic [1:0] ef_fs_d1 = '0, ef_fs_d2 = '0;
   logic [63:0] ef_fs_feat = '0, ef_fs_sip = '0, ef_fs_sys = '0;
   logic [31:0] ef_fs_lcw = '0;
   logic [3:0] ef_fs_raw = '0;
@@ -36008,7 +36026,9 @@ module sep_fcov (
       u_sep_lc_demotion_cg.sample(me);
     end
     if (ef_feat_ev && ef_fin_k) begin
-      fs_dm = {ef_fs_d1 == 2'b01, ef_fs_d2 == 2'b01};
+      fs_dm = {
+        ef_demoted(ef_fs_d1, ef_dclr1, ef_dclr_v), ef_demoted(ef_fs_d2, ef_dclr2, ef_dclr_v)
+      };
       if (ef_own_fc) begin
         // sep_lc_feat_ctrl_profile_cg. The row and class points need a state
         // code that passes the integrity check.
@@ -36788,7 +36808,7 @@ module sep_fcov (
   logic ef_pw_ok = 1'b0;
   logic [EfFuseBits-1:0] ef_pw_shadow = '0;
   logic [63:0] ef_pw_feat = '0;
-  logic [1:0] ef_pw_d1 = 2'b10, ef_pw_d2 = 2'b10;
+  logic [1:0] ef_pw_d1 = '0, ef_pw_d2 = '0;
   logic ef_pw_l1 = 1'b0, ef_pw_l2 = 1'b0;
   logic [2:0] ef_pw_fault = '0, ef_pw_flags = '0;
   logic ef_pw_flx = 1'b0, ef_pw_dx = 1'b0;
@@ -36863,13 +36883,13 @@ module sep_fcov (
       // no cell for an open one.
       if (ef_pw_ok && !ef_pw_dx && (ef_pw_addr inside {EfDemote1, EfDemote2})) begin
         r = (ef_pw_addr == EfDemote2);
-        od = r ? (ef_pw_d2 == 2'b01) : (ef_pw_d1 == 2'b01);
+        od = r ? ef_demoted(ef_pw_d2, ef_dclr2, ef_dclr_v) : ef_demoted(ef_pw_d1, ef_dclr1, ef_dclr_v);
         ol = r ? ef_pw_l2 : ef_pw_l1;
-        nd = r ? (demote_2_i == 2'b01) : (demote_1_i == 2'b01);
+        nd = r ? demote_2_set : demote_1_set;
         nl = r ? (demote_lock_2_i === 1'b1) : (demote_lock_1_i === 1'b1);
         l_other = r ? ef_pw_l1 : ef_pw_l2;
-        d_other_pre = r ? (ef_pw_d1 == 2'b01) : (ef_pw_d2 == 2'b01);
-        d_other_now = r ? (demote_1_i == 2'b01) : (demote_2_i == 2'b01);
+        d_other_pre = r ? ef_demoted(ef_pw_d1, ef_dclr1, ef_dclr_v) : ef_demoted(ef_pw_d2, ef_dclr2, ef_dclr_v);
+        d_other_now = r ? demote_1_set : demote_2_set;
         chg = (od != nd) || (ol != nl);
         nx = r ? $isunknown({demote_2_i, demote_lock_2_i}) : $isunknown({demote_1_i, demote_lock_1_i});
         if (nx) chg = 1'b1;

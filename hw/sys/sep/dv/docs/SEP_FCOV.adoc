@@ -5402,7 +5402,7 @@ that closed set (<<sep-fcov-parked>>); it blocks no cell. Each absent input is l
 |`efuse_lc_raw_i` |`efuse_shadow_probe_o`, word `ShadowIdxLcState`, low 4 bits |sensed lifecycle raw nibble |In the sampler
 |`secure_tm_i` |`secure_tm_o` |latched secure test mode |In the sampler
 |`sec_dis_i` |`lcc_security_disable_probe_o` (`security_disable_o`) |SEC_DIS state |In the sampler
-|`demote_1_i`, `demote_2_i` |`lcc_demote_state_1_probe_o`, `lcc_demote_state_2_probe_o` |demotion state, differential |In the sampler
+|`demote_1_i`, `demote_2_i` |`lcc_demote_state_1_probe_o`, `lcc_demote_state_2_probe_o` |demotion state, differential; a pair reads as demoted when it differs from the pair it held in the last reset, because no specification states which level is demoted |In the sampler
 |`efuse_read_state_i`, `efuse_program_state_i` |`efuse_read_state_o`, `efuse_program_state_o` |interface FSM state |In the sampler
 |`cpu_reset_n_i`, `sep_reset_n_i`, `jtag_sep_reset_n_ovrd_i`, `jtag_sep_reset_n_val_i` |reset pair and IC_RESET override |reset release |In the sampler
 |Generated address constants `SEP_EFUSE_MAP_*`, `EFUSE_INTERFACE_CTRL_*`, `EFUSE_MMR_*`, `SEP_LIFECYCLE_CTRL_*` |`sep_reg.svh` |address decode |In the sampler (the sampler already uses constants of this family)
@@ -5864,7 +5864,9 @@ Debug Demotion", "Programming and Locking"); `sep_lifecycle_ctrl.adoc`
 
 *Sample event*: OKAY completion of a frontdoor write to `DEMOTE_1` or `DEMOTE_2`. Old
 and new (demote, lock) come from `demote_1_i`, `demote_2_i`, `demote_lock_1_i`
-and `demote_lock_2_i`. The four outputs are known at the AW of the write; a
+and `demote_lock_2_i`. A demote output reads as set when its pair differs from the
+pair it held in the last reset, which cold reset clears
+(`lifecycle_controller.adoc`, "Reset Behavior"); no bin names a level of the pair. The four outputs are known at the AW of the write; a
 write with an X or Z output at the AW is no sample. An X or Z output after the
 write counts as a change: an `illegal_bins` hit for a locked register, and no cell
 for an open one.
