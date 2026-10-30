@@ -2452,7 +2452,7 @@ module sep_fcov (
   logic        lk_q;
   // Unlock values written to RANGE_REGWEN after the lock write, one bit each:
   // 0 True, 1 0xF, 2 False, 3 0x0; lk_last_q is the bit of the latest one.
-  logic [3:0]  lk_try_q, lk_last_q;
+  logic [3:0] lk_try_q, lk_last_q;
 
   function automatic logic [3:0] lk_try_bit(input logic [3:0] v);
     case (v)
@@ -9620,12 +9620,7 @@ module sep_fcov (
   endgroup
 
   covergroup sep_dma_range_config_cg with function sample (
-      logic rv_v,
-      logic bl_v,
-      logic [2:0] ip,
-      logic ip_v,
-      logic [1:0] uw,
-      logic uw_v
+      logic rv_v, logic bl_v, logic [2:0] ip, logic ip_v, logic [1:0] uw, logic uw_v
   );
     option.per_instance = 1;
     option.name = "sep_dma_range_config_cg";
@@ -11311,11 +11306,11 @@ module sep_fcov (
     // Refused BASE, LIMIT and RANGE_VALID writes after the lock write, each
     // with the latest unlock value written before it.
     if (dl_base || dl_limit || dl_valid) begin
-      u_sep_dma_containment_cg.sample(
-          dl_base ? 2'd0 : (dl_limit ? 2'd1 : 2'd2), own_dma_irq,
-          lk_last_q[1] ? 2'd0 : (lk_last_q[2] ? 2'd1 : 2'd2),
-          own_dma_irq && (lk_last_q[3:1] != 3'b000), own_dma_irq && (lk_try_q == 4'hF), d_err,
-          own_dma_irq && (d_err || !d_busy), 1'b0, 1'b0);
+      u_sep_dma_containment_cg.sample(dl_base ? 2'd0 : (dl_limit ? 2'd1 : 2'd2), own_dma_irq,
+                                      lk_last_q[1] ? 2'd0 : (lk_last_q[2] ? 2'd1 : 2'd2),
+                                      own_dma_irq && (lk_last_q[3:1] != 3'b000),
+                                      own_dma_irq && (lk_try_q == 4'hF), d_err,
+                                      own_dma_irq && (d_err || !d_busy), 1'b0, 1'b0);
       if (lk_last_q[0])
         u_sep_dma_containment_cg.sample(2'd3, own_dma_irq, 2'd0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,
                                         1'b0);
@@ -34826,8 +34821,7 @@ module sep_fcov (
     // 3 match read (allowed, OKAY); 4 shadow read, 5 shadow write, 6 control
     // read, 7 control write (denied, not OKAY).
     x_state_class_op: coverpoint s.so iff (s.so_v) {
-      bins cells[] = {[6'd0 : 6'd23]};
-      illegal_bins wrong_response = {[6'd32 : 6'd55]};
+      bins cells[] = {[6'd0 : 6'd23]}; illegal_bins wrong_response = {[6'd32 : 6'd55]};
     }
     cp_gate_independent_of_feat: coverpoint s.gi iff (s.gi_v) {
       bins prod = {1'b0}; bins rma_sip = {1'b1};
