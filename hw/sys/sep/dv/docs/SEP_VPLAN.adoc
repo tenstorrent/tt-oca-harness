@@ -3293,7 +3293,7 @@ the test does.
 |`sep_km_kmcsr_reset_rand_test` logs `OBS-KMCSR-ACCESS` as an open question.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |VUART and TB_* registers in a production build
-|Do VUART_TX, VUART_RX, VUART_STATUS and the eight TB_* registers exist in a production build, and what may they expose? (hw/ip/key_manager/doc/architecture.adoc, section "Reset Conditioning"; hw/ip/key_manager/regs/gen/adoc/km_csr.adoc, sections "Key Manager Control and Status Registers", "VUART_TX", "TB_CMD_RESULT".) `sep_km_kmcsr_reset_rand_test` reads each of them once, grades the OKAY response (CHK-KMCSR-READ-RESP) and the reset value of the software-written words (CHK-KMCSR-RESET-READ) and of each VUART_STATUS field (CHK-KMCSR-VUART-STATUS), and logs the data of the other hardware-driven words.
+|Do VUART_TX, VUART_RX, VUART_STATUS and the eight TB_* registers exist in a production build, and what may they expose? (hw/ip/key_manager/doc/architecture.adoc, section "Reset Conditioning"; hw/ip/key_manager/regs/gen/adoc/km_csr.adoc, sections "Key Manager Control and Status Registers", "VUART_TX", "TB_CMD_RESULT".) `sep_km_kmcsr_reset_rand_test` reads each of them once, grades the OKAY response (CHK-KMCSR-READ-RESP) and the reset value of the software-written words (CHK-KMCSR-RESET-READ) and each VUART_STATUS field (CHK-KMCSR-VUART-STATUS: PRINT_ENABLE against the bench drive, which is 1 in one testlist entry and 0 in the other, the other fields against their reset value), and logs the data of the other hardware-driven words.
 |`sep_km_kmcsr_reset_rand_test` logs `OBS-KMCSR-ACCESS` as an open question.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Spurious interrupt code
