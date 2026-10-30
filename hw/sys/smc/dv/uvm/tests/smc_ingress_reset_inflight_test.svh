@@ -11,6 +11,15 @@ class smc_ingress_reset_inflight_test extends smc_base_test;
     super.configure_test_cfg(cfg);
     cfg.require_feature(SmcFeatureSpmMem);
     cfg.axi_timeout_cycles = 8192;
+    cfg.enable_sep_in_reset_monitor = 1;
+  endfunction
+  virtual function void plumb_scenario_seq(ocah_sequence seq);
+    smc_ingress_reset_inflight_test_seq reset_seq;
+    super.plumb_scenario_seq(seq);
+    if (!$cast(reset_seq, seq)) begin
+      `uvm_fatal(get_type_name(), "Invalid ingress-reset scenario sequence")
+    end
+    reset_seq.reset_monitor = m_env.m_sep_in_reset_monitor;
   endfunction
   virtual function ocah_sequence create_scenario_seq();
     return smc_ingress_reset_inflight_test_seq::type_id::create("seq");
