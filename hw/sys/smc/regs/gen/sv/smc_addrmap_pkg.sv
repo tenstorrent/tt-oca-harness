@@ -497,6 +497,9 @@ localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_SIZE = 64'h3008;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR = 64'hC0400000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_SIZE = 64'h4;
 
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_ADOPTER_FUSE_BASE_ADDR = 64'hC0400004;
+localparam longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_ADOPTER_FUSE_SIZE = 64'hFFC;
+
 function automatic longint unsigned SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR(input int unsigned gpio_ctrl_idx);
     return 64'hC0401000 + (gpio_ctrl_idx * 64'h20);
 endfunction
@@ -875,18 +878,23 @@ function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_L
     return 64'hC0006240 + (uart_log_engine_wrap_idx * 64'h400) + (LOG_CTRL_idx * 64'h4);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_NUM = 64'h10;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR = 64'hC0007000;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR = 64'hC0007008;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR = 64'hC0007000;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_ADOPTER_LOCKS_BASE_ADDR = 64'hC0007008;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR = 64'hC0007010;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(input int unsigned I2C_I3C_ID_idx);
-    return 64'hC0007028 + (I2C_I3C_ID_idx * 64'h8);
+    return 64'hC0007030 + (I2C_I3C_ID_idx * 64'h8);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM = 64'h9;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR = 64'hC0007070;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR = 64'hC0007078;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR = 64'hC0007078;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR = 64'hC0007080;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(input int unsigned SPARE_idx);
-    return 64'hC0007080 + (SPARE_idx * 64'h20);
+    return 64'hC0007088 + (SPARE_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM = 64'h1C;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM = 64'h1B;
+function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(input int unsigned SPARE_TAIL_idx);
+    return 64'hC00073E8 + (SPARE_TAIL_idx * 64'h8);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_NUM = 64'h3;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR = 64'hC0008000;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR = 64'hC0008004;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR = 64'hC0008008;

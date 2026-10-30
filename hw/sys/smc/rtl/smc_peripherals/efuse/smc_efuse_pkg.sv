@@ -6,7 +6,7 @@
 // Sizes the 8192-bit fuse array as 256 32-bit words and defines efuse_map_t, the
 // shadow-register layout of the SMC eFuse map, together with the fuse command types.
 // Builds EfuseFieldMap, the per-field lock rules and address ranges, and the Class 1
-// shadow range that covers the LOCKS field. Used by smc_efuse_wrapper and by the SMC
+// shadow range that covers the HARNESS_LOCKS and ADOPTER_LOCKS fields. Used by smc_efuse_wrapper and by the SMC
 // ports that carry the shadow registers and fuse commands.
 
 package smc_efuse_pkg;
@@ -17,8 +17,8 @@ package smc_efuse_pkg;
 
   // Shadow register layout preserved from the legacy generated sub-block header.
   typedef struct packed {
-    logic [0:0]   spare27_read_lock ;
-    logic [0:0]   spare27_write_lock ;
+    logic [0:0]   spare_tail_read_lock ;
+    logic [0:0]   spare_tail_write_lock ;
     logic [0:0]   spare26_read_lock ;
     logic [0:0]   spare26_write_lock ;
     logic [0:0]   spare25_read_lock ;
@@ -81,7 +81,16 @@ package smc_efuse_pkg;
     logic [0:0]   i2c_i3c_id_write_lock ;
     logic [0:0]   jtag_public_identity_read_lock ;
     logic [0:0]   jtag_public_identity_write_lock ;
-  } smc_efuse_map_locks_reg_t;
+  } smc_efuse_map_harness_locks_reg_t;
+
+  typedef struct packed {
+    logic [0:0]   read_lock ;
+    logic [0:0]   write_lock ;
+  } smc_efuse_map_adopter_lock_pair_t;
+
+  typedef struct packed {
+    smc_efuse_map_adopter_lock_pair_t [31:0] region;
+  } smc_efuse_map_adopter_locks_reg_t;
 
   typedef struct packed {logic [255:0] value;} smc_efuse_map_jtag_public_identity_reg_t;
 
@@ -109,13 +118,17 @@ package smc_efuse_pkg;
 
 
 
+  typedef struct packed {logic [63:0] rsvd;} smc_efuse_map_spare_tail_reg_t;
+
   typedef struct packed {
-    smc_efuse_map_spare_reg_t [27:0] spare;
+    smc_efuse_map_spare_tail_reg_t [2:0] spare_tail;
+    smc_efuse_map_spare_reg_t [26:0] spare;
     smc_efuse_map_occp_transport_timeout_reg_t occp_transport_timeout;
     smc_efuse_map_smc_config_reg_t smc_config;
     smc_efuse_map_i2c_i3c_id_reg_t [8:0] i2c_i3c_id;
     smc_efuse_map_jtag_public_identity_reg_t jtag_public_identity;
-    smc_efuse_map_locks_reg_t locks;
+    smc_efuse_map_adopter_locks_reg_t adopter_locks;
+    smc_efuse_map_harness_locks_reg_t harness_locks;
   } smc_efuse_map_regmap_t;
   `include "efuse_typedef.svh"
 
@@ -126,14 +139,20 @@ package smc_efuse_pkg;
   localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity.
   localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes.
 
+  // The adopter fuse region follows the harness map in the fuse address space and is capped
+  // by its window in smc_external, so fuse commands must address and count both.
+  localparam int unsigned MaxAdopterFuseWords =
+      int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_MANDATORY_ADOPTER_FUSE_SIZE) / 4;
+  localparam int unsigned MaxSenseWords = NumFuseWords + MaxAdopterFuseWords;
+
   localparam int unsigned NumFuseBitsWidth = $clog2(
-      NumEfuseBits
-  );  // 13 bits to encode 8192 bits <- used to create bit address type for bank
+      MaxSenseWords * NumFuseWordWidth
+  );  // 16 bits to encode the harness bank and the largest adopter region
   localparam int unsigned NumFuseByteWidth = $clog2(
       NumFuseBytes
   );  // 10 bits to encode 1024 bytes <- used to create byte address type for bank
-  // NOTE: $clog2(256)=8 can only represent 0-255, but we need to represent 256 words
-  localparam int unsigned NumFuseWordsWidth = $clog2(NumFuseWords + 1);
+  // NOTE: $clog2(N) can only represent 0 to N-1, but a full-length read counts N words
+  localparam int unsigned NumFuseWordsWidth = $clog2(MaxSenseWords + 1);
   localparam int unsigned ShadowRegBits = NumEfuseBits;
 
   typedef logic [NumFuseBitsWidth-1:0] efuse_addr_bit_t;
@@ -150,8 +169,9 @@ package smc_efuse_pkg;
   // count with it.
   localparam int unsigned NumSpareRegions = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
 
-  // LOCKS meta-field + 4 functional fields + NumSpareRegions spare regions (idx 0-31).
-  localparam int unsigned NumEfuseFields = 5 + NumSpareRegions;
+  // Lock meta-field + 4 functional fields + NumSpareRegions spare regions + SPARE_TAIL
+  // (idx 0-31).
+  localparam int unsigned NumEfuseFields = 6 + NumSpareRegions;
   localparam logic [efuse_pkg::EfuseFieldMapIdxWidth-1:0] LocksMetaIdx = '1;
   localparam logic [1:0] WriteUnlock = 2'b00;
   localparam logic [1:0] WriteSetOnly = 2'b10;
@@ -159,12 +179,14 @@ package smc_efuse_pkg;
   localparam logic ReadUnlock = 1'b0;
   localparam logic ReadLock = 1'b1;
 
-  // Physical OTP bits covered by LOCKS
-  localparam int unsigned LockFieldBits = $bits(smc_efuse_map_locks_reg_t);
+  // Physical OTP bits covered by HARNESS_LOCKS and ADOPTER_LOCKS
+  localparam int unsigned LockFieldBits = $bits(smc_efuse_map_harness_locks_reg_t);
+  localparam int unsigned AdopterLockFieldBits = $bits(smc_efuse_map_adopter_locks_reg_t);
 
   typedef struct packed {
-    logic [NumEfuseBits-LockFieldBits-1:0] reserved;
-    logic [LockFieldBits-1:0]              locks;
+    logic [NumEfuseBits-LockFieldBits-AdopterLockFieldBits-1:0] reserved;
+    logic [AdopterLockFieldBits-1:0]                            adopter_locks;
+    logic [LockFieldBits-1:0]                                   locks;
   } efuse_lock_view_t;
 
   typedef union packed {
@@ -181,9 +203,9 @@ package smc_efuse_pkg;
       (
           efuse_offset
           (
-              smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR
+              smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR
           ),
-          LockFieldBits,
+          LockFieldBits + AdopterLockFieldBits,
           NumFuseWordWidth
       ),
       default: '0
@@ -195,11 +217,11 @@ package smc_efuse_pkg;
   function automatic efuse_pkg::rule_t [NumEfuseFields-1:0] build_efuse_field_map();
     efuse_pkg::rule_t [NumEfuseFields-1:0] map;
 
-    // Hardware never applies lock bits to this entry.
+    // HARNESS_LOCKS and ADOPTER_LOCKS; hardware never applies lock bits to this entry.
     map[0] = '{
         idx: LocksMetaIdx,
         lock: {WriteSetOnly, ReadUnlock},
-        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR),
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_HARNESS_LOCKS_BASE_ADDR),
         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR)-1
     };
     map[1] = '{ // JTAG_PUBLIC_IDENTITY (idx 0)
@@ -237,16 +259,51 @@ package smc_efuse_pkg;
           (
           k == NumSpareRegions - 1
           ) ?
-          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE - 1)
+          (efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0)) - 1)
           : (
           efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k + 1)) - 1
           )
       };
     end
+    map[5+NumSpareRegions] = '{ // SPARE_TAIL[3] -- all three elements share the last slot
+        idx: efuse_pkg::EfuseFieldMapIdxWidth'(4 + NumSpareRegions),
+        lock: {WriteUnlock, ReadUnlock},
+        start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_TAIL_BASE_ADDR(0)),
+        end_addr: int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE) - 1
+    };
 
     return map;
   endfunction
 
   localparam efuse_pkg::rule_t [NumEfuseFields-1:0] EfuseFieldMap = build_efuse_field_map();
+
+  // One adopter lock region per ADOPTER_LOCKS pair.
+  localparam int unsigned AdopterLockRegions = AdopterLockFieldBits / 2;
+  typedef logic [AdopterLockRegions-1:0][15:0] adopter_lock_region_end_t;
+
+  // Region n covers adopter words [region_end[n-1], region_end[n]), with region_end[-1] = 0,
+  // as byte offsets in the adopter window. An entry of 0 marks an unused region: it matches no
+  // address and carries the never-locked sentinel idx.
+  function automatic efuse_pkg::rule_t [AdopterLockRegions-1:0] build_adopter_field_map(
+      adopter_lock_region_end_t region_end);
+    efuse_pkg::rule_t [AdopterLockRegions-1:0] map;
+    int unsigned start_word;
+
+    start_word = 0;
+    for (int unsigned n = 0; n < AdopterLockRegions; n++) begin
+      if (region_end[n] != '0) begin
+        map[n] = '{
+            idx: efuse_pkg::EfuseFieldMapIdxWidth'(n),
+            lock: {WriteUnlock, ReadUnlock},
+            start_addr: 4 * start_word,
+            end_addr: 4 * int'(region_end[n]) - 1
+        };
+        start_word = int'(region_end[n]);
+      end else begin
+        map[n] = '{idx: LocksMetaIdx, lock: '0, start_addr: '1, end_addr: '0};
+      end
+    end
+    return map;
+  endfunction
 
 endpackage
