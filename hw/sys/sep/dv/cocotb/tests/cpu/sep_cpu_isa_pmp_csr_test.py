@@ -43,15 +43,15 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   neighbours read back a value other than the before-read, so an alias of
   either neighbour changes the after-read. The check runs after every other
   check of the leaf.
-* CHK-MRAC (host) for each drawn ``mrac`` value the CSR reads back the drawn
-  value, the user-mode load from the PMP-denied SRAM region traps with
-  ``mcause`` 5 and the denied word does not reach its register; the
-  allowed-region load of the same run returns the stored word (control). Each
-  2-bit region field of a draw is 0b00, 0b01 or 0b10 (cpu.adoc, Memory
-  attributes: a cacheability and a side-effect attribute per region); a field
-  with both bits set, whose readback the specification does not state, is not
-  drawn. A draw equal to the start-up value ``MRAC_BOOT`` is redrawn, so a
-  core that ignores the write fails the readback.
+* CHK-MRAC (host) for each drawn ``mrac`` value the user-mode load from the
+  PMP-denied SRAM region traps with ``mcause`` 5 and the denied word does not
+  reach its register; the allowed-region load of the same run returns the
+  stored word (control). Each 2-bit region field of a draw is 0b00, 0b01 or
+  0b10 (cpu.adoc, Memory attributes: a cacheability and a side-effect attribute
+  per region); a field with both bits set is not drawn. A draw equal to the
+  start-up value ``MRAC_BOOT`` is redrawn, so every draw writes a new value.
+  No in-tree text states the value that ``mrac`` reads back after a write, so
+  the readback is logged only (``OBS-MRAC-READBACK``).
 * CHK-TRACE-INSTRET (host) the ``minstret`` delta over the straight-line block
   equals the retirements that the trace monitor counts from the first
   ``minstret`` read up to the second.
@@ -536,8 +536,14 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             mc = int(kv["mcause"])
             rok = int(kv["rok"])
             rden = int(kv["rden"])
+            self.logger.info(
+                "OBS-MRAC-READBACK LOG j=%d mrac=0x%08x mrac_readback=0x%08x",
+                j,
+                cfg.mrac[j],
+                int(kv["rb"]),
+            )
             body = (
-                f"mrac=0x{cfg.mrac[j]:08x} mrac_readback=0x{int(kv['rb']):08x} denied "
+                f"mrac=0x{cfg.mrac[j]:08x} denied "
                 f"mcause=0x{mc:x} traps={int(kv['traps'])} allowed_reg=0x{rok:08x} "
                 f"allowed_word=0x{cfg.aw[j]:08x} denied_reg=0x{rden:08x} "
                 f"denied_word=0x{cfg.dw[j]:08x}"
@@ -545,7 +551,6 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             ok = (
                 int(kv["j"]) == j
                 and int(kv["v"]) == cfg.mrac[j]
-                and int(kv["rb"]) == cfg.mrac[j]
                 and mc == MCAUSE_LOAD_FAULT
                 and int(kv["traps"]) == 1
                 and rok == cfg.aw[j]

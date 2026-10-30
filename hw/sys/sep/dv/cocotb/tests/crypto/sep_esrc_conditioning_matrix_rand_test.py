@@ -98,15 +98,15 @@ Checkers:
                        and ends at 0, and at least one run completes. In the
                        pass-through window OUTPUT_COUNT is 0 on every clock.
   CHK-COND-PASSTHRU    every FIFO word == BIW observe word i + d at one d in 0..8.
-  CHK-COND-PASSTHRU-OUTCOUNT
-                       every ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the
-                       pass-through window reads 0, and there is at least one read
-                       (entropy_source.adoc:206 "remains 0 while idle or bypassed").
-                       The window opens after ``SHA256_STATUS.BUSY`` reads 0 with
-                       whitening off (CTRL-COND-PASSTHRU ``busy_zero``).
-Logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the 32-bit health test with the
-compressor bypassed has no single stated behaviour) and ``OBS-BLOCKED
-CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW word is not stated).
+Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
+``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
+(entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
+whitened window shows the field non-zero, so a read of 0 does not tell a correct
+field from one that is not connected; the status tap grades the count
+(CHK-COND-SHA-COUNT). Also logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the
+32-bit health test with the compressor bypassed has no single stated behaviour)
+and ``OBS-BLOCKED CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW
+word is not stated).
 ``OBS-COND-PERIOD-ABS`` logs the gap of each divider value in ``clk_i`` cycles
 (the time base of the period is not stated: the register text names sample-clock
 cycles, the architecture text ``clk_i`` cycles). No text states the effect of a
@@ -344,7 +344,6 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         "CHK-COND-SHA",
         "CHK-COND-SHA-COUNT",
         "CHK-COND-PASSTHRU",
-        "CHK-COND-PASSTHRU-OUTCOUNT",
         "CHK-COND-FIRST-PUSH",
         "CHK-COND-PERIOD-RATIO",
         "CHK-COND-FIRST-STROBE",
@@ -1434,9 +1433,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         )
         outs = [_get(v, "SHA256_STATUS", "OUTPUT_COUNT") for v in out_reads]
         nonzero = sum(1 for o in outs if o)
-        self.chk.ok(
+        self.chk.obs(
             "COND-PASSTHRU-OUTCOUNT",
-            bool(outs) and nonzero == 0,
             reads=len(outs),
             nonzero=nonzero,
             values=",".join(str(v) for v in sorted(set(outs))) or "none",

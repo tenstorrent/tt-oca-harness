@@ -336,7 +336,9 @@ target = "lsu_stub_all_live"
 # The leaf resets the KM while its CPU polls the bus. The raised Verilator error
 # limit keeps the leaf running after an assertion error, so its own checks still
 # grade; the regression runner fails the leaf on any logged assertion error.
-args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+# +VUART_PRINT drives VUART_STATUS.PRINT_ENABLE to 1, so a bit that is not
+# routed to the register reads 0 and fails.
+args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000", "+VUART_PRINT"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
 

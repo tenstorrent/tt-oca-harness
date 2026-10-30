@@ -408,10 +408,10 @@ static void put_list(const uint32_t *r) {
 // read that traps leaves 0 in its register.
 #define PMPX_ACCESS(stmt, ntr, mc) \
     do { \
-        uint32_t n_ = g_ntrap; \
+        uint32_t ntrap0_ = g_ntrap; \
         g_mcause = 0u; \
         stmt; \
-        ntr = g_ntrap - n_; \
+        ntr = g_ntrap - ntrap0_; \
         mc = g_mcause; \
     } while (0)
 #define PMPX_PROBE(csr) \
