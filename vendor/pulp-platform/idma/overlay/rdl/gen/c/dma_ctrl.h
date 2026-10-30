@@ -86,28 +86,28 @@ typedef union {
 } dma_ctrl__STATUS_t;
 
 // reg - dma_ctrl::NEXT_ID
-// Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.
+// Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.
 #define DMA_CTRL__NEXT_ID__DATA_bm 0xffffffff
 #define DMA_CTRL__NEXT_ID__DATA_bp 0
 #define DMA_CTRL__NEXT_ID__DATA_bw 32
 #define DMA_CTRL__NEXT_ID__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.
+        // Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.
         uint32_t DATA :32;
     } f;
     uint32_t w;
 } dma_ctrl__NEXT_ID_t;
 
 // reg - dma_ctrl::DONE
-// Holds the cumulative number of completed transfers. Only accumulates when response is seen
+// Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.
 #define DMA_CTRL__DONE__DATA_bm 0xffffffff
 #define DMA_CTRL__DONE__DATA_bp 0
 #define DMA_CTRL__DONE__DATA_bw 32
 #define DMA_CTRL__DONE__DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Holds the cumulative number of completed transfers. Only accumulates when response is seen
+        // Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.
         uint32_t DATA :32;
     } f;
     uint32_t w;

@@ -400,7 +400,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -418,7 +418,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -436,7 +436,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -454,7 +454,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -472,7 +472,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -490,7 +490,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -508,7 +508,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -526,7 +526,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -544,7 +544,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -562,7 +562,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -580,7 +580,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -598,7 +598,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -616,7 +616,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -634,7 +634,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -652,7 +652,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -670,7 +670,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2 and skip zero on wrap. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires an ID without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
+            <ipxact:description>Reading this register starts the DMA transfer and returns its transfer ID. IDs start at 2, advance by one per command and never read 0; 0xFFFFFFFF reads as 1 from the cycle after it is reached. The descriptor is not validated: a command with zero repetitions, including one with CONFIG.ENABLED_ND clear, or with a length of 0 still retires without copying any data. A stream bank that is not implemented starts no transfer and returns 0.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -688,7 +688,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -706,7 +706,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -724,7 +724,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -742,7 +742,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -760,7 +760,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -778,7 +778,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -796,7 +796,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -814,7 +814,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -832,7 +832,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -850,7 +850,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -868,7 +868,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -886,7 +886,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -904,7 +904,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -922,7 +922,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -940,7 +940,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -958,7 +958,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DATA</ipxact:name>
-            <ipxact:description>Holds the cumulative number of completed transfers. Only accumulates when response is seen</ipxact:description>
+            <ipxact:description>Retirement counter for the stream. Resets to 1 and adds 1 per retirement, never reads 0, and reads 1 from the cycle after it reaches 0xFFFFFFFF. A command retires once, except that a command with CONFIG.ENABLED_ND set, a LENGTH of 0 and NUM_REPETITIONS N of 1 or more retires N times. The value therefore equals the ID NEXT_ID returned for the last retired command only while every earlier command retired once. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
