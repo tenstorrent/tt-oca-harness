@@ -699,6 +699,13 @@ class sep_sec_dis_override_test(sep_base_test):
         readback after the JTAG write and the JTAG write response, without a
         verdict.
 
+        CTRL-SECDIS-JTAG-WR-REACH: the REQUIRED_SIGNERS write, sent on the same
+        JTAG port in the same window just before the LC_STATE write, sets its
+        bit, and the LC_STATE write completes. So a JTAG shadow write reaches the
+        shadow map in this state, and the unchanged LC_STATE word of
+        CHK-SECDIS-LC-WR is a write that arrived and did not change the word. The
+        two write responses stay logged only.
+
         No specification puts eFuse state on ``ext_debug_bus_o``
         (port_table.adoc names the port only), so OBS-SECDIS-DBG-BUS logs the
         bits that change while the two JTAG writes run and in a quiet window
@@ -759,6 +766,24 @@ class sep_sec_dis_override_test(sep_base_test):
             rs_pre,
             rs_post,
             int(rs_post == rs_pre | (1 << rs_bit)),
+        )
+
+        rs_landed = rs_post == rs_pre | (1 << rs_bit)
+        if not rs_landed:
+            raise AssertionError(
+                f"CTRL-SECDIS-JTAG-WR-REACH FAIL: the JTAG write of REQUIRED_SIGNERS bit {rs_bit} "
+                f"did not land (pre=0x{rs_pre:08x} post=0x{rs_post:08x} resp={rs_resp}), so no "
+                "JTAG shadow write is shown to reach the shadow map and CHK-SECDIS-LC-WR "
+                "cannot tell a refused LC_STATE write from a write that never arrived"
+            )
+        self.logger.info(
+            "CTRL-SECDIS-JTAG-WR-REACH PASS: sec_dis=1 sense_done=0 JTAG wr REQUIRED_SIGNERS "
+            "@0x%08x bit=%d landed=1 resp=%d; LC_STATE wr @0x%08x completed resp=%d",
+            rs_addr,
+            rs_bit,
+            rs_resp,
+            lc_addr,
+            lc_resp,
         )
 
         # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f, which

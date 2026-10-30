@@ -988,6 +988,15 @@ Exceptions (a closed set):
   `km_par_rstrb_o` (the byte lanes that the KM parity-checks on the flipped
   response). User: `sep_km_fault_inject_rand_test` (CHK-PARITY,
   CHK-PARITY-VAC).
+* *Key Manager VUART print-enable drive* — the bench drives the
+  `VUART_STATUS.PRINT_ENABLE` input of the KMCSR register block
+  (`hwif_in.VUART_STATUS.print_enable.next` of `u_kmcsr`) for the whole run:
+  1 with the plusarg `+VUART_PRINT`, else 0. The field has no storage and no
+  RTL driver; `hw/ip/key_manager/regs/km_csr.rdl` (`PRINT_ENABLE`, "Set by
+  testbench to enable printf output") puts its driver in the bench. The
+  drive is a `force` on VCS and a hierarchical assignment on Verilator, set
+  at time 0 in every build. Readback: `VUART_STATUS` bit 2 over the KM CSR
+  bus. User: `sep_km_kmcsr_reset_rand_test` (CHK-KMCSR-VUART-STATUS).
 * Each Key Manager hook above is idle while its arm or enable input is 0 or
   unknown, and `sep_base_test.drive_idle_defaults` drives every hook input to
   0 at bring-up.

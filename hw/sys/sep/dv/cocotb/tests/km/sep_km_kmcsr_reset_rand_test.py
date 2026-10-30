@@ -68,9 +68,11 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-KMCSR-RESET-READ  VUART_TX, TB_RESULT, TB_SIGNATURE, TB_ERRCODE, TB_SUBTEST and
                     TB_CMD_ARG (sw = rw, hw = r, no writer in this leaf) read their
                     RDL reset
-  CHK-KMCSR-VUART-STATUS  each VUART_STATUS field reads its RDL reset
-                    (``hw/ip/key_manager/regs/km_csr.rdl:955-994``: TX_READY 1,
-                    RX_VALID 0, PRINT_ENABLE 0, RSVD 0); every bit is read on its own and a
+  CHK-KMCSR-VUART-STATUS  each VUART_STATUS field reads its golden
+                    (``hw/ip/key_manager/regs/km_csr.rdl:955-994``): TX_READY 1,
+                    RX_VALID 0 and RSVD 0 (RDL reset); PRINT_ENABLE reads the
+                    testbench drive ("Set by testbench", km_csr.rdl:980): 1 with
+                    ``+VUART_PRINT``, else 0. Every bit is read on its own and a
                     field with an unknown bit logs ``X``
 
 Controls: the VERSION read before the write; the W1C of the other bits next to
@@ -684,12 +686,14 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         await self._run([self._raw_clear_irq()])
 
     def _grade_vuart_status(self, slot: int) -> None:
-        """Grade each VUART_STATUS field of result slot ``slot`` against its RDL reset.
+        """Grade each VUART_STATUS field of result slot ``slot``.
 
         ``hw/ip/key_manager/regs/km_csr.rdl:955-994``: TX_READY [0] reset 1 ("always 1
         in simulation"), RX_VALID [1] reset 0 (no RX data is offered in this leaf),
-        PRINT_ENABLE [2] reset 0 ("Disabled by default"), RSVD [31:3] reset 0. Each bit of the stored word is read on its own, so a field
-        with an unknown bit logs ``X`` and fails by name.
+        RSVD [31:3] reset 0. PRINT_ENABLE [2] has no storage and is "Set by testbench"
+        (km_csr.rdl:980); ``tb_top`` drives it to 1 with ``+VUART_PRINT``, else 0, and
+        that drive is its golden. Each bit of the stored word is read on its own, so a
+        field with an unknown bit logs ``X`` and fails by name.
         """
         probe = cocotb.top.km_sram_probe_o
         lsb = 32 * kp.slot_words(slot)[0]
@@ -701,15 +705,20 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 continue
             known |= 1 << b
             value |= bit
+        driven = int("VUART_PRINT" in cocotb.plusargs)
         for name, mask, lsb_f, reset in pl.VUART_STATUS_FIELDS:
             field_known = known & mask == mask
             got = (value & mask) >> lsb_f
+            tb_drive = name.upper() == "PRINT_ENABLE"
+            golden = driven if tb_drive else reset
+            extra = {"driven": driven} if tb_drive else {}
             self.chk.ok(
                 "KMCSR-VUART-STATUS",
-                field_known and got == reset,
+                field_known and got == golden,
                 field=name,
                 value=(got if mask >> lsb_f == 1 else _h(got)) if field_known else "X",
-                golden=reset if mask >> lsb_f == 1 else _h(reset),
+                golden=golden if mask >> lsb_f == 1 else _h(golden),
+                **extra,
                 known_mask=_h(known),
                 rdata=_h(value),
             )

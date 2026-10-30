@@ -2538,6 +2538,25 @@ module sep_uvm_top
     end
 
     // ------------------------------------------------------------------
+    // KM VUART_STATUS.PRINT_ENABLE drive.
+    // ------------------------------------------------------------------
+    // km_csr.rdl gives PRINT_ENABLE as "Set by testbench" (sw = r, hw = w, no
+    // storage), and km_csr.sv leaves its hwif_in input without an RTL driver.
+    // The bench drives it for the whole run: 1 with +VUART_PRINT, else 0.
+`define KM_PRINT_ENABLE \
+    `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_kmcsr.hwif_in.VUART_STATUS.print_enable.next
+    logic vuart_print_q;
+    initial begin : vuart_print_enable_drive
+        vuart_print_q = $test$plusargs("VUART_PRINT") != 0;
+`ifdef VERILATOR
+        `KM_PRINT_ENABLE = vuart_print_q;
+`else
+        force `KM_PRINT_ENABLE = vuart_print_q;
+`endif
+    end
+`undef KM_PRINT_ENABLE
+
+    // ------------------------------------------------------------------
     // LC differential-integrity error inject.
     // ------------------------------------------------------------------
     // No legal OTP image can present a broken {~raw, raw} LC_STATE pair: the

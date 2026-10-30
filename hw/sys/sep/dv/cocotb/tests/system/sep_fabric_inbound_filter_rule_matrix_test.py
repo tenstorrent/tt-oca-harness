@@ -43,9 +43,9 @@ CHK-BURST-TO-SINGLE watches the system-CSR AXI-Lite AR/AW after
 ``u_system_csr_a2l_1``: a denied AxLEN=1 produces zero Lite handshakes
 (filter before the converter); an allowed AxLEN=1 produces two Lite
 singles (fabric.adoc: axi_to_axi_lite splits bursts into individual
-transactions). The single-beat access of each deny cell reaches the Lite
-port as one single at its address, so the watch is live when the denied
-burst shows none. WRAP/FIXED/AxLEN>1 are
+transactions). CTRL-BURST-LITE-LIVE: the single-beat access of each deny cell
+reaches the Lite port as one single at its address, so the watch is live
+when the denied burst shows none. WRAP/FIXED/AxLEN>1 are
 not walked. The denied 2-beat read also grades its R beats on the m_axi
 pins: an error response still returns every beat of the burst with RLAST
 on the last beat only, each beat with RID equal to the ARID (AMBA AXI
@@ -164,7 +164,14 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     """External traffic gets OKAY only where an entry's rule allows it, and DECERR elsewhere."""
 
     def _grade(self, name: str, ok: bool, detail: str) -> None:
-        """Log one PASS or FAIL line; a FAIL closes the coverage window, then raises."""
+        """Log one PASS or FAIL line; a FAIL closes the coverage window, then raises.
+
+        ``name`` is ``<PREFIX>-<NAME>`` optionally followed by a leg tag; the tag
+        goes after the verdict as ``leg=<tag>``.
+        """
+        name, _, leg = name.partition(" ")
+        if leg:
+            detail = f"leg={leg.replace(' ', '_')} {detail}"
         if ok:
             self.logger.info("%s PASS: %s", name, detail)
             return
@@ -334,7 +341,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"CHK-BURST-DENY: single-beat rdata 0x{data:08x} != staged 0x{burst_val:08x}"
         )
         self._expect_lite_split(
-            lite_sb, start=burst_addr, nbeats=1, tag="CHK-BURST-TO-SINGLE single-beat AR"
+            lite_sb, start=burst_addr, nbeats=1, tag="CTRL-BURST-LITE-LIVE single-beat AR"
         )
         arid = SepSeededRng(mcfg.seed ^ _BURST_ID_SALT).randrange(1, _M_AXI_ID_MAX + 1)
         mon = self.env.ext_axi_monitor
@@ -448,7 +455,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"(0x{landed:08x} != 0x{poke_sb:08x})"
         )
         self._expect_lite_split(
-            lite_sb, start=burst_addr, nbeats=1, tag="CHK-BURST-TO-SINGLE single-beat AW"
+            lite_sb, start=burst_addr, nbeats=1, tag="CTRL-BURST-LITE-LIVE single-beat AW"
         )
         await self.filt.stage_target(burst_addr, burst_val)
         async with self._graded_window():

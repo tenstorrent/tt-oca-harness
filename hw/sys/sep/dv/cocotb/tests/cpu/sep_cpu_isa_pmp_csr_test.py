@@ -24,16 +24,25 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   drawn values or with each other: the implemented width and granularity are
   not claimed.
 * CHK-PMP16 (host) a further drawn word is written to ``pmpaddr16`` and
-  ``pmpaddr63`` (CSR 0x3C0 and 0x3EF, beyond the 16 implemented entries); the
-  read after the write returns 0 for each. RISC-V Privileged Architecture
-  20211203, section 3.7.1: "Implementations may implement zero, 16, or 64
-  PMP CSRs; the lowest-numbered PMP CSRs must be implemented first." With 16
-  entries (``hw/sys/sep/doc/cpu.adoc``) the core implements CSRs 0 to 15 only,
-  so an access to 16 or 63 either traps or reads 0; the VeeR EL2 PRM
-  ``physical-memory-protection.md:3`` defers to that section. A read that
-  traps leaves 0 in the firmware register; the trap count and ``mcause`` are
-  logged on the line and not graded. The check runs
-  after every other check of the leaf.
+  ``pmpaddr63`` (CSR 0x3C0 and 0x3EF) and read back (before); the firmware then
+  writes the complement of the before-read to ``pmpaddr0`` and ``pmpaddr15``
+  and reads the probed CSR again (after). The VeeR EL2 PRM at the Bender pin
+  (``physical-memory-protection.md``, table "CSR configurations for RV-32")
+  gives a 16-entry core 4 ``pmpcfgX`` and 16 ``pmpaddrX`` CSRs, and the core
+  has 16 entries (``hw/sys/sep/doc/cpu.adoc``). RISC-V Privileged
+  Architecture 20211203, ``priv-csrs.tex``: "Attempts to access a non-existent
+  CSR raise an illegal instruction exception." and, for a WARL field, "allow
+  any value to be written while guaranteeing to return a legal value whenever
+  read [...] the range of supported values can be determined by attempting to
+  write a desired setting then reading to see if the value was retained";
+  ``machine.tex`` section 3.7.1: "All PMP CSR fields are WARL and may be
+  read-only zero". A CSR passes when each of its three accesses traps once with
+  ``mcause`` 2 (a non-existent CSR), or when none traps and the before-read and
+  the after-read are both 0 (read-only zero). CTRL-PMP16-NEIGHBOUR: the
+  neighbour writes do not trap and both
+  neighbours read back a value other than the before-read, so an alias of
+  either neighbour changes the after-read. The check runs after every other
+  check of the leaf.
 * CHK-MRAC (host) for each drawn ``mrac`` value the CSR reads back the drawn
   value, the user-mode load from the PMP-denied SRAM region traps with
   ``mcause`` 5 and the denied word does not reach its register; the
@@ -297,7 +306,7 @@ class IsaCfg:
         # does not move.
         cfg.ls_order = list(LS_VALUES)
         rng.shuffle(cfg.ls_order)
-        cfg.pmpx = rng.getrandbits(32)
+        cfg.pmpx = rng.getrandbits(32) or 1
         return cfg
 
     def words(self) -> list[int]:
@@ -444,14 +453,29 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             raise AssertionError(f"CHK-PMP16 FAIL: PMPX lines for CSRs {addrs}, want 0x3c0,0x3ef")
         bad = []
         for rec in recs:
-            kv = rec.kv
-            rb = int(kv["rb"])
+            kv = {k: int(x) for k, x in rec.kv.items()}
             body = (
-                f"a=0x{int(kv['a']):03x} v=0x{int(kv['v']):08x} rb=0x{rb:08x} want=0x00000000 "
-                f"traps={int(kv['traps'])} mcause=0x{int(kv['mcause']):08x}"
+                f"a=0x{kv['a']:03x} v=0x{kv['v']:08x} before=0x{kv['b']:08x} "
+                f"neighbour_wr=0x{kv['n']:08x} pmpaddr0=0x{kv['n0']:08x} "
+                f"pmpaddr15=0x{kv['n15']:08x} after=0x{kv['aft']:08x} "
+                f"traps=wr:{kv['wtr']},rd:{kv['btr']},rd:{kv['atr']} "
+                f"mcause=0x{kv['wmc']:x},0x{kv['bmc']:x},0x{kv['amc']:x}"
             )
-            self.logger.info("CHK-PMP16 %s %s", "PASS" if rb == 0 else "FAIL", body)
-            if rb != 0:
+            if kv["ntr"] or kv["n0"] == kv["b"] or kv["n15"] == kv["b"]:
+                raise AssertionError(
+                    f"CTRL-PMP16-NEIGHBOUR FAIL: neighbour_traps={kv['ntr']} {body}"
+                )
+            self.logger.info("CTRL-PMP16-NEIGHBOUR PASS: neighbours differ from before; %s", body)
+            traps = (kv["wtr"], kv["btr"], kv["atr"])
+            causes = (kv["wmc"], kv["bmc"], kv["amc"])
+            if traps == (1, 1, 1) and causes == (MCAUSE_ILLEGAL,) * 3:
+                leg = "illegal_instruction"
+            elif traps == (0, 0, 0) and kv["b"] == 0 and kv["aft"] == 0:
+                leg = "read_only_zero"
+            else:
+                leg = None
+            self.logger.info("CHK-PMP16 %s: leg=%s %s", "PASS" if leg else "FAIL", leg, body)
+            if leg is None:
                 bad.append(body)
         if bad:
             raise AssertionError(f"CHK-PMP16 FAIL: {'; '.join(bad)}")

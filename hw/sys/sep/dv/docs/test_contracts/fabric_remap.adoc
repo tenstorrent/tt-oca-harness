@@ -126,7 +126,7 @@ remapped routes to the error slave and never executes.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RAND-REP — entries 0 and 7 × two windows × `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch, run every seed. Seed varies the window data, the entry-15 granule window, and the bound-probe registers. The ARID of the denied burst is drawn from 1 to 63 on a separate seeded stream, so the other draws keep their values.
+*Randomization*: RAND-REP — entries 0 and 7 × two windows × `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch, run every seed. Seed varies the window data, the entry-15 granule window, and the bound-probe registers. The ARID of the denied burst is drawn from 1 to 62 (63 is the pre-sense read) on a separate seeded stream, so the other draws keep their values.
 
 *Objective*: Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 x `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15.
 
@@ -164,7 +164,7 @@ remapped routes to the error slave and never executes.
 |CTRL-RAND-REP
 |Entries 0 and 7, two address windows, `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch — 16 cells in one invocation. Entry 15 carries the granule, bound, and lock cells.
 |CHK-BURST-DENY
-|With `allow_burst=0`, a single-beat external read of the scratch window is OKAY (anti-vacuous) and a 2-beat INCR (AxLEN=1) to the same address is DECERR. `traffic_filter.sv` `pass_burst` is not vacuously true. The R beats of the denied burst on the `m_axi` pins are graded too: two beats, each with RRESP DECERR and RID equal to the ARID, RLAST on the second beat only (AMBA AXI IHI 0022; `hw/ip/axi_filter/doc/index.adoc` "Blocked Transactions" for DECERR). The ARID is drawn from 1 to 63, so an RID that drops to 0 fails.
+|With `allow_burst=0`, a single-beat external read of the scratch window is OKAY (anti-vacuous) and a 2-beat INCR (AxLEN=1) to the same address is DECERR. `traffic_filter.sv` `pass_burst` is not vacuously true. The R beats of the denied burst on the `m_axi` pins are graded too: two beats, each with RRESP DECERR and RID equal to the ARID, RLAST on the second beat only (AMBA AXI IHI 0022; `hw/ip/axi_filter/doc/index.adoc` "Blocked Transactions" for DECERR). The ARID is drawn from 1 to 62 (63 is the pre-sense read), so an RID that drops to 0 fails.
 |CHK-BURST-ALLOW
 |With `allow_burst=1` and a programmed window that already spans two 4 KB pages, the same 2-beat INCR is OKAY and returns the staged scratch value. START/END read back as programmed (the same-page 4 KB granule widen does not fire). The granule widen itself is `CHK-PAGE-WIDEN`.
 |CHK-BURST-WRITE-DENY
@@ -174,7 +174,7 @@ remapped routes to the error slave and never executes.
 |CTRL-BURST-WALK
 |Summary of the `allow_burst` walk: `CHK-BURST-DENY`, `CHK-BURST-ALLOW`, `CHK-BURST-WRITE-DENY`, `CHK-BURST-WRITE-ALLOW` and the `CHK-BURST-TO-SINGLE` read and write legs all passed, so the deny and the allow side were walked on AR and on AW of the scratch window. It grades nothing of its own.
 |CHK-BURST-TO-SINGLE
-|A filter-allowed 2-beat INCR (AxLEN=1) becomes two AXI-Lite singles on the system-CSR bridge (`u_system_csr_a2l_1`): AR/AW at start and start+4. A denied AxLEN=1 produces zero Lite handshakes (filter before the converter). `hw/sys/sep/doc/fabric.adoc`: convert burst to single. Before each denied burst, the single-beat access of the deny cell reaches the Lite port as exactly one single at its address, so the zero-handshake compare of the denied burst runs on a live port.
+|A filter-allowed 2-beat INCR (AxLEN=1) becomes two AXI-Lite singles on the system-CSR bridge (`u_system_csr_a2l_1`): AR/AW at start and start+4. A denied AxLEN=1 produces zero Lite handshakes (filter before the converter). `hw/sys/sep/doc/fabric.adoc`: convert burst to single. Each leg is logged as `CHK-BURST-TO-SINGLE PASS: leg=<deny|allow>_<AR|AW> ...`. Control CTRL-BURST-LITE-LIVE: before each denied burst, the single-beat access of the deny cell reaches the Lite port as exactly one single at its address, so the zero-handshake compare of the denied burst runs on a live port.
 |CHK-WIDEN-GUARD
 |Stimulus guard in `program_rule` (`seq_lib/sep_inbound_filter_rule_seq.py`). A rule programmed with `allow_burst=1` and START and END inside one 4 KB page must be requested as a page widen, or the leaf fails before the entry is written. This keeps a cell that wants a narrow window from getting the whole-page grant by accident. The DUT cannot fail this checker, and it has no PASS line.
 |CHK-PAGE-WIDEN

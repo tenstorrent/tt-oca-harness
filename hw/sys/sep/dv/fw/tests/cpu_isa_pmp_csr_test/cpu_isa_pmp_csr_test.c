@@ -21,7 +21,9 @@
 //   ROW i= op= r= / CROW i= op= r=         result of table row i (control rows after bset)
 //   ZBS traps= mcause= mepc= pc=           the bset step
 //   PMP0 r0..r15= / PMPC i= r0..r15=       pmpaddr readbacks after the drawn and the complement
-//   writes PMPX a= v= rb= traps= mcause=   pmpaddr16 and pmpaddr63 write/read of the drawn value
+//   writes
+//   PMPX a= v= wtr= wmc= b= btr= bmc= n= ntr= n0= n15= aft= atr= amc=
+//                                          pmpaddr16 and pmpaddr63 probes (pmpx_probe)
 //   MSECCFG v= traps= MRAC j= v= rb= traps= mcause= mepc= rok= rden= INSTRET r1= r2= pc1=
 //   pc2=
 
@@ -400,22 +402,45 @@ static void put_list(const uint32_t *r) {
     rec_end();
 }
 
-// Write then read pmpaddr16 (CSR 0x3C0) or pmpaddr63 (CSR 0x3EF). The readback
-// stays 0 when the read traps.
-#define PMPX_PROBE(csr) \
+// Probe pmpaddr16 (CSR 0x3C0) or pmpaddr63 (CSR 0x3EF): write v, read it (b),
+// write ~b to pmpaddr0 and pmpaddr15 and read both back (n0, n15), then read
+// the probed CSR again (aft). Each access logs its trap count and mcause; a
+// read that traps leaves 0 in its register.
+#define PMPX_ACCESS(stmt, ntr, mc) \
     do { \
-        uint32_t rb_ = 0u; \
         uint32_t n_ = g_ntrap; \
         g_mcause = 0u; \
-        CSR_WRITE(csr, v); \
-        __asm__ volatile("csrr %0, " #csr : "+r"(rb_)::"memory"); \
+        stmt; \
+        ntr = g_ntrap - n_; \
+        mc = g_mcause; \
+    } while (0)
+#define PMPX_PROBE(csr) \
+    do { \
+        uint32_t b_ = 0u, a_ = 0u, wt_, wm_, bt_, bm_, at_, am_, nt_, nm_; \
+        PMPX_ACCESS(CSR_WRITE(csr, v), wt_, wm_); \
+        PMPX_ACCESS(__asm__ volatile("csrr %0, " #csr : "+r"(b_)::"memory"), bt_, bm_); \
+        uint32_t n_ = ~b_; \
+        PMPX_ACCESS({ CSR_WRITE(pmpaddr0, n_); CSR_WRITE(pmpaddr15, n_); }, nt_, nm_); \
+        uint32_t n0_ = CSR_READ(pmpaddr0); \
+        uint32_t n15_ = CSR_READ(pmpaddr15); \
+        PMPX_ACCESS(__asm__ volatile("csrr %0, " #csr : "+r"(a_)::"memory"), at_, am_); \
         sep_mbx_puts("PMPX"); \
         rec_hex("a", csr); \
         rec_hex("v", v); \
-        rec_hex("rb", rb_); \
-        rec_hex("traps", g_ntrap - n_); \
-        rec_hex("mcause", g_mcause); \
+        rec_hex("wtr", wt_); \
+        rec_hex("wmc", wm_); \
+        rec_hex("b", b_); \
+        rec_hex("btr", bt_); \
+        rec_hex("bmc", bm_); \
+        rec_hex("n", n_); \
+        rec_hex("ntr", nt_); \
+        rec_hex("n0", n0_); \
+        rec_hex("n15", n15_); \
+        rec_hex("aft", a_); \
+        rec_hex("atr", at_); \
+        rec_hex("amc", am_); \
         rec_end(); \
+        (void)nm_; \
     } while (0)
 
 static void pmpx_probe(uint32_t v) {

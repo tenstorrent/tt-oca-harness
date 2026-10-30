@@ -49,16 +49,21 @@ Checkers:
                     whose R handshake falls while ``sep_fuse_sense_done_o`` is
                     0 answers SLVERR; each epoch has at least one such probe.
                     Control in the same window (CTRL-PRESENSE-PATH): a JTAG
-                    read of ``TOKEN_MATCH_FAULT``, right after probe 1, answers
-                    OKAY with ``sep_fuse_sense_done_o`` and ``sep_reset_n``
-                    both 0. ``otp_fuse_controller.adoc`` (Shadow Register and
-                    JTAG Access Control) lets JTAG reach the token block in
-                    every state and restricts it only in PROD and RMA_SIP,
-                    which the held INVALID state before sensing is not, and
-                    only the MAP window answers SLVERR before sensing; the
-                    read is legal, so it answers OKAY. A port or bridge that
-                    refused every access before sensing fails here, so the
-                    SLVERR is the shadow-map refusal.
+                    read of ``EFUSE_INTERFACE_CTRL_STATUS``, right after probe
+                    1, answers OKAY with ``sep_fuse_sense_done_o`` and
+                    ``sep_reset_n`` both 0. ``otp_fuse_controller.adoc``
+                    (Shadow Register and JTAG Access Control) restricts JTAG
+                    only in PROD and RMA_SIP, which the held INVALID state
+                    before sensing is not; outside the token block the
+                    restricted states refuse the interface control registers
+                    too, so the read is not a token-block read. The register
+                    sits behind the same AXI-Lite to APB bridge as the MAP
+                    window, and only the MAP window answers SLVERR before
+                    sensing (``otp_fuse_controller.adoc``: "Until then, APB
+                    accesses to the MAP window return SLVERR"). A lifecycle
+                    filter or bridge that refused non-token JTAG reads before
+                    sensing fails here, so the SLVERR is the shadow-map
+                    refusal.
   CHK-PRESENSE-CTL  after both taps rise, the same words read OKAY with the
                     staged word of the image (the golden is the staged image,
                     not a DUT read). Words staged 0 stay graded, and each epoch
@@ -123,9 +128,8 @@ from env.sep_lcc_golden import (
 )
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import SEP_CPU_CTRL
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_CPU_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_efuse_rma_token_seq import TOKEN_MATCH_FAULT
 
 TEST = "sep_boot_release_terms_test"
 
@@ -140,6 +144,7 @@ SMC_APERTURES = (0x4000_0000, 0x9000_0000)
 SMC_APERTURE_SIZE = 0x0100_0000
 SEP_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 SEP_FIELD = SEP_CPU_CTRL.field_mask("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
+IF_STATUS_ADDR = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
 
 BOOT_FIRST = "BOOT_FIRST"
 BOOT_WITH_RST = "BOOT_WITH_RST"
@@ -361,10 +366,11 @@ class sep_boot_release_terms_test(sep_base_test):
             ep.probes[i]["resp"] = resp
             ep.probes[i]["data"] = data & 0xFFFF_FFFF
             if i == 0:
-                # Path control: a JTAG read of the token block, behind the same
-                # AXI-Lite to APB bridge, right after the first probe.
+                # Path control: a JTAG read of an interface control register,
+                # outside the token block and behind the same AXI-Lite to APB
+                # bridge, right after the first probe.
                 ep.ctl = {"issued": self._k}
-                ep.ctl["lat"] = await self._timed_read(TOKEN_MATCH_FAULT)
+                ep.ctl["lat"] = await self._timed_read(IF_STATUS_ADDR)
                 resp, data = self._last
                 ep.ctl["resp"] = resp
                 ep.ctl["data"] = data & 0xFFFF_FFFF
@@ -606,16 +612,16 @@ class sep_boot_release_terms_test(sep_base_test):
             and rec[ctl_cyc]["sep"] == 0
         )
         assert c_ok, (
-            f"CHK-PRESENSE FAIL: epoch={ep.kind} path control TOKEN_MATCH_FAULT "
-            f"@0x{TOKEN_MATCH_FAULT:08x} resp={_RESP_NAME.get(c['resp'], c['resp'])} at "
+            f"CHK-PRESENSE FAIL: epoch={ep.kind} path control EFUSE_INTERFACE_CTRL_STATUS "
+            f"@0x{IF_STATUS_ADDR:08x} resp={_RESP_NAME.get(c['resp'], c['resp'])} at "
             f"sample {ctl_cyc} sense_done={rec[ctl_cyc]['done']} sep_reset_n={rec[ctl_cyc]['sep']}; "
             "expected OKAY inside the pre-sense window"
         )
         self.logger.info(
-            "CTRL-PRESENSE-PATH: epoch=%s JTAG TOKEN_MATCH_FAULT @0x%08x resp=OKAY data=0x%08x "
+            "CTRL-PRESENSE-PATH: epoch=%s JTAG EFUSE_INTERFACE_CTRL_STATUS @0x%08x resp=OKAY data=0x%08x "
             "issued=%d resp_cyc=%d done_at_resp=0 sep_reset_n_at_resp=0",
             ep.kind,
-            TOKEN_MATCH_FAULT,
+            IF_STATUS_ADDR,
             c["data"],
             c["issued"],
             ctl_cyc,

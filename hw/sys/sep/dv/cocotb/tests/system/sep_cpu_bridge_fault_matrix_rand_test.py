@@ -96,7 +96,7 @@ Checkers:
   CHK-LATCH       PERIPH_BUS_ERR_STATUS equals the faulted set.
   CHK-OR          vector bit 42 equals (status != 0).
   CHK-CLR-MATRIX  a clear bit clears only its own block (seven bits + drain).
-  CHK-NONVAC      each matrix and mask step starts with at least two bits.
+  CTRL-NONVAC     each matrix and mask step starts with at least two bits.
   CHK-MASK        a mask clear gives the faulted set AND NOT mask.
   CHK-AGAIN       a cleared block re-latches; a re-fault keeps the other bits.
                   The status after the clear and after each re-fault equals
@@ -448,7 +448,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         "CHK-LATCH",
         "CHK-OR",
         "CHK-CLR-MATRIX",
-        "CHK-NONVAC",
+        "CTRL-NONVAC",
         "CHK-MASK",
         "CHK-AGAIN",
         "CHK-CLR-READ0",
@@ -952,8 +952,8 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         nb = bin(exp_before).count("1")
         nv = f"step={tag} latched_before=0x{exp_before:02x} bits={nb}"
         if nb < 2:
-            self._fail("CHK-NONVAC", nv)
-        self._pass("CHK-NONVAC", nv)
+            self._fail("CTRL-NONVAC", nv)
+        self._pass("CTRL-NONVAC", nv)
         text, ok = await self._clear_write(bits)
         line = f"{tag} {text}"
         if not ok:

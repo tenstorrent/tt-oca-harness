@@ -35,8 +35,10 @@ Checkers:
   CHK-NO-STARVE    both requesting clients get edn_ack.
   CHK-RND-REQ      OTBN raises its RND request bit.
   CHK-RND-CONSUME  the RND CSR reads retire with ERR_BITS=0 (rnd_rep_chk_fail,
-                   a chance outcome, is logged only); the stored words are
-                   logged as INFO-RND-WORDS.
+                   a chance outcome, is logged only); OTBN
+                   theory_of_operation.md:137 states ERR_BITS 0 for a
+                   successful run. The stored words are logged as
+                   INFO-RND-WORDS.
   CHK-KMAC-CLIENT  a keyed KMAC-256 on the KMAC client matches the Keccak golden.
   CHK-FOUR-CLIENT  all four adapter clients are granted in one run.
   CHK1..CHK4, CHK-ROUTING  bit-exact entropy golden and five-sink routing.

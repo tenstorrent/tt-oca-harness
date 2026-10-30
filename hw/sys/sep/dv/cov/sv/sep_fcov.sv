@@ -38087,21 +38087,23 @@ module sep_fcov (
       end
     end
     if ((jtag_resp_i.b_valid === 1'b1) && (jtag_req_i.b_ready === 1'b1) && (ef_j_aw == EfPgCtrl) &&
-        pre_sense_q_win && ((ef_jw_data & EfPgGoMask) != 32'h0)) begin
+        (jtag_resp_i.b.resp === AxiOkay) && pre_sense_q_win &&
+        ((ef_jw_data & EfPgGoMask) != 32'h0)) begin
       ef_jp_arm <= 1'b1;
       ef_jp_cmd <= 1'b0;
     end else if (ef_jp_arm) begin
       if (ef_sense_rise) begin
         if (ef_own_ifs) begin
           je = '0;
-          je.jp = (ef_jp_cmd || ef_cmd_pg) ? 2'd3 : 2'd1;
+          je.jp = (ef_jp_cmd || ef_cmd_pg || ef_ps_prog) ? 2'd3 : 2'd1;
           je.jp_v = 1'b1;
           ef_put_jtg(je);
           // The core is held in reset until sensing completes, so a pre-sense
           // program go comes from JTAG: it is also the pre_sense_prog case of
-          // cp_case and x_case_cmd.
+          // cp_case and x_case_cmd, whose window starts at the reset release
+          // (ef_ps_prog).
           ef_ifs(0, 7'd0);
-          ef_ifs(3, {4'd0, 2'd0, ef_jp_cmd || ef_cmd_pg});
+          ef_ifs(3, {4'd0, 2'd0, ef_jp_cmd || ef_cmd_pg || ef_ps_prog});
         end
         ef_jp_arm <= 1'b0;
       end else if (in_reset) begin
