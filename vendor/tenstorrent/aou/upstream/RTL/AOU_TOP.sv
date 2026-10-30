@@ -22,7 +22,9 @@
 // machine, and AOU_CORE_TOP, the AXI-over-UCIe protocol engine. The bringup controller
 // manages the FDI handshakes (wake, clock, state, and rx-active) and drives
 // I_INT_FSM_IN_ACTIVE into the AOU core, so the core needs no external UCIE_CORE
-// connection.
+// connection. I_INT_FSM_IN_ACTIVE means the link is established (Active, Retrain, or
+// L1) and falls only on a link loss, which raises INT_FDI_LINK_DOWN. O_FDI_LINK_UP is
+// narrower and is set only while the FSM is in Active.
 //
 // The FDI data-plane ports mirror the _0/_1 naming and the +define+TWO_PHY gating of
 // AOU_CORE_TOP. PHY0 is always present. PHY1 and I_PHY_TYPE are exposed only when the
@@ -118,8 +120,10 @@ import packet_def_pkg::*;
     parameter   RP2_AXI_DATA_WD             = 512,  // RP2 AXI data width, in bits.
     parameter   RP3_AXI_DATA_WD             = 512,  // RP3 AXI data width, in bits.
 
-    parameter   AXI_PEER_DIE_MAX_DATA_WD    = 1024,  // Widest AXI data width on the peer die, in
-                                                     // bits.
+    localparam  AXI_PEER_DIE_MAX_DATA_WD    = 1024,  // Widest AoU data message (WriteData1024,
+                                                     // ReadData1024). The RX data path is sized
+                                                     // for it because the peer die's AXI width
+                                                     // is unknown.
 
     parameter   APB_ADDR_WD                 = 32,  // APB address width.
     parameter   APB_DATA_WD                 = 32,  // APB data width.
@@ -286,10 +290,9 @@ import packet_def_pkg::*;
     output logic                                        O_LP_WAKE_REQ,  // Wake request to the PHY.
     output logic                                        O_LP_CLK_ACK,  // Clock acknowledge to the PHY.
     output logic                                        O_LP_RX_ACTIVE_STS,  // Rx-active status to the PHY.
+    output logic                                        O_LP_LINKERROR,  // Link error request to the PHY.
 
     input  logic                                        I_SW_ACTIVATE_START,  // Software request to start activation.
-    input  logic                                        I_SW_DEACTIVATE_START,  // Software request to start deactivation.
-    input  logic                                        I_SW_RETRAIN_REQ,  // Software request to retrain the link.
     input  logic                                        I_SW_LINKERROR_INJECT,  // Software request to inject a link error.
 
     output logic [3:0]                                  O_FDI_FSM_STATE,  // FDI bringup FSM state.
@@ -303,7 +306,7 @@ import packet_def_pkg::*;
     output logic                                        INT_ACTIVATE_START,  // Activation start interrupt from the AOU core.
                                                                              // Also drives the bringup controller.
     output logic                                        INT_DEACTIVATE_START,  // Deactivation start interrupt from the AOU core.
-                                                                               // Also drives the bringup controller.
+    output logic                                        INT_FDI_LINK_DOWN,  // FDI link lost while AoU was in use.
 
     input  logic                                        TIEL_DFT_MODESCAN  // DFT scan mode. Tie low for functional operation.
 );
@@ -312,11 +315,12 @@ import packet_def_pkg::*;
     // Internal wires between bringup ctrl and core
     // ================================================================
     logic        w_int_fsm_in_active;
-    logic        w_aou_activate_st_disabled;
+    logic        w_aou_activate_st_disabled;   // status only; the bringup FSM has no use for it
     logic        w_aou_activate_st_enabled;
     logic        w_aou_req_linkreset;
     logic        w_int_activate_start;
     logic        w_int_deactivate_start;
+    logic        w_sw_reset;
 
     // Mux pl_state_sts / stallreq based on active PHY. Under TWO_PHY both PHYs
     // are valid and I_PHY_TYPE selects which one drives the bringup
@@ -354,18 +358,16 @@ import packet_def_pkg::*;
         .O_LP_WAKE_REQ              ( O_LP_WAKE_REQ                 ),
         .O_LP_CLK_ACK               ( O_LP_CLK_ACK                  ),
         .O_LP_RX_ACTIVE_STS         ( O_LP_RX_ACTIVE_STS            ),
+        .O_LP_LINKERROR             ( O_LP_LINKERROR                ),
 
         .O_INT_FSM_IN_ACTIVE        ( w_int_fsm_in_active           ),
-        .I_AOU_ACTIVATE_ST_DISABLED ( w_aou_activate_st_disabled    ),
         .I_AOU_ACTIVATE_ST_ENABLED  ( w_aou_activate_st_enabled     ),
         .I_AOU_REQ_LINKRESET        ( w_aou_req_linkreset           ),
         .I_INT_ACTIVATE_START       ( w_int_activate_start          ),
-        .I_INT_DEACTIVATE_START     ( w_int_deactivate_start        ),
 
         .I_SW_ACTIVATE_START        ( I_SW_ACTIVATE_START           ),
-        .I_SW_DEACTIVATE_START      ( I_SW_DEACTIVATE_START         ),
-        .I_SW_RETRAIN_REQ           ( I_SW_RETRAIN_REQ              ),
         .I_SW_LINKERROR_INJECT      ( I_SW_LINKERROR_INJECT         ),
+        .I_SW_RESET                 ( w_sw_reset                    ),
 
         .O_FSM_STATE                ( O_FDI_FSM_STATE               ),
         .O_LINK_UP                  ( O_FDI_LINK_UP                 )
@@ -413,8 +415,6 @@ import packet_def_pkg::*;
         .RP1_AXI_DATA_WD           ( RP1_AXI_DATA_WD              ),
         .RP2_AXI_DATA_WD           ( RP2_AXI_DATA_WD              ),
         .RP3_AXI_DATA_WD           ( RP3_AXI_DATA_WD              ),
-
-        .AXI_PEER_DIE_MAX_DATA_WD  ( AXI_PEER_DIE_MAX_DATA_WD     ),
 
         .APB_ADDR_WD               ( APB_ADDR_WD                  ),
         .APB_DATA_WD               ( APB_DATA_WD                  ),
@@ -562,11 +562,13 @@ import packet_def_pkg::*;
         .INT_EARLY_WDT_ERR           ( INT_EARLY_WDT_ERR             ),
         .INT_ACTIVATE_START          ( w_int_activate_start          ),
         .INT_DEACTIVATE_START        ( w_int_deactivate_start        ),
+        .INT_FDI_LINK_DOWN           ( INT_FDI_LINK_DOWN             ),
 
         .I_INT_FSM_IN_ACTIVE         ( w_int_fsm_in_active           ),
         .O_AOU_ACTIVATE_ST_DISABLED  ( w_aou_activate_st_disabled    ),
         .O_AOU_ACTIVATE_ST_ENABLED   ( w_aou_activate_st_enabled     ),
         .O_AOU_REQ_LINKRESET         ( w_aou_req_linkreset           ),
+        .O_SW_RESET                  ( w_sw_reset                    ),
 
         .TIEL_DFT_MODESCAN           ( TIEL_DFT_MODESCAN             )
     );

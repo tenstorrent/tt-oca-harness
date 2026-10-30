@@ -12570,14 +12570,14 @@ class AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_DEFAULT = 0x0000FFFF
+AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_DEFAULT = 0x00000000
 AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_FIELD_ACCESS = (
     ('AVS_SLAVE_SUBFRAME', 'r', '', '', False),
 )
 
 AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_WIDTH = 32
 AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_FIELDS = (
-    ('AVS_SLAVE_SUBFRAME', 0, 31, 'r', 'w', '', '', False, True, 65535),
+    ('AVS_SLAVE_SUBFRAME', 0, 31, 'r', 'w', '', '', False, True, 0),
 )
 
 class AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_reg_t(Structure):
@@ -12585,7 +12585,7 @@ class AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_reg_t(Structure):
         ('avs_slave_subframe', c_uint32, 32),
     ]
 
-AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_DEFAULT = 0x0000FFFF
+AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_REG_DEFAULT = 0x00000000
 
 class AVSBUS_CONTROLLER_AVS_LATEST_SLAVE_SUBFRAME_reg_u(Union):
     _fields_ = [
@@ -18845,10 +18845,10 @@ CPU_CTRL_RESET_CTRL_REG_FIELD_ACCESS = (
     ('core1_reset_n_n0_scan', 'rw', '', '', False),
     ('core2_reset_n_n0_scan', 'rw', '', '', False),
     ('core3_reset_n_n0_scan', 'rw', '', '', False),
-    ('core0_reset_pulse_start_n0_scan', 'rw', '', '', False),
-    ('core1_reset_pulse_start_n0_scan', 'rw', '', '', False),
-    ('core2_reset_pulse_start_n0_scan', 'rw', '', '', False),
-    ('core3_reset_pulse_start_n0_scan', 'rw', '', '', False),
+    ('core0_reset_pulse_start_n0_scan', 'rw', '', '', True),
+    ('core1_reset_pulse_start_n0_scan', 'rw', '', '', True),
+    ('core2_reset_pulse_start_n0_scan', 'rw', '', '', True),
+    ('core3_reset_pulse_start_n0_scan', 'rw', '', '', True),
     ('uncore_reset_n_n0_scan', 'rw', '', '', False),
     ('debug_reset_n_n0_scan', 'rw', '', '', False),
 )
@@ -18859,10 +18859,10 @@ CPU_CTRL_RESET_CTRL_REG_FIELDS = (
     ('core1_reset_n_n0_scan', 1, 1, 'rw', 'r', '', '', False, False, 1),
     ('core2_reset_n_n0_scan', 2, 2, 'rw', 'r', '', '', False, False, 1),
     ('core3_reset_n_n0_scan', 3, 3, 'rw', 'r', '', '', False, False, 1),
-    ('core0_reset_pulse_start_n0_scan', 4, 4, 'rw', 'r', '', '', False, False, 0),
-    ('core1_reset_pulse_start_n0_scan', 5, 5, 'rw', 'r', '', '', False, False, 0),
-    ('core2_reset_pulse_start_n0_scan', 6, 6, 'rw', 'r', '', '', False, False, 0),
-    ('core3_reset_pulse_start_n0_scan', 7, 7, 'rw', 'r', '', '', False, False, 0),
+    ('core0_reset_pulse_start_n0_scan', 4, 4, 'rw', 'r', '', '', True, True, 0),
+    ('core1_reset_pulse_start_n0_scan', 5, 5, 'rw', 'r', '', '', True, True, 0),
+    ('core2_reset_pulse_start_n0_scan', 6, 6, 'rw', 'r', '', '', True, True, 0),
+    ('core3_reset_pulse_start_n0_scan', 7, 7, 'rw', 'r', '', '', True, True, 0),
     ('uncore_reset_n_n0_scan', 8, 8, 'rw', 'r', '', '', False, False, 1),
     ('debug_reset_n_n0_scan', 24, 24, 'rw', 'r', '', '', False, False, 0),
 )
@@ -33273,7 +33273,7 @@ CLINT_MTIME_REG_FIELD_ACCESS = (
 
 CLINT_MTIME_REG_WIDTH = 64
 CLINT_MTIME_REG_FIELDS = (
-    ('count', 0, 63, 'rw', 'r', '', '', False, False, None),
+    ('count', 0, 63, 'rw', 'r', '', '', False, False, 0),
 )
 
 class CLINT_MTIME_reg_t(Structure):

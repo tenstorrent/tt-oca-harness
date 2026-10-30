@@ -15,6 +15,7 @@
 
 <p align="center">
   <a href="https://github.com/tenstorrent/tt-oca-harness/actions/workflows/lint.yml"><img alt="Sanity CI" src="https://img.shields.io/github/actions/workflow/status/tenstorrent/tt-oca-harness/lint.yml?branch=main&label=sanity%20ci"></a>
+  <a href="https://github.com/tenstorrent/tt-oca-harness/actions/workflows/unit.yml"><img alt="Unit tests" src="https://img.shields.io/github/actions/workflow/status/tenstorrent/tt-oca-harness/unit.yml?branch=main&label=unit%20tests"></a>
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-blue.svg"></a>
   <a href="https://docs.tenstorrent.com/tt-oca-harness/"><img alt="Documentation" src="https://img.shields.io/badge/docs-online-brightgreen.svg"></a>
   <a href="https://github.com/tenstorrent/tt-oca-harness/releases"><img alt="Release" src="https://img.shields.io/github/v/release/tenstorrent/tt-oca-harness?display_name=tag"></a>

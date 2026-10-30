@@ -60,6 +60,12 @@ defines them and their codes.
 An address between unit apertures reaches no unit. A read there answers `DECERR`
 with data `0xBADCAB1E`, and a write answers `DECERR`.
 
+The local crossbar routes a burst by its start address, so a burst that starts
+between unit apertures answers `DECERR` for every beat. A write burst to a
+register unit is split into single-beat writes. Its write response is that of
+the last beat when the last beat answers `SLVERR` or `DECERR`; otherwise it is
+`SLVERR` when an earlier beat answered an error, and `OKAY` when none did.
+
 An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
@@ -159,6 +165,12 @@ follows:
 * A write to a read-only register, or to the read-only fields of a register,
   answers `OKAY` and has no effect on those bits. It sets no error flag and
   raises no interrupt.
+* An offset inside the block that no register occupies answers `OKAY`. A read
+  returns 0, and a write has no effect.
+* An offset past the end of the block's last register answers `SLVERR` if it
+  reaches the block, including the part of a wider access that runs past that
+  end. The remap tables and filter controls answer `OKAY` there instead: each
+  is an array, and the padding between its entries is a hole.
 * Exclusive access is not supported. The AXI-to-AXI-Lite conversion in front
   of each block discards `AxLOCK`, so an exclusive read or write is performed
   as a normal access and answers `OKAY`, never `EXOKAY`.

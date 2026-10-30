@@ -19,7 +19,8 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 | 0x8 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-READ_DATA,outbound_mailbox_0.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x10 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-STATUS,outbound_mailbox_0.STATUS>> | R a| -
 | 0x18 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-ERROR_FLAGS,outbound_mailbox_0.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -35,7 +36,8 @@ lower half.
 | 0x808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-READ_DATA,inbound_mailbox_0.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-STATUS,inbound_mailbox_0.STATUS>> | R a| -
 | 0x818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-ERROR_FLAGS,inbound_mailbox_0.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -51,7 +53,8 @@ lower half.
 | 0x1008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-READ_DATA,outbound_mailbox_1.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x1010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-STATUS,outbound_mailbox_1.STATUS>> | R a| -
 | 0x1018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-ERROR_FLAGS,outbound_mailbox_1.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -67,7 +70,8 @@ lower half.
 | 0x1808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-READ_DATA,inbound_mailbox_1.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x1810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-STATUS,inbound_mailbox_1.STATUS>> | R a| -
 | 0x1818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-ERROR_FLAGS,inbound_mailbox_1.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -83,7 +87,8 @@ lower half.
 | 0x2008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-READ_DATA,outbound_mailbox_2.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x2010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-STATUS,outbound_mailbox_2.STATUS>> | R a| -
 | 0x2018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-ERROR_FLAGS,outbound_mailbox_2.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -99,7 +104,8 @@ lower half.
 | 0x2808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-READ_DATA,inbound_mailbox_2.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x2810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-STATUS,inbound_mailbox_2.STATUS>> | R a| -
 | 0x2818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-ERROR_FLAGS,inbound_mailbox_2.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -115,7 +121,8 @@ lower half.
 | 0x3008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-READ_DATA,outbound_mailbox_3.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x3010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-STATUS,outbound_mailbox_3.STATUS>> | R a| -
 | 0x3018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-ERROR_FLAGS,outbound_mailbox_3.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -131,7 +138,8 @@ lower half.
 | 0x3808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-READ_DATA,inbound_mailbox_3.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x3810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-STATUS,inbound_mailbox_3.STATUS>> | R a| -
 | 0x3818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-ERROR_FLAGS,inbound_mailbox_3.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -147,7 +155,8 @@ lower half.
 | 0x4008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-READ_DATA,outbound_mailbox_4.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x4010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-STATUS,outbound_mailbox_4.STATUS>> | R a| -
 | 0x4018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-ERROR_FLAGS,outbound_mailbox_4.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -163,7 +172,8 @@ lower half.
 | 0x4808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-READ_DATA,inbound_mailbox_4.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x4810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-STATUS,inbound_mailbox_4.STATUS>> | R a| -
 | 0x4818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-ERROR_FLAGS,inbound_mailbox_4.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -179,7 +189,8 @@ lower half.
 | 0x5008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-READ_DATA,outbound_mailbox_5.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x5010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-STATUS,outbound_mailbox_5.STATUS>> | R a| -
 | 0x5018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-ERROR_FLAGS,outbound_mailbox_5.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -195,7 +206,8 @@ lower half.
 | 0x5808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-READ_DATA,inbound_mailbox_5.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x5810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-STATUS,inbound_mailbox_5.STATUS>> | R a| -
 | 0x5818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-ERROR_FLAGS,inbound_mailbox_5.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -211,7 +223,8 @@ lower half.
 | 0x6008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-READ_DATA,outbound_mailbox_6.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x6010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-STATUS,outbound_mailbox_6.STATUS>> | R a| -
 | 0x6018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-ERROR_FLAGS,outbound_mailbox_6.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -227,7 +240,8 @@ lower half.
 | 0x6808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-READ_DATA,inbound_mailbox_6.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x6810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-STATUS,inbound_mailbox_6.STATUS>> | R a| -
 | 0x6818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-ERROR_FLAGS,inbound_mailbox_6.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -243,7 +257,8 @@ lower half.
 | 0x7008 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-READ_DATA,outbound_mailbox_7.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x7010 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-STATUS,outbound_mailbox_7.STATUS>> | R a| -
 | 0x7018 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-ERROR_FLAGS,outbound_mailbox_7.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -259,7 +274,8 @@ lower half.
 | 0x7808 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-READ_DATA,inbound_mailbox_7.READ_DATA>> | R a| A read of any size or alignment within this register pops one whole 64-bit entry
 from the mailbox fifo, and only the byte lanes it requests are returned. A 32-bit
 read of either half therefore discards the other half of the entry; read this
-register with 64-bit accesses.
+register with 64-bit accesses. A read while the fifo is empty returns
+0x0000_0000_FEED_DEAD with an error response.
 | 0x7810 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-STATUS,inbound_mailbox_7.STATUS>> | R a| -
 | 0x7818 | <<reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-ERROR_FLAGS,inbound_mailbox_7.ERROR_FLAGS>> | R a| A read of any size or alignment within this register clears every flag in it. The
 flags are only returned in the lower 32 bits, so a 32-bit read of the upper half
@@ -399,8 +415,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-WRITE_DATA]
@@ -529,8 +548,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-WRITE_DATA]
@@ -659,8 +681,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-WRITE_DATA]
@@ -789,8 +814,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-WRITE_DATA]
@@ -919,8 +947,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-WRITE_DATA]
@@ -1049,8 +1080,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-WRITE_DATA]
@@ -1179,8 +1213,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-WRITE_DATA]
@@ -1309,8 +1346,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-WRITE_DATA]
@@ -1439,8 +1479,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-WRITE_DATA]
@@ -1569,8 +1612,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-WRITE_DATA]
@@ -1699,8 +1745,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-WRITE_DATA]
@@ -1829,8 +1878,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-WRITE_DATA]
@@ -1959,8 +2011,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-WRITE_DATA]
@@ -2089,8 +2144,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-WRITE_DATA]
@@ -2219,8 +2277,11 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-WRITE_DATA]
@@ -2349,6 +2410,9 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted; a word the peer pushes in that cycle
+is discarded.
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port. The FIFO empties at the end of the
+cycle in which this write is accepted.
 |===

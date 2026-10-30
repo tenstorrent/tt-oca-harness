@@ -60,7 +60,7 @@ package aou_core_csr_uvm_pkg;
             this.credit_manage = new("credit_manage");
             this.credit_manage.configure(this, 1, 3, "RW", 1, 'h1, 1, 1, 0);
             this.aou_sw_reset = new("aou_sw_reset");
-            this.aou_sw_reset.configure(this, 1, 4, "RW", 1, 'h0, 1, 1, 0);
+            this.aou_sw_reset.configure(this, 1, 4, "WO", 1, 'h0, 1, 1, 0);
             this.reserved_10_5 = new("reserved_10_5");
             this.reserved_10_5.configure(this, 6, 5, "RO", 1, 'h0, 1, 1, 0);
             this.tx_lp_mode = new("tx_lp_mode");
@@ -100,7 +100,8 @@ package aou_core_csr_uvm_pkg;
         rand uvm_reg_field slv_tr_complete;
         rand uvm_reg_field mst_tr_complete;
         rand uvm_reg_field int_deactivate_property;
-        rand uvm_reg_field reserved_31_12;
+        rand uvm_reg_field int_fdi_link_down;
+        rand uvm_reg_field reserved_31_13;
 
         function new(string name = "aou_core__aou_init");
             super.new(name, 32, UVM_NO_COVERAGE);
@@ -127,8 +128,10 @@ package aou_core_csr_uvm_pkg;
             this.mst_tr_complete.configure(this, 1, 10, "RO", 1, 'h0, 0, 1, 0);
             this.int_deactivate_property = new("int_deactivate_property");
             this.int_deactivate_property.configure(this, 1, 11, "RO", 1, 'h0, 0, 1, 0);
-            this.reserved_31_12 = new("reserved_31_12");
-            this.reserved_31_12.configure(this, 20, 12, "RO", 1, 'h0, 1, 1, 0);
+            this.int_fdi_link_down = new("int_fdi_link_down");
+            this.int_fdi_link_down.configure(this, 1, 12, "W1C", 1, 'h0, 1, 1, 0);
+            this.reserved_31_13 = new("reserved_31_13");
+            this.reserved_31_13.configure(this, 19, 13, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__aou_init
 
@@ -143,7 +146,8 @@ package aou_core_csr_uvm_pkg;
         rand uvm_reg_field int_req_linkreset_deact_ack_mask;
         rand uvm_reg_field int_req_linkreset_act_ack_mask;
         rand uvm_reg_field int_early_wdt_mask;
-        rand uvm_reg_field reserved_31_10;
+        rand uvm_reg_field int_fdi_link_down_mask;
+        rand uvm_reg_field reserved_31_11;
 
         function new(string name = "aou_core__aou_interrupt_mask");
             super.new(name, 32, UVM_NO_COVERAGE);
@@ -168,8 +172,10 @@ package aou_core_csr_uvm_pkg;
             this.int_req_linkreset_act_ack_mask.configure(this, 1, 8, "RW", 1, 'h0, 1, 1, 0);
             this.int_early_wdt_mask = new("int_early_wdt_mask");
             this.int_early_wdt_mask.configure(this, 1, 9, "RW", 1, 'h0, 1, 1, 0);
-            this.reserved_31_10 = new("reserved_31_10");
-            this.reserved_31_10.configure(this, 22, 10, "RO", 1, 'h0, 1, 1, 0);
+            this.int_fdi_link_down_mask = new("int_fdi_link_down_mask");
+            this.int_fdi_link_down_mask.configure(this, 1, 10, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_11 = new("reserved_31_11");
+            this.reserved_31_11.configure(this, 21, 11, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__aou_interrupt_mask
 
@@ -410,6 +416,7 @@ package aou_core_csr_uvm_pkg;
 
     // reg - aou_core::axi_error_info1_rp0
     class aou_core__axi_error_info1_rp0 extends uvm_reg;
+        rand uvm_reg_field reserved_6_0;
         rand uvm_reg_field debug_lower_addr;
 
         function new(string name = "aou_core__axi_error_info1_rp0");
@@ -417,8 +424,10 @@ package aou_core_csr_uvm_pkg;
         endfunction : new
 
         virtual function void build();
+            this.reserved_6_0 = new("reserved_6_0");
+            this.reserved_6_0.configure(this, 7, 0, "RO", 1, 'h0, 1, 1, 0);
             this.debug_lower_addr = new("debug_lower_addr");
-            this.debug_lower_addr.configure(this, 32, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.debug_lower_addr.configure(this, 25, 7, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__axi_error_info1_rp0
 
@@ -428,7 +437,8 @@ package aou_core_csr_uvm_pkg;
         rand uvm_reg_field axi_slv_bid_mismatch_err;
         rand uvm_reg_field axi_slv_rid_mismatch_info;
         rand uvm_reg_field axi_slv_bid_mismatch_info;
-        rand uvm_reg_field reserved_31_22;
+        rand uvm_reg_field axi_slv_id_mismatch_en;
+        rand uvm_reg_field reserved_31_23;
 
         function new(string name = "aou_core__axi_slv_id_mismatch_err_rp0");
             super.new(name, 32, UVM_NO_COVERAGE);
@@ -443,8 +453,10 @@ package aou_core_csr_uvm_pkg;
             this.axi_slv_rid_mismatch_info.configure(this, 10, 2, "RO", 1, 'h0, 0, 1, 0);
             this.axi_slv_bid_mismatch_info = new("axi_slv_bid_mismatch_info");
             this.axi_slv_bid_mismatch_info.configure(this, 10, 12, "RO", 1, 'h0, 0, 1, 0);
-            this.reserved_31_22 = new("reserved_31_22");
-            this.reserved_31_22.configure(this, 10, 22, "RO", 1, 'h0, 1, 1, 0);
+            this.axi_slv_id_mismatch_en = new("axi_slv_id_mismatch_en");
+            this.axi_slv_id_mismatch_en.configure(this, 1, 22, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_23 = new("reserved_31_23");
+            this.reserved_31_23.configure(this, 9, 23, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__axi_slv_id_mismatch_err_rp0
 
@@ -548,6 +560,7 @@ package aou_core_csr_uvm_pkg;
 
     // reg - aou_core::axi_error_info1_rp1
     class aou_core__axi_error_info1_rp1 extends uvm_reg;
+        rand uvm_reg_field reserved_6_0;
         rand uvm_reg_field debug_lower_addr;
 
         function new(string name = "aou_core__axi_error_info1_rp1");
@@ -555,8 +568,10 @@ package aou_core_csr_uvm_pkg;
         endfunction : new
 
         virtual function void build();
+            this.reserved_6_0 = new("reserved_6_0");
+            this.reserved_6_0.configure(this, 7, 0, "RO", 1, 'h0, 1, 1, 0);
             this.debug_lower_addr = new("debug_lower_addr");
-            this.debug_lower_addr.configure(this, 32, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.debug_lower_addr.configure(this, 25, 7, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__axi_error_info1_rp1
 
@@ -566,7 +581,8 @@ package aou_core_csr_uvm_pkg;
         rand uvm_reg_field axi_slv_bid_mismatch_err;
         rand uvm_reg_field axi_slv_rid_mismatch_info;
         rand uvm_reg_field axi_slv_bid_mismatch_info;
-        rand uvm_reg_field reserved_31_22;
+        rand uvm_reg_field axi_slv_id_mismatch_en;
+        rand uvm_reg_field reserved_31_23;
 
         function new(string name = "aou_core__axi_slv_id_mismatch_err_rp1");
             super.new(name, 32, UVM_NO_COVERAGE);
@@ -581,8 +597,10 @@ package aou_core_csr_uvm_pkg;
             this.axi_slv_rid_mismatch_info.configure(this, 10, 2, "RO", 1, 'h0, 0, 1, 0);
             this.axi_slv_bid_mismatch_info = new("axi_slv_bid_mismatch_info");
             this.axi_slv_bid_mismatch_info.configure(this, 10, 12, "RO", 1, 'h0, 0, 1, 0);
-            this.reserved_31_22 = new("reserved_31_22");
-            this.reserved_31_22.configure(this, 10, 22, "RO", 1, 'h0, 1, 1, 0);
+            this.axi_slv_id_mismatch_en = new("axi_slv_id_mismatch_en");
+            this.axi_slv_id_mismatch_en.configure(this, 1, 22, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_23 = new("reserved_31_23");
+            this.reserved_31_23.configure(this, 9, 23, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__axi_slv_id_mismatch_err_rp1
 
@@ -686,6 +704,7 @@ package aou_core_csr_uvm_pkg;
 
     // reg - aou_core::axi_error_info1_rp2
     class aou_core__axi_error_info1_rp2 extends uvm_reg;
+        rand uvm_reg_field reserved_6_0;
         rand uvm_reg_field debug_lower_addr;
 
         function new(string name = "aou_core__axi_error_info1_rp2");
@@ -693,8 +712,10 @@ package aou_core_csr_uvm_pkg;
         endfunction : new
 
         virtual function void build();
+            this.reserved_6_0 = new("reserved_6_0");
+            this.reserved_6_0.configure(this, 7, 0, "RO", 1, 'h0, 1, 1, 0);
             this.debug_lower_addr = new("debug_lower_addr");
-            this.debug_lower_addr.configure(this, 32, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.debug_lower_addr.configure(this, 25, 7, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__axi_error_info1_rp2
 
@@ -704,7 +725,8 @@ package aou_core_csr_uvm_pkg;
         rand uvm_reg_field axi_slv_bid_mismatch_err;
         rand uvm_reg_field axi_slv_rid_mismatch_info;
         rand uvm_reg_field axi_slv_bid_mismatch_info;
-        rand uvm_reg_field reserved_31_22;
+        rand uvm_reg_field axi_slv_id_mismatch_en;
+        rand uvm_reg_field reserved_31_23;
 
         function new(string name = "aou_core__axi_slv_id_mismatch_err_rp2");
             super.new(name, 32, UVM_NO_COVERAGE);
@@ -719,8 +741,10 @@ package aou_core_csr_uvm_pkg;
             this.axi_slv_rid_mismatch_info.configure(this, 10, 2, "RO", 1, 'h0, 0, 1, 0);
             this.axi_slv_bid_mismatch_info = new("axi_slv_bid_mismatch_info");
             this.axi_slv_bid_mismatch_info.configure(this, 10, 12, "RO", 1, 'h0, 0, 1, 0);
-            this.reserved_31_22 = new("reserved_31_22");
-            this.reserved_31_22.configure(this, 10, 22, "RO", 1, 'h0, 1, 1, 0);
+            this.axi_slv_id_mismatch_en = new("axi_slv_id_mismatch_en");
+            this.axi_slv_id_mismatch_en.configure(this, 1, 22, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_23 = new("reserved_31_23");
+            this.reserved_31_23.configure(this, 9, 23, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__axi_slv_id_mismatch_err_rp2
 
@@ -824,6 +848,7 @@ package aou_core_csr_uvm_pkg;
 
     // reg - aou_core::axi_error_info1_rp3
     class aou_core__axi_error_info1_rp3 extends uvm_reg;
+        rand uvm_reg_field reserved_6_0;
         rand uvm_reg_field debug_lower_addr;
 
         function new(string name = "aou_core__axi_error_info1_rp3");
@@ -831,8 +856,10 @@ package aou_core_csr_uvm_pkg;
         endfunction : new
 
         virtual function void build();
+            this.reserved_6_0 = new("reserved_6_0");
+            this.reserved_6_0.configure(this, 7, 0, "RO", 1, 'h0, 1, 1, 0);
             this.debug_lower_addr = new("debug_lower_addr");
-            this.debug_lower_addr.configure(this, 32, 0, "RW", 1, 'h0, 1, 1, 0);
+            this.debug_lower_addr.configure(this, 25, 7, "RW", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__axi_error_info1_rp3
 
@@ -842,7 +869,8 @@ package aou_core_csr_uvm_pkg;
         rand uvm_reg_field axi_slv_bid_mismatch_err;
         rand uvm_reg_field axi_slv_rid_mismatch_info;
         rand uvm_reg_field axi_slv_bid_mismatch_info;
-        rand uvm_reg_field reserved_31_22;
+        rand uvm_reg_field axi_slv_id_mismatch_en;
+        rand uvm_reg_field reserved_31_23;
 
         function new(string name = "aou_core__axi_slv_id_mismatch_err_rp3");
             super.new(name, 32, UVM_NO_COVERAGE);
@@ -857,8 +885,10 @@ package aou_core_csr_uvm_pkg;
             this.axi_slv_rid_mismatch_info.configure(this, 10, 2, "RO", 1, 'h0, 0, 1, 0);
             this.axi_slv_bid_mismatch_info = new("axi_slv_bid_mismatch_info");
             this.axi_slv_bid_mismatch_info.configure(this, 10, 12, "RO", 1, 'h0, 0, 1, 0);
-            this.reserved_31_22 = new("reserved_31_22");
-            this.reserved_31_22.configure(this, 10, 22, "RO", 1, 'h0, 1, 1, 0);
+            this.axi_slv_id_mismatch_en = new("axi_slv_id_mismatch_en");
+            this.axi_slv_id_mismatch_en.configure(this, 1, 22, "RW", 1, 'h0, 1, 1, 0);
+            this.reserved_31_23 = new("reserved_31_23");
+            this.reserved_31_23.configure(this, 9, 23, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aou_core__axi_slv_id_mismatch_err_rp3
 

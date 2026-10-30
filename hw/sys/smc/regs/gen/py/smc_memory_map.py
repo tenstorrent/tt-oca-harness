@@ -213,7 +213,7 @@ VIEWS = {
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_core1_wdt",
@@ -228,7 +228,7 @@ VIEWS = {
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_core2_wdt",
@@ -243,7 +243,7 @@ VIEWS = {
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_core3_wdt",
@@ -258,7 +258,7 @@ VIEWS = {
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:debug_module",
@@ -721,9 +721,9 @@ VIEWS = {
                 "count": 1,
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
-                "hole_notes": ("0x544, 0x102C and 0x202C are the upper halves of live 64-bit words, so a 64-bit read there returns live data.",),
+                "hole_notes": ("0x544, 0x102C and the word 0x2C past each enable context (0x202C, 0x20AC, ... 0x23AC) are the upper halves of live 64-bit words, so a 64-bit read there returns live data.",),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_clint",
@@ -738,7 +738,7 @@ VIEWS = {
                 "hole_responses": (("", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_core0_beu",
@@ -753,7 +753,7 @@ VIEWS = {
                 "hole_responses": (),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_core1_beu",
@@ -768,7 +768,7 @@ VIEWS = {
                 "hole_responses": (),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_core2_beu",
@@ -783,7 +783,7 @@ VIEWS = {
                 "hole_responses": (),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_core3_beu",
@@ -798,7 +798,7 @@ VIEWS = {
                 "hole_responses": (),
                 "hole_notes": (),
                 "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
-                "past_note": "",
+                "past_note": "Past-extent responses are those an initiator outside the CPU cluster sees. A hart of the cluster gets OKAY past the decoded extent, with read data 0.",
             },
             {
                 "key": "main:smc_cluster_error_device",
