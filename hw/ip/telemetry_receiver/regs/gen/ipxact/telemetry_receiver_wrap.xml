@@ -65,7 +65,9 @@ message. This operation does not erase storage.</ipxact:description>
               <ipxact:name>TELEMETRY_TX_FLUSH</ipxact:name>
               <ipxact:description>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry
 transmitter. The flushing is done via the ATB AF interface. This bit clears
-itself after the flush completes.</ipxact:description>
+itself when the transmitter acknowledges the flush. Writing `0` while a
+flush is pending withdraws the request, so other fields of this register
+must be updated with a read-modify-write while the bit is set.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

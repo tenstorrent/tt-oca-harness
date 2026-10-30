@@ -33,7 +33,7 @@ addrmap clint {
         field {
             sw=rw; 
             hw=r;
-            desc="Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME.";
+            desc="Timer compare value. The core's machine timer interrupt is asserted while MTIME is greater than or equal to this value, and deasserts when software sets this value above MTIME. This register has no reset: its value, and therefore the level of the machine timer interrupt, is undefined until software writes it. Write it before enabling the machine timer interrupt.";
         } count[63:0];
     };
 
@@ -44,8 +44,8 @@ addrmap clint {
         field {
             sw=rw; 
             hw=r;
-            desc="Cycle count (time) value";
-        } count[63:0];
+            desc="Machine time. Increments by one every 1000 CPU-cluster cbus clock cycles. A software write takes precedence over an increment in the same cycle.";
+        } count[63:0] = 0x0;
     };
 
 

@@ -45,10 +45,15 @@ form a message that ends when `last_packet` is set.
 |====================================================================================
 |Field |Width |Location
 |`last_packet` |1 bit |Bit 63 of each packet
-|`probe_id` |5 bits |Bits `[60:56]` of the first packet
-|block |9 bits |Seven per packet: 1-bit valid + 8-bit data
+|`probe_id` |5 bits |Bits `[60:56]` of the first packet, inside the data byte of block 6
+|block _i_ |9 bits |Bits `[9i+8:9i]` for _i_ = 0 to 6: valid at bit `9i+8`, data at `[9i+7:9i]`
 |counter |32 bits |Four consecutive blocks, most-significant byte first
 |====================================================================================
+
+Block 0 of the first packet is not decoded; counter 0 begins at block 1 of the
+first packet, and later packets contribute all seven blocks. The `probe_id` bits
+are also data bits `[6:2]` of block 6 of the first packet, so the counter byte
+that falls on that block carries the probe ID in those bits.
 
 A counter is valid only when all four of its blocks are valid. The number of
 counters per message is parameterized (default 4); the field layout is fixed.
