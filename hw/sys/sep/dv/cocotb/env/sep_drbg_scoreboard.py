@@ -309,6 +309,7 @@ class SepDrbgScoreboard:
                     d.drbg_es_ack_o,
                     d.drbg_es_bits_o,
                     mask=(1 << 384) - 1,
+                    on_rise=lambda: self.chain.seed_accepted(),
                 )
             ),
             # CHK4: golden genbits compare + protocol (FIPS flag, gen_last/glen).
@@ -913,7 +914,7 @@ class SepDrbgScoreboard:
                     continue
                 self._stash_sink_beat(name, (bus >> (32 * idx)) & 0xFFFFFFFF)
 
-    async def _mon_handshake_rise(self, key, a, b, sig, *, mask):
+    async def _mon_handshake_rise(self, key, a, b, sig, *, mask, on_rise=None):
         """One item per RISING edge of (a && b) -- a req/ack handshake completing.
         Used for CHK3: the seed is captured when seed_valid && es_ack (the CSRNG
         actually accepts the presented seed), not on every cycle both are high."""
@@ -928,6 +929,8 @@ class SepDrbgScoreboard:
                     self._note_xz_scored(key)
                 else:
                     self._record(key, v & mask)
+                if on_rise is not None:
+                    on_rise()
             prev = hs
 
     async def _mon_genbits(self):

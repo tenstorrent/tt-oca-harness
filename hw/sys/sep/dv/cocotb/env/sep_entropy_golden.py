@@ -35,7 +35,8 @@ Inter-stage framing (matches ``SepDrbgScoreboard``):
     one 32-bit word per valid cycle directly from the entropy source, with no
     upstream routing or distribution FIFO (hw/ip/drbg/doc/architecture.adoc,
     Seed Assembly), so no word is absorbed ahead of the packer.
-  - CTR_DRBG: first 384b seed -> instantiate; generate glen 128b blocks.
+  - CTR_DRBG: the seed CSRNG accepts first (seed_accepted) -> instantiate, each
+    later accepted seed -> reseed; generate glen 128b blocks.
   - EDN->KM: each 128b block -> 4x32b beats, LSW-first
     beat0=block[31:0], beat1=[63:32], beat2=[95:64], beat3=[127:96].
     (Documented; scoreboard confirms against the DUT probe and may flip to
@@ -119,6 +120,7 @@ class SepEntropyGolden:
         self._seed_done = False  # first seed instantiated?
         self._generate_active = False  # a Generate command is in flight
         self._reseed_pending = None  # seed held until the in-flight gen_last
+        self._drbg_seeds = deque()  # assembled seeds CSRNG has not accepted yet
 
         # --- expected-item queues ----------------------------------------
         self.expected_decor_bytes = deque()
@@ -237,8 +239,15 @@ class SepEntropyGolden:
         self._seed_words = []
         self.expected_seed.append(seed)
         self.n_seeds += 1
+        self._drbg_seeds.append(seed)
 
-        self._run_drbg(seed)
+    def seed_accepted(self):
+        """CSRNG accepted the next assembled seed (seed_valid && es_ack): apply it.
+
+        An assembled seed changes no DRBG state until CSRNG takes it with an
+        Instantiate or Reseed command."""
+        if self._drbg_seeds:
+            self._run_drbg(self._drbg_seeds.popleft())
 
     def unconsumed_seed_words(self):
         """Conditioner words in the seed packer golden that no graded seed took yet.
@@ -373,6 +382,8 @@ if __name__ == "__main__":
     # Seeds alone produce no blocks: the scoreboard pulls them. Pull one
     # full Generate's worth and close the command, as the RTL gen_last would.
     assert g.n_genbits == 0, f"seeds must not self-generate: {g.n_genbits} blocks appeared unpulled"
+    assert g.genbits_block() is None, "an assembled seed instantiated before CSRNG accepted it"
+    g.seed_accepted()
     for _ in range(GLEN):
         assert g.genbits_block() is not None, "genbits_block() returned None after a seed"
     g.genbits_gen_last()

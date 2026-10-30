@@ -36,7 +36,7 @@ module = "system.sep_esrc_e2e_smoke_test"
 firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "entropy", "crypto"]
+tags = ["smoke", "entropy", "crypto", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
@@ -49,7 +49,7 @@ module = "system.sep_esrc_e2e_smoke_test"
 firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
-tags = ["entropy", "crypto"]
+tags = ["entropy", "crypto", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex", "+esrc_fifo_closed"]
@@ -98,7 +98,7 @@ module = "crypto.sep_drbg_gen_segmentation_test"
 firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
-tags = ["drbg", "entropy", "crypto", "subsystem"]
+tags = ["drbg", "entropy", "crypto", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_entropy.parhex"]
@@ -135,7 +135,7 @@ name = "sep_aes_mode_keysize_rand_test"
 module = "crypto.sep_aes_mode_keysize_rand_test"
 seed = 1
 timeout_sec = 1800
-tags = ["crypto", "aes", "rand_rep", "subsystem"]
+tags = ["crypto", "aes", "rand_rep", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
@@ -161,7 +161,7 @@ module = "crypto.sep_drbg_real_sink_multi_km_aes_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
-tags = ["drbg", "entropy", "crypto", "multi_sink", "subsystem"]
+tags = ["drbg", "entropy", "crypto", "multi_sink", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
@@ -174,7 +174,7 @@ module = "crypto.sep_crypto_edn_multisink_arbitration_test"
 seed = 1
 reseed = 4
 timeout_sec = 1800
-tags = ["drbg", "entropy", "crypto", "multi_sink", "aes", "kmac", "subsystem"]
+tags = ["drbg", "entropy", "crypto", "multi_sink", "aes", "kmac", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
@@ -372,7 +372,7 @@ module = "crypto.sep_aes_encoding_inject_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 1800
-tags = ["crypto", "aes", "rand_rep", "subsystem"]
+tags = ["crypto", "aes", "rand_rep", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
@@ -409,7 +409,7 @@ module = "crypto.sep_aes_reseed_trigger_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["crypto", "aes", "rand_rep", "subsystem"]
+tags = ["crypto", "aes", "rand_rep", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
@@ -802,7 +802,7 @@ firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 reseed = 3
 timeout_sec = 7200
-tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem"]
+tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem", "sep_spec_log"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
