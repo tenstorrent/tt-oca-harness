@@ -42,6 +42,11 @@ Checkers:
   CHK-CC-INERT    bit 0 of both sense status registers after the complement
                   write; the OKAY response of each of the 16 timeout writes;
                   every write response arrives.
+  CHK-CC-TIMEOUT-INTR ``TIMEOUT_INTERRUPT[0]`` after the 16 timeout writes
+                  equals its RDL reset 0 (``R``, "timeout interrupt status not
+                  yet implemented";
+                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:114``).
+                  Bits 63:1 have no stated value (``OBS-TIMEOUT``).
   Each graded readback and response prints its own ``CHK-<name> PASS`` line.
   CHK-SCR-SHAPE   the low word of each written scratch register (64-bit
                   readback, and ``scratch_cold_probe_o`` for the cold bank);
@@ -92,6 +97,8 @@ TIMEOUT_MODE = SEP_CPU_CTRL.addr("TIMEOUT_MODE")
 RESP_OKAY = 0
 RESP_DECERR = 3
 TIMEOUT_INTERRUPT = SEP_CPU_CTRL.addr("TIMEOUT_INTERRUPT")
+TI_FIELD = SEP_CPU_CTRL.field_mask("TIMEOUT_INTERRUPT", "reserved")
+TI_RESET = SEP_CPU_CTRL.reset("TIMEOUT_INTERRUPT") & TI_FIELD
 SENSE_REGS = {
     "SEP_FUSE_SENSE_STATUS": (
         SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS"),
@@ -468,9 +475,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             f"CHK-CC-INERT FAIL: timeout writes responses={n_timeout}/{2 * N_WRITES}"
         )
         ti = await self._read64(TIMEOUT_INTERRUPT)
-        self.logger.info(
-            "OBS-TIMEOUT: timeout_interrupt=0x%x after TIMEOUT_CLEAR and TIMEOUT_MODE writes", ti
-        )
+        fc = field_compare(ti, TI_RESET, TI_FIELD)
+        line = f"reg=TIMEOUT_INTERRUPT after TIMEOUT_CLEAR and TIMEOUT_MODE writes {fc.fields()}"
+        assert fc.ok, f"CHK-CC-TIMEOUT-INTR FAIL: {line}"
+        self.logger.info("CHK-CC-TIMEOUT-INTR PASS: %s", line)
+        self.logger.info("OBS-TIMEOUT: timeout_interrupt[63:1]=0x%x", (ti & ~TI_FIELD & M64) >> 1)
         # No line states the read response of TIMEOUT_CLEAR and TIMEOUT_MODE.
         mon = self.env.axi_monitor
         for name, addr in (("TIMEOUT_CLEAR", TIMEOUT_CLEAR), ("TIMEOUT_MODE", TIMEOUT_MODE)):

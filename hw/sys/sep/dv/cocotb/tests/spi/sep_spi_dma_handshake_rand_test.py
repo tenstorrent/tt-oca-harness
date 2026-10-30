@@ -892,13 +892,6 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         end_written = sum(1 for w in img if w != self.sentinel)
         trig_high = self.trig.high_clocks_since(m_trig)
         go_masked = self._go_cmp(await self.dma.rd(DMA_CONTROL))
-        self.logger.info(
-            "OBS-HS-GO-MASKED LOG seed=%d run=%s go=%d %s",
-            cfg.seed,
-            tag,
-            int(go_masked.ok),
-            go_masked.fields(),
-        )
         self._probe_log(tag)
         # GO set at the GO write stays 1: the engine waits for an enabled trigger.
         # Negative-control hook: ``go_exp = 0`` for one run; CHK-HS-MASKED fails while

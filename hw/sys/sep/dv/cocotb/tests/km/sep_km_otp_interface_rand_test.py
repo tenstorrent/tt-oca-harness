@@ -30,6 +30,10 @@ Checks (anchor):
                          OTP_DEMOTION_STATE = 0xA, each group {~demote, demote})
   CHK-OTP-LOCK           zero read of every field in m_w | m_c, staged read of
                          the rest, write-one-to-set lock registers (POKE readback)
+  CHK-OTP-LOCK-RESP      every read of a read-locked field completes OKAY: no
+                         SLVERR, DECERR or unknown flag, and at least one read
+                         (``km_csr.rdl:818``: the lock returns zero, it does
+                         not refuse; POKE flags)
   CHK-OTP-HANDOVER-MASK  control=1: OTP_READ_LOCK = 0x03C (POKE readback)
   CHK-OTP-TM             secure test boot: secrets 0 / all ones, public and
                          life-cycle words kept, OTP_SIGINT quiet (POKE readback,
@@ -65,8 +69,7 @@ Checks (anchor):
                          read 0 in every readout (RDL ``rsvd`` R 0x0)
 
 Logged only (no verdict): ``OBS-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a single-rail
-flip, not stated), ``OBS-OTP-LOCK-RESP`` (the response of a locked-field read, not
-stated; only its zero data is graded).
+flip, not stated).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on an ``INFO-DRAW`` line.
@@ -268,6 +271,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     required_evidence = (
         "CHK-OTP-RD",
         "CHK-OTP-LOCK",
+        "CHK-OTP-LOCK-RESP",
         "CHK-OTP-HANDOVER-MASK",
         "CHK-OTP-TM",
         "CHK-OTP-DEM",
@@ -503,22 +507,37 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     def _bad_under(self, ro: Readout, eff: int) -> list[str]:
         """Response problems of a readout under the effective lock ``eff``.
 
-        The RDL states only that a locked field reads zero, not the response,
-        so a locked read is graded on its data and its SLVERR / DECERR bits are
-        logged. A locked read with an unknown bit or a failed clear before it
-        fails: an unknown word would otherwise compare equal to 0. Every
+        CHK-OTP-LOCK-RESP: a read of a read-locked field completes OKAY with zero
+        data. The read lock defines the data and refuses no read
+        (``hw/ip/key_manager/regs/km_csr.rdl:818``: "Returns zero when the
+        field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD";
+        ``hw/ip/key_manager/doc/architecture.adoc:981-982``), so the access is
+        legal and AXI answers OKAY. The zero data is graded by the caller. A
+        locked read with an unknown bit or a failed clear before it is also a
+        data problem: an unknown word would otherwise compare equal to 0. Every
         unlocked read and every register read counts only as a clean OKAY.
         """
         out = list(ro.reg_bad)
-        locked: list[str] = []
-        for slot, resp in ro.slot_resp.items():
-            name = f"{_FN[slot[0]]}.{slot[1]}{slot[2]}"
-            if (eff >> slot[0]) & 1 and slot in ro.slot_resp_only:
-                locked.append(f"{name}:{resp}")
-            else:
-                out.append(f"{ro.label} {name} not a clean OKAY read")
-        if locked:
-            self.chk.obs("OTP-LOCK-RESP", readout=ro.label, reads=len(locked), first=locked[0])
+        for slot in ro.slot_resp:
+            if not ((eff >> slot[0]) & 1 and slot in ro.slot_resp_only):
+                out.append(f"{ro.label} {_FN[slot[0]]}.{slot[1]}{slot[2]} not a clean OKAY read")
+        if eff:
+            locked = [slot for slot in ro.words if (eff >> slot[0]) & 1]
+            bad = [
+                f"{_FN[slot[0]]}.{slot[1]}{slot[2]}:{ro.slot_resp[slot]}"
+                for slot in locked
+                if slot in ro.slot_resp
+            ]
+            self.chk.ok(
+                "OTP-LOCK-RESP",
+                bool(locked) and not bad,
+                readout=ro.label,
+                eff=f"0x{eff:03x}",
+                reads=len(locked),
+                resp="OKAY" if not bad else "error",
+                bad=len(bad),
+                first=bad[0] if bad else "none",
+            )
         return out
 
     @staticmethod

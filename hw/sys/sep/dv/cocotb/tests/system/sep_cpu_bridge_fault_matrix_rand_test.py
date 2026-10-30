@@ -129,6 +129,14 @@ Checkers:
                   stimulus model plus the raced bit; for the DMA host path,
                   DMA_BUS_ERR_STATUS equals host_path_err alone and vector bit
                   40 is 0.
+  CHK-BRIDGE-HOLE-SI
+                  an SI 32-bit read of a drawn unbacked HMAC word, through an
+                  inbound entry that allows it, answers SLVERR with 0xFFFFFFFF
+                  (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:52``, HMAC row,
+                  Hole in Extent "SLVERR, 0xFFFFFFFF / SLVERR"; the column is
+                  the answer at the inbound AXI port,
+                  ``hw/sys/sep/doc/memory_map.adoc:66-69``). The read runs with
+                  the owner window closed.
 
 FCOV: the owner window is open over each graded instance. The pass label
 ``bfault_pass`` (``env/sep_fcov_gate.set_bfault_pass``) is written 0 at the
@@ -202,6 +210,9 @@ from seq_lib.sep_irq_aggregator_seq import (
 
 TEST = "sep_cpu_bridge_fault_matrix_rand_test"
 RESP_OKAY, RESP_SLVERR, RESP_DECERR = 0, 2, 3
+# Hole in Extent cell of the HMAC row: "SLVERR, 0xFFFFFFFF / SLVERR"
+# (hw/sys/sep/regs/gen/adoc/memory_map.adoc:52).
+SI_HOLE_RDATA = 0xFFFF_FFFF
 RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 BLOCKS = ("hmac", "kmac", "otbn")
@@ -741,29 +752,31 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             self._pass("CHK-OR", orl)
             await self._release()
 
-    async def _obs_hole(self, init: str, block: str, addr: int, access) -> None:
+    async def _obs_hole(self, init: str, block: str, addr: int, access) -> tuple[int, int]:
         """OBS-BRIDGE-HOLE: one unbacked-word read and the fault latch state around it.
 
         No line states whether a fault in a block outside the seven
         PERIPH_BUS_ERR_STATUS bits, or a fault from the SI, latches a bit. The
-        line logs the response, the status, vector bit 42 and the fault pulses;
-        a bit the access set is cleared again so the stimulus model holds.
+        line logs the response, the read data, the status, vector bit 42 and
+        the fault pulses; a bit the access set is cleared again so the stimulus
+        model holds. Returns the response and the read data.
         """
         before = await self._periph()
         mark = self.pulses.mark()
-        resp = await access()
+        resp, rdata = await access()
         st = await self._periph()
         vec = await self._vec()
         pulse = 0
         for _clk, v in self.pulses.recs[mark:]:
             pulse |= v
         self.logger.info(
-            "OBS-BRIDGE-HOLE init=%s block=%s addr=0x%08x resp=%s periph_status=0x%x "
-            "vec42=%d err_pulse=0x%x",
+            "OBS-BRIDGE-HOLE init=%s block=%s addr=0x%08x resp=%s rdata=0x%08x "
+            "periph_status=0x%x vec42=%d err_pulse=0x%x",
             init,
             block,
             addr,
             RESP_NAME.get(resp, resp),
+            rdata,
             st & PERIPH_MASK,
             self._b(vec, 42),
             pulse,
@@ -771,18 +784,19 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         new = st & PERIPH_MASK & ~before
         if new:
             await self._wr_ok(PERIPH_CLEAR_ADDR, new)
+        return resp, rdata
 
     async def _leg_other_holes(self) -> None:
         close_graded_window(self.logger)
         mon = self.env.axi_monitor
         for name, (_kind, addr) in self.c.other.items():
 
-            async def _lsu(addr: int = addr) -> int:
+            async def _lsu(addr: int = addr) -> tuple[int, int]:
                 mon.arm_expected_decerr(1)
-                resp, _ = await self._acc(SepAxiOp.READ, addr)
+                resp, rdata = await self._acc(SepAxiOp.READ, addr)
                 if resp != RESP_DECERR:
                     mon.release_expected_decerr(1)
-                return resp
+                return resp, rdata
 
             await self._obs_hole("lsu", name, addr, _lsu)
         ibank = SepFilterBank(self, "in")
@@ -797,7 +811,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             ),
         )
 
-        async def _si() -> int:
+        async def _si() -> tuple[int, int]:
             ext = self.env.ext_axi_monitor
             ext.open_error_rdata_window()
             seq = SepAxiAccessSeq(
@@ -814,9 +828,16 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
                 ext.close_error_rdata_window()
             if seq.timed_out:
                 raise AssertionError(f"SI read 0x{self.c.si_hole:08x} timed out")
-            return seq.resp_code
+            return seq.resp_code, seq.rdata & 0xFFFF_FFFF
 
-        await self._obs_hole("si", "hmac", self.c.si_hole, _si)
+        resp, rdata = await self._obs_hole("si", "hmac", self.c.si_hole, _si)
+        line = (
+            f"init=si block=hmac addr=0x{self.c.si_hole:08x} resp={RESP_NAME.get(resp, resp)} "
+            f"rdata=0x{rdata:08x} expect=SLVERR/0x{SI_HOLE_RDATA:08x}"
+        )
+        if (resp, rdata) != (RESP_SLVERR, SI_HOLE_RDATA):
+            self._fail("CHK-BRIDGE-HOLE-SI", line)
+        self._pass("CHK-BRIDGE-HOLE-SI", line)
         await ibank.restore_reset(0)
 
     async def _dma_reg_fault(self) -> tuple[int, int]:

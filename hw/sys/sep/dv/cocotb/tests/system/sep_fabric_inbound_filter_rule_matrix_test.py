@@ -87,6 +87,13 @@ with allow_burst 0 or 1. The response codes are logged at once and graded after
 the 2-beat INCR, so the burst is checked whatever code the writes answered. The
 lock is sticky until reset, so this cell runs last on entry 15.
 
+CHK-FILT-RSVD-READ: through an entry whose window runs from the last SRAM
+granule to the Reserved row base 0x10050000, an external read of that base
+answers DECERR with 0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``;
+the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``).
+CTRL-FILT-RSVD-ALLOW reads a staged SRAM word through the same entry first and
+needs OKAY with that word, so the DECERR is not a filter denial.
+
 Functional coverage: the window of this leaf holds only the graded bursts
 and the refused FILTER_CONFIG writes with their read-backs. A
 ``cp_lite_split`` cell samples only after the check of its burst passed
@@ -138,6 +145,10 @@ _TEST = "sep_fabric_inbound_filter_rule_matrix_test"
 # Separate stream for the denied-burst ARID, so the matrix draws keep their seed mapping.
 _BURST_ID_SALT = 0x4255_5253
 _M_AXI_ID_MAX = 62
+# Separate stream for the CTRL-FILT-RSVD-ALLOW staged word.
+_RSVD_CTRL_SALT = 0x5253_5644
+# Read data of the Reserved row cell (hw/sys/sep/regs/gen/adoc/memory_map.adoc:41).
+RSVD_RDATA = 0xBADC_AB1E
 # ARID of the read sent before fuse sensing ends; no other read of this leaf uses it,
 # so an R beat that never comes leaves no later read of that ID to pair with.
 _PRESENSE_ARID = 63
@@ -833,15 +844,37 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             int(read.done()),
         )
 
-    async def _obs_reserved_si_read(self) -> None:
-        """One SI read of a Reserved row through an allow entry over it."""
+    async def _reserved_si_read(self, seed: int) -> None:
+        """CHK-FILT-RSVD-READ: one SI read of a Reserved row through an allow entry over it.
+
+        The memory map gives the Reserved row 0x10050000-0x107FFFFF the cell
+        "DECERR, 0xBADCAB1E / DECERR" (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``),
+        the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:66-69``).
+        A filter denial gives the same code and data, so CTRL-FILT-RSVD-ALLOW
+        first reads the last SRAM word through the same entry, whose window
+        runs from that word to the Reserved base: OKAY with the staged value
+        shows the entry admits the read.
+        """
         addr = rr.RESERVED_BASES[0]
+        ctrl = sym("SEP_SRAM_MEM_BASE_ADDR") + sym("SEP_SRAM_MEM_SIZE") - GRANULE_BYTES
+        staged = SepSeededRng(seed ^ _RSVD_CTRL_SALT).getrandbits(32)
         await self.filt.disable_all()
-        cell = SepInboundFilterCfg(entry=0, allow_addr=addr, allow_value=0)
-        await self.filt.program_rule(cell, read_allowed=True, write_allowed=False)
+        await self.filt.stage_target(ctrl, staged)
+        cell = SepInboundFilterCfg(entry=0, allow_addr=ctrl, allow_value=staged)
+        await self.filt.program_rule(cell, read_allowed=True, write_allowed=False, end_addr=addr)
+        resp, data = await self._ext_read(ctrl)
+        self._grade(
+            "CTRL-FILT-RSVD-ALLOW",
+            (resp, data) == (RESP_OKAY, staged),
+            f"entry=0 window=0x{ctrl:08x}..0x{addr:08x} addr=0x{ctrl:08x} resp={resp} "
+            f"rdata=0x{data:08x} expect={RESP_OKAY}/0x{staged:08x}",
+        )
         resp, data = await self._ext_read(addr)
-        self.logger.info(
-            "OBS-FILT-DENY-RDATA row=reserved addr=0x%08x resp=%d rdata=0x%08x", addr, resp, data
+        self._grade(
+            "CHK-FILT-RSVD-READ",
+            (resp, data) == (RESP_DECERR, RSVD_RDATA),
+            f"row=reserved addr=0x{addr:08x} resp={resp} rdata=0x{data:08x} "
+            f"expect={RESP_DECERR}/0x{RSVD_RDATA:08x}",
         )
         await self.filt.disable_all()
 
@@ -1054,7 +1087,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
 
         await self._check_burst_dimension(mcfg)
-        await self._obs_reserved_si_read()
+        await self._reserved_si_read(mcfg.seed)
 
         # Restore entry 0 / window A / rw for the ownership checks.
         await self.filt.disable_all()

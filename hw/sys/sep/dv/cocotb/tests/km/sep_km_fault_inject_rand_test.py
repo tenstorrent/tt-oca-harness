@@ -36,8 +36,9 @@ the delivered key, ``none`` when no OUTPUT_VALID comes within ``aes_w_clk``
 (``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/theory_of_operation.md``,
 "Side-Loaded Key"), so the post-wipe AES result is graded ``none``, with the
 control CTRL-AES-NOKEY-INPUT (every STATUS sample of that read shows
-INPUT_READY = 0). A non-key AES result where a key is expected is logged as
-``OBS-AES-OTHER``.
+INPUT_READY = 0). A non-key AES result where a key is expected, and an HMAC
+digest that matches neither golden, are miss diagnostics of the witness checks
+(``INFO-AES-OTHER``, ``INFO-HMAC-DIGEST``).
 
 Probes and taps: ``HOST-MBX``, ``PIC-IRQ`` bit 30, ``KM-COUNT``, ``ENGINE-OUT``,
 ``KM-ENTROPY``, ``KM-ISO``, and the read-only taps ``KM-VALID``, ``KM-KPV``,
@@ -46,6 +47,9 @@ readback (``km_irqset_fired_o``, ``km_cpuirq_fired_o``, ``km_par_fired_o`` with
 ``km_par_rstrb_o`` and ``km_kpv_flip_count_o``) before its check is graded.
 
 Checks (HOST-UNREC unless marked):
+  CHK-PRE-KEYVALID   (both) at each fatal point with keys, km_engine_key_valid_o
+                     equals the transfer mask V before the fault
+                     (``firmware.adoc:504-506,1811``).
   CHK-FATAL-WIPE     a KM_WIPE_CTRL write gives exactly one fault frame
                      0xFFFFFFFF and PIC bit 30 rises (HOST: control=1).
   CHK-FLUSH-FIRST    (both) the r unread responses are flushed: one frame after
@@ -76,6 +80,9 @@ Checks (HOST-UNREC unless marked):
   CHK-PARITY         a parity flip sets the memory's parity bit and reports -2 or -3.
   CHK-PARITY-VAC     a flip that the CPU did not check is redrawn, at most 8 times.
   CHK-KEYCRC         a corrupt key word gives 0xFE key_slot_crc, then failure.
+  CHK-KEYCRC-OUTSIDE-NOWRITE  the faulted transfer to an engine outside the
+                     policy writes no key bank and leaves km_engine_key_valid_o
+                     unchanged (``firmware.adoc:500,979``).
   CHK-CRC-FIRST      the CRC fault precedes the policy refusal.
   CHK-NOFLUSH        the key fault keeps the sequence counters.
   CHK-GATE-AFTER     the fault repeats after CMD_RECOV_ACK; a sibling is gated.
@@ -86,7 +93,7 @@ Checks (HOST-UNREC unless marked):
   CHK-KEYPATH-FATAL  (HOST) a key write to a reset HMAC is fatal with -7.
   CHK-XFER-STOP      (HOST) the transfer writes no AES bank after the HMAC fault.
 
-Logged only: OBS-AES-OTHER, the SRAM write count of the HOST fatal
+Logged only: the SRAM write count of the HOST fatal
 path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
 outside the graded set, and INFO-PARITY-VACUOUS parity draws. In the whole leaf the
 CHK-MAINCTX-FATAL point runs after every other fatal point. The regression runs
@@ -188,6 +195,7 @@ IMAGE_UNREC = "rom_main_unrec.rom.parhex"
 EVIDENCE_HOST = (
     "CHK-FATAL-WIPE",
     "CHK-FLUSH-FIRST",
+    "CHK-PRE-KEYVALID",
     "CHK-NOSHRED-HOST",
     "CHK-NOSHRED-HOST-AES",
     "CHK-SHRED-FIRST-HOST",
@@ -219,11 +227,13 @@ EVIDENCE_UNREC = (
     "CHK-PARITY",
     "CHK-PARITY-VAC",
     "CHK-KEYCRC",
+    "CHK-KEYCRC-OUTSIDE-NOWRITE",
     "CHK-CRC-FIRST",
     "CHK-NOFLUSH",
     "CHK-GATE-AFTER",
     "CHK-RESIDUE",
     "CHK-CPU-TRAP",
+    "CHK-PRE-KEYVALID",
     "CHK-MAINCTX-FATAL",
 )
 # Shards of the HOST-UNREC entry (env/sep_shard.py). Each fatal point of this
@@ -261,6 +271,7 @@ POINT_EVIDENCE_UNREC = {
         "CHK-SK-AFTER-BOOT",
         "CHK-SK-READY-FRAME",
         "CHK-WIPE-STATUS",
+        "CHK-PRE-KEYVALID",
         "CHK-RESTORE",
     ),
     "single": (
@@ -270,6 +281,7 @@ POINT_EVIDENCE_UNREC = {
         "CHK-SK-AFTER-BOOT",
         "CHK-SK-READY-FRAME",
         "CHK-KPV-TRAP",
+        "CHK-PRE-KEYVALID",
         "CHK-RESTORE",
     ),
     "multi": (
@@ -279,11 +291,13 @@ POINT_EVIDENCE_UNREC = {
         "CHK-SK-AFTER-BOOT",
         "CHK-SK-READY-FRAME",
         "CHK-KPV-TRAP",
+        "CHK-PRE-KEYVALID",
         "CHK-RESTORE",
     ),
     "parity": ("CHK-PARITY", "CHK-PARITY-VAC", "CHK-PARITY-CLEAN", "CHK-RESTORE"),
     "keycrc": (
         "CHK-KEYCRC",
+        "CHK-KEYCRC-OUTSIDE-NOWRITE",
         "CHK-CRC-FIRST",
         "CHK-NOFLUSH",
         "CHK-GATE-AFTER",
@@ -1153,7 +1167,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 input_ready_samples=in_ready,
             )
         elif state != "key":
-            self.chk.obs("AES-OTHER", step=step, output=output, aes_w_clk=self.aes_w_clk)
+            self.chk.info("AES-OTHER", step=step, output=output, aes_w_clk=self.aes_w_clk)
         if state != "key":
             await self._aes_reset()
         return state
@@ -1171,7 +1185,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             return "key"
         if digest == g_sw:
             return "nokey"
-        self.logger.info("OBS-HMAC-DIGEST digest=%s (neither golden)", [_hx(w) for w in digest])
+        self.logger.info("INFO-HMAC-DIGEST digest=%s (neither golden)", [_hx(w) for w in digest])
         return "other"
 
     # ================================================================ ML-KEM
@@ -1316,11 +1330,17 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             hmac=hmac,
             aes=aes,
         )
+        # firmware.adoc:504-506,1811: a successful transfer sets key_valid of each
+        # returned engine; only a shred or a wipe clears it, and neither runs before
+        # this sample. The bit order of km_engine_key_valid_o is the request mask.
+        self.chk.ok(
+            "PRE-KEYVALID",
+            pre.keyvalid == p.v,
+            keyvalid=_h2(pre.keyvalid),
+            v=_h2(p.v),
+        )
         self.logger.info(
-            "OBS-PRE-STATE keyvalid=%s v=%s shared=%d kpv_words_nonzero=%d ctrl_stat_clk=%d "
-            "stat=%s r=%d",
-            _h2(pre.keyvalid),
-            _h2(p.v),
+            "INFO-PRE-STATE shared=%d kpv_words_nonzero=%d ctrl_stat_clk=%d stat=%s r=%d",
             pre.shared,
             pre.kpv_words_nonzero,
             stat_clk,
@@ -1829,7 +1849,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         pol_code, pol_arg = pol[-1].resp_cmd(KM_CMD_KEY_TRANSFER, sent)
         pol_ok = len(pol) == 1 and pol_code == KM_RC_FAILURE and pol_arg is None
         self.logger.info(
-            "OBS-KEY-A run=%d-%d handle=%s control xfer code=%d arg=%s aes_writes=%d "
+            "INFO-KEY-A run=%d-%d handle=%s control xfer code=%d arg=%s aes_writes=%d "
             "policy code=%s arg=%s",
             run_a[0],
             run_a[-1],
@@ -1845,21 +1865,28 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         index = s_a * pl.SLOT_WORDS + p.flip_word
         await self._set_kpv_flip(1, index, p.flip_bit)
         ctrl_a = [self._ctrl_slots()[s] for s in run_a]
+        kv13 = self._kv()
         resp_expected = self.resp_next
         self.bus.start()
         sent14, f14 = await self._cmd_frames(KM_CMD_KEY_TRANSFER, [ha, p.outside_a], track=False)
         await self.bus.stop()
         flips14 = self.rd(top.km_kpv_flip_count_o, allow_unknown=True)
         bus14 = self.bus.writes
+        bus14_unknown = self.bus.unknown
+        kv14 = self._kv()
         ctrl14 = [self._ctrl_slots()[s] for s in run_a]
-        self.logger.info(
-            "OBS-KEY-CRC-OUTSIDE transfer outside policy frames=%s flips=%d kv=%s recov_err=%d "
-            "bus_writes_logged=%d",
-            [f.text() for f in f14],
-            flips14,
-            _h2(self._kv()),
-            self.rd(top.km_csr_recov_err_o, allow_unknown=True),
-            bus14,
+        # firmware.adoc:979 (key_slot_crc: the triggering operation is aborted) and
+        # :500 (a disallowed engine: no requested key transfer takes place).
+        self.chk.ok(
+            "KEYCRC-OUTSIDE-NOWRITE",
+            flips14 > 0 and bus14 == 0 and bus14_unknown == 0 and kv14 == kv13,
+            frames=[f.text() for f in f14],
+            flips=flips14,
+            bus_bank_writes=bus14,
+            bus_unknown=bus14_unknown,
+            kv=_h2(kv14),
+            kv_before=_h2(kv13),
+            recov_err=self.rd(top.km_csr_recov_err_o, allow_unknown=True),
         )
         fa = f14[0]
         fb = f14[1] if len(f14) > 1 else None

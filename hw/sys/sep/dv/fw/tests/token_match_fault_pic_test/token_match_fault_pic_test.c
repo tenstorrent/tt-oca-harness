@@ -14,11 +14,13 @@
  *   CHK-PIC-FAULT  : the secure-disable fault bit is set
  *   CHK-PIC-MASK   : after masking, the ISR does not re-enter, and the source
  *                    is still pending at both ends of the quiet window
+ *   CHK-PIC-LEVEL-REENTRY : with source 40 enabled again and the handler not
+ *                    masking it, the ISR enters at least twice in a fixed
+ *                    window (doc/programmer/src/sep-programming.adoc:235-237
+ *                    "an unmasked handler re-enters")
  *
  * Observed, not graded:
- *   OBS-PIC-LEVEL-REENTRY : with source 40 enabled again and the handler not
- *                           masking it, the number of ISR entries in a fixed
- *                           window and the pending state after it
+ *   OBS-PIC-LEVEL-REENTRY : the pending state of source 40 after that window
  */
 
 #include <stdint.h>
@@ -148,9 +150,15 @@ int main(void) {
         uint32_t entries = g_isr_count - g_cap_base;
         uint32_t pending = pic_source_pending(PIC_TOKEN_FAULT);
         g_no_mask = 0u;
-        sep_mbx_puts("OBS-PIC-LEVEL-REENTRY entries=");
+        if (entries < 2u) {
+            sep_mbx_puts("FAIL: CHK-PIC-LEVEL-REENTRY entries=");
+            errors++;
+        } else {
+            sep_mbx_puts("CHK-PIC-LEVEL-REENTRY PASS: entries=");
+        }
         sep_mbx_puthex(entries);
-        sep_mbx_puts(" pending=");
+        sep_mbx_puts(" min=0x00000002\n");
+        sep_mbx_puts("OBS-PIC-LEVEL-REENTRY pending=");
         sep_mbx_puthex(pending);
         sep_mbx_puts("\n");
     }

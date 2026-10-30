@@ -124,7 +124,6 @@ from env.sep_fabric_tap import (
     AXPROT_LSU,
     SepFabricTap,
     check_axprot,
-    log_axprot,
     start_taps,
     stop_taps,
 )
@@ -1765,8 +1764,6 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             await stop_taps(self.taps)
             await self.dma_raw.stop()
             await self.dma_tap.stop()
-            log_axprot(self.logger, self.dma_raw, "dma", "ar", "na")
-            log_axprot(self.logger, self.dma_raw, "dma", "aw", "na")
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         assert not self.irq_xz, (
             "CHK-DMA-IRQ FAIL: X/Z on the DMA done or error interrupt out of reset "

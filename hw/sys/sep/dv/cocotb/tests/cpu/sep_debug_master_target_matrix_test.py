@@ -1173,7 +1173,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 f"control_rewrite={control}",
             )
             self.logger.info(
-                "OBS-ALIAS-OUTSIDE: %s addr=0x%08x wr=0x%08x sberror_wr=%d rd=0x%08x sberror_rd=%d "
+                "INFO-ALIAS-OUTSIDE: %s addr=0x%08x wr=0x%08x sberror_wr=%d rd=0x%08x sberror_rd=%d "
                 "sram_word0=0x%016x->0x%016x",
                 chk,
                 addr,
@@ -1750,7 +1750,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     f"wdata={_h(wval) if d == 'w' else 'na'}",
                 )
                 self.logger.info(
-                    "OBS-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
+                    "INFO-DBG-REMAP-RESP: path=%s dir=%s sberror=%d data=%s",
                     path,
                     d.upper(),
                     err,
@@ -1820,7 +1820,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
         self.uncore_ctl = None
         dut.dmi_uncore_enable_i.value = 0
         await ClockCycles(dut.clk_i, 2)
-        self.logger.info("OBS-UNCORE-CTL-RD: rdata=0x%08x (bench holds 0)", rd)
+        self.logger.info("INFO-UNCORE-CTL-RD: rdata=0x%08x (bench holds 0)", rd)
         return res
 
     def _grade_uncore(self, ctl: dict[str, int]) -> bool:

@@ -940,9 +940,11 @@
 // stage in the same order as crypto_isolated_probe_o: the AW, AR, B and R handshakes
 // (valid and ready on the same clock) and the B and R response codes (two bits per
 // stage, stage i at [2i+1:2i]). Read-only taps of the isolate units' slv_req_i and
-// slv_resp_o ports.
+// slv_resp_o ports. iso_slv_ar_valid_probe_o is the AR valid alone, so a read can be
+// seen pending at a stage before its handshake.
 `SEP_TB_OUT(logic [13:0], iso_slv_aw_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_ar_hs_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_ar_valid_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_b_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)

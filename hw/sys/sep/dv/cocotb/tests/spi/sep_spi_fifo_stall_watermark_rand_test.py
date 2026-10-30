@@ -79,8 +79,11 @@ Checkers:
                    shows TXQD and RXQD equal to the words in each FIFO: after
                    the COMMAND write of the TX stall leg (0 and 0), after each
                    idle Rx segment of the RX depth search and the RX
-                   watermark leg (0 and r), and after the RX-full idle segment
-                   (0 and R). RXQD/TXQD give "how many unread/unsent 32-bit
+                   watermark leg (0 and r), after the RX-full idle segment
+                   (0 and R), and after the extra 4-byte Rx segment behind the
+                   full RX FIFO (0 and R: no RXDATA read and no TXDATA write
+                   since, and a full FIFO of RxDepth words takes no more;
+                   spi_host.hjson:98-101). RXQD/TXQD give "how many unread/unsent 32-bit
                    words are currently in the RX/TX FIFO"; only "When active"
                    may they under- or overestimate (spi_host.hjson:322-333).
                    A read with ACTIVE=1 is logged as OBS-SPI-QD. At least one
@@ -196,8 +199,7 @@ Checkers:
 Every CHK line of a per-width leg carries ``width=x1|x2|x4``; the TX
 watermark leg has no segment and no width.
 
-Not graded: TXQD and RXQD while ACTIVE=1 and after the extra Rx segment
-behind a full RX FIFO (logged with OBS-SPI-QD), the CMDQD at which READY stays 0 and the head-segment count of CMDQD
+Not graded: TXQD and RXQD while ACTIVE=1 (logged with OBS-SPI-QD), the CMDQD at which READY stays 0 and the head-segment count of CMDQD
 (logged with OBS-SPI-CMDQD-FULL), RXWM at RXQD equal to RX_WATERMARK, RX_WATERMARK 0x7F against the
 reset value, overflow and underflow.
 
@@ -1472,7 +1474,7 @@ class sep_spi_fifo_stall_watermark_rand_test(sep_base_test):
         if ended == "timeout":
             self._fail(chk, "extra Rx segment: neither chip select high nor a quiet stall window")
         st_x = await self.ops.read_status()
-        self._obs_qd(st_x, f"rx_full_idle extra segment ended={ended}")
+        self._chk_qd_idle(st_x, f"rx_full_idle extra segment ended={ended}", 0, r)
         if st_x.rxqd > r:
             self._fail(chk, f"rxqd_after_extra={st_x.rxqd} max={r}")
         words = 0

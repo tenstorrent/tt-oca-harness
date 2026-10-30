@@ -18,7 +18,7 @@ Contract (``hw/sys/sep/doc/reset_controller.adoc``, SEP Reset Controller;
   block is reset by ``sep_reset_n`` (``reset_controller.adoc``, ``sep_reset_no``
   resets the system peripherals), and no specification line states that it
   answers a read while sensing runs, so the leaf issues no read of it before
-  the release and logs ``OBS-SENSE-STATUS-PRE`` instead.
+  the release and logs ``INFO-SENSE-STATUS-PRE`` instead.
 * From the ``rst_ni`` release until ``sep_fuse_sense_done_o`` rises, a read of
   the shadow map answers SLVERR. After sensing the same word reads OKAY with the
   staged word.
@@ -681,7 +681,7 @@ class sep_boot_release_terms_test(sep_base_test):
         return seq.rdata & _M64
 
     def _obs_sense_pre(self, ep: _Epoch, cyc: int) -> None:
-        """OBS-SENSE-STATUS-PRE: the pre-sense value of SEP_FUSE_SENSE_STATUS is not read.
+        """INFO-SENSE-STATUS-PRE: the pre-sense value of SEP_FUSE_SENSE_STATUS is not read.
 
         The register block is reset by ``sep_reset_n``, and no specification
         line states that it answers a read while sensing runs, so the leaf
@@ -689,7 +689,7 @@ class sep_boot_release_terms_test(sep_base_test):
         reset levels at the path control read; it grades nothing.
         """
         self.logger.info(
-            "OBS-SENSE-STATUS-PRE: epoch=%s no SEP_FUSE_SENSE_STATUS read while sensing runs; "
+            "INFO-SENSE-STATUS-PRE: epoch=%s no SEP_FUSE_SENSE_STATUS read while sensing runs; "
             "at the path control read (sample %d) sense_done=%s sep_reset_n=%s (not scored)",
             ep.kind,
             cyc,

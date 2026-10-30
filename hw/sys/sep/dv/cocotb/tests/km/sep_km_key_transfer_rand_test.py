@@ -23,7 +23,7 @@ the evidence that a key arrived:
   "System Key-Manager Interface"), and KEY_VALID 0 means the bank holds no
   valid key (``hw/sys/sep/doc/crypto.adoc``, "Key Manager Key Delivery"), so
   where no key is expected the result is ``none`` (CHK-AES-NOKEY). An
-  unexpected result where a key is expected is logged as ``OBS-AES-OTHER``.
+  unexpected result where a key is expected is a miss diagnostic (``INFO-AES-OTHER``).
   W is 8 times the duration of the first AES output of the leaf, which always
   has a key. After a result other than ``key`` the leaf resets the AES through
   ``SW_RESET_N`` bit 2, because an AES that waits for a key stays waiting.
@@ -313,7 +313,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         got = self._keyvalid()
         self.banks.append((label, got, expected))
         if got != expected:
-            self.chk.obs("KM-VALID", label=label, key_valid=_h(got), expected=_h(expected))
+            self.chk.info("KM-VALID", label=label, key_valid=_h(got), expected=_h(expected))
         return got
 
     async def _wait_sep_reset_n(self) -> None:
@@ -485,7 +485,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             )
             self.chk.ok("AES-NOKEY", state == "none", **fields)
         elif state != "key":
-            self.chk.obs("AES-OTHER", **fields)
+            self.chk.info("AES-OTHER", **fields)
         if state != "key":
             await self._aes_reset()
         return state
@@ -507,7 +507,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             return "key"
         if digest == g_sw:
             return "nokey"
-        self.chk.obs("HMAC-DIGEST", digest=[hex(w) for w in digest], match="neither_golden")
+        self.chk.info("HMAC-DIGEST", digest=[hex(w) for w in digest], match="neither_golden")
         return "other"
 
     # ------------------------------------------------------------ delivery leg

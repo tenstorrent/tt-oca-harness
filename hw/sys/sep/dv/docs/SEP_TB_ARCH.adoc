@@ -197,7 +197,8 @@ Observation probe groups:
   `sep_ip_reset_override_matrix_test`.
 * Isolate-stage slave-side taps: `iso_slv_aw_hs_probe_o`,
   `iso_slv_ar_hs_probe_o`, `iso_slv_b_hs_probe_o`, `iso_slv_r_hs_probe_o`
-  (one bit per isolate stage, valid and ready on the same clock) and
+  (one bit per isolate stage, valid and ready on the same clock),
+  `iso_slv_ar_valid_probe_o` (the AR valid alone, one bit per stage) and
   `iso_slv_bresp_probe_o`, `iso_slv_rresp_probe_o` (two bits per stage, stage i
   at `[2i+1:2i]`), read from the `slv_req_i` and `slv_resp_o` ports of the 14
   isolate units of `sep_crypto_axi_interconnect.sv` (`u_*_host_isolate`,
@@ -206,9 +207,10 @@ Observation probe groups:
   when it returns the response, the point where the specification drains a
   domain before its reset. No frontdoor shows the stage side of the fabric.
   Owners `sep_sw_reset_isolation_matrix_test` and
-  `sep_crypto_per_ip_reset_isolation_test`, which reads the `ar` handshake of
-  stages 2 (`host_hmac`) and 4 (`host_abr`) and logs it, with the isolate
-  request at it, for each drain read (an observation; no check grades it).
+  `sep_crypto_per_ip_reset_isolation_test`, which reads the `ar` handshake and
+  the first `ar` valid clock of stages 2 (`host_hmac`) and 4 (`host_abr`) and
+  logs both, with the isolate request at each, for each drain read (an
+  observation; no check grades it).
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
   (`u_sep_wdt_wrap.rst_wdt_aon_clk_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
@@ -325,8 +327,8 @@ Observation probe groups:
   expected digest that the bench binds to `SEP_SEC_DISABLE_TOKEN`.
   `lc_state_probe_o`, the `sep` output `lc_state_o`, the differentially
   encoded lifecycle state; no register shows the port value.
-  `sep_lcc_lc_state_transition_matrix_test` logs it beside the `LC_STATE`
-  shadow word (OBS-LC-STATE-PORT). Owners:
+  `sep_lcc_lc_state_transition_matrix_test` grades it against the `LC_STATE`
+  shadow word (CHK-LC-STATE-PORT). Owners:
   `sep_lcc_feat_ctrl_state_matrix_rand_test`,
   `sep_efuse_transient_rma_rand_test`, `sep_efuse_token_channel_rand_test`,
   `sep_efuse_token_fault_matrix_test`, `sep_efuse_interface_status_rand_test`,
@@ -545,7 +547,9 @@ Observation probe groups:
   (`u_generator_complex.jitter_ro_enable_i`, the stored
   `RING_OSC_ENABLE.ENABLE`). Read-only. A check that anchors on it assumes only
   a fixed delay from this tap to the lane. Users: the ESRC conditioning entry
-  of the crypto and entropy area (the lane enable clock of the period walk).
+  of the crypto and entropy area (the lane enable clock of the period walk), and
+  `SepDrbgScoreboard`, which compares it with the `RING_OSC_ENABLE.ENABLE`
+  readback after every entropy bring-up (CHK-CHK1-RO-ENABLE).
 * PIC read-data probe (`pic_rd_data_probe_o`): `picm_rd_data` of the VeeR
   EL2 PIC with the registered read strobe and read address
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;

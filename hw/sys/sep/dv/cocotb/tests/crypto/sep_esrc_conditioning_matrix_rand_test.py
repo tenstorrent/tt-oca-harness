@@ -98,6 +98,13 @@ Checkers:
                        and ends at 0, and at least one run completes. In the
                        pass-through window OUTPUT_COUNT is 0 on every clock.
   CHK-COND-PASSTHRU    every FIFO word == BIW observe word i + d at one d in 0..8.
+  CHK-COND-PASSTHRU-OUTCOUNT
+                       every ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the
+                       pass-through window reads 0, and there is at least one read
+                       (``hw/ip/entropy_source/regs/entropy_source.rdl``:88 "remains 0
+                       while idle or bypassed"). The window opens after
+                       ``SHA256_STATUS.BUSY`` reads 0 with whitening off
+                       (CTRL-COND-PASSTHRU ``busy_zero``), so the engine is idle.
 Logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the 32-bit health test with the
 compressor bypassed has no single stated behaviour) and ``OBS-BLOCKED
 CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW word is not stated).
@@ -338,6 +345,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         "CHK-COND-SHA",
         "CHK-COND-SHA-COUNT",
         "CHK-COND-PASSTHRU",
+        "CHK-COND-PASSTHRU-OUTCOUNT",
         "CHK-COND-FIRST-PUSH",
         "CHK-COND-PERIOD-RATIO",
         "CHK-COND-FIRST-STROBE",
@@ -1424,7 +1432,15 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             mismatches=0 if offset is not None else "all_offsets",
         )
         outs = [_get(v, "SHA256_STATUS", "OUTPUT_COUNT") for v in out_reads]
-        self.chk.obs("COND-PASSTHRU-OUTCOUNT", reads=len(outs), nonzero=sum(1 for o in outs if o))
+        nonzero = sum(1 for o in outs if o)
+        self.chk.ok(
+            "COND-PASSTHRU-OUTCOUNT",
+            bool(outs) and nonzero == 0,
+            reads=len(outs),
+            nonzero=nonzero,
+            values=",".join(str(v) for v in sorted(set(outs))) or "none",
+            busy_zero=busy_ok,
+        )
 
         walk = white.output_count_walk()
         runs = walk["runs"]

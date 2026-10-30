@@ -73,7 +73,8 @@ show PR-OUT handshakes only at its predicted outbound address
 
 Not graded here: the ``locked`` bit, the
 filter register storage, the SEP debug bypass, and the response of the
-extension-window read that the wide control entry admits (OBS-WIDE-CTRL).
+extension-window read that the wide control entry admits, which the bench
+responder on ``axi_extension_axi`` gives (INFO-WIDE-CTRL).
 
 Run mode: no_cpu, real PROD fuse sense with SEC_DIS 0 and fixed SIP_DIS and
 SYS_DIS whose DBG_1 bit 0 is clear, so the inbound filter is active.
@@ -893,7 +894,7 @@ class sep_fabric_filter_match_priority_rand_test(sep_base_test):
                     seq = await self._si(p, allow_timeout=True)
                     addrs = self.taps["PR-EXT"].addrs(m, "ar")
                     self.logger.info(
-                        "OBS-WIDE-CTRL: ext read addr=0x%08x prot1=%d resp=%s pr_ext=%s",
+                        "INFO-WIDE-CTRL: ext read addr=0x%08x prot1=%d resp=%s pr_ext=%s",
                         p.addr,
                         prot1,
                         _RESP.get(seq.resp_code),

@@ -81,6 +81,7 @@ async def drbg_bring_up(
         await test.report_entropy_stall()
         sb.stop()
         raise AssertionError("DRBG-BRING-UP: ESRC never produced a seed (drbg_seed_valid_o)")
+    await sb.grade_ro_enable(test)
     if edn_ctrl is not None:
         await test.start_seq(SepEdnCtrlWriteSeq("edn_ctrl_write", value=edn_ctrl))
     test.logger.info(

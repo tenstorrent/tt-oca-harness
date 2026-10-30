@@ -195,6 +195,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
             raise AssertionError("ESRC never produced a seed (drbg_seed_valid_o)")
+        await self.drbg_sb.grade_ro_enable(self)
         self.start_fifo_drain()
         self.drbg_sb.enable_chk5()
 

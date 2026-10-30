@@ -91,8 +91,7 @@ of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in
 HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
 so each word is the little-endian read ("le").
 Every HMAC golden compare is at ``digest_swap`` = 0 and expects the big-endian read
-(``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order the first readback matches is
-logged as ``OBS-HMAC-DIGEST-ORDER``.
+(``env/sep_hmac_golden.py`` ``SepDigestOrder``).
 """
 
 from __future__ import annotations
@@ -373,7 +372,6 @@ class sep_crypto_delivered_key_select_rand_test(sep_base_test):
 
         await self._aes_legs(ka)
         await self._aes_nokey_leg()
-        self.chk.obs("HMAC-DIGEST-ORDER", **self.digest_order.fields())
         close_graded_window(self.logger)
 
         await self.km.check_outbound_empty("EOT")

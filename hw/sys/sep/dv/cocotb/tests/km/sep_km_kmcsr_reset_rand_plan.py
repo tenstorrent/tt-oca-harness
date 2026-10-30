@@ -158,6 +158,11 @@ RESET_READS = {
     reg: KM_CSR.reset(f"{reg}_REG")
     for reg in ("VUART_TX", "TB_RESULT", "TB_SIGNATURE", "TB_ERRCODE", "TB_SUBTEST", "TB_CMD_ARG")
 }
+# VUART_STATUS fields (sw = r, hw = w) and their RDL resets, graded field by field.
+VUART_STATUS_FIELDS = tuple(
+    (n, m["bm"], m["bp"], m["reset"])
+    for n, m in sorted(KM_CSR.fields("VUART_STATUS_REG").items(), key=lambda t: t[1]["bp"])
+)
 
 # The register text of km_csr.adoc and km_drbg_sampler.adoc states the same
 # resets as the RDL; a mismatch is a specification conflict, not a leaf result.

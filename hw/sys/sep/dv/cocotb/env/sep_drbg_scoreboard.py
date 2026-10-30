@@ -13,9 +13,12 @@ for the decorrelator SR-fill / enable-edge transient.
 CHK1 records a pair on every cycle the DUT decor output changes and on every cycle the
 golden sample divider fires, so a decor output that stops updating (or updates off
 the sample cadence) is compared against the sample the golden takes on that cycle.
-The per-lane ring-oscillator enable (``esrc_ro_enable_o``) is logged at the lock, not
-graded: no text states that the enable at the generator equals
-``RING_OSC_ENABLE.ENABLE``.
+CHK-CHK1-RO-ENABLE (``grade_ro_enable``, called by every bring-up after the generators
+are on): the per-lane ring-oscillator enable at the generators (``esrc_ro_enable_o``)
+equals the ``RING_OSC_ENABLE.ENABLE`` readback, with no X/Z. ENABLE "Enables each
+generator noise ring oscillator" (``hw/ip/entropy_source/regs/entropy_source.rdl``:563,565);
+"the lane ring oscillator, enabled by RING_OSC_ENABLE[i]"
+(``hw/ip/entropy_source/doc/assets/entropy-source-rosc-complex.svg``:6).
 
 strict=False logs mismatches and dumps the first N pairs; strict=True makes report() raise.
 """
@@ -471,11 +474,6 @@ class SepDrbgScoreboard:
                         state = "locked"
                         self.log.info(
                             "CHK1 golden seeded from live ff_stage @ decor=%024x", dut_decor
-                        )
-                        ro_en = _safe_int(d.esrc_ro_enable_o)
-                        self.log.info(
-                            "OBS-CHK1-RO-ENABLE esrc_ro_enable_o=%s",
-                            "X/Z" if ro_en is None else f"0x{ro_en:03x}",
                         )
             elif state == "locked" and changed:
                 # SRs are in lockstep -> gsr (golden ff[28:21]) equals the DUT's
@@ -1068,6 +1066,36 @@ class SepDrbgScoreboard:
             self.log.info("CHK2 frontdoor: drained %d FIFO_RDATA words", len(words))
 
     # ----------------------------------------------------------------- report
+    async def grade_ro_enable(self, test) -> None:
+        """CHK-CHK1-RO-ENABLE: ``esrc_ro_enable_o`` equals the ``RING_OSC_ENABLE.ENABLE``
+        readback on the clock after the read completes. Raises on a FAIL."""
+        from sep_reg_meta import ENTROPY_SOURCE, sym
+        from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+
+        from env.sep_axi_agent import SepAxiOp
+
+        seq = SepAxiAccessSeq(
+            "esrc_ring_osc_rd",
+            op=SepAxiOp.READ,
+            addr=sym("ENTROPY_SOURCE_RING_OSC_ENABLE_REG_ADDR"),
+            length=4,
+            size=2,
+        )
+        await test.start_seq(seq)
+        mask = ENTROPY_SOURCE.fields("RING_OSC_ENABLE")["ENABLE"]["bm"]
+        bp = ENTROPY_SOURCE.fields("RING_OSC_ENABLE")["ENABLE"]["bp"]
+        field = (seq.rdata & mask) >> bp
+        await RisingEdge(self.dut.clk_i)
+        await ReadOnly()
+        probe = _safe_int(self.dut.esrc_ro_enable_o)
+        line = (
+            f"esrc_ro_enable_o={'X/Z' if probe is None else f'0x{probe:03x}'} "
+            f"ring_osc_enable=0x{field:03x} resp_ok={int(seq.resp_ok)}"
+        )
+        if not seq.resp_ok or probe != field:
+            raise AssertionError(f"CHK-CHK1-RO-ENABLE FAIL: {line}")
+        self.log.info("CHK-CHK1-RO-ENABLE PASS: %s", line)
+
     def report(self):
         """Log per-stream results; in strict mode raise on any mismatch."""
         self.log.info("==== sep_drbg_scoreboard CHK1..CHK5 report ====")

@@ -595,17 +595,17 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             + (" X/Z" if unknown else "")
         )
         self.logger.info("%s PASS: %s prot_issued=0x%x", tag, line, prot)
-        # AxUSER[11:4] has a stated value only on the AP and STEE paths (OTHERS,
-        # graded above); the upper bits of every capture and the W user are
-        # logged.
-        self.logger.info(
-            "OBS-OUT-USER-HI: class=%s dir=%s user_issued_11_4=0x%02x user_seen_11_4=0x%02x "
-            "(value logged)",
-            cls,
-            d,
-            user >> 4,
-            b.user >> 4,
-        )
+        if path == "smu":
+            # AxUSER[11:4] has a stated value only on the AP and STEE paths
+            # (OTHERS, graded above); on the SMU path it is logged.
+            self.logger.info(
+                "OBS-OUT-USER-HI: class=%s dir=%s user_issued_11_4=0x%02x "
+                "user_seen_11_4=0x%02x (value logged)",
+                cls,
+                d,
+                user >> 4,
+                b.user >> 4,
+            )
         if write and path == "smu":
             self.logger.info(
                 "OBS-OUT-WUSER: class=%s dir=W wuser_issued=0x%03x wuser_seen=0x%03x "

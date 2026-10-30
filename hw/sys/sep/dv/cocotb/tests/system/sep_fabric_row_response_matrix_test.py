@@ -99,6 +99,15 @@ the system CSRs; ``hw/sys/sep/doc/memory_map.adoc``, Units Unreachable from the
 Inbound Port). The AP and STEE remap ``ATTRS`` words are logged
 (``OBS-ROW-FABRIC-CSR``).
 
+CHK-REG-SUBWORD-WDT: an LSU AxSIZE 0 read at byte offset 1 and an AxSIZE 1 read
+at byte offset 2 of the watchdog ``WKUP_THOLD_LO`` word answer OKAY, and the
+writes of the same shapes answer SLVERR. "A narrow read inside a register
+returns OKAY"; a partial write, "a byte strobe that misses a byte the register
+owns", gets a TL-UL error and "the faulting access also received SLVERR
+synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``;
+the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
+write and the other sub-word targets are logged (``OBS-REG-SUBWORD``).
+
 Not graded: the Forwarded and adopter-defined rows; the response of a burst to
 a register region outside the crypto region and the SPI host extent (the
 specification states none); any AxSIZE 3 access except the pool ``STATUS``
@@ -217,6 +226,10 @@ SUBWORD_TARGETS = (
     ("efuse_program_ctrl", sep_reg.EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR, False),
     ("sw_reset_n", rr.SW_RESET_N, False),
 )
+# A narrow read inside a peripheral register answers OKAY and a partial write
+# answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393;
+# the watchdog block is PERIPH_BUS_ERR_STATUS.wdt, :442).
+SUBWORD_GRADED = "wdt_wkup_thold_lo"
 
 
 def _kmac_prefix_count() -> int:
@@ -864,13 +877,6 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         s = await self._si(SepAxiOp.READ, a, prot=prot, user=user, attrs=attrs)
         _r, lsu_a = await self._lsu(SepAxiOp.READ, a)
         got = s.rdata & 0xFFFF_FFFF
-        self.logger.info(
-            "OBS-ROW-ATTR row=%s attrs=[%s] resp=%s rdata=0x%08x",
-            key,
-            attr_txt,
-            _RN.get(s.resp_code),
-            got,
-        )
         pre_ok = (lsu_b & mask) == (exp & mask) and (lsu_a & mask) == (exp & mask)
         nonzero_ok = key not in rr.NONZERO_LIVE or (exp & mask) != 0
         ok = s.resp_code == OKAY and (got & mask) == (exp & mask) and pre_ok and nonzero_ok
@@ -1443,6 +1449,16 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     cur,
                     rb & 0xFFFF_FFFF,
                 )
+                if name == SUBWORD_GRADED:
+                    line = (
+                        f"target={name} addr=0x{addr + off:08x} size={size} "
+                        f"rd_resp={_RN.get(rd_resp)} wr_resp={_RN.get(wr_resp)} "
+                        f"expect=OKAY/SLVERR"
+                    )
+                    if (rd_resp, wr_resp) == (OKAY, SLVERR):
+                        self.logger.info("CHK-REG-SUBWORD-WDT PASS: %s", line)
+                    else:
+                        self._fail("CHK-REG-SUBWORD-WDT", line)
                 if restore:
                     await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
 

@@ -88,10 +88,9 @@ the lock-blocked read, the bank
 diff after the out-of-range program cases (``OBS-IF-CMD``), the
 count of post-guard commands (``efuse_shim_cmd_*_o``) of each out-of-range read and
 program (``OBS-IF-OOB-CMD``).
-Two points the contract leaves open are logged, not graded: the out-of-range program
-has no accepted twin in the procedure (``OBS-IF-CTRL-NO-TWIN``), and the order of the
-two enable-clear writes after the both-enables case is not stated (the leaf clears
-``read_enable`` first; ``OBS-IF-ENABLE-CLEAR-ORDER``).
+Two bench records grade nothing: the procedure gives the out-of-range program no
+accepted twin (``INFO-IF-CTRL-NO-TWIN``), and after the both-enables case the leaf
+clears ``read_enable`` before ``program_enable`` (``INFO-IF-ENABLE-CLEAR-ORDER``).
 """
 
 from __future__ import annotations
@@ -828,7 +827,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             ok_clear = fc["pae"] == 0 and fc["rae"] == f["rae"] and fc["re"] == f["re"]
             ok = self._status("oor_program", a, f, "0b0010", int(ok_clear), ok_clear)
             await self._pass(tag, ok)
-        self.chk.obs(
+        self.chk.info(
             "IF-CTRL-NO-TWIN", case="oor_program", reason="procedure_gives_no_accepted_twin"
         )
 
@@ -927,7 +926,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         # before the reset; the order is logged, not graded.
         await self._wr(READ_CTRL_ADDR, 0)
         await self._wr(PROGRAM_CTRL_ADDR, 0)
-        self.chk.obs(
+        self.chk.info(
             "IF-ENABLE-CLEAR-ORDER", first="read_enable", second="program_enable", graded=0
         )
         self._golden_from_bank()

@@ -19,6 +19,9 @@
 //   CHK-STAY-PENDING         a waiting source keeps its meip bit while the
 //                            winner handler runs
 //   CHK-NEVER                the never value does not deliver; effective 1 does
+//   CHK-NEVER-MEIP           an enabled, asserted source at the never value
+//                            reads 1 in meip (VeeR EL2 PRM interrupts.md:159,
+//                            step 5 before the priority step 6)
 //   CHK-MIE-LIVE             the mie write lands (control)
 //   CHK-MIP-IDLE             mip.MTIP and mip.MSIP read 0
 //   CHK-NO-TIMER-TRAP        no timer or software trap is taken
@@ -602,11 +605,13 @@ static void chk_end(int pass) {
     }
 }
 
-static void meip_obs(uint32_t s) {
-    rec_obs("NEVER-MEIP");
+static void meip_chk(uint32_t s) {
+    uint32_t bit = (pic_read_meip(s >> 5) >> (s & 31u)) & 1u;
+    rec_chk("NEVER-MEIP", bit == 1u);
     rec_num("src", s);
-    rec_num("meip_bit", (pic_read_meip(s >> 5) >> (s & 31u)) & 1u);
-    rec_end();
+    rec_num("meip_bit", bit);
+    rec_num("want", 1u);
+    chk_end(bit == 1u);
 }
 
 static void run_round(uint32_t r) {
@@ -660,7 +665,7 @@ static void run_round(uint32_t r) {
         uint32_t s = rprm(r, R_SRC + i);
         closed_meip[i] = meip_bit(s);
         if (rprm(r, R_GATE + i) != GATE_MEIE0) {
-            meip_obs(s);
+            meip_chk(s);
         }
     }
     for (uint32_t j = 0; j < n; j++) {
@@ -755,7 +760,7 @@ static void run_round(uint32_t r) {
     raised = src_raise(sn);
     (void)hold();
     uint32_t nruns = g_runs[sn] - own0;
-    meip_obs(sn);
+    meip_chk(sn);
     uint32_t eff1 = p ? PRI_MAX - 1u : 1u; // one level past the never value
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sn), eff1);
     (void)wait_runs(sn, own0 + nruns + 1u);

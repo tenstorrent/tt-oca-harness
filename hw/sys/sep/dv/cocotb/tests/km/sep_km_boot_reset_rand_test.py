@@ -35,6 +35,10 @@ Checks:
                   leaf at that boot
   CHK-BOOT-ORDER  at both cold boots COLD_BOOT_DONE reads 0 while the KM is held
                   and rises before the first host read that shows the READY word
+  CHK-BOOT-ORDER-WARM
+                  at every warm boot COLD_BOOT_DONE reads 1 while the KM is held
+                  and after the READY word (``reset_controller.adoc:96,182``;
+                  ``km_csr.rdl:697,701``; ``architecture.adoc:1119``)
   CHK-BOOT-FLUSH  at each warm reset of the warm-reset leg: the FIFOs keep their
                   words while the KM is held (every stale write OKAY, inbound depth
                   w, outbound depth as before the reset); after the release the
@@ -65,8 +69,7 @@ the cold-boot reference and after each warm reset of the warm-reset leg); the
 CMD_SRAM_EXEC success with the image stored (``control_warm_exec`` of
 CHK-FWSIZE); the confirmation and the handover flush of the image load
 (``stored`` of CHK-SRAM-VER); the SCRAMBLER_KEY writes of the cold-boot
-reference (``control_n_cold`` of each warm CHK-SCR-KEEP line). COLD_BOOT_DONE at
-a warm boot is logged as ``OBS-BOOT-ORDER-WARM`` with ``control=1``.
+reference (``control_n_cold`` of each warm CHK-SCR-KEEP line).
 
 The procedure steps that serve only planned checkers do not run: the witnesses
 and the resident state (steps 3 to 6), the witness reads and
@@ -208,6 +211,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
     required_evidence = (
         "CHK-WIPE-READY",
         "CHK-BOOT-ORDER",
+        "CHK-BOOT-ORDER-WARM",
         "CHK-BOOT-FLUSH",
         "CHK-SCR-KEEP",
         "CHK-FWSIZE",
@@ -589,6 +593,24 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             ready_visible_cycle=b.ready_cycle,
         )
 
+    def _boot_order_warm(self, tag: str, cbd_held: int, cbd_ready: int) -> None:
+        """CHK-BOOT-ORDER-WARM: a KM warm reset keeps COLD_BOOT_DONE at 1.
+
+        ``hw/sys/sep/doc/reset_controller.adoc:96,182``: SW_RESET_N bit 0 drives the
+        KM warm reset; ``hw/ip/key_manager/regs/km_csr.rdl:697,701``: the bit stays
+        set until the next cold reset; ``hw/ip/key_manager/doc/architecture.adoc:1119``:
+        on a warm reset ``COLD_BOOT_DONE`` already reads 1. The cold-boot reference
+        before every warm reset proves the rise (CHK-BOOT-ORDER).
+        """
+        self.chk.ok(
+            "BOOT-ORDER-WARM",
+            cbd_held == 1 and cbd_ready == 1,
+            boot=tag,
+            cbd_held=cbd_held,
+            cbd_ready=cbd_ready,
+            golden=1,
+        )
+
     async def _scr_keep(self, b: _Boot) -> None:
         """CHK-SCR-KEEP of one boot, sampled after its first command."""
         n_now, ctrl = await self._scr()
@@ -624,7 +646,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         _, out_held = await self._depths()
         b = await self._boot(tag, "warm", out_held)
         cbd_ready = await self._cbd()
-        self.chk.obs("BOOT-ORDER-WARM", control=1, boot=tag, cbd_held=cbd_held, cbd_ready=cbd_ready)
+        self._boot_order_warm(tag, cbd_held, cbd_ready)
         self._ready_or_stop(b)
         return b
 
@@ -694,7 +716,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         # Step 10: release; the first word is RESP_KM_READY.
         b = await self._boot(tag, "warm", out_held)
         cbd_ready = await self._cbd()
-        self.chk.obs("BOOT-ORDER-WARM", control=1, boot=tag, cbd_held=cbd_held, cbd_ready=cbd_ready)
+        self._boot_order_warm(tag, cbd_held, cbd_ready)
 
         # Step 11: CMD_STAT at sequence 0; its response must be the next frame.
         echo, code, rseq, f = False, None, -1, None

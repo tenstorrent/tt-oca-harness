@@ -8,8 +8,10 @@ Results"; ``hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc``,
 Register Map"; ``hw/sys/sep/regs/gen/adoc/memory_map.adoc``, SEP AXI-Lite
 Mailbox Wrapper row; ``hw/ip/axi_lite_mailbox_unit/regs/gen/adoc/axil_mailbox.adoc``):
 
-* K1: a ``READ_DATA`` read of an empty FIFO answers SLVERR with 0xFEEDDEAD on
-  the low 32 bits and sets ``ERROR_FLAGS.read_error`` and ``IRQS.eirq``.
+* K1: a 64-bit ``READ_DATA`` read of an empty FIFO answers SLVERR with
+  0x0000_0000_FEED_DEAD and sets ``ERROR_FLAGS.read_error`` and ``IRQS.eirq``
+  (``hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox.rdl:37-38`` "A read while
+  the fifo is empty returns 0x0000_0000_FEED_DEAD with an error response").
 * K2: a ``WRITE_DATA`` write to a full FIFO answers SLVERR, discards the word
   and sets ``ERROR_FLAGS.write_error`` and ``IRQS.eirq``.
 * K3: a write to ``READ_DATA``, ``STATUS``, ``ERROR_FLAGS`` or ``IRQP``
@@ -415,20 +417,14 @@ class sep_mailbox_access_error_inject_test(sep_base_test):
         irqs = await self._rd(m, p, "IRQS")
         lo, hi = data & M32, (data >> 32) & M32
         txt = (
-            f"mbox={m} port={p} resp={resp_name(resp)} data=0x{lo:08X} "
+            f"mbox={m} port={p} resp={resp_name(resp)} data=0x{lo:08X} data_hi=0x{hi:08X} "
             f"read_err={first & ERR_READ and 1} irqs=0x{irqs:x} exp_irqs=0x{exp_irqs:x}"
-        )
-        self.logger.info(
-            "OBS-MBX-DATA-HI seed=%d mbox=%d port=%s check=ERR-RD data_hi=0x%08x",
-            self.seed,
-            m,
-            p,
-            hi,
         )
         if (
             resp != RESP_SLVERR
             or mresp != "SLVERR"
             or lo != READ_EMPTY_SENTINEL
+            or hi != 0
             or first != ERR_READ
             or irqs != exp_irqs
         ):

@@ -30,6 +30,9 @@
 //   CLRIDLE src=.. ...        the idle clear
 //   CTRL-AES-STATUS status=.. cfg_ok=.. valid=.. out0..3=..  the slotless encryption
 //   CTRL-MAP-STATE p=.. src=.. state=..  INTR_STATE of an event source after a map pass
+//   CTRL-PICIO mcgc=.. picio=..          mcgc read before the masked report
+//   MASKED src=33 meie=0 pri=0 meip1_bit1=.. src12_bit=..  the masked report read
+//   INFO-FIFO-EMPTY t=.. intr_state_kmac=..  KMAC INTR_STATE after a FIFO-empty step
 // A REQ is followed by a spin, so the host acts before the next bus access.
 
 #include <stdint.h>
@@ -220,6 +223,8 @@ static const uint8_t k_gw_map[N_GW] = {0, 1, 2, 3, 4, 5, 6, 7, 10, 13, 16, 20}; 
 #define FIRST_BAND 44u
 #define LAST_SRC 255u
 #define SRC17 17u
+#define CSR_MCGC 0x7F8
+#define MCGC_PICIO (1u << 9)
 
 static int g_err;
 static uint32_t g_ip_en[6]; // INTR_ENABLE values the map pass wrote
@@ -509,8 +514,8 @@ static void write_enables(int pass) {
     }
 }
 
-static void obs_fifo_empty(const char *tag) {
-    rec_obs("FIFO-EMPTY");
+static void info_fifo_empty(const char *tag) {
+    rec_info("FIFO-EMPTY");
     rec_str("t", tag);
     rec_hex("intr_state_kmac", rd(KM(STATE)));
     rec_end();
@@ -533,7 +538,7 @@ static void map_assert(int pass) {
     req_tag_n("vec", "p", (uint32_t)pass);
     dump_meip(pass == 1 ? "p1" : "p2");
     if (pass == 1) {
-        obs_fifo_empty("p1");
+        info_fifo_empty("p1");
     }
     for (uint32_t i = 0; i < N_MAP; i++) {
         const struct src *s = &k_map[i];
@@ -568,7 +573,7 @@ static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit) {
     uint32_t w0b = pic_read_meip(0);
     uint32_t w1b = pic_read_meip(1);
     uint32_t before = meip_bit(src);
-    obs_fifo_empty(ip);
+    info_fifo_empty(ip);
     wr(en, rd(en) & ~bit);
     wait_clk(g_p[P_SETTLE]);
     req_tag("vec", ip[0] == 'h' ? "feh1" : "fek1");
@@ -1050,7 +1055,7 @@ int main(void) {
     req_tag("m", "d2");
     pic_write_meigwclr(12u, 0u);
 
-    // Masked report (logged).
+    // Masked report: the host grades the read (CHK-MASKED-VISIBLE).
     rec_mark(0, "masked");
     uint32_t km = (g_p[P_AKIND] >> 12) & 0xFu;
     wr(SEP_TOP_SECURE_DMA_ALERT_TEST_BASE_ADDR, SECURE_DMA__ALERT_TEST__FATAL_FAULT_bm);
@@ -1060,8 +1065,14 @@ int main(void) {
     pic_set_priority(12u, 0u);
     pic_disable_source(33u);
     pic_set_priority(33u, 0u);
+    uint32_t mcgc;
+    __asm__ volatile("csrr %0, %1" : "=r"(mcgc) : "i"(CSR_MCGC));
+    rec_ctl("PICIO");
+    rec_hex("mcgc", mcgc);
+    rec_num("picio", (mcgc & MCGC_PICIO) ? 1u : 0u);
+    rec_end();
     uint32_t m0 = pic_read_meip(0), m1 = pic_read_meip(1);
-    rec_obs("MASKED-VISIBLE");
+    sep_mbx_puts("MASKED");
     rec_num("src", 33u);
     rec_num("meie", 0u);
     rec_num("pri", 0u);

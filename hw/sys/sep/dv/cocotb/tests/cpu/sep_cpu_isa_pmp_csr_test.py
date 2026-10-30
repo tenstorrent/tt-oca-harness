@@ -22,9 +22,15 @@ counts the CPU trace retirements of the ``minstret`` block. It grades:
   i and leaves the other 15 readbacks unchanged, for every i; ``mseccfg``
   reads without a trap. Readbacks are logged and never compared with the
   drawn values or with each other: the implemented width and granularity are
-  not claimed. A further drawn word is written to ``pmpaddr16`` and
-  ``pmpaddr63``; the readback, trap count and ``mcause`` of each are logged
-  (``OBS-PMP16``) and not graded.
+  not claimed.
+* CHK-PMP16 (host) a further drawn word is written to ``pmpaddr16`` and
+  ``pmpaddr63`` (CSR 0x3C0 and 0x3EF, beyond the 16 implemented entries); the
+  read after the write returns 0 for each (RISC-V Privileged Architecture
+  20211203, section 3.7.1: "All PMP CSR fields are WARL and may be read-only
+  zero"; the VeeR EL2 PRM ``physical-memory-protection.md:3`` defers to that
+  section). A read that traps leaves 0 in the firmware register; the trap
+  count and ``mcause`` are logged on the line and not graded. The check runs
+  after every other check of the leaf.
 * CHK-MRAC (host) for each drawn ``mrac`` value the CSR reads back the drawn
   value, the user-mode load from the PMP-denied SRAM region traps with
   ``mcause`` 5 and the denied word does not reach its register; the
@@ -334,7 +340,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
     """RV32 M/C/Zba/Zbb/Zbc results, the Zbs trap, pmpaddr non-aliasing, mrac, minstret and inert lockstep."""
 
     build_env = False
-    required_evidence = ("CHK-ISA", "CHK-PMP", "CHK-MRAC", "CHK-TRACE-INSTRET")
+    required_evidence = ("CHK-ISA", "CHK-PMP", "CHK-MRAC", "CHK-TRACE-INSTRET", "CHK-PMP16")
 
     def build_phase(self) -> None:
         super().build_phase()
@@ -428,6 +434,26 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         self.logger.info("CHK-ISA PASS: seed=%d %s", cfg.seed, body)
         return 1
 
+    def _chk_pmp16(self) -> int:
+        recs = self._recs("PMPX")
+        addrs = [int(rec.kv["a"]) for rec in recs]
+        if addrs != [0x3C0, 0x3EF]:
+            raise AssertionError(f"CHK-PMP16 FAIL: PMPX lines for CSRs {addrs}, want 0x3c0,0x3ef")
+        bad = []
+        for rec in recs:
+            kv = rec.kv
+            rb = int(kv["rb"])
+            body = (
+                f"a=0x{int(kv['a']):03x} v=0x{int(kv['v']):08x} rb=0x{rb:08x} want=0x00000000 "
+                f"traps={int(kv['traps'])} mcause=0x{int(kv['mcause']):08x}"
+            )
+            self.logger.info("CHK-PMP16 %s %s", "PASS" if rb == 0 else "FAIL", body)
+            if rb != 0:
+                bad.append(body)
+        if bad:
+            raise AssertionError(f"CHK-PMP16 FAIL: {'; '.join(bad)}")
+        return len(recs)
+
     def _chk_pmp(self) -> int:
         p0 = self._recs("PMP0")
         pc = self._recs("PMPC")
@@ -460,16 +486,6 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             if cur[i] != prev[i] and not others:
                 entry_pass |= 1 << i
             prev = cur
-        for rec in self._recs("PMPX"):
-            kv = rec.kv
-            self.logger.info(
-                "OBS-PMP16 LOG a=0x%03x v=0x%08x rb=0x%08x traps=%d mcause=0x%08x",
-                int(kv["a"]),
-                int(kv["v"]),
-                int(kv["rb"]),
-                int(kv["traps"]),
-                int(kv["mcause"]),
-            )
         ms_traps = int(ms[0].kv["traps"])
         lst = ",".join(f"0x{v:08x}" for v in _list(p0[0].kv))
         body = (
@@ -731,6 +747,7 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
             n = self._chk_isa(sy) + self._chk_pmp() + self._chk_mrac() + self._chk_instret(sy)
             if ls_leg:
                 n += self._chk_lockstep()
+            n += self._chk_pmp16()
         except AssertionError:
             close_graded_window(self.logger)
             set_isa_pmp_pass(0, self.logger)

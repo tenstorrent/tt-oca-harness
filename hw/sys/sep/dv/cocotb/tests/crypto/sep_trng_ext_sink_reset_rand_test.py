@@ -87,6 +87,19 @@ Checkers:
                    acknowledged in the pre-reset leg, the held beat shows on at
                    least one clock of the clear, and at least one stale word is
                    buffered at the set-up clear.
+  CHK-XRST-URNDFIRST  per OTBN RND trial: after the ``CMD`` = EXECUTE write the
+                   first rise of ``crypto_edn_req_o[3]`` (OTBN URND) comes on a
+                   clock strictly before the first rise of ``crypto_edn_req_o[2]``
+                   (OTBN RND). OTBN reseeds the URND PRNG from the EDN when it starts
+                   execution, before it fetches the instruction at address zero
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md``
+                   :80, :132-134; ``otbn.hjson`` ``SecSkipUrndReseedAtStart``
+                   default 0), and RND asks the EDN only on a read or a prefetch
+                   (ToO:66, :70-71); the program reads RND first at its second
+                   instruction. Client numbers: ``hw/sys/sep/doc/trng.adoc`` :93.
+                   Control ``CTRL-XRST-URNDFIRST``: bit 3 reads 0 on the first
+                   traced clock, so the rise is the EXECUTE reseed and not a
+                   request still high from an earlier one.
   CHK-ADAPTER-CLEAR-HOLD  per adapter-clear trial: on every clock with
                    ``src_req_i && src_ack_o`` of a client synchronizer, the word the
                    client takes (``crypto_edn_sync_data_o``) equals the word that
@@ -593,6 +606,7 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         "CHK-XRST-POOL-INFLIGHT",
         "CHK-XRST-CLIENT",
         "CHK-XRST-OTBN",
+        "CHK-XRST-URNDFIRST",
         "CHK-ADAPTER-CLEAR-HOLD",
         "CHK-ADAPTER-CLEAR-RND",
     )
@@ -1113,7 +1127,6 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         await self._trng_reset()
         setup_rows = self.trace.end()
         s_trial: set[int] = set()
-        urnd_first: list[str] = []
         if client == "otbn_rnd":
 
             def gate() -> bool:
@@ -1131,10 +1144,18 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         )
         if client == "otbn_rnd":
             rows = self.trace.snapshot()
+            urnd_at_begin = _bit(rows[0].creq, 3) if rows else None
             r3 = next((r.clk for r in rows if _bit(r.creq, 3) == 1), None)
             r2 = next((r.clk for r in rows if _bit(r.creq, 2) == 1), None)
-            urnd_first.append(str(int(r3 is not None and (r2 is None or r3 < r2))))
-            self.chk.obs("XRST-URNDFIRST", urnd_before_rnd=urnd_first[0], attempt=attempt)
+            self.chk.ctrl("XRST-URNDFIRST", urnd_at_begin == 0, urnd_at_begin=urnd_at_begin)
+            self.chk.ok(
+                "XRST-URNDFIRST",
+                r3 is not None and (r2 is None or r3 < r2),
+                urnd_before_rnd=int(r3 is not None and (r2 is None or r3 < r2)),
+                urnd_rise_clk="none" if r3 is None else r3,
+                rnd_rise_clk="none" if r2 is None else r2,
+                attempt=attempt,
+            )
         if n is None:
             self.trace.end()
             await self._stop_feeders()

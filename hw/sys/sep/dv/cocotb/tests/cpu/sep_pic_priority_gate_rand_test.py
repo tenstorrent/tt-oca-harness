@@ -37,6 +37,13 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 * CHK-STAY-PENDING (firmware) the waiting sources read pending in meip inside
                  the winner handler; control: the set reads 0 before assertion.
 * CHK-NEVER      (firmware) the never value does not deliver; effective 1 does.
+* CHK-NEVER-MEIP (firmware) each enabled, asserted source at the never value
+                 reads 1 in ``meip``, in the gate corner and the never corner
+                 of every round (VeeR EL2 PRM ``docs/source/interrupts.md:159``
+                 at the Bender pin: step 5, the pending bit is visible in
+                 ``meipX``, comes before the priority step 6; ``:500``: each
+                 bit is the pending indication of one source). Control:
+                 ``CTRL-PICIO`` of the same round.
 * CHK-FLIP       (host) after priord flips and the raw priorities are mirrored
                  the handlers run in the same order, from the same winner.
 * CHK-MIE-LIVE, CHK-MIP-IDLE, CHK-NO-TIMER-TRAP, CHK-CONTROL (firmware) the
@@ -89,7 +96,7 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  and ``mip.mtip``, table 13.3 for ``mcause`` 0x8000_0007).
 
 The host also checks that each record of the threshold, nesting and timer
-legs carries the drawn stimulus. Log only: ``OBS-NEVER-MEIP`` (the never-priority sources), ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
+legs carries the drawn stimulus. Log only: ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
 come from the drawn stimulus and the priority model, never from a DUT read. cpu run mode, ``+skip_fuse_sense``,
 Verilator and VCS.
 
@@ -378,6 +385,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         "CHK-WINNER",
         "CHK-STAY-PENDING",
         "CHK-NEVER",
+        "CHK-NEVER-MEIP",
         "CHK-FLIP",
         "CHK-MIE-LIVE",
         "CHK-MIP-IDLE",
@@ -630,12 +638,14 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         self._chk_echo()
         n_fw = self.con.relay_chk()
         nr = len(self.tcfg.rounds)
+        n_never_gates = sum(g == GATE_NEVER for rd in self.tcfg.rounds for g in rd.gates)
         self.con.require_counts(
             {
                 "CHK-NONE-BEFORE-PROGRAM": 1,
                 "CHK-GATED": sum(len(r.srcs) for r in self.tcfg.rounds) + nr + 1,
                 "CHK-STAY-PENDING": nr,
                 "CHK-NEVER": nr,
+                "CHK-NEVER-MEIP": nr + n_never_gates,
                 "CHK-MIE-LIVE": 1,
                 "CHK-MIP-IDLE": 3,
                 "CHK-NO-TIMER-TRAP": 1,
@@ -669,8 +679,6 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         if got != exp:
             raise AssertionError(f"CHK-GATED FAIL: firmware cells {got} != drawn {exp}")
         n_host = self._chk_order()
-        for rec in self.con.records("OBS-NEVER-MEIP")[:8]:
-            self.logger.info("%s", rec.text)
         for rec in self.con.records("CHK-INT-TIMER-TRAP"):
             trap_clk = int(rec.kv.get("trap_clk", -1))
             bound = int(rec.kv.get("bound", -1))

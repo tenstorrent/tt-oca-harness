@@ -1623,6 +1623,7 @@ class sep_base_test(uvm_test):
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
             raise AssertionError("ESRC never produced a seed (drbg_seed_valid_o)")
+        await self.drbg_sb.grade_ro_enable(self)
         self.drbg_sb.enable_chk5()
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
         return self.drbg_sb

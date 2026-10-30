@@ -107,6 +107,13 @@ required checks; it grades nothing). Each walk names its required checks
 
 Every hold and readback cell grades LC_STATE[7:0] against ``{~raw, raw}`` of the
 golden state.
+Every cell grades ``CHK-LC-STATE-PORT``: the ``lc_state_o`` port (tap
+``lc_state_probe_o``) equals LC_STATE[7:0] at ``efuse_shadow_probe_o`` and
+``{~raw, raw}`` of the cell's state (the golden state of a hold or readback cell,
+the returned state of an advance cell). ``doc/integrator/src/smu-sep.adoc:202``
+gives ``lc_state_o`` as the differentially encoded LC_STATE shadow, and
+``hw/sys/sep/doc/otp_fuse_controller.adoc:217-218`` gives that encoding as
+``{~raw[3:0], raw[3:0]}`` in bits [7:0].
 Every write cell also carries, in LC_STATE[31:8], one bit that no earlier write
 or the sensed word set; ``CTRL-LC-WR-LANDED`` requires that bit in the readback,
 so a dropped write fails the leaf whether the bytes overwrite or OR-merge. The
@@ -120,9 +127,8 @@ CHK-INVALID-TERM) record the preconditions of the hold cells.
 
 Log-only, every cell: ``OBS-LC-UPPER`` (LC_STATE[31:8] written, prior and read:
 the RDL gives ``lc_state`` and ``rsvd`` as sw = r and ``rsvd`` as "Unused", and
-the fuse-field table gives LC_STATE as SW writable set-only; the texts disagree), ``OBS-LC-STATE-PORT``
-(the ``lc_state_o`` port, tap ``lc_state_probe_o``, beside the ``LC_STATE`` shadow
-word at ``efuse_shadow_probe_o``); every write cell: ``OBS-LC-WR-NIBBLE`` (bits
+the fuse-field table gives LC_STATE as SW writable set-only; the texts disagree);
+every write cell: ``OBS-LC-WR-NIBBLE`` (bits
 [7:4] of the write data and of the readback word: the specification does not
 state how a write of the complement nibble acts).
 
@@ -215,6 +221,8 @@ _REQUIRED = {
     ),
     "transient-rma": ("CHK-TRANSIENT-NO-TOKEN", "CHK-TRANSIENT-INVALID", "CHK-W1S-NO-CLEAR"),
 }
+# Every walk grades the lc_state_o port in every cell.
+_REQUIRED = {walk: (*ids, "CHK-LC-STATE-PORT") for walk, ids in _REQUIRED.items()}
 
 
 @pyuvm.test()
@@ -411,11 +419,21 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 (full_wdata >> 4) & 0xF,
                 (seq.observed_word >> 4) & 0xF,
             )
+        # lc_state_o is the differentially encoded LC_STATE shadow, {~raw, raw}.
+        # It is graded against the shadow probe and against the encoding of the
+        # cell's state, so a probe fault cannot mask a port fault.
+        port = self.rd(dut.lc_state_probe_o, 0xFF) & 0xFF
+        port_raw = observed if advance else expected
+        assert port == shadow & LC_STATE_BYTE_MASK == lc_encode(port_raw), (
+            f"CHK-LC-STATE-PORT FAIL: tag={tag} lc_state_o=0x{port:02x} "
+            f"shadow=0x{shadow & 0xFFFF_FFFF:08x} expect=0x{lc_encode(port_raw):02x}"
+        )
         self.logger.info(
-            "OBS-LC-STATE-PORT tag=%s lc_state_o=0x%02x shadow=0x%08x",
+            "CHK-LC-STATE-PORT PASS: tag=%s lc_state_o=0x%02x shadow=0x%08x expect=0x%02x",
             tag,
-            self.rd(dut.lc_state_probe_o, allow_unknown=True) & 0xFF,
+            port,
             shadow & 0xFFFF_FFFF,
+            lc_encode(port_raw),
         )
 
         assert seq.observed_word is not None

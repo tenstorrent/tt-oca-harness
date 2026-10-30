@@ -170,7 +170,13 @@ Checkers:
                        LOCKED window (after the LOCKED reads and the flip drop,
                        before the OTBN reset), so the alert repeats after the error
                        without new stimulus; after the reset the probe shows 0x04 then
-                       0x00, ``STATUS`` reads IDLE and ``FATAL_ALERT_CAUSE`` reads 0.
+                       0x00, ``STATUS`` reads IDLE, ``FATAL_ALERT_CAUSE`` reads 0, and
+                       ``[2:1]`` is high on no clock of a window after the reset as
+                       long as the LOCKED window (the fatal alert "can only be cleared
+                       by resetting OTBN", ToO:314; the gated crypto reset and
+                       ``otbn_sw_rst_n`` reset OTBN, ``hw/sys/sep/doc/reset_controller.adoc``
+                       :60-66, :97). The rise count in the LOCKED window is the control
+                       that a window of that length sees the repeat.
                        IMEM_INTG_VIOLATION "Data read from the instruction memory
                        failed the integrity checks." is fatal (ToO:261-263); "A
                        fatal error is raised whenever a data integrity violation is
@@ -248,8 +254,7 @@ than ``illegal_insn``, or ``FATAL_ALERT_CAUSE`` after a recoverable error);
 ``CMD`` write and the rises of each index in the LOCKED window: no sentence names the
 fatal index or the repeat period), ``OBS-OTBN-INTG-CAUSE`` (the full ``ERR_BITS`` and
 ``FATAL_ALERT_CAUSE`` of each integrity run: "a non-zero value that describes the
-error", ToO:186, does not fix the other bits; also the alert high clocks in a fixed
-window after the OTBN reset); ``INFO-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
+error", ToO:186, does not fix the other bits); ``INFO-OTBN-RND-CLEAN-RNDREP`` (bit 6 after the
 clean RND run, a chance outcome); ``OBS-OTBN-SWERR-KIND-CAUSE`` (the full
 ``ERR_BITS`` and ``FATAL_ALERT_CAUSE`` of the drawn error: no sentence states the
 other bits); ``OBS-OTBN-ILLEGAL-BUS-CAUSE`` (the full ``ERR_BITS`` and
@@ -460,7 +465,7 @@ _DONE_WIN_MULT = 2  # enable-clear watch window of the done-line leg, in t_cmd
 _IGNORE_WIN_MULT = 4  # ignored-command window, in t_cmd (contract)
 _RST_BOUND_CLK = 1_000  # gated reset release wait
 _LINE_BOUND_CLK = 64  # vector bit 29 follow wait after a register write
-_ALERT_OBS_CLK = 256  # alert watch window after the integrity-run reset (log only)
+_ALERT_OBS_CLK = 256  # alert watch window after the integrity-run reset (no high clock)
 _ALERT_LOCKED_CLK = 256  # LOCKED window before the integrity-run reset (rise count)
 _IBA_DMEM_WORDS = 16  # the bus-access DMEM word is drawn below this word index
 _PASS_LABEL_CLK = 2  # clocks the pass label stays set
@@ -1568,6 +1573,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             and exit_ok
             and st_exit == ST_IDLE
             and fatal_exit == 0
+            and sum(after_high.values()) == 0
         )
         intg_ok = self._grade(
             name,
@@ -1592,6 +1598,8 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             reset_arc=exit_arc,
             status_after_reset=f"0x{st_exit:02x}",
             fatal_after_reset=f"0x{fatal_exit:x}",
+            alert_high_after_reset=sum(after_high.values()),
+            after_reset_window_clk=_ALERT_OBS_CLK,
             clk=clks,
             bound=self.idle_bound,
         )
@@ -1612,8 +1620,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             mem=tag,
             err_bits=f"0x{err:x}",
             fatal_cause=f"0x{fatal:x}",
-            alert_high_after_reset=sum(after_high.values()),
-            window_clk=_ALERT_OBS_CLK,
         )
 
     # ---------------------------------------------------- software-error leg

@@ -83,10 +83,11 @@ Isolation proof (both directions, then the remaining isolated bits):
                     verdict. A read accepted on s_axi with the isolate
                     request up completes SLVERR with 0x1501A7ED, every SLVERR
                     carries 0x1501A7ED, and no OKAY follows a SLVERR of the
-                    same ID. The AR handshake of each read on the slave port
-                    of the HMAC host isolate stage, and the isolate request at
-                    it, are logged only (OBS-HOST-DRAIN-STAGE): no spec states
-                    where the isolate stage accepts a read.
+                    same ID. The first clock with ARVALID high and the AR
+                    handshake of each read on the slave port of the HMAC host
+                    isolate stage, and the isolate request at each, are logged
+                    only (OBS-HOST-DRAIN-STAGE): no spec states where the
+                    isolate stage accepts a read.
   * CHK-DRAIN-ARRIVAL  a further read is issued on the first cycle the isolate
                     request is seen, with an empty AR queue and its own AXI ID.
                     Its AR handshake on s_axi must fall while the request is up
@@ -111,9 +112,9 @@ Isolation proof (both directions, then the remaining isolated bits):
                     hang. The exact events still unretired when the isolate
                     request rises are recorded, and at least one of those
                     events must drain OKAY. The CHK-HOST-DRAIN s_axi timing
-                    and SLVERR data terms apply. The AR handshake of each read
-                    at the ABR host isolate stage is logged only
-                    (OBS-ABR-HOST-DRAIN-STAGE).
+                    and SLVERR data terms apply. The first ARVALID clock and the
+                    AR handshake of each read at the ABR host isolate stage are
+                    logged only (OBS-ABR-HOST-DRAIN-STAGE).
   * CHK-ABR-DRAIN-ARRIVAL  the CHK-DRAIN-ARRIVAL contract on the ABR full-AXI
                     isolate: the arrival AR is accepted on s_axi while the
                     request is up and the gated reset is released, and it
@@ -656,8 +657,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         ``s_axi`` is the n-th drain read; its time and the isolate request at it
         are recorded. With ``stage`` (an ``ISO_BENCH`` path name) the loop also
         samples the AR handshake on the slave port of that isolate stage
-        (``iso_slv_ar_hs_probe_o``) for the log. No other traffic targets the
-        stage in this window, and the arrival AR queues behind the drain ARs on
+        (``iso_slv_ar_hs_probe_o``) and, for each read, the first clock its AR
+        valid is high there (``iso_slv_ar_valid_probe_o``), for the log. No other
+        traffic targets the stage in this window, and the arrival AR queues behind the drain ARs on
         the one ``s_axi`` AR channel and the in-order path to the stage, so the
         n-th stage AR handshake is the n-th drain read. A drain AR not yet accepted at the
         reset edge is watched for up to 2000 more clocks.
@@ -673,10 +675,23 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         stage_bit = None if stage is None else ISO_BENCH.index(stage)
 
-        def stage_ar_this_edge() -> bool:
+        stage_valid: list[dict | None] = [None]
+
+        def stage_ar_this_edge(sample: dict) -> bool:
+            """True on a stage AR handshake; ``stage_valid[0]`` holds the sample of the
+            first clock the stage AR valid is high for the read not yet handshaken."""
             if stage_bit is None:
                 return False
+            if stage_valid[0] is None and self.rd_known(
+                top.iso_slv_ar_valid_probe_o, mask=1 << stage_bit
+            ):
+                stage_valid[0] = sample
             return bool(self.rd_known(top.iso_slv_ar_hs_probe_o, mask=1 << stage_bit))
+
+        def stage_record(sample: dict) -> dict:
+            first = stage_valid[0] or sample
+            stage_valid[0] = None
+            return dict(sample, valid_t=first["t"], valid_req=first["req"])
 
         self._require_open_isolate_terms(host=host, km=km, rst=rst, name=name)
         reset_task = cocotb.start_soon(start_reset())
@@ -698,12 +713,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 "host": self.rd_known(host),
                 "km": self.rd_known(km),
                 "rst": self.rd_known(rst),
+                "t": now,
             }
             ids = ar_ids_this_edge()
             if _DRAIN_ARID in ids and len(drain_hs) < n_drain:
-                drain_hs.append(dict(sample, t=now))
-            if stage_ar_this_edge() and len(stage_hs) < n_drain:
-                stage_hs.append(dict(sample, t=now))
+                drain_hs.append(dict(sample))
+            if stage_ar_this_edge(sample) and len(stage_hs) < n_drain:
+                stage_hs.append(stage_record(sample))
             if arrival is not None and arrival_hs is None:
                 if _ARRIVAL_ARID in ids:
                     arrival_hs = dict(sample, t=now)
@@ -743,8 +759,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             }
             if _DRAIN_ARID in ar_ids_this_edge() and len(drain_hs) < n_drain:
                 drain_hs.append(sample)
-            if stage_ar_this_edge() and len(stage_hs) < stage_need:
-                stage_hs.append(sample)
+            if stage_ar_this_edge(sample) and len(stage_hs) < stage_need:
+                stage_hs.append(stage_record(sample))
         await reset_task
         return {
             "drain": drain,
@@ -801,8 +817,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         (``reset_controller.adoc:121-124``). No spec states where the stage
         accepts a read, and an ARVALID already pending at the stage when the
         request rises cannot be withdrawn, so such a read may complete OKAY or
-        SLVERR. Its stage AR handshake (``rec["stage_hs"]``) and the request at
-        it are logged as ``OBS-HOST-DRAIN-STAGE`` (HMAC) or
+        SLVERR. Its first ARVALID clock and its AR handshake at the stage
+        (``rec["stage_hs"]``), and the request at each, are logged as
+        ``OBS-HOST-DRAIN-STAGE`` (HMAC) or
         ``OBS-ABR-HOST-DRAIN-STAGE`` (ABR) and not graded.
         """
         rows = []
@@ -830,7 +847,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             st = (
                 "stage AR not seen"
                 if st_hs is None
-                else f"stage AR at {st_hs['t']:.2f} ns req={st_hs['req']}"
+                else (
+                    f"stage ARVALID at {st_hs['valid_t']:.2f} ns req={st_hs['valid_req']}, "
+                    f"stage AR at {st_hs['t']:.2f} ns req={st_hs['req']}"
+                )
             )
             rd_txt = "none" if row["rdata"] is None else f"0x{row['rdata']:08x}"
             return f"read {row['i']}: {at}, {st} resp={row['code']} rdata={rd_txt}"

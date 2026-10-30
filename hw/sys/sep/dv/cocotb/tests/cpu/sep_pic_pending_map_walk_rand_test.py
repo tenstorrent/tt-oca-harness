@@ -44,6 +44,13 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    status reads done after the encryption.
 * CHK-ALERT-MEIP   meip[1] bit 1 (edge source 33) reads 1 after each alert
                    kind, before its meigwclr write.
+* CHK-MASKED-VISIBLE the held edge bits of sources 12 and 33 read 1 in
+                   ``meip`` with ``meie`` 0 and ``meipl`` 0 (VeeR EL2 PRM
+                   ``docs/source/interrupts.md:504`` at the Bender pin:
+                   disabled requests are reported by default; ``:159``,
+                   step 5 before the priority and enable steps). Control:
+                   ``CTRL-PICIO`` reads ``picio=1`` (``:343``), else
+                   ``CTRL-MISSING PICIO``.
 * CHK-MASKED-CLEAR the held edge bits of sources 12 and 33 read 1 with
                    ``meie`` and ``meipl`` back at 1, and the meip words equal
                    the reset baseline after the meigwclr writes to both.
@@ -52,18 +59,30 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    deassertion and the reassertion, and the clear), the edge
                    hold with its level twin, the level hold, the idle clear
                    and the clear values.
+* CHK-GW-EL        each EL cell reads 1 at idle (input low after the
+                   meigwclr, the active level) and 1 after the input rises
+                   (the latched bit holds): VeeR EL2 PRM
+                   ``docs/source/interrupts.md:68-69`` at the Bender pin (no
+                   edge detection; an input left at its active level after
+                   the clear stays pending) and ``:59-60`` (the IP flop holds
+                   until firmware clears it).
+* CHK-GWCLR-LEVEL  each LH cell reads 1 after a meigwclr write with its input
+                   asserted: a level source keeps no IP bit, so pending follows
+                   the active input (PRM ``interrupts.md:157-159``, steps 3 to
+                   5; ``:840`` and ``el2_pic.rdl:108-109``: meigwclr clears
+                   the IP bit of edge-triggered sources).
 * CHK-EXT-IN       one (two) asserted boundary bits show as one (two) pending
                    sources above 43, the assigned sources stay at their
                    baseline, and the band drops at the release.
 
 Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
-masked in every compare), ``OBS-GW-EL`` (the EL idle and asserted reads,
-whose values depend on the unstated edge direction), ``OBS-MASKED-VISIBLE``,
-``OBS-SRC34``, ``OBS-SRC-SHAPE`` (the high clocks and rises of each source
-line over the single-source walk, and the source 12 latency and shape),
-``OBS-GWCLR-LEVEL`` (the pending bit after a meigwclr write to an asserted
-level cell), the boundary source index and ``OBS-FIFO-EMPTY`` (the KMAC
-``INTR_STATE`` read-back). ``CTRL-VECTOR`` (control, fails the leaf on a
+masked in every compare), ``OBS-SRC34``, ``OBS-SRC-SHAPE`` (the high clocks
+and rises of each source line over the single-source walk, and the source 12
+latency and shape) and the boundary source index. Bench records:
+``INFO-GWCLR-LEVEL`` (the LL cells, whose input is at the inactive level
+during the meigwclr write, so the write has nothing to show) and
+``INFO-FIFO-EMPTY`` (the KMAC ``INTR_STATE`` read-back; its bits are graded
+by ``CTRL-MAP-STATE`` and CHK-FIFO-EMPTY). ``CTRL-VECTOR`` (control, fails the leaf on a
 mismatch): in each map pass the level-source vector equals the expected OR
 vector of the enabled sources.
 
@@ -349,8 +368,11 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         "CHK-IDLE-BAND",
         "CHK-SLOTLESS",
         "CHK-ALERT-MEIP",
+        "CHK-MASKED-VISIBLE",
         "CHK-MASKED-CLEAR",
         "CHK-GW-CELL",
+        "CHK-GW-EL",
+        "CHK-GWCLR-LEVEL",
         "CHK-EDGE-HOLD",
         "CHK-HOLD",
         "CHK-CLR-IDLE",
@@ -904,6 +926,23 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 )
             self._check(ok, "CHK-SLOTLESS", text)
 
+    def _chk_masked_visible(self) -> None:
+        pio = [kv for _, kv in self._lines("CTRL-PICIO")]
+        if len(pio) != 1 or int(pio[0]["picio"]) != 1:
+            raise AssertionError(
+                f"CTRL-MISSING PICIO seed={self.wc.seed} records={pio}: "
+                "meip need not report a disabled source"
+            )
+        mv = [kv for _, kv in self._lines("MASKED")]
+        assert len(mv) == 1, f"expected one MASKED line, got {len(mv)}"
+        m = mv[0]
+        b33, b12 = int(m["meip1_bit1"]), int(m["src12_bit"])
+        self._check(
+            b33 == 1 and b12 == 1 and int(m["meie"]) == 0 and int(m["pri"]) == 0,
+            "CHK-MASKED-VISIBLE",
+            f"meie=0 meipl=0 meip1_bit1={b33} src12_bit={b12} want=1,1",
+        )
+
     def _chk_gateway(self) -> None:
         gws = {int(kv["src"]): kv for _, kv in self._lines("GW")}
         assert sorted(gws) == sorted(GW_SRCS), f"gateway cells ran for {sorted(gws)}"
@@ -915,13 +954,13 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             cls = "event" if src in GW_EVENT else "mailbox"
             vals = (int(kv["idle"]), int(kv["asserted"]), int(kv["deasserted"]))
             if cell == "EL":
-                # The edge direction of an active-low edge source is not stated,
-                # so the idle and asserted reads are logged. One assertion and
-                # one deassertion pass both edges, so an edge source of either
-                # direction holds the bit after the deassertion and after the
-                # reassertion, and drops it at meigwclr.
-                self.logger.info(
-                    "OBS-GW-EL LOG src=%d cfg=0x%x idle=%d asserted=%d", src, kv["cfg"], *vals[:2]
+                # The gateway has no edge detector: the input held low (active)
+                # after the clear reads pending, and the latch holds when it rises.
+                self._check(
+                    vals[:2] == (1, 1),
+                    "CHK-GW-EL",
+                    f"src={src} class={cls} cfg=0x{kv['cfg']:x} idle={vals[0]} "
+                    f"asserted={vals[1]} want_idle=1 want_asserted=1",
                 )
                 el = (vals[2], int(kv["reasserted"]), int(kv["after_clr2"]))
                 self._check(
@@ -932,11 +971,17 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                     f"clr_val=0x{kv['clr_val']:08x}",
                 )
                 continue
-            if cell[0] == "L":
-                # The meigwclr effect on a level cell is not stated, so the pending
-                # bit after a meigwclr write with the input asserted is logged.
+            if cell == "LH":
+                # A level source keeps no IP bit, so the clear leaves the active
+                # input pending.
+                self._check(
+                    int(kv["lclr"]) == 1,
+                    "CHK-GWCLR-LEVEL",
+                    f"src={src} class={cls} cell=LH lclr={int(kv['lclr'])} want=1",
+                )
+            elif cell == "LL":
                 self.logger.info(
-                    "OBS-GWCLR-LEVEL LOG src=%d cell=%s lclr=%d", src, cell, int(kv["lclr"])
+                    "INFO-GWCLR-LEVEL LOG src=%d cell=LL lclr=%d", src, int(kv["lclr"])
                 )
             exp = CELL_MODEL[cell]
             ok = vals == exp
@@ -1149,6 +1194,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self._chk_slotless()
         self._chk_gateway()
         self._chk_ext()
+        self._chk_masked_visible()
         _, ms = self._meip("masked_set")
         held = [(ms[s // 32] >> (s % 32)) & 1 for s in (SRC_DMA_ALERT, SRC_CRYPTO_ALERT)]
         _, mc = self._meip("masked_clr")
@@ -1175,8 +1221,11 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             "CHK-IDLE-BAND": 1,
             "CHK-SLOTLESS": 3,
             "CHK-ALERT-MEIP": 1,
+            "CHK-MASKED-VISIBLE": 1,
             "CHK-MASKED-CLEAR": 1,
             "CHK-GW-CELL": len(GW_SRCS),
+            "CHK-GW-EL": sum(1 for s in GW_SRCS if c.cell(s) == "EL"),
+            "CHK-GWCLR-LEVEL": sum(1 for s in GW_SRCS if c.cell(s) == "LH"),
             "CHK-EDGE-HOLD": n_eh,
             "CHK-HOLD": 1,
             "CHK-CLR-IDLE": 1,

@@ -68,6 +68,10 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-KMCSR-RESET-READ  VUART_TX, TB_RESULT, TB_SIGNATURE, TB_ERRCODE, TB_SUBTEST and
                     TB_CMD_ARG (sw = rw, hw = r, no writer in this leaf) read their
                     RDL reset
+  CHK-KMCSR-VUART-STATUS  each VUART_STATUS field reads its RDL reset
+                    (``hw/ip/key_manager/regs/km_csr.rdl:955-994``: TX_READY 1,
+                    RX_VALID 0, PRINT_ENABLE 0, RSVD 0); every bit is read on its own and a
+                    field with an unknown bit logs ``X``
 
 Controls: the VERSION read before the write; the W1C of the other bits next to
 the own W1C; E = 0 next to case (c), which raises the line for each of the 12
@@ -85,7 +89,8 @@ every PARK and records a missed W as a missing control.
 
 Logged only (no register text states them): ``OBS-KMCSR-ACCESS``, the AXI
 response of the IRQ_SET read and of each read-only register write, and the
-data of the hardware-driven virtual UART and testbench words.
+data of the hardware-driven virtual UART and testbench words other than
+VUART_STATUS.
 """
 
 from __future__ import annotations
@@ -272,6 +277,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         "CHK-RST-SOFT-MBOX",
         "CHK-KMCSR-READ-RESP",
         "CHK-KMCSR-RESET-READ",
+        "CHK-KMCSR-VUART-STATUS",
     )
 
     # ------------------------------------------------------------------ main
@@ -605,8 +611,12 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         with an IRQ_STATUS clear and the IRQ_SET step starts clean.
         """
         reads = await self._run([kp.rd(a) for _, a in pl.OBS_READS], allow_unknown=True)
+        slot = 0
         for (reg, _), x in zip(pl.OBS_READS, reads):
             rdata = _h(x.value) if x.known else "X"
+            if reg == "VUART_STATUS":
+                self._grade_vuart_status(slot)
+            slot += x.op.slots
             if reg == "IRQ_SET":
                 self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata, axi_slverr=x.slv)
                 self.chk.ok("CSR-SET-READ", x.known and x.value == 0, rdata=rdata, golden=_h(0))
@@ -618,6 +628,8 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 axi_slverr=x.slv,
                 axi_decerr=x.dec,
             )
+            if reg == "VUART_STATUS":
+                continue
             if reg in pl.RESET_READS:
                 golden = pl.RESET_READS[reg]
                 self.chk.ok(
@@ -668,6 +680,37 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 golden=_h(before),
             )
         await self._run([self._raw_clear_irq()])
+
+    def _grade_vuart_status(self, slot: int) -> None:
+        """Grade each VUART_STATUS field of result slot ``slot`` against its RDL reset.
+
+        ``hw/ip/key_manager/regs/km_csr.rdl:955-994``: TX_READY [0] reset 1 ("always 1
+        in simulation"), RX_VALID [1] reset 0 (no RX data is offered in this leaf),
+        PRINT_ENABLE [2] reset 0 ("Disabled by default"), RSVD [31:3] reset 0. Each bit of the stored word is read on its own, so a field
+        with an unknown bit logs ``X`` and fails by name.
+        """
+        probe = cocotb.top.km_sram_probe_o
+        lsb = 32 * kp.slot_words(slot)[0]
+        value = known = 0
+        for b in range(32):
+            try:
+                bit = (self.rd(probe, 1 << (lsb + b)) >> lsb) & (1 << b)
+            except AssertionError:
+                continue
+            known |= 1 << b
+            value |= bit
+        for name, mask, lsb_f, reset in pl.VUART_STATUS_FIELDS:
+            field_known = known & mask == mask
+            got = (value & mask) >> lsb_f
+            self.chk.ok(
+                "KMCSR-VUART-STATUS",
+                field_known and got == reset,
+                field=name,
+                value=(got if mask >> lsb_f == 1 else _h(got)) if field_known else "X",
+                golden=reset if mask >> lsb_f == 1 else _h(reset),
+                known_mask=_h(known),
+                rdata=_h(value),
+            )
 
     # ---------------------------------------------------------- step 6: IRQ_SET masks
 

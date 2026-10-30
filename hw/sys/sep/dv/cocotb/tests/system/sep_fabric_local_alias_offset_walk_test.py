@@ -25,9 +25,21 @@ page (hit) and at the source page (miss). Each START and END bit takes both
 values in the readback, but no single START or END bit is shown to decide a
 response.
 
-The rewrite is ``{offset[55:12] + addr[55:12], addr[11:0]}`` modulo 2^56
-(``hw/ip/axi_alias_remap/regs/alias_remap.rdl``); the region matches when
+The rewrite is ``{offset[55:12] + addr[55:12], addr[11:0]}`` with the page sum
+modulo 2^44, so a carry out of bit 55 is discarded
+(``hw/ip/axi_alias_remap/regs/alias_remap.rdl:42``); the region matches when
 start <= addr < end (end is non-inclusive).
+
+Carry. One region's offset sends the source page to the cold scratch page, a
+page below it, so the page sum carries out of bit 55. With the carry discarded
+the beat goes to the cold scratch page plus the source's low 12 bits, an
+unbacked word of the Reserved row 0x108020C0-0x10802FFF; every address below
+0x1_0000_0000 returns to the peripheral crossbar (``hw/sys/sep/doc/fabric.adoc:181-182``),
+whose ``SEP_LOCAL`` initiator uses the same decode as inbound traffic
+(``fabric.adoc:138-143``). The memory map gives that row DECERR, 0xBADCAB1E
+(``hw/sys/sep/regs/gen/adoc/memory_map.adoc:47``; the column is the inbound
+answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``). The expected row and cell come
+from the generated memory map (``env/sep_decode_resp.py``).
 
 no_cpu, +skip_fuse_sense.
 
@@ -41,12 +53,15 @@ Checkers:
                            OKAY with the staged value.
   CHK-ALIAS-WALK-VALID     valid=0 leaves the beat untranslated: OKAY with the
                            staged value.
+  CHK-ALIAS-CARRY          the carry read answers DECERR with 0xBADCAB1E and no
+                           AR leaves on PR-OUT.
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_decode_resp import expected_unbacked
 from env.sep_fabric_common import outbound_ns
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_seeded_rng import SepSeededRng
@@ -189,6 +204,7 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         "CHK-ALIAS-WALK-HIT",
         "CHK-ALIAS-WALK-MISS",
         "CHK-ALIAS-WALK-VALID",
+        "CHK-ALIAS-CARRY",
     )
 
     async def _read(self, addr: int, *, deny: bool) -> tuple[int, int]:
@@ -200,8 +216,8 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
         await self.start_seq(seq)
         return seq.resp_code, seq.rdata & 0xFFFF_FFFF
 
-    async def _obs_read(self, addr: int) -> tuple[int, int, int]:
-        """One LSU read whose response no document states: (resp, rdata, PR-OUT AR count)."""
+    async def _carry_read(self, addr: int) -> tuple[int, int, int]:
+        """One LSU read that may answer an error: (resp, rdata, PR-OUT AR count)."""
         mark = self.tap_out.mark()
         self.env.axi_monitor.arm_expected_decerr(1)
         seq = SepAxiAccessSeq(
@@ -293,25 +309,25 @@ class sep_fabric_local_alias_offset_walk_test(sep_base_test):
             self.logger.info("alias %s", p.summary())
 
         # Hit whose target page sits below the source page: the page sum
-        # carries out of bit 55. The target is the cold scratch page.
+        # carries out of bit 55 and is discarded. The target page is the cold
+        # scratch page and the low 12 bits keep the source offset, so the
+        # target is an unbacked word of the Reserved row above the scratch banks.
         p = plans[0]
         tgt_pg = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR") >> IDX_START
         carry_off = ((tgt_pg - SRC_PG) & PG_MASK) << IDX_START
         tgt = remapped_addr(carry_off, SRC_ADDR)
+        exp = expected_unbacked(tgt, "r")
+        if exp.row != "Reserved":
+            raise RuntimeError(f"carry target 0x{tgt:x} is in row {exp.row}, not Reserved")
         await alias.program(p.region, p.hit_start, p.hit_end, carry_off, True)
-        resp, data, n_out = await self._obs_read(SRC_ADDR)
-        self.logger.info(
-            "OBS-ALIAS-CARRY region=%d offset=0x%014x src=0x%08x stim_target=0x%014x resp=%d "
-            "rdata=0x%08x data_eq_staged=%d pr_out_ar=%d",
-            p.region,
-            carry_off,
-            SRC_ADDR,
-            tgt,
-            resp,
-            data,
-            int(data == staged),
-            n_out,
+        resp, data, n_out = await self._carry_read(SRC_ADDR)
+        line = (
+            f"region={p.region} offset=0x{carry_off:014x} src=0x{SRC_ADDR:08x} "
+            f"target=0x{tgt:014x} row={exp.row} resp={resp} rdata=0x{data:08x} "
+            f"pr_out_ar={n_out} expect={exp.resp}/0x{exp.rdata:08x}/pr_out_ar=0"
         )
+        assert (resp, data, n_out) == (exp.resp, exp.rdata, 0), f"CHK-ALIAS-CARRY FAIL: {line}"
+        self.logger.info("CHK-ALIAS-CARRY PASS: %s", line)
         await alias.program(p.region, 0, ALIAS_END_RESET, 0, False)
         await self.tap_out.stop()
 

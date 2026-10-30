@@ -42,12 +42,13 @@ than each window waited.
 In that retained window (SEC_DIS=1, sense stopped, every shadow at its reset
 value) the JTAG AXI-Lite port writes the shadow map. The lifecycle filter
 restricts JTAG only in PROD and RMA_SIP, and the held ``LC_STATE`` is
-neither, so the port reaches the map. A writable shadow takes the write. The
-``LC_STATE`` write is logged (OBS-SECDIS-LC-WR): the held word is the INVALID
-encoding, and the specification does not state the effect of a write to that
-terminal word, so the outcome has no golden. The external debug bus is
-watched around those writes and in a quiet window on each side of them and
-logged (OBS-SECDIS-DBG-BUS): no specification puts eFuse state on that bus.
+neither, so the port reaches the map. Whether a writable shadow takes the
+write is logged (OBS-SECDIS-SHADOW-WR). The
+``LC_STATE`` write leaves the word at its reset value 0x0000000f
+(CHK-SECDIS-LC-WR): the held word is the INVALID encoding, which is terminal.
+Its JTAG write response has no golden and is logged (OBS-SECDIS-LC-WR). The
+external debug bus is watched around those writes and in a quiet window on each
+side of them and logged (OBS-SECDIS-DBG-BUS): no specification puts eFuse state on that bus.
 
 After a later full sense, a fresh match on the PROD image opens
 ``FEAT_CTRL`` with the ``TEST_EN`` strap at 0: the register and the
@@ -65,6 +66,8 @@ OBS-SECDIS-SHADOW-WR and OBS-SECDIS-DBG-BUS are log lines):
   CHK-RETAIN-*           the same five contracts after rst_ni with the token kept
   CHK-RETAIN-LC-RESET    after that rst_ni the LC_STATE word reads its reset value
                          0x0F (control: the word read a sensed value before it)
+  CHK-SECDIS-LC-WR       a JTAG write of PROD to that INVALID word under SEC_DIS
+                         leaves it at 0x0000000f
   CHK-DROP               a mismatch drops SEC_DIS
   CHK-SENSE-CONTROL      a healthy sense finishes inside each stuck window
   CHK-MISMATCH, CHK-NO-OVERRIDE  mismatch code and the fail-closed PROD FEAT_CTRL
@@ -611,10 +614,15 @@ class sep_sec_dis_override_test(sep_base_test):
         * LC_STATE: lifecycle_controller.adoc says the shadow output holds the
           INVALID encoding 4'b1111 before sensing, and "Invalid lifecycle
           encodings are terminal" (otp_fuse_controller.adoc, LC_STATE row);
-          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. The
-          specification does not state the effect of a write to that terminal
-          word, so OBS-SECDIS-LC-WR logs the write and readback without a
-          verdict.
+          sep_efuse_map.rdl gives the matching ``lc_state`` reset 0x0f. Every
+          text leaves that word unchanged: ``lc_state`` is ``sw = r``
+          (sep_efuse_map.rdl:573-577); "LC_STATE bits can only be set" and an
+          INVALID encoding is "permanent" (lifecycle_controller.adoc:87, :90),
+          and raw 4'b1111 has no bit left to set; "Invalid lifecycle encodings
+          are terminal" (otp_fuse_controller.adoc:220-224). CHK-SECDIS-LC-WR
+          grades the frontdoor readback after the write as the RDL reset word
+          0x0000000f. No text states the JTAG write response, so
+          OBS-SECDIS-LC-WR logs it without a verdict.
 
         CTRL-SECDIS-SHADOW-WR: before the write the REQUIRED_SIGNERS shadow reads
         its reset value at the frontdoor (OKAY, "A read of the eFuse shadow map
@@ -684,21 +692,34 @@ class sep_sec_dis_override_test(sep_base_test):
             int(rs_post == rs_pre | (1 << rs_bit)),
         )
 
-        # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f. The
-        # specification does not state the effect of a write to it, so the
-        # outcome is logged without a verdict.
+        # The LC_STATE shadow word before sense holds INVALID, [7:0] = 0x0f, which
+        # is terminal, so the write leaves the word at its reset value. The write
+        # response has no golden and is logged.
         lc_post = await self._fd_read_word("CHK-RETAIN-MAP-OPEN", lc_addr, "lc_state")
         self.logger.info(
             "OBS-SECDIS-LC-WR: sec_dis=1 sense_done=0 JTAG wr LC_STATE @0x%08x "
-            "wdata=0x%08x resp=%d pre=0x%08x post=0x%08x unchanged=%d "
-            "adoc_invalid_lo=0x%02x",
+            "wdata=0x%08x resp=%d",
             lc_addr,
             lc_wdata,
             lc_resp,
+        )
+        lc_want = word_reset(lc_addr) & _M32
+        assert lc_want & LC_FIELD_MASK == lc_invalid, (
+            f"test bug: LC_STATE RDL reset 0x{lc_want:08x} is not INVALID 0x{lc_invalid:02x}"
+        )
+        assert lc_post == lc_want, (
+            f"CHK-SECDIS-LC-WR FAIL: sec_dis=1 sense_done=0 JTAG wr LC_STATE "
+            f"@0x{lc_addr:08x} wdata=0x{lc_wdata:08x} pre=0x{lc_pre:08x} "
+            f"post=0x{lc_post:08x} want=0x{lc_want:08x}: the terminal INVALID word changed"
+        )
+        self.logger.info(
+            "CHK-SECDIS-LC-WR PASS: sec_dis=1 sense_done=0 LC_STATE @0x%08x "
+            "wdata=0x%08x pre=0x%08x post=0x%08x want=0x%08x",
+            lc_addr,
+            lc_wdata,
             lc_pre,
             lc_post,
-            int(lc_post == lc_pre),
-            lc_invalid,
+            lc_want,
         )
 
         self.logger.info(

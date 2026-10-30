@@ -19,7 +19,8 @@ runs the same plan shape in drawn orders:
                       logged only (``OBS-HMAC-WIPE-BUSY``)
 
 The not-full fifo_empty leg ends with a write to ``INTR_TEST.fifo_empty`` with the window
-closed; the ``INTR_STATE`` reads that follow are logged only (``OBS-HMAC-FE-INTRTEST``).
+closed. The first ``INTR_STATE`` read after it is graded (CHK-HMAC-FE-INTRTEST); the reads
+after a settle window and after a write-one clear are logged only (``OBS-HMAC-FE-INTRTEST``).
 
 The drain stall is the bench input ``hmac_fifo_drain_stall_i``: it holds the read side of the
 message FIFO idle (``tb/tb_top.sv``, HMAC message-FIFO drain stall).
@@ -36,6 +37,11 @@ Checkers:
   CHK-HMAC-STATUS        on every ``STATUS`` sample ``fifo_empty`` = 1 iff ``fifo_depth`` = 0,
                          ``fifo_full`` = 1 implies ``fifo_empty`` = 0, and no not-full sample
                          reports a depth above a full sample of the seed
+  CHK-HMAC-FIFO-CAP      on every ``STATUS`` sample with ``fifo_full`` = 1, ``fifo_depth`` reads
+                         32, so every sample with ``fifo_depth`` below 32 reads ``fifo_full`` = 0
+                         (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/README.md``:24 "32 x
+                         32-bit message FIFO buffer"; ``hmac.hjson``:396-402 ``fifo_full``
+                         "FIFO full", ``fifo_depth`` "FIFO entry count")
   CHK-HMAC-BACKPRESSURE-HOLD
                          with the drain stall held and ``fifo_full`` read 1, one of the next
                          ``BP_BEAT_BOUND`` beats (a termination bound of the leg, not a spec
@@ -54,6 +60,10 @@ Checkers:
                          ``byte-write: "true"``; only address bits [1:0] matter to a write
                          in the window). It runs once per seed, last, after an HMAC reset,
                          with the graded FCOV window closed.
+  CHK-HMAC-FE-INTRTEST   with the window closed, ``INTR_STATE.fifo_empty`` reads 0 right before
+                         a write of 1 to ``INTR_TEST.fifo_empty`` (``CTRL-HMAC-FE-INTRTEST``),
+                         and the first read one clock after the write reads 1 (``hmac.adoc``:74
+                         "Write 1 to force !!INTR_STATE.fifo_empty to 1.")
 
 The measurement run of each stalled leg counts the writes until a ``STATUS`` read after each
 write shows ``fifo_full`` = 1 (N). The graded run posts N writes, reads ``fifo_full`` = 1 and
@@ -73,8 +83,7 @@ of digest bytes 4n..4n+3 ("be"). ``digest_swap`` = 1 "reverses the byte-order in
 HMAC or SHA hash" (``vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/programmers_guide.md``:13),
 so each word is the little-endian read ("le").
 Every digest-to-golden compare of the leaf is at ``digest_swap`` = 0 and expects the
-big-endian read (``env/sep_hmac_golden.py`` ``SepDigestOrder``); the order the first
-readback matches is logged as ``OBS-HMAC-DIGEST-ORDER``. The wipe writes w into every
+big-endian read (``env/sep_hmac_golden.py`` ``SepDigestOrder``). The wipe writes w into every
 digest word, so the all-w DIGEST read of CHK-HMAC-WIPE expects the big-endian read of the
 bytes of w (``digest_words``).
 
@@ -160,6 +169,8 @@ ST_FULL = HMAC.field_mask("STATUS", "fifo_full")
 ST_DEPTH = HMAC.field_mask("STATUS", "fifo_depth")
 ST_DEPTH_LSB = HMAC.field_lsb("STATUS", "fifo_depth")
 ST_FIELDS = ST_IDLE | ST_EMPTY | ST_FULL | ST_DEPTH
+# Message FIFO capacity in 32-bit entries (hmac/README.md:24, "32 x 32-bit message FIFO").
+FIFO_CAP = 32
 ST_RESET_IDLE = HMAC.field_reset("STATUS", "hmac_idle")
 ST_RESET_EMPTY = HMAC.field_reset("STATUS", "fifo_empty")
 INTR_FIFO_EMPTY = HMAC.field_mask("INTR_STATE", "fifo_empty")
@@ -373,11 +384,13 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
 
     required_evidence = (
         "CHK-HMAC-STATUS",
+        "CHK-HMAC-FIFO-CAP",
         "CHK-HMAC-BACKPRESSURE-HOLD",
         "CHK-HMAC-MSG",
         "CHK-HMAC-FIFOEMPTY",
         "CHK-HMAC-WIPE",
         "CHK-HMAC-NARROW-WRITE",
+        "CHK-HMAC-FE-INTRTEST",
     )
 
     async def run_scenario(self) -> None:
@@ -414,7 +427,6 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         self.dut.hmac_fifo_drain_stall_i.value = 0
 
         self.samples: list[tuple[str, int, int, int]] = []
-        self.depth_at_full: int | None = None
         self.ran_lengths: set[tuple[int, int]] = set()
 
         # Reset values of STATUS (RDL reset: fifo_empty = 1, hmac_idle = 1).
@@ -459,7 +471,6 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         await self._reset_hmac()
         close_graded_window(self.logger)
         await self._narrow_write_leg()
-        self.chk.obs("HMAC-DIGEST-ORDER", **self.digest_order.fields())
         self.chk.finish()
 
     async def _narrow_write_leg(self) -> None:
@@ -646,8 +657,6 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             "empty": int(bool(raw & ST_EMPTY)),
             "idle": int(bool(raw & ST_IDLE)),
         }
-        if st["full"] and self.depth_at_full is None:
-            self.depth_at_full = st["depth"]
         cond = st["empty"] == int(st["depth"] == 0) and not (st["full"] and st["empty"])
         extra = {}
         if expect_reset:
@@ -663,7 +672,14 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             idle=st["idle"],
             rsvd=f"0x{raw & ~ST_FIELDS & 0xFFFF_FFFF:x}",
             **extra,
-            **{"OBS-depth_at_full": "na" if self.depth_at_full is None else self.depth_at_full},
+        )
+        self._grade(
+            "HMAC-FIFO-CAP",
+            not st["full"] or st["depth"] == FIFO_CAP,
+            phase=phase,
+            depth=st["depth"],
+            full=st["full"],
+            cap=FIFO_CAP,
         )
         self.chk.obs("HMAC-IDLE", phase=phase, idle=st["idle"])
         self.samples.append((phase, st["depth"], st["full"], st["empty"]))
@@ -1076,11 +1092,15 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
             golden0=f"0x{self.digest_order.expected(golden)[0]:08x}",
         )
         # A software write to INTR_TEST.fifo_empty; the window is closed so the forced
-        # bit reaches no FCOV sample.
+        # bit reaches no FCOV sample. The read right before the write must show 0, so a
+        # 1 after it comes from the INTR_TEST write.
         close_graded_window(self.logger)
+        st_pre = int(bool(await self._rd(HMAC_INTR_STATE) & INTR_FIFO_EMPTY))
+        self._ctrl("HMAC-FE-INTRTEST", st_pre == 0, state_pre_write=st_pre)
         await self._wr(HMAC_INTR_TEST, INTR_TEST_FIFO_EMPTY)
         await ClockCycles(dut.clk_i, 1)
-        st_1 = await self._rd(HMAC_INTR_STATE) & INTR_FIFO_EMPTY
+        st_1 = int(bool(await self._rd(HMAC_INTR_STATE) & INTR_FIFO_EMPTY))
+        self._grade("HMAC-FE-INTRTEST", st_1 == 1, state_pre_write=st_pre, state_1clk=st_1)
         await ClockCycles(dut.clk_i, FQ_SETTLE_CLK)
         st_settle = await self._rd(HMAC_INTR_STATE) & INTR_FIFO_EMPTY
         await self._wr(HMAC_INTR_STATE, INTR_FIFO_EMPTY)
@@ -1088,7 +1108,6 @@ class sep_hmac_fifo_stream_rand_test(sep_base_test):
         self.chk.obs(
             "HMAC-FE-INTRTEST",
             state_before=state,
-            state_1clk=int(bool(st_1)),
             state_settle=int(bool(st_settle)),
             settle_clk=FQ_SETTLE_CLK,
             state_after_w1c=int(bool(st_w1c)),
