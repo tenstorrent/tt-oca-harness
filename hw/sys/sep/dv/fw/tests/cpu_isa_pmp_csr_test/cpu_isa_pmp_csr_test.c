@@ -420,7 +420,12 @@ static void put_list(const uint32_t *r) {
         PMPX_ACCESS(CSR_WRITE(csr, v), wt_, wm_); \
         PMPX_ACCESS(__asm__ volatile("csrr %0, " #csr : "+r"(b_)::"memory"), bt_, bm_); \
         uint32_t n_ = ~b_; \
-        PMPX_ACCESS({ CSR_WRITE(pmpaddr0, n_); CSR_WRITE(pmpaddr15, n_); }, nt_, nm_); \
+        PMPX_ACCESS( \
+            { \
+                CSR_WRITE(pmpaddr0, n_); \
+                CSR_WRITE(pmpaddr15, n_); \
+            }, \
+            nt_, nm_); \
         uint32_t n0_ = CSR_READ(pmpaddr0); \
         uint32_t n15_ = CSR_READ(pmpaddr15); \
         PMPX_ACCESS(__asm__ volatile("csrr %0, " #csr : "+r"(a_)::"memory"), at_, am_); \

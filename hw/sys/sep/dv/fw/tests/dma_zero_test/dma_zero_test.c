@@ -522,9 +522,9 @@ static int obs_zero_dccm_misalign(void) {
     }
     __asm__ volatile("fence" ::: "memory");
     const uint32_t st = zero_fill(dst, DCCM_MISALIGN_BYTES, SEP_DMA_WIDTH_4B);
-    const int in_dccm = dst >= SEP_TOP_SEP_DCCM_BASE_ADDR &&
-                        dst + DCCM_MISALIGN_BYTES <=
-                            SEP_TOP_SEP_DCCM_BASE_ADDR + SEP_TOP_SEP_DCCM_SIZE;
+    const int in_dccm =
+        dst >= SEP_TOP_SEP_DCCM_BASE_ADDR &&
+        dst + DCCM_MISALIGN_BYTES <= SEP_TOP_SEP_DCCM_BASE_ADDR + SEP_TOP_SEP_DCCM_SIZE;
     const int ctrl_ok = in_dccm && (dst & 3u) == DCCM_MISALIGN_OFFSET && (st & DONE_OR_ERR);
     sep_mbx_puts(ctrl_ok ? "CTRL-ZERO-DCCM-MISALIGN LOG dst="
                          : "CTRL-MISSING CTRL-ZERO-DCCM-MISALIGN dst=");
