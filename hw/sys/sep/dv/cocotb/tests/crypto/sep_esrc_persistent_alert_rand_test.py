@@ -56,8 +56,10 @@ Checkers:
                   ANY_FAIL_COUNT is graded (exactly T) by CHK-PF-TRIP-HOLD, not
                   here. Control: ALERT = PF = 0 and ANY_FAIL_COUNT = 0 before
                   the burst. Its FCOV cells are released only when the peak is
-                  exactly T; otherwise the leaf logs INFO-PF-TRIP-COUNT-HOLD
-                  with the peak and releases none.
+                  exactly T, the value CHK-PF-TRIP-HOLD grades; otherwise the
+                  leaf logs INFO-PF-TRIP-COUNT-HOLD with the peak and releases
+                  none. This holds in shard 3 too, which does not grade the
+                  peak: with a peak other than T it fills no trip cell.
   CHK-PF-TRIP-HOLD   every trip: at a read after the clean window that follows
                   window T has ended, ALERT = PF = 1, and ANY_FAIL_COUNT never
                   read above T. Control: the clean noise ran for at least

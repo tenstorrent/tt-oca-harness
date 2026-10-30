@@ -79,10 +79,13 @@ FCOV pass label ``isa_pmp_pass`` (``env/sep_fcov_gate.set_isa_pmp_pass``): the
 sampler holds the ``cp_pmp_entry``, ``cp_mrac_no_perm``, ``cp_lockstep_inert``,
 ``cp_instr_class`` and ``cp_traced_event`` (taken trap) cells of this owner as
 pending while the firmware runs, because the host grades the console only
-after the run. The leaf writes the bits after every check of the run passes:
-bit i of ``cp_pmp_entry`` for an entry i that CHK-PMP passed, the ``mrac`` bit
-for CHK-MRAC, the lockstep bits for CHK-LOCKSTEP-INERT, the class and trap
-bits for CHK-ISA and CHK-MRAC. A FAIL closes the window and writes 0.
+after the run. The leaf adds each bit to the label as soon as the checks that
+grade its cell pass: the class bit after CHK-ISA, bit i of ``cp_pmp_entry``
+after CHK-PMP of entry i, the ``mrac`` and trap bits after CHK-MRAC (CHK-ISA
+grades the ``bset`` trap and passed first), the lockstep bits after
+CHK-LOCKSTEP-INERT. CHK-TRACE-INSTRET and CHK-PMP16 grade no held cell and
+release no bit. A FAIL closes the window and writes 0, so the cells of the
+failing check and of every later check never sample.
 """
 
 from __future__ import annotations
@@ -689,6 +692,15 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         self.logger.info("CHK-LOCKSTEP-INERT PASS: %s", body)
         return 1
 
+    async def _release_cells(self, bits: int) -> None:
+        """Add ``bits`` to ``isa_pmp_pass`` and hold two clocks; only the added bits rise."""
+        dut = cocotb.top
+        self.isa_pmp_mask |= bits
+        await RisingEdge(dut.clk_i)
+        set_isa_pmp_pass(self.isa_pmp_mask, self.logger)
+        await RisingEdge(dut.clk_i)
+        await RisingEdge(dut.clk_i)
+
     def _recs(self, prefix: str):
         from env.sep_fw_console import ConsoleRec, parse_kv
 
@@ -771,28 +783,23 @@ class sep_cpu_isa_pmp_csr_test(sep_base_test):
         seeds = self.con.text_lines("SEED")
         if not seeds or f"seed=0x{seed & _M32:08x}" not in seeds[0]:
             raise AssertionError(f"firmware did not run the patched block: {seeds}")
+        self.isa_pmp_mask = 0
         try:
-            n = self._chk_isa(sy) + self._chk_pmp() + self._chk_mrac() + self._chk_instret(sy)
+            n = self._chk_isa(sy)
+            await self._release_cells(1 << ISA_PMP_PASS_ICLS)
+            n += self._chk_pmp()
+            await self._release_cells(self.pmp_entry_pass)
+            n += self._chk_mrac()
+            await self._release_cells((1 << ISA_PMP_PASS_MRAC) | (1 << ISA_PMP_PASS_TRAP))
+            n += self._chk_instret(sy)
             if ls_leg:
                 n += self._chk_lockstep()
+                await self._release_cells((1 << ISA_PMP_PASS_LS_BIT0) | (1 << ISA_PMP_PASS_LS_BIT1))
             n += self._chk_pmp16()
         except AssertionError:
             close_graded_window(self.logger)
             set_isa_pmp_pass(0, self.logger)
             raise
-        # Every check of the run passed: release the held cells.
-        mask = (
-            self.pmp_entry_pass
-            | (1 << ISA_PMP_PASS_MRAC)
-            | (1 << ISA_PMP_PASS_ICLS)
-            | (1 << ISA_PMP_PASS_TRAP)
-        )
-        if ls_leg:
-            mask |= (1 << ISA_PMP_PASS_LS_BIT0) | (1 << ISA_PMP_PASS_LS_BIT1)
-        await RisingEdge(dut.clk_i)
-        set_isa_pmp_pass(mask, self.logger)
-        await RisingEdge(dut.clk_i)
-        await RisingEdge(dut.clk_i)
         set_isa_pmp_pass(0, self.logger)
         await RisingEdge(dut.clk_i)
         self.result_pass(TEST, seed, n)

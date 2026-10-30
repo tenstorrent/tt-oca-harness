@@ -53,6 +53,9 @@ IHI 0022), and the filter answers DECERR on RRESP
 (``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions"). The ARID is
 drawn from 1 to 62 (ARID 63 is the pre-sense read), so an RID that drops
 to 0 fails.
+OBS-SI-PRESENSE-READ runs last: after an ``rst_ni`` pulse, one external
+read with ARID 63 is sent while fuse sensing runs and is watched for 256
+clocks after ``sep_reset_n`` releases. It grades nothing.
 CHK-PAGE-WIDEN / CHK-PAGE-BOUND / CHK-CONFIG-LOCK cover the same-page
 allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
@@ -150,6 +153,8 @@ RSVD_RDATA = 0xBADC_AB1E
 _PRESENSE_ARID = 63
 # clk_i cycles the pre-sense read is watched after sep_reset_n releases.
 _PRESENSE_WAIT = 256
+# clk_i cycles rst_ni is held low before the pre-sense read.
+_PRESENSE_RST_HOLD = 20
 _MAX_SENSE_CYCLES = 20_000
 # Clocks the leaf keeps its coverage window open after a graded step, so the
 # sampler sees a pass label rise while the window is still open.
@@ -825,6 +830,26 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         return addr, rec, watch, read
 
+    async def _presense_si_read_after_pulse(self) -> None:
+        """Pulse ``rst_ni`` and send the pre-sense SI read while fuse sensing runs.
+
+        Runs after every graded step: the FCOV System Interface tracker pairs a
+        completion with the one read outstanding, so a read left unanswered
+        must not overlap graded reads.
+        """
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 0
+        await ClockCycles(dut.clk_i, _PRESENSE_RST_HOLD)
+        await ReadOnly()
+        self._require_sense_restart()
+        await RisingEdge(dut.clk_i)
+        dut.rst_ni.value = 1
+        await ClockCycles(dut.clk_i, 2)
+        presense = self._presense_si_read_start()
+        await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        await self._presense_si_read_log(*presense)
+
     async def _presense_si_read_log(self, addr: int, rec: dict, watch, read) -> None:
         """OBS-SI-PRESENSE-READ: no line states what an SI read before sensing ends gets."""
         dut = cocotb.top
@@ -890,10 +915,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         # PROD took effect is the FEAT_CTRL read below, value-checked against
         # feat_ctrl_expected.
         self.write_efuse_image(image)
-        await self.release_no_cpu_reset()
-        presense = self._presense_si_read_start()
-        await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
-        await self._presense_si_read_log(*presense)
+        await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         # sec_dis is the one FEAT_CTRL golden input the DUT exposes
         # (lcc_security_disable_probe_o); the lifecycle and DIS inputs are the
         # values written into the fuse image above.
@@ -1163,3 +1185,4 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
 
         await self._check_page_widen(mcfg)
+        await self._presense_si_read_after_pulse()

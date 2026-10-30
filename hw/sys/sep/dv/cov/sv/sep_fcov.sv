@@ -21440,9 +21440,10 @@ module sep_fcov (
   // cp_instr_class and cp_traced_event taken_trap cells of the same owner, is
   // held as pending at its event and samples only when its bit of
   // isa_pmp_pass rises. The owner grades the firmware console after the run,
-  // with the window closed, so the hold outlives the window: the owner writes
-  // the bits through the u_sep_fcov handle after every check of the run
-  // passes, holds them two clocks and writes 0. The next window open and a
+  // with the window closed, so the hold outlives the window: the owner adds
+  // each bit through the u_sep_fcov handle as soon as the checks that grade
+  // its cell pass, holds each write two clocks, and writes 0 after the last
+  // check or on a FAIL. The next window open and a
   // reset drop the pending cells. It gates a sample; it is never a DUT value
   // and drives nothing.
   int unsigned isa_pmp_pass = 0;

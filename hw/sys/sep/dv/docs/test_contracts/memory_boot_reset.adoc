@@ -2109,7 +2109,7 @@ Functional coverage: `sep_debug_trace_cg` (`cp_dmi_aperture`, `cp_sba_target`, `
 
 Error cases: `bset` (illegal-instruction trap) and a user-mode load from a denied PMP region (load access fault).
 
-Functional coverage: `cp_traced_event` (the trap cell), `cp_instr_class` (M, C, Zba, Zbb, Zbc and the Zbs trap), `cp_pmp_entry`, `cp_mrac_no_perm`, `cp_lockstep_inert`, and the Phase 1 `sep_cpu_boot_cg`. The owner-529 cells are held at their event inside the window (`M G isa` to `M C end`) and sample when the leaf writes `isa_pmp_pass` after every check of the run passed: bit i for entry i of `cp_pmp_entry` that CHK-PMP passed, bit 16 for CHK-MRAC, bits 17 and 18 for CHK-LOCKSTEP-INERT, bits 19 and 20 for CHK-ISA and CHK-MRAC. A FAIL writes 0 and closes the window, so the held cells never sample. The base-format retirement and the control of step 5 fill no Phase 3 bin.
+Functional coverage: `cp_traced_event` (the trap cell), `cp_instr_class` (M, C, Zba, Zbb, Zbc and the Zbs trap), `cp_pmp_entry`, `cp_mrac_no_perm`, `cp_lockstep_inert`, and the Phase 1 `sep_cpu_boot_cg`. The owner-529 cells are held at their event inside the window (`M G isa` to `M C end`) and sample when the leaf adds their bit to `isa_pmp_pass` as soon as the checks that grade the cell passed: bit 19 after CHK-ISA, bit i after CHK-PMP of entry i of `cp_pmp_entry`, bits 16 and 20 after CHK-MRAC (CHK-ISA, which grades the `bset` trap, passed first), bits 17 and 18 after CHK-LOCKSTEP-INERT. CHK-TRACE-INSTRET and CHK-PMP16 grade no held cell and gate no bit. A FAIL writes 0 and closes the window, so the cells of the failing check and of every later check never sample. The base-format retirement and the control of step 5 fill no Phase 3 bin.
 
 *Test Procedure*:
 
