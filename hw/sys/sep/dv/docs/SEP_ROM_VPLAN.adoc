@@ -21,7 +21,7 @@
 |Register sources |`hw/sys/sep/regs/` (SystemRDL) and the generated export `hw/sys/sep/regs/gen/`
 |Testbench architecture |<<sep-dv-testbench-architecture,SEP_TB_ARCH>>, Boot ROM Firmware Builds (<<_boot_rom_firmware_builds>>)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep --items rom_fw`)
-|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 189 tests
+|Tests |Every member of the `rom_fw` group in `testlists/all.toml`, defined in `testlists/rom_fw.toml`: 191 tests
 |===
 
 This plan is the technical contract for the Boot ROM firmware tests. It states
@@ -222,7 +222,7 @@ the jump into BL1, as `rom.adoc` defines it, on the `rom_boot` target.
 |===
 |Group |Role
 |`rom_fw_smoke` |Bring-up of the four boot paths and the hand-off magic: `sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` (`expected_count = 5`)
-|`rom_fw` |The credit denominator of this plan: 189 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
+|`rom_fw` |The credit denominator of this plan: 191 tests. The group has no `expected_count` (<<sep-rom-vplan-checklist>>)
 |`all`, `cpu`, `cpu_stub` |Not members. They belong to <<sep-dv-verification-plan>>
 |===
 
@@ -265,8 +265,7 @@ those tests.
 |`SEP-ROM-FUSE-020` |Invalid LC => SMC reset + fatal |<<sep-rom-vplan-fuse-integrity>> |4
 |`SEP-ROM-SMC-010` |SMC SRAM values exchanged as offsets |<<sep-rom-vplan-secondary-chiplet>> |2
 |`SEP-ROM-SMC-030` |Memory-repair gate (strap-bypassable) |<<sep-rom-vplan-dft-gate>> |4
-|`SEP-ROM-SMC-040` |Wait MANIFEST_READY before scratch[8] |<<sep-rom-vplan-secondary-chiplet>> |1
-|`SEP-ROM-SMC-050` |Reject invalid offset; bounds-check staging |<<sep-rom-vplan-secondary-chiplet>> |1
+|`SEP-ROM-SMC-050` |Reject invalid offset; bounds-check staging. Only the invalid-offset clause is mapped; no test maps the SMC SRAM bounds clause |<<sep-rom-vplan-secondary-chiplet>> |1
 |`SEP-ROM-STRAP-010` |Exactly one boot mode, recorded + reported |<<sep-rom-vplan-secondary-chiplet>> |2
 |`SEP-ROM-SPI-010` |All flash access via the transport shim |<<sep-rom-vplan-ot-spi-boot>> |2
 |`SEP-ROM-SPI-020` |Doubled, laundered bounds gate; default-reject |<<sep-rom-vplan-payload-size>>, <<sep-rom-vplan-backup-payload-fail>> |3
@@ -766,7 +765,7 @@ PASS record of its own.
 |`sep_boot_recovery_test` |Runs the base procedure of <<sep-rom-vplan-ot-spi-boot>>. +sep_straps_lo=00080000 (boot_recovery STRAPS_LO[19]) combined with +sep_boot_from_spi gives STRAPS_LO=0x02080000; +sep_smc_mem_hex staged; flash left bootable. |BOOT_RECOVERY arm: WAIT_SMC_MANIFEST, MANIFEST_SRC=0x40061000, MANIFEST_OK and BL1 FUSE_CHK, PASS verdict; BOOT_SPI, BOOT_SECONDARY, SPI_INIT markers absent and zero flash reads. |`CHK-STIMULUS-RECOVERY`, `CHK-RECOVERY-NO-SPI`, `CHK-RECOVERY-ORDER`, `CHK-ROM-PATH`, `CHK-VERDICT` |`SEP-ROM-STRAP-010`
 |`sep_firmware_secondary_chiplet_bootcode_test` |Default scratch[8] offset 0x1000 (no +sep_smc_scratch8), unsigned oca_smc_mem.hex, TEST_DEV OTP, straps all 0. |one attempt at 0x40061000 accepted: OCA_BODY=, MFST_VER=, MANIFEST_OK, PAYLOAD_OK, SBOOT_OFF, BL1_COPIED, BL1_JUMP=, BL1 FUSE_CHK in order; cold_scratch[0] PASS; no PUBK_\*/RSA_EXEC/MANIFEST_ERR=. |`CHK-SECONDARY-BOOT` |`SEP-ROM-STRAP-010`, `SEP-ROM-SMC-010`, `SEP-ROM-RETRY-010`
 |`sep_firmware_secondary_manifest_offset_misaligned_test` |oca_smc_mem_misaligned.hex prepends four bytes to the complete valid image, placing its OCAC manifest and payload bundle at offset 0x1004; +sep_smc_scratch8=00001004 publishes that address; one-shot SLVERR armed on its containing AXI beat at 0x40061000. |one attempt at 0x40061004 refused with MANIFEST_ALIGN_FAIL and MANIFEST_ERR=0x00030108 before OCA_BODY= or any downstream marker; MANIFEST_ALL_FAILED, FAIL verdict and halt. |`CHK-SMC-IMAGE`, `CHK-STIMULUS-OFFSET`, `CHK-STIMULUS-MANIFEST-READ-FAULT`, `CHK-MANIFEST-NO-READ`, `CHK-MANIFEST-SOURCE-ALIGN` |`SEP-ROM-MAN-070`, `SEP-ROM-RETRY-010`
-|`sep_firmware_secondary_manifest_offset_invalid_test` |+sep_smc_scratch8=ffffffff publishes the invalid marker while the TB SMC responder sets MANIFEST_READY; unsigned oca_smc_mem.hex holds OCAC at 0x1000; TEST_DEV OTP; straps all 0. |READY is present and scratch[8] is 0xFFFFFFFF: SMC_MANIFEST_OFF_INVALID, WAIT_SMC_MANIFEST, MANIFEST_OFFSET_INVALID and MANIFEST_BOOT_FAIL=0x00030109 (OCA_BOOT_ERR_MANIFEST_OFFSET_INVALID) in order; no manifest slot or SMC SRAM source is attempted (no MANIFEST_PRIMARY, MANIFEST_SRC=, MANIFEST_ALIGN_FAIL, MANIFEST_ERR= or MANIFEST_ALL_FAILED); cold_scratch[1] ERROR SEP_MSG_MANIFEST_LOAD_FAILED; FAIL verdict; halt. |`CHK-SMC-IMAGE`, `CHK-STIMULUS-OFFSET`, `CHK-MANIFEST-INVALID-OFFSET` |`SEP-ROM-SMC-040`, `SEP-ROM-SMC-050`
+|`sep_firmware_secondary_manifest_offset_invalid_test` |+sep_smc_scratch8=ffffffff publishes the invalid marker while the TB SMC responder sets MANIFEST_READY; unsigned oca_smc_mem.hex holds OCAC at 0x1000; TEST_DEV OTP; straps all 0. |READY is present and scratch[8] is 0xFFFFFFFF: SMC_MANIFEST_OFF_INVALID, WAIT_SMC_MANIFEST, MANIFEST_OFFSET_INVALID and MANIFEST_BOOT_FAIL=0x00030109 (OCA_BOOT_ERR_MANIFEST_OFFSET_INVALID) in order; no manifest slot or SMC SRAM source is attempted (no MANIFEST_PRIMARY, MANIFEST_SRC=, MANIFEST_ALIGN_FAIL, MANIFEST_ERR= or MANIFEST_ALL_FAILED); cold_scratch[1] ERROR SEP_MSG_MANIFEST_LOAD_FAILED; FAIL verdict; halt. |`CHK-SMC-IMAGE`, `CHK-STIMULUS-OFFSET`, `CHK-MANIFEST-INVALID-OFFSET` |`SEP-ROM-SMC-050`
 |`sep_firmware_secondary_chiplet_bootcode_primary_manifest_invalid_test` |+sep_smc_scratch8=00005000 (offset 0x5000 holds no OCAC in oca_smc_mem.hex); TEST_DEV OTP; straps all 0. |one attempt at 0x40065000 refused MANIFEST_ERR=0x00030002, then MANIFEST_ALL_FAILED and MANIFEST_BOOT_FAIL=0x00030002; cold_scratch[1] ERROR word; FAIL verdict; halt. |`CHK-INVALID-PUBLISHED-MANIFEST` |`SEP-ROM-SMC-010`, `SEP-ROM-RETRY-010`, `SEP-ROM-RETRY-050`
 |===
 
@@ -2663,7 +2662,7 @@ PASS record of its own.
 |===
 |Group |Tests |Purpose
 |`rom_fw_smoke` |`sep_rom_non_secure_boot_test`, `sep_rom_ot_dma_boot_test`, `sep_manifest_magic_survives_handoff_test`, `sep_rom_ot_pio_boot_test`, `sep_rom_ot_secure_boot_test` |Bring-up of the SMC-SRAM, OpenTitan SPI DMA and PIO, and signed boot paths, and of the hand-off magic. Run it first after a ROM or toolchain change
-|`rom_fw` |All 189 tests of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
+|`rom_fw` |All 191 tests of `testlists/rom_fw.toml` |The full Boot ROM firmware regression and the credit set of this plan
 |===
 
 [source,bash]
@@ -2707,7 +2706,7 @@ The Boot ROM has no formal flow.
 [cols="4,1,4",options="header"]
 |===
 |Item |State |Note
-|Every test in the summary has a procedure group |Yes |189 tests in 33 groups
+|Every test in the summary has a procedure group |Yes |191 tests in 33 groups
 |Every documented test exists in `rom_fw.toml` and in the `rom_fw` group |Yes |Checked against both
 |Every test has at least one checker with a PASS record |Yes |Static check of the test source: 0 tests without one
 |`rom_fw` has an `expected_count` |No |`rom_fw_smoke` has one. `rom_fw` does not, so a dropped entry does not fail the testlist load
