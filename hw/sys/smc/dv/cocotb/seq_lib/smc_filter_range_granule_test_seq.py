@@ -49,7 +49,7 @@ _CHECKERS = (
 
 
 def _reg(bank: str, reg: str, idx: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_{bank}_FILTER_CTRL_{reg}_BASE_ADDR", idx)
+    return smc_indexed_addr(f"SMC_TOP_SMC_{bank}_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", idx)
 
 
 class smc_filter_range_granule_test_seq(SmcCsrSeq):

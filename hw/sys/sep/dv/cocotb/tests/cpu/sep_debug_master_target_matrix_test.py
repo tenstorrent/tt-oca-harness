@@ -220,7 +220,7 @@ from env.sep_jtag_dmi import (
 from env.sep_seeded_rng import SepSeededRng
 from ocah_jtag_vip import OcahJtagMasterDriver
 from sep_base_test import sep_base_test
-from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, SEP_RESET_CTRL, RegBlock, sym
+from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0, SEP_RESET_CTRL, RegBlock, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import SepDmaOps, SepMemWords
 from seq_lib.sep_fabric_csr_bank_seq import AP_BASE, REMAP_ATTRS, REMAP_STRIDE, STEE_BASE
@@ -322,8 +322,12 @@ DMA_WORD_BYTES = 4
 DMA_WIDTH_ENC = 2  # TRANSFER_WIDTH: 4-byte beats
 
 # AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:178-181, :314-315).
-REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
-REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
+REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "offset"
+)
+REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "valid"
+)
 REGION_MASK = (1 << IDX_START) - 1
 ADDR_BITS = 56  # the outbound address width (hw/sys/sep/doc/fabric.adoc:172-173)
 # (path, region window base, remap CSR base, outbound filter pair)

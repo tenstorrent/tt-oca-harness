@@ -63,7 +63,9 @@ _GROUP_BASE = 0x400
 
 
 def _attrs(kind: str, region: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_{kind}_REMAP_REGION_REGION_ATTRS_BASE_ADDR", region)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_{kind}_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR", region
+    )
 
 
 class smc_outremap_window_translate_test_seq(SmcCsrSeq):

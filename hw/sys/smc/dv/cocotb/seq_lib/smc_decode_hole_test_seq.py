@@ -80,11 +80,11 @@ def _aperture_end(unit: str) -> int:
 
 def _holes() -> tuple[Hole, ...]:
     misc_base = smc_addr("SMC_TOP_SMC_MISC_WRAP_BASE_ADDR")
-    gpio_base = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0)
+    gpio_base = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR", 0)
     dma_base = smc_addr("SMC_TOP_DMA_CTRL_BASE_ADDR")
     assert generated_decoded_extent("smc_misc_wrap") == smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
     assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
-    for unit in ("smc_misc_wrap", "gpio_intf", "dma_ctrl"):
+    for unit in ("smc_misc_wrap", "gpio_intf_wrap", "dma_ctrl"):
         assert generated_past_extent_resp(unit)[0] == "DECERR", unit
     return (
         Hole(
@@ -96,10 +96,10 @@ def _holes() -> tuple[Hole, ...]:
         ),
         Hole(
             "GPIO",
-            smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 64),
+            smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 64),
             0x1,
-            gpio_base + smc_addr("SMC_TOP_GPIO_INTF_TOTAL_SIZE"),
-            _aperture_end("gpio_intf"),
+            gpio_base + smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE"),
+            _aperture_end("gpio_intf_wrap"),
             mask=0x1,
         ),
         Hole(

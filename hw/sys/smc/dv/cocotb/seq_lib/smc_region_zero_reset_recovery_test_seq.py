@@ -47,7 +47,7 @@ _RESET = {
     for name in ("GLOBAL_BASE", "LOCAL_BASE", "REGION_SIZE")
 }
 _FILTER_RESET = {
-    reg: rdl_contract(f"smc_inbound_filter_ctrl/{reg}").reset_word
+    reg: rdl_contract(f"smc_inbound_filter_ctrl_wrap/filter_ctrl/{reg}").reset_word
     for reg in ("START_ADDR", "END_ADDR", "FILTER_CONFIG")
 }
 _SCRATCH_RESET = rdl_contract("smc_misc_wrap/scratch_cold/SCRATCH[0]").reset_word
@@ -127,7 +127,7 @@ _UNITS = (
     ("WDT3", 0xC00, 0xFFF, "smc_cluster_core3_wdt/CTRL"),
     ("RESET_UNIT", 0x2000, 0x27FF, None),
     ("MISC_WRAP", 0x2800, 0x2FFF, "smc_misc_wrap/scratch_cold/SCRATCH[0]"),
-    ("GPIO", 0x3000, 0x3FFF, "gpio_intf/DATA_CTRL"),
+    ("GPIO", 0x3000, 0x3FFF, "gpio_intf_wrap/gpio_intf/DATA_CTRL"),
     ("AVSBUS", 0x4000, 0x4FFF, "smc_avsbus_controller/AVS_CMD"),
     ("I2C", 0x5000, 0x5FFF, "smc_i2c_wrap/i2c/INTR_STATE"),
     ("UART", 0x6000, 0x6FFF, "smc_uart_wrap/uart_log_engine_wrap/uart_log_engine_ctrl/CTRL"),
@@ -137,11 +137,21 @@ _UNITS = (
     ("OCTS_TIMER", 0xA000, 0xAFFF, "smc_system_timer_octs/TIMER_START"),
     ("DFX", 0xB800, 0xBFFF, "dfx_ctrl/STATUS_SMU"),
     ("BASE_CONFIG", 0x1_0000, 0x1_1FFF, "smc_base_config/GLOBAL_BASE"),
-    ("ALIAS_REMAP", 0x1_2000, 0x1_2FFF, "smc_alias_remap/REGION/region_start"),
-    ("MMODE_REMAP", 0x1_3000, 0x1_3FFF, "smc_mmode_remap/REGION/region_attrs"),
-    ("XVISOR_REMAP", 0x1_4000, 0x1_4FFF, "smc_xvisor_remap/REGION/region_attrs"),
-    ("INBOUND_FILTER", 0x1_5000, 0x1_5FFF, "smc_inbound_filter_ctrl/FILTER_CONFIG"),
-    ("OUTBOUND_FILTER", 0x1_6000, 0x1_6FFF, "smc_outbound_filter_ctrl/FILTER_CONFIG"),
+    ("ALIAS_REMAP", 0x1_2000, 0x1_2FFF, "smc_alias_remap_wrap/alias_remap/REGION/region_start"),
+    ("MMODE_REMAP", 0x1_3000, 0x1_3FFF, "smc_mmode_remap_wrap/output_remap/REGION/region_attrs"),
+    ("XVISOR_REMAP", 0x1_4000, 0x1_4FFF, "smc_xvisor_remap_wrap/output_remap/REGION/region_attrs"),
+    (
+        "INBOUND_FILTER",
+        0x1_5000,
+        0x1_5FFF,
+        "smc_inbound_filter_ctrl_wrap/filter_ctrl/FILTER_CONFIG",
+    ),
+    (
+        "OUTBOUND_FILTER",
+        0x1_6000,
+        0x1_6FFF,
+        "smc_outbound_filter_ctrl_wrap/filter_ctrl/FILTER_CONFIG",
+    ),
     ("MAILBOX", 0x1_8000, 0x3_7FFF, "smc_mailbox/outbound_mailbox_0/WRITE_DATA"),
     ("IDMA", 0x3_8000, 0x3_81FF, "dma_ctrl/CONFIG"),
     ("ZEROER", 0x3_8200, 0x3_82FF, "zeroer_ctrl/DEST_ADDR"),

@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from env.sep_fabric_common import FILTER_ADDR_MASK
 from env.sep_filter_model import FilterEntry, FilterModel
-from sep_reg_meta import INBOUND_FILTER_CTRL_0
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -51,11 +51,15 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 # The START_ADDR / END_ADDR field (the same width in both banks), and its part
 # above bit 31, which the hi word of each register holds.
 ADDR_HI_MASK = FILTER_ADDR_MASK >> 32
-SRC_ID_MASK = (1 << INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "src_id")) - 1
-GROUP_ID_MASK = (1 << INBOUND_FILTER_CTRL_0.field_width("FILTER_CONFIG", "group_id")) - 1
+SRC_ID_MASK = (
+    1 << INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_width("FILTER_CONFIG", "src_id")
+) - 1
+GROUP_ID_MASK = (
+    1 << INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_width("FILTER_CONFIG", "group_id")
+) - 1
 # RDL reset values of START_ADDR and END_ADDR (the same in both banks).
-START_RESET = INBOUND_FILTER_CTRL_0.reset("START_ADDR")
-END_RESET = INBOUND_FILTER_CTRL_0.reset("END_ADDR")
+START_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset("START_ADDR")
+END_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset("END_ADDR")
 
 
 def config_word(e: FilterEntry) -> int:

@@ -1137,7 +1137,7 @@ block has no address check (`adams_bridge.adoc:107-108`). The response codes and
 the read data of such a hole word are the "Hole in Extent" cell of the ABR row
 of the generated SEP memory map (`hw/sys/sep/regs/gen/adoc/memory_map.adoc:66`,
 "OKAY, 0x0 / OKAY"), which the default hole response of the SEP register
-description generates (`hw/sys/sep/regs/sep.rdl:189`, `ocah_hole_resp`); a
+description generates (`hw/sys/sep/regs/include/sep_memory_map.rdl`, `ocah_hole_resp`); a
 difference between it and the specification is a specification question and not
 a change of the check.
 

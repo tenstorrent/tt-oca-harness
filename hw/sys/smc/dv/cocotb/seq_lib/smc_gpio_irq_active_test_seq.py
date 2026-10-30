@@ -9,7 +9,7 @@ import cocotb
 from .smc_addr_map import gpio_intf_u32, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
 # DATA_CTRL field bits sourced by symbol from generated hw/ip/gpio/regs/gen/c/
 # gpio_intf.h (same pattern as smc_gpio_p0_int_test_seq), never hand-shifted:

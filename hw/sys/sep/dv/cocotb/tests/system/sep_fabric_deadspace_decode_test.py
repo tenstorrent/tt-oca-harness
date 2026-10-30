@@ -10,7 +10,7 @@ leg order, burst length and split-beat code pairs from the seed.
 A write or read past a block's allocated size must answer the past-extent
 response of its unit, and no live register in that block may change.
 CHK-DEADSPACE-REFUSE grades the response exactly in every window except TRNG:
-``hw/sys/sep/regs/sep.rdl`` sets ``<unit>->ocah_past_extent_resp`` to DECERR,
+``hw/sys/sep/regs/include/sep_memory_map.rdl`` sets ``<unit>->ocah_past_extent_resp`` to DECERR,
 ``0xBADCAB1E`` / DECERR for secure_dma, wdt_timer, aes, otbn, abr, csrng, edn,
 entropy_source, sep_lifecycle_ctrl, km_mailbox_sep and the SPI controller, with
 no path qualifier. A read must answer DECERR with the word ``0xBADCAB1E``, and

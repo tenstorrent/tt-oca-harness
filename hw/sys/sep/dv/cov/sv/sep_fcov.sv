@@ -852,14 +852,14 @@ module sep_fcov (
   localparam logic [31:0] WarmEnd = WarmBase + SEP_SCRATCH_WARM_REG_MAP_SIZE;
 
   // Inbound filter entry bank: 16 RDL array entries at a fixed stride.
-  localparam logic [31:0] FiltBase = INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] FiltStride   = INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR -
-                                         INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] FiltBase = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] FiltStride   = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_1__REG_MAP_BASE_ADDR -
+                                         INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
   localparam int unsigned FiltEntries = sep_pkg::InboundFilterNumFilters;
   localparam logic [31:0] FiltEnd = FiltBase + FiltStride * FiltEntries;
-  localparam logic [31:0] FiltCfgOff = INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET;
-  localparam logic [31:0] FiltStartOff = INBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET;
-  localparam logic [31:0] FiltEndOff = INBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET;
+  localparam logic [31:0] FiltCfgOff = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET;
+  localparam logic [31:0] FiltStartOff = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__START_ADDR_REG_OFFSET;
+  localparam logic [31:0] FiltEndOff = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__END_ADDR_REG_OFFSET;
   localparam logic [31:0] FiltEnMask = 32'(FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_MASK);
 
   // Adams Bridge MLDSA_CTRL / MLDSA_STATUS addresses and field masks come from
@@ -1117,18 +1117,18 @@ module sep_fcov (
 
   // The remap and filter banks are arrays of RDL entries; each window runs
   // from entry 0 to the end of the last entry.
-  localparam logic [31:0] AliasBankBase = LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] AliasBankEnd = LOCAL_MASTER_ALIAS_REMAP_CTRL_15__REG_MAP_BASE_ADDR +
-      LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_SIZE;
-  localparam logic [31:0] ApBankBase = AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] ApBankEnd = AP_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR +
-      AP_OUTPUT_REMAP_CTRL_0__REG_MAP_SIZE;
-  localparam logic [31:0] SteeBankBase = STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] SteeBankEnd = STEE_OUTPUT_REMAP_CTRL_15__REG_MAP_BASE_ADDR +
-      STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_SIZE;
-  localparam logic [31:0] OutFiltBankBase = OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] OutFiltBankEnd = OUTBOUND_FILTER_CTRL_31__REG_MAP_BASE_ADDR +
-      OUTBOUND_FILTER_CTRL_0__REG_MAP_SIZE;
+  localparam logic [31:0] AliasBankBase = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] AliasBankEnd = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_15__REG_MAP_BASE_ADDR +
+      LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_SIZE;
+  localparam logic [31:0] ApBankBase = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] ApBankEnd = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR +
+      AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE;
+  localparam logic [31:0] SteeBankBase = STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] SteeBankEnd = STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_15__REG_MAP_BASE_ADDR +
+      STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_SIZE;
+  localparam logic [31:0] OutFiltBankBase = OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] OutFiltBankEnd = OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_31__REG_MAP_BASE_ADDR +
+      OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_SIZE;
 
   function automatic logic in_blk(logic [31:0] a, logic [31:0] base, logic [31:0] size);
     return in_win(a, base, base + size);
@@ -4954,12 +4954,12 @@ module sep_fcov (
   localparam logic [31:0] FExtTopWord = FExtEnd - 32'd7;
   localparam logic [31:0] FDmaCsrBase = SECURE_DMA_REG_MAP_BASE_ADDR;
   localparam logic [31:0] FDmaCsrEnd = SECURE_DMA_REG_MAP_BASE_ADDR + SECURE_DMA_REG_MAP_SIZE - 1;
-  localparam logic [31:0] FInfiltBase = INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] FOutfiltBase = OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] FFiltStride  = INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR -
-                                         INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam logic [31:0] FFiltStart = INBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET;
-  localparam logic [31:0] FFiltEnd = INBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET;
+  localparam logic [31:0] FInfiltBase = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] FOutfiltBase = OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] FFiltStride  = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_1__REG_MAP_BASE_ADDR -
+                                         INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] FFiltStart = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__START_ADDR_REG_OFFSET;
+  localparam logic [31:0] FFiltEnd = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__END_ADDR_REG_OFFSET;
 
   function automatic bit in_rng(input logic [31:0] a, input logic [31:0] lo, input logic [31:0] hi);
     return (a >= lo) && (a <= hi);
@@ -6602,7 +6602,7 @@ module sep_fcov (
       32'(EFUSE_MMR_REG_MAP_BASE_ADDR),
       FapBaseLocalMasterAliasRemapCtrl,
       FapBaseOutboundFilterCtrl,
-      32'(INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR),
+      32'(INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR),
       32'(SEP_CPU_CTRL_REG_MAP_BASE_ADDR),
       32'(SPI_CONTROLLER_REG_MAP_BASE_ADDR),
       32'hFFFF_FFFF,
@@ -6680,9 +6680,9 @@ module sep_fcov (
       32'(AXIL_MAILBOX_REG_MAP_SIZE),
       32'(EFUSE_INTERFACE_CTRL_REG_MAP_SIZE),
       32'(EFUSE_MMR_REG_MAP_SIZE),
-      32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_TOTAL_SIZE),
-      32'(SEP_TOP_OUTBOUND_FILTER_CTRL_TOTAL_SIZE),
-      32'(SEP_TOP_INBOUND_FILTER_CTRL_TOTAL_SIZE),
+      32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_TOTAL_SIZE),
+      32'(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE),
+      32'(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE),
       32'(SEP_CPU_CTRL_REG_MAP_SIZE),
       32'(SPI_CONTROLLER_REG_MAP_SIZE),
       32'h0,
@@ -6746,8 +6746,8 @@ module sep_fcov (
           if (zero_okay && slot_tail(
                   a,
                   RowBase[r],
-                  32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_STRIDE),
-                  32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_SIZE)
+                  32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE),
+                  32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_SIZE)
               ))
             return 8'({6'(r), 2'd1});
         end
@@ -6755,8 +6755,8 @@ module sep_fcov (
           if (zero_okay && slot_tail(
                   a,
                   RowBase[r],
-                  32'(SEP_TOP_INBOUND_FILTER_CTRL_STRIDE),
-                  32'(SEP_TOP_INBOUND_FILTER_CTRL_SIZE)
+                  32'(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE),
+                  32'(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE)
               ))
             return 8'({6'(r), 2'd1});
         end
@@ -8149,7 +8149,7 @@ module sep_fcov (
     end
     off   = {rel[31:3], 3'b000} % FFiltStride;
     f.idx = 5'(rel / FFiltStride);
-    if (off == 32'(INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET)) begin
+    if (off == 32'(INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET)) begin
       f.v = 1'b1;
       f.r = 2'd0;
     end else if (off == FFiltStart) begin
@@ -8377,8 +8377,8 @@ module sep_fcov (
             ) && slot_tail(
                 lq_a,
                 RowBase[31],
-                32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_STRIDE),
-                32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_SIZE)
+                32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE),
+                32'(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_SIZE)
             ))
           c_array_tail = 3'd1;
         if (z && in_rng(
@@ -8386,8 +8386,8 @@ module sep_fcov (
             ) && slot_tail(
                 lq_a,
                 RowBase[33],
-                32'(SEP_TOP_INBOUND_FILTER_CTRL_STRIDE),
-                32'(SEP_TOP_INBOUND_FILTER_CTRL_SIZE)
+                32'(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE),
+                32'(SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE)
             ))
           c_array_tail = 3'd2;
         if (z && in_rng(
@@ -8395,8 +8395,8 @@ module sep_fcov (
             ) && slot_tail(
                 lq_a,
                 RowBase[32],
-                32'(SEP_TOP_OUTBOUND_FILTER_CTRL_STRIDE),
-                32'(SEP_TOP_OUTBOUND_FILTER_CTRL_SIZE)
+                32'(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE),
+                32'(SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE)
             ))
           c_array_tail = 3'd3;
         if ((lq_resp == FRespDecerr) && (lq_dir_w || (fx_lane32 == 32'hBADC_AB1E))) begin

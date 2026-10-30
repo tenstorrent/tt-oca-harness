@@ -66,19 +66,19 @@ _DATA_SEED = 0x0123_4567_89AB_CDEF
 
 def _filter_spec(bank: str, register: str) -> tuple[str, str, str, str]:
     return (
-        f"smc_{bank.lower()}_filter_ctrl/{register}",
-        f"SMC_TOP_SMC_{bank}_FILTER_CTRL_{register}_BASE_ADDR",
-        f"SMC_TOP_SMC_{bank}_FILTER_CTRL_{register}_NUM",
-        f"SMC_{bank}_FILTER_CTRL_{{index}}__{register}_REG_ADDR",
+        f"smc_{bank.lower()}_filter_ctrl_wrap/filter_ctrl/{register}",
+        f"SMC_TOP_SMC_{bank}_FILTER_CTRL_WRAP_FILTER_CTRL_{register}_BASE_ADDR",
+        f"SMC_TOP_SMC_{bank}_FILTER_CTRL_WRAP_FILTER_CTRL_{register}_NUM",
+        f"SMC_{bank}_FILTER_CTRL_WRAP_FILTER_CTRL_{{index}}__{register}_REG_ADDR",
     )
 
 
 def _remap_spec(register: str) -> tuple[str, str, str, str]:
     return (
-        f"smc_alias_remap/REGION/{register}",
-        f"SMC_TOP_SMC_ALIAS_REMAP_REGION_{register.upper()}_BASE_ADDR",
-        f"SMC_TOP_SMC_ALIAS_REMAP_REGION_{register.upper()}_NUM",
-        f"SMC_ALIAS_REMAP_{{index}}__REGION_{register.upper()}_REG_ADDR",
+        f"smc_alias_remap_wrap/alias_remap/REGION/{register}",
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_{register.upper()}_BASE_ADDR",
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_{register.upper()}_NUM",
+        f"SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_{{index}}__REGION_{register.upper()}_REG_ADDR",
     )
 
 
