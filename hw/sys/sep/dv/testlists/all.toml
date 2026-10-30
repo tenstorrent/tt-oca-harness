@@ -75,7 +75,7 @@ tests = ["sep_axi_smoke_test"]
 # - sep_km_otp_interface_rand_test, VCS only (km.toml `tools`). It grades the KM
 #   OTP integrity legs through the HK-OTP inject.
 name = "all"
-expected_count = 280
+expected_count = 281
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -226,6 +226,7 @@ tests = [
     "sep_km_otp_shim_unreachable_test",
     "sep_km_drbg_sampler_timeout_reset_test",
     "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kmcsr_reset_rand_test_print_off",
     "sep_km_kpv_rand_test",
     "sep_km_cpu_protect_rand_test",
     "sep_km_crossbar_efuse_window_rand_test",
@@ -534,6 +535,7 @@ tests = [
     "sep_km_otp_shim_unreachable_test",
     "sep_km_drbg_sampler_timeout_reset_test",
     "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kmcsr_reset_rand_test_print_off",
     "sep_km_kpv_rand_test",
     "sep_km_cpu_protect_rand_test",
     "sep_km_crossbar_efuse_window_rand_test",
@@ -1050,9 +1052,10 @@ tests = [
 # Convenience group of the Key Manager hardware tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_key_manager"
-expected_count = 33
+expected_count = 34
 tests = [
     "sep_km_kmcsr_reset_rand_test",
+    "sep_km_kmcsr_reset_rand_test_print_off",
     "sep_km_kpv_rand_test",
     "sep_km_cpu_protect_rand_test",
     "sep_km_crossbar_efuse_window_rand_test",

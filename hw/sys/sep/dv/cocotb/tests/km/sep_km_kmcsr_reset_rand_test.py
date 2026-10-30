@@ -73,9 +73,13 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
                     RX_VALID 0 and RSVD 0 (RDL reset); PRINT_ENABLE reads the
                     testbench drive ("Set by testbench", km_csr.rdl:980): 1 with
                     ``+VUART_PRINT``, else 0. Every bit is read on its own and a
-                    field with an unknown bit logs ``X``. Control
-                    CTRL-KMCSR-VUART-DRIVE fails the leaf without
-                    ``+VUART_PRINT``, so bit 2 is graded at drive 1
+                    field with an unknown bit logs ``X``. The leaf logs the drive
+                    as INFO-KMCSR-VUART-DRIVE. The testlist entry
+                    ``sep_km_kmcsr_reset_rand_test`` passes ``+VUART_PRINT`` and
+                    grades bit 2 at drive 1; the entry
+                    ``sep_km_kmcsr_reset_rand_test_print_off`` omits it and grades
+                    bit 2 at drive 0. Both run in the regression, so a bit 2
+                    that reads a constant fails one of them
 
 Controls: the VERSION read before the write; the W1C of the other bits next to
 the own W1C; E = 0 next to case (c), which raises the line for each of the 12
@@ -694,8 +698,9 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         in simulation"), RX_VALID [1] reset 0 (no RX data is offered in this leaf),
         RSVD [31:3] reset 0. PRINT_ENABLE [2] has no storage and is "Set by testbench"
         (km_csr.rdl:980); ``tb_top`` drives it to 1 with ``+VUART_PRINT``, else 0, and
-        that drive is its golden. Each bit of the stored word is read on its own, so a
-        field with an unknown bit logs ``X`` and fails by name.
+        that drive is its golden. One testlist entry runs at each drive. Each bit of the
+        stored word is read on its own, so a field with an unknown bit logs ``X`` and
+        fails by name.
         """
         probe = cocotb.top.km_sram_probe_o
         lsb = 32 * kp.slot_words(slot)[0]
@@ -708,12 +713,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             known |= 1 << b
             value |= bit
         driven = int("VUART_PRINT" in cocotb.plusargs)
-        if not driven:
-            raise AssertionError(
-                "CTRL-KMCSR-VUART-DRIVE FAIL: +VUART_PRINT is absent, so the bench drives "
-                "PRINT_ENABLE to 0 and an unrouted bit 2 cannot fail"
-            )
-        self.logger.info("CTRL-KMCSR-VUART-DRIVE PASS: +VUART_PRINT drives PRINT_ENABLE to 1")
+        self.chk.info("KMCSR-VUART-DRIVE", print_enable=driven)
         for name, mask, lsb_f, reset in pl.VUART_STATUS_FIELDS:
             field_known = known & mask == mask
             got = (value & mask) >> lsb_f

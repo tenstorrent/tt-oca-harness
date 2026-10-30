@@ -336,11 +336,27 @@ target = "lsu_stub_all_live"
 # The leaf resets the KM while its CPU polls the bus. The raised Verilator error
 # limit keeps the leaf running after an assertion error, so its own checks still
 # grade; the regression runner fails the leaf on any logged assertion error.
-# +VUART_PRINT drives VUART_STATUS.PRINT_ENABLE to 1, so a bit that is not
-# routed to the register reads 0 and fails.
+# +VUART_PRINT drives VUART_STATUS.PRINT_ENABLE to 1, so a bit that reads 0
+# fails here.
 args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000", "+VUART_PRINT"]
 [tests.overrides.uvm]
 args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex", "+VUART_PRINT"]
+
+[[tests]]
+# Same module without +VUART_PRINT: the bench drives VUART_STATUS.PRINT_ENABLE to 0
+# for the whole run (the drive is set at time 0), so a bit that reads 1 fails here.
+name = "sep_km_kmcsr_reset_rand_test_print_off"
+module = "km.sep_km_kmcsr_reset_rand_test"
+firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["km", "kmcsr", "reset", "sram_lock", "subsystem", "sep_spec_log"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
+[tests.overrides.uvm]
+args = ["+km_rom_hex={repo_root}/hw/sys/sep/dv/cocotb/tests/km_rom_poke.parhex"]
 
 [[tests]]
 # KPV slot states, CTRL rules, neighbours, KPV scrambler across resets, wipe and cipher. POKE image.

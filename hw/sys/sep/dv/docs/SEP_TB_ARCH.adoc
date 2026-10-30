@@ -996,7 +996,9 @@ Exceptions (a closed set):
   testbench to enable printf output") puts its driver in the bench. The
   drive is a `force` on VCS and a hierarchical assignment on Verilator, set
   at time 0 in every build. Readback: `VUART_STATUS` bit 2 over the KM CSR
-  bus. User: `sep_km_kmcsr_reset_rand_test` (CHK-KMCSR-VUART-STATUS).
+  bus. User: `sep_km_kmcsr_reset_rand_test` (CHK-KMCSR-VUART-STATUS), drive 1
+  in the testlist entry with `+VUART_PRINT` and drive 0 in the entry
+  `sep_km_kmcsr_reset_rand_test_print_off`.
 * Each Key Manager hook above is idle while its arm or enable input is 0 or
   unknown, and `sep_base_test.drive_idle_defaults` drives every hook input to
   0 at bring-up.
