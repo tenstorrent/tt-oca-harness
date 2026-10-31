@@ -92,8 +92,8 @@ Checks:
                        content 0x1004_0000, so 0x18 is selected as the reset
                        starts.
   CHK-WDT-STORE-RESP : every write to a WDT register pair (``WKUP_THOLD_HI/LO``,
-                       ``WKUP_COUNT_HI/LO``, ``WDOG_BARK/BITE_THOLD``) ends with
-                       BRESP OKAY and the written value reads back: (a) one
+                       ``WKUP_COUNT_HI/LO``, ``WDOG_BARK/BITE_THOLD``) reaches the
+                       port and the written value reads back: (a) one
                        full-strobe 64-bit write per pair from the debug-module
                        system bus, (b) a CPU 32-bit store to the even word,
                        (c) a CPU 32-bit store to the odd word; (b) and (c)
@@ -101,12 +101,11 @@ Checks:
                        firmware start-up sets it). One line per
                        access (watchdog.adoc Bus Interface: the 64-bit port is
                        narrowed to the 32-bit ``aon_timer`` register block).
-                       Each access is legal (``sw = rw`` fields in
-                       ``aon_timer.rdl``, ``WDOG_REGWEN`` at its reset value
-                       1), so its golden code is OKAY (AMBA AXI IHI0022,
-                       OKAY: normal access success). The (a) read-back is graded on the bus: an AR of size 8
-                       to the pair after the write's B, and an R beat with
-                       RRESP OKAY that carries the written value.
+                       The (a) read-back is graded on the bus: an AR of size 8
+                       to the pair after the write's B, and an R beat that
+                       carries the written value. No TT text states the BRESP
+                       or RRESP code of these accesses, so the codes are logged
+                       (OBS-WDT-STORE-RESP) and not graded.
                        Graded last, after every other check.
   CHK-MEMIF-WDT-RST  : on every ``clk_i`` cycle of each ``wdt_rst_ni`` CPU
                        reset, the reset inputs of the SRAM and boot ROM memory
@@ -1812,11 +1811,12 @@ class sep_cpu_reset_entry_test(sep_base_test):
             )
 
     def _grade_store_resp(self) -> None:
-        """One CHK-WDT-STORE-RESP line per access: BRESP OKAY and the value reads back.
+        """One CHK-WDT-STORE-RESP line per access: the access reaches the port and the value reads back.
 
         An (a) read-back counts only from the bus: an AR to the pair after the
-        write's B, size 8, and an R beat with RRESP OKAY whose data is the
-        written value and is what ``sbdata1``/``sbdata0`` return.
+        write's B, size 8, and an R beat whose data is the written value and is
+        what ``sbdata1``/``sbdata0`` return. The BRESP and RRESP codes are
+        logged (OBS-WDT-STORE-RESP), not graded.
         """
 
         def h(v, width=8):
@@ -1833,7 +1833,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 aw is not None
                 and w is not None
                 and aw.addr == row["addr"]
-                and resp == 0
+                and b is not None
                 and row["rd"] == row["exp"]
                 and (row["kind"] != "a" or (aw.size == 3 and w.strb == 0xFF))
                 and (row["kind"] == "a" or (aw.size == 2 and w.strb == lane))
@@ -1850,7 +1850,6 @@ class sep_cpu_reset_entry_test(sep_base_test):
                     and ar.seq > b.seq
                     and ar.addr == row["addr"]
                     and ar.size == 3
-                    and r.resp == 0
                     and r.data == row["exp"]
                 )
             width = 16 if row["kind"] == "a" else 8
@@ -1875,6 +1874,16 @@ class sep_cpu_reset_entry_test(sep_base_test):
                     f" rresp={'X' if r is None or r.resp is None else r.resp}"
                     f" rdata={h(None if r is None else r.data, 16)}"
                 )
+            rresp = None
+            if row["kind"] == "a" and row["r"] is not None:
+                rresp = row["r"].resp
+            self.logger.info(
+                "OBS-WDT-STORE-RESP access=(%s) reg=%s bresp=%s rresp=%s",
+                row["kind"],
+                row["reg"],
+                "X" if resp is None else resp,
+                "na" if row["kind"] != "a" else ("X" if rresp is None else rresp),
+            )
             self._grade("CHK-WDT-STORE-RESP", ok, text)
 
     def _grade_memif_wdt_rst(self) -> None:

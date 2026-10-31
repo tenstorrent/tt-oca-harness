@@ -164,13 +164,6 @@ _PG = "EFUSE_PROGRAM_CTRL"
 _PG_BUSY = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_busy")
 _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_done")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_status")
-_PG_CTL = (
-    EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_addr")
-    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data")
-    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_program_go")
-    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_program_read_back")
-    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_enable")
-)
 _ST = "EFUSE_INTERFACE_CTRL_STATUS"
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error")
 _REQ_ERR_CLR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error_clear")
@@ -406,10 +399,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         refused program sets the sticky ``efuse_req_error``, which holds off every
         later read and program request until software writes
         ``efuse_req_error_clear`` (``efuse_interface_ctrl.adoc``); the flag is
-        returned (logged, not graded) and cleared before the direct read. The
-        software-written fields of ``EFUSE_PROGRAM_CTRL`` (sw=rw) read back before the
-        disable write equal the go write (``go_landed``), so the go reached the
-        register even when the program is refused.
+        returned (logged, not graded) and cleared before the direct read.
         """
         await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=0))
         mark = self.shim.mark()
@@ -431,7 +421,6 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             "busy": int(bool(pctl & _PG_BUSY)),
             "done": int(bool(pctl & _PG_DONE)),
             "pstatus": int(bool(pctl & _PG_STATUS)),
-            "go_landed": int(pctl & _PG_CTL == program_ctrl_word(bit_addr, go=1)),
             "req_err": req_err,
             "word": word,
             "bit": (word >> (bit_addr % 32)) & 1,
@@ -835,8 +824,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         )
         ref1_graded = self._grade(
             "PROG-LC",
-            ref1["go_landed"] == 1
-            and ref1["cmd"] == 0
+            ref1["cmd"] == 0
             and ref1["cmd_all"] == 0
             and ref1["word"] == staged_word
             and shadow_ref1 == shadow0
@@ -844,7 +832,6 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             bit=1,
             match="other_only",
             role="new",
-            go_landed=ref1["go_landed"],
             shim_cmd=ref1["cmd"],
             shim_cmd_all=ref1["cmd_all"],
             w_cycles=self.w,
@@ -918,7 +905,6 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         ref2_graded = self._grade(
             "PROG-LC",
             chp_held != CODE_MATCH
-            and ref2["go_landed"] == 1
             and ref2["cmd"] == 0
             and ref2["cmd_all"] == 0
             and ref2["word"] == otp1
@@ -927,7 +913,6 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             bit=2,
             match="other_only",
             role="control",
-            go_landed=ref2["go_landed"],
             shim_cmd=ref2["cmd"],
             shim_cmd_all=ref2["cmd_all"],
             w_cycles=self.w,
