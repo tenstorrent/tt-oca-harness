@@ -276,9 +276,9 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         return (vec >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
-        # TOKEN_MATCH_FAULT is the last 32-bit register of the block, so a 64-bit
+        # TOKEN_MATCH_FAULT is the last 32-bit register of the block, and a 64-bit
         # beat runs past its end and answers SLVERR (doc/trm/src/memory_map.adoc,
-        # generated register blocks).
+        # generated register blocks), so the access is one 4-byte beat.
         seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT, size=2)
         await self.start_seq(seq)
         assert seq.resp_ok, "TOKEN_MATCH_FAULT read not OKAY"
