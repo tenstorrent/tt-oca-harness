@@ -278,8 +278,10 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         """Procedure step 19: the read-only STATUS write also clears a set error flag."""
         mask = _IC.mask32(_STATUS)
         await self._wr(READ_CTRL_ADDR, read_ctrl_word(_OOB_READ_BIT))
-        pre, polls = await self._poll_status(lambda v: v & _RAE)
+        _set, polls = await self._poll_status(lambda v: v & _RAE)
         await self._wr(READ_CTRL_ADDR, 0)
+        pre, _ok, _c = await self._rd(STATUS_ADDR)
+        pre &= mask
         pre_exp = _RESET_EXP[_STATUS] | _RAE
         set_ok = self.chk.ctrl(
             "STATUS-ERR-SET",
