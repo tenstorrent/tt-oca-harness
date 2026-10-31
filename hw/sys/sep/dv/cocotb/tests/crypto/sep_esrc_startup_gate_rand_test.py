@@ -69,6 +69,8 @@ Checkers:
                     BOOT_PHASE_DONE 0 last; bad_pattern reads REPCNT above 0, and
                     above 0 again after the tester clear.
 Every bound is a multiple of a clean time of the same seed and is logged.
+Logged only: OBS-ESRC-SM-STATE, each new MAIN_SM_STATUS.STATE value a poll reads
+(the state encoding is not stated).
 """
 
 from __future__ import annotations
@@ -231,6 +233,7 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
         self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self.chk = SepChkLog(self, TEST, seed)
+        self._last_state: int | None = None
         self.esrc = _Esrc(self)
         self.clk = SepBitWatch(dut.rst_ni, {"rst_ni": 0}, name="clk_count").start()
         self.whiten = SepBitWatch(dut.esrc_whiten_push_o, name="esrc_whiten_push_o").start()
@@ -288,6 +291,17 @@ class sep_esrc_startup_gate_rand_test(sep_base_test):
         biw = await self._rd(ESRC_BIW_OBS_STATUS)
         fifo = await self._rd(ESRC_FIFO_STATUS)
         sm = await self._rd(ESRC_MAIN_SM_STATUS)
+        state = _fld("MAIN_SM_STATUS", "STATE", sm)
+        if state != self._last_state:
+            self._last_state = state
+            self.chk.obs(
+                "ESRC-SM-STATE",
+                state=f"0x{state:03x}",
+                idle=_fld("MAIN_SM_STATUS", "IDLE", sm),
+                boot_phase_done=_fld("MAIN_SM_STATUS", "BOOT_PHASE_DONE", sm),
+                alert=_fld("MAIN_SM_STATUS", "ALERT", sm),
+                clk=self._now(),
+            )
         return Poll(
             _fld("BIW_OBS_STATUS", "LEVEL", biw),
             _fld("FIFO_STATUS", "LEVEL", fifo),

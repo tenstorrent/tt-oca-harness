@@ -40,6 +40,15 @@
 //                         the core.
 //   CHK-ZERO-DCCM-NARROW: a 2-byte-wide fill into the DCCM buffer, graded as
 //                         CHK-ZERO-DCCM-4N2.
+//   OBS-ZERO-DCCM-MISALIGN: a 4-byte-wide fill of 8 bytes to the DCCM buffer
+//                         2 bytes above a word boundary; STATUS, ERROR_CODE,
+//                         DMA_BUS_ERR_STATUS and the first four buffer words
+//                         are logged, not graded: two TT texts state
+//                         different outcomes. Its control
+//                         CTRL-ZERO-DCCM-MISALIGN requires DMA_BUS_ERR_STATUS
+//                         0 before the fill, the destination inside DCCM, 2
+//                         bytes above a word boundary, and the fill ended
+//                         with DONE or ERROR inside the poll bound.
 // The host draws n for each 4n + 2 fill and patches it into g_zero_params.
 // The words a rejected fill targets have no stated value: they are logged on
 // an OBS-ZERO-TCM-SPAN line and not graded.
@@ -135,8 +144,8 @@ static int expect_clean(const char *chk, const char *what, uint32_t st) {
     if ((st & SECURE_DMA__STATUS__DONE_bm) && !(st & SECURE_DMA__STATUS__ERROR_bm) && err == 0) {
         return 0;
     }
-    sep_mbx_puts("FAIL: ");
     sep_mbx_puts(chk);
+    sep_mbx_puts(" FAIL");
     sep_mbx_puts(" ");
     sep_mbx_puts(what);
     sep_mbx_puts(" STATUS=");
@@ -151,8 +160,8 @@ static int expect_word(const char *chk, uint32_t addr, uint32_t got, uint32_t ex
     if (got == exp) {
         return 0;
     }
-    sep_mbx_puts("FAIL: ");
     sep_mbx_puts(chk);
+    sep_mbx_puts(" FAIL");
     sep_mbx_puts(" value at ");
     sep_mbx_puthex(addr);
     sep_mbx_puts(" got ");
@@ -202,7 +211,7 @@ static int chk_zero_sram(void) {
         e += expect_word("CHK-ZERO-SRAM", SRAM_BYTES_BUF + i, b[i], exp);
     }
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-SRAM words and bytes cleared, neighbours kept\n");
+        sep_mbx_puts("CHK-ZERO-SRAM PASS words and bytes cleared, neighbours kept\n");
     }
     return e;
 }
@@ -219,7 +228,7 @@ static int chk_zero_dccm(void) {
     __asm__ volatile("fence" ::: "memory");
     e += expect_cleared_words("CHK-ZERO-DCCM", base, dccm_buf);
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-DCCM words cleared at ");
+        sep_mbx_puts("CHK-ZERO-DCCM PASS words cleared at ");
         sep_mbx_puthex(base + 4u);
         sep_mbx_puts(", neighbours kept\n");
     }
@@ -246,7 +255,7 @@ static int chk_zero_iccm(void) {
     __asm__ volatile("fence" ::: "memory");
     e += expect_cleared_words("CHK-ZERO-ICCM", ICCM_ZERO_BASE, ret);
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-ICCM words cleared at ");
+        sep_mbx_puts("CHK-ZERO-ICCM PASS words cleared at ");
         sep_mbx_puthex(ICCM_ZERO_BASE + 4u);
         sep_mbx_puts(", neighbours kept\n");
     }
@@ -261,7 +270,7 @@ static int chk_zero_tcm_narrow(void) {
 
     uint32_t bus = rd(status_addr);
     if (bus != 0) {
-        sep_mbx_puts("FAIL: CHK-ZERO-TCM-NARROW DMA_BUS_ERR_STATUS=");
+        sep_mbx_puts("CHK-ZERO-TCM-NARROW FAIL DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(" at baseline, expected 0\n");
         return 1;
@@ -271,7 +280,7 @@ static int chk_zero_tcm_narrow(void) {
     bus = rd(status_addr);
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__BUS_ERROR_bm ||
         bus != host_bit) {
-        sep_mbx_puts("FAIL: CHK-ZERO-TCM-NARROW STATUS=");
+        sep_mbx_puts("CHK-ZERO-TCM-NARROW FAIL STATUS=");
         sep_mbx_puthex(st);
         sep_mbx_puts(" ERROR_CODE=");
         sep_mbx_puthex(err);
@@ -286,7 +295,7 @@ static int chk_zero_tcm_narrow(void) {
     st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (bus != 0 || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
-        sep_mbx_puts("FAIL: CHK-ZERO-TCM-NARROW after CLEAR DMA_BUS_ERR_STATUS=");
+        sep_mbx_puts("CHK-ZERO-TCM-NARROW FAIL after CLEAR DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(" STATUS=");
         sep_mbx_puthex(st);
@@ -298,19 +307,19 @@ static int chk_zero_tcm_narrow(void) {
     st = zero_fill(ICCM_ZERO_BASE, 8u, SEP_DMA_WIDTH_4B);
     e += expect_clean("CHK-ZERO-TCM-NARROW", "4-byte-wide recovery fill", st);
     if (e == 0) {
-        sep_mbx_puts("PASS: CHK-ZERO-TCM-NARROW 2-byte-wide ICCM fill rejected, errors cleared "
+        sep_mbx_puts("CHK-ZERO-TCM-NARROW PASS 2-byte-wide ICCM fill rejected, errors cleared "
                      "before GO, recovery clean\n");
     }
     return e;
 }
 
-static int expect_bus_err_clear(const char *chk, const char *when) {
+static int expect_bus_err_clear(const char *ctrl, const char *when) {
     uint32_t bus = rd(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR);
     if (bus == 0) {
         return 0;
     }
-    sep_mbx_puts("FAIL: ");
-    sep_mbx_puts(chk);
+    sep_mbx_puts("CTRL-MISSING ");
+    sep_mbx_puts(ctrl);
     sep_mbx_puts(" DMA_BUS_ERR_STATUS=");
     sep_mbx_puthex(bus);
     sep_mbx_puts(" ");
@@ -331,8 +340,8 @@ static int expect_tcm_reject(const char *chk, uint32_t st, uint32_t *err_out, ui
     *bus_out = bus;
     if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__BUS_ERROR_bm ||
         bus != SEP_CPU_CTRL__DMA_BUS_ERR_STATUS__HOST_PATH_ERR_bm) {
-        sep_mbx_puts("FAIL: ");
         sep_mbx_puts(chk);
+        sep_mbx_puts(" FAIL");
         sep_mbx_puts(" STATUS=");
         sep_mbx_puthex(st);
         sep_mbx_puts(" ERROR_CODE=");
@@ -348,8 +357,8 @@ static int expect_tcm_reject(const char *chk, uint32_t st, uint32_t *err_out, ui
     st = rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (bus != 0 || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
-        sep_mbx_puts("FAIL: ");
         sep_mbx_puts(chk);
+        sep_mbx_puts(" FAIL");
         sep_mbx_puts(" after CLEAR DMA_BUS_ERR_STATUS=");
         sep_mbx_puthex(bus);
         sep_mbx_puts(" STATUS=");
@@ -413,7 +422,7 @@ static int tcm_reject_leg(const char *chk, int iccm, uint32_t total, uint32_t wi
     for (uint32_t i = 0; i < span; i++) {
         zeroed += (w[i] == 0u);
     }
-    sep_mbx_puts("OBS-ZERO-TCM-SPAN ");
+    sep_mbx_puts("OBS-ZERO-TCM-SPAN LOG chk=");
     sep_mbx_puts(chk);
     sep_mbx_puts(" span_words=");
     sep_mbx_puthex(span);
@@ -453,9 +462,8 @@ static int tcm_reject_leg(const char *chk, int iccm, uint32_t total, uint32_t wi
     const uint32_t recovered = w[0];
     e += expect_word(chk, base, recovered, 0u);
     if (e == 0) {
-        sep_mbx_puts("PASS: ");
         sep_mbx_puts(chk);
-        sep_mbx_puts(" n=");
+        sep_mbx_puts(" PASS n=");
         sep_mbx_puthex(n);
         sep_mbx_puts(" total=");
         sep_mbx_puthex(total);
@@ -476,7 +484,7 @@ static int tcm_reject_leg(const char *chk, int iccm, uint32_t total, uint32_t wi
 
 static int chk_zero_tcm_partial(void) {
     if (g_zero_params[0] != ZERO_PARAM_MAGIC) {
-        sep_mbx_puts("FAIL: CHK-ZERO-ICCM-4N2 bad param magic ");
+        sep_mbx_puts("CHK-ZERO-ICCM-4N2 FAIL bad param magic ");
         sep_mbx_puthex(g_zero_params[0]);
         sep_mbx_putc('\n');
         return 1;
@@ -484,7 +492,7 @@ static int chk_zero_tcm_partial(void) {
     const uint32_t n_iccm = g_zero_params[1];
     const uint32_t n_dccm = g_zero_params[2];
     if (n_iccm < 1u || n_iccm > NWORDS || n_dccm < 1u || n_dccm > NWORDS) {
-        sep_mbx_puts("FAIL: CHK-ZERO-ICCM-4N2 param n out of range ");
+        sep_mbx_puts("CHK-ZERO-ICCM-4N2 FAIL param n out of range ");
         sep_mbx_puthex(n_iccm);
         sep_mbx_puts(" ");
         sep_mbx_puthex(n_dccm);
@@ -495,6 +503,62 @@ static int chk_zero_tcm_partial(void) {
     e += tcm_reject_leg("CHK-ZERO-ICCM-4N2", 1, 4u * n_iccm + 2u, SEP_DMA_WIDTH_4B, n_iccm);
     e += tcm_reject_leg("CHK-ZERO-DCCM-4N2", 0, 4u * n_dccm + 2u, SEP_DMA_WIDTH_4B, n_dccm);
     e += tcm_reject_leg("CHK-ZERO-DCCM-NARROW", 0, DCCM_NARROW_BYTES, SEP_DMA_WIDTH_2B, 0u);
+    return e;
+}
+
+// Bytes of the misaligned 4-byte-wide DCCM fill, and its destination offset
+// above the word-aligned dccm_buf.
+#define DCCM_MISALIGN_BYTES 8u
+#define DCCM_MISALIGN_OFFSET 2u
+
+static int obs_zero_dccm_misalign(void) {
+    const uint32_t base = (uint32_t)(uintptr_t)dccm_buf;
+    const uint32_t dst = base + DCCM_MISALIGN_OFFSET;
+    int e = 0;
+
+    e += expect_bus_err_clear("CTRL-ZERO-DCCM-MISALIGN", "before the fill");
+    for (uint32_t i = 0; i < NWORDS + 2u; i++) {
+        dccm_buf[i] = pattern(i);
+    }
+    __asm__ volatile("fence" ::: "memory");
+    const uint32_t st = zero_fill(dst, DCCM_MISALIGN_BYTES, SEP_DMA_WIDTH_4B);
+    const int in_dccm =
+        dst >= SEP_TOP_SEP_DCCM_BASE_ADDR &&
+        dst + DCCM_MISALIGN_BYTES <= SEP_TOP_SEP_DCCM_BASE_ADDR + SEP_TOP_SEP_DCCM_SIZE;
+    const int ctrl_ok = in_dccm && (dst & 3u) == DCCM_MISALIGN_OFFSET && (st & DONE_OR_ERR);
+    sep_mbx_puts(ctrl_ok ? "CTRL-ZERO-DCCM-MISALIGN LOG dst="
+                         : "CTRL-MISSING CTRL-ZERO-DCCM-MISALIGN dst=");
+    sep_mbx_puthex(dst);
+    sep_mbx_puts(" in_dccm=");
+    sep_mbx_puthex((uint32_t)in_dccm);
+    sep_mbx_puts(" total=");
+    sep_mbx_puthex(DCCM_MISALIGN_BYTES);
+    sep_mbx_puts(" STATUS=");
+    sep_mbx_puthex(st);
+    sep_mbx_puts(ctrl_ok ? "\n"
+                         : ", expected a DCCM destination 2 bytes off a word, DONE or ERROR\n");
+    e += !ctrl_ok;
+
+    const uint32_t err = rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    const uint32_t bus = rd(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_BASE_ADDR);
+    __asm__ volatile("fence" ::: "memory");
+    sep_mbx_puts("OBS-ZERO-DCCM-MISALIGN LOG STATUS=");
+    sep_mbx_puthex(st);
+    sep_mbx_puts(" ERROR_CODE=");
+    sep_mbx_puthex(err);
+    sep_mbx_puts(" DMA_BUS_ERR_STATUS=");
+    sep_mbx_puthex(bus);
+    sep_mbx_puts(" span=");
+    for (uint32_t i = 0; i < 4u; i++) {
+        sep_mbx_puthex(dccm_buf[i]);
+        sep_mbx_putc(i < 3u ? ',' : '\n');
+    }
+    // Leave the engine idle: clear both error reports, then a 4-byte-wide fill
+    // of the aligned buffer start.
+    wr(SEP_TOP_SEP_CPU_CTRL_DMA_BUS_ERR_CLEAR_BASE_ADDR, SEP_CPU_CTRL__DMA_BUS_ERR_CLEAR__CLR_bm);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
+    (void)zero_fill(base, 4u, SEP_DMA_WIDTH_4B);
+    wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     return e;
 }
 
@@ -513,6 +577,7 @@ int main(void) {
     errors += chk_zero_iccm();
     errors += chk_zero_tcm_narrow();
     errors += chk_zero_tcm_partial();
+    errors += obs_zero_dccm_misalign();
 
     sep_mbx_puts(errors ? "DMA zero fill test FAILED\n" : "DMA zero fill test PASSED\n");
     return errors;

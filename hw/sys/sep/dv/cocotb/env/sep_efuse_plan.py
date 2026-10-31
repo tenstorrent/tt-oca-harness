@@ -49,7 +49,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 # sep_reg_meta puts regs/gen/py on sys.path, so it comes before sep_reg.
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, EFUSE_MMR, RegBlock, sym
+from sep_reg_meta import (
+    EFUSE_INTERFACE_CTRL,
+    EFUSE_MMR,
+    SEP_LIFECYCLE_CTRL,
+    RegBlock,
+    sym,
+    word_reset,
+)
 
 # isort: split
 import sep_reg  # noqa: E402
@@ -259,10 +266,14 @@ if (DBG1_MASK, DBG2_MASK, FUNC_MASK) != (0xFF_FFFF, 0xFF_FFFF << 24, 0xFFFF << 4
         f"LC_DISABLE groups {DBG1_MASK:#x}/{DBG2_MASK:#x}/{FUNC_MASK:#x} differ from the "
         "specification layout DBG_1 [23:0], DBG_2 [47:24], Function [63:48]"
     )
-# The five named disable bits of the DFT fuse gate ports: SEP_DBG 0, CHIPLET_DBG 1,
-# SEP_FUSE_DBG 2, SMC_FUSE_DBG 3 and SIP_DBG 24 (lifecycle_controller.adoc, SEP
-# feature-disable vector table and Debug and Test Port Path Gating).
-DFT_GATE_BITS = (0, 1, 2, 3, 24)
+# The five named disable bits of the DFT fuse gate ports, in the order SEP_DBG,
+# CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG, SIP_DBG, at the positions of their RDL
+# LC_DISABLE fields (lifecycle_controller.adoc, SEP feature-disable vector table and
+# Debug and Test Port Path Gating).
+DFT_GATE_BITS = tuple(
+    _lc_disable_mask(f).bit_length() - 1
+    for f in ("sep_debug", "chiplet_dbg", "sep_fuse_dbg", "smc_fuse_dbg", "sip_debug")
+)
 # Bits that the walk of sep_lcc_feat_ctrl_state_matrix_rand_test weights double and
 # pins to the owner SIP_DIS in TEST_DEV and SYS_DIS in PROD (VPLAN entry).
 WALK_PINNED_BITS = (0, 1, 2, 3, 4, 23, 24, 25, 47, 48, 63)
@@ -913,9 +924,11 @@ class SepEfusePlan:
         }
         fields = {k: _fmt(v) for k, v in seed_fields.items()}
         fields.update({k: str(v) for k, v in plan_fields.items() if k not in fields})
-        head = " ".join([f"SEED seed={self.seed}", *(f"{k}={v}" for k, v in fields.items())])
+        head = " ".join([f"INFO-SEED seed={self.seed}", *(f"{k}={v}" for k, v in fields.items())])
         lines = [head]
-        lines += [f"DRAW seed={self.seed} name={k} value={_fmt(v)}" for k, v in self.draws.items()]
+        lines += [
+            f"INFO-DRAW seed={self.seed} name={k} value={_fmt(v)}" for k, v in self.draws.items()
+        ]
         if self.setup_fail:
             lines.append(f"SETUP FAIL seed={self.seed} reason={self.setup_fail}")
         return lines
@@ -1342,8 +1355,10 @@ _FEAT_LC_STATE_WEIGHTS = {
     ST_INVALID: 2,
 }
 _FEAT_LC_RAWS = tuple((r, _FEAT_LC_STATE_WEIGHTS[lc_state_class(r)]) for r in range(16))
-_DEMOTE_OPS = ("demote", "lock", "zero")
-DEMOTE_OP_VALUE = {"demote": 0x1, "lock": 0x2, "zero": 0x0}
+_DEMOTE_OPS = ("demote", "lock", "zero", "both", "rsvd")
+# DEMOTE_1/DEMOTE_2 rsvd field (sep_lifecycle_ctrl.rdl): the bit range of the "rsvd.<k>" op.
+_DEMOTE_RSVD_LSB = SEP_LIFECYCLE_CTRL.field_lsb("DEMOTE_1", "rsvd")
+_DEMOTE_RSVD_END = _DEMOTE_RSVD_LSB + SEP_LIFECYCLE_CTRL.field_width("DEMOTE_1", "rsvd")
 
 
 def _feat_extra_filter(sip: int, sys_: int) -> bool:
@@ -1397,9 +1412,18 @@ def plan_feat_ctrl_matrix(seed: int) -> SepEfusePlan:
         count = d.randrange("op_count", 6, 13)
 
         def _ops() -> list[tuple[str, int]]:
-            return [(d.rng.choice(_DEMOTE_OPS), d.rng.choice((1, 2))) for _ in range(count)]
+            ops = []
+            for _ in range(count):
+                op = d.rng.choice(_DEMOTE_OPS)
+                if op == "rsvd":
+                    op = f"rsvd.{d.rng.randrange(_DEMOTE_RSVD_LSB, _DEMOTE_RSVD_END)}"
+                ops.append((op, d.rng.choice((1, 2))))
+            return ops
 
-        leg["ops"] = d.until("ops", _ops, lambda ops: any(o != "zero" for o, _r in ops))
+        # The reset check after the sequence needs a demote or lock bit set.
+        leg["ops"] = d.until(
+            "ops", _ops, lambda ops: any(o in ("demote", "lock", "both") for o, _r in ops)
+        )
         # The control bit is a 0 bit of the first SPARE8 word.
         b0 = d.choice("ctl_bit", [b for (w, b) in zero_bits(img, "SPARE8") if w == 0])
         leg["ctl_bit"] = {
@@ -2149,15 +2173,19 @@ _SHIM_CLASSES = (("edge_10", 2), ("edge_254", 2), ("revoke", 1), ("inner", 1))
 SHIM_HOLD_BUDGET = 120_000
 SHIM_T_MIN = 2_000
 SHIM_M_MAX = 4
+# Shadow words outside the graded word range 10..254 (control and lock words). The plan
+# draws only those whose staged value differs from the RDL reset value.
+SHIM_CTRL_WORDS = (*range(10), 255)
 
 
 def plan_shim_response_fault(seed: int) -> SepEfusePlan:
-    """Fixed image; runtime draws: word class, inner word, spare bits a, b, c, T, m.
+    """Fixed image; runtime draws: word class, inner word, spare bits a, b, c, T, m, control word.
 
     Order: word class (10 and 254 weight 2, the ``CHIPLET_PUBK_REVOKE`` word and an
     inner 256-bit word weight 1); the inner word (11..253, in a 256-bit field); the
     three spare bits; T in [SHIM_T_MIN, SHIM_HOLD_BUDGET // SHIM_M_MAX]; m in
-    [2, SHIM_M_MAX].
+    [2, SHIM_M_MAX]; the control word (one of ``SHIM_CTRL_WORDS`` whose staged value
+    differs from its RDL reset value).
     """
     d = SepEfuseDraws(seed)
     img = build_image(lc_raw=LC_TEST_DEV, sip_dis=FIXED_SIP_DIS, sys_dis=FIXED_SYS_DIS)
@@ -2183,6 +2211,10 @@ def plan_shim_response_fault(seed: int) -> SepEfusePlan:
     ]
     t = d.randrange("timeout_cycles_T", SHIM_T_MIN, SHIM_HOLD_BUDGET // SHIM_M_MAX + 1)
     m = d.randrange("hold_multiple_m", 2, SHIM_M_MAX + 1)
+    ctrl_word = d.choice(
+        "ctrl_word",
+        [k for k in SHIM_CTRL_WORDS if img.words[k] != word_reset(SHADOW_BASE + 4 * k)],
+    )
     leg = {
         "word_class": cls,
         "word": w,
@@ -2191,6 +2223,7 @@ def plan_shim_response_fault(seed: int) -> SepEfusePlan:
         "spare_c": spares[2],
         "timeout_T": t,
         "hold_m": m,
+        "ctrl_word": ctrl_word,
     }
     return _make_plan(T_SHIM_FAULT, seed, d, LC_TEST_DEV, FIXED_SIP_DIS, FIXED_SYS_DIS, img, leg)
 

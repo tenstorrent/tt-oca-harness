@@ -41,7 +41,25 @@ L (0 to 32 pairs) and the random pool operations (20 to 60).
 Checkers: CHK-SEL-RW, CHK-EXT-XFER, CHK-EXT-STRB, CHK-EXT-DROP, CHK-EXT-BP,
 CHK-EXT-IRQ, CHK-SEL-READY, CHK-SEL-HOLD, CHK-SEL-LOCK, CHK-SEL-LOCKFIRST,
 CHK-SEL-GLOBAL, CHK-POOL-DATA, CHK-EDN-FIFO-DEPTH (contracts in the docstring of
-each leg).
+each leg), CHK-EXT-NOSRC-POP (below), and CHK-SEL-RESET: the first reads of the select and the lock return
+their RDL reset values (``EXT_TRNG_SRC_SEL.sel`` 0x7, ``EXT_TRNG_SRC_SEL_LOCK.lock``
+0x0, sep_cpu_ctrl.adoc).
+
+CHK-EXT-NOSRC-POP: after the back-pressure leg, with stream 2 external and no beat
+offered, one DATA pop after the second level read answers SLVERR when that level is
+0 and OKAY otherwise, with no timeout (``entropy_pool.adoc``, Access Policy).
+
+CHK-SEL-READY0: in the ready leg, when the select read back has bit 0 clear, the
+external stream 0 input sees ``tready`` 1 on every clock it holds ``tvalid`` 1
+(``trng.adoc``: an unselected external input receives ready high). Control:
+stream 0 held ``tvalid`` 1 on at least one clock of the leg. Graded only on the
+passes whose s has bit 0 clear, so it is not in ``required_evidence``.
+
+Logged only (no stated outcome): ``OBS-SEL-READY0`` when bit 0 is set (no text
+states when the Key Manager sink lowers ready); ``OBS-EXT-WITHDRAW`` when a source drops a beat it
+holds at the end of a leg: the held word, tready at the drop and the next word that
+completes at that port. ``OBS-EXT-NOSRC`` in the same step: the pool fifo_level before
+and after a hold of ``DRAIN_WINDOW`` clocks, and the data of the pop.
 
 Coverage gate: a FAIL closes the graded window and keeps it closed for the rest of
 the leaf. The sampler holds the cells of the external beats, the external stalls,
@@ -56,8 +74,10 @@ from dataclasses import dataclass, field
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, FallingEdge, NextTimeStep, ReadOnly, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_ext_trng_stream import SepExtTrngStream
+from env.sep_fabric_common import resp_name
 from env.sep_fcov_gate import (
     XHS_PASS_FIFO_DEPTH,
     XHS_PASS_FULL,
@@ -74,10 +94,12 @@ from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_monitor_life import MonitorLife
 from seq_lib.sep_aes_seq import AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_entropy_pool_seq import (
     POOL_POP,
     RESP_OKAY,
+    RESP_SLVERR,
     SepEntropyPool,
     pool_level,
 )
@@ -90,6 +112,7 @@ LOCK_ADDR = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL_LOCK")
 SEL_MASK = SEP_CPU_CTRL.field_mask("EXT_TRNG_SRC_SEL", "sel")
 SEL_RESET = SEP_CPU_CTRL.reset("EXT_TRNG_SRC_SEL")
 LOCK_MASK = SEP_CPU_CTRL.field_mask("EXT_TRNG_SRC_SEL_LOCK", "lock")
+LOCK_RESET = SEP_CPU_CTRL.reset("EXT_TRNG_SRC_SEL_LOCK") & LOCK_MASK
 
 # PIC source 17, the external TRNG interrupt (interrupts.adoc), on vector bit 16.
 VEC_EXT_IRQ = vec_bit(SRC_TIED)
@@ -453,7 +476,26 @@ def _final_stall(rows: list[Row], i: int, min_len: int) -> int | None:
 
 # ----------------------------------------------------------------------------- leaf
 class _Reg(SepAxiRegDriver):
+    """Select and lock register access; ``bresp`` is the B response of the last write.
+
+    A write with ``locked`` set is one the lock refuses. No text states its B code,
+    so the scoreboard does not grade it and the write does not raise; ``bresp`` is
+    -1 when no B response came.
+    """
+
     _DRIVER_TAG = "SEL"
+    bresp = -1
+    locked = False
+
+    async def _write_access(self, addr: int, data: int, *, size: int | None, length: int) -> None:
+        seq = SepAxiAccessSeq(
+            "sel_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data, length=length, size=size,
+            allow_unverified_write_resp=self.locked,
+        )  # fmt: skip
+        await self.test.start_seq(seq)
+        self.bresp = -1 if seq.timed_out else seq.resp_code
+        if not seq.resp_ok and not self.locked:
+            raise AssertionError(f"SEL write @0x{addr:08x} not OKAY")
 
 
 @pyuvm.test()
@@ -474,6 +516,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         "CHK-SEL-GLOBAL",
         "CHK-POOL-DATA",
         "CHK-EDN-FIFO-DEPTH",
+        "CHK-SEL-RESET",
+        "CHK-EXT-NOSRC-POP",
     )
 
     async def run_scenario(self) -> None:
@@ -488,14 +532,23 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         await self.swrst.park(*PARKED)
         await ClockCycles(dut.clk_i, 2)
         self._jtag_sw_rst_hold(PARKED, False)
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
 
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
-        self.chk.obs("SEL-RESET", sel=f"0x{sel0 & SEL_MASK:x}", lock=lock0 & LOCK_MASK)
+        sel0 &= SEL_MASK
+        lock0 &= LOCK_MASK
+        self._grade(
+            "SEL-RESET",
+            sel0 == SEL_RESET and lock0 == LOCK_RESET,
+            sel=f"0x{sel0:x}",
+            lock=lock0,
+            want_sel=f"0x{SEL_RESET:x}",
+            want_lock=LOCK_RESET,
+        )
         self.aes = SepAes(self)
         self.pool = SepEntropyPool(self)
         self.trace = _Trace(dut).start()
@@ -554,8 +607,12 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         await self._clocks(1)
 
     # --- bus and waits ---------------------------------------------------------------
-    async def _sel(self, value: int) -> int:
-        await self.reg._wr(SEL_ADDR, value)
+    async def _sel(self, value: int, *, locked: bool = False) -> int:
+        self.reg.locked = locked
+        try:
+            await self.reg._wr(SEL_ADDR, value)
+        finally:
+            self.reg.locked = False
         return await self.reg._rd(SEL_ADDR) & SEL_MASK
 
     async def _clocks(self, n: int) -> None:
@@ -579,8 +636,9 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
                 return clk
         raise AssertionError(f"{what}: no change within {TRNG_RESET_CAP} clocks")
 
-    async def _trng_reset(self, *, source_reset: int | None = None) -> None:
+    async def _trng_reset(self, *, source_reset: int | None = None) -> tuple[int, int]:
         """Bit 5 of SW_RESET_N to 0 then 1; wait for the fall of the reset probe.
+        Returns the clocks to the rise and to the fall of the probe.
 
         With ``source_reset`` the driver resets that source at the rise of the
         probe, together with the sink reset.
@@ -594,17 +652,48 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         if source_reset is not None:
             dropped = await self.ext.source_reset(source_reset)
-            self.logger.info("source reset stream=%d dropped=%d", source_reset, dropped)
+            self.logger.info("INFO-SOURCE-RESET stream=%d dropped=%d", source_reset, dropped)
         await self.swrst.release("trng")
         fall = await self._wait_probe(dut.trng_reset_active_probe_o, True, "trng reset fall")
         await RisingEdge(dut.clk_i)
-        self.logger.info("TRNG reset: rise_clk=%d fall_clk=%d cap=%d", rise, fall, TRNG_RESET_CAP)
+        self.logger.info(
+            "INFO-TRNG-RESET-EDGES rise_clk=%d fall_clk=%d cap=%d", rise, fall, TRNG_RESET_CAP
+        )
+        return rise, fall
 
     async def _drop_source(self, *streams: int) -> None:
         """End of a leg: the source drops whatever it still holds or queues."""
+        dut = cocotb.top
         for i in streams:
             if self.ext.pending(i):
+                tvalid = _bit(_known(dut.ext_trng_tvalid_o), i)
+                tready = _bit(_known(dut.ext_trng_tready_o), i)
+                held = _word(_known(dut.ext_trng_tdata_o), i) if tvalid == 1 else None
                 await self.ext.source_reset(i)
+                if held is not None:
+                    cocotb.start_soon(self._withdraw_obs(i, held, tready))
+
+    async def _withdraw_obs(self, i: int, held: int, tready: int | None) -> None:
+        """The next word that completes at port ``i`` after a source drops a held beat."""
+        dut = cocotb.top
+        nxt = None
+        for _ in range(SETTLE_CAP):
+            await FallingEdge(dut.clk_i)
+            await ReadOnly()
+            if (
+                _bit(_known(dut.ext_trng_tvalid_o), i) == 1
+                and _bit(_known(dut.ext_trng_tready_o), i) == 1
+            ):
+                nxt = _word(_known(dut.ext_trng_tdata_o), i)
+                break
+        self.chk.obs(
+            "EXT-WITHDRAW",
+            stream=i,
+            held=f"0x{held:08x}",
+            tready_at_drop=tready if tready is not None else "x",
+            next="none" if nxt is None else f"0x{nxt:08x}",
+            next_eq_held=int(nxt == held),
+        )
 
     async def _settle_pairs(self, stream: int, target: int, bound: int) -> int | None:
         """Wait until ``target`` beats completed at port ``stream`` since the counter
@@ -947,6 +1036,33 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             await self._release(XHS_PASS_STALL[1] | XHS_PASS_POOL_POP)
         close_graded_window(self.logger)
         await self._drop_source(2)
+        await self._no_source_obs()
+
+    async def _no_source_obs(self) -> None:
+        """Pool STATUS and one DATA pop with stream 2 external and no beat offered."""
+        old = await self.reg._rd(SEL_ADDR) & SEL_MASK
+        sel = await self._sel(old | 1 << 2)
+        level0 = pool_level(await self.pool.status())
+        await self._clocks(DRAIN_WINDOW)
+        level1 = pool_level(await self.pool.status())
+        seq = await self.pool.access(POOL_POP, allow_timeout=True)
+        await self._sel(old)
+        want = RESP_SLVERR if level1 == 0 else RESP_OKAY
+        self.chk.ok(
+            "EXT-NOSRC-POP",
+            not seq.timed_out and seq.resp_code == want,
+            level=level1, resp=resp_name(seq.resp_code), expect=resp_name(want),
+            timed_out=int(seq.timed_out),
+        )  # fmt: skip
+        self.chk.obs(
+            "EXT-NOSRC",
+            sel=f"0x{sel:x}",
+            pending=self.ext.pending(2),
+            wait_clk=DRAIN_WINDOW,
+            level_before=level0,
+            level_after=level1,
+            rdata=f"0x{(seq.rdata or 0) & 0xFFFF_FFFF_FFFF_FFFF:016x}",
+        )
 
     async def _ready_leg(self, sp: StreamPlan) -> None:
         """CHK-SEL-READY: for a selected stream 1 or 2 with no sink draining, tready
@@ -954,7 +1070,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         stream 1 an AES PRNG reseed after the fall completes the pending beat. A pass of
         stream 1 releases the held crypto stall cell."""
         h = self.plan.hold
-        await self._sel(sp.s)
+        got = await self._sel(sp.s)
         await self._trng_reset()
         graded = [j for j in (1, 2) if sp.s >> j & 1]
         self._open()
@@ -971,12 +1087,17 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             r = await self._until(lambda: self.trace.ext_xfers[1] > base, TRNG_RESET_CAP)
             rise[1] = int(r is not None)
         s0 = [_bit(r.er, 0) for r in rows if _bit(r.ev, 0) == 1]
-        self.chk.obs(
-            "SEL-READY0",
-            sel_bit=sp.s & 1,
-            tvalid_clk=len(s0),
-            tready_low_clk=sum(1 for v in s0 if v == 0),
-        )
+        ready0 = {
+            "sel": f"0x{got:x}",
+            "sel_bit": got & 1,
+            "tvalid_clk": len(s0),
+            "tready_low_clk": sum(1 for v in s0 if v == 0),
+        }
+        if got & 1:
+            self.chk.obs("SEL-READY0", **ready0)
+        else:
+            self._ctrl("SEL-READY0", len(s0) >= 1, **ready0)
+            self._grade("SEL-READY0", ready0["tready_low_clk"] == 0, **ready0)
         for j in graded:
             # The fall is the start of the stall that ends the leg: the last run of
             # clocks with tvalid 1 and tready 0 that reaches the end of the record and
@@ -1279,9 +1400,13 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _lock_leg(self) -> None:
         """CHK-SEL-LOCK: after the lock write of 1, a write of 0 leaves it at 1, a
-        select write leaves the old value, and a TRNG reset leaves the lock at 1.
-        Control: the pre-lock write of a lands and a differs from the value held
-        before it (the plan draws a away from that value)."""
+        select write leaves the old value, and a TRNG reset leaves the lock at 1. The
+        write of 0 is a legal write of the RW1S field and must answer OKAY (the driver
+        raises otherwise). The select write under the lock must get a B response of
+        any code; no text states that code, so it is logged as OBS-SEL-LOCK-RESP.
+        Controls: the pre-lock write of a lands and a differs from the value held
+        before it (the plan draws a away from that value); the TRNG reset probe rises
+        and falls (clocks logged)."""
         plan = self.plan
         held = await self.reg._rd(SEL_ADDR) & SEL_MASK
         self._open()
@@ -1295,16 +1420,25 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         await self._clocks(plan.idle_gap)
         lock1 = await self._lock(LOCK_MASK)
         lock0 = await self._lock(0)
-        kept = await self._sel(plan.b)
-        await self._trng_reset()
+        write0_bresp = resp_name(self.reg.bresp)
+        kept = await self._sel(plan.b, locked=True)
+        sel_b = self.reg.bresp
+        self.chk.obs("SEL-LOCK-RESP", leg="lock", sel_write_bresp=resp_name(sel_b))
+        rise, fall = await self._trng_reset()
+        self._ctrl(
+            "SEL-LOCK",
+            rise < TRNG_RESET_CAP and fall < TRNG_RESET_CAP,
+            trng_reset_rise_clk=rise, trng_reset_fall_clk=fall, cap=TRNG_RESET_CAP,
+        )  # fmt: skip
         lock_r = await self.reg._rd(LOCK_ADDR) & LOCK_MASK
         sel_r = await self.reg._rd(SEL_ADDR) & SEL_MASK
         self.pre_global = (lock_r, sel_r)
         self._grade(
             "SEL-LOCK",
-            lock1 == LOCK_MASK and lock0 == LOCK_MASK and kept == plan.a
+            lock1 == LOCK_MASK and lock0 == LOCK_MASK and kept == plan.a and sel_b >= 0
             and lock_r == LOCK_MASK and sel_r == plan.a,
-            lock=lock1, write0_lock=lock0, sel_kept=f"0x{kept:x}", tried=f"0x{plan.b:x}",
+            lock=lock1, write0_lock=lock0, write0_bresp=write0_bresp, sel_kept=f"0x{kept:x}",
+            tried=f"0x{plan.b:x}", sel_write_b_seen=int(sel_b >= 0),
             after_trng_reset_lock=lock_r, ctrl_sel=f"0x{sel_r:x}", pre_lock_sel=f"0x{pre:x}",
         )  # fmt: skip
 
@@ -1337,10 +1471,14 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _lockfirst_leg(self) -> None:
         """CHK-SEL-LOCKFIRST: with the lock set before any select write, a select write
-        leaves the select at 0x7. Control: after a rst_ni pulse a select write lands."""
+        leaves the select at 0x7. That write must get a B response of any code; no
+        text states the code, so it is logged as OBS-SEL-LOCK-RESP.
+        Control: after a rst_ni pulse a select write lands."""
         self._open()
         lock = await self._lock(LOCK_MASK)
-        sel = await self._sel(0)
+        sel = await self._sel(0, locked=True)
+        sel_b = self.reg.bresp
+        self.chk.obs("SEL-LOCK-RESP", leg="lockfirst", sel_write_bresp=resp_name(sel_b))
         close_graded_window(self.logger)
         await self._global_reset()
         lock_after = await self.reg._rd(LOCK_ADDR) & LOCK_MASK
@@ -1349,9 +1487,10 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self._ctrl("SEL-LOCKFIRST", ctrl, ctrl_after_reset_write_lands=int(ctrl))
         self._grade(
             "SEL-LOCKFIRST",
-            lock == LOCK_MASK and sel == SEL_RESET,
+            lock == LOCK_MASK and sel == SEL_RESET and sel_b >= 0,
             lock=lock,
             write="0x0",
+            sel_write_b_seen=int(sel_b >= 0),
             sel=f"0x{sel:x}",
             ctrl_after_reset_write_lands=int(ctrl),
         )

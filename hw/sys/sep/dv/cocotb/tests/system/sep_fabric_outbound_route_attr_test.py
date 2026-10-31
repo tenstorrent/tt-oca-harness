@@ -78,7 +78,13 @@ Checkers:
                     ID replaces the initiator's. X or Z on any captured field,
                     W user included, fails (VCS). The captures of the two
                     moved-SMU legs take the same compare, logged under
-                    CHK-OUT-SMU-MOVED and CHK-OUT-SMU-FIRST.
+                    CHK-OUT-SMU-MOVED and CHK-OUT-SMU-FIRST. The predicted
+                    address of an AP or STEE capture replaces the address with
+                    the programmed region offset (``fabric.adoc:178-179``): the
+                    offset bits above the 512 KiB region granule and the
+                    issued address below it
+                    (``hw/ip/output_remap/regs/output_remap.rdl:22-25``). An AP
+                    pass with offset 0 predicts ``{0, a[18:0]}``.
                     Logged, not graded (no stated value): the SMU-path number
                     (OBS-OUT-SRC-ID), AxUSER[11:4] of every capture (graded
                     as zero on the AP and STEE paths) and the W user of
@@ -97,6 +103,9 @@ Checkers:
                     enabled outbound pair covers it. With the reset pair
                     restored, the moved first and last words answer DECERR
                     with no PR-OUT capture while an enabled pair covers them.
+                    Each such address is at or above 0x4000_0000 and outside
+                    every window, so it returns to the peripheral crossbar,
+                    which answers DECERR (fabric.adoc:145-146, :181-182).
   CHK-OUT-SMU-FIRST with the SMU window over AP region 0 (valid, offset not
                     the identity), LSU reads and writes of an AP region 0 word
                     leave once on PR-OUT untranslated, with SEP's ID and NS 1.
@@ -222,6 +231,10 @@ PAIR_STEE_INV = (20, 21)
 PAIR_SMU_MOVED = (22, 23)
 PAIR_OVL_LOCAL = (24, 25)
 PAIR_OVL_TRANSLATED = (26, 27)
+PAIR_LOWADDR = (28, 29)
+PAIR_AP_ZERO = (30, 31)
+# The external row below the local units (memory_map.adoc, "SEP External").
+LOWADDR_HI = 0x0FFF_FFFF
 SMU_BASE_FIELD = SEP_CPU_CTRL.field_mask("SMU_GLOBAL_BASE_ADDR", "addr")
 SMU_SIZE_FIELD = SEP_CPU_CTRL.field_mask("SMU_REGION_SIZE", "size")
 # The moved SMU pair: base and size are software fields (sw = rw,
@@ -395,8 +408,8 @@ class _SmuAperture(SepAxiRegDriver):
             got = await self._rd(addr) | (await self._rd(addr + 4) << 32)
             fc = field_compare(got, word, mask)
             line = f"reg=0x{addr:x} {fc.fields()}"
-            assert fc.ok, f"SMU-READBACK FAIL: {line}"
-            self.log.info("SMU-READBACK LOG: %s", line)
+            assert fc.ok, f"CTRL-SMU-READBACK FAIL: {line}"
+            self.log.info("CTRL-SMU-READBACK LOG: %s", line)
 
 
 def _smc_apertures() -> list[tuple[int, int]]:
@@ -589,17 +602,17 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             + (" X/Z" if unknown else "")
         )
         self.logger.info("%s PASS: %s prot_issued=0x%x", tag, line, prot)
-        # AxUSER[11:4] has a stated value only on the AP and STEE paths (OTHERS,
-        # graded above); the upper bits of every capture and the W user are
-        # logged.
-        self.logger.info(
-            "OBS-OUT-USER-HI: class=%s dir=%s user_issued_11_4=0x%02x user_seen_11_4=0x%02x "
-            "(value logged)",
-            cls,
-            d,
-            user >> 4,
-            b.user >> 4,
-        )
+        if path == "smu":
+            # AxUSER[11:4] has a stated value only on the AP and STEE paths
+            # (OTHERS, graded above); on the SMU path it is logged.
+            self.logger.info(
+                "OBS-OUT-USER-HI: class=%s dir=%s user_issued_11_4=0x%02x "
+                "user_seen_11_4=0x%02x (value logged)",
+                cls,
+                d,
+                user >> 4,
+                b.user >> 4,
+            )
         if write and path == "smu":
             self.logger.info(
                 "OBS-OUT-WUSER: class=%s dir=W wuser_issued=0x%03x wuser_seen=0x%03x "
@@ -646,7 +659,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         assert sec_dis == 0, f"bring-up: SEC_DIS={sec_dis}; the pinned image needs SEC_DIS 0"
         feat = await self._rd64(LCC_FEAT_CTRL)
         self.logger.info(
-            "FEAT_CTRL LOG: lc=%s sec_dis=%d feat_ctrl=0x%016x sep_debug=%d",
+            "INFO-FEAT-CTRL lc=%s sec_dis=%d feat_ctrl=0x%016x sep_debug=%d",
             lc_state_name(image.lc_raw()),
             sec_dis,
             feat,
@@ -655,7 +668,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         base = await self._rd64(SMU_BASE_REG)
         size = await self._rd64(SMU_SIZE_REG)
         self.logger.info(
-            "SMU aperture LOG: SMU_GLOBAL_BASE_ADDR=0x%x SMU_REGION_SIZE=0x%x", base, size
+            "INFO-SMU-APERTURE SMU_GLOBAL_BASE_ADDR=0x%x SMU_REGION_SIZE=0x%x", base, size
         )
 
     async def _rd64(self, addr: int) -> int:
@@ -704,6 +717,47 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             )
             self.logger.info("CHK-OUT-ROUTE PASS: %s", line)
         await self._pair_enable(PAIR_SMU, True)
+
+    async def _lowaddr_leg(self) -> None:
+        """One LSU read and write of a drawn word below 0x1000_0000 behind an enabled pair."""
+        cfg = self.tcfg
+        while True:
+            word = 8 * cfg.rng.randrange(0, (LOWADDR_HI + 1) // 8)
+            if not any(b <= word < b + sz for b, sz in _smc_apertures()):
+                break
+        lo, hi = granule8(word)
+        await self._program_pair(PAIR_LOWADDR, lo, hi)
+        smc = SepFabricTap("PR-SMC").start()
+        mon = self.env.axi_monitor
+        for write in cfg.dirs():
+            mo, ms = self.out.mark(), smc.mark()
+            mon.arm_expected_decerr(1)
+            seq = SepAxiAccessSeq(
+                "out_lowaddr",
+                op=SepAxiOp.WRITE if write else SepAxiOp.READ,
+                addr=word,
+                wdata=cfg.wdata() if write else 0,
+                length=8,
+                size=3,
+                prot=cfg.prot(1),
+                allow_ungraded_read_resp=not write,
+                allow_unverified_write_resp=write,
+            )
+            await self.start_seq(seq)
+            if seq.resp_code != RESP_DECERR:
+                mon.release_expected_decerr(1)
+            ch = "aw" if write else "ar"
+            self.logger.info(
+                "OBS-OUT-LOWADDR dir=%s addr=0x%08x resp=%s pr_out=%s pr_smc=%s",
+                "W" if write else "R",
+                word,
+                _rname(seq.resp_code),
+                _join_addrs(self.out.since(mo, ch)),
+                _join_addrs(smc.since(ms, ch)),
+            )
+        await smc.stop()
+        for idx in PAIR_LOWADDR:
+            await self.filt.restore_reset(idx)
 
     async def _remap_leg(self, c: _Cls, pair: tuple[int, int]) -> None:
         """Steps 9 to 11 for one remapped class (13 for STEE)."""
@@ -902,7 +956,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 local_seen += seen
                 n_local += 1
                 self.logger.info(
-                    "local read LOG: %s addr=0x%x resp=%s data[31:0]=0x%08x data[63:32]=0x%08x "
+                    "INFO-LOCAL-READ %s addr=0x%x resp=%s data[31:0]=0x%08x data[63:32]=0x%08x "
                     "out_seen=%d",
                     name,
                     addr,
@@ -946,7 +1000,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         seq = SepAxiAccessSeq(f"si_{tag}", op=SepAxiOp.READ, addr=addr, length=4, size=2)
         await self.start_ext_seq(seq)
         self.logger.info(
-            "SI read LOG: %s addr=0x%x resp=%s data=0x%08x",
+            "INFO-SI-READ %s addr=0x%x resp=%s data=0x%08x",
             tag,
             addr,
             _rname(seq.resp_code),
@@ -957,13 +1011,13 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
     async def _nobypass_leg(self) -> None:
         """Steps 20 to 24."""
         feat0 = await self._rd64(LCC_FEAT_CTRL)
-        self.logger.info("FEAT_CTRL LOG: before DEMOTE_1 feat_ctrl=0x%016x", feat0)
+        self.logger.info("INFO-FEAT-CTRL before DEMOTE_1 feat_ctrl=0x%016x", feat0)
         await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_before_demote")
         demote = SepLccDemoteSeq(1)
         await self.start_seq(demote)
-        self.logger.info("DEMOTE_1 LOG: demote=%s lock=%s", demote.demote, demote.lock)
+        self.logger.info("INFO-DEMOTE demote=%s lock=%s", demote.demote, demote.lock)
         feat1 = await self._rd64(LCC_FEAT_CTRL)
-        self.logger.info("FEAT_CTRL LOG: after DEMOTE_1 feat_ctrl=0x%016x", feat1)
+        self.logger.info("INFO-FEAT-CTRL after DEMOTE_1 feat_ctrl=0x%016x", feat1)
         pre = await self._ext_read(LCC_FEAT_CTRL, "feat_ctrl_after_demote")
         if pre != RESP_OKAY:
             self.logger.error("CHK-OUT-NOBYPASS FAIL: bypass_not_established")
@@ -1015,7 +1069,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             ("drawn", base + 8 * rng.randrange(1, size // 8 - 1)),
         )
         self.logger.info(
-            "SMU moved LOG: base=0x%x size=0x%x words=%s",
+            "INFO-DRAW SMU moved base=0x%x size=0x%x words=%s",
             base,
             size,
             ",".join(f"{n}:0x{a:x}" for n, a in words),
@@ -1096,7 +1150,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         """The SMU window over AP region 0, then the reset pair restored."""
         c = self._draw_region0()
         self.logger.info(
-            "SMU over AP LOG: smu_base=0x%x smu_size=0x%x ap_region=0 O_ap=0x%014x "
+            "INFO-DRAW SMU over AP smu_base=0x%x smu_size=0x%x ap_region=0 O_ap=0x%014x "
             "ap_local=0x%x ap_pred=0x%014x",
             SMU_OVL_BASE,
             SMU_OVL_SIZE,
@@ -1151,6 +1205,26 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         assert n_smu == 4 and n_ap == 4, f"CHK-OUT-SMU-FIRST FAIL: {line}"
         self.logger.info("CHK-OUT-SMU-FIRST PASS: %s", line)
 
+    async def _ap_zero_leg(self) -> None:
+        """CHK-OUT-CAPTURE of the AP region of the leaf programmed with offset 0."""
+        c = _Cls("ap", AP_REGION_BASE, AP_BASE, self.tcfg.ap.region, 0)
+        await self.remap.program(c, True)
+        lo, hi = granule8(c.translated)
+        await self._program_pair(PAIR_AP_ZERO, lo, hi)
+        for write in self.tcfg.dirs():
+            for p1 in (0, 1):
+                await self._cell(
+                    "ap",
+                    c.local,
+                    c.translated,
+                    write=write,
+                    prot=self.tcfg.prot(p1),
+                    expect_okay=True,
+                    graded=True,
+                )
+        await self._pair_enable(PAIR_AP_ZERO, False)
+        await self.remap.program(self.tcfg.ap, True)
+
     def _draw_region0(self) -> _Cls:
         """AP region 0 with a drawn offset: bit 55 set, bits 54:19 drawn."""
         rng = self.tcfg.rng
@@ -1168,7 +1242,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         self.tcfg = cfg = _Cfg(self.random_seed())
-        self.logger.info("outbound route attr: %s", cfg.summary())
+        self.logger.info("INFO-CFG outbound route attr: %s", cfg.summary())
         self.n_capture = 0
         self.n_expect = 0
         self.n_cell = 0
@@ -1208,7 +1282,9 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._nobypass_leg()
         await self._smu_moved_leg()
         await self._smu_over_ap_leg()
+        await self._ap_zero_leg()
         close_graded_window(self.logger)
+        await self._lowaddr_leg()
         await self.out.stop()
         line = f"captures={self.n_capture} admitted={self.n_expect}"
         assert self.n_expect > 0 and self.n_capture == self.n_expect, (
@@ -1239,6 +1315,10 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
             "0 and 1 for each bit-55 value"
         )
         self.logger.info("CHK-OUT-HIBIT PASS: %s", line)
+
+
+def _join_addrs(beats: list) -> str:
+    return ",".join(_hx(b.addr) for b in beats) or "none"
 
 
 def _hx(v) -> str:

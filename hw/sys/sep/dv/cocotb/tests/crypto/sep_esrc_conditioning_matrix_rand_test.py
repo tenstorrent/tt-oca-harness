@@ -34,8 +34,9 @@ the first TRNG reset release and never stops; each leg changes the patterns.
 Randomization (``SepSeededRng`` from the run seed, drawn before the first
 stimulus): the leg order, the partial mask M, the rate N_r (2 to 15), the lane
 noise Z (12 bits with a 0 and a 1) and its polarity, the balanced lanes, the
-divider value D_r (above the reset value, at most 1023) and the order of 0 and
-D_r in the period walk.
+divider value D_r (above the reset value, at most 1023), the order of 0 and
+D_r in the period walk and the strobe (1 or 2 after a FIFO word) at which the
+compressor bypass is set and cleared in ``OBS-COND-BYPASS-MIDGROUP``.
 
 Checkers:
   CHK-COND-MASK        each lane byte == (0xFF if Z[j] else 0x00) AND mask, 16 strobes,
@@ -97,9 +98,15 @@ Checkers:
                        and ends at 0, and at least one run completes. In the
                        pass-through window OUTPUT_COUNT is 0 on every clock.
   CHK-COND-PASSTHRU    every FIFO word == BIW observe word i + d at one d in 0..8.
-Logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the 32-bit health test with the
-compressor bypassed has no single stated behaviour) and ``OBS-BLOCKED
-CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW word is not stated).
+Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
+``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
+(entropy_source.adoc:206 "remains 0 while idle or bypassed"). No bus read in the
+whitened window shows the field non-zero, so a read of 0 does not tell a correct
+field from one that is not connected; the status tap grades the count
+(CHK-COND-SHA-COUNT). Also logged only: ``OBS-BLOCKED CHK-COND-HT-OFF`` (the
+32-bit health test with the compressor bypassed has no single stated behaviour)
+and ``OBS-BLOCKED CHK-COND-SHA-INTAKE`` (whether the whitener takes every BIW
+word is not stated).
 ``OBS-COND-PERIOD-ABS`` logs the gap of each divider value in ``clk_i`` cycles
 (the time base of the period is not stated: the register text names sample-clock
 cycles, the architecture text ``clk_i`` cycles). No text states the effect of a
@@ -108,7 +115,10 @@ written while the stream is stopped, or where the downsample count starts when
 the compressor bypass turns on: ``OBS-COND-DS-MIDRUN-UP``,
 ``OBS-COND-DS-MIDRUN-DOWN``, ``OBS-COND-DIV-MIDRUN-UP``,
 ``OBS-COND-DIV-MIDRUN-DOWN``, ``OBS-COND-DS-RESUME`` and ``OBS-COND-DS-BYPASS-ON``
-log the tapped counts and the distance to the next strobe or FIFO word.
+log the tapped counts and the distance to the next strobe or FIFO word. No text
+states the FIFO words when the compressor bypass is set and cleared again
+between two outputs of the compressor: ``OBS-COND-BYPASS-MIDGROUP`` logs the
+FIFO words pushed between the two writes and the next three words.
 """
 
 from __future__ import annotations
@@ -282,6 +292,7 @@ class Plan:
     balanced: tuple[Balanced, ...]
     div_r: int
     div_walk: tuple[int, ...]
+    bypass_strobe: int
 
     @property
     def rates(self) -> tuple[int, ...]:
@@ -291,7 +302,8 @@ class Plan:
         return (
             f"legs={','.join(self.legs)} mask=0x{self.mask:02x} n_r={self.n_r} "
             f"z=0x{self.z:03x} rates={list(self.rates)} div_r={self.div_r} "
-            f"div_walk={list(self.div_walk)} {describe(self.balanced)}"
+            f"div_walk={list(self.div_walk)} bypass_strobe={self.bypass_strobe} "
+            f"{describe(self.balanced)}"
         )
 
 
@@ -313,7 +325,8 @@ def draw_plan(seed: int) -> Plan:
     div_r = rng.randrange(RESET_DIV + 1, DIV_DRAW_MAX + 1)
     tail = [0, div_r]
     rng.shuffle(tail)
-    return Plan(seed, tuple(legs), mask, n_r, z, balanced, div_r, (RESET_DIV, *tail))
+    bypass_strobe = rng.choice((1, 2))
+    return Plan(seed, tuple(legs), mask, n_r, z, balanced, div_r, (RESET_DIV, *tail), bypass_strobe)
 
 
 class _EsrcRegs(SepAxiRegDriver):
@@ -340,12 +353,12 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.esrc = _EsrcRegs(self)
         self.p: int | None = None
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         # The testers and the window counter run from the TRNG reset release, so the
         # balanced noise runs before the first release and never stops.
         self.noise = SepEsrcPatternNoise(logger=self.logger)
@@ -498,7 +511,9 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         await self.noise.wait_words(SETTLE_STROBES, bound)
         if self._now() - c_change < SETTLE_CLOCKS:
             await ClockCycles(cocotb.top.clk_i, SETTLE_CLOCKS)
-        self.logger.info("SETTLE strobes=%d clocks=%d", SETTLE_STROBES, self._now() - c_change)
+        self.logger.info(
+            "INFO-COND-SETTLE strobes=%d clocks=%d", SETTLE_STROBES, self._now() - c_change
+        )
 
     async def _strobe_bytes(self, count: int, skip: int = 0) -> list[int]:
         """The 12 lane bytes of esrc_decor_bytes_o at each of ``count`` strobes after ``skip``."""
@@ -1046,7 +1061,8 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
 
     # --- mid-run writes (logged only) -------------------------------------------------
     async def _tap_trace(self, rows: list, run: list) -> None:
-        """One row per clk_i (ReadOnly): (strobe, gated strobe, FIFO word, ds count, div count)."""
+        """One row per clk_i (ReadOnly): (strobe, gated strobe, FIFO word, ds count,
+        div count, FIFO word data)."""
         dut = cocotb.top
         while run[0] and len(rows) < MIDRUN_CAP:
             await RisingEdge(dut.clk_i)
@@ -1058,6 +1074,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
                     self.rd(dut.esrc_compress_vld_o),
                     self.rd(dut.esrc_downsample_count_o),
                     self.rd(dut.esrc_decor_div_lane0_o),
+                    self.rd(dut.esrc_compress_data_o),
                 )
             )
         await NextTimeStep()
@@ -1185,6 +1202,11 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             **self._to_push(rows, i_w + 1),
         )
 
+        await self._bypass_midgroup(rows)
+        await self._wr(
+            ESRC_CTRL, _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=plan.n_r)
+        )
+
         # DOWNSAMPLE_RATE with the compressor bypassed: up, down below the count,
         # up, down to at or above the count (right after a word), up.
         def word(r):
@@ -1223,6 +1245,41 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         run[0] = False
         await task
         await self._wr(ESRC_CTRL, _val("CTRL"))
+
+    async def _bypass_midgroup(self, rows: list) -> None:
+        """OBS-COND-BYPASS-MIDGROUP: compressor in use, whitening off; after a FIFO
+        word and ``bypass_strobe`` gated strobes, CTRL.BYPASS_ENTROPY_COMPRESSOR is
+        written 1 and then 0. Logs the FIFO words between the two write responses
+        and the next three FIFO words after the second."""
+        plan = self.plan
+        p = RESET_DIV + 1
+        bound = (plan.n_r + 6) * p * 4
+        await self._wr(ESRC_CTRL, _val("CTRL", DOWNSAMPLE_RATE=plan.n_r, SHA256_WHITENING_ENABLE=0))
+        push = await self._wait_row(rows, len(rows), lambda r: r[2], bound)
+        strobes = []
+        if push:
+            strobes = await self._wait_row(
+                rows, push[0] + 1, lambda r: r[1], bound, count=plan.bypass_strobe
+            )
+        await self._wr(
+            ESRC_CTRL,
+            _val("CTRL", BYPASS_ENTROPY_COMPRESSOR=1, DOWNSAMPLE_RATE=plan.n_r),
+        )
+        i_on = len(rows) - 1
+        await self._wr(ESRC_CTRL, _val("CTRL", DOWNSAMPLE_RATE=plan.n_r, SHA256_WHITENING_ENABLE=0))
+        i_off = len(rows) - 1
+        nxt = await self._wait_row(rows, i_off + 1, lambda r: r[2], 3 * bound, count=3)
+        between = [rows[j][5] for j in range(i_on + 1, i_off + 1) if rows[j][2]]
+        fields = {
+            "strobe": plan.bypass_strobe,
+            "pushes_between": len(between),
+            "words_between": ",".join(f"0x{w:08x}" for w in between) or "none",
+            "next_words": ",".join(f"0x{rows[j][5]:08x}" for j in nxt) or "none",
+            "next_gaps_clk": ",".join(str(b - a) for a, b in zip(nxt, nxt[1:])) or "none",
+        }
+        if not push or len(strobes) < plan.bypass_strobe or len(nxt) < 3:
+            fields["reason"] = "timeout:push"
+        self.chk.obs("COND-BYPASS-MIDGROUP", **fields)
 
     # --- health-test leg (logged only) ----------------------------------------------
     async def _leg_health(self) -> None:
@@ -1375,7 +1432,14 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             mismatches=0 if offset is not None else "all_offsets",
         )
         outs = [_get(v, "SHA256_STATUS", "OUTPUT_COUNT") for v in out_reads]
-        self.chk.obs("COND-PASSTHRU-OUTCOUNT", reads=len(outs), nonzero=sum(1 for o in outs if o))
+        nonzero = sum(1 for o in outs if o)
+        self.chk.obs(
+            "COND-PASSTHRU-OUTCOUNT",
+            reads=len(outs),
+            nonzero=nonzero,
+            values=",".join(str(v) for v in sorted(set(outs))) or "none",
+            busy_zero=busy_ok,
+        )
 
         walk = white.output_count_walk()
         runs = walk["runs"]

@@ -86,8 +86,12 @@ OBS-SCAN-FEAT-HOLD (``FEAT_CTRL``, the DEMOTE state and lock bits and the
 shadow words whose value is not in ``shadow_efuse_values_n0_scan``; the
 specification does not state that every Class-1 word carries the name),
 OBS-SCAN-SHADOW-WR (a ``SIP_DIS``
-shadow write with ``test_en_i`` = 1 at strap 0) and OBS-SCAN-SECDIS-GO (a
-mismatch SEC_DIS go with ``test_en_i`` = 1, after the last session). The
+shadow write with ``test_en_i`` = 1 at strap 0), OBS-SCAN-SECRET0 (per strap-0
+session, the samples on which the secret shadow outputs equal the staged words),
+OBS-SCAN-KM-COPY (the three Key Manager OTP copy signals through each session)
+and OBS-SCAN-SECDIS-GO (a mismatch SEC_DIS go with ``test_en_i`` = 1, after the
+last session). ``INFO-SCAN-FEAT-ORIENT`` prints the PROD profile words of DEMOTE
+0/0 and 1/1 (model values) for orientation. The
 specification does not state these values under a scan reset.
 
 The graded window (owner code of this test) is open for each session only.
@@ -315,6 +319,9 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             "secdis": _bit(sig_bits(dut.lcc_security_disable_probe_o)),
             "dvalid": _bit(sig_bits(dut.token_digest_sdis_valid_o)),
             "digest": _int(sig_bits(dut.token_digest_sdis_sticky_o)),
+            "km_rlock": _int(sig_bits(dut.km_csr_otp_read_lock_o)),
+            "km_rlock_cold": _int(sig_bits(dut.km_csr_otp_read_lock_cold_o)),
+            "km_chg": _int(sig_bits(dut.km_csr_otp_change_status_o)),
         }
 
     async def _sampler(self, rec: list, stop: dict) -> None:
@@ -355,13 +362,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             f"CHK-SCAN-TM-HOLD FAIL: control: secure_tm_o did not read {strap} within "
             f"{STM_BOUND} cycles after sensing with the strap at {strap}"
         )
-        self.logger.info("BOOT strap=%d secure_tm_o=%d after sensing", strap, strap)
+        self.logger.info("INFO-BOOT strap=%d secure_tm_o=%d after sensing", strap, strap)
 
     async def _demote_and_lock(self) -> None:
         for reg in (1, 2):
             for op, val in (("demote", DEMOTE_BIT), ("lock", LOCK_BIT)):
                 resp = await self.fd.wr_graded_by_readback(DEMOTE_ADDR[reg], val, length=8)
-                self.logger.info("DEMOTE LOG: reg=DEMOTE_%d op=%s resp=%d", reg, op, resp)
+                self.logger.info("INFO-DEMOTE LOG: reg=DEMOTE_%d op=%s resp=%d", reg, op, resp)
 
     async def _release_km(self) -> None:
         dut: Any = cocotb.top
@@ -475,11 +482,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         not_low = [(s["t"], [names[i] for i, v in enumerate(s["nets"]) if v != 0]) for s in during]
         not_low = [x for x in not_low if x[1]]
         assert len(during) == cfg.w and not not_low, (
-            f"CTRL-SCAN-REACH FAIL: leg={leg} edges_low={len(during)} expected={cfg.w}: "
+            f"CTRL-MISSING SCAN-REACH: leg={leg} edges_low={len(during)} expected={cfg.w}: "
             f"nets not low with scan_rst_ni=0 test_en_i=1: {not_low[:4]}"
         )
         self.logger.info(
-            "CTRL-SCAN-REACH: leg=%s nets_low=%d/%d on %d edges w=%d phase=%d scan_rst_ni "
+            "CTRL-SCAN-REACH seen: leg=%s nets_low=%d/%d on %d edges w=%d phase=%d scan_rst_ni "
             "fell t=%d rose t=%d",
             leg,
             N_NETS,
@@ -533,6 +540,17 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             len(win),
             " ".join(f"{k}={v}" for k, v in moved.items()),
             ",".join(feats[:4]),
+        )
+        km = ("km_rlock", "km_rlock_cold", "km_chg")
+        self.logger.info(
+            "OBS-SCAN-KM-COPY: leg=%s strap=%d before %s; samples=%d moved %s; during %s; last %s",
+            leg,
+            strap,
+            " ".join(f"{k}={_hex(base[k], 3)}" for k in km),
+            len(win),
+            " ".join(f"{k}={sum(1 for x in win if x[k] != base[k])}" for k in km),
+            " ".join(f"{k}={','.join(sorted({_hex(x[k], 3) for x in win}))}" for k in km),
+            " ".join(f"{k}={_hex(win[-1][k], 3)}" for k in km),
         )
 
     def _obs_class1_names(self) -> None:
@@ -601,13 +619,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
 
         got = sorted(v if v is not None else -1 for v in n0 + nm)
         assert got == sorted(staged), (
-            f"CTRL-SCAN-N0-STAGED FAIL: the two storage arrays (n0_scan={len(n0)} "
+            f"CTRL-MISSING SCAN-N0-STAGED: the two storage arrays (n0_scan={len(n0)} "
             f"normal={len(nm)} entries) do not hold the {NUM_FUSE_WORDS} staged words: "
             f"extra={sorted(set(got) - set(staged))[:4]} "
             f"missing={sorted(set(staged) - set(got))[:4]}"
         )
         self.logger.info(
-            "CTRL-SCAN-N0-STAGED: n0_scan=%d normal=%d entries hold the %d staged words",
+            "CTRL-SCAN-N0-STAGED seen: n0_scan=%d normal=%d entries hold the %d staged words",
             len(n0),
             len(nm),
             NUM_FUSE_WORDS,
@@ -735,8 +753,8 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             and after["dvalid"] == 1
             and bound is not None
             and after["digest"] == bound
-        ), f"CTRL-SECDIS-SET FAIL: {line}"
-        self.logger.info("CTRL-SECDIS-SET: %s", line)
+        ), f"CTRL-MISSING SECDIS-SET: {line}"
+        self.logger.info("CTRL-SECDIS-SET seen: %s", line)
         s = await self._session(leg, 0)
         self._obs_hold(leg, 0, s)
         win = s["win"]
@@ -796,10 +814,10 @@ class sep_scan_mode_state_hold_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.tcfg = cfg = _Cfg(seed)
         self.logger.info(
-            "DRAW w=%d phase=%d strap_order=%s strap_flip=%d,%d,%d",
+            "INFO-DRAW w=%d phase=%d strap_order=%s strap_flip=%d,%d,%d",
             cfg.w,
             cfg.phase,
             ",".join(str(s) for s in cfg.straps),
@@ -811,7 +829,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         self.cfg.wdt_clk_period_ns = P_W * self.cfg.sys_clk_period_ns
         self.clock_phases_ps = {"clk_wdt_i": WDT_PHASE_PCT * self.sys_ps // 100}
         self.logger.info(
-            "CFG H=%d pre=%d p_w=%d wdt_phase_pct=%d sense_bound=%d tap_bound=%d stm_bound=%d",
+            "INFO-CFG H=%d pre=%d p_w=%d wdt_phase_pct=%d sense_bound=%d tap_bound=%d stm_bound=%d",
             H,
             PRE,
             P_W,
@@ -853,7 +871,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             for d in (0, 1)
         }
         self.logger.info(
-            "OBS-SCAN-FEAT-HOLD orientation: profile PROD demote 0/0=0x%016x 1/1=0x%016x "
+            "INFO-SCAN-FEAT-ORIENT: profile PROD demote 0/0=0x%016x 1/1=0x%016x "
             "(staged SIP_DIS=0x%016x SYS_DIS=0x%016x)",
             orient[0],
             orient[1],

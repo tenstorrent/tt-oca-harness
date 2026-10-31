@@ -42,10 +42,16 @@ short name ``ToO`` below):
 * Data lane output enables per segment, on the lanes the segment uses: x1 TX
   and x1 bidirectional drive lane 0 and not lane 1 (lanes 1:0 = 0b01); x2 TX
   drives lanes 1:0; x4 TX drives lanes 3:0; x2 RX drives neither of lanes 1:0
-  and x4 RX no lane (a lane the host receives on is not driven). No source
-  states lanes 3:2 at x1 or x2; the leaf logs them as OBS-SPI-OE-UNUSED. The
-  spec states no pattern for an x1 RX-only or a dummy segment; the leaf logs
-  them as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
+  and x4 RX no lane (a lane the host receives on is not driven); an x2 dummy
+  segment drives neither of lanes 1:0 and an x4 dummy segment no lane (a
+  dummy segment "Holds the bus in a high-impedance state for some number of
+  "dummy" clock cycles (neither side transmits)", ``ToO:63``). No source
+  states lanes 3:2 at x1 or x2; the leaf logs them as OBS-SPI-OE-UNUSED. An
+  x1 dummy segment is logged as OBS-SPI-OE-DUMMY: ``ToO:29`` ("for
+  Standard-mode commands `SD[0]` is always configured as an output") and
+  ``ToO:63`` give different patterns. An x1 RX-only segment is logged as
+  OBS-SPI-OE-X1RX: ``ToO:29`` gives lane 0 driven, and the logged DUT
+  pattern differs; the gap is held for review, not graded.
 
 The leaf walks the 10 legal SPEED x DIRECTION cells as single segments, a dummy
 segment between FIFO reads, CSAAT chains that change speed or direction, the
@@ -71,9 +77,15 @@ Checks:
   entire DATA word, the partial word will be zero-padded and inserted into the
   RX FIFO once the segment is completed."
   (``vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/doc/theory_of_operation.md:485``).
-  The pad byte position
-  depends on ByteOrder and is not graded here. Control: every Tx-only and
+  Control: every Tx-only and
   dummy cell starts with RXEMPTY=1 and leaves RXQD at 0.
+* CHK-SPI-RX-PAD: for an Rx or bidirectional segment whose LEN+1 is not a
+  multiple of 4, the unused most significant bytes of the last RXDATA word
+  read 0 ("If ByteOrder=1 (the default, Little-Endian case), this padding will
+  fill the unused most-significant bytes of the final RX DATA word",
+  ``ToO:486``; ByteOrder 1 as above). STATUS.BYTEORDER is logged in the line
+  and is not the golden. A seed with no such segment logs
+  ``INFO-SPI-RX-PAD partial_segments=0``.
 * CHK-SPI-DUMMY: a dummy segment leaves TXQD and RXQD unchanged and runs LEN+1
   sck cycles. Control: both
   are at least 1 before the segment.
@@ -97,8 +109,9 @@ Checks:
   bytes. Control: x1, x2 and x4 are each graded in both directions.
 * CHK-SPI-OE-SEG: in each graded frame, the data lane output enables at every
   sample edge of a segment equal the pattern of that segment. Control: every
-  pattern row (x1 TX, x1 bidirectional, x2 TX, x2 RX, x4 TX, x4 RX) is
-  graded. x1 RX-only and dummy segments are logged as OBS lines.
+  pattern row (x1 TX, x1 bidirectional, x2 TX, x2 RX, x4 TX, x4 RX, x2
+  dummy, x4 dummy) is graded. x1 RX-only and x1 dummy segments are logged as
+  OBS lines.
 * CHK-SPI-ILLEGAL: each of the 5 graded illegal cells sets ERROR_STATUS to
   CMDINVAL only, and a legal control command after the SPI clean state reads
   ERROR_STATUS 0. SPEED 3 with DIRECTION 2 runs as the control
@@ -186,9 +199,9 @@ CLKDIV_CLASSES = {"zero": (0, 0), "small": (1, 3), "mid": (4, 7)}
 LONG_DUMMY_LEN = 0xFFFFF
 LONG_DUMMY_CYCLES = LONG_DUMMY_LEN + 1
 
-# Output-enable pattern rows the leaf must grade. The x1 RX-only and dummy rows
-# have no stated pattern; the leaf logs them as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
-OE_ROWS = ("x1_tx", "x1_bidir", "x2_tx", "x2_rx", "x4_tx", "x4_rx")
+# Output-enable pattern rows the leaf must grade. The x1 RX-only and x1 dummy rows
+# are logged as OBS-SPI-OE-X1RX and OBS-SPI-OE-DUMMY.
+OE_ROWS = ("x1_tx", "x1_bidir", "x2_tx", "x2_rx", "x4_tx", "x4_rx", "x2_dummy", "x4_dummy")
 
 # Bounds. Each expiry fails the check that the wait feeds.
 SERVICE_READS = 50_000
@@ -219,7 +232,7 @@ def oe_expect(speed: int, direction: int) -> tuple[int, int] | None:
     four at x4. No source states lanes 3:2 at x1 or x2; the leaf logs them.
     """
     if direction == DIR_DUMMY:
-        return None
+        return None if speed == 0 else (0b0000, 0b0011 if speed == 1 else 0b1111)
     if speed == 0:
         return None if direction == DIR_RX else (0b0001, 0b0011)
     if direction == DIR_RX:
@@ -296,9 +309,7 @@ class Seg:
 
     @property
     def oe_row(self) -> str:
-        if self.direction == DIR_DUMMY:
-            return "dummy"
-        kind = {DIR_TX: "tx", DIR_RX: "rx", DIR_BIDIR: "bidir"}[self.direction]
+        kind = {DIR_DUMMY: "dummy", DIR_TX: "tx", DIR_RX: "rx", DIR_BIDIR: "bidir"}[self.direction]
         return f"x{self.lanes}_{kind}"
 
     def fmt(self) -> str:
@@ -433,7 +444,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
         )
         csaat_dirs = [[s.direction for s in segs if s.csaat] for _, _, _, segs in self.chains]
         self.logger.info(
-            "PLAN seed=%d cells=%s illegal=%s dummy_leg=s%dd0:%s/L%d chains=%s "
+            "INFO-PLAN seed=%d cells=%s illegal=%s dummy_leg=s%dd0:%s/L%d chains=%s "
             "chain_csaat1_dirs=%s long_dummy=%d",
             seed,
             cell_txt,
@@ -446,7 +457,7 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             self.long_dummy,
         )
         self.logger.info(
-            "DRAW seed=%d chain_ctl_lens=%s illegal_lens=%s illegal_ctl_lens=%s "
+            "INFO-DRAW seed=%d chain_ctl_lens=%s illegal_lens=%s illegal_ctl_lens=%s "
             "fifo_tx_word=0x%08x",
             seed,
             self.chain_ctl_lens,
@@ -721,7 +732,9 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             self.logger.info("CHK-SPI-CELL PASS %s", line)
 
             if seg.is_rx:
-                rx_rows.append((seg, res["rx_read"], rxqd, drained))
+                all_rx = res["rx_words"] + drained_words
+                last_word = int(all_rx[-1]) if all_rx else 0
+                rx_rows.append((seg, res["rx_read"], rxqd, drained, last_word, st.byteorder))
             else:
                 nonrx_rxqd.append(rxqd)
                 if rxqd or drained:
@@ -745,8 +758,20 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                 f"CTRL-MISSING seed={seed} CHK-SPI-RXCNT: graded Rx directions {sorted(dirs)}, "
                 f"non-Rx controls {len(nonrx_rxqd)}"
             )
-        for seg, in_seg, rxqd, drained in rx_rows:
+        partial = 0
+        for seg, in_seg, rxqd, drained, last_word, byteorder in rx_rows:
             nbytes = seg.len_field + 1
+            if nbytes % 4:
+                partial += 1
+                pad_mask = 0xFFFF_FFFF & ~((1 << (8 * (nbytes % 4))) - 1)
+                pad = (
+                    f"seed={seed} speed={seg.speed} dir={seg.direction} bytes={nbytes} "
+                    f"last_word=0x{last_word:08x} pad_mask=0x{pad_mask:08x} "
+                    f"pad=0x{last_word & pad_mask:08x} expect_pad=0x00000000 byteorder={byteorder}"
+                )
+                if last_word & pad_mask:
+                    raise AssertionError(f"CHK-SPI-RX-PAD FAIL {pad}")
+                self.logger.info("CHK-SPI-RX-PAD PASS %s", pad)
             words = in_seg + drained
             row = (
                 f"seed={seed} speed={seg.speed} dir={seg.direction} bytes={nbytes} "
@@ -760,6 +785,8 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
             if drained != rxqd or words != exp or in_seg + rxqd != exp:
                 raise AssertionError(f"CHK-SPI-RXCNT FAIL {line}")
             self.logger.info("CHK-SPI-RXCNT PASS %s", line)
+        if not partial:
+            self.logger.info("INFO-SPI-RX-PAD seed=%d partial_segments=0", seed)
         self.ran.update(("CHK-SPI-CELL", "CHK-SPI-RXCNT"))
 
     async def _dummy_fifo_leg(self) -> None:

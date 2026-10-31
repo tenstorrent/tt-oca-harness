@@ -6,7 +6,10 @@ cpu mode. Firmware arms PIC source 40 and presents a SEC_DISABLE token.
 The host injects a collapse on that comparator after READY (tb port; no
 LSU conflict). Firmware proves the ISR claim id, the SEC_DISABLE sticky
 bit, and that masking meie[40] stops re-entry. TOKEN_MATCH_FAULT is sw=r;
-there is no W1C.
+there is no W1C. With meie[40] enabled again and the handler not masking,
+the handler enters at least twice in a fixed window
+(doc/programmer/src/sep-programming.adoc:235-237 "an unmasked handler
+re-enters"); the firmware storm cap stops it after five entries.
 
 Real fuse sense on a blank OTP image, staged with write_efuse_image before
 bring-up, so the base test's post-sense shadow compare runs. The SEC_DISABLE
@@ -89,6 +92,7 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
             "CHK-PIC-CLAIM PASS:",
             "CHK-PIC-FAULT PASS:",
             "CHK-PIC-MASK PASS:",
+            "CHK-PIC-LEVEL-REENTRY PASS:",
         ):
             if needle not in console:
                 raise AssertionError(f"firmware missing {needle!r}")
@@ -98,4 +102,7 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
             "firmware did not signal a PASS verdict; the console needles are not "
             "a verdict on their own"
         )
-        self.logger.info("CHK-PIC-40 PASS: claim id 40, SEC_DISABLE sticky, mask stopped re-entry")
+        self.logger.info(
+            "CHK-PIC-40 PASS: claim id 40, SEC_DISABLE sticky, mask stopped re-entry, "
+            "unmasked handler re-entered"
+        )

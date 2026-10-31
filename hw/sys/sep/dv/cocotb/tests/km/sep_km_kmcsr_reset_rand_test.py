@@ -8,7 +8,7 @@ field non-zero) before the first reset, so the dual-rail OTP bundle at the
 SEP-to-KM boundary carries non-trivial value and complement words; the bank
 keeps the image across every rst_ni pulse and it stays the golden of the
 post-sense shadow compare after each sense.
-SRAM scrambler off. Seeded (``SepSeededRng``): every draw is logged as ``DRAW``.
+SRAM scrambler off. Seeded (``SepSeededRng``): every draw is logged as ``INFO-DRAW``.
 
 The KM CPU runs the POKE image (``tests/km_fw/km_rom_poke.S``), a legal master
 of the KM bus that executes the op lists the host posts and stores what the DUT
@@ -26,6 +26,11 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-CSR-STATUS    each IRQ_STATUS bit is sticky; a W1C of the other bits and a write
                     of 0 keep it; its own W1C clears only it; bits [31:12] read 0
   CHK-CSR-SET       IRQ_SET sets exactly the mask bits
+  CHK-CSR-SET-READ  a read of the write-only IRQ_SET returns 0
+  CHK-CSR-RO        a write of the complement to CTRL, DEBUG, OTP_LIFE_CYCLE and
+                    OTP_DEMOTION_STATE (sw = r) leaves the readback unchanged.
+                    Control CTRL-CSR-RO-WR: the write op completed, and the same
+                    value written next to the RW SOFT_RST_CODE reads back
   CHK-CSR-ENABLE    the CPU IRQ line 3 handler enters once when S AND E is non-zero and
                     never when it is zero; a masked bit still sets
   CHK-CSR-ENTRY     IRQ_ENTRY_ADDR resets to 0x10, takes any value while unlocked, keeps
@@ -40,19 +45,48 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-SRAM-R31      with region 31 locked, stores at 0xFC00, 0xFC04, 0xFFFC are dropped
   CHK-SRAM-RELEASE  a PARK clears every lock and a store to a formerly locked region lands
   CHK-RST-WARM      SOFT and PARK reset the warm witnesses, keep the cold and data ones
+  CHK-RST-PARK-DOMAINS  after PARK the DRBG sampler CFG (warm domain) reads its reset
+                    0x01000000 and COLD_BOOT_DONE (cold domain) reads 1
   CHK-RST-COLD      a cold reset clears both domains and the mailbox word
-  CHK-RST-WRONG     a wrong SOFT_RST_CODE takes no reset
+  CHK-RST-WRONG     a wrong SOFT_RST_CODE (0 after all ones, so each readback
+                    differs from the value before) takes no reset: the witnesses keep their
+                    values and the KM warm reset (``km_cpu_rst_n_o``) never reads 0
+                    from the first wrong write to the end of the list. Controls:
+                    CTRL-RST-WRONG-WR (SOFT_RST_CODE, RW, reads back each wrong code)
+                    and CTRL-RST-SOFT-WRST (the same probe reads 0 in the SOFT round)
+  CHK-REAL-CAUSE    each real cause raises exactly its IRQ_STATUS bits: a read past
+                    the KPV extent AXI_SLVERR, a read of the reserved span at 0x4000
+                    AXI_DECERR, a ROM store ROM_WRITE_ERR alone, a DRBG sampler read
+                    timeout AXI_SLVERR and DRBG_ERR
   CHK-HOLD          the KM warm reset rises at least MIN_RESET_CYCLES (10)
                     clocks after the km_sw_rst_n rise
   CHK-ISO           the three KM isolation probes stay 0 during a SOFT reset
+  CHK-RST-SOFT-MBOX after SOFT the mailbox word survives: the restarted image reads it
+                    as its list header and stops in ERROR with ERR_HDR and the word's
+                    low 24 bits
+  CHK-KMCSR-READ-RESP   each read of a virtual UART or testbench word completes OKAY
+  CHK-KMCSR-RESET-READ  VUART_TX, TB_RESULT, TB_SIGNATURE, TB_ERRCODE, TB_SUBTEST and
+                    TB_CMD_ARG (sw = rw, hw = r, no writer in this leaf) read their
+                    RDL reset
+  CHK-KMCSR-VUART-STATUS  each VUART_STATUS field reads its golden
+                    (``hw/ip/key_manager/regs/km_csr.rdl:955-994``): TX_READY 1,
+                    RX_VALID 0 and RSVD 0 (RDL reset); PRINT_ENABLE reads the
+                    testbench drive ("Set by testbench", km_csr.rdl:980): 1 with
+                    ``+VUART_PRINT``, else 0. Every bit is read on its own and a
+                    field with an unknown bit logs ``X``. The leaf logs the drive
+                    as INFO-KMCSR-VUART-DRIVE. The testlist entry
+                    ``sep_km_kmcsr_reset_rand_test`` passes ``+VUART_PRINT`` and
+                    grades bit 2 at drive 1; the entry
+                    ``sep_km_kmcsr_reset_rand_test_print_off`` omits it and grades
+                    bit 2 at drive 0. Both run in the regression, so a bit 2
+                    that reads a constant fails one of them
 
 Controls: the VERSION read before the write; the W1C of the other bits next to
 the own W1C; E = 0 next to case (c), which raises the line for each of the 12
 sources; a landed store in every round with a dropped one; region 31 unlocked in
 round 2; the dropped store before each PARK; non-zero witnesses before every
 reset; the exact code of the SOFT round next to the wrong codes; the probes that
-read isolated during the PARK round. The real-cause pass (AXI_SLVERR, AXI_DECERR,
-ROM_WRITE_ERR, DRBG_ERR) is logged only. Open-owner cells that run here are
+read isolated during the PARK round. Open-owner cells that run here are
 logged with ``control=1``.
 
 The extra PARK hold W counts host clocks from the ``km_sw_rst_n`` fall
@@ -61,7 +95,10 @@ on ``s_axi_aw*``. The first PARK uses the largest W and gives the fall delay and
 the AW latency that time the shorter holds; the leaf logs the measured W of
 every PARK and records a missed W as a missing control.
 
-Not sent (not stated): an IRQ_SET read, the write response of DEBUG or CTRL.
+Logged only (no register text states them): ``OBS-KMCSR-ACCESS``, the AXI
+response of the IRQ_SET read and of each read-only register write, and the
+data of the hardware-driven virtual UART and testbench words other than
+VUART_STATUS.
 """
 
 from __future__ import annotations
@@ -228,10 +265,12 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         "CHK-CSR-VER",
         "CHK-CSR-STATUS",
         "CHK-CSR-SET",
+        "CHK-CSR-SET-READ",
         "CHK-CSR-ENABLE",
         "CHK-CSR-ENTRY",
         "CHK-CSR-SCR",
         "CHK-CSR-DEBUG",
+        "CHK-CSR-RO",
         "CHK-SRAM-SIZE",
         "CHK-SRAM-LOCK",
         "CHK-SRAM-DROP",
@@ -239,17 +278,23 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         "CHK-SRAM-R31",
         "CHK-SRAM-RELEASE",
         "CHK-RST-WARM",
+        "CHK-RST-PARK-DOMAINS",
         "CHK-RST-COLD",
         "CHK-RST-WRONG",
+        "CHK-REAL-CAUSE",
         "CHK-HOLD",
         "CHK-ISO",
+        "CHK-RST-SOFT-MBOX",
+        "CHK-KMCSR-READ-RESP",
+        "CHK-KMCSR-RESET-READ",
+        "CHK-KMCSR-VUART-STATUS",
     )
 
     # ------------------------------------------------------------------ main
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.chk = SepChkLog(self, TEST, seed)
         self.plan = pl.draw_plan(seed)
         for line in pl.plan_draw_lines(self.plan):
@@ -280,10 +325,10 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         if zero:
             raise AssertionError(f"staged eFuse image has zero KM OTP field(s) {zero}")
         self.write_efuse_image(image)
-        self.logger.info(
-            "LOG efuse image lc_raw=0x%x %s",
-            image.lc_raw(),
-            " ".join(f"{n}[0]=0x{image.field_int(n) & 0xFFFF_FFFF:08x}" for n in _KM_OTP_FIELDS),
+        self.chk.info(
+            "EFUSE-IMAGE",
+            lc_raw=f"0x{image.lc_raw():x}",
+            **{f"{n}0": f"0x{image.field_int(n) & 0xFFFF_FFFF:08x}" for n in _KM_OTP_FIELDS},
         )
         await self.bring_up_no_cpu()
         self.swrst = SepSwReset(self)
@@ -308,6 +353,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         await self._irq_walk()
         close_graded_window(self.logger)
         await self._real_cause()
+        await self._access_obs()
         open_graded_window(TEST, self.logger)
         await self._irq_set_masks()
         await self._irq_enable_cases()
@@ -344,7 +390,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         if a is None:
             raise AssertionError(f"no SW_RESET_N AWVALID seen after the {what} write")
         self.lat = a - launch
-        self.logger.info("LOG sw_reset_n_aw_latency=%d clocks (%s)", self.lat, what)
+        self.chk.info("SW-RESET-N-AW-LATENCY", clocks=self.lat, what=what)
         return a
 
     async def _wait_sep_reset_n(self) -> None:
@@ -399,10 +445,9 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 kp.rd(pl.A_SCR_CTRL),
             ]
         )
-        en, entry, lock, ver, dbg, ctrl, scr = (x.value for x in r)
+        en, entry, lock, _ver, dbg, ctrl, scr = (x.value for x in r)
         self.entry_reset = (entry, lock & pl.ENTRY_LOCK_BIT, lock & ~pl.ENTRY_LOCK_BIT)
         self.scr_boot = scr
-        self.chk.info("CSR-VERSION-READ", control=1, version=_h(ver))
         self.chk.ok(
             "CSR-ENABLE",
             (en & pl.IRQ_EN_FIELDS) == pl.IRQ_ENABLE_RESET,
@@ -529,20 +574,26 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             status_set=status_set,
         )
 
-    # -------------------------------------------------- step 5: real causes (log only)
+    # ---------------------------------------------------------- step 5: real causes
 
     async def _real_cause(self) -> None:
         to1 = pl.KM_SMP.value("CFG_REG", TIMEOUT=1, PREFETCH=0)
+        bit = {n: 1 << pl.IRQ_NAMES.index(n) for n in pl.IRQ_NAMES}
+        # Goldens: regs/gen/adoc/memory_map.adoc (past the KPV extent SLVERR, the
+        # reserved span DECERR, a ROM write completes without an error response and
+        # sets ROM_WRITE_ERR); architecture.adoc "Errors and reset" (a DRBG timeout
+        # completes with SLVERR and pulses the DRBG error source).
         causes = [
-            ("kpv_past_extent", [kp.rd(pl.KPV_END, raw=True)]),
-            ("reserved_span", [kp.rd(pl.ROM_END, raw=True)]),
-            ("rom_store", [kp.wr(pl.ROM_BASE, 0x5A5A_5A5A, raw=True)]),
+            ("kpv_past_extent", [kp.rd(pl.KPV_END, raw=True)], bit["AXI_SLVERR"]),
+            ("reserved_span", [kp.rd(pl.ROM_END, raw=True)], bit["AXI_DECERR"]),
+            ("rom_store", [kp.wr(pl.ROM_BASE, 0x5A5A_5A5A, raw=True)], bit["ROM_WRITE_ERR"]),
             (
                 "drbg_timeout",
                 [kp.wr(pl.A_SMP_CFG, to1, raw=True), kp.rd(pl.A_SMP_DATA, raw=True)],
+                bit["AXI_SLVERR"] | bit["DRBG_ERR"],
             ),
         ]
-        for name, ops in causes:
+        for name, ops, golden in causes:
             r = await self._run(
                 [
                     self._raw_clear_irq(),
@@ -554,7 +605,131 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             )
             irq = r[1 + len(ops)].value
             rose = [pl.IRQ_NAMES[b] for b in range(pl.IRQ_BITS) if (irq >> b) & 1]
-            self.chk.obs("REAL-CAUSE", cause=name, irq_status=_h(irq), rose=rose or "none")
+            self.chk.ok(
+                "REAL-CAUSE",
+                irq == golden,
+                cause=name,
+                irq_status=_h(irq),
+                golden=_h(golden),
+                rose=rose or "none",
+            )
+
+    async def _access_obs(self) -> None:
+        """Log each response no register text states; grade the stated data.
+
+        The error responses set the sticky IRQ_STATUS.AXI_SLVERR, so the step ends
+        with an IRQ_STATUS clear and the IRQ_SET step starts clean.
+        """
+        reads = await self._run([kp.rd(a) for _, a in pl.OBS_READS], allow_unknown=True)
+        slot = 0
+        for (reg, _), x in zip(pl.OBS_READS, reads):
+            rdata = _h(x.value) if x.known else "X"
+            if reg == "VUART_STATUS":
+                self._grade_vuart_status(slot)
+            slot += x.op.slots
+            if reg == "IRQ_SET":
+                self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata, axi_slverr=x.slv)
+                self.chk.ok("CSR-SET-READ", x.known and x.value == 0, rdata=rdata, golden=_h(0))
+                continue
+            self.chk.ok(
+                "KMCSR-READ-RESP",
+                x.flags_known and x.slv == 0 and x.dec == 0,
+                reg=reg,
+                axi_slverr=x.slv,
+                axi_decerr=x.dec,
+            )
+            if reg == "VUART_STATUS":
+                continue
+            if reg in pl.RESET_READS:
+                golden = pl.RESET_READS[reg]
+                self.chk.ok(
+                    "KMCSR-RESET-READ",
+                    x.known and x.value == golden,
+                    reg=reg,
+                    rdata=rdata,
+                    golden=_h(golden),
+                )
+            else:
+                self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata)
+        for reg, a in pl.OBS_RO_WRITES:
+            before = (await self._run([kp.rd(a, raw=True)]))[0].value
+            wr_val = ~before & pl.WORD_MASK
+            if wr_val == pl.SOFT_RST_CODE:
+                raise AssertionError(f"{reg}: the complement equals the SOFT_RST_CODE")
+            wr, rd, _twin_wr, twin, _clr = await self._run(
+                [
+                    kp.wr(a, wr_val),
+                    kp.rd(a, raw=True),
+                    kp.wr(pl.A_SOFT_RST, wr_val, raw=True),
+                    kp.rd(pl.A_SOFT_RST, raw=True),
+                    kp.wr(pl.A_SOFT_RST, 0, raw=True),
+                ]
+            )
+            self.chk.ctrl(
+                "CSR-RO-WR",
+                wr.flags_known and twin.value == wr_val,
+                reg=reg,
+                wr_val=_h(wr_val),
+                axi_slverr=wr.slv,
+                twin_soft_rst_code=_h(twin.value),
+            )
+            self.chk.obs(
+                "KMCSR-ACCESS",
+                reg=reg,
+                op="wr",
+                before=_h(before),
+                rdata=_h(rd.value),
+                axi_slverr=wr.slv,
+            )
+            self.chk.ok(
+                "CSR-RO",
+                rd.value == before,
+                reg=reg,
+                wr_val=_h(wr_val),
+                rdata=_h(rd.value),
+                golden=_h(before),
+            )
+        await self._run([self._raw_clear_irq()])
+
+    def _grade_vuart_status(self, slot: int) -> None:
+        """Grade each VUART_STATUS field of result slot ``slot``.
+
+        ``hw/ip/key_manager/regs/km_csr.rdl:955-994``: TX_READY [0] reset 1 ("always 1
+        in simulation"), RX_VALID [1] reset 0 (no RX data is offered in this leaf),
+        RSVD [31:3] reset 0. PRINT_ENABLE [2] has no storage and is "Set by testbench"
+        (km_csr.rdl:980); ``tb_top`` drives it to 1 with ``+VUART_PRINT``, else 0, and
+        that drive is its golden. One testlist entry runs at each drive. Each bit of the
+        stored word is read on its own, so a field with an unknown bit logs ``X`` and
+        fails by name.
+        """
+        probe = cocotb.top.km_sram_probe_o
+        lsb = 32 * kp.slot_words(slot)[0]
+        value = known = 0
+        for b in range(32):
+            try:
+                bit = (self.rd(probe, 1 << (lsb + b)) >> lsb) & (1 << b)
+            except AssertionError:
+                continue
+            known |= 1 << b
+            value |= bit
+        driven = int("VUART_PRINT" in cocotb.plusargs)
+        self.chk.info("KMCSR-VUART-DRIVE", print_enable=driven)
+        for name, mask, lsb_f, reset in pl.VUART_STATUS_FIELDS:
+            field_known = known & mask == mask
+            got = (value & mask) >> lsb_f
+            tb_drive = name.upper() == "PRINT_ENABLE"
+            golden = driven if tb_drive else reset
+            extra = {"driven": driven} if tb_drive else {}
+            self.chk.ok(
+                "KMCSR-VUART-STATUS",
+                field_known and got == golden,
+                field=name,
+                value=(got if mask >> lsb_f == 1 else _h(got)) if field_known else "X",
+                golden=golden if mask >> lsb_f == 1 else _h(golden),
+                **extra,
+                known_mask=_h(known),
+                rdata=_h(value),
+            )
 
     # ---------------------------------------------------------- step 6: IRQ_SET masks
 
@@ -1231,7 +1406,7 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         h = await self.poke.post(ops)
         await self.poke.wait(h, (kp.ST_RUN,))
         await self.poke.mbox.post_raw_words([word])
-        self.logger.info("LOG mailbox word 0x%08x pushed after the image read its list", word)
+        self.chk.info("MBOX-PUSH", word=f"0x{word:08x}", after="image_read_list")
         return h
 
     async def _readback(self, w, names, *, allow_unknown: bool = False):
@@ -1262,12 +1437,18 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         iso_or = tuple(int(any(s.iso[i] for s in smp if s.iso[i] is not None)) for i in range(3))
         unknown = sum(1 for s in smp if None in s.iso)
         self.iso_soft = (iso_or, unknown, len(smp))
+        wrst_low = sum(1 for s in smp if s.wrst == 0)
+        self.chk.ctrl("RST-SOFT-WRST", wrst_low > 0, round=k, km_cpu_rst_low_clocks=wrst_low)
         depth = await self._inbound_depth()
-        self.chk.obs(
+        err = self.poke.word(kp.W_ERR)
+        err_exp = (kp.ERR_HDR << 24) | (w.mbox_word & 0xFF_FFFF)
+        self.chk.ok(
             "RST-SOFT-MBOX",
+            st[0] == kp.ST_ERROR and err == err_exp,
             round=k,
             state=kp.STATE_NAMES.get(st[0], st[0]),
-            err=_h(self.poke.word(kp.W_ERR)),
+            err=_h(err),
+            expected=_h(err_exp),
             word_low=_h(w.mbox_word & 0xFF_FFFF),
             sep_inbound_depth=depth,
         )
@@ -1304,19 +1485,26 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 raise AssertionError("a wrong SOFT_RST_CODE equals the reset code")
             ops += [
                 kp.wr(pl.A_SOFT_RST, c, raw=True),
+                kp.rd(pl.A_SOFT_RST, raw=True),
                 kp.rd(pl.A_SRAM_LOCK, raw=True),
                 kp.rd(pl.A_BOOT, raw=True),
                 kp.delay(_WRONG_GAP_OPS),
             ]
         ops.append(kp.sync())
+        self.watch.start()
         h = await self._post_and_push(ops, w.mbox_word)
         await self.poke.wait(h, (kp.ST_DONE,))
+        await self.watch.stop()
+        wrst_low = sum(1 for s in self.watch.rec if s.wrst == 0)
+        samples = len(self.watch.rec)
         res = self.poke.results(h)
         saw_word = (res[0].data[0] & pl.MBOX_KM_INBOUND_EMPTY) == 0
         self.chk.ctrl("RST-WRONG-MBOX-SEEN", saw_word, round=k, km_status=_h(res[0].data[0]))
         for n, c in enumerate(self.plan.wrong_codes):
-            lock = res[2 + 4 * n].value
-            cbd = res[3 + 4 * n].value & pl.CBD_BIT
+            code_rd = res[2 + 5 * n].value
+            lock = res[3 + 5 * n].value
+            cbd = res[4 + 5 * n].value & pl.CBD_BIT
+            self.chk.ctrl("RST-WRONG-WR", code_rd == c, val=_h(c), soft_rst_code=_h(code_rd))
             self.chk.ok(
                 "RST-WRONG",
                 lock == pre["sram_lock"] and cbd == pl.CBD_BIT,
@@ -1330,14 +1518,15 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         kept = {n: post[n] == pre[n] for n in pre}
         self.chk.ok(
             "RST-WRONG",
-            all(kept.values()) and mbox_rd == w.mbox_word,
+            all(kept.values()) and mbox_rd == w.mbox_word and samples > 0 and wrst_low == 0,
             val="all",
             round=k,
             witnesses_kept=int(all(kept.values())),
             changed=[n for n, v in kept.items() if not v] or "none",
             mbox_word=_h(w.mbox_word),
             mbox_read=_h(mbox_rd),
-            restart=0,
+            km_cpu_rst_low_clocks=wrst_low,
+            samples=samples,
             rsvd={n: _h(v) for n, v in rsvd.items() if v} or "none",
         )
 
@@ -1385,7 +1574,14 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             mbox_depth_hold=held.get("depth"),
             rsvd={n: _h(v) for n, v in rsvd.items() if v} or "none",
         )
-        self.chk.obs("RST-PARK-OWNER", control=1, cfg=_h(post["cfg"]), cbd=post["cbd"])
+        self.chk.ok(
+            "RST-PARK-DOMAINS",
+            post["cfg"] == pl.CFG_RESET and post["cbd"] == pl.CBD_BIT,
+            round=k,
+            cfg=_h(post["cfg"]),
+            cfg_golden=_h(pl.CFG_RESET),
+            cbd=post["cbd"],
+        )
         self._warm_reset_model()
 
     async def _round_cold(self, k, w, pre, names) -> None:

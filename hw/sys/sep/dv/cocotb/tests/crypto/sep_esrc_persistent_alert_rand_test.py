@@ -35,13 +35,14 @@ both 5 and 7 (drawn without replacement, so every shard-3 seed trips at 5 and at
 the window of each threshold (256 or 512), the clean gap of the
 consecutive leg (2, 3 or 4 windows), the order of the two trips of each
 threshold, the masks and the permutation of ``balanced``, and the two counter
-bits of the ERR leg (two different bits of the 32-bit counter copy).
+bits of the ERR leg (two different bits of the 32-bit counter copy), and the
+illegal main-state encoding of the illegal-state leg.
 
 Shards (``env/sep_shard.py``): shard 1 is the reset leg and the threshold
 blocks; shard 2 is the reset leg and the ERR leg; shard 3 is the reset leg and
 the threshold blocks 0, 5 and 7, with no no-trip leg, and it does not grade
-CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD: it logs the CHK-PF-TRIP-HOLD values as
-``INFO-PF-TRIP-HOLD`` and releases no cell by them. Shard 1 and the entry
+CHK-PF-NOTRIP and CHK-PF-TRIP-HOLD: it logs ``OBS-BLOCKED CHK-PF-TRIP-HOLD``
+at each trip, with the reason, and releases no cell by them. Shard 1 and the entry
 without ``+sep_shard`` grade both. The entry without
 ``+sep_shard`` runs every leg, the ERR leg last.
 
@@ -51,9 +52,14 @@ Checkers:
   CHK-PF-TRIP-COUNT  every trip: exactly T failing windows (an exact burst,
                   below), then clean noise. ALERT reads 1 within LAT_WINDOWS
                   windows of words from the start of window T (a wait bound,
-                  not a graded latency), PF reads 1, and the peak of
-                  ANY_FAIL_COUNT is at least T. Control: ALERT = PF = 0 and
-                  ANY_FAIL_COUNT = 0 before the burst.
+                  not a graded latency) and PF reads 1. The peak of
+                  ANY_FAIL_COUNT is graded (exactly T) by CHK-PF-TRIP-HOLD, not
+                  here. Control: ALERT = PF = 0 and ANY_FAIL_COUNT = 0 before
+                  the burst. Its FCOV cells are released only when the peak is
+                  exactly T, the value CHK-PF-TRIP-HOLD grades; otherwise the
+                  leaf logs INFO-PF-TRIP-COUNT-HOLD with the peak and releases
+                  none. This holds in shard 3 too, which does not grade the
+                  peak: with a peak other than T it fills no trip cell.
   CHK-PF-TRIP-HOLD   every trip: at a read after the clean window that follows
                   window T has ended, ALERT = PF = 1, and ANY_FAIL_COUNT never
                   read above T. Control: the clean noise ran for at least
@@ -67,8 +73,8 @@ Checkers:
                   words from the start of window T - 1 (the alert bound of the
                   trip legs), the peak of ANY_FAIL_COUNT is T - 1, and
                   ANY_FAIL_COUNT reads 0 at the last read. Control: the trips
-                  of the same threshold reach the alert and the peak is
-                  non-zero.
+                  of the same threshold reach the alert, the peak is non-zero,
+                  and ALERT_THRESHOLD read back T after the start of the leg.
   CHK-PF-CONSEC   two bursts of T - 2 stuck windows with a clean gap: the peak
                   of ANY_FAIL_COUNT of each burst is at least T - 2, no alert
                   at any poll up to LAT_WINDOWS windows of words after the
@@ -77,7 +83,8 @@ Checkers:
                   zero run above REPETITION_LIMIT = 200 for its last
                   n x W - 200 > (n - 1) x W words, so at least n windows fail
                   in it, whatever its offset to the window wraps. Control: the
-                  trips of the same threshold reach the alert.
+                  trips of the same threshold reach the alert, and
+                  ALERT_THRESHOLD read back T after the start of the leg.
   CHK-PF-DISABLE  T = 0, ten stuck windows: no alert at any poll up to
                   LAT_WINDOWS windows of words after the burst, ANY_FAIL_COUNT
                   peak > 8, and after the burst the count clears by the wrap 2W
@@ -110,6 +117,25 @@ Checkers:
                   ERR at the next read. Logged, not graded: no text states
                   whether a write of 1 clears ERR while its cause persists.
                   Both OBS writes run with the coverage window closed.
+  OBS-SM-ILLEGAL  VCS only, after the ERR leg: ERR reads 0 (control
+                  CTRL-SM-ILLEGAL), then the leaf forces a drawn encoding
+                  outside the state set of the main state machine design
+                  package on its state flops for 2 clocks and releases it; after
+                  SM_ERR_WAIT_CLKS clocks ERR is logged. Logged, not graded: no
+                  .adoc or RDL lists the legal encodings of MAIN_SM_STATUS.STATE,
+                  so no specification makes the forced value an illegal state.
+                  Under Verilator the state flops are not public and the leg
+                  logs ``INFO-SM-ILLEGAL-SKIP``.
+  OBS-SM-ILLEGAL-PF  INTR_STATUS.PERSISTENT_FAILURE after the illegal state.
+                  Logged, not graded: the RDL names a health-test failure or a
+                  counter error for it, not an illegal state.
+  CHK-PIC16       every trip that ends by a MODULE_ENABLE cycle, once ALERT
+                  reads 1: vector bit 15 of ``sep_internal_interrupts_probe_o``
+                  (PIC source 16, the entropy-source interrupt;
+                  ``hw/sys/sep/doc/interrupts.adoc:23``, ``:109-111``) reads 1,
+                  with INTR_ENABLE.PERSISTENT_FAILURE set by the clean start
+                  (``entropy_source.adoc:164``). Control: PERSISTENT_FAILURE
+                  read 1 (CTRL-PIC16).
   CHK-PF-RECOVER  W1C: both bits 0 and the output stays halted for H; a
                   MODULE_ENABLE cycle or a TRNG reset restarts the output
                   (BOOT_PHASE_DONE = 1, LEVEL rises); the reset clears both bits.
@@ -160,8 +186,7 @@ that the later windows hold no failure. Before the consecutive leg and before
 the first trip of a block, a leg that left ALERT, PF or ANY_FAIL_COUNT set is
 followed by a restart (``INFO-PF-LEG-RESTART``). CHK-PF-TRIP-HOLD and
 CHK-PF-NOTRIP grade the peak of ANY_FAIL_COUNT as exactly n, so a misplaced
-switch fails a check and never passes one. Vector bit 15 of
-``sep_internal_interrupts_probe_o`` is logged as ``OBS-PIC16``.
+switch fails a check and never passes one.
 
 Coverage: each leg runs in its own graded window. Every cell that this leaf
 fills from a DUT event is held by the sampler and released by the pass label
@@ -184,6 +209,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
+from cocotb.handle import Force, Release
 from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
@@ -268,6 +294,29 @@ M_BUSY, _ = _fm("SHA256_STATUS", "BUSY")
 M_ANY, _ = _fm("ALERT_SUMMARY_FAIL_COUNTS", "ANY_FAIL_COUNT")
 M_THR, _ = _fm("ALERT_THRESHOLD", "THRESHOLD")
 M_ERR, ERR_BP = _fm("MAIN_SM_STATUS", "ERR")
+M_STATE, _ = _fm("MAIN_SM_STATUS", "STATE")
+STATE_BITS = M_STATE.bit_length()
+# Stimulus of an OBS leg only: the encodings of the main state machine, from
+# vendor/lowRISC/opentitan/upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
+# (state_e). No .adoc or RDL lists them, so OBS-SM-ILLEGAL, which forces a value
+# outside this set, grades nothing.
+MAIN_SM_ENCODINGS = frozenset(
+    (
+        0b011110101, 0b111010010, 0b101101110, 0b010001110, 0b000101100,
+        0b100000001, 0b110100101, 0b000010111, 0b001000000, 0b110100010,
+        0b011000011, 0b001011001, 0b100001111, 0b011111000, 0b010111111,
+        0b110011000, 0b111001101, 0b111111011, 0b001110011,
+    )
+)  # fmt: skip
+# The main state machine under SEP_ESRC (tb/tb_top.sv). The illegal-state leg
+# forces the state flop of u_state_regs and, where it exists, the state_q flop
+# that PRIM_FLOP_SPARSE_FSM adds beside it under SIMULATION, with one value, so
+# the two stay equal; both are variables and keep the value after the release
+# until the next clock edge loads the next state into both.
+MAIN_SM_PATH = "u_dut.u_sep.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan.u_main_sm"
+MAIN_SM_FLOPS = ("u_state_regs.u_state_flop.q_o", "state_q")
+# Clocks the illegal value is held on the state flop output.
+ILLEGAL_HOLD_CLKS = 2
 # Bits of the counter copy that the inject can flip: REPCNT_TOTAL_FAILS.FAIL_COUNT
 # is 32 bits (entropy_source.adoc:682).
 CNTR_BITS = ENTROPY_SOURCE.mask("REPCNT_TOTAL_FAILS").bit_length()
@@ -313,6 +362,7 @@ SHARD_EVIDENCE = {
         "CHK-PF-DISABLE",
         "CHK-PF-HALT",
         "CHK-PF-RECOVER",
+        "CHK-PIC16",
     ),
     2: ("CHK-PF-RESET", "CHK-SM-ERR"),
     3: (
@@ -322,6 +372,7 @@ SHARD_EVIDENCE = {
         "CHK-PF-DISABLE",
         "CHK-PF-HALT",
         "CHK-PF-RECOVER",
+        "CHK-PIC16",
     ),
 }
 # Checks that shard 3 does not grade: it runs no no-trip leg, and it logs the
@@ -357,6 +408,7 @@ class Plan:
     trips: dict[int, tuple[str, str]]
     balanced: tuple[Balanced, ...]
     inj_bits: tuple[int, int]
+    illegal_state: int
 
     def describe(self) -> str:
         blocks = " ".join(
@@ -366,7 +418,8 @@ class Plan:
         )
         return (
             f"trip_thr={','.join(str(t) for t in self.trip_thr)} order={','.join(str(t) for t in self.order)} {blocks} "
-            f"{describe(self.balanced)} inj_bits={self.inj_bits[0]},{self.inj_bits[1]}"
+            f"{describe(self.balanced)} inj_bits={self.inj_bits[0]},{self.inj_bits[1]} "
+            f"illegal_state=0x{self.illegal_state:03x}"
         )
 
 
@@ -399,7 +452,20 @@ def draw_plan(seed: int, shard: int | None = None) -> Plan:
     balanced = tuple(balanced_lanes(rng))
     bit_a = rng.choice(range(CNTR_BITS))
     bit_b = rng.choice([b for b in range(CNTR_BITS) if b != bit_a])
-    return Plan(seed, tuple(trip_thr), tuple(order), window, gap, trips, balanced, (bit_a, bit_b))
+    illegal = rng.choice([v for v in range(1 << STATE_BITS) if v not in MAIN_SM_ENCODINGS])
+    return Plan(
+        seed, tuple(trip_thr), tuple(order), window, gap, trips, balanced, (bit_a, bit_b), illegal
+    )
+
+
+def _handle(path: str):
+    """The simulator handle at a dotted path below the tb top, or None."""
+    node = cocotb.top
+    for part in path.split("."):
+        node = getattr(node, part, None)
+        if node is None:
+            return None
+    return node
 
 
 class _Esrc(SepAxiRegDriver):
@@ -417,6 +483,8 @@ class _Block:
     consec: dict | None = None
     trip_alert: list[int] | None = None
     start_timeout: str | None = None
+    notrip_thr: int | None = None  # ALERT_THRESHOLD readback before the no-trip burst
+    consec_thr: int | None = None  # ALERT_THRESHOLD readback before the consecutive bursts
 
 
 @pyuvm.test()
@@ -432,6 +500,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         "CHK-PF-DISABLE",
         "CHK-PF-HALT",
         "CHK-PF-RECOVER",
+        "CHK-PIC16",
         "CHK-SM-ERR",
     )
 
@@ -441,10 +510,10 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=BASELINE_PARK)
         seed = self.random_seed()
         plan = draw_plan(seed, shard)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self.esrc = _Esrc(self)
         self.clk = SepBitWatch(dut.rst_ni, {"rst_ni": 0}, name="clk_count").start()
         self.noise = SepEsrcPatternNoise(logger=self.logger)
@@ -462,6 +531,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.ctrl_absent = False
         self.disable_result: dict | None = None
         self.started = False
+        self.thr_rb: int | None = None
         self.trip_graded = False
         self.trip_hold: dict | None = None
         self.ungraded = SHARD3_UNGRADED if shard == 3 else ()
@@ -477,6 +547,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             close_graded_window(self.logger)
         if shard not in (1, 3):
             await self._sm_err_leg()
+            await self._sm_illegal_leg()
         close_graded_window(self.logger)
 
         await self.noise.stop()
@@ -542,7 +613,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.chk.ok(name, True, **fields)
         if held:
             close_graded_window(self.logger)
-            self.logger.info("FCOV-ESRC-PA-HOLD %s: a control is absent, no cell released", name)
+            self.logger.info(
+                "INFO-FCOV-ESRC-PA-HOLD %s: a control is absent, no cell released", name
+            )
             return True
         if bits:
             await self._release(bits)
@@ -556,6 +629,18 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
     def _pic16(self) -> int:
         v = self.rd(cocotb.top.sep_internal_interrupts_probe_o, allow_unknown=True)
         return (v >> 15) & 1
+
+    async def _grade_pic16(self, thr: int, pf: int) -> None:
+        """CHK-PIC16 after a trip: vector bit 15 (PIC source 16) reads 1.
+
+        PIC source 16 is the entropy-source interrupt on vector bit 15
+        (interrupts.adoc:23, :109-111), and INTR_ENABLE.PERSISTENT_FAILURE, set by
+        the clean start, enables the persistent-failure interrupt
+        (entropy_source.adoc:18, :164). Control: PERSISTENT_FAILURE read 1.
+        """
+        pic = self._pic16()
+        self._ctrl("PIC16", pf == 1, thr=thr, pf=pf)
+        await self._grade("PIC16", pic == 1, 0, thr=thr, value=pic, expect_value=1)
 
     # --- reset and start -----------------------------------------------------------
     async def _trng_reset(self) -> int:
@@ -592,12 +677,16 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             self._boot_bound(win),
         )
         if not boot:
-            self.logger.info("%s: BOOT_PHASE_DONE not 1 bound=%d", what, self._boot_bound(win))
+            self.logger.info(
+                "INFO-START-TIMEOUT %s: BOOT_PHASE_DONE not 1 bound=%d", what, self._boot_bound(win)
+            )
             return False, False
         bound = self._latency_bound() if self.stream_clean else self._clocks(STREAM_CAP_STROBES)
         level, _ = await self._poll_level_gt0(bound)
         if not level:
-            self.logger.info("%s: FIFO_STATUS.LEVEL stayed 0 bound=%d", what, bound)
+            self.logger.info(
+                "INFO-START-TIMEOUT %s: FIFO_STATUS.LEVEL stayed 0 bound=%d", what, bound
+            )
         return True, level
 
     async def _poll_level_gt0(self, bound: int) -> tuple[bool, list]:
@@ -620,6 +709,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         close_graded_window(self.logger)
         mark = await self._trng_reset()
         await self._clean_start(win, thr, mark)
+        self.thr_rb = (await self._rd(ESRC_ALERT_THRESHOLD)) & M_THR
         boot, level = await self._boot_and_level(win, "start")
         if not (boot and level):
             what = f"start_boot{int(boot)}_level{int(level)}"
@@ -677,7 +767,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         t_ref = box[0]
         if self.stream_clean is None:
             self.stream_clean = t_ref
-        self.logger.info("t_ref=%d clk_i (24 stream strobes) bound=%d", t_ref, bound)
+        self.logger.info("INFO-T-REF t_ref=%d clk_i (24 stream strobes) bound=%d", t_ref, bound)
         return t_ref
 
     async def _hold(self, hold: int) -> tuple[int, int]:
@@ -973,16 +1063,20 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             pf_before=r["pf_before"],
             count_before=r["count_before"],
         )
+        # The cells of the trip are released only when the peak is exactly T, the
+        # count of the failing windows (architecture.adoc:136); the check itself
+        # grades the trip, and CHK-PF-TRIP-HOLD grades the peak.
+        exact = r["peak"] == thr
+        if not exact:
+            self.chk.info("PF-TRIP-COUNT-HOLD", thr=thr, any_fail_peak=r["peak"], released=0)
         await self._grade(
             "PF-TRIP-COUNT",
-            r["reason"] is None and r["peak"] >= thr and r["alert_any"] and r["pf_final"],
-            ESRC_PA_TRIP_COUNT,
+            r["reason"] is None and r["alert_any"] and r["pf_final"],
+            ESRC_PA_TRIP_COUNT if exact else 0,
             **reason,
             thr=thr,
             win=win,
             failing_windows=thr,
-            any_fail_peak=r["peak"],
-            expect_any_fail_peak_min=thr,
             alert=r["alert_any"],
             pf=r["pf_final"],
             wrap_obs=r.get("wrap_obs"),
@@ -1042,14 +1136,12 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             **reason,
         }
 
-    def _not_graded(self, name: str, **fields) -> bool:
-        """In shard 3, log the values of an ungraded check as INFO and return True."""
+    def _not_graded(self, name: str) -> bool:
+        """In shard 3, log an ungraded check as OBS-BLOCKED and return True."""
         if name not in self.ungraded:
             return False
-        self.logger.info(
-            "INFO-%s not graded in shard 3 (shard 1 and the entry without +sep_shard grade it): %s",
-            name,
-            " ".join(f"{k}={v}" for k, v in fields.items()),
+        self.chk.blocked(
+            name, "shard 3 does not grade it; shard 1 and the entry without +sep_shard grade it"
         )
         return True
 
@@ -1059,7 +1151,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.trip_hold = None
         if th is None:
             return
-        if self._not_graded("PF-TRIP-HOLD", cond=int(th["cond"]), **th["fields"]):
+        if self._not_graded("PF-TRIP-HOLD"):
             return
         self.chk.ctrl("PF-TRIP-HOLD", th["ctrl"], **th["ctrl_fields"])
         self.chk.ok("PF-TRIP-HOLD", th["cond"], **th["fields"])
@@ -1163,6 +1255,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         if self.run_notrip:
             if not blk.start_timeout:
                 open_graded_window(TEST, self.logger)
+                blk.notrip_thr = self.thr_rb
                 blk.notrip = await self._exact_burst(win, thr - 1, trip=False)
                 close_graded_window(self.logger)
             self._ctrl_notrip(blk)
@@ -1175,6 +1268,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             open_graded_window(TEST, self.logger)
             try:
                 await self._ensure_clean(thr, win, "consec")
+                blk.consec_thr = self.thr_rb
                 blk.consec = await self._burst_and_settle(segs, win, split=len(first_burst))
             except TrialTimeout as exc:
                 blk.consec = {"timeout": f"timeout:{exc.what} bound={exc.bound}"}
@@ -1205,8 +1299,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         """Trip ended by a MODULE_ENABLE cycle; grades HALT and RECOVER (enable_cycle)."""
         open_graded_window(TEST, self.logger)
         res = await self._trip(thr, win)
-        pic = self._pic16()
-        self.chk.obs("PIC16", value=pic, thr=thr)
+        if res["alert"]:
+            await self._grade_pic16(thr, res["pf"])
         if not res["alert"]:
             close_graded_window(self.logger)
             self.chk.ok("PF-HALT", False, thr=thr, reason="timeout:alert", bound=res["bound"])
@@ -1409,7 +1503,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             fields["reason"] = nt["reason"]
             if nt.get("bound") is not None:
                 fields["bound"] = nt["bound"]
-        if self._not_graded("PF-NOTRIP", **fields):
+        if self._not_graded("PF-NOTRIP"):
             return
         await self._grade(
             "PF-NOTRIP",
@@ -1468,8 +1562,9 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         nt = blk.notrip or {}
         self._ctrl(
             "PF-NOTRIP",
-            tripped and nt.get("peak", 0) > 0,
+            tripped and nt.get("peak", 0) > 0 and blk.notrip_thr == blk.thr,
             thr=blk.thr,
+            thr_readback=blk.notrip_thr,
             ctrl_trip=int(tripped),
             any_fail_peak=nt.get("peak"),
         )
@@ -1477,7 +1572,16 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
     def _ctrl_consec(self, blk: _Block) -> None:
         """Control of CHK-PF-CONSEC: the trips of the block reach the alert."""
         tripped = self._tripped(blk.trip_alert)
-        self._ctrl("PF-CONSEC", tripped, thr=blk.thr, ctrl_single_burst_alert=int(tripped))
+        # A start that timed out leaves no readback; CHK-PF-CONSEC fails on its reason.
+        timed_out = bool(blk.start_timeout or (blk.consec or {}).get("timeout"))
+        thr_ok = blk.consec_thr == blk.thr or (blk.consec_thr is None and timed_out)
+        self._ctrl(
+            "PF-CONSEC",
+            tripped and thr_ok,
+            thr=blk.thr,
+            thr_readback=blk.consec_thr,
+            ctrl_single_burst_alert=int(tripped),
+        )
 
     async def _grade_disable(self) -> None:
         """CHK-PF-DISABLE at the end of the disable leg (its control follows the trips)."""
@@ -1514,6 +1618,54 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self._ctrl("PF-DISABLE", ctrl_ok, ctrl_trip_thr=before, ctrl_trip_alert=int(ctrl_ok))
 
     # --- MAIN_SM_STATUS.ERR leg ------------------------------------------------------
+    async def _sm_illegal_leg(self) -> None:
+        """OBS-SM-ILLEGAL and OBS-SM-ILLEGAL-PF, after the ERR leg (VCS only).
+
+        Logged, not graded: no .adoc or RDL lists the legal encodings of
+        MAIN_SM_STATUS.STATE (entropy_source.rdl: "sparse-encoded"), so no
+        specification makes the forced value an illegal state. The leaf forces the
+        drawn encoding on the state flops (MAIN_SM_FLOPS) for ILLEGAL_HOLD_CLKS
+        clocks, releases it, waits SM_ERR_WAIT_CLKS clocks and reads ERR once.
+        Control: ERR reads 0 before the force (the ERR leg ended with a TRNG
+        reset). The main state machine stays in its error state until a reset, so
+        this leg is the last. Under Verilator the state flop is not public to
+        cocotb and the leg is skipped (INFO-SM-ILLEGAL-SKIP).
+        """
+        if "verilator" in str(getattr(cocotb, "SIM_NAME", "") or "").lower():
+            self.chk.info("SM-ILLEGAL-SKIP", reason="verilator: the main state flop is not public")
+            return
+        flops = [_handle(f"{MAIN_SM_PATH}.{f}") for f in MAIN_SM_FLOPS]
+        if flops[0] is None:
+            self.chk.ctrl(
+                "SM-ILLEGAL", False, reason=f"no handle:{MAIN_SM_PATH}.{MAIN_SM_FLOPS[0]}"
+            )
+            return
+        close_graded_window(self.logger)
+        illegal = self.plan.illegal_state
+        err0, w0 = await self._err_read()
+        self.chk.ctrl("SM-ILLEGAL", err0 == 0, err_before=err0, word_before=f"0x{w0:08x}")
+        flops = [h for h in flops if h is not None]
+        await RisingEdge(cocotb.top.clk_i)
+        for h in flops:
+            h.value = Force(illegal)
+        await self._clocks_wait(ILLEGAL_HOLD_CLKS)
+        for h in flops:
+            h.value = Release()
+        await self._clocks_wait(SM_ERR_WAIT_CLKS)
+        err1, w1 = await self._err_read()
+        pf1 = await self._pf_read()
+        self.chk.obs(
+            "SM-ILLEGAL",
+            state_forced=f"0x{illegal:03x}",
+            flops_forced=len(flops),
+            hold_clk=ILLEGAL_HOLD_CLKS,
+            wait_clk=SM_ERR_WAIT_CLKS,
+            err_before=err0,
+            err=err1,
+            word=f"0x{w1:08x}",
+        )
+        self.chk.obs("SM-ILLEGAL-PF", state_forced=f"0x{illegal:03x}", pf=pf1)
+
     async def _err_read(self) -> tuple[int, int]:
         """One MAIN_SM_STATUS read: (the ERR field, the whole word)."""
         word = await self._rd(ESRC_MAIN_SM_STATUS)
@@ -1538,7 +1690,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         Golden: entropy_source.adoc:410 (ERR, RW1C, reset 0x0: it latches a
         health-test counter integrity error; a reset of the block clears it) and
         architecture.adoc:136 (the full entropy-source reset clears it). The main
-        state machine stays in its error state until the reset, so the leg is last.
+        state machine stays in its error state until the reset, so the ERR legs
+        run last.
         """
         bit_a, bit_b = self.plan.inj_bits
         close_graded_window(self.logger)

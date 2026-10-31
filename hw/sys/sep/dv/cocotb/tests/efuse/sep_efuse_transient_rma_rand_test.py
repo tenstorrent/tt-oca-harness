@@ -28,9 +28,12 @@ RMA_SIP already set, so the SIP match does not fall through: after W the
 ``LC_STATE`` shadow, its probe and ``FEAT_CTRL`` keep the start state, with both
 channels at Match before and after W (``otp_fuse_controller.adoc``, row
 ``TRANSIENT_RMA_EN``). The script ends both matches. A lone SIP match right
-after it is logged and not graded (``OBS-TRANSIENT-AFTER-BLOCK``): no
-specification line states whether the block of a simultaneous match outlives
-the matches without a reset. A cold reset follows; the twin then presents the
+after it lands RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK): the update
+follows each token match (``otp_fuse_controller.adoc:232-238``) and the block
+covers only a SIP match made while the chiplet match is held. The DUT keeps the
+start state, so this check is expected to fail until the RTL ticket on the
+once-per-reset transient update flags is fixed (Issue: pending). A cold reset
+follows; the twin then presents the
 SIP match alone from the sensed start state and lands RMA_SIP, and a second
 cold reset restores the sensed state. The lone SIP match and the cold reset
 after it run with the graded coverage window closed.
@@ -43,7 +46,13 @@ Leg B (TEST_DEV image with the enable at 0): a program of ``LC_STATE`` bit 1 wit
 only RMA_CHIPLET matched changes no bank bit and issues no program command; the
 same program with RMA_SIP matched lands. A program of bit 2 with only RMA_SIP
 matched is refused (a control of the open refusal, ``role=control``); with
-RMA_CHIPLET matched it lands. After each resense the shadow byte is
+RMA_CHIPLET matched it lands.
+
+Last step, starts PROD and TEST_DEV without leg B: a program of bit 2 with RMA_CHIPLET
+matched (CTRL-PROG-LC-ORDER-MATCH) and bit 1 clear is logged as OBS-PROG-LC-ORDER
+(the OTP word, the program commands within W and the status bits), not graded:
+the specification texts disagree on whether that program needs bit 1 in the
+pre-write state. It runs with the graded coverage window closed. After each resense the shadow byte is
 ``{~r, r}`` with r the raw nibble OR the programmed bit (``otp_fuse_controller.adoc``,
 sections Fuse Programming and RMA Authorization, Shadow Register Updates and
 Test-Mode Protection). Every match and mismatch go of leg B must reach its code
@@ -58,7 +67,9 @@ channel before the next cold reset. In leg A a CHIPLET match also ends before
 a later SIP step; leg S holds it on purpose.
 
 Checkers: CHK-TRANSIENT, CHK-TRANSIENT-NOBURN, CHK-TRANSIENT-RESET (every
-leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). A failing hook control
+leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-CTL,
+CTRL-TRANSIENT-EN (the sensed ``TRANSIENT_RMA_EN`` shadow equals the staged
+enable, every leaf), CTRL-PROG-LC-ORDER-MATCH. A failing hook control
 logs ``CHK-HOOK FAIL`` and ends the leaf. A match that does not end with its
 Mismatch go before a cold reset ends the leaf at that control or check: the
 next sense would load the transient state, and the graded failure is the
@@ -89,6 +100,7 @@ from env.sep_efuse_plan import (
     CH_SIP,
     CODE_MATCH,
     CODE_MISMATCH,
+    NARROW_USED,
     PROGRAM_CTRL_ADDR,
     RIGHT_TOKEN,
     ST_PROD,
@@ -116,6 +128,7 @@ from env.sep_efuse_test_lib import (
     log_line,
     probe_word,
     set_shadow_golden,
+    shadow_word,
     sig_bits,
 )
 from env.sep_fcov_gate import (
@@ -138,6 +151,7 @@ _W_MIN = 256
 _SENSE_BOUND = 100_000
 _POLL_READS = 400
 _LC_WORD = field_word("LC_STATE")
+_EN_MASK = NARROW_USED["TRANSIENT_RMA_EN"]
 # Raw LC_STATE bits a token match sets (otp_fuse_controller.adoc:216-224;
 # lifecycle_controller.adoc:88-90): bit 1 with an RMA_SIP match, bit 2 with an
 # RMA_CHIPLET match from a state with bit 1 set.
@@ -248,9 +262,15 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         return self.chk.ctrl(name, cond, **fields)
 
     def _grade_transient(
-        self, step: int | str, ch: str, code: int | None, raw: int, got: dict[str, int | None]
+        self,
+        step: int | str,
+        ch: str,
+        code: int | None,
+        raw: int,
+        got: dict[str, int | None],
+        name: str = "TRANSIENT",
     ) -> bool:
-        """CHK-TRANSIENT: Match code, whole LC_STATE word, its probe and FEAT_CTRL for ``raw``."""
+        """CHK-<name>: Match code, whole LC_STATE word, its probe and FEAT_CTRL for ``raw``."""
         p = self.plan
         exp_word = _lc_word(raw)
         exp_feat = feat_ctrl_profile(raw, p.sip_dis, p.sys_dis)
@@ -263,7 +283,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             and got["probe_feat"] == exp_feat.value
         )
         return self._grade(
-            "TRANSIENT",
+            name,
             ok,
             en=self.en,
             start=self.start,
@@ -443,7 +463,11 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         if leg_b:
             self.required_evidence = (*type(self).required_evidence, "CHK-PROG-LC")
         if leg_s:
-            self.required_evidence = (*type(self).required_evidence, "CHK-TRANSIENT-SIMUL")
+            self.required_evidence = (
+                *type(self).required_evidence,
+                "CHK-TRANSIENT-SIMUL",
+                "CHK-TRANSIENT-AFTER-BLOCK",
+            )
         self.logger.info("EVIDENCE-REQUIRED seed=%d ids=%s", seed, ",".join(self.required_evidence))
 
         raw0 = p.lc_raw & _LC_RAW_MASK
@@ -465,9 +489,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             raise AssertionError("the sense clock did not see the sep_fuse_sense_done_o rise")
         t_sense = sense.clocks
         self.w = max(_W_MULT * t_sense, _W_MIN)
-        self.logger.info(
-            "TIME seed=%d t_sense=%d w_cycles=%d mult=%d", seed, t_sense, self.w, _W_MULT
-        )
+        log_line(self.logger, "INFO-TIME", seed, t_sense=t_sense, w_cycles=self.w, mult=_W_MULT)
         self.shim = SepShimCmdMonitor(dut).start()
         await ClockCycles(dut.clk_i, 2)
 
@@ -509,6 +531,11 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         spare_word = field_word(spare["field"]) + spare["word"]
         self.golden.words[spare_word] = ctl["word"]
         set_shadow_golden(self, self.golden)
+
+        # Every CHK-TRANSIENT cell rests on the staged enable: the sensed shadow shows it.
+        en_shadow = shadow_word(self, field_word("TRANSIENT_RMA_EN")) & _EN_MASK
+        if not self._ctrl("TRANSIENT-EN", en_shadow == en, staged=en, shadow=en_shadow):
+            hook_fail(self.chk, reason="transient_rma_en_shadow", staged=en, shadow=en_shadow)
 
         # ---------------------------------------------------------- leg A
         open_graded_window(_NAME, self.logger)
@@ -570,8 +597,49 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         if leg_b:
             await self._leg_b(seed, staged_word)
         close_graded_window(self.logger)
+        await self._prog_order(raw0, staged_word, leg_b)
         await self.shim.stop()
         self.chk.finish()
+
+    async def _prog_order(self, raw0: int, staged_word: int, leg_b: bool) -> None:
+        """OBS-PROG-LC-ORDER: a program of bit 2 with RMA_CHIPLET matched and bit 1 clear.
+
+        Logged, not graded: the specification does not settle whether the OTP program
+        of bit 2 needs bit 1 in the pre-write state. ``otp_fuse_controller.adoc`` (row
+        ``LC_STATE``) and ``lifecycle_controller.adoc`` say bit 2 requires bit 1;
+        ``token_processing.adoc`` (Post Token Matching Handling) and
+        ``otp_fuse_controller.adoc`` (Fuse Programming and RMA Authorization) gate
+        the fuse program on the token match only. The line logs the OTP word, the
+        program commands within W and the status bits. CTRL-PROG-LC-ORDER-MATCH
+        shows the RMA_CHIPLET match. It runs last, with the graded window closed,
+        because a landed bit changes every later state. It runs from PROD and
+        TEST_DEV (bit 1 clear, a legal state); a leg-B leaf has set bit 1 by then
+        and logs ``INFO-PROG-LC-ORDER-SKIP``.
+        """
+        if leg_b or self.start not in (ST_PROD, ST_TEST_DEV) or (raw0 >> _LC_SIP_BIT) & 1:
+            self.chk.info("PROG-LC-ORDER-SKIP", start=self.start, leg_b=int(leg_b))
+            return
+        code = await self._match(CH_CHIPLET, "o.chp")
+        self._ctrl("PROG-LC-ORDER-MATCH", code == CODE_MATCH, chp_code=_hex2(code))
+        r = await self._program(_LC_BIT2)
+        end = await self._mismatch(CH_CHIPLET, "o.chp_end")
+        self.chk.obs(
+            "PROG-LC-ORDER",
+            start=self.start,
+            bit=2,
+            chp_code=_hex2(code),
+            shim_cmd=r["cmd"],
+            shim_cmd_all=r["cmd_all"],
+            w_cycles=self.w,
+            lc_otp_word=f"0x{r['word']:08x}",
+            staged_otp_word=f"0x{staged_word:08x}",
+            landed=r["bit"],
+            busy=r["busy"],
+            done=r["done"],
+            req_err=r["req_err"],
+            program_status=r["pstatus"],
+            chp_end=_hex2(end),
+        )
 
     async def _simul(self, raw0: int) -> None:
         """Leg S: an RMA_SIP match while an RMA_CHIPLET match is held.
@@ -652,10 +720,9 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _twin_reset(self, raw0: int) -> None:
         """SIP match alone, then a cold reset, graded by CHK-TRANSIENT-RESET.
 
-        First, right after the simultaneous script, a lone SIP match is logged
-        (``OBS-TRANSIENT-AFTER-BLOCK``) and not graded: no specification line
-        states whether the block outlives the matches without a reset. Its
-        Mismatch go must reach its code (CTRL-TRANSIENT-AFTER-BLOCK-END; a
+        First, right after the simultaneous script, a lone SIP match must land
+        RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK,
+        ``otp_fuse_controller.adoc:232-238``). Its Mismatch go must reach its code (CTRL-TRANSIENT-AFTER-BLOCK-END; a
         missing end ends the leaf there), and a cold reset follows, both with
         the window closed. The window opens again after that reset. Then the
         twin SIP match lands RMA_SIP from the sensed start state (CHK-TRANSIENT
@@ -669,14 +736,13 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         obs_sip = await self._match(CH_SIP, f"{tag}.obs_sip")
         await ClockCycles(dut.clk_i, self.w)
         obs = await self._lc_and_feat()
-        self.chk.obs(
-            "TRANSIENT-AFTER-BLOCK",
-            start=self.start,
-            code=_hex2(obs_sip),
-            w_cycles=self.w,
-            got_word=f"0x{obs['word']:08x}",
-            probe_lc="x" if obs["probe_lc"] is None else f"0x{obs['probe_lc']:02x}",
-            got_feat=f"0x{obs['feat']:016x}",
+        self._grade_transient(
+            "after_block",
+            CH_SIP,
+            obs_sip,
+            _transient_next(raw0, CH_SIP, 1),
+            obs,
+            name="TRANSIENT-AFTER-BLOCK",
         )
         obs_end = await self._mismatch(CH_SIP, f"{tag}.obs_sip_end")
         if not self._ctrl(

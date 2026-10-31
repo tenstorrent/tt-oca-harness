@@ -1535,9 +1535,9 @@ def set_isa_pmp_pass(mask: int, log=None) -> bool:
     each of those cells at its event inside the window of that leaf, and
     samples a held cell only when its bit (``ISA_PMP_PASS_*``, or bit i for
     entry i) rises with that window closed; a reset and the next window open
-    drop the held cells. The leaf grades its firmware console after the run,
-    writes the bits after every check of the run passes, holds them two clocks
-    and writes 0. Same rules as ``graded_owner``: a no-op that returns False on
+    drop the held cells. The leaf grades its firmware console after the run
+    and adds each bit as soon as the checks that grade its cell pass, holding
+    each write two clocks; it writes 0 after the last check or on a FAIL. Same rules as ``graded_owner``: a no-op that returns False on
     Verilator. On VCS a sampler without the variable is a testbench error.
     """
     if mask < 0 or mask >> ISA_PMP_PASS_BITS:

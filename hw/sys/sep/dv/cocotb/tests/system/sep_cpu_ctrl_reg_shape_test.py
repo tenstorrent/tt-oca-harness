@@ -15,11 +15,13 @@ Contract (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``,
 * ``SEP_VERSION_ID.version_id`` (R) reads its reset value 0xDEADBEEF after
   every write.
 * After ``SEP_NMI_VEC_LOCK.lock`` (RW1S) is 1, a ``SEP_NMI_VEC`` write does not
-  change ``nmi_vec`` (bits 31:1), and a write of 0 or all-ones to the lock
+  change ``nmi_vec`` (bits 31:1), bit 0 (``rsvd``, "always 0") reads 0, and a write of 0 or all-ones to the lock
   leaves it at 1.
 * ``SEP_FUSE_SENSE_STATUS`` and ``SMC_FUSE_SENSE_STATUS`` (R) ignore a write
-  of the complement of bit 0. Every access, the ``TIMEOUT_CLEAR`` and
-  ``TIMEOUT_MODE`` writes included, gets a response.
+  of the complement of bit 0. Every access gets a response. The legal
+  writes (``SEP_NMI_VEC_LOCK.lock`` RW1S; ``TIMEOUT_CLEAR`` and
+  ``TIMEOUT_MODE``, ``W`` fields with no lock) answer OKAY (AMBA AXI IHI0022,
+  OKAY: normal access success).
 * Each scratch register stores the low word of every write, for every write
   order and shape. Bits 63:32 have no field.
 
@@ -29,16 +31,34 @@ no stated read value are logged as ``OBS-CC-RSVD`` and not graded.
 
 Checkers:
   CHK-CC-RO       ``SEP_VERSION_ID[31:0]`` after each of the 8 writes.
-  CHK-NMI-LOCK    ``SEP_NMI_VEC[31:1]`` after each of the 8 locked writes, and
-                  ``lock`` after each of the 4 lock writes.
+  CHK-NMI-DEFAULT ``SEP_NMI_VEC[31:0]`` on the first read after reset, before
+                  any write, equals the RDL reset (``nmi_vec[31:1] =
+                  0x6000_0080``, vector 0xC000_0100, and ``rsvd`` 0;
+                  ``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:276``,
+                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:342-347``).
+  CHK-NMI-LOCK    ``SEP_NMI_VEC[31:0]`` after each of the 8 locked writes
+                  (bits 31:1 the vector before the write, bit 0 zero), and
+                  ``lock`` and the OKAY response of each of the 4 lock writes.
   CHK-CC-INERT    bit 0 of both sense status registers after the complement
-                  write; every write response, the timeout registers included.
+                  write; the OKAY response of each of the 16 timeout writes;
+                  every write response arrives.
+  CHK-CC-TIMEOUT-INTR ``TIMEOUT_INTERRUPT[0]`` after the 16 timeout writes
+                  equals its RDL reset 0 (``R``, "timeout interrupt status not
+                  yet implemented";
+                  ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:114``).
+                  Bits 63:1 have no stated value (``OBS-TIMEOUT``).
+  Each graded readback and response prints its own ``CHK-<name> PASS`` line.
   CHK-SCR-SHAPE   the low word of each written scratch register (64-bit
                   readback, and ``scratch_cold_probe_o`` for the cold bank);
                   in the high-half-first order also after the high-half
                   write, against the value before it.
-Controls (not counted): CTRL-NMI-DEFAULT, CTRL-NMI-STORE, CTRL-SCR-NEIGHBOUR.
-Records: INFO-SCR-SEQ. Observations: OBS-CC-RSVD, OBS-TIMEOUT.
+  CHK-SCR-RESET   both banks after each reset event, against the write model:
+                  a ``wdt_rst_ni`` pulse clears the warm bank and the cold
+                  bank retains its data; a cold reset clears both
+                  (``cpu.adoc``, Dual Scratch Register Banks). Both banks hold
+                  non-reset words before each event.
+Controls (not counted): CTRL-NMI-STORE, CTRL-SCR-NEIGHBOUR.
+Observations: OBS-CC-RSVD, OBS-TIMEOUT, OBS-CC-TIMEOUT-RD.
 
 The graded window (owner code of this test) is open around the graded
 writes and their readbacks only. The first reads, the writes before the lock,
@@ -74,7 +94,11 @@ NMI_LOCK = SEP_CPU_CTRL.addr("SEP_NMI_VEC_LOCK")
 LOCK_FIELD = SEP_CPU_CTRL.field_mask("SEP_NMI_VEC_LOCK", "lock")
 TIMEOUT_CLEAR = SEP_CPU_CTRL.addr("TIMEOUT_CLEAR")
 TIMEOUT_MODE = SEP_CPU_CTRL.addr("TIMEOUT_MODE")
+RESP_OKAY = 0
+RESP_DECERR = 3
 TIMEOUT_INTERRUPT = SEP_CPU_CTRL.addr("TIMEOUT_INTERRUPT")
+TI_FIELD = SEP_CPU_CTRL.field_mask("TIMEOUT_INTERRUPT", "reserved")
+TI_RESET = SEP_CPU_CTRL.reset("TIMEOUT_INTERRUPT") & TI_FIELD
 SENSE_REGS = {
     "SEP_FUSE_SENSE_STATUS": (
         SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS"),
@@ -89,6 +113,13 @@ SCR_META = RegBlock("SEP_SCRATCH_COLD")
 SCR_FIELD = SCR_META.field_mask("SCRATCH_0_", "data")
 SCR_RESET = SCR_META.reset("SCRATCH_0_") & SCR_FIELD
 BANKS = {"cold": SCRATCH_COLD_ADDRS, "warm": SCRATCH_WARM_ADDRS}
+# CHK-SCR-RESET golden per reset event (hw/sys/sep/doc/cpu.adoc, Dual Scratch Register
+# Banks): sep_cpu_reset_n clears the warm bank and the cold bank retains its data;
+# sep_reset_n clears both.
+SCR_RESET_EXPECT = {
+    "WDT_PULSE": {"warm": "cleared", "cold": "retained"},
+    "COLD": {"warm": "cleared", "cold": "cleared"},
+}
 
 N_WRITES = 8  # writes per register class (fixed by the entry)
 LANES = ("64", "lo", "hi")
@@ -261,17 +292,25 @@ class _Cfg:
 class sep_cpu_ctrl_reg_shape_test(sep_base_test):
     """SEP_CPU_CTRL read-only, locked and inert registers; scratch write shapes."""
 
-    required_evidence = ("CHK-CC-RO", "CHK-NMI-LOCK", "CHK-CC-INERT", "CHK-SCR-SHAPE")
+    required_evidence = (
+        "CHK-CC-RO",
+        "CHK-NMI-DEFAULT",
+        "CHK-NMI-LOCK",
+        "CHK-CC-INERT",
+        "CHK-SCR-SHAPE",
+        "CHK-SCR-RESET",
+    )
 
     # -- access primitives --------------------------------------------------
 
     async def _write(self, addr: int, value: int, lane: str, *, tolerant: bool) -> int:
         """One full-strobe write on ``lane``. Returns the response code.
 
-        ``tolerant`` accepts any response code (the code of a write to a
-        read-only register or a reserved field is not stated); the arrival of
-        the response is the only scored outcome. A missing response fails at
-        the AXI response timeout of the agent.
+        ``tolerant`` accepts any response code here, and the caller grades the
+        code of a legal write (OKAY) itself; the code of a write to a read-only
+        register or of a write the lock refuses is not stated, and only its
+        arrival is scored. A missing response fails at the AXI response timeout
+        of the agent.
         """
         if lane == "64":
             a, data, n, size = addr, value & M64, 8, 3
@@ -326,7 +365,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, VERSION_RESET, VERSION_FIELD)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-RO FAIL: {line}"
-            self.logger.info("INFO-CC-RO LOG: %s", line)
+            self.logger.info("CHK-CC-RO PASS: %s", line)
             self._rsvd("SEP_VERSION_ID", got, VERSION_FIELD)
         close_graded_window(self.logger)
         n_low = sum(1 for _v, lane in cfg.ver if lane in LOW_LANES)
@@ -344,11 +383,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
 
     async def _nmi(self) -> None:
         cfg = self.tcfg
-        # Step 3: first read (control; the reset value stays with the open owners).
+        # Step 3: first read, before any write: the RDL reset value.
         first = await self._read64(NMI_VEC)
         fc = field_compare(first, NMI_RESET, NMI_FIELD | NMI_RSVD0)
-        assert fc.ok, f"CTRL-NMI-DEFAULT FAIL: {fc.fields()}"
-        self.logger.info("CTRL-NMI-DEFAULT: first_read=0x%016x %s", first, fc.fields())
+        assert fc.ok, f"CHK-NMI-DEFAULT FAIL: first_read=0x{first:016x} {fc.fields()}"
+        self.logger.info("CHK-NMI-DEFAULT PASS: first_read=0x%016x %s", first, fc.fields())
         model = NMI_RESET & NMI_FIELD
 
         # Step 4: writes before the lock (control CTRL-NMI-STORE).
@@ -370,7 +409,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
 
         # Step 5: lock (control: the readback shows both values).
         lk0 = await self._read64(NMI_LOCK)
-        fc0 = field_compare(lk0, 0, LOCK_FIELD)
+        fc0 = field_compare(lk0, SEP_CPU_CTRL.reset("SEP_NMI_VEC_LOCK") & LOCK_FIELD, LOCK_FIELD)
         assert fc0.ok, f"CHK-NMI-LOCK FAIL: lock before the set {fc0.fields()}"
         await self._write(NMI_LOCK, 1, "64", tolerant=False)
         lk1 = await self._read64(NMI_LOCK)
@@ -390,11 +429,11 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             assert lane == "hi" or (v & NMI_FIELD) != vec
             resp = await self._write(NMI_VEC, v, lane, tolerant=True)
             got = await self._read64(NMI_VEC)
-            fc = field_compare(got, vec, NMI_FIELD)
+            fc = field_compare(got, vec, NMI_FIELD | NMI_RSVD0)
             line = f"write={i} lane={lane} wdata=0x{v:016x} resp={resp} {fc.fields()}"
-            assert fc.ok, f"CHK-NMI-LOCK FAIL: locked vector write changed nmi_vec: {line}"
-            self.logger.info("CTRL-NMI-LOCK LOG: %s", line)
-            self._rsvd("SEP_NMI_VEC", got, NMI_FIELD)
+            assert fc.ok, f"CHK-NMI-LOCK FAIL: locked vector write changed bits 31:0: {line}"
+            self.logger.info("CHK-NMI-LOCK PASS: %s", line)
+            self._rsvd("SEP_NMI_VEC", got, NMI_FIELD | NMI_RSVD0)
 
         # Step 7: lock write cases.
         n0 = n1 = 0
@@ -402,9 +441,9 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             resp = await self._write(NMI_LOCK, k, lane, tolerant=True)
             got = await self._read64(NMI_LOCK)
             fc = field_compare(got, LOCK_FIELD, LOCK_FIELD)
-            line = f"wdata=0x{k:x} lane={lane} resp={resp} {fc.fields()}"
-            assert fc.ok, f"CHK-NMI-LOCK FAIL: lock cleared by a write: {line}"
-            self.logger.info("CTRL-NMI-LOCK LOG: %s", line)
+            line = f"wdata=0x{k:x} lane={lane} resp={resp} expect_resp={RESP_OKAY} {fc.fields()}"
+            assert fc.ok and resp == RESP_OKAY, f"CHK-NMI-LOCK FAIL: lock write: {line}"
+            self.logger.info("CHK-NMI-LOCK PASS: %s", line)
             self._rsvd("SEP_NMI_VEC_LOCK", got, LOCK_FIELD)
             n0 += int(k == 0)
             n1 += int(k == M64)
@@ -425,18 +464,43 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         for name, addr in (("TIMEOUT_CLEAR", TIMEOUT_CLEAR), ("TIMEOUT_MODE", TIMEOUT_MODE)):
             for v, lane in cfg.timeout[name]:
                 resp = await self._write(addr, v, lane, tolerant=True)
-                self.logger.info(
-                    "INFO-CC-INERT LOG: reg=%s wdata=0x%016x lane=%s resp=%d", name, v, lane, resp
+                line = (
+                    f"reg={name} wdata=0x{v:016x} lane={lane} resp={resp} expect_resp={RESP_OKAY}"
                 )
+                assert resp == RESP_OKAY, f"CHK-CC-INERT FAIL: {line}"
+                self.logger.info("CHK-CC-INERT PASS: %s", line)
         close_graded_window(self.logger)
         n_timeout = self.responses - n_before
         assert n_timeout == 2 * N_WRITES, (
             f"CHK-CC-INERT FAIL: timeout writes responses={n_timeout}/{2 * N_WRITES}"
         )
         ti = await self._read64(TIMEOUT_INTERRUPT)
-        self.logger.info(
-            "OBS-TIMEOUT: timeout_interrupt=0x%x after TIMEOUT_CLEAR and TIMEOUT_MODE writes", ti
-        )
+        fc = field_compare(ti, TI_RESET, TI_FIELD)
+        line = f"reg=TIMEOUT_INTERRUPT after TIMEOUT_CLEAR and TIMEOUT_MODE writes {fc.fields()}"
+        assert fc.ok, f"CHK-CC-TIMEOUT-INTR FAIL: {line}"
+        self.logger.info("CHK-CC-TIMEOUT-INTR PASS: %s", line)
+        self.logger.info("OBS-TIMEOUT: timeout_interrupt[63:1]=0x%x", (ti & ~TI_FIELD & M64) >> 1)
+        # No line states the read response of TIMEOUT_CLEAR and TIMEOUT_MODE.
+        mon = self.env.axi_monitor
+        for name, addr in (("TIMEOUT_CLEAR", TIMEOUT_CLEAR), ("TIMEOUT_MODE", TIMEOUT_MODE)):
+            mon.arm_expected_decerr(1)
+            seq = SepAxiAccessSeq(
+                "ccshape_to_rd",
+                op=SepAxiOp.READ,
+                addr=addr,
+                length=8,
+                size=3,
+                allow_ungraded_read_resp=True,
+            )
+            await self.start_seq(seq)
+            if seq.timed_out or seq.resp_code != RESP_DECERR:
+                mon.release_expected_decerr(1)
+            self.logger.info(
+                "OBS-CC-TIMEOUT-RD reg=%s resp=%s rdata=0x%016x",
+                name,
+                "timeout" if seq.timed_out else seq.resp_code,
+                seq.rdata & M64,
+            )
 
         # Step 9: status registers.
         base: dict[str, int] = {}
@@ -463,7 +527,7 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             fc = field_compare(got, base[name], field)
             line = f"reg={name} wdata=0x{v:016x} lane={lane} resp={resp} {fc.fields()}"
             assert fc.ok, f"CHK-CC-INERT FAIL: read-only bit changed by a write: {line}"
-            self.logger.info("CTRL-CC-INERT LOG: %s", line)
+            self.logger.info("CHK-CC-INERT PASS: %s", line)
             self._rsvd(name, got, field)
             after[name] = got & field
         close_graded_window(self.logger)
@@ -607,7 +671,9 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             await ClockCycles(dut.clk_i, PULSE_CYCLES)
             dut.wdt_rst_ni_i.value = 1
             n = await self._wait_high(dut.sep_cpu_reset_n_o, "sep_cpu_reset_n_o")
-            self.logger.info("WDT_PULSE: low=%d sep_cpu_reset_n_o high after %d", PULSE_CYCLES, n)
+            self.logger.info(
+                "INFO-WDT-PULSE: low=%d sep_cpu_reset_n_o high after %d", PULSE_CYCLES, n
+            )
         else:
             await self.pulse_rst_ni(hold_cycles=PULSE_CYCLES, release_bound=RESET_BOUND)
         rb = await self._read_all()
@@ -616,10 +682,23 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             cleared = all((rb[(b, i)] & SCR_FIELD) == SCR_RESET for i in range(SCRATCH_N))
             retained = all((rb[(b, i)] & SCR_FIELD) == before[(b, i)] for i in range(SCRATCH_N))
             cls[b] = "cleared" if cleared else ("retained" if retained else "mixed")
-        self.logger.info(
-            "INFO-SCR-SEQ: step=%d event=%s warm=%s cold=%s", step, ev, cls["warm"], cls["cold"]
+        exp = SCR_RESET_EXPECT[ev]
+        # Every word written since the last reset event differs from the reset value,
+        # so a cleared bank and a retained bank read differently.
+        armed = sum(int(v != SCR_RESET) for v in before.values())
+        line = (
+            f"step={step} event={ev} warm={cls['warm']} cold={cls['cold']} "
+            f"expect_warm={exp['warm']} expect_cold={exp['cold']} armed_words={armed}/{len(before)}"
         )
-        self.snapshot = {k: v & SCR_FIELD for k, v in rb.items()}
+        assert (cls["warm"], cls["cold"]) == (exp["warm"], exp["cold"]) and armed == len(before), (
+            f"CHK-SCR-RESET FAIL: {line}"
+        )
+        self.logger.info("CHK-SCR-RESET PASS: %s", line)
+        self.snapshot = {
+            (b, i): (SCR_RESET if exp[b] == "cleared" else before[(b, i)])
+            for b in ("cold", "warm")
+            for i in range(SCRATCH_N)
+        }
 
     async def _scratch(self) -> None:
         cfg = self.tcfg
@@ -639,33 +718,35 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.tcfg = cfg = _Cfg(seed)
         self.responses = 0
         self.scr_shape_lines = 0
-        self.logger.info("DRAW ver=%s", " ".join(f"0x{v:016x}/{lane}" for v, lane in cfg.ver))
+        self.logger.info("INFO-DRAW ver=%s", " ".join(f"0x{v:016x}/{lane}" for v, lane in cfg.ver))
         self.logger.info(
-            "DRAW nmi_pre=%s", " ".join(f"0x{v:016x}/{lane}" for v, lane in cfg.nmi_pre)
+            "INFO-DRAW nmi_pre=%s", " ".join(f"0x{v:016x}/{lane}" for v, lane in cfg.nmi_pre)
         )
         self.logger.info(
-            "DRAW nmi_post=%s",
+            "INFO-DRAW nmi_post=%s",
             " ".join(f"hi=0x{h:08x}/lo=0x{lo:08x}/{lane}" for h, lo, lane in cfg.nmi_post),
         )
         self.logger.info(
-            "DRAW lock_writes=%s", " ".join(f"0x{k:x}/{lane}" for k, lane in cfg.lock_writes)
+            "INFO-DRAW lock_writes=%s", " ".join(f"0x{k:x}/{lane}" for k, lane in cfg.lock_writes)
         )
         for name, vals in cfg.timeout.items():
-            self.logger.info("DRAW %s=%s", name, " ".join(f"0x{v:016x}/{lane}" for v, lane in vals))
+            self.logger.info(
+                "INFO-DRAW %s=%s", name, " ".join(f"0x{v:016x}/{lane}" for v, lane in vals)
+            )
         self.logger.info(
-            "DRAW sense_upper=%s sense_lane=%s",
+            "INFO-DRAW sense_upper=%s sense_lane=%s",
             {k: hex(v) for k, v in cfg.sense_upper.items()},
             cfg.sense_lane,
         )
-        self.logger.info("DRAW events=%s", ",".join(cfg.events))
+        self.logger.info("INFO-DRAW events=%s", ",".join(cfg.events))
         for step, ev in enumerate(cfg.events):
             if ev.startswith("WRITE_BANK"):
                 self.logger.info(
-                    "DRAW step=%d %s perm=%s shape=%s half_order=%s values=%s",
+                    "INFO-DRAW step=%d %s perm=%s shape=%s half_order=%s values=%s",
                     step,
                     ev,
                     cfg.perm[step],

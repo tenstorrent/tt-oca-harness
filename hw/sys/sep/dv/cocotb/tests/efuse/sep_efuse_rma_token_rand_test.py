@@ -5,7 +5,11 @@
 RANDCFG.
 
 A matching token authorizes the LC_STATE OTP bit and the resense shows the
-new lifecycle code plus the spec-derived FEAT_CTRL. A mismatch does not
+new lifecycle code plus the spec-derived FEAT_CTRL. After the match, a hash of a
+wrong token on the same channel gives Mismatch and the program of the LC_STATE bit
+returns PROGRAM_ERR (CHK-TOKEN-REHASH-REVOKE, ``token_processing.adoc``: a new start
+clears validity); the legal token is then presented again before the program that
+lands. A mismatch does not
 match, the program is rejected, and LC/FEAT_CTRL stay at the pre-attempt
 golden. Token values come from the run seed. Both SIP and CHIPLET kinds
 walk match and mismatch.
@@ -127,6 +131,26 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         good = SepRmaTokenMatchSeq(kind, token)
         await self.start_seq(good)
         assert good.matched is True, f"{name} legal token did not match"
+        # token_processing.adoc:52, :127: a new start clears validity, so a wrong-token
+        # hash after the match revokes the program authorization.
+        rehash = SepRmaTokenMatchSeq(kind, token ^ 1)
+        await self.start_seq(rehash)
+        revoked = sep_efuse_otp_program_seq(bit, expect_err=True)
+        await self.start_seq(revoked)
+        assert rehash.match_code == TOKEN_MISMATCH and revoked.saw_err, (
+            f"CHK-TOKEN-REHASH-REVOKE FAIL: {name} match, then wrong-token hash code "
+            f"0x{rehash.match_code:02x} (want 0x{TOKEN_MISMATCH:02x}), LC_STATE bit "
+            f"{bit} program saw_err={int(revoked.saw_err)} (want 1)"
+        )
+        self.logger.info(
+            "CHK-TOKEN-REHASH-REVOKE PASS: %s match, wrong-token hash code=0x%02x, "
+            "program saw_err=1",
+            name,
+            rehash.match_code,
+        )
+        good = SepRmaTokenMatchSeq(kind, token)
+        await self.start_seq(good)
+        assert good.matched is True, f"{name} legal token did not match after the re-hash"
         await self.start_seq(sep_efuse_otp_program_seq(bit))
         image.set_lc_state(after)
         self.write_efuse_image(image)
@@ -145,7 +169,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         return (vec >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
-        seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT)
+        seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT, size=2)
         await self.start_seq(seq)
         assert seq.resp_ok, "TOKEN_MATCH_FAULT read not OKAY"
         return seq.rdata
@@ -156,6 +180,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             op=SepAxiOp.WRITE,
             addr=TOKEN_MATCH_FAULT,
             wdata=data,
+            size=2,
         )
         await self.start_seq(seq)
         # The point of the write is that a read-only field ignores it. A write

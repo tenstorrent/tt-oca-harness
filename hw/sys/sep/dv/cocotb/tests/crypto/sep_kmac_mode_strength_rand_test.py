@@ -32,16 +32,25 @@ Checkers:
   CHK-DONE-RW1C  per cell (sep_kmac_seq.run_family): INTR_STATE.kmac_done set ->
                  W1C -> reads 0; CMD DONE returns to idle
   CHK-ERR        per cell: ERR_CODE == 0 and INTR_STATE.kmac_err == 0
-  CHK1..CHK4     bit-exact entropy golden (strict scoreboard report)
-  CHK5_kmac      post-adapter KMAC beats == AXIS1 in order (single live crypto sink)
+  CHK1..CHK4     bit-exact entropy golden (strict scoreboard report); PASS line
+                 ``CHK-ENTROPY-CHAIN`` with the match/mismatch count per stage
+  CHK5_kmac      post-adapter KMAC beats == AXIS1 in order (single live crypto sink);
+                 PASS line ``CHK-KMAC-ROUTING`` with the beat counts (floor 3)
   CHK-RAND-REP   every discrete cell produced its own golden-matching digest,
                  and all digests are distinct (seed logged)
+
+Log-only: ``OBS-KMAC-KEYLEN-UNDEF``, one KMAC-256 run after the walk with ``KEY_LEN``
+drawn from the undefined codes 5 to 7 and a 512-bit software key: kmac_err,
+ERR_CODE and whether the digest equals the 512-bit-key golden. No text states the
+outcome of these codes.
 """
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
-from env.sep_kmac_golden import kmac_family_words
+from cocotb.triggers import ClockCycles
+from env.sep_kmac_golden import kmac_family_words, right_encode
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import (
     KMAC_KEY_LENGTHS,
@@ -50,7 +59,25 @@ from env.sep_spec_tables import (
     KMAC_XOF_STRENGTHS,
 )
 from sep_base_test import sep_base_test
-from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
+from sep_reg_meta import KMAC
+from seq_lib.sep_kmac_seq import (
+    KMAC_CFG_SHADOWED,
+    KMAC_CMD,
+    KMAC_CMD_DONE,
+    KMAC_CMD_PROCESS,
+    KMAC_CMD_START,
+    KMAC_ERR_CODE,
+    KMAC_INTR_KMAC_DONE,
+    KMAC_INTR_KMAC_ERR,
+    KMAC_INTR_STATE,
+    KMAC_KEY_LEN,
+    KMAC_KEY_SHARE0,
+    KMAC_KEY_SHARE1,
+    KMAC_STATUS,
+    KMAC_STATUS_SQUEEZE,
+    SepKmac,
+    SepKmacCfg,
+)
 
 # Walk set: FIPS 202 SHA-3 family + kmac.adoc/RDL SHAKE/cSHAKE 128/256 +
 # keyed KMAC (cSHAKE + kmac_en) at those XOF strengths. XOF output lengths
@@ -73,6 +100,16 @@ CELLS = (
 )
 assert {c[3] for c in CELLS if c[0] == "kmac"} == set(KMAC_KEY_LENGTHS)
 
+# KEY_LEN.len codes 5 to 7: "Other values are reserved."
+# (vendor/lowRISC/opentitan/upstream/hw/ip/kmac/doc/registers.md lines 695-703).
+UNDEF_KEY_LEN_CODES = range(5, 8)
+_CMD_ERR_PROCESSED = KMAC.field_mask("CMD", "err_processed")
+# Outer limit, in clk_i cycles, of the squeeze-or-error wait of the undefined KEY_LEN run.
+_UNDEF_BOUND_CLK = 80_000
+_POLL_CLK = 20
+# Minimum scored CHK5_kmac beats of the walk (see the set_min_matches call).
+_CHK5_KMAC_MIN = 3
+
 
 @pyuvm.test()
 class sep_kmac_mode_strength_rand_test(sep_base_test):
@@ -88,14 +125,14 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         # walk scores about six routed beats where the AES sweep scores over a
         # hundred. 3 sits well above the default floor of 1 and keeps margin if a
         # later seed or reseed shifts the draw count.
-        self.drbg_sb.set_min_matches(CHK5_kmac=3)
+        self.drbg_sb.set_min_matches(CHK5_kmac=_CHK5_KMAC_MIN)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
         self.kmac = SepKmac(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("KMAC mode x strength breadth: seed=%d", seed)
+        self.logger.info("INFO-KMAC-SEED seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
         # output, not on the loop's own trip count. Distinct results additionally
@@ -118,10 +155,28 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             "KMAC cells produced duplicate digests, so they did not all run distinct "
             "configurations: " + ", ".join(f"{k}={results[k][0]:#010x}" for k in sorted(results))
         )
+        await self._keylen_undef_cell()
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
-        self.logger.info("CHK1..CHK4 bit-exact + CHK5_kmac ROUTING (KMAC==AXIS1) PASS")
+        res = self.drbg_sb.results
+        self.logger.info(
+            "CHK-ENTROPY-CHAIN PASS: seed=%d %s",
+            seed,
+            " ".join(
+                f"{k}=match{res[k].matches}/mismatch{res[k].mismatches}"
+                for k in ("CHK1_decor", "CHK2_compress", "CHK3_seed", "CHK4_genbits")
+            ),
+        )
+        route = res["CHK5_kmac"]
+        self.logger.info(
+            "CHK-KMAC-ROUTING PASS: seed=%d dut_items=%d match=%d mismatch=%d min=%d",
+            seed,
+            route.dut_items,
+            route.matches,
+            route.mismatches,
+            _CHK5_KMAC_MIN,
+        )
         self.logger.info(
             "CHK-RAND-REP PASS: walked all %d discrete cells (%s) in one "
             "invocation (seed=%d); message/key randomized per cell; entropy clean",
@@ -168,3 +223,51 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             len(msg),
         )
         return tuple(digest)
+
+    async def _keylen_undef_cell(self) -> None:
+        """One KMAC-256 run with an undefined KEY_LEN code and a 512-bit key; logged only."""
+        key_len = self.rng.choice(UNDEF_KEY_LEN_CODES)
+        msg = self._rand_words(self.rng.randrange(1, 9))
+        key = self._rand_words(512 // 32)
+        cfg = SepKmacCfg(
+            mode="kmac", sec=256, msg_words=msg, outlen_bytes=32, key_words=key, key_bits=512
+        )
+        kmac = self.kmac
+        await kmac._wr(KMAC_KEY_LEN, key_len)
+        await kmac._write_prefix(cfg.prefix_bytes())
+        for i, word in enumerate(key):
+            await kmac._wr(KMAC_KEY_SHARE0[i], word)
+            await kmac._wr(KMAC_KEY_SHARE1[i], 0)
+        await kmac._wr(KMAC_CFG_SHADOWED, cfg.cfg_word())
+        await kmac._wr(KMAC_CFG_SHADOWED, cfg.cfg_word())
+        await kmac._wait_idle("keylen-undef")
+        await kmac._wr(KMAC_CMD, KMAC_CMD_START)
+        data = b"".join(w.to_bytes(4, "little") for w in msg)
+        await kmac._push_msg_bytes(data + right_encode(cfg.outlen_bytes * 8))
+        await kmac._wr(KMAC_CMD, KMAC_CMD_PROCESS)
+        status = intr = 0
+        for _ in range(_UNDEF_BOUND_CLK // _POLL_CLK):
+            status = await kmac._rd(KMAC_STATUS)
+            intr = await kmac._rd(KMAC_INTR_STATE)
+            if status & KMAC_STATUS_SQUEEZE or intr & KMAC_INTR_KMAC_ERR:
+                break
+            await ClockCycles(cocotb.top.clk_i, _POLL_CLK)
+        squeeze = int(bool(status & KMAC_STATUS_SQUEEZE))
+        digest = await kmac.read_digest(cfg.outlen_bytes // 4) if squeeze else []
+        code = await kmac._rd(KMAC_ERR_CODE)
+        golden = kmac_family_words(**cfg.golden_kwargs())
+        self.logger.info(
+            "OBS-KMAC-KEYLEN-UNDEF key_len=%d squeeze=%d kmac_err=%d err_code=0x%08x "
+            "digest_eq_512=%d digest0=%s",
+            key_len,
+            squeeze,
+            int(bool(intr & KMAC_INTR_KMAC_ERR)),
+            code,
+            int(digest == golden),
+            f"0x{digest[0]:08x}" if digest else "na",
+        )
+        if squeeze:
+            await kmac._wr(KMAC_CMD, KMAC_CMD_DONE)
+        if intr & KMAC_INTR_KMAC_ERR:
+            await kmac._wr(KMAC_CMD, _CMD_ERR_PROCESSED)
+        await kmac._wr(KMAC_INTR_STATE, KMAC_INTR_KMAC_DONE | KMAC_INTR_KMAC_ERR)
