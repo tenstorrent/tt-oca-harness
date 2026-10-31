@@ -36334,8 +36334,10 @@ module sep_fcov (
 
   // Window of x_case_cmd for pre_sense_prog: reset release to sense done.
   logic ef_ps_go = 1'b0, ef_ps_prog = 1'b0;
-  // both_enables: from the go to the next cold reset.
-  logic ef_be_arm = 1'b0, ef_be_rcmd = 1'b0;
+  // both_enables: from the go to the write that clears program_enable or the
+  // next cold reset, whichever comes first. ef_be_rcmd_aw is ef_be_rcmd at the
+  // AW of the last EFUSE_PROGRAM_CTRL write, before that write takes effect.
+  logic ef_be_arm = 1'b0, ef_be_rcmd = 1'b0, ef_be_rcmd_aw = 1'b0;
 
   // x_exempt_write: a landed program of LC_STATE bit 0 or 3 waits for the
   // resensed LC_STATE read. ef_xw_req counts the landed programs; the
@@ -36616,8 +36618,14 @@ module sep_fcov (
     end
     if (ef_be_arm) begin
       if (ef_cmd_rd && !in_reset) ef_be_rcmd <= 1'b1;
+      if (aw_hs && (lsu_aw_addr_i == EfPgCtrl)) begin
+        ef_be_rcmd_aw <= ef_be_rcmd || (ef_cmd_rd && !in_reset);
+      end
       if (ef_rst_fall) begin
         if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd2, ef_be_rcmd});
+        ef_be_arm <= 1'b0;
+      end else if (wr_okay && (aw_addr_q == EfPgCtrl) && !(|(wr_data & EfPgEnMask))) begin
+        if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd2, ef_be_rcmd_aw});
         ef_be_arm <= 1'b0;
       end
     end
@@ -38507,13 +38515,18 @@ module sep_fcov (
   // open sense, another owner, a changed mask, mixed rail values or an X or Z
   // rail samples nothing.
   localparam int unsigned EfLcPairs = sep_pkg::LcStateBitWidth;
+  // The bench forces and releases the decoder input at a clk_i rise, in the
+  // time step this block reads it. ef_si_data is the value at the clk_i fall
+  // before, which has settled.
+  logic [2*EfLcPairs-1:0] ef_si_data = 'x;
+  always @(negedge clk_i) ef_si_data <= lc_dec_data_i;
   wire [EfLcPairs-1:0] ef_si_pairs =
-      ~(lc_dec_data_i[EfLcPairs-1:0] ^ lc_dec_data_i[2*EfLcPairs-1:EfLcPairs]);
-  wire ef_si_x = $isunknown(lc_dec_data_i);
+      ~(ef_si_data[EfLcPairs-1:0] ^ ef_si_data[2*EfLcPairs-1:EfLcPairs]);
+  wire ef_si_x = $isunknown(ef_si_data);
   wire ef_si_on = !ef_si_x && (ef_si_pairs != '0);
   // Rail value of the broken pairs; ef_si_mixed when they differ.
-  wire ef_si_one = |(ef_si_pairs & lc_dec_data_i[EfLcPairs-1:0]);
-  wire ef_si_mixed = ef_si_one && |(ef_si_pairs & ~lc_dec_data_i[EfLcPairs-1:0]);
+  wire ef_si_one = |(ef_si_pairs & ef_si_data[EfLcPairs-1:0]);
+  wire ef_si_mixed = ef_si_one && |(ef_si_pairs & ~ef_si_data[EfLcPairs-1:0]);
   logic ef_si_q = 1'b0, ef_si_bad = 1'b0, ef_si_skip = 1'b0;
   logic ef_si_dem = 1'b0, ef_si_val = 1'b0;
   logic [3:0] ef_si_mask = '0;
