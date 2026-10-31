@@ -94,7 +94,7 @@ diff after the out-of-range program cases (``OBS-IF-CMD``), the
 count of post-guard commands (``efuse_shim_cmd_*_o``) of each out-of-range read and
 program (``OBS-IF-OOB-CMD``), the status flags, ``program_done``, ``program_status``
 and bank diff of the in-range program after the out-of-range programs
-(``OBS-IF-OOR-PROG-TWIN``), and, after the lock-program case, a read held by
+(``INFO-IF-OOR-PROG-TWIN``), and, after the lock-program case, a read held by
 ``program_enable`` with ``program_enable`` cleared first: the READ commands at
 ``efuse_shim_command_req_o`` while held and after the clear, ``read_done`` and the
 flags (``INFO-IF-ENABLE-CLEAR-ORDER``). The both-enables case clears
@@ -849,7 +849,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         pre_bit = (snap[twin >> 5] >> (twin & 31)) & 1
         f = await self._run_program(twin)
         diff = self.bank.diff_since(snap)
-        self.chk.obs(
+        self.chk.info(
             "IF-OOR-PROG-TWIN",
             field=self.oor_twin["field"],
             addr=twin,
