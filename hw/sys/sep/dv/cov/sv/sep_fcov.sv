@@ -36598,7 +36598,13 @@ module sep_fcov (
   end
 
   // x_case_cmd pre_sense_prog and both_enables windows; cp_prog_visibility
-  // bin 1. These span a reset, so they do not clear on it.
+  // bin 1. These span a reset, so they do not clear on it. The specification
+  // states that a read does not reach the bank only while program_enable is
+  // set, so the both_enables window ends at an OKAY EFUSE_PROGRAM_CTRL write
+  // that strobes every program_enable byte and writes program_enable 0.
+  wire [31:0] ef_wr_bmask = {{8{wr_strb[3]}}, {8{wr_strb[2]}}, {8{wr_strb[1]}}, {8{wr_strb[0]}}};
+  wire ef_pg_en_clr = wr_okay && (aw_addr_q == EfPgCtrl) &&
+      ((ef_wr_bmask & EfPgEnMask) == EfPgEnMask) && !(|(wr_data & EfPgEnMask));
   always @(posedge clk_i) begin
     if (ef_rel) begin
       ef_ps_go   <= 1'b0;
@@ -36624,7 +36630,7 @@ module sep_fcov (
       if (ef_rst_fall) begin
         if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd2, ef_be_rcmd});
         ef_be_arm <= 1'b0;
-      end else if (wr_okay && (aw_addr_q == EfPgCtrl) && !(|(wr_data & EfPgEnMask))) begin
+      end else if (ef_pg_en_clr) begin
         if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd2, ef_be_rcmd_aw});
         ef_be_arm <= 1'b0;
       end
