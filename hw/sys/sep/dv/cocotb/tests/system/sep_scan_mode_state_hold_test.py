@@ -63,9 +63,14 @@ Checkers:
                         back at the leg value on at least 1 sample, f3
                         opposite on every sample from its move to the
                         test_en_i fall (at least 1).
+  CTRL-SCAN-TE-FALL      every session ends with test_en_i = 0 on each sample
+                        after its last test_en_i = 1 sample (at least 1).
   CHK-SCAN-SECRET-ZERO  at strap 1 the 32 secret shadow words read 0 on every
                         sample of the session. Control: at strap 0 they read
                         the staged words before the session.
+  CTRL-SCAN-SECRET-STORED after the strap-1 session, the shadow storage
+                        (shadow_efuse_values_n0_scan and shadow_efuse_values)
+                        holds every staged secret word.
   CTRL-SECDIS-SET        security_disable_o goes 0 to 1 at the SEC_DIS go with
                         the token whose digest tb_top binds.
   CHK-SCAN-SECDIS-HOLD  security_disable_o, the SEC_DIS digest and its valid
@@ -536,6 +541,20 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             f"edges and opposite at the release, f2 >= 1 back at {strap}, f3 >= 1 opposite "
             f"up to the test_en_i fall)"
         )
+        last_te1 = max((i for i, x in enumerate(win) if x["te"] == 1), default=-1)
+        fell = win[last_te1 + 1 :]
+        line = (
+            f"leg={leg} te1_samples={sum(1 for x in win if x['te'] == 1)} "
+            f"te0_samples_after={len(fell)} last_te1_t="
+            f"{win[last_te1]['t'] if last_te1 >= 0 else '-'} t_end={t_end}"
+        )
+        # Same text as SepChkLog.ctrl(): f3 and the session checks grade the
+        # strap at the test_en_i fall, so a session whose test_en_i never falls
+        # fails the leaf.
+        if last_te1 < 0 or not fell or any(x["te"] != 0 for x in fell):
+            self.logger.error("CTRL-MISSING SCAN-TE-FALL: %s", line)
+            raise AssertionError(f"CTRL-MISSING SCAN-TE-FALL: {line}")
+        self.logger.info("CTRL-SCAN-TE-FALL seen: %s", line)
         for line in self.strap_flips[-3:]:
             self.logger.info("INFO-STRAP-FLIP LOG: %s", line)
         return {"pre": pre, "win": win, "t_rise": t_rise, "flips": flips}
@@ -624,25 +643,29 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             sum(1 for p in set(found) if "sense_done" in p.lower()),
         )
 
-    async def _n0_scan_check(self) -> None:
-        """CTRL-SCAN-N0-STAGED, CHK-SCAN-N0-CLASS1 and OBS-SCAN-N0-COMPLETE after a sense."""
+    async def _storage(self, tag: str) -> tuple[list, list]:
+        """The words of shadow_efuse_values_n0_scan and shadow_efuse_values."""
         dut: Any = cocotb.top
-        img = self.n0_img
         h: Any = dut
         for part in SHADOW_REGS.split("."):
             h = getattr(h, part, None)
-            assert h is not None, f"CHK-SCAN-N0-CLASS1 FAIL: no handle {SHADOW_REGS} ({part})"
+            assert h is not None, f"{tag} FAIL: no handle {SHADOW_REGS} ({part})"
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         n0_bits = sig_bits(h.shadow_efuse_values_n0_scan)
         nm_bits = sig_bits(h.shadow_efuse_values)
         await RisingEdge(dut.clk_i)
         assert n0_bits and len(n0_bits) % 32 == 0 and nm_bits and len(nm_bits) % 32 == 0, (
-            f"CHK-SCAN-N0-CLASS1 FAIL: storage widths n0_scan={len(n0_bits)} "
-            f"normal={len(nm_bits)} bits"
+            f"{tag} FAIL: storage widths n0_scan={len(n0_bits)} normal={len(nm_bits)} bits"
         )
         n0 = [probe_word(n0_bits, k) for k in range(len(n0_bits) // 32)]
         nm = [probe_word(nm_bits, k) for k in range(len(nm_bits) // 32)]
+        return n0, nm
+
+    async def _n0_scan_check(self) -> None:
+        """CTRL-SCAN-N0-STAGED, CHK-SCAN-N0-CLASS1 and OBS-SCAN-N0-COMPLETE after a sense."""
+        img = self.n0_img
+        n0, nm = await self._storage("CHK-SCAN-N0-CLASS1")
         staged = [img.shadow_word(i) for i in range(NUM_FUSE_WORDS)]
         owner: dict[int, list[str]] = {}
         for i, v in enumerate(staged):
@@ -723,6 +746,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await self._release_km()
         s = await self._session(leg, strap)
         self._obs_hold(leg, strap, s)
+        staged = [(SECRETS[f] >> (32 * (idx - field_word(f)))) & M32 for f, idx in SECRET_WORDS]
         win = s["win"]
         bad = [(x["t"], x["stm"]) for x in win if x["stm"] != strap]
         assert not bad, (
@@ -745,8 +769,27 @@ class sep_scan_mode_state_hold_test(sep_base_test):
                 f"during the scan session: {nz[:4]}"
             )
             self.secret1 = len(win)
+            n0, nm = await self._storage("CTRL-MISSING SCAN-SECRET-STORED")
+            left = [v for v in n0 + nm if v is not None]
+            absent = []
+            for (f, idx), v in zip(SECRET_WORDS, staged):
+                if v in left:
+                    left.remove(v)
+                else:
+                    absent.append((f, idx - field_word(f), _hex(v)))
+            line = (
+                f"leg={leg} after the session: secret words={len(SECRET_WORDS)} "
+                f"non-zero staged={sum(1 for v in staged if v)} in storage="
+                f"{len(SECRET_WORDS) - len(absent)} absent={absent[:4]}"
+            )
+            # Same text as SepChkLog.ctrl(): CHK-SCAN-SECRET-ZERO at strap 1 needs
+            # the secret words held in the shadow storage through the session, so
+            # a zero output is the mask and not an empty store.
+            if absent or not any(staged):
+                self.logger.error("CTRL-MISSING SCAN-SECRET-STORED: %s", line)
+                raise AssertionError(f"CTRL-MISSING SCAN-SECRET-STORED: {line}")
+            self.logger.info("CTRL-SCAN-SECRET-STORED seen: %s", line)
         else:
-            staged = [(SECRETS[f] >> (32 * (idx - field_word(f)))) & M32 for f, idx in SECRET_WORDS]
             ctl = [x["secret"] == staged for x in s["pre"]]
             self.secret0 = (sum(ctl), len(ctl), staged[0])
             same = sum(1 for x in win if x["secret"] == staged)

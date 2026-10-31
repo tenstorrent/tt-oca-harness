@@ -188,10 +188,10 @@ class sep_address_map_test(sep_base_test):
 
         # CHK-EXT-DEMUX-BOUND. ext_demux_decode() in sep.sv is Tenstorrent-owned
         # decode on an adopter-owned aperture: the first word selects the eFuse
-        # shim port, the next word leaves SEP and is terminated by the extension
-        # error slave. This leaf selects both master ports of u_efuse_shim_demux.
-        # The two responses must differ. The value behind the shim is adopter
-        # owned and is not graded -- only which port the decode chose.
+        # shim port and the next word answers DECERR. The two responses must
+        # differ. The check grades the response class, not which slave answered
+        # the DECERR. The value behind the shim is adopter owned and is not
+        # graded.
         off = EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE
         # Keyed off the response rather than the monitor tally: the monitor
         # counts on its own clock edge, which may not have run when start_seq
@@ -208,8 +208,7 @@ class sep_address_map_test(sep_base_test):
         )
         assert past.resp_code == RESP_DECERR, (
             f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} resp={past.resp_code}, "
-            f"expected DECERR (3) from the extension error slave -- one word past "
-            f"the shim window must leave SEP"
+            f"expected DECERR (3) one word past the shim window"
         )
 
         inside = await self._access(SepAxiOp.READ, EFUSE_SHIM_BASE)
@@ -223,8 +222,8 @@ class sep_address_map_test(sep_base_test):
         )
         self.logger.info(
             "CHK-EXT-DEMUX-BOUND PASS: 0x%08x selected the shim port (resp=%d) "
-            "and 0x%08x left SEP to the extension error slave (DECERR); the "
-            "%d-byte window boundary is graded, the adopter value is not",
+            "and 0x%08x answered DECERR; the %d-byte window boundary is graded, "
+            "the answering slave and the adopter value are not",
             EFUSE_SHIM_BASE,
             inside.resp_code,
             off,

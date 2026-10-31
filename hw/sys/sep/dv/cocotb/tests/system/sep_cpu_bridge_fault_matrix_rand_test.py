@@ -1068,10 +1068,19 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self._release()
 
     # ---- DMA host path -------------------------------------------------------------
-    async def _idle_check(self, tag: str) -> None:
+    async def _idle_check(self, tag: str, bus_err: int | None = None) -> None:
+        """CTRL-DMA-IDLE: STATUS.BUSY and STATUS.ERROR clear, and DMA_BUS_ERR_STATUS
+        clear when ``bus_err`` is given."""
         st = await self.dma.read_status()
-        if st.raw & (ST_BUSY | ST_ERROR):
-            self._ctrl_missing(f"DMA idle check {tag}: {st.fmt()}")
+        line = (
+            f"seed={self.c.seed} {tag}: status=0x{st.raw:x} busy={int(bool(st.raw & ST_BUSY))} "
+            f"error={int(bool(st.raw & ST_ERROR))}"
+        )
+        if bus_err is not None:
+            line += f" bus_err_status=0x{bus_err & DMA_MASK:02x}"
+        if st.raw & (ST_BUSY | ST_ERROR) or (bus_err or 0) & DMA_MASK:
+            self._ctrl_missing(f"DMA-IDLE {line}")
+        self.logger.info("CTRL-DMA-IDLE seen %s", line)
 
     async def _w1c_error(self) -> None:
         await self.dma.wr(_D.addr("STATUS"), ST_ERROR)
@@ -1098,9 +1107,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         c = self.c
         close_graded_window(self.logger)
         await self._wr_ok(DMA_CLEAR_ADDR, 1)
-        d = await self._dma()
-        if d & DMA_MASK:
-            self._ctrl_missing(f"DMA_BUS_ERR_STATUS=0x{d:x} after clear before the copy")
+        bus_err = await self._dma()
         for idx, ns in zip(OUT_PAIR, (False, True)):
             await self.obank.program(
                 idx,
@@ -1117,7 +1124,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             )
         await self.dma.program_range(0x0, 0xFFFF_FFFF, valid=True)
         await self.dma.wr(_D.addr("ADDR_SPACE_ID"), ASID_RESET)
-        await self._idle_check("before host copy")
+        await self._idle_check("before host copy", bus_err)
         await self._open()
         st, ars, slv = await self._failing_copy(c.dma_size)
         ecode = await self.dma.rd(_D.addr("ERROR_CODE"))

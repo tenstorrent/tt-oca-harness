@@ -209,6 +209,20 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         sib = SepLocalAliasCfg(cfg.seed, sibling_of=cfg)
         self.logger.info("local-alias debug: second window %s", sib.summary())
         await alias.program(cfg)
+        sib_pre = alias_probe_seq(sib.access_addr)
+        await self.start_seq(sib_pre)
+        sib_own = (
+            f"region={sib.region} addr=0x{sib.access_addr:08x} "
+            f"read=0x{sib_pre.rdata & 0xFFFF_FFFF:08x} marker=0x{cfg.marker:08x} "
+            f"resp_ok={int(sib_pre.resp_ok)}"
+        )
+        # Same text as SepChkLog.ctrl(): the second-region CHK-OFFSET needs the
+        # source page's own value to differ from the marker, so a missing
+        # precondition fails the leaf.
+        if not (sib_pre.resp_ok and (sib_pre.rdata & 0xFFFF_FFFF) != cfg.marker):
+            self.logger.error("CTRL-MISSING OFFSET-SIB-OWN: %s", sib_own)
+            raise AssertionError(f"CTRL-MISSING OFFSET-SIB-OWN: {sib_own}")
+        self.logger.info("CTRL-OFFSET-SIB-OWN seen: %s", sib_own)
         await alias.program(sib)
         # One write in region cfg.region, then reads in two different regions
         # with no write in between.
@@ -221,6 +235,14 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             assert (rd.rdata & 0xFFFF_FFFF) == cfg.marker, (
                 f"CHK-OFFSET FAIL: region {c.region} read 0x{rd.rdata & 0xFFFF_FFFF:08x} "
                 f"!= marker 0x{cfg.marker:08x} -- the read did not hit its window"
+            )
+            self.logger.info(
+                "CHK-OFFSET PASS: region %d read 0x%08x returns marker 0x%08x of "
+                "CLOCK_GATE_CTRL 0x%08x",
+                c.region,
+                c.access_addr,
+                rd.rdata & 0xFFFF_FFFF,
+                c.expect_addr,
             )
             lanes.append(self._lane())
         await alias._wr(sib.access_addr, cfg.marker)
