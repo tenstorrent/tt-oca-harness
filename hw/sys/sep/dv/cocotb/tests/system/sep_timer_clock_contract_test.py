@@ -22,10 +22,16 @@ this order, over the CPU-LSU master on ``s_axi``:
   count, thresholds near 2^32 do not wrap, and ``INTR_TEST`` forces the bark
   status without a bite (``hw/sys/sep/doc/watchdog.adoc``, Bark Interrupt and
   Bite Reset; ``aon_timer.adoc``). A write of 1 to ``ALERT_TEST`` gets a write
-  response within the bounded wait, and the response is OKAY: the write is a
-  legal access (``ALERT_TEST`` is ``sw = w`` in ``aon_timer.rdl`` with no
-  write enable), so the golden code is OKAY (AMBA AXI IHI0022, OKAY: normal
-  access success) (CHK-WDT-ALERT-ACCESS).
+  response within the bounded wait (CTRL-WDT-ALERT-RESP), and
+  OBS-WDT-ALERT-RESP logs its response code: the write is a legal access
+  (``ALERT_TEST`` is ``sw = w`` in ``aon_timer.rdl`` with no write enable), and
+  no specification states the response code of a legal register write. With
+  ``WDOG_CTRL`` enable and ``pause_in_sleep`` both 1, OBS-WDT-PAUSE-RUN logs the
+  count advance over ``WDT_WAIT`` ``clk_wdt_i`` periods against the
+  ``clk_wdt_i`` edges between the two count reads; no specification states
+  the level of the sleep input of the timer in SEP. Control
+  CTRL-WDT-PAUSE-RUN: ``WDOG_CTRL`` reads both bits 1 before the first count
+  read.
 * Leg H. The watchdog runs with ``clk_i`` held low past its bite threshold;
   OBS-WDT-CLKSTOP logs what the timer core does (no pass/fail).
 * Leg W. The wakeup expiry follows the 64-bit threshold across the 32-bit
@@ -284,9 +290,8 @@ bite request holds, a ``wdt_rst_ni_i`` pulse clears it (CHK-BITE-CLEAR).
 
 Checkers: CHK-REFCNT-RATE, CHK-REFCNT-PHASE, CHK-REFCNT-WRITE,
 CHK-REFCNT-RESET, CHK-REFCNT-SPACED, CHK-WDT-ORDER, CHK-WDT-THOLD-MONO, CHK-WDT-MAX,
-CHK-WDT-INTRTEST, CHK-WDT-ALERT-ACCESS, CHK-WKUP-WIDE, CHK-WKUP-LATER,
-CHK-WDT-SHAPE, CHK-WDT-COHERENT, CHK-REGWEN-STICKY, CHK-REGWEN-HOLD,
-CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE-CLEAR, CHK-WDT-RATE,
+CHK-WDT-INTRTEST, CHK-WKUP-WIDE, CHK-WKUP-LATER, CHK-WDT-SHAPE, CHK-WDT-COHERENT,
+CHK-REGWEN-STICKY, CHK-REGWEN-HOLD, CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE-CLEAR, CHK-WDT-RATE,
 CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-SCOPE, CHK-WDT-PET,
 CHK-WDT-PET-HOLD, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
 CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ. Controls (not
@@ -294,13 +299,14 @@ counted): CTRL-WDT-ENABLE, CTRL-WDT-THOLD, CTRL-WDT-PAUSE, CTRL-WKUP-SMALL,
 CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
 CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
 CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY,
-CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED. Observations (not graded): OBS-WDT-CLKSTOP,
-OBS-BITE-CLEAR-EDGE, OBS-REFCNT-SPACED-LAT.
+CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED, CTRL-WDT-ALERT-RESP, CTRL-WDT-PAUSE-RUN.
+Observations (not graded): OBS-WDT-CLKSTOP, OBS-BITE-CLEAR-EDGE,
+OBS-REFCNT-SPACED-LAT, OBS-WDT-ALERT-RESP, OBS-WDT-PAUSE-RUN.
 
 The graded window (owner code of this test) opens at leg R and closes for the
-enable control run, leg H, the small wakeup control runs, the preload of each
-reset event, the CTRL-WDT-PET-BARK run, the count wait of CHK-WDT-THOLD-BELOW,
-and at the end of the leaf. The sampler holds every cell the window fills and
+enable control run, the pause-in-sleep run, leg H, the small wakeup control
+runs, the preload of each reset event, the CTRL-WDT-PET-BARK run, the count
+wait of CHK-WDT-THOLD-BELOW, and at the end of the leaf. The sampler holds every cell the window fills and
 samples the held cells once, when the leaf writes the release bit of its pass
 label after every check passed; a failing leaf writes the drop bit. The bark-line
 cells of ``cp_thold_order`` fill only inside the graded runs of CHK-WDT-ORDER and
@@ -318,13 +324,13 @@ from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
-from env.sep_fabric_common import RESP_OKAY
 from env.sep_fcov_gate import (
     TIMER_CONTRACT_PASS_DROP,
     TIMER_CONTRACT_PASS_ORDER_RUN,
     TIMER_CONTRACT_PASS_RELEASE,
     close_graded_window,
     open_graded_window,
+    set_open_value_leg_pass,
     set_timer_contract_pass,
 )
 from env.sep_field_compare import field_compare
@@ -601,7 +607,6 @@ class sep_timer_clock_contract_test(sep_base_test):
         "CHK-WDT-THOLD-MONO",
         "CHK-WDT-MAX",
         "CHK-WDT-INTRTEST",
-        "CHK-WDT-ALERT-ACCESS",
         "CHK-WKUP-WIDE",
         "CHK-WKUP-LATER",
         "CHK-WDT-SHAPE",
@@ -1551,6 +1556,7 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self._wr(WDOG_CTRL, 0)
         v0 = await self._poll_eq("WDOG_CTRL", WDOG_CTRL, 0, WDOG_CTRL_FIELDS, "CTRL-WDT-PAUSE")
         self.logger.info("CTRL-WDT-PAUSE: write1_read=0x%x write0_read=0x%x", v1, v0)
+        await self._pause_run(bx, dx)
         src13 = SepBitWatch(
             cocotb.top.sep_internal_interrupts_probe_o, {"src13": 12}, name="src13"
         ).start()
@@ -1565,15 +1571,13 @@ class sep_timer_clock_contract_test(sep_base_test):
             allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
+        seed = self.tcfg.seed
         if seq.timed_out:
-            raise AssertionError("CHK-WDT-ALERT-ACCESS FAIL: no response")
-        if seq.resp_code != RESP_OKAY:
-            raise AssertionError(
-                f"CHK-WDT-ALERT-ACCESS FAIL: bresp={seq.resp_code} expect={RESP_OKAY} (OKAY)"
-            )
-        self.logger.info(
-            "CHK-WDT-ALERT-ACCESS PASS: bresp=%d expect=%d (OKAY)", seq.resp_code, RESP_OKAY
-        )
+            msg = f"CTRL-MISSING WDT-ALERT-RESP: seed={seed} no response to the ALERT_TEST write"
+            self.logger.error(msg)
+            self._fail(msg)
+        self.logger.info("CTRL-WDT-ALERT-RESP seen: seed=%d response=1", seed)
+        self.logger.info("OBS-WDT-ALERT-RESP seed=%d bresp=%d", seed, seq.resp_code)
         # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         self.logger.info(
@@ -1583,6 +1587,49 @@ class sep_timer_clock_contract_test(sep_base_test):
             SRC13_WINDOW,
         )
         await src13.stop()
+
+    async def _pause_run(self, bx: int, dx: int) -> None:
+        """Count window with ``WDOG_CTRL`` enable and ``pause_in_sleep`` set (window closed)."""
+        seed = self.tcfg.seed
+        want = WDOG_EN | WDOG_PAUSE
+        was = await self._ungraded()
+        await self._wdt_baseline(bx, dx, 0)
+        await self._wr(WDOG_CTRL, want)
+        for _ in range(POLL_READS):
+            ctrl = await self._rd(WDOG_CTRL)
+            if ctrl & WDOG_CTRL_FIELDS == want:
+                break
+            await ClockCycles(cocotb.top.clk_i, POLL_GAP)
+        if ctrl & WDOG_CTRL_FIELDS != want:
+            msg = (
+                f"CTRL-MISSING WDT-PAUSE-RUN: seed={seed} wdog_ctrl=0x{ctrl & WDOG_CTRL_FIELDS:x} "
+                f"expect=0x{want:x}"
+            )
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-WDT-PAUSE-RUN seen: seed=%d wdog_ctrl=0x%x", seed, ctrl)
+        set_open_value_leg_pass("wdt_pause_in_sleep_set", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        c0, s0, e0 = await self._timed_rd(WDOG_COUNT)
+        await self._wait_wdt(WDT_WAIT)
+        c1, s1, e1 = await self._timed_rd(WDOG_COUNT)
+        st = await self._rd(INTR_STATE)
+        await self._wr(WDOG_CTRL, 0)
+        self.logger.info(
+            "OBS-WDT-PAUSE-RUN seed=%d wdog_ctrl=0x%x count0=0x%x count1=0x%x dcount=%d "
+            "clk_wdt_edges_min=%d clk_wdt_edges_max=%d wait_wdt=%d bark=%d",
+            seed,
+            ctrl,
+            c0,
+            c1,
+            c1 - c0,
+            self._edges("clk_wdt_i", e0, s1),
+            self._edges("clk_wdt_i", s0, e1),
+            WDT_WAIT,
+            int(bool(st & BARK_BIT)),
+        )
+        await self._regraded(was)
 
     # -- leg H ------------------------------------------------------------------
 

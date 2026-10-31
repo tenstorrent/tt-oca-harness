@@ -76,6 +76,25 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    sources above 43, the assigned sources stay at their
                    baseline, and the band drops at the release.
 
+Open-value legs (logged, not graded; each has a control that fails the leaf):
+
+* ``OBS-GW-EL``       an event source held at its active level in level mode
+                   (``CTRL-GW-LVL2EDGE``: ``meip`` reads 1 and ``meigwctrl``
+                   reads level before the switch, edge after it) switches to
+                   edge mode with the input asserted: ``meip`` after the
+                   switch, after the input drops and after ``meigwclr``.
+* ``OBS-GWCLR-RACE``  a one-clock pulse on the drawn boundary input in the
+                   clock of the ``meigwclr`` write to its source, and one and
+                   two clocks before it (``CTRL-GWCLR-RACE``: the pulse and the
+                   write read in the same clock on the pin and
+                   ``pic_wr_probe_o``): ``meip`` after the write.
+* ``OBS-DMA-ALERT-INTEG`` the DMA alert receiver pair forced to one drawn value
+                   on both wires (``dma_alert_inject_i``; ``CTRL-DMA-ALERT-INJ``:
+                   the pair reads that value while the input is 1): vector
+                   bit 11 (``dma_alert``, which also drives
+                   ``sep_ras_o.dma_alert``) and ``meip`` bit 12 under the force,
+                   after the release and after ``meigwclr``.
+
 Logged, not graded: ``OBS-IDLE-UNSTATED`` (sources 13, 15, 16, 37, 38, 39,
 masked in every compare), ``OBS-SRC34``, ``OBS-SRC-SHAPE`` (the high clocks
 and rises of each source line over the single-source walk, and the source 12
@@ -108,10 +127,11 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_fcov_gate import set_open_value_leg_pass
 from env.sep_fw_console import SepFwConsole, parse_kv
 from env.sep_pic_map import (
     EXCLUDED_IDLE_SOURCES,
@@ -203,6 +223,12 @@ FILL_MAX = 64
 GAP_MAX = 64
 
 P_MAGIC_WORD = 0x3A1C9E21
+# Salt of the open-value leg draws, so the draws above keep their seed mapping.
+_LEG_SALT = 0x4F56_4C47 << 32
+# meigwclr race: the pulse clock relative to the write clock, per timed attempt
+# (attempt 0 measures the write clock), and the bound on each attempt.
+RACE_OFFSETS = (0, -1, -2)
+RACE_BOUND = 4096
 
 # Status fields of the idle window and the KMAC fifo_empty state (register export).
 HMAC_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
@@ -230,6 +256,9 @@ KMAC_FE_STATE = KMAC.field_mask("INTR_STATE", "fifo_empty")
 # meip word 0 offset in the PIC and the meip word stride (register export).
 MEIP0_OFF = sym("PIC_MEIP_0__REG_OFFSET")
 MEIP_STRIDE = sym("PIC_MEIP_1__REG_OFFSET") - MEIP0_OFF
+# meigwclr entry 1 offset and the entry stride (register export).
+GWCLR1_OFF = sym("PIC_MEIGWCLR_1__REG_OFFSET")
+GWCLR_STRIDE = sym("PIC_MEIGWCLR_2__REG_OFFSET") - GWCLR1_OFF
 
 
 def _pack(vals, bits: int, words: int) -> list[int]:
@@ -267,6 +296,8 @@ class WalkCfg:
     clr_x: int
     ext: tuple[int, int, int]
     ext_width: int
+    dinj_val: int
+    l2e: int
 
     @classmethod
     def from_seed(cls, seed: int, ext_width: int) -> "WalkCfg":
@@ -297,8 +328,12 @@ class WalkCfg:
         assert ext_width >= 2, f"sep_ext_interrupts_i is {ext_width} bits wide"
         b1 = rng.randrange(ext_width)
         b2, b3 = rng.sample(range(ext_width), 2)
+        leg = SepSeededRng(seed ^ _LEG_SALT)
+        dinj_val = leg.getrandbits(1)
+        l2e = GW_SRCS.index(leg.choice(GW_EVENT))
         return cls(seed, ord1, ord2, gap1, gap2, alert_order, (k1, k2), pair_gap, akind,
-                   native_order, mask1, gw_cell, gw_order, clr_x, (b1, b2, b3), ext_width)  # fmt: skip
+                   native_order, mask1, gw_cell, gw_order, clr_x, (b1, b2, b3), ext_width,
+                   dinj_val, l2e)  # fmt: skip
 
     def enabled(self, src: int, pas: int) -> bool:
         on = bool((self.mask1 >> src) & 1)
@@ -326,6 +361,7 @@ class WalkCfg:
             HOLD_CLK,
             SETTLE_CLK,
             FILL_MAX,
+            self.l2e,
         ]
 
     def cell(self, src: int) -> str:
@@ -441,10 +477,73 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
     async def _req_ext(self, kv: dict) -> None:
         step = int(kv["step"])
         b1, b2, b3 = self.wc.ext
-        mask = {0: 1 << b1, 2: (1 << b2) | (1 << b3)}.get(step, 0)
+        mask = {0: 1 << b1, 2: (1 << b2) | (1 << b3), 4: 1 << b1}.get(step, 0)
         await RisingEdge(self.dut.clk_i)
         self.dut.sep_ext_interrupts_i.value = mask
         self.logger.info("INFO-EXT-DRIVE LOG step=%d mask=0x%x", step, mask)
+
+    async def _req_dinj(self, kv: dict) -> None:
+        clk = self.dut.clk_i
+        await RisingEdge(clk)
+        if kv["t"] != "on":
+            self.dut.dma_alert_inject_i.value = 0
+            self.dinj_on = False
+            self._on_mark({"t": "di1"})
+            return
+        self.dut.dma_alert_inject_val_i.value = self.wc.dinj_val
+        self.dut.dma_alert_inject_i.value = 1
+        self.dinj_on = True
+        self._on_mark({"t": "di0"})
+        pair = self.dut.dma_alert_rx_probe_o
+        want = 0b11 if self.wc.dinj_val else 0b00
+        while True:
+            await RisingEdge(clk)
+            await ReadOnly()
+            if not self.dinj_on:
+                return
+            self.dinj_clk += 1
+            inj, pv = self.dut.dma_alert_inject_i.value, pair.value
+            if inj.is_resolvable and int(inj) == 1 and pv.is_resolvable and int(pv) == want:
+                self.dinj_forced += 1
+
+    async def _req_race(self, kv: dict) -> None:
+        """Time a one-clock pulse of boundary bit b1 against the next meigwclr write.
+
+        Clock n is the n-th rising edge after the request line. Attempt 0
+        records the clock of the write; attempt i > 0 drives the pin to 1 on
+        clock d + RACE_OFFSETS[i - 1] only, d being that write clock.
+        """
+        clk, pin, wsig = self.dut.clk_i, self.dut.sep_ext_interrupts_i, self.dut.pic_wr_probe_o
+        i, src = int(kv["i"]), int(kv["src"])
+        bit = 1 << self.wc.ext[0]
+        off = GWCLR1_OFF + (src - 1) * GWCLR_STRIDE
+        target = None
+        if i > 0 and self.race_d is not None:
+            target = self.race_d + RACE_OFFSETS[i - 1]
+        pulse = wr = None
+        n = 0
+        while n < RACE_BOUND:
+            await RisingEdge(clk)
+            n += 1
+            if n == target:
+                pin.value = bit
+            elif target is not None and n == target + 1:
+                pin.value = 0
+            await ReadOnly()
+            pv = pin.value
+            if pulse is None and pv.is_resolvable and int(pv) & bit:
+                pulse = n
+            w = wsig.value
+            if wr is None and w.is_resolvable and (int(w) >> 15) & 1 and (int(w) & 0x7FFF) == off:
+                wr = n
+            if wr is not None and (target is None or n > target):
+                break
+        if n == target:
+            await RisingEdge(clk)
+            pin.value = 0
+        if i == 0:
+            self.race_d = wr
+        self.race.append((i, src, target, pulse, wr))
 
     async def _req_win(self, kv: dict) -> None:
         op = next(k for k in kv if k in ("aes", "otp", "lcc"))
@@ -1074,6 +1173,110 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"after_release={len(rel)} ctrl_src24={int(live)} width={self.wc.ext_width}",
             )
 
+    # ---- open-value legs (logged; the control fails the leaf) ----
+    def _leg_dma_alert_integ(self) -> None:
+        seed, v = self.wc.seed, self.wc.dinj_val
+        recs = [kv for _, kv in self._lines("DINJ")]
+        if len(recs) != 1 or self.dinj_forced == 0:
+            raise AssertionError(
+                f"CTRL-MISSING DMA-ALERT-INJ: seed={seed} forced_clk={self.dinj_forced} "
+                f"window_clk={self.dinj_clk} val={v} records={len(recs)}"
+            )
+        self.logger.info(
+            "CTRL-DMA-ALERT-INJ LOG seed=%d val=%d forced_clk=%d window_clk=%d",
+            seed,
+            v,
+            self.dinj_forced,
+            self.dinj_clk,
+        )
+        r = recs[0]
+        m0, m1 = self._mark("di0")[0], self._mark("di1")[0]
+        rises = [c for c in self.w.rise_clks_since(m0, "b11") if c <= m1.clk]
+        self.logger.info(
+            "OBS-DMA-ALERT-INTEG LOG val=%d src12_high_clk=%d rise_clk=%d level_at_release=%d "
+            "release_high_clk=%d level_after=%d meip12_under=%d meip12_held=%d meip12_after_clr=%d",
+            v,
+            self._high("di0", "di1", "b11"),
+            rises[0] - m0.clk if rises else -1,
+            self._mark("di1")[2],
+            self._high("di1", "di2", "b11"),
+            self._mark("di2")[2],
+            int(r["under"]),
+            int(r["held"]),
+            int(r["after_clr"]),
+        )
+
+    def _leg_gw_level_to_edge(self) -> None:
+        seed, src = self.wc.seed, GW_SRCS[self.wc.l2e]
+        recs = [kv for _, kv in self._lines("GWL2E")]
+        r = recs[0] if len(recs) == 1 else {}
+        reach = (
+            int(r.get("src", -1)) == src,
+            int(r.get("before", 0)),
+            int(r.get("type_before", 1)),
+            int(r.get("type_after", 0)),
+        )
+        body = (
+            f"seed={seed} src={src} meip_before={reach[1]} type_before={reach[2]} "
+            f"type_after={reach[3]} records={len(recs)}"
+        )
+        if reach != (True, 1, 0, 1):
+            raise AssertionError(f"CTRL-MISSING GW-LVL2EDGE: {body}")
+        self.logger.info("CTRL-GW-LVL2EDGE LOG %s", body)
+        self.logger.info(
+            "OBS-GW-EL LOG src=%d after_switch=%d settled=%d released=%d after_clr=%d",
+            src,
+            int(r["after"]),
+            int(r["settled"]),
+            int(r["released"]),
+            int(r["after_clr"]),
+        )
+
+    def _leg_gwclr_race(self) -> None:
+        seed = self.wc.seed
+        recs = {int(kv["i"]): kv for _, kv in self._lines("GWRACE")}
+        att = {a[0]: a for a in self.race}
+        n = len(RACE_OFFSETS) + 1
+        if sorted(recs) != list(range(n)) or sorted(att) != list(range(n)):
+            raise AssertionError(
+                f"CTRL-MISSING GWCLR-RACE: seed={seed} records={sorted(recs)} "
+                f"attempts={sorted(att)} want={n}"
+            )
+        _, src, _, pulse, wr = att[1]
+        if pulse is None or wr is None or pulse != wr:
+            raise AssertionError(
+                f"CTRL-MISSING GWCLR-RACE: seed={seed} pulse_clk={pulse} gwclr_wr_clk={wr}"
+            )
+        self.logger.info(
+            "CTRL-GWCLR-RACE LOG seed=%d src=%d bit=%d pulse_clk=%d gwclr_wr_clk=%d calib_wr_clk=%d",
+            seed,
+            src,
+            self.wc.ext[0],
+            pulse,
+            wr,
+            self.race_d,
+        )
+        for i, offset in enumerate(RACE_OFFSETS, start=1):
+            _, src, _, pulse, wr = att[i]
+            self.logger.info(
+                "OBS-GWCLR-RACE LOG src=%d offset=%d pulse_clk=%s gwclr_wr_clk=%s before=%d after=%d",
+                src,
+                offset,
+                pulse,
+                wr,
+                int(recs[i]["before"]),
+                int(recs[i]["after"]),
+            )
+
+    async def _pass_legs(self, legs: tuple[str, ...]) -> None:
+        """Raise the FCOV pass label of each leg whose control passed (two clocks each)."""
+        clk = self.dut.clk_i
+        for leg in legs:
+            await RisingEdge(clk)
+            set_open_value_leg_pass(leg, self.logger)
+            await ClockCycles(clk, 2)
+            set_open_value_leg_pass(None, self.logger)
+
     def _check_params(self) -> None:
         p = dict(self._lines("PARAMS")[0][1])
         p2 = dict(self._lines("PARAMS2")[0][1])
@@ -1087,8 +1290,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             p2["o2a"],
             p2["idle0"],
             p2["idle1"],
+            p2["l2e"],
         )
-        exp = (w[27], w[28], w[31], w[32], w[2], w[6], w[33], w[34])
+        exp = (w[27], w[28], w[31], w[32], w[2], w[6], w[33], w[34], w[38])
         assert got == exp, f"firmware ran params {got}, patched {exp}"
 
     # ---- scenario ----
@@ -1122,6 +1326,9 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
         self.logger.info("INFO-DRAW clear_value=0x%08x", c.clr_x)
         self.logger.info("INFO-DRAW boundary_bit=%d boundary_pair=%d,%d width=%d", *c.ext, width)
+        self.logger.info(
+            "INFO-DRAW dma_alert_pair_val=%d level_to_edge_src=%d", c.dinj_val, GW_SRCS[c.l2e]
+        )
         patched = os.path.join(os.getcwd(), "sep_dtcm_pic_walk.hex")
         patch_param_block(_DTCM_HEX, patched, P_MAGIC_WORD, c.words())
 
@@ -1132,6 +1339,12 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.slot_watch: dict = {}
         self.slot_rec: dict = {}
         self.rd_caps: list = []
+        self.dinj_on = False
+        self.dinj_clk = self.dinj_forced = 0
+        self.race: list = []
+        self.race_d = None
+        self.dut.dma_alert_inject_i.value = 0
+        self.dut.dma_alert_inject_val_i.value = 0
         vec = self.dut.sep_internal_interrupts_probe_o
         self.w = SepBitWatch(
             vec, {"b11": vec_bit(SRC_DMA_ALERT), "b32": vec_bit(SRC_CRYPTO_ALERT)}, name="vec"
@@ -1162,6 +1375,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         self.con.on_request("kstall", self._req_kstall)
         self.con.on_request("ext", self._req_ext)
         self.con.on_request("win", self._req_win)
+        self.con.on_request("dinj", self._req_dinj)
+        self.con.on_request("race", self._req_race)
         # The firmware brings the entropy stack up for the AES and OTBN runs; the
         # ring oscillators take their raw noise from this driver (+esrc_noise_force).
         noise = self.start_esrc_noise_driver()
@@ -1184,6 +1399,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             await self.wa.stop()
             await self.wv.stop()
             self.dut.sep_ext_interrupts_i.value = 0
+            self.dut.dma_alert_inject_i.value = 0
             self.dut.hmac_fifo_drain_stall_i.value = 0
             self.dut.kmac_fifo_drain_stall_i.value = 0
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
@@ -1247,4 +1463,8 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         bad = {k: (self.n_pass[k], v) for k, v in want.items() if self.n_pass[k] != v}
         assert not bad, f"CHK-COUNT FAIL (got, want): {bad}"
         self.logger.info("INFO-CHK-COUNT LOG %s", " ".join(f"{k}={v}" for k, v in want.items()))
+        self._leg_dma_alert_integ()
+        self._leg_gw_level_to_edge()
+        self._leg_gwclr_race()
+        await self._pass_legs(("dma_alert_pair_force", "gw_level_to_edge", "gwclr_same_cycle"))
         self.result_pass(_TEST, c.seed, len(want))

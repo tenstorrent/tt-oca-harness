@@ -163,6 +163,9 @@
 // docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
 `SEP_TB_IN(logic, dma_alert_inject_i)
 `SEP_TB_IN(logic, dma_alert_inject_val_i)
+// The secure DMA alert receiver pair {alert_p, alert_n}, as the receiver sees
+// it (after the dma_alert_inject_i force). Observation-only.
+`SEP_TB_OUT(logic [1:0], dma_alert_rx_probe_o)
 // OTBN memory integrity flip. Live only in a run with +sep_otbn_intg_flip.
 // While otbn_intg_flip_en_i is 1, every read response that the OTBN core takes
 // from the memory otbn_intg_flip_mem_i selects (0 IMEM, 1 DMEM) reaches the
@@ -1497,6 +1500,10 @@
 `SEP_TB_IN(logic, bh_smc_en_i)
 `SEP_TB_IN(logic [55:0], bh_smc_base_i)
 `SEP_TB_IN(logic [55:0], bh_smc_size_i)
+// SMC aperture inputs of the DUT (smc_global_base_addr_i, smc_region_size_i),
+// observation-only. Outside every tb ready/valid cone.
+`SEP_TB_OUT(logic [55:0], smc_base_probe_o)
+`SEP_TB_OUT(logic [55:0], smc_size_probe_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.

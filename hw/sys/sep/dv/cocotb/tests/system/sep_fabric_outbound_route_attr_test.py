@@ -112,6 +112,13 @@ Checkers:
                     Positive control: with the reset SMU pair restored, the
                     same accesses leave translated with AxUSER 0 (OTHERS).
 
+Logged, not graded: after CHK-OUT-SMU-MOVED a second moved pair, drawn on its
+own seeded stream, has a size that is not a power of two or a power-of-two size
+with a base that is not size-aligned. The RDL gives the two registers no
+description and no legal-value rule. CTRL-SMU-MOVED: both registers read back
+the drawn pair (RDL field compare). OBS-SMU-MOVED: the response and the PR-OUT
+captures of an LSU read of the first and the last word of that window.
+
 Every access that a graded window covers is first issued and graded with the
 window closed; the window then covers one more identical access, graded again.
 """
@@ -120,6 +127,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_common import (
     FILTER_ADDR_MASK,
@@ -135,7 +143,11 @@ from env.sep_fabric_common import (
 )
 from env.sep_fabric_common import resp_name as _rname
 from env.sep_fabric_tap import SepFabricTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_open_value_leg_pass,
+)
 from env.sep_field_compare import field_compare
 from env.sep_filter_model import FilterEntry
 from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, lc_state_name
@@ -243,6 +255,13 @@ SMU_SIZE_FIELD = SEP_CPU_CTRL.field_mask("SMU_REGION_SIZE", "size")
 # 16 MiB (hw/sys/sep/dv/tb/tb_top.sv:660-661), and below the reset SMU pair.
 SMU_MOVED_BASE = 0x4100_0000
 SMU_MOVED_SIZE = 0x0100_0000
+# A second moved pair, drawn on its own seeded stream so the other draws keep
+# their values: a size that is not a power of two, or a power-of-two size with
+# a base that is not size-aligned. Both sit in 4 KiB pages above the moved
+# window of CHK-OUT-SMU-MOVED and far below the reset SMU pair.
+_IRREGULAR_SALT = 0x534D_5549
+IRREGULAR_LO = SMU_MOVED_BASE + SMU_MOVED_SIZE
+IRREGULAR_PAGES = 0x1000
 BENCH_SMC_BASE = 0x4000_0000
 BENCH_SMC_SIZE = 0x0100_0000
 # The SMU window over AP region 0: exactly that region.
@@ -1146,6 +1165,77 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         assert ok, f"CHK-OUT-SMU-MOVED FAIL: {line}"
         self.logger.info("CHK-OUT-SMU-MOVED PASS: %s", line)
 
+    def _draw_irregular(self) -> tuple[str, int, int]:
+        """(kind, base, size) of the second moved SMU pair."""
+        rng = SepSeededRng(self.tcfg.seed ^ _IRREGULAR_SALT)
+        if rng.getrandbits(1):
+            while True:
+                pages = rng.randrange(3, IRREGULAR_PAGES)
+                if pages & (pages - 1):
+                    break
+            base = IRREGULAR_LO + 0x1000 * rng.randrange(0, IRREGULAR_PAGES)
+            return "size_not_pow2", base, 0x1000 * pages
+        size = 1 << rng.randrange(13, 25)
+        base = IRREGULAR_LO + 0x1000 * (2 * rng.randrange(0, IRREGULAR_PAGES // 2) + 1)
+        return "base_unaligned", base, size
+
+    async def _smu_irregular_leg(self) -> None:
+        """A moved SMU pair the RDL gives no rule for; the route of its words is logged."""
+        kind, base, size = self._draw_irregular()
+        last = base + size - 8
+        for sb, ss in _smc_apertures():
+            assert base + size <= sb or sb + ss <= base, (
+                f"stimulus: irregular SMU window 0x{base:x}+0x{size:x} overlaps the SMC "
+                f"aperture 0x{sb:x}+0x{ss:x}"
+            )
+        assert base + size <= SMU_BASE, f"stimulus: 0x{base:x}+0x{size:x} reaches the reset pair"
+        self.logger.info(
+            "INFO-DRAW SMU irregular kind=%s base=0x%x size=0x%x last=0x%x", kind, base, size, last
+        )
+        await self._program_pair(PAIR_SMU_MOVED, base, base + size - 1)
+        await self.smu_ap.program(base, size, size_first=False)
+        got_base = await self._rd64(SMU_BASE_REG)
+        got_size = await self._rd64(SMU_SIZE_REG)
+        fb = field_compare(got_base, base, SMU_BASE_FIELD)
+        fs = field_compare(got_size, size, SMU_SIZE_FIELD)
+        line = f"kind={kind} base: {fb.fields()} size: {fs.fields()}"
+        assert fb.ok and fs.ok, f"CTRL-SMU-MOVED FAIL: {line}"
+        self.logger.info("CTRL-SMU-MOVED LOG: %s", line)
+        set_open_value_leg_pass("smu_moved_irregular", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        for word, addr in (("first", base), ("last", last)):
+            mark = self.out.mark()
+            self.env.axi_monitor.arm_expected_decerr(1)
+            seq = SepAxiAccessSeq(
+                "out_irregular",
+                op=SepAxiOp.READ,
+                addr=addr,
+                length=8,
+                size=3,
+                prot=self.tcfg.prot(1),
+                user=self.tcfg.users[0],
+                allow_ungraded_read_resp=True,
+            )
+            await self.start_seq(seq)
+            if seq.resp_code != RESP_DECERR:
+                self.env.axi_monitor.release_expected_decerr(1)
+            caps = [b for b in self.out.since(mark) if b.ch == "ar"]
+            self.logger.info(
+                "OBS-SMU-MOVED kind=%s base=0x%x size=0x%x word=%s addr=0x%x resp=%s "
+                "out_ar=%d out_addrs=%s",
+                kind,
+                base,
+                size,
+                word,
+                addr,
+                _rname(seq.resp_code),
+                len(caps),
+                _join_addrs(caps),
+            )
+        await self.smu_ap.program(SMU_BASE, SMU_SIZE, size_first=True)
+        await self._pair_enable(PAIR_SMU_MOVED, False)
+
     async def _smu_over_ap_leg(self) -> None:
         """The SMU window over AP region 0, then the reset pair restored."""
         c = self._draw_region0()
@@ -1281,6 +1371,7 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         await self._local_leg()
         await self._nobypass_leg()
         await self._smu_moved_leg()
+        await self._smu_irregular_leg()
         await self._smu_over_ap_leg()
         await self._ap_zero_leg()
         close_graded_window(self.logger)

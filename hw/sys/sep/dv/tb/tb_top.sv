@@ -162,6 +162,8 @@ module sep_uvm_top
             bh_smc_size = '0;
         end
     end
+    assign smc_base_probe_o = u_dut.smc_global_base_addr_i;
+    assign smc_size_probe_o = u_dut.smc_region_size_i;
     // SEP-OTP JTAG AXI-Lite: assembled from the flat j_axi_* master inputs (below).
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
@@ -3422,6 +3424,7 @@ module sep_uvm_top
         else
             release `DMA_ALERT_RX;
     end
+    assign dma_alert_rx_probe_o = `DMA_ALERT_RX;
 `undef DMA_ALERT_RX
 
     // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore

@@ -53,6 +53,10 @@
 //                            core clocks; stopped with mitcnt B - 1 it takes
 //                            no trap, stopped with mitcnt B it traps once
 //
+// The priord flip leg raises the drawn sources with mstatus.MIE 0, prints
+// their meip bits (CTRL-PRIORD-PENDING), flips priord with no meipl write and
+// sets mstatus.MIE; INFO-PRIORD-FLIP logs the handler order.
+//
 // Source drive recipe. A mailbox source k + 1 is driven by one CPU push into
 // the inbound WRITE_DATA of mailbox k with IRQEN.wtirq 1, WIRQT 0 and an
 // inbound filter allow window open over that port (all eight are opened at
@@ -137,8 +141,12 @@ enum {
     P_IT_BOUND1,    // core clocks that the timer 1 trap must not precede
     P_IT_HOLD_MITB, // mitb of the hold legs (0: pending on every clock)
     P_LEG_HOLD,     // loop iterations of the hold window of these legs
-    P_EXT_END
+    P_PF_FROM,      // priord of the flip leg before the flip
+    P_PF_N,         // number of flip-leg sources
+    P_PF_SRC,       // S_MAX words of flip-leg sources, then S_MAX of their meipl values
+    P_EXT_END = P_PF_SRC + 2 * S_MAX
 };
+#define P_PF_RAW (P_PF_SRC + S_MAX)
 #define P_WORDS P_EXT_END
 
 volatile uint32_t g_prm[P_WORDS] = {
@@ -814,6 +822,58 @@ static int wait_flag(volatile uint32_t *f) {
     return 0;
 }
 
+// priord flip leg: the drawn sources are pending behind mstatus.MIE 0 in one
+// order, then priord flips with no meipl write and mstatus.MIE opens.
+static void leg_priord_flip(void) {
+    uint32_t p = g_prm[P_PF_FROM];
+    uint32_t n = g_prm[P_PF_N];
+    uint32_t setmask = 0u;
+    mstatus_mie(0);
+    set_order(p);
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t s = g_prm[P_PF_SRC + i];
+        pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), g_prm[P_PF_RAW + i]);
+        pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
+        setmask |= 1u << s;
+    }
+    rec_mark(1, "priord_flip");
+    uint32_t before = pic_read_meip(0) & setmask;
+    clear_log();
+    uint32_t t0 = g_total;
+    uint32_t raised = 0u;
+    for (uint32_t i = 0; i < n; i++) {
+        raised += src_raise(g_prm[P_PF_SRC + i]);
+    }
+    (void)hold();
+    uint32_t pending = pic_read_meip(0) & setmask;
+    rec_ctl("PRIORD-PENDING");
+    rec_num("priord", p);
+    rec_hex("set", setmask);
+    rec_hex("meip_before", before);
+    rec_hex("meip", pending);
+    rec_num("raised", raised);
+    rec_num("runs", g_total - t0);
+    rec_end();
+    set_order(p ^ 1u);
+    mstatus_mie(1);
+    (void)wait_total(t0 + n);
+    (void)hold();
+    mstatus_mie(0);
+    rec_info("PRIORD-FLIP");
+    rec_num("priord_from", p);
+    rec_num("priord_to", p ^ 1u);
+    rec_num("n", g_log_n);
+    put_ids("ids", 0u, g_log_n);
+    rec_end();
+    rec_mark(0, "priord_flip_end");
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t s = g_prm[P_PF_SRC + i];
+        pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
+        pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 0u);
+    }
+    set_order(0u);
+}
+
 // Threshold leg (standard order): meipt = T, the source at level T is pending
 // with mstatus.MIE 1 and must not deliver; at level T + 1 it delivers once.
 static void leg_threshold(void) {
@@ -1273,6 +1333,7 @@ int main(void) {
         zero_set(r);
         set_order(0u);
     }
+    leg_priord_flip();
 
     // Idle window: no PIC source enabled, MIE, MTIE and MSIE set. MIE goes to 0
     // before the marker and to 1 inside the window, so the hold window of the

@@ -24,7 +24,7 @@ Every legal write (pre-lock, FIPS_LOCK, the pre-lock reserved CTRL write and the
 post-unlock tap set) grades its OKAY B response in the same CHK line. A write the
 lock refuses has no stated B code: its CHK line grades only that a B response
 arrived, so a write that never reached the DUT fails, and logs the code as
-OBS-POST-LOCK-RESP, OBS-OBS-ENABLE-LOCKED-RESP or OBS-CTRL-RSVD-LOCKED-RESP.
+OBS-POST-LOCK-RESP, OBS-ENABLE-LOCKED-RESP or OBS-CTRL-RSVD-LOCKED-RESP.
 The reserved bits of each graded FIPS_LOCK read are logged as OBS-FIPS-LOCK-RSVD
 (no stated reset value).
 CHK-RANDCFG grades the (register, field) pairs that the walked targets cover,
@@ -272,7 +272,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
             resp = await esrc.write_obs(reg, held ^ 1, cfg.lane_post, locked=True)
             got, lane = await esrc.read_obs(reg)
             direction = "set" if held == 0 else "clear"
-            self.logger.info("OBS-OBS-ENABLE-LOCKED-RESP: %s B=%s", reg, _resp(resp))
+            self.logger.info("OBS-ENABLE-LOCKED-RESP: %s B=%s", reg, _resp(resp))
             self._grade(
                 "CHK-OBS-ENABLE-LOCKED",
                 _b_seen(resp) and got == held,

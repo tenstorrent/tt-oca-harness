@@ -1177,7 +1177,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 f"control_rewrite={control}",
             )
             self.logger.info(
-                "INFO-ALIAS-OUTSIDE: %s addr=0x%08x wr=0x%08x sberror_wr=%d rd=0x%08x sberror_rd=%d "
+                "OBS-ALIAS-OUTSIDE: %s addr=0x%08x wr=0x%08x sberror_wr=%d rd=0x%08x sberror_rd=%d "
                 "sram_word0=0x%016x->0x%016x",
                 chk,
                 addr,
