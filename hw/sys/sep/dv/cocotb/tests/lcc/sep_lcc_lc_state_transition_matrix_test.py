@@ -519,6 +519,14 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 observed,
                 word,
             )
+            # The cells after an advance start from the state it reaches, so a
+            # state other than the chapter golden is a missing setup for them.
+            landed = (
+                f"cell={tag} prev={lc_state_name(prev)} expect={lc_state_name(expected)} "
+                f"got={lc_state_name(observed)}"
+            )
+            assert observed == expected, f"CTRL-MISSING LC-ADVANCE-STATE {landed}"
+            self.logger.info("CTRL-LC-ADVANCE-STATE seen: %s", landed)
             assert seq.observed_feat == want_feat, (
                 f"CHK-LC-FEAT-DECODE FAIL: cell={tag} state={lc_state_name(observed)} "
                 f"FEAT_CTRL 0x{seq.observed_feat:016x} != decode 0x{want_feat:016x}"

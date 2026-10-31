@@ -57,8 +57,12 @@ Checkers:
   CHK-SCAN-TM-HOLD      secure_tm_o keeps the leg strap value (0 and 1) on
                         every sample of the session while the strap moves
                         (no cold reset and no fuse-sense completion, so no
-                        sampling event). Control: at least 3 samples with
-                        test_en_i = 1 and the strap opposite per session.
+                        sampling event). Control per session, from the
+                        sampled strap with test_en_i = 1: f1 opposite on
+                        every scan_rst_ni-low edge and at the release, f2
+                        back at the leg value on at least 1 sample, f3
+                        opposite on every sample from its move to the
+                        test_en_i fall (at least 1).
   CHK-SCAN-SECRET-ZERO  at strap 1 the 32 secret shadow words read 0 on every
                         sample of the session. Control: at strap 0 they read
                         the staged words before the session.
@@ -504,14 +508,37 @@ class sep_scan_mode_state_hold_test(sep_base_test):
             t_rise,
         )
         assert len(pre) >= PRE - 1 and win, f"{leg}: too few samples (pre={len(pre)})"
-        flipped = sum(1 for x in win if x["strap"] == 1 - strap and x["te"] == 1)
-        assert flipped >= 3, (
-            f"CHK-SCAN-TM-HOLD FAIL: control: leg={leg} strap at {1 - strap} with test_en_i=1 "
-            f"on {flipped} samples"
+        # One count per strap move, each from the sampled strap with test_en_i = 1:
+        # f1 opposite on every scan_rst_ni-low edge and on the last edge before the
+        # release, f2 back at the leg value after the release, f3 opposite again on
+        # every edge from its move to the test_en_i fall.
+        opp = 1 - strap
+        held = [x for x in win if x["t"] < t_rise and x["te"] == 1]
+        after = [x for x in win if x["t"] > t_rise and x["te"] == 1]
+        back = [i for i, x in enumerate(after) if x["strap"] == strap]
+        tail = after[back[-1] + 1 :] if back else []
+        moves = {
+            "f1": sum(1 for x in during if x["strap"] == opp and x["te"] == 1),
+            "f2": len(back),
+            "f3": sum(1 for x in tail if x["strap"] == opp),
+        }
+        flips = ",".join(f"{k}:{v}" for k, v in moves.items())
+        assert (
+            moves["f1"] == cfg.w
+            and held
+            and held[-1]["strap"] == opp
+            and moves["f2"] >= 1
+            and moves["f3"] >= 1
+            and moves["f3"] == len(tail)
+        ), (
+            f"CHK-SCAN-TM-HOLD FAIL: control: leg={leg} strap moves not seen with "
+            f"test_en_i=1: samples {flips} (f1 needs {cfg.w} opposite on the scan_rst_ni-low "
+            f"edges and opposite at the release, f2 >= 1 back at {strap}, f3 >= 1 opposite "
+            f"up to the test_en_i fall)"
         )
         for line in self.strap_flips[-3:]:
             self.logger.info("INFO-STRAP-FLIP LOG: %s", line)
-        return {"pre": pre, "win": win, "t_rise": t_rise, "flipped": flipped}
+        return {"pre": pre, "win": win, "t_rise": t_rise, "flips": flips}
 
     # -- logged items ----------------------------------------------------------
 
@@ -704,7 +731,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         self.tm_pass.append(
             f"strap={strap} secure_tm_o={strap} samples={len(win)} w={self.tcfg.w} "
-            f"strap_flips=3 opposite_strap_samples={s['flipped']}"
+            f"strap_move_samples={s['flips']}"
         )
         if strap == 1:
             nz = [
@@ -785,8 +812,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         tm_bad = [(x["t"], x["stm"]) for x in win if x["stm"] != 0]
         assert not tm_bad, f"CHK-SCAN-TM-HOLD FAIL: leg={leg} secure_tm_o left 0: {tm_bad[:4]}"
         self.tm_pass.append(
-            f"strap=0 sec_dis=1 secure_tm_o=0 samples={len(win)} strap_flips=3 "
-            f"opposite_strap_samples={s['flipped']}"
+            f"strap=0 sec_dis=1 secure_tm_o=0 samples={len(win)} strap_move_samples={s['flips']}"
         )
 
         # OBS-SCAN-SECDIS-GO: a mismatch go with test_en_i = 1.

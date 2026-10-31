@@ -103,6 +103,8 @@ class sep_efuse_sense_test(sep_base_test):
             ",".join([f"{f}:{c}" for c, f in seen] + [f"{f}:none" for f in unseen]),
             "none" if rec["done"] is None else rec["done"],
         )
+        assert rec["done"] is not None, "CHK-SENSE-DONE FAIL: no sep_fuse_sense_done_o rise seen"
+        self.logger.info("CHK-SENSE-DONE PASS: sep_fuse_sense_done_o rose at clock %d", rec["done"])
         words = sorted(rec["first"].items())
         last = rec["first"].get(255)
         order_ok = all(a[1] < b[1] for a, b in zip(words, words[1:]))
@@ -122,8 +124,6 @@ class sep_efuse_sense_test(sep_base_test):
             rec["done"],
             last,
         )
-        assert rec["done"] is not None, "CHK-SENSE-DONE FAIL: no sep_fuse_sense_done_o rise seen"
-        self.logger.info("CHK-SENSE-DONE PASS: sep_fuse_sense_done_o rose at clock %d", rec["done"])
         # The bring-up runs the shared backdoor compare of every shadow word
         # (CHK-SENSE-BACKDOOR); +skip_fuse_sense skips it.
         backdoor = "CHK-SENSE-BACKDOOR" in self._evidence.seen

@@ -128,8 +128,24 @@ class sep_clock_gate_control_test(sep_base_test):
         # CHK-STORAGE, all-ones leg: drive all ones into both 32-bit halves. The
         # pka_cg_enable field must read 1. The Reserved bits 63:1 have no stated
         # access or read value, so their readback is logged, not graded.
-        await gate.write_raw(CLOCK_GATE_CTRL, 0xFFFF_FFFF)
-        await gate.write_raw(CLOCK_GATE_CTRL_HI, 0xFFFF_FFFF)
+        resp = {}
+        for half, addr in (("lower", CLOCK_GATE_CTRL), ("upper", CLOCK_GATE_CTRL_HI)):
+            try:
+                await gate.write_raw(addr, 0xFFFF_FFFF)
+                resp[half] = "OKAY"
+            except AssertionError:
+                resp[half] = "not_OKAY"
+        wr = (
+            f"lower=0x{CLOCK_GATE_CTRL:08x} resp={resp['lower']} "
+            f"upper=0x{CLOCK_GATE_CTRL_HI:08x} resp={resp['upper']} wdata=0xffffffff"
+        )
+        # Same text as SepChkLog.ctrl(): the all-ones leg of CHK-STORAGE claims a
+        # write to both halves, so a half whose write does not answer OKAY fails
+        # the leaf.
+        if set(resp.values()) != {"OKAY"}:
+            self.logger.error("CTRL-MISSING CG-ALLONES-WR: %s", wr)
+            self._grade(False, f"CTRL-MISSING CG-ALLONES-WR: {wr}")
+        self.logger.info("CTRL-CG-ALLONES-WR seen: %s", wr)
         hi = await gate.read_raw(CLOCK_GATE_CTRL_HI)
         lo = await gate.read_raw(CLOCK_GATE_CTRL)
         self.logger.info(

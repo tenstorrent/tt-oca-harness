@@ -366,7 +366,7 @@ not grade that rejection.
 |CHK-SENSE-WORD-ORDER
 |The sense loads the shadow words in ascending word order, one word per response strobe, and `sep_fuse_sense_done_o` rises one clock after the strobe that stores word 255 (`hw/sys/sep/doc/otp_fuse_controller.adoc`, eFuse sensing). Over the words whose staged value differs from reset, the first clock on which each word changes at `efuse_shadow_probe_o` rises strictly with the word index; the done rise is one clock after the change of word 255, or after the last changed word when word 255 stays at reset. Fewer than two changed words fails the check.
 |CHK-IMAGE-MATCH
-|Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
+|Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare shows a store only for a word whose staged value differs from its RDL reset value. The image keeps the `LOCKS` and `LOCKS_SPARE` words at their reset value 0, because a non-zero lock word locks the image, so for those words the compare also passes on a word that was not stored; `CHK-SENSE-WORD-ORDER` prints the count of words that changed (`changed_words`). The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -457,7 +457,7 @@ not grade that rejection.
 |===
 |Checker |Contract
 |CHK-IFU-TYPES
-|All seven functions fetch and execute correctly, each returning its distinct expected value across the immediate, upper-immediate, register and jump formats.
+|All seven functions fetch and execute correctly, each returning its expected value across the immediate, upper-immediate, register and jump formats. The register-format call (`ROM_FUNC6(30, 12)`) and the first immediate-format call (`ROM_FUNC0`) both expect 42, so those two rows do not tell a fetch of one function from a fetch of the other.
 |CHK-ALL
 |The test passes only if all seven match; a partial result is a failure. The host also counts the seven per-function lines itself, so a firmware that stopped calling into the ROM partway cannot pass on the completion magic alone.
 |===

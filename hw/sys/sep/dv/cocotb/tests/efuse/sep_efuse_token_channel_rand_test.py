@@ -850,7 +850,8 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
                 # SEC_DIS acts only while its match holds (token_processing.adoc, Post
                 # Token Matching Handling), so the Mismatch verdict drops the port.
                 await ClockCycles(dut.clk_i, 2)
-                secdis = self._sdis()
+                # 0 is the pass value, so an X or Z must not read as 0.
+                secdis = self.rd_known(dut.lcc_security_disable_probe_o) & 1
                 ok_sd = self._grade(
                     "SDIS-AFTER-FOREIGN",
                     sdis_pre == 1 and run_d.final == CODE_MISMATCH and secdis == 0,

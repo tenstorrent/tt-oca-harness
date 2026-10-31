@@ -102,7 +102,7 @@ class sep_address_map_test(sep_base_test):
             seq.base_addr_rw_checks,
         )
         self.logger.info(
-            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore%s",
+            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore->readback%s",
             seq.write_readback_checks,
             (
                 f" ({len(seq.write_readback_storage_only)} of them storage-only -- RDL "

@@ -342,8 +342,12 @@ class sep_address_map_seq(uvm_sequence):
             )
             await self._write(addr, pattern, name=name)
             await self._read(addr, expected=expected, name=name)
-            # Restore the generated reset value.
             await self._write(addr, SEP_CPU_CTRL.reset32(name), name=f"{name}_restore")
+            await self._read(
+                addr,
+                expected=SEP_CPU_CTRL.reset32(name) & store_mask,
+                name=f"{name}_restored",
+            )
             self.write_readback_checks += 1
             # Informational only: these have no software-usable fields, so what was
             # proven is storage, not an implemented-field readback.

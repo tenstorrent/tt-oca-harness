@@ -47,7 +47,10 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
                 f"CHK-CLEAR-REJECT FAIL: {name}[{word}] write-0 cleared "
                 f"0x{field.sensed:08x} -> 0x{got:08x}"
             )
-            self.logger.info("CHK-CLEAR-REJECT PASS: %s[%d] write-0 left 0x%08x", name, word, got)
+            # write_word raises on a response other than OKAY.
+            self.logger.info(
+                "CHK-CLEAR-REJECT PASS: %s[%d] write-0 resp=OKAY left 0x%08x", name, word, got
+            )
 
         await shadow.write_word(name, word, field.drive_word(field.set_bits))
         got = await shadow.read_word(name, word)
@@ -71,7 +74,9 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
             f"CHK-OR-MERGE FAIL: {name}[{word}] write-0 cleared "
             f"0x{field.after_set:08x} -> 0x{got:08x}"
         )
-        self.logger.info("CHK-OR-MERGE PASS: %s[%d] write-0 left OR 0x%08x", name, word, got)
+        self.logger.info(
+            "CHK-OR-MERGE PASS: %s[%d] write-0 resp=OKAY left OR 0x%08x", name, word, got
+        )
 
     async def _check_writable_contrast(self, shadow: SepEfuseShadow, field) -> None:
         name, word, pattern = field.name, field.word_idx, field.pattern

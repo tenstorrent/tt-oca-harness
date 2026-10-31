@@ -46,7 +46,7 @@
 |CHK-CFG
 |The DMA configuration lock is open before programming. A wrong value is counted as an error: the firmware emits `ERROR: CFG_REGWEN not unlocked`, increments its error count, and that count gates the mailbox PASS magic.
 |CHK-COMPLETE
-|The SHA-256 transfer completes: the DMA_DONE interrupt reaches the service routine and `ERROR_CODE` reads 0 (`vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl`, `INTR_STATE.DMA_DONE`, `STATUS.DONE`, `ERROR_CODE` reset 0). The host matches the line `SHA-256 pass DMA_DONE seen, ERROR_CODE = 0x0`, which only the SHA-256 pass prints; the SHA-384 pass prints its own completion line.
+|The SHA-256 transfer completes: a DMA interrupt reaches the service routine and `ERROR_CODE` reads 0 (`vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl`, `INTR_STATE.DMA_DONE`, `STATUS.DONE`, `ERROR_CODE` reset 0). The host matches the line `SHA-256 pass DMA_DONE seen, ERROR_CODE = 0x0`, which only the SHA-256 pass prints; the SHA-384 pass prints its own completion line. One service routine serves PIC source 9 (DMA done) and source 11 (DMA error), so this check does not tell which source fired; `sep_dma_irq_error_lock_rand_test` grades each source against its event.
 |CHK-DIGEST
 |The hardware digest equals an independent software SHA-256 over the same data. The eight hardware digest words are read through the array-indexed accessor `SHA2_DIGEST_0_BASE_ADDR(i)`, so a wrong array stride or a wrong register symbol shifts the assembled digest and the `memcmp` below fails.
 |CHK-COPY

@@ -540,10 +540,12 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             raise AssertionError(f"read 0x{addr:08x} answered {RESP_NAME.get(resp, resp)}")
         return v
 
-    async def _wr_ok(self, addr: int, v: int) -> None:
+    async def _wr_ok(self, addr: int, v: int) -> str:
+        """Write ``v``; a response other than OKAY raises. Returns the response name."""
         resp, _ = await self._acc(SepAxiOp.WRITE, addr, v)
         if resp != RESP_OKAY:
             raise AssertionError(f"write 0x{addr:08x} answered {RESP_NAME.get(resp, resp)}")
+        return RESP_NAME[resp]
 
     async def _periph(self) -> int:
         return await self._rd_ok(PERIPH_STATUS_ADDR)
@@ -917,11 +919,11 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self._release()
         # Register-path write of 0, then the write of 1 (the control).
         await self._arm()
-        await self._wr_ok(DMA_CLEAR_ADDR, 0)
+        r0 = await self._wr_ok(DMA_CLEAR_ADDR, 0)
         d0 = await self._dma()
         v0 = await self._vec()
         line = (
-            f"write0=still_set reg_path_err={int(bool(d0 & DMA_REG_PATH_BIT))} "
+            f"write0=still_set write0_resp={r0} reg_path_err={int(bool(d0 & DMA_REG_PATH_BIT))} "
             f"vec40={self._b(v0, 40)} dma_status=0x{d0 & DMA_MASK:x}"
         )
         if (d0 & DMA_MASK) != DMA_REG_PATH_BIT or self._b(v0, 40) != 1:
@@ -957,7 +959,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         """
         exp_before = self.latched & PERIPH_MASK
         before = await self._periph()
-        await self._wr_ok(PERIPH_CLEAR_ADDR, bits)
+        resp = await self._wr_ok(PERIPH_CLEAR_ADDR, bits)
         self.latched &= ~bits
         exp_after = self.latched & PERIPH_MASK
         after = await self._periph()
@@ -966,7 +968,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         fc = field_compare(after, exp_after, PERIPH_MASK)
         text = (
             f"before=0x{before & PERIPH_MASK:02x} exp_before=0x{exp_before:02x} "
-            f"after=0x{after & PERIPH_MASK:02x} exp_after=0x{exp_after:02x} "
+            f"write=0x{bits:02x} resp={resp} after=0x{after & PERIPH_MASK:02x} exp_after=0x{exp_after:02x} "
             f"vec42={self._b(vec, 42)} [{fc.fields()}]"
         )
         ok = fb.ok and fc.ok and self._b(vec, 42) == int(bool(exp_after))
@@ -1161,13 +1163,13 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         # Host-path clear cells; cell=host_only is the control of CHK-DMA-HOST-HOLD.
         before = d & DMA_MASK
         await self._arm()
-        await self._wr_ok(DMA_CLEAR_ADDR, 0)
+        r0 = await self._wr_ok(DMA_CLEAR_ADDR, 0)
         a0 = await self._dma()
         await self._wr_ok(DMA_CLEAR_ADDR, 1)
         a1 = await self._dma()
         v1 = await self._vec()
         line = (
-            f"cell=host_only before=0x{before:x} after_write0=0x{a0 & DMA_MASK:x} "
+            f"cell=host_only before=0x{before:x} write0_resp={r0} after_write0=0x{a0 & DMA_MASK:x} "
             f"after_write1=0x{a1 & DMA_MASK:x} vec40={self._b(v1, 40)} vec41={self._b(v1, 41)}"
         )
         if (
@@ -1192,7 +1194,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         resp_r, d_r = await self._dma_reg_fault()
         before = d_r & DMA_MASK
         vb = await self._vec()
-        await self._wr_ok(DMA_CLEAR_ADDR, 0)
+        r0 = await self._wr_ok(DMA_CLEAR_ADDR, 0)
         a0 = await self._dma()
         await self._wr_ok(DMA_CLEAR_ADDR, 1)
         a1 = await self._dma()
@@ -1200,8 +1202,8 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         line = (
             f"cell=both reg_fault_resp={RESP_NAME.get(resp_r, resp_r)} before=0x{before:x} "
             f"before_vec40={self._b(vb, 40)} before_vec41={self._b(vb, 41)} "
-            f"after_write0=0x{a0 & DMA_MASK:x} after_write1=0x{a1 & DMA_MASK:x} "
-            f"vec40={self._b(v1, 40)} vec41={self._b(v1, 41)}"
+            f"write0_resp={r0} after_write0=0x{a0 & DMA_MASK:x} "
+            f"after_write1=0x{a1 & DMA_MASK:x} vec40={self._b(v1, 40)} vec41={self._b(v1, 41)}"
         )
         both = DMA_HOST_PATH_BIT | DMA_REG_PATH_BIT
         if (
