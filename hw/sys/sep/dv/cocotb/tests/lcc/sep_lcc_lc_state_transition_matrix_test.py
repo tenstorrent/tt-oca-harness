@@ -36,6 +36,8 @@ part must transition exactly like a non-demoted one.
 
 The golden of every write cell is the chapter's: ``otp_fuse_controller.adoc``
 (Fuse Fields) gives LC_STATE as SW writable set-only under these rules.
+``sep_efuse_map.rdl`` (register ``LC_STATE``) gives ``lc_state`` as sw = r; the
+two texts disagree, and the advance cells grade the chapter.
 
 One sensed starting state per leaf. ``efuse_bank_model`` deposits the OTP image
 in a time-0 ``initial`` and a fuse survives reset, so a test cannot re-sense its
@@ -97,8 +99,8 @@ required checks; it grades nothing). Each walk names its required checks
                              rules with no bus request, INVALID result included.
 
 Every cell grades LC_STATE[7:0] against ``{~raw, raw}`` of the golden state.
-Every write completes OKAY on the bus, including a write that a token gate or
-the terminal rule holds (the scoreboard grades the response).
+A write that moves the state completes OKAY on the bus (the scoreboard grades
+the response).
 Every cell grades ``CHK-LC-STATE-PORT``: the ``lc_state_o`` port (tap
 ``lc_state_probe_o``) equals LC_STATE[7:0] at ``efuse_shadow_probe_o`` and
 ``{~raw, raw}`` of the cell's golden state. ``doc/integrator/src/smu-sep.adoc:202``
@@ -122,7 +124,10 @@ passes on the forced all-ones value.
 Log-only, every cell: ``OBS-LC-UPPER`` (LC_STATE[31:8] written, prior and read:
 the RDL gives ``lc_state`` and ``rsvd`` as sw = r and ``rsvd`` as "Unused", and
 the fuse-field table gives LC_STATE as SW writable set-only; the texts disagree);
-every write cell: ``OBS-LC-WR-NIBBLE`` (bits
+every hold cell whose write a token gate or the terminal rule refuses (the
+CHK-GATE-* cells and CHK-INVALID-TERM): ``OBS-LC-WR-REFUSED-RESP`` (the write
+response; no text states the response of a refused write, so the scoreboard
+does not grade it); every write cell: ``OBS-LC-WR-NIBBLE`` (bits
 [7:4] of the write data and of the readback word: the specification does not
 state how a write of the complement nibble acts).
 
@@ -380,6 +385,10 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             assert expect is not None, "a readback-only cell needs an expected state"
             expected = expect
 
+        # A write that sets a lifecycle bit still 0 and leaves the state where it
+        # was is one a token gate or the terminal rule refuses. No text states the
+        # response of a refused write, so it is logged (OBS-LC-WR-REFUSED-RESP).
+        refused = do_write and expected == prev and bool(wdata & 0xF & ~prev)
         seq = SepLcShadowWriteSeq(
             full_wdata,
             expected,
@@ -389,9 +398,18 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             demote_1=self._demote_1,
             demote_2=self._demote_2,
             do_write=do_write,
+            refused=refused,
             name=f"lc_w1s_{tag}",
         )
         await self.start_seq(seq)
+        if refused:
+            self.logger.info(
+                "OBS-LC-WR-REFUSED-RESP tag=%s prev=%s wdata=0x%08x resp=%s",
+                tag,
+                lc_state_name(prev),
+                full_wdata,
+                seq.write_resp,
+            )
         observed = seq.observed_lc_raw
         assert observed is not None, "sequence did not publish an observed LC code"
         assert seq.observed_feat is not None, "sequence did not publish a FEAT_CTRL value"

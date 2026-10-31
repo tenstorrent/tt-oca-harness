@@ -20,9 +20,11 @@ writable under the lock (CHK-OBS-LANE-SEL), and after rst_ni the tap held at 0
 can be set again (CHK-OBS-POST-UNLOCK). Health-test ENABLE
 stays 0 so this test does not trip the alert path.
 
-Every write, including each write the lock refuses and the reserved CTRL
-write, grades its OKAY B response in the same CHK line, so a write that never
-reached the DUT fails.
+Every legal write (pre-lock, FIPS_LOCK, the pre-lock reserved CTRL write and the
+post-unlock tap set) grades its OKAY B response in the same CHK line. A write the
+lock refuses has no stated B code: its CHK line grades only that a B response
+arrived, so a write that never reached the DUT fails, and logs the code as
+OBS-POST-LOCK-RESP, OBS-OBS-ENABLE-LOCKED-RESP or OBS-CTRL-RSVD-LOCKED-RESP.
 The reserved bits of each graded FIPS_LOCK read are logged as OBS-FIPS-LOCK-RSVD
 (no stated reset value).
 CHK-RANDCFG grades the (register, field) pairs that the walked targets cover,
@@ -64,6 +66,11 @@ WORD_MASK = 0xFFFF_FFFF
 
 def _resp(code: int | None) -> str:
     return "none" if code is None else RESP_NAME.get(code, str(code))
+
+
+def _b_seen(code: int) -> bool:
+    """A B response of any code arrived (-1 means none came)."""
+    return code >= 0
 
 
 def _lock_of(word: int) -> int:
@@ -121,11 +128,12 @@ class sep_esrc_fips_lock_test(sep_base_test):
         # The target constructor asserts poke & mask != pre & mask, so a write
         # the lock let through moves the masked value.
         self._walked.append(target)
-        resp = await esrc.write_resp(target.addr, target.poke)
+        resp = await esrc.write_resp(target.addr, target.poke, locked=True)
         got = await esrc.read(target.addr)
+        self.logger.info("OBS-POST-LOCK-RESP: %s B=%s", target.name, _resp(resp))
         self._grade(
             "CHK-POST-LOCK",
-            resp == RESP_OKAY and (got & target.mask) == (target.pre & target.mask),
+            _b_seen(resp) and (got & target.mask) == (target.pre & target.mask),
             f"{target.name} poke 0x{target.poke:08x} B={_resp(resp)} pre 0x{target.pre:08x} "
             f"read 0x{got:08x} mask 0x{target.mask:x} held 0x{got & target.mask:08x} "
             f"want 0x{target.pre & target.mask:08x}",
@@ -261,12 +269,13 @@ class sep_esrc_fips_lock_test(sep_base_test):
         # lane moving while RAW_ENABLE holds shows the write reached the register
         # and the lock is per field, not a dropped write or a whole-register freeze.
         for reg, held in cfg.obs_held.items():
-            resp = await esrc.write_obs(reg, held ^ 1, cfg.lane_post)
+            resp = await esrc.write_obs(reg, held ^ 1, cfg.lane_post, locked=True)
             got, lane = await esrc.read_obs(reg)
             direction = "set" if held == 0 else "clear"
+            self.logger.info("OBS-OBS-ENABLE-LOCKED-RESP: %s B=%s", reg, _resp(resp))
             self._grade(
                 "CHK-OBS-ENABLE-LOCKED",
-                resp == RESP_OKAY and got == held,
+                _b_seen(resp) and got == held,
                 f"{reg}.RAW_ENABLE read {got} after a {direction} under lock (held {held}) "
                 f"B={_resp(resp)}",
             )
@@ -278,11 +287,12 @@ class sep_esrc_fips_lock_test(sep_base_test):
                     f"(pre-lock {cfg.lane_pre})",
                 )
 
-        ctrl_before, resp, ctrl_after = await esrc.poke_reserved_ctrl_bit()
+        ctrl_before, resp, ctrl_after = await esrc.poke_reserved_ctrl_bit(locked=True)
         word = await self._read_lock_word(esrc, "after locked CTRL RSVD0 write")
+        self.logger.info("OBS-CTRL-RSVD-LOCKED-RESP: CTRL B=%s", _resp(resp))
         self._grade(
             "CHK-CTRL-RSVD",
-            resp == RESP_OKAY
+            _b_seen(resp)
             and (ctrl_after & ctrl_t.mask) == (ctrl_t.pre & ctrl_t.mask)
             and (ctrl_after & CTRL_RSVD0_BIT) == 0
             and _lock_of(word) == 1,

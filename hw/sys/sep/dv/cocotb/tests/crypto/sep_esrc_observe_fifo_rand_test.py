@@ -68,8 +68,9 @@ Checkers:
                     lane value; a FLUSH with old words of z and words of 1 - z buffered
                     and the sample clock stopped gives LEVEL 0, and every word popped
                     after it equals the word of 1 - z (no kept word); locked at 0:
-                    a write of RAW_ENABLE 1 that the lock refuses answers OKAY,
-                    and LEVEL stays 0.
+                    after a write of RAW_ENABLE 1 that the lock refuses, LEVEL
+                    stays 0. That write must get a B response of any code; no text
+                    states the code, so it is logged as ``OBS-OBS-LOCK0-RESP``.
   CHK-OBS-OFF       both RAW_ENABLE fields 0, the module running after the boot phase:
                     both LEVELs read 0 after a hold of 256 strobes and at least 4 x
                     the measured first-word time of each FIFO (entropy_source.adoc:792,
@@ -126,7 +127,7 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
-from env.sep_fabric_common import RESP_OKAY, resp_name
+from env.sep_fabric_common import resp_name
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -385,7 +386,10 @@ class _EsrcRegs(SepAxiRegDriver):
     _DRIVER_TAG = "ESRC"
 
     async def wr_locked(self, addr: int, data: int) -> int:
-        """A write that FIPS_LOCK refuses; returns its B code, -1 if none came."""
+        """A write that FIPS_LOCK refuses; returns its B code, -1 if none came.
+
+        No text states that code, so the scoreboard does not grade it.
+        """
         seq = SepAxiAccessSeq(
             "esrc_wr_locked",
             op=SepAxiOp.WRITE,
@@ -393,6 +397,7 @@ class _EsrcRegs(SepAxiRegDriver):
             wdata=data,
             length=4,
             size=self._AXI_SIZE,
+            allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
         return -1 if seq.timed_out else seq.resp_code
@@ -1070,6 +1075,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             resp = await self.esrc.wr_locked(ESRC_NOISE_OBS_CTRL, _noise_ctrl(1, 0))
         else:
             resp = await self.esrc.wr_locked(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
+        self.logger.info("OBS-OBS-LOCK0-RESP: fifo=%s B=%s", fifo, resp_name(resp))
         raw_rb = await self._read_raw(fifo)
         wait = LOCK0_WAIT_FACTOR * t_cap if t_cap else 0
         if wait:
@@ -1080,20 +1086,20 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         close_graded_window(self.logger)
         self.chk.ctrl(
             "OBS-LOCK",
-            t_cap is not None and raw0 == 0 and lock == 1 and raw_rb == 0,
+            t_cap is not None and raw0 == 0 and lock == 1 and resp >= 0 and raw_rb == 0,
             fifo=fifo,
             locked_at=0,
             ctrl_locked1_capture_clk=t_cap if t_cap is not None else "none",
             raw_before=raw0,
             lock=lock,
+            b_seen=int(resp >= 0),
             post_lock_write_readback=raw_rb,
         )
         self.chk.ok(
             "OBS-LOCK",
-            t_cap is not None and level == 0 and resp == RESP_OKAY,
+            t_cap is not None and level == 0,
             fifo=fifo,
             locked_at=0,
-            bresp=resp_name(resp),
             level=level,
             capture_clk=t_cap if t_cap is not None else "none",
             wait_clk=wait,

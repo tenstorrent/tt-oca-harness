@@ -80,11 +80,13 @@ Checkers:
                        falls after it is cleared (``otbn.adoc`` :44).
   CHK-OTBN-CMD-IGNORE  an unrecognised ``CMD`` at IDLE starts nothing for
                        4 x t_cmd; a ``CMD`` write at 0x01 leaves ``STATUS`` 0x01.
-                       Each ignored write must answer OKAY; the line logs
-                       the B responses.
+                       The line logs the B response of each ignored write;
+                       the write at IDLE must answer OKAY, the response of a
+                       write at 0x01 is not graded.
   CHK-OTBN-BUSYWR      ``CTRL.software_errs_fatal`` written at 0x01 reads 0;
                        ``STATUS`` stays 0x01; not 0xFF after the release.
-                       Each write at 0x01 must answer OKAY (``ctrl_bresp``).
+                       The B response of each write at 0x01 is logged
+                       (``ctrl_bresp``, not graded).
   CHK-OTBN-INITDONE    after the first OTBN reset the probe shows 0x04 at the
                        first clock after the release, then 0x00. "After reset,
                        OTBN is busy with the internal secure wipe and the
@@ -132,7 +134,7 @@ Checkers:
                        state the byte order of a record, so the check accepts
                        the little-endian and the big-endian 6-byte record and
                        ``OBS-OTBN-CKSUM-ORDER`` logs which one matched.
-  CHK-OTBN-LOCKED-HOLD a ``CMD`` = EXECUTE write (answers OKAY) at LOCKED leaves ``STATUS`` at
+  CHK-OTBN-LOCKED-HOLD a ``CMD`` = EXECUTE write (B response logged, not graded) at LOCKED leaves ``STATUS`` at
                        0xFF for 4 x t_cmd and ``FATAL_ALERT_CAUSE`` unchanged;
                        after an OTBN reset the probe shows 0x04 then 0x00 and
                        ``FATAL_ALERT_CAUSE`` reads 0. "The locked state is a
@@ -680,11 +682,13 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
     async def _wr(self, addr: int, val: int) -> None:
         await self.otbn._wr(addr, val)
 
-    async def _wr_b(self, addr: int, val: int) -> str:
+    async def _wr_b(self, addr: int, val: int, *, refused: bool = False) -> str:
         """Register write that returns the name of its B response.
 
-        Every write must answer OKAY, including one the DUT ignores because OTBN
-        is not idle (``otbn.hjson`` ``CMD`` and ``CTRL``), and raises otherwise.
+        A legal write must answer OKAY and raises otherwise. A ``refused`` write
+        (OTBN not idle: ``otbn.hjson`` ``CMD`` and ``CTRL``) is ignored by the
+        DUT and no text states its response code, so the code is only returned
+        for the log.
         """
         seq = SepAxiAccessSeq(
             "otbn_b_wr",
@@ -693,9 +697,10 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             wdata=val,
             length=4,
             size=2,
+            allow_unverified_write_resp=refused,
         )
         await self.start_seq(seq)
-        if not seq.resp_ok:
+        if not refused and not seq.resp_ok:
             raise AssertionError(f"OTBN write 0x{val:02x} @0x{addr:08x} not OKAY")
         return resp_name(seq.resp_code)
 
@@ -1355,12 +1360,12 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         ctrl_bresps: list[str] = []
         if busy:
             for _ in range(p.k):
-                ctrl_bresps.append(await self._wr_b(A_CTRL, M_CTRL_SWERR))
+                ctrl_bresps.append(await self._wr_b(A_CTRL, M_CTRL_SWERR, refused=True))
                 ctrl_reads.append(await self._rd(A_CTRL, M_CTRL_SWERR))
                 st_after_ctrl.append(await self._rd(A_STATUS, M_STATUS))
             bresps: list[str] = []
             for _ in range(p.j):
-                bresps.append(await self._wr_b(A_CMD, CMD_SEC_WIPE_DMEM))
+                bresps.append(await self._wr_b(A_CMD, CMD_SEC_WIPE_DMEM, refused=True))
                 st_after_cmd.append(await self._rd(A_STATUS, M_STATUS))
             if self._grade(
                 "OTBN-CMD-IGNORE",
@@ -1693,7 +1698,7 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
         if fatal_ok:
             await self._pass_label(OTBN_CMD_PASS_SWERR_FATAL)
         # LOCKED hold: a recognised command at LOCKED, then the OTBN reset exit.
-        hold_bresp = await self._wr_b(A_CMD, CMD_EXECUTE)
+        hold_bresp = await self._wr_b(A_CMD, CMD_EXECUTE, refused=True)
         _, hvals, hclks = await self._poll_status(lambda s: s != ST_LOCKED, win)
         fatal_hold = await self._rd(A_FATAL, M_FATAL)
         exit_ok, exit_arc = await self._reset_otbn("swerr-fatal-exit")
