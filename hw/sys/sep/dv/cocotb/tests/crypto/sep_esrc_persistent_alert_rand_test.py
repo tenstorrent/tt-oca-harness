@@ -136,8 +136,9 @@ Checkers:
                   (PIC source 16, the entropy-source interrupt;
                   ``hw/sys/sep/doc/interrupts.adoc:23``, ``:109-111``) reads 1,
                   with INTR_ENABLE.PERSISTENT_FAILURE set by the clean start
-                  (``entropy_source.adoc:164``). Control: PERSISTENT_FAILURE
-                  read 1 (CTRL-PIC16).
+                  (``entropy_source.adoc:164``). Every other INTR_STATUS bit
+                  is cleared (W1C) before the read. Control: INTR_STATUS then
+                  reads PERSISTENT_FAILURE and no other bit (CTRL-PIC16).
   CHK-PF-RECOVER  W1C: both bits 0 and the output stays halted for H; a
                   MODULE_ENABLE cycle or a TRNG reset restarts the output
                   (BOOT_PHASE_DONE = 1, LEVEL rises); the reset clears both bits.
@@ -327,6 +328,7 @@ SM_W0 = 0
 THR_FIELDS = ENTROPY_SOURCE.mask("ALERT_THRESHOLD")
 THR_RESET = ENTROPY_SOURCE.reset("ALERT_THRESHOLD")  # 0x4 (entropy_source.adoc:762)
 INTR_ENABLE_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
+INTR_STATUS_ALL = ENTROPY_SOURCE.mask("INTR_STATUS")
 CTRL_OFF = ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0)
 CTRL_ON = ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1)
 
@@ -638,10 +640,15 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         PIC source 16 is the entropy-source interrupt on vector bit 15
         (interrupts.adoc:23, :109-111), and INTR_ENABLE.PERSISTENT_FAILURE, set by
         the clean start, enables the persistent-failure interrupt
-        (entropy_source.adoc:18, :164). Control: PERSISTENT_FAILURE read 1.
+        (entropy_source.adoc:18, :164). The clean start enables every interrupt,
+        so every other INTR_STATUS bit is cleared (W1C) first. Control: the
+        INTR_STATUS read after that clear has PERSISTENT_FAILURE set and no other
+        bit, so only PERSISTENT_FAILURE can drive the source.
         """
+        await self._wr(ESRC_INTR_STATUS, INTR_STATUS_ALL & ~M_PF)
+        st = (await self._rd(ESRC_INTR_STATUS)) & INTR_STATUS_ALL
         pic = self._pic16()
-        self._ctrl("PIC16", pf == 1, thr=thr, pf=pf)
+        self._ctrl("PIC16", pf == 1 and st == M_PF, thr=thr, pf=pf, intr_status=f"0x{st:x}")
         await self._grade("PIC16", pic == 1, 0, thr=thr, value=pic, expect_value=1)
 
     # --- reset and start -----------------------------------------------------------

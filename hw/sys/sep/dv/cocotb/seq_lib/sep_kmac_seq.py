@@ -78,7 +78,8 @@ def _hjson_enum(reg: str, field: str, need: tuple[str, ...]) -> dict[str, int]:
     """Name -> value of the ``reg``.``field`` enum in kmac.hjson. Raises if ``need`` is not parsed."""
     text = _KMAC_HJSON.read_text(encoding="utf-8")
     at = text.find(f'{{ name: "{reg}"')
-    fld = text.find(f'name: "{field}"', at) if at >= 0 else -1
+    m = re.compile(rf'name:\s*"?{field}"?\s').search(text, at) if at >= 0 else None
+    fld = m.start() if m else -1
     start = text.find("enum:", fld) if fld >= 0 else -1
     end = text.find("]", start) if start >= 0 else -1
     body = text[start:end] if end >= 0 else ""
@@ -139,7 +140,13 @@ KMAC_STRENGTH = {
         "CFG_SHADOWED", "kstrength", ("L128", "L224", "L256", "L384", "L512")
     ).items()
 }
-KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}
+KMAC_KEYLEN = {
+    int(n[3:]): v
+    for n, v in _hjson_enum(
+        "KEY_LEN", "len", ("Key128", "Key192", "Key256", "Key384", "Key512")
+    ).items()
+}
+KMAC_ENTROPY_EDN = _hjson_enum("CFG_SHADOWED", "entropy_mode", ("edn_mode",))["edn_mode"]
 KMAC_KEY_LEN_256 = KMAC_KEYLEN[256]
 
 
@@ -152,7 +159,7 @@ def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool, sideload: bool =
         | (kstrength << KMAC.field_lsb("CFG_SHADOWED", "kstrength"))
         | (mode << KMAC.field_lsb("CFG_SHADOWED", "mode"))
         | (int(bool(sideload)) << KMAC.field_lsb("CFG_SHADOWED", "sideload"))
-        | (0x1 << KMAC.field_lsb("CFG_SHADOWED", "entropy_mode"))
+        | (KMAC_ENTROPY_EDN << KMAC.field_lsb("CFG_SHADOWED", "entropy_mode"))
         | KMAC.field_mask("CFG_SHADOWED", "entropy_ready")
     )
 
