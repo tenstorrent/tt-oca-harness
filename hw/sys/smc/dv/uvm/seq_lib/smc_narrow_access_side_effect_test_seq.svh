@@ -9,6 +9,7 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   localparam string ChkPoll = "CHK-NARROW-ZEROER-POLL";
   localparam string ChkPop = "CHK-NARROW-MBX-POP";
   localparam string ChkPush = "CHK-NARROW-MBX-PUSH";
+  localparam string ChkZeroFill = "CHK-NARROW-MBX-ZERO-FILL";
   localparam string ChkEmpty = "CHK-NARROW-MBX-EMPTY";
   localparam string ChkError = "CHK-NARROW-MBX-ERROR";
   localparam string ChkNullZeroer = "CHK-NARROW-NULL-ZEROER";
@@ -30,11 +31,11 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   localparam int unsigned ComparisonBound = 64;
   localparam int unsigned ComparisonsPerPass = 3;
   // Reads: 4 baseline, 3 MUTEX, 8 upper polls, 4 SIZE/DEST readbacks,
-  // 3 pop/push, 2 empty, 3 ERROR, 3 EIRQ and 1 final STATUS.
-  localparam int unsigned FixedReads = 31;
-  // Writes: 3 MUTEX, 4 SIZE/DEST poison, 4 SIZE/DEST cleanup,
-  // 3 pushes, 2 EIRQ and 2 null-strobe.
-  localparam int unsigned FixedWrites = 18;
+  // 5 pop/push, 2 empty, 4 ERROR, 5 EIRQ, 3 STATUS and one per reverse entry.
+  localparam int unsigned FixedReads = 38 + SmcMailboxDepth;
+  // Writes: 3 MUTEX, 4 SIZE/DEST poison, 4 SIZE/DEST cleanup, 5 pushes,
+  // 3 EIRQ, 2 null-strobe, 2 full-FIFO attempts and one per reverse entry.
+  localparam int unsigned FixedWrites = 23 + SmcMailboxDepth;
   // Base of the SYS_OUT-backed memory pages reserved for this scenario.
   localparam bit [63:0] OutputBase = 64'h0200_0000;
   localparam bit [7:0] Poison = 8'hD3;
@@ -152,16 +153,35 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     end
   endtask
 
-  protected task null_write(bit [63:0] address);
-    smc_axi_mem_write_seq op = smc_axi_mem_write_seq::type_id::create("null_write");
+  protected task strobed_write(bit [63:0] address, bit [63:0] data, bit [7:0] strb, string label,
+                               bit error_expected = 0);
+    smc_axi_mem_write_seq op = smc_axi_mem_write_seq::type_id::create("strobed_write");
     op.addr = address;
-    op.data = '1;
-    op.strb = '0;
+    op.data = data;
+    op.strb = strb;
+    op.check_response = !error_expected;
     op.start(p_sequencer.m_sep_in_seqr);
     mem_accesses++;
-    `uvm_info(get_type_name(), $sformatf("SEP_IN null-strobe write addr=0x%0h data=%h strb=%h %s",
-                                         address, op.data, op.strb, access_context()), UVM_LOW)
-    check_response(ChkMemResp, op.result, "null-strobe write");
+    `uvm_info(get_type_name(), $sformatf("SEP_IN %s addr=0x%0h data=%h strb=%h resp=%s %s", label,
+                                         address, data, strb, op.result.worst_resp().name(),
+                                         access_context()), UVM_LOW)
+    if (error_expected) begin
+      prerequisite(ChkErrorControl,
+                   !op.result.timed_out && op.result.resp_list.size() == 1 &&
+                   !op.result.any_resp_xz() && op.result.worst_resp() == OCAH_AXI_RESP_SLVERR,
+                   label, $sformatf(
+                   "addr=0x%0h timeout=%b responses=%p",
+                   address,
+                   op.result.timed_out,
+                   op.result.resp_list
+                   ));
+    end else begin
+      check_response(ChkMemResp, op.result, label);
+    end
+  endtask
+
+  protected task null_write(bit [63:0] address);
+    strobed_write(address, '1, '0, "null-strobe write");
   endtask
 
   protected task empty_read(bit [63:0] address, int unsigned ordinal);
@@ -182,17 +202,17 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   task body();
     int unsigned read_before, write_before, compare_before, mismatch_before;
     int unsigned polls, control_polls, zero_words, entries;
-    bit [63:0] page, status, errors, observed, word0, word1;
+    bit [63:0] page, status, errors, observed, word0, word1, upper_push;
     bit [63:0] saved_start, saved_end, saved_config, programmed_config;
     bit [63:0] queue_data[$];
-    bit [31:0] upper, lower, value, pattern;
+    bit [31:0] upper, lower, value, value_lo, value_zf, pattern;
     bit unchanged, guards_intact, poll_idle, null_entry_ok;
     logic [31:0] busy_before, busy_after;
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkMemResp, ChkAcquire, ChkRelease, ChkPoll, ChkPop,
-                    ChkPush, ChkEmpty, ChkError, ChkNullZeroer, ChkNullMailbox, ChkControl,
-                    ChkErrorControl, ChkCleanup, ChkRestore, ChkSetup, ChkScoreboard, ChkNonvac,
-                    ChkSbMinAct});
+                    ChkPush, ChkZeroFill, ChkEmpty, ChkError, ChkNullZeroer, ChkNullMailbox,
+                    ChkControl, ChkErrorControl, ChkCleanup, ChkRestore, ChkSetup, ChkScoreboard,
+                    ChkNonvac, ChkSbMinAct});
     negative = env_cfg.narrow_side_effect_sequence_negative;
     if (negative)
       `uvm_info(get_type_name(), "NEGATIVE VALIDATION: narrow side-effect expectations", UVM_LOW)
@@ -249,6 +269,8 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     word0 = {pattern, pattern ^ 32'h0101_0101};
     word1 = {pattern ^ 32'h0202_0202, pattern ^ 32'h0404_0404};
     value = 32'(random_pattern(32)) | 1;
+    value_lo = 32'(random_pattern(32)) | 1;
+    value_zf = 32'(random_pattern(32)) | 1;
     read_before = sep_in_history.count(1);
     write_before = sep_in_history.count(0);
     compare_before = scoreboard.compare_count(SmcFeatureMutexSema);
@@ -309,12 +331,50 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
           "actual=%h expected=%h", {upper, lower}, {word0[63:32], word1[31:0]}));
     csr_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA) + SmcCsrBytes, value, "upper push");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "upper push readback");
-    grade(ChkPush, "upper push value lands in the upper half", observed == {value, 32'h0},
-          $sformatf("actual=%h value=%h", observed, value));
+    upper_push = observed;
+    csr_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), value_lo, "lower push");
+    mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "lower push readback");
+    grade(ChkPush, "32-bit pushes place data in the addressed half",
+          upper_push == {value, 32'h0} && observed == {32'h0, value_lo}, $sformatf(
+          "upper_push=%h lower_push=%h upper_value=%h lower_value=%h",
+          upper_push,
+          observed,
+          value,
+          value_lo
+          ));
+    strobed_write(smc_mailbox_addr(mailbox, 0, MBX_WRITE_DATA), {value_zf, 32'hFFFF_FFFF}, 8'hF0,
+                  "partial-strobe push");
+    mem_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), observed, "partial-strobe push readback");
+    grade(ChkZeroFill, "unstrobed lanes of a partial-strobe push are zero",
+          observed == {value_zf, 32'h0}, $sformatf("actual=%h value=%h", observed, value_zf));
     empty_read(smc_mailbox_addr(mailbox, 1, MBX_READ_DATA), 1);
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "read-error control");
     prerequisite(ChkErrorControl, (errors & AXIL_MAILBOX_ERROR_READ_ERROR_MASK) != 0,
                  "read-error flag is live", $sformatf("errors=%h", errors));
+    for (int unsigned i = 0; i < SmcMailboxDepth; i++) begin
+      mem_write(smc_mailbox_addr(mailbox, 1, MBX_WRITE_DATA), word0 ^ 64'(i), "reverse FIFO fill");
+    end
+    mem_read(smc_mailbox_addr(mailbox, 1, MBX_STATUS), status, "reverse FIFO full");
+    prerequisite(ChkErrorControl, (status & AXIL_MAILBOX_STATUS_FULL_MASK) != 0,
+                 "reverse FIFO is full", $sformatf("status=%h depth=%0d", status, SmcMailboxDepth));
+    strobed_write(smc_mailbox_addr(mailbox, 1, MBX_WRITE_DATA), ~word0, '1,
+                  "full FIFO write-error control", 1);
+    mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "write-error control");
+    prerequisite(ChkErrorControl, (errors & AXIL_MAILBOX_ERROR_WRITE_ERROR_MASK) != 0,
+                 "write-error flag is live", $sformatf("errors=%h", errors));
+    mem_write(smc_mailbox_addr(mailbox, 1, MBX_IRQS), AXIL_MAILBOX_IRQS_EIRQ_MASK,
+              "EIRQ clear before repeated full write");
+    mem_read(smc_mailbox_addr(mailbox, 1, MBX_IRQS), observed,
+             "EIRQ cleared before repeated full write");
+    prerequisite(ChkErrorControl, (observed & AXIL_MAILBOX_IRQS_EIRQ_MASK) == 0,
+                 "EIRQ clear before repeated full write is effective", $sformatf("IRQS=%h", observed
+                 ));
+    // Reading ERROR clears its flags, so recreate write_error before the upper read.
+    strobed_write(smc_mailbox_addr(mailbox, 1, MBX_WRITE_DATA), ~word1, '1,
+                  "full FIFO write-error recreation", 1);
+    mem_read(smc_mailbox_addr(mailbox, 1, MBX_IRQS), observed, "repeated full write error");
+    prerequisite(ChkErrorControl, (observed & AXIL_MAILBOX_IRQS_EIRQ_MASK) != 0,
+                 "repeated full write registers an error", $sformatf("IRQS=%h", observed));
     mem_write(smc_mailbox_addr(mailbox, 1, MBX_IRQS), AXIL_MAILBOX_IRQS_EIRQ_MASK,
               "EIRQ clear before second empty read");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_IRQS), observed,
@@ -328,8 +388,17 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
                  "second empty read registers an error", $sformatf("IRQS=%h", observed));
     csr_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR) + SmcCsrBytes, upper, "upper error clear");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_ERROR), errors, "errors after upper read");
-    grade(ChkError, "upper read clears all errors", upper == 0 && errors == 0, $sformatf(
+    grade(ChkError, "upper read clears both error flags", upper == 0 && errors == 0, $sformatf(
           "upper=%h errors=%h", upper, errors));
+    for (int unsigned i = 0; i < SmcMailboxDepth; i++) begin
+      mem_read(smc_mailbox_addr(mailbox, 0, MBX_READ_DATA), observed, "reverse FIFO drain");
+      prerequisite(ChkCleanup, observed == (word0 ^ 64'(i)),
+                   "full writes preserve queued reverse data", $sformatf(
+                   "index=%0d expected=%h observed=%h", i, word0 ^ 64'(i), observed));
+    end
+    mem_read(smc_mailbox_addr(mailbox, 0, MBX_STATUS), status, "reverse FIFO drained");
+    prerequisite(ChkCleanup, (status & AXIL_MAILBOX_STATUS_EMPTY_MASK) != 0,
+                 "reverse FIFO is empty", $sformatf("status=%h", status));
     mem_write(smc_mailbox_addr(mailbox, 1, MBX_IRQS), AXIL_MAILBOX_IRQS_EIRQ_MASK, "EIRQ clear");
     mem_read(smc_mailbox_addr(mailbox, 1, MBX_IRQS), observed, "EIRQ cleared");
     prerequisite(ChkCleanup, (observed & AXIL_MAILBOX_IRQS_EIRQ_MASK) == 0, "EIRQ cleanup",

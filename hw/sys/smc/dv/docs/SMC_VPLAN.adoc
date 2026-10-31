@@ -50740,22 +50740,24 @@ word. Mailbox checks remain in the sequence; `mailbox_fifo` is not required.
 Zeroer data and guards use SYS_OUT responder `write_bytes`/`read_bytes`.
 
 *Objective*: Grade the side effects of 32-bit upper-word reads and writes
-and zero-strobe writes to documented 64-bit FIFO, mutex and Zeroer registers.
+and partial- and zero-strobe writes to documented 64-bit FIFO, mutex and
+Zeroer registers.
 
 *Expectation Sources*: `cpu_ctrl.rdl`, MUTEX, defines acquisition on any read,
 zero returned when byte 0 is absent, and release on a write. `axil_mailbox.rdl`
 defines whole-entry pops on narrow reads, zero-fill for nonstrobed write
 lanes, push on null writes and clearing all ERROR flags on any read.
 The mailbox `interface.adoc` specifies SLVERR and low error data 0xFEEDDEAD
-for empty reads. `zeroer_ctrl.rdl` defines START on any write, including a
-zero-strobe write with nonzero SIZE, not on reads. `filter_ctrl.rdl` defines
+for empty reads, and SLVERR, discarded data and write-error/EIRQ flags for
+writes to a full FIFO. `zeroer_ctrl.rdl` defines START on any write, including
+a zero-strobe write with nonzero SIZE, not on reads. `filter_ctrl.rdl` defines
 the address granule and write-back rules; filter masks are generated symbols.
 
 *Test Coverage*: The default sixteen passes exercise mailboxes 0-15 and
 rotate all four mutexes. Four distinct 32-bit payload halves distinguish
 pop order and lane selection.
 The null mailbox write carries all ones, distinguishing zero-fill from raw
-write data. Each pass has a valid Zeroer job and a set read-error flag as
+write data. Each pass has a valid Zeroer job and read- and write-error flags as
 positive controls before the corresponding absence/clear checks.
 
 *Test Procedure*: Save an unlocked outbound filter entry, program and read
@@ -50769,15 +50771,20 @@ the window, configure SIZE/DEST and poll CTRL_STATUS's upper word eight times;
 require idle and poison unchanged, then clear SIZE/DEST with readback before
 checking that no busy samples accumulated across the polls and cleanup. Push
 two distinct mailbox words and pop their upper and lower halves as two
-separate entries. Push an upper word and check upper-half placement.
-Empty-read and observe the read-error flag, then clear and read back EIRQ
-before the second empty read and require EIRQ set as its positive control. The
-second error must clear on an upper ERROR read. Clear EIRQ and read it back.
-Re-poison and issue a null Zeroer START, requiring zero payload and intact
-guards after bounded completion. Null-write mailbox WRITE_DATA, drain only
-while STATUS is not empty, and require exactly one zero entry. Clear/read
-SIZE/DEST, check accounting, and restore/read the saved filter outside the
-counted window.
+separate entries. Push 32-bit upper and lower words and check both placements.
+Push a 64-bit word with upper-only strobes and nonzero data on disabled lanes;
+require those lanes zero in the popped word. Empty-read on the inbound port
+and observe read_error. Fill that port's write FIFO, require FULL, attempt a
+write and require SLVERR and write_error. Clear/read EIRQ, repeat the full
+write with SLVERR and require EIRQ set, then clear/read EIRQ again. Empty-read
+that same port and require EIRQ set. Read upper ERROR and require zero, then
+read the full ERROR word and require both flags clear. Drain the reverse FIFO
+through the outbound port, require the original data in order and EMPTY, then
+clear/read inbound EIRQ. Re-poison and issue a null Zeroer START, requiring
+zero payload and intact guards after bounded completion. Null-write mailbox
+WRITE_DATA, drain only while STATUS is not empty, and require exactly one zero
+entry. Clear/read SIZE/DEST, check accounting, and restore/read the saved
+filter outside the counted window.
 
 *Checkers*:
 
@@ -50788,19 +50795,20 @@ counted window.
 |`CHK-NARROW-MUTEX-RELEASE` |Release permits the next lower read to acquire
 |`CHK-NARROW-ZEROER-POLL` |Upper reads preserve idle and the poisoned window without accumulating busy samples
 |`CHK-NARROW-MBX-POP` |Two narrow reads pop separate whole entries on the requested lanes
-|`CHK-NARROW-MBX-PUSH` |Upper write places its payload in the upper half of the queued word
+|`CHK-NARROW-MBX-PUSH` |32-bit upper and lower writes place their payload in the addressed half
+|`CHK-NARROW-MBX-ZERO-FILL` |A 64-bit upper-only-strobe write zero-fills disabled lanes carrying nonzero bus data
 |`CHK-NARROW-MBX-EMPTY` |Two empty reads return SLVERR and the specified low payload
-|`CHK-NARROW-MBX-ERROR` |Upper ERROR read returns zero and clears the flags
+|`CHK-NARROW-MBX-ERROR` |Upper ERROR read returns zero and clears both read_error and write_error
 |`CHK-NARROW-NULL-ZEROER` |Null START zeros exactly the configured window
 |`CHK-NARROW-NULL-MAILBOX` |Null write pushes exactly one zero entry
-|`CHK-NARROW-ZEROER-CONTROL`, `CHK-NARROW-MBX-ERROR-CONTROL` |A valid job reaches memory and advances busy samples; the first error flag is observed set, EIRQ is read clear before the second empty read and set after it; prerequisite failures terminate
+|`CHK-NARROW-ZEROER-CONTROL`, `CHK-NARROW-MBX-ERROR-CONTROL` |A valid job reaches memory and advances busy samples; read_error and write_error have controls; full writes return SLVERR; EIRQ is read clear before each repeated fault and set after it; prerequisite failures terminate
 |`CHK-NARROW-SETUP` |Geometry, filter readback and initial state are valid; failures terminate
-|`CHK-NARROW-CLEANUP` |SIZE/DEST and EIRQ cleanup readbacks match and mailbox drain completes within its bound; failures terminate
+|`CHK-NARROW-CLEANUP` |SIZE/DEST and EIRQ cleanup readbacks match and mailbox drain completes within its bound; full writes preserve reverse FIFO data and the reverse FIFO drains empty; failures terminate
 |`CHK-NARROW-RESTORE` |Saved filter START/END/CONFIG are restored under RDL masks
 |`CHK-NARROW-SCOREBOARD`, `CHK-SB-MUTEX-SEMA` |No new mutex mismatch and no unpaired prediction remain
-|`CHK-NONVAC` |18 writes, 31+k+2m reads and three mutex comparisons per pass in the counted window; k is observed completion polls and m is drained null-write entries
+|`CHK-NONVAC` |25 writes, 40+k+2m reads (for mailbox depth 2) and three mutex comparisons per pass in the counted window; k is observed completion polls and m is drained null-write entries
 |`CHK-SB-MIN-ACTIVITY` |Prior passes meet the passive comparison floor
-|`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP`, `CHK-MEM-RESP` |Bring-up and checked accesses complete with OKAY; empty reads have their own SLVERR check
+|`CHK-FUSE-SENSE-DONE`, `CHK-CSR-RESP`, `CHK-MEM-RESP` |Bring-up and checked accesses complete with OKAY; empty reads and full writes have their own SLVERR checks
 |===
 
 *Known Limitations*: Sequential single-beat SEP_IN accesses only; no reset in
@@ -50815,14 +50823,14 @@ passive readback because every read acquires. Restore values equal to the
 programmed filter values are logged as nondiscriminating. Neither the Zeroer
 completion polling nor a completed control job proves an exact START cycle.
 Mailbox interrupts beyond the EIRQ error controls and cleanup are not graded.
-The narrow write helper drives zero on unstrobed lanes, so PUSH grades lane
-placement, not zero-fill discrimination. NULL-MAILBOX checks zero-fill with
-all-ones write data and no strobes.
+The narrow write helper drives zero on unstrobed lanes, so the discriminating
+partial-strobe zero-fill check uses a 64-bit access; 32-bit push checks grade
+lane placement. NULL-MAILBOX checks all-ones data with no strobes.
 
 *Pass Criteria*: All checks pass. Used alone,
-`+SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE` reverses ten records per pass:
-ACQUIRE, RELEASE, POLL, POP, PUSH, EMPTY twice, ERROR, NULL-ZEROER and
-NULL-MAILBOX; 160 failures for sixteen passes, no fatal or mutex mismatch.
+`+SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE` reverses eleven records per pass:
+ACQUIRE, RELEASE, POLL, POP, PUSH, ZERO-FILL, EMPTY twice, ERROR, NULL-ZEROER and
+NULL-MAILBOX; 176 failures for sixteen passes, no fatal or mutex mismatch.
 `+SMC_MUTEX_SCOREBOARD_NEGATIVE` corrupts all three predictions per pass:
 48 mismatches, 16 scenario scoreboard failures and one final feature
 failure, 65 errors total. Setup, controls, cleanup, restore and NONVAC
