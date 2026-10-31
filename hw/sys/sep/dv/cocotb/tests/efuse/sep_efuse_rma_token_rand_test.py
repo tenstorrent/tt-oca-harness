@@ -169,7 +169,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         return (vec >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
-        seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT)
+        seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT, size=2)
         await self.start_seq(seq)
         assert seq.resp_ok, "TOKEN_MATCH_FAULT read not OKAY"
         return seq.rdata
@@ -180,6 +180,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             op=SepAxiOp.WRITE,
             addr=TOKEN_MATCH_FAULT,
             wdata=data,
+            size=2,
         )
         await self.start_seq(seq)
         # The point of the write is that a read-only field ignores it. A write
