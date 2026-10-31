@@ -100,10 +100,12 @@ set at drawn ``meipl`` values (never the never value of either order) in one
 order, raises the sources with mstatus.MIE 0, flips priord with no ``meipl``
 write and sets mstatus.MIE. ``CTRL-PRIORD-PENDING`` (fails the leaf) needs
 the drawn set to read 1 in ``meip`` before the flip, 0 before the raise, and
-no handler run with mstatus.MIE 0. ``OBS-PRIORD-PENDING`` logs the first
-claimed source and the handler order, with the winner of each order from the
-priority model for reference. After the control passes, the test raises the
-``priord_flip_pending`` bin of ``sep_open_value_leg_cg``.
+no handler run with mstatus.MIE 0. ``CTRL-PRIORD-FLIP`` (fails the leaf)
+needs ``mpiccfg.priord`` to read the flipped order after the write.
+``OBS-PRIORD-PENDING`` logs the first claimed source and the handler order,
+with the winner of each order from the priority model for reference. After
+both controls pass, the test raises the ``priord_flip_pending`` bin of
+``sep_open_value_leg_cg``.
 
 The host also checks that each record of the threshold, nesting and timer
 legs carries the drawn stimulus. Log only: ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
@@ -652,6 +654,14 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         if not reach:
             raise AssertionError(f"CTRL-MISSING PRIORD-PENDING: {body}")
         self.logger.info("CTRL-PRIORD-PENDING LOG %s", body)
+        flip_recs = self.con.records("CTRL-PRIORD-FLIP")
+        priord = flip_recs[0].kv.get("priord") if len(flip_recs) == 1 else None
+        flip_body = (
+            f"seed={cfg.seed} priord={priord} expect={cfg.pf_from ^ 1} records={len(flip_recs)}"
+        )
+        if priord is None or int(priord) != cfg.pf_from ^ 1:
+            raise AssertionError(f"CTRL-MISSING PRIORD-FLIP: {flip_body}")
+        self.logger.info("CTRL-PRIORD-FLIP LOG %s", flip_body)
         flips = [parse_kv(t) for t in self.con.text_lines("INFO-PRIORD-FLIP")]
         ids = _ids(flips[0].get("ids", "")) if len(flips) == 1 else []
         raws = dict(zip(cfg.pf_srcs, cfg.pf_raws, strict=True))

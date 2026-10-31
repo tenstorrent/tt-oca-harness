@@ -85,8 +85,8 @@ Open-value legs (logged, not graded; each has a control that fails the leaf):
                    switch, after the input drops and after ``meigwclr``.
 * ``OBS-GWCLR-RACE``  a one-clock pulse on the drawn boundary input in the
                    clock of the ``meigwclr`` write to its source, and one and
-                   two clocks before it (``CTRL-GWCLR-RACE``: the pulse and the
-                   write read in the same clock on the pin and
+                   two clocks before it (``CTRL-GWCLR-RACE``: in each attempt
+                   the pin pulse lies 0, 1 or 2 clocks before the write on
                    ``pic_wr_probe_o``): ``meip`` after the write.
 * ``OBS-DMA-ALERT-INTEG`` the DMA alert receiver pair forced to one drawn value
                    on both wires (``dma_alert_inject_i``; ``CTRL-DMA-ALERT-INJ``:
@@ -1242,26 +1242,30 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 f"CTRL-MISSING GWCLR-RACE: seed={seed} records={sorted(recs)} "
                 f"attempts={sorted(att)} want={n}"
             )
-        _, src, _, pulse, wr = att[1]
-        if pulse is None or wr is None or pulse != wr:
-            raise AssertionError(
-                f"CTRL-MISSING GWCLR-RACE: seed={seed} pulse_clk={pulse} gwclr_wr_clk={wr}"
-            )
-        self.logger.info(
-            "CTRL-GWCLR-RACE LOG seed=%d src=%d bit=%d pulse_clk=%d gwclr_wr_clk=%d calib_wr_clk=%d",
-            seed,
-            src,
-            self.wc.ext[0],
-            pulse,
-            wr,
-            self.race_d,
-        )
         for i, offset in enumerate(RACE_OFFSETS, start=1):
             _, src, _, pulse, wr = att[i]
+            if pulse is None or wr is None or pulse - wr != offset:
+                raise AssertionError(
+                    f"CTRL-MISSING GWCLR-RACE: seed={seed} attempt={i} offset={offset} "
+                    f"pulse_clk={pulse} gwclr_wr_clk={wr}"
+                )
             self.logger.info(
-                "OBS-GWCLR-RACE LOG src=%d offset=%d pulse_clk=%s gwclr_wr_clk=%s before=%d after=%d",
-                src,
+                "CTRL-GWCLR-RACE LOG seed=%d attempt=%d offset=%d src=%d bit=%d pulse_clk=%d "
+                "gwclr_wr_clk=%d calib_wr_clk=%d",
+                seed,
+                i,
                 offset,
+                src,
+                self.wc.ext[0],
+                pulse,
+                wr,
+                self.race_d,
+            )
+            self.logger.info(
+                "OBS-GWCLR-RACE LOG src=%d wr_minus_pulse=%d pulse_clk=%d gwclr_wr_clk=%d "
+                "before=%d after=%d",
+                src,
+                wr - pulse,
                 pulse,
                 wr,
                 int(recs[i]["before"]),

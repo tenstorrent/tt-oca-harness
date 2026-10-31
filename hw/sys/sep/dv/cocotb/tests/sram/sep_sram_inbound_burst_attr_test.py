@@ -47,8 +47,9 @@ fault in one byte lane then shows on every data checker it reaches.
 
 Logged, not graded: after the cases, one SRAM word in the window takes an
 exclusive read and then a write with AWLOCK 1 and the same ID and address. No
-SEP document states the result. CTRL-SRAM-IN-ATTR: the AW handshake on the
-m_axi port carried AWLOCK 1. OBS-SRAM-IN-EXCL-WR logs the response of each
+SEP document states the result. CTRL-SRAM-IN-ATTR: the AR handshake of the
+read and the AW handshake of the write on the m_axi port carried lock 1, the
+drawn ID and the word address. OBS-SRAM-IN-EXCL-WR logs the response of each
 access and the word before and after, read by the CPU-LSU master. The leg runs
 in the coverage window of this leaf. It draws on a seeded stream of its own, so the
 case draws keep their values.
@@ -236,15 +237,21 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
         data = rng.getrandbits(64)
         before = await self._lsu_read(word)
 
+        task = cocotb.start_soon(capture_ax("ar"))
         rd = await self._ext(SepAxiOp.READ, word, axi_id, attrs={"lock": 1})
+        ar_hs = take_handshake(task)
         task = cocotb.start_soon(capture_ax("aw"))
         wr = await self._ext(SepAxiOp.WRITE, word, axi_id, wdata=data, attrs={"lock": 1})
-        excl_hs = take_handshake(task)
+        aw_hs = take_handshake(task)
         after = await self._lsu_read(word)
 
-        lock_seen = None if excl_hs is None else excl_hs["lock"]
-        line = f"awlock_seen={lock_seen} expect=1"
-        assert lock_seen == 1, f"CTRL-SRAM-IN-ATTR FAIL: {line}"
+        want = {"lock": 1, "id": axi_id, "addr": word}
+        seen = {
+            ch: None if hs is None else {k: hs[k] for k in want}
+            for ch, hs in (("ar", ar_hs), ("aw", aw_hs))
+        }
+        line = f"ar_seen={seen['ar']} aw_seen={seen['aw']} expect={want}"
+        assert seen["ar"] == want and seen["aw"] == want, f"CTRL-SRAM-IN-ATTR FAIL: {line}"
         self.logger.info("CTRL-SRAM-IN-ATTR LOG: %s", line)
         set_open_value_leg_pass("sram_in_excl_write", self.logger)
         await ClockCycles(cocotb.top.clk_i, 2)

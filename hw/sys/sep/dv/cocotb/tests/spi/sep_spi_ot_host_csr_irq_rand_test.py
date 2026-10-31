@@ -194,7 +194,11 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       sampler, so a dead sck tap fails that reference.
                       Control (CTRL-SPI-CMDINVAL-SPIEN1, else CTRL-MISSING):
                       CONTROL reads SPIEN=1 and ERROR_STATUS reads 0 before
-                      the reserved COMMAND. Logged only
+                      the reserved COMMAND. Control
+                      (CTRL-SPI-CMDINVAL-QUEUED, else CTRL-MISSING): the
+                      write of the Tx COMMAND raises STATUS.CMDQD by 1 and
+                      STATUS.TXQD reads at least 1 after it, or the window
+                      shows sck edges. Logged only
                       (OBS-SPI-CMDINVAL-SPIEN1): STATUS (CMDQD, ACTIVE, TXQD)
                       and the chip select windows while CMDINVAL halts the
                       IP. SW_RST then empties both queues before the write of
@@ -2621,18 +2625,26 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         if not ctrl & CTRL_SPIEN or es0:
             self._ctrl_missing("CTRL-SPI-CMDINVAL-SPIEN1", ctrl_line)
         self.logger.info("CTRL-SPI-CMDINVAL-SPIEN1 PASS seed=%d %s", self.seed, ctrl_line)
-        set_open_value_leg_pass("spi_cmdinval_spien1", self.logger)
-        await ClockCycles(cocotb.top.clk_i, 2)
-        set_open_value_leg_pass(None, self.logger)
         mark = self.pads.mark()
         await self.ops.wr(COMMAND, command_word(0, speed=_SPEED_RESERVED))
         await self.ops.push_tx(word)
-        await self.ops.issue_command(command_word(n_bytes - 1, direction=DIR_TX))
+        st_before = await self.ops.issue_command(command_word(n_bytes - 1, direction=DIR_TX))
+        st_after = await self.ops.read_status()
         await ClockCycles(cocotb.top.clk_i, window)
         es = await self.ops.rd(ERROR_STATUS)
         st_pre = await self.ops.read_status()
         held_edges = len(self.pads.sck_edges_between(mark.clk + 1, self.pads.now() + 1))
         held_wins = len(self.pads.windows_since(mark, complete_only=False))
+        # A host that runs the Tx command pops it at once; its sck edges show
+        # that it was queued, and the check below fails on them.
+        queued = st_after.cmdqd == st_before.cmdqd + 1 and st_after.txqd >= 1
+        queued_line = (
+            f"cmdqd_before={st_before.cmdqd} cmdqd_after={st_after.cmdqd} "
+            f"txqd_after={st_after.txqd} sck_edges_before_w1c={held_edges}"
+        )
+        if not (queued or held_edges):
+            self._ctrl_missing("CTRL-SPI-CMDINVAL-QUEUED", queued_line)
+        self.logger.info("CTRL-SPI-CMDINVAL-QUEUED PASS seed=%d %s", self.seed, queued_line)
         self._grade(
             "CHK-SPI-CMDINVAL-SPIEN1",
             es == ERR_CMDINVAL and held_edges == 0 and t_seg > 0,
@@ -2640,6 +2652,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"sck_edges_before_w1c={held_edges} window_clk={window} t_seg={t_seg} "
             f"tx_bytes={n_bytes}",
         )
+        set_open_value_leg_pass("spi_cmdinval_spien1", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
         self.logger.info(
             "OBS-SPI-CMDINVAL-SPIEN1 LOG seed=%d tx_word=0x%08x tx_bytes=%d cs_windows_held=%d "
             "cmdqd_held=%d active_held=%d txqd_held=%d",

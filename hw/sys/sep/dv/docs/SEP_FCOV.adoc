@@ -7181,7 +7181,7 @@ each leg runs on every seed of its owner.
 [cols="1,4,5,8",options="header"]
 |===
 |Code |Bin |Owning test |Leg reached (CTRL reach line)
-|1 |`dma_align_mismatch` |`sep_dma_irq_error_lock_rand_test` |A width-1 transfer with source address 0 mod 4 and destination address 1, 2 or 3 mod 4: after the GO write a STATUS read shows DONE or ERROR, or the DMA master tap shows an AR beat (CTRL-DMA-ALIGN-GO).
+|1 |`dma_align_mismatch` |`sep_dma_irq_error_lock_rand_test` |A width-1 transfer with source address 0 mod 4 and destination address 1, 2 or 3 mod 4, `TRANSFER_WIDTH` and `DST_ADDR_LO` read back as written: after the GO write a STATUS read shows DONE or ERROR, or the DMA master tap shows an AR beat (CTRL-DMA-ALIGN-GO).
 |2 |`dma_clr_outside_range` |`sep_spi_dma_handshake_rand_test` |A handshake run with `INTR_SRC_ADDR_0` below the enabled memory range: `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`, `INTR_SRC_ADDR_0`, `RANGE_BASE` and `HANDSHAKE_INTR_ENABLE` read back as written and the trigger probe is high in the window (CTRL-DMA-CLR-RANGE).
 |3 |`dma_clr_bus0` |`sep_spi_dma_handshake_rand_test` |A handshake run with `CLEAR_INTR_BUS` bit 0 at 0: `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`, `INTR_SRC_ADDR_0`, `RANGE_BASE` and `HANDSHAKE_INTR_ENABLE` read back as written and the trigger probe is high in the window (CTRL-DMA-CLR-RANGE).
 |4 |`dma_alert_pair_force` |`sep_pic_pending_map_walk_rand_test` |The DMA alert pair reads the drawn value on both wires on `dma_alert_rx_probe_o` for at least one clock while the inject input is 1 (DMA alert sender inject, `docs/SEP_TB_ARCH.adoc`; CTRL-DMA-ALERT-INJ).
@@ -7194,15 +7194,15 @@ each leg runs on every seed of its owner.
 |11 |`row_attr_spi_dma_cell` |`sep_fabric_row_response_matrix_test` |An SPI or DMA register live cell read with drawn attributes, exclusive included (CTRL-ROW-ATTR).
 |12 |`slot_csr_prot_drawn` |`sep_fabric_slot_csr_strobe_rand_test` |Alias and output-remap slot register accesses with drawn AxPROT and a non-default AxCACHE, seen on the `s_axi` handshake (CTRL-SLOT-PROT).
 |13 |`syscsr_prot_drawn` |`sep_fabric_inbound_rebase_test` |System register accesses with drawn AxPROT[0] and AxPROT[2], seen on the `m_axi` handshake (CTRL-SYSCSR-PROT).
-|14 |`sram_in_excl_write` |`sep_sram_inbound_burst_attr_test` |An inbound SRAM write with AWLOCK 1 after an exclusive read, seen on the `m_axi` AW handshake (CTRL-SRAM-IN-ATTR).
+|14 |`sram_in_excl_write` |`sep_sram_inbound_burst_attr_test` |An inbound SRAM write with AWLOCK 1 after an exclusive read of the same ID and address, both seen on the `m_axi` AR and AW handshakes (CTRL-SRAM-IN-ATTR).
 |15 |`gw_level_to_edge` |`sep_pic_pending_map_walk_rand_test` |A source pending in `meip` in level mode before its gateway switches to edge mode, and the type bit reads edge after the switch (CTRL-GW-LVL2EDGE).
 |16 |`gwclr_same_cycle` |`sep_pic_pending_map_walk_rand_test` |A boundary source pulse on the clock of a `meigwclr` write (`pic_wr_probe_o`) (CTRL-GWCLR-RACE).
 |17 |`nmi_during_handler` |`sep_nmi_vector_bark_rand_test` |The bark line (`wdt_bark_probe_o`) high for at least one clock between the two marker lines the NMI handler prints (CTRL-NMI-NESTED).
-|18 |`priord_flip_pending` |`sep_pic_priority_gate_rand_test` |Drawn sources pending in `meip` before the PIC priority order (`mpiccfg.priord`) flips with MIE 0 (CTRL-PRIORD-PENDING).
+|18 |`priord_flip_pending` |`sep_pic_priority_gate_rand_test` |Drawn sources pending in `meip` before the PIC priority order (`mpiccfg.priord`) flips with MIE 0 (CTRL-PRIORD-PENDING), and `mpiccfg.priord` read back flipped (CTRL-PRIORD-FLIP).
 |19 |`sram_wstrb_sparse` |`sep_sram_axi_shape_matrix_test` |A W beat with a drawn non-contiguous WSTRB to a fully written word: the W handshake on `m_axi` carries it and one B beat follows (CTRL-SRAM-STRB).
 |20 |`sram_wstrb_zero` |`sep_sram_axi_shape_matrix_test` |A W beat with WSTRB 0 to a fully written word: the W handshake on `m_axi` carries it and one B beat follows (CTRL-SRAM-STRB).
 |21 |`sram_macro_bit_flip` |`sep_sram_axi_shape_matrix_test` |One drawn bit of a written word flipped in the SRAM macro array, read back by backdoor before the AXI read (CTRL-SRAM-FLIP).
-|22 |`spi_cmdinval_spien1` |`sep_spi_ot_host_csr_irq_rand_test` |A reserved-SPEED `COMMAND` write with `CONTROL.SPIEN` read back 1 and `ERROR_STATUS` 0 before it (CTRL-SPI-CMDINVAL-SPIEN1).
+|22 |`spi_cmdinval_spien1` |`sep_spi_ot_host_csr_irq_rand_test` |A reserved-SPEED `COMMAND` write with `CONTROL.SPIEN` read back 1 and `ERROR_STATUS` 0 before it (CTRL-SPI-CMDINVAL-SPIEN1), and a legal Tx `COMMAND` queued behind it (CTRL-SPI-CMDINVAL-QUEUED). The leaf writes the code after CHK-SPI-CMDINVAL-SPIEN1 passes.
 |23 |`wdt_pause_in_sleep_set` |`sep_timer_clock_contract_test` |A count window with `WDOG_CTRL` enable 1 and pause_in_sleep 1 read back (CTRL-WDT-PAUSE-RUN).
 |===
 
