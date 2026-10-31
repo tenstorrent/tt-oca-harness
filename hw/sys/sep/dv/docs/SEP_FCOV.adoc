@@ -1036,10 +1036,10 @@ count values, not behaviour.
 |`sep_efuse_field_layout_rand_test`, `sep_efuse_lock_slot_matrix_rand_test` |Class and value of each narrow field; leaf kind and lock layout |`sep_efuse_field_value_cg`, `sep_efuse_lock_policy_cg`, seed-dependent
 |`sep_efuse_lock_slot_matrix_rand_test` |Lock leg, the locked and twin words of the JTAG read, the LC_STATE bit of the exempt program (bit 0 or bit 3) |`sep_efuse_jtag_policy_cg.x_jtag_rlock` (both bins fill only in a lock-leg leaf; named seed: 2) and `sep_efuse_lock_policy_cg.x_exempt_write` (`bit3_prog_prod_end`: seed 44; `bit0_prog_prod`: seed 50), seed-dependent
 |`sep_lcc_feat_ctrl_state_matrix_rand_test` |Leaf plan: follow-on leg, raw state code, strap, reset vector, walk positions, leg E order |`sep_lc_feat_ctrl_profile_cg`, `sep_lc_feature_bit_semantics_cg`, `sep_dtp_gating_ladder_cg`, `sep_lc_sigint_failclosed_cg.x_raw16_sigint`, `sep_lc_demotion_cg`, `sep_lc_demote_lock_cg`, `sep_sec_dis_activation_cg` (the after-sense bin of `cp_match_phase`, the Match and Mismatch cells of `x_verdict_out`, `x_state_demote_forced`), `sep_lc_port_gate_cg.x_port_raw16`, seed-dependent. The 32 leg E combinations have no bin (<<sep-fcov-p2-efuse-lifecycle-notdeclared>>)
-|`sep_lcc_state_codeword_rand_test` |Nibble of the state code word; order of the 60 inject epochs and the DEMOTE register set between the two walks |`sep_lc_sigint_failclosed_cg.x_sigint_state_secdis_out` and the integrity-error cells of `sep_efuse_jtag_policy_cg`, seed-dependent. The order and the DEMOTE register select no cell: every leaf fills `sep_lc_sigint_inject_cg.x_mask_value_demote`
+|`sep_lcc_state_codeword_rand_test` |Nibble of the state code word; order of the 60 inject epochs, the DEMOTE register set between the two walks and one `rsvd` marker bit per DEMOTE register |`sep_lc_sigint_failclosed_cg.x_sigint_state_secdis_out` and the integrity-error cells of `sep_efuse_jtag_policy_cg`, seed-dependent. The order and the DEMOTE register select no cell: every leaf fills `sep_lc_sigint_inject_cg.x_mask_value_demote`
 |`sep_efuse_transient_rma_rand_test` |Enable and start state |`sep_lc_illegal_transition_cg.x_transient`, seed-dependent; `cp_simultaneous_match`, which fills only in a leaf that runs the held-CHIPLET script (enable 1, start TEST_DEV or PROD; named seeds: 2 for `blocked_from_test_dev`, 27 for `blocked_from_prod`); `cp_reset_restore`, which fills in a leaf whose leg A updates the shadow or that runs the held-CHIPLET script (seeds 2 and 27 fill it); and `sep_efuse_lock_policy_cg.x_lc_prog_gate`, which fills only in a leg B leaf (enable 0, start TEST_DEV; named seed: 8)
 |`sep_efuse_token_fault_matrix_test` |Fault cell of each channel |`sep_token_fault_cg.x_ch_kind_copy`, `x_ch_retry`, seed-dependent
-|`sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test` |Lifecycle state of the image (five states for the secure test mode matrix, 9 seeds) |`sep_efuse_jtag_policy_cg.cp_state`, `x_state_class_op`, `cp_gate_independent_of_feat`, seed-dependent; the eight JTAG cells of `sep_efuse_secure_tm_cg.x_shadow_wr_block` depend on the state: they fill only in TEST_DEV, PROD_END and RMA_CHIPLET (named seeds: 1 RMA_CHIPLET, 5 PROD_END, 7 TEST_DEV), and the eight frontdoor cells fill in every leaf
+|`sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test` |Lifecycle state of the image (five states for the secure test mode matrix, 9 seeds) |`sep_efuse_jtag_policy_cg.cp_state`, `x_state_class_op`, `cp_gate_independent_of_feat`, seed-dependent; `sep_lc_demote_hold_cg.cp_prod_strap1_demote` fills only in a PROD leaf (named seeds: 2, 3); the eight JTAG cells of `sep_efuse_secure_tm_cg.x_shadow_wr_block` depend on the state: they fill only in TEST_DEV, PROD_END and RMA_CHIPLET (named seeds: 1 RMA_CHIPLET, 5 PROD_END, 7 TEST_DEV), and the eight frontdoor cells fill in every leaf
 |`sep_sec_dis_timing_rand_test` |Class B or C |`sep_sec_dis_activation_cg.cp_match_phase` during-sense bin, and `sep_sec_dis_robustness_cg.cp_stops_sense` phase bins and `cp_reset_values_hold`, seed-dependent
 |`sep_efuse_token_channel_rand_test` |Channel of the first go-while-busy leg, delay of the second go |None: the leaf runs the go-while-busy leg on all three channels in every run (a drawn channel first, then the other two), so the three bins of `sep_token_channel_cg.cp_go_while_busy` fill in every run, one CHK-TOKEN-GWB PASS line per channel; the delay is a timing value. The two bins of `cp_token_hmac_overlap` fill in every run
 |`sep_efuse_shim_response_fault_test` |Word class of the sense status |None: `cp_sense_status_word` has one bin for every word of 10 to 254, and CHK-SENSE-STATUS grades the drawn word
@@ -5695,9 +5695,9 @@ and the seven nibbles close in about 4 regressions. Leg A at the nibble `0111` i
 injects, so it runs as a control of an open test, and the cells of that nibble still
 fill in leg B of `sep_lcc_state_codeword_rand_test`.
 PROD and PROD_END give a nonzero profile when the Function group has an open
-bit, and the control epoch needs that. These legs drive the default inject
-(every pair, both rails at 0); the pair mask and the rail value are the cells
-of `sep_lc_sigint_inject_cg`. INVALID is excluded.
+bit, and the control epoch needs that. Leg B drives the default inject
+(every pair, both rails at 0); leg A walks the pair masks and rail values, which
+are the cells of `sep_lc_sigint_inject_cg`. INVALID is excluded.
 
 ===== `sep_lc_illegal_transition_cg`
 
@@ -6296,8 +6296,9 @@ No document states the level of the fuse DFT ports (<<sep-fcov-p2-efuse-lifecycl
 so the fuse DFT cells of `x_cond_gate` name no level. The owning tests grade
 those ports against a closed and an open control in the same leaf.
 
-*Owning tests*: `sep_lcc_feat_ctrl_state_matrix_rand_test` (`x_port_raw16`,
-the SEC_DIS cells of `x_cond_gate`); `sep_sec_dis_override_test`
+*Owning tests*: `sep_lcc_feat_ctrl_state_matrix_rand_test` (`x_port_raw16`, on
+every `CHK-FEAT-CELL` read of legs A and C, one raw code per leaf; the SEC_DIS
+cells of `x_cond_gate`); `sep_sec_dis_override_test`
 (`cp_presense_port`, the before-sense and SEC_DIS cells of `x_cond_gate`);
 `sep_sec_dis_timing_rand_test` (`cp_presense_port`);
 `sep_lcc_state_codeword_rand_test` (the integrity-error cells of `x_cond_gate`).
@@ -6308,7 +6309,12 @@ the SEC_DIS cells of `x_cond_gate`); `sep_sec_dis_override_test`
 `sep_lcc_feat_ctrl_state_matrix_rand_test` senses one drawn raw code, so the 16
 cells close over merged regressions, as `x_raw16_sigint` does. `cp_presense_port`
 and `x_cond_gate` fill in one regression: every leaf of the owners holds the
-conditions.
+conditions, except that the integrity-error cells fill only in a leaf of
+`sep_lcc_state_codeword_rand_test` that does not draw the nibble `0111`. In
+`sep_sec_dis_override_test` the owner window of `cp_presense_port` and of the
+before-sense and SEC_DIS cells of `x_cond_gate` runs from before the first
+`rst_ni` release to the stopped-sense gate read and closes before the first
+override release under SEC_DIS.
 
 ===== `sep_lc_sigint_inject_cg`
 
@@ -6340,7 +6346,9 @@ and walks them again.
 
 *Tool*: VCS.
 
-*Status*: Every leaf fills the 60 cells.
+*Status*: Every leaf except one that draws the nibble `0111` (logged
+`role=control`; its leg A is not credited) fills the 60 cells. About one seed in
+eight draws `0111`, so the cells of that leaf close over merged regressions.
 
 ===== `sep_lc_demote_hold_cg`
 
@@ -6368,16 +6376,22 @@ and the lock 0 (`cp_sdis_demote_set`); feature change (`cp_prod_strap1_demote`).
 |`cp_prod_strap1_demote` |PROD, `secure_tm_i` 1, SEC_DIS 0, no integrity error: demotion {`DEMOTE_1` only, `DEMOTE_2` only, both}. 3 bins. The feature value is graded by the owning check, not here |executable
 |===
 
-*Owning tests*: `sep_cpu_reset_retention_test` (`x_reset_kind_held`);
-`sep_lcc_feat_ctrl_state_matrix_rand_test` (`cp_sdis_demote_set`);
+*Owning tests*: `sep_cpu_reset_retention_test` (`x_reset_kind_held`; entries
+`sep_cpu_reset_retention_test`, 4 seeds, `lsu_stub_all_live`, and
+`sep_cpu_reset_retention_test_dbg`, 4 seeds, full CPU);
+`sep_lcc_feat_ctrl_state_matrix_rand_test` (`cp_sdis_demote_set[demote_1_set]`,
+leg A, every seed; 4 seeds in the testlist);
 `sep_efuse_secure_tm_matrix_rand_test` (`cp_prod_strap1_demote`).
 
 *Tool*: VCS.
 
-*Status*: Every leaf of each owner fills its points: the retention leaf pulses
-each reset once with both DEMOTE registers set, every leaf of the feature
-matrix writes `DEMOTE_1` under SEC_DIS in leg A, and every leaf of the secure
-test mode matrix runs a PROD leg with each demotion at strap 1.
+*Status*: Every leaf of the retention test and of the feature matrix fills its
+points: the retention leaf reads `DEMOTE_1` and `DEMOTE_2` with demote 1 before
+each of the four reset kinds and again after it, so all four `held` cells are
+hit in every seed, and every leaf of the feature matrix writes `DEMOTE_1` under
+SEC_DIS in leg A. Every leaf of the secure test mode matrix runs each demotion
+at strap 1 in its own state; `cp_prod_strap1_demote` fills in a PROD leaf (named
+seeds: 2 and 3, both in the 9-seed testlist run).
 
 ===== Owning tests
 

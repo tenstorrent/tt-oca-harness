@@ -19,6 +19,11 @@ withheld profile. After sensing completes with the override off, the reset
 releases, the same read returns the reset default again, and FEAT_CTRL reads
 the PROD golden of the pinned image, so the withheld read is not a register
 stuck at zero.
+
+In the same released window, with sensing still open, a 64-bit read of
+``SEP_FUSE_SENSE_STATUS`` is logged (OBS-SENSE-STATUS-PRE: response, data, and
+sense done before and after the read). No text states the response or value of
+that read while sensing runs.
 """
 
 from __future__ import annotations
@@ -28,6 +33,7 @@ import pyuvm
 from cocotb.handle import Immediate
 from cocotb.triggers import ReadWrite, RisingEdge, Timer
 from env.sep_axi_agent import SepAxiOp
+from env.sep_efuse_image import SEP_FUSE_SENSE_STATUS
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -209,6 +215,40 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         )
         return got
 
+    async def _log_sense_status_pre(self) -> None:
+        """OBS-SENSE-STATUS-PRE: SEP_FUSE_SENSE_STATUS read while sensing runs.
+
+        The TDR keeps ``sep_reset_n`` released and no token is presented, so the
+        read reaches ``sep_cpu_ctrl`` while the sense is still in progress.
+        """
+        dut = cocotb.top
+        done_before = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        seq = SepAxiAccessSeq(
+            "sense_status_pre",
+            op=SepAxiOp.READ,
+            addr=SEP_FUSE_SENSE_STATUS,
+            length=8,
+            size=3,
+            allow_ungraded_read_resp=True,
+            allow_timeout=True,
+        )
+        await self.start_seq(seq)
+        done_after = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
+        cpu_rst, fabric_rst = self._probes()
+        self.logger.info(
+            "OBS-SENSE-STATUS-PRE: SEP_FUSE_SENSE_STATUS @0x%08x resp=%d timed_out=%d "
+            "rdata=0x%016x sense_done_before=%d sense_done_after=%d "
+            "sep_cpu_reset_n_o=%d dbg_sep_reset_n_o=%d",
+            SEP_FUSE_SENSE_STATUS,
+            seq.resp_code,
+            int(seq.timed_out),
+            seq.rdata & ((1 << 64) - 1),
+            done_before,
+            done_after,
+            cpu_rst,
+            fabric_rst,
+        )
+
     async def run_scenario(self) -> None:
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
@@ -271,6 +311,8 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
             SEP_RESET_CTRL_SW_RESET_N,
             got,
         )
+
+        await self._log_sense_status_pre()
 
         self._require_sense_open("CHK-FEAT-CLOSED")
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1

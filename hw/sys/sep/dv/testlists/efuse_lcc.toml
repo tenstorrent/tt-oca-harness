@@ -39,7 +39,7 @@ name = "sep_efuse_lcc_lc_state_stitch_test"
 module = "lcc.sep_efuse_lcc_lc_state_stitch_test"
 seed = 1
 timeout_sec = 1800
-tags = ["lcc", "subsystem", "efuse"]
+tags = ["lcc", "subsystem", "efuse", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 # count=1 fails the first bank write after each reset, the floor the retry check
@@ -107,7 +107,7 @@ name = "sep_lcc_demote_feat_ctrl_matrix_test"
 module = "lcc.sep_lcc_demote_feat_ctrl_matrix_test"
 seed = 1
 timeout_sec = 1800
-tags = ["lcc", "demote", "efuse", "subsystem"]
+tags = ["lcc", "demote", "efuse", "subsystem", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -131,7 +131,7 @@ module = "efuse.sep_sec_dis_override_test"
 seed = 1
 args = ["+sep_edn_jtag_reset_waive"]
 timeout_sec = 1800
-tags = ["efuse", "lcc", "sec_dis", "subsystem", "sep_spec_log"]
+tags = ["efuse", "lcc", "sec_dis", "subsystem", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -144,7 +144,7 @@ module = "efuse.sep_sec_dis_reset_reach_test"
 seed = 1
 args = ["+sep_edn_jtag_reset_waive"]
 timeout_sec = 1800
-tags = ["efuse", "lcc", "sec_dis", "subsystem"]
+tags = ["efuse", "lcc", "sec_dis", "subsystem", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -155,7 +155,7 @@ name = "sep_efuse_rma_token_rand_test"
 module = "efuse.sep_efuse_rma_token_rand_test"
 seed = 1
 timeout_sec = 1800
-tags = ["efuse", "lcc", "rma", "subsystem", "sep_spec_log"]
+tags = ["efuse", "lcc", "rma", "subsystem", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -326,7 +326,7 @@ module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
 # No reseed: every run runs all four events; the seed selects only the flip offset and their order.
 timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log"]
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+sep_edn_jtag_reset_waive"]
@@ -339,7 +339,7 @@ module = "efuse.sep_secure_tm_strap_sampling_test"
 seed = 1
 # No reseed: the dbg_rstb_i event is directed; the main entry carries the drawn offset and order.
 timeout_sec = 3600
-tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log"]
+tags = ["lcc", "efuse", "strap", "reset", "subsystem", "scan_secure_tm", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 tools = ["vcs"]
 target = "default"
@@ -354,7 +354,7 @@ module = "efuse.sep_efuse_window_decode_reset_test"
 seed = 1
 # No reseed: every run reads every cell; the seed selects only offsets, values and orders.
 timeout_sec = 1800
-tags = ["efuse", "window", "rand_cfg", "subsystem"]
+tags = ["efuse", "window", "rand_cfg", "subsystem", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -379,7 +379,7 @@ module = "lcc.sep_lcc_state_codeword_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 1800
-tags = ["lcc", "sigint", "rand_rep", "subsystem"]
+tags = ["lcc", "sigint", "rand_rep", "subsystem", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -391,7 +391,7 @@ module = "lcc.sep_lcc_feat_ctrl_state_matrix_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 3600
-tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner"]
+tags = ["lcc", "feat_ctrl", "demotion", "rand_rep", "subsystem", "sep_spec_log", "fcov_gate_owner", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -441,7 +441,7 @@ module = "efuse.sep_efuse_interface_status_rand_test"
 seed = 1
 # No reseed: every run walks the eight cases; the seed selects only order, slots and values.
 timeout_sec = 3600
-tags = ["efuse", "interface", "rand_rep", "subsystem", "sep_spec_log"]
+tags = ["efuse", "interface", "rand_rep", "subsystem", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -465,7 +465,7 @@ module = "efuse.sep_efuse_secure_tm_matrix_rand_test"
 seed = 1
 reseed = 9
 timeout_sec = 3600
-tags = ["efuse", "secure_tm", "rand_rep", "subsystem", "harness_dv_holes", "sep_spec_log"]
+tags = ["efuse", "secure_tm", "rand_rep", "subsystem", "harness_dv_holes", "sep_spec_log", "lcc_gate_checks"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -490,7 +490,7 @@ module = "efuse.sep_sec_dis_timing_rand_test"
 seed = 1
 reseed = 3
 timeout_sec = 3600
-tags = ["efuse", "lcc", "sec_dis", "rand_rep", "subsystem"]
+tags = ["efuse", "lcc", "sec_dis", "rand_rep", "subsystem", "lcc_gate_checks"]
 tools = ["vcs"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

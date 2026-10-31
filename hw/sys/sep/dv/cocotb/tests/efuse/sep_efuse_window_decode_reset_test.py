@@ -31,21 +31,36 @@ Checkers:
   CHK-CSR-RW      ``EFUSE_PROGRAM_CTRL`` and ``EFUSE_READ_CTRL`` read back the drawn
                   pattern; a write of 0x71 to the status register leaves 0x1.
   CHK-TOKEN-RW    each token array reads back the eight words written in drawn order.
-  CHK-FEAT-RO     ``FEAT_CTRL`` keeps its value after a write of its complement.
+  CHK-FEAT-RO     ``FEAT_CTRL`` keeps its value after one 64-bit write of its
+                  complement (``sep_lifecycle_ctrl.rdl``: ``FEAT_CTRL`` is ``sw = r``).
   CHK-WIN-DECODE  past-extent and reserved accesses change no graded register and no
                   software-writable shadow word; the control write of a ``SYS_DIS``
                   word reads back all ones; the 256-word sweep matches the model.
 
+Control: ``CTRL-LCC-WR-TAP``: the ``FEAT_CTRL`` write reaches the AXI-Lite port of
+the lifecycle register block. The write tap (``lcc_wr_count_probe_o``,
+``lcc_wr_addr_probe_o``, ``lcc_wr_data_probe_o``) counts one write-address
+handshake, at the ``FEAT_CTRL`` offset of the generated RDL, with the written data.
+A missing tap event fails the leaf, so CHK-FEAT-RO cannot pass on a write that
+never arrived.
+
 Log-only: the response and read data past the extent and in the reserved span
 (``OBS-WIN-RESP LOG``), the two read-data registers (``OBS-CSR-DATA LOG``), the timeout
 write and readback (``OBS-CSR-RW LOG``), ``TOKEN_MATCH_FAULT`` and the match registers
-(``OBS-TOKEN-FAULT LOG``). The FCOV graded window is closed around these controls.
+(``OBS-TOKEN-FAULT LOG``), the response of the ``FEAT_CTRL`` write
+(``OBS-LCC-WR-RESP LOG``), the five interface-control reset reads repeated with a
+seeded AxPROT and AxCACHE (``OBS-EFUSE-AXATTR LOG``; AxLOCK, AxUSER and AxATOP keep
+the bench default), and, after the last graded step, a byte write, a halfword write
+and an unaligned halfword read on ``EFUSE_PROGRAM_CTRL`` and on one ``SYS_DIS``
+shadow word (``OBS-EFUSE-SUBWORD LOG``: response, data, the word before and after).
+The FCOV graded window is closed around these controls.
 """
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
+from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_image import SHADOW_BASE
@@ -68,8 +83,10 @@ from env.sep_efuse_plan import (
 from env.sep_efuse_test_lib import SepEfuseFd, log_line
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_field_compare import field_compare
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 TEST = T_WINDOW_DECODE
 
@@ -100,6 +117,11 @@ if _RESET_EXP != {_STATUS: 0x1, _PG: 0x0, _RD: 0x0, _RD_TMO: 0x0080_0000, _PG_TM
 _STATUS_RO_WRITE = 0x0000_0071  # bits 0, 4, 5, 6 at 1; the three clear bits at 0
 _FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 _FEAT_MASK = SEP_LIFECYCLE_CTRL.mask("FEAT_CTRL")
+_FEAT_OFFSET = SEP_LIFECYCLE_CTRL.offset("FEAT_CTRL")
+_PG_ADDR_MASK = _IC.field_mask(_PG, "efuse_addr")
+# Logged-only draws (AxPROT/AxCACHE, sub-word lanes) come from a separate stream, so
+# the plan draws keep their seed mapping.
+_OBS_SALT = 0x5357_4158
 _SHADOW_LAST = SHADOW_BASE + 0x3FC
 _PAST_EXTENT_PINNED = STATUS_ADDR + 0x1C
 _RSVD_PINNED = (SHADOW_BASE + 0x600, SHADOW_BASE + 0xC1C, SHADOW_BASE + 0xFFFC)
@@ -137,6 +159,90 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
 
     def _log(self, tag: str, **fields: object) -> None:
         log_line(self.logger, tag, self.seed, **fields)
+
+    async def _lcc_tap(self) -> tuple[int, int, int]:
+        """Lifecycle register write tap after ``ReadOnly``: (count, offset, data)."""
+        dut = cocotb.top
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        tap = (
+            self.rd(dut.lcc_wr_count_probe_o),
+            self.rd(dut.lcc_wr_addr_probe_o),
+            self.rd(dut.lcc_wr_data_probe_o),
+        )
+        await FallingEdge(dut.clk_i)
+        return tap
+
+    async def _axi(
+        self,
+        op: SepAxiOp,
+        addr: int,
+        *,
+        length: int = 4,
+        data: int = 0,
+        prot: int | None = None,
+        cache: int | None = None,
+    ) -> tuple[int, bool, int]:
+        """One access whose response is logged, not graded: (rdata, OKAY, code)."""
+        seq = SepAxiAccessSeq(
+            f"obs_{op.value}_0x{addr:08x}",
+            op=op,
+            addr=addr,
+            wdata=data,
+            length=length,
+            size=length.bit_length() - 1,
+            allow_ungraded_read_resp=op is SepAxiOp.READ,
+            allow_unverified_write_resp=op is SepAxiOp.WRITE,
+            prot=prot,
+            attrs=None if cache is None else {"cache": cache},
+        )
+        await self.start_seq(seq)
+        return int(seq.rdata), bool(seq.resp_ok), int(seq.resp_code)
+
+    async def _subword(self, reg: str, addr: int, lanes: dict[str, int], safe: int) -> None:
+        """Byte write, halfword write and an unaligned halfword read on one word.
+
+        ``lanes`` holds the drawn byte lane and halfword lane. Each write carries the
+        complement of the bytes it strobes, within ``safe``. Response, data and the
+        full word before and after each access are logged.
+        """
+        for kind, off, n in (
+            ("byte_wr", lanes["byte"], 1),
+            ("half_wr", lanes["half"], 2),
+        ):
+            before, _ok, _c = await self._rd(addr)
+            lane_mask = ((1 << (8 * n)) - 1) << (8 * off)
+            data = ((~before & safe & lane_mask) >> (8 * off)) & ((1 << (8 * n)) - 1)
+            _r, _ok, code = await self._unmapped(
+                lambda off=off, n=n, data=data: self._axi(
+                    SepAxiOp.WRITE, addr + off, length=n, data=data
+                )
+            )
+            after, _ok, _c = await self._rd(addr)
+            self._log(
+                "OBS-EFUSE-SUBWORD",
+                reg=reg,
+                op=kind,
+                addr=f"0x{addr + off:08x}",
+                strobe=f"0x{((1 << n) - 1) << off:x}",
+                wdata=f"0x{data:0{2 * n}x}",
+                resp=_RESP.get(code, code),
+                word_before=f"0x{before:08x}",
+                word_after=f"0x{after:08x}",
+            )
+        word, _ok, _c = await self._rd(addr)
+        rdata, _ok, code = await self._unmapped(
+            lambda: self._axi(SepAxiOp.READ, addr + 1, length=2)
+        )
+        self._log(
+            "OBS-EFUSE-SUBWORD",
+            reg=reg,
+            op="unaligned_half_rd",
+            addr=f"0x{addr + 1:08x}",
+            resp=_RESP.get(code, code),
+            rdata=f"0x{rdata & 0xFFFF:04x}",
+            word=f"0x{word:08x}",
+        )
 
     async def _graded_regs(self) -> dict[str, int]:
         """STATUS, EFUSE_PROGRAM_CTRL and EFUSE_READ_CTRL, field bits only."""
@@ -283,6 +389,26 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
                 rsvd=f"0x{cmp.rsvd:x}",
             )
         close_graded_window(self.logger)
+
+        # Step 4b: the same reset reads with a seeded AxPROT and AxCACHE, logged.
+        obs_rng = SepSeededRng(seed ^ _OBS_SALT)
+        for name in _RESET_REGS:
+            prot = obs_rng.randrange(8)
+            cache = obs_rng.randrange(16)
+            got, _ok, code = await self._unmapped(
+                lambda name=name, prot=prot, cache=cache: self._axi(
+                    SepAxiOp.READ, _IC.addr(name), prot=prot, cache=cache
+                )
+            )
+            self._log(
+                "OBS-EFUSE-AXATTR",
+                reg=name,
+                prot=prot,
+                cache=f"0x{cache:x}",
+                resp=_RESP.get(code, code),
+                got=f"0x{got & _IC.mask32(name):08x}",
+                reset=f"0x{_RESET_EXP[name]:08x}",
+            )
         fault_before, _ok, _c = await self._rd(TOKEN_MATCH_FAULT_ADDR)
 
         # Step 5: the two read-data registers answer OKAY; data logged.
@@ -375,14 +501,31 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             match_logged=",".join(f"0x{v:x}" for v in match_vals),
         )
 
-        # Steps 11-12: FEAT_CTRL is read only.
+        # Steps 11-12: FEAT_CTRL is read only. The write is one 64-bit access (the
+        # register's access width); the write tap shows that it reached the
+        # lifecycle register block.
         open_graded_window(TEST, self.logger)
         lo, _ok, _c = await self._rd(_FEAT_CTRL)
         hi, _ok, _c = await self._rd(_FEAT_CTRL + 4)
         before = (hi << 32 | lo) & _FEAT_MASK
         wr64 = ~before & _FEAT_MASK
-        await self._wr(_FEAT_CTRL, wr64 & _WORD, ungraded=True)
-        await self._wr(_FEAT_CTRL + 4, wr64 >> 32, ungraded=True)
+        n0, _a0, _d0 = await self._lcc_tap()
+        seq = await self.fd.access(
+            SepAxiOp.WRITE, _FEAT_CTRL, wr64, length=8, unverified_write=True
+        )
+        n1, tap_addr, tap_data = await self._lcc_tap()
+        self._log("OBS-LCC-WR-RESP", reg="FEAT_CTRL", resp=_RESP.get(seq.resp_code, seq.resp_code))
+        off_mask = (1 << len(dut.lcc_wr_addr_probe_o)) - 1
+        count_delta = (n1 - n0) % (1 << len(dut.lcc_wr_count_probe_o))
+        self.chk.ctrl(
+            "LCC-WR-TAP",
+            count_delta == 1 and tap_addr == (_FEAT_OFFSET & off_mask) and tap_data == wr64,
+            count_delta=count_delta,
+            offset=f"0x{tap_addr:02x}",
+            exp_offset=f"0x{_FEAT_OFFSET & off_mask:02x}",
+            data=f"0x{tap_data:016x}",
+            wr=f"0x{wr64:016x}",
+        )
         lo, _ok, _c = await self._rd(_FEAT_CTRL)
         hi, _ok, _c = await self._rd(_FEAT_CTRL + 4)
         after = (hi << 32 | lo) & _FEAT_MASK
@@ -445,4 +588,20 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             first=",".join(mism[:4]) or "none",
         )
         close_graded_window(self.logger)
+
+        # Step 19: sub-word writes and an unaligned read, after every graded step,
+        # logged. EFUSE_PROGRAM_CTRL takes data in efuse_addr only, so go and
+        # program_enable stay 0; the SYS_DIS word is the one step 17 left alone.
+        await self._subword(
+            _PG,
+            PROGRAM_CTRL_ADDR,
+            {"byte": obs_rng.randrange(2), "half": 0},
+            _PG_ADDR_MASK,
+        )
+        await self._subword(
+            f"SYS_DIS[{1 - w}]",
+            shadow_addr("SYS_DIS", 1 - w),
+            {"byte": obs_rng.randrange(4), "half": 2 * obs_rng.randrange(2)},
+            _WORD,
+        )
         self.chk.finish()
