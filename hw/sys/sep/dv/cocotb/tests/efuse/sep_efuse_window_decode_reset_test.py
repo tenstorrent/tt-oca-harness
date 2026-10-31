@@ -28,6 +28,7 @@ Checkers:
   CHK-CSR-RESET   the five interface-control registers read their reset values after
                   sense done and answer OKAY. Zero-reset rows count on a four-state
                   simulator only; on Verilator they log ``INFO-CSR-RESET LOG``.
+  CHK-CSR-DATA-RESP  the two read-data registers answer OKAY; their data is logged.
   CHK-CSR-RW      ``EFUSE_PROGRAM_CTRL`` and ``EFUSE_READ_CTRL`` read back the drawn
                   pattern; a write of 0x71 to the status register leaves 0x1.
   CHK-TOKEN-RW    each token array reads back the eight words written in drawn order.
@@ -116,6 +117,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
 
     required_evidence = (
         "CHK-CSR-RESET",
+        "CHK-CSR-DATA-RESP",
         "CHK-CSR-RW",
         "CHK-TOKEN-RW",
         "CHK-FEAT-RO",
@@ -289,7 +291,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         for name in _DATA_REGS:
             got, ok, code = await self._rd(_IC.addr(name), ungraded=True)
-            self.chk.ok("CSR-RESET", ok, reg=name, resp=_RESP.get(code, code), data_graded=0)
+            self.chk.ok("CSR-DATA-RESP", ok, reg=name, resp=_RESP.get(code, code))
             self._log("OBS-CSR-DATA", reg=name, resp=_RESP.get(code, code), rdata=f"0x{got:08x}")
         close_graded_window(self.logger)
 
