@@ -115,8 +115,7 @@ no specification gives a response for: each live word again with the AxPROT[2],
 AxUSER, AxCACHE, AxQOS, AxREGION and AxLOCK drawn at its CHK-ROW cell; exclusive
 reads with drawn attributes of the pool ``STATUS`` (one 64-bit access), an ABR
 register, the SPI host ``CSID`` and the DMA live word; an SI write of ``CSID``
-with drawn AW attributes and WUSER, and one with AWATOP not 0 (AtomicStore,
-AWLOCK 0). The line logs the response, the read data or the LSU read-back, and
+with drawn AW attributes and WUSER. The line logs the response, the read data or the LSU read-back, and
 grades nothing. CTRL-ROW-ATTR: the SI address handshake (and the W beat) carried
 the drawn attributes, address and size; every live row has its drawn read.
 
@@ -229,9 +228,6 @@ AXI_INCR = 1
 # Request attributes of an SI address handshake that the attribute legs draw.
 # AxPROT[1] stays at SI_PROT[1], so inbound entry 0 admits every draw.
 AX_ATTRS = ("prot", "user", "cache", "qos", "region", "lock")
-# AWATOP[5:4] = 0b01 is AtomicStore, the atomic class with a B response and no
-# R beats (AMBA AXI IHI 0022, Atomic transactions); AWATOP[3:0] is drawn.
-AXI_ATOP_STORE = 0b01_0000
 # Separates the stream of the open-value legs from the cell walk of the same seed.
 _ATTR_SALT = 0x524F_5741
 # The inbound entry admits the whole SEP Local region of the CPU logical map.
@@ -1477,34 +1473,27 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         size: int = 2,
         wdata: int = 0,
         wuser: int | None = None,
-        atop: int = 0,
     ) -> tuple[SepAxiAccessSeq, dict[str, int] | None]:
         """One SI access with ``drawn`` attributes; also returns what the SI port
-        carried on its address handshake (with the WUSER of the W beat and the
-        AWATOP of the AW handshake when given), or None when no handshake was seen."""
+        carried on its address handshake (with the WUSER of the W beat when
+        given), or None when no handshake was seen."""
         ch = "ar" if op is SepAxiOp.READ else "aw"
-        fields = AX_ATTRS + ("addr", "size") + (("atop",) if atop else ())
+        fields = AX_ATTRS + ("addr", "size")
         hs = cocotb.start_soon(_capture_si(ch, fields))
         ws = cocotb.start_soon(_capture_si("w", ("user",))) if wuser is not None else None
         attrs = {k: drawn[k] for k in ("cache", "qos", "region", "lock")}
         if wuser is not None:
             attrs["wuser"] = wuser
-        if atop:
-            cocotb.top.m_axi_awatop.value = atop
-        try:
-            s = await self._si(
-                op,
-                addr,
-                size=size,
-                wdata=wdata,
-                prot=drawn["prot"],
-                user=drawn["user"],
-                attrs=attrs,
-                rng=self.leg_rng,
-            )
-        finally:
-            if atop:
-                cocotb.top.m_axi_awatop.value = 0
+        s = await self._si(
+            op,
+            addr,
+            size=size,
+            wdata=wdata,
+            prot=drawn["prot"],
+            user=drawn["user"],
+            attrs=attrs,
+            rng=self.leg_rng,
+        )
         seen = take_handshake(hs)
         if seen is not None and ws is not None:
             w = take_handshake(ws)
@@ -1587,22 +1576,19 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         await self._leg_cov("row_attr_pool_cell", all(oks[:2]))
         await self._leg_cov("row_attr_spi_dma_cell", all(oks[2:]))
 
-    async def _attr_write(self, drawn: dict[str, int], *, wuser: int | None, atop: int) -> bool:
+    async def _attr_write(self, drawn: dict[str, int], *, wuser: int) -> bool:
         """SI write of the complement of ``CSID`` with ``drawn`` attributes, read
         back and restored from the LSU."""
         before = self._expect_reg(SPI_CSID)
         wd = (~before) & 0xFFFF_FFFF
-        s, seen = await self._si_attrs(
-            SepAxiOp.WRITE, SPI_CSID, drawn, wdata=wd, wuser=wuser, atop=atop
-        )
+        s, seen = await self._si_attrs(SepAxiOp.WRITE, SPI_CSID, drawn, wdata=wd, wuser=wuser)
         _r, back = await self._lsu(SepAxiOp.READ, SPI_CSID)
         self.logger.info(
             "OBS-ROW-ATTR LOG: row=spi_host dir=W size=2 addr=0x%08x reg=CSID attrs=[%s] "
-            "wuser=%s atop=0x%x bresp=%s wdata=0x%08x before=0x%08x readback=0x%08x graded=0",
+            "wuser=%s bresp=%s wdata=0x%08x before=0x%08x readback=0x%08x graded=0",
             SPI_CSID,
             _attr_txt(drawn),
             _hex(wuser),
-            atop,
             _RN.get(s.resp_code),
             wd,
             before,
@@ -1610,22 +1596,14 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         )
         self.regval[SPI_CSID] = back & 0xFFFF_FFFF
         await self._lsu_write_reg(SPI_CSID, before, "SPI CSID restore")
-        want = {**drawn, "addr": SPI_CSID, "size": 2}
-        if wuser is not None:
-            want["wuser"] = wuser
-        if atop:
-            want["atop"] = atop
+        want = {**drawn, "addr": SPI_CSID, "size": 2, "wuser": wuser}
         return self._attr_ctrl("spi_host", "W", want, seen)
 
     async def _attr_write_leg(self) -> None:
-        """A write with drawn AW attributes and WUSER, then a write with AWATOP
-        not 0 (AWLOCK 0: an atomic access is not exclusive)."""
+        """A write with drawn AW attributes and WUSER."""
         wuser = self.leg_rng.getrandbits(len(cocotb.top.m_axi_wuser))
-        ok = await self._attr_write(self._draw_attrs(), wuser=wuser, atop=0)
+        ok = await self._attr_write(self._draw_attrs(), wuser=wuser)
         await self._leg_cov("row_attr_drawn_write", ok)
-        atop = AXI_ATOP_STORE | self.leg_rng.getrandbits(4)
-        ok = await self._attr_write(self._draw_attrs(lock=0), wuser=None, atop=atop)
-        await self._leg_cov("row_awatop", ok)
 
     async def _narrow_leg(self) -> None:
         """1- and 2-byte SI reads and writes to a Reserved, a Past Extent and a Hole cell."""

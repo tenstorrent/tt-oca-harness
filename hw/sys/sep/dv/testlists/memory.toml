@@ -61,9 +61,7 @@ timeout_sec = 1800
 tags = ["sram", "memory", "fabric", "inbound", "subsystem", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-# +sep_inbound_atop_waive: the AWATOP leg sends an atomic write into the inbound demuxes,
-# which assume AWATOP 0.
-args = ["+skip_fuse_sense", "+sep_inbound_atop_waive"]
+args = ["+skip_fuse_sense"]
 
 [[tests]]
 name = "sep_rom_sanity_test"

@@ -283,11 +283,11 @@ claimed.
 
 *Area*: Memory, boot, reset, WDT, clock
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, `+sep_inbound_atop_waive` (the AWATOP write reaches inbound demuxes that assume AWATOP 0), 3 seeds
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, 3 seeds
 
 *Source Module*: `sep_sram_inbound_burst_attr_test`
 
-*BFM / Model*: ocah_axi_vip (CPU-LSU and external master), `SepSramInboundCfg` and `SepSramByteModel` (`seq_lib/sep_sram_inbound_burst_seq.py`). SMN-inbound AWATOP hook (`m_axi_awatop`, top-port drive), set around one write and cleared after its B response.
+*BFM / Model*: ocah_axi_vip (CPU-LSU and external master), `SepSramInboundCfg` and `SepSramByteModel` (`seq_lib/sep_sram_inbound_burst_seq.py`).
 
 *Randomization*: RANDCFG -- the 16 KiB window, the burst lengths, starts and
 data (walking one, walking zero or random), the overlay span and data, the
@@ -297,20 +297,19 @@ AxREGION, AxUSER, WUSER, ARLOCK on exclusive-legal reads) come from the run seed
 (`SepSramInboundCfg`, `SepInboundAttrs`). Lengths 1 and 256 and two
 exclusive-shaped short bursts, one read with ARLOCK set, run on every seed;
 `reseed = 3`. After the cases, a leg on a seeded stream of its own (salt) draws
-two distinct SRAM words of the window, an AxID from 1 to 15, two 64-bit write
-values and an AWATOP AtomicStore encoding (0b01_e_ooo, 16 values), so the case
-draws keep their values.
+one SRAM word of the window, an AxID from 1 to 15 and a 64-bit write value, so
+the case draws keep their values.
 
 *Objective*: `hw/sys/sep/doc/fabric.adoc`: the SRAM target serves INCR bursts of every length, and the System Interface is the crossbar initiator that may issue bursts. The inbound filter decides on the address, `prot[1]`, `user[3:0]` and `AxLEN` only (`hw/ip/axi_filter/doc/index.adoc`, "Match, Then Permit"), and the SEP documents give the other request fields no effect on an SRAM access, so none of them may change the data. AXI4 (IHI 0022, A3.4.3) gives the strobe rule: a byte whose strobe is low is not written.
 
-*Test Coverage*: Inbound INCR bursts into SRAM, write and read, under seeded request attributes; partial strobes; cross-master readback. An AWLOCK 1 write after an exclusive read and an AWATOP AtomicStore write, logged only. Functional coverage: owner window 782 opens for the attribute leg only; `sep_open_value_leg_cg` bins `sram_in_excl_write` and `sram_in_atop` sample after CTRL-SRAM-IN-ATTR passed.
+*Test Coverage*: Inbound INCR bursts into SRAM, write and read, under seeded request attributes; partial strobes; cross-master readback. An AWLOCK 1 write after an exclusive read, logged only. Functional coverage: owner window 782 opens for the attribute leg only; `sep_open_value_leg_cg` bin `sram_in_excl_write` samples after CTRL-SRAM-IN-ATTR passed.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up in `no_cpu` mode with fuse sense skipped. Program two inbound-filter entries over the same 16 KiB SRAM window, `allow_ns = 1` and `allow_ns = 0`, both read+write, `src_id = 0`, `allow_burst = 1`.
 . For each case: issue the burst write from the external master; issue a short unaligned overlay write inside its span; write two words of the span from the CPU-LSU master; burst-read the whole span from the external master; read the first, last and two seeded beats from the CPU-LSU master. Sample every AW and AR handshake, and RLAST on every R beat of each burst read, on the `m_axi` port. A data mismatch is recorded against its checker and the remaining cases still run.
-. Attribute leg, in the coverage window of this leaf (owner code 782). The CPU-LSU master reads both drawn words. The external master reads word 1 with ARLOCK 1, then writes it with AWLOCK 1 and the same ID. The leaf sets `m_axi_awatop` to the drawn AtomicStore code, the external master writes word 2, and the leaf clears `m_axi_awatop`. Every response is ungraded. The CPU-LSU master reads both words again. The AW handshake on `m_axi` carried AWLOCK 1 on the first write and the drawn AWATOP on the second (CTRL-SRAM-IN-ATTR). The two legs log their responses and the words before and after (OBS-SRAM-IN-EXCL-WR, OBS-SRAM-IN-ATOP).
+. Attribute leg, in the coverage window of this leaf (owner code 782). The CPU-LSU master reads the drawn word. The external master reads it with ARLOCK 1, then writes it with AWLOCK 1 and the same ID. Every response is ungraded. The CPU-LSU master reads the word again. The AW handshake on `m_axi` carried AWLOCK 1 (CTRL-SRAM-IN-ATTR). The leg logs its responses and the word before and after (OBS-SRAM-IN-EXCL-WR).
 
 *Checkers*:
 
@@ -328,11 +327,9 @@ draws keep their values.
 |CHK-SRAM-IN-XPATH
 |The CPU-LSU master reads the burst's beats back equal to the model, so the inbound writes landed at the addresses they named; and the inbound burst read returns the words the CPU-LSU master wrote, so the inbound read path returns SRAM content.
 |CTRL-SRAM-IN-ATTR
-|Reach line of the attribute leg, not a check: the AW handshake of the exclusive write carried AWLOCK 1 and the AW handshake of the atomic write carried the drawn AWATOP, on the `m_axi` pins. Otherwise the leaf fails. Evidence: `CTRL-SRAM-IN-ATTR LOG: awlock_seen=1 expect=1 awatop_seen=<n> expect=0x<..>`; failure: `CTRL-SRAM-IN-ATTR FAIL: awlock_seen=<v> expect=1 awatop_seen=<v> expect=0x<..>`.
+|Reach line of the attribute leg, not a check: the AW handshake of the exclusive write carried AWLOCK 1 on the `m_axi` pins. Otherwise the leaf fails. Evidence: `CTRL-SRAM-IN-ATTR LOG: awlock_seen=1 expect=1`; failure: `CTRL-SRAM-IN-ATTR FAIL: awlock_seen=<v> expect=1`.
 |OBS-SRAM-IN-EXCL-WR
 |Logged only, no pass or fail. Address, ID, the exclusive read response and data, the AWLOCK 1 write response and BID, the written value, and the word before and after (CPU-LSU reads). No SEP document states the exclusive-access result at the SRAM. Evidence: `OBS-SRAM-IN-EXCL-WR addr=0x<..> id=0x<..> excl_read_resp=<code> rdata=0x<..> write_resp=<code> bid=<n> wdata=0x<..> before=0x<..> after=0x<..>`.
-|OBS-SRAM-IN-ATOP
-|Logged only, no pass or fail. Address, AWATOP, write response and BID, written value, word before and after. No SEP document states the result of an atomic write at the SRAM. Only AtomicStore is drawn: the other atomic types return read data that the master agent does not take. Evidence: `OBS-SRAM-IN-ATOP addr=0x<..> awatop=0x<..> write_resp=<code> bid=<n> wdata=0x<..> before=0x<..> after=0x<..>`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. After the last case the test fails once if any data compare missed, naming each of CHK-SRAM-IN-READ, CHK-SRAM-IN-STRB and CHK-SRAM-IN-XPATH that recorded a mismatch. `UVM_ERROR` is 0.

@@ -46,15 +46,11 @@ CHK-SRAM-IN-XPATH that saw a mismatch, with its count and first mismatch. A
 fault in one byte lane then shows on every data checker it reaches.
 
 Logged, not graded: after the cases, one SRAM word in the window takes an
-exclusive read and then a write with AWLOCK 1 and the same ID and address, and
-another word takes a write with AWATOP not 0 (an AtomicStore encoding, the only
-atomic type that returns no read data). No SEP document states the result of
-either. The AWATOP comes from the SMN-inbound AWATOP hook, set around the write
-and cleared after its B response. CTRL-SRAM-IN-ATTR: the AW handshake on the
-m_axi port carried AWLOCK 1 on the first write and the drawn AWATOP on the
-second. OBS-SRAM-IN-EXCL-WR and OBS-SRAM-IN-ATOP log the response of each access
-and the word before and after, read by the CPU-LSU master. The leg runs in the
-coverage window of this leaf. It draws on a seeded stream of its own, so the
+exclusive read and then a write with AWLOCK 1 and the same ID and address. No
+SEP document states the result. CTRL-SRAM-IN-ATTR: the AW handshake on the
+m_axi port carried AWLOCK 1. OBS-SRAM-IN-EXCL-WR logs the response of each
+access and the word before and after, read by the CPU-LSU master. The leg runs
+in the coverage window of this leaf. It draws on a seeded stream of its own, so the
 case draws keep their values.
 
 Run mode: no_cpu (CPU-LSU master) with the external SMN master, and
@@ -96,19 +92,8 @@ from seq_lib.sep_sram_inbound_burst_seq import (
 )
 
 TEST = "sep_sram_inbound_burst_attr_test"
-# Seeded stream of the AWLOCK and AWATOP leg.
+# Seeded stream of the AWLOCK leg.
 _ATTR_SALT = 0x5352_4154
-# AWATOP AtomicStore: 0b01, endianness, three operation bits.
-ATOP_STORE = 0b01_0000
-
-
-async def _capture_awatop() -> int:
-    """``m_axi_awatop`` at the next AW handshake on the m_axi port."""
-    dut = cocotb.top
-    while True:
-        await RisingEdge(dut.clk_i)
-        if dut.m_axi_awvalid.value == 1 and dut.m_axi_awready.value == 1:
-            return int(dut.m_axi_awatop.value)
 
 
 def _w(v: int) -> str:
@@ -244,60 +229,38 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
         return seq
 
     async def _attr_leg(self, cfg: SepSramInboundCfg) -> None:
-        """AWLOCK 1 after an exclusive read, and AWATOP not 0, on SRAM words."""
+        """AWLOCK 1 after an exclusive read, on an SRAM word."""
         rng = SepSeededRng(self.random_seed() ^ _ATTR_SALT)
-        words = rng.sample(range(cfg.win_base, cfg.win_end + 1, BEAT_BYTES), 2)
+        word = rng.choice(range(cfg.win_base, cfg.win_end + 1, BEAT_BYTES))
         axi_id = rng.randrange(1, 16)
-        data = [rng.getrandbits(64) for _ in words]
-        atop = ATOP_STORE | rng.randrange(0, 16)
-        before = [await self._lsu_read(a) for a in words]
+        data = rng.getrandbits(64)
+        before = await self._lsu_read(word)
 
-        rd = await self._ext(SepAxiOp.READ, words[0], axi_id, attrs={"lock": 1})
+        rd = await self._ext(SepAxiOp.READ, word, axi_id, attrs={"lock": 1})
         task = cocotb.start_soon(capture_ax("aw"))
-        wr = await self._ext(SepAxiOp.WRITE, words[0], axi_id, wdata=data[0], attrs={"lock": 1})
+        wr = await self._ext(SepAxiOp.WRITE, word, axi_id, wdata=data, attrs={"lock": 1})
         excl_hs = take_handshake(task)
-
-        cocotb.top.m_axi_awatop.value = atop
-        try:
-            task = cocotb.start_soon(_capture_awatop())
-            at = await self._ext(SepAxiOp.WRITE, words[1], axi_id, wdata=data[1])
-            atop_seen = take_handshake(task)
-        finally:
-            cocotb.top.m_axi_awatop.value = 0
-        after = [await self._lsu_read(a) for a in words]
+        after = await self._lsu_read(word)
 
         lock_seen = None if excl_hs is None else excl_hs["lock"]
-        line = f"awlock_seen={lock_seen} expect=1 awatop_seen={atop_seen} expect=0x{atop:02x}"
-        assert lock_seen == 1 and atop_seen == atop, f"CTRL-SRAM-IN-ATTR FAIL: {line}"
+        line = f"awlock_seen={lock_seen} expect=1"
+        assert lock_seen == 1, f"CTRL-SRAM-IN-ATTR FAIL: {line}"
         self.logger.info("CTRL-SRAM-IN-ATTR LOG: %s", line)
-        for leg in ("sram_in_excl_write", "sram_in_atop"):
-            set_open_value_leg_pass(leg, self.logger)
-            await ClockCycles(cocotb.top.clk_i, 2)
-            set_open_value_leg_pass(None, self.logger)
-            await ClockCycles(cocotb.top.clk_i, 1)
+        set_open_value_leg_pass("sram_in_excl_write", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
         self.logger.info(
             "OBS-SRAM-IN-EXCL-WR addr=0x%08x id=0x%x excl_read_resp=%s rdata=%s "
             "write_resp=%s bid=%s wdata=%s before=%s after=%s",
-            words[0],
+            word,
             axi_id,
             resp_name(rd.resp_code),
             _w(rd.rdata & MASK64),
             resp_name(wr.resp_code),
             wr.resp_id,
-            _w(data[0]),
-            _w(before[0]),
-            _w(after[0]),
-        )
-        self.logger.info(
-            "OBS-SRAM-IN-ATOP addr=0x%08x awatop=0x%02x write_resp=%s bid=%s wdata=%s "
-            "before=%s after=%s",
-            words[1],
-            atop,
-            resp_name(at.resp_code),
-            at.resp_id,
-            _w(data[1]),
-            _w(before[1]),
-            _w(after[1]),
+            _w(data),
+            _w(before),
+            _w(after),
         )
 
     def _attrs(

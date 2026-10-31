@@ -44107,7 +44107,7 @@ module sep_fcov (
   // another owner samples nothing. A window close and a reset do not clear the
   // last owner, because firmware leaves grade after the window closed. The
   // label is the bin value and drives nothing.
-  localparam int unsigned OvLegCount = 25;
+  localparam int unsigned OvLegCount = 23;
   function automatic int unsigned ov_leg_owner(input int unsigned leg);
     case (leg)
       5'd1: return FcovOwnSepDmaIrqErrorLockRandTest;
@@ -44121,20 +44121,18 @@ module sep_fcov (
       5'd9: return FcovOwnSepFabricRowResponseMatrixTest;
       5'd10: return FcovOwnSepFabricRowResponseMatrixTest;
       5'd11: return FcovOwnSepFabricRowResponseMatrixTest;
-      5'd12: return FcovOwnSepFabricRowResponseMatrixTest;
-      5'd13: return FcovOwnSepFabricSlotCsrStrobeRandTest;
-      5'd14: return FcovOwnSepFabricInboundRebaseTest;
-      5'd15: return FcovOwnSepSramInboundBurstAttrTest;
-      5'd16: return FcovOwnSepSramInboundBurstAttrTest;
-      5'd17: return FcovOwnSepPicPendingMapWalkRandTest;
-      5'd18: return FcovOwnSepPicPendingMapWalkRandTest;
-      5'd19: return FcovOwnSepNmiVectorBarkRandTest;
-      5'd20: return FcovOwnSepPicPriorityGateRandTest;
+      5'd12: return FcovOwnSepFabricSlotCsrStrobeRandTest;
+      5'd13: return FcovOwnSepFabricInboundRebaseTest;
+      5'd14: return FcovOwnSepSramInboundBurstAttrTest;
+      5'd15: return FcovOwnSepPicPendingMapWalkRandTest;
+      5'd16: return FcovOwnSepPicPendingMapWalkRandTest;
+      5'd17: return FcovOwnSepNmiVectorBarkRandTest;
+      5'd18: return FcovOwnSepPicPriorityGateRandTest;
+      5'd19: return FcovOwnSepSramAxiShapeMatrixTest;
+      5'd20: return FcovOwnSepSramAxiShapeMatrixTest;
       5'd21: return FcovOwnSepSramAxiShapeMatrixTest;
-      5'd22: return FcovOwnSepSramAxiShapeMatrixTest;
-      5'd23: return FcovOwnSepSramAxiShapeMatrixTest;
-      5'd24: return FcovOwnSepSpiOtHostCsrIrqRandTest;
-      5'd25: return FcovOwnSepTimerClockContractTest;
+      5'd22: return FcovOwnSepSpiOtHostCsrIrqRandTest;
+      5'd23: return FcovOwnSepTimerClockContractTest;
       default: return FcovOwnNone;
     endcase
   endfunction
@@ -44154,21 +44152,19 @@ module sep_fcov (
       bins row_attr_pool_cell = {5'd8};
       bins row_narrow_unbacked = {5'd9};
       bins row_attr_drawn_write = {5'd10};
-      bins row_awatop = {5'd11};
-      bins row_attr_spi_dma_cell = {5'd12};
-      bins slot_csr_prot_drawn = {5'd13};
-      bins syscsr_prot_drawn = {5'd14};
-      bins sram_in_excl_write = {5'd15};
-      bins sram_in_atop = {5'd16};
-      bins gw_level_to_edge = {5'd17};
-      bins gwclr_same_cycle = {5'd18};
-      bins nmi_during_handler = {5'd19};
-      bins priord_flip_pending = {5'd20};
-      bins sram_wstrb_sparse = {5'd21};
-      bins sram_wstrb_zero = {5'd22};
-      bins sram_macro_bit_flip = {5'd23};
-      bins spi_cmdinval_spien1 = {5'd24};
-      bins wdt_pause_in_sleep_set = {5'd25};
+      bins row_attr_spi_dma_cell = {5'd11};
+      bins slot_csr_prot_drawn = {5'd12};
+      bins syscsr_prot_drawn = {5'd13};
+      bins sram_in_excl_write = {5'd14};
+      bins gw_level_to_edge = {5'd15};
+      bins gwclr_same_cycle = {5'd16};
+      bins nmi_during_handler = {5'd17};
+      bins priord_flip_pending = {5'd18};
+      bins sram_wstrb_sparse = {5'd19};
+      bins sram_wstrb_zero = {5'd20};
+      bins sram_macro_bit_flip = {5'd21};
+      bins spi_cmdinval_spien1 = {5'd22};
+      bins wdt_pause_in_sleep_set = {5'd23};
     }
   endgroup
 

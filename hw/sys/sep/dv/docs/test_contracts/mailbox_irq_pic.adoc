@@ -488,7 +488,7 @@ poll and yields the same pass.
 
 *Area*: Mailbox, IRQ, PIC
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+sep_spi_rsvd_speed_waive` (the CMDINVAL clear with SPIEN=1 pops a reserved-SPEED COMMAND to the core), 3 seeds
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 
 *Source Module*: `sep_spi_ot_host_csr_irq_rand_test`
 

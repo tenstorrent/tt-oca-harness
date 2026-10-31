@@ -440,9 +440,6 @@
 `SEP_TB_IN(logic [3:0], m_axi_awqos)
 `SEP_TB_IN(logic [3:0], m_axi_awregion)
 `SEP_TB_IN(logic [11:0], m_axi_awuser)
-// AWATOP of the inbound write. Default 0; an undriven or unknown value drives
-// 0. Top-port drive, docs/SEP_TB_ARCH.adoc.
-`SEP_TB_IN(logic [5:0], m_axi_awatop)
 `SEP_TB_IN(logic, m_axi_awvalid)
 `SEP_TB_OUT(logic, m_axi_awready)
 // Write data channel
