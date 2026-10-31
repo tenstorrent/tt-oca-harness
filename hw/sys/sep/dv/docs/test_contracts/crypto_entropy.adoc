@@ -4023,6 +4023,8 @@ Proof by entry. `sep_esrc_persistent_alert_rand_test_shard2` proves `cp_sm_err` 
 |Not a graded check. The `LANE_SEL` text states a flush on a lane change; the `FLUSH` text states a flush on a `LANE_SEL` change (`entropy_source.adoc`, `NOISE_OBS_CTRL`). The two disagree for a write that changes the field and keeps lane 0, so no golden is stated. The leaf writes `LANE_SEL` with a value that keeps lane 0 and logs `LEVEL` before and after the write. Evidence: `OBS-LANESEL-SAME seed=<n> sel=<12 to 15> level_before=<n> level_after=<n>`; a wait for `LEVEL` of 4 that times out adds `reason=timeout:level_before bound=<b>`.
 |OBS-OVF-KEEP
 |Not a graded check. No text states which word a full observe FIFO discards. The leaf drives a known sequence of 66 words at 8 x `clk_i` + 2 ps and logs the overflow bit, `LEVEL`, the number of popped words and the bit index in the sequence at which the first and the last popped word start. Evidence: `OBS-OVF-KEEP seed=<n> lane=<l> seq_words=66 edges=<n> overflow=<0 or 1> level=<n> popped=<n> first_at_bit=<i or none> last_at_bit=<i or none>`.
+|OBS-LOCK0-RESP
+|A logged line, not a graded check: the B response code of the `RAW_ENABLE` = 1 write to `NOISE_OBS_CTRL` or `BIW_OBS_CTRL` that the lock refuses in the locked-at-0 leg. No text states the code of a write the lock refuses (`FIPS_LOCK.LOCK` prevents changes). The leg grades only the arrival of the B response (`CTRL-OBS-LOCK`, `b_seen=1`) and `LEVEL` staying 0. Evidence: `OBS-LOCK0-RESP: fifo=<noise or biw> B=<code>`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
