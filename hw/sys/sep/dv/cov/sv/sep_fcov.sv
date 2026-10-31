@@ -785,6 +785,10 @@ module sep_fcov (
   // 6 dft_nonsecure, 7 dfd, 8 smc_jtag2axi, 9 smc_otp_jtag2axi,
   // 10 sep_otp_jtag2axi.
   input wire [10:0]                         dbg_dis_i,
+  // Lifecycle state output and the lifecycle controller decoder input
+  // (docs/SEP_FCOV.adoc, eFuse, lifecycle groups, Sampled signals): read-only.
+  input wire [2*sep_pkg::LcStateBitWidth-1:0] lc_state_i,    // lc_state_probe_o
+  input wire [2*sep_pkg::LcStateBitWidth-1:0] lc_dec_data_i, // lc_dec_data_probe_o
   // Fabric and CPU master taps of the fabric feature points (docs/SEP_FCOV.adoc,
   // fabric and remap groups, Sampled signals): read-only, no force.
   input sep_pkg::sep_32_64_3_12_axi_req_t   dbg_req_i,        // PR-DBG-SB request (dbg_axi_req)
@@ -3016,9 +3020,9 @@ module sep_fcov (
   wire         feat_ctrl_lo_rd = rd_ev && (ar_addr_q == SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR);
   wire         feat_ctrl_hi_rd = rd_ev &&
       (ar_addr_q == (SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR + 32'd4)) && feat_lo_valid_q;
-  // The state axis comes from the sensed shadow, which reads 0x0 (TEST_DEV)
-  // until a real sense completes. A read before that, or on a +skip_fuse_sense
-  // run, describes no sensed state and does not sample.
+  // The state axis comes from the sensed shadow, which holds INVALID (raw
+  // 4'b1111, word 0x0F) until a real sense completes. A read before that, or on
+  // a +skip_fuse_sense run, describes no sensed state and does not sample.
   wire         feat_ctrl_sample = feat_ctrl_hi_rd && !skip_fuse_sense_q &&
       (fuse_sense_done_i === 1'b1);
 
@@ -34993,14 +34997,16 @@ module sep_fcov (
     end
   end
 
-  // Program and read enables, as the last frontdoor write left them.
+  // Program and read enables, as the last frontdoor write left them. A write
+  // changes an enable only when it strobes that enable's byte.
+  wire [31:0] ef_wr_bmask = {{8{wr_strb[3]}}, {8{wr_strb[2]}}, {8{wr_strb[1]}}, {8{wr_strb[0]}}};
   logic ef_pen_q = 1'b0;
   logic ef_pg_tmo_en_q = 1'b0;
   always @(posedge clk_i) begin
     if (in_reset) begin
       ef_pen_q <= 1'b0;
       ef_pg_tmo_en_q <= 1'b0;
-    end else if (wr_okay && (aw_addr_q == EfPgCtrl)) begin
+    end else if (wr_okay && (aw_addr_q == EfPgCtrl) && |(ef_wr_bmask & EfPgEnMask)) begin
       ef_pen_q <= |(wr_data & EfPgEnMask);
     end else if (wr_okay && (aw_addr_q == EfPgTmo)) begin
       ef_pg_tmo_en_q <= |(wr_data & EfPgTmoEnMask);
@@ -36330,8 +36336,10 @@ module sep_fcov (
 
   // Window of x_case_cmd for pre_sense_prog: reset release to sense done.
   logic ef_ps_go = 1'b0, ef_ps_prog = 1'b0;
-  // both_enables: from the go to the next cold reset.
-  logic ef_be_arm = 1'b0, ef_be_rcmd = 1'b0;
+  // both_enables: from the go to the write that clears program_enable or the
+  // next cold reset, whichever comes first. ef_be_rcmd_aw is ef_be_rcmd at the
+  // AW of the last EFUSE_PROGRAM_CTRL write, before that write takes effect.
+  logic ef_be_arm = 1'b0, ef_be_rcmd = 1'b0, ef_be_rcmd_aw = 1'b0;
 
   // x_exempt_write: a landed program of LC_STATE bit 0 or 3 waits for the
   // resensed LC_STATE read. ef_xw_req counts the landed programs; the
@@ -36592,7 +36600,13 @@ module sep_fcov (
   end
 
   // x_case_cmd pre_sense_prog and both_enables windows; cp_prog_visibility
-  // bin 1. These span a reset, so they do not clear on it.
+  // bin 1. These span a reset, so they do not clear on it. The specification
+  // states that a read issued while program_enable is set does not reach the
+  // bank and states nothing about that read after program_enable clears, so
+  // the both_enables window ends at an OKAY EFUSE_PROGRAM_CTRL write
+  // that strobes every program_enable byte and writes program_enable 0.
+  wire ef_pg_en_clr = wr_okay && (aw_addr_q == EfPgCtrl) &&
+      ((ef_wr_bmask & EfPgEnMask) == EfPgEnMask) && !(|(wr_data & EfPgEnMask));
   always @(posedge clk_i) begin
     if (ef_rel) begin
       ef_ps_go   <= 1'b0;
@@ -36612,8 +36626,14 @@ module sep_fcov (
     end
     if (ef_be_arm) begin
       if (ef_cmd_rd && !in_reset) ef_be_rcmd <= 1'b1;
+      if (aw_hs && (lsu_aw_addr_i == EfPgCtrl)) begin
+        ef_be_rcmd_aw <= ef_be_rcmd || (ef_cmd_rd && !in_reset);
+      end
       if (ef_rst_fall) begin
         if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd2, ef_be_rcmd});
+        ef_be_arm <= 1'b0;
+      end else if (ef_pg_en_clr) begin
+        if (ef_own_ifs) ef_ifs(3, {4'd0, 2'd2, ef_be_rcmd_aw});
         ef_be_arm <= 1'b0;
       end
     end
@@ -38348,6 +38368,267 @@ module sep_fcov (
       ef_st_sensed <= 1'b0;
     end else if (ef_sense_rise && ef_st_prog) begin
       ef_st_sensed <= 1'b1;
+    end
+  end
+
+  // ---------------------------------------------------------------------
+  // Lifecycle port, gate-port, integrity-inject and demotion-hold points:
+  // sep_lc_port_gate_cg, sep_lc_sigint_inject_cg, sep_lc_demote_hold_cg.
+  // ---------------------------------------------------------------------
+  localparam logic [7:0] EfLcReset = 8'(SEP_EFUSE_MAP_LC_STATE_REG_DEFAULT);
+
+  typedef struct packed {
+    logic [4:0] pr;
+    logic pr_v;  // x_port_raw16: {port differs, raw}
+    logic pp;
+    logic pp_v;  // cp_presense_port: port differs from the LC_STATE reset value
+    logic [4:0] cg;
+    logic cg_v;  // x_cond_gate: {wrong level, condition, port}
+  } ef_pgt_t;
+
+  covergroup sep_lc_port_gate_cg with function sample (ef_pgt_t s);
+    option.per_instance = 1;
+    option.name = "sep_lc_port_gate_cg";
+    // lc_state_o against the sensed LC_STATE byte {~r, r}, r in 0 to 15, at a
+    // feature change with no integrity error.
+    x_port_raw16: coverpoint s.pr iff (s.pr_v) {
+      bins raw[] = {[5'd0 : 5'd15]}; illegal_bins port_differs = {[5'd16 : 5'd31]};
+    }
+    // lc_state_o at the first clock after a cold reset: the LC_STATE reset
+    // value, the INVALID encoding.
+    cp_presense_port: coverpoint s.pp iff (s.pp_v) {
+      bins invalid_reset_value = {1'b0}; illegal_bins other_value = {1'b1};
+    }
+    // Condition 0 before sense with SEC_DIS 0, 1 SEC_DIS 1, 2 integrity error
+    // with SEC_DIS 0; port 0 dbg_disable, 1 sep_fuse_dft_disable, 2
+    // smc_fuse_dft_disable. dbg_disable has a stated level: every gated path
+    // 1 under conditions 0 and 2, every path 0 under condition 1; another
+    // level is illegal. No document states the level of the fuse DFT ports,
+    // so their cells record the condition only.
+    x_cond_gate: coverpoint s.cg iff (s.cg_v) {
+      bins cells[] = {5'd0, 5'd1, 5'd2, 5'd4, 5'd5, 5'd6, 5'd8, 5'd9, 5'd10};
+      illegal_bins dbg_disable_wrong_level = {5'd16, 5'd20, 5'd24};
+    }
+  endgroup
+
+  // {error not held, demoted, bad value, pair mask} of one inject epoch.
+  covergroup sep_lc_sigint_inject_cg with function sample (logic [6:0] mv);
+    option.per_instance = 1;
+    option.name = "sep_lc_sigint_inject_cg";
+    // Pair mask 1 to 15 x bad value {both rails 0, both rails 1} x demotion
+    // {none, set}. Legal: lc_sigint_i high and feat_ctrl_i 0 on every clock
+    // of the epoch from the first clock lc_sigint_i is high.
+    x_mask_value_demote: coverpoint mv {
+      bins cells[] = {[7'd1 : 7'd15], [7'd17 : 7'd31], [7'd33 : 7'd47], [7'd49 : 7'd63]};
+      illegal_bins error_not_held = {
+        [7'd65 : 7'd79], [7'd81 : 7'd95], [7'd97 : 7'd111], [7'd113 : 7'd127]
+      };
+    }
+  endgroup
+
+  typedef struct packed {
+    logic [2:0] rk;
+    logic rk_v;  // x_reset_kind_held: {cleared, reset kind}
+    logic sd;
+    logic sd_v;  // cp_sdis_demote_set: DEMOTE_1 demote bit reads 0
+    logic [1:0] pd;
+    logic pd_v;  // cp_prod_strap1_demote: {DEMOTE_1, DEMOTE_2}
+  } ef_dhd_t;
+
+  covergroup sep_lc_demote_hold_cg with function sample (ef_dhd_t s);
+    option.per_instance = 1;
+    option.name = "sep_lc_demote_hold_cg";
+    // Kind 0 wdt_rst_ni, 1 dbg_rstb_i, 2 jtag_trst_ni, 3 a fall of a
+    // sep_crypto_gated_rst_n bit (SW_RESET_N). The first DEMOTE read after the
+    // fall, of a register whose demote bit read 1 before it: demote and lock
+    // hold until SEP cold reset, so a cleared bit is illegal.
+    x_reset_kind_held: coverpoint s.rk iff (s.rk_v) {
+      bins held[] = {[3'd0 : 3'd3]}; illegal_bins cleared = {[3'd4 : 3'd7]};
+    }
+    // A DEMOTE_1 write of the demote bit with SEC_DIS 1 and the lock 0, then
+    // the next DEMOTE_1 read: the demote bit is set.
+    cp_sdis_demote_set: coverpoint s.sd iff (s.sd_v) {
+      bins demote_1_set = {1'b0}; illegal_bins demote_1_clear = {1'b1};
+    }
+    // PROD, SECURE_TM 1, SEC_DIS 0, no integrity error: the demotion
+    // combination at a feature change.
+    cp_prod_strap1_demote: coverpoint s.pd iff (s.pd_v) {
+      bins d10 = {2'b10}; bins d01 = {2'b01}; bins d11 = {2'b11};
+    }
+  endgroup
+
+  sep_lc_port_gate_cg     u_sep_lc_port_gate_cg     = new();
+  sep_lc_sigint_inject_cg u_sep_lc_sigint_inject_cg = new();
+  sep_lc_demote_hold_cg   u_sep_lc_demote_hold_cg   = new();
+
+  // x_port_raw16 and cp_presense_port.
+  always @(posedge clk_i) begin
+    ef_pgt_t e;
+    if (ef_feat_ev && ef_fin_k && ef_own_fc && !ef_sig && !$isunknown(ef_lc_word[7:0])) begin
+      e = '0;
+      e.pr = {
+        (lc_state_i !== ef_lc_word[7:0]) || (ef_lc_word[7:4] != ~ef_lc_word[3:0]), ef_lc_word[3:0]
+      };
+      e.pr_v = 1'b1;
+      u_sep_lc_port_gate_cg.sample(e);
+    end
+    if (ef_rel && !skip_fuse_sense_q && (ef_own_ovr || ef_own_sdt)) begin
+      e = '0;
+      e.pp = (lc_state_i !== EfLcReset);
+      e.pp_v = 1'b1;
+      u_sep_lc_port_gate_cg.sample(e);
+    end
+  end
+
+  // x_cond_gate: one sample per port once a condition has held for
+  // EfFeatSettle clocks.
+  wire [1:0] ef_gc = !ef_live ? 2'd3 :
+      ef_sd ? 2'd1 :
+      (fuse_sense_done_i === 1'b0) && (lc_sigint_i === 1'b0) && (sec_dis_i === 1'b0) ? 2'd0 :
+      ef_sensed && ef_sig ? 2'd2 : 2'd3;
+  logic [1:0] ef_gc_q = 2'd3;
+  int unsigned ef_gc_cnt = 0;
+  logic ef_gc_done = 1'b0;
+  always @(posedge clk_i) begin
+    ef_pgt_t e;
+    logic [10:0] gated;
+    logic own, wrong;
+    ef_gc_q <= ef_gc;
+    if (ef_gc != ef_gc_q) begin
+      ef_gc_cnt  <= 0;
+      ef_gc_done <= 1'b0;
+    end else if (ef_gc_cnt < EfFeatSettle) begin
+      ef_gc_cnt <= ef_gc_cnt + 1;
+    end else if (!ef_gc_done && (ef_gc != 2'd3)) begin
+      ef_gc_done <= 1'b1;
+      own = (ef_gc == 2'd2) ? ef_own_cw : (ef_own_ovr || ((ef_gc == 2'd1) && ef_own_fc));
+      if (own) begin
+        for (int p = 0; p < 11; p++) gated[p] = (EfPathCase[p] != 0);
+        wrong = (ef_gc == 2'd1) ? (dbg_dis_i !== 11'h0) : ((dbg_dis_i & gated) !== gated);
+        for (int k = 0; k < 3; k++) begin
+          e = '0;
+          e.cg = {(k == 0) && wrong, ef_gc, 2'(k)};
+          e.cg_v = 1'b1;
+          u_sep_lc_port_gate_cg.sample(e);
+        end
+      end
+    end
+  end
+
+  // x_mask_value_demote: an epoch is the run of clocks with a broken pair
+  // (equal rails) at the decoder input; one sample per epoch, at the clock
+  // the last broken pair is gone. Pair i is {data[LcStateBitWidth+i],
+  // data[i]}. The first clock of the epoch fixes the mask, the rail value and
+  // the demotion, and is not graded. An epoch with SEC_DIS high, a reset, an
+  // open sense, another owner, a changed mask, mixed rail values or an X or Z
+  // rail samples nothing.
+  localparam int unsigned EfLcPairs = sep_pkg::LcStateBitWidth;
+  // The bench forces and releases the decoder input at a clk_i rise, in the
+  // time step this block reads it. ef_si_data is the value at the clk_i fall
+  // before, which has settled.
+  logic [2*EfLcPairs-1:0] ef_si_data = 'x;
+  always @(negedge clk_i) ef_si_data <= lc_dec_data_i;
+  wire [EfLcPairs-1:0] ef_si_pairs =
+      ~(ef_si_data[EfLcPairs-1:0] ^ ef_si_data[2*EfLcPairs-1:EfLcPairs]);
+  wire ef_si_x = $isunknown(ef_si_data);
+  wire ef_si_on = !ef_si_x && (ef_si_pairs != '0);
+  // Rail value of the broken pairs; ef_si_mixed when they differ.
+  wire ef_si_one = |(ef_si_pairs & ef_si_data[EfLcPairs-1:0]);
+  wire ef_si_mixed = ef_si_one && |(ef_si_pairs & ~ef_si_data[EfLcPairs-1:0]);
+  logic ef_si_q = 1'b0, ef_si_bad = 1'b0, ef_si_skip = 1'b0;
+  logic ef_si_dem = 1'b0, ef_si_val = 1'b0;
+  logic [3:0] ef_si_mask = '0;
+  always @(posedge clk_i) begin
+    ef_si_q <= ef_si_on;
+    if (ef_si_on) begin
+      if (!ef_si_q) begin
+        ef_si_mask <= 4'(ef_si_pairs);
+        ef_si_val  <= ef_si_one;
+        ef_si_dem  <= (ef_dm != 2'b00);
+        ef_si_bad  <= 1'b0;
+        ef_si_skip <= !ef_sensed || !ef_own_cw || ef_sd || ef_si_mixed ||
+            $isunknown({demote_1_i, demote_2_i});
+      end else begin
+        if (!ef_sig || (feat_ctrl_i !== 64'h0)) ef_si_bad <= 1'b1;
+        if (!ef_sensed || !ef_own_cw || ef_sd || ef_si_mixed || (4'(ef_si_pairs) != ef_si_mask) ||
+            (ef_si_one != ef_si_val)) begin
+          ef_si_skip <= 1'b1;
+        end
+      end
+    end else if (ef_si_q) begin
+      if (!ef_si_skip && !ef_si_x) begin
+        u_sep_lc_sigint_inject_cg.sample({ef_si_bad, ef_si_dem, ef_si_val, ef_si_mask});
+      end
+    end
+  end
+
+  // x_reset_kind_held. ef_rh_known holds the demote bit of the last DEMOTE_1
+  // and DEMOTE_2 read; a reset fall arms each register whose bit read 1, and
+  // the next read of that register samples once per armed kind.
+  logic ef_rh_wdt_q = 1'b1, ef_rh_dbg_q = 1'b1, ef_rh_trst_q = 1'b1;
+  logic [6:0] ef_rh_ip_q = '1;
+  logic [1:0] ef_rh_known = '0;
+  logic [3:0][1:0] ef_rh_pend = '0;
+  always @(posedge clk_i) begin
+    ef_dhd_t e;
+    logic [3:0] fall;
+    logic [3:0][1:0] pend;
+    logic r, b;
+    fall[0] = ef_rh_wdt_q && (wdt_rst_n_i === 1'b0);
+    fall[1] = ef_rh_dbg_q && (dbg_rstb_i === 1'b0);
+    fall[2] = ef_rh_trst_q && (jtag_trst_n_i === 1'b0);
+    fall[3] = (|(ef_rh_ip_q & ~ip_rst_n_i)) && !$isunknown(ip_rst_n_i) &&
+        (wdt_rst_n_i === 1'b1) && (dbg_rstb_i === 1'b1);
+    ef_rh_wdt_q  <= (wdt_rst_n_i !== 1'b0);
+    ef_rh_dbg_q  <= (dbg_rstb_i !== 1'b0);
+    ef_rh_trst_q <= (jtag_trst_n_i !== 1'b0);
+    for (int i = 0; i < 7; i++) ef_rh_ip_q[i] <= (ip_rst_n_i[i] !== 1'b0);
+    if (in_reset || !mr_own_ret) begin
+      ef_rh_known <= '0;
+      ef_rh_pend  <= '0;
+    end else begin
+      pend = ef_rh_pend;
+      for (int k = 0; k < 4; k++) if (fall[k]) pend[k] = pend[k] | ef_rh_known;
+      if (rd_ev && ((ar_addr_q == EfDemote1) || (ar_addr_q == EfDemote2))) begin
+        r = (ar_addr_q == EfDemote2);
+        b = |(rd_data & EfDemoteMask);
+        for (int k = 0; k < 4; k++) begin
+          if (pend[k][r]) begin
+            e = '0;
+            e.rk = {!b, 2'(k)};
+            e.rk_v = 1'b1;
+            u_sep_lc_demote_hold_cg.sample(e);
+            pend[k][r] = 1'b0;
+          end
+        end
+        ef_rh_known[r] <= b;
+      end
+      ef_rh_pend <= pend;
+    end
+  end
+
+  // cp_sdis_demote_set and cp_prod_strap1_demote.
+  logic ef_sdd_pend = 1'b0;
+  always @(posedge clk_i) begin
+    ef_dhd_t e;
+    if (in_reset || !ef_own_fc) begin
+      ef_sdd_pend <= 1'b0;
+    end else if (wr_ev && (aw_addr_q == EfDemote1) && ((wr_data & EfDemoteMask) != 32'h0) &&
+                 ef_sd && !ef_aw_l1) begin
+      ef_sdd_pend <= 1'b1;
+    end else if (rd_ev && (ar_addr_q == EfDemote1) && ef_sdd_pend) begin
+      e = '0;
+      e.sd = ((rd_data & EfDemoteMask) == 32'h0);
+      e.sd_v = 1'b1;
+      u_sep_lc_demote_hold_cg.sample(e);
+      ef_sdd_pend <= 1'b0;
+    end
+    if (ef_feat_ev && ef_fin_k && ef_own_stm && (ef_lc == EfProd) && (secure_tm_i === 1'b1) &&
+        !ef_sd && !ef_sig && (ef_dm != 2'b00)) begin
+      e = '0;
+      e.pd = ef_dm;
+      e.pd_v = 1'b1;
+      u_sep_lc_demote_hold_cg.sample(e);
     end
   end
 

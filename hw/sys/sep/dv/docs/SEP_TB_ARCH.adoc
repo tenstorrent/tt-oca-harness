@@ -337,6 +337,10 @@ Observation probe groups:
   `sep_sec_dis_timing_rand_test`, `sep_lcc_state_codeword_rand_test`,
   `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`,
   `sep_lcc_lc_state_transition_matrix_test`.
+* Lifecycle decoder input tap (`lc_dec_data_probe_o`): the decoder input
+  `u_lc_state_dec.data_i` of `u_sep_lifecycle_ctrl`, read-only XMR, after the
+  LC differential-integrity inject. Owner: `sep_lcc_state_codeword_rand_test`
+  (CTRL-SIGINT-EPOCHS counts the epochs whose broken pairs reach it).
 * eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of
   `u_sep_fcov`): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
   comparator fault bits), `token_go_i` (hash start pulses),
@@ -349,8 +353,22 @@ Observation probe groups:
   `efuse_shadow_resp_valid_o` and `efuse_shadow_sense_done_o`).
   The sampler also reads `cmp_match_p_i` and `cmp_match_n_i`, `tok_words_i`,
   the digest latch inputs and `jtag_filt_sigint_i` from the taps above. No
-  check reads them. Users: the owners of the eFuse and lifecycle groups of
-  `docs/SEP_FCOV.adoc`.
+  check reads them. `lc_state_i` is `lc_state_probe_o`, and `lc_dec_data_i`
+  is `lc_dec_data_probe_o`, the decoder input tap above. Users: the owners of the eFuse
+  and lifecycle groups of `docs/SEP_FCOV.adoc`.
+* Lifecycle controller register write tap (`lcc_wr_count_probe_o[15:0]`,
+  `lcc_wr_addr_probe_o[4:0]`, `lcc_wr_data_probe_o[63:0]`): the number of
+  write-address handshakes at the AXI-Lite port of the register block of
+  `u_sep_lifecycle_ctrl` since time 0 (it wraps), the register offset of the
+  last one, and the data of the last write-data handshake, on the clock of
+  `u_sep_lifecycle_ctrl`. `FEAT_CTRL` is `sw = r`
+  (`hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`), so no
+  readback shows that a write to it reached the register block. Read-only; no
+  force. Owner: `sep_efuse_window_decode_reset_test` (CTRL-LCC-WR-TAP).
+* JTAG TRST tap (`jtag_trst_probe_o`): the `sep` input `jtag_trst_ni` as the
+  DUT receives it, after the core TAP pin select of `tb_top`. No register
+  shows it. Read-only. Owner: `sep_cpu_reset_retention_test`
+  (CTRL-JTAG-TRST-EDGE).
 * KM OTP ID probes (`km_otp_sep_*_id_o`).
 * Secure test mode output (`secure_tm_o`): the `sep` output that shows the
   latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`
@@ -1013,7 +1031,20 @@ Exceptions (a closed set):
   detune of a lane, a state code on every clock, a hardware command that EDN
   sends to CSRNG, a push into an endpoint FIFO, or a sample-clock period; a
   register read samples a status once. Read-only; no force.
-* *LC differential / token-comparator fault inject* — fail-closed paths with no
+* *LC differential-integrity inject* — the fail-closed path of the lifecycle
+  controller has no legal OTP frontdoor: the sense FSM regenerates the
+  `{~raw, raw}` pair of `LC_STATE`. While `lc_sigint_inject_i` is 1, `tb_top`
+  forces the decoder input `u_lc_state_dec.data_i` of `u_sep_lifecycle_ctrl`
+  to its source value, the `LC_STATE` shadow byte, with each pair that
+  `lc_sigint_pair_mask_i` selects broken: both rails at
+  `lc_sigint_bad_value_i`. Pair i is `{data_i[4+i], data_i[i]}`. A mask of 0,
+  or one with an X or Z bit, selects all four pairs, and a bad value other
+  than 1 is 0, so a leaf that drives only `lc_sigint_inject_i` forces every
+  rail to 0. The `LC_STATE` shadow is not forced. The force is re-issued on
+  each rising edge of `clk_i` and released when the inject drops. Readback:
+  `lcc_sigint_err_probe_o`. Users: `sep_lcc_state_codeword_rand_test` (pair
+  mask and bad value), `sep_efuse_lcc_lc_state_stitch_test`.
+* *Token-comparator fault inject* — fail-closed paths with no
   legal OTP frontdoor. `token_cmp_fault_copy_i` selects the comparator copy
   (0, 1 or 2) of a collapse or disagree pattern; 0, also when undriven, is
   copy 0, and 3 forces nothing. The common-mode patterns force all three
