@@ -855,6 +855,9 @@ static void leg_priord_flip(void) {
     rec_num("runs", g_total - t0);
     rec_end();
     set_order(p ^ 1u);
+    rec_ctl("PRIORD-FLIP");
+    rec_num("priord", (pic_read_mpiccfg() & EL2_PIC__MPICCFG__PRIORD_bm) ? 1u : 0u);
+    rec_end();
     mstatus_mie(1);
     (void)wait_total(t0 + n);
     (void)hold();

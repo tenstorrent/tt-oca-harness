@@ -330,6 +330,7 @@ NM_CHUNK = 1024
 CTRL_RX_WM_LSB = SPI_CONTROLLER.field_lsb("CONTROL", "rx_watermark")
 CTRL_TX_WM_LSB = SPI_CONTROLLER.field_lsb("CONTROL", "tx_watermark")
 GO_MASK = SECURE_DMA.field_mask("CONTROL", "go")
+HS_ENABLE_MASK = SECURE_DMA.field_mask("CONTROL", "hardware_handshake_enable")
 INTR_EN_CHUNK = SECURE_DMA.field_mask("INTR_ENABLE", "dma_chunk_done")
 INTR_EN_DONE = SECURE_DMA.field_mask("INTR_ENABLE", "dma_done")
 HS_MASK_FIELD = SECURE_DMA.field_mask("HANDSHAKE_INTR_ENABLE", "mask")
@@ -926,8 +927,16 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         img = await self.mem.read(HS_DST, nw)
         end_written = sum(1 for w in img if w != self.sentinel)
         trig_high = self.trig.high_clocks_since(m_trig)
-        go_masked = self._go_cmp(await self.dma.rd(DMA_CONTROL))
+        control = await self.dma.rd(DMA_CONTROL)
+        go_masked = self._go_cmp(control)
         self._probe_log(tag)
+        # HARDWARE_HANDSHAKE_ENABLE is sw=rw, hw=r and resets to 0; only the GO
+        # write of this run sets it.
+        hs_enable = int(bool(control & HS_ENABLE_MASK))
+        go_line = f"run={tag} hs_enable={hs_enable} expect=1 control=0x{control:08x}"
+        if not hs_enable:
+            self._ctrl_missing("CTRL-HS-MASKED-GO", go_line)
+        self.logger.info("CTRL-HS-MASKED-GO PASS seed=%d %s", cfg.seed, go_line)
         # Negative-control hook: ``masked_written += 1`` here; CHK-HS-MASKED fails.
         line = (
             f"run={tag} dest_sentinel_kept={int(masked_written == 0 and end_written == 0)} "

@@ -44,7 +44,9 @@ Checkers:
                    accepted read twin of each shows its read command.
   CHK-IF-CTRL      every case starts with clean flags (case frame), and each refusal
                    case has an accepted twin that completes (program twins change the
-                   bank by exactly their bit at ``otp_bank_probe_o``).
+                   bank by exactly their bit at ``otp_bank_probe_o``). The
+                   out-of-range program case ends with one in-range program of a
+                   zero bit of an unlocked spare field that no other case uses.
   CHK-IF-PRESENSE  a JTAG program go issued before sense done changes no bank bit and
                    sends no program command from reset release to the sense-done rise;
                    the post-sense twin lands with its command. ``CHK-HOOK FAIL`` when
@@ -90,15 +92,20 @@ Log-only: the flags of the pre-sense and both-enables cases
 the lock-blocked read, the bank
 diff after the out-of-range program cases (``OBS-IF-CMD``), the
 count of post-guard commands (``efuse_shim_cmd_*_o``) of each out-of-range read and
-program (``OBS-IF-OOB-CMD``). ``OBS-EFUSE-SHIM-DBG`` logs ``efuse_debug_bus_o``
+program (``OBS-IF-OOB-CMD``), the status flags, ``program_done``, ``program_status``
+and bank diff of the in-range program after the out-of-range programs
+(``OBS-IF-OOR-PROG-TWIN``), and, after the lock-program case, a read held by
+``program_enable`` with ``program_enable`` cleared first: the READ commands at
+``efuse_shim_command_req_o`` while held and after the clear, ``read_done`` and the
+flags (``OBS-IF-ENABLE-CLEAR-ORDER``). The both-enables case clears
+``read_enable`` before ``program_enable``, so the held read there cannot reach
+the bank before its cold reset.
+``OBS-EFUSE-SHIM-DBG`` logs ``efuse_debug_bus_o``
 sampled on every ``clk_i`` from the first case frame to the end of the leaf: the OR of
 the write and read counter-error bits [12] and [4], the write and read FSM states
 [11:8] and [3:0] seen, and the OR of the other bits. No legal stimulus makes a
 counter error, so the line shows only that the bits stay 0 under these reads and
 programs; it cannot show that a counter error sets them.
-Two bench records grade nothing: the procedure gives the out-of-range program no
-accepted twin (``INFO-IF-CTRL-NO-TWIN``), and after the both-enables case the leaf
-clears ``read_enable`` before ``program_enable`` (``INFO-IF-ENABLE-CLEAR-ORDER``).
 """
 
 from __future__ import annotations
@@ -151,6 +158,7 @@ from env.sep_fcov_gate import (
     set_ef_hold_pass,
     set_ef_hold_tag,
 )
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL
 
@@ -195,6 +203,9 @@ _PASS_HOLD = 2  # clocks the step tag stays on the pass label
 _DBG_WR_ERR = 1 << 12
 _DBG_RD_ERR = 1 << 4
 _DBG_OTHER = 0xE0E0
+# The in-range program after the out-of-range ones draws its bit from a separate
+# stream, so the plan draws keep their seed mapping.
+_OOR_TWIN_SALT = 0x4F4F_5254
 
 
 def _b(v: int, m: int) -> int:
@@ -842,9 +853,25 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
             ok_clear = fc["pae"] == 0 and fc["rae"] == f["rae"] and fc["re"] == f["re"]
             ok = self._status("oor_program", a, f, "0b0010", int(ok_clear), ok_clear)
             await self._pass(tag, ok)
-        self.chk.info(
-            "IF-CTRL-NO-TWIN", case="oor_program", reason="procedure_gives_no_accepted_twin"
+        twin = self.oor_twin["addr"]
+        snap = await self._frame("oor_program")
+        tag = self._step()
+        pre_bit = (snap[twin >> 5] >> (twin & 31)) & 1
+        f = await self._run_program(twin)
+        diff = self.bank.diff_since(snap)
+        self.chk.obs(
+            "IF-OOR-PROG-TWIN",
+            field=self.oor_twin["field"],
+            addr=twin,
+            pre_bit=pre_bit,
+            status=self._s4(f),
+            pg_done=f["pg_done"],
+            pg_status=f["pg_status"],
+            otp_diff="none" if not diff else diff_log(diff),
+            graded=0,
         )
+        ok = self._twin_program("oor_program", f, diff, twin)
+        await self._pass(tag, ok and pre_bit == 0)
 
     async def _case_lock_program(self) -> None:
         """Step 11: program on the write-locked field, then the unlocked twin."""
@@ -872,6 +899,38 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         f = await self._run_program(twin)
         ok = self._twin_program("lock_program", f, self.bank.diff_since(snap), twin)
         await self._pass(tag, ok)
+        await self._enable_clear_order()
+
+    async def _enable_clear_order(self) -> None:
+        """A read held by ``program_enable``, then ``program_enable`` cleared first.
+
+        Logged, not graded: the READ commands at the shim tap while the read is
+        held and after ``program_enable`` drops with ``read_enable`` still set.
+        """
+        await self._clean_ctrl()
+        bit = self.reads["frame"]["addr"]
+        mark = self.cmds.mark()
+        await self._wr(PROGRAM_CTRL_ADDR, program_ctrl_word(0, data=0, enable=1, go=0))
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word(bit, enable=1))
+        await ClockCycles(cocotb.top.clk_i, self.w)
+        held = len(self.cmds.reads_since(mark, address=bit))
+        await self._wr(PROGRAM_CTRL_ADDR, 0)
+        await ClockCycles(cocotb.top.clk_i, self.w)
+        total = len(self.cmds.reads_since(mark, address=bit))
+        f = await self._flags()
+        await self._wr(READ_CTRL_ADDR, 0)
+        self.chk.obs(
+            "IF-ENABLE-CLEAR-ORDER",
+            first="program_enable",
+            second="read_enable",
+            addr=bit,
+            read_cmds_held=held,
+            read_cmds_after_clear=total - held,
+            read_done=f["rd_done"],
+            status=self._s4(f),
+            busy=f"{f['rd_busy']}{f['pg_busy']}",
+            graded=0,
+        )
 
     async def _case_lock_read(self) -> None:
         """Step 12: read on the read-locked field, then the unlocked twin."""
@@ -938,12 +997,9 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         )
         # The contract does not order the two enable-clear writes. read_enable goes
         # first, so that dropping program_enable cannot hand the held read to the bank
-        # before the reset; the order is logged, not graded.
+        # before the reset.
         await self._wr(READ_CTRL_ADDR, 0)
         await self._wr(PROGRAM_CTRL_ADDR, 0)
-        self.chk.info(
-            "IF-ENABLE-CLEAR-ORDER", first="read_enable", second="program_enable", graded=0
-        )
         self._golden_from_bank()
         c_fall = await self._rst_pulse()
         n = await clocks_to_sense(self, self.sense_bound, started=True)
@@ -991,6 +1047,35 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
 
     # -- leaf ---------------------------------------------------------------
 
+    def _oor_twin_bit(self, p: Any) -> dict[str, Any]:
+        """A zero bit of an unlocked spare field that no plan program or read uses."""
+        locked = {
+            LOCK_SLOT_FIELD[p.leg["write_lock_slot"]],
+            LOCK_SLOT_FIELD[p.leg["read_lock_slot"]],
+        }
+        used = {r["addr"] for r in (*self.progs.values(), *self.reads.values())}
+        used |= {self.lock_prog["addr"], self.lock_read["addr"]}
+        cands = [
+            (f, w, b)
+            for f in SPARE_FIELDS
+            if f not in locked
+            for w, b in zero_bits(p.image, f)
+            if bit_address(f, w, b) not in used
+        ]
+        if not cands:
+            raise AssertionError(f"SETUP FAIL seed={self.seed} reason=no_oor_twin_bit")
+        f, w, b = SepSeededRng(self.seed ^ _OOR_TWIN_SALT).choice(cands)
+        rec = {"field": f, "word": w, "bit": b, "addr": bit_address(f, w, b)}
+        self.logger.info(
+            "INFO-DRAW seed=%d oor_program_twin field=%s word=%d bit=%d addr=%d",
+            self.seed,
+            f,
+            w,
+            b,
+            rec["addr"],
+        )
+        return rec
+
     async def run_scenario(self) -> None:
         dut = cocotb.top
         self.seed = seed = self.random_seed()
@@ -1008,6 +1093,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         self.lock_prog = p.leg["lock_program"]
         self.lock_read = p.leg["lock_read"]
         self.oor = list(p.leg["oor_addresses"])
+        self.oor_twin = self._oor_twin_bit(p)
         self._jtag_draws()
         close_graded_window(self.logger)
         set_ef_hold_tag(0, self.logger)

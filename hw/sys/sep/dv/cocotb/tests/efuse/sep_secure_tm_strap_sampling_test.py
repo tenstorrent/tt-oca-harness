@@ -74,6 +74,12 @@ Checkers:
                    profile word of the staged disable vectors, which is not all
                    ones.
 
+``OBS-STM-LATER-SENSE``: after the leg-D strap-0 hold, with the match present and
+the strap at 1, the leaf waits ``_LATER_SENSE_MULT`` x ``T_sense`` more clocks with
+no further stimulus and logs whether ``sep_fuse_sense_done_o`` rises, and
+``secure_tm_o`` there. ``test_mode.adoc`` names a later fuse-sense completion as a
+sampling event and states no such completion while the match holds sensing off.
+
 ``OBS-STM-CLEAR-NOCLK`` logs ``secure_tm_o`` after leg A when ``rst_ni`` falls with
 ``clk_i`` stopped (strap 1); a reset release and a sense with the strap at 1 follow
 before leg B. The leg-E token match is a control (``CTRL-STM-E-TOKEN``, code and
@@ -139,6 +145,8 @@ _TAP_BOUND = 256
 _SYNC_BOUND = 16
 _HMAC_BOUND = 4_096
 _TOKEN_POLLS = 200
+# Clocks of the later-sense watch of leg D, as a multiple of T_sense.
+_LATER_SENSE_MULT = 4
 
 _EVENTS = ("wdt_rst_ni", "dbg_rstb_i", "sw_reset_n", "sep_reset_n_ovrd")
 _FEAT_MASK = (1 << 64) - 1
@@ -443,6 +451,32 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             if code in (TOKEN_MATCH, TOKEN_MISMATCH, TOKEN_ERROR):
                 return code
         raise AssertionError(f"SEC_DIS match status did not settle (last code={code})")
+
+    async def _later_sense(self, t_sense: int) -> None:
+        """OBS-STM-LATER-SENSE: a sense-done rise after the leg-D hold, or none."""
+        h0 = self._now()
+        bound = _LATER_SENSE_MULT * t_sense
+        rise = None
+        while self._now() < h0 + bound:
+            await RisingEdge(cocotb.top.clk_i)
+            last = len(self.rec) - 1
+            if self.rec[last]["done"] == 1:
+                rise = last
+                break
+        end = len(self.rec) - 1
+        secdis = self._window(h0, end, "secdis")
+        self.logger.info(
+            "OBS-STM-LATER-SENSE: leg=D strap=%s sense_rise=%s waited=%d bound=%d T_sense=%d "
+            "secure_tm_o_at_end=%s secdis_ones=%d/%d",
+            self.rec[end]["strap"],
+            "none" if rise is None else f"start+{rise - h0}",
+            end - h0,
+            bound,
+            t_sense,
+            self.rec[end]["stm"],
+            sum(1 for v in secdis if v == 1),
+            len(secdis),
+        )
 
     # -- scenario --------------------------------------------------------------
 
@@ -803,6 +837,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"pre_flip_samples={len(pre_flip)}"
         )
         close_graded_window(self.logger)
+        await self._later_sense(t_sense)
 
         # Evaluate the controls read at the end of the leaf.
         ones = sum(1 for r in self.rec if r["stm"] == 1)

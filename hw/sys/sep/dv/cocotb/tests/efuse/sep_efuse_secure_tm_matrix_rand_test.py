@@ -48,6 +48,19 @@ and JTAG Access Control, Shadow Register Updates and Test-Mode Protection;
                     four targets are set-only in every state. PROD and RMA_SIP restrict
                     JTAG to the token block and log
                     ``OBS-BLOCKED CHK-STM-JTAG reason=lifecycle_gate``.
+  CHK-STM-FEAT-DEMOTED  a closing leg after the SEC_DIS control: for each demotion
+                    {``DEMOTE_1``, ``DEMOTE_2``, both}, in seeded order, a cold reset
+                    with the strap at 1, a full sense, the ``demote`` write and a
+                    64-bit ``FEAT_CTRL`` read. ``secure_tm_o`` reads 1, each written
+                    register reads ``demote`` = 1, and ``FEAT_CTRL`` equals the
+                    profile row of the state with that demotion
+                    (``hw/sys/sep/doc/lifecycle_controller.adoc``, Per-LC-state Feature
+                    Control Profile and Overrides and Final Gates: ``SECURE_TM`` is not
+                    a term of ``feat_ctrl_o``; ``security_disable.adoc``). The disable
+                    vectors of the row are the staged ones with the strap-0 program
+                    bits set. On a PROD image a demoted row differs from the undemoted
+                    row, so the leg shows that the demotion took effect at strap 1.
+                    The write response is logged in the line, not graded.
   INFO-STM-STATE     logs the drawn state and ``jtag_leg`` (1 when CHK-STM-JTAG runs)
                     of the seed. A control line, not a check.
   CTRL-STM-WRITE-ISSUED  each target write returns a B response code of OKAY,
@@ -81,7 +94,9 @@ fields at ``efuse_shadow_probe_o`` at strap 1 and strap 0, against the staged wo
 the specification does not state whether secure test mode masks them) and
 ``OBS-DIGEST-PROG-STATE`` (a strap-0 program of a 0 bit of a drawn digest field: the
 OTP bit, the program commands at the tap and ``efuse_req_error``; the specification
-does not state in which states it lands). No step writes ``LC_STATE`` and no SEC_DIS go runs at strap 1.
+does not state in which states it lands). No step writes ``LC_STATE`` and no SEC_DIS go runs at strap 1. The closing
+leg's resenses compare the shadow with the OTP array as the strap-0 programs
+left it.
 In RMA_CHIPLET the profile row is all ones with or without SEC_DIS, so there the
 SEC_DIS control rests on ``security_disable_o`` and the match codes alone.
 """
@@ -93,12 +108,14 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import SepEfuseBank, SepShimCmdMonitor
+from env.sep_efuse_image import SepEfuseImage
 from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
     DIGEST_FIELDS,
     PROGRAM_CTRL_ADDR,
     SECRET_FIELDS,
+    ST_PROD,
     STATUS_ADDR,
     STM_PROGRAM_CLASSES,
     STM_TARGETS,
@@ -142,6 +159,10 @@ from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL
 TEST = "sep_efuse_secure_tm_matrix_rand_test"
 
 FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
+DEMOTE_ADDR = {g: SEP_LIFECYCLE_CTRL.addr(f"DEMOTE_{g}") for g in (1, 2)}
+DEMOTE_BIT = {g: SEP_LIFECYCLE_CTRL.field_mask(f"DEMOTE_{g}", "demote") for g in (1, 2)}
+# Demotions of the closing strap-1 leg: (DEMOTE_1, DEMOTE_2).
+_DEMOTIONS = ((1, 0), (0, 1), (1, 1))
 M32 = 0xFFFF_FFFF
 ALL_ONES = (1 << 64) - 1
 # W_prog = W_PROG_MULT x the measured sense time (test parameter).
@@ -184,6 +205,7 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         "CHK-STM-PROG",
         "CHK-STM-PROG-CTL",
         "CHK-STM-SECRET",
+        "CHK-STM-FEAT-DEMOTED",
     )
 
     # -- samples -------------------------------------------------------------
@@ -428,6 +450,76 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 program_cmds=len(cmds[cls]),
             )
         return cmds
+
+    async def _strap1_demote_leg(self, state: str) -> None:
+        """CHK-STM-FEAT-DEMOTED: each demotion at strap 1 reads its profile row.
+
+        The strap-0 programs set one bit of each program class in OTP, so the
+        disable vectors of the row and the compare golden of each resense take
+        those bits. The graded window is open from the demotion write to the
+        ``FEAT_CTRL`` read, so ``cp_prod_strap1_demote`` records the PROD cells.
+        """
+        p = self.p
+        golden = SepEfuseImage()
+        golden.words = list(p.image.words)
+        for cls in STM_PROGRAM_CLASSES:
+            pr = p.leg["programs"][cls]
+            golden.words[field_word(pr["field"]) + pr["word"]] |= 1 << pr["bit"]
+        sip, sys_ = golden.field_int("SIP_DIS"), golden.field_int("SYS_DIS")
+        base = feat_ctrl_profile(p.lc_raw, sip, sys_)
+        rows = {
+            d: feat_ctrl_profile(p.lc_raw, sip, sys_, demote_1=d[0], demote_2=d[1])
+            for d in _DEMOTIONS
+        }
+        same = [f"{d[0]}{d[1]}" for d, r in rows.items() if r.value == base.value]
+        if state == ST_PROD and same:
+            raise AssertionError(
+                f"test bug: PROD demoted row(s) {','.join(same)} equal the undemoted row "
+                f"0x{base.value:016x} (sip_dis=0x{sip:016x} sys_dis=0x{sys_:016x}), so the "
+                "leg cannot show each demotion"
+            )
+        bank = SepEfuseImage()
+        bank.words = list(SepEfuseBank().read())
+        self.write_efuse_image(bank)
+        order = p.draw.shuffled("strap1_demote_order", _DEMOTIONS)
+        self.logger.info(
+            "INFO-STM-DEMOTE-LEG seed=%d state=%s order=%s",
+            p.seed,
+            state,
+            ",".join(f"{d1}{d2}" for d1, d2 in order),
+        )
+        for d1, d2 in order:
+            await rst_pulse(self, strap=1)
+            await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
+            waited = await wait_bit(self, "secure_tm_o", 1, STM_BOUND)
+            stm = bit(self, "secure_tm_o")
+            # wait_bit returns in the read-only phase; leave it before the gate write.
+            await ClockCycles(cocotb.top.clk_i, 1)
+            self._open()
+            resp = {}
+            for g, on in ((1, d1), (2, d2)):
+                if on:
+                    resp[g] = await self.fd.wr_graded_by_readback(DEMOTE_ADDR[g], DEMOTE_BIT[g])
+            rd = {g: await self.fd.rd(DEMOTE_ADDR[g]) for g in (1, 2)}
+            feat = await self._feat()
+            row = rows[(d1, d2)]
+            landed = all(bool(rd[g] & DEMOTE_BIT[g]) == bool(on) for g, on in ((1, d1), (2, d2)))
+            self._grade(
+                "STM-FEAT-DEMOTED",
+                waited is not None and stm == 1 and landed and feat == row.value,
+                state=state,
+                strap=1,
+                secure_tm_o=stm,
+                demote=f"{d1}{d2}",
+                demote1_rd=f"0x{rd[1]:08x}",
+                demote2_rd=f"0x{rd[2]:08x}",
+                wr_resp=[resp.get(g, "na") for g in (1, 2)],
+                feat=f"0x{feat:016x}",
+                feat_exp=f"0x{row.value:016x}",
+                row=row.row,
+                undemoted=f"0x{base.value:016x}",
+            )
+            self._close()
 
     # -- scenario ------------------------------------------------------------
 
@@ -713,7 +805,11 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         fell = await wait_bit(self, "lcc_security_disable_probe_o", 0, SDIS_BOUND)
         self.chk.ok(
             "STM-CTL",
-            sd_feat == ALL_ONES and code_mm == CODE_MISMATCH and fell is not None,
+            code_m == CODE_MATCH
+            and rose is not None
+            and sd_feat == ALL_ONES
+            and code_mm == CODE_MISMATCH
+            and fell is not None,
             strap=0,
             secure_tm_before_sense=int(e0["before_ones"] != 0),
             secure_tm_after_sense=e0["after"],
@@ -721,10 +817,12 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             landed="na",
             feat=f"0x{feat0:016x}",
             secdis_feat=f"0x{sd_feat:016x}",
-            code_match=f"0x{code_m:02x}",
+            sdis_rose=int(rose is not None),
+            code_match=f"0x{(code_m or 0):02x}",
             code_mismatch=f"0x{(code_mm or 0):02x}",
             sdis_after_mismatch=bit(self, "lcc_security_disable_probe_o"),
         )
+        await self._strap1_demote_leg(state)
         await self.shim.stop()
         # The monitor stop returns in the read-only phase; leave it before the drive.
         await ClockCycles(cocotb.top.clk_i, 1)

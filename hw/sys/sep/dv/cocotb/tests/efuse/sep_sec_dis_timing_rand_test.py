@@ -32,7 +32,10 @@ Both classes: a cold reset under the match leaves every shadow field at its rese
 value with an OKAY response: 0x0, and 0x0F for ``LC_STATE``, the INVALID hold that
 ``hw/sys/sep/doc/otp_fuse_controller.adoc`` (Fuse Sensing and Boot Sequencing)
 gives before sensing completes
-(``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``, reset values). The compare
+(``hw/sys/sep/regs/gen/adoc/blocks/sep_efuse_map.adoc``, reset values). At the
+same read the port ``lc_state_o`` (``{~raw, raw}``,
+``doc/integrator/src/smu-sep.adoc``) equals that ``LC_STATE`` reset value
+(CHK-LC-STATE-PORT). The compare
 takes each word's field bits and reset value from the generated IP-XACT, so the
 ``rsvd`` and ``reserved`` fields (access R, reset 0x0) are compared too; only a bit
 with no field or no declared reset is masked and logged as ``rsvd=0x<v>``. A mismatch,
@@ -40,8 +43,14 @@ a cold reset and a full sense recover the staged image; that recovery, the sense
 stop, the OKAY map read and the feature override are logged controls here.
 ``secure_tm_req_i`` stays 0 for the whole leaf.
 
-Checkers: CHK-BIND, CHK-SDIS-HOLD, CHK-SDIS-RESET-VALUES. A failing hook control
-logs ``CHK-HOOK FAIL`` and ends the leaf.
+Class C also logs ``OBS-SDIS-FIRST-CYCLE``: on the first ``clk_i`` edge after the
+release of the cold reset under the match, and on the first edge with
+``security_disable_o`` = 1, the feature-control probe ``lcc_feat_ctrl_probe_o``,
+``security_disable_o``, sense done and ``lc_state_o``. No text states the
+feature-control value on those first cycles.
+
+Checkers: CHK-BIND, CHK-SDIS-HOLD, CHK-SDIS-RESET-VALUES, CHK-LC-STATE-PORT. A
+failing hook control logs ``CHK-HOOK FAIL`` and ends the leaf.
 The VPLAN evidence line of CHK-SDIS-HOLD names ``ctl_map_resp`` twice; the leaf
 logs the control-sense map read as ``ctl_map_resp`` and the read in the hold window
 as ``hold_map_resp``.
@@ -55,6 +64,7 @@ from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
+from env.sep_efuse_image import LC_FIELD_MASK, lc_encode
 from env.sep_efuse_plan import (
     CH_SEC_DIS,
     CODE_MATCH,
@@ -112,6 +122,13 @@ def _probe(sig) -> tuple[int, int]:
     if "x" in s or "X" in s or "z" in s or "Z" in s:
         return int(s.translate(_TO0), 2), int(s.translate(_X1), 2)
     return int(s, 2), 0
+
+
+def _hex(bits: str) -> str:
+    """A packed value as hex, or its bit string when a bit is X or Z."""
+    if set(bits) <= {"0", "1"}:
+        return f"0x{int(bits, 2):0{(len(bits) + 3) // 4}x}"
+    return bits
 
 
 def _word(value: int, w: int) -> int:
@@ -226,12 +243,17 @@ class _HoldMonitor:
 class sep_sec_dis_timing_rand_test(sep_base_test):
     """SEC_DIS match before and during sense; shadow hold and reset values."""
 
-    required_evidence = ("CHK-BIND", "CHK-SDIS-HOLD", "CHK-SDIS-RESET-VALUES")
+    required_evidence = (
+        "CHK-BIND",
+        "CHK-SDIS-HOLD",
+        "CHK-SDIS-RESET-VALUES",
+        "CHK-LC-STATE-PORT",
+    )
 
     # ------------------------------------------------------------------ bus
 
     def _sense_done(self) -> int:
-        return self.rd(cocotb.top.sep_fuse_sense_done_o, allow_unknown=True) & 1
+        return self.rd_known(cocotb.top.sep_fuse_sense_done_o) & 1
 
     def _sdis(self) -> int:
         return self.rd(cocotb.top.lcc_security_disable_probe_o, allow_unknown=True) & 1
@@ -262,6 +284,37 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             out.append((sd, val, xm))
             if sd or len(out) > _SENSE_BOUND:
                 return
+
+    async def _first_cycle(self, bound: int) -> dict:
+        """Samples on the first clk_i edge with rst_ni high after a low, and on the first
+        edge with security_disable_o = 1 within ``bound`` edges of it (-1: none)."""
+        dut = cocotb.top
+        seen_low = False
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            rst = sig_bits(dut.rst_ni)
+            if rst == "0":
+                seen_low = True
+            elif seen_low and rst == "1":
+                break
+        out = {
+            "rel_sdis": sig_bits(dut.lcc_security_disable_probe_o),
+            "rel_feat": _hex(sig_bits(dut.lcc_feat_ctrl_probe_o)),
+            "rel_sense_done": sig_bits(dut.sep_fuse_sense_done_o),
+            "rel_lc_port": _hex(sig_bits(dut.lc_state_probe_o)),
+            "sdis_at": -1,
+            "sdis_feat": "na",
+        }
+        for n in range(bound):
+            if sig_bits(dut.lcc_security_disable_probe_o) == "1":
+                out["sdis_at"] = n
+                out["sdis_feat"] = _hex(sig_bits(dut.lcc_feat_ctrl_probe_o))
+                break
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+        await NextTimeStep()
+        return out
 
     async def _sdis_rise(self, bound: int) -> int | None:
         """Clock count (of self.clk) at the first clock with security_disable_o = 1."""
@@ -316,6 +369,17 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             )
             self.chk.finish()
         await RisingEdge(dut.clk_i)
+
+    async def _staged_readback(self, staged_val: dict[int, int]) -> bool:
+        """Every shadow register; each staged non-zero word reads its non-zero staged value."""
+        ok = True
+        for name in FIELD_NAMES:
+            for k in range(field_n_words(name)):
+                widx = field_word(name) + k
+                got = await self.fd.rd(shadow_addr(name, k))
+                if widx in staged_val:
+                    ok &= got == staged_val[widx] and got != 0
+        return ok
 
     async def _read_shadow_map(self) -> list[tuple[str, int, int, int, int]]:
         """Every shadow word: (field, word, data, response code, sense done at response)."""
@@ -379,14 +443,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         t_first, tl = changes[0], changes[-1]
         await self.wait_fuse_sense()
         ctl_sense_cmds = len(self.shim.reads_since(ctl_mark))
-        # Every shadow register; each staged non-zero word reads its non-zero staged value.
-        ctl_fields_ok = True
-        for name in FIELD_NAMES:
-            for k in range(field_n_words(name)):
-                widx = field_word(name) + k
-                got = await self.fd.rd(shadow_addr(name, k))
-                if widx in staged_val:
-                    ctl_fields_ok &= got == staged_val[widx] and got != 0
+        ctl_fields_ok = await self._staged_readback(staged_val)
         self.chk.ctrl(
             "SDIS-STAGED-NONZERO",
             ctl_fields_ok,
@@ -419,6 +476,13 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         lat = rise_n - c0
         await self._mismatch_drop("latency")
         await self.pulse_rst_ni(max_sense_cycles=_SENSE_BOUND)
+        if cls == "C":
+            # The class C cold reset must start from a full sense of the staged words.
+            self.chk.ctrl(
+                "SDIS-PRE-COLD-STAGED",
+                await self._staged_readback(staged_val),
+                fields=len(p.leg["staged_fields"]),
+            )
 
         if cls == "B":
             hold = await self._class_b(seed, trace, t_first, tl, lat, w, staged, staged_val)
@@ -440,6 +504,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             hold["bad_probe"] == 0
             and hold.get("reads_in_window", 0) == 0
             and hold.get("rst_released", 1) == 1
+            and (cls != "B" or (hold["n_loaded"] >= 1 and hold["n_reset"] >= 1))
             and controls_ok,
             **{
                 "class": cls,
@@ -455,6 +520,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
                 "match_lat": lat,
                 "k": hold.get("k", "na"),
                 "n_loaded": hold.get("n_loaded", "na"),
+                "n_reset": hold.get("n_reset", "na"),
                 "ctl_sense_done": int(hold["bad_sd"] == 0) ^ 1,
                 "ctl_sdis_o": int(hold["bad_sdis"] == 0),
                 "hold_map_resp": RESP_NAME.get(hold["map_resp"], str(hold["map_resp"])),
@@ -486,7 +552,29 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
                 )
             if name in staged_fields and data & mask != exp:
                 staged_zero = False
+        lc_port = sig_bits(dut.lc_state_probe_o)
+        port_sd = self._sense_done()
+        port_sdis = self._sdis()
+        lc_reset = word_reset(shadow_addr("LC_STATE", 0)) & LC_FIELD_MASK
+        if lc_reset != lc_encode(0xF):
+            raise AssertionError(
+                f"test bug: LC_STATE RDL reset 0x{lc_reset:02x} is not INVALID "
+                f"0x{lc_encode(0xF):02x}"
+            )
+        port_val = int(lc_port, 2) if set(lc_port) <= {"0", "1"} else None
         close_graded_window(self.logger)
+        self.chk.ok(
+            "LC-STATE-PORT",
+            port_val == lc_reset and port_sd == 0 and port_sdis == 1,
+            **{
+                "class": cls,
+                "got_port": _hex(lc_port),
+                "exp": f"0x{lc_reset:02x}",
+                "shadow": lc_word,
+                "sense_done": port_sd,
+                "secdis": port_sdis,
+            },
+        )
         self.chk.ok(
             "SDIS-RESET-VALUES",
             not bad and staged_zero and ctl_fields_ok,
@@ -645,6 +733,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             "k": k,
             "k_ctl": k,
             "n_loaded": n_loaded,
+            "n_reset": n_reset,
             "bad_sd": mon.bad_sd,
             "bad_sdis": mon.bad_sdis,
             "bad_probe": mon.bad_probe,
@@ -667,6 +756,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         if code != CODE_MATCH or rise_n is None:
             hook_fail(self.chk, reason="class_c_match", code=code, rise=rise_n)
         set_efuse_sdis_hold_bound(w, self.logger)
+        first = cocotb.start_soon(self._first_cycle(_RST_RELEASE_BOUND))
         await rst_pulse(self)
         mon = _HoldMonitor("zero")
         mark = self.shim.mark()
@@ -678,6 +768,16 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         mon.stop = True
         set_efuse_sdis_hold_bound(0, self.logger)
         await RisingEdge(dut.clk_i)
+        fc = await first
+        self.chk.obs(
+            "SDIS-FIRST-CYCLE",
+            rel_secdis=fc["rel_sdis"],
+            rel_feat=fc["rel_feat"],
+            rel_sense_done=fc["rel_sense_done"],
+            rel_lc_port=fc["rel_lc_port"],
+            secdis_first_at=fc["sdis_at"],
+            secdis_first_feat=fc["sdis_feat"],
+        )
         self.chk.obs(
             "SDIS-CLASS-C",
             window=w,

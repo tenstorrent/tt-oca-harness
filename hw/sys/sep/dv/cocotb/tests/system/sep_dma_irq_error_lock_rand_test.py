@@ -196,9 +196,10 @@ Checkers:
                     and destination address must have the same alignment."
                     (``secure_dma.rdl:92``) states no unit for the alignment
                     and no ERROR_CODE bit for it (``:333-372``).
-                    Control, else CTRL-MISSING (CTRL-DMA-ALIGN-GO): after the
-                    GO write a STATUS read shows DONE or ERROR, or the DMA
-                    master tap shows an AR beat.
+                    Control, else CTRL-MISSING (CTRL-DMA-ALIGN-GO):
+                    TRANSFER_WIDTH and DST_ADDR_LO read back as written before
+                    the GO write, and after it a STATUS read shows DONE or
+                    ERROR, or the DMA master tap shows an AR beat.
   CHK-DMA-INTR-RELEASE per L2 kind: after the write of 1 to STATUS.ERROR,
                     INTR_STATE.DMA_ERROR reads 0 and source 11 is low. Control:
                     INTR_STATE.DMA_ERROR reads 1 and source 11 is high just
@@ -274,6 +275,7 @@ from seq_lib.sep_dma_ops import (
     _D,
     CHUNK_DATA_SIZE,
     CONTROL,
+    DST_ADDR_LO,
     ERROR_CODE,
     ERROR_CODE_MASK,
     INTR_CHUNK_DONE,
@@ -923,9 +925,11 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         dst = c.dst + c.align_dst_off
         await self._cold_reset()
         await self._base_config(MAX_BYTES // 4)
-        await ops.program_transfer(
+        written = await ops.program_transfer(
             src=c.src, dst=dst, total=size, chunk=size, width_enc=ALIGN_WIDTH_ENC
         )
+        width_rb = await ops.rd(TRANSFER_WIDTH)
+        dst_rb = await ops.rd(DST_ADDR_LO)
         tap = SepDmaTap().start()
         await ClockCycles(cocotb.top.clk_i, 1)
         m = tap.mark()
@@ -951,10 +955,12 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
         await ops.wr(CONTROL, control_word())
         line = (
             f"width_enc={ALIGN_WIDTH_ENC} size={size} src=0x{c.src:08x} dst=0x{dst:08x} "
-            f"src_mod4={c.src % 4} dst_mod4={dst % 4} go={go} ended={int(ended)} "
-            f"ar_seen={int(bool(ev.ar))} status={st.fmt()}"
+            f"src_mod4={c.src % 4} dst_mod4={dst % 4} "
+            f"transfer_width_rb=0x{width_rb:x} dst_addr_lo_rb=0x{dst_rb:08x} go={go} "
+            f"ended={int(ended)} ar_seen={int(bool(ev.ar))} status={st.fmt()}"
         )
-        if not (ended or ev.ar):
+        landed = width_rb == written["TRANSFER_WIDTH"] and dst_rb == written["DST_ADDR_LO"]
+        if not (landed and (ended or ev.ar)):
             self._ctrl_missing("CTRL-DMA-ALIGN-GO", line)
         self.logger.info("CTRL-DMA-ALIGN-GO PASS seed=%d %s", c.seed, line)
         set_open_value_leg_pass("dma_align_mismatch", self.logger)
