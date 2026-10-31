@@ -296,15 +296,31 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
             raise AssertionError(f"CTRL-DEMOTE-RB control not met: {line}")
         self.logger.info("CTRL-DEMOTE-RB: %s", line)
 
+    async def _require_demotes_clear(self, tag: str) -> None:
+        """CTRL-DEMOTE-CLEAR: DEMOTE_1 and DEMOTE_2 read ``demote`` 0 and ``lock`` 0.
+
+        An undemoted cell after a resense then runs with both demotes clear,
+        also where its golden equals the demoted golden (TEST_DEV at DIS 0).
+        """
+        fd = SepEfuseFd(self)
+        got = {g: await fd.rd(DEMOTE_ADDR[g]) for g in (1, 2)}
+        line = f"{tag} " + " ".join(f"demote_{g}=0x{v:08x}" for g, v in got.items())
+        if any(v & (DEMOTE_BIT | DEMOTE_LOCK_BIT) for v in got.values()):
+            self.logger.error("CTRL-DEMOTE-CLEAR FAIL (control not met): %s", line)
+            raise AssertionError(f"CTRL-DEMOTE-CLEAR control not met: {line}")
+        self.logger.info("CTRL-DEMOTE-CLEAR: %s", line)
+
     async def _walk_demotes(self, image: SepEfuseImage, *, dis_tag: str) -> int:
         n = 0
         lc = lc_state_name(image.lc_raw())
+        await self._require_demotes_clear(f"{lc}/{dis_tag}/d00")
         await self._check_cell(image, demote_1=0, demote_2=0, tag=f"{lc}/{dis_tag}/d00")
         n += 1
         await self._set_demote(1, f"{lc}/{dis_tag}/d10")
         await self._check_cell(image, demote_1=1, demote_2=0, tag=f"{lc}/{dis_tag}/d10")
         n += 1
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        await self._require_demotes_clear(f"{lc}/{dis_tag}/d00b")
         await self._check_cell(image, demote_1=0, demote_2=0, tag=f"{lc}/{dis_tag}/d00b")
         await self._set_demote(2, f"{lc}/{dis_tag}/d01")
         await self._check_cell(image, demote_1=0, demote_2=1, tag=f"{lc}/{dis_tag}/d01")

@@ -2590,6 +2590,7 @@ module sep_uvm_top
             release `LCC_INST.u_lc_state_dec.data_i;
         end
     end
+    assign lc_dec_data_probe_o = `LCC_INST.u_lc_state_dec.data_i;
 
     // ------------------------------------------------------------------
     // Lifecycle controller register write tap.

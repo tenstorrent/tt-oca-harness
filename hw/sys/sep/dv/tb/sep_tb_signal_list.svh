@@ -1590,6 +1590,9 @@
 // lc_state_o of sep: the differentially encoded lifecycle state (frontdoor DUT
 // output).
 `SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_state_probe_o)
+// Input of the lifecycle-state decoder (read-only XMR): pair i is
+// {data_i[LcStateBitWidth+i], data_i[i]}, after any sigint inject force.
+`SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_dec_data_probe_o)
 // AXI-Lite write port of the lifecycle controller register block. Read-only
 // taps: the number of write-address handshakes since time 0 (wraps), the
 // register offset of the last one, and the data of the last write-data

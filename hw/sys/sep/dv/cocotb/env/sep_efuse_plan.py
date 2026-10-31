@@ -1036,7 +1036,9 @@ PRESTAGED_TESTS: tuple[str, ...] = (
     T_SEC_DIS_TIMING,
 )
 
-_TIMEOUT_CYCLES_RESET = 0x80_0000
+_TIMEOUT_CYCLES_RESET = EFUSE_INTERFACE_CTRL.field_reset(
+    "EFUSE_READ_REQ_TIMEOUT", "read_req_timeout_cycles"
+) << EFUSE_INTERFACE_CTRL.field_lsb("EFUSE_READ_REQ_TIMEOUT", "read_req_timeout_cycles")
 
 
 def _timeout_count(d: SepEfuseDraws, name: str) -> int:

@@ -221,6 +221,14 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             if got["sense_done"] != 0 or (got["sdis"] == 0 and known) or clk > SENSE_BOUND:
                 return got
 
+    async def _gate_levels(self, label: str) -> None:
+        """Gated ``dbg_disable`` ports and fuse DFT ports before a walk, after ``ReadOnly``."""
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        dbg = {k: self._port(f"dbg_disable_{k}_o") for k in GATED_DBG}
+        self.pre_levels.append((label, dbg, self._fuse_ports()))
+        await RisingEdge(cocotb.top.clk_i)
+
     # -- checks --------------------------------------------------------------
 
     async def _epoch_watch(self, st: dict) -> None:
@@ -307,6 +315,14 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             mask=f"0x{mask:x}",
             value=value,
             demoted=walk["dem_label"],
+        )
+        self.chk.ctrl(
+            "SIGINT-FRESH",
+            pre_sigint == 0 and pre_feat == walk["pre_exp"],
+            **cell,
+            pre_sigint=pre_sigint,
+            pre_feat="x" if pre_feat is None else f"0x{pre_feat:016x}",
+            exp_feat=f"0x{walk['pre_exp']:016x}",
         )
         self.chk.ok(
             "SIGINT",
@@ -454,10 +470,12 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         self.walk_count = 0
         self.applied = 0
         self.epochs_exp = 0
-        self.dec_in = dut.u_dut.u_sep.u_sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
+        self.dec_in = dut.lc_dec_data_probe_o
         self.epoch_fuse: list[tuple[str, dict]] = []
         self.epoch_dbg: list[tuple[str, dict]] = []
         self.release_logged = False
+        self.pre_levels: list[tuple[str, dict, dict]] = []
+        await self._gate_levels("none")
         walk = {
             "n": n,
             "sip": sip,
@@ -465,6 +483,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             "role": role,
             "ctl_ok": ctl_ok,
             "ctl": ctl,
+            "pre_exp": ctl_row.value,
             "dem_label": "none",
             "exp_pairs": ref_pairs,
             "pair_ctl_ok": True,
@@ -496,8 +515,12 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             dem_written=d["written"],
             dem_before=d["before"],
             dem_resp=d["resp"],
+            pre_exp=feat_ctrl_profile(
+                n, sip, sys_, demote_1=d["dsel"][0], demote_2=d["dsel"][1]
+            ).value,
             last=True,
         )
+        await self._gate_levels(d["label"])
         await self._walk(walk)
         self.chk.ctrl(
             "SIGINT-EPOCHS",
@@ -583,6 +606,13 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             if any(d[k] != 1 for k in GATED_DBG)
         ]
         open_bad = [f"{k}={opened[k]}" for k in GATED_DBG if opened[k] != 0]
+        pre_open = [f"{lbl}:{k}" for lbl, d, _f in self.pre_levels for k in GATED_DBG if d[k] == 0]
+        if not pre_open:
+            self.chk.obs(
+                "DBG-DISABLE-NODISC",
+                reason="every gated port read 1 before both walks",
+                walks=len(self.pre_levels),
+            )
         self.chk.ok(
             "DBG-DISABLE",
             open_sdis == 1 and not open_bad and len(self.epoch_dbg) == self.epochs_exp and not bad,
@@ -592,6 +622,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             mismatches=len(bad),
             first_bad=bad[0] if bad else "none",
             open_ctl_bad=",".join(open_bad) or "none",
+            pre_open=len(pre_open),
         )
 
     def _fuse_class(self, opened: dict, open_sdis: int) -> None:
@@ -608,6 +639,16 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         )
         for k in FUSE_PORTS:
             bad = [tag for tag, f in self.epoch_fuse if f[k] is None or f[k] != closed[k]]
+            moved = [
+                lbl for lbl, _d, f in self.pre_levels if f[k] is not None and f[k] != closed[k]
+            ]
+            if not moved:
+                self.chk.obs(
+                    "FUSE-DFT-NODISC",
+                    port=FUSE_PORTS[k],
+                    reason="the port read its closed control before both walks",
+                    walks=len(self.pre_levels),
+                )
             self.chk.ok(
                 "FUSE-DFT-CLASS",
                 presense_ok
@@ -626,6 +667,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
                 closed_sense_done=closed["sense_done"],
                 closed_sdis=closed["sdis"],
                 closed_clk=closed["clk"],
+                pre_open_walks=len(moved),
             )
 
     # -- leg C ---------------------------------------------------------------

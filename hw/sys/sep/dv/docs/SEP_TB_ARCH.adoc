@@ -337,6 +337,10 @@ Observation probe groups:
   `sep_sec_dis_timing_rand_test`, `sep_lcc_state_codeword_rand_test`,
   `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`,
   `sep_lcc_lc_state_transition_matrix_test`.
+* Lifecycle decoder input tap (`lc_dec_data_probe_o`): the decoder input
+  `u_lc_state_dec.data_i` of `u_sep_lifecycle_ctrl`, read-only XMR, after the
+  LC differential-integrity inject. Owner: `sep_lcc_state_codeword_rand_test`
+  (CTRL-SIGINT-EPOCHS counts the epochs whose broken pairs reach it).
 * eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of
   `u_sep_fcov`): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
   comparator fault bits), `token_go_i` (hash start pulses),

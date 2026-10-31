@@ -29,7 +29,9 @@ Checkers:
                   sense done and answer OKAY. Zero-reset rows count on a four-state
                   simulator only; on Verilator they log ``INFO-CSR-RESET LOG``.
   CHK-CSR-RW      ``EFUSE_PROGRAM_CTRL`` and ``EFUSE_READ_CTRL`` read back the drawn
-                  pattern; a write of 0x71 to the status register leaves 0x1.
+                  pattern; a write of 0x71 to the status register leaves 0x1; with
+                  ``efuse_read_addr_error`` set, a write of 0x71 plus
+                  ``efuse_read_addr_error_clear`` leaves 0x1, so a lost write fails.
   CHK-TOKEN-RW    each token array reads back the eight words written in drawn order.
   CHK-FEAT-RO     ``FEAT_CTRL`` keeps its value after one 64-bit write of its
                   complement (``sep_lifecycle_ctrl.rdl``: ``FEAT_CTRL`` is ``sw = r``).
@@ -42,7 +44,9 @@ the lifecycle register block. The write tap (``lcc_wr_count_probe_o``,
 ``lcc_wr_addr_probe_o``, ``lcc_wr_data_probe_o``) counts one write-address
 handshake, at the ``FEAT_CTRL`` offset of the generated RDL, with the written data.
 A missing tap event fails the leaf, so CHK-FEAT-RO cannot pass on a write that
-never arrived.
+never arrived. ``CTRL-STATUS-ERR-SET``: a read at the first bit address past the
+bank sets ``efuse_read_addr_error`` before the second status write, so that write
+has an effect a lost write cannot show.
 
 Log-only: the response and read data past the extent and in the reserved span
 (``OBS-WIN-RESP LOG``), the two read-data registers (``OBS-CSR-DATA LOG``), the timeout
@@ -77,6 +81,7 @@ from env.sep_efuse_plan import (
     TOKEN_T1,
     TOKEN_T2,
     plan,
+    read_ctrl_word,
     shadow_addr,
     token_words,
 )
@@ -114,7 +119,21 @@ _RESET_EXP = {
 if _RESET_EXP != {_STATUS: 0x1, _PG: 0x0, _RD: 0x0, _RD_TMO: 0x0080_0000, _PG_TMO: 0x0080_0000}:
     raise RuntimeError(f"interface-control reset values {_RESET_EXP} differ from the contract")
 
-_STATUS_RO_WRITE = 0x0000_0071  # bits 0, 4, 5, 6 at 1; the three clear bits at 0
+_RAE = _IC.field_mask(_STATUS, "efuse_read_addr_error")
+# Every read-only bit of STATUS at 1; the three clear bits at 0.
+_STATUS_RO_WRITE = (
+    _SENSE_DONE
+    | _IC.field_mask(_STATUS, "efuse_req_error")
+    | _IC.field_mask(_STATUS, "efuse_program_addr_error")
+    | _RAE
+)
+if _STATUS_RO_WRITE != 0x0000_0071:
+    raise RuntimeError(f"STATUS read-only write 0x{_STATUS_RO_WRITE:x} differs from the contract")
+_STATUS_RO_CLEAR_WRITE = _STATUS_RO_WRITE | _IC.field_mask(_STATUS, "efuse_read_addr_error_clear")
+# The first bit address past the bank (otp_fuse_controller.adoc fuse bits).
+_OOB_READ_BIT = 32 * NUM_FUSE_WORDS
+# Bound of each STATUS poll of step 19, in frontdoor reads.
+_STATUS_POLL_READS = 64
 _FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 _FEAT_MASK = SEP_LIFECYCLE_CTRL.mask("FEAT_CTRL")
 _FEAT_OFFSET = SEP_LIFECYCLE_CTRL.offset("FEAT_CTRL")
@@ -243,6 +262,46 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             resp=_RESP.get(code, code),
             rdata=f"0x{rdata & 0xFFFF:04x}",
             word=f"0x{word:08x}",
+        )
+
+    async def _poll_status(self, until) -> tuple[int, int]:
+        """Read STATUS until ``until(field bits)`` holds: (field bits, reads); bounded."""
+        got = 0
+        for n in range(1, _STATUS_POLL_READS + 1):
+            got, _ok, _c = await self._rd(STATUS_ADDR)
+            got &= _IC.mask32(_STATUS)
+            if until(got):
+                return got, n
+        return got, _STATUS_POLL_READS
+
+    async def _status_write_with_error(self) -> None:
+        """Procedure step 19: the read-only STATUS write also clears a set error flag."""
+        mask = _IC.mask32(_STATUS)
+        await self._wr(READ_CTRL_ADDR, read_ctrl_word(_OOB_READ_BIT))
+        pre, polls = await self._poll_status(lambda v: v & _RAE)
+        await self._wr(READ_CTRL_ADDR, 0)
+        pre_exp = _RESET_EXP[_STATUS] | _RAE
+        set_ok = self.chk.ctrl(
+            "STATUS-ERR-SET",
+            pre == pre_exp,
+            read_bit=_OOB_READ_BIT,
+            status=f"0x{pre:08x}",
+            exp=f"0x{pre_exp:08x}",
+            polls=polls,
+        )
+        _ok_w, wr_code = await self._wr(STATUS_ADDR, _STATUS_RO_CLEAR_WRITE, ungraded=True)
+        got, polls = await self._poll_status(lambda v: not v & _RAE)
+        cmp = field_compare(got, _RESET_EXP[_STATUS], mask)
+        self.chk.ok(
+            "CSR-RW",
+            set_ok and cmp.ok,
+            reg="STATUS",
+            pre=f"0x{pre:08x}",
+            wr=f"0x{_STATUS_RO_CLEAR_WRITE:08x}",
+            wr_resp=_RESP.get(wr_code, wr_code),
+            got=f"0x{got:08x}",
+            exp=f"0x{_RESET_EXP[_STATUS]:08x}",
+            polls=polls,
         )
 
     async def _graded_regs(self) -> dict[str, int]:
@@ -591,7 +650,11 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         )
         close_graded_window(self.logger)
 
-        # Step 19: sub-word writes and an unaligned read, after every graded step,
+        # Step 19: a STATUS write whose effect shows. After the last graded window,
+        # because the out-of-range read changes the status fields of EFUSE_READ_CTRL.
+        await self._status_write_with_error()
+
+        # Step 20: sub-word writes and an unaligned read, after every graded step,
         # logged. EFUSE_PROGRAM_CTRL takes data in efuse_addr only, so go and
         # program_enable stay 0; the SYS_DIS word is the one step 17 left alone.
         await self._subword(

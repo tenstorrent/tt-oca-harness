@@ -504,6 +504,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             hold["bad_probe"] == 0
             and hold.get("reads_in_window", 0) == 0
             and hold.get("rst_released", 1) == 1
+            and (cls != "B" or (hold["n_loaded"] >= 1 and hold["n_reset"] >= 1))
             and controls_ok,
             **{
                 "class": cls,
@@ -519,6 +520,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
                 "match_lat": lat,
                 "k": hold.get("k", "na"),
                 "n_loaded": hold.get("n_loaded", "na"),
+                "n_reset": hold.get("n_reset", "na"),
                 "ctl_sense_done": int(hold["bad_sd"] == 0) ^ 1,
                 "ctl_sdis_o": int(hold["bad_sdis"] == 0),
                 "hold_map_resp": RESP_NAME.get(hold["map_resp"], str(hold["map_resp"])),
@@ -731,6 +733,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             "k": k,
             "k_ctl": k,
             "n_loaded": n_loaded,
+            "n_reset": n_reset,
             "bad_sd": mon.bad_sd,
             "bad_sdis": mon.bad_sdis,
             "bad_probe": mon.bad_probe,
