@@ -47,9 +47,9 @@ OR-merged with the writes of the leaf).
   CHK-DEMOTE-MARK   every ``DEMOTE_1``/``DEMOTE_2`` write that leaves the register
                     unchanged by the RW1S golden (a blocked ``demote``, a repeated
                     ``lock``, a ``zero`` write, ...) and the leg A SEC_DIS write carry
-                    one ``rsvd`` bit k that no write since the cold reset set (k drawn
-                    with ``SepSeededRng``); the 64-bit readback right after the write
-                    has bit k set. ``rsvd`` is write-one-to-set with no write enable
+                    one ``rsvd`` bit k in [63:32] that no write since the cold reset
+                    set (k drawn with ``SepSeededRng``); the 64-bit readback right
+                    after the write has bit k set. ``rsvd`` is write-one-to-set with no write enable
                     (``sep_lifecycle_ctrl.rdl`` DEMOTE_1/2), so bit k proves that the
                     write reached the register.
   CHK-GATE-BOUND    every read with SEC_DIS 0: no bit outside the OR of the SEC_DIS 0
@@ -175,6 +175,9 @@ DEMOTE_OP = {"demote": DEMOTE_BIT, "lock": LOCK_BIT, "zero": 0, "both": DEMOTE_B
 OP_NAME = {"demote": "set_demote", "lock": "set_lock", "zero": "zero", "both": "set_both"}
 RSVD_MASK = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "rsvd")
 RSVD_BITS = tuple(b for b in range(64) if (RSVD_MASK >> b) & 1)
+# Marker bits sit in the upper 32-bit lane: the FCOV write class of a DEMOTE write
+# (sep_lc_demote_lock_cg) reads the low lane, which then carries the op value alone.
+MARK_BITS = tuple(b for b in RSVD_BITS if b >= 32)
 # Salt of the marker-bit stream; the leaf plan draws nothing from it.
 _MARK_SALT = 0x4D41_524B_4445_4D4F
 
@@ -589,7 +592,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         value = _op_value(op)
         k = None
         if mark or not applied:
-            free = [b for b in RSVD_BITS if not (self.rsvd[reg] >> b) & 1]
+            free = [b for b in MARK_BITS if not (self.rsvd[reg] >> b) & 1]
             if not free:
                 hook_fail(self.chk, reason="no free rsvd marker bit", reg=reg, op=op)
             k = self.mark_rng.choice(free)

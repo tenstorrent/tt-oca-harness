@@ -354,8 +354,7 @@ Observation probe groups:
   The sampler also reads `cmp_match_p_i` and `cmp_match_n_i`, `tok_words_i`,
   the digest latch inputs and `jtag_filt_sigint_i` from the taps above. No
   check reads them. `lc_state_i` is `lc_state_probe_o`, and `lc_dec_data_i`
-  is the decoder input `u_lc_state_dec.data_i` of `u_sep_lifecycle_ctrl`, read
-  after the LC differential-integrity inject. Users: the owners of the eFuse
+  is `lc_dec_data_probe_o`, the decoder input tap above. Users: the owners of the eFuse
   and lifecycle groups of `docs/SEP_FCOV.adoc`.
 * Lifecycle controller register write tap (`lcc_wr_count_probe_o[15:0]`,
   `lcc_wr_addr_probe_o[4:0]`, `lcc_wr_data_probe_o[63:0]`): the number of

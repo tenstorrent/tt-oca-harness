@@ -7092,7 +7092,7 @@ module sep_uvm_top
                                  token_digest_test_en_o}),
         .jtag_filt_sigint_i    (jtag_filter_lc_sigint_err_probe_o),
         .lc_state_i            (lc_state_probe_o),
-        .lc_dec_data_i         (`SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i),
+        .lc_dec_data_i         (lc_dec_data_probe_o),
         .jtag_id_i             (jtag_id_probe_o),
         .efuse_read_error_i    (efuse_read_error_o),
         .efuse_read_done_i     (efuse_read_done_o),

@@ -788,7 +788,7 @@ module sep_fcov (
   // Lifecycle state output and the lifecycle controller decoder input
   // (docs/SEP_FCOV.adoc, eFuse, lifecycle groups, Sampled signals): read-only.
   input wire [2*sep_pkg::LcStateBitWidth-1:0] lc_state_i,    // lc_state_probe_o
-  input wire [2*sep_pkg::LcStateBitWidth-1:0] lc_dec_data_i, // u_lc_state_dec.data_i
+  input wire [2*sep_pkg::LcStateBitWidth-1:0] lc_dec_data_i, // lc_dec_data_probe_o
   // Fabric and CPU master taps of the fabric feature points (docs/SEP_FCOV.adoc,
   // fabric and remap groups, Sampled signals): read-only, no force.
   input sep_pkg::sep_32_64_3_12_axi_req_t   dbg_req_i,        // PR-DBG-SB request (dbg_axi_req)
