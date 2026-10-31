@@ -773,6 +773,10 @@
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_write_count_o)
+// Count of accepted OTBN TL-UL A-channel writes into the IMEM window whose
+// byte mask is not 4'hf, reset with the bench reset. Observation-only. User:
+// sep_fabric_row_response_matrix_test.
+`SEP_TB_OUT(logic [31:0], otbn_imem_tl_partial_wr_count_o)
 // ESRC -> DRBG -> CSRNG -> EDN -> KM entropy datapath probes. The driven noise
 // (esrc_noise_o) is the deterministic stimulus; the rest are DUT observation
 // points for the alive smoke and CHK1-CHK5 golden-vs-probe scoreboard.

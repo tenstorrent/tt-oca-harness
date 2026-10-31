@@ -4094,6 +4094,27 @@ module sep_uvm_top
     assign otbn_dmem_req_count_o   = otbn_dmem_req_cnt_q;
     assign otbn_dmem_write_count_o = otbn_dmem_wr_cnt_q;
 
+    // OTBN TL-UL port (sep_crypto_otbn_wrapper.sv, tl_i of u_otbn): the count of
+    // accepted A-channel writes into the IMEM window whose byte mask is not
+    // 4'hf. Monitor-only.
+`define OTBN_TL `SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan
+    logic [31:0] otbn_imem_tl_partial_wr_cnt_q;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            otbn_imem_tl_partial_wr_cnt_q <= '0;
+        end else if (`OTBN_TL.tl_req.a_valid && `OTBN_TL.tl_resp.a_ready &&
+                     `OTBN_TL.tl_req.a_opcode != tlul_pkg::GET &&
+                     `OTBN_TL.tl_req.a_mask != 4'hf &&
+                     `OTBN_TL.tl_req.a_address[otbn_reg_pkg::BlockAw-1:0] >=
+                         otbn_reg_pkg::OTBN_IMEM_OFFSET &&
+                     `OTBN_TL.tl_req.a_address[otbn_reg_pkg::BlockAw-1:0] <
+                         otbn_reg_pkg::OTBN_IMEM_OFFSET + otbn_reg_pkg::OTBN_IMEM_SIZE) begin
+            otbn_imem_tl_partial_wr_cnt_q <= otbn_imem_tl_partial_wr_cnt_q + 32'd1;
+        end
+    end
+`undef OTBN_TL
+    assign otbn_imem_tl_partial_wr_count_o = otbn_imem_tl_partial_wr_cnt_q;
+
     // KM CPU ready-mux taps (picorv32_wrapper.sv). Per source (0 ROM, 1 SRAM,
     // 2 AXI adapter): km_ready_on_q counts the clocks with the source ready
     // high while the CPU request is valid for that source, km_ready_off_q the

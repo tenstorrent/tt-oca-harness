@@ -969,6 +969,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                 set_open_value_leg_pass(f"km_bank_subword_{size}", self.logger)
                 await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
                 set_open_value_leg_pass(None, self.logger)
+                await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
         if not reached:
             return
         ct = await self._aes_block(tuple(pt))

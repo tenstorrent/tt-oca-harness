@@ -280,6 +280,13 @@ Open-value legs (logged, not graded; each control fails the leaf):
                  acknowledges with ``CMD_STS`` = 0. ``OBS-CSRNG-VCTR-WRAP`` logs
                  block 2 with the ctr_len 32 and ctr_len 128 candidates (SP 800-90A
                  10.2.1.2) and ``match=<32|128|none>``: no document states ctr_len.
+
+Graded after the counter-wrap control:
+  CHK-CSRNG-VCTR-DISTINCT  block 2 differs from block 1. SP 800-90A
+                 10.2.1.5.1 step 4.1 increments V modulo 2^ctr_len for every
+                 allowed ctr_len, and AES-256 under one key is a permutation, so
+                 two consecutive blocks of one Generate never repeat
+                 (csrng/README.md:34 claims the SP 800-90A CTR_DRBG).
 """
 
 from __future__ import annotations
@@ -2273,7 +2280,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         block 1 equals the golden block and the Generate acknowledges with
         ``CMD_STS`` = 0. Block 2 follows the increment of V[31:0] = 0xffffffff, which
         depends on ctr_len, and no document states ctr_len: it is logged with the
-        ctr_len 32 and ctr_len 128 candidates and the one it matches. The leg ends
+        ctr_len 32 and ctr_len 128 candidates and the one it matches. For every
+        ctr_len the increment is modulo 2^ctr_len (SP 800-90A 10.2.1.5.1 step 4.1),
+        so block 2 runs on a V other than block 1 under the same key and differs
+        from it (CHK-CSRNG-VCTR-DISTINCT). The leg ends
         with an Uninstantiate. Runs after the bus compare leg, on its instance.
         """
         r = self.reg
@@ -2333,6 +2343,13 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         ok = blk1 == gold1 and f.get("gen_cmd_sts") == STS_SUCCESS and "reason" not in f
         if self.chk.ctrl("CSRNG-VCTR-WRAP", ok, **f):
             blk2 = _blk(got[GEN1_WORDS:])
+            self._grade(
+                "CSRNG-VCTR-DISTINCT",
+                blk2 != blk1,
+                block1=_txt(blk1),
+                block2=_txt(blk2),
+                expect="block2!=block1",
+            )
             match = next((str(n) for n, c in cands.items() if c == blk2), "none")
             self.chk.obs(
                 "CSRNG-VCTR-WRAP",

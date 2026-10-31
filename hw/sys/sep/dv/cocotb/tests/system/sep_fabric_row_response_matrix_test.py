@@ -1754,10 +1754,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 rd_resp, rdata = await self._lsu(SepAxiOp.READ, addr + off, size=size, expect="any")
                 if otbn:
                     crc_before = await self._load_checksum()
+                    tl_before = int(cocotb.top.otbn_imem_tl_partial_wr_count_o.value)
                 wr_resp, _w = await self._lsu(
                     SepAxiOp.WRITE, addr + off, size=size, wdata=wv, expect="any"
                 )
                 if otbn:
+                    tl_writes = int(cocotb.top.otbn_imem_tl_partial_wr_count_o.value) - tl_before
+                    self._ctrl(
+                        "OTBN-SUBWORD-TL",
+                        tl_writes == 1,
+                        f"addr=0x{addr + off:08x} size={size} tl_partial_writes={tl_writes} "
+                        "expect=1",
+                    )
                     crc_after = await self._load_checksum()
                     line = (
                         f"target={name} addr=0x{addr + off:08x} size={size} "

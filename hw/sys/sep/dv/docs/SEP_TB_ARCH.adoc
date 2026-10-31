@@ -1263,6 +1263,13 @@ Exceptions (a closed set):
   and `abr_ahb_err_count_o` the clocks with HRESP high. No CSR shows the AHB
   transfers behind an AXI access. Read-only; no force; 0 in a build without Adams
   Bridge (`SEP_ABR_EN` not defined). Users: `sep_abr_access_size_test`.
+* *OTBN TL-UL sub-word write counter* — `otbn_imem_tl_partial_wr_count_o`
+  counts the accepted A-channel writes (`a_valid` and `a_ready`, opcode not
+  `Get`) on the TL-UL port of the OTBN instance in
+  `sep_crypto_otbn_wrapper.sv` whose address falls in the IMEM window and
+  whose byte mask is not `4'hf`. Reset with the bench reset. No CSR shows
+  whether a sub-word write reached OTBN. Read-only; no force. Users:
+  `sep_fabric_row_response_matrix_test`.
 * *AES masking parameters* — `aes_sec_params_o` carries the
   `SecMasking` (bit 0) and `SecAllowForcingMasks` (bit 1) parameters of the
   OpenTitan AES core in `aes_wrapper.sv`, read as hierarchical parameters.
