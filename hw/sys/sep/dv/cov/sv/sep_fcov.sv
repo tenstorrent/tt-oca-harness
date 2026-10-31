@@ -34997,14 +34997,16 @@ module sep_fcov (
     end
   end
 
-  // Program and read enables, as the last frontdoor write left them.
+  // Program and read enables, as the last frontdoor write left them. A write
+  // changes an enable only when it strobes that enable's byte.
+  wire [31:0] ef_wr_bmask = {{8{wr_strb[3]}}, {8{wr_strb[2]}}, {8{wr_strb[1]}}, {8{wr_strb[0]}}};
   logic ef_pen_q = 1'b0;
   logic ef_pg_tmo_en_q = 1'b0;
   always @(posedge clk_i) begin
     if (in_reset) begin
       ef_pen_q <= 1'b0;
       ef_pg_tmo_en_q <= 1'b0;
-    end else if (wr_okay && (aw_addr_q == EfPgCtrl)) begin
+    end else if (wr_okay && (aw_addr_q == EfPgCtrl) && |(ef_wr_bmask & EfPgEnMask)) begin
       ef_pen_q <= |(wr_data & EfPgEnMask);
     end else if (wr_okay && (aw_addr_q == EfPgTmo)) begin
       ef_pg_tmo_en_q <= |(wr_data & EfPgTmoEnMask);
@@ -36599,10 +36601,10 @@ module sep_fcov (
 
   // x_case_cmd pre_sense_prog and both_enables windows; cp_prog_visibility
   // bin 1. These span a reset, so they do not clear on it. The specification
-  // states that a read does not reach the bank only while program_enable is
-  // set, so the both_enables window ends at an OKAY EFUSE_PROGRAM_CTRL write
+  // states that a read issued while program_enable is set does not reach the
+  // bank and states nothing about that read after program_enable clears, so
+  // the both_enables window ends at an OKAY EFUSE_PROGRAM_CTRL write
   // that strobes every program_enable byte and writes program_enable 0.
-  wire [31:0] ef_wr_bmask = {{8{wr_strb[3]}}, {8{wr_strb[2]}}, {8{wr_strb[1]}}, {8{wr_strb[0]}}};
   wire ef_pg_en_clr = wr_okay && (aw_addr_q == EfPgCtrl) &&
       ((ef_wr_bmask & EfPgEnMask) == EfPgEnMask) && !(|(wr_data & EfPgEnMask));
   always @(posedge clk_i) begin
