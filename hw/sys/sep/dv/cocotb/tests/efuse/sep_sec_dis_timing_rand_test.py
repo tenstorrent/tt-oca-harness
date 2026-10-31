@@ -253,7 +253,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
     # ------------------------------------------------------------------ bus
 
     def _sense_done(self) -> int:
-        return self.rd(cocotb.top.sep_fuse_sense_done_o, allow_unknown=True) & 1
+        return self.rd_known(cocotb.top.sep_fuse_sense_done_o) & 1
 
     def _sdis(self) -> int:
         return self.rd(cocotb.top.lcc_security_disable_probe_o, allow_unknown=True) & 1
@@ -370,6 +370,17 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             self.chk.finish()
         await RisingEdge(dut.clk_i)
 
+    async def _staged_readback(self, staged_val: dict[int, int]) -> bool:
+        """Every shadow register; each staged non-zero word reads its non-zero staged value."""
+        ok = True
+        for name in FIELD_NAMES:
+            for k in range(field_n_words(name)):
+                widx = field_word(name) + k
+                got = await self.fd.rd(shadow_addr(name, k))
+                if widx in staged_val:
+                    ok &= got == staged_val[widx] and got != 0
+        return ok
+
     async def _read_shadow_map(self) -> list[tuple[str, int, int, int, int]]:
         """Every shadow word: (field, word, data, response code, sense done at response)."""
         out = []
@@ -432,14 +443,7 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         t_first, tl = changes[0], changes[-1]
         await self.wait_fuse_sense()
         ctl_sense_cmds = len(self.shim.reads_since(ctl_mark))
-        # Every shadow register; each staged non-zero word reads its non-zero staged value.
-        ctl_fields_ok = True
-        for name in FIELD_NAMES:
-            for k in range(field_n_words(name)):
-                widx = field_word(name) + k
-                got = await self.fd.rd(shadow_addr(name, k))
-                if widx in staged_val:
-                    ctl_fields_ok &= got == staged_val[widx] and got != 0
+        ctl_fields_ok = await self._staged_readback(staged_val)
         self.chk.ctrl(
             "SDIS-STAGED-NONZERO",
             ctl_fields_ok,
@@ -472,6 +476,13 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
         lat = rise_n - c0
         await self._mismatch_drop("latency")
         await self.pulse_rst_ni(max_sense_cycles=_SENSE_BOUND)
+        if cls == "C":
+            # The class C cold reset must start from a full sense of the staged words.
+            self.chk.ctrl(
+                "SDIS-PRE-COLD-STAGED",
+                await self._staged_readback(staged_val),
+                fields=len(p.leg["staged_fields"]),
+            )
 
         if cls == "B":
             hold = await self._class_b(seed, trace, t_first, tl, lat, w, staged, staged_val)

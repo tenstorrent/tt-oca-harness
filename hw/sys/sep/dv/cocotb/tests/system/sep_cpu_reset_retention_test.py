@@ -140,9 +140,14 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           with ``wdt_rst_ni`` only). Control: one pin fall.
   CHK-DEMOTE-HELD         demotion-hold leg, every seed and build, one line per
                           reset kind (``wdt_rst_ni`` pulse, ``dbg_rstb_i``
-                          pulse, a ``SW_RESET_N`` write that resets a drawn
-                          domain and then restores 0x7E, ``jtag_trst_ni``
-                          pulse): ``DEMOTE_1`` and ``DEMOTE_2`` read the set
+                          pulse on the full-CPU build only, a ``SW_RESET_N``
+                          write that resets a drawn domain and then restores
+                          0x7E, ``jtag_trst_ni`` pulse). Each kind must reach
+                          the DUT: one pin fall for ``wdt`` and ``dbg``, a
+                          ``sep_cpu_reset_n`` low clock for ``wdt``, the
+                          ``ip_rst_n`` fall for ``sw`` and
+                          CTRL-JTAG-TRST-EDGE for ``jtag``. ``DEMOTE_1`` and
+                          ``DEMOTE_2`` read the set
                           value (``demote``, ``lock`` and one drawn ``rsvd``
                           bit) before the reset and the same value after it
                           (``lifecycle_controller.adoc``: hold until SEP cold
@@ -1503,23 +1508,37 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.logger.info("CTRL-JTAG-TRST-EDGE: %s", text)
         return text
 
-    async def _narrow_reset(self, kind: str, draw: dict) -> str:
-        """Apply one narrow reset; return its log fields."""
-        if kind == "wdt":
-            await self._pulse("WDT", draw["wdt_width"])
-            await self.taps.resets["sep_cpu_reset_n"].wait_level(1, TAP_BOUND)
-            return f"width={draw['wdt_width']}"
-        if kind == "dbg":
-            await self._pulse("DBG", draw["dbg_width"])
-            return f"width={draw['dbg_width']}"
+    async def _narrow_reset(self, kind: str, draw: dict) -> tuple[str, bool]:
+        """Apply one narrow reset; return its log fields and whether it reached the DUT.
+
+        ``wdt`` reaches when its pin falls once and ``sep_cpu_reset_n`` goes low;
+        ``dbg`` when its pin falls once. ``sw`` and ``jtag`` raise when their
+        reset edge is missing.
+        """
+        if kind in ("wdt", "dbg"):
+            cls = kind.upper()
+            width = draw[f"{kind}_width"]
+            mr = self.taps.mark()
+            mp = self.pins[cls].mark()
+            await self._pulse(cls, width)
+            cpu = self.taps.resets["sep_cpu_reset_n"]
+            await cpu.wait_level(1, TAP_BOUND)
+            pin_fall = len(self.pins[cls].fall_clks_since(mp))
+            fields = f"width={width} pin_fall={pin_fall}"
+            if kind == "dbg":
+                return fields, pin_fall == 1
+            n = cpu.clk - mr["sep_cpu_reset_n"].clk
+            cpu_low = n - cpu.high_clocks_since(mr["sep_cpu_reset_n"])
+            return f"{fields} sep_cpu_reset_n_low={cpu_low}", pin_fall == 1 and cpu_low > 0
         if kind == "sw":
             d = draw["sw_domain"]
             await self._wr(SW, SW_DEFAULT & ~(1 << IPRST[d]))
             fall = await self._wait_ip(d, 0, "demotion-hold SW_RESET_N")
             await self._wr(SW, SW_DEFAULT)
             await self._wait_ip(d, 1, "demotion-hold SW_RESET_N release")
-            return f"domain={d} ip_rst_n[{IPRST[d]}]_fall_clk={fall} restored=0x{SW_DEFAULT:02x}"
-        return await self._trst_pulse(draw["trst_width"])
+            fields = f"domain={d} ip_rst_n[{IPRST[d]}]_fall_clk={fall} restored=0x{SW_DEFAULT:02x}"
+            return fields, True
+        return await self._trst_pulse(draw["trst_width"]), True
 
     async def _demote_hold_leg(self) -> None:
         """DEMOTE_1 and DEMOTE_2 hold across each narrow reset; ``rst_ni`` clears them.
@@ -1535,6 +1554,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
         marks = {g: 1 << dx.choice(RSVD_BITS) for g in DEMOTE_ADDR}
         kinds = list(HOLD_KINDS)
         dx.shuffle(kinds)
+        # Nothing in the CPU-stub build takes dbg_rstb_i (reset_controller.adoc).
+        kinds = [k for k in kinds if k != "dbg" or self.full_cpu]
         kinds.append("jtag")
         draw = {
             "wdt_width": dx.randrange(2, 33),
@@ -1568,12 +1589,12 @@ class sep_cpu_reset_retention_test(sep_base_test):
         for kind in kinds:
             before = await self._demote_regs()
             feat_b = self._feat()
-            fields = await self._narrow_reset(kind, draw)
+            fields, reached = await self._narrow_reset(kind, draw)
             after = await self._demote_regs()
             feat_a = self._feat()
             self._chk(
                 "CHK-DEMOTE-HELD",
-                all(before[g] == exp[g] and after[g] == exp[g] for g in DEMOTE_ADDR),
+                reached and all(before[g] == exp[g] and after[g] == exp[g] for g in DEMOTE_ADDR),
                 f"kind={kind} {fields} "
                 + " ".join(
                     f"demote_{g}_before=0x{before[g]:016x} demote_{g}_after=0x{after[g]:016x} "

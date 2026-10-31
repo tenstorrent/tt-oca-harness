@@ -282,23 +282,34 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         self._check_fuse_dft_disable(ctl.feat_ctrl, tag)
         return ctl
 
+    async def _set_demote(self, group: int, tag: str) -> None:
+        """Write ``demote`` to DEMOTE_<group>; CTRL-DEMOTE-RB requires the readback to show it.
+
+        A cell whose golden is the same with and without the demote (TEST_DEV
+        at DIS 0) is then still shown to run with the demote set.
+        """
+        seq = SepLccDemoteSeq(group=group)
+        await self.start_seq(seq)
+        line = f"{tag} group={group} demote={int(bool(seq.demote))} lock={int(seq.lock)}"
+        if not seq.demote or seq.lock:
+            self.logger.error("CTRL-DEMOTE-RB FAIL (control not met): %s", line)
+            raise AssertionError(f"CTRL-DEMOTE-RB control not met: {line}")
+        self.logger.info("CTRL-DEMOTE-RB: %s", line)
+
     async def _walk_demotes(self, image: SepEfuseImage, *, dis_tag: str) -> int:
         n = 0
         lc = lc_state_name(image.lc_raw())
         await self._check_cell(image, demote_1=0, demote_2=0, tag=f"{lc}/{dis_tag}/d00")
         n += 1
-        d1 = SepLccDemoteSeq(group=1)
-        await self.start_seq(d1)
+        await self._set_demote(1, f"{lc}/{dis_tag}/d10")
         await self._check_cell(image, demote_1=1, demote_2=0, tag=f"{lc}/{dis_tag}/d10")
         n += 1
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         await self._check_cell(image, demote_1=0, demote_2=0, tag=f"{lc}/{dis_tag}/d00b")
-        d2 = SepLccDemoteSeq(group=2)
-        await self.start_seq(d2)
+        await self._set_demote(2, f"{lc}/{dis_tag}/d01")
         await self._check_cell(image, demote_1=0, demote_2=1, tag=f"{lc}/{dis_tag}/d01")
         n += 1
-        d1b = SepLccDemoteSeq(group=1)
-        await self.start_seq(d1b)
+        await self._set_demote(1, f"{lc}/{dis_tag}/d11")
         await self._check_cell(image, demote_1=1, demote_2=1, tag=f"{lc}/{dis_tag}/d11")
         n += 1
         return n
@@ -412,8 +423,8 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         await self._program_dis_bits(image, fuse_sip, fuse_sys)
         self.write_efuse_image(image)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
-        await self.start_seq(SepLccDemoteSeq(group=2))
-        await self.start_seq(SepLccDemoteSeq(group=1))
+        await self._set_demote(2, "PROD/dis_fuse_dbg/d11")
+        await self._set_demote(1, "PROD/dis_fuse_dbg/d11")
         await self._check_cell(image, demote_1=1, demote_2=1, tag="PROD/dis_fuse_dbg/d11")
         cells += 1
 

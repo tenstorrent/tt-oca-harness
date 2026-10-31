@@ -160,8 +160,8 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         await ReadWrite()
 
     @staticmethod
-    def _pack(*, enable_port: int | None) -> int:
-        """All-ones TDR word, optionally with one port's reset_enable cleared.
+    def _pack(*, enable_port: int | None, control_port: int | None = None) -> int:
+        """All-ones TDR word, optionally with one port's reset_enable or reset_control cleared.
 
         Bit 0 is reset_hold. Port ``n`` stores reset_enable at ``2*n+1`` and
         reset_control at ``2*n+2``.
@@ -169,6 +169,8 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         value = (1 << _IC_RESET_BITS) - 1
         if enable_port is not None:
             value &= ~(1 << (2 * enable_port + 1))
+        if control_port is not None:
+            value &= ~(1 << (2 * control_port + 2))
         return value
 
     async def _capture_shift_update(self, value: int) -> int:
@@ -272,27 +274,39 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         )
 
         # reset_control first, with reset_enable still at its reset 1, so the
-        # mux select does not move on this Update-DR.
-        captured = await self._capture_shift_update(self._pack(enable_port=None))
+        # mux select does not move on this Update-DR. The next Capture-DR reads
+        # the written word back.
+        ctrl_word = self._pack(enable_port=None, control_port=_SEP_RESET_N_PORT)
+        captured = await self._capture_shift_update(ctrl_word)
         self._require_sense_open("CHK-TDR-CAPTURE")
         idle = (1 << _IC_RESET_BITS) - 1
         assert captured == idle, (
             f"CHK-TDR-CAPTURE FAIL: shifted-out 0x{captured:x} want 0x{idle:x} "
             "(the TDR reset value)"
         )
-        await self._hold_probes(0, "CHK-TDR-CTRL")
         self.logger.info(
             "CHK-TDR-CAPTURE PASS: shifted-out 0x%x (reset_hold and every "
             "reset_enable/reset_control at 1)",
             captured,
         )
-        self.logger.info(
-            "CHK-TDR-CTRL PASS: Update-DR of reset_control leaves "
-            "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 for %d cycles",
-            _RESET_SYNC_CYCLES,
-        )
+        await self._hold_probes(0, "CHK-TDR-CTRL")
 
-        await self._capture_shift_update(self._pack(enable_port=_SEP_RESET_N_PORT))
+        readback = await self._capture_shift_update(self._pack(enable_port=_SEP_RESET_N_PORT))
+        self._require_sense_open("CHK-TDR-CTRL")
+        assert readback == ctrl_word, (
+            f"CHK-TDR-CTRL FAIL: Capture-DR after the reset_control[{_SEP_RESET_N_PORT}]=0 "
+            f"Update-DR shifted out 0x{readback:x}, want the written 0x{ctrl_word:x}"
+        )
+        self.logger.info(
+            "CHK-TDR-CTRL PASS: Update-DR of reset_control[%d]=0 with reset_enable[%d]=1 "
+            "leaves sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 for %d cycles; "
+            "Capture-DR reads back 0x%x (written 0x%x)",
+            _SEP_RESET_N_PORT,
+            _SEP_RESET_N_PORT,
+            _RESET_SYNC_CYCLES,
+            readback,
+            ctrl_word,
+        )
         self._require_sense_open("CHK-TDR-RELEASE")
         await self._wait_probes(1, "CHK-TDR-RELEASE")
         self._pins_stay_clear("CHK-TDR-RELEASE")

@@ -116,6 +116,9 @@ def _write_locked(image: SepEfuseImage, name: str) -> bool:
 class sep_efuse_rma_token_rand_test(sep_base_test):
     """Match updates LC; mismatch does not; comparator fault path both ways."""
 
+    # OTP (word, mask) of the spare bit the RMA_SIP program set, or None.
+    _spare_landed: tuple[int, int] | None = None
+
     async def _check_lc(self, image: SepEfuseImage, raw: int, tag: str) -> None:
         # The image pins SEC_DISABLE clear and no SEC_DIS token is presented, so
         # the value is known ahead of the read. Feeding the probe into the golden
@@ -250,8 +253,21 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
                 "rma_spare_err_clear", op=SepAxiOp.WRITE, addr=_IF_STATUS, wdata=_REQ_ERROR_CLEAR
             )
             await self.start_seq(clr)
+            st = SepAxiAccessSeq("rma_spare_status_clr", op=SepAxiOp.READ, addr=_IF_STATUS)
+            await self.start_seq(st)
+            left = int(bool(st.rdata & _REQ_ERROR))
+            ok = st.resp_ok and not left
+            line = (
+                f"CTRL-PROG-RMA-ERR-CLEAR: efuse_req_error before=1 after_w1c={left} "
+                f"resp_ok={int(st.resp_ok)}"
+            )
+            if not ok:
+                self.logger.error("%s (control not met)", line)
+                raise AssertionError(f"{line} (control not met)")
+            self.logger.info(line)
         if otp_bit:
             image.words[addr >> 5] |= 1 << (addr & 31)
+            self._spare_landed = (addr >> 5, 1 << (addr & 31))
             self.write_efuse_image(image)
 
     def _irq39(self) -> int:
@@ -260,7 +276,10 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         return (vec >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
-        seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT)
+        # TOKEN_MATCH_FAULT is the last 32-bit register of the block, so a 64-bit
+        # beat runs past its end and answers SLVERR (doc/trm/src/memory_map.adoc,
+        # generated register blocks).
+        seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT, size=2)
         await self.start_seq(seq)
         assert seq.resp_ok, "TOKEN_MATCH_FAULT read not OKAY"
         return seq.rdata
@@ -271,6 +290,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             op=SepAxiOp.WRITE,
             addr=TOKEN_MATCH_FAULT,
             wdata=data,
+            size=2,
         )
         await self.start_seq(seq)
         # The point of the write is that a read-only field ignores it. A write
@@ -483,6 +503,10 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         # clk_wdt_i and entropy_rosc_sample_clk_i. resense pulses rst_ni with the
         # clocks already running, which is what this phase needs.
         image = self.select_efuse_image(lc_raw=LC_RMA_CHIP_1, fixed=cfg.image_fixed())
+        # The OTP keeps the spare bit the RMA_SIP program set; the golden keeps it too.
+        if self._spare_landed is not None:
+            word, mask = self._spare_landed
+            image.words[word] |= mask
         self.write_efuse_image(image)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
 

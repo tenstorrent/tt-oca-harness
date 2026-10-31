@@ -508,8 +508,10 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         )
 
         # Leg B: SEC_DIS over the integrity error on every pair, then a mismatch.
-        open_graded_window(TEST, self.logger)
+        # The walk returns in the read-only phase; the clock edge leaves it before
+        # the gate write.
         await RisingEdge(dut.clk_i)
+        open_graded_window(TEST, self.logger)
         self._set_pin(dut, "lc_sigint_pair_mask_i", 0)
         self._set_pin(dut, "lc_sigint_bad_value_i", 0)
         self._set_pin(dut, "lc_sigint_inject_i", 1)
@@ -683,6 +685,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         self._set_pin(dut, "jtag_filter_lc_sigint_inject_i", 1)
         waited = await wait_bit(self, "jtag_filter_lc_sigint_err_probe_o", 1, SIGINT_BOUND)
         if waited is None:
+            await RisingEdge(dut.clk_i)
             close_graded_window(self.logger)
             hook_fail(
                 self.chk,

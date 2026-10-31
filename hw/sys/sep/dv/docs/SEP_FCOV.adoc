@@ -6387,8 +6387,10 @@ leg A, every seed; 4 seeds in the testlist);
 
 *Status*: Every leaf of the retention test and of the feature matrix fills its
 points: the retention leaf reads `DEMOTE_1` and `DEMOTE_2` with demote 1 before
-each of the four reset kinds and again after it, so all four `held` cells are
-hit in every seed, and every leaf of the feature matrix writes `DEMOTE_1` under
+each reset kind and again after it. The `wdt_rst_ni`, `SW_RESET_N` and
+`jtag_trst_ni` cells are hit in every seed; the `dbg_rstb_i` cell only on the
+full-CPU build (entry `sep_cpu_reset_retention_test_dbg`), because nothing in
+the CPU-stub build takes `dbg_rstb_i`. Every leaf of the feature matrix writes `DEMOTE_1` under
 SEC_DIS in leg A. Every leaf of the secure test mode matrix runs each demotion
 at strap 1 in its own state; `cp_prod_strap1_demote` fills in a PROD leaf (named
 seeds: 2 and 3, both in the 9-seed testlist run).

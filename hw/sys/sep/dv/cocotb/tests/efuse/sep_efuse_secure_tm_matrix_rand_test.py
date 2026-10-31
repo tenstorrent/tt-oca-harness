@@ -471,10 +471,12 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             d: feat_ctrl_profile(p.lc_raw, sip, sys_, demote_1=d[0], demote_2=d[1])
             for d in _DEMOTIONS
         }
-        if state == ST_PROD and all(r.value == base.value for r in rows.values()):
+        same = [f"{d[0]}{d[1]}" for d, r in rows.items() if r.value == base.value]
+        if state == ST_PROD and same:
             raise AssertionError(
-                f"test bug: every PROD demoted row equals the undemoted row 0x{base.value:016x} "
-                f"(sip_dis=0x{sip:016x} sys_dis=0x{sys_:016x}), so the leg cannot show a demotion"
+                f"test bug: PROD demoted row(s) {','.join(same)} equal the undemoted row "
+                f"0x{base.value:016x} (sip_dis=0x{sip:016x} sys_dis=0x{sys_:016x}), so the "
+                "leg cannot show each demotion"
             )
         bank = SepEfuseImage()
         bank.words = list(SepEfuseBank().read())
@@ -491,6 +493,8 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
             waited = await wait_bit(self, "secure_tm_o", 1, STM_BOUND)
             stm = bit(self, "secure_tm_o")
+            # wait_bit returns in the read-only phase; leave it before the gate write.
+            await ClockCycles(cocotb.top.clk_i, 1)
             self._open()
             resp = {}
             for g, on in ((1, d1), (2, d2)):
@@ -801,7 +805,11 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
         fell = await wait_bit(self, "lcc_security_disable_probe_o", 0, SDIS_BOUND)
         self.chk.ok(
             "STM-CTL",
-            sd_feat == ALL_ONES and code_mm == CODE_MISMATCH and fell is not None,
+            code_m == CODE_MATCH
+            and rose is not None
+            and sd_feat == ALL_ONES
+            and code_mm == CODE_MISMATCH
+            and fell is not None,
             strap=0,
             secure_tm_before_sense=int(e0["before_ones"] != 0),
             secure_tm_after_sense=e0["after"],
@@ -809,7 +817,8 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
             landed="na",
             feat=f"0x{feat0:016x}",
             secdis_feat=f"0x{sd_feat:016x}",
-            code_match=f"0x{code_m:02x}",
+            sdis_rose=int(rose is not None),
+            code_match=f"0x{(code_m or 0):02x}",
             code_mismatch=f"0x{(code_mm or 0):02x}",
             sdis_after_mismatch=bit(self, "lcc_security_disable_probe_o"),
         )

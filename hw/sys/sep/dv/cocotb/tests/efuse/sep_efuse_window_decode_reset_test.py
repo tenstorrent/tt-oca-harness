@@ -63,7 +63,7 @@ import pyuvm
 from cocotb.triggers import FallingEdge, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
-from env.sep_efuse_image import SHADOW_BASE
+from env.sep_efuse_image import NUM_FUSE_WORDS, SHADOW_BASE
 from env.sep_efuse_plan import (
     CHANNELS,
     MATCH_ADDR,
@@ -122,13 +122,13 @@ _PG_ADDR_MASK = _IC.field_mask(_PG, "efuse_addr")
 # Logged-only draws (AxPROT/AxCACHE, sub-word lanes) come from a separate stream, so
 # the plan draws keep their seed mapping.
 _OBS_SALT = 0x5357_4158
-_SHADOW_LAST = SHADOW_BASE + 0x3FC
+_SHADOW_LAST_IDX = NUM_FUSE_WORDS - 1
+_SHADOW_LAST = SHADOW_BASE + 4 * _SHADOW_LAST_IDX
 _PAST_EXTENT_PINNED = STATUS_ADDR + 0x1C
 _RSVD_PINNED = (SHADOW_BASE + 0x600, SHADOW_BASE + 0xC1C, SHADOW_BASE + 0xFFFC)
 _ARRAY_TOKEN = {"sip": TOKEN_T1, "chiplet": TOKEN_T2, "sec_dis": TOKEN_OTHER}
 _ARRAY_TAG = {"sip": "sip", "chiplet": "chp", "sec_dis": "sdis"}
 _RESP = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
-_RESP_DECERR = 3
 _WORD = 0xFFFF_FFFF
 
 
@@ -231,8 +231,9 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
                 word_after=f"0x{after:08x}",
             )
         word, _ok, _c = await self._rd(addr)
+        # At halfword size the read from byte 1 is two R beats: byte 1, then the halfword at byte 2.
         rdata, _ok, code = await self._unmapped(
-            lambda: self._axi(SepAxiOp.READ, addr + 1, length=2)
+            lambda: self._axi(SepAxiOp.READ, addr + 1, length=2), beats=2
         )
         self._log(
             "OBS-EFUSE-SUBWORD",
@@ -252,19 +253,19 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             out[name] = v & _IC.mask32(name)
         return out
 
-    async def _unmapped(self, access):
+    async def _unmapped(self, access, beats: int = 1):
         """Run one access whose response code is logged and not graded.
 
         The AXI monitor fails a DECERR beat it was not told to expect. The
-        response here is not graded, so the access takes one credit and hands it
-        back when the answer is not DECERR (a credit left standing would hide a
-        later unexpected DECERR).
+        response here is not graded, so the access takes one credit per response
+        beat and hands back each credit no DECERR beat used (a credit left
+        standing would hide a later unexpected DECERR).
         """
         mon = self.env.axi_monitor
-        mon.arm_expected_decerr(1)
+        seen = mon.expected_decerr_seen
+        mon.arm_expected_decerr(beats)
         result = await access()
-        if result[-1] != _RESP_DECERR:
-            mon.release_expected_decerr(1)
+        mon.release_expected_decerr(beats - (mon.expected_decerr_seen - seen))
         return result
 
     async def _decode_access(self, win: str, addr: int) -> None:
@@ -322,7 +323,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
     async def _control_reads(self, tag: str) -> None:
         """Procedure step 13: the last shadow word and STATUS answer OKAY with the model."""
         for addr, exp, mask in (
-            (_SHADOW_LAST, self.model[0xFF], _WORD),
+            (_SHADOW_LAST, self.model[_SHADOW_LAST_IDX], _WORD),
             (STATUS_ADDR, _RESET_EXP[_STATUS], _IC.mask32(_STATUS)),
         ):
             got, ok, code = await self._rd(addr, ungraded=True)
@@ -456,7 +457,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             )
 
         # Step 9: write of 1 to read-only status bits; response code not graded.
-        await self._wr(STATUS_ADDR, _STATUS_RO_WRITE, ungraded=True)
+        _ok_w, wr_code = await self._wr(STATUS_ADDR, _STATUS_RO_WRITE, ungraded=True)
         got, _ok, _c = await self._rd(STATUS_ADDR)
         cmp = field_compare(got, _RESET_EXP[_STATUS], _IC.mask32(_STATUS))
         self.chk.ok(
@@ -464,6 +465,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             cmp.ok,
             reg="STATUS",
             wr=f"0x{_STATUS_RO_WRITE:08x}",
+            wr_resp=_RESP.get(wr_code, wr_code),
             got=f"0x{got & _IC.mask32(_STATUS):08x}",
             exp=f"0x{_RESET_EXP[_STATUS]:08x}",
             rsvd=f"0x{cmp.rsvd:x}",
