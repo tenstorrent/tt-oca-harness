@@ -54,8 +54,10 @@
 //                            no trap, stopped with mitcnt B it traps once
 //
 // The priord flip leg raises the drawn sources with mstatus.MIE 0, prints
-// their meip bits (CTRL-PRIORD-PENDING), flips priord with no meipl write and
-// sets mstatus.MIE; INFO-PRIORD-FLIP logs the handler order.
+// their meip bits and the priord read back before the flip
+// (CTRL-PRIORD-PENDING), flips priord with no meipl write, prints the priord
+// read back after it (CTRL-PRIORD-FLIP) and sets mstatus.MIE;
+// INFO-PRIORD-FLIP logs the handler order.
 //
 // Source drive recipe. A mailbox source k + 1 is driven by one CPU push into
 // the inbound WRITE_DATA of mailbox k with IRQEN.wtirq 1, WIRQT 0 and an
@@ -830,6 +832,7 @@ static void leg_priord_flip(void) {
     uint32_t setmask = 0u;
     mstatus_mie(0);
     set_order(p);
+    uint32_t from = (pic_read_mpiccfg() & EL2_PIC__MPICCFG__PRIORD_bm) ? 1u : 0u;
     for (uint32_t i = 0; i < n; i++) {
         uint32_t s = g_prm[P_PF_SRC + i];
         pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), g_prm[P_PF_RAW + i]);
@@ -847,7 +850,7 @@ static void leg_priord_flip(void) {
     (void)hold();
     uint32_t pending = pic_read_meip(0) & setmask;
     rec_ctl("PRIORD-PENDING");
-    rec_num("priord", p);
+    rec_num("priord", from);
     rec_hex("set", setmask);
     rec_hex("meip_before", before);
     rec_hex("meip", pending);

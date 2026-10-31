@@ -1007,7 +1007,9 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         ev = self.dtap.since(m_tap)
         st = await dma.read_status()
         ecode = await dma.rd(ERROR_CODE)
-        go = int(bool(await dma.rd(DMA_CONTROL) & GO_MASK))
+        control = await dma.rd(DMA_CONTROL)
+        go = int(bool(control & GO_MASK))
+        hs_enable = int(bool(control & HS_ENABLE_MASK))
         clr_rb = (await self.mem.read(CLR_ADDR, 1))[0]
         moved = sum(self._filled(await self.mem.read(HS_DST, nw), cfg.n))
         clr_idx = [i for i, b in enumerate(ev.aw) if b.addr == CLR_ADDR]
@@ -1015,8 +1017,9 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             f"variant={variant} "
             + " ".join(f"{k}=0x{rb[k]:x}/0x{want[k]:x}" for k in rb)
             + f" trigger_high_clk={trig_high} window_clks={2 * t_fill}"
+            + f" hs_enable={hs_enable} control=0x{control:08x}"
         )
-        if rb != want or trig_high < 1:
+        if rb != want or trig_high < 1 or not hs_enable:
             self._ctrl_missing("CTRL-DMA-CLR-RANGE", line)
         self.logger.info("CTRL-DMA-CLR-RANGE PASS seed=%d %s", cfg.seed, line)
         set_open_value_leg_pass(leg, self.logger)
