@@ -398,22 +398,14 @@ class smc_scoreboard extends ocah_scoreboard;
       return;
     end
     word_addr = smc_csr_word_addr(obs.address);
-    if (feature == SmcFeatureMutexSema) begin
-      int unsigned idx;
-      if (smc_is_mutex_upper_read(obs, idx)) begin
-        compare_csr_pair(feature, obs, exp, word_addr, $sformatf(
-                         "CPU_CTRL_MUTEX_%0d upper addr=0x%0h", idx, word_addr));
-        return;
-      end
-    end
     compare_csr_pair(feature, obs, exp, word_addr, csr_context(feature, word_addr), field_mask(
                      feature, word_addr));
   endfunction
 
   // Bits the feature has a contract on. Every CSR feature here owns the whole
   // 32-bit word except mutex_sema, whose registers are declared regwidth 64
-  // with a narrower live field, so the bits above the field are excluded
-  // rather than given an invented expectation.
+  // with a narrower live field: the low word is compared under the field mask,
+  // and an upper MUTEX word, which reads as zero, is compared whole.
   protected function bit [31:0] field_mask(string feature, bit [63:0] word_addr);
     int unsigned idx;
     bit          is_sema;
@@ -497,6 +489,8 @@ class smc_scoreboard extends ocah_scoreboard;
         return $sformatf(
             "CPU_CTRL_%s_%0d addr=0x%0h", is_sema ? "SEMA" : "MUTEX", ms_idx, word_addr
         );
+      if (smc_mutex_sema_lookup(word_addr - SmcCsrBytes, ms_idx, is_sema) && !is_sema)
+        return $sformatf("CPU_CTRL_MUTEX_%0d upper addr=0x%0h", ms_idx, word_addr);
       return $sformatf("addr=0x%0h", word_addr);
     end
     if (feature == SmcFeatureLockCsr) begin

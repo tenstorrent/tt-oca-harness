@@ -14,14 +14,6 @@ class smc_narrow_access_side_effect_test extends smc_base_test;
   virtual function ocah_sequence create_scenario_seq();
     return smc_narrow_access_side_effect_test_seq::type_id::create("seq");
   endfunction
-  virtual function void plumb_scenario_seq(ocah_sequence seq);
-    smc_narrow_access_side_effect_test_seq narrow_seq;
-    super.plumb_scenario_seq(seq);
-    if (!$cast(narrow_seq, seq)) begin
-      `uvm_fatal(get_type_name(), "Invalid narrow-access scenario sequence")
-    end
-    narrow_seq.sep_in_monitor = m_env.m_sep_in_axi_env.m_monitor;
-  endfunction
   virtual function string specific_loops_knob();
     return "SMC_NARROW_ACCESS_SIDE_EFFECT_TEST_LOOPS";
   endfunction

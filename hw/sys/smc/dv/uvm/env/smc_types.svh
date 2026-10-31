@@ -666,8 +666,9 @@ endfunction
 //
 // Both registers are declared regwidth/accesswidth 64, but each live field
 // sits inside the low 32 bits, so the bench's 4-byte CSR access covers the
-// whole field under test; bits above the field carry no RDL field and are
-// masked out of every compare rather than being given an invented expectation.
+// whole field under test. Low-word bits above the field carry no RDL field and
+// are masked out of the compare; an upper MUTEX word reads as zero per
+// cpu_ctrl.rdl and is compared whole.
 // ---------------------------------------------------------------------------
 
 localparam int unsigned SmcMutexCount = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_MUTEX_NUM);
@@ -717,8 +718,8 @@ function automatic bit smc_is_mutex_sema_access(ocah_axi_item t, output int unsi
   return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
 endfunction
 
-// OKAY single-beat 32-bit reads of the upper MUTEX word still acquire.
-// cpu_ctrl.rdl requires the returned upper word to be zero in full.
+// An OKAY single-beat 32-bit read of the upper MUTEX word acquires the mutex and,
+// per cpu_ctrl.rdl, returns zero across the whole word.
 function automatic bit smc_is_mutex_upper_read(ocah_axi_item t, output int unsigned idx);
   if (t.direction != OCAH_AXI_DIR_READ || !t.is_ok() || t.size != SmcCsrSize ||
       t.data_words.size() != 1 || t.beat_count() != 1)

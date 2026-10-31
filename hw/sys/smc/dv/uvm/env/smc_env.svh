@@ -58,6 +58,7 @@ class smc_env extends ocah_env;
   smc_fabric_reg_ref_model m_fabric_reg_ref_model;
   smc_mailbox_fifo_ref_model m_mailbox_fifo_ref_model;
   smc_scoreboard            m_scoreboard;
+  smc_sep_in_history m_sep_in_history;
   smc_virtual_sequencer     m_vseqr;
 
   function new(string name = "smc_env", uvm_component parent = null);
@@ -106,6 +107,7 @@ class smc_env extends ocah_env;
         smc_mailbox_fifo_ref_model::type_id::create("m_mailbox_fifo_ref_model", this);
     m_mailbox_fifo_ref_model.tb_vif = tb_vif;
     m_scoreboard = smc_scoreboard::type_id::create("m_scoreboard", this);
+    m_sep_in_history = smc_sep_in_history::type_id::create("m_sep_in_history", this);
 
     m_vseqr = smc_virtual_sequencer::type_id::create("m_vseqr", this);
   endfunction
@@ -114,6 +116,7 @@ class smc_env extends ocah_env;
     super.connect_phase(phase);
     m_vseqr.m_sep_in_seqr       = m_sep_in_master_env.m_sequencer;
     m_vseqr.m_sys_out_slave_seq = m_sys_out_slave_agent.seq;
+    m_sep_in_axi_env.item_ap.connect(m_sep_in_history.analysis_export);
     // scratch_csr: the monitor stream feeds the reference model and the
     // scoreboard's observed side; the model's expected_ap feeds the other.
     m_sep_in_axi_env.item_ap.connect(m_scratch_csr_ref_model.analysis_export);
