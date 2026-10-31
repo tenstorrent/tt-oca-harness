@@ -47,7 +47,10 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
                 f"CHK-CLEAR-REJECT FAIL: {name}[{word}] write-0 cleared "
                 f"0x{field.sensed:08x} -> 0x{got:08x}"
             )
-            self.logger.info("CHK-CLEAR-REJECT PASS: %s[%d] write-0 left 0x%08x", name, word, got)
+            # write_word raises on a response other than OKAY.
+            self.logger.info(
+                "CHK-CLEAR-REJECT PASS: %s[%d] write-0 resp=OKAY left 0x%08x", name, word, got
+            )
 
         await shadow.write_word(name, word, field.drive_word(field.set_bits))
         got = await shadow.read_word(name, word)
@@ -71,7 +74,9 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
             f"CHK-OR-MERGE FAIL: {name}[{word}] write-0 cleared "
             f"0x{field.after_set:08x} -> 0x{got:08x}"
         )
-        self.logger.info("CHK-OR-MERGE PASS: %s[%d] write-0 left OR 0x%08x", name, word, got)
+        self.logger.info(
+            "CHK-OR-MERGE PASS: %s[%d] write-0 resp=OKAY left OR 0x%08x", name, word, got
+        )
 
     async def _check_writable_contrast(self, shadow: SepEfuseShadow, field) -> None:
         name, word, pattern = field.name, field.word_idx, field.pattern
@@ -115,7 +120,16 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
                 + [w.name for w in cfg.writable]
             )
         )
+        # The sequence reads SEP_FUSE_SENSE_STATUS, then every word of each walked row.
+        reads = 1 + sum(len(img.expected_field(name)) for name in walked)
+        mark = self.sb_mark()
         await self.start_seq(sep_efuse_shadow_check_seq(img, fields=walked))
+        self.assert_sb_judged(mark, "CHK-SENSE-WALK")
+        judged = self.env.scoreboard.value_checks - mark[1]
+        assert judged == reads, f"CHK-SENSE-WALK FAIL: scoreboard judged {judged} of {reads} reads"
+        self.logger.info(
+            "CHK-SENSE-WALK PASS: rows=%d judged=%d/%d reads", len(walked), judged, reads
+        )
 
         shadow = SepEfuseShadow(self)
         for field in cfg.fields:

@@ -8,9 +8,12 @@ against a software SHA-256, the copied data and the DMA error code. It returns i
 fw/startup/crt0.s emits PASS (0xCAFEBABE) / FAIL (0xDEADBEEF) on the 0x8000_0000 mailbox, which the
 boot scoreboard gates on with the banner and ICCM-execution checks.
 
-The host also gates on CHK-SHA384, CHK-MULTICHUNK, CHK-DIGEST-SWAP, CHK-CFG, CHK-COMPLETE,
-CHK-COPY and CHK-SHA384-COPY, and compares the printed hardware and software digests itself
-(CHK-DIGEST).
+Before GO the firmware fills the destination with a sentinel that no source word can hold and
+prints the readback counts of both regions; the host requires every source word filled and every
+destination word at the sentinel (CTRL-SRC-FILL), so a copy that does not run cannot match the
+source. The host also gates on CHK-SHA384, CHK-MULTICHUNK, CHK-DIGEST-SWAP, CHK-CFG, CHK-COMPLETE
+(the SHA-256 pass line, which no other pass prints), CHK-COPY and CHK-SHA384-COPY, and compares the
+printed hardware and software digests itself (CHK-DIGEST).
 """
 
 from __future__ import annotations
@@ -40,6 +43,7 @@ _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
 # Must match the banner dma_hash_test.c actually prints.
 _BANNER = "Secure DMA SHA-256 Hash Test"
+_SRC_FILL = re.compile(r"SRC-FILL src_live=(\d+)/(\d+) dst_sentinel=(\d+)/(\d+)")
 
 
 @pyuvm.test()
@@ -72,6 +76,19 @@ class sep_dma_hash_test(sep_base_test):
         # each leg's PASS line -- an image without those legs reaches the PASS
         # magic with three contracts never exercised.
         console = self.sb.console_text()
+
+        # CTRL-SRC-FILL: before GO every source word is filled and every
+        # destination word holds the sentinel.
+        fill = _SRC_FILL.search(console)
+        src_live, src_n, dst_sent, dst_n = (int(v) for v in fill.groups()) if fill else (0, 0, 0, 0)
+        fill_ok = src_n > 0 and src_live == src_n and dst_n == src_n and dst_sent == dst_n
+        fields = f"src_live={src_live}/{src_n} dst_sentinel={dst_sent}/{dst_n}"
+        assert fill_ok, (
+            f"CTRL-MISSING SRC-FILL: {fields} (line present={int(bool(fill))}). "
+            f"Console was:\n{console}"
+        )
+        self.logger.info("CTRL-SRC-FILL seen: %s", fields)
+
         for needle, chk, what in (
             ("PASS: SHA-384 digest matches", "CHK-SHA384", "the SHA-384 FIPS 180-4 vector"),
             (
@@ -103,7 +120,11 @@ class sep_dma_hash_test(sep_base_test):
                 "CHK-CFG",
                 "CFG_REGWEN readable and unlocked before configuration",
             ),
-            ("DMA transfer completed!", "CHK-COMPLETE", "the DMA reporting completion"),
+            (
+                "SHA-256 pass DMA_DONE seen, ERROR_CODE = 0x0",
+                "CHK-COMPLETE",
+                "the SHA-256 pass DMA_DONE interrupt with ERROR_CODE = 0",
+            ),
             (
                 "PASS: SRAM and DCCM data matches",
                 "CHK-COPY",

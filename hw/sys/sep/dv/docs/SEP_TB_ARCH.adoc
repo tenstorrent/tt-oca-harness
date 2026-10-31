@@ -599,7 +599,8 @@ Observation probe groups:
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`,
    `sep_cpu_demux_unmapped_fetch_test`, `sep_debug_master_target_matrix_test`
-   (CHK-DBG-REMAP).
+   (CHK-DBG-REMAP), `sep_address_map_test` (CTRL-FABRIC-WALK-LOCAL),
+   `sep_fabric_local_alias_datapath_test` (CTRL-VALID-GATE-LOCAL).
    Its replies (monitor PR-OUT-RSP): B (`resp`, `id`) and R (`resp`, `id`,
    `last`, `data`) on `smn_outbound_axi_resp_i`, with READY from the request net.
    Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST, CHK-DMA-HOST-HOLD),
@@ -616,7 +617,8 @@ Observation probe groups:
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`,
    `sep_cpu_demux_unmapped_fetch_test`, `sep_debug_master_target_matrix_test`
-   (CHK-DBG-EXT).
+   (CHK-DBG-EXT), `sep_address_map_test` (CTRL-EXT-DEMUX-PORT,
+   CTRL-EXT-DEMUX-SHIM).
 ** PR-TRNG (`pr_trng_*`): the TRNG AXI-Lite passthrough port, wrapper net
    `u_dut.ext_trng_axil_req`: AW and AR address and AxPROT, and W data and
    strobe; and its replies (monitor PR-TRNG-RSP): B (`resp`) and R (`resp`,

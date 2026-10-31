@@ -312,15 +312,18 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         seq = SepRmaTokenMatchSeq(kind, token)
         await self.start_seq(seq)
         name = "RMA_SIP" if kind == TOKEN_RMA_SIP else "RMA_CHIPLET"
-        assert seq.matched is True, (
-            f"{name} token did not match (code=0x{seq.match_code:02x}); the gate "
-            "cells would then pass for the wrong reason"
-        )
+        code = "none" if seq.match_code is None else f"0x{seq.match_code:02x}"
+        # Same text as SepChkLog.ctrl(): a miss logs CTRL-MISSING and fails the
+        # leaf, because the gate cells after it would pass for the wrong reason.
+        if seq.matched is not True:
+            line = f"CTRL-MISSING TOKEN-MATCH: kind={name} code={code}"
+            self.logger.error(line)
+            raise AssertionError(line)
         if kind == TOKEN_RMA_SIP:
             self._sip_match = True
         else:
             self._chiplet_match = True
-        self.logger.info("CTRL-TOKEN-MATCH LOG kind=%s code=0x%02x", name, seq.match_code)
+        self.logger.info("CTRL-TOKEN-MATCH seen: kind=%s code=%s", name, code)
 
     async def _match_under_fault(self, kind: int) -> int:
         """Present a good token with the comparator faulted; expect the error code.
@@ -516,6 +519,14 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 observed,
                 word,
             )
+            # The cells after an advance start from the state it reaches, so a
+            # state other than the chapter golden is a missing setup for them.
+            landed = (
+                f"cell={tag} prev={lc_state_name(prev)} expect={lc_state_name(expected)} "
+                f"got={lc_state_name(observed)}"
+            )
+            assert observed == expected, f"CTRL-MISSING LC-ADVANCE-STATE {landed}"
+            self.logger.info("CTRL-LC-ADVANCE-STATE seen: %s", landed)
             assert seq.observed_feat == want_feat, (
                 f"CHK-LC-FEAT-DECODE FAIL: cell={tag} state={lc_state_name(observed)} "
                 f"FEAT_CTRL 0x{seq.observed_feat:016x} != decode 0x{want_feat:016x}"

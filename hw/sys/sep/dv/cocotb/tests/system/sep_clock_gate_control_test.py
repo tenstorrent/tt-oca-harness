@@ -128,8 +128,22 @@ class sep_clock_gate_control_test(sep_base_test):
         # CHK-STORAGE, all-ones leg: drive all ones into both 32-bit halves. The
         # pka_cg_enable field must read 1. The Reserved bits 63:1 have no stated
         # access or read value, so their readback is logged, not graded.
-        await gate.write_raw(CLOCK_GATE_CTRL, 0xFFFF_FFFF)
-        await gate.write_raw(CLOCK_GATE_CTRL_HI, 0xFFFF_FFFF)
+        # No document states the response of these writes, so this leaf logs it;
+        # the pka_cg_enable readback below grades the lower-half write.
+        resp = {}
+        for half, addr in (("lower", CLOCK_GATE_CTRL), ("upper", CLOCK_GATE_CTRL_HI)):
+            try:
+                await gate.write_raw(addr, 0xFFFF_FFFF)
+                resp[half] = "OKAY"
+            except AssertionError:
+                resp[half] = "not_OKAY"
+        self.logger.info(
+            "OBS-CG-ALLONES-WR-RESP LOG lower=0x%08x resp=%s upper=0x%08x resp=%s wdata=0xffffffff",
+            CLOCK_GATE_CTRL,
+            resp["lower"],
+            CLOCK_GATE_CTRL_HI,
+            resp["upper"],
+        )
         hi = await gate.read_raw(CLOCK_GATE_CTRL_HI)
         lo = await gate.read_raw(CLOCK_GATE_CTRL)
         self.logger.info(

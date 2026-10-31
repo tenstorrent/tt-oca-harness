@@ -10,13 +10,17 @@ not a live alias of the neighbouring registers. Not a full dead-space walk.
 Bring-up holds the CPU off. Expected offsets/resets/masks come from
 env/sep_reg_meta.py and the ABR / pool seq constants; see sep_address_map_seq.
 The eFuse-shim window boundary must select the shim port for its first word and
-leave SEP on the next word (CHK-EXT-DEMUX-BOUND).
+leave SEP on the next word (CHK-EXT-DEMUX-BOUND); the PR-EXT tap shows that
+next word's read on the extension port (CTRL-EXT-DEMUX-PORT) and no read of
+the first word there (CTRL-EXT-DEMUX-SHIM). The PR-OUT tap shows that no
+fabric-walk read leaves on the outbound port (CTRL-FABRIC-WALK-LOCAL).
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
+from env.sep_fabric_tap import SepFabricTap
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL, sym
 from seq_lib.sep_address_map_seq import CPU_CTRL_INTERIOR_HOLES, sep_address_map_seq
@@ -39,6 +43,7 @@ class sep_address_map_test(sep_base_test):
     # Every graded contract this leaf owns. Dropping any one of them is the
     # failure mode a clean exit would otherwise hide.
     required_evidence = (
+        "CHK-CPU-CTRL-RESET",
         "CHK-REFCNT-READ",
         "CHK-BASEADDR-RW",
         "CHK-RW-READBACK",
@@ -46,7 +51,7 @@ class sep_address_map_test(sep_base_test):
         "CHK-CPU-CTRL-HOLE",
         "CHK-EXT-DEMUX-BOUND",
     )
-    min_evidence = 6
+    min_evidence = 7
 
     async def _access(
         self,
@@ -82,6 +87,15 @@ class sep_address_map_test(sep_base_test):
             f"CHK-ADDRMAP FAIL: {len(sb_errors)} scoreboard error(s) before "
             f"the PASS summary; first: {sb_errors[0]}"
         )
+        wrong = [f"{n}=0x{got:08x}/0x{exp:08x}" for n, exp, got in seq.reset_reads if got != exp]
+        assert seq.reset_reads and not wrong, (
+            f"CHK-CPU-CTRL-RESET FAIL: {len(seq.reset_reads)} reset read(s), "
+            f"mismatch (got/exp) {wrong}"
+        )
+        self.logger.info(
+            "CHK-CPU-CTRL-RESET PASS: regs=%d each equals its RDL reset value",
+            len(seq.reset_reads),
+        )
         self.logger.info(
             "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable and advancing, last read 0x%08x_%08x",
             seq.ref_counter_high,
@@ -92,7 +106,7 @@ class sep_address_map_test(sep_base_test):
             seq.base_addr_rw_checks,
         )
         self.logger.info(
-            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore%s",
+            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore->readback%s",
             seq.write_readback_checks,
             (
                 f" ({len(seq.write_readback_storage_only)} of them storage-only -- RDL "
@@ -102,6 +116,18 @@ class sep_address_map_test(sep_base_test):
             if seq.write_readback_storage_only
             else "",
         )
+        walk_ars = seq.fabric_walk_out_ars
+        walk = (
+            f"rows={seq.fabric_walk_checks} pr_out_ar={len(walk_ars)} "
+            f"[{' '.join(b.fmt() for b in walk_ars)}]"
+        )
+        # Same text as SepChkLog.ctrl(): fabric.adoc routes an address the local
+        # fabric does not decode to the SMN, whose responder answers OKAY with
+        # zero, so CHK-FABRIC-WALK needs no walk read on PR-OUT.
+        if walk_ars:
+            self.logger.error("CTRL-MISSING FABRIC-WALK-LOCAL: %s", walk)
+            raise AssertionError(f"CTRL-MISSING FABRIC-WALK-LOCAL: {walk}")
+        self.logger.info("CTRL-FABRIC-WALK-LOCAL seen: %s", walk)
         self.logger.info(
             "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",
             seq.fabric_walk_checks,
@@ -178,11 +204,14 @@ class sep_address_map_test(sep_base_test):
 
         # CHK-EXT-DEMUX-BOUND. ext_demux_decode() in sep.sv is Tenstorrent-owned
         # decode on an adopter-owned aperture: the first word selects the eFuse
-        # shim port, the next word leaves SEP and is terminated by the extension
-        # error slave. This leaf selects both master ports of u_efuse_shim_demux.
-        # The two responses must differ. The value behind the shim is adopter
-        # owned and is not graded -- only which port the decode chose.
+        # shim port and the next word answers DECERR. The two responses must
+        # differ. CTRL-EXT-DEMUX-PORT shows on the PR-EXT tap that the next word
+        # leaves SEP on the extension port and that the port answers it DECERR.
+        # The value behind the shim is adopter owned and is not graded.
         off = EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE
+        ext = SepFabricTap("PR-EXT").start()
+        ext_rsp = SepFabricTap("PR-EXT-RSP").start()
+        ext_mark, rsp_mark = ext.mark(), ext_rsp.mark()
         # Keyed off the response rather than the monitor tally: the monitor
         # counts on its own clock edge, which may not have run when start_seq
         # returns, and a standing credit would absorb the next unexpected DECERR
@@ -198,11 +227,46 @@ class sep_address_map_test(sep_base_test):
         )
         assert past.resp_code == RESP_DECERR, (
             f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} resp={past.resp_code}, "
-            f"expected DECERR (3) from the extension error slave -- one word past "
-            f"the shim window must leave SEP"
+            f"expected DECERR (3) one word past the shim window"
         )
+        ars = ext.since(ext_mark, "ar")
+        rs = ext_rsp.since(rsp_mark, "r")
+        port = (
+            f"addr=0x{off:08x} ar=[{' '.join(b.fmt() for b in ars)}] "
+            f"r=[{' '.join(b.fmt() for b in rs)}]"
+        )
+        # Same text as SepChkLog.ctrl(): CHK-EXT-DEMUX-BOUND reads its DECERR as
+        # the extension port's answer, so a read that never reached the port, or
+        # a port reply other than one DECERR beat to that request, fails the leaf.
+        if not (
+            len(ars) == 1
+            and ars[0].addr == off
+            and ars[0].id is not None
+            and len(rs) == 1
+            and rs[0].resp == RESP_DECERR
+            and rs[0].id == ars[0].id
+            and rs[0].last == 1
+        ):
+            self.logger.error("CTRL-MISSING EXT-DEMUX-PORT: %s", port)
+            raise AssertionError(f"CTRL-MISSING EXT-DEMUX-PORT: {port}")
+        self.logger.info("CTRL-EXT-DEMUX-PORT seen: %s", port)
 
+        shim_mark = ext.mark()
         inside = await self._access(SepAxiOp.READ, EFUSE_SHIM_BASE)
+        shim_ars = ext.since(shim_mark, "ar")
+        await ext.stop()
+        await ext_rsp.stop()
+        shim = (
+            f"addr=0x{EFUSE_SHIM_BASE:08x} ext_ar={len(shim_ars)} "
+            f"[{' '.join(b.fmt() for b in shim_ars)}]"
+        )
+        # Same text as SepChkLog.ctrl(): memory_map.adoc sends the shim window to
+        # the eFuse controller rather than out the extension port, so
+        # CHK-EXT-DEMUX-BOUND needs that read to put no AR on PR-EXT.
+        if shim_ars:
+            self.logger.error("CTRL-MISSING EXT-DEMUX-SHIM: %s", shim)
+            raise AssertionError(f"CTRL-MISSING EXT-DEMUX-SHIM: {shim}")
+        self.logger.info("CTRL-EXT-DEMUX-SHIM seen: %s", shim)
         assert not inside.timed_out, (
             f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{EFUSE_SHIM_BASE:08x} timed out"
         )
@@ -213,8 +277,8 @@ class sep_address_map_test(sep_base_test):
         )
         self.logger.info(
             "CHK-EXT-DEMUX-BOUND PASS: 0x%08x selected the shim port (resp=%d) "
-            "and 0x%08x left SEP to the extension error slave (DECERR); the "
-            "%d-byte window boundary is graded, the adopter value is not",
+            "and 0x%08x answered DECERR on the extension port; the %d-byte "
+            "window boundary is graded, the adopter value is not",
             EFUSE_SHIM_BASE,
             inside.resp_code,
             off,

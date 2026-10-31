@@ -70,6 +70,12 @@ class sep_efuse_sense_test(sep_base_test):
     # read directly), so skip the AXI env -- otherwise its check_phase fails the
     # test for "no AXI transactions".
     build_env = False
+    required_evidence = (
+        "CHK-SENSE-DONE",
+        "CHK-SENSE-WORD-ORDER",
+        "CHK-SENSE-BACKDOOR",
+        "CHK-IMAGE-MATCH",
+    )
 
     async def run_scenario(self) -> None:
         img = self.select_efuse_image()
@@ -97,6 +103,8 @@ class sep_efuse_sense_test(sep_base_test):
             ",".join([f"{f}:{c}" for c, f in seen] + [f"{f}:none" for f in unseen]),
             "none" if rec["done"] is None else rec["done"],
         )
+        assert rec["done"] is not None, "CHK-SENSE-DONE FAIL: no sep_fuse_sense_done_o rise seen"
+        self.logger.info("CHK-SENSE-DONE PASS: sep_fuse_sense_done_o rose at clock %d", rec["done"])
         words = sorted(rec["first"].items())
         last = rec["first"].get(255)
         order_ok = all(a[1] < b[1] for a, b in zip(words, words[1:]))
@@ -116,7 +124,14 @@ class sep_efuse_sense_test(sep_base_test):
             rec["done"],
             last,
         )
-        assert "skip_fuse_sense" not in cocotb.plusargs, (
-            "CHK-SENSE FAIL: +skip_fuse_sense skips the shadow compare this record names"
+        # The bring-up runs the shared backdoor compare of every shadow word
+        # (CHK-SENSE-BACKDOOR); +skip_fuse_sense skips it.
+        backdoor = "CHK-SENSE-BACKDOOR" in self._evidence.seen
+        assert "skip_fuse_sense" not in cocotb.plusargs and backdoor, (
+            f"CHK-IMAGE-MATCH FAIL: backdoor compare logged={int(backdoor)}; "
+            "+skip_fuse_sense skips the shadow compare this record names"
         )
-        self.logger.info("CHK-SENSE PASS: sensed shadow matched the staged image")
+        self.logger.info(
+            "CHK-IMAGE-MATCH PASS: words=%d sensed shadow equals the staged image",
+            len(img.words),
+        )

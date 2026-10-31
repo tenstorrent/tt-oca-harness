@@ -46,7 +46,9 @@ handshake, at the ``FEAT_CTRL`` offset of the generated RDL, with the written da
 A missing tap event fails the leaf, so CHK-FEAT-RO cannot pass on a write that
 never arrived. ``CTRL-STATUS-ERR-SET``: a read at the first bit address past the
 bank sets ``efuse_read_addr_error`` before the second status write, so that write
-has an effect a lost write cannot show.
+has an effect a lost write cannot show. ``CTRL-RO-WR``: the 0x71 write to the status
+register gets an OKAY or SLVERR B response, so it reached a mapped register; which
+of the two is not graded.
 
 Log-only: the response and read data past the extent and in the reserved span
 (``OBS-WIN-RESP LOG``), the two read-data registers (``OBS-CSR-DATA LOG``), the timeout
@@ -175,6 +177,18 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         """One 32-bit frontdoor write: (OKAY, response code)."""
         seq = await self.fd.access(SepAxiOp.WRITE, addr, data, unverified_write=ungraded)
         return bool(seq.resp_ok), int(seq.resp_code)
+
+    def _ro_write_reached(self, reg: str, code: int) -> None:
+        """CTRL-RO-WR: a write to a mapped read-only register got a B response that is not DECERR.
+
+        The response code itself has no stated value and is not graded.
+        """
+        self.chk.ctrl(
+            "RO-WR",
+            code in (0, 2),
+            reg=reg,
+            resp=_RESP.get(code, code),
+        )
 
     def _log(self, tag: str, **fields: object) -> None:
         log_line(self.logger, tag, self.seed, **fields)
@@ -473,12 +487,10 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             )
         fault_before, _ok, _c = await self._rd(TOKEN_MATCH_FAULT_ADDR)
 
-        # Step 5: the two read-data registers answer OKAY; data logged.
+        # Step 5: the two read-data registers; response and data logged.
         open_graded_window(TEST, self.logger)
         for name in _DATA_REGS:
-            got, ok, code = await self._rd(_IC.addr(name), ungraded=True)
-            if not ok:
-                self.chk.ok("CSR-RESET", False, reg=name, resp=_RESP.get(code, code))
+            got, _ok, code = await self._rd(_IC.addr(name), ungraded=True)
             self._log("OBS-CSR-DATA", reg=name, resp=_RESP.get(code, code), rdata=f"0x{got:08x}")
         close_graded_window(self.logger)
 
@@ -519,6 +531,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
 
         # Step 9: write of 1 to read-only status bits; response code not graded.
         _ok_w, wr_code = await self._wr(STATUS_ADDR, _STATUS_RO_WRITE, ungraded=True)
+        self._ro_write_reached("STATUS", wr_code)
         got, _ok, _c = await self._rd(STATUS_ADDR)
         cmp = field_compare(got, _RESET_EXP[_STATUS], _IC.mask32(_STATUS))
         self.chk.ok(

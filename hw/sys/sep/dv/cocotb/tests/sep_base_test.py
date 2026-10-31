@@ -116,6 +116,7 @@ class _EvidenceFilter(logging.Filter):
             "CHK-NOISE-FORCE",
             "CHK-PRE-SENSE-FAIL-CLOSED",
             "CHK-CHK1-RO-ENABLE",
+            "CHK-SENSE-BACKDOOR",
         }
     )
 

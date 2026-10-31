@@ -54,6 +54,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_fabric_tap import SepFabricTap, TapBeat
 from pyuvm import uvm_sequence
 from sep_reg_meta import (
     CSRNG,
@@ -231,8 +232,11 @@ class sep_address_map_seq(uvm_sequence):
         self.ref_counter_low = 0
         self.ref_counter_high = 0
         self.base_addr_rw_checks = 0
+        self.reset_reads: list[tuple[str, int, int]] = []
         self.write_readback_checks = 0
         self.fabric_walk_checks = 0
+        # PR-OUT AR beats during the fabric walk.
+        self.fabric_walk_out_ars: list[TapBeat] = []
         # Registers whose only fields are RDL `reserved` fields. They are
         # still fully checked above (real sw=rw storage), but what they prove is
         # storage rather than an implemented-field readback -- noted so the
@@ -260,11 +264,9 @@ class sep_address_map_seq(uvm_sequence):
 
     async def body(self) -> None:
         for name in READ_CHECK:
-            await self._read(
-                BASE + SEP_CPU_CTRL.offset(name),
-                expected=SEP_CPU_CTRL.reset32(name),
-                name=name,
-            )
+            exp = SEP_CPU_CTRL.reset32(name)
+            got = await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=exp, name=name)
+            self.reset_reads.append((name, exp, got & 0xFFFF_FFFF))
 
         for name, _why in READ_ONLY:
             value = await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=None, name=name)
@@ -343,8 +345,12 @@ class sep_address_map_seq(uvm_sequence):
             )
             await self._write(addr, pattern, name=name)
             await self._read(addr, expected=expected, name=name)
-            # Restore the generated reset value.
             await self._write(addr, SEP_CPU_CTRL.reset32(name), name=f"{name}_restore")
+            await self._read(
+                addr,
+                expected=SEP_CPU_CTRL.reset32(name) & store_mask,
+                name=f"{name}_restored",
+            )
             self.write_readback_checks += 1
             # Informational only: these have no software-usable fields, so what was
             # proven is storage, not an implemented-field readback.
@@ -363,10 +369,15 @@ class sep_address_map_seq(uvm_sequence):
         await self._write(cg_addr, cg_mask, name="CLOCK_GATE_CTRL")
         await self._read(cg_addr, expected=cg_mask, name="CLOCK_GATE_CTRL")
 
-        # Walk the SEP-local fabric: every block must decode on the LSU bus.
+        # Walk the SEP-local fabric: every block must decode on the LSU bus, so
+        # no walk read may leave on PR-OUT.
+        out = SepFabricTap("PR-OUT").start()
+        out_mark = out.mark()
         for name, addr, expected in FABRIC_BLOCKS:
             await self._read(addr, expected=expected, name=name)
             self.fabric_walk_checks += 1
+        self.fabric_walk_out_ars = out.since(out_mark, "ar")
+        await out.stop()
 
         # Restore CLOCK_GATE_CTRL to its reset value.
         await self._write(cg_addr, cg_reset, name="CLOCK_GATE_CTRL_restore")
