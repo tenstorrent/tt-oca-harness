@@ -38,6 +38,8 @@ Checkers:
             KEY CSRs == HMAC-SHA256(decoy_key, msg) golden under the SW-key
             convention (KEY_0 first, big-endian per word)
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
+  CTRL-DECOY-REWRITE  after the transfer, every write of the decoy to the
+            KEY CSRs answers OKAY
   PUB-OBSERVATION  HMAC public KEY CSRs read back zero after the sideload. NOT a
             checker: hmac.hjson declares KEY swaccess=wo, so the read returns zero
             whether the key is protected, mirrored elsewhere, or never delivered.
@@ -250,8 +252,18 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         # The decoy goes back into the KEY CSRs with KEY_VALID set, so a transfer
         # that lands in the KEY CSR storage, or a KEY write that displaces the
         # sideloaded key, leaves the decoy keying the graded MAC.
-        await self.hmac.write_key(decoy)
-        self.chk.info("DECOY-KEY-REWRITE", key=",".join(hex(w) for w in decoy))
+        try:
+            await self.hmac.write_key(decoy)
+            rewrite_ok = True
+        except AssertionError:
+            rewrite_ok = False
+        self.chk.ctrl(
+            "DECOY-REWRITE",
+            rewrite_ok,
+            words=len(decoy),
+            all_okay=int(rewrite_ok),
+            key=",".join(hex(w) for w in decoy),
+        )
 
         # Keyed HMAC-SHA256 with the SIDELOAD key live and the decoy in the CSRs.
         await self.hmac.configure_keyed_256()
