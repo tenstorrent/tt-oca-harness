@@ -115,6 +115,9 @@ pattern that differs from the first in both directions (a CHK-W1S-NO-CLEAR
 cell). ``CTRL-TOKEN-MATCH`` (each token match), ``CTRL-GATE-SIP-FAULT`` (the
 collapsed comparator code) and ``CTRL-TOKEN-SIP-HELD`` (the SIP match before
 CHK-INVALID-TERM) record the preconditions of the hold cells.
+``CTRL-SEC-DIS-OFF`` records that the security-disable override
+(``lcc_security_disable_probe_o``) is 0 after sense, so no FEAT_CTRL check
+passes on the forced all-ones value.
 
 Log-only, every cell: ``OBS-LC-UPPER`` (LC_STATE[31:8] written, prior and read:
 the RDL gives ``lc_state`` and ``rsvd`` as sw = r and ``rsvd`` as "Unused", and
@@ -275,9 +278,10 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._upper_seen = self._upper | self._nuisance | self._nuisance2
         sec_dis = int(getattr(cocotb.top, "lcc_security_disable_probe_o").value) & 0x1
         assert sec_dis == 0, (
-            "SEC_DIS is asserted, which forces FEAT_CTRL to all-ones and would "
-            "make every decode check in this walk vacuous"
+            "CTRL-SEC-DIS-OFF FAIL sec_dis=1: SEC_DIS is asserted, which forces "
+            "FEAT_CTRL to all-ones and would make every decode check in this walk vacuous"
         )
+        self.logger.info("CTRL-SEC-DIS-OFF LOG sec_dis=%d", sec_dis)
         # The sensed nibble, read off the DUT, must be the state the leaf asked
         # for -- otherwise every cell below measures the wrong starting state.
         probe = int(getattr(cocotb.top, "efuse_shadow_probe_o").value)

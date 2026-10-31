@@ -46,7 +46,11 @@ short name ``ToO`` below):
   segment drives neither of lanes 1:0 and an x4 dummy segment no lane (a
   dummy segment "Holds the bus in a high-impedance state for some number of
   "dummy" clock cycles (neither side transmits)", ``ToO:63``). No source
-  states lanes 3:2 at x1 or x2; the leaf logs them as OBS-SPI-OE-UNUSED. An
+  states lanes 3:2 at x1 or x2; the leaf logs them as OBS-SPI-OE-UNUSED, and
+  CHK-SPI-OE-SEG does not grade them. The SPI data scoreboard decodes a TX
+  segment only when its four output enables are exactly the segment's lanes
+  (x1 0001, x2 0011, x4 1111), so CHK-SPI-SB-FRAME fails a TX segment that
+  drives lane 2 or 3 at x1 or x2. An
   x1 dummy segment is logged as OBS-SPI-OE-DUMMY: ``ToO:29`` ("for
   Standard-mode commands `SD[0]` is always configured as an output") and
   ``ToO:63`` give different patterns. An x1 RX-only segment is logged as
@@ -114,7 +118,8 @@ Checks:
   dummy, x4 dummy) is graded. x1 RX-only and x1 dummy segments are logged as
   OBS lines.
 * CHK-SPI-ILLEGAL: each of the 5 graded illegal cells sets ERROR_STATUS to
-  CMDINVAL only, and a legal control command after the SPI clean state reads
+  CMDINVAL only, and a legal control command after the SPI clean state runs
+  on the pad (one chip-select-low window of LEN+1 sck cycles) and reads
   ERROR_STATUS 0. SPEED 3 with DIRECTION 2 runs as the control
   ``CTRL-SPI-ILLEGAL LOG`` and prints no CHK line. The illegal COMMAND is written
   with the core held (CONTROL.SPIEN=0), so the reserved cell never runs on the
@@ -996,25 +1001,31 @@ class sep_spi_pad_speed_dir_matrix_test(sep_base_test):
                     f"after the SPI clean state ({flushed.fmt()})"
                 )
             mark = self.pads.mark()
-            await self.ops.issue_command(
-                Seg(0, DIR_DUMMY, self.illegal_ctl_lens[(speed, direction)]).cmd
-            )
-            await self.ops.wait_segment_done(self.pads, mark, bound_clks=SEG_BOUND_CLKS)
+            ctl_len = self.illegal_ctl_lens[(speed, direction)]
+            await self.ops.issue_command(Seg(0, DIR_DUMMY, ctl_len).cmd)
+            ctl_wins = await self.ops.wait_segment_done(self.pads, mark, bound_clks=SEG_BOUND_CLKS)
+            ctl_sck = sum(w.leading_edges for w in ctl_wins)
             ctl = field_compare(await self._err_status(), 0, ERR_STATUS_MASK)
+            ctl_ran = len(ctl_wins) == 1 and ctl_sck == ctl_len + 1
+            ctl_txt = (
+                f"control_windows={len(ctl_wins)} control_sck_cycles={ctl_sck} "
+                f"control_expect={ctl_len + 1}"
+            )
             if control:
-                if not ctl.ok:
+                if not (ctl.ok and ctl_ran):
                     raise AssertionError(
-                        f"CTRL-SPI-ILLEGAL FAIL seed={seed} control_err_status=0x{ctl.got:02x}"
+                        f"CTRL-SPI-ILLEGAL FAIL seed={seed} control_err_status=0x{ctl.got:02x} "
+                        f"{ctl_txt}"
                     )
                 continue
             line = (
                 f"seed={seed} speed={speed} dir={direction} "
                 f"err_status=0x{err.got & err.mask:02x} "
-                f"control_err_status=0x{ctl.got & ctl.mask:02x} "
+                f"control_err_status=0x{ctl.got & ctl.mask:02x} {ctl_txt} "
                 f"spien0_legal_err_status=0x{pre.got & pre.mask:02x} err_mask=0x{err.mask:02x} "
                 f"len={self.illegal_lens[(speed, direction)]}"
             )
-            if not err.ok or not ctl.ok:
+            if not err.ok or not ctl.ok or not ctl_ran:
                 raise AssertionError(f"CHK-SPI-ILLEGAL FAIL {line}")
             self.logger.info("CHK-SPI-ILLEGAL PASS %s", line)
         self.ran.add("CHK-SPI-ILLEGAL")

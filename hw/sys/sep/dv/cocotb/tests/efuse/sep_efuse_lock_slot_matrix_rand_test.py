@@ -38,7 +38,8 @@ Checkers:
                     (read before the go) and the write-one clear returns it to 0, on an
                     unlocked twin it ends with ``read_done`` 1, ``read_status`` 0 and
                     ``efuse_req_error`` 0; a program on a write-locked field sets
-                    ``efuse_req_error``, which the clear returns to 0, with no bank
+                    ``efuse_req_error`` from 0 (cleared and read back before the
+                    go), and the clear returns it to 0, with no bank
                     bit change and no program command at the post-guard tap, on an
                     unlocked field it lands exactly its bit with one program command
                     at its address; a shadow write is
@@ -441,7 +442,13 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         return r
 
     async def _program(self, bit_addr: int, *, read_back: int = 0, watch: bool = True) -> dict:
-        """Program bit ``bit_addr`` (data 1): go, full W, command tap, bank diff, status."""
+        """Program bit ``bit_addr`` (data 1): clear, go, full W, command tap, bank diff, status.
+
+        ``efuse_req_error`` is sticky, so the request clears it and reads it back
+        before the go (``pre_req_err``); a refused program graded on a flag that
+        was already set cannot pass.
+        """
+        pre = await self._clear_status()
         snap = self.bank.snapshot()
         mark = self.shim.mark() if watch else None
         start = self._pulse_mark() if watch else None
@@ -458,6 +465,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "done": _bit(ctrl, _PG_DONE),
             "prog_status": _bit(ctrl, _PG_STATUS),
             "req_err": _bit(st, _REQ_ERR),
+            "pre_req_err": pre,
             "diff": diff,
             "progs": progs,
             "clr_req_err": "na",
@@ -528,6 +536,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         progs = r["progs"]
         return (
             r["busy"] == 0
+            and r["pre_req_err"] == 0
             and r["req_err"] == 1
             and r["clr_req_err"] == 0
             and not r["diff"]
@@ -661,11 +670,19 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
 
         # Step 5: program a zero bit of the used range.
         if prog_bit is None:
-            f.update(prog="na", req_err="na", clr_req_err="na", otp_diff="na", shim_cmd="na")
+            f.update(
+                prog="na",
+                pre_req_err="na",
+                req_err="na",
+                clr_req_err="na",
+                otp_diff="na",
+                shim_cmd="na",
+            )
         else:
             a = prog_bit["addr"]
             r = await self._program(a)
             f["prog_bit_addr"] = a
+            f["pre_req_err"] = r["pre_req_err"]
             f["req_err"] = r["req_err"]
             f["clr_req_err"] = r["clr_req_err"]
             f["otp_diff"] = (
