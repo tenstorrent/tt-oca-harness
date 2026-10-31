@@ -71,45 +71,13 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             f"CHK-OFFSET FAIL: source 0x{cfg.access_addr:08x}=0x{src_pre:08x} "
             f"already equals dest 0x{cfg.expect_addr:08x} -- vacuous"
         )
-        # Park CLOCK_GATE_CTRL at a value other than the marker. The aliased
-        # write below must then change it, which only a write that lands on
-        # CLOCK_GATE_CTRL can do.
-        await alias._wr(cfg.expect_addr, cfg.parked)
-        parked = alias_probe_seq(cfg.expect_addr)
-        await self.start_seq(parked)
-        park = (
-            f"addr=0x{cfg.expect_addr:08x} wrote=0x{cfg.parked:08x} "
-            f"read=0x{parked.rdata & 0xFFFF_FFFF:08x} resp_ok={int(parked.resp_ok)}"
-        )
-        # Same text as SepChkLog.ctrl(): CHK-OFFSET-WRITE needs CLOCK_GATE_CTRL
-        # parked away from the marker, so a missing park fails the leaf.
-        if not (parked.resp_ok and (parked.rdata & 0xFFFF_FFFF) == cfg.parked):
-            self.logger.error("CTRL-MISSING OFFSET-PARK: %s", park)
-            raise AssertionError(f"CTRL-MISSING OFFSET-PARK: {park}")
-        self.logger.info("CTRL-OFFSET-PARK seen: %s", park)
+        await self._park(alias, cfg)
 
         await alias.program(cfg)
 
         await alias._wr(cfg.access_addr, cfg.marker)
 
-        landed = alias_probe_seq(cfg.expect_addr)
-        await self.start_seq(landed)
-        assert landed.resp_ok, f"identity dest 0x{cfg.expect_addr:08x} resp not OKAY"
-        landed_data = landed.rdata & 0xFFFF_FFFF
-        assert landed_data == cfg.marker, (
-            f"CHK-OFFSET-WRITE FAIL: aliased write of 0x{cfg.marker:08x} to "
-            f"0x{cfg.access_addr:08x} left identity CLOCK_GATE_CTRL "
-            f"0x{cfg.expect_addr:08x} at 0x{landed_data:08x} (parked 0x{cfg.parked:08x}) "
-            "-- the write landed somewhere else"
-        )
-        self.logger.info(
-            "CHK-OFFSET-WRITE PASS: aliased write to 0x%08x moved identity "
-            "CLOCK_GATE_CTRL 0x%08x from 0x%08x to 0x%08x",
-            cfg.access_addr,
-            cfg.expect_addr,
-            cfg.parked,
-            landed_data,
-        )
+        await self._check_landed(cfg)
 
         hit = alias_probe_seq(cfg.access_addr)
         await self.start_seq(hit)
@@ -198,6 +166,47 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             cfg.seed,
         )
 
+    async def _park(self, alias: SepLocalAlias, cfg: SepLocalAliasCfg) -> None:
+        """Park CLOCK_GATE_CTRL at a value other than the marker (CTRL-OFFSET-PARK).
+
+        An aliased write of the marker must then change it, which only a write
+        that lands on CLOCK_GATE_CTRL can do.
+        """
+        await alias._wr(cfg.expect_addr, cfg.parked)
+        parked = alias_probe_seq(cfg.expect_addr)
+        await self.start_seq(parked)
+        park = (
+            f"addr=0x{cfg.expect_addr:08x} wrote=0x{cfg.parked:08x} "
+            f"read=0x{parked.rdata & 0xFFFF_FFFF:08x} resp_ok={int(parked.resp_ok)}"
+        )
+        # Same text as SepChkLog.ctrl(): CHK-OFFSET-WRITE needs CLOCK_GATE_CTRL
+        # parked away from the marker, so a missing park fails the leaf.
+        if not (parked.resp_ok and (parked.rdata & 0xFFFF_FFFF) == cfg.parked):
+            self.logger.error("CTRL-MISSING OFFSET-PARK: %s", park)
+            raise AssertionError(f"CTRL-MISSING OFFSET-PARK: {park}")
+        self.logger.info("CTRL-OFFSET-PARK seen: %s", park)
+
+    async def _check_landed(self, cfg: SepLocalAliasCfg) -> None:
+        """CHK-OFFSET-WRITE: the aliased marker write moved identity CLOCK_GATE_CTRL."""
+        landed = alias_probe_seq(cfg.expect_addr)
+        await self.start_seq(landed)
+        assert landed.resp_ok, f"identity dest 0x{cfg.expect_addr:08x} resp not OKAY"
+        landed_data = landed.rdata & 0xFFFF_FFFF
+        assert landed_data == cfg.marker, (
+            f"CHK-OFFSET-WRITE FAIL: aliased write of 0x{cfg.marker:08x} to "
+            f"0x{cfg.access_addr:08x} left identity CLOCK_GATE_CTRL "
+            f"0x{cfg.expect_addr:08x} at 0x{landed_data:08x} (parked 0x{cfg.parked:08x}) "
+            "-- the write landed somewhere else"
+        )
+        self.logger.info(
+            "CHK-OFFSET-WRITE PASS: aliased write to 0x%08x moved identity "
+            "CLOCK_GATE_CTRL 0x%08x from 0x%08x to 0x%08x",
+            cfg.access_addr,
+            cfg.expect_addr,
+            cfg.parked,
+            landed_data,
+        )
+
     def _lane(self) -> str:
         """``ext_debug_bus_o[207:192]`` as a bit string, X and Z kept."""
         v = cocotb.top.ext_debug_bus_o.value
@@ -225,8 +234,12 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         self.logger.info("CTRL-OFFSET-SIB-OWN seen: %s", sib_own)
         await alias.program(sib)
         # One write in region cfg.region, then reads in two different regions
-        # with no write in between.
+        # with no write in between. The write must move CLOCK_GATE_CTRL from
+        # the parked value, which a write that passes through to the source
+        # page does not do.
+        await self._park(alias, cfg)
         await alias._wr(cfg.access_addr, cfg.marker)
+        await self._check_landed(cfg)
         lanes = []
         for c in (cfg, sib):
             rd = alias_probe_seq(c.access_addr)

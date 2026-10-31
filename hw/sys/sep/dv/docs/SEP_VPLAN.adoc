@@ -928,7 +928,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool). The value of `SEP_TEST_CTRL` and its strap bits is logged only (`OBS-SEP-TEST-CTRL`).
+|Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the eFuse-shim window boundary holds: the first word does not answer DECERR, and the next word answers DECERR after it leaves SEP on the extension port, which the PR-EXT observation tap proves (`CHK-EXT-DEMUX-BOUND`, `CTRL-EXT-DEMUX-PORT`). The value of `SEP_TEST_CTRL` and its strap bits is logged only (`OBS-SEP-TEST-CTRL`).
 |<<sep_cpu_ifu_lsu_alias_remap_matrix_test,`sep_cpu_ifu_lsu_alias_remap_matrix_test`>>
 |1
 |cpu, +skip_fuse_sense
@@ -3789,7 +3789,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Positive diversion of the eFuse shim window
 |The eFuse shim demux output is internal.
 |ACCEPT-PROBE
-|A read-only probe on the demux output gives the observation, and no test adds it. `sep_fabric_extension_port_window_test` grades the silent extension port.
+|A read-only probe on the demux output gives the observation, and no test adds it. `sep_fabric_extension_port_window_test` grades the silent extension port. `sep_address_map_test` proves on the PR-EXT observation tap that the first word past the window leaves SEP on the extension port (`CTRL-EXT-DEMUX-PORT`).
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |CPU IFU responder for invalid targets
 |The CPU masters have no boundary port.
