@@ -187,9 +187,13 @@ def _smc_reg_module():
 @lru_cache(maxsize=1)
 def _registers() -> dict[str, RdlReg]:
     root = ET.parse(_IPXACT).getroot()
-    block = root.find(".//i:addressBlock", _NS)
-    if block is None:
+    blocks = root.findall(".//i:memoryMap/i:addressBlock", _NS)
+    if not blocks:
         raise RuntimeError(f"no ipxact:addressBlock in {_IPXACT}")
+    # peakrdl-ipxact exports smc_top as one addressBlock while it has an array child,
+    # and as one addressBlock per unit once it has none.
+    top = root.find("i:name", _NS).text
+    wrapped = len(blocks) == 1 and blocks[0].find("i:name", _NS).text == top
 
     out: dict[str, RdlReg] = {}
 
@@ -233,7 +237,11 @@ def _registers() -> dict[str, RdlReg]:
                         fields,
                     )
 
-    walk(block, [], _num(block.find("i:baseAddress", _NS).text))
+    for block in blocks:
+        if block.findtext("i:usage", namespaces=_NS) == "memory":
+            continue
+        prefix = [] if wrapped else [block.find("i:name", _NS).text]
+        walk(block, prefix, _num(block.find("i:baseAddress", _NS).text))
     return out
 
 

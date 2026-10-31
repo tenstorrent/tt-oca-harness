@@ -93,9 +93,9 @@ module smc_periph_axi_lite_xbar
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE)},
     '{idx: 2,
-      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
-      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)
-                    + smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_TOTAL_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_SIZE)},
     // apb2avsbus: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_{BASE_ADDR,SIZE}
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR),

@@ -116,7 +116,7 @@ if (OUTFILT_BASE & ~(PAGE - 1)) == SRC_PAGE:
     raise RuntimeError("the outbound filter bank shares the source page")
 if max(ALIAS_BASE, OUTFILT_BASE) & ~(PAGE - 1) >= SRC_PAGE:
     raise RuntimeError("a programmed bank sits at or above the source page")
-_ = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
+_ = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR")
 
 
 class SepAliasRegionDriver(SepAxiRegDriver):

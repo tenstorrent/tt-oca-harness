@@ -38,7 +38,7 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import AXI_BUS_BYTES
 from pyuvm import ConfigDB
 from sep_reg_meta import (
-    INBOUND_FILTER_CTRL_0,
+    INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
     KM_MAILBOX_SEP,
     RegAccess,
     RegInfo,
@@ -157,7 +157,7 @@ WRITE_SAFE_PREFIXES = (
     "SEP_SCRATCH_COLD",
     "SEP_SCRATCH_WARM",
     "SEP_CPU_CTRL",
-    "INBOUND_FILTER_CTRL_",
+    "INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_",
 )
 
 # Anti-vacuity list, not the touch set: the touch set is every register the
@@ -262,10 +262,10 @@ _TOUCH_DENY_NAME: dict[str, str] = {
 # programmed under a random value drops live beats. No write path may enter
 # these banks, the masked storage touch included.
 SIDE_EFFECT_EXCLUDE_PREFIXES: dict[str, str] = {
-    "LOCAL_MASTER_ALIAS_REMAP_CTRL_": "side-effect: alias remap rewrites LSU",
-    "AP_OUTPUT_REMAP_CTRL_": "side-effect: outbound remap",
-    "STEE_OUTPUT_REMAP_CTRL_": "side-effect: outbound remap",
-    "OUTBOUND_FILTER_CTRL_": "side-effect: outbound filter drop",
+    "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_": "side-effect: alias remap rewrites LSU",
+    "AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_": "side-effect: outbound remap",
+    "STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_": "side-effect: outbound remap",
+    "OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_": "side-effect: outbound filter drop",
 }
 
 # Blanket bash exclusion, refined per register by touch_reason: the mailbox
@@ -283,8 +283,8 @@ _INBOUND_ADDR = frozenset({"START_ADDR", "END_ADDR"})
 # from the generated export rather than transcribed: the value for START_ADDR is
 # the peer END_ADDR's reset, and vice versa.
 _INBOUND_PEER_RESET = {
-    "START_ADDR": INBOUND_FILTER_CTRL_0.reset("END_ADDR"),
-    "END_ADDR": INBOUND_FILTER_CTRL_0.reset("START_ADDR"),
+    "START_ADDR": INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset("END_ADDR"),
+    "END_ADDR": INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset("START_ADDR"),
 }
 
 
@@ -320,7 +320,10 @@ def inbound_addr_expected(name: str, written: int) -> int:
 
 
 def _is_inbound_addr(info: RegInfo) -> bool:
-    return info.block.startswith("INBOUND_FILTER_CTRL_") and info.name in _INBOUND_ADDR
+    return (
+        info.block.startswith("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_")
+        and info.name in _INBOUND_ADDR
+    )
 
 
 def touch_reason(info: RegInfo) -> str | None:
@@ -549,7 +552,8 @@ class SepRegBitBashCfg:
         inbound_addr = [
             info
             for info in self.write_regs
-            if info.block.startswith("INBOUND_FILTER_CTRL_") and info.name in _INBOUND_ADDR
+            if info.block.startswith("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_")
+            and info.name in _INBOUND_ADDR
         ]
         if len(inbound_addr) != 32:
             raise RuntimeError(
@@ -905,7 +909,7 @@ class SepRegBitBash:
 
 def _selftest() -> None:
     start = RegInfo(
-        block="INBOUND_FILTER_CTRL_0_",
+        block="INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_",
         name="START_ADDR",
         addr=0,
         reset=0,
@@ -913,7 +917,7 @@ def _selftest() -> None:
         mask_all=0xFFFF_FFFF,
     )
     end = RegInfo(
-        block="INBOUND_FILTER_CTRL_0_",
+        block="INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_",
         name="END_ADDR",
         addr=0,
         reset=7,
@@ -938,7 +942,7 @@ def _selftest() -> None:
     # touch_reason admits the outbound-filter bank; the side-effect half is
     # what keeps a write off it. Both halves must be consulted.
     outbound = RegInfo(
-        block="OUTBOUND_FILTER_CTRL_0_",
+        block="OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_",
         name="START_ADDR",
         addr=0,
         reset=0,
@@ -946,7 +950,7 @@ def _selftest() -> None:
         mask_all=0xFFFF_FFFF,
     )
     filter_cfg = RegInfo(
-        block="INBOUND_FILTER_CTRL_0_",
+        block="INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_",
         name="FILTER_CONFIG",
         addr=0,
         reset=0,

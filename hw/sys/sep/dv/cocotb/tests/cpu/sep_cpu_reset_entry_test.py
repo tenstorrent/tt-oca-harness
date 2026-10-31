@@ -218,7 +218,7 @@ _CPU_CTRL = RegBlock("SEP_CPU_CTRL")
 _WDT = RegBlock("WDT_TIMER")
 _COLD = RegBlock("SEP_SCRATCH_COLD")
 _WARM = RegBlock("SEP_SCRATCH_WARM")
-_OUTF = RegBlock("OUTBOUND_FILTER_CTRL_0_")
+_OUTF = RegBlock("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_")
 
 # Outbound mailbox (tb/sep_outbound_mbx.sv: STDOUT is the SMU_GLOBAL_BASE_ADDR
 # reset value). The routine stores 32-bit words at these offsets.

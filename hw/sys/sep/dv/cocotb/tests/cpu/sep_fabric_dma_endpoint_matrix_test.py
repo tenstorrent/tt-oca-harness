@@ -138,8 +138,8 @@ from env.sep_fcov_gate import (
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import (
-    AP_OUTPUT_REMAP_CTRL_0,
-    INBOUND_FILTER_CTRL_0,
+    AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0,
+    INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
     RegBlock,
     indexed_block_count,
     register_fields,
@@ -185,9 +185,13 @@ EC_DEFINED = SECURE_DMA.mask("ERROR_CODE")
 LOCAL_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR")
 EXT_WORD = sym("SEP_EXTERNAL_REG_MAP_BASE_ADDR") + 0x100
 # FILTER_CONFIG field bits (low word, RW fields plus the RO data_bus_width).
-CFG_FIELDS = INBOUND_FILTER_CTRL_0.mask32("FILTER_CONFIG")
-REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
-REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
+CFG_FIELDS = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.mask32("FILTER_CONFIG")
+REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "offset"
+)
+REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "valid"
+)
 # The local alias span is 768 MiB from the SEP map base (fabric.adoc, SEP CPU
 # local-alias traffic); its top word, direct and through the alias window.
 LOCAL_ALIAS_SPAN = 0x3000_0000
@@ -219,7 +223,7 @@ POOL_STREAM = 2
 POOL_FEED_BOUND = 4096
 # SW_RESET_N reset value (RDL) and the field bits of the register.
 SW_RESET_N_RESET = RegBlock("SEP_RESET_CTRL").reset("SW_RESET_N")
-FILT_IN0_CFG = sym("INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR")
+FILT_IN0_CFG = sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR")
 # The not-connected targets of the firmware (ROM_BASE, DMA_CSR_WORD).
 NC_ROM = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 NC_DMA_CSR = SECURE_DMA.addr("ENABLED_MEMORY_RANGE_LIMIT")
@@ -228,12 +232,16 @@ IRQ_ERROR = agg_from_pic(PIC_DMA_ERROR)
 # STEE output remap (generated map; the region span is the one of the AP
 # window, IDX_START of sep_outbound_remap_seq, checked below).
 STEE_REGION = sym("STEE_REGION_MEM_BASE_ADDR")
-STEE_OUTPUT_REMAP_CTRL_0 = RegBlock("STEE_OUTPUT_REMAP_CTRL_0_")
-STEE_OFFSET_FIELD = STEE_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
-STEE_VALID_FIELD = STEE_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
+STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0 = RegBlock("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0_")
+STEE_OFFSET_FIELD = STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "offset"
+)
+STEE_VALID_FIELD = STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "valid"
+)
 if (
     sym("STEE_REGION_MEM_SIZE") != N_REGIONS << IDX_START
-    or indexed_block_count("STEE_OUTPUT_REMAP_CTRL") != N_REGIONS
+    or indexed_block_count("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP") != N_REGIONS
 ):
     raise RuntimeError("the STEE window does not hold the AP region count and span")
 # NS is AxPROT[1] (fabric.adoc, Transaction Routing: "its security state in
@@ -245,8 +253,8 @@ ADDR_NS_BIT = 55
 ADDR_BITS = STEE_OFFSET_FIELD.bit_length()
 # Inbound filter entry of the START_ADDR legs: the last entry, which the leaf
 # keeps disabled (the entry count from the generated map).
-FILT_IDX = indexed_block_count("INBOUND_FILTER_CTRL") - 1
-FILT_ENTRY = RegBlock(f"INBOUND_FILTER_CTRL_{FILT_IDX}_")
+FILT_IDX = indexed_block_count("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL") - 1
+FILT_ENTRY = RegBlock(f"INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{FILT_IDX}_")
 FILT_START = FILT_ENTRY.addr("START_ADDR")
 START_MASK = FILT_ENTRY.mask("START_ADDR")
 FILT_LOCKED = FILT_ENTRY.field_mask("FILTER_CONFIG", "locked")

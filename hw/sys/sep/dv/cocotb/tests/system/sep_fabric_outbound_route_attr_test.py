@@ -142,8 +142,8 @@ from env.sep_lcc_golden import LC_PROD, LCC_FEAT_CTRL, lc_state_name
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import (
-    AP_OUTPUT_REMAP_CTRL_0,
-    LOCAL_MASTER_ALIAS_REMAP_CTRL_0,
+    AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0,
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0,
     SEP_CPU_CTRL,
     RegBlock,
     sym,
@@ -195,15 +195,19 @@ SW_DEBUG_FIELD = SEP_CPU_CTRL.field_mask("SEP_SW_DEBUG", "sep_sw_debug")
 SCRATCH_FIELD = RegBlock("SEP_SCRATCH_COLD").field_mask("SCRATCH_0_", "data") & 0xFFFF_FFFF
 SMU_BASE_REG = SEP_CPU_CTRL.addr("SMU_GLOBAL_BASE_ADDR")
 SMU_SIZE_REG = SEP_CPU_CTRL.addr("SMU_REGION_SIZE")
-REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
-REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
+REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "offset"
+)
+REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "valid"
+)
 REGION_MASK = (1 << IDX_START) - 1
 # sep_outbound_mbx latches its completion state on these 32-bit write words.
 _MBX_MAGIC = OUTBOUND_MBX_MAGIC
 BIT55 = 1 << 55
 # Alias region 0 maps this SMU page, clear of the three SMU_WORDS, onto the
 # same page with address bit 55 set.
-_ALIAS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0
+_ALIAS = LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0
 ALIAS_PAGE = SMU_MID + 0x1000
 ALIAS_VALID_FIELD = _ALIAS.field_mask("REGION_REGION_ATTRS", "valid")
 ALIAS_FIELDS = {

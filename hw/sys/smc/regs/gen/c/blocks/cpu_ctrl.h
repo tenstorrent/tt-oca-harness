@@ -233,14 +233,14 @@ typedef union {
 } cpu_ctrl__REFERENCE_COUNTER_t;
 
 // reg - cpu_ctrl::WDT_TIMEOUT
-// Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
+// Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bm 0xffffffff
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bp 0
 #define CPU_CTRL__WDT_TIMEOUT__DATA_bw 32
 #define CPU_CTRL__WDT_TIMEOUT__DATA_reset 0x4000
 typedef union {
     struct __attribute__ ((__packed__)) {
-        // Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
+        // Number of cycles after a core's 1st stage watchdog timeout at which the 2nd stage watchdog timeout occurs. A value of 0 raises the 2nd stage timeout as soon as the 1st stage timeout occurs. Defaults to 16384 cycles
         uint32_t data :32;
     } f;
     uint32_t w;

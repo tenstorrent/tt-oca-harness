@@ -268,8 +268,8 @@ from env.sep_seeded_rng import SepSeededRng
 from ocah_jtag_vip import OcahJtagMasterDriver
 from sep_base_test import sep_base_test
 from sep_reg_meta import (
-    AP_OUTPUT_REMAP_CTRL_0,
-    INBOUND_FILTER_CTRL_0,
+    AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0,
+    INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0,
     SEP_RESET_CTRL,
     RegBlock,
     sym,
@@ -405,11 +405,15 @@ ISO_DATA = 0x1501_A7ED
 # (hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:22-45), so a
 # set bit stays set; that write is the last access of the leaf.
 DEMOTE_2 = sym("SEP_LIFECYCLE_CTRL_DEMOTE_2_REG_ADDR")
-F_LOCKED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "locked")
+F_LOCKED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "locked")
 
 # AP and STEE output remap (hw/sys/sep/doc/fabric.adoc:178-181, :314-315).
-REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
-REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
+REMAP_OFFSET_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "offset"
+)
+REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
+    "REGION_REGION_ATTRS", "valid"
+)
 REGION_MASK = (1 << IDX_START) - 1
 ADDR_BITS = 56  # the outbound address width (hw/sys/sep/doc/fabric.adoc:172-173)
 # (path, region window base, remap CSR base, outbound filter pair)

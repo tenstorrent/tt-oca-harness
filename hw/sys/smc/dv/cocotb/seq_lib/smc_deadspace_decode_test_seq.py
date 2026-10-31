@@ -184,18 +184,22 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
         ),
         DeadspaceProbe(
             "outbound_filter0_start",
-            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", 0),
+            smc_indexed_addr(
+                "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR", 0
+            ),
             0x200,
-            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0),
-            _block_extent("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL", indexed=True),
+            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0),
+            _block_extent("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", indexed=True),
             "FILTER_CTRL_START_ADDR",
         ),
         DeadspaceProbe(
             "alias_remap0_region_end",
-            smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR", 0),
+            smc_indexed_addr(
+                "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR", 0
+            ),
             0x100,
-            smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_BASE_ADDR", 0),
-            _block_extent("SMC_TOP_SMC_ALIAS_REMAP_REGION", indexed=True),
+            smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_BASE_ADDR", 0),
+            _block_extent("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION", indexed=True),
             "REMAP_REGION_REGION_END",
         ),
         DeadspaceProbe(

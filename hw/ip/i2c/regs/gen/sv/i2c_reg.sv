@@ -279,46 +279,80 @@ module i2c_reg (
         automatic logic is_valid_rw;
         automatic logic is_external;
         is_external = '0;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.INTR_STATE = cpuif_req_masked & (cpuif_addr == 8'h0);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h0);
         decoded_reg_strb.INTR_ENABLE = cpuif_req_masked & (cpuif_addr == 8'h4);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h4);
         decoded_reg_strb.INTR_TEST = cpuif_req_masked & (cpuif_addr == 8'h8);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h8);
         decoded_reg_strb.SMBUS_CTRL = cpuif_req_masked & (cpuif_addr == 8'hc);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'hc);
         decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 8'h10);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h10);
         decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 8'h14) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h14);
         decoded_reg_strb.RDATA = cpuif_req_masked & (cpuif_addr == 8'h18) & !cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 8'h18) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h18);
         decoded_reg_strb.FDATA = cpuif_req_masked & (cpuif_addr == 8'h1c) & cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 8'h1c) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h1c);
         decoded_reg_strb.FIFO_CTRL = cpuif_req_masked & (cpuif_addr == 8'h20) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h20);
         decoded_reg_strb.HOST_FIFO_CONFIG = cpuif_req_masked & (cpuif_addr == 8'h24);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h24);
         decoded_reg_strb.TARGET_FIFO_CONFIG = cpuif_req_masked & (cpuif_addr == 8'h28);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h28);
         decoded_reg_strb.HOST_FIFO_STATUS = cpuif_req_masked & (cpuif_addr == 8'h2c) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h2c);
         decoded_reg_strb.TARGET_FIFO_STATUS = cpuif_req_masked & (cpuif_addr == 8'h30) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h30);
         decoded_reg_strb.OVRD = cpuif_req_masked & (cpuif_addr == 8'h34);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h34);
         decoded_reg_strb.VAL = cpuif_req_masked & (cpuif_addr == 8'h38) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h38);
         decoded_reg_strb.TIMING0 = cpuif_req_masked & (cpuif_addr == 8'h3c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h3c);
         decoded_reg_strb.TIMING1 = cpuif_req_masked & (cpuif_addr == 8'h40);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h40);
         decoded_reg_strb.TIMING2 = cpuif_req_masked & (cpuif_addr == 8'h44);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h44);
         decoded_reg_strb.TIMING3 = cpuif_req_masked & (cpuif_addr == 8'h48);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h48);
         decoded_reg_strb.TIMING4 = cpuif_req_masked & (cpuif_addr == 8'h4c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h4c);
         decoded_reg_strb.TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 8'h50);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h50);
         decoded_reg_strb.TARGET_ID = cpuif_req_masked & (cpuif_addr == 8'h54);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h54);
         decoded_reg_strb.ACQDATA = cpuif_req_masked & (cpuif_addr == 8'h58) & !cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 8'h58) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h58);
         decoded_reg_strb.TXDATA = cpuif_req_masked & (cpuif_addr == 8'h5c) & cpuif_req_is_wr;
         is_external |= cpuif_req_masked & (cpuif_addr == 8'h5c) & cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h5c);
         decoded_reg_strb.HOST_TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 8'h60);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h60);
         decoded_reg_strb.TARGET_TIMEOUT_CTRL = cpuif_req_masked & (cpuif_addr == 8'h64);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h64);
         decoded_reg_strb.TARGET_NACK_COUNT = cpuif_req_masked & (cpuif_addr == 8'h68);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h68);
         decoded_reg_strb.TARGET_ACK_CTRL = cpuif_req_masked & (cpuif_addr == 8'h6c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h6c);
         decoded_reg_strb.ACQ_FIFO_NEXT_DATA = cpuif_req_masked & (cpuif_addr == 8'h70) & !cpuif_req_is_wr;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h70);
         decoded_reg_strb.HOST_NACK_HANDLER_TIMEOUT = cpuif_req_masked & (cpuif_addr == 8'h74);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h74);
         decoded_reg_strb.CONTROLLER_EVENTS = cpuif_req_masked & (cpuif_addr == 8'h78);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h78);
         decoded_reg_strb.TARGET_EVENTS = cpuif_req_masked & (cpuif_addr == 8'h7c);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h7c);
         decoded_reg_strb.SMBUS_STATUS = cpuif_req_masked & (cpuif_addr == 8'h80) & !cpuif_req_is_wr;
-        decoded_err = '0;
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr == 8'h80);
+        is_valid_addr = cpuif_addr < 8'h84;
+        decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
     logic external_wr_ack;
@@ -3894,7 +3928,7 @@ module i2c_reg (
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -4111,7 +4145,7 @@ module i2c_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign external_rd_ack = readback_external_rd_ack;

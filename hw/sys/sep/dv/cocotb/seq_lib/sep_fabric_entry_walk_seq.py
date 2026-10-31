@@ -33,7 +33,7 @@ granularity (``sep_outbound_remap_seq.IDX_START``).
 from __future__ import annotations
 
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import INBOUND_FILTER_CTRL_0
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -56,13 +56,13 @@ from seq_lib.sep_outbound_remap_seq import (
 )
 
 # filter_ctrl.rdl start_addr / end_addr width; the hi word holds bits ADDR_W-1:32.
-ADDR_W = INBOUND_FILTER_CTRL_0.field_width("START_ADDR", "start_addr")
+ADDR_W = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_width("START_ADDR", "start_addr")
 ADDR_MASK = (1 << ADDR_W) - 1
 HI_MASK = ADDR_MASK >> 32
 GRAN_MASK = GRANULE_BYTES - 1
 # filter_ctrl.rdl START_ADDR / END_ADDR resets (upper words reset to zero).
-START_RESET = INBOUND_FILTER_CTRL_0.reset32("START_ADDR")
-END_RESET = INBOUND_FILTER_CTRL_0.reset32("END_ADDR")
+START_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset32("START_ADDR")
+END_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset32("END_ADDR")
 if REMAP_OFFSET_MASK != ADDR_MASK:
     raise RuntimeError(f"remap offset mask 0x{REMAP_OFFSET_MASK:x} is not offset[55:0]")
 if END_RESET != GRAN_MASK:

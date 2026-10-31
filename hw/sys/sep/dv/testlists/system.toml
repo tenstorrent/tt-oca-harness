@@ -480,7 +480,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# The same sweep from the SMN inbound master. The sixteen INBOUND_FILTER_CTRL blocks stay
+# The same sweep from the SMN inbound master. The sixteen INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL blocks stay
 # on s_axi only: they gate the access in flight.
 name = "sep_axi_order_sweep_m_axi_test"
 module = "system.sep_axi_order_sweep_m_axi_test"

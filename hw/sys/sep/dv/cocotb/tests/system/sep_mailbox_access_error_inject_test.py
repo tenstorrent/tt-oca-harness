@@ -97,7 +97,7 @@ from env.sep_mbox_pair_model import IRQ_ALL, MboxSystem, popcount
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0 as MBX_REGS
-from sep_reg_meta import INBOUND_FILTER_CTRL_0, sep_addr_define
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0, sep_addr_define
 from seq_lib.sep_fabric_filter_bank_seq import SepFilterBank
 from seq_lib.sep_mailbox_iface_seq import SepMbox
 from seq_lib.sep_mbox_port_ops import (
@@ -134,7 +134,9 @@ RO_TARGETS = ("READ_DATA", "STATUS", "ERROR_FLAGS", "IRQP")
 QUIET_CLKS = 32
 # IRQS threshold causes (wtirq, rtirq) and FILTER_CONFIG.entry_enabled, from the RDL.
 IRQS_THR = IRQ_WTIRQ | IRQ_RTIRQ
-FILT_ENTRY_ENABLED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "entry_enabled")
+FILT_ENTRY_ENABLED = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask(
+    "FILTER_CONFIG", "entry_enabled"
+)
 
 
 class Inj:

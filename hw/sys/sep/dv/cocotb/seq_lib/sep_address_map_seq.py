@@ -170,12 +170,12 @@ WRITE_ONLY = [
 # Blocks whose address AND reset value are exported take both from the header.
 # The ABR NAME0 and entropy-pool STATUS addresses come from their owning seq
 # modules.
-_INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
+_INFILT0 = sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 _INFILT0_CFG_RESET = next(
     (
         info.reset
         for info in iter_registers()
-        if info.block == "INBOUND_FILTER_CTRL_0_" and info.name == "FILTER_CONFIG"
+        if info.block == "INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_" and info.name == "FILTER_CONFIG"
     ),
     None,
 )
@@ -183,7 +183,7 @@ if _INFILT0_CFG_RESET is None:
     # Fail at import rather than build a row with no expected value. A bare
     # next() raises StopIteration with no message; name what is missing.
     raise RuntimeError(
-        "INBOUND_FILTER_CTRL_0_.FILTER_CONFIG is not in the generated register "
+        "INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_.FILTER_CONFIG is not in the generated register "
         "export, so the inbound-filter address-map row has no reset value to "
         "check; update FABRIC_BLOCKS to the block's name in the export"
     )
@@ -215,8 +215,12 @@ FABRIC_BLOCKS = [
     ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
     ("AXIL_MAILBOX", sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"), None),
     ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),
-    ("ALIAS_REMAP", sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR"), None),
-    ("AP_OUTPUT_REMAP", sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR"), None),
+    (
+        "ALIAS_REMAP",
+        sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0__REG_MAP_BASE_ADDR"),
+        None,
+    ),
+    ("AP_OUTPUT_REMAP", sym("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0__REG_MAP_BASE_ADDR"), None),
     ("OT_SPI_HOST", sym("SPI_CONTROLLER_INTR_STATE_REG_ADDR"), None),
 ]
 

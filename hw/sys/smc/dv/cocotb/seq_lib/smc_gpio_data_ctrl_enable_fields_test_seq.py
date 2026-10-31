@@ -18,16 +18,16 @@ from .smc_pad_table import pad_function
 from .smc_regblock_field_sweep_utils import RegInstance, reg_instances
 
 _DATA_CTRL = (
-    "gpio_intf/DATA_CTRL",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 _DATA_CTRL_ENABLE = (
-    "gpio_intf/DATA_CTRL_ENABLE",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL_ENABLE",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_ENABLE_REG_ADDR",
 )
 
 _INSTANCE = 60

@@ -57,10 +57,12 @@ WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
 assert WDT0_CTRL == LOCAL_BASE
 
 # --- alias remap: 8 regions, 0x20 apart --------------------------------------
-ALIAS_NUM = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_NUM")
+ALIAS_NUM = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM")
 ALIAS_SPEC_STRIDE = 0x20
 ALIAS_REGION_START = tuple(
-    smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", region)
+    smc_indexed_addr(
+        "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", region
+    )
     for region in range(ALIAS_NUM)
 )
 assert ALIAS_REGION_START[0] == LOCAL_BASE + 0x0001_2000

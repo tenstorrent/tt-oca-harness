@@ -95,13 +95,13 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import smc_reg_addr
 from .smc_regblock_field_sweep_utils import RegInstance, reg_instances
 
-_OUT = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_"
-_OUT_PY = "SMC_OUTBOUND_FILTER_CTRL_{index}__"
+_OUT = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_"
+_OUT_PY = "SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{index}__"
 
 
 def _spec(register: str) -> tuple[str, str, str, str]:
     return (
-        f"smc_outbound_filter_ctrl/{register}",
+        f"smc_outbound_filter_ctrl_wrap/filter_ctrl/{register}",
         f"{_OUT}{register}_BASE_ADDR",
         f"{_OUT}{register}_NUM",
         f"{_OUT_PY}{register}_REG_ADDR",
@@ -174,7 +174,7 @@ _TRAFFIC_ENTRY = 1
 
 # -- the inbound leg at 56-bit addresses ------------------------------------
 
-_IN = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_"
+_IN = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_"
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
 _CFG_MASK = {
     name: _field_mask(_FILTER_H, f"FILTER_CTRL__FILTER_CONFIG__{name.upper()}_bm")
@@ -211,10 +211,10 @@ _FENCE = (
 
 def _in_spec(register: str) -> tuple[str, str, str, str]:
     return (
-        f"smc_inbound_filter_ctrl/{register}",
+        f"smc_inbound_filter_ctrl_wrap/filter_ctrl/{register}",
         f"{_IN}{register}_BASE_ADDR",
         f"{_IN}{register}_NUM",
-        f"SMC_INBOUND_FILTER_CTRL_{{index}}__{register}_REG_ADDR",
+        f"SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{{index}}__{register}_REG_ADDR",
     )
 
 
