@@ -206,7 +206,7 @@ seed = 1
 # No reseed: every run walks all eight destinations through both rounds; the seed
 # selects only key and data words.
 timeout_sec = 14400
-tags = ["km", "sideload", "abr", "aes", "hmac", "kmac", "otbn", "subsystem", "entropy", "sep_spec_log"]
+tags = ["km", "sideload", "abr", "aes", "hmac", "kmac", "otbn", "subsystem", "entropy", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
@@ -421,7 +421,7 @@ firmware = { name = "km_rom_mbox_km", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
 timeout_sec = 3600
-tags = ["km", "mailbox", "irq", "subsystem"]
+tags = ["km", "mailbox", "irq", "subsystem", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_mbox_km.param.parhex"]
@@ -454,7 +454,7 @@ seed = 1
 reseed = 3
 timeout_sec = 7200
 tools = ["vcs"]
-tags = ["km", "otp", "efuse", "subsystem", "sep_spec_log"]
+tags = ["km", "otp", "efuse", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+km_rom_hex=km_rom_poke.parhex"]
@@ -469,7 +469,7 @@ firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
 timeout_sec = 5400
-tags = ["km", "key_bank", "abr", "mlkem", "subsystem", "sep_spec_log"]
+tags = ["km", "key_bank", "abr", "mlkem", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000"]
@@ -485,7 +485,7 @@ firmware = { name = "km_rom_poke", mode = "km_rom_blob" }
 seed = 1
 reseed = 1
 timeout_sec = 5400
-tags = ["km", "key_bank", "abr", "mlkem", "subsystem", "sep_spec_log"]
+tags = ["km", "key_bank", "abr", "mlkem", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+km_rom_hex=km_rom_poke.parhex", "+verilator+error+limit+10000", "+sep_shard=2"]

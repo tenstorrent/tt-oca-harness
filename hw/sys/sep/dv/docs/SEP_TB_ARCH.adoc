@@ -168,6 +168,20 @@ Observation probe groups:
   the bench reset. It counts the 0-to-1 edges of the KMCSR bit of the KM CPU
   `eoi` vector, which the core sets to the interrupts it serves at handler
   entry. User: `sep_km_otp_change_irq_test` (CHK-OTP-ENTRY).
+* KM CPU ready-mux counters (`km_rom_ready_on_target_count_o`,
+  `km_sram_ready_on_target_count_o`, `km_axi_ready_on_target_count_o` and the
+  `*_ready_off_target_count_o` twins), reset with the bench reset. Per source
+  (KM ROM interface, KM SRAM interface, AXI adapter), the on-target counter
+  counts the clocks with the source ready high while the KM CPU request is
+  valid for that source, and the off-target counter the clocks with the
+  source ready high while it is not. No CSR shows a ready of a source the
+  request does not select. User: `sep_km_mailbox_km_side_rand_test`.
+* KM CPU AXI-adapter write capture (`km_axi_wr_addr_o`, `km_axi_wr_strb_o`,
+  `km_axi_subword_wr_count_o`), reset with the bench reset: the address and
+  strobes of the last adapter write handshake (valid, ready and a non-zero
+  strobe in one clock), and the count of those handshakes whose strobes are
+  not `4'hf`. No CSR shows the strobes of a KM CPU store. User:
+  `sep_km_key_bank_register_rand_test`.
 * KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`).
 * KM SRAM read-count probes (`km_sram_rd_*`) and scrambled-write probes
   (`km_sram_scr_wr_*`).
@@ -1210,6 +1224,24 @@ Exceptions (a closed set):
   B handshake of `dma_axi_req_probe_o`, `r.user` on a clock with bits 0 and 1
   of `dma_resp_r_hs_o` high. No CSR shows the USER field of a response beat.
   Read-only; no force. Users: `sep_fabric_dma_endpoint_matrix_test`.
+* *Adams Bridge AHB counters* — on the AHB-lite bus from the Adams Bridge
+  wrapper into `abr_top` (single slave, HREADY is HREADYOUT):
+  `abr_ahb_xfer_count_o` counts the accepted address phases (HTRANS bit 1
+  with HREADYOUT high), `abr_ahb_wait_count_o` the clocks with HREADYOUT low
+  and `abr_ahb_err_count_o` the clocks with HRESP high. No CSR shows the AHB
+  transfers behind an AXI access. Read-only; no force; 0 in a build without Adams
+  Bridge (`SEP_ABR_EN` not defined). Users: `sep_abr_access_size_test`.
+* *AES masking parameters* — `aes_sec_params_o` carries the
+  `SecMasking` (bit 0) and `SecAllowForcingMasks` (bit 1) parameters of the
+  OpenTitan AES core in `aes_wrapper.sv`, read as hierarchical parameters.
+  A parameter has no CSR. The VCS build drives the port; the Verilator build
+  ties it to 0. Read-only; no force. Users:
+  `sep_crypto_shadow_update_err_rand_test`.
+* *CSRNG gate inputs* — the OTP enable of the CSRNG software application read
+  (`csrng_sw_app_read_en_o`, MuBi8) and the lifecycle hardware-debug enable
+  (`csrng_lc_hw_debug_en_o`, `lc_tx_t`) at the input ports of the DRBG
+  instance in `sep_trng.sv`. No CSR shows either input. Read-only; no force.
+  Users: `sep_drbg_cmd_sequence_rand_test`.
 * *Mailbox, IRQ and PIC observation taps* — the crypto alert receiver pulses
   (`crypto_alert_pulse_probe_o`), the PIC register read data
   (`pic_rd_data_probe_o`), the PIC register write strobe

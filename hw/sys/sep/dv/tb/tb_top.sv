@@ -2503,6 +2503,58 @@ module sep_uvm_top
     assign abr_zeroize_ready_probe_o = '0;
 `endif
 
+    // Adams Bridge AHB-lite counters on the wrapper bus into abr_top
+    // (sep_crypto_abr_wrapper.sv, single slave: hready is hreadyout).
+    // abr_ahb_xfer_cnt_q counts the accepted address phases (HTRANS NONSEQ or
+    // SEQ with HREADYOUT high), abr_ahb_wait_cnt_q the clocks with HREADYOUT
+    // low, abr_ahb_err_cnt_q the clocks with HRESP high. Monitor-only; 0 in a
+    // build without Adams Bridge.
+`ifdef SEP_ABR_EN
+`define ABR_AHB `SEP_CORE.u_sep_crypto.u_sep_crypto_abr_wrapper_s3c_scan
+    logic [31:0] abr_ahb_xfer_cnt_q, abr_ahb_wait_cnt_q, abr_ahb_err_cnt_q;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            abr_ahb_xfer_cnt_q <= '0;
+            abr_ahb_wait_cnt_q <= '0;
+            abr_ahb_err_cnt_q  <= '0;
+        end else begin
+            if (`ABR_AHB.ab_htrans[1] && `ABR_AHB.ab_hreadyout)
+                abr_ahb_xfer_cnt_q <= abr_ahb_xfer_cnt_q + 32'd1;
+            if (!`ABR_AHB.ab_hreadyout) abr_ahb_wait_cnt_q <= abr_ahb_wait_cnt_q + 32'd1;
+            if (`ABR_AHB.ab_hresp) abr_ahb_err_cnt_q <= abr_ahb_err_cnt_q + 32'd1;
+        end
+    end
+`undef ABR_AHB
+    assign abr_ahb_xfer_count_o = abr_ahb_xfer_cnt_q;
+    assign abr_ahb_wait_count_o = abr_ahb_wait_cnt_q;
+    assign abr_ahb_err_count_o  = abr_ahb_err_cnt_q;
+`else
+    assign abr_ahb_xfer_count_o = '0;
+    assign abr_ahb_wait_count_o = '0;
+    assign abr_ahb_err_count_o  = '0;
+`endif
+
+    // AES masking parameters of the OpenTitan AES core in aes_wrapper.sv:
+    // {SecAllowForcingMasks, SecMasking}, read as hierarchical parameters. The
+    // VCS build drives the port; the Verilator build ties it to 0, so a reader
+    // runs on VCS.
+`ifndef VERILATOR
+    assign aes_sec_params_o = {
+        1'(`SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes.SecAllowForcingMasks),
+        1'(`SEP_CORE.u_sep_crypto.u_aes_wrapper_s3c_scan.u_tt_aes.SecMasking)
+    };
+`else
+    assign aes_sec_params_o = '0;
+`endif
+
+    // CSRNG gate inputs at the DRBG instance in sep_trng.sv: the OTP enable of
+    // the software application read (MuBi8) and the lifecycle hardware-debug
+    // enable (lc_tx_t). Monitor-only.
+    assign csrng_sw_app_read_en_o =
+        8'(`SEP_CORE.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan.otp_en_csrng_sw_app_read_i);
+    assign csrng_lc_hw_debug_en_o =
+        4'(`SEP_CORE.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan.lc_hw_debug_en_i);
+
     // ------------------------------------------------------------------
     // Warm-reset handler seed: +sep_cold_scratch7=<hex32>
     // ------------------------------------------------------------------
@@ -3998,6 +4050,57 @@ module sep_uvm_top
     assign otbn_imem_write_count_o = otbn_imem_wr_cnt_q;
     assign otbn_dmem_req_count_o   = otbn_dmem_req_cnt_q;
     assign otbn_dmem_write_count_o = otbn_dmem_wr_cnt_q;
+
+    // KM CPU ready-mux taps (picorv32_wrapper.sv). Per source (0 ROM, 1 SRAM,
+    // 2 AXI adapter): km_ready_on_q counts the clocks with the source ready
+    // high while the CPU request is valid for that source, km_ready_off_q the
+    // clocks with the source ready high while it is not. The AXI-adapter write
+    // capture holds the address and strobes of the last write handshake of the
+    // adapter; km_axi_subword_wr_cnt_q counts the handshakes whose strobes are
+    // not 4'hf. Monitor-only.
+`define KM_RDY_CPU `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_cpu
+    logic [2:0]       km_src_sel, km_src_rdy;
+    logic [2:0][31:0] km_ready_on_q, km_ready_off_q;
+    logic [31:0]      km_axi_wr_addr_q, km_axi_subword_wr_cnt_q;
+    logic [3:0]       km_axi_wr_strb_q;
+    assign km_src_sel = {`KM_RDY_CPU.is_periph_addr, `KM_RDY_CPU.is_sram_addr,
+                         `KM_RDY_CPU.is_rom_addr} & {3{`KM_RDY_CPU.mem_valid}};
+    assign km_src_rdy = {`KM_RDY_CPU.axi_adapter_mem_ready, `KM_RDY_CPU.sram_mem_ready,
+                         `KM_RDY_CPU.rom_mem_ready};
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_ready_on_q           <= '0;
+            km_ready_off_q          <= '0;
+            km_axi_wr_addr_q        <= '0;
+            km_axi_wr_strb_q        <= '0;
+            km_axi_subword_wr_cnt_q <= '0;
+        end else begin
+            for (int s = 0; s < 3; s++) begin
+                if (km_src_rdy[s] && km_src_sel[s])
+                    km_ready_on_q[s] <= km_ready_on_q[s] + 32'd1;
+                if (km_src_rdy[s] && !km_src_sel[s])
+                    km_ready_off_q[s] <= km_ready_off_q[s] + 32'd1;
+            end
+            if (`KM_RDY_CPU.axi_adapter_mem_valid && `KM_RDY_CPU.axi_adapter_mem_ready &&
+                (|`KM_RDY_CPU.axi_adapter_mem_wstrb)) begin
+                km_axi_wr_addr_q <= `KM_RDY_CPU.axi_adapter_mem_addr;
+                km_axi_wr_strb_q <= `KM_RDY_CPU.axi_adapter_mem_wstrb;
+                if (`KM_RDY_CPU.axi_adapter_mem_wstrb != 4'hf)
+                    km_axi_subword_wr_cnt_q <= km_axi_subword_wr_cnt_q + 32'd1;
+            end
+        end
+    end
+`undef KM_RDY_CPU
+    assign km_rom_ready_on_target_count_o   = km_ready_on_q[0];
+    assign km_sram_ready_on_target_count_o  = km_ready_on_q[1];
+    assign km_axi_ready_on_target_count_o   = km_ready_on_q[2];
+    assign km_rom_ready_off_target_count_o  = km_ready_off_q[0];
+    assign km_sram_ready_off_target_count_o = km_ready_off_q[1];
+    assign km_axi_ready_off_target_count_o  = km_ready_off_q[2];
+    assign km_axi_wr_addr_o                 = km_axi_wr_addr_q;
+    assign km_axi_wr_strb_o                 = km_axi_wr_strb_q;
+    assign km_axi_subword_wr_count_o        = km_axi_subword_wr_cnt_q;
+
     // KM SRAM word 0: peek the real macro array. The KM SRAM is one unscrambled
     // prim_ram_1p_adv (sep_ip_integration.u_km_sram) addressed by word index
     // within the 32 KB SRAM window the Key Manager specification places at

@@ -1870,6 +1870,13 @@ OPEN_VALUE_LEGS = (
     "sram_macro_bit_flip",
     "spi_cmdinval_spien1",
     "wdt_pause_in_sleep_set",
+    "csrng_bus_cmp_replay",
+    "csrng_vctr_wrap",
+    "esrc_ht_bypass_zero",
+    "km_xfer_short_key",
+    "km_bank_subword_byte",
+    "km_bank_subword_half",
+    "km_mbox_flush_race",
 )
 
 
