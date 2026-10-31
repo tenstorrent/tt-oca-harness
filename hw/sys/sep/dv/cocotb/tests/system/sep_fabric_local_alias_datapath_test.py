@@ -16,7 +16,8 @@ states that an invalid remap entry behaves as a transparent pass-through,
 so a window whose bounds and offset are programmed with the valid bit
 clear must leave the beat at the address the master issued. Programming
 the window and clearing only the enable is what separates a working gate
-from an address that was never in range.
+from an address that was never in range. The PR-OUT tap shows that the
+gated read puts no AR on the outbound port (CTRL-VALID-GATE-LOCAL).
 
 The cacheable flag that ``fabric.adoc`` lists per region is not checked
 here: this bench has no observable on the outbound cache bits.
@@ -32,6 +33,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
+from env.sep_fabric_tap import SepFabricTap
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_local_alias_seq import (
     N_REGIONS,
@@ -129,8 +131,23 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         # guard above proved it differs from the marker the destination now
         # holds, so this compare fails if the remap ignores the valid bit.
         await alias.program(cfg, valid=False)
+        out = SepFabricTap("PR-OUT").start()
+        out_mark = out.mark()
         gated = alias_probe_seq(cfg.access_addr)
         await self.start_seq(gated)
+        out_ars = out.since(out_mark, "ar")
+        await out.stop()
+        local = (
+            f"addr=0x{cfg.access_addr:08x} pr_out_ar={len(out_ars)} "
+            f"[{' '.join(b.fmt() for b in out_ars)}]"
+        )
+        # Same text as SepChkLog.ctrl(): the outbound responder and an unbacked
+        # word also answer OKAY with zero, so CHK-VALID-GATE needs the gated read
+        # to stay on the local fabric. An AR on PR-OUT fails the leaf.
+        if out_ars:
+            self.logger.error("CTRL-MISSING VALID-GATE-LOCAL: %s", local)
+            raise AssertionError(f"CTRL-MISSING VALID-GATE-LOCAL: {local}")
+        self.logger.info("CTRL-VALID-GATE-LOCAL seen: %s", local)
         assert gated.resp_ok, (
             f"CHK-VALID-GATE FAIL: 0x{cfg.access_addr:08x} resp not OKAY with "
             f"the region programmed and valid clear"

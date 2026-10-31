@@ -11,7 +11,9 @@ Bring-up holds the CPU off. Expected offsets/resets/masks come from
 env/sep_reg_meta.py and the ABR / pool seq constants; see sep_address_map_seq.
 The eFuse-shim window boundary must select the shim port for its first word and
 leave SEP on the next word (CHK-EXT-DEMUX-BOUND); the PR-EXT tap shows that
-next word's read on the extension port (CTRL-EXT-DEMUX-PORT).
+next word's read on the extension port (CTRL-EXT-DEMUX-PORT) and no read of
+the first word there (CTRL-EXT-DEMUX-SHIM). The PR-OUT tap shows that no
+fabric-walk read leaves on the outbound port (CTRL-FABRIC-WALK-LOCAL).
 """
 
 from __future__ import annotations
@@ -114,6 +116,18 @@ class sep_address_map_test(sep_base_test):
             if seq.write_readback_storage_only
             else "",
         )
+        walk_ars = seq.fabric_walk_out_ars
+        walk = (
+            f"rows={seq.fabric_walk_checks} pr_out_ar={len(walk_ars)} "
+            f"[{' '.join(b.fmt() for b in walk_ars)}]"
+        )
+        # Same text as SepChkLog.ctrl(): fabric.adoc routes an address the local
+        # fabric does not decode to the SMN, whose responder answers OKAY with
+        # zero, so CHK-FABRIC-WALK needs no walk read on PR-OUT.
+        if walk_ars:
+            self.logger.error("CTRL-MISSING FABRIC-WALK-LOCAL: %s", walk)
+            raise AssertionError(f"CTRL-MISSING FABRIC-WALK-LOCAL: {walk}")
+        self.logger.info("CTRL-FABRIC-WALK-LOCAL seen: %s", walk)
         self.logger.info(
             "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",
             seq.fabric_walk_checks,
@@ -217,8 +231,6 @@ class sep_address_map_test(sep_base_test):
         )
         ars = ext.since(ext_mark, "ar")
         rs = ext_rsp.since(rsp_mark, "r")
-        await ext.stop()
-        await ext_rsp.stop()
         port = (
             f"addr=0x{off:08x} ar=[{' '.join(b.fmt() for b in ars)}] "
             f"r=[{' '.join(b.fmt() for b in rs)}]"
@@ -239,7 +251,22 @@ class sep_address_map_test(sep_base_test):
             raise AssertionError(f"CTRL-MISSING EXT-DEMUX-PORT: {port}")
         self.logger.info("CTRL-EXT-DEMUX-PORT seen: %s", port)
 
+        shim_mark = ext.mark()
         inside = await self._access(SepAxiOp.READ, EFUSE_SHIM_BASE)
+        shim_ars = ext.since(shim_mark, "ar")
+        await ext.stop()
+        await ext_rsp.stop()
+        shim = (
+            f"addr=0x{EFUSE_SHIM_BASE:08x} ext_ar={len(shim_ars)} "
+            f"[{' '.join(b.fmt() for b in shim_ars)}]"
+        )
+        # Same text as SepChkLog.ctrl(): memory_map.adoc sends the shim window to
+        # the eFuse controller rather than out the extension port, so
+        # CHK-EXT-DEMUX-BOUND needs that read to put no AR on PR-EXT.
+        if shim_ars:
+            self.logger.error("CTRL-MISSING EXT-DEMUX-SHIM: %s", shim)
+            raise AssertionError(f"CTRL-MISSING EXT-DEMUX-SHIM: {shim}")
+        self.logger.info("CTRL-EXT-DEMUX-SHIM seen: %s", shim)
         assert not inside.timed_out, (
             f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{EFUSE_SHIM_BASE:08x} timed out"
         )
