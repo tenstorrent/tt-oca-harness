@@ -25,6 +25,14 @@ reset clears the sticky fault bits and the interrupt, and the detector re-arms
 after it (CHK-FAULT-RESET). At RMA_CHIP_1 a JTAG read of TOKEN_MATCH_FAULT
 equals the AXI read (CHK-JTAG-FAULT).
 
+Between the SIP and the CHIPLET walk, with LC_STATE at RMA_SIP, one zero bit of
+a spare field with no write lock in the image is programmed through
+``EFUSE_PROGRAM_CTRL`` (read-back verify on). No document states whether RMA_SIP
+accepts that program, so it is logged, not graded (``OBS-PROG-RMA LOG``: the bit
+at ``otp_bank_probe_o`` before and after, the bank diff, ``program_status`` and
+``efuse_req_error``). The bit as the bank then holds it goes into the image, so
+the later senses compare every other shadow word against the image.
+
 The end-to-end LC stitch is graded by lcc/sep_efuse_lcc_lc_state_stitch_test.
 Real fuse sense. Starts in PROD so the SIP then CHIPLET walk is W1S-legal.
 """
@@ -35,11 +43,25 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_efuse_bank_watch import SepEfuseBank, bank_diff, diff_log
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_efuse_plan import (
+    SLOT_OF_FIELD,
+    SPARE_FIELDS,
+    bit_address,
+    field_word,
+    write_lock_bit,
+    zero_bits,
+)
 from env.sep_lcc_golden import LC_PROD, LC_RMA_CHIP_1, lc_state_name
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import EFUSE_INTERFACE_CTRL
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
+from seq_lib.sep_efuse_otp_program_seq import (
+    sep_efuse_otp_program_once_seq,
+    sep_efuse_otp_program_seq,
+)
 from seq_lib.sep_efuse_rma_token_seq import (
     FAULT_RMA_CHIPLET,
     FAULT_RMA_SIP,
@@ -68,11 +90,34 @@ from seq_lib.sep_efuse_rma_token_seq import (
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
+# The RMA_SIP spare-bit draw comes from a separate stream, so the token draws keep
+# their seed mapping.
+_SPARE_SALT = 0x524D_4153
+_IF_STATUS = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
+_REQ_ERROR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error")
+_REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
+)
+# Bits of the lock vector held in LOCKS; the rest are in LOCKS_SPARE.
+_LOCKS_BITS = 64
+
+
+def _write_locked(image: SepEfuseImage, name: str) -> bool:
+    """True when the image sets the write lock of field ``name``."""
+    slot = SLOT_OF_FIELD.get(name)
+    if slot is None:
+        return False
+    b = write_lock_bit(slot)
+    reg, b = ("LOCKS", b) if b < _LOCKS_BITS else ("LOCKS_SPARE", b - _LOCKS_BITS)
+    return bool((image.words[field_word(reg) + b // 32] >> (b % 32)) & 1)
 
 
 @pyuvm.test()
 class sep_efuse_rma_token_rand_test(sep_base_test):
     """Match updates LC; mismatch does not; comparator fault path both ways."""
+
+    # OTP (word, mask) of the spare bit the RMA_SIP program set, or None.
+    _spare_landed: tuple[int, int] | None = None
 
     async def _check_lc(self, image: SepEfuseImage, raw: int, tag: str) -> None:
         # The image pins SEC_DISABLE clear and no SEC_DIS token is presented, so
@@ -163,12 +208,77 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             lc_state_name(after),
         )
 
+    async def _rma_spare_program(self, image: SepEfuseImage, seed: int) -> None:
+        """Program one unlocked spare bit at RMA_SIP and log the outcome."""
+        lc = lc_state_name(image.lc_raw())
+        cands = [
+            (f, w, b)
+            for f in SPARE_FIELDS
+            if not _write_locked(image, f)
+            for w, b in zero_bits(image, f)
+        ]
+        if not cands:
+            self.logger.info("OBS-PROG-RMA LOG seed=%d lc=%s candidates=0 programmed=0", seed, lc)
+            return
+        f, w, b = SepSeededRng(seed ^ _SPARE_SALT).choice(cands)
+        addr = bit_address(f, w, b)
+        bank = SepEfuseBank(cocotb.top)
+        pre = bank.read()
+        prog = sep_efuse_otp_program_once_seq(addr, read_back=True)
+        await self.start_seq(prog)
+        post = bank.read()
+        diff = bank_diff(pre, post)
+        st = SepAxiAccessSeq("rma_spare_status", op=SepAxiOp.READ, addr=_IF_STATUS)
+        await self.start_seq(st)
+        req_err = int(bool(st.rdata & _REQ_ERROR))
+        otp_bit = (post[addr >> 5] >> (addr & 31)) & 1
+        self.logger.info(
+            "OBS-PROG-RMA LOG seed=%d lc=%s field=%s word=%d bit=%d addr=%d otp_before=%d "
+            "otp_after=%d otp_diff=%s program_status=%d efuse_req_error=%d candidates=%d",
+            seed,
+            lc,
+            f,
+            w,
+            b,
+            addr,
+            (pre[addr >> 5] >> (addr & 31)) & 1,
+            otp_bit,
+            "none" if not diff else diff_log(diff),
+            int(bool(prog.program_err)),
+            req_err,
+            len(cands),
+        )
+        if req_err:
+            clr = SepAxiAccessSeq(
+                "rma_spare_err_clear", op=SepAxiOp.WRITE, addr=_IF_STATUS, wdata=_REQ_ERROR_CLEAR
+            )
+            await self.start_seq(clr)
+            st = SepAxiAccessSeq("rma_spare_status_clr", op=SepAxiOp.READ, addr=_IF_STATUS)
+            await self.start_seq(st)
+            left = int(bool(st.rdata & _REQ_ERROR))
+            ok = st.resp_ok and not left
+            line = (
+                f"CTRL-PROG-RMA-ERR-CLEAR: efuse_req_error before=1 after_w1c={left} "
+                f"resp_ok={int(st.resp_ok)}"
+            )
+            if not ok:
+                self.logger.error("%s (control not met)", line)
+                raise AssertionError(f"{line} (control not met)")
+            self.logger.info(line)
+        if otp_bit:
+            image.words[addr >> 5] |= 1 << (addr & 31)
+            self._spare_landed = (addr >> 5, 1 << (addr & 31))
+            self.write_efuse_image(image)
+
     def _irq39(self) -> int:
         mask = 1 << IRQ_TOKEN_MATCH_FAULT
         vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask)
         return (vec >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
+        # TOKEN_MATCH_FAULT is the last 32-bit register of the block, and a 64-bit
+        # beat runs past its end and answers SLVERR (doc/trm/src/memory_map.adoc,
+        # generated register blocks), so the access is one 4-byte beat.
         seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT, size=2)
         await self.start_seq(seq)
         assert seq.resp_ok, "TOKEN_MATCH_FAULT read not OKAY"
@@ -393,6 +503,10 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         # clk_wdt_i and entropy_rosc_sample_clk_i. resense pulses rst_ni with the
         # clocks already running, which is what this phase needs.
         image = self.select_efuse_image(lc_raw=LC_RMA_CHIP_1, fixed=cfg.image_fixed())
+        # The OTP keeps the spare bit the RMA_SIP program set; the golden keeps it too.
+        if self._spare_landed is not None:
+            word, mask = self._spare_landed
+            image.words[word] |= mask
         self.write_efuse_image(image)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
 
@@ -439,6 +553,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self._check_lc(image, LC_PROD, "prod-baseline")
 
         await self._mismatch_then_match(image, TOKEN_RMA_SIP, cfg.sip_token)
+        await self._rma_spare_program(image, cfg.seed)
         await self._mismatch_then_match(image, TOKEN_RMA_CHIPLET, cfg.chiplet_token)
 
         self.logger.info(

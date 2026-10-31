@@ -74,9 +74,15 @@
 `SEP_TB_IN(logic, jtag_ic_reset_tdi_i)
 `SEP_TB_OUT(logic, jtag_ic_reset_tdo_o)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
-// pair onto the LCC decoder input (no legal OTP image can present one). See
-// the force block in tb_top.sv.
+// pair onto the selected pairs of the LCC decoder input (no legal OTP image can
+// present one). See the force block in tb_top.sv.
 `SEP_TB_IN(logic, lc_sigint_inject_i)
+// Pairs the inject breaks: bit i is pair i, {data_i[4+i], data_i[i]} of the
+// decoder input. 0, or a value with an X or Z bit, selects all four pairs.
+`SEP_TB_IN(logic [sep_pkg::LcStateBitWidth-1:0], lc_sigint_pair_mask_i)
+// Rail value of a broken pair: 1 drives both rails to 1; 0, X or Z drives both
+// rails to 0.
+`SEP_TB_IN(logic, lc_sigint_bad_value_i)
 // Token-comparator redundancy fault inject. Default 0. Encoding:
 //   3'b000 off
 //   3'b001 collapse instance 0 of the selected comparator (both rails 0).
@@ -1518,6 +1524,8 @@
 `SEP_TB_OUT(logic, jtag_filter_lc_sigint_err_probe_o)
 // The sep input jtag_id_i as the DUT receives it. Read-only tap.
 `SEP_TB_OUT(logic [31:1], jtag_id_probe_o)
+// The sep input jtag_trst_ni as the DUT receives it. Read-only tap.
+`SEP_TB_OUT(logic, jtag_trst_probe_o)
 // Post-guard fuse command at the sep output efuse_shim_command_req_o: valid,
 // command, bit address, program data and word count. Read-only taps.
 `SEP_TB_OUT(logic, efuse_shim_cmd_valid_o)
@@ -1582,6 +1590,16 @@
 // lc_state_o of sep: the differentially encoded lifecycle state (frontdoor DUT
 // output).
 `SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_state_probe_o)
+// Input of the lifecycle-state decoder (read-only XMR): pair i is
+// {data_i[LcStateBitWidth+i], data_i[i]}, after any sigint inject force.
+`SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_dec_data_probe_o)
+// AXI-Lite write port of the lifecycle controller register block. Read-only
+// taps: the number of write-address handshakes since time 0 (wraps), the
+// register offset of the last one, and the data of the last write-data
+// handshake.
+`SEP_TB_OUT(logic [15:0], lcc_wr_count_probe_o)
+`SEP_TB_OUT(logic [4:0], lcc_wr_addr_probe_o)
+`SEP_TB_OUT(logic [63:0], lcc_wr_data_probe_o)
 // Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
 // read these by name so a packed-struct reorder cannot swap two same-case
 // bits past the golden. The flattened vector stays for a width self-test.
