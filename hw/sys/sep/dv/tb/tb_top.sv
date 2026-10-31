@@ -4097,7 +4097,7 @@ module sep_uvm_top
     // OTBN TL-UL port (sep_crypto_otbn_wrapper.sv, tl_i of u_otbn): the count of
     // accepted A-channel writes into the IMEM window whose byte mask is not
     // 4'hf. Monitor-only.
-`define OTBN_TL `SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan
+`define OTBN_TL `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
     logic [31:0] otbn_imem_tl_partial_wr_cnt_q;
     always_ff @(posedge clk_i or negedge rst_n_int) begin
         if (!rst_n_int) begin
