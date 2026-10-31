@@ -65,6 +65,17 @@ ABR register address or memory window owns. The response codes and the read
 data are the SEP memory map's "Hole in Extent" cell of the ABR row. A write
 there must leave every graded register unchanged.
 
+``CHK-ABR-AHB-HRESP`` grades the AHB-lite bus into ``abr_top`` on every access
+of the leaf: "ABR never drives ``hresp`` to error" (``adams_bridge.adoc``
+lines 99-100), so the bench count of clocks with ``hresp`` high
+(``abr_ahb_err_count_o``) does not move across any access, the refused ones
+included. Control ``CTRL-ABR-AHB-TAP``: each full-word access with an OKAY
+response at a word that an ABR register or memory window owns raises the
+bench transfer count (``abr_ahb_xfer_count_o``) by at least 1, so the tap
+watches a live bus. ``OBS-ABR-AHB-RESP`` logs, per access, the transfer count
+and the wait clocks (``abr_ahb_wait_count_o``) it added: no text states the
+wait states of an ABR access.
+
 FCOV: the graded window of this test opens right before the first graded read
 and closes after ``CHK-ABR-INMAP-HOLE``, or at the first failing check. Each
 check that passes writes the ``x_abr_access`` cells it graded to the
@@ -200,8 +211,9 @@ def _owned_words() -> frozenset[int]:
 
 
 # Words inside the register map extent that no register or memory owns.
+OWNED_WORDS = _owned_words()
 INMAP_HOLES: tuple[int, ...] = tuple(
-    a for a in range(ABR_BASE, ABR_BASE + ABR_MAP_END, 4) if a not in _owned_words()
+    a for a in range(ABR_BASE, ABR_BASE + ABR_MAP_END, 4) if a not in OWNED_WORDS
 )
 # The upper neighbour of the 32-bit counter (graded every seed) and the words
 # the seed draws one hole from.
@@ -322,6 +334,7 @@ class sep_abr_access_size_test(sep_base_test):
         "CHK-ABR-UNPOP-PARTIAL",
         "CHK-ABR-INMAP-HOLE",
         "CHK-ABR-SIZE-RESTORE",
+        "CHK-ABR-AHB-HRESP",
     )
 
     async def _passed(self, *cells: str) -> None:
@@ -342,14 +355,55 @@ class sep_abr_access_size_test(sep_base_test):
         set_crypto_bus_pass(0, self.logger)
         await RisingEdge(self.clk)
 
+    def _ahb_counts(self) -> tuple[int, int, int]:
+        """The bench AHB counters into ``abr_top``: transfers, wait clocks, error clocks."""
+        top: Any = cocotb.top
+        return (
+            self.rd(top.abr_ahb_xfer_count_o),
+            self.rd(top.abr_ahb_wait_count_o),
+            self.rd(top.abr_ahb_err_count_o),
+        )
+
     async def _one(self, acc: AbrAccess, expect: int) -> AbrAccess:
-        """Issue ``acc``, tolerating exactly one monitor DECERR when ``expect`` is DECERR."""
+        """Issue ``acc``, tolerating exactly one monitor DECERR when ``expect`` is DECERR.
+
+        Grades CHK-ABR-AHB-HRESP and CTRL-ABR-AHB-TAP on the access and logs
+        OBS-ABR-AHB-RESP.
+        """
         mon = self.env.axi_monitor
         if expect == RESP_DECERR:
             mon.arm_expected_decerr(1)
+        x0, w0, e0 = self._ahb_counts()
         acc = await self.abr.one(acc, refused=expect != RESP_OKAY)
         if expect == RESP_DECERR and acc.resp != RESP_DECERR:
             mon.release_expected_decerr(1)
+        x1, w1, e1 = self._ahb_counts()
+        what = f"addr=0x{acc.addr:08x} {acc.op} bytes={acc.nbytes} size={acc.size}"
+        self.logger.info(
+            "OBS-ABR-AHB-RESP %s resp=%s xfer_delta=%d wait_clocks=%d",
+            what,
+            acc.resp_name,
+            x1 - x0,
+            w1 - w0,
+        )
+        if e1 != e0:
+            raise AssertionError(
+                f"CHK-ABR-AHB-HRESP FAIL: {what} hresp_err_clocks={e1 - e0} "
+                f"transfers={x1 - x0}, expected 0 (ABR never drives hresp to error)"
+            )
+        self._ahb_accesses += 1
+        if (
+            acc.resp == RESP_OKAY
+            and acc.nbytes in (4, 8)
+            and acc.addr % 4 == 0
+            and acc.addr in OWNED_WORDS
+        ):
+            if x1 - x0 < 1:
+                raise AssertionError(
+                    f"CTRL-MISSING ABR-AHB-TAP: {what} xfer_delta={x1 - x0}, "
+                    "expected >= 1 for a full-word access"
+                )
+            self._ahb_live += 1
         return acc
 
     async def _rd(
@@ -401,6 +455,8 @@ class sep_abr_access_size_test(sep_base_test):
         cfg = SepAbrAccessSizeCfg(self.random_seed())
         self.logger.info("abr access size: %s", cfg.summary())
         await self.bring_up_no_cpu()
+        self._ahb_accesses = 0
+        self._ahb_live = 0
         self.abr = SepAbrBus(self)
         await self.abr.capture_identity(BUS)
         top: Any = cocotb.top
@@ -436,6 +492,21 @@ class sep_abr_access_size_test(sep_base_test):
         self.logger.info(
             "CHK-ABR-SIZE-RESTORE PASS: %d registers read back their entry values",
             len(RW_WORDS),
+        )
+
+        # --- CHK-ABR-AHB-HRESP ------------------------------------------------
+        if not self._ahb_live:
+            raise AssertionError(
+                f"CTRL-MISSING ABR-AHB-TAP: no full-word access raised the transfer count "
+                f"over {self._ahb_accesses} accesses"
+            )
+        self.logger.info(
+            "CTRL-ABR-AHB-TAP seen: %d full-word accesses each raised the transfer count",
+            self._ahb_live,
+        )
+        self.logger.info(
+            "CHK-ABR-AHB-HRESP PASS: %d accesses, the hresp error count did not move",
+            self._ahb_accesses,
         )
 
     async def _reads(self, cfg: SepAbrAccessSizeCfg) -> None:

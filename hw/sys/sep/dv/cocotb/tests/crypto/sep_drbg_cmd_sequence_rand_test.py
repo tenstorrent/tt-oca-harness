@@ -113,7 +113,10 @@ N = 1 on every seed, the auto sequence trial with the drawn N, the logged N = 0
 trial), the instantiate-seed leg (a TRNG reset, ESRC configured with its
 generators off) and, last, the reserved acmd 0x9 leg (each from a clean start).
 The 0x9 leg runs after every other check, so its result does not change the
-stimulus of another check.
+stimulus of another check. After it come the enable-order leg, then, from one
+clean start, the bus compare replay leg and the counter-wrap leg. The counter-wrap
+leg draws its seed words from its own ``SepSeededRng`` stream (the run seed XOR a
+leg salt), so the plan draws above keep their seed mapping.
 
 Only reserved values whose bits [2:0] are also reserved are graded. The text
 reserves 0x0 and 0x6 to 0xf of the 4-bit acmd field, but the OpenTitan CSRNG
@@ -257,6 +260,26 @@ The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``,
 ``OBS-DRBG-*``). The
 ``CMD_STS`` of the CSRNG instantiate stays an observation (``OBS-CSRNG-STS``): no
 sentence states that a first instantiate on the software instance succeeds.
+``OBS-CSRNG-GENBITS-GATE`` also logs the two CSRNG gate inputs at the DRBG instance
+(``csrng_sw_app_read_en_o``, ``csrng_lc_hw_debug_en_o``) and the run's lifecycle
+source: hw/ip/drbg/doc/architecture.adoc:47 says these signals gate the software
+read, and no text states their value per lifecycle state.
+
+Open-value legs (logged, not graded; each control fails the leaf):
+  CTRL-CSRNG-BUS-CMP  two known-answer Generates with the same seed (an
+                 Uninstantiate and an Instantiate between them) give two 4-word
+                 blocks equal to the golden block, both acknowledge with
+                 ``CMD_STS`` = 0, and ``RECOV_ALERT_STS`` bit 12 reads 0 after a
+                 write of 0 before the second Generate. ``OBS-CSRNG-BUS-CMP`` logs
+                 bit 12 after the second Generate: it is set when the value equals
+                 "the prior valid value on the bus" (csrng.hjson:655-656), and no
+                 text states whether that value survives an Uninstantiate.
+  CTRL-CSRNG-VCTR-WRAP  an Instantiate (flag0 True, clen 12) whose seed sets
+                 V[31:0] to 0xfffffffe, then a Generate with glen 2: block 1
+                 (V[31:0] = 0xffffffff) equals the golden block and the Generate
+                 acknowledges with ``CMD_STS`` = 0. ``OBS-CSRNG-VCTR-WRAP`` logs
+                 block 2 with the ctr_len 32 and ctr_len 128 candidates (SP 800-90A
+                 10.2.1.2) and ``match=<32|128|none>``: no document states ctr_len.
 """
 
 from __future__ import annotations
@@ -268,12 +291,13 @@ import pyuvm
 from cocotb.triggers import ClockCycles, FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
-from env.sep_ctr_drbg_golden import SepCtrDrbgGolden
+from env.sep_ctr_drbg_golden import BLOCK_LEN, SepCtrDrbgGolden
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
     set_drbg_seq_drop,
     set_drbg_seq_pass,
+    set_open_value_leg_pass,
 )
 from env.sep_reg_meta import CSRNG, EDN, SEP_CPU_CTRL, sym
 from env.sep_seeded_rng import SepSeededRng
@@ -348,6 +372,7 @@ _CS_RECOV = CSRNG.fields("RECOV_ALERT_STS")
 CS_FLAG0_INV = _CS_RECOV["ACMD_FLAG0_FIELD_ALERT"]["bm"]
 CS_ACMD_INV = _CS_RECOV["CMD_STAGE_INVALID_ACMD_ALERT"]["bm"]
 CS_RESEED_CNT = _CS_RECOV["CMD_STAGE_RESEED_CNT_ALERT"]["bm"]
+CS_BUS_CMP = _CS_RECOV["CS_BUS_CMP_ALERT"]["bm"]
 _ED_RECOV = EDN.fields("RECOV_ALERT_STS")
 # CTRL field -> its RECOV_ALERT_STS field alert bit (csrng.adoc and edn.adoc RECOV_ALERT_STS).
 CS_CTRL_ALERT = {
@@ -402,6 +427,15 @@ AUTO_N_HI = 4
 # lower end is the hold the coverage cell requires (cov/sv/sep_fcov.sv CzIaHold).
 INST_HOLD_MIN = 256
 INST_HOLD_MAX = 2048
+# Counter-wrap leg: Instantiate sets V[31:0] to VCTR_PRE_WRAP, so block 1 of a glen 2
+# Generate runs at V[31:0] = 0xffffffff and block 2 is the first block after the wrap.
+# The leg draws its seed from its own stream, so the plan draws keep their mapping.
+VCTR_PRE_WRAP = 0xFFFF_FFFE
+VCTR_WRAP_SALT = 0x5743_5452
+VCTR_GLEN = 2
+VCTR_CTR_LENS = (32, BLOCK_LEN)
+# Clocks the open-value leg pass label stays set.
+OV_LABEL_CLOCKS = 2
 
 
 def cmd_word(acmd: int, *, clen: int = 0, flag0: int = MUBI_FALSE, glen: int = 0) -> int:
@@ -522,6 +556,23 @@ def draw_plan(seed: int) -> Plan:
         auto_n,
         inst_hold,
     )
+
+
+class _CtrLenDrbg(SepCtrDrbgGolden):
+    """CTR_DRBG golden whose V increment wraps the rightmost ``ctr_len`` bits.
+
+    SP 800-90A 10.2.1.2: rightmost(V, ctr_len) + 1 mod 2^ctr_len, the leftmost
+    BLOCK_LEN - ctr_len bits kept. No document states the ctr_len of the CSRNG,
+    so a block after a wrap is a candidate for a log line, never an expected value.
+    """
+
+    def __init__(self, ctr_len: int) -> None:
+        super().__init__()
+        self.ctr_len = ctr_len
+
+    def _v_increment(self) -> None:
+        mask = (1 << self.ctr_len) - 1
+        self.v = (self.v & ~mask) | ((self.v + 1) & mask)
 
 
 class _Reg(SepAxiRegDriver):
@@ -745,6 +796,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await self._inst_seed_leg()
             await self._acmd_hi_leg()
             await self._enable_order_leg()
+            await self._bus_cmp_leg()
+            await self._vctr_wrap_leg()
             failed = False
         finally:
             if failed:
@@ -1958,6 +2011,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             self.chk.obs(
                 "CSRNG-GENBITS-GATE",
                 genbits_vld_after=await r._rd(CSRNG_GENBITS_VLD) & GB_VLD,
+                sw_app_read_en=f"0x{self.rd(cocotb.top.csrng_sw_app_read_en_o):02x}",
+                lc_hw_debug_en=f"0x{self.rd(cocotb.top.csrng_lc_hw_debug_en_o):x}",
+                lc_source="skip_fuse_sense" if "skip_fuse_sense" in cocotb.plusargs else "fuse",
             )
             # The CTRL write sets bit 1 when SW_APP_ENABLE is neither True nor False
             # (csrng.adoc:351-353); the bit is RW0C, so one read after the write sees it.
@@ -2031,7 +2087,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         )
         await self._release()
 
-    async def _genbits_kat(self, drain_max: int) -> dict:
+    async def _genbits_kat(self, drain_max: int, clear_recov: bool = False) -> dict:
         """Known-answer Generate with SW_APP_ENABLE True: the GENBITS words equal the
         SP 800-90A CTR_DRBG golden (AES-256, no derivation function) of the drawn seed.
 
@@ -2041,9 +2097,14 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         (README.md:47). The seed bytes B1 (most significant) .. B48 go to CMD_REQ
         least significant word first, and GENBITS returns each 128-bit block least
         significant word first (programmers_guide.md:37-114).
+
+        With ``clear_recov``, ``RECOV_ALERT_STS`` is written 0 and read back
+        between the Instantiate acknowledge and the Generate, and read again after
+        the Generate acknowledge (``recov_clear``, ``recov_after``).
         """
         r = self.reg
         seed = self.plan.kat_seed
+        extra: dict = {}
         await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
         drained = 0
         while await r._rd(CSRNG_GENBITS_VLD) & GB_VLD and drained < drain_max:
@@ -2057,6 +2118,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         _, ins_sts = await self._wait(
             CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "kat_ins_ack"
         )
+        if clear_recov:
+            await r._wr(CSRNG_RECOV_ALERT_STS, 0)
+            extra["recov_clear"] = await r._rd(CSRNG_RECOV_ALERT_STS)
         await self._sw_cmd(CMD_GENERATE_1, FIRST_CAP, "kat_gen", wait_ack=False)
         got = []
         for i in range(GEN1_WORDS):
@@ -2067,6 +2131,8 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         _, gen_sts = await self._wait(
             CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "kat_gen_ack"
         )
+        if clear_recov:
+            extra["recov_after"] = await r._rd(CSRNG_RECOV_ALERT_STS)
         golden = SepCtrDrbgGolden()
         golden.instantiate(0, additional_input=seed)
         block = golden.generate(1)[0]
@@ -2077,6 +2143,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             "gen_cmd_sts": _field(gen_sts, CS_STS_STS),
             "genbits": [f"0x{w:08x}" for w in got],
             "expected": [f"0x{w:08x}" for w in expected],
+            **extra,
         }
 
     # --- reserved acmd 0x9: the last leg ---------------------------------------------
@@ -2135,3 +2202,143 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await r._wr(EDN_CTRL, _edn_ctrl(False, False, False))
         finally:
             await noise.stop()
+
+    # --- open-value legs: bus compare replay and V counter wrap ------------------------
+    async def _leg_cov(self, leg: str) -> None:
+        """Pass label of an open-value leg whose control passed."""
+        set_open_value_leg_pass(leg, self.logger)
+        await ClockCycles(cocotb.top.clk_i, OV_LABEL_CLOCKS)
+        set_open_value_leg_pass(None, self.logger)
+
+    async def _bus_cmp_leg(self) -> None:
+        """CTRL-CSRNG-BUS-CMP and OBS-CSRNG-BUS-CMP: two known-answer Generates with
+        the same seed put two equal consecutive blocks on the software port.
+
+        ``RECOV_ALERT_STS`` is written 0 between the second Instantiate and the second
+        Generate. The control: both 4-word blocks equal the golden block, so they
+        equal each other, and bit 12 reads 0 after the clear. Bit 12 after the second
+        Generate is logged: ``CS_BUS_CMP_ALERT`` is set when the genbits value equals
+        "the prior valid value on the bus" (csrng.hjson:655-656), and no text states
+        whether that value survives the Uninstantiate between the two blocks
+        (theory_of_operation.md:270 zeroes the instance values).
+        """
+        await self._clean_start("bus_cmp")
+        f: dict = {}
+        ok = False
+        step = "ins"
+        try:
+            await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), FIRST_CAP, "bus_cmp_ins")
+            step = "kat1"
+            first = await self._genbits_kat(GEN1_WORDS)
+            step = "kat2"
+            second = await self._genbits_kat(GEN1_WORDS, clear_recov=True)
+            blk_eq = first["genbits"] == second["genbits"]
+            bit12_clear = int(bool(second["recov_clear"] & CS_BUS_CMP))
+            f = {
+                "blk1": first["genbits"],
+                "blk2": second["genbits"],
+                "golden": first["expected"],
+                "blk1_eq_blk2": int(blk_eq),
+                "bit12_after_clear": bit12_clear,
+                "gen_cmd_sts": [first["gen_cmd_sts"], second["gen_cmd_sts"]],
+            }
+            ok = (
+                blk_eq
+                and first["genbits"] == first["expected"]
+                and bit12_clear == 0
+                and first["gen_cmd_sts"] == STS_SUCCESS
+                and second["gen_cmd_sts"] == STS_SUCCESS
+            )
+            recov = second["recov_after"]
+        except TrialTimeout as exc:
+            f["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
+        if self.chk.ctrl("CSRNG-BUS-CMP", ok, **f):
+            self.chk.obs(
+                "CSRNG-BUS-CMP",
+                bit12=int(bool(recov & CS_BUS_CMP)),
+                recov=f"0x{recov:x}",
+                blk1=f["blk1"],
+                blk2=f["blk2"],
+            )
+            await self._leg_cov("csrng_bus_cmp_replay")
+
+    async def _vctr_wrap_leg(self) -> None:
+        """CTRL-CSRNG-VCTR-WRAP and OBS-CSRNG-VCTR-WRAP: a Generate of two blocks
+        across the wrap of V[31:0].
+
+        With flag0 True and clen 12 the seed alone sets the instance
+        (theory_of_operation.md:227) and no derivation function runs (README.md:47),
+        so V = C XOR seed[127:0] with C fixed (SP 800-90A 10.2.1.3.1). Seed word 0 =
+        C[31:0] XOR VCTR_PRE_WRAP puts block 1 at V[31:0] = 0xffffffff. The control:
+        block 1 equals the golden block and the Generate acknowledges with
+        ``CMD_STS`` = 0. Block 2 follows the increment of V[31:0] = 0xffffffff, which
+        depends on ctr_len, and no document states ctr_len: it is logged with the
+        ctr_len 32 and ctr_len 128 candidates and the one it matches. The leg ends
+        with an Uninstantiate. Runs after the bus compare leg, on its instance.
+        """
+        r = self.reg
+        rest = SepSeededRng(self.plan.seed ^ VCTR_WRAP_SALT).getrandbits(KAT_SEED_BITS)
+        rest &= ~0xFFFF_FFFF
+        base = SepCtrDrbgGolden()
+        base.instantiate(0, additional_input=rest)
+        w0 = (base.v & 0xFFFF_FFFF) ^ VCTR_PRE_WRAP
+        seed = rest | w0
+        golden = SepCtrDrbgGolden()
+        golden.instantiate(0, additional_input=seed)
+        assert golden.v & 0xFFFF_FFFF == VCTR_PRE_WRAP, "counter-wrap seed: bench error"
+        gold1 = golden.generate_one()
+        cands = {}
+        for ctr_len in VCTR_CTR_LENS:
+            g = _CtrLenDrbg(ctr_len)
+            g.instantiate(0, additional_input=seed)
+            g.generate_one()
+            cands[ctr_len] = g.generate_one()
+        wrote_w0 = seed & 0xFFFF_FFFF
+        f: dict = {"seed_w0": f"0x{wrote_w0:08x}", "expect_w0": f"0x{w0:08x}"}
+        got: list[int] = []
+        step = "uni"
+        try:
+            await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
+            await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), FIRST_CAP, "vctr_uni")
+            step = "ins"
+            ins = cmd_word(ACMD_INSTANTIATE, clen=KAT_CLEN, flag0=MUBI_TRUE)
+            await self._sw_cmd(ins, FIRST_CAP, "vctr_ins_rdy", wait_ack=False)
+            for i in range(KAT_CLEN):
+                await r._wr(CSRNG_CMD_REQ, (seed >> (32 * i)) & 0xFFFF_FFFF)
+            await self._wait(CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "vctr_ins_ack")
+            step = "gen"
+            gen = cmd_word(ACMD_GENERATE, glen=VCTR_GLEN)
+            await self._sw_cmd(gen, FIRST_CAP, "vctr_gen", wait_ack=False)
+            for i in range(VCTR_GLEN * GEN1_WORDS):
+                await self._wait(CSRNG_GENBITS_VLD, GB_VLD, GB_VLD, FIRST_CAP, f"vctr_vld{i}")
+                got.append(await r._rd(CSRNG_GENBITS))
+            _, gen_sts = await self._wait(
+                CSRNG_SW_CMD_STS, CS_STS_ACK, CS_STS_ACK, FIRST_CAP, "vctr_gen_ack"
+            )
+            f["gen_cmd_sts"] = _field(gen_sts, CS_STS_STS)
+            step = "uni_end"
+            await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), FIRST_CAP, "vctr_uni_end")
+        except TrialTimeout as exc:
+            f["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
+
+        def _blk(words: list[int]) -> int:
+            return sum(w << (32 * i) for i, w in enumerate(words))
+
+        def _txt(block: int) -> list[str]:
+            return [f"0x{(block >> (32 * i)) & 0xFFFF_FFFF:08x}" for i in range(GEN1_WORDS)]
+
+        blk1 = _blk(got[:GEN1_WORDS]) if len(got) >= GEN1_WORDS else None
+        f["block1"] = _txt(blk1) if blk1 is not None else "none"
+        f["golden1"] = _txt(gold1)
+        ok = blk1 == gold1 and f.get("gen_cmd_sts") == STS_SUCCESS and "reason" not in f
+        if self.chk.ctrl("CSRNG-VCTR-WRAP", ok, **f):
+            blk2 = _blk(got[GEN1_WORDS:])
+            match = next((str(n) for n, c in cands.items() if c == blk2), "none")
+            self.chk.obs(
+                "CSRNG-VCTR-WRAP",
+                block2=_txt(blk2),
+                cand_ctr32=_txt(cands[32]),
+                cand_ctr128=_txt(cands[BLOCK_LEN]),
+                match=match,
+            )
+            await self._leg_cov("csrng_vctr_wrap")

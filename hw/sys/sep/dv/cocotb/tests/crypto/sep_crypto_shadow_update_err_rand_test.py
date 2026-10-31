@@ -119,6 +119,10 @@ instance passed and before the window closes (``env/sep_fcov_gate.py``,
 cells. ``cp_fatal_quiet`` samples at the graded STATUS read itself: its sample
 condition is the per-read compare of CHK-SHADOW-FATAL-QUIET.
 
+``OBS-AES-SEC-PARAMS`` logs the AES build parameters SecMasking and
+SecAllowForcingMasks at leaf start (``aes_sec_params_o``): ``aes.hjson`` gives
+only the OpenTitan defaults and no SEP text states the build values.
+
 ``OBS-SHADOW-AUX`` logs ``STATUS.ALERT_RECOV_CTRL_UPDATE_ERR`` after the
 mismatched AES AUX pair: the status text names "the shadowed Control Register"
 (aes.hjson:995) and no text states that it covers CTRL_AUX_SHADOWED;
@@ -495,6 +499,8 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
+        sec = self.rd(dut.aes_sec_params_o)
+        self.chk.obs("AES-SEC-PARAMS", sec_masking=sec & 1, sec_allow_forcing_masks=(sec >> 1) & 1)
         self.aes = SepAes(self)
         self.kmac = SepKmac(self)
         self.bus = SepAxiRegDriver(self)

@@ -86,6 +86,12 @@ Checkers:
                    APT_HI_TOTAL_FAILS reads 0 after the constant-zero leg.
 Logged only: OBS-ESRC-HT-TOTALS, the five total-fail counters after each limit
 trial (no text states how the totals count the per-generator failures).
+OBS-ESRC-HT-BYPASS, HEALTH_TEST_STATUS bits 3 and 5 and the APT_LO and MARKOV_LO
+totals after the constant-zero windows with ``CTRL.BYPASS_ENTROPY_COMPRESSOR``
+set: architecture.adoc:47-48 states the 32-bit test clock-gated off in that mode,
+architecture.adoc:122 states that it monitors the post-bypass stream. Control
+CTRL-ESRC-HT-BYPASS: CTRL reads the bypass 1 before the windows, and the
+lane-byte control compares at least W zero strobes with no mismatch.
 """
 
 from __future__ import annotations
@@ -94,7 +100,7 @@ from dataclasses import dataclass
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_esrc_pattern_noise import (
@@ -116,7 +122,11 @@ from env.sep_esrc_pattern_noise import (
     square_lane,
 )
 from env.sep_esrc_sha_tap import BLOCK_WORDS, DIGEST_WORDS, SepEsrcShaTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_open_value_leg_pass,
+)
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_shard import sep_shard
 from env.sep_trial_wait import TrialTimeout
@@ -143,7 +153,7 @@ DRAIN_POPS = 160
 # Shards (env/sep_shard.py). Every group starts with its own TRNG reset.
 # 1: both pattern trials and the APT enable leg, which repeats the first trial.
 # 2: the repetition enable leg and the limit trials, which its grade reads.
-# 3: the constant-zero and constant-ones legs; the ones leg reads the zero leg.
+# 3: the constant-zero, constant-ones and bypass-zero legs; the ones leg reads the zero leg.
 SHARD_EVIDENCE = {
     1: ("CHK-HT-TRIP", "CHK-HT-PASS", "CHK-HT-OTHERS", "CHK-HT-W1C", "CHK-HT-ENABLE"),
     2: ("CHK-HT-ENABLE", "CHK-HT-LIMIT"),
@@ -161,6 +171,10 @@ def _fbm(reg: str, field: str) -> int:
 
 def _fbp(reg: str, field: str) -> int:
     return ENTROPY_SOURCE.fields(reg)[field]["bp"]
+
+
+def _timeout_reason(exc: TrialTimeout | EsrcStrobeTimeout) -> str:
+    return f"timeout:{exc.what}" if isinstance(exc, TrialTimeout) else "timeout:strobes"
 
 
 def _freset(reg: str, field: str) -> int:
@@ -201,6 +215,11 @@ M_HT_ENABLE = _fbm("HEALTH_TEST_CTRL", "ENABLE")
 P_HT_ENABLE = _fbp("HEALTH_TEST_CTRL", "ENABLE")
 M_REP_LIMIT = _fbm("HEALTH_TEST_CTRL", "REPETITION_LIMIT")
 P_REP_LIMIT = _fbp("HEALTH_TEST_CTRL", "REPETITION_LIMIT")
+
+M_CTRL_BYPASS = _fbm("CTRL", "BYPASS_ENTROPY_COMPRESSOR")
+P_CTRL_BYPASS = _fbp("CTRL", "BYPASS_ENTROPY_COMPRESSOR")
+# Clocks the leaf holds an FCOV leg pass label before it writes 0.
+LEG_LABEL_CLKS = 2
 
 # Status bit allocation (architecture.adoc:126).
 BIT_REP, BIT_APT, BIT_MKV_HI, BIT_MKV_LO = 0, 3, 4, 5
@@ -346,6 +365,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         if runs(3):
             apt_hi_zero = await self._guard(self._zero_leg(), ("HT-TOP-ZERO",), None)
             await self._guard(self._ones_leg(apt_hi_zero), ("HT-TOP-ONE",), None)
+            await self._bypass_zero_leg()
         close_graded_window(self.logger)
 
         await self.noise.stop()
@@ -359,7 +379,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         except (TrialTimeout, EsrcStrobeTimeout) as exc:
             close_graded_window(self.logger)
             self.noise.byte_check(False)
-            reason = f"timeout:{exc.what}" if isinstance(exc, TrialTimeout) else "timeout:strobes"
+            reason = _timeout_reason(exc)
             for name in checks:
                 self.chk.ok(name, False, reason=reason, bound=exc.bound, **fields)
             if not checks:
@@ -849,6 +869,59 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         if span is None:
             fields["reason"] = "no_quiet_span"
         self.chk.ok("HT-PRESHA", span is not None and 2 * s["out_words"] == absorbed, **fields)
+
+    async def _bypass_zero_leg(self) -> None:
+        """Constant zero with the compressor bypassed; the 32-bit tester result is logged.
+
+        The windows are those of ``_zero_leg``. Which of architecture.adoc:47-48 (the
+        32-bit test is clock-gated off in bypass) and architecture.adoc:122 (it
+        monitors the post-bypass stream) holds is not settled, so the status and
+        totals are OBS-ESRC-HT-BYPASS.
+        """
+        w = RESET_WINDOW
+        try:
+            await self._start(w, ctrl_fields={"BYPASS_ENTROPY_COMPRESSOR": 1})
+            ctrl = await self._rd(A_CTRL)
+            s0, t0, _ = await self._top_regs()
+            await self._write_reset_limits()
+            open_graded_window(TEST, self.logger)
+            c0, m0 = self.noise.byte_control()
+            await self._pattern_window([Stuck(0)] * NUM_LANES, 3 * w, w)
+            c1, m1 = self.noise.byte_control()
+            s1, t1, i1 = await self._top_regs()
+        except (TrialTimeout, EsrcStrobeTimeout) as exc:
+            close_graded_window(self.logger)
+            self.noise.byte_check(False)
+            self.chk.ctrl("ESRC-HT-BYPASS", False, reason=_timeout_reason(exc), bound=exc.bound)
+            return
+        bypass = (ctrl & M_CTRL_BYPASS) >> P_CTRL_BYPASS
+        words = (c1 - c0) // NUM_LANES
+        if self.chk.ctrl(
+            "ESRC-HT-BYPASS",
+            bypass == 1 and m1 == m0 and words >= w,
+            ctrl=f"0x{ctrl:08x}",
+            bypass=bypass,
+            expect=1,
+            words=words,
+            mismatched=m1 - m0,
+            window=w,
+        ):
+            set_open_value_leg_pass("esrc_ht_bypass_zero", self.logger)
+            await ClockCycles(cocotb.top.clk_i, LEG_LABEL_CLKS)
+            set_open_value_leg_pass(None, self.logger)
+        close_graded_window(self.logger)
+        self.chk.obs(
+            "ESRC-HT-BYPASS",
+            status=f"0x{s1:02x}",
+            apt_bit3=(s1 >> BIT_APT) & 1,
+            mkv_lo_bit5=(s1 >> BIT_MKV_LO) & 1,
+            apt_lo_total=t1["APT_LO_TOTAL_FAILS"],
+            mkv_lo_total=t1["MARKOV_LO_TOTAL_FAILS"],
+            intr_health_failed=int(bool(i1)),
+            status_before=f"0x{s0:02x}",
+            totals_before=f"{t0['APT_LO_TOTAL_FAILS']}_{t0['MARKOV_LO_TOTAL_FAILS']}",
+            window=w,
+        )
 
     async def _ones_leg(self, apt_hi_zero: int | None) -> None:
         """Constant ones with the compressor in use and whitening off."""

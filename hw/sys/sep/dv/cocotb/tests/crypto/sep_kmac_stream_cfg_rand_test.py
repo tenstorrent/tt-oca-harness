@@ -107,11 +107,14 @@ and reports an error, and states no code. Whether that error applies to a
 gated ``PREFIX`` write is open against the DUT, so both values are logged and
 not graded. ``OBS-KMAC-REGWEN-GATED-RSVD`` logs the
 ENTROPY_PERIOD reserved bits, which have no stated value.
-``INFO-KMAC-REGWEN-SQUEEZE`` logs ``CFG_REGWEN`` in squeeze and at idle after
-``CMD.done`` of each cell. Both values are graded elsewhere: the squeeze read by
-CHK-KMAC-REGWEN ``part=squeeze``, and the idle value by the CHK-KMAC-REGWEN idle
-read of the next cell, which runs with no reset in between. No text states the
-clock at which ``CFG_REGWEN`` returns to 1, and no line grades that clock.
+``OBS-KMAC-REGWEN-SQUEEZE`` logs ``CFG_REGWEN`` in squeeze and at idle after
+``CMD.done`` of each cell, and ``regwen_return_clk``: the clocks from the
+``CMD.done`` write to the first ``CFG_REGWEN`` read that shows 1 (reads every
+4 clocks, bound ``_OUTER_CLK``; ``not_returned`` at the bound). No text states
+the clock at which ``CFG_REGWEN`` returns to 1, and no line grades that clock.
+The squeeze value is graded by CHK-KMAC-REGWEN ``part=squeeze``, and the idle
+value by the CHK-KMAC-REGWEN idle read of the next cell, which runs with no
+reset in between.
 ``OBS-KMAC-FE-INTRTEST`` logs ``INTR_STATE.fifo_empty``
 of the CHK-KMAC-FE-INTRTEST leg after a settle window and after a write-one
 clear: no text states whether the forced bit stays set or whether the clear
@@ -863,17 +866,21 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         # Step 15: done, idle; clear kmac_done before the next idle window.
         t2 = self._now_clk()
         await self._wr(KMAC_CMD, KMAC_CMD_DONE)
+        regwen_back, _, regwen_clk = await self._poll(
+            _KMAC_CFG_REGWEN, _REGWEN_EN, _REGWEN_EN, t2, _OUTER_CLK
+        )
         done_idle, status, _ = await self._poll(
             KMAC_STATUS, _IDLE | _SQUEEZE, _IDLE, t2, _OUTER_CLK
         )
         await self._wr(KMAC_INTR_STATE, _DONE)
         cleared = _bits(await self._rd(KMAC_INTR_STATE), _DONE) == 0
-        self.chk.info(
+        self.chk.obs(
             "KMAC-REGWEN-SQUEEZE",
             seed=seed,
             cell=cell.index,
             squeeze=ctrl_process_squeeze,
             squeeze_regwen=squeeze_regwen,
+            regwen_return_clk=regwen_clk if regwen_back else f"not_returned bound={_OUTER_CLK}",
             idle_after_done=int(done_idle),
             done_regwen=_bits(await self._rd(_KMAC_CFG_REGWEN), _REGWEN_EN),
         )

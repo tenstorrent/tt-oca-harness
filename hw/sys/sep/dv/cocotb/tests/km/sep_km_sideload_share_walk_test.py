@@ -86,6 +86,17 @@ Ordering that the compares rely on:
     and Z has eight pairwise-distinct words, so a dword reversal or any other
     word permutation in KM-to-ABR delivery changes the engine input and fails
     the KV-vs-direct compare.
+
+Open-value leg (logged, not graded; its control fails the leaf). After CHK-ROUND
+one OTBN key of n words, n drawn in 1..11 from its own ``SepSeededRng`` stream
+(the run seed XOR a leg salt, so the round draws keep their seed mapping), is
+loaded and transferred, and the key-dump program runs once:
+  CTRL-XFER-SHORT-KEY  ERR_BITS reads 0 and share0 ^ share1 words 0..n-1 equal
+                the short key.
+  OBS-XFER-PAD  share0 ^ share1 words n..11 and the positions that are not 0.
+                firmware.adoc, "Crypto Engine Drivers", pads short keys with
+                DRBG words and states no pad position; the pad values are
+                random, so no value is graded.
 """
 
 from __future__ import annotations
@@ -94,6 +105,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_fcov_gate import close_graded_window, open_graded_window, set_open_value_leg_pass
 from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
@@ -164,7 +176,10 @@ from seq_lib.sep_kmac_seq import (
 )
 from seq_lib.sep_otbn_seq import SepOtbn
 
+TEST = "sep_km_sideload_share_walk_test"
 ROUNDS = 2
+# Leg salt of the short-key draws.
+_SHORT_KEY_SALT = 0x5348_4B59
 
 # Words per share per destination (hw/sys/sep/doc/crypto.adoc, km-key-delivery-summary).
 DEST_WORDS = {
@@ -800,6 +815,36 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             (status >> AES_STATUS_OUTPUT_VALID) & 1,
         )
 
+    async def _short_key(self) -> None:
+        """OTBN delivery of a key shorter than the 12-word share width."""
+        n_full = DEST_WORDS[KM_DEST_OTBN]
+        rng = SepSeededRng(self.walk.seed ^ _SHORT_KEY_SALT)
+        n = rng.randrange(1, n_full)
+        key = _distinct_words(rng, n, None)
+        self.logger.info("INFO-XFER-SHORT-KEY n=%d key=%s", n, [hex(w) for w in key])
+        handle = await self.km.key_load(key_words=list(key), dest=KM_DEST_OTBN)
+        await self._transfer(ROUNDS, handle, KM_DEST_OTBN)
+        await self.otbn.execute()
+        errbits = await self.otbn.read_errbits()
+        _, s0, s1, _ = await self.otbn.read_keydump_outputs()
+        got = [a ^ b for a, b in zip(s0, s1)]
+        line = (
+            f"n={n} key=[{','.join(f'0x{w:08x}' for w in key)}] "
+            f"got=[{','.join(f'0x{w:08x}' for w in got[:n])}] err_bits=0x{errbits:x}"
+        )
+        if errbits != 0 or got[:n] != key:
+            raise AssertionError(f"CTRL-MISSING XFER-SHORT-KEY: {line}")
+        self.logger.info("CTRL-XFER-SHORT-KEY seen: %s", line)
+        set_open_value_leg_pass("km_xfer_short_key", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        self.logger.info(
+            "OBS-XFER-PAD n=%d pad=[%s] nonzero=%s",
+            n,
+            ",".join(f"0x{w:08x}" for w in got[n:]),
+            [i for i in range(n, n_full) if got[i]],
+        )
+
     # --------------------------------------------------------------- main --
     async def run_scenario(self) -> None:
         self.walk = SepKmShareWalkCfg(self.random_seed())
@@ -861,6 +906,10 @@ class sep_km_sideload_share_walk_test(sep_base_test):
                 f"{n}[0]=0x{outputs[0][n][0]:08x}/0x{outputs[1][n][0]:08x}" for n in ABR_OUTPUTS
             ),
         )
+
+        open_graded_window(TEST, self.logger)
+        await self._short_key()
+        close_graded_window(self.logger)
 
         await self._cleared_final()
 
