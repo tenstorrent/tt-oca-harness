@@ -1269,8 +1269,8 @@ the graded registers only, not every populated ABR register.
 
 *BFM / Model*: ocah_axi_vip, both TB masters
 
-*Randomization*: RANDCFG -- the op mix, addresses, data, per-master outstanding
-depth (1 to 6 per master, and one seed in three sets both to 1), AWIDs and the RREADY / BREADY throttle patterns come from the
+*Randomization*: RANDCFG -- the op mix, addresses, data, per-master
+second-half depth (3 to 6 per master; the first half of each stream runs at depth 1), AWIDs and the RREADY / BREADY throttle patterns come from the
 run seed (`SepAbrConcurrentRwCfg`); `reseed = 3`.
 
 *Objective*: Proves the statement in `adams_bridge.adoc` that any number of
@@ -1282,10 +1282,10 @@ and 32-bit writes and refused partial-word writes, from `s_axi` and `m_axi` at
 the same time with both response channels throttled; 64-bit writes from `s_axi`
 alone, which owns the one read-write register pair in an 8-byte granule.
 Functional coverage: `sep_crypto_bus_access_cg` `x_abr_concurrent` (6 bins),
-owner window 750. The cells depend on the drawn outstanding depth of each
-master and on timing, so they close over merged regressions. The depth-2 cells
-fill in a lockstep seed (both masters at depth 1), which about 35 percent of the
-seeds are. The window opens
+owner window 750. The depth-2 cells fill in the lockstep first half of each stream (both masters
+at depth 1), the depth 3-to-6 cells in the second half; which cells a seed
+fills also depends on the op mix and timing, so they close over merged
+regressions. The window opens
 right before the two streams start and closes after the pass label or at the
 first failing check.
 
@@ -1302,8 +1302,10 @@ order. `s_axi` owns the interrupt-enable pair and `error_internal_intr_count_r`;
 seeded streams are built after it. Identity reads name only words whose
 captured value no other identity word read holds, so a response swapped
 between two identity reads is a mismatch.
-. Both masters run their seeded streams at once, each with its drawn number of
-accesses outstanding, while seeded pause patterns hold RREADY and BREADY low.
+. Both masters run their seeded streams at once while seeded pause patterns
+hold RREADY and BREADY low: the first half of each stream with one access
+outstanding per master, then, after both halves drain, the second half with
+the drawn number (3 to 6) outstanding.
 . The FCOV owner window opens before the streams start and closes after `CHK-ABR-CRW-STRESS`. The leaf writes the pass label of the six `x_abr_concurrent` cells (`crypto_bus_pass`) only after `CHK-ABR-CRW-WRITE-RESP`, `CHK-ABR-CRW-READ` and `CHK-ABR-CRW-STRESS` pass, holds it two clocks and writes 0, so a response that a failing check graded never samples.
 . After both drain, every register is read from both masters, then restored.
 
@@ -1319,7 +1321,7 @@ accesses outstanding, while seeded pause patterns hold RREADY and BREADY low.
 |CHK-ABR-CRW-READ
 |Every read answers OKAY. An identity word returns its captured reference exactly. A read-write word returns a value inside its owner's write window: the last write whose response came back before the read was issued, or any later write issued before the read returned. At least one read-write word had a single legal value and at least one cross-master read observed a value the other master wrote.
 |CHK-ABR-CRW-STRESS
-|The pins show one AR per read and one AW and B per write, each master reaching its drawn depth in accesses outstanding at once, cycles with both masters outstanding, and RREADY and BREADY each held low while a response was valid.
+|The pins show one AR per read and one AW and B per write, each master reaching its drawn second-half depth, at least 3, in accesses outstanding at once (`adams_bridge.adoc`: any number of reads and writes may be outstanding; a DUT that holds one access per master fails), cycles with both masters outstanding, and RREADY and BREADY each held low while a response was valid.
 |CHK-ABR-CRW-FINAL
 |After both streams drain, each read-write register reads its owner's last written value from both masters.
 |CHK-ABR-CRW-RESTORE

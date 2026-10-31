@@ -677,7 +677,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu + external SMN master, +skip_fuse_sense
 |ocah_axi_vip
-|Seeded interleaved reads and writes from both TB masters at once, a seeded number outstanding on each master (1 to 6, with one seed in three at 1 on both) and both response channels throttled, graded by a scoreboard that bounds each read by its register owner's write window and checks each register's final value. The six `x_abr_concurrent` cells are written to the pass label only after CHK-ABR-CRW-WRITE-RESP, CHK-ABR-CRW-READ and CHK-ABR-CRW-STRESS pass.
+|Seeded interleaved reads and writes from both TB masters at once, the first half of each stream with one access outstanding on each master and the second half with a seeded number from 3 to 6 on each, and both response channels throttled, graded by a scoreboard that bounds each read by its register owner's write window and checks each register's final value. The six `x_abr_concurrent` cells are written to the pass label only after CHK-ABR-CRW-WRITE-RESP, CHK-ABR-CRW-READ and CHK-ABR-CRW-STRESS pass.
 |<<sep_abr_absent_decerr_test,`sep_abr_absent_decerr_test`>>
 |2
 |no_cpu, +skip_fuse_sense, `lsu_stub_abr_absent` model, Verilator only
