@@ -141,9 +141,9 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
             f"addr=0x{cfg.access_addr:08x} pr_out_ar={len(out_ars)} "
             f"[{' '.join(b.fmt() for b in out_ars)}]"
         )
-        # Same text as SepChkLog.ctrl(): the outbound responder and an unbacked
-        # word also answer OKAY with zero, so CHK-VALID-GATE needs the gated read
-        # to stay on the local fabric. An AR on PR-OUT fails the leaf.
+        # Same text as SepChkLog.ctrl(): the outbound responder also answers OKAY
+        # with zero, so CHK-VALID-GATE needs the gated read to stay off the
+        # outbound port. An AR on PR-OUT fails the leaf.
         if out_ars:
             self.logger.error("CTRL-MISSING VALID-GATE-LOCAL: %s", local)
             raise AssertionError(f"CTRL-MISSING VALID-GATE-LOCAL: {local}")
