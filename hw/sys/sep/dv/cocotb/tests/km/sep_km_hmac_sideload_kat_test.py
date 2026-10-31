@@ -16,11 +16,14 @@ the SW key and once with the sideload key is not possible. The decoy leg takes
 its place: before the transfer, while KEY_CTRL.KEY_VALID is clear, the host
 writes a seeded software decoy key to the public KEY CSRs and runs the keyed
 MAC; that digest must equal the golden of the decoy (CTRL-DECOY-LIVE), which
-proves the decoy is in the KEY CSRs and the engine uses them. Between that MAC
-and the one after the transfer the leaf neither writes WIPE_SECRET (the register
-that clears the secret key, hmac.hjson) nor resets the HMAC domain, so the decoy
-is still in the KEY CSRs. The digest after the transfer must equal the golden of the KM key and differ from the golden of the decoy, so
-an engine that takes the CSR key over the sideloaded key fails.
+proves the decoy is in the KEY CSRs and the engine uses them. After the
+transfer, with KEY_VALID set, the host writes the same decoy to the KEY CSRs
+again (each write OKAY), and neither writes WIPE_SECRET (the register that
+clears the secret key, hmac.hjson) nor resets the HMAC domain before the graded
+MAC. The digest after the transfer must equal the golden of the KM key and
+differ from the golden of the decoy, so an engine that takes the CSR key over
+the sideloaded key, a transfer that lands in the KEY CSR storage, or a KEY
+write that displaces the sideloaded key fails.
 
 The key is known a priori and the digest is checked directly against the golden
 under key_word_rev=1, key_be=1, msg_be=0, so a truncated, word-swapped or
@@ -35,6 +38,8 @@ Checkers:
             KEY CSRs == HMAC-SHA256(decoy_key, msg) golden under the SW-key
             convention (KEY_0 first, big-endian per word)
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
+  CTRL-DECOY-REWRITE  after the transfer, every write of the decoy to the
+            KEY CSRs answers OKAY
   PUB-OBSERVATION  HMAC public KEY CSRs read back zero after the sideload. NOT a
             checker: hmac.hjson declares KEY swaccess=wo, so the read returns zero
             whether the key is protected, mirrored elsewhere, or never delivered.
@@ -242,6 +247,22 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             "Asserted, but hmac.hjson declares KEY swaccess=wo, so this read alone "
             "cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,
+        )
+
+        # The decoy goes back into the KEY CSRs with KEY_VALID set, so a transfer
+        # that lands in the KEY CSR storage, or a KEY write that displaces the
+        # sideloaded key, leaves the decoy keying the graded MAC.
+        try:
+            await self.hmac.write_key(decoy)
+            rewrite_ok = True
+        except AssertionError:
+            rewrite_ok = False
+        self.chk.ctrl(
+            "DECOY-REWRITE",
+            rewrite_ok,
+            words=len(decoy),
+            all_okay=int(rewrite_ok),
+            key=",".join(hex(w) for w in decoy),
         )
 
         # Keyed HMAC-SHA256 with the SIDELOAD key live and the decoy in the CSRs.
