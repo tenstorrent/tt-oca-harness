@@ -39,14 +39,14 @@
 |CHK-WR-RB
 |Each read/write register returns exactly the pattern written, masked to its implemented bits. Note the `SEP_NMI_VEC` pattern already has bit 0 clear, so the reserved-bit mask is a no-op here and this test does not exercise reserved-bit behaviour; `sep_reg_bit_bash_rand_test` CHK-RESERVED does.
 |CHK-RESP
-|Every read beat returns `OKAY` and no transaction decode-errors. The cited tally covers read beats; write responses are enforced by the scoreboard line under CHK-NONVAC, which fails any non-OKAY item.
+|Every read and every write of the sequence answers `OKAY`, and the shared scoreboard rejects no access while the sequence runs.
 |CHK-NONVAC
-|The scoreboard performed a non-zero number of value comparisons.
+|The shared scoreboard judges the value of every read the sequence issues: the reset read and the four readbacks.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-AXI-SMOKE` (`cocotb/seq_lib/sep_axi_smoke_seq.py`), covers CHK-DECODE and CHK-WR-RB. CHK-RESP and CHK-NONVAC are enforced in `check_phase` of the shared scoreboard (`cocotb/env/sep_scoreboard.py`).
+*Evidence*: `cocotb/seq_lib/sep_axi_smoke_seq.py` logs `CHK-DECODE PASS` (the reset read) and one `CHK-WR-RB PASS` line per register (pattern, readback and mask). `cocotb/tests/system/sep_axi_smoke_test.py` logs `CHK-RESP PASS: accesses=9 all OKAY, 0 scoreboard rejections` and `CHK-NONVAC PASS: scoreboard judged 5/5 read values`, from the response of each access and the scoreboard (`cocotb/env/sep_scoreboard.py`) counts taken before and after the sequence. The leaf names the four records in `required_evidence`, so a missing record fails it.
 
 '''''
 
@@ -191,7 +191,7 @@
 
 [arabic]
 . Bring up in `no_cpu` mode.
-. Read the target location and require zero.
+. Read the target location before any write; it must answer `OKAY` with a word other than the 64-bit pattern.
 . Write a 64-bit pattern; read it back.
 . Write a 32-bit pattern to the upper half; read the full 64 bits back.
 
@@ -200,19 +200,19 @@
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-RESET-READ
-|A read of the target location before any write returns zero with an `OKAY` response — the decode and liveness anchor for the write/readback that follows. This is not an SRAM reset property: the macro has no array reset, and the zero comes from simulator memory initialisation, so this leg would not reproduce on silicon.
+|CTRL-SRAM-PRE
+|A read of the target location before any write answers `OKAY` with a word other than the 64-bit pattern, so CHK-STORE cannot pass on a word that was already there. The read data is logged and not graded: the macro has no array reset, and the value comes from simulator memory initialisation. A miss logs `CTRL-MISSING SRAM-PRE` and fails the leaf.
 |CHK-STORE
 |A 64-bit write stores and reads back exactly.
 |CHK-LANE
 |A genuine 4-byte beat (`AxSIZE=2`) to the upper half changes only those lanes; the lower four survive.
 |CHK-RESP
-|Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
+|Every read and every write of the sequence answers `OKAY`, and the shared scoreboard rejects no access while the sequence runs.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-SRAM-SMOKE` (`cocotb/seq_lib/sep_sram_smoke_seq.py`), covers CHK-RESET-READ (the `expected=0` read), CHK-STORE (64-bit write and readback) and CHK-LANE (the 4-byte beat at `size=2`). CHK-RESP is enforced by the shared scoreboard.
+*Evidence*: `cocotb/seq_lib/sep_sram_smoke_seq.py` logs `CTRL-SRAM-PRE seen` (the read before any write, with its response and read data), then `CHK-STORE PASS` (64-bit write and readback) and `CHK-LANE PASS` (the 4-byte beat at `size=2`), each with the address and the 64-bit read data. `cocotb/tests/sram/sep_sram_smoke_test.py` logs `CHK-RESP PASS: accesses=5 all OKAY, 0 scoreboard rejections`. The leaf names the three `CHK-` records in `required_evidence`, so a missing record fails it.
 
 '''''
 
@@ -371,7 +371,7 @@ not grade that rejection.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-SENSE` (`cocotb/tests/efuse/sep_efuse_sense_test.py`), covers CHK-SENSE-DONE and CHK-IMAGE-MATCH. The record refuses to pass under `+skip_fuse_sense`, which would skip the shadow compare. `CHK-SENSE-WORD-ORDER` is its own record. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock, and grades nothing.
+*Evidence*: `cocotb/tests/efuse/sep_efuse_sense_test.py` logs `CHK-SENSE-DONE PASS` with the clock of the `sep_fuse_sense_done_o` rise. The shared backdoor compare (`cocotb/seq_lib/sep_efuse_backdoor_check.py`, run by the bring-up) logs `CHK-SENSE-BACKDOOR PASS words=<n> errors=0 secure_tm=<s>`, or `CHK-SENSE-BACKDOOR FAIL` and fails the leaf. `CHK-IMAGE-MATCH PASS words=<n>` follows only when that compare logged its PASS and `+skip_fuse_sense` is absent. The leaf names the four records in `required_evidence`, so a missing record fails it. `CHK-SENSE-WORD-ORDER` is its own record. `OBS-SENSE-FIELD-ORDER` logs, per field, the first clock on which a word of the field changes at `efuse_shadow_probe_o`, and the sense-done clock, and grades nothing.
 
 '''''
 
@@ -423,7 +423,7 @@ not grade that rejection.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: one aggregate record, `CHK-JEDEC` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`), covers CHK-JEDEC-ID. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
+*Evidence*: `CHK-JEDEC-ID PASS` (`cocotb/tests/spi/sep_spi_flash_jedec_smoke_test.py`) carries the opcode and the RXDATA word; the leaf raises before it when the flash model saw no 0x9F frame or RXDATA differs from the model identifier. CHK-RESP and CHK-NONVAC are enforced by the shared scoreboard. `hw/sys/sep/dv/cocotb/env/sep_spi_wire_monitor.py` logs `CHK-SPI-WIRE PASS` and `CHK-SPI-FRAME-SHAPE PASS` lines and the `CHK-SPI-LEDGER` checker record. `hw/sys/sep/dv/cocotb/env/sep_spi_scoreboard.py` logs `CHK-SPI-SB-RX PASS`.
 
 '''''
 
@@ -464,7 +464,7 @@ not grade that rejection.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: CHK-IFU-TYPES is the firmware console (`fw/tests/rom_sanity_test/rom_sanity_test.c`): one `[PASS] IFU` or `[FAIL] IFU` line per function, from a compare of the return value with its expected value, and a non-zero error count turns the completion magic to FAIL. CHK-ALL is the host-side `CHK-ALL` record (`cocotb/tests/cpu/sep_rom_sanity_test.py`), which counts seven `[PASS] IFU` lines and requires the `PASS: 7/7` summary.
+*Evidence*: CHK-IFU-TYPES is the firmware console (`fw/tests/rom_sanity_test/rom_sanity_test.c`): one `CHK-IFU-TYPES PASS` or `CHK-IFU-TYPES FAIL` line per function, from a compare of the return value with its expected value, and a non-zero error count turns the completion magic to FAIL. CHK-ALL is the host-side `CHK-ALL` record (`cocotb/tests/cpu/sep_rom_sanity_test.py`), which counts seven `CHK-IFU-TYPES PASS` lines and requires the `PASS: 7/7` summary.
 
 '''''
 
@@ -570,7 +570,7 @@ the prediction, and the run must FAIL.
 |<<sep_sram_smoke_test,`sep_sram_smoke_test`>>
 |Same as the cocotb procedure, over sixteen seeded passes by default
 (`+SEP_TEST_LOOPS`, `+SEP_MEMORY_TEST_LOOPS`, `+SEP_SRAM_SMOKE_TEST_LOOPS`), each
-on its own SRAM word so every read before a write sees the zero fill. Adds
+on its own SRAM word so every read before a write sees the zero fill. The SV sequence grades that read as zero under `CHK-RESET-READ`; the zero is the zero fill of the SRAM macro in `tb/tb_top.sv`. Adds
 `+SEP_RANDOM_COUNT` seeded random rounds per pass (five by default): a 64-bit write and readback, then a 4-byte
 beat to a seeded half and a full-word readback (CHK-RANDOM-STORE,
 CHK-RANDOM-LANE). CHK-RESP is the sequence's own check: every access returns

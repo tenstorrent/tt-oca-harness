@@ -289,8 +289,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         for name in _DATA_REGS:
             got, ok, code = await self._rd(_IC.addr(name), ungraded=True)
-            if not ok:
-                self.chk.ok("CSR-RESET", False, reg=name, resp=_RESP.get(code, code))
+            self.chk.ok("CSR-RESET", ok, reg=name, resp=_RESP.get(code, code), data_graded=0)
             self._log("OBS-CSR-DATA", reg=name, resp=_RESP.get(code, code), rdata=f"0x{got:08x}")
         close_graded_window(self.logger)
 

@@ -231,6 +231,7 @@ class sep_address_map_seq(uvm_sequence):
         self.ref_counter_low = 0
         self.ref_counter_high = 0
         self.base_addr_rw_checks = 0
+        self.reset_reads: list[tuple[str, int, int]] = []
         self.write_readback_checks = 0
         self.fabric_walk_checks = 0
         # Registers whose only fields are RDL `reserved` fields. They are
@@ -260,11 +261,9 @@ class sep_address_map_seq(uvm_sequence):
 
     async def body(self) -> None:
         for name in READ_CHECK:
-            await self._read(
-                BASE + SEP_CPU_CTRL.offset(name),
-                expected=SEP_CPU_CTRL.reset32(name),
-                name=name,
-            )
+            exp = SEP_CPU_CTRL.reset32(name)
+            got = await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=exp, name=name)
+            self.reset_reads.append((name, exp, got & 0xFFFF_FFFF))
 
         for name, _why in READ_ONLY:
             value = await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=None, name=name)

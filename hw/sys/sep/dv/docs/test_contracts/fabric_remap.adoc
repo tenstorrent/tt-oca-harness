@@ -25,7 +25,7 @@
 
 [arabic]
 . Bring up in `no_cpu` mode with the LSU splice owning the bus.
-. Read every `sep_cpu_ctrl` reset-check register and require the exported reset value.
+. Read every `sep_cpu_ctrl` reset-check register and require the exported reset value (CHK-CPU-CTRL-RESET).
 . Response-check hardware-driven registers, and log the value of `SEP_TEST_CTRL` with its strap bits `fast_spi_en`, `fast_iccm_en`, `fast_dccm_en`, `fast_sram_en`, `fast_pka_en` and `sep_standalone` (bits 31 to 26; `OBS-SEP-TEST-CTRL value=0x<..> fast_spi_en=<b> fast_iccm_en=<b> fast_dccm_en=<b> fast_sram_en=<b> fast_pka_en=<b> sep_standalone=<b>`; no check reads it); read the low half of `REFERENCE_COUNTER` twice and require it to advance (the reference clock is driven, so the counter is live and no reset value applies).
 . Write/readback/restore the SEP base/size CSRs and the pure-RW storage registers (masked).
 . Write the implemented `CLOCK_GATE_CTRL` bits, read them back, then restore reset after the fabric walk.
@@ -37,6 +37,8 @@
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-CPU-CTRL-RESET
+|Every `sep_cpu_ctrl` register of the reset-check list answers OKAY and reads its reset value from `hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl` (the generated `reset32`). The test compares each readback with that value itself, and the shared scoreboard compares it too. A DUT with a wrong reset value or a register that does not decode fails. Evidence: `CHK-CPU-CTRL-RESET PASS: regs=<n> each equals its RDL reset value`; on a mismatch `CHK-CPU-CTRL-RESET FAIL` names each register with its readback and reset value.
 |CHK-REFCNT-READ
 |The reference counter is LIVE and readable: the low half is read twice and must advance. It counts on `clk_ref_i`, which the testbench drives, so no pinned value can be its expectation -- and the advance is a stronger statement than a reset compare, because a neighbouring register's storage, a stuck all-ones and a zero return all hold still between the two reads. The high half is read for the pair but is not value-checked.
 |CHK-RW-READBACK
@@ -53,7 +55,7 @@
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: the test logs `CHK-ADDRMAP FAIL` and stops before the CHK-REFCNT-READ, CHK-BASEADDR-RW, CHK-RW-READBACK and CHK-FABRIC-WALK records if the shared scoreboard holds any response or value error. CHK-CPU-CTRL-HOLE and CHK-EXT-DEMUX-BOUND are logged after further accesses; a scoreboard error from those accesses fails the run in `check_phase`, after their PASS lines.
+*Evidence*: the test logs `CHK-ADDRMAP FAIL` and stops before the CHK-CPU-CTRL-RESET, CHK-REFCNT-READ, CHK-BASEADDR-RW, CHK-RW-READBACK and CHK-FABRIC-WALK records if the shared scoreboard holds any response or value error. CHK-CPU-CTRL-HOLE and CHK-EXT-DEMUX-BOUND are logged after further accesses; a scoreboard error from those accesses fails the run in `check_phase`, after their PASS lines.
 
 '''''
 
@@ -632,7 +634,7 @@ and STEE output-remap banks.
 [arabic]
 . Bring up in `no_cpu`. Read the seeded source page through the identity path.
 . Write the marker to `CLOCK_GATE_CTRL` and read it back. Require the source page's value to differ from the marker.
-. Park `CLOCK_GATE_CTRL` at the inverse of the marker and read it back.
+. Park `CLOCK_GATE_CTRL` at the inverse of the marker and read it back (`CTRL-OFFSET-PARK seen: addr=0x<a> wrote=0x<v> read=0x<v> resp_ok=1`; a readback other than the parked value logs `CTRL-MISSING OFFSET-PARK` and fails the leaf, because CHK-OFFSET-WRITE needs the parked value to differ from the marker).
 . Program the seeded region and write the marker through the alias; the identity `CLOCK_GATE_CTRL` readback must move to the marker (CHK-OFFSET-WRITE).
 . Read through the alias and require the marker. Then change `CLOCK_GATE_CTRL` at its identity address only; the aliased read must follow it (CHK-OFFSET).
 . Write the marker to `CLOCK_GATE_CTRL`. Reprogram the same region with bounds and offset live and only the valid bit clear, and read the source address. Require the source page's own value, not the marker (CHK-VALID-GATE).
@@ -2229,3 +2231,75 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 *Scope limit*: The leaf does not grade the completion order of same-ID writes, the completion latency of a phase, the outbound ID encoding, or the acceptance point of a request that the filters answer themselves.
 
 '''''
+
+[[sep_outbound_stall_saturation_test]]
+===== 2.35 `sep_outbound_stall_saturation_test`
+
+*Phase*: 3
+
+*Area*: Fabric and remap
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+sep_outbound_depth=64`, one seed per regression (no reseed). Verilator and VCS. Testlist groups `all`, `cpu_stub`, file `testlists/system.toml`.
+
+*Source Module*: `sep_outbound_stall_saturation_test` (transaction helpers shared with `cocotb/seq_lib/sep_outbound_contention_seq.py`; responder control in `cocotb/seq_lib/sep_outbound_stall_seq.py`)
+
+*BFM / Model*: ocah_axi_vip as the CPU-LSU master (`s_axi`) and as the SMN inbound master (`m_axi`, through the inbound filter); the Secure DMA, programmed over the CPU-LSU master; the outbound responder `tb/sep_outbound_mbx.sv`, driven through its top ports `smn_outbound_ready_stall_i` and `smn_outbound_resp_hold_i` (READY stall per channel, B and R VALID delay and hold, release); the PR-OUT, PR-OUT-RSP and PR-INFLT fabric taps (read-only). The responder queues `+sep_outbound_depth` write bursts, pending B responses and reads; the leaf requires that depth to be at least the 36 requests of one hold (20 LSU requests and 16 DMA words), so every stop it reaches at the port is the DUT's and not the responder's.
+
+*Randomization*: `SepSeededRng` from the run seed (DIRECTED with seed-drawn delays): the two LSU AxUSER values and the SMN inbound AxUSER, the maximum one-channel delay (8 to 32 clocks), the READY stall percent of AW, W and AR (20 to 50 each), the response hold percent (3 to 10) and its maximum (4 to 16 clocks), and the write data. Every phase runs on every seed. The leaf prints `SEED seed=<S>` and one `DRAW` line per drawn value.
+
+*Objective*: The CPU LSU and the Secure DMA issue to one outbound window while the responder delays AW, W and AR READY and delays or holds B and R VALID, and is then released: the outbound path stops accepting at a finite count, and every request completes after the release with exactly one B per write and the beats of each read, without deadlock. The SMN inbound master has no route to the outbound port (`hw/sys/sep/doc/fabric.adoc`, Fabric Topology: the peripheral crossbar answers an inbound address at or above `0x4000_0000` with DECERR). No specification states the outstanding limit of the local crossbar or of the outbound chain, so no count is compared: reaching a stop is a control of the leaf, and the counts are logged. Sources: `hw/sys/sep/doc/fabric.adoc` ("Fabric Topology", "Transaction Routing", "Filtering and Protection"); `hw/sys/sep/doc/cpu.adoc` (LSU master, AxPROT table); `hw/sys/sep/doc/dma.adoc` (master path).
+
+*Test Coverage*: Zero-delay baseline, one-channel and all-channel responder delays; a hold with accepted requests and its drain; the LSU write and read stops under a held target and their drain; the held extra LSU write at that stop; the same stops with the DMA and the SMN inbound master issuing alongside, for writes, reads, and writes and reads together; fresh transactions after the saturation drains; B and R accounting and AxUSER and AxPROT of every LSU and DMA request at PR-OUT. This entry extends `sep_outbound_contention_rand_test` (same run mode and responder), which grades contention under seeded delays without a held stop. Functional coverage: none owned.
+
+*Test Procedure*:
+
+[arabic]
+. Draw the values of the Randomization field. Fail at set-up if the responder depth is below the requests of one hold. Bring up with the LSU splice, start the fabric taps and program inbound filter entry 0 to admit the SMN inbound accesses (window, AxUSER source ID, NS).
+. Baseline, one-channel and all-channel delays. Issue LSU and DMA transactions with no responder delay, then with a seeded delay on one channel at a time, then with the drawn READY stalls on AW, W and AR and the drawn response holds; in the all-channel leg every drawn READY stall meets a request at the port (CHK-DELAYS).
+. Hold and drain. Hold B and R VALID, issue requests that the port accepts, see no response during the hold window, release and drain (CHK-HOLD-DRAIN).
+. Master-side stop. For writes and for reads, hold the target and issue 20 LSU requests until the LSU master stalls with fewer than 20 accepted (`CTRL-OUT-STOP`; the accepted count is `OBS-LIMIT`). Release and drain every session (CHK-OUT-DRAIN). The SMN inbound master issues alongside as the stimulus of the no-path check (`INFO-SYSIF-REACH`).
+. Held stop. At the stop, issue one extra LSU write, which stalls and is not accepted before a release (`CTRL-XBAR-HELD-STOP`). Release one beat at a time within a bound: the held LSU request and the DMA's next write are each admitted (CHK-XBAR-HELD).
+. Chain stop. Repeat the stop with the DMA and the SMN inbound master issuing alongside, for writes, for reads, and for writes and reads together (`CTRL-CHAIN-STOP`; the port totals are `OBS-CHAIN-LIMIT`, the three-initiator hold is `INFO-CHAIN-HELD`). Release and drain every session (CHK-CHAIN-DRAIN).
+. Post-drain. Issue fresh transactions after the saturation drains (CHK-XBAR-POSTDRAIN).
+. Final accounting. After an idle window, count the B and R beats against the accepted writes and reads (CHK-SAT-B-COUNT, CHK-SAT-R-COUNT); grade every SMN inbound access (CHK-SYSIF-NO-OUTBOUND-PATH); match every LSU and DMA request of the leaf at PR-OUT and grade its attributes (CHK-ATTR-USER); check the phase fence (CHK-NONVAC) and the bounded waits (CHK-TIMEOUT-PATHS).
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CTRL-OUT-STOP
+|(Control) For writes and for reads, the LSU master stalls (AW or AR stall clocks greater than 0, counted only on clocks where the request on offer is an LSU outbound request) with fewer than its 20 issued requests accepted. A DUT that accepts all 20 is not wrong, but the drain checks after it would grade no held request, so a miss logs `CTRL-MISSING OUT-STOP` and fails the leaf. Evidence: `CTRL-OUT-STOP seen: <fields>`, or `CTRL-OUT-STOP absent` followed by `CTRL-MISSING OUT-STOP: seed=<S> <fields>`; `OBS-LIMIT` logs the accepted count.
+|CTRL-XBAR-HELD-STOP
+|(Control) The one extra LSU write of a held session at the stop of CTRL-OUT-STOP stalls and is not accepted before a release. A miss logs `CTRL-MISSING XBAR-HELD-STOP` and fails the leaf.
+|CTRL-CHAIN-STOP
+|(Control) The stop of CTRL-OUT-STOP with the DMA and the SMN inbound master issuing alongside, for writes, for reads and for the writes-and-reads hold. A miss logs `CTRL-MISSING CHAIN-STOP` and fails the leaf; `OBS-CHAIN-LIMIT` logs the port totals.
+|CHK-DELAYS
+|Every transaction of the zero-delay baseline, the one-channel legs and the all-channel leg completes with its response, and in the all-channel leg every AW, W and AR READY stall the leaf draws meets a request at the port (PR-OUT VALID without READY on at least one clock per channel).
+|CHK-HOLD-DRAIN
+|Requests are accepted during a hold, no response returns during it, and every request completes after the release.
+|CHK-OUT-DRAIN
+|Every limit session at the stop of CTRL-OUT-STOP drains: each issued request completes after the release, and nothing deadlocks.
+|CHK-XBAR-HELD
+|The request held at CTRL-XBAR-HELD-STOP completes; the LSU's held request and the DMA's next write are each admitted within the bounded one-beat releases.
+|CHK-XBAR-POSTDRAIN
+|Fresh transactions after the saturation drains complete.
+|CHK-CHAIN-DRAIN
+|With the DMA and the SMN inbound master issuing alongside, every session at CTRL-CHAIN-STOP drains, the writes-and-reads hold included; in the three-initiator hold the LSU's held request and the DMA's next write are each admitted within the bounded one-beat releases.
+|CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
+|Exactly one B per accepted write and the beats of each accepted read, and none after the idle window.
+|CHK-SYSIF-NO-OUTBOUND-PATH
+|Every access of the SMN inbound master answers DECERR with one B or its R beats, and none reaches PR-OUT (`fabric.adoc`, Fabric Topology). Each one leaves the inbound filter (one PR-INFLT AW per write and one AR per read in the SMN slot), so the filter admitted it and the DECERR is the decode's.
+|CHK-ATTR-USER
+|Over the whole PR-OUT window from bring-up to the end of the leaf, every LSU and DMA request the leaf issues matches exactly one PR-OUT request at its address, and no PR-OUT request is unmatched. Each matched request has AxLEN 0, AxPROT bits 0 and 2 as issued with NS 1, and AxUSER[3:0] known and not OTHERS (0), the same on every request, although the LSU alternates two distinct non-zero values and the DMA issues OTHERS. `OBS-SAT-SRC-ID` logs that value with AxUSER[11:4].
+|CHK-NONVAC
+|The ordered fence of the phases: bring-up, baseline, channel delays, all delayed, hold released, master limit, port limit, held limit, chain limit, both limits, post drain.
+|CHK-TIMEOUT-PATHS
+|Each bounded wait (a transaction, a DMA DONE wait, a one-beat release loop) logs its bound and raises on expiry; every one has a measured use within its bound. Fixed windows (the hold and idle windows, a delayed release) cannot expire and are logged as `INFO-WAIT`.
+|===
+
+*Logged, not graded*: `OBS-LIMIT` and `OBS-CHAIN-LIMIT` (the accepted counts at each stop), `OBS-SAT-SRC-ID` (the source ID at the port), `INFO-CHAIN-HELD`, `INFO-SYSIF-REACH` and `INFO-WAIT`. A row of a checker that a leg cannot grade is logged as `OBS-BLOCKED CHK-<NAME> reason=<r>` and earns no credit.
+
+*Pass Criteria*: Every named checker and control PASSes. UVM_ERROR == 0.
+
+*Scope limit*: The leaf does not grade the outstanding limit of the local crossbar or of the outbound chain, the completion latency, the response during a hold, or the acceptance point of a request that the filters answer themselves. At the LSU pins the stop of the outbound chain is not separable from a stop upstream of it.

@@ -39,6 +39,7 @@ class sep_address_map_test(sep_base_test):
     # Every graded contract this leaf owns. Dropping any one of them is the
     # failure mode a clean exit would otherwise hide.
     required_evidence = (
+        "CHK-CPU-CTRL-RESET",
         "CHK-REFCNT-READ",
         "CHK-BASEADDR-RW",
         "CHK-RW-READBACK",
@@ -46,7 +47,7 @@ class sep_address_map_test(sep_base_test):
         "CHK-CPU-CTRL-HOLE",
         "CHK-EXT-DEMUX-BOUND",
     )
-    min_evidence = 6
+    min_evidence = 7
 
     async def _access(
         self,
@@ -81,6 +82,15 @@ class sep_address_map_test(sep_base_test):
         assert not sb_errors, (
             f"CHK-ADDRMAP FAIL: {len(sb_errors)} scoreboard error(s) before "
             f"the PASS summary; first: {sb_errors[0]}"
+        )
+        wrong = [f"{n}=0x{got:08x}/0x{exp:08x}" for n, exp, got in seq.reset_reads if got != exp]
+        assert seq.reset_reads and not wrong, (
+            f"CHK-CPU-CTRL-RESET FAIL: {len(seq.reset_reads)} reset read(s), "
+            f"mismatch (got/exp) {wrong}"
+        )
+        self.logger.info(
+            "CHK-CPU-CTRL-RESET PASS: regs=%d each equals its RDL reset value",
+            len(seq.reset_reads),
         )
         self.logger.info(
             "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable and advancing, last read 0x%08x_%08x",

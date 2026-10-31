@@ -139,7 +139,7 @@
 
 *BFM / Model*: ocah_axi_vip, KM path / golden
 
-*Objective*: Proves that a known key loaded over the Key Manager mailbox and sideloaded to HMAC produces the independent HMAC-SHA256 golden, and that the digest differs from the golden of the decoy software key.
+*Objective*: Proves that a known key loaded over the Key Manager mailbox and sideloaded to HMAC produces the independent HMAC-SHA256 golden, and that the digest differs from the golden of the decoy software key, which a keyed MAC before the transfer proves is live in the software key registers.
 
 *Test Coverage*: Known-key Key Manager to HMAC sideload known-answer.
 
@@ -147,9 +147,11 @@
 
 [arabic]
 . Bring up real entropy; boot the Key Manager; load the known key for HMAC.
-. Transfer the key; read back the reset register for the isolation record.
-. Read the public key registers and require zero.
+. Release HMAC; read back the reset register for the isolation record.
 . Write a seeded software decoy key to the public key registers. Each decoy word differs from the Key Manager key word at the same index.
+. Before the transfer `KEY_CTRL.KEY_VALID` is clear (`hw/ip/key_manager/regs/hmac_wrapper_key.rdl`, `KEY_VALID` reset 0), so the engine keys from the software key registers (`hw/sys/sep/doc/hmac.adoc`, OCAH Modifications). Configure keyed SHA-256; start; feed the message; process; read the digest. Require the digest to equal the decoy golden under the software-key convention (`CTRL-DECOY-LIVE`).
+. Transfer the key.
+. Read the public key registers and require zero.
 . Configure keyed SHA-256; start; feed the message; process; read the digest.
 . Require the digest to differ from the decoy golden, then to equal the golden of the Key Manager key under the pinned convention.
 . Clear the done event and confirm it reads back clear.
@@ -165,10 +167,12 @@
 |The transfer to HMAC succeeds.
 |CHK-ISO
 |Only the Key Manager and HMAC are released during the transfer. AES, KMAC and OTBN are parked. The check is a mask over those bits, not an equality on the whole register. Adams Bridge stays released: the Key Manager firmware does not reach ready with that domain held, and the Adams Bridge sideload leaf is the isolation claim for that engine.
+|CTRL-DECOY-LIVE
+|Before the transfer, with `KEY_CTRL.KEY_VALID` clear, the keyed digest equals the independent HMAC-SHA256 golden of the decoy key under the software-key convention: `KEY_0` first, big-endian per word (`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson`, `KEY` and `CFG.key_swap` = 0). A decoy write that does not reach the key registers, or an engine that ignores them, fails the control. Evidence: `CTRL-DECOY-LIVE seen: seed=<n> digest==decoy_sw_golden=1`.
 |CHK-DECOY
-|The digest differs from the independent HMAC-SHA256 golden of the software decoy key, under both the software-key and the sideload key byte conventions. The decoy is in the public key registers while the sideloaded key is valid, so the check fails if the engine uses the register key in place of the sideloaded key.
+|The digest after the transfer differs from the independent HMAC-SHA256 golden of the software decoy key, under both the software-key and the sideload key byte conventions. `CTRL-DECOY-LIVE` proved the decoy live in the public key registers, and between that MAC and this one the leaf neither writes `WIPE_SECRET` (the register that clears the secret key, `hmac.hjson`) nor resets the HMAC domain. So the decoy is in the registers while the sideloaded key is valid, and the check fails if the engine uses the register key in place of the sideloaded key. Evidence: `CHK-DECOY PASS: seed=<n> digest!=decoy_sw_golden=1 digest!=decoy_sideload_golden=1`.
 |CHK-MAC
-|The digest equals the independent HMAC-SHA256 golden for the known key.
+|The digest equals the independent HMAC-SHA256 golden for the known key. Evidence: `CHK-MAC PASS: seed=<n> digest==golden=1`.
 |CHK-RW1C
 |The done event clears on write-one-to-clear.
 |CHK0

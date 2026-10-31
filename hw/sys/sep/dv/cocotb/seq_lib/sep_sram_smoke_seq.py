@@ -10,10 +10,16 @@ from pyuvm import uvm_sequence
 from sep_reg_meta import sym
 
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
+STORE_PATTERN = 0x0123_4567_89AB_CDEF
 
 
 class sep_sram_smoke_seq(uvm_sequence):
-    async def _read(self, addr: int, length: int, expected: int | None = None) -> None:
+    def __init__(self, name: str = "sep_sram_smoke_seq") -> None:
+        super().__init__(name)
+        # (op, addr, resp_ok) of every access, for CHK-RESP in the test.
+        self.responses: list[tuple[str, int, bool]] = []
+
+    async def _check(self, chk: str, addr: int, length: int, expected: int, what: str) -> None:
         item = SepAxiItem(f"rd_sram_0x{addr:08x}")
         item.op = SepAxiOp.READ
         item.addr = addr
@@ -21,12 +27,28 @@ class sep_sram_smoke_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
-        if expected is not None:
-            mask = (1 << (length * 8)) - 1
-            assert item.resp_ok and (item.rdata & mask) == (expected & mask), (
-                f"CHK-SRAM-SMOKE FAIL: read 0x{addr:08x} resp_ok={item.resp_ok} "
-                f"got 0x{item.rdata & mask:x} want 0x{expected & mask:x}"
-            )
+        self.responses.append(("rd", addr, bool(item.resp_ok)))
+        mask = (1 << (length * 8)) - 1
+        got = item.rdata & mask
+        assert item.resp_ok and got == expected & mask, (
+            f"{chk} FAIL: {what}: read 0x{addr:08x} resp_ok={item.resp_ok} "
+            f"got 0x{got:x} want 0x{expected & mask:x}"
+        )
+        cocotb.log.info("%s PASS: %s: read 0x%08x = 0x%016x", chk, what, addr, got)
+
+    async def _pre_read(self, addr: int) -> None:
+        item = SepAxiItem(f"rd_sram_0x{addr:08x}")
+        item.op = SepAxiOp.READ
+        item.addr = addr
+        item.length = 8
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.responses.append(("rd", addr, bool(item.resp_ok)))
+        fields = f"addr=0x{addr:08x} resp_ok={int(bool(item.resp_ok))} rdata=0x{item.rdata:016x}"
+        if not (item.resp_ok and item.rdata != STORE_PATTERN):
+            cocotb.log.error("CTRL-MISSING SRAM-PRE: %s", fields)
+            raise AssertionError(f"CTRL-MISSING SRAM-PRE: {fields}")
+        cocotb.log.info("CTRL-SRAM-PRE seen: %s", fields)
 
     async def _write(self, addr: int, data: int, length: int, size: int | None = None) -> None:
         item = SepAxiItem(f"wr_sram_0x{addr:08x}")
@@ -37,14 +59,16 @@ class sep_sram_smoke_seq(uvm_sequence):
         item.wdata = data
         await self.start_item(item)
         await self.finish_item(item)
+        self.responses.append(("wr", addr, bool(item.resp_ok)))
 
     async def body(self) -> None:
         base = SEP_SRAM_BASE + 0x100
-        await self._read(base, 8, expected=0)
-        await self._write(base, 0x0123_4567_89AB_CDEF, 8)
-        await self._read(base, 8, expected=0x0123_4567_89AB_CDEF)
+        await self._pre_read(base)
+        await self._write(base, STORE_PATTERN, 8)
+        await self._check("CHK-STORE", base, 8, STORE_PATTERN, "64-bit write")
         # Drive a real 4-byte beat, not a full-width beat with narrowed strobes:
         # nothing else in the suite exercises a narrow AxSIZE on this bus.
         await self._write(base + 4, 0xFEED_FACE, 4, size=2)
-        await self._read(base, 8, expected=0xFEED_FACE_89AB_CDEF)
-        cocotb.log.info("CHK-SRAM-SMOKE PASS: 64-bit then 32-bit write/readback at 0x%08x", base)
+        await self._check(
+            "CHK-LANE", base, 8, 0xFEED_FACE_89AB_CDEF, "4-byte AxSIZE=2 write to the upper half"
+        )

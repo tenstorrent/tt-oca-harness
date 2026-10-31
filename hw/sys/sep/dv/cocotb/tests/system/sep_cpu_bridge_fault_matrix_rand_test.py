@@ -476,6 +476,31 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.logger.error(msg)
         raise AssertionError(msg)
 
+    def _expected_counts(self) -> dict[str, int]:
+        """Number of PASS lines each checker logs for this seed's draws."""
+        c = self.c
+        n_blk, n_bits, n_masks = len(BLOCKS), len(PERIPH_BITS), len(c.masks)
+        exp = {
+            "CHK-CTRL": 1,
+            "CHK-PARTIAL-WR": len(PARTIAL_BLOCKS),
+            "CHK-PARTIAL-CLR": len(PARTIAL_BLOCKS),
+            "CHK-RESP": self.wr_faults,
+            "CHK-LATCH": n_blk,
+            "CHK-OR": n_blk,
+            "CHK-BRIDGE-HOLE-SI": 1,
+            "CHK-CLR-READ0": 1,
+            "CHK-DMA-CLR": 4,
+            "CTRL-NONVAC": n_bits + n_masks,
+            "CHK-CLR-MATRIX": n_bits + n_blk,
+            "CHK-MASK": n_masks,
+            "CHK-AGAIN": 2,
+            "CHK-HOST": 1,
+            "CHK-DMA-HOST-HOLD": 1,
+            "CHK-RACE": n_blk + 1,
+        }
+        exp.update({f"CHK-SRC{src}-EXCL": 1 for src in EXCL_SRC})
+        return exp
+
     # ---- FCOV pass label -----------------------------------------------------------
     async def _arm(self) -> None:
         """Start a graded instance: bfault_pass 0 drops every held outcome."""
@@ -547,6 +572,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         """One access to the hole of ``b``; grades the response; updates the model."""
         addr = self.c.hole[b]
         if op == "wr":
+            self.wr_faults += 1
             resp, _ = await self._acc(SepAxiOp.WRITE, addr, 0xA5A5_0000 | (addr & 0xFFFF))
             line = f"block={b} op=wr addr=0x{addr:08x} resp={RESP_NAME.get(resp, resp)}"
             if resp != RESP_SLVERR:
@@ -1393,6 +1419,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.c = c = _Cfg(seed)
         self.n_checks = 0
         self.counts: dict[str, int] = {}
+        self.wr_faults = 0
         self.op_i = 0
         self.latched = 0
         self.ctrl_reg_path_err = 0
@@ -1430,6 +1457,18 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             await self._race_periph(b)
         await self._race_dma()
         await self._leg_excl()
+        exp = self._expected_counts()
+        diff = {k: (self.counts.get(k, 0), n) for k, n in exp.items() if self.counts.get(k, 0) != n}
+        diff.update({k: (n, 0) for k, n in self.counts.items() if k not in exp})
+        if diff:
+            self._ctrl_missing(f"CTRL-CHK-COUNTS got/expected={diff}")
+        self.logger.info(
+            "CTRL-CHK-COUNTS seen seed=%d names=%d lines=%d wr_faults=%d",
+            seed,
+            len(exp),
+            sum(exp.values()),
+            self.wr_faults,
+        )
         close_graded_window(self.logger)
         await self.vw.stop()
         await self.pulses.stop()

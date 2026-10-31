@@ -391,7 +391,13 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         await ReadOnly()
         base = [n for n, v in zip([x[0] for x in NETS], self._sample()["nets"]) if v != 1]
         await RisingEdge(dut.clk_i)
-        assert not base, f"precondition FAIL: nets not high before the session: {base}"
+        line = f"nets_high={N_NETS - len(base)}/{N_NETS} not_high={base}"
+        # Same text as SepChkLog.ctrl(): CTRL-SCAN-REACH grades a fall of these
+        # nets, so each must be released high before the session.
+        if base:
+            self.logger.error("CTRL-MISSING SCAN-PRE: %s", line)
+            raise AssertionError(f"CTRL-MISSING SCAN-PRE: {line}")
+        self.logger.info("CTRL-SCAN-PRE seen: %s", line)
 
     async def _shadow_write_obs(self) -> None:
         """OBS-SCAN-SHADOW-WR: a SIP_DIS shadow write with test_en_i = 1 at strap 0."""

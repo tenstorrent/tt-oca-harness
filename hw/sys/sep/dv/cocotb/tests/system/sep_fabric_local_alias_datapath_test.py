@@ -82,10 +82,16 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         await alias._wr(cfg.expect_addr, cfg.parked)
         parked = alias_probe_seq(cfg.expect_addr)
         await self.start_seq(parked)
-        assert parked.resp_ok and (parked.rdata & 0xFFFF_FFFF) == cfg.parked, (
-            f"CLOCK_GATE_CTRL wrote 0x{cfg.parked:08x} read "
-            f"0x{parked.rdata & 0xFFFF_FFFF:08x} before the aliased write"
+        park = (
+            f"addr=0x{cfg.expect_addr:08x} wrote=0x{cfg.parked:08x} "
+            f"read=0x{parked.rdata & 0xFFFF_FFFF:08x} resp_ok={int(parked.resp_ok)}"
         )
+        # Same text as SepChkLog.ctrl(): CHK-OFFSET-WRITE needs CLOCK_GATE_CTRL
+        # parked away from the marker, so a missing park fails the leaf.
+        if not (parked.resp_ok and (parked.rdata & 0xFFFF_FFFF) == cfg.parked):
+            self.logger.error("CTRL-MISSING OFFSET-PARK: %s", park)
+            raise AssertionError(f"CTRL-MISSING OFFSET-PARK: {park}")
+        self.logger.info("CTRL-OFFSET-PARK seen: %s", park)
 
         await alias.program(cfg)
 

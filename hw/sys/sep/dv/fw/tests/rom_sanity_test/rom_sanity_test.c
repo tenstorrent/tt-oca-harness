@@ -41,9 +41,9 @@ typedef int32_t (*func_i32_t)(int32_t);
 typedef int32_t (*func_i32_i32_t)(int32_t, int32_t);
 
 // Compare a ROM function's return value to the expected value and log a
-// pass/fail line naming the check and the observed value.
+// CHK-IFU-TYPES PASS/FAIL line naming the function and the observed value.
 static int check(const char *name, int32_t got, int32_t want) {
-    sep_mbx_puts(got == want ? "[PASS] " : "[FAIL] ");
+    sep_mbx_puts(got == want ? "CHK-IFU-TYPES PASS: " : "CHK-IFU-TYPES FAIL: ");
     sep_mbx_puts(name);
     sep_mbx_puts(" got=");
     sep_mbx_puthex((uint32_t)got);

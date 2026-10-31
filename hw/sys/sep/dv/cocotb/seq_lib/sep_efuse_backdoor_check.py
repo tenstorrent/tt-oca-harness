@@ -88,13 +88,19 @@ def check_efuse_shadow_backdoor(
                 errors.append(f"{name}[{k}] word{widx}: sensed 0x{got:08x} != expected 0x{exp:08x}")
     for e in errors:
         logger.error("EFUSE BACKDOOR FAIL: %s", e)
-    logger.info(
-        "eFuse backdoor check: %d words, %d error(s), secure_tm=%d", checked, len(errors), secure_tm
-    )
     # Guard against a vacuous "0 words, 0 error(s)" pass. Only meaningful for a
     # whole-image compare: a caller that asked for a subset via fields= is not
     # expected to span the image, and asserting the full count there would fail
     # every such call.
+    spans = fields is not None or checked == len(image.words)
+    passed = spans and not errors
+    (logger.info if passed else logger.error)(
+        "CHK-SENSE-BACKDOOR %s words=%d errors=%d secure_tm=%d",
+        "PASS" if passed else "FAIL",
+        checked,
+        len(errors),
+        secure_tm,
+    )
     if fields is None:
         assert checked == len(image.words), (
             f"eFuse backdoor check covered {checked} words, expected all "

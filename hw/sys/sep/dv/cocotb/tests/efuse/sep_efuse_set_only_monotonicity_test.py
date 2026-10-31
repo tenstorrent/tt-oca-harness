@@ -115,7 +115,16 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
                 + [w.name for w in cfg.writable]
             )
         )
+        # The sequence reads SEP_FUSE_SENSE_STATUS, then every word of each walked row.
+        reads = 1 + sum(len(img.expected_field(name)) for name in walked)
+        mark = self.sb_mark()
         await self.start_seq(sep_efuse_shadow_check_seq(img, fields=walked))
+        self.assert_sb_judged(mark, "CHK-SENSE-WALK")
+        judged = self.env.scoreboard.value_checks - mark[1]
+        assert judged == reads, f"CHK-SENSE-WALK FAIL: scoreboard judged {judged} of {reads} reads"
+        self.logger.info(
+            "CHK-SENSE-WALK PASS: rows=%d judged=%d/%d reads", len(walked), judged, reads
+        )
 
         shadow = SepEfuseShadow(self)
         for field in cfg.fields:
