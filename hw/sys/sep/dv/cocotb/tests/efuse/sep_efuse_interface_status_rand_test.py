@@ -97,7 +97,7 @@ and bank diff of the in-range program after the out-of-range programs
 (``OBS-IF-OOR-PROG-TWIN``), and, after the lock-program case, a read held by
 ``program_enable`` with ``program_enable`` cleared first: the READ commands at
 ``efuse_shim_command_req_o`` while held and after the clear, ``read_done`` and the
-flags (``OBS-IF-ENABLE-CLEAR-ORDER``). The both-enables case clears
+flags (``INFO-IF-ENABLE-CLEAR-ORDER``). The both-enables case clears
 ``read_enable`` before ``program_enable``, so the held read there cannot reach
 the bank before its cold reset.
 """
@@ -909,7 +909,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         total = len(self.cmds.reads_since(mark, address=bit))
         f = await self._flags()
         await self._wr(READ_CTRL_ADDR, 0)
-        self.chk.obs(
+        self.chk.info(
             "IF-ENABLE-CLEAR-ORDER",
             first="program_enable",
             second="read_enable",
