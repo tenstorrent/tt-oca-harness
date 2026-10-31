@@ -49,7 +49,7 @@ import cocotb
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
-from env.sep_efuse_image import SHADOW_BASE
+from env.sep_efuse_image import NUM_FUSE_WORDS, SHADOW_BASE
 from env.sep_efuse_plan import (
     CHANNELS,
     MATCH_ADDR,
@@ -101,7 +101,7 @@ if _RESET_EXP != {_STATUS: 0x1, _PG: 0x0, _RD: 0x0, _RD_TMO: 0x0080_0000, _PG_TM
 _STATUS_RO_WRITE = 0x0000_0071  # bits 0, 4, 5, 6 at 1; the three clear bits at 0
 _FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 _FEAT_MASK = SEP_LIFECYCLE_CTRL.mask("FEAT_CTRL")
-_SHADOW_LAST = SHADOW_BASE + 0x3FC
+_SHADOW_LAST = SHADOW_BASE + 4 * (NUM_FUSE_WORDS - 1)
 _PAST_EXTENT_PINNED = STATUS_ADDR + 0x1C
 _RSVD_PINNED = (SHADOW_BASE + 0x600, SHADOW_BASE + 0xC1C, SHADOW_BASE + 0xFFFC)
 _ARRAY_TOKEN = {"sip": TOKEN_T1, "chiplet": TOKEN_T2, "sec_dis": TOKEN_OTHER}
@@ -136,6 +136,18 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         """One 32-bit frontdoor write: (OKAY, response code)."""
         seq = await self.fd.access(SepAxiOp.WRITE, addr, data, unverified_write=ungraded)
         return bool(seq.resp_ok), int(seq.resp_code)
+
+    def _ro_write_reached(self, reg: str, code: int) -> None:
+        """CTRL-RO-WR: a write to a mapped read-only register got a B response that is not DECERR.
+
+        The response code itself has no stated value and is not graded.
+        """
+        self.chk.ctrl(
+            "RO-WR",
+            code in (0, 2),
+            reg=reg,
+            resp=_RESP.get(code, code),
+        )
 
     def _log(self, tag: str, **fields: object) -> None:
         log_line(self.logger, tag, self.seed, **fields)
@@ -218,7 +230,7 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
     async def _control_reads(self, tag: str) -> None:
         """Procedure step 13: the last shadow word and STATUS answer OKAY with the model."""
         for addr, exp, mask in (
-            (_SHADOW_LAST, self.model[0xFF], _WORD),
+            (_SHADOW_LAST, self.model[NUM_FUSE_WORDS - 1], _WORD),
             (STATUS_ADDR, _RESET_EXP[_STATUS], _IC.mask32(_STATUS)),
         ):
             got, ok, code = await self._rd(addr, ungraded=True)
@@ -331,7 +343,8 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
             )
 
         # Step 9: write of 1 to read-only status bits; response code not graded.
-        await self._wr(STATUS_ADDR, _STATUS_RO_WRITE, ungraded=True)
+        _ok_w, code = await self._wr(STATUS_ADDR, _STATUS_RO_WRITE, ungraded=True)
+        self._ro_write_reached("STATUS", code)
         got, _ok, _c = await self._rd(STATUS_ADDR)
         cmp = field_compare(got, _RESET_EXP[_STATUS], _IC.mask32(_STATUS))
         self.chk.ok(
@@ -382,8 +395,10 @@ class sep_efuse_window_decode_reset_test(sep_base_test):
         hi, _ok, _c = await self._rd(_FEAT_CTRL + 4)
         before = (hi << 32 | lo) & _FEAT_MASK
         wr64 = ~before & _FEAT_MASK
-        await self._wr(_FEAT_CTRL, wr64 & _WORD, ungraded=True)
-        await self._wr(_FEAT_CTRL + 4, wr64 >> 32, ungraded=True)
+        _ok_w, code_lo = await self._wr(_FEAT_CTRL, wr64 & _WORD, ungraded=True)
+        self._ro_write_reached("FEAT_CTRL_LO", code_lo)
+        _ok_w, code_hi = await self._wr(_FEAT_CTRL + 4, wr64 >> 32, ungraded=True)
+        self._ro_write_reached("FEAT_CTRL_HI", code_hi)
         lo, _ok, _c = await self._rd(_FEAT_CTRL)
         hi, _ok, _c = await self._rd(_FEAT_CTRL + 4)
         after = (hi << 32 | lo) & _FEAT_MASK
