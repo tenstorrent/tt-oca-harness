@@ -83,8 +83,6 @@ class sep_axi_smoke_seq(uvm_sequence):
         item.addr = addr
         item.length = 4
         item.wdata = data
-        # The CHK-WR-RB readback grades the write; its response is logged.
-        item.allow_unverified_write_resp = True
         await self.start_item(item)
         await self.finish_item(item)
         self.responses.append(("wr", addr, int(item.resp_code)))

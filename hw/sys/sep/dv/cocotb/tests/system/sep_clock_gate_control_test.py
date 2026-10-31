@@ -33,11 +33,8 @@ sep_address_map_test (CLOCK_GATE_CTRL storage poke in sep_address_map_seq).
 from __future__ import annotations
 
 import pyuvm
-from env.sep_axi_agent import SepAxiOp
-from env.sep_fabric_common import RESP_NAME
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_clock_gate_seq import (
     CLOCK_GATE_CTRL,
     CLOCK_GATE_CTRL_HI,
@@ -131,21 +128,15 @@ class sep_clock_gate_control_test(sep_base_test):
         # CHK-STORAGE, all-ones leg: drive all ones into both 32-bit halves. The
         # pka_cg_enable field must read 1. The Reserved bits 63:1 have no stated
         # access or read value, so their readback is logged, not graded.
-        # No document states the response of these writes, so it is logged, not
-        # graded; the pka_cg_enable readback below grades the lower-half write.
+        # No document states the response of these writes, so this leaf logs it;
+        # the pka_cg_enable readback below grades the lower-half write.
         resp = {}
         for half, addr in (("lower", CLOCK_GATE_CTRL), ("upper", CLOCK_GATE_CTRL_HI)):
-            wr_seq = SepAxiAccessSeq(
-                f"cg_allones_{half}",
-                op=SepAxiOp.WRITE,
-                addr=addr,
-                wdata=0xFFFF_FFFF,
-                length=4,
-                size=2,
-                allow_unverified_write_resp=True,
-            )
-            await self.start_seq(wr_seq)
-            resp[half] = RESP_NAME.get(wr_seq.resp_code, wr_seq.resp_code)
+            try:
+                await gate.write_raw(addr, 0xFFFF_FFFF)
+                resp[half] = "OKAY"
+            except AssertionError:
+                resp[half] = "not_OKAY"
         self.logger.info(
             "OBS-CG-ALLONES-WR-RESP LOG lower=0x%08x resp=%s upper=0x%08x resp=%s wdata=0xffffffff",
             CLOCK_GATE_CTRL,

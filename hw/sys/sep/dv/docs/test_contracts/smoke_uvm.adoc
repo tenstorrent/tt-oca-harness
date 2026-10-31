@@ -39,9 +39,9 @@
 |CHK-WR-RB
 |Each read/write register returns exactly the pattern written, masked to its implemented bits. Note the `SEP_NMI_VEC` pattern already has bit 0 clear, so the reserved-bit mask is a no-op here and this test does not exercise reserved-bit behaviour; `sep_reg_bit_bash_rand_test` CHK-RESERVED does.
 |CHK-NONVAC
-|The shared scoreboard judges the value of every read the sequence issues, the reset read and the four readbacks, and rejects no access while the sequence runs. The scoreboard judges only the value of a read that answers `OKAY` and rejects any other read response, as for every plain read of this bench.
+|The shared scoreboard judges the value of every read the sequence issues, the reset read and the four readbacks, and rejects no access while the sequence runs. The scoreboard judges only the value of a read that answers `OKAY`.
 |OBS-RESP
-|A logged line, not a graded check: the response code of every access of the sequence. No document states the response of these `sep_cpu_ctrl` accesses. The writes are graded by their readback (CHK-WR-RB), and their response is not graded.
+|A logged line, not a graded check: the response code of every access of the sequence. No document states the response of these `sep_cpu_ctrl` accesses, so no check of this leaf grades it. The shared scoreboard rejects a non-OKAY response of any access that does not opt out, as for every plain access of this bench.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -207,7 +207,7 @@
 |CHK-LANE
 |A genuine 4-byte beat (`AxSIZE=2`) to the upper half changes only those lanes; the lower four survive.
 |OBS-RESP
-|A logged line, not a graded check: the response code of every access of the sequence. No document states the response of an SRAM access. The writes are graded by their readback (CHK-STORE, CHK-LANE), and their response is not graded.
+|A logged line, not a graded check: the response code of every access of the sequence. No document states the response of an SRAM access, so no check of this leaf grades it. The shared scoreboard rejects a non-OKAY response of any access that does not opt out, as for every plain access of this bench.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

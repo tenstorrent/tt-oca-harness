@@ -711,7 +711,7 @@ silent.
 
 [arabic]
 . Write `pka_cg_enable` 1 then 0 and read both 32-bit halves back without a mask.
-. Write all ones to both 32-bit halves and read both halves back. No document states the response of these writes, so each is logged, not graded (`OBS-CG-ALLONES-WR-RESP LOG lower=0x<a> resp=<r> upper=0x<a> resp=<r> wdata=0xffffffff`). The `pka_cg_enable` readback of 1 after the earlier write of 0 shows that the lower-half write landed. The upper half holds only Reserved bits, so its write shows no graded readback.
+. Write all ones to both 32-bit halves and read both halves back. No document states the response of these writes, so the leaf logs it and no check of the leaf grades it (`OBS-CG-ALLONES-WR-RESP LOG lower=0x<a> resp=<r> upper=0x<a> resp=<r> wdata=0xffffffff`). The `pka_cg_enable` readback of 1 after the earlier write of 0 shows that the lower-half write landed. The upper half holds only Reserved bits, so its write shows no graded readback.
 . Read AES / HMAC / OTBN / SW_DEBUG CSRs with the bit 0 and 1.
 . After every check above has passed, write `pka_cg_enable` 0 and then 1, each inside its own FCOV owner window, read the upper then the lower half, grade the field, and close the window.
 
