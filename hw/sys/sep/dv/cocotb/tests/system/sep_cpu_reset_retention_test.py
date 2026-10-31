@@ -131,7 +131,11 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
 
 Controls (not counted): ``CTRL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
-``sep_reset_n``). Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
+``sep_reset_n``), ``CTRL-BANK-WRITE`` (each scratch bank reads its drawn words
+after the write), ``CTRL-OVL-ARMED`` (the domain-D probe reads its armed
+non-reset value before each overlap run) and ``CTRL-DMA-COLD-MID`` (``STATUS``
+reads BUSY=1 and DONE=0 before the cold reset, which falls less than one
+calibrated copy time after GO). Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
 ``REFERENCE_COUNTER`` after each event). The DBG lines of CHK-BANK and
 CHK-CPU-RST-DBG take credit only after CHK-DBG-SYNC passes.
 
@@ -690,10 +694,19 @@ class sep_cpu_reset_retention_test(sep_base_test):
         t0 = None
         await self.dma.go()
         t0 = self.clk
-        st = await self.dma.poll_status(
-            lambda s: s.done or s.error, self.dma.done_bound(COPY_BYTES), "cal"
-        )
+        # Each STATUS poll is timed: DONE rose after the poll before the last one
+        # was issued, so the copy runs for at least C - 2 x the slowest poll.
+        self.lat_st = 0
+        for _ in range(self.dma.done_bound(COPY_BYTES)):
+            t_rd = self.clk
+            st = await self.dma.read_status()
+            self.lat_st = max(self.lat_st, self.clk - t_rd)
+            if st.done or st.error:
+                break
+        else:
+            raise AssertionError(f"calibration copy did not end: {st.fmt()}")
         self.c = self.clk - t0
+        self.c_run = self.c - 2 * self.lat_st
         if st.error:
             raise AssertionError(f"calibration copy ended with ERROR: {st.fmt()}")
         await self.dma.wr(_D.addr("STATUS"), ST_DONE | ST_CHUNK_DONE)
@@ -709,9 +722,22 @@ class sep_cpu_reset_retention_test(sep_base_test):
             raise AssertionError(
                 f"calibration: C={self.c} does not exceed 8 x widest pulse {widest}"
             )
-        self.copy_delay = self.c // 4 + int(self.plan.f_c * (self.c // 2))
+        # The cold leg reads STATUS once after the delay and then pulses rst_ni, so
+        # the delay range ends 4 x the slowest poll before the shortest copy end.
+        span = min(self.c // 2, self.c_run - 4 * self.lat_st - self.c // 4)
+        if span <= 0:
+            raise AssertionError(
+                f"calibration: C={self.c} leaves no delay range "
+                f"(slowest STATUS read {self.lat_st} clocks)"
+            )
+        self.copy_delay = self.c // 4 + int(self.plan.f_c * span)
         self.logger.info(
-            "INFO-DRAW-SCALED copy_delay=%d (f_c=%.6f C=%d)", self.copy_delay, self.plan.f_c, self.c
+            "INFO-DRAW-SCALED copy_delay=%d (f_c=%.6f C=%d span=%d status_read_max=%d)",
+            self.copy_delay,
+            self.plan.f_c,
+            self.c,
+            span,
+            self.lat_st,
         )
 
     async def _program_copy(self) -> dict[str, int]:
@@ -848,6 +874,12 @@ class sep_cpu_reset_retention_test(sep_base_test):
         for name, addrs in banks:
             for a, v in zip(addrs, self.plan.scratch[name]):
                 await self._wr(a, v)
+            got = [await self._rd(a) for a in addrs]
+            self._ctl(
+                "CTRL-BANK-WRITE",
+                got == list(self.plan.scratch[name]),
+                f"bank={name} got=" + ",".join(f"0x{v:08x}" for v in got),
+            )
 
     async def _bank_ctl(self, event: str) -> None:
         """CHK-BANK: the scratch banks after a reset event (``cpu.adoc``, Dual Scratch
@@ -1038,6 +1070,14 @@ class sep_cpu_reset_retention_test(sep_base_test):
             await self._arm_probe(_BY_NAME[sib], (n % 3) + 1)
             for name in KEEP_PROBES:
                 await self._arm_probe(_BY_NAME[name], (n % 3) + 1)
+            pd_arm = _BY_NAME[d]
+            got = await self.pd.read(pd_arm)
+            self._ctl(
+                "CTRL-OVL-ARMED",
+                got == self.armed[d] & pd_arm.mask and got != pd_arm.reset & pd_arm.mask,
+                f"dom={d} probe=0x{pd_arm.addr:08x} got=0x{got:x} "
+                f"armed=0x{self.armed[d] & pd_arm.mask:x} reset=0x{pd_arm.reset & pd_arm.mask:x}",
+            )
             await self._write_banks()
             off = int(run.f_o * self.tiso)
             if run.band == "before":
@@ -1689,6 +1729,13 @@ class sep_cpu_reset_retention_test(sep_base_test):
         t_go = self.clk
         while self.clk < t_go + self.copy_delay:
             await RisingEdge(dut.clk_i)
+        st_mid = await self.dma.read_status()
+        rst_clk = self.clk - t_go
+        self._ctl(
+            "CTRL-DMA-COLD-MID",
+            st_mid.busy == 1 and st_mid.done == 0 and rst_clk < self.c_run,
+            f"{st_mid.fmt()} rst_clk_after_go={rst_clk} copy_run_min={self.c_run} C={self.c}",
+        )
         m = self.taps.mark()
         res = await self.pulse_rst_ni(hold_cycles=self.plan.cold_width)
         for name in ("sep_reset_n", "sep_cpu_reset_n"):

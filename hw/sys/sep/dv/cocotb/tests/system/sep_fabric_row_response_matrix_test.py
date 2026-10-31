@@ -124,7 +124,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_decode_resp import logical_region
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, RESP_SLVERR
+from env.sep_fabric_common import FILTER_ADDR_MASK, RESP_DECERR, RESP_OKAY, RESP_SLVERR
 from env.sep_fabric_common import RESP_NAME as _RN
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_row_pass
 from env.sep_filter_model import FilterEntry
@@ -527,6 +527,17 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 src_id=src_id,
             ),
         )
+        # The Reserved-row DECERR cells take entry 0 as covering the whole SEP
+        # local window, so its range must read back as programmed.
+        _, rb_s, rb_e = await bank.read_entry(0)
+        want_s, want_e = _SEP_LOCAL[0] & FILTER_ADDR_MASK, _SEP_LOCAL[1] & FILTER_ADDR_MASK
+        line = (
+            f"rb_start=0x{rb_s:x} rb_end=0x{rb_e:x} want_start=0x{want_s:x} want_end=0x{want_e:x}"
+        )
+        if (rb_s, rb_e) != (want_s, want_e):
+            self.logger.error("CTRL-ROW-FILTER-RANGE FAIL (control not met): %s", line)
+            raise AssertionError(f"CTRL-ROW-FILTER-RANGE control not met: {line}")
+        self.logger.info("CTRL-ROW-FILTER-RANGE: %s", line)
 
     # ---------------------------------------------------------------- inventory
     def _inventory(self) -> set[tuple[str, str, str, str]]:
