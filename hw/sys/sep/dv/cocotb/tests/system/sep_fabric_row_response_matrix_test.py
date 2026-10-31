@@ -1540,6 +1540,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             set_open_value_leg_pass(leg)
             await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
             set_open_value_leg_pass(None)
+            await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
 
     async def _attr_read(
         self, row: str, reg: rr.Reg | None, drawn: dict[str, int], *, addr: int = 0
