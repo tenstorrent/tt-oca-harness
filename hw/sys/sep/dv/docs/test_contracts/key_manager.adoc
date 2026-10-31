@@ -152,6 +152,7 @@
 . Before the transfer `KEY_CTRL.KEY_VALID` is clear (`hw/ip/key_manager/regs/hmac_wrapper_key.rdl`, `KEY_VALID` reset 0), so the engine keys from the software key registers (`hw/sys/sep/doc/hmac.adoc`, OCAH Modifications). Configure keyed SHA-256; start; feed the message; process; read the digest. Require the digest to equal the decoy golden under the software-key convention (`CTRL-DECOY-LIVE`).
 . Transfer the key.
 . Read the public key registers and require zero.
+. Write the same decoy to the public key registers again; each write must answer `OKAY`.
 . Configure keyed SHA-256; start; feed the message; process; read the digest.
 . Require the digest to differ from the decoy golden, then to equal the golden of the Key Manager key under the pinned convention.
 . Clear the done event and confirm it reads back clear.
@@ -170,7 +171,7 @@
 |CTRL-DECOY-LIVE
 |Before the transfer, with `KEY_CTRL.KEY_VALID` clear, the keyed digest equals the independent HMAC-SHA256 golden of the decoy key under the software-key convention: `KEY_0` first, big-endian per word (`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson`, `KEY` and `CFG.key_swap` = 0). A decoy write that does not reach the key registers, or an engine that ignores them, fails the control. Evidence: `CTRL-DECOY-LIVE seen: seed=<n> digest==decoy_sw_golden=1`.
 |CHK-DECOY
-|The digest after the transfer differs from the independent HMAC-SHA256 golden of the software decoy key, under both the software-key and the sideload key byte conventions. `CTRL-DECOY-LIVE` proved the decoy live in the public key registers, and between that MAC and this one the leaf neither writes `WIPE_SECRET` (the register that clears the secret key, `hmac.hjson`) nor resets the HMAC domain. So the decoy is in the registers while the sideloaded key is valid, and the check fails if the engine uses the register key in place of the sideloaded key. Evidence: `CHK-DECOY PASS: seed=<n> digest!=decoy_sw_golden=1 digest!=decoy_sideload_golden=1`.
+|The digest after the transfer differs from the independent HMAC-SHA256 golden of the software decoy key, under both the software-key and the sideload key byte conventions. `CTRL-DECOY-LIVE` proved the decoy live in the public key registers. After the transfer, with `KEY_CTRL.KEY_VALID` set, the leaf writes the same decoy to those registers again, each write answering `OKAY`, and before the graded MAC it neither writes `WIPE_SECRET` (the register that clears the secret key, `hmac.hjson`) nor resets the HMAC domain. The sideloaded key is used in preference to the software key registers whenever `KEY_VALID` is set (`hw/sys/sep/doc/hmac.adoc`, OCAH Modifications), so the check fails if the engine uses the register key in place of the sideloaded key, if the transfer lands in the register storage, or if a register write displaces the sideloaded key. Evidence: `CHK-DECOY PASS: seed=<n> digest!=decoy_sw_golden=1 digest!=decoy_sideload_golden=1`.
 |CHK-MAC
 |The digest equals the independent HMAC-SHA256 golden for the known key. Evidence: `CHK-MAC PASS: seed=<n> digest==golden=1`.
 |CHK-RW1C

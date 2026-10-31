@@ -16,11 +16,14 @@ the SW key and once with the sideload key is not possible. The decoy leg takes
 its place: before the transfer, while KEY_CTRL.KEY_VALID is clear, the host
 writes a seeded software decoy key to the public KEY CSRs and runs the keyed
 MAC; that digest must equal the golden of the decoy (CTRL-DECOY-LIVE), which
-proves the decoy is in the KEY CSRs and the engine uses them. Between that MAC
-and the one after the transfer the leaf neither writes WIPE_SECRET (the register
-that clears the secret key, hmac.hjson) nor resets the HMAC domain, so the decoy
-is still in the KEY CSRs. The digest after the transfer must equal the golden of the KM key and differ from the golden of the decoy, so
-an engine that takes the CSR key over the sideloaded key fails.
+proves the decoy is in the KEY CSRs and the engine uses them. After the
+transfer, with KEY_VALID set, the host writes the same decoy to the KEY CSRs
+again (each write OKAY), and neither writes WIPE_SECRET (the register that
+clears the secret key, hmac.hjson) nor resets the HMAC domain before the graded
+MAC. The digest after the transfer must equal the golden of the KM key and
+differ from the golden of the decoy, so an engine that takes the CSR key over
+the sideloaded key, a transfer that lands in the KEY CSR storage, or a KEY
+write that displaces the sideloaded key fails.
 
 The key is known a priori and the digest is checked directly against the golden
 under key_word_rev=1, key_be=1, msg_be=0, so a truncated, word-swapped or
@@ -243,6 +246,12 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             "cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,
         )
+
+        # The decoy goes back into the KEY CSRs with KEY_VALID set, so a transfer
+        # that lands in the KEY CSR storage, or a KEY write that displaces the
+        # sideloaded key, leaves the decoy keying the graded MAC.
+        await self.hmac.write_key(decoy)
+        self.chk.info("DECOY-KEY-REWRITE", key=",".join(hex(w) for w in decoy))
 
         # Keyed HMAC-SHA256 with the SIDELOAD key live and the decoy in the CSRs.
         await self.hmac.configure_keyed_256()
