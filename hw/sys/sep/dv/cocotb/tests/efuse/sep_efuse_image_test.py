@@ -33,7 +33,7 @@ Checkers:
                       W1S bit; the done field and the reserved bits are logged
                       OBS.
 
-Logged only: OBS-EFUSE-OTP-PLAIN, after the first sense, the AXI read of every
+Bench record: INFO-EFUSE-OTP-PLAIN, after the first sense, the AXI read of every
 shadow word of CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID with its response,
 beside the image word the bench loaded. No text states whether these fields are
 stored obfuscated. The line shows only that the sense and read path returns the
@@ -177,7 +177,7 @@ class sep_efuse_image_test(sep_base_test):
         )
 
     async def _log_otp_plain(self, img: SepEfuseImage) -> None:
-        """OBS-EFUSE-OTP-PLAIN: each shadow word of the key and UID fields beside its image word."""
+        """INFO-EFUSE-OTP-PLAIN: each shadow word of the key and UID fields beside its image word."""
         for name in _PLAIN_FIELDS:
             fld = SepEfuseImage.field(name)
             shadow, resp = [], []
@@ -189,7 +189,7 @@ class sep_efuse_image_test(sep_base_test):
                 resp.append(RESP_NAME.get(seq.resp_code, seq.resp_code))
             image = img.words[fld.word : fld.word + fld.n_words]
             self.logger.info(
-                "OBS-EFUSE-OTP-PLAIN: field=%s words=%d equal=%d resp=[%s] shadow=[%s] image=[%s]",
+                "INFO-EFUSE-OTP-PLAIN: field=%s words=%d equal=%d resp=[%s] shadow=[%s] image=[%s]",
                 name,
                 fld.n_words,
                 int(shadow == image),

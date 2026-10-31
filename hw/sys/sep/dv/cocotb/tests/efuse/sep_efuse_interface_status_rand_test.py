@@ -100,7 +100,7 @@ and bank diff of the in-range program after the out-of-range programs
 flags (``OBS-IF-ENABLE-CLEAR-ORDER``). The both-enables case clears
 ``read_enable`` before ``program_enable``, so the held read there cannot reach
 the bank before its cold reset.
-``OBS-EFUSE-SHIM-DBG`` logs ``efuse_debug_bus_o``
+The bench record ``INFO-EFUSE-SHIM-DBG`` logs ``efuse_debug_bus_o``
 sampled on every ``clk_i`` from the first case frame to the end of the leaf: the OR of
 the write and read counter-error bits [12] and [4], the write and read FSM states
 [11:8] and [3:0] seen, and the OR of the other bits. No legal stimulus makes a
@@ -1145,7 +1145,7 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         await self.cmds.stop()
         dbg["on"] = False
         await dbg_task
-        self.chk.obs(
+        self.chk.info(
             "EFUSE-SHIM-DBG",
             clocks=dbg["clocks"],
             unknown=dbg["unknown"],
