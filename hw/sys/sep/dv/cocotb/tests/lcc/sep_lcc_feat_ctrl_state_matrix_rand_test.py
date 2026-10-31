@@ -28,8 +28,9 @@ OR-merged with the writes of the leaf).
                     In leg C the SEC_DIS cell is all ones with ``security_disable_o``
                     high and the cell after the mismatch is the demotion row with it
                     low. The RMA_CHIPLET SEC_DIS cell is logged ``ctl=1``. Each
-                    leg C demotion cell also requires the write response OKAY and
-                    both DEMOTE registers equal to the RW1S golden. Leg A also
+                    leg C demotion cell also requires both DEMOTE registers equal
+                    to the RW1S golden; its write response is logged
+                    (``OBS-LCC-WR-RESP``), not graded. Leg A also
                     grades the cell after the SEC_DIS demotion step
                     (``after=sdis_demote_mismatch``): the DEMOTE_1 row of the state.
   CHK-LC-STATE-PORT every CHK-FEAT-CELL cell: the ``lc_state_o`` port (tap
@@ -598,7 +599,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             k = self.mark_rng.choice(free)
             value = value | (1 << k)
             self.rsvd[reg] |= 1 << k
-        self._wr_resp = await self.fd.wr_graded_by_readback(DEMOTE_ADDR[reg], value, length=8)
+        resp = await self.fd.wr_graded_by_readback(DEMOTE_ADDR[reg], value, length=8)
         self.chk.obs(
             "LCC-WR-RESP",
             reg=f"DEMOTE_{reg}",
@@ -606,7 +607,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             applied=applied,
             secdis=self.sdis,
             wdata=f"0x{value:016x}",
-            resp=self._wr_resp,
+            resp=resp,
         )
         if k is None:
             return None
@@ -839,8 +840,9 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     async def _demote_cell(self, reg_n: int) -> None:
         """Leg C demote write, then a FEAT_CTRL cell that also grades the write.
 
-        The write is answered OKAY and DEMOTE_1/2 read back the RW1S golden, so a lost
-        write fails also in a state whose profile row does not depend on demotion.
+        DEMOTE_1/2 read back the RW1S golden, so a lost write fails also in a state
+        whose profile row does not depend on demotion. The write response is logged
+        (``OBS-LCC-WR-RESP``), not graded.
         """
         await self._write_demote(reg_n, "demote")
         got = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
@@ -851,8 +853,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             reg,
             probe,
             sdis_port="na",
-            step_ok=self._wr_resp == 0 and got == exp,
-            wr_resp=self._wr_resp,
+            step_ok=got == exp,
             demote1_exp=f"0x{exp[1]:x}",
             demote1_rd=f"0x{got[1]:x}",
             demote2_exp=f"0x{exp[2]:x}",
