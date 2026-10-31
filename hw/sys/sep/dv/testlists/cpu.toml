@@ -195,7 +195,7 @@ firmware = "dma_endpoint_matrix_test"
 seed = 1
 reseed = 4
 timeout_sec = 4500
-tags = ["fabric", "dma", "smc", "cpu", "subsystem", "sep_spec_log"]
+tags = ["fabric", "dma", "smc", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+esrc_noise_force", "+sep_smc_aperture_base=40000000", "+sep_smc_aperture_size=1000000"]
 
@@ -232,7 +232,7 @@ firmware = "pic_priority_gate_rand_test"
 seed = 1
 reseed = 3
 timeout_sec = 8000
-tags = ["pic", "interrupt", "priority", "cpu", "subsystem", "sep_spec_log"]
+tags = ["pic", "interrupt", "priority", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -244,7 +244,7 @@ firmware = "pic_pending_map_walk_rand_test"
 seed = 1
 reseed = 4
 timeout_sec = 7200
-tags = ["pic", "interrupt", "alert", "gateway", "cpu", "subsystem", "sep_spec_log"]
+tags = ["pic", "interrupt", "alert", "gateway", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
@@ -256,7 +256,7 @@ firmware = "nmi_vector_bark_rand_test"
 seed = 1
 reseed = 3
 timeout_sec = 3600
-tags = ["nmi", "wdt", "pic", "interrupt", "cpu", "subsystem"]
+tags = ["nmi", "wdt", "pic", "interrupt", "cpu", "subsystem", "logs_open_spec_value"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
@@ -295,7 +295,7 @@ name = "sep_debug_master_target_matrix_test"
 module = "cpu.sep_debug_master_target_matrix_test"
 seed = 1
 timeout_sec = 3600
-tags = ["debug", "jtag", "dmi", "cpu", "subsystem", "sep_spec_log"]
+tags = ["debug", "jtag", "dmi", "cpu", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 tools = ["vcs"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]

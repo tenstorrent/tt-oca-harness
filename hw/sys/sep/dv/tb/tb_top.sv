@@ -1185,7 +1185,7 @@ module sep_uvm_top
     // before cocotb drives m_axi_*.
     // ------------------------------------------------------------------
     always_comb begin
-        smn_inbound_req_drive           = '{default: '0};  // zeros atop/unused
+        smn_inbound_req_drive           = '{default: '0};  // zeros unused fields
         smn_inbound_req_drive.aw.id     = m_axi_awid;
         smn_inbound_req_drive.aw.addr   = m_axi_awaddr;
         smn_inbound_req_drive.aw.len    = m_axi_awlen;
@@ -1197,6 +1197,8 @@ module sep_uvm_top
         smn_inbound_req_drive.aw.qos    = m_axi_awqos;
         smn_inbound_req_drive.aw.region = m_axi_awregion;
         smn_inbound_req_drive.aw.user   = m_axi_awuser;
+        // An undriven or unknown AWATOP drives 0.
+        smn_inbound_req_drive.aw.atop   = $isunknown(m_axi_awatop) ? '0 : m_axi_awatop;
         smn_inbound_req_drive.aw_valid  = (m_axi_awvalid === 1'b1);
         smn_inbound_req_drive.w.data    = m_axi_wdata;
         smn_inbound_req_drive.w.strb    = m_axi_wstrb;
@@ -1373,6 +1375,13 @@ module sep_uvm_top
         `SEP_CORE.dma_axi_req.ar.addr[31:0],
         `SEP_CORE.dma_axi_resp.ar_ready,
         `SEP_CORE.dma_axi_req.ar_valid
+    };
+    assign dma_resp_buser_o = `SEP_CORE.dma_axi_resp.b.user;
+    assign dma_resp_ruser_o = `SEP_CORE.dma_axi_resp.r.user;
+    assign dma_resp_r_hs_o  = {
+        `SEP_CORE.dma_axi_resp.r.last,
+        `SEP_CORE.dma_axi_req.r_ready,
+        `SEP_CORE.dma_axi_resp.r_valid
     };
     assign dma_status_probe_o = {
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_chunk_done_qs,
@@ -3394,6 +3403,26 @@ module sep_uvm_top
     end
 `undef CRYPTO_ALERT_INJ
 `undef CRYPTO_ALERT_RX
+
+    // ------------------------------------------------------------------
+    // DMA alert sender inject.
+    // ------------------------------------------------------------------
+    // While dma_alert_inject_i is 1, the alert pair (alert_p, alert_n) at the
+    // input of the one secure DMA alert receiver
+    // (u_sep_dma_wrap.gen_alert_receivers[0].u_alert_receiver.alert_tx_i) is
+    // forced to {v, v}, v = dma_alert_inject_val_i. Both wires at one value is
+    // not a differential code, so the receiver signals an integrity fail into
+    // dma_alert. The DMA cannot send a malformed pair, so this has no
+    // frontdoor. Re-issued every clock for Verilator, released when the input
+    // drops. Default 0: no force.
+`define DMA_ALERT_RX `SEP_CORE.u_sep_dma_wrap.gen_alert_receivers[0].u_alert_receiver.alert_tx_i
+    always @(negedge clk_i) begin
+        if (dma_alert_inject_i === 1'b1)
+            force `DMA_ALERT_RX = {dma_alert_inject_val_i, dma_alert_inject_val_i};
+        else
+            release `DMA_ALERT_RX;
+    end
+`undef DMA_ALERT_RX
 
     // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
     // every command write, leaving the block powered, idle and error-free while
@@ -5599,6 +5628,7 @@ module sep_uvm_top
     assign m_axi_awqos    = '0;
     assign m_axi_awregion = '0;
     assign m_axi_awuser   = '0;
+    assign m_axi_awatop   = '0;
     assign m_axi_awvalid  = 1'b0;
     assign m_axi_wdata    = '0;
     assign m_axi_wstrb    = '0;
@@ -5671,6 +5701,8 @@ module sep_uvm_top
     assign crypto_alert_inject_i    = 1'b0;
     assign crypto_alert_inject_idx_i = '0;
     assign crypto_alert_inject_val_i = 1'b0;
+    assign dma_alert_inject_i       = 1'b0;
+    assign dma_alert_inject_val_i   = 1'b0;
     assign esrc_fifo_parity_inject_i = 1'b0;
     assign esrc_fifo_parity_bit_i   = '0;
     assign esrc_fifo_ptr_inject_i   = 1'b0;
