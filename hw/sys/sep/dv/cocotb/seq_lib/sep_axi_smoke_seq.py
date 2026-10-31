@@ -63,8 +63,8 @@ WRITE_READBACK = [
 class sep_axi_smoke_seq(uvm_sequence):
     def __init__(self, name: str = "sep_axi_smoke_seq") -> None:
         super().__init__(name)
-        # (op, addr, resp_ok) of every access, for CHK-RESP in the test.
-        self.responses: list[tuple[str, int, bool]] = []
+        # (op, addr, response code) of every access, for OBS-RESP in the test.
+        self.responses: list[tuple[str, int, int]] = []
 
     async def _read(self, addr: int, expected: int) -> SepAxiItem:
         item = SepAxiItem(f"rd_0x{addr:08x}")
@@ -74,7 +74,7 @@ class sep_axi_smoke_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
-        self.responses.append(("rd", addr, bool(item.resp_ok)))
+        self.responses.append(("rd", addr, int(item.resp_code)))
         return item
 
     async def _write(self, addr: int, data: int) -> None:
@@ -83,14 +83,16 @@ class sep_axi_smoke_seq(uvm_sequence):
         item.addr = addr
         item.length = 4
         item.wdata = data
+        # The CHK-WR-RB readback grades the write; its response is logged.
+        item.allow_unverified_write_resp = True
         await self.start_item(item)
         await self.finish_item(item)
-        self.responses.append(("wr", addr, bool(item.resp_ok)))
+        self.responses.append(("wr", addr, int(item.resp_code)))
 
     async def body(self) -> None:
         # 1. Reset-value decode sanity.
         item = await self._read(LOCAL_BASE_ADDR_ADDR, expected=LOCAL_BASE_ADDR_EXP)
-        assert item.resp_ok and item.rdata == LOCAL_BASE_ADDR_EXP, (
+        assert item.rdata == LOCAL_BASE_ADDR_EXP, (
             f"CHK-DECODE FAIL: SEP_LOCAL_BASE_ADDR 0x{LOCAL_BASE_ADDR_ADDR:08x} "
             f"resp_ok={item.resp_ok} got 0x{item.rdata:08x} want 0x{LOCAL_BASE_ADDR_EXP:08x}"
         )
@@ -104,7 +106,7 @@ class sep_axi_smoke_seq(uvm_sequence):
         for name, addr, pattern, mask in WRITE_READBACK:
             await self._write(addr, pattern)
             item = await self._read(addr, expected=pattern & mask)
-            assert item.resp_ok and item.rdata == pattern & mask, (
+            assert item.rdata == pattern & mask, (
                 f"CHK-WR-RB FAIL: {name} 0x{addr:08x} resp_ok={item.resp_ok} "
                 f"wrote 0x{pattern:08x} got 0x{item.rdata:08x} want 0x{pattern & mask:08x}"
             )

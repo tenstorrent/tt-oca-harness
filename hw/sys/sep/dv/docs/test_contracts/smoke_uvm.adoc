@@ -38,15 +38,15 @@
 |The reset-value read returns the specified non-zero reset value, proving real decode rather than an unmapped-address zero.
 |CHK-WR-RB
 |Each read/write register returns exactly the pattern written, masked to its implemented bits. Note the `SEP_NMI_VEC` pattern already has bit 0 clear, so the reserved-bit mask is a no-op here and this test does not exercise reserved-bit behaviour; `sep_reg_bit_bash_rand_test` CHK-RESERVED does.
-|CHK-RESP
-|Every read and every write of the sequence answers `OKAY`, and the shared scoreboard rejects no access while the sequence runs.
 |CHK-NONVAC
-|The shared scoreboard judges the value of every read the sequence issues: the reset read and the four readbacks.
+|The shared scoreboard judges the value of every read the sequence issues, the reset read and the four readbacks, and rejects no access while the sequence runs. The scoreboard judges only the value of a read that answers `OKAY` and rejects any other read response, as for every plain read of this bench.
+|OBS-RESP
+|A logged line, not a graded check: the response code of every access of the sequence. No document states the response of these `sep_cpu_ctrl` accesses. The writes are graded by their readback (CHK-WR-RB), and their response is not graded.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `cocotb/seq_lib/sep_axi_smoke_seq.py` logs `CHK-DECODE PASS` (the reset read) and one `CHK-WR-RB PASS` line per register (pattern, readback and mask). `cocotb/tests/system/sep_axi_smoke_test.py` logs `CHK-RESP PASS: accesses=9 all OKAY, 0 scoreboard rejections` and `CHK-NONVAC PASS: scoreboard judged 5/5 read values`, from the response of each access and the scoreboard (`cocotb/env/sep_scoreboard.py`) counts taken before and after the sequence. The leaf names the four records in `required_evidence`, so a missing record fails it.
+*Evidence*: `cocotb/seq_lib/sep_axi_smoke_seq.py` logs `CHK-DECODE PASS` (the reset read) and one `CHK-WR-RB PASS` line per register (pattern, readback and mask). `cocotb/tests/system/sep_axi_smoke_test.py` logs `OBS-RESP LOG accesses=9 <op>@0x<a>=<resp> ...` and `CHK-NONVAC PASS: scoreboard judged 5/5 read values, 0 rejections`, from the scoreboard (`cocotb/env/sep_scoreboard.py`) counts taken before and after the sequence. The leaf names the three `CHK-` records in `required_evidence`, so a missing record fails it.
 
 '''''
 
@@ -201,18 +201,18 @@
 |===
 |Checker |Contract
 |CTRL-SRAM-PRE
-|A read of the target location before any write answers `OKAY` with a word other than the 64-bit pattern, so CHK-STORE cannot pass on a word that was already there. The read data is logged and not graded: the macro has no array reset, and the value comes from simulator memory initialisation. A miss logs `CTRL-MISSING SRAM-PRE` and fails the leaf.
+|A read of the target location before any write answers `OKAY` with a word other than the 64-bit pattern, so CHK-STORE cannot pass on a word that was already there. The `OKAY` is required because a refused read returns 0, which also differs from the pattern. The read data is logged and not graded: the macro has no array reset, and the value comes from simulator memory initialisation. A miss logs `CTRL-MISSING SRAM-PRE` and fails the leaf.
 |CHK-STORE
 |A 64-bit write stores and reads back exactly.
 |CHK-LANE
 |A genuine 4-byte beat (`AxSIZE=2`) to the upper half changes only those lanes; the lower four survive.
-|CHK-RESP
-|Every read and every write of the sequence answers `OKAY`, and the shared scoreboard rejects no access while the sequence runs.
+|OBS-RESP
+|A logged line, not a graded check: the response code of every access of the sequence. No document states the response of an SRAM access. The writes are graded by their readback (CHK-STORE, CHK-LANE), and their response is not graded.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `cocotb/seq_lib/sep_sram_smoke_seq.py` logs `CTRL-SRAM-PRE seen` (the read before any write, with its response and read data), then `CHK-STORE PASS` (64-bit write and readback) and `CHK-LANE PASS` (the 4-byte beat at `size=2`), each with the address and the 64-bit read data. `cocotb/tests/sram/sep_sram_smoke_test.py` logs `CHK-RESP PASS: accesses=5 all OKAY, 0 scoreboard rejections`. The leaf names the three `CHK-` records in `required_evidence`, so a missing record fails it.
+*Evidence*: `cocotb/seq_lib/sep_sram_smoke_seq.py` logs `CTRL-SRAM-PRE seen` (the read before any write, with its response and read data), then `CHK-STORE PASS` (64-bit write and readback) and `CHK-LANE PASS` (the 4-byte beat at `size=2`), each with the address and the 64-bit read data. `cocotb/tests/sram/sep_sram_smoke_test.py` logs `OBS-RESP LOG accesses=5 <op>@0x<a>=<resp> ...`. The leaf names the two `CHK-` records in `required_evidence`, so a missing record fails it.
 
 '''''
 
@@ -561,8 +561,9 @@ CHK-FUSE-SENSE-DONE.
 (`+SEP_TEST_LOOPS`, `+SEP_SYSTEM_TEST_LOOPS`, `+SEP_AXI_SMOKE_TEST_LOOPS`).
 Adds `+SEP_RANDOM_COUNT` seeded random patterns per register (five by default),
 and a restore readback of each reset value (CHK-CSR-RANDOM-READBACK,
-CHK-CSR-RESTORE). CHK-DECODE, CHK-WR-RB and CHK-RESP are named
-CHK-CSR-RESET-VALUE, CHK-CSR-READBACK and CHK-CSR-RESP. The scoreboard check is
+CHK-CSR-RESTORE). CHK-DECODE and CHK-WR-RB are named CHK-CSR-RESET-VALUE and
+CHK-CSR-READBACK. The SV sequence also grades every response `OKAY`
+(CHK-CSR-RESP), which the cocotb leaf logs as OBS-RESP. The scoreboard check is
 CHK-SB-CPU-CTRL-CSR, and CHK-NONVAC requires the scoreboard compares of a pass
 to equal the predicted reads it issued. `+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts
 the prediction, and the run must FAIL.

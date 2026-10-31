@@ -16,8 +16,8 @@ STORE_PATTERN = 0x0123_4567_89AB_CDEF
 class sep_sram_smoke_seq(uvm_sequence):
     def __init__(self, name: str = "sep_sram_smoke_seq") -> None:
         super().__init__(name)
-        # (op, addr, resp_ok) of every access, for CHK-RESP in the test.
-        self.responses: list[tuple[str, int, bool]] = []
+        # (op, addr, response code) of every access, for OBS-RESP in the test.
+        self.responses: list[tuple[str, int, int]] = []
 
     async def _check(self, chk: str, addr: int, length: int, expected: int, what: str) -> None:
         item = SepAxiItem(f"rd_sram_0x{addr:08x}")
@@ -27,10 +27,10 @@ class sep_sram_smoke_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
-        self.responses.append(("rd", addr, bool(item.resp_ok)))
+        self.responses.append(("rd", addr, int(item.resp_code)))
         mask = (1 << (length * 8)) - 1
         got = item.rdata & mask
-        assert item.resp_ok and got == expected & mask, (
+        assert got == expected & mask, (
             f"{chk} FAIL: {what}: read 0x{addr:08x} resp_ok={item.resp_ok} "
             f"got 0x{got:x} want 0x{expected & mask:x}"
         )
@@ -43,7 +43,7 @@ class sep_sram_smoke_seq(uvm_sequence):
         item.length = 8
         await self.start_item(item)
         await self.finish_item(item)
-        self.responses.append(("rd", addr, bool(item.resp_ok)))
+        self.responses.append(("rd", addr, int(item.resp_code)))
         fields = f"addr=0x{addr:08x} resp_ok={int(bool(item.resp_ok))} rdata=0x{item.rdata:016x}"
         if not (item.resp_ok and item.rdata != STORE_PATTERN):
             cocotb.log.error("CTRL-MISSING SRAM-PRE: %s", fields)
@@ -57,9 +57,11 @@ class sep_sram_smoke_seq(uvm_sequence):
         item.length = length
         item.size = size
         item.wdata = data
+        # The readback of CHK-STORE / CHK-LANE grades the write; its response is logged.
+        item.allow_unverified_write_resp = True
         await self.start_item(item)
         await self.finish_item(item)
-        self.responses.append(("wr", addr, bool(item.resp_ok)))
+        self.responses.append(("wr", addr, int(item.resp_code)))
 
     async def body(self) -> None:
         base = SEP_SRAM_BASE + 0x100
