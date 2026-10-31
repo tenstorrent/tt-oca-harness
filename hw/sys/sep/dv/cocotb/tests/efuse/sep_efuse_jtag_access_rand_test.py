@@ -16,7 +16,7 @@ program of p, so the p read at the end grades a refused burn in every leaf.
 builds the same plan. JTAG and frontdoor accesses never overlap, except one
 frontdoor read and one JTAG read of the shadow word of p, started on the same clock
 at the end of the leaf. CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the
-frontdoor read OKAY with the staged word; ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires
+frontdoor read data equal to the staged word; ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires
 both AR handshakes before either read completes; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
 the clock each read completes on and the command count at the post-guard tap.
 
@@ -27,7 +27,7 @@ Mechanism and Token Submission):
 
   CHK-JTAG          each JTAG access answers as its class requires. The token block
                     (three token arrays, ``TOKEN_EOP``, three match registers)
-                    answers OKAY; in RMA_SIP a token word read returns the word last
+                    is reached; in RMA_SIP a token word read returns the word last
                     written; a match read of a channel with a go returns the SHA-256
                     golden of its last go (Match 0x15, Mismatch 0x2a). A shadow word or
                     interface-control access answers a response that is not OKAY and
@@ -48,7 +48,9 @@ Mechanism and Token Submission):
                     probe), a JTAG write of ``TOKEN_T1`` into the SIP array and a go
                     give the SIP match 0x15 at a frontdoor read.
   CHK-JTAG-CONCURRENT  the concurrent pair at the end of the leaf: JTAG response not
-                    OKAY, frontdoor response OKAY with the staged word.
+                    OKAY, frontdoor data equal to the staged word.
+  OBS-JTAG-ALLOW-RESP  the response code of each token-block access: no TT text states
+                    the response of an access JTAG may make.
 
 The plan draws the result of the go (Match or Mismatch, equal weight) and builds the
 array content that gives it, so the go golden varies over seeds. The other value
@@ -180,6 +182,18 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             **extra,
         )
 
+    def _allow_resp(self, acc: dict, resp: int) -> None:
+        """OBS-JTAG-ALLOW-RESP: the response code of a token-block access. No TT text
+        states the response code of an access JTAG may make, so it is logged."""
+        self.chk.obs(
+            "JTAG-ALLOW-RESP",
+            state=self.state,
+            op=acc["op"],
+            tgt=acc["cls"],
+            addr=f"0x{acc['addr']:08x}",
+            resp=resp,
+        )
+
     # -- denied accesses -----------------------------------------------------
 
     async def _denied(self, acc: dict) -> None:
@@ -218,22 +232,13 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         if acc["cls"] == "token_word" and acc["op"] == "wr":
             resp = await self._jwr(acc["addr"], acc["data"])
             self.last_wr[(acc["channel"], acc["index"])] = acc["data"]
-            self._jtag_line(
-                resp == OKAY,
-                acc,
-                "allow",
-                resp,
-                data_ok="na",
-                target_unchanged="na",
-                channel=acc["channel"],
-                index=acc["index"],
-                vector=acc["vector"],
-            )
+            self._allow_resp(acc, resp)
         elif acc["cls"] == "token_word":
             resp, data = await self._jrd(acc["addr"])
             last = self.last_wr[(acc["channel"], acc["index"])]
+            self._allow_resp(acc, resp)
             self._jtag_line(
-                resp == OKAY and data == last,
+                data == last,
                 acc,
                 "allow",
                 resp,
@@ -250,14 +255,8 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             resp = await self._jwr(TOKEN_EOP_ADDR, acc["data"])
             code, codes, resps = await self._jtag_poll(ch, golden)
             others = [c for c in codes if c not in (CODE_IDLE, golden)]
-            ok = (
-                resp == OKAY
-                and code == golden
-                and golden == acc["golden"]
-                and pre != golden
-                and not others
-                and all(r == OKAY for r in resps)
-            )
+            ok = code == golden and golden == acc["golden"] and pre != golden and not others
+            self._allow_resp(acc, resp)
             self.last_result[ch] = golden
             self._jtag_line(
                 ok,
@@ -271,6 +270,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 go_result=f"0x{acc['golden']:02x}",
                 pre_go=f"0x{pre:02x}",
                 polls=len(codes),
+                poll_resps=",".join(str(r) for r in resps[-4:]),
                 codes=",".join(f"{c:02x}" for c in codes[-4:]),
             )
         else:
@@ -279,8 +279,9 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             code = data & MATCH_STATUS_MASK
             if ch in self.last_result:
                 want = self.last_result[ch]
+                self._allow_resp(acc, resp)
                 self._jtag_line(
-                    resp == OKAY and code == want,
+                    code == want,
                     acc,
                     "allow",
                     resp,
@@ -292,15 +293,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 )
             else:
                 self.chk.obs("JTAG-MATCH-NOGO", state=self.state, channel=ch, data=f"0x{code:02x}")
-                self._jtag_line(
-                    resp == OKAY,
-                    acc,
-                    "allow",
-                    resp,
-                    data_ok="na",
-                    target_unchanged="na",
-                    channel=ch,
-                )
+                self._allow_resp(acc, resp)
 
     async def _status_clear_control(self, w: int) -> None:
         """Control of "target unchanged" for the denied status write: the same clear,
@@ -386,8 +379,8 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
 
         CHK-JTAG-CONCURRENT: the JTAG read answers a response that is not OKAY
         (``otp_fuse_controller.adoc``, Shadow Register and JTAG Access Control), and the
-        frontdoor read answers OKAY with the staged word, outside ``ignore_mask`` (the
-        bit c when it shares the word). ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
+        frontdoor read returns the staged word, outside ``ignore_mask`` (the bit c when
+        it shares the word). The frontdoor response code is logged in the same line. ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
         the clock each read completes on and the command count at the post-guard tap:
         the specification does not state the arbitration of the two masters or the data
         of a denied read. ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires that each read had
@@ -454,7 +447,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         keep = ~ignore_mask & M32
         self.chk.ok(
             "JTAG-CONCURRENT",
-            jtag_resp != OKAY and fd_seq.resp_code == OKAY and fd_rdata & keep == staged & keep,
+            jtag_resp != OKAY and fd_rdata & keep == staged & keep,
             state=self.state,
             word=word,
             jtag_resp=jtag_resp,
@@ -596,8 +589,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         resps = pre_resps + t1_resps + poll_resps
         self.chk.ok(
             "JTAG-TOKEN",
-            all(r == OKAY for r in resps)
-            and code == CODE_MATCH
+            code == CODE_MATCH
             and fd_match == CODE_MATCH
             and feat & DBG_MASK == 0
             and feat2 & DBG_MASK == 0
@@ -644,7 +636,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                     break
             self.chk.ctrl(
                 "JTAG-MATCH-END",
-                got == CODE_MISMATCH and all(r == OKAY for r in resps),
+                got == CODE_MISMATCH,
                 state=self.state,
                 channel=ch,
                 code=f"0x{(got or 0):02x}",

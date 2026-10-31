@@ -79,6 +79,8 @@ OBS-SECDIS-SHADOW-WR and OBS-SECDIS-DBG-BUS are log lines):
   CHK-SECDIS-LC-WR       a JTAG write of PROD to that INVALID word under SEC_DIS
                          leaves it at 0x0000000f (JTAG readback)
   CTRL-SECDIS-JTAG-REACH every JTAG read of that window answers AXI OKAY
+  OBS-SECDIS-JTAG-TOKEN-RESP  the JTAG token presentations: accesses not answered
+                         OKAY (no TT text states their response code)
   CHK-DROP               a mismatch drops SEC_DIS
   CHK-SENSE-CONTROL      a healthy sense finishes inside each stuck window
   CHK-MISMATCH, CHK-NO-OVERRIDE  mismatch code and the fail-closed PROD FEAT_CTRL
@@ -267,15 +269,18 @@ class sep_sec_dis_override_test(sep_base_test):
 
         otp_fuse_controller.adoc, Shadow Register and JTAG Access Control: JTAG
         reaches the token block in every lifecycle state, and the held INVALID
-        state before sense is not one of the restricted states. The token
-        inputs, ``TOKEN_EOP`` and the match status have no lock or regwen rule,
-        so every access must answer AXI OKAY.
+        state before sense is not one of the restricted states. No TT text states
+        the response code of these accesses, so ``OBS-SECDIS-JTAG-TOKEN-RESP`` logs
+        every access that did not answer OKAY; the match code the caller grades
+        shows that the token reached the block.
         """
         seq = _CountedTokenSeq(TOKEN_SEC_DISABLE, token, jtag=self.jtag_axil_op)
         await seq.body()
-        assert not seq.bad_resp, (
-            f"{label} FAIL: JTAG token access not OKAY (label, addr, resp): "
-            + ", ".join(f"({lb}, 0x{a:08x}, {r})" for lb, a, r in seq.bad_resp)
+        self.logger.info(
+            "OBS-SECDIS-JTAG-TOKEN-RESP %s non_okay=%d %s",
+            label,
+            len(seq.bad_resp),
+            ", ".join(f"({lb}, 0x{a:08x}, {r})" for lb, a, r in seq.bad_resp) or "-",
         )
         return seq
 

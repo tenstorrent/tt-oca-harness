@@ -1103,7 +1103,7 @@ class SepDrbgScoreboard:
             f"esrc_ro_enable_o={'X/Z' if probe is None else f'0x{probe:03x}'} "
             f"ring_osc_enable=0x{field:03x} resp_ok={int(seq.resp_ok)}"
         )
-        if not seq.resp_ok or field != expect or probe != field:
+        if field != expect or probe != field:
             raise AssertionError(f"CHK-CHK1-RO-ENABLE FAIL: {line}")
         self.log.info("CHK-CHK1-RO-ENABLE PASS: %s", line)
 

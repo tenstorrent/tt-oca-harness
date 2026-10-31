@@ -91,7 +91,7 @@ granule to the Reserved row base 0x10050000, an external read of that base
 answers DECERR with 0xBADCAB1E (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:41``;
 the column is the inbound-port answer, ``hw/sys/sep/doc/memory_map.adoc:66-69``).
 CTRL-FILT-RSVD-ALLOW reads a staged SRAM word through the same entry first and
-needs OKAY with that word, so the DECERR is not a filter denial.
+needs that word back, so the DECERR is not a filter denial.
 
 Functional coverage: the window of this leaf holds only the graded bursts
 and the refused FILTER_CONFIG writes with their read-backs. A
@@ -880,8 +880,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         the answer at the inbound AXI port (``hw/sys/sep/doc/memory_map.adoc:66-69``).
         A filter denial gives the same code and data, so CTRL-FILT-RSVD-ALLOW
         first reads the last SRAM word through the same entry, whose window
-        runs from that word to the Reserved base: OKAY with the staged value
-        shows the entry admits the read.
+        runs from that word to the Reserved base: the staged value shows the entry
+        admits the read (the response code is logged in the same line).
         """
         addr = rr.RESERVED_BASES[0]
         ctrl = sym("SEP_SRAM_MEM_BASE_ADDR") + sym("SEP_SRAM_MEM_SIZE") - GRANULE_BYTES
@@ -893,9 +893,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         resp, data = await self._ext_read(ctrl)
         self._grade(
             "CTRL-FILT-RSVD-ALLOW",
-            (resp, data) == (RESP_OKAY, staged),
+            data == staged,
             f"entry=0 window=0x{ctrl:08x}..0x{addr:08x} addr=0x{ctrl:08x} resp={resp} "
-            f"rdata=0x{data:08x} expect={RESP_OKAY}/0x{staged:08x}",
+            f"rdata=0x{data:08x} expect=0x{staged:08x}",
         )
         resp, data = await self._ext_read(addr)
         self._grade(

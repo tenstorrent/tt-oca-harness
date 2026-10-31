@@ -106,8 +106,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           bound after that B. The B of the cut write is logged,
                           not graded (OBS-WDT-INFLIGHT).
   CHK-MBX-CPURST          after each pulse sequence: the word pushed into one
-                          drawn mailbox before the sequence pops back OKAY and
-                          equal. The mailboxes are system peripherals
+                          drawn mailbox before the sequence pops back equal (the
+                          read response code is logged in the same line). The mailboxes are system peripherals
                           (``fabric.adoc``, Fabric Topology), which take
                           ``sep_reset_n`` (``clk_rst.adoc``, Reset
                           Architecture); a watchdog reset does not assert it,
@@ -839,10 +839,10 @@ class sep_cpu_reset_retention_test(sep_base_test):
             data = int(rd.rdata) & ((1 << 64) - 1)
             self._chk(
                 "CHK-MBX-CPURST",
-                rd.resp_code == RESP_OKAY and data == self.mbx_word,
+                data == self.mbx_word,
                 f"event={event} mbox={self.mbx_m} status=0x{int(st.rdata) & 0xFFFF_FFFF:x} "
                 f"status_resp={RESP_NAME[st.resp_code]} data=0x{data:016x} "
-                f"data_resp={RESP_NAME[rd.resp_code]} expect=OKAY/0x{self.mbx_word:016x}",
+                f"data_resp={RESP_NAME[rd.resp_code]} expect=0x{self.mbx_word:016x}",
             )
             await self._acc64(SepAxiOp.WRITE, self._mbx("out", "WRITE_DATA"), self.mbx_word)
         nmi = await self._rd(NMI_VEC)

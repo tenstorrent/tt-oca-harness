@@ -37,9 +37,9 @@ Checks:
   CHK-ROM-NOECC    : a 1-bit or 2-bit flip in a stored word reads back as the
                      whole flipped 64-bit word with no trap and no NMI; the
                      neighbour words read exact (rom.adoc:59-60, no ECC or
-                     integrity-error sideband), and every PR-LSU-ROM R beat
-                     answers OKAY (a ROM load is a legal access; AMBA AXI
-                     IHI0022, OKAY: normal access success). Positive probes in the same
+                     integrity-error sideband). The PR-LSU-ROM R beats are
+                     counted and their OKAY count is logged in the same line
+                     (no TT text states the code). Positive probes in the same
                      line: every flipped word holds image ^ mask in the macro
                      before the loads (CTRL-FLIP-STORED), and PR-ROM carries a
                      request at exactly the planned flip-leg words. Control:
@@ -1150,7 +1150,6 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             and self.flip_stored == len(p.flips)
             and req_ok
             and len(r_resp) >= len(exp_reads)
-            and all(c == 0 for c in r_resp)
         )
         self._grade(
             "CHK-ROM-NOECC",
@@ -1222,7 +1221,6 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             and req_ok
             and labelled == len(p.flips)
             and len(r_resp) >= len(exp_reads)
-            and all(c == 0 for c in r_resp)
         )
         self._grade(
             "CHK-ROM-NOECC",

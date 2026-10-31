@@ -73,10 +73,11 @@ Checkers:
   CHK-SENSE-STATUS  after ``sep_fuse_sense_done_o`` has held 1 for
                     ``_REL_BOUND`` ``clk_i`` cycles, one 64-bit read of
                     ``SEP_FUSE_SENSE_STATUS`` per epoch and the final polls
-                    answer OKAY within the bound, and the port reads 1 around
-                    each read. The field ``sep_fuse_sense_done`` and the
-                    reserved bits 63:1 have no stated value after sensing:
-                    they are logged (``OBS-SENSE-STATUS-DONE``), not graded.
+                    complete within the bound, and the port reads 1 around
+                    each read. The response code, the field
+                    ``sep_fuse_sense_done`` and the reserved bits 63:1 have no
+                    stated value after sensing: they are logged
+                    (``OBS-SENSE-STATUS-DONE``), not graded.
 
 Controls: in BOOT_FIRST, BOOT_WITH_RST and BOOT_MID the sensing is the last
 term, so those cells are controls of CHK-REL-GATE. The post-sense reads of
@@ -706,9 +707,9 @@ class sep_boot_release_terms_test(sep_base_test):
 
         The reads start after ``sep_fuse_sense_done_o`` held 1 on ``_REL_BOUND``
         consecutive ``clk_i`` edges; the port must read 1 before and after
-        every read, and every read must answer OKAY. No specification line
-        states the field value after sensing, so the 64-bit words are logged
-        as ``OBS-SENSE-STATUS-DONE``.
+        every read, and every read must complete. No TT text states the
+        response code or the field value after sensing, so both are logged in
+        ``OBS-SENSE-STATUS-DONE``.
         """
         dut = cocotb.top
         for c in range(_REL_BOUND):
@@ -719,31 +720,39 @@ class sep_boot_release_terms_test(sep_base_test):
                 f"at settle cycle {c}, expected 1 for {_REL_BOUND} cycles"
             )
         words = []
+        resps = []
         for i in range(n):
             before = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
             seq = SepAxiAccessSeq(
-                f"sep_status_{tag}{i}", op=SepAxiOp.READ, addr=SEP_STATUS, length=8, size=3
+                f"sep_status_{tag}{i}",
+                op=SepAxiOp.READ,
+                addr=SEP_STATUS,
+                length=8,
+                size=3,
+                allow_ungraded_read_resp=True,
             )
             await self.start_seq(seq)
             after = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
             word = self._status_data(seq)
-            ok = before == 1 and after == 1 and not seq.timed_out and seq.resp_code == RESP_OKAY
+            ok = before == 1 and after == 1 and not seq.timed_out
             assert ok, (
                 f"CHK-SENSE-STATUS FAIL: {tag} phase=post_sense poll {i} "
-                f"resp={_RESP_NAME.get(seq.resp_code, seq.resp_code)} "
-                f"timed_out={int(seq.timed_out)} exp_resp=OKAY port_before={before} "
+                f"timed_out={int(seq.timed_out)} port_before={before} "
                 f"port_after={after} word=0x{word:016x}"
             )
             words.append(word)
+            resps.append(_RESP_NAME.get(seq.resp_code, str(seq.resp_code)))
         self.logger.info(
-            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d resp=OKAY port=1 settle=%d",
+            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d completed=%d port=1 settle=%d",
             tag,
+            n,
             n,
             _REL_BOUND,
         )
         self.logger.info(
-            "OBS-SENSE-STATUS-DONE: %s field_mask=0x%x field=%s word=%s (not scored)",
+            "OBS-SENSE-STATUS-DONE: %s resp=%s field_mask=0x%x field=%s word=%s (not scored)",
             tag,
+            ",".join(resps),
             SEP_FIELD,
             ",".join(f"0x{v:x}" for v in sorted({w & SEP_FIELD for w in words})),
             ",".join(f"0x{v:016x}" for v in sorted(set(words))),

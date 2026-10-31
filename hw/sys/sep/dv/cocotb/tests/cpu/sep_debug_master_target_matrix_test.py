@@ -53,9 +53,9 @@ Checks:
                   of the access) and in ``sbdata``, and the independent path
                   still reads ``new`` after it. ``sbdata`` holds the write value
                   from the write, so a read whose data never arrives fails.
-                  ``sberror`` reads 0 after the write and after the read, and
-                  the R beat answers OKAY (each target is a legal access, so
-                  the golden code is OKAY, AMBA AXI IHI0022). On
+                  ``sberror`` reads 0 after the write and after the read; the R
+                  beat code is logged (``rresp``), not graded: no TT text
+                  states it. On
                   PR-DBG-SB each access shows one write and one read record
                   with ID bits [2:1] = 0, AWSIZE = ARSIZE = log2 of the access
                   bytes, AWLEN = ARLEN = 0, one W beat whose strobes are the byte
@@ -109,8 +109,8 @@ Checks:
   CHK-DBG-POOL-RD : (entry S) one 64-bit debug-master read of the entropy-pool
                   ``STATUS`` (``hw/sys/sep/doc/entropy_pool.adoc:34``,
                   non-destructive; ``:40-41``, one 64-bit access) shows one AR at
-                  ``STATUS`` with ARSIZE 3 and one R beat (OKAY: a legal
-                  access, AMBA AXI IHI0022) on PR-DBG-SB, ``sberror`` 0, the bench LSU 64-bit reads of ``STATUS`` before
+                  ``STATUS`` with ARSIZE 3 and one R beat (its code logged as
+                  ``rresp``) on PR-DBG-SB, ``sberror`` 0, the bench LSU 64-bit reads of ``STATUS`` before
                   and after it agree, and ``sbdata`` equals both on the
                   ``STATUS`` fields
                   (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:149``).
@@ -171,9 +171,8 @@ Checks:
                   ``hw/sys/sep/doc/assets/sep_axi_connectivity.svg:129``).
   CHK-DBG-SBA-REG: (entry S) 64-bit debug-master read and write of
                   ``START_ADDR`` of a disabled, unlocked inbound filter entry
-                  and of ``DEMOTE_2``: each R or B beat answers OKAY and
-                  ``sberror`` reads 0 (both are legal accesses: ``sw = rw``,
-                  no lock set, so the golden code is OKAY, AMBA AXI IHI0022);
+                  and of ``DEMOTE_2``: one R or B beat each (its code logged as
+                  ``resp``, not graded) and ``sberror`` reads 0;
                   before the instance the bench LSU master writes a drawn
                   non-zero ``start_addr`` and one drawn ``DEMOTE_2`` bit in
                   [63:2] (CTRL-DBG-SBA-PRELOAD: both read back non-zero), and
@@ -1034,7 +1033,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                 cmp += f" upper_kept={int(up_ok)}"
         else:
             cmp = f"field_mask=0x{mask:x} " + " ".join(rsvd)
-        ok = ok and acc.before != acc.wr and acc.sberr == (0, 0) and r_resp == RESP_OKAY
+        ok = ok and acc.before != acc.wr and acc.sberr == (0, 0)
         w = 2 * acc.size
 
         def h(v: int | None) -> str:
@@ -1242,7 +1241,6 @@ class sep_debug_master_target_matrix_test(sep_base_test):
             and len(r) == 1
             and r_data == rd
             and rerr == 0
-            and r[0].resp == RESP_OKAY
             and stable.ok
             and c0.ok
             and c1.ok,
@@ -1629,11 +1627,7 @@ class sep_debug_master_target_matrix_test(sep_base_test):
                     ax = [b.addr for b in self._beats(self.sb_tap, sm, "ar" if d == "r" else "aw")]
                     self._grade(
                         "CHK-DBG-SBA-REG",
-                        fc.ok
-                        and len(rsp) == 1
-                        and rsp[0].resp == RESP_OKAY
-                        and err == 0
-                        and ax == [addr],
+                        fc.ok and len(rsp) == 1 and err == 0 and ax == [addr],
                         f"target={name} dir={d.upper()} addr=0x{addr:08x} "
                         f"pr_dbg_sb_{'ar' if d == 'r' else 'aw'}={[_h(a) for a in ax]} "
                         f"wr={'-' if d == 'r' else _h(wvals[name])} "

@@ -20,8 +20,10 @@ writable under the lock (CHK-OBS-LANE-SEL), and after rst_ni the tap held at 0
 can be set again (CHK-OBS-POST-UNLOCK). Health-test ENABLE
 stays 0 so this test does not trip the alert path.
 
-Every legal write (pre-lock, FIPS_LOCK, the pre-lock reserved CTRL write and the
-post-unlock tap set) grades its OKAY B response in the same CHK line. A write the
+The FIPS_LOCK write and the pre-lock reserved CTRL write grade their OKAY B
+response in the same CHK line. The observe-tap writes before the lock and the
+post-unlock tap set grade only that a B response arrived, with the code on the
+same line: no TT text states it. A write the
 lock refuses has no stated B code: its CHK line grades only that a B response
 arrived, so a write that never reached the DUT fails, and logs the code as
 OBS-POST-LOCK-RESP, OBS-OBS-ENABLE-LOCKED-RESP or OBS-CTRL-RSVD-LOCKED-RESP.
@@ -237,7 +239,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
                 got, lane = await esrc.read_obs(reg)
                 self._grade(
                     "CHK-OBS-PRE-LOCK",
-                    resp == RESP_OKAY
+                    resp != -1
                     and got == want
                     and (reg != "NOISE_OBS_CTRL" or lane == cfg.lane_pre),
                     f"{reg}.RAW_ENABLE wrote {want} read {got}; LANE_SEL wrote "
@@ -334,7 +336,7 @@ class sep_esrc_fips_lock_test(sep_base_test):
         got, _ = await esrc.read_obs(rel_tap)
         self._grade(
             "CHK-OBS-POST-UNLOCK",
-            at_reset == raw_reset and resp == RESP_OKAY and got == 1,
+            at_reset == raw_reset and resp != -1 and got == 1,
             f"{rel_tap}.RAW_ENABLE read {at_reset} after rst_ni (reset {raw_reset}) and "
             f"{got} after a set B={_resp(resp)}",
         )

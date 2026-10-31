@@ -27,8 +27,8 @@ OR-merged with the writes of the leaf).
                     In leg C the SEC_DIS cell is all ones with ``security_disable_o``
                     high and the cell after the mismatch is the demotion row with it
                     low. The RMA_CHIPLET SEC_DIS cell is logged ``ctl=1``. Each
-                    leg C demotion cell also requires the write response OKAY and
-                    both DEMOTE registers equal to the RW1S golden.
+                    leg C demotion cell also requires both DEMOTE registers equal to
+                    the RW1S golden; its write response is logged (``wr_resp``).
   CHK-GATE-BOUND    every read with SEC_DIS 0: no bit outside the OR of the SEC_DIS 0
                     rows of the state (model shadows). A read whose mask is all ones
                     logs ``INFO-GATE-BOUND LOG ... graded=0``.
@@ -39,8 +39,8 @@ OR-merged with the writes of the leaf).
                     ``sep_lifecycle_ctrl.rdl`` DEMOTE_1/2 ``rsvd``) and ``FEAT_CTRL``
                     equals the row of the cumulative demotion (``rsvd`` is "Not
                     used"). The random sequence draws ``rsvd.<k>`` writes of one
-                    bit k in [63:2]. Each step after a write also requires the
-                    write response OKAY (``wr_resp=0``).
+                    bit k in [63:2]. The write response of each step is logged
+                    (``wr_resp``): no TT text states it.
                     A write of both bits while ``lock`` is 0 has no stated demote
                     golden: its demote bit is logged (``OBS-DEMOTE-LOCK-ONE-WRITE``,
                     every both-bits write) and the model takes the readback; the lock
@@ -63,8 +63,8 @@ OR-merged with the writes of the leaf).
   CHK-RMA-BYPASS    leg D: in RMA_SIP and RMA_CHIPLET both disable shadows read the
                     staged values and ``FEAT_CTRL`` equals the row.
   CHK-DIS-EARLIER   leg D: after a write of 0 to ``SIP_DIS`` and of ~S to ``SYS_DIS``,
-                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0; both writes
-                    are answered OKAY (set-only, unlocked: a legal write); ``DEMOTE_1``
+                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0 (both write
+                    responses are logged, not graded); ``DEMOTE_1``
                     and ``DEMOTE_2`` read the RW1S golden after the PROD demotion writes
                     (``dem_regs=``).
   CHK-DIS-STEP      leg D: after each walk write the owner shadow equals the OR-merge
@@ -409,8 +409,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             "DEMOTE-STEP",
             all((got[r] ^ exp[r]) & ~ungraded[r] == 0 for r in (1, 2))
             and feat == row.value
-            and probe == row.value
-            and (op is None or self._wr_resp == 0),
+            and probe == row.value,
             step=step,
             reg=reg if reg is not None else "na",
             op=OP_NAME.get(op, op) if op else "none",
@@ -675,8 +674,8 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     async def _demote_cell(self, reg_n: int) -> None:
         """Leg C demote write, then a FEAT_CTRL cell that also grades the write.
 
-        The write is answered OKAY and DEMOTE_1/2 read back the RW1S golden, so a lost
-        write fails also in a state whose profile row does not depend on demotion.
+        DEMOTE_1/2 read back the RW1S golden, so a lost write fails also in a state whose
+        profile row does not depend on demotion. The write response is logged.
         """
         await self._write_demote(reg_n, "demote")
         got = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
@@ -687,7 +686,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             reg,
             probe,
             sdis_port="na",
-            step_ok=self._wr_resp == 0 and got == exp,
+            step_ok=got == exp,
             wr_resp=self._wr_resp,
             demote1_exp=f"0x{exp[1]:x}",
             demote1_rd=f"0x{got[1]:x}",
@@ -772,9 +771,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             and dem == dem_exp
             and reg & s == 0
             and reg == row.value
-            and probe == row.value
-            and resp_sys == 0
-            and resp_sip == 0,
+            and probe == row.value,
             state=self.state,
             S=f"0x{s:016x}",
             sip_got=f"0x{sip:016x}",

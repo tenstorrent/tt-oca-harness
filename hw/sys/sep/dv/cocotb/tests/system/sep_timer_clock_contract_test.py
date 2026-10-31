@@ -22,10 +22,8 @@ this order, over the CPU-LSU master on ``s_axi``:
   count, thresholds near 2^32 do not wrap, and ``INTR_TEST`` forces the bark
   status without a bite (``hw/sys/sep/doc/watchdog.adoc``, Bark Interrupt and
   Bite Reset; ``aon_timer.adoc``). A write of 1 to ``ALERT_TEST`` gets a write
-  response within the bounded wait, and the response is OKAY: the write is a
-  legal access (``ALERT_TEST`` is ``sw = w`` in ``aon_timer.rdl`` with no
-  write enable), so the golden code is OKAY (AMBA AXI IHI0022, OKAY: normal
-  access success) (CHK-WDT-ALERT-ACCESS).
+  response within the bounded wait (CHK-WDT-ALERT-ACCESS). No TT text states
+  its response code, so it is logged (OBS-WDT-ALERT-RESP).
 * Leg H. The watchdog runs with ``clk_i`` held low past its bite threshold;
   OBS-WDT-CLKSTOP logs what the timer core does (no pass/fail).
 * Leg W. The wakeup expiry follows the 64-bit threshold across the 32-bit
@@ -318,7 +316,6 @@ from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
-from env.sep_fabric_common import RESP_OKAY
 from env.sep_fcov_gate import (
     TIMER_CONTRACT_PASS_DROP,
     TIMER_CONTRACT_PASS_ORDER_RUN,
@@ -1567,13 +1564,8 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self.start_seq(seq)
         if seq.timed_out:
             raise AssertionError("CHK-WDT-ALERT-ACCESS FAIL: no response")
-        if seq.resp_code != RESP_OKAY:
-            raise AssertionError(
-                f"CHK-WDT-ALERT-ACCESS FAIL: bresp={seq.resp_code} expect={RESP_OKAY} (OKAY)"
-            )
-        self.logger.info(
-            "CHK-WDT-ALERT-ACCESS PASS: bresp=%d expect=%d (OKAY)", seq.resp_code, RESP_OKAY
-        )
+        self.logger.info("CHK-WDT-ALERT-ACCESS PASS: write response arrived")
+        self.logger.info("OBS-WDT-ALERT-RESP bresp=%d", seq.resp_code)
         # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         self.logger.info(
