@@ -2571,22 +2571,63 @@ module sep_uvm_top
     // No legal OTP image can present a broken {~raw, raw} LC_STATE pair: the
     // sense FSM regenerates the pair from the raw nibble. The specification's
     // fail-closed feat_ctrl=0 path therefore has no frontdoor stimulus.
-    // When lc_sigint_inject_i=1, force both rails of the LCC decoder input to 0
-    // so prim_diff_decode_multi asserts sigint (XNOR of equal rails). The
-    // software-visible LC_STATE shadow is not touched -- only the decoder
-    // input -- so the stitch test can still value-check the legal pair.
-    // Re-issue every clock (Verilator snapshots a force RHS). Release when the
-    // port drops so the legal pair returns. Default 0; outside AXI cones.
-`define LCC_DEC_DATA \
-    `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
+    // While lc_sigint_inject_i=1, force the LCC decoder input to its source
+    // value with each pair that lc_sigint_pair_mask_i selects broken: both
+    // rails at lc_sigint_bad_value_i, so prim_diff_decode_multi asserts sigint
+    // (XNOR of equal rails). Pair i is {data_i[LcStateBitWidth+i], data_i[i]}.
+    // A mask of 0, or one with an X or Z bit, selects every pair, and a bad
+    // value other than 1 is 0, so with both inputs at 0 or undriven every rail
+    // is 0. The software-visible LC_STATE shadow is not touched -- only the
+    // decoder input -- so the stitch test can still value-check the legal
+    // pair. Re-issue every clock (Verilator snapshots a force RHS). Release
+    // when the port drops so the legal pair returns. Default 0; outside AXI
+    // cones.
+`define LCC_INST `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl
+    localparam int unsigned LcPairs = sep_pkg::LcStateBitWidth;
+    wire [LcPairs-1:0] lc_sigint_pairs =
+        ($isunknown(lc_sigint_pair_mask_i) || (lc_sigint_pair_mask_i == '0)) ?
+        '1 : lc_sigint_pair_mask_i;
+    wire [2*LcPairs-1:0] lc_sigint_rails = {2{lc_sigint_pairs}};
+    wire [2*LcPairs-1:0] lc_sigint_bad = {(2*LcPairs){lc_sigint_bad_value_i === 1'b1}};
+    wire [2*LcPairs-1:0] lc_sigint_src =
+        `LCC_INST.shadow_regs_i.fields.lc_state.lc_state[2*LcPairs-1:0];
     always @(posedge clk_i) begin
         if (lc_sigint_inject_i === 1'b1) begin
-            force `LCC_DEC_DATA = '0;
+            force `LCC_INST.u_lc_state_dec.data_i =
+                (lc_sigint_src & ~lc_sigint_rails) | (lc_sigint_bad & lc_sigint_rails);
         end else begin
-            release `LCC_DEC_DATA;
+            release `LCC_INST.u_lc_state_dec.data_i;
         end
     end
-`undef LCC_DEC_DATA
+    assign lc_dec_data_probe_o = `LCC_INST.u_lc_state_dec.data_i;
+
+    // ------------------------------------------------------------------
+    // Lifecycle controller register write tap.
+    // ------------------------------------------------------------------
+    // FEAT_CTRL is read-only (sep_lifecycle_ctrl.rdl, sw = r), so no readback
+    // shows that a write to it reached the register block. These taps count
+    // the write-address handshakes at the AXI-Lite port of the register block
+    // and keep the register offset of the last one and the data of the last
+    // write-data handshake. They read the request and ready nets and drive
+    // nothing.
+    logic [15:0] lcc_wr_count_q = '0;
+    logic [4:0]  lcc_wr_addr_q = '0;
+    logic [63:0] lcc_wr_data_q = '0;
+    always @(posedge `LCC_INST.clk_i) begin
+        if ((`LCC_INST.lifecycle_axil_req.aw_valid === 1'b1) &&
+            (`LCC_INST.lifecycle_axil_resp.aw_ready === 1'b1)) begin
+            lcc_wr_count_q <= lcc_wr_count_q + 16'd1;
+            lcc_wr_addr_q  <= `LCC_INST.lifecycle_axil_req.aw.addr[4:0];
+        end
+        if ((`LCC_INST.lifecycle_axil_req.w_valid === 1'b1) &&
+            (`LCC_INST.lifecycle_axil_resp.w_ready === 1'b1)) begin
+            lcc_wr_data_q <= `LCC_INST.lifecycle_axil_req.w.data;
+        end
+    end
+    assign lcc_wr_count_probe_o = lcc_wr_count_q;
+    assign lcc_wr_addr_probe_o  = lcc_wr_addr_q;
+    assign lcc_wr_data_probe_o  = lcc_wr_data_q;
+`undef LCC_INST
 
     // ------------------------------------------------------------------
     // Token-comparator redundancy fault inject.
@@ -2856,6 +2897,8 @@ module sep_uvm_top
     assign jtag_filter_lc_sigint_err_probe_o = `JTAG_LC_DEC.sigint_o;
     // The sep input jtag_id_i as the DUT receives it.
     assign jtag_id_probe_o = `SEP_CORE.jtag_id_i;
+    // The sep input jtag_trst_ni as the DUT receives it.
+    assign jtag_trst_probe_o = `SEP_CORE.jtag_trst_ni;
 
     // ------------------------------------------------------------------
     // JTAG lifecycle filter integrity inject.
@@ -5682,6 +5725,8 @@ module sep_uvm_top
     assign jtag_ic_reset_trst_n_i   = 1'b1;
     assign jtag_ic_reset_tdi_i      = 1'b0;
     assign lc_sigint_inject_i       = 1'b0;
+    assign lc_sigint_pair_mask_i    = '0;
+    assign lc_sigint_bad_value_i    = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
     assign token_cmp_fault_copy_i   = '0;
@@ -7078,6 +7123,8 @@ module sep_uvm_top
         .latch_test_en_i       ({token_digest_sdis_test_en_o, token_digest_chiplet_test_en_o,
                                  token_digest_test_en_o}),
         .jtag_filt_sigint_i    (jtag_filter_lc_sigint_err_probe_o),
+        .lc_state_i            (lc_state_probe_o),
+        .lc_dec_data_i         (lc_dec_data_probe_o),
         .jtag_id_i             (jtag_id_probe_o),
         .efuse_read_error_i    (efuse_read_error_o),
         .efuse_read_done_i     (efuse_read_done_o),

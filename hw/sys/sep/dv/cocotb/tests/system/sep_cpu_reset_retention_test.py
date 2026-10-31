@@ -11,7 +11,10 @@ sequence leaves the sequence intact: the domain isolates, resets and returns
 released after the write of 1. A cold reset clears all of them, also in the
 middle of a DMA copy, and a later copy completes. After a ``wdt_rst_ni`` pulse
 that cuts a write, the cold reset clears what the pulse left on the bus, and
-the next write completes.
+the next write completes. The set-only ``demote``, ``lock`` and ``rsvd`` bits
+of ``DEMOTE_1`` and ``DEMOTE_2`` hold across a ``wdt_rst_ni`` pulse, a
+``dbg_rstb_i`` pulse, a ``SW_RESET_N`` engine reset and a ``jtag_trst_ni``
+pulse, and a cold reset clears them.
 
 Sources: ``hw/sys/sep/doc/clk_rst.adoc`` (Reset Architecture);
 ``hw/sys/sep/doc/reset_controller.adoc`` (SEP Reset Controller, Isolation and
@@ -23,7 +26,10 @@ Map, sources 41 and 43); ``hw/sys/sep/doc/cpu.adoc`` (CPU: the run-request
 synchronizer); ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc``
 (reset values); ``doc/trm/src/reset.adoc`` (Watchdog timeout: the watchdog
 reset does not drain transactions, and a cold reset follows every watchdog
-timeout).
+timeout); ``hw/sys/sep/doc/lifecycle_controller.adoc`` (Overview: ``demote`` and
+``lock`` are set-only and hold until SEP cold reset; In-Field Debug Demotion,
+Reset Behavior); ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl``
+(``DEMOTE``: ``demote``, ``lock`` and ``rsvd`` are ``woset``).
 
 Legs. Calibration (isolation latency Tiso, write-handshake latency, clean copy
 time C), arming, a fault-latch inject, the WDT sequence of 2 to 6 pulses and
@@ -35,18 +41,23 @@ a recovery copy. The full-CPU build adds the DBG sequence, the DBG overlap
 runs, the DBG DMA leg (a ``dbg_rstb_i`` pulse against a running and an idle
 copy) and the run-request synchronizer leg (CHK-DBG-SYNC). The cold-recover
 leg (a ``wdt_rst_ni`` pulse with a write in flight, then ``rst_ni``) runs last on
-every build. The leaf selects
+every build, followed by the demotion-hold leg (``DEMOTE_1`` and ``DEMOTE_2``
+set, one pulse of each narrow reset with the ``jtag_trst_ni`` pulse last, then
+``rst_ni``). The leaf selects
 these legs from the build it runs on (the full ``sep_cpu`` present), not from
 the simulator, and sets ``required_evidence`` to match.
 
 Probes. Approved: ``dbg_sep_reset_n_o``, ``sep_cpu_reset_n_o``,
-``sep_internal_interrupts_probe_o`` bits 40 to 42, ``ip_rst_n[6:1]``, the
-HMAC, KMAC and Adams Bridge isolate-complete probes. Observation taps: the
-OTBN and AES bits of the isolate-complete vector (``env/sep_reset_taps.py``)
-and ``mpc_run_sync_probe_o``. Drives: ``wdt_rst_ni_i``, ``dbg_rstb_i``,
-``rst_ni``, ``mpc_reset_run_req``. Register path: the CPU-LSU master. Every
-expected value is an RDL reset value, a value the leaf wrote, or a word of the
-copy model (source snapshot against the destination).
+``sep_internal_interrupts_probe_o`` bits 40 to 42, ``ip_rst_n[6:1]``, the HMAC,
+KMAC and Adams Bridge isolate-complete probes. Observation taps: the OTBN and
+AES bits of the isolate-complete vector (``env/sep_reset_taps.py``),
+``mpc_run_sync_probe_o`` and ``jtag_trst_probe_o`` (the ``jtag_trst_ni`` input
+of ``sep``); ``lcc_feat_ctrl_probe_o`` is logged. Drives: ``wdt_rst_ni_i``,
+``dbg_rstb_i``, ``rst_ni``, ``mpc_reset_run_req``, and the core TAP pins
+(``jtag_bench_own_i`` = 1, ``jtag_trst_n_i``) in the demotion-hold leg. Register
+path: the CPU-LSU master. Every expected value is an RDL reset value, a value
+the leaf wrote, or a word of the copy model (source snapshot against the
+destination).
 
 Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-RETAIN              per sequence: every armed register keeps its value,
@@ -127,10 +138,32 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ``sep_reset_n`` high (``clk_rst.adoc``, Reset
                           Architecture: the CPU reset combines ``sep_reset_n``
                           with ``wdt_rst_ni`` only). Control: one pin fall.
+  CHK-DEMOTE-HELD         demotion-hold leg, every seed and build, one line per
+                          reset kind (``wdt_rst_ni`` pulse, ``dbg_rstb_i``
+                          pulse on the full-CPU build only, a ``SW_RESET_N``
+                          write that resets a drawn domain and then restores
+                          0x7E, ``jtag_trst_ni`` pulse). Each kind must reach
+                          the DUT: one pin fall for ``wdt`` and ``dbg``, a
+                          ``sep_cpu_reset_n`` low clock for ``wdt``, the
+                          ``ip_rst_n`` fall for ``sw`` and
+                          CTRL-JTAG-TRST-EDGE for ``jtag``. ``DEMOTE_1`` and
+                          ``DEMOTE_2`` read the set
+                          value (``demote``, ``lock`` and one drawn ``rsvd``
+                          bit) before the reset and the same value after it
+                          (``lifecycle_controller.adoc``: hold until SEP cold
+                          reset; ``reset_controller.adoc``: ``rst_ni`` resets
+                          the lifecycle controller). ``FEAT_CTRL``
+                          (``lcc_feat_ctrl_probe_o``) is logged on the line,
+                          not graded: with ``+skip_fuse_sense`` the lifecycle
+                          decode stays at reset.
 
 Controls (not counted): ``CTRL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
-``sep_reset_n``). Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
+``sep_reset_n``); ``CTRL-DEMOTE-COLD-CLEAR`` (the ``rst_ni`` pulse at the end of
+the demotion-hold leg returns ``DEMOTE_1`` and ``DEMOTE_2`` to their RDL reset
+value, so the readback of CHK-DEMOTE-HELD is live); ``CTRL-JTAG-TRST-EDGE``
+(``jtag_trst_probe_o`` falls and then rises in the ``jtag_trst_ni`` pulse).
+Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
 ``REFERENCE_COUNTER`` after each event). The DBG lines of CHK-BANK and
 CHK-CPU-RST-DBG take credit only after CHK-DBG-SYNC passes.
 
@@ -166,6 +199,7 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import (
     HMAC,
     SEP_CPU_CTRL,
+    SEP_LIFECYCLE_CTRL,
     SEP_RESET_CTRL,
     iter_registers,
     register_fields,
@@ -312,6 +346,22 @@ WRITE_BOUND = 4_000
 INFLIGHT_OFFSET = 1
 INFLIGHT_WIDTH = 2
 
+# Demotion-hold leg. DEMOTE_1 and DEMOTE_2 (sep_lifecycle_ctrl.rdl): demote, lock
+# and rsvd are woset, so the leaf sets demote with one drawn rsvd bit and then
+# lock, and both registers must read that value until rst_ni. The draws come from
+# a separate stream so the Plan draws keep their seed mapping.
+DEMOTE_SALT = 0x4445_4D48
+DEMOTE_ADDR = {1: SEP_LIFECYCLE_CTRL.addr("DEMOTE_1"), 2: SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")}
+DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
+LOCK_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "lock")
+RSVD_MASK = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "rsvd")
+RSVD_BITS = tuple(i for i in range(RSVD_MASK.bit_length()) if (RSVD_MASK >> i) & 1)
+DEMOTE_STORE = SEP_LIFECYCLE_CTRL.mask_all("DEMOTE_1")
+DEMOTE_RESET = SEP_LIFECYCLE_CTRL.reset("DEMOTE_1")
+HOLD_KINDS = ("wdt", "dbg", "sw")
+# Clocks the bench-owned TRST stays high before its fall.
+TRST_SETUP = 4
+
 
 @dataclass
 class OvlRun:
@@ -421,6 +471,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         "CHK-MBX-CPURST",
         "CHK-NMI-COLD",
         "CHK-BANK",
+        "CHK-DEMOTE-HELD",
     )
 
     # ---- log helpers --------------------------------------------------------
@@ -583,6 +634,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             "DBG": SepBitWatch(dut.dbg_rstb_i, name="dbg_rstb_i").start(),
         }
         self.mpc = SepBitWatch(dut.mpc_run_sync_probe_o, name="mpc_run_sync").start()
+        self.trst = SepBitWatch(dut.jtag_trst_probe_o, name="jtag_trst_probe_o").start()
         self.pd = SepResetProbeDriver(self)
         self.dma = SepDmaOps(self)
         self.mem = SepMemWords(self)
@@ -632,9 +684,11 @@ class sep_cpu_reset_retention_test(sep_base_test):
             # Last, after every other check: a CPU reset with a write in flight,
             # then the cold reset that clears what it leaves.
             await self._wdt_cold_recover_leg()
+            # The TRST pulse also resets the TAP, so this leg runs last.
+            await self._demote_hold_leg()
         finally:
             await self._close()
-            for w in (self.irq, self.mpc, *self.pins.values()):
+            for w in (self.irq, self.mpc, self.trst, *self.pins.values()):
                 await w.stop()
             await self.taps.stop()
             await self.chan.stop()
@@ -1400,6 +1454,167 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"{int(sep_high)} b_outcome={outcome} cold_sep_reset_n_low={int(cold_low)} "
             f"cold_release_clks={res['release_clks']} next_write={nxt} next_aw_clk={nxt_aw} "
             f"other_id0_b_after_cold={stale} bound={WRITE_BOUND}",
+        )
+
+    # ---- demotion-hold leg ----------------------------------------------------------
+    async def _demote_regs(self) -> dict[int, int]:
+        """DEMOTE_1 and DEMOTE_2, one 64-bit read each, storage bits only."""
+        out = {}
+        for g, addr in DEMOTE_ADDR.items():
+            seq = await self._acc64(SepAxiOp.READ, addr)
+            if seq.resp_code != RESP_OKAY:
+                raise AssertionError(f"DEMOTE_{g} read resp={RESP_NAME[seq.resp_code]}")
+            out[g] = int(seq.rdata) & DEMOTE_STORE
+        return out
+
+    def _feat(self) -> int:
+        return self.rd(cocotb.top.lcc_feat_ctrl_probe_o)
+
+    async def _trst_pulse(self, width: int) -> str:
+        """Pulse ``jtag_trst_ni`` low for ``width`` clocks through the bench-owned TAP pins.
+
+        The bench takes the pins at the level the DUT input already has, drives
+        TRST high for ``TRST_SETUP`` clocks, then low for ``width`` clocks, then
+        high. CTRL-JTAG-TRST-EDGE reads the edges at ``jtag_trst_probe_o``.
+        """
+        dut = cocotb.top
+        await FallingEdge(dut.clk_i)
+        dut.jtag_trst_n_i.value = self.rd(dut.jtag_trst_probe_o)
+        dut.jtag_bench_own_i.value = 1
+        await FallingEdge(dut.clk_i)
+        dut.jtag_trst_n_i.value = 1
+        for _ in range(TRST_SETUP):
+            await FallingEdge(dut.clk_i)
+        m = self.trst.mark()
+        dut.jtag_trst_n_i.value = 0
+        for _ in range(width):
+            await RisingEdge(dut.clk_i)
+        await FallingEdge(dut.clk_i)
+        dut.jtag_trst_n_i.value = 1
+        for _ in range(2):
+            await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        falls = self.trst.fall_clks_since(m)
+        rises = [c for c in self.trst.rise_clks_since(m) if falls and c > falls[0]]
+        text = (
+            f"jtag_trst_probe_o fall_clk={falls[0] if falls else None} "
+            f"rise_clk={rises[0] if rises else None} width={width}"
+        )
+        await FallingEdge(dut.clk_i)
+        if not (falls and rises):
+            msg = f"CTRL-JTAG-TRST-EDGE MISSING: {text}"
+            self.logger.error(msg)
+            raise AssertionError(msg)
+        self.logger.info("CTRL-JTAG-TRST-EDGE: %s", text)
+        return text
+
+    async def _narrow_reset(self, kind: str, draw: dict) -> tuple[str, bool]:
+        """Apply one narrow reset; return its log fields and whether it reached the DUT.
+
+        ``wdt`` reaches when its pin falls once and ``sep_cpu_reset_n`` goes low;
+        ``dbg`` when its pin falls once. ``sw`` and ``jtag`` raise when their
+        reset edge is missing.
+        """
+        if kind in ("wdt", "dbg"):
+            cls = kind.upper()
+            width = draw[f"{kind}_width"]
+            mr = self.taps.mark()
+            mp = self.pins[cls].mark()
+            await self._pulse(cls, width)
+            cpu = self.taps.resets["sep_cpu_reset_n"]
+            await cpu.wait_level(1, TAP_BOUND)
+            pin_fall = len(self.pins[cls].fall_clks_since(mp))
+            fields = f"width={width} pin_fall={pin_fall}"
+            if kind == "dbg":
+                return fields, pin_fall == 1
+            n = cpu.clk - mr["sep_cpu_reset_n"].clk
+            cpu_low = n - cpu.high_clocks_since(mr["sep_cpu_reset_n"])
+            return f"{fields} sep_cpu_reset_n_low={cpu_low}", pin_fall == 1 and cpu_low > 0
+        if kind == "sw":
+            d = draw["sw_domain"]
+            await self._wr(SW, SW_DEFAULT & ~(1 << IPRST[d]))
+            fall = await self._wait_ip(d, 0, "demotion-hold SW_RESET_N")
+            await self._wr(SW, SW_DEFAULT)
+            await self._wait_ip(d, 1, "demotion-hold SW_RESET_N release")
+            fields = f"domain={d} ip_rst_n[{IPRST[d]}]_fall_clk={fall} restored=0x{SW_DEFAULT:02x}"
+            return fields, True
+        return await self._trst_pulse(draw["trst_width"]), True
+
+    async def _demote_hold_leg(self) -> None:
+        """DEMOTE_1 and DEMOTE_2 hold across each narrow reset; ``rst_ni`` clears them.
+
+        Each register gets one write of ``demote`` with a drawn ``rsvd`` bit and
+        then one write of ``lock``; the write responses are not graded, the
+        readback is. ``wdt_rst_ni``, ``dbg_rstb_i`` and ``SW_RESET_N`` come in a
+        drawn order and ``jtag_trst_ni`` last. CHK-DEMOTE-HELD compares the
+        readback after each reset with the set value and with the readback before
+        it. The closing ``rst_ni`` pulse is CTRL-DEMOTE-COLD-CLEAR.
+        """
+        dx = SepSeededRng(self.seed ^ DEMOTE_SALT)
+        marks = {g: 1 << dx.choice(RSVD_BITS) for g in DEMOTE_ADDR}
+        kinds = list(HOLD_KINDS)
+        dx.shuffle(kinds)
+        # Nothing in the CPU-stub build takes dbg_rstb_i (reset_controller.adoc).
+        kinds = [k for k in kinds if k != "dbg" or self.full_cpu]
+        kinds.append("jtag")
+        draw = {
+            "wdt_width": dx.randrange(2, 33),
+            "dbg_width": dx.randrange(2, 33),
+            "sw_domain": dx.choice(D_CHOICES),
+            "trst_width": dx.randrange(2, 33),
+        }
+        self.logger.info(
+            "INFO-DRAW demote_hold order=%s mark_1=0x%016x mark_2=0x%016x wdt_width=%d "
+            "dbg_width=%d sw_domain=%s trst_width=%d",
+            ",".join(kinds),
+            marks[1],
+            marks[2],
+            draw["wdt_width"],
+            draw["dbg_width"],
+            draw["sw_domain"],
+            draw["trst_width"],
+        )
+        await self._open()
+        feat0 = self._feat()
+        exp = {}
+        for g, addr in DEMOTE_ADDR.items():
+            await self._acc64(SepAxiOp.WRITE, addr, DEMOTE_BIT | marks[g])
+            await self._acc64(SepAxiOp.WRITE, addr, LOCK_BIT)
+            exp[g] = (DEMOTE_RESET | DEMOTE_BIT | LOCK_BIT | marks[g]) & DEMOTE_STORE
+        self.logger.info(
+            "INFO-DEMOTE-SET feat_ctrl_before=0x%016x feat_ctrl_set=0x%016x",
+            feat0,
+            self._feat(),
+        )
+        for kind in kinds:
+            before = await self._demote_regs()
+            feat_b = self._feat()
+            fields, reached = await self._narrow_reset(kind, draw)
+            after = await self._demote_regs()
+            feat_a = self._feat()
+            self._chk(
+                "CHK-DEMOTE-HELD",
+                reached and all(before[g] == exp[g] and after[g] == exp[g] for g in DEMOTE_ADDR),
+                f"kind={kind} {fields} "
+                + " ".join(
+                    f"demote_{g}_before=0x{before[g]:016x} demote_{g}_after=0x{after[g]:016x} "
+                    f"demote_{g}_exp=0x{exp[g]:016x}"
+                    for g in DEMOTE_ADDR
+                )
+                + f" feat_ctrl_before=0x{feat_b:016x} feat_ctrl_after=0x{feat_a:016x} "
+                "feat_ctrl_graded=0",
+            )
+        res = await self.pulse_rst_ni(hold_cycles=self.plan.cold_width)
+        for name in ("sep_reset_n", "sep_cpu_reset_n"):
+            await self.taps.resets[name].wait_level(1, TAP_BOUND)
+        await FallingEdge(cocotb.top.clk_i)
+        cold = await self._demote_regs()
+        rst = DEMOTE_RESET & DEMOTE_STORE
+        self._ctl(
+            "CTRL-DEMOTE-COLD-CLEAR",
+            all(cold[g] == rst for g in DEMOTE_ADDR),
+            f"demote_1=0x{cold[1]:016x} demote_2=0x{cold[2]:016x} exp=0x{rst:016x} "
+            f"cold_release_clks={res['release_clks']}",
         )
 
     def _reset_cpu_master(self, where: str) -> None:
