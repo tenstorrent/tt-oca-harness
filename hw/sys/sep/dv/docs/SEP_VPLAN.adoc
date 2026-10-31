@@ -3298,7 +3298,7 @@ the test does.
 |`sep_efuse_lcc_lc_state_stitch_test` logs `lc_sigint_err` and `FEAT_CTRL` two clocks after the injection ends as `OBS-LC-SIGINT-RELEASE`. `sep_lcc_state_codeword_rand_test` requires the error to be clear before its next codeword (`CTRL-SIGINT-FRESH`), so a DUT that holds the error fails that control.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Read held by `program_enable` after the enable clears
-|`doc/programmer/src/smc-programming.adoc` (Command-Path Ownership) states that a read issued while `program_enable` is high does not reach the bank. It does not state whether that read reaches the bank after `program_enable` clears with `read_enable` still set, and no document orders the two enable clears.
+|`doc/programmer/src/smc-programming.adoc` (Command-Path Ownership) states that a read issued while `program_enable` is high does not reach the bank. It does not state whether that read reaches the bank after `program_enable` clears with `read_enable` still set, and no document orders the two enable clears. *Issue*: #3537
 |`sep_efuse_interface_status_rand_test` logs the READ commands at `efuse_shim_command_req_o` while held and after the clear, and `read_done`, as `OBS-IF-ENABLE-CLEAR-ORDER`. The `both_enables` illegal bin of `x_case_cmd` closes its window at the write that clears `program_enable`.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Blocked CHIPLET match after a SiP match
