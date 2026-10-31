@@ -2001,7 +2001,7 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 |OBS-ROW-SPI-BURST-CODE
 |Logged only, no pass or fail. The exact response and read data of each past-extent beat and the B code of the crossing write. The code of a past-extent burst beat is an open specification question.
 |CHK-SI-ID-ECHO
-|Every SI access of the leaf, OKAY and error rows alike, answers with the drawn non-zero AxID on RID (read) or BID (write), sampled from the `m_axi` response handshake. A response carries the ID of its request (AMBA AXI IHI 0022), and the fabric retains the AXI IDs needed for responses across the AXI4-Lite bridge (`hw/sys/sep/doc/fabric.adoc:22-23`). The check fails when no SI access answered. Evidence: `CHK-SI-ID-ECHO PASS: <n> SI accesses answered BID/RID equal to the drawn AxID`.
+|Every SI access of the leaf, OKAY and error rows alike, answers with the drawn non-zero AxID on RID (read) or BID (write), sampled from the `m_axi` response handshake. A response carries the ID of its request (AMBA AXI IHI 0022), and the fabric retains the AXI IDs needed for responses across the AXI4-Lite bridge (`hw/sys/sep/doc/fabric.adoc:22-23`). The check also fails on an SI access, the logged burst leg included, that returns no response, and when no SI access answered. Evidence: `CHK-SI-ID-ECHO PASS: <n> SI accesses answered BID/RID equal to the drawn AxID`.
 |OBS-ROW-BURST
 |Logged only, no pass or fail. For a 2-beat INCR SI read and write that start at the last register word of the DMA, watchdog and CPU-control rows: the start address, the RRESP of each beat, the overall read response, the B response, the read data, and the LSU read of the word before and after the write.
 |OBS-REG-SUBWORD

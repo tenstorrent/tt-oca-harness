@@ -47,7 +47,8 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 * CHK-MASKED-VISIBLE the held edge bits of sources 12 and 33 read 1 in
                    ``meip`` with ``meie`` 0 and ``meipl`` 0, both read back
                    for each source (VeeR EL2 PRM
-                   ``docs/source/interrupts.md:504`` at the Bender pin:
+                   ``docs/source/interrupts.md:504`` at the ``veer_el2``
+                   ``rev`` in ``Bender.yml`` (upstream ``tt-Cores-VeeR-EL2``):
                    disabled requests are reported by default; ``:159``,
                    step 5 before the priority and enable steps). Control:
                    ``CTRL-PICIO`` reads ``picio=1`` (``:343``), else
@@ -63,7 +64,7 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 * CHK-GW-EL        each EL cell reads 1 at idle (input low after the
                    meigwclr, the active level) and 1 after the input rises
                    (the latched bit holds): VeeR EL2 PRM
-                   ``docs/source/interrupts.md:68-69`` at the Bender pin (no
+                   ``docs/source/interrupts.md:68-69`` at the same ``rev`` (no
                    edge detection; an input left at its active level after
                    the clear stays pending) and ``:59-60`` (the IP flop holds
                    until firmware clears it).

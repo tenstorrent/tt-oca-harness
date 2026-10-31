@@ -907,9 +907,9 @@ class SepEfusePlan:
         return list(self.image.words)
 
     def log_lines(self, **seed_fields: Any) -> list[str]:
-        """One ``SEED`` line and one ``DRAW`` line per drawn value, in draw order.
+        """One ``INFO-SEED`` line and one ``INFO-DRAW`` line per drawn value, in draw order.
 
-        ``seed_fields`` are the keys of the entry's ``SEED`` form (VPLAN entry,
+        ``seed_fields`` are the keys of the entry's ``INFO-SEED`` form (VPLAN entry,
         procedure step 1), printed right after ``seed=<n>`` in the given order; the
         plan keys follow, and a plan key that the entry form also names is not
         printed twice.
@@ -1134,7 +1134,7 @@ def plan_field_layout(seed: int) -> SepEfusePlan:
     first equal pair is redrawn and every pair is checked again. A 256-bit field takes
     an unused vector. Otherwise the graded narrow field with the most classes draws a
     fresh class and a fresh value (equal weight, same legal ranges, recorded as
-    ``redraw.<field>.class`` / ``.value`` DRAW lines); after half of the
+    ``redraw.<field>.class`` / ``.value`` INFO-DRAW lines); after half of the
     ``FIELD_LAYOUT_PAIR_TRIES`` tries of the pair, the other word's field is redrawn.
     When a pair reaches the bound, the plan sets ``setup_fail = "adjacent_equal"``.
     """

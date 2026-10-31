@@ -92,8 +92,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           registers written before the run read their written
                           values after the ``SW_RESET_N`` engine reset and the
                           pulse (``reset_controller.adoc:44-49``, SW_RESET_N
-                          fields table: no SPI or DMA bit). A seed whose every
-                          run takes the cold reset logs ``OBS-BLOCKED``.
+                          fields table: no SPI or DMA bit). The WDT pulse
+                          of the "before" band cannot cut the write, so every
+                          seed has such a run; a leaf with none fails.
   CHK-WDT-COLD-RECOVER    last leg, every seed and build: a ``wdt_rst_ni`` pulse
                           lands while an accepted ``SW_RESET_N`` write has its B
                           outstanding and is released before the calibrated B
@@ -418,6 +419,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         "CHK-DMA-COLDRST",
         "CHK-DMA-COLDRST-RECOVER",
         "CHK-WDT-COLD-RECOVER",
+        "CHK-SWRST-KEEP",
         "CHK-MBX-CPURST",
         "CHK-NMI-COLD",
         "CHK-BANK",
@@ -1214,10 +1216,14 @@ class sep_cpu_reset_retention_test(sep_base_test):
             if cold:
                 await self._rearm_after_cold()
             await self._bank_ctl(f"{run.cls}+COLD" if cold else run.cls)
+        # The WDT pulse of the "before" band ends before the write's AW handshake,
+        # so it cannot cut the write and its run takes no cold reset.
         if n_keep == 0:
-            self.logger.info(
-                "OBS-BLOCKED CHK-SWRST-KEEP: every overlap run took the cold reset before "
-                "the release write"
+            self._chk(
+                "CHK-SWRST-KEEP",
+                False,
+                "every overlap run took the cold reset before the release write, the "
+                "WDT before-band run included",
             )
 
     async def _chk_swrst_keep(self, d: str, cls: str, band: str) -> None:

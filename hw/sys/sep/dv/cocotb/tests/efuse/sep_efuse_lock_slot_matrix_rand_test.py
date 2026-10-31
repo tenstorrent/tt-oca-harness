@@ -794,6 +794,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             for b in range(WORD_BITS)
             if (used >> b) & 1 and not (bank[w0 + k] >> b) & 1
         ]
+        if not zeros:
+            self.chk.obs("UID-RDLOCK-PROG", slot=slot, field=name, reason="no_zero_bit")
+            return
         k, b = self.plan.draw.choice("uid_rlock_bit", zeros)
         a = bit_address(name, k, b)
         r = await self._program(a)

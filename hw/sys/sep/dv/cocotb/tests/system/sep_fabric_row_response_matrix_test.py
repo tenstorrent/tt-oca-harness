@@ -27,8 +27,9 @@ VCS. A hole write leaves its neighbour register unchanged; the in-extent write
 of the same data to the neighbour changes it (control, run before the hole
 writes of the unit).
 
-CHK-SI-ID-ECHO: every SI access, OKAY and error rows alike, answers with the
-drawn non-zero AxID on BID or RID, sampled from the m_axi response handshake.
+CHK-SI-ID-ECHO: every SI access, OKAY and error rows alike and the logged burst
+leg too, answers with the drawn non-zero AxID on BID or RID, sampled from the
+m_axi response handshake; an access with no response fails it.
 Golden: a response carries the ID of its request (AMBA AXI IHI 0022), and the
 SEP fabric "retains the AXI IDs needed for responses" across the AXI4-Lite
 bridge (``hw/sys/sep/doc/fabric.adoc:22-23``).
@@ -384,7 +385,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         finally:
             if op is SepAxiOp.READ:
                 mon.close_error_rdata_window()
-        assert not seq.timed_out, f"SI {op.value} 0x{addr:08x} timed out"
+        assert not seq.timed_out, (
+            f"CHK-SI-ID-ECHO FAIL: SI {op.value} 0x{addr:08x} returned no response"
+        )
         if seq.resp_id == axi_id:
             self.si_id_ok += 1
         else:
@@ -1386,7 +1389,11 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     # ---------------------------------------------------------------- scenario
     # ------------------------------------------------------------ logged legs
     async def _burst_past_leg(self) -> None:
-        """A 2-beat SI INCR burst from the last register word of a non-crypto row."""
+        """A 2-beat SI INCR burst from the last register word of a non-crypto row.
+
+        The response codes and data are logged (``OBS-ROW-BURST``); the response ID
+        of each burst is graded by ``CHK-SI-ID-ECHO`` in ``_si``.
+        """
         mon = self.env.ext_axi_monitor
         for name, base in BURST_PAST_ROWS:
             row = rr.map_row(base)

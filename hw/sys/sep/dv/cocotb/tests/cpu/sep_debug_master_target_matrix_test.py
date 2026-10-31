@@ -26,9 +26,9 @@ Checks:
   CHK-DTMCS     : the first ``dtmcs`` read after the TAP reset is 0x0000_0071:
                   version 1, abits 7, dmistat 0, idle 0 (EL2 Programmer's
                   Reference Manual, linked from ``hw/sys/sep/doc/cpu.adoc``,
-                  at the vendored core revision, the ``el2`` ``rev`` in
-                  ``Bender.yml``: upstream ``docs/source/debugging.md``,
-                  section 11.1.1.2, Table 11.3).
+                  at the vendored core revision, the ``veer_el2`` ``rev``
+                  in ``Bender.yml``: upstream ``tt-Cores-VeeR-EL2``
+                  ``docs/source/debugging.md``, section 11.1.1.2, Table 11.3).
   CHK-DMI-GATE  : a write of ``dmcontrol.dmactive`` = 1 with
                   ``dmi_core_enable_i`` low does not land: after the enable
                   rises ``dmactive`` reads 0 (``hw/sys/sep/doc/port_table.adoc``,
@@ -120,8 +120,9 @@ Checks:
                   (``hw/sys/sep/doc/entropy_pool.adoc:38-39``); ``sberror`` is
                   not 0 (RISC-V debug ``sbcs.sberror``, EL2 debug module, PRM
                   cited at ``hw/sys/sep/doc/cpu.adoc:23`` at the vendored core
-                  revision, upstream ``docs/source/debugging.md``, sbcs
-                  table), and the LSU read of ``STATUS`` after it equals the
+                  revision (the ``veer_el2`` ``rev`` in ``Bender.yml``),
+                  upstream ``tt-Cores-VeeR-EL2`` ``docs/source/debugging.md``,
+                  sbcs table), and the LSU read of ``STATUS`` after it equals the
                   one before it on the fields.
   CHK-DBG-EXT   : (entry S) a debug-master 64-bit read and write of a drawn word
                   of the extension window above the eFuse shim, once with the
@@ -462,8 +463,9 @@ DTM_WR = 1 << 7
 DTM_ADDR = 0x7F
 SPIN_LOOP = 0x0000_006F  # jal x0, 0
 # dtmcs after the TAP reset: version 1, abits 7, dmistat 0, idle 0 (EL2 PRM
-# linked from hw/sys/sep/doc/cpu.adoc, at the el2 rev in Bender.yml:
-# upstream docs/source/debugging.md, section 11.1.1.2, Table 11.3).
+# linked from hw/sys/sep/doc/cpu.adoc, at the veer_el2 rev in Bender.yml:
+# upstream tt-Cores-VeeR-EL2 docs/source/debugging.md, section 11.1.1.2,
+# Table 11.3).
 DTMCS_RESET = (7 << 4) | 1
 
 

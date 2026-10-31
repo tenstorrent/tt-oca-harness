@@ -40,7 +40,8 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 * CHK-NEVER-MEIP (firmware) each enabled, asserted source at the never value
                  reads 1 in ``meip``, in the gate corner and the never corner
                  of every round (VeeR EL2 PRM ``docs/source/interrupts.md:159``
-                 at the Bender pin: step 5, the pending bit is visible in
+                 at the ``veer_el2`` ``rev`` in ``Bender.yml``, upstream
+                 ``tt-Cores-VeeR-EL2``: step 5, the pending bit is visible in
                  ``meipX``, comes before the priority step 6; ``:500``: each
                  bit is the pending indication of one source). Control:
                  ``CTRL-PICIO`` of the same round.
