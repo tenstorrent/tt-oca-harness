@@ -53,14 +53,16 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 * CHK-THRESHOLD  (firmware) standard order, ``meipt`` = T drawn from 1 to 14:
                  the source at level T is pending (its ``meip`` bit reads 1)
                  with no delivery for a hold window of 32 core clocks or more
-                 (``hold_clk``); at level T + 1 it delivers once (VeeR EL2
+                 (``hold_clk``), and its ``meipl`` reads back T after the
+                 write; at level T + 1 it delivers once (VeeR EL2
                  PRM section 8.12.5: delivery needs a priority strictly above
                  the threshold).
 * CHK-NEST       (firmware) the handler of source A (level L drawn from 1 to
                  14) copies ``meicidpl`` into ``meicurpl``, saves ``mepc`` and
                  ``mstatus`` and sets mstatus.MIE: source B at level L stays
                  pending with no entry for a hold window of 32 core clocks or
-                 more, at level L + 1 it nests once;
+                 more with its ``meipl`` read back at L, at level L + 1 it
+                 nests once;
                  ``meicidpl`` reads L with no ``meicpct`` write (fast
                  interrupt redirect captures the claim ID and level pair,
                  PRM sections 8.6.1, 8.8, 8.12.9, 8.12.10;
