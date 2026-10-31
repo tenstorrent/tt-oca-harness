@@ -39,8 +39,8 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
   // Base of the SYS_OUT-backed memory pages reserved for this scenario.
   localparam bit [63:0] OutputBase = 64'h0200_0000;
   localparam bit [7:0] Poison = 8'hD3;
-  // Mailbox interface.adoc specifies the error payload's low 32 bits.
-  localparam bit [31:0] EmptyReadData = 32'hFEED_DEAD;
+  // axil_mailbox.rdl READ_DATA and interface.adoc specify the full empty-read payload.
+  localparam bit [63:0] EmptyReadData = 64'h0000_0000_FEED_DEAD;
   localparam bit [63:0] FilterStart =
       smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(
       0
@@ -192,9 +192,9 @@ class smc_narrow_access_side_effect_test_seq extends smc_base_test_seq;
     mem_accesses++;
     `uvm_info(get_type_name(), $sformatf("SEP_IN empty read addr=0x%0h data=%h ordinal=%0d %s",
                                          address, op.data, ordinal, access_context()), UVM_LOW)
-    grade(ChkEmpty, "empty mailbox response and low payload",
+    grade(ChkEmpty, "empty mailbox response and 64-bit payload",
           !op.result.timed_out && op.result.resp_list.size() == 1 && !op.result.any_resp_xz() &&
-          op.result.worst_resp() == OCAH_AXI_RESP_SLVERR && op.data[31:0] == EmptyReadData,
+          op.result.worst_resp() == OCAH_AXI_RESP_SLVERR && op.data == EmptyReadData,
           $sformatf("ordinal=%0d data=%h resp=%s", ordinal, op.data, op.result.worst_resp().name()
           ));
   endtask

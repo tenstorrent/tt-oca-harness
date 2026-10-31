@@ -50744,14 +50744,17 @@ and partial- and zero-strobe writes to documented 64-bit FIFO, mutex and
 Zeroer registers.
 
 *Expectation Sources*: `cpu_ctrl.rdl`, MUTEX, defines acquisition on any read,
-zero returned when byte 0 is absent, and release on a write. `axil_mailbox.rdl`
-defines whole-entry pops on narrow reads, zero-fill for nonstrobed write
-lanes, push on null writes and clearing all ERROR flags on any read.
-The mailbox `interface.adoc` specifies SLVERR and low error data 0xFEEDDEAD
-for empty reads, and SLVERR, discarded data and write-error/EIRQ flags for
-writes to a full FIFO. `zeroer_ctrl.rdl` defines START on any write, including
-a zero-strobe write with nonzero SIZE, not on reads. `filter_ctrl.rdl` defines
-the address granule and write-back rules; filter masks are generated symbols.
+zero returned when byte 0 is absent, and release on a write.
+`axil_mailbox.rdl` defines whole-entry pops on narrow reads, zero-fill for
+nonstrobed write lanes, push on null writes and clearing all ERROR flags on
+any read. The mailbox `interface.adoc` specifies SLVERR and error data
+0x0000_0000_FEED_DEAD for empty reads, and SLVERR, discarded data and
+write-error/EIRQ flags for writes to a full FIFO. `zeroer_ctrl.rdl` defines
+START as a write-triggered operation, including a zero-strobe write with
+nonzero SIZE, and describes STATUS as a read-only busy indication. The
+scenario checks that upper-word reads do not start a clear. `filter_ctrl.rdl`
+defines the address granule and write-back rules; filter masks are generated
+symbols.
 
 *Test Coverage*: The default sixteen passes exercise mailboxes 0-15 and
 rotate all four mutexes. Four distinct 32-bit payload halves distinguish
@@ -50797,7 +50800,7 @@ filter outside the counted window.
 |`CHK-NARROW-MBX-POP` |Two narrow reads pop separate whole entries on the requested lanes
 |`CHK-NARROW-MBX-PUSH` |32-bit upper and lower writes place their payload in the addressed half
 |`CHK-NARROW-MBX-ZERO-FILL` |A 64-bit upper-only-strobe write zero-fills disabled lanes carrying nonzero bus data
-|`CHK-NARROW-MBX-EMPTY` |Two empty reads return SLVERR and the specified low payload
+|`CHK-NARROW-MBX-EMPTY` |Two empty reads return SLVERR and the specified 64-bit payload
 |`CHK-NARROW-MBX-ERROR` |Upper ERROR read returns zero and clears both read_error and write_error
 |`CHK-NARROW-NULL-ZEROER` |Null START zeros exactly the configured window
 |`CHK-NARROW-NULL-MAILBOX` |Null write pushes exactly one zero entry
@@ -50814,18 +50817,22 @@ filter outside the counted window.
 *Known Limitations*: Sequential single-beat SEP_IN accesses only; no reset in
 flight, byte accesses, unaligned accesses or narrow SEMA traffic. The
 `mutex_sema` model accepts only OKAY 32-bit upper reads and does not grade
-error reads or upper writes. Empty-read upper data is not given a value
-expectation. The SYS_OUT backing store is not checked for retention across
-passes. Poll and compare bounds are bench limits, not DUT latency promises.
-The initial MUTEX release has a same-pass free-read control; the release
-before the upper read is checked by that acquire. The final release has no
-passive readback because every read acquires. Restore values equal to the
-programmed filter values are logged as nondiscriminating. Neither the Zeroer
-completion polling nor a completed control job proves an exact START cycle.
-Mailbox interrupts beyond the EIRQ error controls and cleanup are not graded.
-The narrow write helper drives zero on unstrobed lanes, so the discriminating
-partial-strobe zero-fill check uses a 64-bit access; 32-bit push checks grade
-lane placement. NULL-MAILBOX checks all-ones data with no strobes.
+error reads or upper writes. ERROR_FLAGS clearing is graded for an upper-half
+32-bit read with both flags set. The 64-bit ERROR_FLAGS reads serve as
+controls; their own clearing is not graded independently. Lower-half 32-bit
+and byte ERROR_FLAGS reads, and an error arriving in the same cycle as the
+clearing read, are not exercised. The SYS_OUT backing store is not checked for
+retention across passes. Poll and compare bounds are bench limits, not DUT
+latency promises. The initial MUTEX release has a same-pass free-read control;
+the release before the upper read is checked by that acquire. The final
+release has no passive readback because every read acquires. Restore values
+equal to the programmed filter values are logged as nondiscriminating. Neither
+the Zeroer completion polling nor a completed control job proves an exact
+START cycle. Mailbox interrupts beyond the EIRQ error controls and cleanup are
+not graded. The narrow write helper drives zero on unstrobed lanes, so the
+discriminating partial-strobe zero-fill check uses a 64-bit access; 32-bit
+push checks grade lane placement. NULL-MAILBOX checks all-ones data with no
+strobes.
 
 *Pass Criteria*: All checks pass. Used alone,
 `+SMC_NARROW_SIDE_EFFECT_SEQUENCE_NEGATIVE` reverses eleven records per pass:
