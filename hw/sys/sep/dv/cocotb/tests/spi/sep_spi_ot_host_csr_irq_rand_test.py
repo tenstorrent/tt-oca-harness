@@ -22,12 +22,12 @@ block, which reggen derives from upstream spi_host.hjson).
 
 Checks (each emits a positive CHK-X PASS line; assert fails the test on a bad DUT):
   CHK-RESET     : every control reg reads its documented reset value; STATUS
-                  reads ACTIVE, TXFULL, RXFULL, TXQD, RXQD and CMDQD 0.
+                  reads READY, TXEMPTY and RXEMPTY 1 (idle, both FIFOs empty)
+                  and ACTIVE, TXFULL, RXFULL, TXQD, RXQD and CMDQD 0.
   CHK-SPI-STATUS-RESET: STATUS reads TXSTALL, RXSTALL, TXWM and RXWM at their
-                  RDL reset value 0x0 (spi_controller.rdl, STATUS). READY,
-                  TXEMPTY, RXEMPTY and BYTEORDER are logged only
-                  (OBS-SPI-STATUS-RESET): the RDL gives reset 0x0, while the
-                  field text (an empty FIFO, the unmodified IP with ByteOrder
+                  RDL reset value 0x0 (spi_controller.rdl, STATUS). BYTEORDER
+                  is logged only (OBS-SPI-STATUS-RESET): the RDL gives reset
+                  0x0, while the field text (the unmodified IP with ByteOrder
                   1) gives 1; the open question is in SEP_VPLAN.
   CHK-REG-RW    : each RW reg write->readback exact; bits outside the writable
                   mask (RO/reserved) read 0.
@@ -569,7 +569,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             got = await self.spi.rd(addr)
             assert got == exp, f"CHK-RESET FAIL {name}@0x{addr:08x} 0x{got:08x} != 0x{exp:08x}"
         st = await self.spi.rd(STATUS)
+        assert st & ST_READY, f"CHK-RESET FAIL STATUS.READY not set: 0x{st:08x}"
         assert not (st & ST_ACTIVE), f"CHK-RESET FAIL STATUS.ACTIVE set: 0x{st:08x}"
+        assert st & ST_TXEMPTY, f"CHK-RESET FAIL STATUS.TXEMPTY not set: 0x{st:08x}"
+        assert st & ST_RXEMPTY, f"CHK-RESET FAIL STATUS.RXEMPTY not set: 0x{st:08x}"
         assert not (st & ST_TXFULL), f"CHK-RESET FAIL STATUS.TXFULL set: 0x{st:08x}"
         assert not (st & ST_RXFULL), f"CHK-RESET FAIL STATUS.RXFULL set: 0x{st:08x}"
         assert not (st & (ST_TXQD | ST_RXQD | ST_CMDQD)), (
@@ -590,11 +593,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             f"CHK-SPI-STATUS-RESET FAIL: status=0x{st:08x} {text} expect 0 (RDL reset)"
         )
         self.logger.info("CHK-SPI-STATUS-RESET PASS: status=0x%08x %s expect=0", st, text)
-        self.logger.info(
-            "OBS-SPI-STATUS-RESET status=0x%08x ready=%d txempty=%d rxempty=%d byteorder=%d",
-            st,
-            *(field(f) for f in ("ready", "txempty", "rxempty", "byteorder")),
-        )
+        self.logger.info("OBS-SPI-STATUS-RESET status=0x%08x byteorder=%d", st, field("byteorder"))
 
     # ---- OBS-SPI-WO-RO-ACCESS ---------------------------------------------
     async def _obs_wo_ro(self) -> None:

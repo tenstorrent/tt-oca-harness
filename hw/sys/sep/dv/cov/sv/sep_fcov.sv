@@ -4527,11 +4527,8 @@ module sep_fcov (
     cp_transition: coverpoint {
       from, to
     } {
-      // A frontdoor LC_STATE write is the only producer of these two pairs, and
-      // the RDL (lc_state sw = r) and the fuse-field table (set-only) disagree on
-      // its result, so no check grades them.
-      ignore_bins prod_to_rma_sip = {{LcProd, LcRmaSip1}};
-      ignore_bins rma_sip_to_chiplet = {{LcRmaSip1, LcRmaChip1}};
+      bins prod_to_rma_sip = {{LcProd, LcRmaSip1}};
+      bins rma_sip_to_chiplet = {{LcRmaSip1, LcRmaChip1}};
       // TEST_DEV to PROD by a program of LC_STATE bit 0 and a resense, in the
       // window of the LC_STATE stitch leaf only.
       bins test_dev_to_prod_prog = {{LcTestDev, LcProd}};

@@ -50,8 +50,9 @@ short name ``ToO`` below):
   x1 dummy segment is logged as OBS-SPI-OE-DUMMY: ``ToO:29`` ("for
   Standard-mode commands `SD[0]` is always configured as an output") and
   ``ToO:63`` give different patterns. An x1 RX-only segment is logged as
-  OBS-SPI-OE-X1RX: ``ToO:29`` gives lane 0 driven, and the logged DUT
-  pattern differs; the gap is held for review, not graded.
+  OBS-SPI-OE-X1RX: ``ToO:29`` gives lane 0 driven in Standard mode, while
+  ``ToO:31-33`` allows half-duplex Standard-mode commands and no text names
+  the x1 RX-only segment; the lane pattern is an open specification question.
 
 The leaf walks the 10 legal SPEED x DIRECTION cells as single segments, a dummy
 segment between FIFO reads, CSAAT chains that change speed or direction, the

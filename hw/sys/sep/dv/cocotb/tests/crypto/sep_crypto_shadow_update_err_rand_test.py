@@ -100,9 +100,8 @@ Checkers:
                        update error reads 1.
   CHK-ALERT-MALFORMED  per block: bit 32 stays 0 over a quiet window before and
                        rises during the malformed pair on a clock 2 to
-                       4 x c - 1 (inclusive) after the mark. The level after
-                       the release and its quiet window are logged
-                       (OBS-ALERT-MALFORMED-POST): no text states them.
+                       4 x c - 1 (inclusive) after the mark, reads 0 after the
+                       release and stays 0 over a quiet window after it.
                        c: the ALERT_TEST delay of the block in the same trial.
                        The mark is the last clock sampled before the inject:
                        the leaf drives the inject on clock 1 and the pair is
@@ -1214,24 +1213,17 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             quiet_post = self.vec.high_clocks_since(mp, "alert")
             # The rise counts only on a clock ALERT_RISE_CLK_MIN to rise_max after the mark.
             raised = int(raise_clk is not None and ALERT_RISE_CLK_MIN <= raise_clk <= rise_max)
-            # No text states that bit 32 drops once the pair is legal again, so the
-            # level after the release is logged, not graded.
-            self.chk.obs(
-                "ALERT-MALFORMED-POST",
-                block=blk,
-                post=post,
-                quiet_post_high_clk=quiet_post,
-                quiet_clk=WINDOW_FACTOR * c,
-            )
             if self._grade(
                 "ALERT-MALFORMED",
-                pre == 0 and quiet_pre == 0 and raised == 1,
+                pre == 0 and quiet_pre == 0 and raised == 1 and post == 0 and quiet_post == 0,
                 block=blk,
                 index=idx,
                 wire=val,
                 pre=pre,
                 quiet_pre_high_clk=quiet_pre,
                 raised=raised,
+                post=post,
+                quiet_post_high_clk=quiet_post,
                 quiet_clk=WINDOW_FACTOR * c,
                 raise_clk=raise_clk,
                 expect_raise_clk_min=ALERT_RISE_CLK_MIN,

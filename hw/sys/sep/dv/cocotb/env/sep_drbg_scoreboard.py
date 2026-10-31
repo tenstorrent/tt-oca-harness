@@ -303,6 +303,11 @@ class SepDrbgScoreboard:
             # CHK3: capture the seed on the REAL CSRNG seed handshake
             # (seed_valid && es_ack), not merely seed_valid -- the value the CSRNG
             # actually accepted.
+            # MODELLING DEPENDENCY: the instantiate/reseed BOUNDARY of the CHK4
+            # golden is the same handshake, taken from the DUT (seed_accepted). A
+            # DUT that accepts a seed but does not apply it, or applies one it did
+            # not accept, still mismatches on the next genbits block; what CHK4
+            # cannot see is the handshake itself landing at the wrong time.
             cocotb.start_soon(
                 self._mon_handshake_rise(
                     "CHK3_seed",

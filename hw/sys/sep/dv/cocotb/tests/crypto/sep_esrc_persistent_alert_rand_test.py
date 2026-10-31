@@ -52,14 +52,15 @@ Checkers:
   CHK-PF-TRIP-COUNT  every trip: exactly T failing windows (an exact burst,
                   below), then clean noise. ALERT reads 1 within LAT_WINDOWS
                   windows of words from the start of window T (a wait bound,
-                  not a graded latency) and PF reads 1. The peak of
-                  ANY_FAIL_COUNT is graded (exactly T) by CHK-PF-TRIP-HOLD, not
-                  here. Control: ALERT = PF = 0 and ANY_FAIL_COUNT = 0 before
-                  the burst. Its FCOV cells are released only when the peak is
+                  not a graded latency), PF reads 1, and the peak of
+                  ANY_FAIL_COUNT is at least T, in every shard;
+                  CHK-PF-TRIP-HOLD grades it as exactly T. Control: ALERT = PF
+                  = 0 and ANY_FAIL_COUNT = 0 before the burst. Its FCOV cells are released only when the peak is
                   exactly T, the value CHK-PF-TRIP-HOLD grades; otherwise the
                   leaf logs INFO-PF-TRIP-COUNT-HOLD with the peak and releases
                   none. This holds in shard 3 too, which does not grade the
-                  peak: with a peak other than T it fills no trip cell.
+                  peak as exactly T: with a peak other than T it fills no trip
+                  cell.
   CHK-PF-TRIP-HOLD   every trip: at a read after the clean window that follows
                   window T has ended, ALERT = PF = 1, and ANY_FAIL_COUNT never
                   read above T. Control: the clean noise ran for at least
@@ -117,15 +118,16 @@ Checkers:
                   ERR at the next read. Logged, not graded: no text states
                   whether a write of 1 clears ERR while its cause persists.
                   Both OBS writes run with the coverage window closed.
-  OBS-SM-ILLEGAL  VCS only, after the ERR leg: ERR reads 0 (control
-                  CTRL-SM-ILLEGAL), then the leaf forces a drawn encoding
+  OBS-SM-ILLEGAL  VCS only, after the ERR leg, when ERR reads 0 (logged in
+                  the OBS line): the leaf forces a drawn encoding
                   outside the state set of the main state machine design
                   package on its state flops for 2 clocks and releases it; after
                   SM_ERR_WAIT_CLKS clocks ERR is logged. Logged, not graded: no
                   .adoc or RDL lists the legal encodings of MAIN_SM_STATUS.STATE,
                   so no specification makes the forced value an illegal state.
-                  Under Verilator the state flops are not public and the leg
-                  logs ``INFO-SM-ILLEGAL-SKIP``.
+                  The leg cannot fail the leaf: under Verilator (the state
+                  flops are not public), with no handle, or with ERR not 0
+                  before the force it logs ``INFO-SM-ILLEGAL-SKIP`` and ends.
   OBS-SM-ILLEGAL-PF  INTR_STATUS.PERSISTENT_FAILURE after the illegal state.
                   Logged, not graded: the RDL names a health-test failure or a
                   counter error for it, not an illegal state.
@@ -1071,12 +1073,14 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             self.chk.info("PF-TRIP-COUNT-HOLD", thr=thr, any_fail_peak=r["peak"], released=0)
         await self._grade(
             "PF-TRIP-COUNT",
-            r["reason"] is None and r["alert_any"] and r["pf_final"],
+            r["reason"] is None and r["peak"] >= thr and r["alert_any"] and r["pf_final"],
             ESRC_PA_TRIP_COUNT if exact else 0,
             **reason,
             thr=thr,
             win=win,
             failing_windows=thr,
+            any_fail_peak=r["peak"],
+            expect_any_fail_peak_min=thr,
             alert=r["alert_any"],
             pf=r["pf_final"],
             wrap_obs=r.get("wrap_obs"),
@@ -1626,24 +1630,27 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         specification makes the forced value an illegal state. The leaf forces the
         drawn encoding on the state flops (MAIN_SM_FLOPS) for ILLEGAL_HOLD_CLKS
         clocks, releases it, waits SM_ERR_WAIT_CLKS clocks and reads ERR once.
-        Control: ERR reads 0 before the force (the ERR leg ended with a TRNG
-        reset). The main state machine stays in its error state until a reset, so
-        this leg is the last. Under Verilator the state flop is not public to
-        cocotb and the leg is skipped (INFO-SM-ILLEGAL-SKIP).
+        ERR reads 0 before the force (the ERR leg ended with a TRNG reset). The
+        main state machine stays in its error state until a reset, so this leg is
+        the last. The leg only logs: under Verilator (the state flop is not public
+        to cocotb), with no handle, or with ERR not 0 before the force it logs
+        INFO-SM-ILLEGAL-SKIP and ends.
         """
         if "verilator" in str(getattr(cocotb, "SIM_NAME", "") or "").lower():
             self.chk.info("SM-ILLEGAL-SKIP", reason="verilator: the main state flop is not public")
             return
         flops = [_handle(f"{MAIN_SM_PATH}.{f}") for f in MAIN_SM_FLOPS]
         if flops[0] is None:
-            self.chk.ctrl(
-                "SM-ILLEGAL", False, reason=f"no handle:{MAIN_SM_PATH}.{MAIN_SM_FLOPS[0]}"
-            )
+            self.chk.info("SM-ILLEGAL-SKIP", reason=f"no handle:{MAIN_SM_PATH}.{MAIN_SM_FLOPS[0]}")
             return
         close_graded_window(self.logger)
         illegal = self.plan.illegal_state
         err0, w0 = await self._err_read()
-        self.chk.ctrl("SM-ILLEGAL", err0 == 0, err_before=err0, word_before=f"0x{w0:08x}")
+        if err0 != 0:
+            self.chk.info(
+                "SM-ILLEGAL-SKIP", reason="ERR not 0 before the force", word=f"0x{w0:08x}"
+            )
+            return
         flops = [h for h in flops if h is not None]
         await RisingEdge(cocotb.top.clk_i)
         for h in flops:

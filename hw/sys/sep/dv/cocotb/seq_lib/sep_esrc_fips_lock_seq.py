@@ -475,14 +475,11 @@ class SepEsrcFipsLock(SepAxiRegDriver):
     async def read(self, addr: int) -> int:
         return await self._rd(addr)
 
-    async def write_resp(self, addr: int, data: int, *, locked: bool = False) -> int:
+    async def write_resp(self, addr: int, data: int) -> int:
         """Write one word and return the B response code the DUT sent, -1 if none came.
 
         The caller grades the code, so a write that never reached the DUT, or
-        came back non-OKAY, fails the check that relies on it. ``locked`` marks
-        a write that FIPS_LOCK refuses: no text states its B code, so the
-        scoreboard does not grade it and the caller only requires that a B
-        response arrived.
+        came back non-OKAY, fails the check that relies on it.
         """
         seq = SepAxiAccessSeq(
             f"{self._DRIVER_TAG.lower()}_wr",
@@ -491,7 +488,6 @@ class SepEsrcFipsLock(SepAxiRegDriver):
             wdata=data,
             length=4,
             size=self._AXI_SIZE,
-            allow_unverified_write_resp=locked,
         )
         await self.test.start_seq(seq)
         return -1 if seq.timed_out else seq.resp_code
@@ -506,13 +502,13 @@ class SepEsrcFipsLock(SepAxiRegDriver):
     async def try_unlock(self) -> int:
         return await self.write_resp(ESRC_FIPS_LOCK, 0)
 
-    async def poke_reserved_ctrl_bit(self, *, locked: bool = False) -> tuple[int, int, int]:
+    async def poke_reserved_ctrl_bit(self) -> tuple[int, int, int]:
         """CTRL before, B response of the RSVD0 write, CTRL after."""
         cur = await self._rd(ESRC_CTRL)
-        resp = await self.write_resp(ESRC_CTRL, cur | CTRL_RSVD0_BIT, locked=locked)
+        resp = await self.write_resp(ESRC_CTRL, cur | CTRL_RSVD0_BIT)
         return cur, resp, await self._rd(ESRC_CTRL)
 
-    async def write_obs(self, reg: str, enable: int, lane: int = 0, *, locked: bool = False) -> int:
+    async def write_obs(self, reg: str, enable: int, lane: int = 0) -> int:
         """Write RAW_ENABLE of one observe-tap register; LANE_SEL for NOISE_OBS_CTRL.
 
         Returns the B response code; the caller grades it.
@@ -520,9 +516,7 @@ class SepEsrcFipsLock(SepAxiRegDriver):
         fields = {"RAW_ENABLE": enable}
         if reg == "NOISE_OBS_CTRL":
             fields["LANE_SEL"] = lane
-        return await self.write_resp(
-            OBS_CTRL_ADDR[reg], ENTROPY_SOURCE.value(reg, **fields), locked=locked
-        )
+        return await self.write_resp(OBS_CTRL_ADDR[reg], ENTROPY_SOURCE.value(reg, **fields))
 
     async def read_obs(self, reg: str) -> tuple[int, int]:
         """RAW_ENABLE and (NOISE_OBS_CTRL only, else 0) LANE_SEL, read from the DUT."""

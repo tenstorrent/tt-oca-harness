@@ -478,23 +478,20 @@ def _final_stall(rows: list[Row], i: int, min_len: int) -> int | None:
 class _Reg(SepAxiRegDriver):
     """Select and lock register access; ``bresp`` is the B response of the last write.
 
-    A write with ``locked`` set is one the lock refuses. No text states its B code,
-    so the scoreboard does not grade it and the write does not raise; ``bresp`` is
-    -1 when no B response came.
+    Every write must answer OKAY and raises otherwise; ``bresp`` is -1 when no B
+    response came.
     """
 
     _DRIVER_TAG = "SEL"
     bresp = -1
-    locked = False
 
     async def _write_access(self, addr: int, data: int, *, size: int | None, length: int) -> None:
         seq = SepAxiAccessSeq(
-            "sel_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data, length=length, size=size,
-            allow_unverified_write_resp=self.locked,
+            "sel_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data, length=length, size=size
         )  # fmt: skip
         await self.test.start_seq(seq)
         self.bresp = -1 if seq.timed_out else seq.resp_code
-        if not seq.resp_ok and not self.locked:
+        if not seq.resp_ok:
             raise AssertionError(f"SEL write @0x{addr:08x} not OKAY")
 
 
@@ -607,12 +604,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         await self._clocks(1)
 
     # --- bus and waits ---------------------------------------------------------------
-    async def _sel(self, value: int, *, locked: bool = False) -> int:
-        self.reg.locked = locked
-        try:
-            await self.reg._wr(SEL_ADDR, value)
-        finally:
-            self.reg.locked = False
+    async def _sel(self, value: int) -> int:
+        await self.reg._wr(SEL_ADDR, value)
         return await self.reg._rd(SEL_ADDR) & SEL_MASK
 
     async def _clocks(self, n: int) -> None:
@@ -1401,9 +1394,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
     async def _lock_leg(self) -> None:
         """CHK-SEL-LOCK: after the lock write of 1, a write of 0 leaves it at 1, a
         select write leaves the old value, and a TRNG reset leaves the lock at 1. The
-        write of 0 is a legal write of the RW1S field and must answer OKAY (the driver
-        raises otherwise). The select write under the lock must get a B response of
-        any code; no text states that code, so it is logged as OBS-SEL-LOCK-RESP.
+        write of 0 and the select write under the lock must answer OKAY (the driver
+        raises otherwise).
         Controls: the pre-lock write of a lands and a differs from the value held
         before it (the plan draws a away from that value); the TRNG reset probe rises
         and falls (clocks logged)."""
@@ -1421,9 +1413,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         lock1 = await self._lock(LOCK_MASK)
         lock0 = await self._lock(0)
         write0_bresp = resp_name(self.reg.bresp)
-        kept = await self._sel(plan.b, locked=True)
+        kept = await self._sel(plan.b)
         sel_b = self.reg.bresp
-        self.chk.obs("SEL-LOCK-RESP", leg="lock", sel_write_bresp=resp_name(sel_b))
         rise, fall = await self._trng_reset()
         self._ctrl(
             "SEL-LOCK",
@@ -1435,10 +1426,10 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self.pre_global = (lock_r, sel_r)
         self._grade(
             "SEL-LOCK",
-            lock1 == LOCK_MASK and lock0 == LOCK_MASK and kept == plan.a and sel_b >= 0
+            lock1 == LOCK_MASK and lock0 == LOCK_MASK and kept == plan.a and sel_b == RESP_OKAY
             and lock_r == LOCK_MASK and sel_r == plan.a,
             lock=lock1, write0_lock=lock0, write0_bresp=write0_bresp, sel_kept=f"0x{kept:x}",
-            tried=f"0x{plan.b:x}", sel_write_b_seen=int(sel_b >= 0),
+            tried=f"0x{plan.b:x}", sel_write_bresp=resp_name(sel_b),
             after_trng_reset_lock=lock_r, ctrl_sel=f"0x{sel_r:x}", pre_lock_sel=f"0x{pre:x}",
         )  # fmt: skip
 
@@ -1471,14 +1462,12 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
 
     async def _lockfirst_leg(self) -> None:
         """CHK-SEL-LOCKFIRST: with the lock set before any select write, a select write
-        leaves the select at 0x7. That write must get a B response of any code; no
-        text states the code, so it is logged as OBS-SEL-LOCK-RESP.
+        leaves the select at 0x7 and answers OKAY.
         Control: after a rst_ni pulse a select write lands."""
         self._open()
         lock = await self._lock(LOCK_MASK)
-        sel = await self._sel(0, locked=True)
+        sel = await self._sel(0)
         sel_b = self.reg.bresp
-        self.chk.obs("SEL-LOCK-RESP", leg="lockfirst", sel_write_bresp=resp_name(sel_b))
         close_graded_window(self.logger)
         await self._global_reset()
         lock_after = await self.reg._rd(LOCK_ADDR) & LOCK_MASK
@@ -1487,10 +1476,10 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         self._ctrl("SEL-LOCKFIRST", ctrl, ctrl_after_reset_write_lands=int(ctrl))
         self._grade(
             "SEL-LOCKFIRST",
-            lock == LOCK_MASK and sel == SEL_RESET and sel_b >= 0,
+            lock == LOCK_MASK and sel == SEL_RESET and sel_b == RESP_OKAY,
             lock=lock,
             write="0x0",
-            sel_write_b_seen=int(sel_b >= 0),
+            sel_write_bresp=resp_name(sel_b),
             sel=f"0x{sel:x}",
             ctrl_after_reset_write_lands=int(ctrl),
         )

@@ -58,9 +58,9 @@ Checkers:
                       value fails); the inject is then released, and the cell wrote
                       more than rate message bytes.
   CHK-KMAC-REGWEN     CFG_REGWEN 1 in the idle window, 0 in absorb; a double
-                      write of CFG_SHADOWED in absorb leaves it at C. The line
-                      logs the AXI response of each locked write
-                      (``locked_wr_resp``, not graded). Control: the idle
+                      write of CFG_SHADOWED in absorb leaves it at C, and each
+                      locked write answers OKAY (``locked_wr_resp``).
+                      Control: the idle
                       write reads back C. A second line (``part=squeeze``)
                       grades CFG_REGWEN 0 on the read after ``kmac_done``,
                       with the STATUS read before it showing ``sha3_squeeze``
@@ -147,6 +147,7 @@ from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
+from env.sep_fabric_common import RESP_OKAY
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_kmac_stream_pass
 from env.sep_kmac_golden import sha3, shake
 from env.sep_seeded_rng import SepSeededRng
@@ -729,7 +730,10 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         cfg_after = await self._rd(KMAC_CFG_SHADOWED) & _CFG_MASK
         self._ok(
             "KMAC-REGWEN",
-            idle_regwen == 1 and absorb_regwen == 0 and cfg_after == (c_word & _CFG_MASK),
+            idle_regwen == 1
+            and absorb_regwen == 0
+            and cfg_after == (c_word & _CFG_MASK)
+            and all(r == RESP_OKAY for r in locked_wr_resp),
             **tag,
             idle_regwen=idle_regwen,
             absorb_regwen=absorb_regwen,
@@ -953,15 +957,12 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             )
 
     async def _wr_resp(self, addr: int, data: int) -> int:
-        """One refused 32-bit register write; returns its AXI response code, not graded."""
+        """One 32-bit register write; returns its AXI response code.
+
+        The scoreboard requires OKAY, also for a write that CFG_REGWEN gates.
+        """
         seq = SepAxiAccessSeq(
-            "kmac_rg_wr",
-            op=SepAxiOp.WRITE,
-            addr=addr,
-            wdata=data,
-            length=4,
-            size=_AXSIZE[4],
-            allow_unverified_write_resp=True,
+            "kmac_rg_wr", op=SepAxiOp.WRITE, addr=addr, wdata=data, length=4, size=_AXSIZE[4]
         )
         await self.start_seq(seq)
         return seq.resp_code

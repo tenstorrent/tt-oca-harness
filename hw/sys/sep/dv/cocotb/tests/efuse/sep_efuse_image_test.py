@@ -16,11 +16,10 @@ multi-bit W1S program persistence across a resense.
 Checkers:
   CHK-PRE-SENSE-FAIL-CLOSED  FEAT_CTRL reads the whole 64-bit zero (INVALID
                       profile) while sep_fuse_sense_done_o is 0 (base test).
-  CHK-SENSE-SHADOW    after sense-done every shadow word matches the image
-                      golden. The sep_fuse_sense_done field of
-                      SEP_FUSE_SENSE_STATUS (OBS-SENSE-STATUS-DONE) and the
-                      reserved bits (OBS-SENSE-STATUS-RSVD) have no stated value
-                      and are logged.
+  CHK-SENSE-SHADOW    after sense-done, the sep_fuse_sense_done field of
+                      SEP_FUSE_SENSE_STATUS reads 1 and every shadow word matches
+                      the image golden. The reserved bits have no stated value
+                      and are logged OBS.
   CHK-PRE-SENSE-OPEN  FEAT_CTRL reads the fail-closed zero before sense-done and
                       the image golden after it.
   CHK-OTP-DIRECT      the burned bits read 1 in a direct OTP read before the resense.
@@ -29,9 +28,9 @@ Checkers:
                       before the programs (no random burn draws them), and the
                       direct OTP read of that word equals the golden word
                       exactly before and after.
-  CHK-W1S-PERSIST     after the resense the shadow equals the image plus every
-                      W1S bit; the done field and the reserved bits are logged
-                      OBS.
+  CHK-W1S-PERSIST     after the resense the sep_fuse_sense_done field of
+                      SEP_FUSE_SENSE_STATUS reads 1 and the shadow equals the
+                      image plus every W1S bit; the reserved bits are logged OBS.
 
 FCOV graded window (owner sep_efuse_image_test): it opens after the reset
 release and before the pre-sense FEAT_CTRL read, and closes after
@@ -127,23 +126,19 @@ class sep_efuse_image_test(sep_base_test):
         set_efimg_pass(False, self.logger)
 
     async def _check_sense_shadow(self, img: SepEfuseImage, chk: str = "CHK-SENSE-SHADOW") -> None:
-        """``chk``: every shadow word after sense-done.
+        """``chk``: the done field of the status word and every shadow word after sense-done.
 
-        No specification line states the value of the ``sep_fuse_sense_done`` field
-        of ``SEP_FUSE_SENSE_STATUS`` after sense-done, so it is logged
-        (OBS-SENSE-STATUS-DONE). The reserved bits have no stated reset, so they are
-        logged (OBS-SENSE-STATUS-RSVD). Neither is graded.
+        The reserved bits of ``SEP_FUSE_SENSE_STATUS`` have no stated reset, so
+        they are logged (OBS-SENSE-STATUS-RSVD) and not graded.
         """
         seq = _ShadowStatusSeq(img)
         mark = self.sb_mark()
         await self.start_seq(seq)
         assert seq.status is not None, f"{chk} FAIL: no SEP_FUSE_SENSE_STATUS read"
         done_field = seq.status & _SENSE_DONE_MASK
-        self.logger.info(
-            "OBS-SENSE-STATUS-DONE: %s sep_fuse_sense_done field=0x%x SEP_FUSE_SENSE_STATUS=0x%08x",
-            chk,
-            done_field,
-            seq.status,
+        assert done_field == _SENSE_DONE_MASK, (
+            f"{chk} FAIL: sep_fuse_sense_done field=0x{done_field:x} "
+            f"(SEP_FUSE_SENSE_STATUS=0x{seq.status:08x}), expected 0x{_SENSE_DONE_MASK:x}"
         )
         self.assert_sb_judged(mark, chk)
         done = int(self.rd(cocotb.top.sep_fuse_sense_done_o))
@@ -154,8 +149,11 @@ class sep_efuse_image_test(sep_base_test):
         )
         assert done == 1, f"{chk} FAIL: sep_fuse_sense_done_o={done} after the status read"
         self.logger.info(
-            "%s PASS: sep_fuse_sense_done_o=%d shadow judged=%d/%d reads",
+            "%s PASS: sep_fuse_sense_done=0x%x (expected 0x%x) "
+            "sep_fuse_sense_done_o=%d shadow judged=%d/%d reads",
             chk,
+            done_field,
+            _SENSE_DONE_MASK,
             done,
             judged,
             shadow_reads,
