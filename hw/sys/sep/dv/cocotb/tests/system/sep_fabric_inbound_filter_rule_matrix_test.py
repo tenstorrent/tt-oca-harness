@@ -846,9 +846,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         dut.rst_ni.value = 1
         await ClockCycles(dut.clk_i, 2)
-        presense = self._presense_si_read_start()
+        pre_sense = self._presense_si_read_start()
         await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
-        await self._presense_si_read_log(*presense)
+        await self._presense_si_read_log(*pre_sense)
 
     async def _presense_si_read_log(self, addr: int, rec: dict, watch, read) -> None:
         """OBS-SI-PRESENSE-READ: no line states what an SI read before sensing ends gets."""
