@@ -574,6 +574,9 @@ timeout_sec = 3600
 tags = ["fabric", "decode", "memory_map", "system", "subsystem", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
+# +sep_inbound_atop_waive: one SI write carries AWATOP into the inbound demuxes, which
+# assume AWATOP 0.
+args = ["+sep_inbound_atop_waive"]
 
 [[tests]]
 # Secure DMA copy and hash matrix: widths, address modes, chunks, beat shape on the DMA master and the destination image. The seed draws the transfer.

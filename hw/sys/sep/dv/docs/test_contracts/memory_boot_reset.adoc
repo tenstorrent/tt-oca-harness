@@ -283,7 +283,7 @@ claimed.
 
 *Area*: Memory, boot, reset, WDT, clock
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, 3 seeds
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`, `+sep_inbound_atop_waive` (the AWATOP write reaches inbound demuxes that assume AWATOP 0), 3 seeds
 
 *Source Module*: `sep_sram_inbound_burst_attr_test`
 

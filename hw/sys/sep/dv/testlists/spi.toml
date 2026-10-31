@@ -38,7 +38,9 @@ timeout_sec = 1800
 tags = ["spi", "csr", "subsystem", "sep_spec_log", "fcov_gate_owner", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
+# +sep_spi_rsvd_speed_waive: the CMDINVAL leg with SPIEN=1 clears CMDINVAL with a
+# reserved-SPEED COMMAND queued, and the core then sees the reserved speed.
+args = ["+skip_fuse_sense", "+sep_spi_rsvd_speed_waive"]
 
 [[tests]]
 name = "sep_spi_ot_dma_rx_test"

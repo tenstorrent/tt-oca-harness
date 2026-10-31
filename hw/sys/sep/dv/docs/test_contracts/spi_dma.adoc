@@ -805,7 +805,7 @@ both-tools leaf. A leaf that asserts `rst_ni` runs with real fuse sense (no
 
 *Area*: SPI and DMA
 
-*Run mode*: `no_cpu` (`lsu_stub_all_live`) with `+skip_fuse_sense`, as the open test, 3 seeds, the seed count of the open test entry; tool: both (Verilator and VCS); the entry of the open test in `spi.toml`, with no testlist entry added
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) with `+skip_fuse_sense` and `+sep_spi_rsvd_speed_waive`, as the open test, 3 seeds, the seed count of the open test entry; tool: both (Verilator and VCS); the entry of the open test in `spi.toml`, with no testlist entry added
 
 *Source Module*: `sep_spi_ot_host_csr_irq_rand_test`
 

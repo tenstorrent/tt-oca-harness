@@ -4907,6 +4907,18 @@ use it" names the entries whose checks need the hook.
 |The assertion control of `tb_top`
 |`sep_cpu_reset_retention_test` (both entries)
 |<<sep-vplan-phase3-mem-boot-reset,Memory, boot, reset>>
+|`+sep_inbound_atop_waive`
+|Existing bench hook
+|Turns off the `NoAtopAllowed` assumptions of the SMN-inbound AXI demuxes for the whole run. They are built without atomic support; the leaf logs the response to an atomic write (`OBS-ROW-ATTR`, `OBS-SRAM-IN-ATOP`). VCS only.
+|The assertion control of `tb_top`
+|`sep_fabric_row_response_matrix_test`, `sep_sram_inbound_burst_attr_test`
+|<<sep-vplan-phase3-fabric-remap,Fabric, remap>>
+|`+sep_spi_rsvd_speed_waive`
+|Existing bench hook
+|Turns off the SPI host core assertions `ValidSpeed_A` and `SpeedValid` for the whole run. A reserved-SPEED COMMAND queued behind CMDINVAL reaches the core when the bit is cleared; the leaf logs the result (`OBS-SPI-CMDINVAL-SPIEN1`). VCS only.
+|The assertion control of `tb_top`
+|`sep_spi_ot_host_csr_irq_rand_test`
+|<<sep-vplan-phase3-spi-dma,SPI, DMA>>
 |`jtag_id_i` drive
 |Top-port drive
 |`jtag_id_i[31:1]` from the TB input `jtag_id_i`; an undriven or unknown value drives 0. It shows that no shadow word carries the ID.

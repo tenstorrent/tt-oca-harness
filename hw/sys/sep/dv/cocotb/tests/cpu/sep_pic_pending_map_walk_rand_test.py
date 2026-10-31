@@ -1290,7 +1290,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             p2["o2a"],
             p2["idle0"],
             p2["idle1"],
-            p2["l2e"],
+            int(p2["l2e"]),
         )
         exp = (w[27], w[28], w[31], w[32], w[2], w[6], w[33], w[34], w[38])
         assert got == exp, f"firmware ran params {got}, patched {exp}"

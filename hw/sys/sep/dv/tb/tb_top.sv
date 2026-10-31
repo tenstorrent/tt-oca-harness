@@ -275,6 +275,32 @@ module sep_uvm_top
             $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
                 .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
         end
+        // The SMN-inbound demuxes are built without atomic support and assume
+        // AWATOP 0 at their input. No SEP document states the fabric response
+        // to an atomic write, so a test that drives m_axi_awatop logs it.
+        if ($test$plusargs("sep_inbound_atop_waive")) begin
+            $display("[tb] SMN-inbound NoAtopAllowed checks off (+sep_inbound_atop_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_system_peripherals.u_inbound_filter.u_axi_demux
+                .i_demux_simple.genblk1.NoAtopAllowed);
+            $assertoff(0, `SEP_CORE.u_sep_system_peripherals.u_sep_system_peripherals_xbar_wrapper
+                .u_sep_system_peripherals_xbar.u_axi_xbar.i_xbar_unmuxed.gen_slv_port_demux[1]
+                .i_axi_demux.i_demux_simple.genblk1.NoAtopAllowed);
+            $assertoff(0, `SEP_CORE.u_sep_local_axi_xbar_wrapper.u_sep_local_axi_xbar.u_axi_xbar
+                .i_xbar_unmuxed.gen_slv_port_demux[4].i_axi_demux.i_demux_simple.genblk1
+                .NoAtopAllowed);
+            $assertoff(0, `SEP_CORE.u_sram_burst_demux.i_demux_simple.genblk1.NoAtopAllowed);
+        end
+        // The SPI host keeps a reserved-SPEED COMMAND queued behind
+        // ERROR_STATUS.CMDINVAL and pops it to the core when the bit is cleared;
+        // the core assumes a valid speed. No document states the result after
+        // the clear, so a test that logs it turns the speed checks off.
+        if ($test$plusargs("sep_spi_rsvd_speed_waive")) begin
+            $display("[tb] SPI host reserved-speed checks off (+sep_spi_rsvd_speed_waive)");
+            $assertoff(0, `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.u_spi_core.fsm
+                .ValidSpeed_A);
+            $assertoff(0, `SEP_CORE.u_sep_io.u_sep_ot_spi_wrap.u_spi_host.u_spi_core
+                .shift_register.SpeedValid);
+        end
         // SHA-256-only prim_sha2_32 (MultimodeEn=0) ties inner digest_mode_i to
         // SHA2_None. ValidDigestModeFlag_A requires {SHA2_256, SHA2_384, SHA2_512}
         // on every hash beat, so it is not a contract on those instances. HMAC

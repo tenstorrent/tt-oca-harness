@@ -1101,8 +1101,10 @@ class sep_sram_axi_shape_matrix_test(sep_base_test):
             return sram._id("gen_ram_inst[0].u_mem", extended=False).mem
 
     async def _leg_pass(self, leg: str) -> None:
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
         set_open_value_leg_pass(leg, self.logger)
-        await ClockCycles(cocotb.top.clk_i, 2)
+        await ClockCycles(clk, 2)
         set_open_value_leg_pass(None, self.logger)
 
     async def _drive_strb(self, strb: int, seen: dict) -> None:
