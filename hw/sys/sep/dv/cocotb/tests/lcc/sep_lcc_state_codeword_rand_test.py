@@ -79,7 +79,12 @@ Requirements; ``doc/integrator/src/smu-sep.adoc``, ``dbg_disable_o`` polarity):
 Nothing is graded after an inject input falls: the specification states no release
 of ``sep_ras_o.lc_sigint_err``. After the first epoch of the walk the leaf logs
 ``sep_ras_o.lc_sigint_err``, ``FEAT_CTRL`` and ``lcc_feat_ctrl_probe_o``
-(``OBS-LC-SIGINT-RELEASE``). The value of ``lc_state_o`` in each epoch is logged
+(``OBS-LC-SIGINT-RELEASE``). An epoch that finds the error still 1 or
+``lcc_feat_ctrl_probe_o`` off the row of its walk first restores a clean start: a cold
+reset and, in the demoted walk, the demotion write again (``INFO-SIGINT-RESTORE``).
+``CTRL-SIGINT-FRESH`` is the bench control of that start: the error at 0 and the probe at
+the row of the walk. Each DEMOTE write response is logged (``OBS-LCC-WR-RESP``), not
+graded. The value of ``lc_state_o`` in each epoch is logged
 (``OBS-LC-PORT-SIGINT``): no text states the port under the error.
 ``sep_ras_o.lc_sigint_err`` under the filter-side inject is logged
 (``OBS-LC-SIGINT-FILTER``) and not graded.
@@ -262,11 +267,26 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         """One inject epoch: raise the error on the pairs of ``mask`` at ``value``."""
         dut = cocotb.top
         n, sip, sys_ = walk["n"], walk["sip"], walk["sys"]
-        await RisingEdge(dut.clk_i)
-        await ReadOnly()
-        pre_sigint = self._port("lcc_sigint_err_probe_o")
-        v = dut.lcc_feat_ctrl_probe_o.value
-        pre_feat = int(v) if v.is_resolvable else None
+        cell = dict(
+            n=f"0x{n:x}",
+            mask=f"0x{mask:x}",
+            value=value,
+            demoted=walk["dem_label"],
+        )
+        pre_sigint, pre_feat = await self._pre_sample()
+        if pre_sigint != 0 or pre_feat != walk["pre_exp"]:
+            self.chk.info(
+                "SIGINT-RESTORE",
+                **cell,
+                sigint=pre_sigint,
+                feat="x" if pre_feat is None else f"0x{pre_feat:016x}",
+                exp_feat=f"0x{walk['pre_exp']:016x}",
+                action="cold_reset" + ("+demotion" if "dem_written" in walk else ""),
+            )
+            await self._cold_reset()
+            if "dem_written" in walk:
+                await self._write_demotion(walk["dem_written"])
+            pre_sigint, pre_feat = await self._pre_sample()
         await RisingEdge(dut.clk_i)
         self._set_pin(dut, "lc_sigint_pair_mask_i", mask)
         self._set_pin(dut, "lc_sigint_bad_value_i", value)
@@ -310,12 +330,6 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         if applied is not None:
             self.applied += 1
         fail_row = feat_ctrl_profile(n, sip, sys_, sigint_err=1)
-        cell = dict(
-            n=f"0x{n:x}",
-            mask=f"0x{mask:x}",
-            value=value,
-            demoted=walk["dem_label"],
-        )
         self.chk.ctrl(
             "SIGINT-FRESH",
             pre_sigint == 0 and pre_feat == walk["pre_exp"],
@@ -372,7 +386,6 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
                 exp_2=f"0x{exp[2]:016x}",
                 got_2=f"0x{dem_rb[2]:016x}",
                 before_2=f"0x{before[2]:016x}",
-                wr_resp=",".join(str(walk["dem_resp"][r]) for r in (1, 2)),
             )
         if not self.release_logged:
             self.release_logged = True
@@ -386,6 +399,13 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
                 feat=f"0x{rel_feat:016x}",
                 probe=f"0x{rel_probe:016x}",
             )
+
+    async def _pre_sample(self) -> tuple[int | None, int | None]:
+        """``lcc_sigint_err_probe_o`` and ``lcc_feat_ctrl_probe_o`` at the next clock."""
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        v = cocotb.top.lcc_feat_ctrl_probe_o.value
+        return self._port("lcc_sigint_err_probe_o"), int(v) if v.is_resolvable else None
 
     def _dec_broken(self) -> tuple[int, int | str] | None:
         """Broken pairs at the lifecycle decoder input: (pair mask, rail value).
@@ -417,6 +437,12 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         for mask, value in order:
             await self._epoch(mask, value, walk)
 
+    async def _write_demotion(self, written: dict[int, int]) -> None:
+        """64-bit write of ``written[r]`` to ``DEMOTE_<r>``; the response is logged only."""
+        for r in (1, 2):
+            resp = await self.fd.wr_graded_by_readback(DEMOTE_ADDR[r], written[r], length=8)
+            self.chk.obs("LCC-WR-RESP", reg=f"DEMOTE_{r}", wdata=f"0x{written[r]:016x}", resp=resp)
+
     async def _set_demotion(self) -> dict:
         """Write the drawn demotion with one ``rsvd`` marker bit in each register."""
         await RisingEdge(cocotb.top.clk_i)
@@ -425,10 +451,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             r: (DEMOTE_BIT if dsel[r - 1] else 0) | (1 << self.rng.choice(RSVD_BITS))
             for r in (1, 2)
         }
-        resp = {
-            r: await self.fd.wr_graded_by_readback(DEMOTE_ADDR[r], written[r], length=8)
-            for r in (1, 2)
-        }
+        await self._write_demotion(written)
         before = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
@@ -439,7 +462,6 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             "dsel": dsel,
             "label": label,
             "written": written,
-            "resp": resp,
             "before": before,
             "pairs": pairs,
         }
@@ -514,7 +536,6 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             ),
             dem_written=d["written"],
             dem_before=d["before"],
-            dem_resp=d["resp"],
             pre_exp=feat_ctrl_profile(
                 n, sip, sys_, demote_1=d["dsel"][0], demote_2=d["dsel"][1]
             ).value,
@@ -608,7 +629,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         open_bad = [f"{k}={opened[k]}" for k in GATED_DBG if opened[k] != 0]
         pre_open = [f"{lbl}:{k}" for lbl, d, _f in self.pre_levels for k in GATED_DBG if d[k] == 0]
         if not pre_open:
-            self.chk.obs(
+            self.chk.info(
                 "DBG-DISABLE-NODISC",
                 reason="every gated port read 1 before both walks",
                 walks=len(self.pre_levels),
@@ -643,7 +664,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
                 lbl for lbl, _d, f in self.pre_levels if f[k] is not None and f[k] != closed[k]
             ]
             if not moved:
-                self.chk.obs(
+                self.chk.info(
                     "FUSE-DFT-NODISC",
                     port=FUSE_PORTS[k],
                     reason="the port read its closed control before both walks",

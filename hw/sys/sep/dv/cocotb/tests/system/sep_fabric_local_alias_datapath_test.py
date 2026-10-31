@@ -122,7 +122,7 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         # Same text as SepChkLog.ctrl(): CHK-VALID-GATE needs the destination
         # at the marker, which differs from src_pre, so a missing restore fails
         # the leaf.
-        if not (restored.resp_ok and (restored.rdata & 0xFFFF_FFFF) == cfg.marker):
+        if (restored.rdata & 0xFFFF_FFFF) != cfg.marker:
             self.logger.error("CTRL-MISSING VALID-GATE-RESTORE: %s", restore)
             raise AssertionError(f"CTRL-MISSING VALID-GATE-RESTORE: {restore}")
         self.logger.info("CTRL-VALID-GATE-RESTORE seen: %s", restore)

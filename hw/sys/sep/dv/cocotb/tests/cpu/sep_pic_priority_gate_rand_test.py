@@ -99,8 +99,9 @@ Open-value leg (logged, not graded): the priord flip leg arms a drawn source
 set at drawn ``meipl`` values (never the never value of either order) in one
 order, raises the sources with mstatus.MIE 0, flips priord with no ``meipl``
 write and sets mstatus.MIE. ``CTRL-PRIORD-PENDING`` (fails the leaf) needs
-the drawn set to read 1 in ``meip`` before the flip, 0 before the raise, and
-no handler run with mstatus.MIE 0. ``CTRL-PRIORD-FLIP`` (fails the leaf)
+``mpiccfg.priord`` to read the drawn starting order, the drawn set to read 1
+in ``meip`` before the flip, 0 before the raise, and no handler run with
+mstatus.MIE 0. ``CTRL-PRIORD-FLIP`` (fails the leaf)
 needs ``mpiccfg.priord`` to read the flipped order after the write.
 ``OBS-PRIORD-PENDING`` logs the first claimed source and the handler order,
 with the winner of each order from the priority model for reference. After
@@ -642,10 +643,12 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         body = (
             f"seed={cfg.seed} meip=0x{meip:x} expect=0x{want:x} set=0x{kv.get('set', 0):x} "
             f"meip_before=0x{kv.get('meip_before', 0):x} raised={kv.get('raised')} "
-            f"runs={kv.get('runs')} records={len(recs)}"
+            f"runs={kv.get('runs')} priord={kv.get('priord')} priord_expect={cfg.pf_from} "
+            f"records={len(recs)}"
         )
         reach = (
-            kv.get("set") == want
+            int(kv.get("priord", -1)) == cfg.pf_from
+            and kv.get("set") == want
             and meip == want
             and kv.get("meip_before") == 0
             and int(kv.get("raised", -1)) == len(cfg.pf_srcs)
