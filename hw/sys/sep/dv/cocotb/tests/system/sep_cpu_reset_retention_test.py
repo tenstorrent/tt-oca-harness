@@ -103,8 +103,9 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           registers written before the run read their written
                           values after the ``SW_RESET_N`` engine reset and the
                           pulse (``reset_controller.adoc:44-49``, SW_RESET_N
-                          fields table: no SPI or DMA bit). A seed whose every
-                          run takes the cold reset logs ``OBS-BLOCKED``.
+                          fields table: no SPI or DMA bit). The WDT pulse
+                          of the "before" band cannot cut the write, so every
+                          seed has such a run; a leaf with none fails.
   CHK-WDT-COLD-RECOVER    last leg, every seed and build: a ``wdt_rst_ni`` pulse
                           lands while an accepted ``SW_RESET_N`` write has its B
                           outstanding and is released before the calibrated B
@@ -116,8 +117,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           bound after that B. The B of the cut write is logged,
                           not graded (OBS-WDT-INFLIGHT).
   CHK-MBX-CPURST          after each pulse sequence: the word pushed into one
-                          drawn mailbox before the sequence pops back OKAY and
-                          equal. The mailboxes are system peripherals
+                          drawn mailbox before the sequence pops back equal (the
+                          read response code is logged in the same line). The mailboxes are system peripherals
                           (``fabric.adoc``, Fabric Topology), which take
                           ``sep_reset_n`` (``clk_rst.adoc``, Reset
                           Architecture); a watchdog reset does not assert it,
@@ -159,11 +160,15 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
 
 Controls (not counted): ``CTRL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
-``sep_reset_n``); ``CTRL-DEMOTE-COLD-CLEAR`` (the ``rst_ni`` pulse at the end of
-the demotion-hold leg returns ``DEMOTE_1`` and ``DEMOTE_2`` to their RDL reset
-value, so the readback of CHK-DEMOTE-HELD is live); ``CTRL-JTAG-TRST-EDGE``
-(``jtag_trst_probe_o`` falls and then rises in the ``jtag_trst_ni`` pulse).
-Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
+``sep_reset_n``); ``CTRL-BANK-WRITE`` (each scratch bank reads its drawn words
+after the write); ``CTRL-OVL-ARMED`` (the domain-D probe reads its armed
+non-reset value before each overlap run); ``CTRL-DMA-COLD-MID`` (``STATUS``
+reads BUSY=1 and DONE=0 before the cold reset, which falls less than one
+calibrated copy time after GO); ``CTRL-DEMOTE-COLD-CLEAR`` (the ``rst_ni`` pulse
+at the end of the demotion-hold leg returns ``DEMOTE_1`` and ``DEMOTE_2`` to
+their RDL reset value, so the readback of CHK-DEMOTE-HELD is live);
+``CTRL-JTAG-TRST-EDGE`` (``jtag_trst_probe_o`` falls and then rises in the
+``jtag_trst_ni`` pulse). Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
 ``REFERENCE_COUNTER`` after each event). The DBG lines of CHK-BANK and
 CHK-CPU-RST-DBG take credit only after CHK-DBG-SYNC passes.
 
@@ -468,6 +473,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         "CHK-DMA-COLDRST",
         "CHK-DMA-COLDRST-RECOVER",
         "CHK-WDT-COLD-RECOVER",
+        "CHK-SWRST-KEEP",
         "CHK-MBX-CPURST",
         "CHK-NMI-COLD",
         "CHK-BANK",
@@ -742,10 +748,19 @@ class sep_cpu_reset_retention_test(sep_base_test):
         t0 = None
         await self.dma.go()
         t0 = self.clk
-        st = await self.dma.poll_status(
-            lambda s: s.done or s.error, self.dma.done_bound(COPY_BYTES), "cal"
-        )
+        # Each STATUS poll is timed: DONE rose after the poll before the last one
+        # was issued, so the copy runs for at least C - 2 x the slowest poll.
+        self.lat_st = 0
+        for _ in range(self.dma.done_bound(COPY_BYTES)):
+            t_rd = self.clk
+            st = await self.dma.read_status()
+            self.lat_st = max(self.lat_st, self.clk - t_rd)
+            if st.done or st.error:
+                break
+        else:
+            raise AssertionError(f"calibration copy did not end: {st.fmt()}")
         self.c = self.clk - t0
+        self.c_run = self.c - 2 * self.lat_st
         if st.error:
             raise AssertionError(f"calibration copy ended with ERROR: {st.fmt()}")
         await self.dma.wr(_D.addr("STATUS"), ST_DONE | ST_CHUNK_DONE)
@@ -761,9 +776,22 @@ class sep_cpu_reset_retention_test(sep_base_test):
             raise AssertionError(
                 f"calibration: C={self.c} does not exceed 8 x widest pulse {widest}"
             )
-        self.copy_delay = self.c // 4 + int(self.plan.f_c * (self.c // 2))
+        # The cold leg reads STATUS once after the delay and then pulses rst_ni, so
+        # the delay range ends 4 x the slowest poll before the shortest copy end.
+        span = min(self.c // 2, self.c_run - 4 * self.lat_st - self.c // 4)
+        if span <= 0:
+            raise AssertionError(
+                f"calibration: C={self.c} leaves no delay range "
+                f"(slowest STATUS read {self.lat_st} clocks)"
+            )
+        self.copy_delay = self.c // 4 + int(self.plan.f_c * span)
         self.logger.info(
-            "INFO-DRAW-SCALED copy_delay=%d (f_c=%.6f C=%d)", self.copy_delay, self.plan.f_c, self.c
+            "INFO-DRAW-SCALED copy_delay=%d (f_c=%.6f C=%d span=%d status_read_max=%d)",
+            self.copy_delay,
+            self.plan.f_c,
+            self.c,
+            span,
+            self.lat_st,
         )
 
     async def _program_copy(self) -> dict[str, int]:
@@ -865,10 +893,10 @@ class sep_cpu_reset_retention_test(sep_base_test):
             data = int(rd.rdata) & ((1 << 64) - 1)
             self._chk(
                 "CHK-MBX-CPURST",
-                rd.resp_code == RESP_OKAY and data == self.mbx_word,
+                data == self.mbx_word,
                 f"event={event} mbox={self.mbx_m} status=0x{int(st.rdata) & 0xFFFF_FFFF:x} "
                 f"status_resp={RESP_NAME[st.resp_code]} data=0x{data:016x} "
-                f"data_resp={RESP_NAME[rd.resp_code]} expect=OKAY/0x{self.mbx_word:016x}",
+                f"data_resp={RESP_NAME[rd.resp_code]} expect=0x{self.mbx_word:016x}",
             )
             await self._acc64(SepAxiOp.WRITE, self._mbx("out", "WRITE_DATA"), self.mbx_word)
         nmi = await self._rd(NMI_VEC)
@@ -900,6 +928,12 @@ class sep_cpu_reset_retention_test(sep_base_test):
         for name, addrs in banks:
             for a, v in zip(addrs, self.plan.scratch[name]):
                 await self._wr(a, v)
+            got = [await self._rd(a) for a in addrs]
+            self._ctl(
+                "CTRL-BANK-WRITE",
+                got == list(self.plan.scratch[name]),
+                f"bank={name} got=" + ",".join(f"0x{v:08x}" for v in got),
+            )
 
     async def _bank_ctl(self, event: str) -> None:
         """CHK-BANK: the scratch banks after a reset event (``cpu.adoc``, Dual Scratch
@@ -1090,6 +1124,14 @@ class sep_cpu_reset_retention_test(sep_base_test):
             await self._arm_probe(_BY_NAME[sib], (n % 3) + 1)
             for name in KEEP_PROBES:
                 await self._arm_probe(_BY_NAME[name], (n % 3) + 1)
+            pd_arm = _BY_NAME[d]
+            got = await self.pd.read(pd_arm)
+            self._ctl(
+                "CTRL-OVL-ARMED",
+                got == self.armed[d] & pd_arm.mask and got != pd_arm.reset & pd_arm.mask,
+                f"dom={d} probe=0x{pd_arm.addr:08x} got=0x{got:x} "
+                f"armed=0x{self.armed[d] & pd_arm.mask:x} reset=0x{pd_arm.reset & pd_arm.mask:x}",
+            )
             await self._write_banks()
             off = int(run.f_o * self.tiso)
             if run.band == "before":
@@ -1268,10 +1310,14 @@ class sep_cpu_reset_retention_test(sep_base_test):
             if cold:
                 await self._rearm_after_cold()
             await self._bank_ctl(f"{run.cls}+COLD" if cold else run.cls)
+        # The WDT pulse of the "before" band ends before the write's AW handshake,
+        # so it cannot cut the write and its run takes no cold reset.
         if n_keep == 0:
-            self.logger.info(
-                "OBS-BLOCKED CHK-SWRST-KEEP: every overlap run took the cold reset before "
-                "the release write"
+            self._chk(
+                "CHK-SWRST-KEEP",
+                False,
+                "every overlap run took the cold reset before the release write, the "
+                "WDT before-band run included",
             )
 
     async def _chk_swrst_keep(self, d: str, cls: str, band: str) -> None:
@@ -1898,6 +1944,13 @@ class sep_cpu_reset_retention_test(sep_base_test):
         t_go = self.clk
         while self.clk < t_go + self.copy_delay:
             await RisingEdge(dut.clk_i)
+        st_mid = await self.dma.read_status()
+        rst_clk = self.clk - t_go
+        self._ctl(
+            "CTRL-DMA-COLD-MID",
+            st_mid.busy == 1 and st_mid.done == 0 and rst_clk < self.c_run,
+            f"{st_mid.fmt()} rst_clk_after_go={rst_clk} copy_run_min={self.c_run} C={self.c}",
+        )
         m = self.taps.mark()
         res = await self.pulse_rst_ni(hold_cycles=self.plan.cold_width)
         for name in ("sep_reset_n", "sep_cpu_reset_n"):

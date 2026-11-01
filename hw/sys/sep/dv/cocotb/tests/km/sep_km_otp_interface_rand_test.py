@@ -30,10 +30,9 @@ Checks (anchor):
                          OTP_DEMOTION_STATE = 0xA, each group {~demote, demote})
   CHK-OTP-LOCK           zero read of every field in m_w | m_c, staged read of
                          the rest, write-one-to-set lock registers (POKE readback)
-  CHK-OTP-LOCK-RESP      every read of a read-locked field completes OKAY: no
-                         SLVERR, DECERR or unknown flag, and at least one read
-                         (``km_csr.rdl:818``: the lock returns zero, it does
-                         not refuse; POKE flags)
+  OBS-OTP-LOCK-RESP      the response flags of each read of a read-locked field
+                         (``km_csr.rdl:818`` states the zero data, not the
+                         response code; POKE flags)
   CHK-OTP-HANDOVER-MASK  control=1: OTP_READ_LOCK = 0x03C (POKE readback)
   CHK-OTP-TM             secure test boot: secrets 0 / all ones, public and
                          life-cycle words kept, OTP_SIGINT quiet (POKE readback,
@@ -271,7 +270,6 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     required_evidence = (
         "CHK-OTP-RD",
         "CHK-OTP-LOCK",
-        "CHK-OTP-LOCK-RESP",
         "CHK-OTP-HANDOVER-MASK",
         "CHK-OTP-TM",
         "CHK-OTP-DEM",
@@ -412,9 +410,9 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         dut.test_en_strap_i.value = strap
         await ClockCycles(dut.clk_i, RESET_HOLD)
         dut.rst_ni.value = 1
-        presense = cocotb.start_soon(self._sample_presense())
+        pre_sense = cocotb.start_soon(self._sample_presense())
         await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
-        self.chk.obs("OTP-PRESENSE", boot=boot, **(await presense))
+        self.chk.obs("OTP-PRESENSE", boot=boot, **(await pre_sense))
         rel = await self._wait_sep_reset_release()
         self.cfg.reset_done.set()
         await ReadOnly()
@@ -507,12 +505,11 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     def _bad_under(self, ro: Readout, eff: int) -> list[str]:
         """Response problems of a readout under the effective lock ``eff``.
 
-        CHK-OTP-LOCK-RESP: a read of a read-locked field completes OKAY with zero
-        data. The read lock defines the data and refuses no read
-        (``hw/ip/key_manager/regs/km_csr.rdl:818``: "Returns zero when the
-        field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD";
-        ``hw/ip/key_manager/doc/architecture.adoc:981-982``), so the access is
-        legal and AXI answers OKAY. The zero data is graded by the caller. A
+        OBS-OTP-LOCK-RESP: the response of a read of a read-locked field. The RDL
+        states only the data (``hw/ip/key_manager/regs/km_csr.rdl:818``: "Returns
+        zero when the field's bit is set in either OTP_READ_LOCK or
+        OTP_READ_LOCK_COLD"), not the response code, so the code is logged and the
+        zero data is graded by the caller. A
         locked read with an unknown bit or a failed clear before it is also a
         data problem: an unknown word would otherwise compare equal to 0. Every
         unlocked read and every register read counts only as a clean OKAY.
@@ -528,9 +525,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
                 for slot in locked
                 if slot in ro.slot_resp
             ]
-            self.chk.ok(
+            self.chk.obs(
                 "OTP-LOCK-RESP",
-                bool(locked) and not bad,
                 readout=ro.label,
                 eff=f"0x{eff:03x}",
                 reads=len(locked),

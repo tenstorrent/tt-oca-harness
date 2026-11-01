@@ -13,12 +13,15 @@ other token-block accesses, and per denied access its address and pattern. The
 required interface-control write of every leaf is a denied ``EFUSE_PROGRAM_CTRL``
 program of p, so the p read at the end grades a refused burn in every leaf.
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
-builds the same plan. JTAG and frontdoor accesses never overlap, except one
-frontdoor read and one JTAG read of the shadow word of p, started on the same clock
-at the end of the leaf. CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the
-frontdoor read OKAY with the staged word; ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires
-both AR handshakes before either read completes; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
-the clock each read completes on and the command count at the post-guard tap.
+builds the same plan. After sense, ``CTRL-JTAG-LC-STATE`` reads the ``LC_STATE``
+shadow word at the frontdoor and requires the code of the drawn state. JTAG and
+frontdoor accesses never overlap, except one frontdoor read and one JTAG read of the
+shadow word of p, started on the same clock at the end of the leaf.
+CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the frontdoor read data
+equal to the staged word, and logs the frontdoor response code;
+``CTRL-JTAG-CONCURRENT-OVERLAP`` requires both AR handshakes before either read
+completes; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data, the clock each read
+completes on and the command count at the post-guard tap.
 
 Contract (``hw/sys/sep/doc/otp_fuse_controller.adoc``, section Shadow Register and
 JTAG Access Control; ``hw/sys/sep/doc/lifecycle_controller.adoc``, row SEP OTP
@@ -27,7 +30,7 @@ Mechanism and Token Submission):
 
   CHK-JTAG          each JTAG access answers as its class requires. The token block
                     (three token arrays, ``TOKEN_EOP``, three match registers)
-                    answers OKAY; in RMA_SIP a token word read returns the word last
+                    is reached; in RMA_SIP a token word read returns the word last
                     written; a match read of a channel with a go returns the SHA-256
                     golden of its last go (Match 0x15, Mismatch 0x2a). A shadow word or
                     interface-control access answers a response that is not OKAY and
@@ -48,7 +51,9 @@ Mechanism and Token Submission):
                     probe), a JTAG write of ``TOKEN_T1`` into the SIP array and a go
                     give the SIP match 0x15 at a frontdoor read.
   CHK-JTAG-CONCURRENT  the concurrent pair at the end of the leaf: JTAG response not
-                    OKAY, frontdoor response OKAY with the staged word.
+                    OKAY, frontdoor data equal to the staged word.
+  OBS-JTAG-ALLOW-RESP  the response code of each token-block access: no TT text states
+                    the response of an access JTAG may make.
 
 The plan draws the result of the go (Match or Mismatch, equal weight) and builds the
 array content that gives it, so the go golden varies over seeds. The other value
@@ -72,7 +77,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
-from env.sep_efuse_image import SHADOW_BASE
+from env.sep_efuse_image import LC_FIELD_MASK, LC_WORD_IDX, SHADOW_BASE, lc_encode
 from env.sep_efuse_plan import (
     CH_CHIPLET,
     CH_SIP,
@@ -180,6 +185,18 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             **extra,
         )
 
+    def _allow_resp(self, acc: dict, resp: int) -> None:
+        """OBS-JTAG-ALLOW-RESP: the response code of a token-block access. No TT text
+        states the response code of an access JTAG may make, so it is logged."""
+        self.chk.obs(
+            "JTAG-ALLOW-RESP",
+            state=self.state,
+            op=acc["op"],
+            tgt=acc["cls"],
+            addr=f"0x{acc['addr']:08x}",
+            resp=resp,
+        )
+
     # -- denied accesses -----------------------------------------------------
 
     async def _denied(self, acc: dict) -> None:
@@ -218,22 +235,13 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         if acc["cls"] == "token_word" and acc["op"] == "wr":
             resp = await self._jwr(acc["addr"], acc["data"])
             self.last_wr[(acc["channel"], acc["index"])] = acc["data"]
-            self._jtag_line(
-                resp == OKAY,
-                acc,
-                "allow",
-                resp,
-                data_ok="na",
-                target_unchanged="na",
-                channel=acc["channel"],
-                index=acc["index"],
-                vector=acc["vector"],
-            )
+            self._allow_resp(acc, resp)
         elif acc["cls"] == "token_word":
             resp, data = await self._jrd(acc["addr"])
             last = self.last_wr[(acc["channel"], acc["index"])]
+            self._allow_resp(acc, resp)
             self._jtag_line(
-                resp == OKAY and data == last,
+                data == last,
                 acc,
                 "allow",
                 resp,
@@ -250,14 +258,18 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             resp = await self._jwr(TOKEN_EOP_ADDR, acc["data"])
             code, codes, resps = await self._jtag_poll(ch, golden)
             others = [c for c in codes if c not in (CODE_IDLE, golden)]
+            # The go golden is computed from last_wr, so each word of the array must
+            # read back as written (``efuse_mmr.rdl``: the token words are sw = rw).
+            back = [(await self._jrd(TOKEN_ARRAY_ADDR[ch][k]))[1] for k in range(8)]
+            words_equal = back == content
             ok = (
-                resp == OKAY
-                and code == golden
+                code == golden
                 and golden == acc["golden"]
                 and pre != golden
                 and not others
-                and all(r == OKAY for r in resps)
+                and words_equal
             )
+            self._allow_resp(acc, resp)
             self.last_result[ch] = golden
             self._jtag_line(
                 ok,
@@ -271,7 +283,11 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 go_result=f"0x{acc['golden']:02x}",
                 pre_go=f"0x{pre:02x}",
                 polls=len(codes),
+                poll_resps=",".join(str(r) for r in resps[-4:]),
                 codes=",".join(f"{c:02x}" for c in codes[-4:]),
+                words_back=len(back),
+                words_equal=int(words_equal),
+                **({} if words_equal else {"back": ",".join(f"{w:08x}" for w in back)}),
             )
         else:
             ch = acc["channel"]
@@ -279,8 +295,9 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             code = data & MATCH_STATUS_MASK
             if ch in self.last_result:
                 want = self.last_result[ch]
+                self._allow_resp(acc, resp)
                 self._jtag_line(
-                    resp == OKAY and code == want,
+                    code == want,
                     acc,
                     "allow",
                     resp,
@@ -292,15 +309,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 )
             else:
                 self.chk.obs("JTAG-MATCH-NOGO", state=self.state, channel=ch, data=f"0x{code:02x}")
-                self._jtag_line(
-                    resp == OKAY,
-                    acc,
-                    "allow",
-                    resp,
-                    data_ok="na",
-                    target_unchanged="na",
-                    channel=ch,
-                )
+                self._allow_resp(acc, resp)
 
     async def _status_clear_control(self, w: int) -> None:
         """Control of "target unchanged" for the denied status write: the same clear,
@@ -386,8 +395,8 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
 
         CHK-JTAG-CONCURRENT: the JTAG read answers a response that is not OKAY
         (``otp_fuse_controller.adoc``, Shadow Register and JTAG Access Control), and the
-        frontdoor read answers OKAY with the staged word, outside ``ignore_mask`` (the
-        bit c when it shares the word). ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
+        frontdoor read returns the staged word, outside ``ignore_mask`` (the bit c when
+        it shares the word). The frontdoor response code is logged in the same line. ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
         the clock each read completes on and the command count at the post-guard tap:
         the specification does not state the arbitration of the two masters or the data
         of a denied read. ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires that each read had
@@ -454,7 +463,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         keep = ~ignore_mask & M32
         self.chk.ok(
             "JTAG-CONCURRENT",
-            jtag_resp != OKAY and fd_seq.resp_code == OKAY and fd_rdata & keep == staged & keep,
+            jtag_resp != OKAY and fd_rdata & keep == staged & keep,
             state=self.state,
             word=word,
             jtag_resp=jtag_resp,
@@ -515,6 +524,18 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             "INFO-WINDOW W=%d sense_clks=%d mult=%d secure_tm_o=%d", w, sense_clks, W_MULT, stm
         )
         self.chk.ctrl("JTAG-STM", stm == 0, secure_tm_o=stm)
+        # sep_efuse_map.rdl LC_STATE.lc_state: {~raw[3:0], raw[3:0]}.
+        lc_resp, lc_word = await self.fd.rd_graded_by_data(SHADOW_BASE + 4 * LC_WORD_IDX)
+        lc = lc_word & LC_FIELD_MASK
+        self.chk.ctrl(
+            "JTAG-LC-STATE",
+            lc == lc_encode(p.lc_raw),
+            state=self.state,
+            sensed=lc_state_class(lc),
+            lc_state=f"0x{lc:02x}",
+            exp=f"0x{lc_encode(p.lc_raw):02x}",
+            resp=lc_resp,
+        )
 
         feat, probe = await self._feat_dbg()
         if feat != probe or feat & DBG_MASK:
@@ -582,12 +603,12 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         # 0x2a on the SIP channel: the SIP code has no reset value after power-on,
         # so only a graded Mismatch go of this leaf skips the TOKEN_OTHER step.
         pre_resps: list[int] = []
-        if self.last_result.get(CH_SIP) != CODE_MISMATCH:
+        pre_ran = self.last_result.get(CH_SIP) != CODE_MISMATCH
+        pre_code = None
+        if pre_ran:
             pre_resps = await self._jtag_token(CH_SIP, TOKEN_OTHER)
-            code, _codes, more = await self._jtag_poll(CH_SIP, CODE_MISMATCH)
+            pre_code, _codes, more = await self._jtag_poll(CH_SIP, CODE_MISMATCH)
             pre_resps += more
-            if code != CODE_MISMATCH:
-                pre_resps.append(-1)
         t1_resps = await self._jtag_token(CH_SIP, TOKEN_T1)
         code, codes, poll_resps = await self._jtag_poll(CH_SIP, CODE_MATCH)
         fd_match = await self.fd.rd(MATCH_ADDR[CH_SIP]) & MATCH_STATUS_MASK
@@ -596,7 +617,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         resps = pre_resps + t1_resps + poll_resps
         self.chk.ok(
             "JTAG-TOKEN",
-            all(r == OKAY for r in resps)
+            (not pre_ran or pre_code == CODE_MISMATCH)
             and code == CODE_MATCH
             and fd_match == CODE_MATCH
             and feat & DBG_MASK == 0
@@ -606,6 +627,9 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             feat=f"0x{feat2:016x}",
             feat_before=f"0x{feat:016x}",
             dbg_open=f"0x{feat2 & DBG_MASK:x}",
+            pre_match="skipped"
+            if not pre_ran
+            else ("none" if pre_code is None else f"0x{pre_code:02x}"),
             sip_match=f"0x{fd_match:02x}",
             jtag_polls=len(codes),
             non_okay=sum(1 for r in resps if r != OKAY),
@@ -644,7 +668,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                     break
             self.chk.ctrl(
                 "JTAG-MATCH-END",
-                got == CODE_MISMATCH and all(r == OKAY for r in resps),
+                got == CODE_MISMATCH,
                 state=self.state,
                 channel=ch,
                 code=f"0x{(got or 0):02x}",

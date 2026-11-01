@@ -22,10 +22,8 @@ this order, over the CPU-LSU master on ``s_axi``:
   count, thresholds near 2^32 do not wrap, and ``INTR_TEST`` forces the bark
   status without a bite (``hw/sys/sep/doc/watchdog.adoc``, Bark Interrupt and
   Bite Reset; ``aon_timer.adoc``). A write of 1 to ``ALERT_TEST`` gets a write
-  response within the bounded wait, and the response is OKAY: the write is a
-  legal access (``ALERT_TEST`` is ``sw = w`` in ``aon_timer.rdl`` with no
-  write enable), so the golden code is OKAY (AMBA AXI IHI0022, OKAY: normal
-  access success) (CHK-WDT-ALERT-ACCESS).
+  response within the bounded wait (CHK-WDT-ALERT-ACCESS). No TT text states
+  its response code, so it is logged (OBS-WDT-ALERT-RESP).
 * Leg H. The watchdog runs with ``clk_i`` held low past its bite threshold;
   OBS-WDT-CLKSTOP logs what the timer core does (no pass/fail).
 * Leg W. The wakeup expiry follows the 64-bit threshold across the 32-bit
@@ -290,8 +288,8 @@ CHK-REGWEN-WDTRST, CHK-REGWEN-COLD, CHK-BITE-CLEAR, CHK-WDT-RATE,
 CHK-WDT-BARK-TIME, CHK-WKUP-TIME, CHK-REGWEN-LOCK-SCOPE, CHK-WDT-PET,
 CHK-WDT-PET-HOLD, CHK-WDT-THOLD-ZERO, CHK-WDT-THOLD-BELOW, CHK-WKUP-PRESC-MAX,
 CHK-WKUP-THOLD-ZERO, CHK-WKUP-RESTART, CHK-WKUP-CARRY-READ. Controls (not
-counted): CTRL-WDT-ENABLE, CTRL-WDT-THOLD, CTRL-WDT-PAUSE, CTRL-WKUP-SMALL,
-CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
+counted): CTRL-WDT-ENABLE, CTRL-WDT-INTRTEST-EN, CTRL-WDT-THOLD, CTRL-WDT-PAUSE,
+CTRL-WKUP-SMALL, CTRL-WKUP-CAUSE, CTRL-REGWEN-LOCKED, CTRL-REGWEN-HOLD-EVENT, CTRL-REGWEN-WDTRST-ARMED,
 CTRL-REGWEN-WDTRST-EVENT, CTRL-WDT-PET-BARK,
 CTRL-WDT-THOLD-ZERO, CTRL-WDT-THOLD-BELOW, CTRL-WKUP-THOLD-ZERO, CTRL-WKUP-CARRY,
 CTRL-CLKI-STOPPED, CTRL-REFCNT-SPACED. Observations (not graded): OBS-WDT-CLKSTOP,
@@ -318,7 +316,6 @@ from cocotb.utils import get_sim_time
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_edge_timer import SepEdgeTimer, SepPinEdgeCounter
-from env.sep_fabric_common import RESP_OKAY
 from env.sep_fcov_gate import (
     TIMER_CONTRACT_PASS_DROP,
     TIMER_CONTRACT_PASS_ORDER_RUN,
@@ -678,6 +675,24 @@ class sep_timer_clock_contract_test(sep_base_test):
             f"{chk} FAIL: {name} never read 0x{want & mask:x} on mask 0x{mask:x} in "
             f"{POLL_READS} reads (last 0x{got:08x})"
         )
+
+    async def _shape_before(self, name: str, addr: int, wv: int, mask: int, hold: int = 0) -> int:
+        """Return a read of ``name`` whose field bits differ from ``wv``.
+
+        When the register already holds ``wv``, the complement (with the ``hold``
+        bits kept 0) is written and polled first, so the graded write of ``wv``
+        must change the register and a dropped write fails its poll.
+        """
+        before = await self._rd(addr)
+        if (before & mask) == (wv & mask):
+            alt = ~wv & mask & ~hold
+            await self._wr(addr, alt)
+            before = await self._poll_eq(name, addr, alt, mask, "CHK-WDT-SHAPE")
+        assert (before & mask) != (wv & mask), (
+            f"CHK-WDT-SHAPE FAIL: {name} reads 0x{before & mask:x} before the write of "
+            f"0x{wv & mask:x}; the write cannot be told from a dropped one"
+        )
+        return before
 
     async def _wait_wdt(self, periods: int) -> None:
         await ClockCycles(cocotb.top.clk_wdt_i, periods)
@@ -1509,6 +1524,15 @@ class sep_timer_clock_contract_test(sep_base_test):
         for en in (0, 1):
             if en:
                 await self._wr(WDOG_CTRL, WDOG_EN)
+                ctl = await self._poll_eq(
+                    "WDOG_CTRL", WDOG_CTRL, WDOG_EN, WDOG_CTRL_FIELDS, "CTRL-WDT-INTRTEST-EN"
+                )
+                self.logger.info(
+                    "CTRL-WDT-INTRTEST-EN: WDOG_CTRL=0x%x expect=0x%x field_mask=0x%x",
+                    ctl & WDOG_CTRL_FIELDS,
+                    WDOG_EN,
+                    WDOG_CTRL_FIELDS,
+                )
             await self._wr(INTR_TEST, BARK_BIT)
             await self._poll_eq("INTR_STATE", INTR_STATE, BARK_BIT, BARK_BIT, "CHK-WDT-INTRTEST")
             await self._wr(INTR_STATE, BARK_BIT)
@@ -1567,13 +1591,8 @@ class sep_timer_clock_contract_test(sep_base_test):
         await self.start_seq(seq)
         if seq.timed_out:
             raise AssertionError("CHK-WDT-ALERT-ACCESS FAIL: no response")
-        if seq.resp_code != RESP_OKAY:
-            raise AssertionError(
-                f"CHK-WDT-ALERT-ACCESS FAIL: bresp={seq.resp_code} expect={RESP_OKAY} (OKAY)"
-            )
-        self.logger.info(
-            "CHK-WDT-ALERT-ACCESS PASS: bresp=%d expect=%d (OKAY)", seq.resp_code, RESP_OKAY
-        )
+        self.logger.info("CHK-WDT-ALERT-ACCESS PASS: write response arrived")
+        self.logger.info("OBS-WDT-ALERT-RESP bresp=%d", seq.resp_code)
         # No line states the shape of PIC source 13 after an ALERT_TEST write.
         await ClockCycles(cocotb.top.clk_i, SRC13_WINDOW)
         self.logger.info(
@@ -1864,7 +1883,9 @@ class sep_timer_clock_contract_test(sep_base_test):
             for name in cfg.walk_order:
                 addr, mask, reset = AON[name]
                 pat = cfg.patterns(name)[pi]
-                wv = pat & ~WKUP_EN if name == "WKUP_CTRL" else pat
+                hold = WKUP_EN if name == "WKUP_CTRL" else 0
+                wv = pat & ~hold
+                before = await self._shape_before(name, addr, wv, mask, hold)
                 await self._wr(addr, wv)
                 got = await self._poll_eq(name, addr, wv, mask, "CHK-WDT-SHAPE")
                 lane = "hi" if addr & 0x4 else "lo"
@@ -1872,7 +1893,13 @@ class sep_timer_clock_contract_test(sep_base_test):
                 lanes.add(lane)
                 n_checks += 1
                 differs[name] |= (got & mask) != (reset & mask)
-                self.logger.info("CHK-WDT-SHAPE PASS: reg=%s lane=%s %s", name, lane, fc.fields())
+                self.logger.info(
+                    "CHK-WDT-SHAPE PASS: reg=%s lane=%s before=0x%x %s",
+                    name,
+                    lane,
+                    before & mask,
+                    fc.fields(),
+                )
             # WKUP_CAUSE (RW0C): a write cannot set it. A write lands no later than twice
             # the measured landing time of the clear plus 16 clk_wdt_i periods, so the
             # cause is read back-to-back from the write response to the end of that
@@ -1944,13 +1971,16 @@ class sep_timer_clock_contract_test(sep_base_test):
         lanes.add("hi")
         for pi in range(4):
             pat = cfg.patterns("WDOG_CTRL")[pi]
+            before = await self._shape_before("WDOG_CTRL", WDOG_CTRL, pat, WDOG_CTRL_FIELDS)
             await self._wr(WDOG_CTRL, pat)
             got = await self._poll_eq(
                 "WDOG_CTRL", WDOG_CTRL, pat, WDOG_CTRL_FIELDS, "CHK-WDT-SHAPE"
             )
             self.logger.info(
-                "CHK-WDT-SHAPE PASS: reg=WDOG_CTRL pattern=0x%08x readback=0x%x field_mask=0x%x",
+                "CHK-WDT-SHAPE PASS: reg=WDOG_CTRL pattern=0x%08x before=0x%x readback=0x%x "
+                "field_mask=0x%x",
                 pat,
+                before & WDOG_CTRL_FIELDS,
                 got,
                 WDOG_CTRL_FIELDS,
             )

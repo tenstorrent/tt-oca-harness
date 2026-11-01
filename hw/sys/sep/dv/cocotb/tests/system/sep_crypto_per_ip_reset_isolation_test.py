@@ -157,20 +157,17 @@ Isolation proof (both directions, then the remaining isolated bits):
                     within a bound), and the KMAC endpoint's
                     ``edn_ack`` is 0 on every gated-reset edge. An edge
                     with no KMAC ``edn_req`` outstanding is logged as
-                    INFO-EDN-EDGE-KMAC-IDLE; CHK-EDN-LEAD grades the KMAC
-                    cancel on a live request.
-  * CHK-EDN-LEAD  a software reset of KMAC, AES or OTBN cancels that
-                    engine's EDN endpoints from the first cycle its paths
-                    all report isolated until its reset releases. The
-                    KMAC, AES, OTBN URND and OTBN RND trials each need
-                    resets whose cancel finds the endpoint's edn_req high
-                    and not just acknowledged. Control (CTRL-EDN-LEAD-DUE):
-                    per engine, the same arm with no reset is acknowledged
-                    no later than the latest gated-reset fall of its live
-                    trials, counted from the request. The KMAC trials also grade
-                    CHK-KMAC-DRAIN-ORDER on their reset edge. No endpoint
-                    of the engine is acknowledged on any cycle of the cancel
-                    window. The bus of a cancelled endpoint has no stated
+                    INFO-EDN-EDGE-KMAC-IDLE.
+  * OBS-EDN-NOACK-WINDOW (graded=0)  KMAC, AES, OTBN URND and OTBN RND
+                    are each reset with the endpoint's edn_req live at the
+                    cancel. The acknowledges of the engine's endpoints from
+                    the first cycle its paths report isolated to the
+                    release are counted and logged, with the first
+                    acknowledge of the same arm with no reset and the
+                    number of windows that hold it. The stimulus places no
+                    due acknowledge inside that window, so it is logged
+                    only. The KMAC trials grade CHK-KMAC-DRAIN-ORDER on
+                    their reset edge. The bus of a cancelled endpoint has no stated
                     value and is logged (OBS-EDN-CANCEL-BUS).
   * CHK-EDN-DISCARD  a word committed to an endpoint and not yet
                     acknowledged on the cycle before its cancel started is
@@ -358,18 +355,14 @@ _EDN_HOLD_STEP = 13
 # is ~10 cycles, so this is far above a re-request round trip and well below
 # a hang. Exceeding it means the sibling did not recover by itself.
 _EDN_KEEP_CYCLES = 20_000
-# CHK-EDN-LEAD resets per engine. OTBN URND requests continuously, and its
-# endpoint reads 0 on the cycle the acknowledge state machine pops a word, so
-# one quiet pre-edge cycle could be that pop. Each OTBN trial issues the reset
-# a different number of cycles after a URND acknowledge, and every trial must
-# show the quiet cycle.
+# EDN-LEAD resets per engine. Each OTBN phase trial issues the reset a
+# different number of cycles after a URND acknowledge.
 #
 # The "kmac", "aes", "otbn_urnd" and "otbn_rnd" counts are resets whose cancel
 # finds the endpoint's edn_req live: high on the last released cycle before the gated
 # reset falls, with no edn_ack on that cycle or the one before. After the live
-# trials of an engine, CTRL-EDN-LEAD-DUE runs the same arm with no reset and
-# requires an acknowledge no later than the latest fall of those trials, so an
-# acknowledge was due in the time the graded windows cover. KMAC is armed by a CFG commit with EDN entropy, AES by a PRNG reseed,
+# trials of an engine, OBS-EDN-NOACK-WINDOW logs the first acknowledge of the
+# same arm with no reset against the cancel windows. KMAC is armed by a CFG commit with EDN entropy, AES by a PRNG reseed,
 # OTBN RND by the RND program. Each of these reseeds spans several EDN words.
 # OTBN URND is armed by an OTBN reset pulse: a cold OTBN raises URND edn_req
 # and holds it until an acknowledge.
@@ -377,8 +370,8 @@ _EDN_LEAD_TRIALS = {"kmac": 2, "aes": 2, "otbn": 6, "otbn_urnd": 2, "otbn_rnd": 
 # Live-request trials: each one arms a fresh request and writes the reset on
 # the AXI master itself a walking 0 to _EDN_HOLD_STEP - 1 cycles after the
 # request is seen, so the cancel start steps over every phase of one EDN word.
-# The bound is _EDN_LIVE_PASSES passes of that walk per engine; CHK-EDN-LEAD
-# fails if fewer resets than the count above find a live request.
+# The bound is _EDN_LIVE_PASSES passes of that walk per engine; the leaf fails
+# as a setup failure if fewer resets than the count above find a live request.
 _EDN_LIVE_PASSES = 2
 # Bound on the reset request's AXI write, the isolate drain and the reset
 # release, in cycles.
@@ -1370,8 +1363,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         acknowledged again within ``_EDN_KEEP_CYCLES`` while the KMAC reset is
         still asserted. The software-reset write is an AXI transaction and
         outlasts one KMAC seed, so a KMAC request outstanding on the edge is
-        graded only when one occurs. CHK-EDN-LEAD grades the cancel ahead of
-        the reset.
+        graded only when one occurs.
         """
         clk = cocotb.top.clk_i
         acks: list[int] = []
@@ -1584,8 +1576,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "to URND before it, and URND was acknowledged again after it; "
                     "KMAC edn_ack was "
                     "0 on every edge. KMAC edn_req was outstanding on %d edges and "
-                    "idle on %d (INFO-EDN-EDGE-KMAC-IDLE); CHK-EDN-LEAD grades the "
-                    "KMAC cancel on a live request",
+                    "idle on %d (INFO-EDN-EDGE-KMAC-IDLE)",
                     tag,
                     steady + 1,
                     urnd_completions,
@@ -1947,9 +1938,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         if graded:
             open_graded_window(TEST, self.logger)
         try:
-            res = await self._edn_lead_reset(
-                tag, eng, bits, rst_sig, held, iso, direct=after_ack or live
-            )
+            res = await self._edn_lead_reset(tag, eng, bits, rst_sig, iso, direct=after_ack or live)
         except BaseException:
             if graded:
                 # The failure can be raised in the ReadOnly phase of a sample,
@@ -1962,13 +1951,14 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             await ClockCycles(clk, 2)
             close_graded_window(self.logger)
         self.logger.info(
-            "%s %s trial (delay %d): edn_ack 0 on %d released cycle(s) of the "
-            "cancel window and on all %d asserted-reset cycles; request live at "
+            "%s %s trial (delay %d): edn_ack on %d cycle(s) of %d released and %d "
+            "asserted-reset cycle(s) of the cancel window; request live at "
             "the cancel %s; committed and not yet acknowledged at the cancel "
             "start %s%s; graded window %s",
             _info_name(tag),
             eng.name,
             delay,
+            res["window_acks"],
             res["lead"],
             res["reset_cycles"],
             {b: int(v) for b, v in res["live"].items()},
@@ -1996,12 +1986,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # Sample i of the reset is delay + 2 + i cycles after the cycle the
         # request was seen.
         self._edn_lead_window = (delay + 2 + res["c0"], delay + 2 + res["fall"])
+        self._edn_window_acks += res["window_acks"]
         return res["live"][lead_bit]
 
     async def _edn_lead_reset(
-        self, tag: str, eng, bits: tuple[int, ...], rst_sig, held: dict, iso, *, direct: bool
+        self, tag: str, eng, bits: tuple[int, ...], rst_sig, iso, *, direct: bool
     ) -> dict:
-        """Request the reset of ``eng`` and grade the cancel window.
+        """Request the reset of ``eng`` and count the acknowledges of its cancel window.
 
         With ``direct`` the reset is written on the AXI master itself, so the
         write does not wait behind the background entropy FIFO drain read.
@@ -2026,14 +2017,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 "iso": None if iso is None else tuple(self._edn_level(p) for p in iso),
             }
 
-        def require_quiet(snap: dict, where: str) -> None:
-            if any(snap["ack"].values()):
-                raise AssertionError(
-                    f"{tag} FAIL: {eng.name} endpoint acknowledged {where} "
-                    f"(ack={snap['ack']} bus="
-                    f"{ {b: hex(w) for b, w in snap['bus'].items()} }; held "
-                    f"{ {b: hex(w) for b, w in held.items()} } at the request)"
-                )
+        # The stimulus places no due acknowledge inside the cancel window, so
+        # an acknowledge there is counted and logged, not graded.
+        window_acks = [0]
+
+        def count_acks(snap: dict) -> None:
+            window_acks[0] += sum(snap["ack"].values())
 
         samples: list[dict] = []
         for _ in range(_EDN_LEAD_CYCLES):
@@ -2059,8 +2048,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         for sn in window[:-1]:
             if sn["rst"] != 1:
                 raise AssertionError(f"{tag} FAIL: {eng.name} gated reset fell and rose again")
-            require_quiet(sn, "on a released cycle after its paths reported isolated")
-        require_quiet(window[-1], "on the cycle its gated reset fell")
+            count_acks(sn)
+        count_acks(window[-1])
         lead = len(window) - 1
         committed: dict[int, tuple[int, int]] = {}
         if c0 >= 1:
@@ -2099,7 +2088,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             if snap["rst"] == 1:
                 break
             reset_cycles += 1
-            require_quiet(snap, "while its gated reset is asserted")
+            count_acks(snap)
             if any(snap["bus"].values()):
                 bus_live += 1
         else:
@@ -2118,6 +2107,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "live": live,
             "c0": c0,
             "fall": len(samples) - 1,
+            "window_acks": window_acks[0],
         }
 
     async def _edn_live_trials(
@@ -2130,10 +2120,11 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         The attempts stop once ``_EDN_LEAD_TRIALS[name]`` resets found the
         request live at the cancel. Every attempt runs inside the graded
         window; the cancel cell samples only a reset with a live request.
-        Fails if fewer resets than that count found one, so the cancel of a
-        live request is graded on every engine. Returns the attempts made.
+        Fails as a setup failure if fewer resets than that count found one.
+        Returns the attempts made.
         """
         need = _EDN_LEAD_TRIALS[name]
+        acks0 = self._edn_window_acks
         budget = _EDN_LIVE_PASSES * _EDN_HOLD_STEP
         windows: list[tuple[int, int]] = []
         attempts = 0
@@ -2153,28 +2144,29 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             attempts += 1
         if len(windows) < need:
             raise AssertionError(
-                f"{tag} FAIL: {len(windows)} of {attempts} {name} resets found edn_req "
-                f"live at the cancel ({need} required). The acknowledge compare cannot "
-                "fail without a live request, so the cancel is not graded."
+                f"{tag} SETUP FAILED (not a contract result): {len(windows)} of "
+                f"{attempts} {name} resets found edn_req live at the cancel ({need} required)"
             )
-        await self._edn_due_control(name, eng, bits[0], arm, windows)
+        await self._edn_due_control(name, eng, bits[0], arm, windows, self._edn_window_acks - acks0)
         return attempts
 
-    async def _edn_due_control(self, name: str, eng, bit: int, arm, windows) -> None:
-        """CTRL-EDN-LEAD-DUE: the same arm with no reset is acknowledged in time.
+    async def _edn_due_control(
+        self, name: str, eng, bit: int, arm, windows, window_acks: int
+    ) -> None:
+        """OBS-EDN-NOACK-WINDOW: the no-reset acknowledge against the cancel windows.
 
         ``windows`` holds, per live trial of ``eng``, the cancel start and the
         gated-reset fall as cycles after the request was seen. The arm of
-        those trials runs once more with no reset, and ``bit`` must be
-        acknowledged no later than the latest fall, counted from the cycle
-        the request is seen in the same way. Otherwise no acknowledge was due
-        inside any graded window, the leaf logs ``CTRL-MISSING`` and fails.
-        The line also counts the trials whose window, cancel start to fall,
-        holds that acknowledge cycle. The engine is then pulsed back to reset.
+        those trials runs once more with no reset, and the line logs the
+        first acknowledge cycle of ``bit`` (counted the same way, up to the
+        latest fall), the number of windows that hold it, and the acknowledges
+        seen in the cancel windows of this client's attempts. Logged only:
+        the stimulus places no due acknowledge inside a window. The engine is
+        then pulsed back to reset.
         """
         clk = cocotb.top.clk_i
         bound = max(fall for _c0, fall in windows)
-        await arm(f"CTRL-EDN-LEAD-DUE {name}")
+        await arm(f"OBS-EDN-NOACK-WINDOW {name}")
         for _ in range(_EDN_PEND_CYCLES):
             await RisingEdge(clk)
             await ReadOnly()
@@ -2182,7 +2174,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 break
         else:
             raise AssertionError(
-                f"CTRL-EDN-LEAD-DUE SETUP FAILED (not a contract result): {name} "
+                f"OBS-EDN-NOACK-WINDOW SETUP FAILED (not a contract result): {name} "
                 f"endpoint {bit} never raised edn_req"
             )
         due = None
@@ -2194,13 +2186,16 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 due = k
                 break
         in_window = sum(1 for c0, fall in windows if due is not None and c0 <= due <= fall)
-        fields = (
-            f"client={name} ack_after_req={due if due is not None else 'none'} "
-            f"bound={bound} windows={windows} due_in_window={in_window}"
+        self.logger.info(
+            "OBS-EDN-NOACK-WINDOW graded=0 client=%s ack_after_req=%s bound=%d windows=%s "
+            "due_in_window=%d window_acks=%d",
+            name,
+            due if due is not None else "none",
+            bound,
+            windows,
+            in_window,
+            window_acks,
         )
-        if due is None:
-            raise AssertionError(f"CTRL-MISSING CHK-EDN-LEAD: CTRL-EDN-LEAD-DUE {fields}")
-        self.logger.info("CTRL-EDN-LEAD-DUE %s", fields)
         await NextTimeStep()
         await self._pulse_reset(eng.rst_bit)
 
@@ -2214,11 +2209,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await self.otbn.start_execute()
 
     async def _prove_edn_cancel_lead(self, tag: str) -> None:
-        """A software reset cancels the engine's endpoints from its isolated cycle.
+        """Software resets that cut a live EDN request; the cancel window is logged.
 
         KMAC, AES, OTBN URND and OTBN RND are reset while the endpoint's EDN
-        request is live, so EDN would acknowledge it inside the window without
-        the cancel; each needs ``_EDN_LEAD_TRIALS`` such resets. Six more OTBN
+        request is live; each needs ``_EDN_LEAD_TRIALS`` such resets. The
+        acknowledges seen in each cancel window are counted and logged
+        (``OBS-EDN-NOACK-WINDOW``), because the stimulus places no due
+        acknowledge inside the window. Six more OTBN
         trials start at a different offset from a URND acknowledge each time,
         with the graded window closed. The committed-word walk then puts an OTBN cancel start on every phase of one URND
         acknowledge period, from a fresh URND burst each time, until one
@@ -2312,13 +2309,11 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             self._arm_rnd_live,
         )
         self.logger.info(
-            "%s PASS: %d KMAC, %d AES, %d OTBN URND and %d OTBN RND resets with a "
-            "live request (%d, %d, %d and %d attempts), %d OTBN URND phase resets "
-            "(URND live on %d) and %d walk resets (URND live on %d) each showed no "
-            "edn_ack on the engine's EDN endpoints from the first cycle its paths "
-            "reported isolated, on the cycle the gated reset fell and on every "
-            "asserted-reset cycle",
-            tag,
+            "OBS-EDN-NOACK-WINDOW graded=0 summary: %d KMAC, %d AES, %d OTBN URND and "
+            "%d OTBN RND resets with a live request (%d, %d, %d and %d attempts), %d "
+            "OTBN URND phase resets (URND live on %d) and %d walk resets (URND live on "
+            "%d); edn_ack on the engine's EDN endpoints on %d cycle(s) from the first "
+            "cycle its paths reported isolated to the release",
             _EDN_LEAD_TRIALS["kmac"],
             _EDN_LEAD_TRIALS["aes"],
             _EDN_LEAD_TRIALS["otbn_urnd"],
@@ -2331,6 +2326,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             urnd_phase_live,
             walk,
             walk_live,
+            self._edn_window_acks,
         )
 
     def _check_edn_discard(self, tag: str) -> None:
@@ -2412,11 +2408,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         self._edn_held: list[tuple[int, int, int]] = []
         self._edn_committed: list[tuple[int, int, int]] = []
         self._edn_cycle = 0
+        self._edn_window_acks = 0
         self._edn_log_stop = False
         ack_log = cocotb.start_soon(self._watch_edn_acks())
         await self._prove_edn_sibling_after_flush()
         await self._prove_kmac_edn_edge("CHK-EDN-EDGE")
-        await self._prove_edn_cancel_lead("CHK-EDN-LEAD")
+        await self._prove_edn_cancel_lead("EDN-LEAD")
         # Runs here because the URND grant stream is live only while entropy
         # is flowing; by the end of the scenario the engines are parked and
         # URND requests go unacknowledged.
@@ -2430,9 +2427,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # The acknowledge watcher ends in a ReadOnly phase, where the label
         # cannot be written.
         await NextTimeStep()
-        # The cancel cells of the graded CHK-EDN-LEAD trials are held from each
-        # reset release; this label releases them after CHK-EDN-DISCARD has
-        # graded every word those resets cancelled.
+        # The cancel cells of the live-request trials are held from each reset
+        # release; this label releases them after CHK-EDN-DISCARD has graded
+        # every word those resets cancelled.
         set_iprst_edn_pass(True, self.logger)
         await ClockCycles(cocotb.top.clk_i, 2)
         set_iprst_edn_pass(False, self.logger)
