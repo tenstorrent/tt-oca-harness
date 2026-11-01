@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from env.sep_fabric_common import FILTER_ADDR_MASK
 from env.sep_filter_model import GRANULE_4K, FilterEntry, FilterModel
-from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0, SEP_CPU_CTRL
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
@@ -68,6 +68,14 @@ RANGE_FIXED_MASK = FILTER_ADDR_MASK & ~(GRANULE_4K - 1)
 # RDL reset values of START_ADDR and END_ADDR (the same in both banks).
 START_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset("START_ADDR")
 END_RESET = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.reset("END_ADDR")
+
+# A word of the SMU aperture at its RDL reset, and its 4 KiB page. The route
+# demux sends the SMU aperture to the outbound port through the outbound filter
+# (hw/sys/sep/doc/fabric.adoc, "Fabric Topology", output fabric), so a read of
+# the word behind an enabled outbound pair over the page puts one AR handshake at
+# that address on the outbound port.
+SMU_PAGE = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
+SMU_PAGE_WORD = SMU_PAGE + 0x100
 
 
 def config_word(e: FilterEntry) -> int:
@@ -174,6 +182,26 @@ class SepFilterBank(SepAxiRegDriver):
         self.range_written[idx] = True
         if check:
             await self.check_entry(idx, "program")
+
+    async def program_pair(self, idxs: tuple[int, int], start: int, end: int) -> None:
+        """Enable two entries over one range with ``allow_ns`` 0 and 1.
+
+        Read and write allowed, ``src_id`` 0; either AxPROT[1] value matches one
+        entry of the pair.
+        """
+        for idx, ns in zip(idxs, (False, True)):
+            await self.program(
+                idx,
+                FilterEntry(
+                    start=start,
+                    end=end,
+                    enabled=True,
+                    read_allowed=True,
+                    write_allowed=True,
+                    allow_ns=ns,
+                    src_id=0,
+                ),
+            )
 
     async def set_enabled(self, idx: int, enabled: bool, *, check: bool = True) -> None:
         """Change ``entry_enabled`` only; the other fields keep the model value."""

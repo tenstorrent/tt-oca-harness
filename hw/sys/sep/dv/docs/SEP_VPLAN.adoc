@@ -934,7 +934,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the eFuse-shim window boundary holds: the first word does not answer DECERR, and the next word answers DECERR after it leaves SEP on the extension port, which the PR-EXT observation tap proves, while the first word does not leave on that port (`CHK-EXT-DEMUX-BOUND`, `CTRL-EXT-DEMUX-PORT`, `CTRL-EXT-DEMUX-SHIM`). The PR-OUT observation tap proves that no walked read leaves on the outbound port (`CHK-FABRIC-WALK`, `CTRL-FABRIC-WALK-LOCAL`). The value of `SEP_TEST_CTRL` and its strap bits is logged only (`OBS-SEP-TEST-CTRL`).
+|Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the eFuse-shim window boundary holds: the first word does not answer DECERR, and the next word answers DECERR after it leaves SEP on the extension port, which the PR-EXT observation tap proves, while the first word does not leave on that port (`CHK-EXT-DEMUX-BOUND`, `CTRL-EXT-DEMUX-PORT`, `CTRL-EXT-DEMUX-SHIM`). The PR-OUT observation tap proves that no walked read leaves on the outbound port, and that a read of an SMU-aperture word behind an enabled outbound filter pair in the same tap window puts one AR handshake at that address on the port (`CHK-FABRIC-WALK`, `CTRL-FABRIC-WALK-LOCAL`). The value of `SEP_TEST_CTRL` and its strap bits is logged only (`OBS-SEP-TEST-CTRL`).
 |<<sep_cpu_ifu_lsu_alias_remap_matrix_test,`sep_cpu_ifu_lsu_alias_remap_matrix_test`>>
 |1
 |cpu, +skip_fuse_sense
@@ -984,7 +984,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping"), and the read hit index of the remap-hit debug lane. With the valid bit clear, the read stays at the issued address and the PR-OUT observation tap shows no AR handshake on the outbound port (`CHK-VALID-GATE`, `CTRL-VALID-GATE-LOCAL`).
+|Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping"), and the read hit index of the remap-hit debug lane. With the valid bit clear, the read stays at the issued address and the PR-OUT observation tap shows no AR handshake on the outbound port, while a read of an SMU-aperture word behind an enabled outbound filter pair in the same tap window shows one AR handshake at that address (`CHK-VALID-GATE`, `CTRL-VALID-GATE-LOCAL`).
 |<<sep_fabric_local_alias_offset_walk_test,`sep_fabric_local_alias_offset_walk_test`>>
 |2
 |no_cpu, +skip_fuse_sense

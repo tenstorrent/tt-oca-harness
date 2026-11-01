@@ -162,6 +162,8 @@ status read.
 
 from __future__ import annotations
 
+import itertools
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
@@ -374,6 +376,43 @@ class _Cfg:
         lo, hi = HOLE_RANGE["hmac"]
         self.si_hole = lo + 4 * rng.randrange((hi - lo) // 4)
 
+    def planned_wr_faults(self) -> int:
+        """Hole writes the plan drives outside the race legs.
+
+        Replays the latch model of the leaf from the draws alone: the latch leg
+        writes each block once; each restore faults every block of the block
+        order that the model holds clear, with the next refault op; a clear
+        removes its bits; the re-trigger leg faults its two blocks with the next
+        ops. The partial-write legs set and clear their own bits only.
+        """
+        ops = itertools.cycle(self.refault_ops)
+        latched = set(BLOCKS)
+        n = len(BLOCKS)
+
+        def fault(b: str) -> None:
+            nonlocal n
+            n += next(ops) == "wr"
+            latched.add(b)
+
+        def restore() -> None:
+            for b in self.block_order:
+                if b not in latched:
+                    fault(b)
+
+        for i in self.clear_order:
+            restore()
+            latched.discard(PERIPH_BITS[i])
+        restore()
+        latched.clear()
+        for mk in self.masks:
+            restore()
+            latched.difference_update(name for i, name in enumerate(PERIPH_BITS) if mk >> i & 1)
+        restore()
+        latched.discard(self.retrig_clear)
+        fault(self.retrig_clear)
+        fault(self.retrig_set)
+        return n
+
     def draw_lines(self) -> list[str]:
         return [
             f"block_order={','.join(self.block_order)} sweep_order={','.join(self.sweep_order)}",
@@ -484,7 +523,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             "CHK-CTRL": 1,
             "CHK-PARTIAL-WR": len(PARTIAL_BLOCKS),
             "CHK-PARTIAL-CLR": len(PARTIAL_BLOCKS),
-            "CHK-RESP": self.wr_faults,
+            "CHK-RESP": c.planned_wr_faults() + self.race_wr_faults,
             "CHK-LATCH": n_blk,
             "CHK-OR": n_blk,
             "CHK-BRIDGE-HOLE-SI": 1,
@@ -1289,6 +1328,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         exp_others = self.latched & ~BIT[b] & PERIPH_MASK
         for trial in range(1, RACE_TRIALS + 1):
             if not self.latched & BIT[b] or not (await self._periph()) & BIT[b]:
+                self.race_wr_faults += 1
                 await self._fault(b, "wr")
             tried.add(d)
             mk = self.pulses.mark()
@@ -1429,6 +1469,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.n_checks = 0
         self.counts: dict[str, int] = {}
         self.wr_faults = 0
+        self.race_wr_faults = 0
         self.op_i = 0
         self.latched = 0
         self.ctrl_reg_path_err = 0
@@ -1472,11 +1513,14 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         if diff:
             self._ctrl_missing(f"CTRL-CHK-COUNTS got/expected={diff}")
         self.logger.info(
-            "CTRL-CHK-COUNTS seen seed=%d names=%d lines=%d wr_faults=%d",
+            "CTRL-CHK-COUNTS seen seed=%d names=%d lines=%d wr_faults=%d planned_wr_faults=%d "
+            "race_wr_faults=%d",
             seed,
             len(exp),
             sum(exp.values()),
             self.wr_faults,
+            c.planned_wr_faults(),
+            self.race_wr_faults,
         )
         close_graded_window(self.logger)
         await self.vw.stop()

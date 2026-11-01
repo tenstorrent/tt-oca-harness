@@ -13,7 +13,9 @@ The eFuse-shim window boundary must select the shim port for its first word and
 leave SEP on the next word (CHK-EXT-DEMUX-BOUND); the PR-EXT tap shows that
 next word's read on the extension port (CTRL-EXT-DEMUX-PORT) and no read of
 the first word there (CTRL-EXT-DEMUX-SHIM). The PR-OUT tap shows that no
-fabric-walk read leaves on the outbound port (CTRL-FABRIC-WALK-LOCAL).
+fabric-walk read leaves on the outbound port, and that a read of an SMU-aperture
+word behind an enabled outbound filter pair, in the same tap window after the
+walk, puts exactly one AR at that address on the port (CTRL-FABRIC-WALK-LOCAL).
 """
 
 from __future__ import annotations
@@ -23,12 +25,22 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_tap import SepFabricTap
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL, sym
-from seq_lib.sep_address_map_seq import CPU_CTRL_INTERIOR_HOLES, sep_address_map_seq
+from seq_lib.sep_address_map_seq import (
+    CPU_CTRL_INTERIOR_HOLES,
+    FABRIC_BLOCKS,
+    sep_address_map_seq,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_fabric_filter_bank_seq import SMU_PAGE, SMU_PAGE_WORD, SepFilterBank
 
 RESP_OKAY = 0
 RESP_DECERR = 3
 MASK32 = 0xFFFF_FFFF
+# Rows of FABRIC_BLOCKS: one CSR in each LSU-reachable block that the
+# sep_address_map_seq docstring lists.
+FABRIC_WALK_ROWS = 22
+# Outbound filter entries opened over the SMU page for the PR-OUT liveness read.
+OUT_PAIR = (0, 1)
 
 # Generated SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP window. An unmapped address
 # in the remainder of that external aperture answers DECERR (AXI decode).
@@ -75,8 +87,12 @@ class sep_address_map_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
-        seq = sep_address_map_seq("addr_map_seq")
+        outf = SepFilterBank(self, "out")
+        await outf.program_pair(OUT_PAIR, SMU_PAGE, SMU_PAGE + 0xFFF)
+        seq = sep_address_map_seq("addr_map_seq", out_probe=SMU_PAGE_WORD)
         await self.start_seq(seq)
+        for idx in OUT_PAIR:
+            await outf.restore_reset(idx)
         # The scoreboard accumulates response/value errors and defers its raise
         # to check_phase. Without this gate every CHK-* PASS line below prints
         # on a run that has already failed, and a PASS token in a kept log must
@@ -117,20 +133,40 @@ class sep_address_map_test(sep_base_test):
             else "",
         )
         walk_ars = seq.fabric_walk_out_ars
+        probe_ars = seq.out_probe_ars
         walk = (
-            f"rows={seq.fabric_walk_checks} pr_out_ar={len(walk_ars)} "
-            f"[{' '.join(b.fmt() for b in walk_ars)}]"
+            f"rows={len(seq.fabric_walk_rows)} pr_out_ar={len(walk_ars)} "
+            f"[{' '.join(b.fmt() for b in walk_ars)}] "
+            f"live_addr=0x{SMU_PAGE_WORD:x} live_ar={len(probe_ars)} "
+            f"[{' '.join(b.fmt() for b in probe_ars)}]"
         )
-        # Same text as SepChkLog.ctrl(): fabric.adoc routes an address the local
-        # fabric does not decode to the SMN, whose responder answers OKAY with
-        # zero, so CHK-FABRIC-WALK needs no walk read on PR-OUT.
-        if walk_ars:
+        # Same text as SepChkLog.ctrl(): a read that leaves on the outbound port
+        # is answered OKAY by the bench responder, so CHK-FABRIC-WALK needs no
+        # walk read on PR-OUT. The liveness read in the same window must show its
+        # one AR there, so an absence cannot come from a tap that records nothing.
+        if walk_ars or len(probe_ars) != 1 or probe_ars[0].addr != SMU_PAGE_WORD:
             self.logger.error("CTRL-MISSING FABRIC-WALK-LOCAL: %s", walk)
             raise AssertionError(f"CTRL-MISSING FABRIC-WALK-LOCAL: {walk}")
         self.logger.info("CTRL-FABRIC-WALK-LOCAL seen: %s", walk)
+        # The scoreboard grades the response of every row and the value of a row
+        # with an expectation; the gate above stops the leaf on any error. This
+        # check requires that every row was read and answered OKAY, so a shorter
+        # walk fails.
+        planned = [name for name, _addr, _exp in FABRIC_BLOCKS]
+        walked = [name for name, _ok in seq.fabric_walk_rows]
+        not_ok = [name for name, ok in seq.fabric_walk_rows if not ok]
+        rows = (
+            f"rows={len(walked)} planned={len(planned)} expected={FABRIC_WALK_ROWS} "
+            f"not_okay={not_ok} missing={[n for n in planned if n not in walked]}"
+        )
+        assert len(planned) == FABRIC_WALK_ROWS and walked == planned and not not_ok, (
+            f"CHK-FABRIC-WALK FAIL: {rows}"
+        )
         self.logger.info(
-            "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",
-            seq.fabric_walk_checks,
+            "CHK-FABRIC-WALK PASS: rows=%d of %d, each LSU-reachable block CSR read and "
+            "answered OKAY",
+            len(walked),
+            FABRIC_WALK_ROWS,
         )
 
         # 0x158-0x177 owns no register: sep_cpu_ctrl.rdl places
