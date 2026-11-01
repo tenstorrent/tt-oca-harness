@@ -580,6 +580,8 @@ class _TapWatch:
     trst_low: int = 0
     # jtag_tck_i 0 -> 1 transitions sampled with jtag_tms_i at 1.
     tms_high_rises: int = 0
+    # Every jtag_tck_i 0 -> 1 transition.
+    tck_rises: int = 0
     tck_prev: int | None = None
 
     def ok(self, via: str) -> bool:
@@ -759,8 +761,9 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 tw = self.tapw
                 tw.trst_low += self._rd_or_none(dut.jtag_trst_n_i) == 0
                 tck = self._rd_or_none(dut.jtag_tck_i)
-                if tw.tck_prev == 0 and tck == 1 and self._rd_or_none(dut.jtag_tms_i) == 1:
-                    tw.tms_high_rises += 1
+                if tw.tck_prev == 0 and tck == 1:
+                    tw.tck_rises += 1
+                    tw.tms_high_rises += self._rd_or_none(dut.jtag_tms_i) == 1
                 tw.tck_prev = tck
             if self.scope is not None:
                 self.scope.samples += 1
@@ -1176,6 +1179,10 @@ class sep_cpu_reset_entry_test(sep_base_test):
         content after the TRST leg. A scan through BYPASS or IDCODE captures a
         different word, so the line shows that 0x18 is selected as the reset
         starts. The scan writes the value the TDR already holds.
+        CTRL-TAPRST-SCAN: the A1 shift after the Test-Logic-Reset shows at least
+        32 TCK rises on the pins while wdt_rst_ni is low, and its capture is not
+        the ROM base that a scan of the TDR returns, so a skipped scan, or one
+        that still reaches the TDR, fails.
         """
         from env.sep_jtag_dmi import IR_RSTVEC, IR_WIDTH, RSTVEC_BITS
 
@@ -1198,18 +1205,43 @@ class sep_cpu_reset_entry_test(sep_base_test):
                 self._fail(f"{tag}: {line}")
         tw = await self._tap_reset(via)
         extra = tw.text() + " "
+        scan: dict = {}
+        scan_ok = True
         if via == "TLR":
-            extra += (
-                f"ir_before=0x{IR_RSTVEC:02x} ir_capture=0x{cap:08x} dr_after=0x{self.a1:08x} "
-                "dr_in_reset=1 "
-            )
 
             async def _stage() -> None:
                 self._stage_sram()
-                await self.dmi.tap.shift_dr(self.a1, RSTVEC_BITS, back_to_rti=True)
+                self.tapw = _TapWatch()
+                scan["cap"] = int(
+                    await self.dmi.tap.shift_dr(self.a1, RSTVEC_BITS, back_to_rti=True)
+                )
+                await RisingEdge(cocotb.top.clk_i)
+                scan["tck"] = self.tapw.tck_rises
+                scan["rst"] = self._rd_or_none(cocotb.top.wdt_rst_ni_i)
+                self.tapw = None
 
             during = _stage
         ep, mark = await self._cpu_reset(during)
+        if via == "TLR":
+            scan_ok = (
+                scan.get("tck", 0) >= RSTVEC_BITS
+                and scan.get("rst") == 0
+                and scan.get("cap", DEFAULT_RESET_PC) != DEFAULT_RESET_PC
+            )
+            line = (
+                f"dr_in=0x{self.a1:08x} tck_rises={scan.get('tck', 0)} "
+                f"wdt_rst_ni={scan.get('rst')} capture=0x{scan.get('cap', 0):08x} "
+                f"expect=tck_rises>={RSTVEC_BITS},wdt_rst_ni=0,capture!=0x{DEFAULT_RESET_PC:08x}"
+            )
+            tag = "CTRL-TAPRST-SCAN" if scan_ok else "CTRL-MISSING TAPRST-SCAN"
+            self.logger.info("%s: %s", tag, line)
+            if not scan_ok:
+                self._fail(f"{tag}: {line}")
+            extra += (
+                f"ir_before=0x{IR_RSTVEC:02x} ir_capture=0x{cap:08x} "
+                f"dr_after_capture=0x{scan.get('cap', 0):08x} "
+                f"dr_after_tck_rises={scan.get('tck', 0)} "
+            )
         pc, marker, _ = await self._entry(ep, mark, f"step7 {via}")
         self._grade_vector(
             "CHK-RSTVEC-TAPRST",
@@ -1219,7 +1251,7 @@ class sep_cpu_reset_entry_test(sep_base_test):
             marker,
             DEFAULT_RESET_PC,
             "M_ROM",
-            tw.ok(via) and ir_ok,
+            tw.ok(via) and ir_ok and scan_ok,
         )
 
     async def _program_wide(self, vector: int) -> None:

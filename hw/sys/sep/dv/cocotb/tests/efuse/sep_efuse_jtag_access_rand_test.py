@@ -575,12 +575,12 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         # 0x2a on the SIP channel: the SIP code has no reset value after power-on,
         # so only a graded Mismatch go of this leaf skips the TOKEN_OTHER step.
         pre_resps: list[int] = []
-        if self.last_result.get(CH_SIP) != CODE_MISMATCH:
+        pre_ran = self.last_result.get(CH_SIP) != CODE_MISMATCH
+        pre_code = None
+        if pre_ran:
             pre_resps = await self._jtag_token(CH_SIP, TOKEN_OTHER)
-            code, _codes, more = await self._jtag_poll(CH_SIP, CODE_MISMATCH)
+            pre_code, _codes, more = await self._jtag_poll(CH_SIP, CODE_MISMATCH)
             pre_resps += more
-            if code != CODE_MISMATCH:
-                pre_resps.append(-1)
         t1_resps = await self._jtag_token(CH_SIP, TOKEN_T1)
         code, codes, poll_resps = await self._jtag_poll(CH_SIP, CODE_MATCH)
         fd_match = await self.fd.rd(MATCH_ADDR[CH_SIP]) & MATCH_STATUS_MASK
@@ -589,7 +589,8 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         resps = pre_resps + t1_resps + poll_resps
         self.chk.ok(
             "JTAG-TOKEN",
-            code == CODE_MATCH
+            (not pre_ran or pre_code == CODE_MISMATCH)
+            and code == CODE_MATCH
             and fd_match == CODE_MATCH
             and feat & DBG_MASK == 0
             and feat2 & DBG_MASK == 0
@@ -598,6 +599,9 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             feat=f"0x{feat2:016x}",
             feat_before=f"0x{feat:016x}",
             dbg_open=f"0x{feat2 & DBG_MASK:x}",
+            pre_match="skipped"
+            if not pre_ran
+            else ("none" if pre_code is None else f"0x{pre_code:02x}"),
             sip_match=f"0x{fd_match:02x}",
             jtag_polls=len(codes),
             non_okay=sum(1 for r in resps if r != OKAY),

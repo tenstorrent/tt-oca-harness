@@ -71,8 +71,8 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
                    until firmware clears it).
 * CHK-GWCLR-LEVEL  each LH cell reads 1 after a meigwclr write with its input
                    asserted: a level source keeps no IP bit, so pending follows
-                   the active input (PRM ``interrupts.md:157-159``, steps 3 to
-                   5; ``:840`` and ``el2_pic.rdl:108-109``: meigwclr clears
+                   the active input (PRM ``interrupts.md:69``; ``:157-159``,
+                   steps 3 to 5; ``:840`` and ``el2_pic.rdl:108-109``: meigwclr clears
                    the IP bit of edge-triggered sources). Control: on the
                    same source, an edge latched in edge mode reads 0 after a
                    meigwclr write of the same value.

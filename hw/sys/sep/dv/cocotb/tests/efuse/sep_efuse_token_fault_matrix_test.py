@@ -350,9 +350,22 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         return code, clocks
 
     async def _present_until(self, ch: str, token: int, until: int, label: str) -> int | None:
-        """Write ``token``, go, poll until ``until``; the code before the go differs."""
+        """Write ``token``, go, poll until ``until``.
+
+        A code that already equals ``until`` before the go fails the leaf, so a go
+        with no effect cannot pass the poll.
+        """
         order = self.plan.draw.word_order(label)
         await write_token(self.fd.wr, ch, token, order)
+        pre = await self.fd.match(ch)
+        if pre == until:
+            hook_fail(
+                self.chk,
+                reason="code_before_go_equals_until",
+                ch=_CH_NAME[ch],
+                label=label,
+                code=f"0x{pre:02x}",
+            )
         await token_go(self.fd.wr, ch)
         code, _n = await poll_code(self.fd.rd, ch, max_reads=_POLL_READS, until=until)
         return code

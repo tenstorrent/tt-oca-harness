@@ -55,7 +55,8 @@ Checkers:
                   not a graded latency), PF reads 1, and the peak of
                   ANY_FAIL_COUNT is at least T, in every shard;
                   CHK-PF-TRIP-HOLD grades it as exactly T. Control: ALERT = PF
-                  = 0 and ANY_FAIL_COUNT = 0 before the burst. Its FCOV cells are released only when the peak is
+                  = 0 and ANY_FAIL_COUNT = 0 before the burst, and
+                  ALERT_THRESHOLD read back T after the start of the trip. Its FCOV cells are released only when the peak is
                   exactly T, the value CHK-PF-TRIP-HOLD grades; otherwise the
                   leaf logs INFO-PF-TRIP-COUNT-HOLD with the peak and releases
                   none. This holds in shard 3 too, which does not grade the
@@ -94,7 +95,8 @@ Checkers:
                   the alert.
   CHK-PF-HALT     after a trip, BUSY = 0 and a drain: LEVEL stays 0 and
                   ``esrc_compress_vld_o`` is silent for H = t_ref. Control: the
-                  clean run shows 24 stream strobes in t_ref.
+                  clean run shows 24 stream strobes in t_ref (CTRL-PF-STREAM;
+                  the CHK line prints the counted strobes as ctrl_stream_vld).
   CHK-SM-ERR      the last leg, after a TRNG reset. ``leg=set``: ERR reads 0,
                   then the counter-copy inject (``esrc_cntr_inject_i``: one
                   copy of the ``REPCNT_TOTAL_FAILS`` counter differs from the
@@ -526,6 +528,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.p: int | None = None
         self.setup = SepEsrcLeafSetup(self, self.swrst, self.noise)
         self.stream_clean: int | None = None
+        self.t_ref_strobes: int | None = None
         # Per trip block that has run: the alert of each of its trips (control of
         # CHK-PF-DISABLE).
         self.block_trips: dict[int, list[int]] = {}
@@ -741,7 +744,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         return False
 
     async def _count_stream(self, n: int, bound: int, box: list[int]) -> None:
-        """Count high clocks of esrc_compress_vld_o up to ``n``; box gets the clocks taken."""
+        """Count high clocks of esrc_compress_vld_o up to ``n``; box gets the clocks and the count."""
         dut = cocotb.top
         seen = 0
         for clk in range(1, bound + 1):
@@ -750,7 +753,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             if self.rd(dut.esrc_compress_vld_o):
                 seen += 1
                 if seen >= n:
-                    box.append(clk)
+                    box += [clk, seen]
                     return
 
     async def _measure_t_ref(self) -> int | None:
@@ -773,7 +776,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 "PF-STREAM", False, strobes_lt=STREAM_STROBES, reason="timeout:stream", bound=bound
             )
             return None
-        t_ref = box[0]
+        t_ref, self.t_ref_strobes = box
+        self._ctrl("PF-STREAM", True, strobes=self.t_ref_strobes, t_ref=t_ref)
         if self.stream_clean is None:
             self.stream_clean = t_ref
         self.logger.info("INFO-T-REF t_ref=%d clk_i (24 stream strobes) bound=%d", t_ref, bound)
@@ -1066,8 +1070,12 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         reason = {"reason": r["reason"]} if r["reason"] else {}
         self._ctrl(
             "PF-TRIP-COUNT",
-            r["alert_before"] == 0 and r["pf_before"] == 0 and r["count_before"] == 0,
+            r["alert_before"] == 0
+            and r["pf_before"] == 0
+            and r["count_before"] == 0
+            and self.thr_rb == thr,
             thr=thr,
+            thr_readback=self.thr_rb,
             alert_before=r["alert_before"],
             pf_before=r["pf_before"],
             count_before=r["count_before"],
@@ -1357,7 +1365,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 level_max=level_max,
                 stream_vld=vld,
                 hold_clk=hold,
-                ctrl_stream_vld=STREAM_STROBES,
+                ctrl_stream_vld=self.t_ref_strobes,
             )
         # Clear leg: W1C of ALERT and PERSISTENT_FAILURE, hold H, enable cycle.
         sm_before = await self._rd(ESRC_MAIN_SM_STATUS)

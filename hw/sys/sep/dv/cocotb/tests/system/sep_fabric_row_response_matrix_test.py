@@ -1523,7 +1523,12 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 src = self.rng.randrange(1, 16)
                 miss = self.rng.choice([u for u in range(16) if u != src])
                 # Probed on the inbound filter START word of entry 1, which the SI
-                # reaches; entry 0 (the probe's entry) leaves it unchanged.
+                # reaches; entry 0 (the probe's entry) leaves it unchanged. A
+                # non-zero staged value makes a refused read that returns zero
+                # data fail the data terms.
+                _r, src_cur = await self._lsu(SepAxiOp.READ, src_addr)
+                src_staged = self.rng.randrange(1, 1 << 29) << 3
+                await self._lsu(SepAxiOp.WRITE, src_addr, wdata=src_staged)
                 _r, ref = await self._lsu(SepAxiOp.READ, src_addr)
                 ref &= 0xFFFF_FFFF
                 w = await self._si(SepAxiOp.READ, src_addr)
@@ -1533,16 +1538,18 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     t = await self._si(SepAxiOp.READ, src_addr, user=u)
                     got[kind] = (t.resp_code, t.rdata & 0xFFFF_FFFF)
                 await self._program_entry()
+                await self._lsu(SepAxiOp.WRITE, src_addr, wdata=src_cur)
                 wild = (w.resp_code, w.rdata & 0xFFFF_FFFF)
                 line = (
                     f"target=infilt_start entry_src_id={src} axuser_match=0x{src:x} "
                     f"axuser_mismatch=0x{miss:x} wildcard={_RN.get(wild[0])}/0x{wild[1]:08x} "
                     f"match={_RN.get(got['src_match'][0])}/0x{got['src_match'][1]:08x} "
                     f"mismatch={_RN.get(got['src_mismatch'][0])}/0x{got['src_mismatch'][1]:08x} "
-                    f"expect=0x{ref:08x},0x{ref:08x},DECERR"
+                    f"staged=0x{src_staged:08x} expect=0x{ref:08x},0x{ref:08x},DECERR"
                 )
                 if (
-                    wild[1] == ref
+                    ref == src_staged
+                    and wild[1] == ref
                     and got["src_match"][1] == ref
                     and got["src_mismatch"][0] == RESP_DECERR
                 ):
@@ -1550,16 +1557,24 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 else:
                     self._fail("CHK-ROW-FILTER-SRC", line)
             await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
+        # FEAT_CTRL sits behind the local crossbar, so each SI read must show its
+        # AR at the crossbar's ext initiator, past the inbound filter: a refused
+        # read that returns zero data then fails on the count, not on the data.
         _r, lsu_v = await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL)
-        lo = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)
-        hi = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL + 4)
+        task, ars = self.watch_xbar_ext_in(write=False)
+        try:
+            lo = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)
+            hi = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL + 4)
+        finally:
+            task.kill()
+        n_ar = sum(1 for a in ars if (a & ~0x7) == (LCC_FEAT_CTRL & ~0x7))
         got = ((hi.rdata & 0xFFFF_FFFF) << 32) | (lo.rdata & 0xFFFF_FFFF)
         line = (
             f"target=lc_feat_ctrl addr=0x{LCC_FEAT_CTRL:08x} lsu_rb=0x{lsu_v & 0xFFFF_FFFF:08x} "
             f"si_resp={_RN.get(lo.resp_code)},{_RN.get(hi.resp_code)} si_rdata=0x{got:016x} "
-            f"expect=0x{self.feat_golden:016x}"
+            f"ext_ar={n_ar} expect=0x{self.feat_golden:016x},ext_ar=2"
         )
-        if got == self.feat_golden:
+        if got == self.feat_golden and n_ar == 2:
             self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s", line)
         else:
             self._fail("CHK-ROW-FABRIC-CSR", line)

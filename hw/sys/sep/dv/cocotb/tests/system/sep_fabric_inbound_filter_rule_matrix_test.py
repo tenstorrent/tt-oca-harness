@@ -882,6 +882,8 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         first reads the last SRAM word through the same entry, whose window
         runs from that word to the Reserved base: the staged value shows the entry
         admits the read (the response code is logged in the same line).
+        CTRL-FILT-RSVD-PASSED then requires the Reserved read itself to show one
+        AR at the local crossbar's ext initiator, which is past the filter.
         """
         addr = rr.RESERVED_BASES[0]
         ctrl = sym("SEP_SRAM_MEM_BASE_ADDR") + sym("SEP_SRAM_MEM_SIZE") - GRANULE_BYTES
@@ -897,7 +899,18 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"entry=0 window=0x{ctrl:08x}..0x{addr:08x} addr=0x{ctrl:08x} resp={resp} "
             f"rdata=0x{data:08x} expect=0x{staged:08x}",
         )
-        resp, data = await self._ext_read(addr)
+        task, ars = self.watch_xbar_ext_in(write=False)
+        try:
+            resp, data = await self._ext_read(addr)
+        finally:
+            task.kill()
+        passed = [a for a in ars if (a & ~(GRANULE_BYTES - 1)) == addr]
+        self._grade(
+            "CTRL-FILT-RSVD-PASSED",
+            len(passed) == 1,
+            f"addr=0x{addr:08x} ar_past_filter={len(passed)} ars="
+            f"[{' '.join(f'0x{a:08x}' for a in ars)}] expect=1",
+        )
         self._grade(
             "CHK-FILT-RSVD-READ",
             (resp, data) == (RESP_DECERR, RSVD_RDATA),
@@ -905,6 +918,28 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"expect={RESP_DECERR}/0x{RSVD_RDATA:08x}",
         )
         await self.filt.disable_all()
+
+    async def _src_mismatch_premise(
+        self, cell: SepInboundFilterCfg, addr: int, val: int, read_ok: bool, write_ok: bool
+    ) -> None:
+        """CTRL-SRC-ID-CFG: the mismatch cell's entry is programmed and live.
+
+        A disabled or mis-programmed entry also answers DECERR, so the deny
+        proves the source-ID mismatch only once the FILTER_CONFIG read-back
+        equals the programmed word and a read with ``user`` equal to the
+        programmed ``src_id`` returns the staged value through the same entry.
+        """
+        expected = cell.config_word(read_allowed=read_ok, write_allowed=write_ok)
+        cfg_rb = await self.filt.read_cpu(cell.cfg_addr)
+        resp, data = await self._ext_read(addr, user=cell.src_id)
+        self._grade(
+            "CTRL-SRC-ID-CFG",
+            (cfg_rb & FILTER_RW_MASK) == (expected & FILTER_RW_MASK) and data == val,
+            f"entry={cell.entry} cfg_rw=0x{cfg_rb & FILTER_RW_MASK:08x} "
+            f"expect=0x{expected & FILTER_RW_MASK:08x} src_id=0x{cell.src_id:x} "
+            f"addr=0x{addr:08x} user=0x{cell.src_id:x} resp={resp} rdata=0x{data:08x} "
+            f"expect_rdata=0x{val:08x}",
+        )
 
     async def _bring_up_prod_filter_active(self) -> None:
         """Real-sense a PROD image -> sep_debug=0 (inbound filter active)."""
@@ -966,6 +1001,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             await self.filt.program_rule(cell, read_allowed=read_ok, write_allowed=write_ok)
 
             if not expect_hit:
+                await self._src_mismatch_premise(cell, addr, val, read_ok, write_ok)
                 await self._assert_ext_deny_read(
                     addr,
                     user=axi_user,

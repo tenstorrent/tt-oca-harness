@@ -11,8 +11,12 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 * CHK-NONE-BEFORE-PROGRAM (firmware) no delivery with the reset meie and meipl.
 * CHK-LEVEL-SWEEP (firmware) each of the 16 ``meipl`` encodings written to the
                  drawn sweep source reads back as written, in both priority
-                 orders (``el2_pic.adoc``: ``intpriority`` 3:0 is RW); the
-                 host requires the 32 records at the drawn source.
+                 orders (``el2_pic.adoc``: ``intpriority`` 3:0 is RW); each
+                 cell first writes the complement and reads it back
+                 (``pre_read``), and ``mpiccfg.priord`` reads back the order
+                 of the cell (``priord_rd``; ``el2_pic.rdl``: ``priord`` is
+                 RW). The host requires the 32 records at the drawn source
+                 with ``priord_rd`` equal to ``priord``.
 * CHK-GATED      (firmware) no delivery through a closed gate (meie 0, never
                  priority, mstatus.MIE 0); opening the gate delivers the same
                  source once and no other. A source held behind ``meie`` 0
@@ -667,10 +671,10 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             }
         )
         sweep = sorted(
-            (int(r.kv["src"]), int(r.kv["priord"]), int(r.kv["wrote"]))
+            (int(r.kv["src"]), int(r.kv["priord"]), int(r.kv["priord_rd"]), int(r.kv["wrote"]))
             for r in self.con.records("CHK-LEVEL-SWEEP")
         )
-        want_sweep = [(self.tcfg.sweep, p, v) for p in range(2) for v in range(16)]
+        want_sweep = [(self.tcfg.sweep, p, p, v) for p in range(2) for v in range(16)]
         if sweep != want_sweep:
             raise AssertionError(f"CHK-LEVEL-SWEEP FAIL host: cells {sweep} != drawn {want_sweep}")
         self._chk_legs()

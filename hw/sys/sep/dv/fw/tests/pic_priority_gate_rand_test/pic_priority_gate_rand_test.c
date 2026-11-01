@@ -1248,20 +1248,30 @@ int main(void) {
     rec_num("raised", raised);
     chk_end(pass);
 
-    // Encoding sweep: meipl.intpriority is RW, so each value reads back as
-    // written in either priority order (window closed, no source pending).
+    // Encoding sweep: meipl.intpriority and mpiccfg.priord are RW, so each
+    // value reads back as written in either priority order (window closed, no
+    // source pending). Each cell first writes the complement of v, so the
+    // destination differs from v before the graded write.
     rec_mark(0, "sweep");
     uint32_t sw = g_prm[P_SWEEP];
     for (uint32_t p = 0; p < 2u; p++) {
         set_order(p);
+        uint32_t priord_rd = pic_read_mpiccfg() & EL2_PIC__MPICCFG__PRIORD_bm;
         for (uint32_t v = 0; v < 16u; v++) {
+            uint32_t pre = v ^ EL2_PIC__MEIPL__INTPRIORITY_bm;
+            pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), pre);
+            uint32_t pre_rb =
+                pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
             pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), v);
             uint32_t rb =
                 pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
-            pass = rb == v;
+            pass = priord_rd == p && pre_rb == pre && rb == v;
             rec_chk("LEVEL-SWEEP", pass);
             rec_num("src", sw);
             rec_num("priord", p);
+            rec_num("priord_rd", priord_rd);
+            rec_num("pre", pre);
+            rec_num("pre_read", pre_rb);
             rec_num("wrote", v);
             rec_num("read", rb);
             chk_end(pass);
