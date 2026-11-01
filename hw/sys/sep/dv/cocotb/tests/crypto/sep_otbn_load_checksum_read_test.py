@@ -15,29 +15,31 @@ brought up, OTBN is released from its software reset and reaches IDLE (the memor
 are accessible only at IDLE, ``otbn.hjson`` :797-802 and :821-826). Then for IMEM,
 then DMEM:
 
-  1. ``LOAD_CHECKSUM`` <- 0 (ToO:460-461).
+  1. ``LOAD_CHECKSUM`` <- 0 (ToO:456-457, :461).
   2. One full-word write of a drawn word (every byte non-zero) to a drawn word index.
   3. ``LOAD_CHECKSUM`` is read: X.
-  4. One 32-bit read of that word, then one 8-bit read of a drawn byte lane of it.
-  5. ``LOAD_CHECKSUM`` is read again: Y.
+  4. One 32-bit read of that word; ``LOAD_CHECKSUM`` is read again.
+  5. One 8-bit read of a drawn byte lane of that word; ``LOAD_CHECKSUM`` is read again.
 
 Controls:
   CTRL-OTBN-IDLE            ``STATUS`` reads IDLE before the first memory access.
   CTRL-OTBN-<MEM>-CRC-LIVE  X equals ``binascii.crc32`` of the one 48b record
-                            ``{imem, idx[14:0], wdata}`` (ToO:446-453; ``imem`` is 1
+                            ``{imem, idx[14:0], wdata}`` (ToO:447-453; ``imem`` is 1
                             for IMEM and 0 for DMEM) in little- or big-endian byte
                             order. The text fixes the record layout, not its byte
                             order, so both are accepted. This proves the register
                             follows writes to that memory.
   CTRL-OTBN-<MEM>-READBACK  the 32-bit read returns the written word and the 8-bit
-                            read returns its byte at the drawn lane, both OKAY. A
-                            read at a non-IDLE state returns 0 (``otbn.hjson``
+                            read returns its byte at the drawn lane (the AXI driver
+                            fails the leaf on a response other than OKAY). A read
+                            at a non-IDLE state returns 0 (``otbn.hjson``
                             :801-802), which no drawn byte equals, so the reads
                             reached the memory.
 
 Checks:
-  CHK-OTBN-IMEM-READ-CRC    Y == X after the two IMEM reads.
-  CHK-OTBN-DMEM-READ-CRC    Y == X after the two DMEM reads.
+  CHK-OTBN-IMEM-READ-CRC    ``LOAD_CHECKSUM`` == X after the 32-bit IMEM read, and
+                            again after the 8-bit IMEM read.
+  CHK-OTBN-DMEM-READ-CRC    the same for DMEM.
 """
 
 from __future__ import annotations
@@ -68,7 +70,7 @@ CKSUM_ORDERS = ("little", "big")
 
 
 def load_checksum_golden(imem: int, idx: int, wdata: int, order: str) -> int:
-    """CRC-32-IEEE of one 48b ``{imem, idx[14:0], wdata}`` record from 0 (ToO:446-453)."""
+    """CRC-32-IEEE of one 48b ``{imem, idx[14:0], wdata}`` record from 0 (ToO:447-453)."""
     rec = ((imem & 1) << 47) | ((idx & 0x7FFF) << 32) | (wdata & 0xFFFF_FFFF)
     return binascii.crc32(rec.to_bytes(6, order), 0)
 
@@ -109,27 +111,36 @@ class sep_otbn_load_checksum_read_test(sep_base_test):
         )
 
         word = (await otbn._rd(addr)) & 0xFFFF_FFFF
+        chk.ctrl(
+            f"OTBN-{name}-READBACK",
+            word == wdata,
+            read="word",
+            addr=f"0x{addr:08x}",
+            rdata=f"0x{word:08x}",
+            expect=f"0x{wdata:08x}",
+        )
+        await self._grade_crc(name, "word", addr, before)
+
         byte_addr = addr + lane
         byte = (await otbn._read_access(byte_addr, size=AXI_SIZE_BYTE, length=1)) & 0xFF
         exp_byte = (wdata >> (8 * lane)) & 0xFF
         chk.ctrl(
             f"OTBN-{name}-READBACK",
-            word == wdata and byte == exp_byte,
-            addr=f"0x{addr:08x}",
-            word=f"0x{word:08x}",
-            exp_word=f"0x{wdata:08x}",
-            byte_addr=f"0x{byte_addr:08x}",
-            byte=f"0x{byte:02x}",
-            exp_byte=f"0x{exp_byte:02x}",
+            byte == exp_byte,
+            read="byte",
+            addr=f"0x{byte_addr:08x}",
+            rdata=f"0x{byte:02x}",
+            expect=f"0x{exp_byte:02x}",
         )
+        await self._grade_crc(name, "byte", byte_addr, before)
 
-        after = await otbn.read_load_checksum()
-        chk.ok(
+    async def _grade_crc(self, name: str, read: str, addr: int, before: int) -> None:
+        after = await self.otbn.read_load_checksum()
+        self.chk.ok(
             f"OTBN-{name}-READ-CRC",
             after == before,
-            reads="word,byte",
+            read=read,
             addr=f"0x{addr:08x}",
-            byte_addr=f"0x{byte_addr:08x}",
             before=f"0x{before:08x}",
             after=f"0x{after:08x}",
             expect="after==before",

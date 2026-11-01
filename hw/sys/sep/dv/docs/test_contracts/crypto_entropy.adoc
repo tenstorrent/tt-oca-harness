@@ -4826,7 +4826,7 @@ every memory word; the readable windows read 0 until VALID whatever they hold.
 
 *Objective*: A host read of an OTBN memory word does not change `LOAD_CHECKSUM`. "The register exposes a cumulative CRC checksum which is updated on every write to either memory." and "The stream over which the checksum is computed is the stream of writes that have been seen since the last write to LOAD_CHECKSUM." (`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md`:441, :449); `LOAD_CHECKSUM` is "A 32-bit CRC checksum of data written to memory" (`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson`:763). A read is not a write, so it is not in the stream.
 
-*Test Coverage*: One full-word write, one 32-bit read and one 8-bit read of one word of IMEM and of one word of DMEM, at IDLE.
+*Test Coverage*: One full-word write, one 32-bit read and one 8-bit read of one word of IMEM and of one word of DMEM, at IDLE, with `LOAD_CHECKSUM` read after each read.
 
 *Test Procedure*:
 
@@ -4834,9 +4834,9 @@ every memory word; the readable windows read 0 until VALID whatever they hold.
 . Bring up with OTBN, AES, HMAC, KMAC and ABR held in `SW_RESET_N`. Bring up ESRC, CSRNG and EDN with the OTBN URND sink observed, and start the FIFO drain.
 . Draw the plan and log `PLAN seed=<n>`.
 . Release OTBN in `SW_RESET_N`. Poll `STATUS` until IDLE (a bounded wait that fails on LOCKED), then read `STATUS` and expect IDLE (`CTRL-OTBN-IDLE`; the memories are accessible only at IDLE, `otbn.hjson`:797-802, :821-826).
-. For IMEM, then DMEM: write `LOAD_CHECKSUM` = 0 (`theory_of_operation.md`:460-461). Write the drawn word to the drawn index with one 32-bit write. Read `LOAD_CHECKSUM` (X) and expect the CRC-32 (`binascii.crc32` from 0) of the 48b record `{imem, idx[14:0], wdata}`, `imem` = 1 for IMEM and 0 for DMEM, in little- or big-endian byte order (`CTRL-OTBN-<MEM>-CRC-LIVE`; `theory_of_operation.md`:446-453; the text fixes the layout of the record, not its byte order).
-. Read the word with one 32-bit read and expect the written word; read the drawn byte lane with one 8-bit read and expect that byte of the written word; both responses OKAY (`CTRL-OTBN-<MEM>-READBACK`). A read at a state other than IDLE returns 0 (`otbn.hjson`:801-802), which no drawn byte equals.
-. Read `LOAD_CHECKSUM` (Y) and grade `CHK-OTBN-<MEM>-READ-CRC`. Log X and Y.
+. For IMEM, then DMEM: write `LOAD_CHECKSUM` = 0 (`theory_of_operation.md`:456-457, :461). Write the drawn word to the drawn index with one 32-bit write. Read `LOAD_CHECKSUM` (X) and expect the CRC-32 (`binascii.crc32` from 0) of the 48b record `{imem, idx[14:0], wdata}`, `imem` = 1 for IMEM and 0 for DMEM, in little- or big-endian byte order (`CTRL-OTBN-<MEM>-CRC-LIVE`; `theory_of_operation.md`:447-453; the text fixes the layout of the record, not its byte order).
+. Read the word with one 32-bit read and expect the written word (`CTRL-OTBN-<MEM>-READBACK`, `read=word`). Read `LOAD_CHECKSUM` and grade `CHK-OTBN-<MEM>-READ-CRC` (`read=word`); log X and the value read.
+. Read the drawn byte lane with one 8-bit read and expect that byte of the written word (`CTRL-OTBN-<MEM>-READBACK`, `read=byte`). Read `LOAD_CHECKSUM` and grade `CHK-OTBN-<MEM>-READ-CRC` (`read=byte`); log X and the value read. The AXI driver fails the leaf on a read response other than OKAY. A read at a state other than IDLE returns 0 (`otbn.hjson`:801-802), which no drawn byte equals.
 . Stop the FIFO drain and grade the entropy chain.
 
 *Checkers*:
@@ -4845,7 +4845,7 @@ every memory word; the readable windows read 0 until VALID whatever they hold.
 |===
 |Checker |Contract
 |CHK-OTBN-IMEM-READ-CRC
-|After the 32-bit read and the 8-bit read of the written IMEM word, `LOAD_CHECKSUM` equals X, its value before the reads (`theory_of_operation.md`:441, :449; `otbn.hjson`:763).
+|After the 32-bit read of the written IMEM word, and again after the 8-bit read, `LOAD_CHECKSUM` equals X, its value before the reads (`theory_of_operation.md`:441, :449; `otbn.hjson`:763).
 |CHK-OTBN-DMEM-READ-CRC
 |The same for the written DMEM word.
 |===
