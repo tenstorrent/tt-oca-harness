@@ -21,10 +21,12 @@ Only"; ``vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_d
   AES or watchdog register answers SLVERR and latches that block's bit alone
   (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:63-68``); the register
   value after it is logged as ``OBS-PARTIAL-KEPT`` and not graded;
-* each of sources 41, 42 and 43 rises with no other vector bit changing in
-  that clock, except the other two of the three
+* the vector bit of each of sources 41, 42 and 43 rises in the run
   (``hw/sys/sep/doc/interrupts.adoc:22-23`` "Bit ``i`` of that vector is PIC
-  source ``i + 1``"; ``:33-34`` "Slots 1–43 are individually assigned");
+  source ``i + 1``"; the rows of sources 41 at ``:225-231``, 42 at
+  ``:233-238`` and 43 at ``:240-251``); the other vector bits that move in
+  the clock of each rise are logged as ``OBS-SRC<n>-COINCIDENT`` and not
+  graded, because no sentence states which bits stay still then;
 * each ``PERIPH_BUS_ERR_CLEAR`` bit clears only its own block; both clear
   registers read 0;
 * ``DMA_BUS_ERR_CLEAR.clr`` clears both DMA latches for a written 1 only;
@@ -45,8 +47,8 @@ between them: each trial measures the clock of both pulses and moves the
 offset by their distance, inside a bounded range and number of trials.
 
 The read-only tap ``sep_internal_interrupts_probe_o`` is watched on every
-clock (``env/sep_bit_watch.pic_vector_watch``) for the exclusivity of each rise
-of vector bits 40, 41 and 42.
+clock (``env/sep_bit_watch.pic_vector_watch``) for each rise of vector bits 40,
+41 and 42 and the other bits that move in its clock.
 
 Randomization (``SepSeededRng`` from the run seed): the block order of hmac,
 kmac and otbn, the sweep order, the hole offset of each block, the
@@ -86,12 +88,16 @@ Checkers:
                   leg answers OKAY and latches nothing (``CTRL-FULL-STROBE``).
   CHK-PARTIAL-CLR a write of that block's PERIPH_BUS_ERR_CLEAR bit returns the
                   status to 0 and vector bit 42 to 0.
-  CHK-SRC41-EXCL, CHK-SRC42-EXCL, CHK-SRC43-EXCL
-                  at every rise of vector bit 40, 41 or 42 in the run, every
-                  other vector bit keeps its value of the clock before; the
-                  six bits with an unstated idle level and the other two of
-                  the three bridge-fault bits are not compared; each bit rises
-                  at least once.
+  CHK-SRC41-RISE, CHK-SRC42-RISE, CHK-SRC43-RISE
+                  vector bit 40, 41 and 42 each rise at least once in the run
+                  (``interrupts.adoc:22-23``; source rows ``:225-231``,
+                  ``:233-238``, ``:240-251``).
+  OBS-SRC41-COINCIDENT, OBS-SRC42-COINCIDENT, OBS-SRC43-COINCIDENT
+                  logged only: the number of rises of that bit at which
+                  another vector bit differs from its value of the clock
+                  before, and for the first 16 of them the clock and those
+                  bits (the six bits with an unstated idle level are not
+                  compared).
   CHK-RESP        a hole write answers SLVERR.
   CHK-LATCH       PERIPH_BUS_ERR_STATUS equals the faulted set.
   CHK-OR          vector bit 42 equals (status != 0).
@@ -143,12 +149,12 @@ FCOV: the owner window is open over each graded instance. The pass label
 start of each graded instance and 1 after its checks pass; the sampler holds
 every legal outcome of this leaf's points until that rise. The race trials run
 with the window closed; only the graded read after a same-cycle coincidence
-opens it. The exclusive rises of sources 41 to 43 in the window
-(``cp_src_exclusive_other`` bins s41 to s43) are held until the end of the
-run: CHK-SRC41/42/43-EXCL grade every rise of the run there, and after each
-check passes the leaf sets the bit of its source in ``exo_pass``
-(``env/sep_fcov_gate.set_exo_pass``), which samples the held rises of that
-source.
+opens it. The rises of sources 41 to 43 in the window that the sampler sees
+with no other compared bit moving (``cp_src_exclusive_other`` bins s41 to
+s43; that compare is the sampler's own, not a graded check) are held until
+the end of the run: after CHK-SRC41/42/43-RISE passes, the leaf sets the bit
+of its source in ``exo_pass`` (``env/sep_fcov_gate.set_exo_pass``), which
+samples the held rises of that source.
 
 Observed only (``OBS-DMA-HOST-CLR``): STATUS.ERROR and ERROR_CODE.BUS_ERROR
 after a write of 1 to DMA_BUS_ERR_CLEAR while both are set. No sentence states
@@ -180,7 +186,7 @@ from env.sep_fcov_gate import (
 )
 from env.sep_field_compare import field_compare
 from env.sep_filter_model import FilterEntry
-from env.sep_pic_map import vec_bit, vec_mask
+from env.sep_pic_map import vec_bit
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import AES, HMAC, KMAC, OTBN, SEP_CPU_CTRL, WDT_TIMER, register_fields, sym
@@ -303,10 +309,8 @@ def _unbacked_words(block: str) -> tuple[str, list[int]]:
     return "hole", [a for a in range(row.base, top, 4) if a not in backed]
 
 
-# Exclusivity of the three bridge-fault sources: own vector bit and the bits
-# that may move in the same clock (the other two of the three).
-EXCL_SRC = (41, 42, 43)
-EXCL_SAME = {s: vec_mask([o for o in EXCL_SRC if o != s]) for s in EXCL_SRC}
+# The three bridge-fault sources whose vector bits the leaf watches on every clock.
+RISE_SRC = (41, 42, 43)
 
 
 def _owned_bytes(mask: int) -> int:
@@ -480,9 +484,9 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         "CHK-CTRL",
         "CHK-PARTIAL-WR",
         "CHK-PARTIAL-CLR",
-        "CHK-SRC41-EXCL",
-        "CHK-SRC42-EXCL",
-        "CHK-SRC43-EXCL",
+        "CHK-SRC41-RISE",
+        "CHK-SRC42-RISE",
+        "CHK-SRC43-RISE",
         "CHK-RESP",
         "CHK-LATCH",
         "CHK-OR",
@@ -537,7 +541,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             "CHK-DMA-HOST-HOLD": 1,
             "CHK-RACE": n_blk + 1,
         }
-        exp.update({f"CHK-SRC{src}-EXCL": 1 for src in EXCL_SRC})
+        exp.update({f"CHK-SRC{src}-RISE": 1 for src in RISE_SRC})
         return exp
 
     # ---- FCOV pass label -----------------------------------------------------------
@@ -765,31 +769,42 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         for b in self.c.partial_order:
             await self._partial(b)
 
-    async def _leg_excl(self) -> None:
-        """CHK-SRC41/42/43-EXCL over every rise of the run since the watcher mark.
+    async def _leg_src_rise(self) -> None:
+        """CHK-SRC41/42/43-RISE and OBS-SRC41/42/43-COINCIDENT over the run since the watcher mark.
 
         After each check passes, the bit of its source joins ``exo_pass``,
         which releases the held ``cp_src_exclusive_other`` rises of that
         source; the label returns to 0 after the last check.
         """
         released = 0
-        for src in EXCL_SRC:
+        for src in RISE_SRC:
             key = f"s{src}"
-            same = EXCL_SAME[src]
             try:
                 rises = self.vw.rises_since(self.vw_mark, key)
-                smears = self.vw.smears_since(self.vw_mark, key, same_clock=same)
             except AssertionError as exc:
-                # VecWatchNoRiseError (no rise of the own bit), an idle or dead watcher.
-                self._fail(f"CHK-SRC{src}-EXCL", f"src={src} vec_bit={vec_bit(src)} {exc}")
+                # An idle or dead watcher.
+                self._fail(f"CHK-SRC{src}-RISE", f"src={src} vec_bit={vec_bit(src)} {exc}")
             line = (
                 f"src={src} vec_bit={vec_bit(src)} rises={len(rises)} "
-                f"rise_clks={[r.clk for r in rises][:8]} smears={len(smears)} "
-                f"first_smear={[(k, hex(m)) for k, m in smears[:2]]} same_clock=0x{same:x}"
+                f"rise_clks={[r.clk for r in rises][:8]}"
             )
-            if smears or not rises:
-                self._fail(f"CHK-SRC{src}-EXCL", line)
-            self._pass(f"CHK-SRC{src}-EXCL", line)
+            if not rises:
+                self._fail(f"CHK-SRC{src}-RISE", line)
+            moved = self.vw.smears_since(self.vw_mark, key)
+            self.logger.info(
+                "OBS-SRC%d-COINCIDENT seed=%d src=%d vec_bit=%d rises=%d coincident=%d moved=%s",
+                src,
+                self.c.seed,
+                src,
+                vec_bit(src),
+                len(rises),
+                len(moved),
+                [
+                    (clk, [b for b in range(m.bit_length()) if (m >> b) & 1])
+                    for clk, m in moved[:16]
+                ],
+            )
+            self._pass(f"CHK-SRC{src}-RISE", line)
             released |= exo_pass_bit(src)
             set_exo_pass(released, self.logger)
             await ClockCycles(cocotb.top.clk_i, LABEL_CLK)
@@ -1489,7 +1504,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.out = SepFabricTap("PR-OUT").start()
         self.out_rsp = SepFabricTap("PR-OUT-RSP").start()
         self.pulses = _PulseRec().start()
-        self.vw = pic_vector_watch({f"s{s}": vec_bit(s) for s in EXCL_SRC}).start()
+        self.vw = pic_vector_watch({f"s{s}": vec_bit(s) for s in RISE_SRC}).start()
         self.vw_mark = self.vw.mark()
         self._go_word = control_word(go=1, initial=1)
 
@@ -1506,7 +1521,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         for b in c.sweep_order:
             await self._race_periph(b)
         await self._race_dma()
-        await self._leg_excl()
+        await self._leg_src_rise()
         exp = self._expected_counts()
         diff = {k: (self.counts.get(k, 0), n) for k, n in exp.items() if self.counts.get(k, 0) != n}
         diff.update({k: (n, 0) for k, n in self.counts.items() if k not in exp})
