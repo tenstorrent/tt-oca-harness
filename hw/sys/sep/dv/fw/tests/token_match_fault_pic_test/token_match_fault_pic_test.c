@@ -14,6 +14,13 @@
  *   CHK-PIC-FAULT  : the secure-disable fault bit is set
  *   CHK-PIC-MASK   : after masking, the ISR does not re-enter, and the source
  *                    is still pending at both ends of the quiet window
+ *   CHK-PIC-LEVEL-REENTRY : with source 40 enabled again and the handler not
+ *                    masking it, the ISR enters at least twice in a fixed
+ *                    window (doc/programmer/src/sep-programming.adoc:235-237
+ *                    "an unmasked handler re-enters")
+ *
+ * Observed, not graded:
+ *   OBS-PIC-LEVEL-REENTRY : the pending state of source 40 after that window
  */
 
 #include <stdint.h>
@@ -31,17 +38,25 @@
 #define ISR_WAIT_ITERS 200000
 #define STORM_CHECK_ITERS 4096
 #define PRESENT_TRIES 8
+#define REENTRY_CAP 4u
 
 static volatile uint32_t g_isr_count;
 static volatile uint32_t g_claim_id;
 static volatile uint32_t g_fault;
+static volatile uint32_t g_no_mask;
+static volatile uint32_t g_cap_base;
 
 void __attribute__((interrupt("machine"))) token_fault_isr(void) {
     uint32_t meihap;
     __asm__ volatile("csrr %0, %1" : "=r"(meihap) : "i"(CSR_MEIHAP));
     g_claim_id = (meihap >> 2) & 0xFFu;
     g_fault = READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
-    pic_disable_source(PIC_TOKEN_FAULT);
+    /* The level cannot be cleared, so the handler masks the source after at
+     * most REENTRY_CAP unmasked entries; this keeps a storm from stalling the
+     * CPU. */
+    if (!g_no_mask || g_isr_count - g_cap_base >= REENTRY_CAP) {
+        pic_disable_source(PIC_TOKEN_FAULT);
+    }
     g_isr_count++;
     __asm__ volatile("fence" ::: "memory");
 }
@@ -123,6 +138,29 @@ int main(void) {
             sep_mbx_puts("CHK-PIC-MASK PASS: source 40 still requesting, meie[40] "
                          "mask stopped re-entry\n");
         }
+
+        g_cap_base = g_isr_count;
+        g_no_mask = 1u;
+        __asm__ volatile("fence" ::: "memory");
+        pic_enable_source(PIC_TOKEN_FAULT);
+        for (i = 0; i < STORM_CHECK_ITERS; i++) {
+            __asm__ volatile("nop");
+        }
+        pic_disable_source(PIC_TOKEN_FAULT);
+        uint32_t entries = g_isr_count - g_cap_base;
+        uint32_t pending = pic_source_pending(PIC_TOKEN_FAULT);
+        g_no_mask = 0u;
+        if (entries < 2u) {
+            sep_mbx_puts("FAIL: CHK-PIC-LEVEL-REENTRY entries=");
+            errors++;
+        } else {
+            sep_mbx_puts("CHK-PIC-LEVEL-REENTRY PASS: entries=");
+        }
+        sep_mbx_puthex(entries);
+        sep_mbx_puts(" min=0x00000002\n");
+        sep_mbx_puts("OBS-PIC-LEVEL-REENTRY pending=");
+        sep_mbx_puthex(pending);
+        sep_mbx_puts("\n");
     }
 
     return errors;

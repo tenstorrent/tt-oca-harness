@@ -9,11 +9,12 @@ the test rebuilds the same plan from the same seed for its golden and checks
 the sha256 of the staged file against it.
 
 Contract (spec only): ``hw/ip/key_manager/doc/architecture.adoc`` "OTP Inputs
-and Readout", "Errors and reset", "Scan and Scan-Dump Protection";
+and Readout", "Reset Conditioning", "Scan and Scan-Dump Protection";
 ``hw/ip/key_manager/regs/gen/adoc/km_csr.adoc`` "OTP_LIFE_CYCLE" through
 "OTP_READ_LOCK_COLD", "IRQ_STATUS", "IRQ_SET", "OTP_CHANGE_STATUS";
 ``hw/sys/sep/doc/otp_fuse_controller.adoc`` "Fuse Fields";
 ``hw/sys/sep/doc/lifecycle_controller.adoc`` "In-Field Debug Demotion";
+``sep_lifecycle_ctrl.rdl`` DEMOTE ``demote`` (1 = demoted, reset 0);
 ``hw/sys/sep/doc/test_mode.adoc`` "Protection While Active".
 
 The KM CPU reads and writes every KMCSR register through the POKE image, which
@@ -25,17 +26,25 @@ for the integrity and change legs; it is stimulus only and never a golden.
 
 Checks (anchor):
   CHK-OTP-RD             boot-1 readout of the four secrets, the life cycle and
-                         the demotion state (POKE readback vs staged image)
+                         the demotion state (POKE readback vs staged image;
+                         OTP_DEMOTION_STATE = 0xA, each group {~demote, demote})
   CHK-OTP-LOCK           zero read of every field in m_w | m_c, staged read of
                          the rest, write-one-to-set lock registers (POKE readback)
+  OBS-OTP-LOCK-RESP      the response flags of each read of a read-locked field
+                         (``km_csr.rdl:818`` states the zero data, not the
+                         response code; POKE flags)
   CHK-OTP-HANDOVER-MASK  control=1: OTP_READ_LOCK = 0x03C (POKE readback)
   CHK-OTP-TM             secure test boot: secrets 0 / all ones, public and
                          life-cycle words kept, OTP_SIGINT quiet (POKE readback,
                          ``secure_tm_o``)
   CHK-OTP-DEM            a DEMOTE write sets OTP_CHANGE_STATUS.demotion and
-                         IRQ_STATUS.OTP_CHANGE and changes one group (POKE readback)
-  CHK-OTP-SUPP           no change after a KM warm reset with a demotion held
-  CHK-OTP-COLD           a SEP cold reset restores the first-boot demotion state
+                         IRQ_STATUS.OTP_CHANGE and changes only its own group,
+                         2'b10 -> 2'b01: DEMOTE_1 bits [1:0], DEMOTE_2 bits [3:2]
+                         (POKE readback)
+  CHK-OTP-SUPP           no change after a KM warm reset with a demotion held;
+                         control CTRL-OTP-SUPP-PARK: OTP_READ_LOCK, set to 0x1FF
+                         before PARK, reads 0 after it (warm reset domain)
+  CHK-OTP-COLD           a SEP cold reset restores OTP_DEMOTION_STATE = 0xA
   CHK-OTP-NOTKM          shadow writes of REQUIRED_ALGS / REQUIRED_SIGNERS leave
                          the KM OTP words and status unchanged (POKE + host readback)
   CHK-OTP-NOTKM-CLASS    programmed bits of one field outside the KM interface
@@ -45,18 +54,24 @@ Checks (anchor):
                          image (POKE readback; host program and shadow readback)
   CHK-OTP-SIG            a single-rail flip sets the sticky OTP_SIGINT (IRQ_STATUS)
   CHK-OTP-CHG            a two-rail flip sets the field change bit and
-                         OTP_CHANGE, no OTP_SIGINT (POKE readback)
+                         OTP_CHANGE, no OTP_SIGINT (POKE readback); on the held
+                         point the readout word after the flip release equals the
+                         word before the flip, with no KM reset between
+                         (``km_csr.adoc``: "Read-through from OTP port; no reset");
+                         control CTRL-OTP-CHG-READOUT: the held field is unlocked
+                         and the word before the flip equals its golden
+  CHK-OTP-BOOT-SIGINT    IRQ_STATUS.OTP_SIGINT reads 0 right after each KM reset
+                         (``km_csr.adoc`` IRQ_STATUS reset 0x0, complementary
+                         rails)
+  CHK-OTP-RSVD           the reserved bits of OTP_LIFE_CYCLE, OTP_DEMOTION_STATE,
+                         the two lock registers, OTP_CHANGE_STATUS and IRQ_STATUS
+                         read 0 in every readout (RDL ``rsvd`` R 0x0)
 
-Logged only (no verdict): ``OBS-OTP-BOOT-SIGINT`` (IRQ_STATUS.OTP_SIGINT right
-after each KM reset; the leaf clears it with a write of 1 before any graded
-OTP_SIGINT read), ``OBS-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a single-rail
-flip, not stated), ``OBS-OTP-DEM-GROUP`` (which group a DEMOTE register drives,
-not stated), ``OBS-OTP-LOCK-RESP`` (the response of a locked-field read, not
-stated; only its zero data is graded), ``OBS-OTP-RSVD`` (reserved bits of the read
-registers).
+Logged only (no verdict): ``OBS-OTP-SIG-CHANGE`` (OTP_CHANGE_STATUS after a single-rail
+flip, not stated).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
-draw is logged on a ``DRAW`` line.
+draw is logged on an ``INFO-DRAW`` line.
 
 The fuse array changes in the simulation only through ``EFUSE_PROGRAM_CTRL``
 (host writes, staged image unlocked); the golden of every later sense is the
@@ -182,6 +197,8 @@ class Leg:
     w1c_change: int = 0
     bad: list[str] = field(default_factory=list)
     active: int = 0
+    pre_rd: int | None = None
+    post_rd: int | None = None
 
 
 # One fuse bit to program: (eFuse field name, word in the field, bit in the word).
@@ -262,15 +279,17 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         "CHK-OTP-NOTKM-CLASS",
         "CHK-OTP-SIG",
         "CHK-OTP-CHG",
+        "CHK-OTP-BOOT-SIGINT",
+        "CHK-OTP-RSVD",
     )
 
     # --- small helpers ------------------------------------------------------
 
     def _draw(self, name: str, value) -> None:
         if isinstance(value, int):
-            self.logger.info("DRAW %s=0x%x", name, value)
+            self.logger.info("INFO-DRAW %s=0x%x", name, value)
         else:
-            self.logger.info("DRAW %s=%s", name, value)
+            self.logger.info("INFO-DRAW %s=%s", name, value)
 
     async def _run(self, ops: list[kp.PokeOp], **kw) -> list[kp.PokeResult]:
         return await self.poke.run(ops, timeout_cycles=LIST_TIMEOUT, allow_unknown=True, **kw)
@@ -296,6 +315,30 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             raise AssertionError(f"host {op.value} 0x{addr:08x} did not complete")
         return seq.rdata & WORD_MASK, bool(seq.resp_ok)
 
+    async def _sample_presense(self) -> dict:
+        """The KM OTP identity inputs each clock from ``rst_ni`` release to sense done."""
+        dut = cocotb.top
+        taps = (dut.km_otp_sep_chiplet_id_o, dut.km_otp_sep_sip_id_o, dut.km_otp_sep_sys_id_o)
+        first = None
+        for cycle in range(1, SENSE_BOUND + 1):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            vals = [self.rd(t, allow_unknown=True) for t in taps]
+            if first is None and any(vals):
+                first = cycle
+            if self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True):
+                return {
+                    "chiplet": _h(vals[0]),
+                    "sip": _h(vals[1]),
+                    "sys": _h(vals[2]),
+                    "first_nonzero_cycle": "none" if first is None else first,
+                    "sense_done_cycle": cycle,
+                }
+        return {
+            "first_nonzero_cycle": "none" if first is None else first,
+            "sense_done_cycle": "none",
+        }
+
     async def _wait_sep_reset_release(self) -> int:
         dut = cocotb.top
         for cycle in range(1, RELEASE_BOUND + 1):
@@ -316,19 +359,21 @@ class sep_km_otp_interface_rand_test(sep_base_test):
                 f"{fp.identity()}; the prestage registry entry of {TEST} did not run"
             )
 
-    def _rsvd(self, reg: str, value: int, fields: int) -> None:
-        if value & ~fields & WORD_MASK:
-            self.chk.obs("OTP-RSVD", reg=reg, value=_h(value), mask=_h(~fields & WORD_MASK))
+    @staticmethod
+    def _rsvd(reg: str, value: int, fields: int) -> str | None:
+        """``reg=value`` when a reserved bit (RDL ``rsvd``, R, reset 0x0) reads 1."""
+        return f"{reg}={_h(value)}" if value & ~fields & WORD_MASK else None
 
     # --- boots and resets ---------------------------------------------------------
 
     async def _km_boot(self, boot: str) -> None:
         """Release the KM, wait for the POKE start marker, then clear OTP_SIGINT.
 
-        A KM reset can leave IRQ_STATUS.OTP_SIGINT at 1 before any inject. The
-        leaf logs that value and writes 1 to OTP_SIGINT only, so every graded
-        OTP_SIGINT read starts from a cleared bit, and OTP_CHANGE stays as the
-        reset left it (CHK-OTP-SUPP and CHK-OTP-COLD read it).
+        CHK-OTP-BOOT-SIGINT grades IRQ_STATUS.OTP_SIGINT as 0 after the reset
+        (``km_csr.adoc`` IRQ_STATUS reset 0x0; the staged rails are
+        complementary). The leaf then writes 1 to OTP_SIGINT only, so every
+        later graded OTP_SIGINT read starts from a cleared bit, and OTP_CHANGE
+        stays as the reset left it (CHK-OTP-SUPP and CHK-OTP-COLD read it).
         """
         await self.poke.release()
         await self.poke.wait_boot()
@@ -339,8 +384,9 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             [kp.rd(m.A_IRQ_STATUS), kp.wr(m.A_IRQ_STATUS, m.IRQ_OTP_SIGINT), kp.rd(m.A_IRQ_STATUS)]
         )
         pre, post = r[0].value, r[2].value
-        self.chk.obs(
+        self.chk.ok(
             "OTP-BOOT-SIGINT",
+            _ok(r[0]) and not pre & m.IRQ_OTP_SIGINT,
             boot=boot,
             irq_pre=_h(pre),
             sigint_pre=int(bool(pre & m.IRQ_OTP_SIGINT)),
@@ -364,18 +410,16 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         dut.test_en_strap_i.value = strap
         await ClockCycles(dut.clk_i, RESET_HOLD)
         dut.rst_ni.value = 1
+        pre_sense = cocotb.start_soon(self._sample_presense())
         await self.wait_fuse_sense(max_cycles=SENSE_BOUND)
+        self.chk.obs("OTP-PRESENSE", boot=boot, **(await pre_sense))
         rel = await self._wait_sep_reset_release()
         self.cfg.reset_done.set()
         await ReadOnly()
         tm = self.rd(dut.secure_tm_o)
         await RisingEdge(dut.clk_i)
         self.logger.info(
-            "LOG %s cold reset strap=%d: sep_reset_n release +%d clk, secure_tm_o=%d",
-            boot,
-            strap,
-            rel,
-            tm,
+            "INFO-COLD-RESET boot=%s strap=%d sep_reset_n_release_clk=%d", boot, strap, rel
         )
         self.swrst = SepSwReset(self)
         await self._km_boot(boot)
@@ -443,33 +487,53 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             slot_resp,
             resp_only,
         )
-        self._rsvd("OTP_LIFE_CYCLE", words[(m.F_LC, "reg", 0)], m.LC_FIELDS)
-        self._rsvd("OTP_DEMOTION_STATE", words[(m.F_DEM, "reg", 0)], m.DEM_FIELDS)
-        self._rsvd("OTP_READ_LOCK", ro.lock, m.LOCK_FIELDS)
-        self._rsvd("OTP_READ_LOCK_COLD", ro.lock_cold, m.LOCK_FIELDS)
-        self._rsvd("OTP_CHANGE_STATUS", ro.change, m.CHANGE_FIELDS)
-        self._rsvd("IRQ_STATUS", ro.irq, m.IRQ_FIELDS)
+        rsvd = [
+            x
+            for x in (
+                self._rsvd("OTP_LIFE_CYCLE", words[(m.F_LC, "reg", 0)], m.LC_FIELDS),
+                self._rsvd("OTP_DEMOTION_STATE", words[(m.F_DEM, "reg", 0)], m.DEM_FIELDS),
+                self._rsvd("OTP_READ_LOCK", ro.lock, m.LOCK_FIELDS),
+                self._rsvd("OTP_READ_LOCK_COLD", ro.lock_cold, m.LOCK_FIELDS),
+                self._rsvd("OTP_CHANGE_STATUS", ro.change, m.CHANGE_FIELDS),
+                self._rsvd("IRQ_STATUS", ro.irq, m.IRQ_FIELDS),
+            )
+            if x
+        ]
+        self.chk.ok("OTP-RSVD", not rsvd, readout=label, regs=6, nonzero=",".join(rsvd) or "none")
         return ro
 
     def _bad_under(self, ro: Readout, eff: int) -> list[str]:
         """Response problems of a readout under the effective lock ``eff``.
 
-        The RDL states only that a locked field reads zero, not the response,
-        so a locked read is graded on its data and its SLVERR / DECERR bits are
-        logged. A locked read with an unknown bit or a failed clear before it
-        fails: an unknown word would otherwise compare equal to 0. Every
+        OBS-OTP-LOCK-RESP: the response of a read of a read-locked field. The RDL
+        states only the data (``hw/ip/key_manager/regs/km_csr.rdl:818``: "Returns
+        zero when the field's bit is set in either OTP_READ_LOCK or
+        OTP_READ_LOCK_COLD"), not the response code, so the code is logged and the
+        zero data is graded by the caller. A
+        locked read with an unknown bit or a failed clear before it is also a
+        data problem: an unknown word would otherwise compare equal to 0. Every
         unlocked read and every register read counts only as a clean OKAY.
         """
         out = list(ro.reg_bad)
-        locked: list[str] = []
-        for slot, resp in ro.slot_resp.items():
-            name = f"{_FN[slot[0]]}.{slot[1]}{slot[2]}"
-            if (eff >> slot[0]) & 1 and slot in ro.slot_resp_only:
-                locked.append(f"{name}:{resp}")
-            else:
-                out.append(f"{ro.label} {name} not a clean OKAY read")
-        if locked:
-            self.chk.obs("OTP-LOCK-RESP", readout=ro.label, reads=len(locked), first=locked[0])
+        for slot in ro.slot_resp:
+            if not ((eff >> slot[0]) & 1 and slot in ro.slot_resp_only):
+                out.append(f"{ro.label} {_FN[slot[0]]}.{slot[1]}{slot[2]} not a clean OKAY read")
+        if eff:
+            locked = [slot for slot in ro.words if (eff >> slot[0]) & 1]
+            bad = [
+                f"{_FN[slot[0]]}.{slot[1]}{slot[2]}:{ro.slot_resp[slot]}"
+                for slot in locked
+                if slot in ro.slot_resp
+            ]
+            self.chk.obs(
+                "OTP-LOCK-RESP",
+                readout=ro.label,
+                eff=f"0x{eff:03x}",
+                reads=len(locked),
+                resp="OKAY" if not bad else "error",
+                bad=len(bad),
+                first=bad[0] if bad else "none",
+            )
         return out
 
     @staticmethod
@@ -497,15 +561,15 @@ class sep_km_otp_interface_rand_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         fp = plan(TEST, seed)
         self.fp = fp
         # The KM OTP field values of the current fuse array: the staged plan
         # plus every bit this leaf programs.
         self.otp_fields = dict(fp.otp_fields)
-        self.logger.info("DRAW fuse_plan %s", fp.summary())
+        self.logger.info("INFO-DRAW fuse_plan %s", fp.summary())
         lc_name = {0x0: "TEST_DEV", 0x1: "PROD"}.get(fp.lc_raw, f"0x{fp.lc_raw:x}")
-        self.logger.info("LC lc=%s", lc_name)
+        self.logger.info("INFO-LC lc=%s", lc_name)
         self.masks = m.lock_rounds(fp.lock_mask_a)
         self._draw("lock.a", self.masks["a"])
         self._draw("lock.not_a", self.masks["not_a"])
@@ -546,9 +610,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         dut.test_en_strap_i.value = 0
         rel = await self._wait_sep_reset_release()
         self.tm0 = self.rd(dut.secure_tm_o)
-        self.logger.info(
-            "LOG boot1 strap=0: sep_reset_n release +%d clk, secure_tm_o=%d", rel, self.tm0
-        )
+        self.logger.info("INFO-COLD-RESET boot=boot1 strap=0 sep_reset_n_release_clk=%d", rel)
         self.swrst = SepSwReset(self)
         self.poke = SepKmPoke(self)
         open_graded_window(TEST, self.logger)
@@ -580,8 +642,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
     async def _step_first_read(self) -> None:
         ro = await self._readout("boot1")
         self.r0 = ro
-        self.dem_record = ro.words[(m.F_DEM, "reg", 0)] & m.DEM_FIELDS
-        self._draw("record.demotion", self.dem_record)
+        self.dem_record = m.dem_expected()
+        dem = ro.words[(m.F_DEM, "reg", 0)] & m.DEM_FIELDS
         exp = self._expected(0)
         diff = self._diff(ro, exp)
         graded = (m.F_LC, m.F_DEM, *m.SECRET)
@@ -600,14 +662,12 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             and ro.words[(f, "cpl", w)] == exp[(f, "cpl", w)]
         )
         lc = ro.words[(m.F_LC, "reg", 0)] & m.LC_FIELDS
-        dem_cpl = m.dem_groups_cpl(self.dem_record)
         ok = (
             not ro.bad
             and n_val == 32
             and n_cpl == 32
             and lc == m.lc_encode(self.fp.lc_raw)
-            and dem_cpl == 2
-            and all(not diff[f] for f in graded if f != m.F_DEM)
+            and all(not diff[f] for f in graded)
         )
         self.chk.ok(
             "OTP-RD",
@@ -616,8 +676,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             graded_cpl=n_cpl,
             lc=_h(lc),
             lc_exp=_h(m.lc_encode(self.fp.lc_raw)),
-            dem=_h(self.dem_record),
-            dem_groups_cpl=dem_cpl,
+            dem=_h(dem),
+            dem_exp=_h(self.dem_record),
             bad=len(ro.bad),
             first=(ro.bad + [f"{_FN[f]}:{d[0]}" for f, d in diff.items() if d])[:4],
         )
@@ -648,9 +708,6 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             fields_staged=sum(1 for d in diff.values() if not d),
             lock=_h(ro.lock),
             lock_cold=_h(ro.lock_cold),
-        )
-        self.logger.info(
-            "LOG boot1 status: change=%s irq=%s secure_tm_o=%d", _h(ro.change), _h(ro.irq), self.tm0
         )
 
     # --- steps 4 to 6: lock rounds ------------------------------------------------------
@@ -866,8 +923,14 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             )
         return active
 
-    async def _leg(self, label: str, pts: list[m.FlipPoint], *, single: bool) -> Leg:
-        """Control reads, one HK-OTP flip at the sync, bounded poll, readback, W1C."""
+    async def _leg(
+        self, label: str, pts: list[m.FlipPoint], *, single: bool, rd_addr: int | None = None
+    ) -> Leg:
+        """Control reads, one HK-OTP flip at the sync, bounded poll, readback, W1C.
+
+        With ``rd_addr`` the readout word at that address is also read before the
+        sync and after the poll.
+        """
         leg = Leg(label, pts)
         leg.exp = 0 if single else sum(1 << p.f for p in pts)
         mask = m.flip_mask([p.tup() for p in pts])
@@ -875,6 +938,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         o.add(kp.rd(m.A_DEMOTION), "pre_dem")
         o.add(kp.rd(m.A_IRQ_STATUS), "pre_irq")
         o.add(kp.rd(m.A_CHANGE), "pre_change")
+        if rd_addr is not None:
+            o.add(kp.rd(rd_addr), "pre_rd")
         o.add(kp.sync())
         if single:
             o.add(kp.poll(m.A_IRQ_STATUS, m.IRQ_OTP_SIGINT, m.IRQ_OTP_SIGINT, POLL_LOADS), "poll")
@@ -885,6 +950,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             )
         o.add(kp.rd(m.A_IRQ_STATUS), "irq")
         o.add(kp.rd(m.A_CHANGE), "change")
+        if rd_addr is not None:
+            o.add(kp.rd(rd_addr), "post_rd")
         if single:
             o.add(kp.wr(m.A_IRQ_STATUS, m.IRQ_OTP_SIGINT))
             o.add(kp.rd(m.A_IRQ_STATUS), "w1c_sig")
@@ -909,6 +976,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         leg.irq, leg.change = v["irq"], v["change"]
         leg.w1c_change = v["w1c_change"]
         leg.w1c_irq = v["w1c_sig"] if single else v["w1c_irq"]
+        leg.pre_rd, leg.post_rd = v.get("pre_rd"), v.get("post_rd")
         if single:
             self.chk.obs(
                 "OTP-SIG-CHANGE",
@@ -917,7 +985,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
                 irq_change=int(bool(leg.irq & m.IRQ_OTP_CHANGE)),
             )
         self.logger.info(
-            "LOG HK-OTP %s points=%s mask_bits=%d active_clocks=%d",
+            "INFO-HK-OTP leg=%s points=%s mask_bits=%d active_clocks=%d",
             label,
             ",".join(p.text() for p in pts),
             bin(mask).count("1"),
@@ -1057,9 +1125,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         async def on_sync(_k: int) -> None:
             seq = SepLccDemoteSeq(group)
             await self.start_seq(seq)
-            self.logger.info(
-                "LOG DEMOTE_%d host readback demote=%s lock=%s", group, seq.demote, seq.lock
-            )
+            self.logger.info("INFO-DEMOTE-WRITE group=%d", group)
             return None
 
         r = await self._run(o.ops, on_sync=on_sync)
@@ -1073,10 +1139,14 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         leg.w1c_change, leg.w1c_irq = v["w1c_change"], v["w1c_irq"]
         return leg
 
-    def _grade_dem(self, leg: Leg, other_group: int | None) -> int | None:
+    def _grade_dem(self, leg: Leg, reg: int, demoted: frozenset[int]) -> None:
+        """Grade one DEMOTE leg; ``demoted`` holds the groups demoted before it."""
         pre = leg.pre_dem & m.DEM_FIELDS
         post = leg.dem & m.DEM_FIELDS
         changed = m.dem_groups_changed(pre, post)
+        exp_group = reg - 1
+        exp_pre = m.dem_expected(demoted)
+        exp_post = m.dem_expected(demoted | {exp_group})
         before0 = self._pre_zero(leg)
         self.chk.ctrl(
             "OTP-DEM-PRE", before0, reg=leg.label, change=_h(leg.pre_change), irq=_h(leg.pre_irq)
@@ -1087,10 +1157,11 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             and (leg.change & m.CHANGE_FIELDS) == leg.exp
             and bool(leg.irq & m.IRQ_OTP_CHANGE)
             and len(changed) == 1
-            and m.dem_groups_cpl(post) == 2
+            and pre == exp_pre
+            and post == exp_post
             and not (leg.w1c_change & m.CHANGE_FIELDS)
             and not (leg.w1c_irq & m.IRQ_OTP_CHANGE)
-            and (other_group is None or group != other_group)
+            and group == exp_group
         )
         self.chk.ok(
             "OTP-DEM",
@@ -1098,31 +1169,46 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             reg=leg.label,
             change_before=int(not before0),
             group=group if group is not None else "none",
+            exp_group=exp_group,
             change_bit=f"0x{leg.change & m.CHANGE_FIELDS:03x}",
             irq=int(bool(leg.irq & m.IRQ_OTP_CHANGE)),
             group_changed=len(changed),
-            group_cpl=m.dem_groups_cpl(post),
             dem=f"{_h(pre)}->{_h(post)}",
+            dem_exp=f"{_h(exp_pre)}->{_h(exp_post)}",
             w1c_after=f"{leg.w1c_change & m.CHANGE_FIELDS},{int(bool(leg.w1c_irq & m.IRQ_OTP_CHANGE))}",
         )
-        self.chk.obs(
-            "OTP-DEM-GROUP", reg=leg.label, group_index=group if group is not None else "none"
-        )
-        return group
 
     async def _step_demote_park(self) -> None:
         da = self.rep.demote_first
         db = 3 - da
         self.dem_a = await self._demote(da)
-        g_a = self._grade_dem(self.dem_a, None)
+        self._grade_dem(self.dem_a, da, frozenset())
+        # OTP_READ_LOCK is in the warm reset domain (architecture.adoc, "Cleared by
+        # warm or cold reset"): set before PARK, it reads 0 only after a real reset.
+        lk = await self._run([kp.wr(m.A_READ_LOCK, m.LOCK_FIELDS), kp.rd(m.A_READ_LOCK)])
         await self._park()
         r = await self._run(
-            [kp.delay(QUIET), kp.rd(m.A_CHANGE), kp.rd(m.A_IRQ_STATUS), kp.rd(m.A_DEMOTION)]
+            [
+                kp.delay(QUIET),
+                kp.rd(m.A_CHANGE),
+                kp.rd(m.A_IRQ_STATUS),
+                kp.rd(m.A_DEMOTION),
+                kp.rd(m.A_READ_LOCK),
+            ]
         )
         supp_change, supp_irq, supp_dem = r[1].value, r[2].value, r[3].value
         supp_bad = [x for x in r if x.op.reports and not _ok(x)]
+        self.chk.ctrl(
+            "OTP-SUPP-PARK",
+            _ok(lk[1])
+            and lk[1].value & m.LOCK_FIELDS == m.LOCK_FIELDS
+            and _ok(r[4])
+            and not r[4].value & m.LOCK_FIELDS,
+            lock_before_park=_h(lk[1].value),
+            lock_after_park=_h(r[4].value),
+        )
         self.dem_b = await self._demote(db)
-        self._grade_dem(self.dem_b, g_a)
+        self._grade_dem(self.dem_b, db, frozenset({da - 1}))
         held = (supp_dem & m.DEM_FIELDS) == (self.dem_a.dem & m.DEM_FIELDS)
         twin = bool(self.dem_b.change & (1 << m.F_DEM)) and bool(self.dem_b.irq & m.IRQ_OTP_CHANGE)
         self.chk.ctrl(
@@ -1140,8 +1226,33 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             twin_change=int(twin),
         )
         # Step 13: a two-rail flip well after the reboot with both demotions held.
-        await self._run([kp.delay(QUIET)])
-        leg = await self._leg(f"chg.held.{self.rep.held.text()}", [self.rep.held], single=False)
+        locks = await self._run([kp.delay(QUIET), kp.rd(m.A_READ_LOCK), kp.rd(m.A_READ_LOCK_COLD)])
+        hp = self.rep.held
+        if hp.f == m.F_LC:
+            rd_addr, slot = m.A_LIFE_CYCLE, (m.F_LC, "reg", 0)
+            want_rd = m.lc_encode(self.fp.lc_raw)
+        elif hp.f == m.F_DEM:
+            rd_addr, slot = m.A_DEMOTION, (m.F_DEM, "reg", 0)
+            want_rd = self.dem_b.dem & m.DEM_FIELDS
+        else:
+            rd_addr, slot = m.word_addr(hp.f, "val", hp.word), (hp.f, "val", hp.word)
+            want_rd = m.staged_word(self.otp_fields, hp.f, hp.word)
+        leg = await self._leg(f"chg.held.{hp.text()}", [hp], single=False, rd_addr=rd_addr)
+        lock_bits = (locks[1].value | locks[2].value) & m.LOCK_FIELDS
+        pre_field = None if leg.pre_rd is None else self._field_bits(slot, leg.pre_rd)
+        # The read-through check sees the field only when it is unlocked and the
+        # word before the flip is the staged value, not a locked zero.
+        self.chk.ctrl(
+            "OTP-CHG-READOUT",
+            all(_ok(x) for x in locks if x.op.reports)
+            and not (lock_bits >> hp.f) & 1
+            and pre_field == want_rd,
+            field=_FN[hp.f],
+            lock=_h(locks[1].value),
+            lock_cold=_h(locks[2].value),
+            readout_pre=_h(pre_field or 0),
+            readout_want=_h(want_rd),
+        )
         both = (leg.pre_dem & m.DEM_FIELDS) == (self.dem_b.dem & m.DEM_FIELDS)
         self.chk.ctrl(
             "OTP-CHG-PRE",
@@ -1152,7 +1263,22 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         )
         self.chk.ctrl("OTP-CHG-HELD", both, dem=_h(leg.pre_dem))
         ok, info = self._chg_ok(leg)
-        self.chk.ok("OTP-CHG", ok, field=_FN[self.rep.held.f], both_rail=1, held=1, **info)
+        # km_csr.adoc OTP readout registers: "Read-through from OTP port; no reset".
+        # After the release the port is back at its live value and no KM reset ran,
+        # so the readout word equals the word read before the flip.
+        thru = leg.pre_rd is not None and leg.post_rd == leg.pre_rd
+        self.chk.ok(
+            "OTP-CHG",
+            ok and thru,
+            field=_FN[hp.f],
+            both_rail=1,
+            held=1,
+            readout_addr=f"0x{rd_addr:x}",
+            readout_pre=_h(leg.pre_rd or 0),
+            readout_post=_h(leg.post_rd or 0),
+            read_through=int(thru),
+            **info,
+        )
         self.dem_last = self.dem_b.dem & m.DEM_FIELDS
 
     # --- step 14: SEP cold reset ---------------------------------------------------------
@@ -1171,8 +1297,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             and dem == self.dem_record
             and not (change & m.CHANGE_FIELDS)
             and not (irq & m.IRQ_OTP_CHANGE),
-            dem_equals_first_boot=int(dem == self.dem_record),
             dem=_h(dem),
+            dem_exp=_h(self.dem_record),
             change=_h(change & m.CHANGE_FIELDS),
             irq_change=int(bool(irq & m.IRQ_OTP_CHANGE)),
         )
@@ -1214,7 +1340,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             got, rd_ok = await self._host(SepAxiOp.READ, fld.shadow_addr)
             landed += int(rd_ok and got == want)
             host.append(f"{name}:{_h(staged)}->{_h(got)} wr_ok={int(wr_ok)} rd_ok={int(rd_ok)}")
-        self.logger.info("LOG shadow writes %s", " ".join(host))
+        self.logger.info("INFO-SHADOW-WRITES %s", " ".join(host))
         self.notkm_a = pre
         await self._run([kp.delay(QUIET)])
         post = await self._readout("boot5_post_shadow")
@@ -1284,7 +1410,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             self.model.words[fld.word + w] |= 1 << b
             if name in self.otp_fields:
                 self.otp_fields[name] |= 1 << (32 * w + b)
-        self.logger.info("LOG fuse program %s", " ".join(info))
+        self.logger.info("INFO-FUSE-PROGRAM %s", " ".join(info))
         return done, info
 
     async def _shadow_bits(self, bits: list[FuseBit]) -> tuple[bool, list[str]]:

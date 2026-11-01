@@ -9,14 +9,19 @@
 // never source) and the sweep source from the run seed and patches them into
 // g_prm. Each leg starts with an M line (sep_console_rec.h). The firmware
 // prints one CHK line per check; the host grades CHK-WINNER and CHK-FLIP from
-// the ORDER lines.
+// the INFO-ORDER lines.
 //
 //   CHK-NONE-BEFORE-PROGRAM  no delivery with the reset meie and meipl
 //   CHK-GATED                no delivery through a closed gate (meie 0, never
-//                            priority, mstatus.MIE 0); opening it delivers once
+//                            priority, mstatus.MIE 0, mie.MEIE 0); opening it
+//                            delivers once; a source behind meie 0 reads 1
+//                            in meip (closed_meip), with CTRL-PICIO the control
 //   CHK-STAY-PENDING         a waiting source keeps its meip bit while the
 //                            winner handler runs
 //   CHK-NEVER                the never value does not deliver; effective 1 does
+//   CHK-NEVER-MEIP           an enabled, asserted source at the never value
+//                            reads 1 in meip (VeeR EL2 PRM interrupts.md:159,
+//                            step 5 before the priority step 6)
 //   CHK-MIE-LIVE             the mie write lands (control)
 //   CHK-MIP-IDLE             mip.MTIP and mip.MSIP read 0
 //   CHK-NO-TIMER-TRAP        no timer or software trap is taken
@@ -30,7 +35,15 @@
 //   CHK-NEST                 in a handler that copies meicidpl into meicurpl
 //                            and sets mstatus.MIE, a source at the same level
 //                            stays pending with no entry; one level higher it
-//                            nests once
+//                            nests once; meicidpl holds the level of the
+//                            claimed source with no meicpct write (fast
+//                            interrupt redirect, PRM sections 8.6.1, 8.12.9;
+//                            hw/sys/sep/doc/interrupts.adoc:387 names the
+//                            fast-interrupt path of this core)
+//   CHK-TIMER-PIN            the timer_int pin drives mip.MTIP: with mie.MTIE 0
+//                            it takes no trap; with mie.MTIE 1 and mstatus.MIE
+//                            1 it takes one trap with mcause 0x8000_0007; the
+//                            bit drops with the pin
 //   CHK-INT-TIMER-HOLD       internal timer k pending (mip.MITIPk 1) with
 //                            mie.MITIEk 0 takes no trap, with mie.MTIE and
 //                            mie.MSIE both 0 or both 1; then mie.MITIEk 1
@@ -149,7 +162,9 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define MIP_MEIP (1u << 11)
 #define MIE_WRITE (MIE_MEIE | MIE_MTIE | MIE_MSIE)
 #define MCAUSE_IRQ 0x80000000u
-#define MCAUSE_ECALL_M 11u // RISC-V privileged spec: environment call from M-mode
+#define MCAUSE_ECALL_M 11u // EL2 PRM table 13.3: environment call from M-mode
+// EL2 PRM table 13.3 (named by hw/sys/sep/doc/cpu.adoc): machine timer interrupt.
+#define MCAUSE_MTI (MCAUSE_IRQ | 7u)
 #define LOG_MAX 64u
 #define SRC_CTRL 1u
 
@@ -163,6 +178,10 @@ volatile uint32_t g_prm[P_WORDS] = {
 #define CSR_MITCNT1 0x7D5
 #define CSR_MITB1 0x7D6
 #define CSR_MITCTL1 0x7D7
+// mcgc and its picio bit (VeeR EL2 PRM table 12.2, reset 1). With picio 1 the
+// meipX registers report a disabled source that is pending (PRM 8.9, 8.12.3).
+#define CSR_MCGC 0x7F8
+#define MCGC_PICIO (1u << 9)
 #define MITCTL_ENABLE 1u       // mitctl.enable, bit 0
 #define MITB_RESET 0xFFFFFFFFu // mitb reset value
 // hw/sys/sep/doc/interrupts.adoc:294-298: pending and enable bits, cause codes.
@@ -218,6 +237,7 @@ static volatile uint32_t g_it_n[2], g_it_mc[2], g_it_cyc[2];
 // Nesting leg: first source, in-handler flag, and what its handler saw.
 static volatile uint32_t g_nest_a, g_nest_in, g_nest_done;
 static volatile uint32_t g_nest_cidpl, g_nest_blocked, g_nest_bmeip, g_nest_nested;
+static volatile uint32_t g_nest_bpl_rd;
 static volatile uint32_t g_nest_b_in_a, g_nest_b_raised, g_nest_hclk;
 
 // ---- Inbound filter allow window over the inbound port of mailbox m ----
@@ -441,6 +461,7 @@ static void nest_body(uint32_t a) {
     g_nest_cidpl = cid;
     uint32_t b0 = g_runs[b];
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(b), g_prm[P_NEST_PL_SAME]);
+    g_nest_bpl_rd = pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(b)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
     pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(b), EL2_PIC__MEIE__INTEN_bm);
     g_nest_b_raised = src_raise(b);
     mstatus_mie(1);
@@ -587,11 +608,13 @@ static void chk_end(int pass) {
     }
 }
 
-static void meip_obs(uint32_t s) {
-    rec_obs("NEVER-MEIP");
+static void meip_chk(uint32_t s) {
+    uint32_t bit = (pic_read_meip(s >> 5) >> (s & 31u)) & 1u;
+    rec_chk("NEVER-MEIP", bit == 1u);
     rec_num("src", s);
-    rec_num("meip_bit", (pic_read_meip(s >> 5) >> (s & 31u)) & 1u);
-    rec_end();
+    rec_num("meip_bit", bit);
+    rec_num("want", 1u);
+    chk_end(bit == 1u);
 }
 
 static void run_round(uint32_t r) {
@@ -601,7 +624,7 @@ static void run_round(uint32_t r) {
     for (uint32_t i = 0; i < n; i++) {
         setmask |= 1u << rprm(r, R_SRC + i);
     }
-    sep_mbx_puts("ROUND");
+    rec_info("ROUND");
     rec_num("r", r);
     rec_num("priord", p);
     put_list("srcs", r, R_SRC);
@@ -628,8 +651,25 @@ static void run_round(uint32_t r) {
     }
     (void)hold();
     uint32_t gated_runs = g_total - t0;
+    uint32_t mcgc;
+    __asm__ volatile("csrr %0, %1" : "=r"(mcgc) : "i"(CSR_MCGC));
+    uint32_t picio = (mcgc & MCGC_PICIO) ? 1u : 0u;
+    rec_ctl("PICIO");
+    rec_hex("mcgc", mcgc);
+    rec_num("picio", picio);
+    rec_end();
+    if (!picio) {
+        sep_mbx_puts("CTRL-MISSING PICIO mcgc.picio=0: meip need not report a disabled source");
+        rec_end();
+        g_err++;
+    }
+    uint32_t closed_meip[S_MAX];
     for (uint32_t i = 0; i < n; i++) {
-        meip_obs(rprm(r, R_SRC + i));
+        uint32_t s = rprm(r, R_SRC + i);
+        closed_meip[i] = meip_bit(s);
+        if (rprm(r, R_GATE + i) != GATE_MEIE0) {
+            meip_chk(s);
+        }
     }
     for (uint32_t j = 0; j < n; j++) {
         uint32_t i = rprm(r, R_ORDER + j);
@@ -647,6 +687,9 @@ static void run_round(uint32_t r) {
         uint32_t own = g_runs[s] - own0;
         uint32_t other = (g_total - before) - own;
         int pass = gated_runs == 0u && raised == n && own == 1u && other == 0u;
+        if (g == GATE_MEIE0) {
+            pass = pass && closed_meip[i] == 1u;
+        }
         rec_chk("GATED", pass);
         rec_num("src", s);
         rec_str("gate", g == GATE_MEIE0 ? "meie0" : "never");
@@ -654,6 +697,9 @@ static void run_round(uint32_t r) {
         rec_num("then_open_runs", own);
         rec_num("other_runs", other);
         rec_num("raised", raised);
+        if (g == GATE_MEIE0) {
+            rec_num("closed_meip", closed_meip[i]);
+        }
         chk_end(pass);
     }
 
@@ -682,7 +728,7 @@ static void run_round(uint32_t r) {
     (void)hold();
     uint32_t open_runs = g_total - t0;
     uint32_t first = g_log[0];
-    sep_mbx_puts("ORDER");
+    rec_info("ORDER");
     rec_str("corner", "winner");
     rec_num("r", r);
     rec_num("priord", p);
@@ -717,7 +763,7 @@ static void run_round(uint32_t r) {
     raised = src_raise(sn);
     (void)hold();
     uint32_t nruns = g_runs[sn] - own0;
-    meip_obs(sn);
+    meip_chk(sn);
     uint32_t eff1 = p ? PRI_MAX - 1u : 1u; // one level past the never value
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sn), eff1);
     (void)wait_runs(sn, own0 + nruns + 1u);
@@ -737,6 +783,7 @@ static void run_round(uint32_t r) {
     disable_set(r);
     mstatus_mie(0);
     set_order(p ^ 1u);
+    uint32_t flip_rd = pic_read_mpiccfg() & EL2_PIC__MPICCFG__PRIORD_bm;
     for (uint32_t i = 0; i < n; i++) {
         uint32_t s = rprm(r, R_SRC + i);
         pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), PRI_MAX - rprm(r, R_RAW + i));
@@ -751,11 +798,12 @@ static void run_round(uint32_t r) {
     mstatus_mie(1);
     (void)wait_total(t0 + n);
     (void)hold();
-    sep_mbx_puts("ORDER");
+    rec_info("ORDER");
     rec_str("corner", "flip");
     rec_num("r", r);
     rec_num("priord_from", p);
     rec_num("priord_to", p ^ 1u);
+    rec_num("priord_rd", flip_rd);
     rec_num("n", g_log_n);
     put_ids("ids", 0u, g_log_n);
     rec_end();
@@ -779,6 +827,7 @@ static void leg_threshold(void) {
     set_order(0u);
     pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), g_prm[P_THR_PL_HELD]);
+    uint32_t pl_rd = pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
     pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
     __asm__ volatile("csrw %0, %1" ::"i"(CSR_MEIPT), "r"(t));
     uint32_t t_rd;
@@ -800,13 +849,14 @@ static void leg_threshold(void) {
     pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 0u);
     set_order(0u);
-    int pass = raised == 1u && held == 0u && pend == 1u && hclk >= LEG_HOLD_MIN_CLK && open == 1u &&
-               other == 0u;
+    int pass = pl_rd == g_prm[P_THR_PL_HELD] && raised == 1u && held == 0u && pend == 1u &&
+               hclk >= LEG_HOLD_MIN_CLK && open == 1u && other == 0u;
     rec_chk("THRESHOLD", pass);
     rec_num("src", s);
     rec_num("meipt", t);
     rec_num("pl_held", g_prm[P_THR_PL_HELD]);
     rec_num("pl_open", g_prm[P_THR_PL_OPEN]);
+    rec_num("pl_held_rd", pl_rd);
     rec_num("raised", raised);
     rec_num("held_runs", held);
     rec_num("held_meip", pend);
@@ -835,6 +885,7 @@ static void leg_nest(void) {
     g_nest_bmeip = 0u;
     g_nest_b_raised = 0u;
     g_nest_cidpl = 0u;
+    g_nest_bpl_rd = 0u;
     g_nest_hclk = 0u;
     uint32_t a0 = g_runs[a], b0 = g_runs[b], t0 = g_total;
     g_nest_a = a;
@@ -857,14 +908,15 @@ static void leg_nest(void) {
     }
     set_order(0u);
     int pass = done && raised == 1u && aruns == 1u && g_nest_cidpl == g_prm[P_NEST_PL_A] &&
-               g_nest_b_raised == 1u && g_nest_blocked == 0u && g_nest_bmeip == 1u &&
-               g_nest_hclk >= LEG_HOLD_MIN_CLK && g_nest_nested == 1u && g_nest_b_in_a == 1u &&
-               other == 0u;
+               g_nest_bpl_rd == g_prm[P_NEST_PL_SAME] && g_nest_b_raised == 1u &&
+               g_nest_blocked == 0u && g_nest_bmeip == 1u && g_nest_hclk >= LEG_HOLD_MIN_CLK &&
+               g_nest_nested == 1u && g_nest_b_in_a == 1u && other == 0u;
     rec_chk("NEST", pass);
     rec_num("a", a);
     rec_num("b", b);
     rec_num("pl_a", g_prm[P_NEST_PL_A]);
     rec_num("pl_same", g_prm[P_NEST_PL_SAME]);
+    rec_num("pl_same_rd", g_nest_bpl_rd);
     rec_num("pl_high", g_prm[P_NEST_PL_HIGH]);
     rec_num("done", (uint32_t)done);
     rec_num("a_runs", aruns);
@@ -1043,6 +1095,97 @@ static void leg_it_trap(uint32_t k) {
     chk_end(pass);
 }
 
+static void req_tint(uint32_t on) {
+    rec_req("tint");
+    rec_num("on", on);
+    rec_end();
+}
+
+static int wait_mtip(uint32_t want) {
+    for (uint32_t i = 0; i < g_prm[P_WAIT]; i++) {
+        if (((read_mip() & MIP_MTIP) != 0u) == (want != 0u)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// mie.MEIE gate (EL2 PRM section 8.6.1, named by hw/sys/sep/doc/cpu.adoc: an
+// external interrupt is taken once one is pending and the meie bit of mie and
+// the mie bit of mstatus are set): the source pending at an open PIC gate with
+// mstatus.MIE 1 and mie.MEIE 0 does not deliver; mie.MEIE 1 delivers it once.
+static void leg_mie_meie(void) {
+    uint32_t s = SRC_CTRL;
+    mstatus_mie(0);
+    set_order(0u);
+    __asm__ volatile("csrc mie, %0" ::"r"(MIE_MEIE));
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 1u);
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
+    uint32_t own0 = g_runs[s], t0 = g_total;
+    uint32_t raised = src_raise(s);
+    mstatus_mie(1);
+    uint32_t hclk = hold();
+    uint32_t gated = g_total - t0;
+    uint32_t pend = meip_bit(s);
+    __asm__ volatile("csrs mie, %0" ::"r"(MIE_MEIE));
+    (void)wait_runs(s, own0 + 1u);
+    (void)hold();
+    mstatus_mie(0);
+    uint32_t own = g_runs[s] - own0;
+    uint32_t other = (g_total - t0) - own;
+    pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
+    pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 0u);
+    int pass = raised == 1u && gated == 0u && pend == 1u && own == 1u && other == 0u;
+    rec_chk("GATED", pass);
+    rec_num("src", s);
+    rec_str("gate", "mie_meie");
+    rec_num("handler_runs", gated);
+    rec_num("then_open_runs", own);
+    rec_num("other_runs", other);
+    rec_num("raised", raised);
+    rec_num("pending_meip", pend);
+    rec_num("hold_clk", hclk);
+    chk_end(pass);
+}
+
+// Timer pin (hw/sys/sep/doc/interrupts.adoc:291: the timer_int pin drives
+// mip.MTIP; EL2 PRM tables 13.1 and 13.2: mie.mtie enables and mip.mtip
+// reports the machine timer interrupt; table 13.3: mcause 0x8000_0007). The
+// host drives timer_int_i on each REQ tint line.
+static void leg_timer_pin(void) {
+    mstatus_mie(0);
+    __asm__ volatile("csrc mie, %0" ::"r"(MIE_MTIE | MIE_MSIE));
+    uint32_t tt0 = g_cls_timer;
+    req_tint(1u);
+    int up = wait_mtip(1u);
+    uint32_t mip_on = (read_mip() >> 7) & 1u;
+    mstatus_mie(1);
+    uint32_t hclk = hold();
+    uint32_t held = g_cls_timer - tt0;
+    g_last_mcause = 0u;
+    __asm__ volatile("csrs mie, %0" ::"r"(MIE_MTIE));
+    for (uint32_t i = 0; i < g_prm[P_WAIT] && g_cls_timer - tt0 == held; i++) {
+    }
+    (void)hold();
+    mstatus_mie(0);
+    uint32_t taken = g_cls_timer - tt0 - held;
+    uint32_t mc = g_last_mcause;
+    req_tint(0u);
+    int down = wait_mtip(0u);
+    uint32_t mip_off = (read_mip() >> 7) & 1u;
+    __asm__ volatile("csrw mie, %0" ::"r"(MIE_WRITE));
+    int pass = up && mip_on == 1u && held == 0u && taken == 1u && mc == MCAUSE_MTI && down &&
+               mip_off == 0u;
+    rec_chk("TIMER-PIN", pass);
+    rec_num("mip_mtip_on", mip_on);
+    rec_num("mtie0_traps", held);
+    rec_num("hold_clk", hclk);
+    rec_num("mtie1_traps", taken);
+    rec_hex("mcause", mc);
+    rec_num("mip_mtip_off", mip_off);
+    chk_end(pass);
+}
+
 int main(void) {
     sep_outbound_filter_init();
     sep_mbx_puts("SEP PIC priority gate test\n");
@@ -1051,7 +1194,7 @@ int main(void) {
         sep_mbx_puts("FAIL: parameter block not patched\n");
         return 1;
     }
-    sep_mbx_puts("PARAMS");
+    rec_info("PARAMS");
     rec_hex("seed", g_prm[P_SEED]);
     rec_num("rounds", nr);
     rec_num("sweep", g_prm[P_SWEEP]);
@@ -1107,20 +1250,33 @@ int main(void) {
     rec_num("raised", raised);
     chk_end(pass);
 
-    // Encoding sweep (log only, window closed).
+    // Encoding sweep: meipl.intpriority and mpiccfg.priord are RW, so each
+    // value reads back as written in either priority order (window closed, no
+    // source pending). Each cell first writes the complement of v, so the
+    // destination differs from v before the graded write.
     rec_mark(0, "sweep");
     uint32_t sw = g_prm[P_SWEEP];
     for (uint32_t p = 0; p < 2u; p++) {
         set_order(p);
+        uint32_t priord_rd = pic_read_mpiccfg() & EL2_PIC__MPICCFG__PRIORD_bm;
         for (uint32_t v = 0; v < 16u; v++) {
+            uint32_t pre = v ^ EL2_PIC__MEIPL__INTPRIORITY_bm;
+            pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), pre);
+            uint32_t pre_rb =
+                pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
             pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), v);
-            rec_obs("LEVEL-SWEEP");
+            uint32_t rb =
+                pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
+            pass = priord_rd == p && pre_rb == pre && rb == v;
+            rec_chk("LEVEL-SWEEP", pass);
             rec_num("src", sw);
             rec_num("priord", p);
+            rec_num("priord_rd", priord_rd);
+            rec_num("pre", pre);
+            rec_num("pre_read", pre_rb);
             rec_num("wrote", v);
-            rec_num("read",
-                    pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm);
-            rec_end();
+            rec_num("read", rb);
+            chk_end(pass);
         }
     }
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), 0u);
@@ -1242,6 +1398,11 @@ int main(void) {
         rec_mark(0, "itimer_setup");
         leg_it_trap(k);
     }
+
+    rec_mark(0, "mie_meie_setup");
+    leg_mie_meie();
+    rec_mark(0, "timer_pin_setup");
+    leg_timer_pin();
 
     rec_mark(0, "end");
     if (g_err == 0) {

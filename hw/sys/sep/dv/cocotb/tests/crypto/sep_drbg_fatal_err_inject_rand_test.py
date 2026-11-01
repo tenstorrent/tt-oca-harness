@@ -45,12 +45,19 @@ Checkers:
                     0 before it, for the fatal-alert sources.
   CHK-DRBG-STICKY   after a write-one clear of the state the source bit stays (all but
                     EDN 0); the FIFO-error cells read the state 0 after the clear.
+                    On the fatal-alert cells the state can read 1 before and after the
+                    clear, so the check there grades only that the source bit
+                    stays set until reset, not that the clear landed.
   CHK-DRBG-RESET    ERR_CODE reads 0 after a TRNG reset. Control: non-zero before.
   CHK-EDN-FIFO13    the FIFO holds k words, then a CTRL.CMD_FIFO_RST pulse
                     (edn.adoc:98-101), then 1, e and 13 words: ERR_CODE 0, INTR_STATE 0,
                     vector bits 28 and 32 low. A clear that keeps the k words errs at
-                    word 14 - k, at or before the 13-word read. Control: ERR_CODE 0
-                    with the k words held, before the clear.
+                    word 14 - k, at or before the 13-word read. Controls:
+                    CTRL-EDN-FIFO-HELD, a trial on the same FIFO with the same k
+                    held words and no clear, reads ERR_CODE 0 after 13 words and
+                    the FIFO source bit after word 14, so the k words land; then
+                    a TRNG reset, and CTRL-EDN-FIFO-PRECLEAR reads ERR_CODE 0
+                    with the k words held again, before the clear.
   CHK-EDN-FIFO14    the 14th word: ERR_CODE equals the FIFO error bit plus
                     FIFO_WRITE_ERR, INTR_STATE equals edn_fatal_err, vector bit 28 high
                     and at least one clock of vector bit 32.
@@ -273,13 +280,13 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=PARK)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.regs = _DrbgRegs(self)
         self.sb = None
         self.t_ref = 1
-        self.logger.info("BASELINE sw_reset_n=0x%02x", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x", self.swrst.value)
         self.vec = SepBitWatch(
             cocotb.top.sep_internal_interrupts_probe_o, dict(VEC_BITS), name="pic_vec"
         ).start()
@@ -455,13 +462,18 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             err_code_before=f"0x{err0 & unit.err_mask:08x}",
             fatal_state_before=int(bool(st0 & unit.fatal_bm)),
         )
+        self.chk.obs(
+            "DRBG-ERRCODE-FIELDS",
+            unit=unit.name,
+            bit=bit,
+            other_src=f"0x{other:08x}",
+            type=f"0x{typ:08x}",
+        )
         fields = {
             "unit": unit.name,
             "bit": bit,
             **self._err_fields(unit, err),
             "source_bit_set": int(bool(err & src)),
-            "OBS-other-src": f"0x{other:08x}",
-            "OBS-type": f"0x{typ:08x}",
             "fatal_state": fatal_state,
             "enable": enabled,
             "vec": vec_level,
@@ -539,6 +551,31 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         e = plan.extra[fifo]
         k = plan.pre[fifo]
         await self._setup()
+        # Control, no clear: the k held words count toward the 13-word limit, so the
+        # FIFO stays clean through word 13 and errs at word 14, which is test data
+        # word 14 - k. A held word that did not land moves the error later.
+        for w in plan.pre_words[fifo]:
+            await self._wr(addr, w)
+        for w in words[: FIFO_WORDS - k]:
+            await self._wr(addr, w)
+        clean = await self._rd(unit.err_code)
+        await self._wr(addr, words[FIFO_WORDS - k])
+        held_err, held_val, held_bound = await self._wait_err_bit(unit, err_meta["bm"])
+        held_fields = {
+            "fifo": fifo,
+            "held_before_clear": k,
+            "err_code_at_13": f"0x{clean & unit.err_mask:08x}",
+            "src_bit_at_14": int(held_err),
+            **self._err_fields(unit, held_val),
+        }
+        if not held_err:
+            held_fields["reason"] = f"timeout:err_code bound={held_bound}"
+        self._ctrl(
+            "EDN-FIFO-HELD",
+            (clean & unit.err_mask) == 0 and held_err,
+            **held_fields,
+        )
+        await self._setup()
         # The FIFO holds k words (1 to 12) before the clear. CMD_FIFO_RST True clears
         # both command FIFOs, and software returns it to its reset state before the
         # next command word (edn.adoc:98-101), so the FIFO takes 13 words after the
@@ -547,7 +584,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             await self._wr(addr, w)
         held = await self._rd(unit.err_code)
         self._ctrl(
-            "EDN-FIFO-HELD",
+            "EDN-FIFO-PRECLEAR",
             (held & unit.err_mask) == 0,
             fifo=fifo,
             held_before_clear=k,

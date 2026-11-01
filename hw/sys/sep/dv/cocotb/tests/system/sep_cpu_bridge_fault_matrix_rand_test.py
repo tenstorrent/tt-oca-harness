@@ -96,7 +96,7 @@ Checkers:
   CHK-LATCH       PERIPH_BUS_ERR_STATUS equals the faulted set.
   CHK-OR          vector bit 42 equals (status != 0).
   CHK-CLR-MATRIX  a clear bit clears only its own block (seven bits + drain).
-  CHK-NONVAC      each matrix and mask step starts with at least two bits.
+  CTRL-NONVAC     each matrix and mask step starts with at least two bits.
   CHK-MASK        a mask clear gives the faulted set AND NOT mask.
   CHK-AGAIN       a cleared block re-latches; a re-fault keeps the other bits.
                   The status after the clear and after each re-fault equals
@@ -129,6 +129,14 @@ Checkers:
                   stimulus model plus the raced bit; for the DMA host path,
                   DMA_BUS_ERR_STATUS equals host_path_err alone and vector bit
                   40 is 0.
+  CHK-BRIDGE-HOLE-SI
+                  an SI 32-bit read of a drawn unbacked HMAC word, through an
+                  inbound entry that allows it, answers SLVERR with 0xFFFFFFFF
+                  (``hw/sys/sep/regs/gen/adoc/memory_map.adoc:52``, HMAC row,
+                  Hole in Extent "SLVERR, 0xFFFFFFFF / SLVERR"; the column is
+                  the answer at the inbound AXI port,
+                  ``hw/sys/sep/doc/memory_map.adoc:66-69``). The read runs with
+                  the owner window closed.
 
 FCOV: the owner window is open over each graded instance. The pass label
 ``bfault_pass`` (``env/sep_fcov_gate.set_bfault_pass``) is written 0 at the
@@ -159,6 +167,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import pic_vector_watch
+from env.sep_decode_resp import sep_map_row
 from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import (
     close_graded_window,
@@ -172,7 +181,8 @@ from env.sep_filter_model import FilterEntry
 from env.sep_pic_map import vec_bit, vec_mask
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from sep_reg_meta import AES, HMAC, KMAC, OTBN, SEP_CPU_CTRL, WDT_TIMER, sym
+from sep_reg_meta import AES, HMAC, KMAC, OTBN, SEP_CPU_CTRL, WDT_TIMER, register_fields, sym
+from sep_reg_meta import sep_reg as _sep_reg
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_dma_ops import (
     _D,
@@ -199,7 +209,10 @@ from seq_lib.sep_irq_aggregator_seq import (
 )
 
 TEST = "sep_cpu_bridge_fault_matrix_rand_test"
-RESP_OKAY, RESP_SLVERR = 0, 2
+RESP_OKAY, RESP_SLVERR, RESP_DECERR = 0, 2, 3
+# Hole in Extent cell of the HMAC row: "SLVERR, 0xFFFFFFFF / SLVERR"
+# (hw/sys/sep/regs/gen/adoc/memory_map.adoc:52).
+SI_HOLE_RDATA = 0xFFFF_FFFF
 RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 BLOCKS = ("hmac", "kmac", "otbn")
@@ -252,6 +265,41 @@ PARTIAL_BLOCKS = tuple(PARTIAL_REG)
 # watchdog register leaves): the full-strobe write of WDOG_BARK_THOLD crosses
 # the register clock domain crossing and completes in a few watchdog clocks.
 WDT_CLK_RATIO = 8
+
+# Register blocks outside the seven PERIPH_BUS_ERR_STATUS bits, by generated
+# block name. Their unbacked word is a drawn in-extent hole where the generated
+# memory map gives the window one, else the first word past the extent.
+OTHER_BLOCKS = (
+    ("esrc", "ENTROPY_SOURCE"),
+    ("spi", "SPI_CONTROLLER"),
+    ("km", "KM_MAILBOX_SEP"),
+    ("otp", "EFUSE_INTERFACE_CTRL"),
+    ("lc", "SEP_LIFECYCLE_CTRL"),
+    ("abr", "ABR"),
+)
+
+
+def _unbacked_words(block: str) -> tuple[str, list[int]]:
+    """("hole", in-extent words no register or memory backs) or ("past", [first past word])."""
+    row = sep_map_row(sym(f"{block}_REG_MAP_BASE_ADDR"))
+    top = row.base + row.extent
+    if row.hole is None:
+        return "past", [top]
+    mems = [
+        int(v)
+        for k, v in vars(_sep_reg).items()
+        if k.endswith("_MEM_BASE_ADDR") and row.base <= int(v) < top
+    ]
+    top = min([top, *mems])
+    backed: set[int] = set()
+    for a in range(row.base, top, 4):
+        try:
+            width, _ = register_fields(a)
+        except KeyError:
+            continue
+        backed.update(a + 4 * k for k in range(max(1, width // 32)))
+    return "hole", [a for a in range(row.base, top, 4) if a not in backed]
+
 
 # Exclusivity of the three bridge-fault sources: own vector bit and the bits
 # that may move in the same clock (the other two of the three).
@@ -318,6 +366,13 @@ class _Cfg:
             for k in range(n):
                 data |= rng.randrange(1, 0x100) << (8 * k)
             self.partial[b] = (off, n, data)
+        # Unbacked word of each other register block, then the SI HMAC hole.
+        self.other: dict[str, tuple[str, int]] = {}
+        for name, block in OTHER_BLOCKS:
+            kind, words = _unbacked_words(block)
+            self.other[name] = (kind, words[rng.randrange(len(words))])
+        lo, hi = HOLE_RANGE["hmac"]
+        self.si_hole = lo + 4 * rng.randrange((hi - lo) // 4)
 
     def draw_lines(self) -> list[str]:
         return [
@@ -332,6 +387,9 @@ class _Cfg:
             + ",".join(self.partial_order)
             + " partial="
             + ",".join(f"{b}:off{o}/bytes{n}/data0x{d:x}" for b, (o, n, d) in self.partial.items()),
+            "other="
+            + ",".join(f"{b}:{k}:0x{a:08x}" for b, (k, a) in self.other.items())
+            + f" si_hole=0x{self.si_hole:08x}",
         ]
 
 
@@ -390,7 +448,6 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         "CHK-LATCH",
         "CHK-OR",
         "CHK-CLR-MATRIX",
-        "CHK-NONVAC",
         "CHK-MASK",
         "CHK-AGAIN",
         "CHK-CLR-READ0",
@@ -694,6 +751,94 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             self._pass("CHK-OR", orl)
             await self._release()
 
+    async def _obs_hole(self, init: str, block: str, addr: int, access) -> tuple[int, int]:
+        """OBS-BRIDGE-HOLE: one unbacked-word read and the fault latch state around it.
+
+        No line states whether a fault in a block outside the seven
+        PERIPH_BUS_ERR_STATUS bits, or a fault from the SI, latches a bit. The
+        line logs the response, the read data, the status, vector bit 42 and
+        the fault pulses; a bit the access set is cleared again so the stimulus
+        model holds. Returns the response and the read data.
+        """
+        before = await self._periph()
+        mark = self.pulses.mark()
+        resp, rdata = await access()
+        st = await self._periph()
+        vec = await self._vec()
+        pulse = 0
+        for _clk, v in self.pulses.recs[mark:]:
+            pulse |= v
+        self.logger.info(
+            "OBS-BRIDGE-HOLE init=%s block=%s addr=0x%08x resp=%s rdata=0x%08x "
+            "periph_status=0x%x vec42=%d err_pulse=0x%x",
+            init,
+            block,
+            addr,
+            RESP_NAME.get(resp, resp),
+            rdata,
+            st & PERIPH_MASK,
+            self._b(vec, 42),
+            pulse,
+        )
+        new = st & PERIPH_MASK & ~before
+        if new:
+            await self._wr_ok(PERIPH_CLEAR_ADDR, new)
+        return resp, rdata
+
+    async def _leg_other_holes(self) -> None:
+        close_graded_window(self.logger)
+        mon = self.env.axi_monitor
+        for name, (_kind, addr) in self.c.other.items():
+
+            async def _lsu(addr: int = addr) -> tuple[int, int]:
+                mon.arm_expected_decerr(1)
+                resp, rdata = await self._acc(SepAxiOp.READ, addr)
+                if resp != RESP_DECERR:
+                    mon.release_expected_decerr(1)
+                return resp, rdata
+
+            await self._obs_hole("lsu", name, addr, _lsu)
+        ibank = SepFilterBank(self, "in")
+        await ibank.program(
+            0,
+            FilterEntry(
+                start=self.c.si_hole,
+                end=self.c.si_hole + 3,
+                enabled=True,
+                read_allowed=True,
+                allow_ns=True,
+            ),
+        )
+
+        async def _si() -> tuple[int, int]:
+            ext = self.env.ext_axi_monitor
+            ext.open_error_rdata_window()
+            seq = SepAxiAccessSeq(
+                "si_hmac_hole",
+                op=SepAxiOp.READ,
+                addr=self.c.si_hole,
+                length=4,
+                size=2,
+                allow_ungraded_read_resp=True,
+            )
+            try:
+                await self.start_ext_seq(seq)
+            finally:
+                ext.close_error_rdata_window()
+            if seq.timed_out:
+                raise AssertionError(f"SI read 0x{self.c.si_hole:08x} timed out")
+            return seq.resp_code, seq.rdata & 0xFFFF_FFFF
+
+        resp, rdata = await self._obs_hole("si", "hmac", self.c.si_hole, _si)
+        line = (
+            f"init=si block=hmac addr=0x{self.c.si_hole:08x} resp={RESP_NAME.get(resp, resp)} "
+            f"rdata=0x{rdata:08x} expect=SLVERR/0x{SI_HOLE_RDATA:08x}"
+        )
+        if (resp, rdata) != (RESP_SLVERR, SI_HOLE_RDATA):
+            self._fail("CHK-BRIDGE-HOLE-SI", line)
+        self._pass("CHK-BRIDGE-HOLE-SI", line)
+        await ibank.restore_reset(0)
+
     async def _dma_reg_fault(self) -> tuple[int, int]:
         resp, _ = await self._acc(SepAxiOp.READ, dma_reg_unmapped_addr())
         self.logger.info(
@@ -806,8 +951,8 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         nb = bin(exp_before).count("1")
         nv = f"step={tag} latched_before=0x{exp_before:02x} bits={nb}"
         if nb < 2:
-            self._fail("CHK-NONVAC", nv)
-        self._pass("CHK-NONVAC", nv)
+            self._fail("CTRL-NONVAC", nv)
+        self._pass("CTRL-NONVAC", nv)
         text, ok = await self._clear_write(bits)
         line = f"{tag} {text}"
         if not ok:
@@ -1251,12 +1396,12 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.op_i = 0
         self.latched = 0
         self.ctrl_reg_path_err = 0
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         for d in c.draw_lines():
-            self.logger.info("DRAW %s", d)
+            self.logger.info("INFO-DRAW %s", d)
         self.cfg.wdt_clk_period_ns = WDT_CLK_RATIO * self.cfg.sys_clk_period_ns
         self.logger.info(
-            "WDT sim-timing knob: clk_wdt=%s ns (%dx core)",
+            "INFO-WDT-CLK clk_wdt=%s ns (%dx core)",
             self.cfg.wdt_clk_period_ns,
             WDT_CLK_RATIO,
         )
@@ -1275,6 +1420,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self._leg_ctrl()
         await self._leg_partial()
         await self._leg_latch()
+        await self._leg_other_holes()
         await self._leg_dma_reg()
         await self._leg_matrix()
         await self._leg_masks()

@@ -12,8 +12,9 @@ Two value checks per write, both exact-value (so a broken next state fails here
 rather than merely "no X"):
 
   * the LC_STATE shadow word reads back the differentially encoded ``{~raw, raw}``
-    for the expected next state, in bytes [7:0], with bytes [31:8] OR-merged as
-    ordinary set-only shadow bytes, and
+    for the expected next state in bytes [7:0] (the caller grades it from
+    ``observed_word``; bytes [31:8] are compared only when ``expected_upper`` is
+    given), and
   * the lifecycle controller's FEAT_CTRL decodes that same next state, which is
     what proves the write reached the LCC rather than only the shadow storage.
 
@@ -37,13 +38,18 @@ LC_STATE_UPPER_MASK = _LC_STATE_MAP.field_mask("LC_STATE", "rsvd")
 
 
 class SepLcShadowWriteSeq(uvm_sequence):
-    """Write ``wdata`` to the LC_STATE shadow word; require ``expected_raw``."""
+    """Write ``wdata`` to the LC_STATE shadow word; require ``expected_raw``.
+
+    ``refused`` marks a write that a token gate or the terminal rule refuses: no
+    text states the response of such a write, so the scoreboard does not grade it
+    and the caller logs ``write_resp``.
+    """
 
     def __init__(
         self,
         wdata: int,
         expected_raw: int,
-        expected_upper: int,
+        expected_upper: int | None,
         *,
         sip_dis: int,
         sys_dis: int,
@@ -51,12 +57,15 @@ class SepLcShadowWriteSeq(uvm_sequence):
         demote_2: int = 0,
         sec_dis: int = 0,
         do_write: bool = True,
+        refused: bool = False,
         name: str = "sep_lc_shadow_write_seq",
     ) -> None:
         super().__init__(name)
         self.wdata = wdata & 0xFFFF_FFFF
         self.expected_raw = expected_raw & 0xF
-        self.expected_upper = expected_upper & LC_STATE_UPPER_MASK
+        self.expected_upper = (
+            None if expected_upper is None else expected_upper & LC_STATE_UPPER_MASK
+        )
         self.sip_dis = sip_dis
         self.sys_dis = sys_dis
         self.demote_1 = demote_1
@@ -66,6 +75,8 @@ class SepLcShadowWriteSeq(uvm_sequence):
         # path: there the lifecycle nibble moves on a token match with no bus
         # request at all, so a write would be the wrong stimulus.
         self.do_write = do_write
+        self.refused = refused
+        self.write_resp: int | None = None
         self.observed_lc_raw: int | None = None
         self.observed_word: int | None = None
         self.observed_feat: int | None = None
@@ -78,19 +89,24 @@ class SepLcShadowWriteSeq(uvm_sequence):
         data: int = 0,
         expected: int | None = None,
         label: str = "axi",
-    ) -> int:
+    ) -> SepAxiItem:
         item = SepAxiItem(f"{label}_0x{addr:08x}")
         item.op = op
         item.addr = addr
         item.length = 4
         item.wdata = data
         item.expected = expected
+        item.allow_unverified_write_resp = op is SepAxiOp.WRITE and self.refused
         await self.start_item(item)
         await self.finish_item(item)
-        return int(item.rdata)
+        return item
 
     async def body(self) -> None:
-        expected_word = self.expected_upper | lc_encode(self.expected_raw)
+        expected_word = (
+            None
+            if self.expected_upper is None
+            else self.expected_upper | lc_encode(self.expected_raw)
+        )
         feat = feat_ctrl_expected(
             self.expected_raw,
             self.sip_dis,
@@ -101,26 +117,36 @@ class SepLcShadowWriteSeq(uvm_sequence):
         )
 
         if self.do_write:
-            await self._access(
+            wr = await self._access(
                 SepAxiOp.WRITE, LC_STATE_SHADOW, data=self.wdata, label="wr_lc_state_shadow"
             )
-        word = await self._access(
+            self.write_resp = wr.resp_code
+        rd = await self._access(
             SepAxiOp.READ, LC_STATE_SHADOW, expected=expected_word, label="rd_lc_state_shadow"
         )
+        word = int(rd.rdata)
         self.observed_word = word
         # Publish the nibble the DUT returned, not the one this sequence expected:
         # the caller's transition check consumes it, so that check stays driven by
         # DUT data rather than comparing two test-side constants.
         self.observed_lc_raw = word & 0xF
 
-        feat_lo = await self._access(
-            SepAxiOp.READ, LCC_FEAT_CTRL, expected=feat & 0xFFFF_FFFF, label="rd_feat_lo"
+        feat_lo = int(
+            (
+                await self._access(
+                    SepAxiOp.READ, LCC_FEAT_CTRL, expected=feat & 0xFFFF_FFFF, label="rd_feat_lo"
+                )
+            ).rdata
         )
-        feat_hi = await self._access(
-            SepAxiOp.READ,
-            LCC_FEAT_CTRL + 4,
-            expected=(feat >> 32) & 0xFFFF_FFFF,
-            label="rd_feat_hi",
+        feat_hi = int(
+            (
+                await self._access(
+                    SepAxiOp.READ,
+                    LCC_FEAT_CTRL + 4,
+                    expected=(feat >> 32) & 0xFFFF_FFFF,
+                    label="rd_feat_hi",
+                )
+            ).rdata
         )
         self.observed_feat = feat_lo | (feat_hi << 32)
 

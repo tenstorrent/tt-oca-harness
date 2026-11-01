@@ -78,14 +78,23 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
   CHK-DMA-CPURST          each pulse class and DMA mode: the copy completes,
                           the programmed registers, ``RANGE_REGWEN`` and both
                           latches are kept. The WDT runs also need the
-                          ``sep_cpu_reset_n`` tap low in the pulse; the DBG runs
-                          (full-CPU build) take credit only with CHK-DBG-SYNC.
+                          ``sep_cpu_reset_n`` tap low in the pulse, the DBG runs
+                          need it high; the DBG runs (full-CPU build) take
+                          credit only with CHK-DBG-SYNC.
   CHK-DMA-COLDRST         the cold reset in the middle of a copy returns every
                           moved Secure DMA register, both status registers and
                           ``SW_RESET_N`` to their reset values, and
                           ``ADDR_SPACE_ID`` reads its reset value; the destination
                           does not change after the reset when its control holds.
   CHK-DMA-COLDRST-RECOVER a new copy after the cold reset completes and matches.
+  CHK-SWRST-KEEP          per overlap run without a cold reset: the SPI
+                          ``CONFIGOPTS``, DMA ``SRC_ADDR_LO`` and DMA range
+                          registers written before the run read their written
+                          values after the ``SW_RESET_N`` engine reset and the
+                          pulse (``reset_controller.adoc:44-49``, SW_RESET_N
+                          fields table: no SPI or DMA bit). The WDT pulse
+                          of the "before" band cannot cut the write, so every
+                          seed has such a run; a leaf with none fails.
   CHK-WDT-COLD-RECOVER    last leg, every seed and build: a ``wdt_rst_ni`` pulse
                           lands while an accepted ``SW_RESET_N`` write has its B
                           outstanding and is released before the calibrated B
@@ -96,11 +105,39 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           bound, with no other ID-0 B from the cold reset to the
                           bound after that B. The B of the cut write is logged,
                           not graded (OBS-WDT-INFLIGHT).
+  CHK-MBX-CPURST          after each pulse sequence: the word pushed into one
+                          drawn mailbox before the sequence pops back equal (the
+                          read response code is logged in the same line). The mailboxes are system peripherals
+                          (``fabric.adoc``, Fabric Topology), which take
+                          ``sep_reset_n`` (``clk_rst.adoc``, Reset
+                          Architecture); a watchdog reset does not assert it,
+                          and ``dbg_rstb_i`` resets the debug module and the
+                          run-request synchronizer (``reset_controller.adoc``).
+  CHK-NMI-COLD            after the cold reset: ``SEP_NMI_VEC``, written again
+                          in the cold leg at a drawn non-reset value
+                          (CTRL-COLD-ARMED reads it), reads its RDL reset value
+                          0xC000_0100 (``sep_cpu_ctrl.rdl``, ``SEP_NMI_VEC``).
+  CHK-BANK                after each reset event: a ``wdt_rst_ni`` pulse clears
+                          the warm scratch bank and the cold bank retains its
+                          data; ``sep_reset_n`` clears both; a ``dbg_rstb_i``
+                          pulse asserts neither reset, so both retain
+                          (``cpu.adoc``, Dual Scratch Register Banks;
+                          ``clk_rst.adoc``, Reset Architecture).
+  CHK-CPU-RST-DBG         full-CPU build: each ``dbg_rstb_i`` pulse of the DBG
+                          sequence leaves ``sep_cpu_reset_n`` and
+                          ``sep_reset_n`` high (``clk_rst.adoc``, Reset
+                          Architecture: the CPU reset combines ``sep_reset_n``
+                          with ``wdt_rst_ni`` only). Control: one pin fall.
 
 Controls (not counted): ``CTRL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
-``sep_reset_n``). Observations: ``OBS-BANK`` (the scratch banks after each
-event), ``OBS-CPU-RST-DBG``.
+``sep_reset_n``), ``CTRL-BANK-WRITE`` (each scratch bank reads its drawn words
+after the write), ``CTRL-OVL-ARMED`` (the domain-D probe reads its armed
+non-reset value before each overlap run) and ``CTRL-DMA-COLD-MID`` (``STATUS``
+reads BUSY=1 and DONE=0 before the cold reset, which falls less than one
+calibrated copy time after GO). Observations: ``OBS-RST-CPUCTRL-KEEP`` (``SEP_NMI_VEC`` and
+``REFERENCE_COUNTER`` after each event). The DBG lines of CHK-BANK and
+CHK-CPU-RST-DBG take credit only after CHK-DBG-SYNC passes.
 
 Environment choices (logged): the placement of each pulse in clocks from the
 calibrated latencies, the allowance of CHK-DBG-SYNC (2 clocks), and the bound
@@ -163,6 +200,8 @@ from seq_lib.sep_irq_aggregator_seq import (
     kmac_reg_unmapped_addr,
     otbn_reg_unmapped_addr,
 )
+from seq_lib.sep_mailbox_walk_seq import MAILBOX_COUNT
+from seq_lib.sep_mbox_port_ops import REG_OFFSETS, port_base
 from seq_lib.sep_reset_mid_transfer_seq import PROBES, ResetProbe, SepResetProbeDriver, other_value
 from seq_lib.sep_scratch_reset_seq import (
     SCRATCH_COLD_ADDRS,
@@ -172,6 +211,24 @@ from seq_lib.sep_scratch_reset_seq import (
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N, SW_RESET_N_BIT
 
 TEST = "sep_cpu_reset_retention_test"
+# Logged-only state: a mailbox word and a non-reset SEP_NMI_VEC, drawn from a
+# separate stream so the Plan draws keep their seed mapping.
+OBS_SALT = 0x4D42_5852
+NMI_VEC = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
+NMI_MASK = SEP_CPU_CTRL.mask32("SEP_NMI_VEC")
+NMI_RESET = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
+# CHK-BANK golden (warm, cold) per reset event: hw/sys/sep/doc/cpu.adoc, Dual Scratch
+# Register Banks; hw/sys/sep/doc/clk_rst.adoc, Reset Architecture.
+BANK_EXPECT = {
+    "WDT": ("cleared", "retained"),
+    "DBG": ("retained", "retained"),
+    "COLD": ("cleared", "cleared"),
+    "WDT+COLD": ("cleared", "cleared"),
+    "DBG+COLD": ("cleared", "cleared"),
+}
+REFCNT = SEP_CPU_CTRL.addr("REFERENCE_COUNTER")
+# Registers outside every SW_RESET_N domain, written before each overlap run.
+KEEP_PROBES = ("spi", "dma")
 RESP_OKAY, RESP_SLVERR = 0, 2
 RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", -1: "NONE"}
 ISO_DATA = 0x1501_A7ED  # reset_controller.adoc, Isolation and Reset Sequencing, step 2
@@ -270,7 +327,7 @@ class OvlRun:
 
 
 class Plan:
-    """Every draw of the leaf, in the order of the contract, logged as DRAW lines."""
+    """Every draw of the leaf, in the order of the contract, logged as INFO-DRAW lines."""
 
     def __init__(self, seed: int) -> None:
         rng = SepSeededRng(seed)
@@ -284,17 +341,17 @@ class Plan:
             n = rng.randrange(2, 7)
             self.seq[cls] = [(rng.randrange(2, 33), rng.randrange(0, 65)) for _ in range(n)]
             self.lines.append(
-                f"DRAW seq={cls} events={n} (width,spacing)="
+                f"INFO-DRAW seq={cls} events={n} (width,spacing)="
                 + ",".join(f"({w},{s})" for w, s in self.seq[cls])
             )
         self.d = rng.choice(D_CHOICES)
         self.sibling = "otbn" if self.d == "aes" else "aes"
-        self.lines.append(f"DRAW overlap_domain D={self.d} sibling={self.sibling}")
+        self.lines.append(f"INFO-DRAW overlap_domain D={self.d} sibling={self.sibling}")
         runs = [(c, b) for c in ("WDT", "DBG") for b in ("before", "between", "after")]
         rng.shuffle(runs)
         self.ovl = [OvlRun(c, b, frac(), rng.randrange(2, 33)) for c, b in runs]
         self.lines.append(
-            "DRAW overlap_order="
+            "INFO-DRAW overlap_order="
             + ",".join(f"{r.cls}:{r.band}:f_o={r.f_o:.6f}:width={r.width}" for r in self.ovl)
         )
         self.dma_modes = ["RUNNING", "IDLE"]
@@ -302,15 +359,15 @@ class Plan:
         self.f_c = frac()
         self.dma_width = rng.randrange(2, 33)
         self.lines.append(
-            f"DRAW dma_mode_order={','.join(self.dma_modes)} f_c={self.f_c:.6f} "
+            f"INFO-DRAW dma_mode_order={','.join(self.dma_modes)} f_c={self.f_c:.6f} "
             f"dma_pulse_width={self.dma_width}"
         )
         self.latch = rng.choice(tuple(x for x in ("kmac", "otbn") if x != self.d))
-        self.lines.append(f"DRAW latched_block L={self.latch}")
+        self.lines.append(f"INFO-DRAW latched_block L={self.latch}")
         self.cold_width = rng.randrange(8, 33)
         self.dbg_sync_width = rng.randrange(8, 33)
         self.lines.append(
-            f"DRAW cold_rst_ni_width={self.cold_width} dbg_sync_width={self.dbg_sync_width}"
+            f"INFO-DRAW cold_rst_ni_width={self.cold_width} dbg_sync_width={self.dbg_sync_width}"
         )
         # Armed values: non-default, each different from the one before it.
         self.values: dict[str, list[int]] = {}
@@ -320,7 +377,7 @@ class Plan:
                 vals.append(other_value(rng, p.mask, (p.reset, *vals[-1:])))
             self.values[p.name] = vals
             self.lines.append(
-                f"DRAW armed {p.name} @0x{p.addr:08x} = "
+                f"INFO-DRAW armed {p.name} @0x{p.addr:08x} = "
                 + ",".join(f"0x{x:08x}" for x in vals)
                 + f" (RDL reset 0x{p.reset:08x})"
             )
@@ -333,13 +390,13 @@ class Plan:
             ],
         }
         self.lines.append(
-            "DRAW scratch cold="
+            "INFO-DRAW scratch cold="
             + ",".join(f"0x{v:08x}" for v in self.scratch["cold"])
             + " warm="
             + ",".join(f"0x{v:08x}" for v in self.scratch["warm"])
         )
         self.data_seed = rng.getrandbits(32)
-        self.lines.append(f"DRAW copy_data_seed=0x{self.data_seed:08x}")
+        self.lines.append(f"INFO-DRAW copy_data_seed=0x{self.data_seed:08x}")
         self.rng = rng
 
     def words(self, n: int, avoid: list[int] | None = None) -> list[int]:
@@ -366,6 +423,10 @@ class sep_cpu_reset_retention_test(sep_base_test):
         "CHK-DMA-COLDRST",
         "CHK-DMA-COLDRST-RECOVER",
         "CHK-WDT-COLD-RECOVER",
+        "CHK-SWRST-KEEP",
+        "CHK-MBX-CPURST",
+        "CHK-NMI-COLD",
+        "CHK-BANK",
     )
 
     # ---- log helpers --------------------------------------------------------
@@ -482,7 +543,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.seed = self.random_seed()
         self.k = 0
         self.plan = Plan(self.seed)
-        self.logger.info("SEED %s seed=%d", TEST, self.seed)
+        self.logger.info("INFO-SEED %s seed=%d", TEST, self.seed)
         for line in self.plan.lines:
             self.logger.info(line)
         await self.bring_up_no_cpu()
@@ -496,7 +557,11 @@ class sep_cpu_reset_retention_test(sep_base_test):
             raise AssertionError(msg)
         self.classes = ("WDT", "DBG") if self.full_cpu else ("WDT",)
         if self.full_cpu:
-            self.required_evidence = (*type(self).required_evidence, "CHK-DBG-SYNC")
+            self.required_evidence = (
+                *type(self).required_evidence,
+                "CHK-DBG-SYNC",
+                "CHK-CPU-RST-DBG",
+            )
         self.logger.info(
             "INFO-BUILD: full_cpu=%d pulse_classes=%s required_evidence=%s",
             int(self.full_cpu),
@@ -504,7 +569,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             ",".join(self.required_evidence),
         )
         self.logger.info(
-            "ENV tap_bound=%d write_bound=%d dbg_sync_allow=%d sync_latency=%d copy_bytes=%d "
+            "INFO-ENV tap_bound=%d write_bound=%d dbg_sync_allow=%d sync_latency=%d copy_bytes=%d "
             "(clk_i cycles)",
             TAP_BOUND,
             WRITE_BOUND,
@@ -533,6 +598,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self.agg: dict[str, str] = {}
         self.ovl_dbg: list[str] = []
         self.cpurst_dbg: list[str] = []
+        self.dbg_lines: list[tuple[str, str]] = []
         self.cpu_rst = {"wdt_events": 0, "low": 0, "sep_high": True}
         try:
             await RisingEdge(dut.clk_i)
@@ -548,6 +614,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 await self._latch_faults(f"{cls} sequence")
                 await self._sequence(cls)
                 await self._retention_reads(cls)
+                await self._cpurst_state(cls)
             # Every DMA run, the DBG runs too, comes before the overlap leg.
             for cls in self.classes:
                 for mode in self.plan.dma_modes:
@@ -563,6 +630,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
                     self._chk("CHK-OVL", True, line)
                 for line in self.cpurst_dbg:
                     self._chk("CHK-DMA-CPURST", True, line)
+                for chk, line in self.dbg_lines:
+                    self._chk(chk, True, line)
                 for key in ("DBG",):
                     self._chk("CHK-RETAIN", True, self.retain[key])
                     self._chk("CHK-AGG-SURVIVE", True, self.agg[key])
@@ -625,10 +694,19 @@ class sep_cpu_reset_retention_test(sep_base_test):
         t0 = None
         await self.dma.go()
         t0 = self.clk
-        st = await self.dma.poll_status(
-            lambda s: s.done or s.error, self.dma.done_bound(COPY_BYTES), "cal"
-        )
+        # Each STATUS poll is timed: DONE rose after the poll before the last one
+        # was issued, so the copy runs for at least C - 2 x the slowest poll.
+        self.lat_st = 0
+        for _ in range(self.dma.done_bound(COPY_BYTES)):
+            t_rd = self.clk
+            st = await self.dma.read_status()
+            self.lat_st = max(self.lat_st, self.clk - t_rd)
+            if st.done or st.error:
+                break
+        else:
+            raise AssertionError(f"calibration copy did not end: {st.fmt()}")
         self.c = self.clk - t0
+        self.c_run = self.c - 2 * self.lat_st
         if st.error:
             raise AssertionError(f"calibration copy ended with ERROR: {st.fmt()}")
         await self.dma.wr(_D.addr("STATUS"), ST_DONE | ST_CHUNK_DONE)
@@ -644,9 +722,22 @@ class sep_cpu_reset_retention_test(sep_base_test):
             raise AssertionError(
                 f"calibration: C={self.c} does not exceed 8 x widest pulse {widest}"
             )
-        self.copy_delay = self.c // 4 + int(self.plan.f_c * (self.c // 2))
+        # The cold leg reads STATUS once after the delay and then pulses rst_ni, so
+        # the delay range ends 4 x the slowest poll before the shortest copy end.
+        span = min(self.c // 2, self.c_run - 4 * self.lat_st - self.c // 4)
+        if span <= 0:
+            raise AssertionError(
+                f"calibration: C={self.c} leaves no delay range "
+                f"(slowest STATUS read {self.lat_st} clocks)"
+            )
+        self.copy_delay = self.c // 4 + int(self.plan.f_c * span)
         self.logger.info(
-            "INFO-DRAW-SCALED copy_delay=%d (f_c=%.6f C=%d)", self.copy_delay, self.plan.f_c, self.c
+            "INFO-DRAW-SCALED copy_delay=%d (f_c=%.6f C=%d span=%d status_read_max=%d)",
+            self.copy_delay,
+            self.plan.f_c,
+            self.c,
+            span,
+            self.lat_st,
         )
 
     async def _program_copy(self) -> dict[str, int]:
@@ -696,6 +787,80 @@ class sep_cpu_reset_retention_test(sep_base_test):
             fc = field_compare(got, self.armed[p.name], p.mask)
             if not fc.ok or (self.armed[p.name] & p.mask) == (p.reset & p.mask):
                 raise AssertionError(f"arm readback {p.name}: {fc.fields()}")
+        await self._arm_cpurst_state()
+
+    # ---- mailbox and CPU-control state across the resets ----------------------
+    def _mbx(self, port: str, reg: str) -> int:
+        return port_base(self.mbx_m, port) + REG_OFFSETS[reg]
+
+    async def _acc64(self, op: SepAxiOp, addr: int, data: int = 0) -> SepAxiAccessSeq:
+        seq = SepAxiAccessSeq(
+            f"ret64_{op.value}_0x{addr:08x}",
+            op=op,
+            addr=addr,
+            wdata=data,
+            length=8,
+            size=3,
+            allow_unverified_write_resp=op is SepAxiOp.WRITE,
+            allow_ungraded_read_resp=op is SepAxiOp.READ,
+        )
+        await self.start_seq(seq)
+        if seq.timed_out:
+            raise AssertionError(f"{op.value} @0x{addr:08x} got no response")
+        return seq
+
+    async def _arm_cpurst_state(self) -> None:
+        """Arm one mailbox word with WIRQT set, and a non-reset SEP_NMI_VEC (lock 0)."""
+        xr = SepSeededRng(self.seed ^ OBS_SALT)
+        self.mbx_m = xr.randrange(MAILBOX_COUNT)
+        self.mbx_word = xr.getrandbits(64) | 1
+        self.nmi_armed = other_value(xr, NMI_MASK, (NMI_RESET,))
+        self.logger.info(
+            "INFO-OBS-ARM mbox=%d word=0x%016x nmi_vec=0x%08x",
+            self.mbx_m,
+            self.mbx_word,
+            self.nmi_armed,
+        )
+        await self._wr(self._mbx("out", "WIRQT"), 1)
+        await self._acc64(SepAxiOp.WRITE, self._mbx("out", "WRITE_DATA"), self.mbx_word)
+        await self._wr(NMI_VEC, self.nmi_armed)
+
+    async def _cpurst_state(self, event: str, *, mbox: bool = True) -> None:
+        """CHK-MBX-CPURST, CHK-NMI-COLD and OBS-RST-CPUCTRL-KEEP after a reset event.
+
+        The mailbox read pops the armed word, and the word is pushed again so the
+        next event starts from the same state. No line places ``SEP_NMI_VEC`` or
+        ``REFERENCE_COUNTER`` in a reset domain, so after a CPU-only reset they
+        are logged.
+        """
+        if mbox:
+            st = await self._acc(SepAxiOp.READ, self._mbx("in", "STATUS"))
+            rd = await self._acc64(SepAxiOp.READ, self._mbx("in", "READ_DATA"))
+            data = int(rd.rdata) & ((1 << 64) - 1)
+            self._chk(
+                "CHK-MBX-CPURST",
+                data == self.mbx_word,
+                f"event={event} mbox={self.mbx_m} status=0x{int(st.rdata) & 0xFFFF_FFFF:x} "
+                f"status_resp={RESP_NAME[st.resp_code]} data=0x{data:016x} "
+                f"data_resp={RESP_NAME[rd.resp_code]} expect=0x{self.mbx_word:016x}",
+            )
+            await self._acc64(SepAxiOp.WRITE, self._mbx("out", "WRITE_DATA"), self.mbx_word)
+        nmi = await self._rd(NMI_VEC)
+        ref = await self._acc64(SepAxiOp.READ, REFCNT)
+        if event == "COLD":
+            self._chk(
+                "CHK-NMI-COLD",
+                (nmi & NMI_MASK) == (NMI_RESET & NMI_MASK),
+                f"nmi_vec=0x{nmi & NMI_MASK:x} expect=0x{NMI_RESET & NMI_MASK:x} "
+                f"pre_reset_readback=0x{self.nmi_cold_pre:x}",
+            )
+        self.logger.info(
+            "OBS-RST-CPUCTRL-KEEP event=%s nmi_vec=0x%x armed=0x%x refcnt=0x%x",
+            event,
+            nmi & NMI_MASK,
+            self.nmi_armed,
+            int(ref.rdata),
+        )
 
     async def _write_banks(self, warm_only: bool = False) -> None:
         banks = (
@@ -709,9 +874,23 @@ class sep_cpu_reset_retention_test(sep_base_test):
         for name, addrs in banks:
             for a, v in zip(addrs, self.plan.scratch[name]):
                 await self._wr(a, v)
+            got = [await self._rd(a) for a in addrs]
+            self._ctl(
+                "CTRL-BANK-WRITE",
+                got == list(self.plan.scratch[name]),
+                f"bank={name} got=" + ",".join(f"0x{v:08x}" for v in got),
+            )
 
     async def _bank_ctl(self, event: str) -> None:
+        """CHK-BANK: the scratch banks after a reset event (``cpu.adoc``, Dual Scratch
+        Register Banks; ``clk_rst.adoc``, Reset Architecture).
+
+        Both banks hold their drawn non-reset words before the event. ``sep_reset_n``
+        clears both (``COLD``); ``sep_cpu_reset_n`` clears the warm bank and the cold
+        bank keeps its data (``WDT``); ``dbg_rstb_i`` asserts neither (``DBG``).
+        """
         await self._close()
+        expect = BANK_EXPECT[event]
         out = {}
         for name, addrs in (("warm", SCRATCH_WARM_ADDRS), ("cold", SCRATCH_COLD_ADDRS)):
             vals = [await self._rd(a) for a in addrs]
@@ -721,7 +900,16 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 out[name] = "cleared"
             else:
                 out[name] = "mixed:" + ",".join(f"0x{v:x}" for v in vals)
-        self.logger.info("OBS-BANK: event=%s warm=%s cold=%s", event, out["warm"], out["cold"])
+        line = (
+            f"event={event} warm={out['warm']} cold={out['cold']} "
+            f"expect_warm={expect[0]} expect_cold={expect[1]}"
+        )
+        ok = (out["warm"], out["cold"]) == expect
+        if ok and event == "DBG":
+            # The DBG half takes credit only after CHK-DBG-SYNC passes.
+            self.dbg_lines.append(("CHK-BANK", line))
+        else:
+            self._chk("CHK-BANK", ok, line)
         await self._write_banks(warm_only=True)
         await self._open()
 
@@ -756,6 +944,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         mins = [1, 1]
         for i, (w, s) in enumerate(events):
             mr = self.taps.mark()
+            mp = self.pins[cls].mark()
             first = await self._pulse(cls, w)
             await self.taps.resets["sep_cpu_reset_n"].wait_level(1, TAP_BOUND)
             await self._cycles(s)
@@ -769,13 +958,17 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 self.cpu_rst["low"] += int(cpu_low > 0)
                 self.cpu_rst["sep_high"] &= sep_low == 0
             else:
-                self.logger.info(
-                    "OBS-CPU-RST-DBG: pulse=%d width=%d sep_cpu_reset_n_low=%d sep_reset_n_low=%d",
-                    i,
-                    w,
-                    cpu_low,
-                    sep_low,
+                # clk_rst.adoc, Reset Architecture: sep_cpu_reset_n combines sep_reset_n
+                # with wdt_rst_ni only, so a dbg_rstb_i pulse leaves both high.
+                pin_fall = len(self.pins[cls].fall_clks_since(mp))
+                line = (
+                    f"pulse={i} width={w} pin_fall={pin_fall} sep_cpu_reset_n_low={cpu_low} "
+                    f"sep_reset_n_low={sep_low} expect_low=0,0"
                 )
+                if pin_fall == 1 and cpu_low == 0 and sep_low == 0:
+                    self.dbg_lines.append(("CHK-CPU-RST-DBG", line))
+                else:
+                    self._chk("CHK-CPU-RST-DBG", False, line)
             await RisingEdge(cocotb.top.clk_i)
             await ReadOnly()
             b40, b42 = self._irq(IRQ_DMA_REG_PATH), self._irq(IRQ_PERIPH_OR)
@@ -783,7 +976,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             stay &= bool(b40 and b42)
             mins = [min(mins[0], b40), min(mins[1], b42)]
             self.logger.info(
-                "SEQ %s event=%d width=%d spacing=%d first_low_clk=%d src41=%d src43=%d",
+                "INFO-SEQ %s event=%d width=%d spacing=%d first_low_clk=%d src41=%d src43=%d",
                 cls,
                 i,
                 w,
@@ -870,10 +1063,21 @@ class sep_cpu_reset_retention_test(sep_base_test):
     # ---- step 7: overlap leg ----------------------------------------------------
     async def _overlap_leg(self) -> None:
         d, sib = self.plan.d, self.plan.sibling
+        n_keep = 0
         for n, run in enumerate(r for r in self.plan.ovl if r.cls in self.classes):
             dut = cocotb.top
             await self._arm_probe(_BY_NAME[d], (n % 3) + 1)
             await self._arm_probe(_BY_NAME[sib], (n % 3) + 1)
+            for name in KEEP_PROBES:
+                await self._arm_probe(_BY_NAME[name], (n % 3) + 1)
+            pd_arm = _BY_NAME[d]
+            got = await self.pd.read(pd_arm)
+            self._ctl(
+                "CTRL-OVL-ARMED",
+                got == self.armed[d] & pd_arm.mask and got != pd_arm.reset & pd_arm.mask,
+                f"dom={d} probe=0x{pd_arm.addr:08x} got=0x{got:x} "
+                f"armed=0x{self.armed[d] & pd_arm.mask:x} reset=0x{pd_arm.reset & pd_arm.mask:x}",
+            )
             await self._write_banks()
             off = int(run.f_o * self.tiso)
             if run.band == "before":
@@ -1025,6 +1229,9 @@ class sep_cpu_reset_retention_test(sep_base_test):
             # The cold reset returns the sibling to its RDL reset value.
             sib_want = ps_.reset if cold else self.armed[ps_.name]
             fs = field_compare(got_s, sib_want, ps_.mask)
+            if not cold:
+                await self._chk_swrst_keep(d, run.cls, run.band)
+                n_keep += 1
             iso_order = pre_iso == 0 and pre_key == 1 and ack_c is not None and ack_c < fall
             ok = iso_order and held and fd.ok and fs.ok and (swv & SW_FIELDS) == SW_HMAC_HELD
             line = (
@@ -1048,7 +1255,38 @@ class sep_cpu_reset_retention_test(sep_base_test):
             self.armed[pd_.name] = pd_.reset
             if cold:
                 await self._rearm_after_cold()
-            await self._bank_ctl(run.cls)
+            await self._bank_ctl(f"{run.cls}+COLD" if cold else run.cls)
+        # The WDT pulse of the "before" band ends before the write's AW handshake,
+        # so it cannot cut the write and its run takes no cold reset.
+        if n_keep == 0:
+            self._chk(
+                "CHK-SWRST-KEEP",
+                False,
+                "every overlap run took the cold reset before the release write, the "
+                "WDT before-band run included",
+            )
+
+    async def _chk_swrst_keep(self, d: str, cls: str, band: str) -> None:
+        """CHK-SWRST-KEEP: a SW_RESET_N engine reset leaves the SPI host and the DMA.
+
+        ``hw/sys/sep/doc/reset_controller.adoc:44-49``: ``sep_reset_no`` resets
+        the SPI host and the DMA; the ``SW_RESET_N`` fields table (``:88-100``)
+        has no SPI or DMA bit. Each SPI, DMA and DMA range register written
+        before the run reads its written value after the engine reset and the
+        CPU reset pulse.
+        """
+        bad = []
+        for p in (*(_BY_NAME[n] for n in KEEP_PROBES), *RANGE_PROBES):
+            got = await self.pd.read(p)
+            fc = field_compare(got, self.armed[p.name], p.mask)
+            if not fc.ok:
+                bad.append(f"{p.name}:{fc.fields()}")
+        names = ",".join([*KEEP_PROBES, *(p.name for p in RANGE_PROBES)])
+        self._chk(
+            "CHK-SWRST-KEEP",
+            not bad,
+            f"dom={d} pulse={cls} band={band} regs={names}" + (f" mismatch={bad}" if bad else ""),
+        )
 
     async def _rearm_after_cold(self) -> None:
         """Restore the armed state the later legs start from after an overlap cold reset.
@@ -1372,13 +1610,6 @@ class sep_cpu_reset_retention_test(sep_base_test):
             self.cpu_rst["sep_high"] &= (
                 self.taps.resets["sep_reset_n"].high_clocks_since(mr["sep_reset_n"]) == n
             )
-        else:
-            self.logger.info(
-                "OBS-CPU-RST-DBG: dma_mode=%s width=%d sep_cpu_reset_n_low=%d",
-                mode,
-                self.plan.dma_width,
-                cpu_low,
-            )
         st = await self.dma.poll_status(
             lambda s: s.done or s.error, 4 * self.dma.done_bound(COPY_BYTES), f"{mode} done"
         )
@@ -1400,7 +1631,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             and (dst_st & DMA_REG_PATH_BIT)
             and (pst & PERIPH_BIT[self.plan.latch])
             and pin_fall == 1
-            and (cpu_low > 0 or cls == "DBG")
+            and (cpu_low > 0) == (cls == "WDT")
         )
         line = (
             f"pulse={cls} mode={mode} pin_fall={pin_fall} cpu_rst_pulse={int(cpu_low > 0)} "
@@ -1461,6 +1692,11 @@ class sep_cpu_reset_retention_test(sep_base_test):
         sw_pre = await self._rd(SW)
         armed_pre = {}
         at_default = []
+        # An overlap cold reset returned SEP_NMI_VEC to its reset value: arm it again.
+        await self._wr(NMI_VEC, self.nmi_armed)
+        self.nmi_cold_pre = (await self._rd(NMI_VEC)) & NMI_MASK
+        if self.nmi_cold_pre == (NMI_RESET & NMI_MASK):
+            at_default.append(f"SEP_NMI_VEC=0x{self.nmi_cold_pre:x}")
         for p in (*self._armed_probes(), *RANGE_PROBES):
             armed_pre[p.name] = await self.pd.read(p)
             if (armed_pre[p.name] & p.mask) == (p.reset & p.mask):
@@ -1482,7 +1718,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
         self._ctl(
             "CTRL-COLD-ARMED",
             not at_default,
-            f"registers={len(armed_pre) + 4} at_rdl_default={at_default or 'none'} "
+            f"registers={len(armed_pre) + 5} at_rdl_default={at_default or 'none'} "
+            f"SEP_NMI_VEC_pre=0x{self.nmi_cold_pre:x} "
             f"CONTROL_pre=0x{ctl_pre & CONTROL_RD_MASK:08x} "
             f"INTR_STATE_pre=0x{intr_pre & INTR_STATE_MASK:x} "
             f"DMA_BUS_ERR_STATUS_pre=0x{dst_pre & DMA_ST_MASK:02x} "
@@ -1492,6 +1729,13 @@ class sep_cpu_reset_retention_test(sep_base_test):
         t_go = self.clk
         while self.clk < t_go + self.copy_delay:
             await RisingEdge(dut.clk_i)
+        st_mid = await self.dma.read_status()
+        rst_clk = self.clk - t_go
+        self._ctl(
+            "CTRL-DMA-COLD-MID",
+            st_mid.busy == 1 and st_mid.done == 0 and rst_clk < self.c_run,
+            f"{st_mid.fmt()} rst_clk_after_go={rst_clk} copy_run_min={self.c_run} C={self.c}",
+        )
         m = self.taps.mark()
         res = await self.pulse_rst_ni(hold_cycles=self.plan.cold_width)
         for name in ("sep_reset_n", "sep_cpu_reset_n"):
@@ -1507,7 +1751,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
             f"control_cold_sep_reset_n_low={int(cold_low > 0)}",
         )
         self.logger.info(
-            "COLD rst_ni width=%d delay=%d release_clks=%d",
+            "INFO-COLD rst_ni width=%d delay=%d release_clks=%d",
             self.plan.cold_width,
             self.copy_delay,
             res["release_clks"],
@@ -1563,6 +1807,7 @@ class sep_cpu_reset_retention_test(sep_base_test):
         pst = await self._rd(PERIPH_STATUS_ADDR)
         swv = await self._rd(SW)
         self.logger.info("INFO-SWRST-COLD-UNMOVED: fields=km,otbn,aes,kmac,trng,abr")
+        await self._cpurst_state("COLD", mbox=False)
         # Control of CHK-RETAIN: every armed register reads its RDL default.
         defaults = 0
         regs = (*self._armed_probes(), *RANGE_PROBES)

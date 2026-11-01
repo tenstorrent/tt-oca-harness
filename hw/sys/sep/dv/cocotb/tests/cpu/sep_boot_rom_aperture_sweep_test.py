@@ -25,16 +25,21 @@ Checks:
                      write-enable cycle, and PR-LSU-XBAR carries no ROM address.
                      Control: the SRAM word load of step 6 is on PR-LSU-XBAR
                      and not on PR-LSU-ROM.
-  CHK-ROM-STORE    : each of 16 byte and halfword stores completes, and the word
-                     reads back as the image before and after the store
-                     (rom.adoc: stores receive a response and do not modify
-                     the ROM).
+  CHK-ROM-STORE    : each of 16 byte and halfword stores completes, the word
+                     reads back as the image before and after the store, and
+                     PR-LSU-ROM carries one AW beat at the store word, one W
+                     beat with the strobe of the stored bytes and one B beat
+                     per store (rom.adoc: stores receive a response and do not
+                     modify the ROM). The B code is logged
+                     (OBS-ROM-STORE-RESP).
   CHK-ROM-STORE-WE : in the store leg, PR-ROM-MACRO shows requests at a store
                      word only for its four readback loads.
   CHK-ROM-NOECC    : a 1-bit or 2-bit flip in a stored word reads back as the
                      whole flipped 64-bit word with no trap and no NMI; the
                      neighbour words read exact (rom.adoc:59-60, no ECC or
-                     integrity-error sideband). Positive probes in the same
+                     integrity-error sideband). The PR-LSU-ROM R beats are
+                     counted and their OKAY count is logged in the same line
+                     (no TT text states the code). Positive probes in the same
                      line: every flipped word holds image ^ mask in the macro
                      before the loads (CTRL-FLIP-STORED), and PR-ROM carries a
                      request at exactly the planned flip-leg words. Control:
@@ -541,13 +546,13 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         mem = self._sram_mem()
         for widx, word in sorted(img.items()):
             mem[widx].value = int.from_bytes(bytes(word), "little")
-        self.logger.info("STAGE sram words=%d", len(img))
+        self.logger.info("INFO-STAGE sram words=%d", len(img))
 
     def _stage_rom(self) -> None:
         mem = self._rom_mem()
         for i, w in enumerate(self.plan.img.words):
             mem[i].value = w
-        self.logger.info("STAGE rom words=%d", ROM_WORDS)
+        self.logger.info("INFO-STAGE rom words=%d", ROM_WORDS)
 
     def _period_ps(self) -> int:
         return int(round(self.cfg.sys_clk_period_ns * 1000))
@@ -580,18 +585,18 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
     # ---------------------------------------------------------------- set-up
     def _draw(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         p = self.plan = _Plan(SepSeededRng(seed))
         digest = hashlib.sha256(b"".join(w.to_bytes(8, "little") for w in p.img.words))
         self.logger.info(
-            "DRAW image sha256=%s word16=0x%016x word%d=0x%016x",
+            "INFO-DRAW image sha256=%s word16=0x%016x word%d=0x%016x",
             digest.hexdigest()[:16],
             p.img.word(16),
             TOP_WORD,
             p.img.word(TOP_WORD),
         )
         self.logger.info(
-            "DRAW probes seeded=%d sizes=%s seq_base=%d seq_size=%d seq_off=%d blocks=%d "
+            "INFO-DRAW probes seeded=%d sizes=%s seq_base=%d seq_size=%d seq_off=%d blocks=%d "
             "sram_ctl=0x%08x",
             N_SEEDED,
             "/".join(str(sum(1 for _a, s in p.seeded if s == z)) for z in SIZES),
@@ -602,13 +607,13 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             p.sram_ctl,
         )
         self.logger.info(
-            "DRAW stores=%s",
+            "INFO-DRAW stores=%s",
             " ".join(f"0x{a:08x}/{s}/0x{d:x}" for a, s, d in p.stores),
         )
-        self.logger.info("DRAW flips=%s", " ".join(f"{w}/0x{m:x}" for w, m in p.flips))
-        self.logger.info("DRAW u_o=%d/65536", p.u)
+        self.logger.info("INFO-DRAW flips=%s", " ".join(f"{w}/0x{m:x}" for w, m in p.flips))
+        self.logger.info("INFO-DRAW u_o=%d/65536", p.u)
         self.logger.info(
-            "ENV rst_hold=%d romctl_bound=%d sweep_bound=%d store_bound=%d flip_poll=%d "
+            "INFO-ENV rst_hold=%d romctl_bound=%d sweep_bound=%d store_bound=%d flip_poll=%d "
             "leg_bound=%d cpu_low_bound=%d release_bound=%d anchor_bound=%d "
             "first_req_bound=%d rsp_bound=%d",
             RST_HOLD,
@@ -631,7 +636,9 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             raise AssertionError(
                 f"the staged fuse image holds ROM_CTL=0x{rom_ctl:x}; the run mode needs 0x0"
             )
-        self.logger.info("CFG fuse image ROM_CTL=0x0 lc_raw=0x%x (real fuse sense)", image.lc_raw())
+        self.logger.info(
+            "INFO-CFG fuse image ROM_CTL=0x0 lc_raw=0x%x (real fuse sense)", image.lc_raw()
+        )
         self.write_efuse_image(image)
 
     async def _tap_default(self) -> None:
@@ -650,7 +657,9 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         await Timer(1, units="ns")
         self._set_pin(dut, "jtag_trst_n_i", 0)
         await Timer(1, units="ns")
-        self.logger.info("CFG core TAP reset by jtag_trst_ni 1->0; reset vector TDR at its default")
+        self.logger.info(
+            "INFO-CFG core TAP reset by jtag_trst_ni 1->0; reset vector TDR at its default"
+        )
 
     # ---------------------------------------------------------------- scenario
     async def run_scenario(self) -> None:
@@ -662,7 +671,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
         code = build_code(p)
         table = b"".join(a.to_bytes(4, "little") + s.to_bytes(4, "little") for a, s in p.table())
         self.logger.info(
-            "CFG code=0x%08x+%d table=0x%08x+%d loads=%d",
+            "INFO-CFG code=0x%08x+%d table=0x%08x+%d loads=%d",
             FW_BASE,
             code.nbytes,
             TABLE,
@@ -806,7 +815,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             self._label_run = False
             await label
         self.logger.info(
-            "FCOV-ROM-FLIP-LABEL flip_words_labelled=%d/%d handshakes_labelled=%d",
+            "INFO-FCOV-ROM-FLIP-LABEL flip_words_labelled=%d/%d handshakes_labelled=%d",
             len(self.label_hits),
             len(self.plan.flips),
             sum(self.label_hits.values()),
@@ -1037,15 +1046,37 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
                 )
             idx = j + 3
         sizes = sorted({s for _a, s, _d in p.stores})
+        t0, t1 = self._marker_t(OFF_ST_B), self._marker_t(OFF_ST_E)
+        # rom.adoc states that a store receives a response, not which one: the
+        # B beat count is graded and its code is logged.
+        aw_beats = self._in(self.lsu_rom.beats, t0, t1, "aw")
+        w_beats = self._in(self.lsu_rom.beats, t0, t1, "w")
+        b_beats = self._in(self.lsu_rom.beats, t0, t1, "b")
+        port_bad = []
+        if not (len(aw_beats) == len(w_beats) == len(b_beats) == N_STORES):
+            port_bad.append(f"aw={len(aw_beats)} w={len(w_beats)} b={len(b_beats)}")
+        for i, ((addr, s, _d), aw, w) in enumerate(zip(p.stores, aw_beats, w_beats)):
+            exp_strb = ((1 << s) - 1) << (addr & 7)
+            if aw.addr is None or (aw.addr >> 3) != (addr >> 3) or w.strb != exp_strb:
+                port_bad.append(
+                    f"#{i} aw_word={'X' if aw.addr is None else hex(aw.addr >> 3)} "
+                    f"exp_word={hex(addr >> 3)} strb={w.strb} exp_strb=0x{exp_strb:02x}"
+                )
+        self.logger.info(
+            "OBS-ROM-STORE-RESP n_stores=%d bresp=%s",
+            N_STORES,
+            ",".join("X" if b.resp is None else str(b.resp) for b in b_beats),
+        )
         self._grade(
             "CHK-ROM-STORE",
-            not bad,
-            f"n={N_STORES} sizes={','.join(map(str, sizes))} responses={N_STORES - len(bad)} "
+            not bad and not port_bad,
+            f"n={N_STORES} sizes={','.join(map(str, sizes))} responses={len(b_beats)} "
+            f"aw_match={N_STORES - len(port_bad) if not port_bad else 'no'} "
             f"traps={traps} readback={'image' if not bad else 'mismatch'}"
-            + ("" if not bad else " " + "; ".join(bad[:4])),
+            + ("" if not bad else " " + "; ".join(bad[:4]))
+            + ("" if not port_bad else " port: " + "; ".join(port_bad[:4])),
         )
         # CHK-ROM-STORE-WE: macro requests at the store words in the store leg.
-        t0, t1 = self._marker_t(OFF_ST_B), self._marker_t(OFF_ST_E)
         exp_n = Counter((a - ROM_BASE) >> 3 for a, _s, _d in p.stores)
         exp_n = Counter({w: 4 * n for w, n in exp_n.items()})
         got_n = Counter(b.addr for b in self._in(self.macro.beats, t0, t1, "req"))
@@ -1097,6 +1128,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             None if b.addr is None else b.addr >> 3 for b in self._in(self.rom.beats, t0, t1, "req")
         }
         req_ok = rq_words == set(exp_reads)
+        r_resp = [b.resp for b in self._in(self.lsu_rom.beats, t0, t1, "r")]
         for x, v in reads:
             exp = p.img.flipped(x, flipped[x]) if x in flipped else p.img.word(x)
             if v != exp:
@@ -1117,13 +1149,15 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             and nmi == 0
             and self.flip_stored == len(p.flips)
             and req_ok
+            and len(r_resp) >= len(exp_reads)
         )
         self._grade(
             "CHK-ROM-NOECC",
             ok,
             f"instance=first flips1={n1}/{N_FLIP1} flips2={n2}/{N_FLIP2} "
             f"data={'stored' if not bad else 'mismatch'} "
-            f"resp={'OKAY' if c2 == c1 and nmi == 0 else 'ERR'} traps={c2 - c1 + nmi} "
+            f"lsu_rom_r_beats={len(r_resp)} lsu_rom_r_okay={sum(c == 0 for c in r_resp)} "
+            f"traps={c2 - c1 + nmi} "
             f"neighbours_exact={neigh} control_ecall_traps={c1 - c0} "
             f"probe_macro_flipped={self.flip_stored}/{len(p.flips)} "
             f"probe_rom_req_words={len(rq_words)}/{len(set(exp_reads))} "
@@ -1175,6 +1209,7 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             None if b.addr is None else b.addr >> 3 for b in self._in(self.rom.beats, t0, t1, "req")
         }
         req_ok = rq_words == set(exp_reads)
+        r_resp = [b.resp for b in self._in(self.lsu_rom.beats, t0, t1, "r")]
         labelled = len(self.label_hits)
         ok = (
             not bad
@@ -1185,13 +1220,15 @@ class sep_boot_rom_aperture_sweep_test(sep_base_test):
             and self.flip_stored == len(p.flips)
             and req_ok
             and labelled == len(p.flips)
+            and len(r_resp) >= len(exp_reads)
         )
         self._grade(
             "CHK-ROM-NOECC",
             ok,
             f"instance=repeat flips1={n1}/{N_FLIP1} flips2={n2}/{N_FLIP2} "
             f"data={'stored' if not bad else 'mismatch'} "
-            f"resp={'OKAY' if c3 == c2 and nmi == 0 else 'ERR'} traps={c3 - c2 + nmi} "
+            f"lsu_rom_r_beats={len(r_resp)} lsu_rom_r_okay={sum(c == 0 for c in r_resp)} "
+            f"traps={c3 - c2 + nmi} "
             f"probe_macro_flipped={self.flip_stored}/{len(p.flips)} "
             f"probe_rom_req_words={len(rq_words)}/{len(exp_reads)} "
             f"probe_rom_req_exact={int(req_ok)} probe_label_words={labelled}/{len(p.flips)}"

@@ -30,6 +30,12 @@
 //   CLRIDLE src=.. ...        the idle clear
 //   CTRL-AES-STATUS status=.. cfg_ok=.. valid=.. out0..3=..  the slotless encryption
 //   CTRL-MAP-STATE p=.. src=.. state=..  INTR_STATE of an event source after a map pass
+//   CTRL-PICIO mcgc=.. picio=..          mcgc read before the masked report
+//   MASKED src=33 meie12=.. pri12=.. meie33=.. pri33=.. meip1_bit1=.. src12_bit=..
+//                             the masked report read, with the meie and meipl
+//                             readbacks of sources 12 and 33
+//   UNMASKED meie12=.. pri12=.. meie33=.. pri33=..  the readbacks after re-arming
+//   INFO-FIFO-EMPTY t=.. intr_state_kmac=..  KMAC INTR_STATE after a FIFO-empty step
 // A REQ is followed by a spin, so the host acts before the next bus access.
 
 #include <stdint.h>
@@ -220,6 +226,8 @@ static const uint8_t k_gw_map[N_GW] = {0, 1, 2, 3, 4, 5, 6, 7, 10, 13, 16, 20}; 
 #define FIRST_BAND 44u
 #define LAST_SRC 255u
 #define SRC17 17u
+#define CSR_MCGC 0x7F8
+#define MCGC_PICIO (1u << 9)
 
 static int g_err;
 static uint32_t g_ip_en[6]; // INTR_ENABLE values the map pass wrote
@@ -287,6 +295,14 @@ static void dump_meip(const char *tag) {
         rec_hex(k[i], w[i]);
     }
     rec_end();
+}
+
+// The meie and meipl fields of the masked-report sources, read back.
+static void pic_rec_arm(void) {
+    rec_num("meie12", pic_read_source_enable(12u) & EL2_PIC__MEIE__INTEN_bm);
+    rec_num("pri12", pic_read_priority(12u) & EL2_PIC__MEIPL__INTPRIORITY_bm);
+    rec_num("meie33", pic_read_source_enable(33u) & EL2_PIC__MEIE__INTEN_bm);
+    rec_num("pri33", pic_read_priority(33u) & EL2_PIC__MEIPL__INTPRIORITY_bm);
 }
 
 static uint32_t meip_bit(uint32_t src) {
@@ -509,13 +525,10 @@ static void write_enables(int pass) {
     }
 }
 
-static void obs_fifo_empty(const char *tag) {
-    rec_obs("FIFO-EMPTY");
+static void info_fifo_empty(const char *tag) {
+    rec_info("FIFO-EMPTY");
     rec_str("t", tag);
-    rec_str("intr_state_hmac", "na");
-    rec_hex("intr_enable_hmac", rd(HM(ENABLE)));
     rec_hex("intr_state_kmac", rd(KM(STATE)));
-    rec_hex("intr_enable_kmac", rd(KM(ENABLE)));
     rec_end();
 }
 
@@ -536,7 +549,7 @@ static void map_assert(int pass) {
     req_tag_n("vec", "p", (uint32_t)pass);
     dump_meip(pass == 1 ? "p1" : "p2");
     if (pass == 1) {
-        obs_fifo_empty("p1");
+        info_fifo_empty("p1");
     }
     for (uint32_t i = 0; i < N_MAP; i++) {
         const struct src *s = &k_map[i];
@@ -571,7 +584,7 @@ static void fe_cell(const char *ip, uint32_t src, uint32_t en, uint32_t bit) {
     uint32_t w0b = pic_read_meip(0);
     uint32_t w1b = pic_read_meip(1);
     uint32_t before = meip_bit(src);
-    obs_fifo_empty(ip);
+    info_fifo_empty(ip);
     wr(en, rd(en) & ~bit);
     wait_clk(g_p[P_SETTLE]);
     req_tag("vec", ip[0] == 'h' ? "feh1" : "fek1");
@@ -686,6 +699,20 @@ static void gw_cell(uint32_t g) {
     }
     pic_set_priority(id, 1u);
     pic_enable_source(id);
+    uint32_t ectl_latched = 0u, ectl_clr = 1u;
+    if (!(cell >> 1)) {
+        // Control for the level clear: the same meigwclr write on this source
+        // drops an edge latched in active-high edge mode.
+        pic_set_gateway(id, 1u, 0u);
+        pic_write_meigwclr(id, clr);
+        gw_assert(s);
+        wait_clk(g_p[P_SETTLE]);
+        gw_deassert(s);
+        wait_clk(g_p[P_SETTLE]);
+        ectl_latched = meip_bit(id);
+        pic_write_meigwclr(id, clr);
+        ectl_clr = meip_bit(id);
+    }
     pic_set_gateway(id, cell >> 1, cell & 1u);
     if (cell >> 1) {
         // The edge latch holds any earlier assertion of the source (the map
@@ -697,6 +724,13 @@ static void gw_cell(uint32_t g) {
     gw_assert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t a1 = meip_bit(id);
+    uint32_t lclr = 0u;
+    if (!(cell >> 1)) {
+        // A level cell takes a meigwclr write with its input asserted; the
+        // pending bit after it is logged.
+        pic_write_meigwclr(id, clr);
+        lclr = meip_bit(id);
+    }
     gw_deassert(s);
     wait_clk(g_p[P_SETTLE]);
     uint32_t d1 = meip_bit(id);
@@ -723,6 +757,9 @@ static void gw_cell(uint32_t g) {
     rec_num("after_clr", c1);
     rec_num("reasserted", a2);
     rec_num("after_clr2", c2);
+    rec_num("lclr", lclr);
+    rec_num("ectl_latched", ectl_latched);
+    rec_num("ectl_clr", ectl_clr);
     rec_hex("clr_val", clr);
     rec_end();
     pic_set_gateway(id, 0u, 0u);
@@ -1005,7 +1042,9 @@ int main(void) {
 
     // Single-source reads.
     rec_mark(1, "single");
+    req_tag("m", "s0");
     single_walk();
+    req_tag("m", "s1");
     wr(CS(ENABLE), CSRNG__INTR_ENABLE__CS_CMD_REQ_DONE_bm);
 
     // Alert kinds, the no-write window and the pair trial.
@@ -1043,7 +1082,7 @@ int main(void) {
     req_tag("m", "d2");
     pic_write_meigwclr(12u, 0u);
 
-    // Masked report (logged).
+    // Masked report: the host grades the read (CHK-MASKED-VISIBLE).
     rec_mark(0, "masked");
     uint32_t km = (g_p[P_AKIND] >> 12) & 0xFu;
     wr(SEP_TOP_SECURE_DMA_ALERT_TEST_BASE_ADDR, SECURE_DMA__ALERT_TEST__FATAL_FAULT_bm);
@@ -1053,11 +1092,16 @@ int main(void) {
     pic_set_priority(12u, 0u);
     pic_disable_source(33u);
     pic_set_priority(33u, 0u);
+    uint32_t mcgc;
+    __asm__ volatile("csrr %0, %1" : "=r"(mcgc) : "i"(CSR_MCGC));
+    rec_ctl("PICIO");
+    rec_hex("mcgc", mcgc);
+    rec_num("picio", (mcgc & MCGC_PICIO) ? 1u : 0u);
+    rec_end();
     uint32_t m0 = pic_read_meip(0), m1 = pic_read_meip(1);
-    rec_obs("MASKED-VISIBLE");
+    sep_mbx_puts("MASKED");
     rec_num("src", 33u);
-    rec_num("meie", 0u);
-    rec_num("pri", 0u);
+    pic_rec_arm();
     rec_num("meip1_bit1", (m1 >> 1) & 1u);
     rec_num("src12_bit", (m0 >> 12) & 1u);
     rec_end();
@@ -1065,6 +1109,10 @@ int main(void) {
     pic_set_priority(12u, 1u);
     pic_enable_source(33u);
     pic_set_priority(33u, 1u);
+    sep_mbx_puts("UNMASKED");
+    pic_rec_arm();
+    rec_end();
+    dump_meip("masked_set");
     pic_write_meigwclr(12u, 0u);
     pic_write_meigwclr(33u, 0u);
     dump_meip("masked_clr");
@@ -1125,7 +1173,7 @@ int main(void) {
     uint32_t lcc = rd(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
     wait_clk(g_p[P_SETTLE]);
     req_kv("win", "lcc", 0u);
-    rec_info("SLOTLESS-READS");
+    rec_ctl("SLOTLESS-READS");
     rec_hex("otp", otp);
     rec_hex("lcc", lcc);
     rec_end();

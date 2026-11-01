@@ -267,7 +267,21 @@ class sep_address_map_seq(uvm_sequence):
             )
 
         for name, _why in READ_ONLY:
-            await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=None, name=name)
+            value = await self._read(BASE + SEP_CPU_CTRL.offset(name), expected=None, name=name)
+            if name == "SEP_TEST_CTRL":
+                # No spec states the strap values this bench presents, so the
+                # fields are logged.
+                cocotb.log.info(
+                    "OBS-SEP-TEST-CTRL value=0x%08x fast_spi_en=%d fast_iccm_en=%d "
+                    "fast_dccm_en=%d fast_sram_en=%d fast_pka_en=%d sep_standalone=%d",
+                    value,
+                    (value >> 31) & 1,
+                    (value >> 30) & 1,
+                    (value >> 29) & 1,
+                    (value >> 28) & 1,
+                    (value >> 27) & 1,
+                    (value >> 26) & 1,
+                )
 
         # The 64-bit REFERENCE_COUNTER is frontdoor readable and LIVE: it counts
         # on clk_ref_i, which the testbench drives, so no pinned value can be

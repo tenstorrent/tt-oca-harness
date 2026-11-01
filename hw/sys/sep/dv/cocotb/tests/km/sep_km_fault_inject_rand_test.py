@@ -29,9 +29,16 @@ The draws, the source table and the frame model are in
 Witnesses. HMAC: keyed HMAC-SHA256 of a fixed message with a fixed software key
 in the KEY registers; ``key`` when the digest equals the golden of the delivered
 key, ``nokey`` when it equals the golden of the software key. AES: ECB-256 with
-``sideload`` = 1; ``key`` when the output equals the golden of the delivered
-key. Any other AES result is logged as ``OBS-AES-NOKEY`` and never grades the
-absence of a key.
+``sideload`` = 1 in automatic mode; ``key`` when the output equals the golden of
+the delivered key, ``none`` when no OUTPUT_VALID comes within ``aes_w_clk``
+(8 x the first AES read of the leaf). After the wipe the sideload KEY_VALID is
+0, and an automatic-mode AES starts only with a valid sideload key
+(``vendor/lowRISC/opentitan/upstream/hw/ip/aes/doc/theory_of_operation.md``,
+"System Key-Manager Interface"), so the post-wipe AES result is graded
+``none``, with the control CTRL-AES-NOKEY-INPUT (every STATUS sample of that read shows
+INPUT_READY = 0). A non-key AES result where a key is expected, and an HMAC
+digest that matches neither golden, are miss diagnostics of the witness checks
+(``INFO-AES-OTHER``, ``INFO-HMAC-DIGEST``).
 
 Probes and taps: ``HOST-MBX``, ``PIC-IRQ`` bit 30, ``KM-COUNT``, ``ENGINE-OUT``,
 ``KM-ENTROPY``, ``KM-ISO``, and the read-only taps ``KM-VALID``, ``KM-KPV``,
@@ -40,18 +47,31 @@ readback (``km_irqset_fired_o``, ``km_cpuirq_fired_o``, ``km_par_fired_o`` with
 ``km_par_rstrb_o`` and ``km_kpv_flip_count_o``) before its check is graded.
 
 Checks (HOST-UNREC unless marked):
+  CHK-PRE-KEYVALID   (both) at each fatal point with keys, km_engine_key_valid_o
+                     equals the transfer mask V before the fault
+                     (``firmware.adoc:504-506,1811``).
   CHK-FATAL-WIPE     a KM_WIPE_CTRL write gives exactly one fault frame
                      0xFFFFFFFF and PIC bit 30 rises (HOST: control=1).
   CHK-FLUSH-FIRST    (both) the r unread responses are flushed: one frame after
                      the rise, no stale RESP_CMD.
   CHK-SRAM-SHRED     the SRAM write count rises by 8192 or more by the rise.
-  CHK-SHRED-WITNESS  (control) the HMAC witness shows no key after the report.
+  CHK-SHRED-WITNESS  (control) the HMAC witness shows no key and the AES gives
+                     no output within aes_w_clk after the report.
   CHK-NOSHRED-HOST   (HOST) with the ROM wipe off, the hardware wipe still clears
                      the HMAC witness key.
+  CHK-NOSHRED-HOST-AES (HOST) and the AES gives no output within aes_w_clk.
+  CHK-SHRED-FIRST-HOST (HOST) no bank key_valid and no shared key at the first
+                     fault word of the real-wipe point (the wipe pulse).
+  CHK-SK-AFTER-BOOT  (both) after a wipe, CMD_ABR_SK_TRANSFER of the pending
+                     shared key returns failure with no argument.
+  CHK-SK-READY-FRAME (both) RESP_ABR_SHARED_KEY_READY carries no payload.
+  CHK-WIPE-STATUS    (both) the real wipe sets IRQ_STATUS.WIPE_STATE (control:
+                     0 before the KM_WIPE_CTRL write).
   CHK-TRAP-HELD      (both) bit 30 stays high and a CMD_STAT gets no answer.
   CHK-RESTORE        (both, control) a warm reset restores CMD_STAT and bit 30 = 0.
   CHK-PARITY-CLEAN   (both, control) a clean run and each no-flip twin raise no fault.
-  CHK-FATAL-SET      HK-IRQSET sets report the code of the first source.
+  CHK-FATAL-SET      HK-IRQSET sets report the code of the first source, the
+                     forced {drbg_err, axi_slverr} set included (-8).
   CHK-SHRED-FIRST    no bank key_valid and no shared key at the first fault word
                      (real-wipe point: control).
   CHK-STATUS-HELD    the IRQ_STATUS bits of the set, WIPE_STATE excluded, stay
@@ -60,11 +80,16 @@ Checks (HOST-UNREC unless marked):
   CHK-PARITY         a parity flip sets the memory's parity bit and reports -2 or -3.
   CHK-PARITY-VAC     a flip that the CPU did not check is redrawn, at most 8 times.
   CHK-KEYCRC         a corrupt key word gives 0xFE key_slot_crc, then failure.
+  CHK-KEYCRC-OUTSIDE-NOWRITE  the faulted transfer to an engine outside the
+                     policy writes no key bank and leaves km_engine_key_valid_o
+                     unchanged (``firmware.adoc:500,979``).
   CHK-CRC-FIRST      the CRC fault precedes the policy refusal.
   CHK-NOFLUSH        the key fault keeps the sequence counters.
   CHK-GATE-AFTER     the fault repeats after CMD_RECOV_ACK; a sibling is gated.
   CHK-RESIDUE        a flip past the key end raises no fault.
   CHK-CPU-TRAP       CPU lines 1 and 2 report -9 and -10 and rank above KMCSR.
+                     (control CTRL-CPU-TRAP-CSR-SET: the KMCSR source of the
+                     shared clock latched its IRQ_STATUS bit.)
   CHK-MAINCTX-FATAL  a bad image CRC sends one 0xFFFFFFF2 frame and holds bit 30.
   CHK-DRBG-STALL     (HOST) a stopped KM entropy stream reports -8; key 0 of
                      the plan sits in its banks (CTRL-DRBG-STALL-KEYED).
@@ -73,10 +98,9 @@ Checks (HOST-UNREC unless marked):
   CHK-KEYPATH-FATAL  (HOST) a key write to a reset HMAC is fatal with -7.
   CHK-XFER-STOP      (HOST) the transfer writes no AES bank after the HMAC fault.
 
-Logged only: OBS-AES-NOKEY, the shared-key transfer after each boot, the frames
-of the ML-KEM notify, the SRAM write count of the HOST fatal path, the KPV and
-KM-VALID samples at the first fault word, the IRQ_STATUS bits outside the graded
-set, and VACUOUS parity draws. In the whole leaf the
+Logged only: the SRAM write count of the HOST fatal
+path, the KPV and KM-VALID samples at the first fault word, the IRQ_STATUS bits
+outside the graded set, and INFO-PARITY-VACUOUS parity draws. In the whole leaf the
 CHK-MAINCTX-FATAL point runs after every other fatal point. The regression runs
 the HOST-UNREC entry as fourteen shards (SHARD_POINTS_UNREC).
 """
@@ -123,7 +147,12 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_STATUS,
     SepAbrMlkem,
 )
-from seq_lib.sep_aes_seq import AES_STATUS, AES_STATUS_OUTPUT_VALID, SepAes
+from seq_lib.sep_aes_seq import (
+    AES_STATUS,
+    AES_STATUS_INPUT_READY,
+    AES_STATUS_OUTPUT_VALID,
+    SepAes,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_hmac_seq import SepHmac
 from seq_lib.sep_km_mailbox_seq import (
@@ -171,7 +200,13 @@ IMAGE_UNREC = "rom_main_unrec.rom.parhex"
 EVIDENCE_HOST = (
     "CHK-FATAL-WIPE",
     "CHK-FLUSH-FIRST",
+    "CHK-PRE-KEYVALID",
     "CHK-NOSHRED-HOST",
+    "CHK-NOSHRED-HOST-AES",
+    "CHK-SHRED-FIRST-HOST",
+    "CHK-SK-AFTER-BOOT",
+    "CHK-SK-READY-FRAME",
+    "CHK-WIPE-STATUS",
     "CHK-TRAP-HELD",
     "CHK-RESTORE",
     "CHK-PARITY-CLEAN",
@@ -190,16 +225,21 @@ EVIDENCE_UNREC = (
     "CHK-PARITY-CLEAN",
     "CHK-FATAL-SET",
     "CHK-SHRED-FIRST",
+    "CHK-SK-AFTER-BOOT",
+    "CHK-SK-READY-FRAME",
+    "CHK-WIPE-STATUS",
     "CHK-STATUS-HELD",
     "CHK-KPV-TRAP",
     "CHK-PARITY",
     "CHK-PARITY-VAC",
     "CHK-KEYCRC",
+    "CHK-KEYCRC-OUTSIDE-NOWRITE",
     "CHK-CRC-FIRST",
     "CHK-NOFLUSH",
     "CHK-GATE-AFTER",
     "CHK-RESIDUE",
     "CHK-CPU-TRAP",
+    "CHK-PRE-KEYVALID",
     "CHK-MAINCTX-FATAL",
 )
 # Shards of the HOST-UNREC entry (env/sep_shard.py). Each fatal point of this
@@ -234,19 +274,36 @@ POINT_EVIDENCE_UNREC = {
         "CHK-SHRED-WITNESS",
         "CHK-TRAP-HELD",
         "CHK-SHRED-FIRST",
+        "CHK-SK-AFTER-BOOT",
+        "CHK-SK-READY-FRAME",
+        "CHK-WIPE-STATUS",
+        "CHK-PRE-KEYVALID",
         "CHK-RESTORE",
     ),
     "single": (
         "CHK-FATAL-SET",
         "CHK-STATUS-HELD",
         "CHK-SHRED-FIRST",
+        "CHK-SK-AFTER-BOOT",
+        "CHK-SK-READY-FRAME",
         "CHK-KPV-TRAP",
+        "CHK-PRE-KEYVALID",
         "CHK-RESTORE",
     ),
-    "multi": ("CHK-FATAL-SET", "CHK-STATUS-HELD", "CHK-SHRED-FIRST", "CHK-KPV-TRAP", "CHK-RESTORE"),
+    "multi": (
+        "CHK-FATAL-SET",
+        "CHK-STATUS-HELD",
+        "CHK-SHRED-FIRST",
+        "CHK-SK-AFTER-BOOT",
+        "CHK-SK-READY-FRAME",
+        "CHK-KPV-TRAP",
+        "CHK-PRE-KEYVALID",
+        "CHK-RESTORE",
+    ),
     "parity": ("CHK-PARITY", "CHK-PARITY-VAC", "CHK-PARITY-CLEAN", "CHK-RESTORE"),
     "keycrc": (
         "CHK-KEYCRC",
+        "CHK-KEYCRC-OUTSIDE-NOWRITE",
         "CHK-CRC-FIRST",
         "CHK-NOFLUSH",
         "CHK-GATE-AFTER",
@@ -653,7 +710,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
     # ================================================================ scenario
     async def run_scenario(self) -> None:
         seed = self.random_seed()
-        self.logger.info("SEED seed=%d", seed)
+        self.logger.info("INFO-SEED seed=%d", seed)
         self.unrec = self._entry() == "unrec"
         entry = ENTRY_UNREC if self.unrec else TEST
         self.required_evidence = EVIDENCE_UNREC if self.unrec else EVIDENCE_HOST
@@ -662,10 +719,10 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.plan = pl.draw_plan(seed)
         pl.check_plan(self.plan)
         for line in pl.draw_lines(self.plan):
-            self.logger.info(line)
+            self.logger.info("INFO-%s", line)
         self.logger.info("INFO-ROM-BUILD km_boot_wipe=0 km_unrec_wipe=%d", int(self.unrec))
         self.logger.info(
-            "LOG entry=%s legs selected by +km_rom_hex (%s)",
+            "INFO-ENTRY entry=%s legs selected by +km_rom_hex (%s)",
             "HOST-UNREC" if self.unrec else "HOST",
             IMAGE_UNREC if self.unrec else IMAGE_HOST,
         )
@@ -675,6 +732,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.aes_w_clk: int | None = None
         self.ek: list[int] | None = None
         self.sk_pending = False
+        self.sk_valid_pending = 0
         self.fresh = False
         self.resp_next = 0
         self.w_ref = 0
@@ -931,7 +989,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 )
             self.resp_next = (fr.seq + 1) & 0xFF
             if fr.resp_id == KM_RESP_ABR_SHARED_KEY_READY:
-                self.chk.obs("SK-NOTIFY", cmd=_h2(cmd_id), frame=fr.text())
+                self._sk_ready_frame(fr, f"cmd_{_h2(cmd_id)}")
                 continue
             frames.append(fr)
             code, _arg = fr.resp_cmd(cmd_id, sent)
@@ -941,6 +999,22 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 raise AssertionError(
                     f"command 0x{cmd_id:02x}: no RESP_CMD echo in {[f.text() for f in frames]}"
                 )
+
+    def _sk_ready_frame(self, fr: _Frame, after: str) -> None:
+        """CHK-SK-READY-FRAME: RESP_ABR_SHARED_KEY_READY has no payload.
+
+        firmware.adoc, "0x56 - RESP_ABR_SHARED_KEY_READY": "This message has no
+        payload."
+        """
+        self.chk.ok(
+            "SK-READY-FRAME",
+            fr.payload_len == 0 and len(fr.words) == 1,
+            after=after,
+            payload_len=fr.payload_len,
+            words=len(fr.words),
+            frame=fr.text(),
+            sk_valid=self._sk(),
+        )
 
     async def _cmd(self, cmd_id: int, payload: list[int]) -> tuple[int, int | None, _Frame]:
         """One command whose only frame is its RESP_CMD; (code, argument, frame)."""
@@ -1020,9 +1094,24 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         self.fresh = False
 
     async def _sk_flush(self, after: str) -> None:
-        """The pending ABR shared key: CMD_ABR_SK_TRANSFER with DEST_VALID bit 7, logged."""
+        """CHK-SK-AFTER-BOOT: the fatal point wiped the pending ABR shared key.
+
+        Every point that leaves a shared key pending ends in a wipe event, whose
+        pulse clears the ML-KEM shared key and its KEY_VALID (architecture.adoc,
+        "Wipe State"); CMD_ABR_SK_TRANSFER then returns failure with no return
+        argument (firmware.adoc, "CMD_ABR_SK_TRANSFER").
+        """
+        sk_valid = self._sk()
         code, arg, _ = await self._cmd(KM_CMD_ABR_SK_TRANSFER, [MSG_MASK])
-        self.chk.obs("SK-AFTER-BOOT", after=after, code=code, arg=_hx(arg))
+        self.chk.ok(
+            "SK-AFTER-BOOT",
+            self.sk_valid_pending == 1 and sk_valid == 0 and code == KM_RC_FAILURE and arg is None,
+            after=after,
+            control_sk_valid_pending=self.sk_valid_pending,
+            sk_valid=sk_valid,
+            code=code,
+            arg=_hx(arg),
+        )
         self.sk_pending = False
 
     async def _restore(self, after: str) -> None:
@@ -1038,8 +1127,14 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await self.swrst.release("aes")
         await self.aes.wait_idle("post-witness-reset")
 
-    async def _aes_read(self, key, step: str) -> str:
-        """AES witness: ``key`` or ``other``. Resets the AES after ``other``."""
+    async def _aes_read(self, key, step: str, expect_key: bool = True) -> str:
+        """AES witness: ``key``, ``none`` or ``other``. Resets the AES after a non-key result.
+
+        With ``expect_key`` False the wipe has cleared the sideload KEY_VALID, so
+        the result is ``none``: no OUTPUT_VALID within ``aes_w_clk``. Its control
+        CTRL-AES-NOKEY-INPUT requires every STATUS sample after the DATA_IN
+        writes to read INPUT_READY = 0: the block landed and was not loaded.
+        """
         golden = aes256_ecb_encrypt_words(list(key[:WITNESS_WORDS]), list(AES_PT))
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()
@@ -1047,8 +1142,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         t0 = self._cyc()
         first = self.aes_first_clk is None
         dur = None
+        samples = in_ready = 0
         while True:
             st = await self.aes._rd(AES_STATUS)
+            samples += 1
+            in_ready += bool(st & (1 << AES_STATUS_INPUT_READY))
             el = self._cyc() - t0
             if st & (1 << AES_STATUS_OUTPUT_VALID):
                 dur = el
@@ -1065,15 +1163,25 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         if first:
             self.aes_first_clk = dur
             self.aes_w_clk = W_FACTOR * dur
-            self.logger.info("LOG aes_first_clk=%d aes_w_clk=%d (%s)", dur, self.aes_w_clk, step)
-        state = "key" if out == golden else "other"
-        if state == "other":
-            self.chk.obs(
-                "AES-NOKEY",
-                step=step,
-                output="none" if out is None else "0x" + "".join(f"{w:08x}" for w in out),
-                aes_w_clk=self.aes_w_clk,
+            self.logger.info(
+                "INFO-AES-REF aes_first_clk=%d aes_w_clk=%d step=%s", dur, self.aes_w_clk, step
             )
+        if out is None:
+            state = "none"
+        else:
+            state = "key" if out == golden else "other"
+        output = "none" if out is None else "0x" + "".join(f"{w:08x}" for w in out)
+        if not expect_key:
+            self.chk.ctrl(
+                "AES-NOKEY-INPUT",
+                samples > 0 and in_ready == 0,
+                step=step,
+                samples=samples,
+                input_ready_samples=in_ready,
+            )
+        elif state != "key":
+            self.chk.info("AES-OTHER", step=step, output=output, aes_w_clk=self.aes_w_clk)
+        if state != "key":
             await self._aes_reset()
         return state
 
@@ -1090,7 +1198,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             return "key"
         if digest == g_sw:
             return "nokey"
-        self.logger.info("LOG hmac digest=%s (neither golden)", [_hx(w) for w in digest])
+        self.logger.info("INFO-HMAC-DIGEST digest=%s (neither golden)", [_hx(w) for w in digest])
         return "other"
 
     # ================================================================ ML-KEM
@@ -1144,7 +1252,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             raise AssertionError(f"response sequence {fr.seq}, expected {self.resp_next}")
         self.resp_next = (fr.seq + 1) & 0xFF
         self.sk_pending = True
-        self.logger.info("LOG RESP_ABR_SHARED_KEY_READY frame=%s", fr.text())
+        self.sk_valid_pending = self._sk()
+        self._sk_ready_frame(fr, "encaps")
 
     # ================================================================ fatal plumbing
     async def _wipe_write(self, value: int) -> None:
@@ -1204,7 +1313,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 return
             prev = d
             await ClockCycles(cocotb.top.clk_i, max(64, stat_clk // 2))
-        self.logger.info("LOG outbound depth did not settle; the quiet control decides")
+        self.logger.info("INFO-SETTLE outbound depth did not settle; the quiet control decides")
 
     # ================================================================ precondition
     async def _precondition(self, witness: bool) -> _Pre:
@@ -1234,11 +1343,17 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             hmac=hmac,
             aes=aes,
         )
+        # firmware.adoc:504-506,1811: a successful transfer sets key_valid of each
+        # returned engine; only a shred or a wipe clears it, and neither runs before
+        # this sample. The bit order of km_engine_key_valid_o is the request mask.
+        self.chk.ok(
+            "PRE-KEYVALID",
+            pre.keyvalid == p.v,
+            keyvalid=_h2(pre.keyvalid),
+            v=_h2(p.v),
+        )
         self.logger.info(
-            "LOG pre-state keyvalid=%s v=%s shared=%d kpv_words_nonzero=%d ctrl_stat_clk=%d "
-            "stat=%s r=%d",
-            _h2(pre.keyvalid),
-            _h2(p.v),
+            "INFO-PRE-STATE shared=%d kpv_words_nonzero=%d ctrl_stat_clk=%d stat=%s r=%d",
             pre.shared,
             pre.kpv_words_nonzero,
             stat_clk,
@@ -1258,7 +1373,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         pre.wr_end = self._wr_count()
         pre.depth = await self._out_depth()
         self.logger.info(
-            "LOG quiet window w_clk=%d ctrl_stat_clk=%d pic30_high=%d sram_writes=%d->%d "
+            "OBS-QUIET-WINDOW w_clk=%d ctrl_stat_clk=%d pic30_high=%d sram_writes=%d->%d "
             "out_depth=%d",
             pre.w_clk,
             stat_clk,
@@ -1283,25 +1398,27 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             kpv_words_nonzero_logged="none" if f is None else f["kpv_words_nonzero"],
             kpv_ctrl_nonzero_logged="none" if f is None else f["kpv_ctrl_nonzero"],
         )
+        # Control: the pre-state record holds keys and a pending shared key,
+        # so a clear sample at the fault word is a change.
+        ok = (
+            pre.keyvalid != 0
+            and pre.shared == 1
+            and f is not None
+            and kv_at == 0
+            and not f["kv_unknown"]
+            and not f["sk_unknown"]
+            and sk_at == 0
+        )
         if self.unrec:
-            # Control: the pre-state record holds keys and a pending shared key,
-            # so a clear sample at the fault word is a change.
-            ok = (
-                pre.keyvalid != 0
-                and pre.shared == 1
-                and f is not None
-                and kv_at == 0
-                and not f["kv_unknown"]
-                and not f["sk_unknown"]
-                and sk_at == 0
-            )
             # The real-wipe point is a control: its wipe pulse clears the keys
             # in hardware before the report (architecture.adoc, "Wipe State").
             if point == "real_wipe":
                 fields["control"] = 1
             self.chk.ok("SHRED-FIRST", ok, **fields)
         else:
-            self.chk.obs("SHRED-FIRST-HOST", km_unrec_wipe=0, **fields)
+            # With the ROM wipe off, the wipe pulse alone clears every bank
+            # key_valid and the shared key (architecture.adoc, "Wipe State").
+            self.chk.ok("SHRED-FIRST-HOST", ok, km_unrec_wipe=0, **fields)
 
     # ================================================================ step 2 and twins
     async def _clean_run(self, n: int, mem: int | None, label: str) -> None:
@@ -1362,6 +1479,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         p = self.plan
         self.fresh = False
         pre = await self._precondition(witness=True)
+        status_before = self._csr_status()
         wr_base = self._wr_count()  # step 5
         depth_before = pre.depth
         watch = _FatalWatch(self)
@@ -1374,7 +1492,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         high, answered, wframes = await self._trap_window(pre.w_clk)
         delta = None if watch.wr_at_rise is None else watch.wr_at_rise - wr_base  # step 7
         hmac_after = await self._hmac_read(p.keys[0].words, HMAC_MSG2)
-        aes_after = await self._aes_read(p.keys[0].words, "post_wipe")
+        aes_after = await self._aes_read(p.keys[0].words, "post_wipe", expect_key=False)
         status = self._csr_status()  # step 8
         watch.stop()
         b_end = self._b30()
@@ -1457,17 +1575,21 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             # Control: the wipe pulse of the KM_WIPE_CTRL edge clears the
             # sideload keys in hardware (architecture.adoc, "Wipe State"), so
             # this point cannot tell the ROM shred apart. CHK-SHRED-FIRST at
-            # the HK-IRQSET points grades the ROM shred.
+            # the HK-IRQSET points grades the ROM shred. With KEY_VALID 0 an
+            # automatic-mode AES does not start (OT aes theory_of_operation.md,
+            # "System Key-Manager Interface"), so it gives no output within
+            # aes_w_clk.
             self.chk.ok(
                 "SHRED-WITNESS",
                 pre.hmac == "key"
                 and pre.aes == "key"
                 and hmac_after == "nokey"
-                and aes_after != "key",
+                and aes_after == "none",
                 hmac_before="golden" if pre.hmac == "key" else pre.hmac,
                 hmac_after=hmac_after,
                 aes_before="golden" if pre.aes == "key" else pre.aes,
-                aes_key_after=int(aes_after == "key"),
+                aes_after=aes_after,
+                aes_w_clk=self.aes_w_clk,
                 control=1,
             )
         else:
@@ -1479,12 +1601,36 @@ class sep_km_fault_inject_rand_test(sep_base_test):
                 hmac_before="golden" if pre.hmac == "key" else pre.hmac,
                 hmac_after=hmac_after,
                 msg_changed=1,
-                writes_delta_logged="none" if delta is None else delta,
             )
-            self.chk.obs("NOSHRED-HOST-AES", control=1, aes_before=pre.aes, aes_after=aes_after)
+            self.chk.obs("NOSHRED-WRITES", writes_delta="none" if delta is None else delta)
+            # The wipe pulse clears both shares and KEY_VALID of the AES
+            # sideload block (architecture.adoc, "Wipe State"), and an
+            # automatic-mode AES starts only with a valid sideload key (OT aes
+            # theory_of_operation.md, "System Key-Manager Interface"): no output
+            # within aes_w_clk.
+            self.chk.ok(
+                "NOSHRED-HOST-AES",
+                pre.aes == "key" and aes_after == "none",
+                km_unrec_wipe=0,
+                aes_before="golden" if pre.aes == "key" else pre.aes,
+                aes_after=aes_after,
+                aes_w_clk=self.aes_w_clk,
+            )
         self._shred_first(pre, watch, "real_wipe")
+        # The wipe-state edge sets the sticky IRQ_STATUS.WIPE_STATE
+        # (architecture.adoc, "Wipe State"; km_csr.rdl IRQ_STATUS), and the
+        # fatal handler leaves it set (firmware.adoc, "Interrupt Priority").
+        wipe_bit = 1 << pl.IRQ_BIT["wipe_state"]
+        self.chk.ok(
+            "WIPE-STATUS",
+            rose and not status_before & wipe_bit and bool(status & wipe_bit),
+            control_wipe_state_before=int(bool(status_before & wipe_bit)),
+            wipe_state=int(bool(status & wipe_bit)),
+            status=f"0x{status:03x}",
+            err_o=int(rose),
+        )
         self.logger.info(
-            "LOG real wipe: W=%d status=0x%03x err_o_end=%d rise_cyc=%s",
+            "OBS-REAL-WIPE W=%d status=0x%03x err_o_end=%d rise_cyc=%s",
             p.wipe_w,
             status,
             b_end,
@@ -1615,7 +1761,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             if consumed:
                 break
             self.logger.info(
-                "VACUOUS mem=%s lane=%d n=%d fired=%d rstrb=0x%x seed=%d",
+                "INFO-PARITY-VACUOUS mem=%s lane=%d n=%d fired=%d rstrb=0x%x seed=%d",
                 pl.MEM_NAME[mem],
                 lane,
                 n,
@@ -1721,7 +1867,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         pol_code, pol_arg = pol[-1].resp_cmd(KM_CMD_KEY_TRANSFER, sent)
         pol_ok = len(pol) == 1 and pol_code == KM_RC_FAILURE and pol_arg is None
         self.logger.info(
-            "LOG key A run=%d-%d handle=%s control xfer code=%d arg=%s aes_writes=%d "
+            "INFO-KEY-A run=%d-%d handle=%s control xfer code=%d arg=%s aes_writes=%d "
             "policy code=%s arg=%s",
             run_a[0],
             run_a[-1],
@@ -1737,21 +1883,28 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         index = s_a * pl.SLOT_WORDS + p.flip_word
         await self._set_kpv_flip(1, index, p.flip_bit)
         ctrl_a = [self._ctrl_slots()[s] for s in run_a]
+        kv13 = self._kv()
         resp_expected = self.resp_next
         self.bus.start()
         sent14, f14 = await self._cmd_frames(KM_CMD_KEY_TRANSFER, [ha, p.outside_a], track=False)
         await self.bus.stop()
         flips14 = self.rd(top.km_kpv_flip_count_o, allow_unknown=True)
         bus14 = self.bus.writes
+        bus14_unknown = self.bus.unknown
+        kv14 = self._kv()
         ctrl14 = [self._ctrl_slots()[s] for s in run_a]
-        self.logger.info(
-            "LOG key CRC transfer outside policy frames=%s flips=%d kv=%s recov_err=%d "
-            "bus_writes_logged=%d",
-            [f.text() for f in f14],
-            flips14,
-            _h2(self._kv()),
-            self.rd(top.km_csr_recov_err_o, allow_unknown=True),
-            bus14,
+        # firmware.adoc:979 (key_slot_crc: the triggering operation is aborted) and
+        # :500 (a disallowed engine: no requested key transfer takes place).
+        self.chk.ok(
+            "KEYCRC-OUTSIDE-NOWRITE",
+            flips14 > 0 and bus14 == 0 and bus14_unknown == 0 and kv14 == kv13,
+            frames=[f.text() for f in f14],
+            flips=flips14,
+            bus_bank_writes=bus14,
+            bus_unknown=bus14_unknown,
+            kv=_h2(kv14),
+            kv_before=_h2(kv13),
+            recov_err=self.rd(top.km_csr_recov_err_o, allow_unknown=True),
         )
         fa = f14[0]
         fb = f14[1] if len(f14) > 1 else None
@@ -1906,6 +2059,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         watch = _FatalWatch(self)
         watch.start()
         await RisingEdge(top.clk_i)
+        status_before = self._csr_status()
         top.km_cpuirq_lines_i.value = lines
         csr_bit = 0
         if csr_src is not None:
@@ -1924,6 +2078,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         await ClockCycles(top.clk_i, 16)
         await ReadOnly()
         b1 = self._b30()
+        status = self._csr_status()
         await RisingEdge(top.clk_i)
         watch.stop()
         top.km_cpuirq_arm_i.value = 0
@@ -1941,6 +2096,22 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             fired=fired,
             pending_seen=f"0x{watch.pend_seen:x}",
         )
+        if csr_src is not None:
+            # Control: the KMCSR source of the shared clock latched its sticky
+            # IRQ_STATUS bit. The CPU trap sets WIPE_STATE itself
+            # (architecture.adoc, "Wipe State"), so that bit cannot show it.
+            src_bit = pl.set_mask((csr_src,)) & ~(1 << pl.IRQ_BIT["wipe_state"])
+            if src_bit:
+                self.chk.ctrl(
+                    "CPU-TRAP-CSR-SET",
+                    csr_fired == 1 and not (status_before & src_bit) and (status & src_bit) != 0,
+                    with_csr=csr_src,
+                    bit=f"0x{src_bit:03x}",
+                    status_before=f"0x{status_before:03x}",
+                    status=f"0x{status:03x}",
+                )
+            else:
+                self.chk.info("CPU-TRAP-CSR-SET", with_csr=csr_src, anchor="km_irqset_fired_o")
         self.chk.ok(
             "CPU-TRAP",
             b0 == 0
@@ -1975,7 +2146,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         frame, orig, flipped = p.main_stream()
         assert flipped != orig, "the flipped stream word equals the original word"
         self.logger.info(
-            "LOG main-context stream n=%d w=%d bit=%d original=%s flipped=%s confirm=%d",
+            "INFO-MAIN-STREAM n=%d w=%d bit=%d original=%s flipped=%s confirm=%d",
             n,
             p.main_w,
             p.main_bit,
@@ -2060,7 +2231,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             await RisingEdge(top.clk_i)
             await ReadOnly()
             if self.rd_known(top.km_cpu_rst_n_o) == 0:
-                self.logger.info("LOG %s: KM warm reset asserted after %d clocks", what, i + 1)
+                self.logger.info(
+                    "OBS-KM-HELD %s: KM warm reset asserted after %d clocks", what, i + 1
+                )
                 return
         raise AssertionError(
             f"{what}: the KM warm reset did not assert within {KM_HELD_BOUND} clocks"
@@ -2071,7 +2244,8 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         """Select the external input for the KM stream with the KM held, feed the
         boot, load and transfer key 0 of the plan, and stop the stream with no
         beat waiting. Returns the coroutine function that restores the internal
-        source while the KM is held, and the KM-VALID sample after the transfer.
+        source while the KM is held, the key handle, and the KM-VALID samples
+        before and after the transfer.
 
         A key write draws DRBG words (``firmware.adoc``, "Crypto Engine
         Drivers"), so the transfer runs while the bench still feeds the stream
@@ -2096,13 +2270,7 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         kv_pre = self._kv()
         await self._transfer_pre(handle, key.dest)
         kv = self._kv()
-        self.chk.info(
-            "DRBG-STALL-KEY",
-            handle=_h2(handle),
-            dest=_h2(key.dest),
-            keyvalid_pre=_h2(kv_pre),
-            keyvalid=_h2(kv),
-        )
+        self.chk.info("DRBG-STALL-KEY", dest=_h2(key.dest))
         offered = await feed.stop()
         self.chk.info(
             "DRBG-STALL-STOP",
@@ -2118,11 +2286,11 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             await self._cpu_ctrl_wr("EXT_TRNG_SRC_SEL", sel)
             await ext.stop()
 
-        return restore, kv
+        return restore, handle, kv_pre, kv
 
     async def _drbg_stall_point(self) -> None:
         top = cocotb.top
-        restore, kv_xfer = await self._drbg_stall_stop()
+        restore, handle, kv_pre, kv_xfer = await self._drbg_stall_stop()
         drbg_bit = 1 << pl.IRQ_BIT["drbg_err"]
         seen = 0
         for _ in range(TVALID_WINDOW):
@@ -2149,7 +2317,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             "DRBG-STALL-KEYED",
             kv & dest == dest,
             dest=_h2(dest),
+            handle=_h2(handle),
             keyvalid_before=_h2(kv),
+            keyvalid_pre=_h2(kv_pre),
             keyvalid_xfer=_h2(kv_xfer),
         )
         watch = _FatalWatch(self)
@@ -2241,9 +2411,9 @@ class sep_km_fault_inject_rand_test(sep_base_test):
         watch.stop()
         one = len(frames) == 1
         code = frames[0].fault_word if one else None
-        # A new transaction on an isolated path completes with SLVERR, and the
-        # KM fabric reports an AXI SLVERR as axi_slverr (-7).
-        want = pl.fault_word(pl.CODE["axi_slverr"])
+        # An isolated path answers SLVERR (reset_controller.adoc, "Isolation
+        # and Reset Sequencing"), which the ROM reports as axi_slverr -7.
+        expected = pl.fault_word(pl.CODE["axi_slverr"])
         self.chk.ok(
             "KEYPATH-FATAL",
             iso == 1
@@ -2251,12 +2421,12 @@ class sep_km_fault_inject_rand_test(sep_base_test):
             and rose
             and one
             and frames[0].resp_id == KM_RESP_UNRECOVERABLE_FAULT
-            and code == want
+            and code == expected
             and high == TRAP_SAMPLES,
             iso=iso,
             frames=len(frames),
+            expected=_hx(expected),
             code=_hx(code),
-            want=_hx(want),
             err_o=int(rose),
             samples_high=high,
             control_quiet=b0,

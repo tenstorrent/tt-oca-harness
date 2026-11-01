@@ -147,7 +147,8 @@ Checkers:
                   TX_SETTLE_CLKS clocks. Controls: STATUS.TXQD reads the number
                   of words written at each state (else CTRL-MISSING), and the
                   probe reads 0 before the TX_WATERMARK write. The clocks from
-                  the write to the rise and to the fall are logged
+                  the TX_WATERMARK write to the rise and from the last
+                  TXDATA write to the fall are logged
                   (``OBS-HS-TRIG-TX-LAT``): the text states a registered OR and
                   no clock count, so the rise and the fall are graded inside
                   TRIG_RISE_CLKS only.
@@ -229,6 +230,9 @@ from ocah_spi_vip import OcahSpiFlash
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_dma_ops import (
+    CFG_REGWEN as DMA_CFG_REGWEN,
+)
+from seq_lib.sep_dma_ops import (
     CONTROL as DMA_CONTROL,
 )
 from seq_lib.sep_dma_ops import (
@@ -240,6 +244,9 @@ from seq_lib.sep_dma_ops import (
     SepDmaOps,
     SepMemWords,
     asid_word,
+)
+from seq_lib.sep_dma_ops import (
+    STATUS as DMA_STATUS,
 )
 from seq_lib.sep_spi_host_csr_seq import (
     CONTROL as SPI_CONTROL,
@@ -538,7 +545,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         self.flash.init_signals()
         await self.flash.start()
         self.logger.info(
-            "RESET LOG run=%s release_clks=%d sep_reset_n_at_hold_end=%d",
+            "INFO-RESET LOG run=%s release_clks=%d sep_reset_n_at_hold_end=%d",
             tag,
             rel["release_clks"],
             rel["sep_reset_n_at_hold_end"],
@@ -630,7 +637,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
 
     def _probe_log(self, tag: str) -> None:
         self.logger.info(
-            "PROBE LOG run=%s dma_busy_probe_o=%s spi_tx_qd_probe_o=%s",
+            "INFO-PROBE LOG run=%s dma_busy_probe_o=%s spi_tx_qd_probe_o=%s",
             tag,
             self.busy.level(),
             self.rd(cocotb.top.spi_tx_qd_probe_o, allow_unknown=True),
@@ -680,7 +687,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         # Appended draw: the clear value, never the word written there first.
         clr_val = unique_words(cfg.rng, 1, exclude={self.sentinel})[0]
         self.logger.info(
-            "DRAW seed=%d clear_addr=0x%08x clear_wr_val=0x%08x clear_pre=0x%08x",
+            "INFO-DRAW seed=%d clear_addr=0x%08x clear_wr_val=0x%08x clear_pre=0x%08x",
             cfg.seed,
             CLR_ADDR,
             clr_val,
@@ -885,13 +892,6 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         end_written = sum(1 for w in img if w != self.sentinel)
         trig_high = self.trig.high_clocks_since(m_trig)
         go_masked = self._go_cmp(await self.dma.rd(DMA_CONTROL))
-        self.logger.info(
-            "OBS-HS-GO-MASKED LOG seed=%d run=%s go=%d %s",
-            cfg.seed,
-            tag,
-            int(go_masked.ok),
-            go_masked.fields(),
-        )
         self._probe_log(tag)
         # GO set at the GO write stays 1: the engine waits for an enabled trigger.
         # Negative-control hook: ``go_exp = 0`` for one run; CHK-HS-MASKED fails while
@@ -951,9 +951,11 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         ctrl_bad: list[str] = []
         bad: list[str] = []
         t_edge: dict[str, int | None] = {"rise": None, "fall": None}
+        t_last = None
         for k in range(w + 1):
             if k:
                 await spi.push_tx(k)
+                t_last = self.tw.clk
             exp = rule(k)
             # The first state raises the probe, the state at TXQD = W lowers it;
             # each wait is bounded and a miss fails below.
@@ -987,12 +989,14 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             if bad or ctrl_bad:
                 break
         lat_rise = None if t_edge["rise"] is None else t_edge["rise"] - t_wr
+        lat_fall = None if None in (t_edge["fall"], t_last) else t_edge["fall"] - t_last
         self.logger.info(
-            "OBS-HS-TRIG-TX-LAT LOG seed=%d wm=%d rise_clks_after_wm_write=%s fall_clk=%s",
+            "OBS-HS-TRIG-TX-LAT LOG seed=%d wm=%d rise_clks_after_wm_write=%s "
+            "fall_clks_after_last_word=%s",
             cfg.seed,
             w,
             lat_rise,
-            t_edge["fall"],
+            lat_fall,
         )
         line = (
             f"wm={w} wm_written={wm_written} rx_watermark=1 spien=0 {pre} "
@@ -1068,7 +1072,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
                 f"{TEST} needs +{FOUR_LANE_PLUSARG}: the DUT must receive spi_sd_i on every lane"
             )
         self.logger.info(
-            "PLAN seed=%d runs=depth,reference,trigger,lanes,normal,handshake,masked,stop,clear,"
+            "INFO-PLAN seed=%d runs=depth,reference,trigger,lanes,normal,handshake,masked,stop,clear,"
             "masked_alt,tx_term graded=trigger,lanes,handshake,masked,stop,clear,"
             "masked_alt,tx_term checks=CHK-HS-MASKED,CHK-HS-GO,CHK-HS-STOP,CHK-HS-NOCHUNK,"
             "CHK-HS-DATA,CHK-HS-TRIG-EQ,CHK-HS-TRIG-TX,CHK-HS-LANE-RX,CHK-HS-CLR,"
@@ -1076,7 +1080,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             cfg.seed,
         )
         self.logger.info(
-            "DRAW seed=%d chunk=%d n=%d mask_hi=0x%03x n_stop=%d clkdiv=%d wm=%d "
+            "INFO-DRAW seed=%d chunk=%d n=%d mask_hi=0x%03x n_stop=%d clkdiv=%d wm=%d "
             "chunks_total_stop=%d eq_wm=%d eq_chunk=%d",
             cfg.seed,
             cfg.chunk,
@@ -1090,13 +1094,13 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             cfg.eq_chunk,
         )
         self.logger.info(
-            "DRAW seed=%d flash_addr=0x%06x flash_words=%s",
+            "INFO-DRAW seed=%d flash_addr=0x%06x flash_words=%s",
             cfg.seed,
             FLASH_ADDR,
             ",".join(f"{w:08x}" for w in cfg.flash_words),
         )
         self.logger.info(
-            "DRAW seed=%d lane_order=%s lane_reads=%s",
+            "INFO-DRAW seed=%d lane_order=%s lane_reads=%s",
             cfg.seed,
             ",".join(f"x{lanes}" for lanes in cfg.lane_order),
             " ".join(
@@ -1105,7 +1109,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             ),
         )
         self.logger.info(
-            "DRAW seed=%d nm_sentinel=0x%08x nm_src_words=%d",
+            "INFO-DRAW seed=%d nm_sentinel=0x%08x nm_src_words=%d",
             cfg.seed,
             cfg.nm_sentinel,
             len(cfg.nm_src),
@@ -1490,6 +1494,17 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
             n_tot,
             "".join(str(int(f)) for f in filled),
         )
+        # Engine state while GO is 1 and the trigger is low: STATUS.BUSY,
+        # CFG_REGWEN and the DMA busy output, read before the re-trigger.
+        wait_st = DmaStatus(await self.dma.rd(DMA_STATUS))
+        wait_regwen = await self.dma.rd(DMA_CFG_REGWEN)
+        self.logger.info(
+            "OBS-DMA-HS-WAIT LOG seed=%d busy=%d cfg_regwen=0x%x busy_probe=%s",
+            cfg.seed,
+            wait_st.busy,
+            wait_regwen,
+            self.busy.level(),
+        )
         # Re-trigger leg, GO still 1: the DMA drained RXQD below RX_WATERMARK, so
         # the trigger is low; a second segment of W+1 words raises it again and
         # the engine moves the next chunk (OpenTitan DMA theory of operation:
@@ -1591,7 +1606,7 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         mask_alt = 0 if cfg.mask_hi else alt_hi << 1
         tx_wm = cfg.rng.randrange(1, 5)
         self.logger.info(
-            "DRAW seed=%d alt_hi=0x%03x mask_alt=0x%03x tx_wm=%d",
+            "INFO-DRAW seed=%d alt_hi=0x%03x mask_alt=0x%03x tx_wm=%d",
             cfg.seed,
             alt_hi,
             mask_alt,

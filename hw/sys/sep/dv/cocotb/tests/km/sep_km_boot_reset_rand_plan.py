@@ -174,5 +174,5 @@ class BootResetPlan:
         self._draws.append((name, value))
 
     def draw_lines(self) -> list[str]:
-        """One ``DRAW <name>=<value>`` line for every drawn value."""
-        return [f"DRAW {name}={_fmt(value)}" for name, value in self._draws]
+        """One ``INFO-DRAW <name>=<value>`` line for every drawn value."""
+        return [f"INFO-DRAW {name}={_fmt(value)}" for name, value in self._draws]
