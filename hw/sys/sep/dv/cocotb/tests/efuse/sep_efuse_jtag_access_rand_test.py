@@ -16,7 +16,8 @@ program of p, so the p read at the end grades a refused burn in every leaf.
 builds the same plan. After sense, ``CTRL-JTAG-LC-STATE`` reads the ``LC_STATE``
 shadow word at the frontdoor and requires the code of the drawn state. JTAG and
 frontdoor accesses never overlap, except one frontdoor read and one JTAG read of the
-shadow word of p, started on the same clock at the end of the leaf.
+shadow word of p, started on the same clock after every other graded access and
+before the deny-write controls, while no shadow write of the leaf has landed.
 CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the frontdoor read data
 equal to the staged word, and logs the frontdoor response code;
 ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires both AR handshakes before either read
@@ -50,8 +51,9 @@ Mechanism and Token Submission):
   CHK-JTAG-TOKEN    with every DBG_1 and DBG_2 bit of ``FEAT_CTRL`` at 0 (register and
                     probe), a JTAG write of ``TOKEN_T1`` into the SIP array and a go
                     give the SIP match 0x15 at a frontdoor read.
-  CHK-JTAG-CONCURRENT  the concurrent pair at the end of the leaf: JTAG response not
-                    OKAY, frontdoor data equal to the staged word.
+  CHK-JTAG-CONCURRENT  the concurrent pair, after every other graded access and before
+                    the deny-write controls: JTAG response not OKAY, frontdoor data
+                    equal to the staged word.
   OBS-JTAG-ALLOW-RESP  the response code of each token-block access: no TT text states
                     the response of an access JTAG may make.
 
@@ -676,11 +678,11 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 non_okay=sum(1 for r in resps if r != OKAY),
             )
             self.last_result[ch] = CODE_MISMATCH
-        await self._deny_write_controls(w)
         p_word_idx = field_word(p_bit["field"]) + p_bit["word"]
         c_word_idx = field_word(c_bit["field"]) + c_bit["word"]
         await self._concurrent_read(
             p_word_idx, (1 << c_bit["bit"]) if c_word_idx == p_word_idx else 0
         )
+        await self._deny_write_controls(w)
         await self.shim.stop()
         self.chk.finish(f" state={self.state}")
