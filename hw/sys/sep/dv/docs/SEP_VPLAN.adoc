@@ -173,9 +173,12 @@ test:
 EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
 ----
 
-`own` is the observed set less the IDs in `_EvidenceFilter.BASE_IDS`. That set
-is empty, so every record counts toward `own`, the shared records listed under
-Test Procedures included. A leaf whose `own` count is zero fails. Firmware
+`own` is the observed set less the IDs in `_EvidenceFilter.BASE_IDS`
+(`cocotb/tests/sep_base_test.py`): the records of the firmware boot and of the
+shared entropy and fuse-sense helpers, such as `CHK-FW-IDENTITY`,
+`CHK-FW-CONSOLE`, `CHK-VERDICT`, `CHK-ALERTS-ZERO` and `CHK-SENSE-BACKDOOR`. A
+leaf that names one of them in `required_evidence` counts it as its own. A leaf
+whose `own` count is zero fails. Firmware
 leaves emit `CHK-FW-CONSOLE` from `poll_boot` after the mailbox PASS magic, or
 `CHK-VERDICT` after `cold_scratch[0]` reports completion on the scratch0-gated
 leaves. `_EvidenceFilter.NO_OWN_EVIDENCE` names the leaves that may pass with no
@@ -190,6 +193,20 @@ A row names its log lines by the prefixes of <<sep-log-prefixes>>: a test
 _grades_ a `CHK-` line, _controls_ with a `CTRL-` line, _logs as an open
 question_ an `OBS-` line, and _records_ an `INFO-` line. Only `CHK-` and
 `CTRL-` lines are evidence for a row.
+
+Every key step of a test has a logged proof. A key step is a stimulus that
+creates the case that the Objective or a Checkers row claims, or an outcome of
+a step that is part of the Objective or of a Checkers row. Its proof is a
+`CHK-` line, graded against a value that a specification or the RDL states, or
+a `CTRL-` line that shows the stimulus reached its case. A fail-only assert,
+or a line with no prefix, is not a proof: a reader of the log cannot tell a
+step that passed from a step that did not run.
+
+A missing control fails the leaf. A `CTRL-` line that does not show the
+healthy behaviour logs `CTRL-MISSING <NAME>` and is a recorded failure
+(`SepChkLog.ctrl` in `cocotb/env/sep_chk_log.py`; a leaf that does not use
+`SepChkLog` logs the same text and raises). A check whose control is missing
+proves nothing, so the leaf cannot pass on it.
 
 [[bench-assertion-waiver]]
 ==== Bench-scope assertion waiver
@@ -468,7 +485,7 @@ they leave out; the checker table of each linked entry is the full set.
 |Token comparator fault latch cleared by reset |<<sep_efuse_rma_token_rand_test,`sep_efuse_rma_token_rand_test`>> |all, cpu_stub |None |`sep_efuse_rma_token_rand_test` (`CHK-FAULT-RESET`). The set-only phases prove the fault bits survive a valid retry; only this one separates that from a latch that never clears. After the two zeros it re-arms once, so the phase ends on a zero-to-one transition rather than on a wedged detector that stays at 0. |YES
 |Debug-disable gating ladder (`dbg_disable`) |<<sep_lcc_demote_feat_ctrl_matrix_test,`sep_lcc_demote_feat_ctrl_matrix_test`>> |all, cpu_stub |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`, `CHK-FUSE-DFT-DIS`). All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` is Case 3 and `dfd` is Case 1. The DFT-inserted fuse-path ports are separate DUT outputs, not members of `dbg_disable`: `sep_fuse_dft_disable` is in its open class when Case 3 AND `sep_fuse_dbg` holds and in its closed class otherwise; `smc_fuse_dft_disable` likewise with Case 2 AND `smc_fuse_dbg`. No document states the level of a class, so the first cell of each class is its control. The compose cell closes those two bits while Case 2 and Case 3 stay open. |YES
 |Local-master alias remap datapath |<<sep_fabric_local_alias_datapath_test,`sep_fabric_local_alias_datapath_test`>>, <<sep_fabric_local_alias_offset_walk_test,`sep_fabric_local_alias_offset_walk_test`>> |all, cpu_stub |None |`sep_fabric_local_alias_datapath_test`, `sep_fabric_local_alias_offset_walk_test` (every region, each 56-bit offset bit, START/END at the drawn bounds) |YES
-|Local-master alias remap hit debug lane |<<sep_fabric_local_alias_datapath_test,`sep_fabric_local_alias_datapath_test`>> |all, cpu_stub |None |`sep_fabric_local_alias_datapath_test` (CHK-DBG-AR: the read hit index on `ext_debug_bus_o[207:192]` follows the read region; field positions not graded) |YES
+|Local-master alias remap hit debug lane |<<sep_fabric_local_alias_datapath_test,`sep_fabric_local_alias_datapath_test`>> |all, cpu_stub |None |`sep_fabric_local_alias_datapath_test` logs the lane (OBS-DBG-AR) without a verdict: no document or RDL defines it (see <<sep-vplan-phase3-blocked,Blocked features>>). |Blocked: the specification does not state the remap-hit lane of `ext_debug_bus_o`
 |CSR reset / RW / RO / reserved |<<sep_reg_bit_bash_rand_test,`sep_reg_bit_bash_rand_test`>> |all, cpu_stub |None |The checker table of each entry named. |YES
 |AXI AW/W channel ordering, write landing and neighbour displacement |<<sep_axi_order_sweep_test,`sep_axi_order_sweep_test`>>, <<sep_axi_order_sweep_m_axi_test,`sep_axi_order_sweep_m_axi_test`>> |all, cpu_stub |`sep_axi_decode_cg` |`sep_axi_order_sweep_test` (s_axi, 321 cells over 27 blocks, 107 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 225 over 11, 75 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure. |YES
 |AXI narrow-write strobe and memory windows |<<sep_axi_strobe_window_test,`sep_axi_strobe_window_test`>> |all, cpu_stub |`sep_axi_decode_cg` |The checker table of each entry named. `cp_strobe_merge` samples in owner window 758, one narrow write per window. |YES
@@ -754,7 +771,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |3
 |no_cpu, `+skip_fuse_sense`, `+esrc_noise_force`
 |CPU-LSU master; AES golden model
-|Proves that an invalid KEY_LEN, OPERATION or MODE written to `CTRL_SHADOWED` maps to AES-256, encrypt and no mode, and that no mode never starts.
+|Proves that an invalid KEY_LEN, OPERATION or MODE written to `CTRL_SHADOWED` maps to AES-256, encrypt and no mode, that `CTRL_SHADOWED` reads the mapped OPERATION and MODE after a legal non-reset pair, and that no mode never starts.
 
 |<<sep_aes_stream_status_rand_test,`sep_aes_stream_status_rand_test`>>
 |3
@@ -917,7 +934,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool). The value of `SEP_TEST_CTRL` and its strap bits is logged only (`OBS-SEP-TEST-CTRL`).
+|Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the eFuse-shim window boundary holds: the first word does not answer DECERR, and the next word answers DECERR after it leaves SEP on the extension port, which the PR-EXT observation tap proves, while the first word does not leave on that port (`CHK-EXT-DEMUX-BOUND`, `CTRL-EXT-DEMUX-PORT`, `CTRL-EXT-DEMUX-SHIM`). The PR-OUT observation tap proves that no walked read leaves on the outbound port, and that a read of an SMU-aperture word behind an enabled outbound filter pair in the same tap window puts one AR handshake at that address on the port (`CHK-FABRIC-WALK`, `CTRL-FABRIC-WALK-LOCAL`). The value of `SEP_TEST_CTRL` and its strap bits is logged only (`OBS-SEP-TEST-CTRL`).
 |<<sep_cpu_ifu_lsu_alias_remap_matrix_test,`sep_cpu_ifu_lsu_alias_remap_matrix_test`>>
 |1
 |cpu, +skip_fuse_sense
@@ -967,7 +984,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |2
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping"), and the read hit index of the remap-hit debug lane.
+|Scope is the sixteen programmable local-master regions ahead of the system-peripherals routing demux (`hw/sys/sep/doc/fabric.adoc`, "Address Remapping"), and the read hit index of the remap-hit debug lane. With the valid bit clear, the read stays at the issued address and the PR-OUT observation tap shows no AR handshake on the outbound port, while a read of an SMU-aperture word behind an enabled outbound filter pair in the same tap window shows one AR handshake at that address (`CHK-VALID-GATE`, `CTRL-VALID-GATE-LOCAL`).
 |<<sep_fabric_local_alias_offset_walk_test,`sep_fabric_local_alias_offset_walk_test`>>
 |2
 |no_cpu, +skip_fuse_sense
@@ -1086,6 +1103,18 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |cpu, `+skip_fuse_sense`, `+esrc_noise_force`, SMC aperture plusargs
 |DMA firmware master, outbound filter source-ID model, request probes (observation taps), SMC aperture plusargs and SMC memory model (BH-SMC, added hook)
 |Proves that the DMA reaches the scratch, WDT, AES register, register and outbound targets, does not reach its own CSR or the boot ROM (each such run ends with a DMA interrupt; the end state is logged), gets a DMA bus error from the DECERR extension port, carries OTHERS (AxUSER zero in all 12 bits) on the AP path and a source ID that is not OTHERS with NS 1 on the SMU path, as the outbound source-ID stack shows, drives the AxPROT that `cpu.adoc` states (`sep-cpu-axprot-table`) on every read and write, and that CPU beats carry a source ID that is not OTHERS, the same as the DMA beats on the SMU path (the number of SEP's ID is logged, because no specification states it). The SMC leg runs on every seed through BH-SMC, a top-port drive. Also proves that a DMA read of the entropy pool, issued with the pool level 1 or more and below its depth (the test fills it through the external stream 2), does not reach the pool: the run ends with a DMA interrupt and pops nothing (CHK-DMA-NOTCONN), that a DMA write and read through AP region 0 and through two STEE regions leave on PR-OUT at {offset[55:19], address[18:0]} with AxUSER 0 and the NS that the path sets, both STEE NS values on every run (CHK-DMA-REMAP), that the CPU read, store and read-back on PR-SMC carry one source ID, equal to the SMU-path ID, with AxPROT 0b001 (CHK-DMA-SMC-CPU), and that a DMA write of an inbound filter `START_ADDR` lands while the entry is unlocked and answers DECERR with the word kept once it is locked (CHK-DMA-FILT-WR), that the outbound filter `START_ADDR` and `END_ADDR` of entries programmed in one 8-byte granule read back as programmed (CHK-DMA-FILT-RANGE), and that a DMA copy from the Key Manager mailbox `STATUS` word ends DONE with the word in the destination (CHK-DMA-KM-SRC). Extends the open DMA tests and the Phase 3 DMA transfer and TCM tests with the remaining endpoint pairs only. A further not-connected run reads the PIC base as the source and logs the end state, the destination and the source word (`OBS-DMA-NOTCONN-RESP`) with no verdict.
+
+|<<sep_outbound_contention_rand_test,`sep_outbound_contention_rand_test`>>
+|3
+|no_cpu, `+skip_fuse_sense`, `+sep_outbound_depth=64`
+|LSU and SMN inbound masters, Secure DMA, outbound responder with seeded READY stalls and response holds, PR-OUT, PR-OUT-RSP and PR-INFLT taps (observation taps)
+|Proves that the CPU LSU and the Secure DMA each reach one outbound window, singly and at the same time, under seeded target delays: one request per access, exactly one B per write and its beats per read, every response routed to its initiator, same-ID reads returned in port order, and AxUSER and AxPROT at the port as the specification states; the SMN inbound master has no route to the outbound port.
+
+|<<sep_outbound_stall_saturation_test,`sep_outbound_stall_saturation_test`>>
+|3
+|no_cpu, `+skip_fuse_sense`, `+sep_outbound_depth=64`
+|LSU and SMN inbound masters, Secure DMA, outbound responder with READY stall, response hold and release (top-port drives), PR-OUT, PR-OUT-RSP and PR-INFLT taps (observation taps)
+|Proves that, under a held outbound target, the LSU and the DMA stop at a finite count and that every request completes after the release with exactly one B per write and the beats of each read, without deadlock, alone and with all three initiators issuing; reaching the stop is a control (`CTRL-OUT-STOP`, `CTRL-XBAR-HELD-STOP`, `CTRL-CHAIN-STOP`) and the counts are logged, because no specification states the outstanding limit.
 |===
 
 [[phase2-mailbox-irq-pic]]
@@ -1226,7 +1255,7 @@ SV-UVM realization of a scenario keeps the cocotb name (<<sv-uvm-smoke>>).
 |1
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
-|Drives the secure DMA engine from real firmware to copy a block from SRAM into the CPU's data tightly-coupled memory with the inline hash engine enabled, then proves two things independently: the copied data is identical to the source, and the hardware digest is correct. Walks both SHA-256, against a software digest over build-varying data, and SHA-384, against the published FIPS 180-4 vector for a fixed message. Also carries the same message as two chunks and re-runs it with the digest byte-swap off.
+|Drives the secure DMA engine from real firmware to copy a block from SRAM into the CPU's data tightly-coupled memory with the inline hash engine enabled, then proves two things independently: the copied data is identical to the source, and the hardware digest is correct. Walks both SHA-256, against a software digest over build-varying data, and SHA-384, against the published FIPS 180-4 vector for a fixed message. Also carries the same message as two chunks and re-runs it with the digest byte-swap off. Before GO the destination holds a sentinel and the source fill is read back (CTRL-SRC-FILL), so the copy and digest checks cannot pass when no data moved.
 |<<sep_spi_ot_dma_rx_test,`sep_spi_ot_dma_rx_test`>>
 |1
 |cpu, +skip_fuse_sense
@@ -1593,7 +1622,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |2
 |no_cpu, real fuse sense
 |ocah_axi_vip, LCC golden
-|Write-one-to-set from a sensed RMA SIP start: the chiplet token gate holds; bit 0, the chiplet advance and the INVALID write are logged.
+|Write-one-to-set from a sensed RMA SIP start: the chiplet token gate holds; bit 0, the chiplet advance and the INVALID write are logged. The chiplet advance must return RMA_CHIPLET (`CHK-CHIP-ADVANCE`), the bit-2 allow leg of the production leaf's ordering gate.
 |<<sep_lcc_lc_state_w1s,`sep_lcc_lc_state_w1s_rma_chiplet_test`>>
 |2
 |no_cpu, real fuse sense
@@ -1735,7 +1764,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |1
 |no_cpu, real fuse sense
 |ocah_axi_vip, KM path / golden
-|Proves that a known key loaded over the Key Manager mailbox and sideloaded to HMAC produces the independent HMAC-SHA256 golden, and that the digest differs from the golden of the decoy software key.
+|Proves that a known key loaded over the Key Manager mailbox and sideloaded to HMAC produces the independent HMAC-SHA256 golden, and that the digest differs from the golden of the decoy software key, which a keyed MAC before the transfer proves is live in the software key registers.
 |<<sep_km_kmac_sideload_kat_test,`sep_km_kmac_sideload_kat_test`>>
 |1
 |no_cpu, real fuse sense
@@ -1961,6 +1990,18 @@ entry does not repeat them. Each one fails the leaf that runs it:
 * `CHK-DONE-RW1C` and `CHK-ERR` (every KMAC operation of the KMAC sequence):
   `INTR_STATE.kmac_done` sets after absorb and clears by W1C, and `ERR_CODE`
   and `INTR_STATE.kmac_err` read 0.
+* `CHK-SENSE-BACKDOOR` (every leaf with real fuse sense): after sense done,
+  every sensed shadow word at `efuse_shadow_probe_o` equals the staged image,
+  and the compare spans the image (`cocotb/seq_lib/sep_efuse_backdoor_check.py`).
+  It logs `CHK-SENSE-BACKDOOR PASS words=<n> errors=0 secure_tm=<s>`, or
+  `CHK-SENSE-BACKDOOR FAIL` and raises.
+* The DRBG scoreboard stage records `CHK1_decor`, `CHK2_compress`,
+  `CHK3_seed`, `CHK4_genbits` and the per-sink `CHK5_<sink>` (leaves that start
+  the entropy scoreboard, `cocotb/env/sep_drbg_scoreboard.py`): each stage
+  compares the DUT stream item for item with the golden output of the stage
+  before it. With the scoreboard strict, the bring-up default, its report
+  raises on a mismatch or on a stream with too few items; a leaf that starts it
+  with `strict=False` grades register state and not these streams.
 
 include::test_contracts/smoke_uvm.adoc[tag=smoke]
 
@@ -2773,6 +2814,10 @@ the test does.
 |Does `SEP_DBG` or any other control gate the CPU debug master access to the fabric?
 |No test logs it.
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
+|Local-master remap-hit debug lane on `ext_debug_bus_o[207:192]`
+|Which bits of `ext_debug_bus_o` carry the local-master remap hit, and what do they hold for the read channel and the write channel? `port_table.adoc` gives the port only as "External debug observation bus", and no document or RDL assigns this lane.
+|`sep_fabric_local_alias_datapath_test` logs the lane after reads in two regions and after a write in the second region as `OBS-DBG-AR`, without a verdict.
+|<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |Writers of the lifecycle register block
 |Which initiators may write the lifecycle controller register block, and are fabric reachability plus the inbound filter the only control?
 |`sep_debug_master_target_matrix_test` grades the debug-master write and the readback of the reserved bits of `DEMOTE_2` against the RDL field and the connectivity figure (CHK-DBG-SBA-REG). Whether any other control gates a writer stays open; no test logs it.
@@ -3449,8 +3494,8 @@ feature, and the note says how the test treats the blocked leg.
 |`sep_abr_zeroize_latency_test` logs the engine-side and bus-side counts as `OBS-ABR-ZEROIZE-CYCLES` and grades nothing on them
 |<<sep-vplan-phase3-crypto-entropy,Crypto and entropy>>
 |Invalid encodings map to safe values: MODE to AES_NONE, KEY_LEN to AES_256, OPERATION to AES_ENC, PRNG_RESEED_RATE to PER_1, PHASE to GCM_INIT, NUM_VALID_BYTES to 16.
-|Readback of an invalid encoding. The RDL does not say whether the readback shows the written or the mapped value. Source: `vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc` (`CTRL_SHADOWED`).
-|`sep_aes_encoding_inject_rand_test` grades behaviour and logs the readback. `sep_aes_encoding_inject_rand_test` logs `OBS-AES-ENC-RB` as an open question.
+|Readback of an invalid KEY_LEN. `aes.hjson` states that invalid OPERATION and MODE values are mapped to AES_ENC and AES_NONE, and the readback of those two fields is graded; the question stays open for the KEY_LEN readback only. Source: `vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc` (`CTRL_SHADOWED`); `vendor/lowRISC/opentitan/upstream/hw/ip/aes/data/aes.hjson` (`CTRL_SHADOWED.OPERATION`, `CTRL_SHADOWED.MODE`).
+|`sep_aes_encoding_inject_rand_test` grades the OPERATION and MODE readback after a legal non-reset pair (CHK-AES-INV-OP-RB, CHK-AES-INV-MODE-RB, `aes.hjson` field text "are mapped to"). The KEY_LEN cell grades the mapping by its ciphertext and logs the readback as `OBS-AES-ENC-RB`, an open question.
 |<<sep-vplan-phase3-spi-dma,SPI and DMA>>
 |STATUS reset value
 |The RDL reset column states 0x0 for READY, TXEMPTY and RXEMPTY (`spi_controller.adoc`, STATUS). The Phase 1 and Phase 2 reset check requires them set. Which one is the contract?
@@ -3765,7 +3810,7 @@ item is blocked (<<sep-vplan-credit-rules>>).
 |Positive diversion of the eFuse shim window
 |The eFuse shim demux output is internal.
 |ACCEPT-PROBE
-|A read-only probe on the demux output gives the observation, and no test adds it. `sep_fabric_extension_port_window_test` grades the silent extension port.
+|A read-only probe on the demux output gives the observation, and no test adds it. `sep_fabric_extension_port_window_test` grades the silent extension port. `sep_address_map_test` proves on the PR-EXT observation tap that the first word past the window leaves SEP on the extension port (`CTRL-EXT-DEMUX-PORT`) and that the first word of the window does not (`CTRL-EXT-DEMUX-SHIM`).
 |<<sep-vplan-phase3-fabric-remap,Fabric and remap>>
 |CPU IFU responder for invalid targets
 |The CPU masters have no boundary port.

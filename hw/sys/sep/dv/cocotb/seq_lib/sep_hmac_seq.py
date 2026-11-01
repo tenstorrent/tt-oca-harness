@@ -203,7 +203,7 @@ class SepHmac(SepAxiRegDriver):
         These key registers are declared write-only and the generated register
         block ties their read data to '0, so a zero readback is not by itself
         evidence that the sideloaded key is unexposed; it catches only a register
-        that becomes readable. Nothing in this run writes them.
+        that becomes readable.
 
         For that to be worth anything the read path must be known alive, so this
         also returns STATUS, a readable register in the same window over the same

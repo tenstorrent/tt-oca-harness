@@ -25,35 +25,38 @@
 
 [arabic]
 . Bring up in `no_cpu` mode with the LSU splice owning the bus.
-. Read every `sep_cpu_ctrl` reset-check register and require the exported reset value.
+. Read every `sep_cpu_ctrl` reset-check register and require the exported reset value (CHK-CPU-CTRL-RESET).
 . Response-check hardware-driven registers, and log the value of `SEP_TEST_CTRL` with its strap bits `fast_spi_en`, `fast_iccm_en`, `fast_dccm_en`, `fast_sram_en`, `fast_pka_en` and `sep_standalone` (bits 31 to 26; `OBS-SEP-TEST-CTRL value=0x<..> fast_spi_en=<b> fast_iccm_en=<b> fast_dccm_en=<b> fast_sram_en=<b> fast_pka_en=<b> sep_standalone=<b>`; no check reads it); read the low half of `REFERENCE_COUNTER` twice and require it to advance (the reference clock is driven, so the counter is live and no reset value applies).
-. Write/readback/restore the SEP base/size CSRs and the pure-RW storage registers (masked).
+. Write/readback/restore the SEP base/size CSRs and the pure-RW storage registers (masked), and read each register back after its restore.
 . Write the implemented `CLOCK_GATE_CTRL` bits, read them back, then restore reset after the fabric walk.
-. Walk one readable CSR per LSU-reachable block (DMA, WDT, scratch, reset, OTBN, AES, HMAC, KMAC, CSRNG, EDN, ESRC, ABR NAME, entropy-pool STATUS, lifecycle, KM mailbox, eFuse shadow, AXI mailbox, inbound filter CFG, alias remap, outbound remap, SPI) and require OKAY (value-check where reset is known).
+. Walk one readable CSR per LSU-reachable block (DMA, WDT, scratch, reset, OTBN, AES, HMAC, KMAC, CSRNG, EDN, ESRC, ABR NAME, entropy-pool STATUS, lifecycle, KM mailbox, eFuse shadow, AXI mailbox, inbound filter CFG, alias remap, outbound remap, SPI) with the PR-OUT tap running and require OKAY (value-check where reset is known), and no AR handshake on the outbound port during the walk. Before the walk, outbound filter entries 0 and 1 are programmed as a pair over the 4 KiB page at the reset `SMU_GLOBAL_BASE_ADDR` (`allow_ns` 0 and 1, read and write allowed, `src_id` 0). After the walk, with the tap still running, read the word at offset `0x100` of that page and require OKAY and exactly one AR handshake on the outbound port, at that address: the route demux sends the SMU aperture to the outbound port (`hw/sys/sep/doc/fabric.adoc`, "Fabric Topology", output fabric), so the read shows that the tap records an outbound read in the window (`CTRL-FABRIC-WALK-LOCAL seen: rows=<n> pr_out_ar=0 [] live_addr=0x<a> live_ar=1 [ar[addr=0x<a> ...]]`; a walk AR handshake, or a liveness read with no AR handshake, more than one, or one at another address, logs `CTRL-MISSING FABRIC-WALK-LOCAL` and fails the leaf). Both entries return to their RDL reset values after the sequence.
 . Read three words in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` (including `0x10A3_0170`). Require OKAY with zero data, which `hw/sys/sep/doc/memory_map.adoc` states as the contract for an offset inside a unit's extent that owns no register. Prove `SEP_SW_DEBUG` writable, then require a hole write to leave it unchanged.
+. Read the word one past the eFuse-shim window with the PR-EXT tap running and require DECERR, with one AR handshake at that address and one DECERR R beat on the extension port (CTRL-EXT-DEMUX-PORT); then, with the tap still running, read the first word of the window and require no AR handshake on the extension port (`CTRL-EXT-DEMUX-SHIM seen: addr=0x<a> ext_ar=0 []`; any AR handshake logs `CTRL-MISSING EXT-DEMUX-SHIM` and fails the leaf) and a response other than DECERR (CHK-EXT-DEMUX-BOUND).
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-CPU-CTRL-RESET
+|Every `sep_cpu_ctrl` register of the reset-check list reads its reset value from `hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl` (the generated `reset32`). The test compares each readback with that value itself, and the shared scoreboard compares it too. A DUT with a wrong reset value fails, and so does a register with a non-zero reset value that does not decode. A register whose RDL reset is 0 proves its reset value only, not its decode: an offset between registers answers OKAY with read data 0 (`doc/trm/src/memory_map.adoc`), so a missing decode there reads like the reset value. The non-zero resets and the CHK-RW-READBACK legs prove that the block decodes. Evidence: `CHK-CPU-CTRL-RESET PASS: regs=<n> each equals its RDL reset value`; on a mismatch `CHK-CPU-CTRL-RESET FAIL` names each register with its readback and reset value.
 |CHK-REFCNT-READ
 |The reference counter is LIVE and readable: the low half is read twice and must advance. It counts on `clk_ref_i`, which the testbench drives, so no pinned value can be its expectation -- and the advance is a stronger statement than a reset compare, because a neighbouring register's storage, a stuck all-ones and a zero return all hold still between the two reads. The high half is read for the pair but is not value-checked.
 |CHK-RW-READBACK
-|Every pure read/write register returns exactly what was written, masked to its implemented bits, and is restored afterwards.
+|Every pure read/write register returns exactly what was written, masked to its implemented bits. Each is then written back to its RDL reset value and read back; the readback must equal that reset value under the same mask.
 |CHK-BASEADDR-RW
 |The base and size registers accept a write, read back, and restore cleanly.
 |CHK-FABRIC-WALK
-|Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation. The logged count must be non-zero.
+|Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation. The walk has 22 rows, one per block listed in step 6 with cold and warm scratch as two rows, and the check requires each of them to be read, in table order, with an OKAY response; a shorter walk or a non-OKAY row fails (`CHK-FABRIC-WALK PASS: rows=22 of 22, each LSU-reachable block CSR read and answered OKAY`; otherwise `CHK-FABRIC-WALK FAIL: rows=<n> planned=<n> expected=22 not_okay=[...] missing=[...]`). The shared scoreboard also fails any non-OKAY row, including a row read without an expected value, through the `CHK-ADDRMAP FAIL` gate. `hw/sys/sep/doc/fabric.adoc` routes an address the local fabric does not decode to the SMN, where the bench outbound responder also answers OKAY with zero, so the walk runs with the PR-OUT observation tap and CTRL-FABRIC-WALK-LOCAL requires no AR handshake on the outbound port: each walked read is answered inside SEP. The liveness read of the SMU-aperture word in the same tap window must show its one AR handshake, so the absence cannot come from a tap that records nothing.
 |CHK-EXT-DEMUX-BOUND
-|The first word of the eFuse-shim window answers something other than DECERR, so the demux selected the shim port, and the word past the window answers DECERR from the extension error slave. Both addresses come from the generated header by symbol. The value behind the shim is adopter-owned and is not graded — only which port the decode selected.
+|The first word of the eFuse-shim window answers something other than DECERR, so the demux selected the shim port, and the word past the window answers DECERR. The PR-EXT observation tap proves that the word past the window leaves SEP on the extension port and that the DECERR is the port's reply (`CTRL-EXT-DEMUX-PORT seen: addr=0x<a> ar=[ar[addr=0x<a> id=0x<i> ...]] r=[r[resp=0x3 id=0x<i> last=0x1 ...]]`; anything other than exactly one AR handshake at that address and exactly one R beat with DECERR, the same ID and RLAST set logs `CTRL-MISSING EXT-DEMUX-PORT` and fails the leaf). The same tap proves that the read of the first word does not leave on the extension port: `hw/sys/sep/doc/memory_map.adoc` ("External Window Reference Model") routes the window to the eFuse controller rather than out the external port (`CTRL-EXT-DEMUX-SHIM seen: addr=0x<a> ext_ar=0 []`; any AR handshake logs `CTRL-MISSING EXT-DEMUX-SHIM` and fails the leaf). The CHK grades the response class at the initiator. Both addresses come from the generated header by symbol. The value behind the shim is adopter-owned and is not graded — only which port the decode selected.
 |CHK-CPU-CTRL-HOLE
-|Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` reads OKAY with zero data, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. `hw/sys/sep/doc/memory_map.adoc` states both halves: a unit accepts such an offset with zero/OKAY, and non-aliasing follows from exact-match register decode rather than from refusal.
+|Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` reads OKAY with zero data, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. `hw/sys/sep/doc/memory_map.adoc` states both halves: a unit accepts such an offset with zero/OKAY, and non-aliasing follows from exact-match register decode rather than from refusal. The check grades the response and the data; it does not prove the hole accesses stay on the local fabric, since the bench outbound responder also answers OKAY with zero.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: the test logs `CHK-ADDRMAP FAIL` and stops before the CHK-REFCNT-READ, CHK-BASEADDR-RW, CHK-RW-READBACK and CHK-FABRIC-WALK records if the shared scoreboard holds any response or value error. CHK-CPU-CTRL-HOLE and CHK-EXT-DEMUX-BOUND are logged after further accesses; a scoreboard error from those accesses fails the run in `check_phase`, after their PASS lines.
+*Evidence*: the test logs `CHK-ADDRMAP FAIL` and stops before the CHK-CPU-CTRL-RESET, CHK-REFCNT-READ, CHK-BASEADDR-RW, CHK-RW-READBACK and CHK-FABRIC-WALK records if the shared scoreboard holds any response or value error. CHK-CPU-CTRL-HOLE and CHK-EXT-DEMUX-BOUND are logged after further accesses; a scoreboard error from those accesses fails the run in `check_phase`, after their PASS lines.
 
 '''''
 
@@ -632,11 +635,11 @@ and STEE output-remap banks.
 [arabic]
 . Bring up in `no_cpu`. Read the seeded source page through the identity path.
 . Write the marker to `CLOCK_GATE_CTRL` and read it back. Require the source page's value to differ from the marker.
-. Park `CLOCK_GATE_CTRL` at the inverse of the marker and read it back.
+. Park `CLOCK_GATE_CTRL` at the inverse of the marker and read it back (`CTRL-OFFSET-PARK seen: addr=0x<a> wrote=0x<v> read=0x<v> resp_ok=1`; a readback other than the parked value logs `CTRL-MISSING OFFSET-PARK` and fails the leaf, because CHK-OFFSET-WRITE needs the parked value to differ from the marker).
 . Program the seeded region and write the marker through the alias; the identity `CLOCK_GATE_CTRL` readback must move to the marker (CHK-OFFSET-WRITE).
 . Read through the alias and require the marker. Then change `CLOCK_GATE_CTRL` at its identity address only; the aliased read must follow it (CHK-OFFSET).
-. Write the marker to `CLOCK_GATE_CTRL`. Reprogram the same region with bounds and offset live and only the valid bit clear, and read the source address. Require the source page's own value, not the marker (CHK-VALID-GATE).
-. Program the seeded region again and a second upper-half region over the other source page, both to `CLOCK_GATE_CTRL`. Write through the first region, then read through the first and the second region with no write in between; sample `ext_debug_bus_o[207:192]` after each read. Then write and read through the second region and sample again (CHK-DBG-AR).
+. Write the marker to `CLOCK_GATE_CTRL` at its identity address and read it back (`CTRL-VALID-GATE-RESTORE seen: addr=0x<a> wrote=0x<v> read=0x<v> resp_ok=1`; a readback other than the marker logs `CTRL-MISSING VALID-GATE-RESTORE` and fails the leaf, because CHK-VALID-GATE needs the destination to differ from the source page's value). Reprogram the same region with bounds and offset live and only the valid bit clear, and read the source address with the PR-OUT tap running. Before the tap starts, outbound filter entries 0 and 1 are programmed as a pair over the 4 KiB page at the reset `SMU_GLOBAL_BASE_ADDR` (`allow_ns` 0 and 1, read and write allowed, `src_id` 0); after the gated read, with the tap still running, read the word at offset `0x100` of that page, then return both entries to their RDL reset values. Require no AR handshake on the outbound port for the gated read, and OKAY and exactly one AR handshake at that address for the liveness read: the route demux sends the SMU aperture to the outbound port (`hw/sys/sep/doc/fabric.adoc`, "Fabric Topology", output fabric) (`CTRL-VALID-GATE-LOCAL seen: addr=0x<a> pr_out_ar=0 [] live_addr=0x<a> live_ar=1 [ar[addr=0x<a> ...]]`; an AR handshake for the gated read, or a liveness read with no AR handshake, more than one, or one at another address, logs `CTRL-MISSING VALID-GATE-LOCAL` and fails the leaf) and the source page's own value, not the marker (CHK-VALID-GATE).
+. Program the seeded region again. Read the other source page before any region covers it and require its own value to differ from the marker (`CTRL-OFFSET-SIB-OWN seen: region=<r> addr=0x<a> read=0x<v> marker=0x<m> resp_ok=1`; a read equal to the marker, or not OKAY, logs `CTRL-MISSING OFFSET-SIB-OWN` and fails the leaf, because a second-region read that passes through would then match). Program a second upper-half region over that page, both regions to `CLOCK_GATE_CTRL`. Park `CLOCK_GATE_CTRL` again (`CTRL-OFFSET-PARK`, same format and failure as above). Write the marker through the first region; the identity `CLOCK_GATE_CTRL` readback must move from the parked value to the marker (CHK-OFFSET-WRITE, same format as above). Then read through the first and the second region with no write in between; each read must return the marker (`CHK-OFFSET PASS: region <r> read 0x<a> returns marker 0x<m> of CLOCK_GATE_CTRL 0x<d>`, one line per region). Sample `ext_debug_bus_o[207:192]` after each read. Then write and read through the second region and sample again. Log the three samples without a verdict (OBS-DBG-AR).
 
 *Checkers*:
 
@@ -644,18 +647,18 @@ and STEE output-remap banks.
 |===
 |Checker |Contract
 |CHK-OFFSET-WRITE
-|An aliased write of the marker moves the identity `CLOCK_GATE_CTRL` readback from a parked value (the marker with every implemented bit inverted) to the marker. A write that lands on any other address leaves the parked value.
+|An aliased write of the marker moves the identity `CLOCK_GATE_CTRL` readback from a parked value (the marker with every implemented bit inverted) to the marker, once for the seeded region alone and once for the first region of the two-region step. A write that lands on any other address leaves the parked value.
 |CHK-OFFSET
-|A programmed region's live read equals input plus the programmed offset. The aliased read returns the marker, then returns the parked value after a write to `CLOCK_GATE_CTRL` at its identity address only. The source page's own value differs from the marker, so a read that passes through, or lands on any other register, cannot match both.
-|CHK-DBG-AR
-|The remap-hit debug lane `ext_debug_bus_o[207:192]` carries the read hit index of the read channel. With the write held in one region, two reads that hit different regions leave different lane values; a read field that copies the write index cannot tell them apart. Control: a write and a read in the second region move the lane from the value of the read-only change, so the write side is live. No document defines the field positions in the lane, so the check is layout-free and does not grade them. An X or Z bit in the lane fails.
+|A programmed region's live read equals input plus the programmed offset. The aliased read returns the marker, then returns the parked value after a write to `CLOCK_GATE_CTRL` at its identity address only. The source page's own value differs from the marker, so a read that passes through, or lands on any other register, cannot match both. In the two-region step, the first region's write moves `CLOCK_GATE_CTRL` from the parked value to the marker (CHK-OFFSET-WRITE), so it did not land on the first source page, and each source page's own value differs from the marker (the first by the vacuity guard, the second by CTRL-OFFSET-SIB-OWN). Each region's read of the marker therefore shows that region remapped.
+|OBS-DBG-AR
+|Logged only. `ext_debug_bus_o[207:192]` after the read in each of two regions with the write held, and after a write and a read in the second region. `port_table.adoc` states only "External debug observation bus", and no document or RDL assigns this lane, so no value is graded.
 |CHK-VALID-GATE
-|The region valid bit gates the remap: `hw/sys/sep/doc/fabric.adoc` ("Address Remapping") states that an invalid entry behaves as a transparent pass-through. The same window is reprogrammed with bounds and offset live and only the enable clear, and the beat must then read the value at the address the master issued rather than the remapped destination. Programming the window first is what separates a working gate from an address that was never in range, and the vacuity guard on `CHK-OFFSET` has already shown the two values differ. The cacheable flag that `fabric.adoc` lists per region is not checked: this bench has no observable on the outbound cache bits.
+|The region valid bit gates the remap: `hw/sys/sep/doc/fabric.adoc` ("Address Remapping") states that an invalid entry behaves as a transparent pass-through. The same window is reprogrammed with bounds and offset live and only the enable clear, and the beat must then read the value at the address the master issued rather than the remapped destination. Programming the window first is what separates a working gate from an address that was never in range, and the vacuity guard on `CHK-OFFSET` has already shown the two values differ. The source page's own value can be zero, which the bench outbound responder also returns, so CTRL-VALID-GATE-LOCAL requires the gated read to put no AR handshake on the PR-OUT observation tap: the read does not leave on the outbound port. The liveness read of the SMU-aperture word in the same tap window must show its one AR handshake, so the absence cannot come from a tap that records nothing. An unbacked local word also reads zero; the check does not tell it from the source page. The cacheable flag that `fabric.adoc` lists per region is not checked: this bench has no observable on the outbound cache bits.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope*: This entry is distinct from the CPU high-alias window (`sep_cpu_ifu_lsu_alias_remap_matrix_test`). CSR programming stays on `sep_fabric_remap_filter_csr_bank_test`. Local-master `REGION_ATTRS` has `valid` and `cacheable`. Cacheable overrides AXI `cache` on a hit; this vehicle does not observe that field. CHK-DBG-AR grades the remap-hit lane `ext_debug_bus_o[207:192]` without decoding it: no RDL, generated header or document defines its field layout, so the check compares lane values only.
+*Scope*: This entry is distinct from the CPU high-alias window (`sep_cpu_ifu_lsu_alias_remap_matrix_test`). CSR programming stays on `sep_fabric_remap_filter_csr_bank_test`. Local-master `REGION_ATTRS` has `valid` and `cacheable`. Cacheable overrides AXI `cache` on a hit; this vehicle does not observe that field. `ext_debug_bus_o[207:192]` is logged only (OBS-DBG-AR): no RDL, generated header or document defines what that lane carries.
 
 '''''
 
@@ -2229,3 +2232,75 @@ The open tests keep the rest. Functional coverage: `sep_filter_match_cg` (`cp_fa
 *Scope limit*: The leaf does not grade the completion order of same-ID writes, the completion latency of a phase, the outbound ID encoding, or the acceptance point of a request that the filters answer themselves.
 
 '''''
+
+[[sep_outbound_stall_saturation_test]]
+===== 2.35 `sep_outbound_stall_saturation_test`
+
+*Phase*: 3
+
+*Area*: Fabric and remap
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, `+sep_outbound_depth=64`, one seed per regression (no reseed). Verilator and VCS. Testlist groups `all`, `cpu_stub`, file `testlists/system.toml`.
+
+*Source Module*: `sep_outbound_stall_saturation_test` (transaction helpers shared with `cocotb/seq_lib/sep_outbound_contention_seq.py`; responder control in `cocotb/seq_lib/sep_outbound_stall_seq.py`)
+
+*BFM / Model*: ocah_axi_vip as the CPU-LSU master (`s_axi`) and as the SMN inbound master (`m_axi`, through the inbound filter); the Secure DMA, programmed over the CPU-LSU master; the outbound responder `tb/sep_outbound_mbx.sv`, driven through its top ports `smn_outbound_ready_stall_i` and `smn_outbound_resp_hold_i` (READY stall per channel, B and R VALID delay and hold, release); the PR-OUT, PR-OUT-RSP and PR-INFLT fabric taps (read-only). The responder queues `+sep_outbound_depth` write bursts, pending B responses and reads; the leaf requires that depth to be at least the 36 requests of one hold (20 LSU requests and 16 DMA words), so every stop it reaches at the port is the DUT's and not the responder's.
+
+*Randomization*: `SepSeededRng` from the run seed (DIRECTED with seed-drawn delays): the two LSU AxUSER values and the SMN inbound AxUSER, the maximum one-channel delay (8 to 32 clocks), the READY stall percent of AW, W and AR (20 to 50 each), the response hold percent (3 to 10) and its maximum (4 to 16 clocks), and the write data. Every phase runs on every seed. The leaf prints `SEED seed=<S>` and one `DRAW` line per drawn value.
+
+*Objective*: The CPU LSU and the Secure DMA issue to one outbound window while the responder delays AW, W and AR READY and delays or holds B and R VALID, and is then released: the outbound path stops accepting at a finite count, and every request completes after the release with exactly one B per write and the beats of each read, without deadlock. The SMN inbound master has no route to the outbound port (`hw/sys/sep/doc/fabric.adoc`, Fabric Topology: the peripheral crossbar answers an inbound address at or above `0x4000_0000` with DECERR). No specification states the outstanding limit of the local crossbar or of the outbound chain, so no count is compared: reaching a stop is a control of the leaf, and the counts are logged. Sources: `hw/sys/sep/doc/fabric.adoc` ("Fabric Topology", "Transaction Routing", "Filtering and Protection"); `hw/sys/sep/doc/cpu.adoc` (LSU master, AxPROT table); `hw/sys/sep/doc/dma.adoc` (master path).
+
+*Test Coverage*: Zero-delay baseline, one-channel and all-channel responder delays; a hold with accepted requests and its drain; the LSU write and read stops under a held target and their drain; the held extra LSU write at that stop; the same stops with the DMA and the SMN inbound master issuing alongside, for writes, reads, and writes and reads together; fresh transactions after the saturation drains; B and R accounting and AxUSER and AxPROT of every LSU and DMA request at PR-OUT. This entry extends `sep_outbound_contention_rand_test` (same run mode and responder), which grades contention under seeded delays without a held stop. Functional coverage: none owned.
+
+*Test Procedure*:
+
+[arabic]
+. Draw the values of the Randomization field. Fail at set-up if the responder depth is below the requests of one hold. Bring up with the LSU splice, start the fabric taps and program inbound filter entry 0 to admit the SMN inbound accesses (window, AxUSER source ID, NS).
+. Baseline, one-channel and all-channel delays. Issue LSU and DMA transactions with no responder delay, then with a seeded delay on one channel at a time, then with the drawn READY stalls on AW, W and AR and the drawn response holds; in the all-channel leg every drawn READY stall meets a request at the port (CHK-DELAYS).
+. Hold and drain. Hold B and R VALID, issue requests that the port accepts, see no response during the hold window, release and drain (CHK-HOLD-DRAIN).
+. Master-side stop. For writes and for reads, hold the target and issue 20 LSU requests until the LSU master stalls with fewer than 20 accepted (`CTRL-OUT-STOP`; the accepted count is `OBS-LIMIT`). Release and drain every session (CHK-OUT-DRAIN). The SMN inbound master issues alongside as the stimulus of the no-path check (`INFO-SYSIF-REACH`).
+. Held stop. At the stop, issue one extra LSU write, which stalls and is not accepted before a release (`CTRL-XBAR-HELD-STOP`). Release one beat at a time within a bound: the held LSU request and the DMA's next write are each admitted (CHK-XBAR-HELD).
+. Chain stop. Repeat the stop with the DMA and the SMN inbound master issuing alongside, for writes, for reads, and for writes and reads together (`CTRL-CHAIN-STOP`; the port totals are `OBS-CHAIN-LIMIT`, the three-initiator hold is `INFO-CHAIN-HELD`). Release and drain every session (CHK-CHAIN-DRAIN).
+. Post-drain. Issue fresh transactions after the saturation drains (CHK-XBAR-POSTDRAIN).
+. Final accounting. After an idle window, count the B and R beats against the accepted writes and reads (CHK-SAT-B-COUNT, CHK-SAT-R-COUNT); grade every SMN inbound access (CHK-SYSIF-NO-OUTBOUND-PATH); match every LSU and DMA request of the leaf at PR-OUT and grade its attributes (CHK-ATTR-USER); check the phase fence (CHK-NONVAC) and the bounded waits (CHK-TIMEOUT-PATHS).
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CTRL-OUT-STOP
+|(Control) For writes and for reads, the LSU master stalls (AW or AR stall clocks greater than 0, counted only on clocks where the request on offer is an LSU outbound request) with fewer than its 20 issued requests accepted. A DUT that accepts all 20 is not wrong, but the drain checks after it would grade no held request, so a miss logs `CTRL-MISSING OUT-STOP` and fails the leaf. Evidence: `CTRL-OUT-STOP seen: <fields>`, or `CTRL-OUT-STOP absent` followed by `CTRL-MISSING OUT-STOP: seed=<S> <fields>`; `OBS-LIMIT` logs the accepted count.
+|CTRL-XBAR-HELD-STOP
+|(Control) The one extra LSU write of a held session at the stop of CTRL-OUT-STOP stalls and is not accepted before a release. A miss logs `CTRL-MISSING XBAR-HELD-STOP` and fails the leaf.
+|CTRL-CHAIN-STOP
+|(Control) The stop of CTRL-OUT-STOP with the DMA and the SMN inbound master issuing alongside, for writes, for reads and for the writes-and-reads hold. A miss logs `CTRL-MISSING CHAIN-STOP` and fails the leaf; `OBS-CHAIN-LIMIT` logs the port totals.
+|CHK-DELAYS
+|Every transaction of the zero-delay baseline, the one-channel legs and the all-channel leg completes with its response, and in the all-channel leg every AW, W and AR READY stall the leaf draws meets a request at the port (PR-OUT VALID without READY on at least one clock per channel).
+|CHK-HOLD-DRAIN
+|Requests are accepted during a hold, no response returns during it, and every request completes after the release.
+|CHK-OUT-DRAIN
+|Every limit session at the stop of CTRL-OUT-STOP drains: each issued request completes after the release, and nothing deadlocks.
+|CHK-XBAR-HELD
+|The request held at CTRL-XBAR-HELD-STOP completes; the LSU's held request and the DMA's next write are each admitted within the bounded one-beat releases.
+|CHK-XBAR-POSTDRAIN
+|Fresh transactions after the saturation drains complete.
+|CHK-CHAIN-DRAIN
+|With the DMA and the SMN inbound master issuing alongside, every session at CTRL-CHAIN-STOP drains, the writes-and-reads hold included; in the three-initiator hold the LSU's held request and the DMA's next write are each admitted within the bounded one-beat releases.
+|CHK-SAT-B-COUNT, CHK-SAT-R-COUNT
+|Exactly one B per accepted write and the beats of each accepted read, and none after the idle window.
+|CHK-SYSIF-NO-OUTBOUND-PATH
+|Every access of the SMN inbound master answers DECERR with one B or its R beats, and none reaches PR-OUT (`fabric.adoc`, Fabric Topology). Each one leaves the inbound filter (one PR-INFLT AW per write and one AR per read in the SMN slot), so the filter admitted it and the DECERR is the decode's.
+|CHK-ATTR-USER
+|Over the whole PR-OUT window from bring-up to the end of the leaf, every LSU and DMA request the leaf issues matches exactly one PR-OUT request at its address, and no PR-OUT request is unmatched. Each matched request has AxLEN 0, AxPROT bits 0 and 2 as issued with NS 1, and AxUSER[3:0] known and not OTHERS (0), the same on every request, although the LSU alternates two distinct non-zero values and the DMA issues OTHERS. `OBS-SAT-SRC-ID` logs that value with AxUSER[11:4].
+|CHK-NONVAC
+|The ordered fence of the phases: bring-up, baseline, channel delays, all delayed, hold released, master limit, port limit, held limit, chain limit, both limits, post drain.
+|CHK-TIMEOUT-PATHS
+|Each bounded wait (a transaction, a DMA DONE wait, a one-beat release loop) logs its bound and raises on expiry; every one has a measured use within its bound. Fixed windows (the hold and idle windows, a delayed release) cannot expire and are logged as `INFO-WAIT`.
+|===
+
+*Logged, not graded*: `OBS-LIMIT` and `OBS-CHAIN-LIMIT` (the accepted counts at each stop), `OBS-SAT-SRC-ID` (the source ID at the port), `INFO-CHAIN-HELD`, `INFO-SYSIF-REACH` and `INFO-WAIT`. A row of a checker that a leg cannot grade is logged as `OBS-BLOCKED CHK-<NAME> reason=<r>` and earns no credit.
+
+*Pass Criteria*: Every named checker and control PASSes. UVM_ERROR == 0.
+
+*Scope limit*: The leaf does not grade the outstanding limit of the local crossbar or of the outbound chain, the completion latency, the response during a hold, or the acceptance point of a request that the filters answer themselves. At the LSU pins the stop of the outbound chain is not separable from a stop upstream of it.
