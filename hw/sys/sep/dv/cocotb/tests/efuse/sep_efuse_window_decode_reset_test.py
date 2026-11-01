@@ -47,8 +47,9 @@ A missing tap event fails the leaf, so CHK-FEAT-RO cannot pass on a write that
 never arrived. ``CTRL-STATUS-ERR-SET``: a read at the first bit address past the
 bank sets ``efuse_read_addr_error`` before the second status write, so that write
 has an effect a lost write cannot show. ``CTRL-RO-WR``: the 0x71 write to the status
-register gets an OKAY or SLVERR B response, so it reached a mapped register; which
-of the two is not graded.
+register gets an OKAY or SLVERR B response, so a mapped target answered it; which
+of the two is not graded. The second status write shows that the path reaches the
+register.
 
 Log-only: the response and read data past the extent and in the reserved span
 (``OBS-WIN-RESP LOG``), the two read-data registers (``OBS-CSR-DATA LOG``), the timeout
