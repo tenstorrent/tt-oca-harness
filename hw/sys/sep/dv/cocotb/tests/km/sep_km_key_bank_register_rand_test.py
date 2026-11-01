@@ -914,10 +914,10 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         key, pt, stores = self._subword_draws()
         addr = [a.share0[j] for _, j, _ in stores]
         self.logger.info(
-            "DRAW subword key=%s pt=%s stores=%s",
-            [_h(w) for w in key],
+            "DRAW subword key_words=%d pt=%s stores=%s",
+            len(key),
             [_h(w) for w in pt],
-            [(size, j, _h(v)) for size, j, v in stores],
+            [(size, j) for size, j, _ in stores],
         )
         base = kp.KM_SRAM_BASE + _SUBWORD_REGION * _SUBWORD_REGION_BYTES
         snippet = self._subword_snippet(base, stores, addr)

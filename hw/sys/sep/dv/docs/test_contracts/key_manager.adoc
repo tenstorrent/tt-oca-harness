@@ -1138,7 +1138,7 @@ last.
 |CHK-ROUND
 |Every round-2 ABR output (ML-DSA public key, ML-KEM encapsulation key, ML-KEM ciphertext) differs from its round-1 output. The ABR compares are against the same engine, so this row fails an engine that ignores its seed or message. AES, HMAC, KMAC and OTBN have goldens per round and are not compared here.
 |CTRL-XFER-SHORT-KEY
-|The short-key leg reached the engine: `ERR_BITS` reads 0 after the key dump and share0 XOR share1 words 0 to n-1 equal the n-word key (`firmware.adoc`, section "Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)": form one full-width key share from the supplied key, padding short keys with DRBG words). A miss fails the leaf. Evidence: `CTRL-XFER-SHORT-KEY seen: n=<n> key=[..] got=[..] err_bits=0x0`; failure (raises): `CTRL-MISSING XFER-SHORT-KEY: n=<n> key=[..] got=[..] err_bits=0x<e>`.
+|The short-key leg reached the engine: `ERR_BITS` reads 0 after the key dump and share0 XOR share1 words 0 to n-1 equal the n-word key (`firmware.adoc`, section "Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)": form one full-width key share from the supplied key, padding short keys with DRBG words). A miss fails the leaf. Evidence: `CTRL-XFER-SHORT-KEY seen: n=<n> key_match=<n>/<n> bad_words=[] err_bits=0x0`; failure (raises): `CTRL-MISSING XFER-SHORT-KEY: n=<n> key_match=<m>/<n> bad_words=[<i>,...] err_bits=0x<e>` (key values are not logged).
 |OBS-XFER-PAD
 |Share0 XOR share1 words n to 11 of the short key and the positions that are not 0. The text pads short keys with DRBG words and does not state the pad positions; the pad values are random, so no value is graded. Evidence: `OBS-XFER-PAD n=<n> pad=[0x<w>,...] nonzero=[<i>,...]`.
 |CHK-HMAC-CLR-1/2

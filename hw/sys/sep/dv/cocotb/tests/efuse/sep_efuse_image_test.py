@@ -38,7 +38,8 @@ Checkers:
 
 Bench record: INFO-EFUSE-OTP-PLAIN, after the first sense, the AXI read of every
 shadow word of CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID with its response,
-beside the image word the bench loaded. No text states whether these fields are
+compared with the image word the bench loaded; only the match and the indexes of
+differing words are logged, not the values. No text states whether these fields are
 stored obfuscated. The line shows only that the sense and read path returns the
 stored word unchanged; it cannot show how the stored value relates to the secret
 or UID it carries, or any transform firmware applies after the read.
@@ -191,13 +192,12 @@ class sep_efuse_image_test(sep_base_test):
                 resp.append(RESP_NAME.get(seq.resp_code, seq.resp_code))
             image = img.words[fld.word : fld.word + fld.n_words]
             self.logger.info(
-                "INFO-EFUSE-OTP-PLAIN: field=%s words=%d equal=%d resp=[%s] shadow=[%s] image=[%s]",
+                "INFO-EFUSE-OTP-PLAIN: field=%s words=%d equal=%d resp=[%s] diff_words=[%s]",
                 name,
                 fld.n_words,
                 int(shadow == image),
                 ",".join(str(r) for r in resp),
-                ",".join(f"0x{w:08x}" for w in shadow),
-                ",".join(f"0x{w:08x}" for w in image),
+                ",".join(str(i) for i, (s, w) in enumerate(zip(shadow, image)) if s != w),
             )
 
     async def _watch_resense(self) -> tuple[str | None, int | None]:

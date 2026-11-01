@@ -821,17 +821,15 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         rng = SepSeededRng(self.walk.seed ^ _SHORT_KEY_SALT)
         n = rng.randrange(1, n_full)
         key = _distinct_words(rng, n, None)
-        self.logger.info("INFO-XFER-SHORT-KEY n=%d key=%s", n, [hex(w) for w in key])
+        self.logger.info("INFO-XFER-SHORT-KEY n=%d", n)
         handle = await self.km.key_load(key_words=list(key), dest=KM_DEST_OTBN)
         await self._transfer(ROUNDS, handle, KM_DEST_OTBN)
         await self.otbn.execute()
         errbits = await self.otbn.read_errbits()
         _, s0, s1, _ = await self.otbn.read_keydump_outputs()
         got = [a ^ b for a, b in zip(s0, s1)]
-        line = (
-            f"n={n} key=[{','.join(f'0x{w:08x}' for w in key)}] "
-            f"got=[{','.join(f'0x{w:08x}' for w in got[:n])}] err_bits=0x{errbits:x}"
-        )
+        bad = [i for i in range(n) if got[i] != key[i]]
+        line = f"n={n} key_match={n - len(bad)}/{n} bad_words={bad} err_bits=0x{errbits:x}"
         if errbits != 0 or got[:n] != key:
             raise AssertionError(f"CTRL-MISSING XFER-SHORT-KEY: {line}")
         self.logger.info("CTRL-XFER-SHORT-KEY seen: %s", line)
