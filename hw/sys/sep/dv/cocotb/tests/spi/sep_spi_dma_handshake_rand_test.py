@@ -88,9 +88,10 @@ Checkers:
                   input 0 is the only connected input (``hw/sys/sep/doc/dma.adoc``,
                   "Only handshake input 0 is connected"), and MASK holds the
                   "Enable bits for incoming handshake interrupt wires"
-                  (``secure_dma.rdl``, HANDSHAKE_INTR_ENABLE). CONTROL.GO at
-                  the end of the window is logged (``OBS-HS-GO-MASKED``): no
-                  text states GO while every enabled trigger stays low.
+                  (``secure_dma.rdl``, HANDSHAKE_INTR_ENABLE). CONTROL.GO
+                  reads 1 at the end of the window: in handshake operation the
+                  engine clears GO only once TOTAL_DATA_SIZE bytes have been
+                  transferred (``secure_dma.rdl``, CONTROL.GO), and none moved.
   CHK-HS-GO       In handshake operation the engine keeps GO set across chunks
                   and clears it, setting STATUS.DONE, once TOTAL_DATA_SIZE
                   bytes have been transferred (secure_dma.adoc, CONTROL.GO).
@@ -937,23 +938,19 @@ class sep_spi_dma_handshake_rand_test(sep_base_test):
         if not hs_enable:
             self._ctrl_missing("CTRL-HS-MASKED-GO", go_line)
         self.logger.info("CTRL-HS-MASKED-GO PASS seed=%d %s", cfg.seed, go_line)
-        # Negative-control hook: ``masked_written += 1`` here; CHK-HS-MASKED fails.
+        # Negative-control hook: ``go_exp = 0`` for one run; CHK-HS-MASKED fails while
+        # the cp_hs_mask terms (trigger high, no write) still hold.
+        go_exp = 1
         line = (
             f"run={tag} dest_sentinel_kept={int(masked_written == 0 and end_written == 0)} "
+            f"go={int(go_masked.ok)} expect_go={go_exp} {go_masked.fields()} "
             f"control_mask1_filled={mask1_filled} trigger_high_clk={trig_high} "
             f"window_clks={t_fill} dest_polls={polls} words_written_end={end_written} "
             f"mask=0x{mask & HS_MASK_FIELD:03x}"
         )
         if trig_high < 1:
             self._ctrl_missing("CHK-HS-MASKED", line)
-        self.logger.info(
-            "OBS-HS-GO-MASKED LOG seed=%d run=%s go=%d %s",
-            cfg.seed,
-            tag,
-            int(go_masked.ok),
-            go_masked.fields(),
-        )
-        if masked_written or end_written:
+        if masked_written or end_written or int(go_masked.ok) != go_exp:
             self._fail("CHK-HS-MASKED", line)
         self._pass("CHK-HS-MASKED", line)
         await self._release(HS_MASK_PASS_MASK | HS_MASK_PASS_RUN)
