@@ -97,14 +97,17 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_bank_watch import WORD_MASK, SepShimCmdMonitor
 from env.sep_efuse_image import SHADOW_BASE
 from env.sep_efuse_plan import (
+    DIGEST_FIELDS,
     PROGRAM_CTRL_ADDR,
+    SECRET_FIELDS,
     STATUS_ADDR,
     T_SHIM_FAULT,
     feat_ctrl_profile,
+    field_n_words,
     field_word,
     plan,
     program_ctrl_word,
@@ -156,6 +159,10 @@ _HOLD_READS = 4  # frontdoor reads of EFUSE_PROGRAM_CTRL inside the held window
 _POLL_BOUND_MULT = 4  # bound of a program_done or busy poll, in sense times
 _REL_SETTLE = 128  # clocks after the release done (over the 64-clock sampler window)
 _RST_HOLD = 20
+# Shadow words of the secret and token-digest fields: a log prints them only as a digest.
+_HIDDEN_WORDS = frozenset(
+    field_word(f) + k for f in SECRET_FIELDS + DIGEST_FIELDS for k in range(field_n_words(f))
+)
 _PASS_HOLD = 2  # clocks a step tag stays on the pass label
 # Hold tags of the graded steps (set_ef_hold_tag).
 _TAG_SENSE, _TAG_LIFE = 1, 2
@@ -163,6 +170,11 @@ _TAG_SENSE, _TAG_LIFE = 1, 2
 
 def _b(v: int, m: int) -> int:
     return int(bool(v & m))
+
+
+def _wfmt(word: int, v: int, spec: str = "08x") -> str:
+    """Shadow word ``word`` with value ``v`` in hex; a non-zero hidden word as ``sha:<word_digest>``."""
+    return f"sha:{word_digest([v])}" if v and word in _HIDDEN_WORDS else f"0x{v:{spec}}"
 
 
 class _SenseRec:
@@ -407,21 +419,21 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             sense=label,
             word=w,
             word_class=p.leg["word_class"],
-            got_probe=f"0x{probe[w]:x}",
-            got_read=f"0x{got_w:x}",
+            got_probe=_wfmt(w, probe[w], "x"),
+            got_read=_wfmt(w, got_w, "x"),
             reset=f"0x{rst_w:x}",
-            staged=f"0x{staged[w]:08x}",
-            next_read=f"0x{got_w1:08x}",
+            staged=_wfmt(w, staged[w]),
+            next_read=_wfmt(w + 1, got_w1),
             others_equal=int(not others),
             others_bad=",".join(str(i) for i in others[:8]) or "none",
             sense_done=int(n is not None),
             t_sense_inj="none" if n is None else n,
             status_sense_done=_b(status, _M_SENSE_DONE),
-            ctl_word=f"0x{ctl_w:08x}",
+            ctl_word=_wfmt(w, ctl_w),
             resp_strobes=len(resp),
             resp_status_words=",".join(str(k) for k in err_idx[:8]) or "none",
             resp_w_status="none" if resp_w is None else resp_w[0],
-            resp_w_data="none" if resp_w is None else f"0x{resp_w[1]:08x}",
+            resp_w_data="none" if resp_w is None else _wfmt(w, resp_w[1]),
             read_cmds=shape["read_cmds"],
             cmds=shape["cmds"],
             fsm_strobes=shape["fsm_strobes"],
@@ -510,9 +522,9 @@ class sep_efuse_shim_response_fault_test(sep_base_test):
             "SENSE-STATUS",
             ctl_ok,
             word=w,
-            ctl_word=f"0x{ctl_w:08x}",
-            ctl_next=f"0x{ctl_w1:08x}",
-            staged=f"0x{staged[w]:08x}",
+            ctl_word=_wfmt(w, ctl_w),
+            ctl_next=_wfmt(w + 1, ctl_w1),
+            staged=_wfmt(w, staged[w]),
             probe_equal=sum(int(x == y) for x, y in zip(ctl_probe, staged)),
         )
         self._grade(

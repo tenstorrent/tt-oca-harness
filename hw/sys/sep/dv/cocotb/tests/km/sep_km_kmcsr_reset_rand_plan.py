@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import CHeaderRegBlock, ip_c_header
 
@@ -492,7 +493,7 @@ def plan_draw_lines(p: Plan) -> list[str]:
         f"INFO-DRAW en_b e=0x{p.en_b.e:03x} s=0x{p.en_b.s:03x}",
         "INFO-DRAW en_c=" + ",".join(f"src{c.src}:e=0x{c.e:03x}:s=0x{c.s:03x}" for c in p.en_c),
         f"INFO-DRAW en_d e=0x{p.en_d.e:03x} s=0x{p.en_d.s:03x}",
-        f"INFO-DRAW scrambler_key k={h(p.scr_k)} k2={h(p.scr_k2)}",
+        f"INFO-DRAW scrambler_key k_sha={word_digest([p.scr_k])} k2_sha={word_digest([p.scr_k2])}",
         f"INFO-DRAW irq_entry aligned={h(p.entry_aligned)} unaligned={h(p.entry_unaligned)} "
         f"v2={h(p.entry_v2)}",
         "INFO-DRAW size_addrs=" + ",".join(f"0x{a:04x}" for a in p.size_addrs),

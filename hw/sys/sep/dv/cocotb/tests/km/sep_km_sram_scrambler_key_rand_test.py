@@ -67,7 +67,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from env import sep_km_img_param as ip
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from sep_base_test import sep_base_test
 from sep_reg_meta import CHeaderRegBlock, ip_c_header
@@ -258,7 +258,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
     def _log_draws(self) -> None:
         p = self.plan
         lg = self.logger.info
-        lg("DRAW ka=%s kb=%s", _h(p.ka), _h(p.kb))
+        lg("DRAW ka_sha=%s kb_sha=%s", word_digest([p.ka]), word_digest([p.kb]))
         lg("DRAW addrs8=%s", [hex(a) for a in p.addrs8])
         lg("DRAW data8=%s", [_h(d) for d in p.data8])
         lg("DRAW order8=%s", p.order8)
@@ -361,10 +361,14 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             words.append(data & WORD)
         return words
 
-    async def _recv(self, n: int, tag: str, need: str, before=None) -> list[int]:
+    async def _recv(
+        self, n: int, tag: str, need: str, before=None, key_at: tuple[int, ...] = ()
+    ) -> list[int]:
         """One message of n words; ``before`` runs once it is in the FIFO, before the read.
 
-        A transport failure fails the checker ``need`` and stops the leaf.
+        A transport failure fails the checker ``need`` and stops the leaf. The
+        ``MSG`` line prints the words at ``key_at`` (scrambler key reads) as a
+        ``word_digest`` digest only.
         """
         try:
             await self._wait_group(n, tag)
@@ -374,7 +378,11 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         except _TransportError as exc:
             self.chk.ok(need, False, transport=tag, reason=str(exc))
             raise
-        self.logger.info("MSG %s %s", tag, [_h(w) for w in words])
+        self.logger.info(
+            "MSG %s %s",
+            tag,
+            [f"key_sha={word_digest([w])}" if i in key_at else _h(w) for i, w in enumerate(words)],
+        )
         return words
 
     def _count_ok(self, got: list[int], want: list[int]) -> int:
@@ -453,8 +461,8 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         g64: list[int] = []
         for k in range(4):
             g64 += await self._recv(16, f"words64-{k}", "SSCR-ALIAS")
-        g_key_unlocked = await self._recv(1, "key-unlocked", "SSCR-LOCK")
-        g_locked = await self._recv(2, "locked", "SSCR-LOCK")
+        g_key_unlocked = await self._recv(1, "key-unlocked", "SSCR-LOCK", key_at=(0,))
+        g_locked = await self._recv(2, "locked", "SSCR-LOCK", key_at=(1,))
         g_kb_locked = await self._recv(8, "kb-locked", "SSCR-LOCK")
         g_en0_locked = await self._recv(9, "enable0-locked", "SSCR-LOCK")
         g_lock0_locked = await self._recv(9, "lock0-locked", "SSCR-LOCK")
@@ -553,7 +561,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         p = self.plan
         d8 = p.data8
         key_rd_unlocked_ok = g_key_unlocked[0] == p.ka
-        self.chk.ctrl("SSCR-LOCK-KEYRD", key_rd_unlocked_ok, key_rd=_h(g_key_unlocked[0]))
+        self.chk.ctrl("SSCR-LOCK-KEYRD", key_rd_unlocked_ok, key_match=key_rd_unlocked_ok)
         en0_ctrl = g_en0[0]
         self.chk.ctrl("SSCR-LOCK-EN0", en0_ctrl == 0, en0_ctrl=_h(en0_ctrl))
         self.chk.obs("SSCR-EN0", reads_eq=self._count_ok(g_en0[1:], d8))
@@ -577,7 +585,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             and all_ctrl,
             key_rd_unlocked_ok=f"{int(key_rd_unlocked_ok)}(control)",
             en0_ctrl=f"{_h(en0_ctrl)}(control)",
-            key_rd_locked=_h(key_rd_locked),
+            key_rd_locked_zero=key_rd_locked == 0,
             key_write_ignored=key_write_ignored,
             enable_write_ignored=enable_write_ignored,
             lock_write0_kept=lock_write0_kept,
@@ -652,7 +660,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         """Cold reset: SCRAMBLER_CTRL reads its reset value and a kB write lands."""
         p = self.plan
         await self._cold_release(3)
-        g = await self._recv(2, "cold", "SSCR-RST")
+        g = await self._recv(2, "cold", "SSCR-RST", key_at=(1,))
         close_graded_window(self.logger)
         warm_ctrl = self.warm[0]
         warm_reads_ok = self._count_ok(self.warm[1:], p.data8)

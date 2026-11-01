@@ -98,7 +98,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_plan import (
     CH_CHIPLET,
     CH_SEC_DIS,
@@ -908,8 +908,8 @@ class sep_efuse_token_channel_rand_test(sep_base_test):
                 dig = expected_digest(ch, p.image)
                 extra = {
                     "tok_eq_digest": int(tok == dig),
-                    "tok_words": ",".join(f"0x{w:08x}" for w in token_words(tok)),
-                    "digest_words": ",".join(f"0x{w:08x}" for w in token_words(dig)),
+                    "tok_sha": word_digest(token_words(tok)),
+                    "digest_sha": word_digest(token_words(dig)),
                 }
             else:
                 name = shape

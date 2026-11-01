@@ -115,11 +115,13 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
+from env.sep_chk_log import word_digest
 from env.sep_efuse_plan import (
     CH_SEC_DIS,
     CODE_MATCH,
     CODE_MISMATCH,
     DEFAULT_VECTOR,
+    DIGEST_FIELDS,
     FIELD_NAMES,
     FIELD_VECTORS,
     MATCH_ADDR,
@@ -718,11 +720,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
                 missing.append((f, i - field_word(f), staged[i]))
         for f, k, v in missing:
             self.logger.info(
-                "OBS-SCAN-N0-COMPLETE: field=%s word=%d value=0x%08x not in "
+                "OBS-SCAN-N0-COMPLETE: field=%s word=%d value=%s not in "
                 "shadow_efuse_values_n0_scan; in shadow_efuse_values=%d",
                 f,
                 k,
-                v,
+                f"sha:{word_digest(v)}" if f in SECRET_FIELDS or f in DIGEST_FIELDS else _hex(v),
                 int(v in nm),
             )
         self.logger.info(
@@ -759,7 +761,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         if strap == 1:
             nz = [
-                (x["t"], SECRET_WORDS[i][0], _hex(v))
+                (x["t"], SECRET_WORDS[i][0], _hex(v) if v is None else f"sha:{word_digest(v)}")
                 for x in win
                 for i, v in enumerate(x["secret"])
                 if v != 0
@@ -776,7 +778,7 @@ class sep_scan_mode_state_hold_test(sep_base_test):
                 if v in left:
                     left.remove(v)
                 else:
-                    absent.append((f, idx - field_word(f), _hex(v)))
+                    absent.append((f, idx - field_word(f), f"sha:{word_digest(v)}"))
             line = (
                 f"leg={leg} after the session: secret words={len(SECRET_WORDS)} "
                 f"non-zero staged={sum(1 for v in staged if v)} in storage="
@@ -971,11 +973,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SCAN-SECRET-ZERO PASS: strap=1 words=%d zero on %d session samples; "
-            "control strap=0 staged on %d/%d samples (CHIPLET_UID word0=0x%08x)",
+            "control strap=0 staged on %d/%d samples (CHIPLET_UID word0_sha=%s)",
             len(SECRET_WORDS),
             self.secret1,
             ok0,
             n0,
-            w0,
+            word_digest(w0),
         )
         self.result_pass(TEST, seed, len(self.required_evidence))

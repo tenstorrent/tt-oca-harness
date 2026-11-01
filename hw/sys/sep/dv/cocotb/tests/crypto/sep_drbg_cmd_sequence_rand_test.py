@@ -297,7 +297,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, FallingEdge, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_ctr_drbg_golden import BLOCK_LEN, SepCtrDrbgGolden
 from env.sep_fcov_gate import (
     close_graded_window,
@@ -529,7 +529,7 @@ class Plan:
             f" cs_bad={[hex(v) for v in self.cs_bad]} ed_bad={[hex(v) for v in self.ed_bad]}"
             f" bad_flag0=0x{self.bad_flag0:x} bad_acmd=0x{self.bad_acmd:x}"
             f" reseed_k={self.reseed_k} gen_off=0x{self.gen_off:x}"
-            f" kat_seed=0x{self.kat_seed:096x}"
+            f" kat_seed_sha={word_digest(self.kat_seed)}"
             f" auto_n={self.auto_n} inst_hold={self.inst_hold}"
         )
 
@@ -2305,7 +2305,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             g.generate_one()
             cands[ctr_len] = g.generate_one()
         wrote_w0 = seed & 0xFFFF_FFFF
-        f: dict = {"seed_w0": f"0x{wrote_w0:08x}", "expect_w0": f"0x{w0:08x}"}
+        f: dict = {"seed_w0_sha": word_digest(wrote_w0), "expect_w0_sha": word_digest(w0)}
         got: list[int] = []
         step = "uni"
         try:

@@ -105,6 +105,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_chk_log import diff_words, word_digest
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_open_value_leg_pass
 from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_kmac_golden import kmac_family_words
@@ -285,7 +286,7 @@ class SepKmShareWalkCfg:
 
     def summary(self) -> str:
         first = " ".join(
-            f"{DEST_NAME[d]}[0]=0x{self.keys[0][d][0]:08x}/0x{self.keys[1][d][0]:08x}"
+            f"{DEST_NAME[d]}_sha={word_digest(self.keys[0][d])}/{word_digest(self.keys[1][d])}"
             for d in DEST_WORDS
         )
         return f"seed={self.seed} {first} aes_pt[0]=0x{self.aes_pt[0]:08x}"
@@ -446,10 +447,10 @@ class sep_km_sideload_share_walk_test(sep_base_test):
     @staticmethod
     def _same(got: list[int], exp: list[int], *, chk: str, what: str) -> None:
         assert len(got) == len(exp), f"{chk} FAIL: {what} is {len(got)} words, expected {len(exp)}"
-        bad = next((i for i, (g, e) in enumerate(zip(got, exp)) if g != e), None)
-        assert bad is None, (
-            f"{chk} FAIL: {what} differs at word {bad} of {len(exp)}: "
-            f"got=0x{got[bad]:08x} exp=0x{exp[bad]:08x}"
+        bad = diff_words(got, exp)
+        assert not bad, (
+            f"{chk} FAIL: {what} differs at words {bad} of {len(exp)}: "
+            f"got_sha={word_digest(got)} exp_sha={word_digest(exp)}"
         )
 
     # ------------------------------------------------------------- rounds --
@@ -491,10 +492,10 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             f"CHK-AES-{tag} FAIL: ct={[hex(w) for w in ct]} golden={[hex(w) for w in golden]}"
         )
         self.logger.info(
-            "CHK-AES-%d PASS: ct == AES-256(K, PT) golden ct=%s k[0]=0x%08x",
+            "CHK-AES-%d PASS: ct == AES-256(K, PT) golden ct=%s k_sha=%s",
             tag,
             [hex(w) for w in ct],
-            keys[KM_DEST_AES][0],
+            word_digest(keys[KM_DEST_AES]),
         )
         out["aes"] = ct
 
@@ -510,12 +511,12 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         )
         self.logger.info(
             "CHK-HMAC-%d PASS: digest == HMAC-SHA256(K, msg) golden d[0]=0x%08x d[7]=0x%08x "
-            "k[0]=0x%08x sw_key[0]=0x%08x",
+            "k_sha=%s sw_key_sha=%s",
             tag,
             digest[0],
             digest[7],
-            keys[KM_DEST_HMAC][0],
-            self.walk.hmac_sw[r][0],
+            word_digest(keys[KM_DEST_HMAC]),
+            word_digest(self.walk.hmac_sw[r]),
         )
         out["hmac"] = digest
 
@@ -529,12 +530,11 @@ class sep_km_sideload_share_walk_test(sep_base_test):
             f"golden={[hex(w) for w in golden]}"
         )
         self.logger.info(
-            "CHK-KMAC-%d PASS: digest == KMAC256(K, msg) golden d[0]=0x%08x d[7]=0x%08x "
-            "k[0]=0x%08x",
+            "CHK-KMAC-%d PASS: digest == KMAC256(K, msg) golden d[0]=0x%08x d[7]=0x%08x k_sha=%s",
             tag,
             digest[0],
             digest[7],
-            keys[KM_DEST_KMAC][0],
+            word_digest(keys[KM_DEST_KMAC]),
         )
         out["kmac"] = digest
 
@@ -545,19 +545,21 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         key, s0, s1, pad = await self.otbn.read_keydump_outputs()
         exp = keys[KM_DEST_OTBN]
         assert key == exp, (
-            f"CHK-OTBN-{tag} FAIL: key={[hex(w) for w in key]} exp={[hex(w) for w in exp]}"
+            f"CHK-OTBN-{tag} FAIL: key differs at words {diff_words(key, exp)}: "
+            f"key_sha={word_digest(key)} exp_sha={word_digest(exp)}"
         )
         assert [a ^ b for a, b in zip(s0, s1)] == exp, f"CHK-OTBN-{tag} FAIL: share0^share1 != K"
-        assert all(w == 0 for w in pad), f"CHK-OTBN-{tag} FAIL: pad={[hex(w) for w in pad]}"
+        assert all(w == 0 for w in pad), (
+            f"CHK-OTBN-{tag} FAIL: pad nonzero at words {[i for i, w in enumerate(pad) if w]}"
+        )
         self.logger.info(
             "CHK-OTBN-%d PASS: DMEM key == K (12 words), share0^share1 == K, ERR_BITS=0x%08x "
-            "key[0]=0x%08x key[11]=0x%08x s0[0]=0x%08x s1[0]=0x%08x",
+            "key_sha=%s s0_sha=%s s1_sha=%s",
             tag,
             errbits,
-            key[0],
-            key[11],
-            s0[0],
-            s1[0],
+            word_digest(key),
+            word_digest(s0),
+            word_digest(s1),
         )
         out["otbn"] = key
 
@@ -604,13 +606,12 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         )
         self.logger.info(
             "CHK-MLKEM-SEED-%d PASS: KV seed read status 0x%08x; EK == direct-seed EK "
-            "(%d words, ek[0]=0x%08x); engine Z == delivered Z z[0]=0x%08x z[3]=0x%08x",
+            "(%d words, ek[0]=0x%08x); engine Z == delivered Z z_sha=%s",
             tag,
             st,
             KEM_EK_WORDS,
             ek_kv[0],
-            z_kv[0],
-            z_kv[3],
+            word_digest(z_kv),
         )
         out["mlkem_seed"] = ek_kv
 
@@ -837,9 +838,9 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         await ClockCycles(cocotb.top.clk_i, 2)
         set_open_value_leg_pass(None, self.logger)
         self.logger.info(
-            "OBS-XFER-PAD n=%d pad=[%s] nonzero=%s",
+            "OBS-XFER-PAD n=%d pad_sha=%s nonzero=%s",
             n,
-            ",".join(f"0x{w:08x}" for w in got[n:]),
+            word_digest(got[n:]),
             [i for i in range(n, n_full) if got[i]],
         )
 

@@ -106,7 +106,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_bank_watch import SepEfuseBank, SepShimCmdMonitor
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_efuse_plan import (
@@ -763,9 +763,9 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 and otp_secret[f] == staged[0],
                 strap=1,
                 field=f,
-                probe=f"0x{max(s1['probe']):x}",
-                ctl_probe=f"0x{ctl_probe[0]:08x}",
-                staged=f"0x{staged[0]:08x}",
+                probe_nonzero_at=[k for k, v in enumerate(s1["probe"]) if v],
+                ctl_probe_sha=word_digest(ctl_probe),
+                staged_sha=word_digest(staged),
                 reg_read_eq_staged=int(reg_eq),
                 reg_resps=[r for r, _d in s1["reads"]],
                 otp_word0_eq_staged=int(otp_secret[f] == staged[0]),
@@ -778,9 +778,9 @@ class sep_efuse_secure_tm_matrix_rand_test(StrapHold, sep_base_test):
                 "STM-RMA-DIGEST-PROBE",
                 state=state,
                 field=f,
-                strap1=f"0x{digest1[f][0]:08x}",
-                strap0=f"0x{s0[0]:08x}",
-                staged=f"0x{staged[0]:08x}",
+                strap1_sha=word_digest(digest1[f]),
+                strap0_sha=word_digest(s0),
+                staged_sha=word_digest(staged),
                 strap1_eq_staged=sum(int(a == b) for a, b in zip(digest1[f], staged)),
                 strap1_zero=sum(int(a == 0) for a in digest1[f]),
                 strap0_eq_staged=sum(int(a == b) for a, b in zip(s0, staged)),

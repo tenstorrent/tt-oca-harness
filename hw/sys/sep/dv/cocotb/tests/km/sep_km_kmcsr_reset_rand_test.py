@@ -111,8 +111,9 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env import sep_km_poke as kp
-from env.sep_chk_log import SepChkLog
-from env.sep_efuse_image import LC_PROD
+from env.sep_chk_log import SepChkLog, word_digest
+from env.sep_efuse_image import LC_PROD, SepEfuseImage
+from env.sep_efuse_plan import SECRET_FIELDS
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from km import sep_km_kmcsr_reset_rand_plan as pl
 from sep_base_test import sep_base_test
@@ -325,11 +326,14 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         if zero:
             raise AssertionError(f"staged eFuse image has zero KM OTP field(s) {zero}")
         self.write_efuse_image(image)
-        self.chk.info(
-            "EFUSE-IMAGE",
-            lc_raw=f"0x{image.lc_raw():x}",
-            **{f"{n}0": f"0x{image.field_int(n) & 0xFFFF_FFFF:08x}" for n in _KM_OTP_FIELDS},
-        )
+        otp: dict[str, str] = {}
+        for n in _KM_OTP_FIELDS:
+            if n in SECRET_FIELDS:
+                fld = SepEfuseImage.field(n)
+                otp[f"{n}_sha"] = word_digest(image.words[fld.word : fld.word + fld.n_words])
+            else:
+                otp[f"{n}0"] = f"0x{image.field_int(n) & 0xFFFF_FFFF:08x}"
+        self.chk.info("EFUSE-IMAGE", lc_raw=f"0x{image.lc_raw():x}", **otp)
         await self.bring_up_no_cpu()
         self.swrst = SepSwReset(self)
         self.poke = SepKmPoke(self)
@@ -870,10 +874,10 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
             ctrl_rd=_h(ctrl & f),
             ctrl_boot_rd=_h(self.scr_boot & f),
             rsvd=_h((ctrl | self.scr_boot) & ~f),
-            key=_h(k),
-            key_rd=_h(r[2].value),
-            key2=_h(k2),
-            key2_rd=_h(r[4].value),
+            key_match=r[2].value == k,
+            key2_match=r[4].value == k2,
+            key_sha=word_digest([k]),
+            key2_sha=word_digest([k2]),
         )
 
     # ---------------------------------------------------------- step 9: IRQ entry

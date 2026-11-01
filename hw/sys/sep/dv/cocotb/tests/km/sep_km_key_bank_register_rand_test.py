@@ -107,7 +107,7 @@ from env import sep_km_poke as kp
 from env.sep_abr_kem_nist import NIST_KEM_ENC_C, NIST_KEM_ENC_EK, NIST_KEM_ENC_K
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_fcov_gate import (
     KM_SK_PASS_CONSUME,
     KM_SK_PASS_IRQ,
@@ -199,6 +199,10 @@ _SHARD_EVIDENCE = {
 }
 
 _ALL_SW = sum(1 << b for b in SW_RESET_N_BIT.values())
+
+
+def _nonzero_at(words) -> list[int]:
+    return [i for i, w in enumerate(words) if w]
 
 
 def _h(v: int) -> str:
@@ -478,7 +482,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                 else:
                     nonzero += 1
                     if len(bad) < 4:
-                        bad.append(f"{pl.BANKS[bit].name}.s{s}[{i}]={_h(d)}")
+                        bad.append(f"{pl.BANKS[bit].name}.s{s}[{i}]")
                 if not _flags_ok(f):
                     resp_err += 1
                 if f is not None:
@@ -597,7 +601,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         self.chk.obs(
             "SK-WORDS",
             phase="delivery1",
-            words=[_h(w) for w in words],
+            words_sha=word_digest(words),
             match_vector=list(words) == list(NIST_KEM_ENC_K),
         )
         valid = r[9].value & pl.SK_VALID
@@ -637,7 +641,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         ]
         r = await self._run(ops)
         pre = tuple(r[1].data)
-        self.chk.obs("SK-WORDS", phase="before_consume", words=[_h(w) for w in pre])
+        self.chk.obs("SK-WORDS", phase="before_consume", words_sha=word_digest(pre))
         self._control(
             "SK-PRE-CONSUME",
             bool(r[0].value & pl.SK_VALID) and any(pre) and _ok(r[0]) and _ok(r[1]),
@@ -665,8 +669,8 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             set_km_sk_pass(label, self.logger)
             await ClockCycles(self.dut.clk_i, _LABEL_CLKS)
         if not grade_words:
-            self.chk.obs("SK-WORDS", phase="after_consume", words=[_h(w) for w in r[4].data])
-            self.chk.obs("SK-WORDS", phase="after_set", words=[_h(w) for w in r[7].data])
+            self.chk.obs("SK-WORDS", phase="after_consume", nonzero_at=_nonzero_at(r[4].data))
+            self.chk.obs("SK-WORDS", phase="after_set", nonzero_at=_nonzero_at(r[7].data))
             return
         # Zeroize: the words read 0 after the consume and stay 0 after the
         # refused set.
@@ -675,8 +679,8 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             "BANK-SK-SW",
             words_zero,
             words_zero=words_zero,
-            words_after_consume=[_h(w) for w in r[4].data],
-            words_after_set=[_h(w) for w in r[7].data],
+            nonzero_after_consume=_nonzero_at(r[4].data),
+            nonzero_after_set=_nonzero_at(r[7].data),
         ):
             # Pass label: releases cp_sk_delivery_state[firmware_consumes].
             set_km_sk_pass(label | KM_SK_PASS_WORDS, self.logger)
@@ -862,7 +866,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             "SINGLE-SHARE",
             ct == golden and v_pre == 1 and v_wipe == 0 and v_post == 1 and resp,
             share=leg.share,
-            key=[_h(w) for w in leg.key],
+            key_sha=word_digest(leg.key),
             pt=[_h(w) for w in leg.pt],
             ct=[_h(w) for w in ct],
             golden=[_h(w) for w in golden],

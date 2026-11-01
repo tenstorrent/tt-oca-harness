@@ -165,7 +165,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_bank_watch import (
     PulseCount,
     SepEfuseBank,
@@ -176,9 +176,11 @@ from env.sep_efuse_bank_watch import (
 )
 from env.sep_efuse_image import LC_FIELD_MASK, lc_encode
 from env.sep_efuse_plan import (
+    DIGEST_FIELDS,
     LOCK_SLOT_FIELD,
     PROGRAM_CTRL_ADDR,
     READ_CTRL_ADDR,
+    SECRET_FIELDS,
     SLOT_OF_FIELD,
     STATUS_ADDR,
     WORD_BITS,
@@ -268,6 +270,12 @@ def _bit(v: int, m: int) -> int:
 
 def _hexw(words: list[int]) -> str:
     return ":".join(f"{w:08x}" for w in words)
+
+
+def _hexf(name: str, words: list[int], prefix: str = "") -> str:
+    """``_hexw`` of a field's words; a secret or token-digest field shows only ``sha:<word_digest>``."""
+    hidden = name in SECRET_FIELDS or name in DIGEST_FIELDS
+    return f"sha:{word_digest(words)}" if hidden else prefix + _hexw(words)
 
 
 @pyuvm.test()
@@ -622,11 +630,11 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
         staged = [self.plan.image.words[w0 + k] & _WORD for k in range(field_n_words(name))]
         ok = True
         f: dict[str, Any] = {"slot": slot, "field": name, "wl": int(wl), "rl": int(rl)}
-        f["staged"] = _hexw(staged)
+        f["staged"] = _hexf(name, staged)
 
         # Step 3: the sense fills the shadow, locked or not.
         probe = self._probe(name)
-        f["sense_probe"] = _hexw(probe)
+        f["sense_probe"] = _hexf(name, probe)
         ok &= probe == staged
 
         # Step 4: frontdoor read and the read-interface request.
@@ -638,7 +646,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             ok &= blocked
         else:
             words, bad = await self._fd_words(name)
-            f["read"] = _hexw(words)
+            f["read"] = _hexf(name, words)
             ok &= words == staged and bad == 0
         if read_bit is None:
             f["rd_if"] = "na"
@@ -710,8 +718,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
                 exp[wk] |= 1 << b
             after = self._probe(name)
             f["shadow_wr"] = "blocked" if wl else "or"
-            f["shadow_exp"] = _hexw(exp)
-            f["shadow_got"] = _hexw(after)
+            f["shadow_exp"] = _hexf(name, exp)
+            f["shadow_got"] = _hexf(name, after)
             ok &= after == exp
             self.chk.obs(
                 "LOCK-CELL-WR-RESP", slot=slot, field=name, locked=int(wl), resp=resp_name(resp)
@@ -882,10 +890,10 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             tf = {
                 "twin": f"{t['field']}.{t['word']}",
                 "twin_slot": t["slot"],
-                "twin_staged": f"0x{t['staged']:08x}",
-                "twin_probe": f"0x{t['probe']:08x}",
+                "twin_staged": _hexf(t["field"], [t["staged"]], "0x"),
+                "twin_probe": _hexf(t["field"], [t["probe"]], "0x"),
                 "twin_resp": t["resp"],
-                "twin_data": f"0x{t['data']:08x}",
+                "twin_data": _hexf(t["field"], [t["data"]], "0x"),
             }
         return self._grade(
             "LOCK-JTAG-RD",
@@ -894,9 +902,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             role="locked",
             locked=f"{lk['field']}.{lk['word']}",
             locked_slot=lk["slot"],
-            locked_staged=f"0x{lk['staged']:08x}",
-            locked_probe=f"0x{lk['probe']:08x}",
-            locked_data=f"0x{lk['data']:08x}",
+            locked_staged=_hexf(lk["field"], [lk["staged"]], "0x"),
+            locked_probe=_hexf(lk["field"], [lk["probe"]], "0x"),
+            locked_data=_hexf(lk["field"], [lk["data"]], "0x"),
             locked_eq_staged=int(lk["data"] == lk["staged"]),
             locked_resp_obs=lk["resp"],
             **tf,
@@ -1123,8 +1131,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             "LOCK-ORDER-PATH",
             cgot == cexp,
             field=cname,
-            exp=_hexw(cexp),
-            got=_hexw(cgot),
+            exp=_hexf(cname, cexp),
+            got=_hexf(cname, cgot),
         )
         self._open_window()
         tag = self._step()
@@ -1165,7 +1173,9 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             ok &= step_ok
             trace.append(f"{action}:{int(step_ok)}")
             if not step_ok:
-                trace.append(f"shadow={_hexw(shadow)}/exp={_hexw(gold)}/locks=0x{locks:016x}")
+                trace.append(
+                    f"shadow={_hexf(name, shadow)}/exp={_hexf(name, gold)}/locks=0x{locks:016x}"
+                )
 
         # Step 11: a zero write to LOCKS keeps the lock; a third-bit write is blocked.
         for k in range(2):
@@ -1178,7 +1188,7 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             not (before_c[wc] >> bc) & 1,
             field=name,
             bit_c=f"{wc}.{bc}",
-            shadow=_hexw(before_c),
+            shadow=_hexf(name, before_c),
         )
         await _write_field(wc, bc)
         final = self._probe(name)
@@ -1197,8 +1207,8 @@ class sep_efuse_lock_slot_matrix_rand_test(sep_base_test):
             ok,
             field=name,
             perm="/".join(perm),
-            shadow=f"0x{_hexw(final)}",
-            exp=f"0x{_hexw(gold)}",
+            shadow=_hexf(name, final, "0x"),
+            exp=_hexf(name, gold, "0x"),
             lock_after_zero=lock_after_zero,
             third_bit_landed=third,
             locks=f"0x{locks_after:016x}",

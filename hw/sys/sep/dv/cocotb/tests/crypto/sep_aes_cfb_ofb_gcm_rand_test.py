@@ -81,7 +81,7 @@ from env.sep_aes_mode_golden import (
     ofb_crypt,
     words_to_bytes,
 )
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_fcov_gate import fcov_present, owner_code
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import ot_rdl_named_codes
@@ -215,7 +215,7 @@ class Plan:
     def describe(self) -> str:
         return (
             f"mode={self.mode} keylen={self.key_bits} dir={self.direction} "
-            f"key={self.key.hex()} iv={self.iv.hex()} data_len={len(self.data)} "
+            f"key_sha={word_digest(self.key_words)} iv={self.iv.hex()} data_len={len(self.data)} "
             f"aad_len={len(self.aad)} bad_phase=0x{self.bad_phase:02x}"
         )
 

@@ -70,6 +70,7 @@ after the lock. CHK-LOCKRT shows the hardware kept the key it was using.
 from __future__ import annotations
 
 import pyuvm
+from env.sep_chk_log import word_digest
 from env.sep_spec_tables import kpv_scrambler_ctrl_mask
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_kpv_scrambler_seq import (
@@ -156,7 +157,8 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         assert key_b_value not in first_words, (
             f"CHK-KEYED FAIL: the same plaintext at logical index {first_logical} "
             f"stored word 0x{key_b_value:08x} under BOTH keys "
-            f"(0x{cfg.key_a:08x} and 0x{cfg.key_b:08x}) -- the data path ignores the key"
+            f"(key_a_sha={word_digest(cfg.key_a)} and key_b_sha={word_digest(cfg.key_b)}) "
+            "-- the data path ignores the key"
         )
         self.logger.info(
             "CHK-KEYED PASS: logical %d key-B word 0x%08x (physical %d) "
@@ -180,11 +182,13 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         # --- CHK-KEYRD / CHK-LOCKRT -------------------------------------------
         assert rep.key_unlocked == cfg.key_b, (
             f"CHK-KEYRD FAIL: before the lock, KPV_SCRAMBLER_KEY read back "
-            f"0x{rep.key_unlocked:08x}, expected the written key 0x{cfg.key_b:08x}. "
+            f"key_sha={word_digest(rep.key_unlocked)}, expected the written key "
+            f"key_sha={word_digest(cfg.key_b)}. "
             "Without this a write-only register would make CHK-SWWEL look locked"
         )
         self.logger.info(
-            "CHK-KEYRD PASS: the key register reads back 0x%08x while unlocked", cfg.key_b
+            "CHK-KEYRD PASS: the key register reads back the written key key_sha=%s while unlocked",
+            word_digest(cfg.key_b),
         )
 
         assert rep.post_lock_round_trip == expected_pt, (
@@ -205,7 +209,7 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         rekey = (~cfg.key_b) & 0xFFFF_FFFF
         assert rep.rekey_round_trip != expected_pt, (
             f"CHK-SWWEL FAIL: control: before the lock, with ENABLE=1, writing key "
-            f"0x{rekey:08x} left logical index {first_logical} reading the plaintext "
+            f"key_sha={word_digest(rekey)} left logical index {first_logical} reading the plaintext "
             f"0x{expected_pt:08x} -- a key write made while enabled does not reach the "
             "datapath, so the post-lock key compare could not fail"
         )
@@ -224,12 +228,12 @@ class sep_km_kpv_scrambler_test(sep_base_test):
             "be set"
         )
         self.logger.info(
-            "CHK-SWWEL PASS: unlocked control: key 0x%08x written with ENABLE=1 moved "
+            "CHK-SWWEL PASS: unlocked control: key key_sha=%s written with ENABLE=1 moved "
             "the round-trip to 0x%08x (plaintext 0x%08x); after the lock, the same key "
             "write left the datapath key unchanged (round-trip 0x%08x) and an ENABLE "
             "clear is refused (CTRL=0x%08x); the KEY register lock itself is not "
             "observable frontdoor",
-            rekey,
+            word_digest(rekey),
             rep.rekey_round_trip,
             expected_pt,
             rep.refused_round_trip,

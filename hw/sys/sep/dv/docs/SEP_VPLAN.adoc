@@ -3224,7 +3224,7 @@ the test does.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |Obfuscation of UIDs and `CLASS_KEY`
 |Does a defined obfuscation protect the UIDs and `CLASS_KEY`, or is the read-lock the only protection?
-|Not observable in DV: the image is a bench draw, so no read shows whether a stored value is obfuscated or how firmware decodes it. `sep_efuse_image_test` logs the shadow words of `CLASS_KEY` and the UID fields beside the staged image words as a bench record (`INFO-EFUSE-OTP-PLAIN`), which shows only that the read path applies no transform.
+|Not observable in DV: the image is a bench draw, so no read shows whether a stored value is obfuscated or how firmware decodes it. `sep_efuse_image_test` compares the shadow words of `CLASS_KEY` and the UID fields with the staged image words and logs the match and the indexes of differing words, not the values, as a bench record (`INFO-EFUSE-OTP-PLAIN`), which shows only that the read path applies no transform.
 |<<sep-vplan-phase3-efuse-lifecycle,eFuse, lifecycle>>
 |UID read-lock and writability
 |`sep_efuse_map.adoc` says that a read-locked UID field loses both writability and software visibility, and the field table of `otp_fuse_controller.adoc` says the two locks act independently. Does a read-lock alone stop programming of the three UID fields (slots 11, 13, 15)? (`sep_efuse_lock_slot_matrix_rand_test` does not draw the lock kind read alone on these slots in its lock layout. At the end of its lock leg it programs the read-lock bit of one unlocked UID slot alone and then a 0 bit of that UID field.)
@@ -3388,7 +3388,7 @@ the test does.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Key-word positions of the DRBG pad
 |Which key-word positions do the DRBG pad words of a short key fill, and in which order do the pad words and the mask words leave the DRBG stream? The text says only that short keys are padded with DRBG words and that an equally sized DRBG mask follows. (hw/ip/key_manager/doc/firmware.adoc, sections "Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)", "DRBG Driver".) The DRBG word count of a short transfer and the padded outputs are the Planned check CHK-PAD of `sep_km_key_transfer_rand_test`; its rounds below the share width do not run.
-|`sep_km_sideload_share_walk_test` logs `OBS-XFER-PAD` (the share XOR words above an n-word OTBN key, n in [1, 11]) as an open question.
+|`sep_km_sideload_share_walk_test` logs `OBS-XFER-PAD` (a SHA-256 digest of the share XOR words above an n-word OTBN key, n in [1, 11], and the positions that are not 0; the words are not logged) as an open question.
 |<<sep-vplan-phase3-key-manager,Key Manager>>
 |Property of a shuffled share order
 |Which property of one shuffled share-write order, or of a set of such orders, is deterministic? The text states a Fisher-Yates shuffle that gives a uniformly random permutation from a PRNG whose state depends on every earlier PRNG call, so every order, the sequential order included, is legal. (hw/ip/key_manager/doc/firmware.adoc, sections "Firmware PRNG", "Register Access Shuffling".) `sep_km_key_transfer_rand_test` grades the bank order of a multi-engine transfer (CHK-ENG-ORDER) and logs the per-bank AW handshakes (`OBS-KM-BUS-AW`). The address set and the last key_valid write of one transfer are its Planned check CHK-DELIV.
@@ -3562,7 +3562,7 @@ feature, and the note says how the test treats the blocked leg.
 * The TIMEOUT_ERR and COUNT_BAD results when a stream error and a timeout expiry fall in one cycle (STREAM_ERR set is stated). (hw/ip/key_manager/doc/architecture.adoc, section "Errors and reset".) `sep_km_drbg_sampler_rand_test` logs them and does not grade them.
 * The precedence of the handover-disabled and zero-size conditions of CMD_SRAM_EXEC. (hw/ip/key_manager/doc/firmware.adoc, section "0x12 - CMD_SRAM_EXEC".)
 * The CMD_SRAM_LOAD_EXEC image ceiling value. `sep_km_handover_rand_test` grades sizes at or above the SRAM size and logs the rest.
-* The read value of a locked KPV_SCRAMBLER_KEY. (hw/ip/key_manager/regs/gen/adoc/km_kpv.adoc, sections "CTRL[64]", "KPV_SCRAMBLER_KEY".) `sep_km_kpv_rand_test` logs it (`OBS-KPV-ACCESS`, `case=scr_key_locked`) and does not grade it.
+* The read value of a locked KPV_SCRAMBLER_KEY. (hw/ip/key_manager/regs/gen/adoc/km_kpv.adoc, sections "CTRL[64]", "KPV_SCRAMBLER_KEY".) `sep_km_kpv_rand_test` logs it (`OBS-KPV-ACCESS`, `case=scr_key_locked`; a non-zero value as a SHA-256 digest only) and does not grade it.
 * The value of OTP_EFUSE_REMAP_BASE. (hw/ip/key_manager/doc/architecture.adoc.) `sep_km_crossbar_efuse_window_rand_test` grades that the base is constant.
 * The OTP readout value before the sense completes, and the length of the OTP change suppression window. (hw/sys/sep/doc/otp_fuse_controller.adoc, section "Fuse Sensing and Boot Sequencing"; hw/ip/key_manager/doc/architecture.adoc, section "OTP Inputs and Readout".) `sep_km_otp_interface_rand_test` logs the KM identity inputs from the release to the sense-done rise (`OBS-OTP-PRESENSE`) and does not grade them.
 * Whether SEP_IRQ_STATUS.flushed_by_km sets at the boot flush of the ROM. (hw/ip/key_manager/regs/gen/adoc/km_mailbox_sep.adoc, section "SEP_IRQ_STATUS".) `sep_km_boot_reset_rand_test` logs it per boot (`OBS-BOOT-FLUSHED-BY-KM`) and does not grade it.

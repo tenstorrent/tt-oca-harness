@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, replace
 
+from env.sep_chk_log import word_digest
 from env.sep_crc_golden import crc8_rohc, crc32c
 from env.sep_seeded_rng import SepSeededRng
 
@@ -399,7 +400,7 @@ class CommandProtocolPlan:
         # Step 14 positive twins.
         self.twin_load_key = _key(rng, 4)
         self.twin_abr_dest = rng.randrange(1, 0x100)
-        self._log("twin_load_key", self.twin_load_key)
+        self._log("twin_load_key_sha", word_digest(self.twin_load_key))
         self._log("twin_abr_dest", self.twin_abr_dest)
 
         self.wrap_carriers = tuple(rng.choice(self.WRAP_CARRIERS) for _ in range(self.WRAP_FRAMES))
@@ -510,7 +511,11 @@ class CommandProtocolPlan:
                     break
         tag = f"pair{idx}_vault"
         self._log(f"{tag}_cmd", f"0x{cmd:02x}")
-        self._log(f"{tag}_payload", payload)
+        if cmd == CMD_KEY_GENERATE:
+            self._log(f"{tag}_payload", payload)
+        else:
+            self._log(f"{tag}_payload", payload[:2])
+            self._log(f"{tag}_key_sha", word_digest(payload[2:]))
         if "len_wire" in d.kinds:
             self._log(f"{tag}_d_plen", d_plen)
         return VaultDraw(cmd, payload, d_plen)
@@ -558,7 +563,10 @@ class CommandProtocolPlan:
             "vf_flip_bit",
             "ack_delay",
         ):
-            self._log(f"{tag}_{name}", getattr(g, name))
+            if name in ("load_key", "h_key"):
+                self._log(f"{tag}_{name}_sha", word_digest(getattr(g, name)))
+            else:
+                self._log(f"{tag}_{name}", getattr(g, name))
         if oflow:
             self._log(f"{tag}_oflow_words", oflow)
         return g

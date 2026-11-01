@@ -28,6 +28,8 @@ import importlib.util
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from env.sep_chk_log import word_digest
+
 WORD = 0xFFFF_FFFF
 
 _KM_REG_PY = (
@@ -358,7 +360,7 @@ def draw_plan(rng) -> KpvPlan:
     wipe_hold = rng.choice(WIPE_HOLD_CHOICES)
     log("scr_slots", scr_slots)
     log("scr_cells", scr_cells)
-    log("kk", f"0x{kk:08x}")
+    log("kk_sha", word_digest(kk))
     log("lock_timing", "before" if lock_before else "after")
     log("wipe_hold_W", wipe_hold)
 
@@ -367,7 +369,7 @@ def draw_plan(rng) -> KpvPlan:
     sram_words = rng.sample(range((SRAM_TEST_BASE - SRAM_BASE) // 4, SRAM_SIZE // 4), N_SRAM_WORDS)
     sram_addrs = [SRAM_BASE + 4 * w for w in sram_words]
     sram_values = distinct_words(rng, N_SRAM_WORDS)
-    log("kk2", f"0x{kk2:08x}")
+    log("kk2_sha", word_digest(kk2))
     log("wipe_slots_free_sealed_retired", list(wipe_slots))
     log("sram_addrs", [f"0x{a:05x}" for a in sram_addrs])
 
@@ -383,8 +385,8 @@ def draw_plan(rng) -> KpvPlan:
             d1 = nz_word(rng)
             d2 = nz_word(rng, (d1,))
         cipher.append((cell, d1, d2))
-    log("cipher_key", f"0x{cipher_key:08x}")
-    log("cipher_key2", f"0x{cipher_key2:08x}")
+    log("cipher_key_sha", word_digest(cipher_key))
+    log("cipher_key2_sha", word_digest(cipher_key2))
     log("cipher_cells", [c for c, _, _ in cipher])
 
     return KpvPlan(

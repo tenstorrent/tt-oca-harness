@@ -69,7 +69,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepVecWatch, VecMark, VecWatchNoRiseError, pic_vector_watch
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_plan import (
     CH_CHIPLET,
     CH_SEC_DIS,
@@ -621,7 +621,8 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         self.chk.obs(
             "FAULT-RESET-WORDS",
             ch=_CH_NAME[ch],
-            words=",".join(f"0x{w:08x}" for w in words),
+            nonzero_at=[k for k, w in enumerate(words) if w],
+            words_sha=word_digest(words),
         )
 
     async def _freeze_cell(self, ch: str) -> None:
@@ -711,12 +712,12 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
             and dig_r == dig_b,
             ch=_CH_NAME[ch],
             role="control" if ch == CH_SIP else "new",
-            digest_before=f"0x{dig_a:064x}",
-            digest_frozen="x" if dig_f is None else f"0x{dig_f:064x}",
+            digest_before_sha=word_digest(dig_a),
+            digest_frozen_sha="x" if dig_f is None else word_digest(dig_f),
             valid_before=val_a,
             valid_frozen="x" if val_f is None else val_f,
-            digest_after_release="none" if dig_r is None else f"0x{dig_r:064x}",
-            digest_b=f"0x{dig_b:064x}",
+            digest_after_release_sha="none" if dig_r is None else word_digest(dig_r),
+            digest_b_sha=word_digest(dig_b),
             frozen_changes=changed,
             window=window,
             resp_ok=int(resp_ok),
