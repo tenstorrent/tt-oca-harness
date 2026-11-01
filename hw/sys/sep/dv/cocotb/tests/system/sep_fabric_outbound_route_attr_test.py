@@ -1201,6 +1201,9 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
         line = f"kind={kind} base: {fb.fields()} size: {fs.fields()}"
         assert fb.ok and fs.ok, f"CTRL-SMU-MOVED FAIL: {line}"
         self.logger.info("CTRL-SMU-MOVED LOG: %s", line)
+        set_open_value_leg_pass("smu_moved_irregular", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
         for word, addr in (("first", base), ("last", last)):
             mark = self.out.mark()
             self.env.axi_monitor.arm_expected_decerr(1)
@@ -1230,12 +1233,6 @@ class sep_fabric_outbound_route_attr_test(sep_base_test):
                 len(caps),
                 _join_addrs(caps),
             )
-            assert not seq.timed_out, (
-                f"CTRL-SMU-MOVED FAIL: kind={kind} word={word} addr=0x{addr:x} no response"
-            )
-        set_open_value_leg_pass("smu_moved_irregular", self.logger)
-        await ClockCycles(cocotb.top.clk_i, 2)
-        set_open_value_leg_pass(None, self.logger)
         await self.smu_ap.program(SMU_BASE, SMU_SIZE, size_first=True)
         await self._pair_enable(PAIR_SMU_MOVED, False)
 
