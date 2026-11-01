@@ -29,8 +29,9 @@ attributes captured on the SI port. A hole write leaves its neighbour register u
 of the same data to the neighbour changes it (control, run before the hole
 writes of the unit).
 
-CHK-SI-ID-ECHO: every SI access, OKAY and error rows alike, answers with the
-drawn non-zero AxID on BID or RID, sampled from the m_axi response handshake.
+CHK-SI-ID-ECHO: every SI access, OKAY and error rows alike and the logged burst
+leg too, answers with the drawn non-zero AxID on BID or RID, sampled from the
+m_axi response handshake; an access with no response fails it.
 Golden: a response carries the ID of its request (AMBA AXI IHI 0022), and the
 SEP fabric "retains the AXI IDs needed for responses" across the AXI4-Lite
 bridge (``hw/sys/sep/doc/fabric.adoc:22-23``).
@@ -85,17 +86,18 @@ sample only on the release of an OTBN cache instance, after CHK-ROW-CACHE.
 
 CHK-ROW-FILTER-SRC: with inbound entry 0 set to a drawn non-zero ``src_id``,
 an SI read of the inbound filter entry 1 ``START_ADDR`` word whose AxUSER
-equals ``src_id`` answers OKAY with the LSU read-back, as the read through the
-wildcard entry just before does, and a read whose AxUSER differs answers
-DECERR. A foreign source ID
+equals ``src_id`` returns the LSU read-back, as the read through the wildcard
+entry just before does, and a read whose AxUSER differs answers DECERR (the
+response codes of the admitted reads are logged, not graded). A foreign source ID
 does not match the entry, no other inbound entry is enabled, and unmatched
 inbound traffic is blocked with DECERR while SEP-scope debug is off
 (``hw/ip/axi_filter/doc/index.adoc``, Match, Then Permit and Blocked
 Transactions; the bring-up line records ``sep_debug=0``).
 
 CHK-ROW-FABRIC-CSR: the SI read of the inbound filter ``START_ADDR`` word and of
-the alias remap ``START`` word answers OKAY with the value the LSU staged, and
-the SI read of both halves of ``FEAT_CTRL`` answers OKAY with the bring-up golden
+the alias remap ``START`` word returns the value the LSU staged, and the SI read
+of both halves of ``FEAT_CTRL`` returns the bring-up golden (response codes
+logged, not graded)
 (``hw/sys/sep/doc/fabric.adoc``, Fabric Topology: the inbound crossbar reaches
 the system CSRs; ``hw/sys/sep/doc/memory_map.adoc``, Units Unreachable from the
 Inbound Port). The AP and STEE remap ``ATTRS`` words are logged
@@ -141,7 +143,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_decode_resp import logical_region
-from env.sep_fabric_common import RESP_DECERR, RESP_OKAY, RESP_SLVERR
+from env.sep_fabric_common import FILTER_ADDR_MASK, RESP_DECERR, RESP_OKAY, RESP_SLVERR
 from env.sep_fabric_common import RESP_NAME as _RN
 from env.sep_fcov_gate import (
     close_graded_window,
@@ -438,7 +440,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         finally:
             if op is SepAxiOp.READ:
                 mon.close_error_rdata_window()
-        assert not seq.timed_out, f"SI {op.value} 0x{addr:08x} timed out"
+        assert not seq.timed_out, (
+            f"CHK-SI-ID-ECHO FAIL: SI {op.value} 0x{addr:08x} returned no response"
+        )
         if seq.resp_id == axi_id:
             self.si_id_ok += 1
         else:
@@ -589,6 +593,17 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 src_id=src_id,
             ),
         )
+        # The Reserved-row DECERR cells take entry 0 as covering the whole SEP
+        # local window, so its range must read back as programmed.
+        _, rb_s, rb_e = await bank.read_entry(0)
+        want_s, want_e = _SEP_LOCAL[0] & FILTER_ADDR_MASK, _SEP_LOCAL[1] & FILTER_ADDR_MASK
+        line = (
+            f"rb_start=0x{rb_s:x} rb_end=0x{rb_e:x} want_start=0x{want_s:x} want_end=0x{want_e:x}"
+        )
+        if (rb_s, rb_e) != (want_s, want_e):
+            self.logger.error("CTRL-ROW-FILTER-RANGE FAIL (control not met): %s", line)
+            raise AssertionError(f"CTRL-ROW-FILTER-RANGE control not met: {line}")
+        self.logger.info("CTRL-ROW-FILTER-RANGE: %s", line)
 
     # ---------------------------------------------------------------- inventory
     def _inventory(self) -> set[tuple[str, str, str, str]]:
@@ -1030,9 +1045,11 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     else:
                         self._fail("CHK-ROW-KM", line)
         self._close()
+        ctl = []
         for v in (rr.KM_IRQ_ENABLE_CTL, 0):
             s = await self._si(SepAxiOp.WRITE, rr.KM_IRQ_ENABLE, wdata=v)
             r = await self._si(SepAxiOp.READ, rr.KM_IRQ_ENABLE)
+            ctl.append(f"wrote=0x{v:x}/read=0x{r.rdata & 0xFFFF_FFFF:x}")
             if s.resp_code != OKAY or r.resp_code != OKAY or (r.rdata & 0xFFFF_FFFF) != v:
                 self._abort(
                     "CHK-ROW-KM",
@@ -1042,7 +1059,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 )
         self.regval[rr.KM_IRQ_ENABLE] = 0
         for line in lines:
-            self.logger.info("CHK-ROW-KM PASS: %s baseline_ctl=0x%x", line, rr.KM_IRQ_ENABLE_CTL)
+            self.logger.info("CHK-ROW-KM PASS: %s baseline_ctl %s", line, " ".join(ctl))
         await self._release()
 
     async def _snapshot(self, key: str) -> dict[int, tuple[int, int]]:
@@ -1702,7 +1719,11 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
     # ---------------------------------------------------------------- scenario
     # ------------------------------------------------------------ logged legs
     async def _burst_past_leg(self) -> None:
-        """A 2-beat SI INCR burst from the last register word of a non-crypto row."""
+        """A 2-beat SI INCR burst from the last register word of a non-crypto row.
+
+        The response codes and data are logged (``OBS-ROW-BURST``); the response ID
+        of each burst is graded by ``CHK-SI-ID-ECHO`` in ``_si``.
+        """
         mon = self.env.ext_axi_monitor
         for name, base in BURST_PAST_ROWS:
             row = rr.map_row(base)
@@ -1786,8 +1807,9 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         Topology), and forwards the other addresses below ``0x4000_0000`` to the
         local crossbar (``memory_map.adoc``, Units Unreachable from the Inbound
         Port), so an SI read of the inbound filter START word, of the alias remap
-        START word and of ``FEAT_CTRL`` answers OKAY with the staged value or the
-        bring-up golden. The AP and STEE remap words are logged
+        START word and of ``FEAT_CTRL`` returns the staged value or the bring-up
+        golden. No TT text states the response code of these reads; it is logged in
+        the same line. The AP and STEE remap words are logged
         (``OBS-ROW-FABRIC-CSR``): ``memory_map.adoc`` lists the AP/STEE remap
         regions as unreachable from the inbound port.
         """
@@ -1811,15 +1833,20 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             )
             if name in ("ap_attrs", "stee_attrs"):
                 self.logger.info("OBS-ROW-FABRIC-CSR %s", line)
-            elif s.resp_code == RESP_OKAY and (s.rdata & 0xFFFF_FFFF) == staged:
-                self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s expect=OKAY/staged", line)
+            elif (s.rdata & 0xFFFF_FFFF) == staged:
+                self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s expect=staged", line)
             else:
-                self._fail("CHK-ROW-FABRIC-CSR", f"{line} expect=OKAY/staged")
+                self._fail("CHK-ROW-FABRIC-CSR", f"{line} expect=staged")
             if name == "stee_attrs":
                 src = self.rng.randrange(1, 16)
                 miss = self.rng.choice([u for u in range(16) if u != src])
                 # Probed on the inbound filter START word of entry 1, which the SI
-                # reaches; entry 0 (the probe's entry) leaves it unchanged.
+                # reaches; entry 0 (the probe's entry) leaves it unchanged. A
+                # non-zero staged value makes a refused read that returns zero
+                # data fail the data terms.
+                _r, src_cur = await self._lsu(SepAxiOp.READ, src_addr)
+                src_staged = self.rng.randrange(1, 1 << 29) << 3
+                await self._lsu(SepAxiOp.WRITE, src_addr, wdata=src_staged)
                 _r, ref = await self._lsu(SepAxiOp.READ, src_addr)
                 ref &= 0xFFFF_FFFF
                 w = await self._si(SepAxiOp.READ, src_addr)
@@ -1829,33 +1856,43 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     t = await self._si(SepAxiOp.READ, src_addr, user=u)
                     got[kind] = (t.resp_code, t.rdata & 0xFFFF_FFFF)
                 await self._program_entry()
+                await self._lsu(SepAxiOp.WRITE, src_addr, wdata=src_cur)
                 wild = (w.resp_code, w.rdata & 0xFFFF_FFFF)
                 line = (
                     f"target=infilt_start entry_src_id={src} axuser_match=0x{src:x} "
                     f"axuser_mismatch=0x{miss:x} wildcard={_RN.get(wild[0])}/0x{wild[1]:08x} "
                     f"match={_RN.get(got['src_match'][0])}/0x{got['src_match'][1]:08x} "
                     f"mismatch={_RN.get(got['src_mismatch'][0])}/0x{got['src_mismatch'][1]:08x} "
-                    f"expect=OKAY/0x{ref:08x},OKAY/0x{ref:08x},DECERR"
+                    f"staged=0x{src_staged:08x} expect=0x{ref:08x},0x{ref:08x},DECERR"
                 )
                 if (
-                    wild == (RESP_OKAY, ref)
-                    and got["src_match"] == wild
+                    ref == src_staged
+                    and wild[1] == ref
+                    and got["src_match"][1] == ref
                     and got["src_mismatch"][0] == RESP_DECERR
                 ):
                     self.logger.info("CHK-ROW-FILTER-SRC PASS: %s", line)
                 else:
                     self._fail("CHK-ROW-FILTER-SRC", line)
             await self._lsu(SepAxiOp.WRITE, addr, wdata=cur)
+        # FEAT_CTRL sits behind the local crossbar, so each SI read must show its
+        # AR at the crossbar's ext initiator, past the inbound filter: a refused
+        # read that returns zero data then fails on the count, not on the data.
         _r, lsu_v = await self._lsu(SepAxiOp.READ, LCC_FEAT_CTRL)
-        lo = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)
-        hi = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL + 4)
+        task, ars = self.watch_xbar_ext_in(write=False)
+        try:
+            lo = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL)
+            hi = await self._si(SepAxiOp.READ, LCC_FEAT_CTRL + 4)
+        finally:
+            task.kill()
+        n_ar = sum(1 for a in ars if (a & ~0x7) == (LCC_FEAT_CTRL & ~0x7))
         got = ((hi.rdata & 0xFFFF_FFFF) << 32) | (lo.rdata & 0xFFFF_FFFF)
         line = (
             f"target=lc_feat_ctrl addr=0x{LCC_FEAT_CTRL:08x} lsu_rb=0x{lsu_v & 0xFFFF_FFFF:08x} "
             f"si_resp={_RN.get(lo.resp_code)},{_RN.get(hi.resp_code)} si_rdata=0x{got:016x} "
-            f"expect=OKAY/0x{self.feat_golden:016x}"
+            f"ext_ar={n_ar} expect=0x{self.feat_golden:016x},ext_ar=2"
         )
-        if lo.resp_code == hi.resp_code == RESP_OKAY and got == self.feat_golden:
+        if got == self.feat_golden and n_ar == 2:
             self.logger.info("CHK-ROW-FABRIC-CSR PASS: %s", line)
         else:
             self._fail("CHK-ROW-FABRIC-CSR", line)

@@ -32,7 +32,7 @@ after it lands RMA_SIP without a reset (CHK-TRANSIENT-AFTER-BLOCK): the update
 follows each token match (``otp_fuse_controller.adoc:232-238``) and the block
 covers only a SIP match made while the chiplet match is held. The DUT keeps the
 start state, so this check is expected to fail until the RTL ticket on the
-once-per-reset transient update flags is fixed (Issue: pending). A cold reset
+once-per-reset transient update flags is fixed (#3527). A cold reset
 follows; the twin then presents the
 SIP match alone from the sensed start state and lands RMA_SIP, and a second
 cold reset restores the sensed state. The lone SIP match and the cold reset
@@ -69,7 +69,9 @@ a later SIP step; leg S holds it on purpose.
 Checkers: CHK-TRANSIENT, CHK-TRANSIENT-NOBURN, CHK-TRANSIENT-RESET (every
 leaf); CHK-TRANSIENT-SIMUL (leg S); CHK-PROG-LC (leg B). Controls: CTRL-WINDOW-CTL,
 CTRL-TRANSIENT-EN (the sensed ``TRANSIENT_RMA_EN`` shadow equals the staged
-enable, every leaf), CTRL-PROG-LC-ORDER-MATCH. A failing hook control
+enable, every leaf), CTRL-PROG-LC-ORDER-MATCH, CTRL-PROG-LC-GO (leg B: after each
+refused program, ``efuse_addr``, ``efuse_data`` and ``program_enable`` of
+``EFUSE_PROGRAM_CTRL`` read back as the go wrote them). A failing hook control
 logs ``CHK-HOOK FAIL`` and ends the leaf. A match that does not end with its
 Mismatch go before a cold reset ends the leaf at that control or check: the
 next sense would load the transient state, and the graded failure is the
@@ -164,6 +166,13 @@ _PG = "EFUSE_PROGRAM_CTRL"
 _PG_BUSY = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_busy")
 _PG_DONE = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_done")
 _PG_STATUS = EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_status")
+# The sw=rw request fields of EFUSE_PROGRAM_CTRL read back as written
+# (efuse_interface_ctrl.rdl); efuse_program_go is a single pulse and is not read.
+_PG_REQ = (
+    EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_addr")
+    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "efuse_data")
+    | EFUSE_INTERFACE_CTRL.field_mask(_PG, "program_enable")
+)
 _ST = "EFUSE_INTERFACE_CTRL_STATUS"
 _REQ_ERR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error")
 _REQ_ERR_CLR = EFUSE_INTERFACE_CTRL.field_mask(_ST, "efuse_req_error_clear")
@@ -362,12 +371,22 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _present(self, ch: str, token: int, until: int, label: str) -> int | None:
         """Write ``token`` to ``ch`` in a drawn word order, go, poll until ``until``.
 
-        Returns the code, or None when the bounded poll ends first. The code before
-        every go of this leaf differs from ``until``, so a go that has no effect
-        times the poll out.
+        Returns the code, or None when the bounded poll ends first. A code that
+        already equals ``until`` before the go fails the leaf, so a go that has no
+        effect times the poll out.
         """
         order = self.plan.draw.word_order(label)
         await write_token(self.fd.wr, ch, token, order)
+        pre = await self.fd.match(ch)
+        if pre == until:
+            self._close_window()
+            hook_fail(
+                self.chk,
+                reason="code_before_go_equals_until",
+                ch=_CH_NAME[ch],
+                label=label,
+                code=f"0x{pre:02x}",
+            )
         await token_go(self.fd.wr, ch)
         code, _n = await poll_code(self.fd.rd, ch, max_reads=_POLL_READS, until=until)
         return code
@@ -393,15 +412,18 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _program(self, bit_addr: int) -> dict[str, int]:
         """Program one bit with the full W wait, then read status and the OTP word.
 
-        Two writes: enable, data and address, then the same with the go bit. The
-        command record runs from the go write to the end of W. ``program_enable`` is
+        Two writes: enable and address with data 0 and no go, then the same with
+        data 1 and the go bit. The data bit differs between the two writes, so the
+        request fields read back show the go write landed; the first write has no
+        go and starts no program (``efuse_interface_ctrl.rdl``). The command record
+        runs from the go write to the end of W. ``program_enable`` is
         dropped before the direct read, so the read interface reaches the bank. A
         refused program sets the sticky ``efuse_req_error``, which holds off every
         later read and program request until software writes
         ``efuse_req_error_clear`` (``efuse_interface_ctrl.adoc``); the flag is
         returned (logged, not graded) and cleared before the direct read.
         """
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=0))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, data=0, go=0))
         mark = self.shim.mark()
         await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=1))
         await ClockCycles(cocotb.top.clk_i, self.w)
@@ -421,10 +443,25 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
             "busy": int(bool(pctl & _PG_BUSY)),
             "done": int(bool(pctl & _PG_DONE)),
             "pstatus": int(bool(pctl & _PG_STATUS)),
+            "pctl": pctl,
             "req_err": req_err,
             "word": word,
             "bit": (word >> (bit_addr % 32)) & 1,
         }
+
+    def _go_issued(self, bit: int, bit_addr: int, res: dict) -> bool:
+        """The request fields of a refused program read back as the go wrote them.
+
+        ``efuse_data`` is 0 before the go write and 1 in it, so a lost go write fails.
+        """
+        exp = program_ctrl_word(bit_addr, go=0)
+        return self._ctrl(
+            "PROG-LC-GO",
+            res["pctl"] & _PG_REQ == exp,
+            bit=bit,
+            program_ctrl=f"0x{res['pctl']:08x}",
+            exp_req=f"0x{exp:08x}",
+        )
 
     def _golden_with(self, otp_word: int) -> None:
         """Make the post-sense golden carry the current OTP LC_STATE word and spare bit."""
@@ -794,6 +831,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         # Bit 1 with only RMA_CHIPLET matched: refused.
         self._leg_b_code("b1.chp", await self._match(CH_CHIPLET, "b1.chp"), CODE_MATCH)
         ref1 = await self._program(_LC_BIT1)
+        go1 = self._go_issued(1, _LC_BIT1, ref1)
         shadow_ref1 = await self.fd.rd(shadow_addr("LC_STATE"))
         self._leg_b_code(
             "b1.chp_end", await self._mismatch(CH_CHIPLET, "b1.chp_end"), CODE_MISMATCH
@@ -824,7 +862,8 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         )
         ref1_graded = self._grade(
             "PROG-LC",
-            ref1["cmd"] == 0
+            go1
+            and ref1["cmd"] == 0
             and ref1["cmd_all"] == 0
             and ref1["word"] == staged_word
             and shadow_ref1 == shadow0
@@ -877,6 +916,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         close_graded_window(self.logger)
         ref2 = await self._program(_LC_BIT2)
         self._reopen_window()
+        go2 = self._go_issued(2, _LC_BIT2, ref2)
         shadow_ref2 = await self.fd.rd(shadow_addr("LC_STATE"))
 
         # Bit 2 with RMA_CHIPLET matched: lands.
@@ -905,6 +945,7 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         ref2_graded = self._grade(
             "PROG-LC",
             chp_held != CODE_MATCH
+            and go2
             and ref2["cmd"] == 0
             and ref2["cmd_all"] == 0
             and ref2["word"] == otp1

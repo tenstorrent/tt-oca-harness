@@ -11,8 +11,12 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 * CHK-NONE-BEFORE-PROGRAM (firmware) no delivery with the reset meie and meipl.
 * CHK-LEVEL-SWEEP (firmware) each of the 16 ``meipl`` encodings written to the
                  drawn sweep source reads back as written, in both priority
-                 orders (``el2_pic.adoc``: ``intpriority`` 3:0 is RW); the
-                 host requires the 32 records at the drawn source.
+                 orders (``el2_pic.adoc``: ``intpriority`` 3:0 is RW); each
+                 cell first writes the complement and reads it back
+                 (``pre_read``), and ``mpiccfg.priord`` reads back the order
+                 of the cell (``priord_rd``; ``el2_pic.rdl``: ``priord`` is
+                 RW). The host requires the 32 records at the drawn source
+                 with ``priord_rd`` equal to ``priord``.
 * CHK-GATED      (firmware) no delivery through a closed gate (meie 0, never
                  priority, mstatus.MIE 0); opening the gate delivers the same
                  source once and no other. A source held behind ``meie`` 0
@@ -40,26 +44,31 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
 * CHK-NEVER-MEIP (firmware) each enabled, asserted source at the never value
                  reads 1 in ``meip``, in the gate corner and the never corner
                  of every round (VeeR EL2 PRM ``docs/source/interrupts.md:159``
-                 at the Bender pin: step 5, the pending bit is visible in
+                 at the ``veer_el2`` ``rev`` in ``Bender.yml``, upstream
+                 ``tt-Cores-VeeR-EL2``: step 5, the pending bit is visible in
                  ``meipX``, comes before the priority step 6; ``:500``: each
                  bit is the pending indication of one source). Control:
                  ``CTRL-PICIO`` of the same round.
 * CHK-FLIP       (host) after priord flips and the raw priorities are mirrored
-                 the handlers run in the same order, from the same winner.
+                 the handlers run in the same order, from the same winner;
+                 ``mpiccfg.priord`` reads back the flipped order
+                 (``priord_rd`` equal to ``priord_to``).
 * CHK-MIE-LIVE, CHK-MIP-IDLE, CHK-NO-TIMER-TRAP, CHK-CONTROL (firmware) the
                  timer and software interrupt paths stay idle while the trap
                  path is live.
 * CHK-THRESHOLD  (firmware) standard order, ``meipt`` = T drawn from 1 to 14:
                  the source at level T is pending (its ``meip`` bit reads 1)
                  with no delivery for a hold window of 32 core clocks or more
-                 (``hold_clk``); at level T + 1 it delivers once (VeeR EL2
+                 (``hold_clk``), and its ``meipl`` reads back T after the
+                 write; at level T + 1 it delivers once (VeeR EL2
                  PRM section 8.12.5: delivery needs a priority strictly above
                  the threshold).
 * CHK-NEST       (firmware) the handler of source A (level L drawn from 1 to
                  14) copies ``meicidpl`` into ``meicurpl``, saves ``mepc`` and
                  ``mstatus`` and sets mstatus.MIE: source B at level L stays
                  pending with no entry for a hold window of 32 core clocks or
-                 more, at level L + 1 it nests once;
+                 more with its ``meipl`` read back at L, at level L + 1 it
+                 nests once;
                  ``meicidpl`` reads L with no ``meicpct`` write (fast
                  interrupt redirect captures the claim ID and level pair,
                  PRM sections 8.6.1, 8.8, 8.12.9, 8.12.10;
@@ -454,9 +463,11 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         )
         return first == exp and ids == order, body, order
 
-    def _flip_verdict(self, i: int, fids: list[int]) -> tuple[bool, str]:
-        """CHK-FLIP of round ``i``: (pass, body)."""
+    def _flip_verdict(self, i: int, kv: dict) -> tuple[bool, str]:
+        """CHK-FLIP of round ``i`` from its flip INFO-ORDER line: (pass, body)."""
         rd = self.tcfg.rounds[i]
+        fids = _ids(kv.get("ids", ""))
+        priord_rd = int(kv["priord_rd"]) if "priord_rd" in kv else None
         raws = rd.raw_map()
         exp = winner(raws, rd.priord)
         to = rd.priord ^ 1
@@ -466,10 +477,11 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         ffirst = fids[0] if fids else None
         body = _fmt(
             f"seed={self.tcfg.seed} round={i} priord_from={rd.priord} priord_to={to} "
-            f"first={ffirst} exp={exp_f} raw_to={mraw} order={','.join(str(x) for x in fids)} "
+            f"priord_rd={priord_rd} first={ffirst} exp={exp_f} raw_to={mraw} order={','.join(str(x) for x in fids)} "
             f"exp_order={','.join(str(x) for x in order_f)}"
         )
-        return ffirst == exp_f and exp_f == exp and fids == order_f, body
+        ok = priord_rd == to and ffirst == exp_f and exp_f == exp and fids == order_f
+        return ok, body
 
     def _chk_order(self) -> int:
         seed = self.tcfg.seed
@@ -490,7 +502,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             self.logger.info("CHK-WINNER PASS %s", body)
             n += 1
             ties += int(_has_top_tie(self.tcfg.rounds[i].raw_map(), self.tcfg.rounds[i].priord))
-            ok, fbody = self._flip_verdict(i, _ids(flips[i].get("ids", "")))
+            ok, fbody = self._flip_verdict(i, flips[i])
             if not ok:
                 raise AssertionError(f"CHK-FLIP FAIL {fbody}")
             self.logger.info("CHK-FLIP PASS %s", fbody)
@@ -557,7 +569,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             return False
         if not self._winner_verdict(i, _ids(wins[0].get("ids", "")))[0]:
             return False
-        return self._flip_verdict(i, _ids(flips[0].get("ids", "")))[0]
+        return self._flip_verdict(i, flips[0])[0]
 
     async def _label_follower(self) -> None:
         """Write pic_fw_pass from the console: the drop bit at each ``M G``
@@ -742,10 +754,10 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             }
         )
         sweep = sorted(
-            (int(r.kv["src"]), int(r.kv["priord"]), int(r.kv["wrote"]))
+            (int(r.kv["src"]), int(r.kv["priord"]), int(r.kv["priord_rd"]), int(r.kv["wrote"]))
             for r in self.con.records("CHK-LEVEL-SWEEP")
         )
-        want_sweep = [(self.tcfg.sweep, p, v) for p in range(2) for v in range(16)]
+        want_sweep = [(self.tcfg.sweep, p, p, v) for p in range(2) for v in range(16)]
         if sweep != want_sweep:
             raise AssertionError(f"CHK-LEVEL-SWEEP FAIL host: cells {sweep} != drawn {want_sweep}")
         self._chk_legs()

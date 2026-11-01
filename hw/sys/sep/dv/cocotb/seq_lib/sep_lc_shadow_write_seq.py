@@ -45,16 +45,15 @@ LCC_FEAT_CTRL_HI = LCC_FEAT_CTRL + _FEAT_CTRL_WIDTH // 16
 class SepLcShadowWriteSeq(uvm_sequence):
     """Write ``wdata`` to the LC_STATE shadow word; require ``expected_raw``.
 
-    ``expected_raw`` None reads the word and FEAT_CTRL back with no expected value;
-    the caller grades them. ``refused`` marks a write that a token gate or the
-    terminal rule refuses: no text states the response of such a write, so the
-    scoreboard does not grade it and the caller logs ``write_resp``.
+    ``refused`` marks a write that a token gate or the terminal rule refuses: no
+    text states the response of such a write, so the scoreboard does not grade it
+    and the caller logs ``write_resp``.
     """
 
     def __init__(
         self,
         wdata: int,
-        expected_raw: int | None,
+        expected_raw: int,
         expected_upper: int | None,
         *,
         sip_dis: int,
@@ -68,7 +67,7 @@ class SepLcShadowWriteSeq(uvm_sequence):
     ) -> None:
         super().__init__(name)
         self.wdata = wdata & 0xFFFF_FFFF
-        self.expected_raw = None if expected_raw is None else expected_raw & 0xF
+        self.expected_raw = expected_raw & 0xF
         self.expected_upper = (
             None if expected_upper is None else expected_upper & LC_STATE_UPPER_MASK
         )
@@ -110,20 +109,16 @@ class SepLcShadowWriteSeq(uvm_sequence):
     async def body(self) -> None:
         expected_word = (
             None
-            if self.expected_upper is None or self.expected_raw is None
+            if self.expected_upper is None
             else self.expected_upper | lc_encode(self.expected_raw)
         )
-        feat = (
-            None
-            if self.expected_raw is None
-            else feat_ctrl_expected(
-                self.expected_raw,
-                self.sip_dis,
-                self.sys_dis,
-                demote_1=self.demote_1,
-                demote_2=self.demote_2,
-                sec_dis=self.sec_dis,
-            )
+        feat = feat_ctrl_expected(
+            self.expected_raw,
+            self.sip_dis,
+            self.sys_dis,
+            demote_1=self.demote_1,
+            demote_2=self.demote_2,
+            sec_dis=self.sec_dis,
         )
 
         if self.do_write:
@@ -144,10 +139,7 @@ class SepLcShadowWriteSeq(uvm_sequence):
         feat_lo = int(
             (
                 await self._access(
-                    SepAxiOp.READ,
-                    LCC_FEAT_CTRL,
-                    expected=None if feat is None else feat & 0xFFFF_FFFF,
-                    label="rd_feat_lo",
+                    SepAxiOp.READ, LCC_FEAT_CTRL, expected=feat & 0xFFFF_FFFF, label="rd_feat_lo"
                 )
             ).rdata
         )
@@ -156,7 +148,7 @@ class SepLcShadowWriteSeq(uvm_sequence):
                 await self._access(
                     SepAxiOp.READ,
                     LCC_FEAT_CTRL_HI,
-                    expected=None if feat is None else (feat >> 32) & 0xFFFF_FFFF,
+                    expected=(feat >> 32) & 0xFFFF_FFFF,
                     label="rd_feat_hi",
                 )
             ).rdata

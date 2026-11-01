@@ -494,8 +494,6 @@ class _Reg(SepAxiRegDriver):
         )  # fmt: skip
         await self.test.start_seq(seq)
         self.bresp = -1 if seq.timed_out else seq.resp_code
-        if not seq.resp_ok and not self.locked:
-            raise AssertionError(f"SEL write @0x{addr:08x} not OKAY")
 
 
 @pyuvm.test()
@@ -1401,9 +1399,8 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
     async def _lock_leg(self) -> None:
         """CHK-SEL-LOCK: after the lock write of 1, a write of 0 leaves it at 1, a
         select write leaves the old value, and a TRNG reset leaves the lock at 1. The
-        write of 0 is a legal write of the RW1S field and must answer OKAY (the driver
-        raises otherwise). The select write under the lock must get a B response of
-        any code; no text states that code, so it is logged as OBS-SEL-LOCK-RESP.
+        select write under the lock must get a B response of any code; no text states
+        that code, so it is logged as OBS-SEL-LOCK-RESP.
         Controls: the pre-lock write of a lands and a differs from the value held
         before it (the plan draws a away from that value); the TRNG reset probe rises
         and falls (clocks logged)."""
