@@ -316,12 +316,12 @@ the case draws keep their values.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-SRAM-IN-STIM
-|Each AW / AR handshake on `m_axi` carries the drawn ID, address, AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS, AxREGION and AxUSER, so the verdicts are about the attributes the log names.
+|CTRL-SRAM-IN-STIM
+|Reach line of the case checks, not a check: each AW / AR handshake on `m_axi` carries the drawn ID, address, AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS, AxREGION and AxUSER, and every W beat of a write carries the drawn WUSER up to WLAST, so the verdicts are about the attributes the log names. Otherwise the leaf fails.
 |CHK-SRAM-IN-WRITE
 |Every inbound write answers OKAY with BID equal to AWID.
 |CHK-SRAM-IN-READ
-|Every beat of each burst read answers OKAY (EXOKAY allowed on an exclusive read), RLAST sampled on the `m_axi` R channel falls on the last beat and on no other, RID equals ARID, and every beat equals the byte model.
+|Every beat of each burst read answers OKAY (EXOKAY allowed on an exclusive read) and RLAST falls on the last beat and on no other, both sampled per beat on the `m_axi` R channel, RID equals ARID, and every beat equals the byte model.
 |CHK-SRAM-IN-STRB
 |On the overlay's first and last beats, the strobed bytes hold the overlay and the unstrobed bytes keep the burst data.
 |CHK-SRAM-IN-XPATH
@@ -334,7 +334,7 @@ the case draws keep their values.
 
 *Pass Criteria*: Every named checker PASSes. After the last case the test fails once if any data compare missed, naming each of CHK-SRAM-IN-READ, CHK-SRAM-IN-STRB and CHK-SRAM-IN-XPATH that recorded a mismatch. `UVM_ERROR` is 0.
 
-*Not claimed*: per-beat RRESP. The VIP folds a burst's responses into one code, any non-OKAY beat winning, so a burst with one error beat fails but the beat is not named. Exclusive-write semantics: AWLOCK of the cases stays 0, because an exclusive write a slave refuses leaves memory unchanged and the SEP documents do not state whether SRAM supports exclusive access.
+*Not claimed*: Exclusive-write semantics: AWLOCK of the cases stays 0, because an exclusive write a slave refuses leaves memory unchanged and the SEP documents do not state whether SRAM supports exclusive access.
 
 '''''
 
