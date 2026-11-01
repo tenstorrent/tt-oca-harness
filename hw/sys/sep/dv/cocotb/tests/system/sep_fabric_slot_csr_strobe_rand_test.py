@@ -43,6 +43,14 @@ Checkers:
                    START_ADDR and one END_ADDR write.
   CHK-SLOT-FINAL   every register of every slot still holds its model value.
 
+Logged, not graded: after the final walk, a read and a write of drawn writable
+registers of the alias and output-remap slots carry a drawn AxPROT and an
+AxCACHE other than the VIP default 0b0011, on a seeded stream of their own so
+the sweep draws keep their values. No specification states an AxPROT or AxCACHE
+rule at these registers. CTRL-SLOT-PROT: the s_axi handshake of each access
+carried the drawn AxPROT and AxCACHE. OBS-SLOT-PROT: the response of each access
+and the value a read with the default attributes returns after the write.
+
 FCOV: owner window of this leaf (sep_filter_match_cg.cp_locked_range_write)
 opens for one refused START_ADDR or END_ADDR write and the reads after it at
 a time, after the whole-register read before it matched the model. The held
@@ -57,12 +65,40 @@ no_cpu / +skip_fuse_sense.
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
-from env.sep_fcov_gate import close_graded_window
+from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_axi_agent import SepAxiOp
+from env.sep_fcov_gate import close_graded_window, set_open_value_leg_pass
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
-from seq_lib.sep_fabric_slot_csr_strobe_seq import RANGE_REGS, SepFabricSlotCsrStrobe
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_fabric_slot_csr_strobe_seq import (
+    RANGE_REGS,
+    RESP_DECERR,
+    RESP_NAME,
+    SepFabricSlotCsrStrobe,
+)
 
 TEST = "sep_fabric_slot_csr_strobe_rand_test"
+# Seeded stream of the drawn-attribute accesses.
+_PROT_SALT = 0x5107_9907
+PROT_REGS = 4
+# AxCACHE the VIP drives when a sequence names none (env/sep_axi_agent.py).
+VIP_CACHE = 0b0011
+
+
+async def _capture_attrs(channel: str) -> tuple[int, int]:
+    """(AxPROT, AxCACHE) of the next ``channel`` handshake on the s_axi pins."""
+    dut = cocotb.top
+    valid = getattr(dut, f"s_axi_{channel}valid")
+    ready = getattr(dut, f"s_axi_{channel}ready")
+    prot = getattr(dut, f"s_axi_{channel}prot")
+    cache = getattr(dut, f"s_axi_{channel}cache")
+    while True:
+        await RisingEdge(dut.clk_i)
+        if valid.value == 1 and ready.value == 1:
+            return int(prot.value), int(cache.value)
 
 
 @pyuvm.test()
@@ -246,3 +282,65 @@ class sep_fabric_slot_csr_strobe_rand_test(sep_base_test):
             n_regs,
             len(sweep.slots),
         )
+        await self._prot_leg(sweep)
+
+    async def _ungraded(self, reg, op: SepAxiOp, data: int, **kw) -> SepAxiAccessSeq:
+        """One 8-byte access whose response the leaf logs, not grades."""
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        if op is SepAxiOp.READ:
+            kw["allow_ungraded_read_resp"] = True
+        else:
+            kw["allow_unverified_write_resp"] = True
+        seq = SepAxiAccessSeq(
+            f"slot_prot_{reg.bank}{reg.slot}",
+            op=op,
+            addr=reg.addr,
+            wdata=data,
+            length=8,
+            size=3,
+            **kw,
+        )
+        await self.start_seq(seq)
+        if seq.resp_code != RESP_DECERR:
+            mon.release_expected_decerr(1)
+        return seq
+
+    async def _prot_leg(self, sweep: SepFabricSlotCsrStrobe) -> None:
+        """Drawn AxPROT and AxCACHE on writable alias and output-remap registers."""
+        rng = SepSeededRng(self.random_seed() ^ _PROT_SALT)
+        pool = [r for s in sweep.slots if not s.is_filter for r in s.regs.values() if r.rw_mask]
+        bad = []
+        obs = []
+        for reg in [rng.choice(pool) for _ in range(PROT_REGS)]:
+            # The guarded field (alias region valid) stays 0, so no write
+            # remaps the accesses that follow.
+            data = rng.getrandbits(64) & reg.rw_mask & ~reg.guard_mask
+            for op in (SepAxiOp.READ, SepAxiOp.WRITE):
+                prot = rng.getrandbits(3)
+                cache = rng.choice([c for c in range(16) if c != VIP_CACHE])
+                cap = cocotb.start_soon(_capture_attrs("ar" if op is SepAxiOp.READ else "aw"))
+                seq = await self._ungraded(reg, op, data, prot=prot, attrs={"cache": cache})
+                seen = cap.result() if cap.done() else None
+                cap.cancel()
+                if seen != (prot, cache):
+                    bad.append(f"{reg.tag} {op.value} seen={seen} drawn={(prot, cache)}")
+                val = f"rdata=0x{seq.rdata:016x}" if op is SepAxiOp.READ else f"wdata=0x{data:016x}"
+                obs.append(
+                    f"reg={reg.tag} addr=0x{reg.addr:08x} op={op.value} prot=0b{prot:03b} "
+                    f"cache=0b{cache:04b} resp={RESP_NAME.get(seq.resp_code, seq.resp_code)} {val}"
+                )
+            rb = await self._ungraded(reg, SepAxiOp.READ, 0)
+            obs.append(
+                f"reg={reg.tag} addr=0x{reg.addr:08x} op=readback attrs=default "
+                f"resp={RESP_NAME.get(rb.resp_code, rb.resp_code)} rdata=0x{rb.rdata:016x} "
+                f"wdata=0x{data:016x}"
+            )
+        line = f"accesses={2 * PROT_REGS} mismatches={len(bad)}"
+        assert not bad, f"CTRL-SLOT-PROT FAIL: {line}: " + "; ".join(bad[:4])
+        self.logger.info("CTRL-SLOT-PROT LOG: %s; each handshake carried the drawn attrs", line)
+        set_open_value_leg_pass("slot_csr_prot_drawn", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        for text in obs:
+            self.logger.info("OBS-SLOT-PROT %s", text)

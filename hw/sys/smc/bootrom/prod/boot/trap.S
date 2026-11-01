@@ -91,5 +91,10 @@ generic_trap_fail:
     sd t6, 0(t5)
 
 trap_infinite_loop:
-    j trap_infinite_loop
+    # Hart 0 parks so that the SEP can reset it without losing SRAM writes.
+    csrr t5, mhartid
+    bnez t5, 1f
+    j smc_park_hart0
+1:
+    j 1b
     .cfi_endproc

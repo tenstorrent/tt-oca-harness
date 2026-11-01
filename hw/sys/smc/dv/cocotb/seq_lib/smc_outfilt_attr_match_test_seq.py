@@ -116,11 +116,15 @@ CHECKERS = (
 
 
 def _outbound(reg: str, entry: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_{reg}_BASE_ADDR", entry)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", entry
+    )
 
 
 def _remap_attrs(bank: str) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_{bank}_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_{bank}_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR", 0
+    )
 
 
 class smc_outfilt_attr_match_test_seq(SmcCsrSeq):
@@ -266,7 +270,9 @@ class smc_outfilt_attr_match_test_seq(SmcCsrSeq):
         self._wait("jtag_axi_access", f"{_AXI_TIMEOUT_NS}ns", "none")
         self._wait("sep_in_axi_access", f"{_AXI_TIMEOUT_NS}ns", "none")
         for reg in ("FILTER_CONFIG", "START_ADDR", "END_ADDR"):
-            self._resets[reg] = rdl_contract(f"smc_outbound_filter_ctrl/{reg}").reset_word
+            self._resets[reg] = rdl_contract(
+                f"smc_outbound_filter_ctrl_wrap/filter_ctrl/{reg}"
+            ).reset_word
         watcher = cocotb.start_soon(self._watch_output())
 
         # S1

@@ -29,7 +29,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from sep_reg_meta import INBOUND_FILTER_CTRL_0
+from sep_reg_meta import INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0
 
 RESP_OKAY = 0
 RESP_EXOKAY = 1
@@ -38,7 +38,9 @@ RESP_DECERR = 3
 RESP_NAME = {-1: "TIMEOUT", 0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 # START_ADDR / END_ADDR field of a filter entry (the same in both banks).
-FILTER_ADDR_MASK: int = INBOUND_FILTER_CTRL_0.field_mask("START_ADDR", "start_addr")
+FILTER_ADDR_MASK: int = INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask(
+    "START_ADDR", "start_addr"
+)
 
 
 def resp_name(code: int) -> str:

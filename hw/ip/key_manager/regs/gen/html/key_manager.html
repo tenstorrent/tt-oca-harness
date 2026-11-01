@@ -438,7 +438,7 @@
 <h3 id="LC_STATE">LC_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>rsvd</td><td>R</td><td>0x0</td><td>Unused</td></tr>
+<tr><td>31:8</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved; hardware ignores these bits. A read returns whatever the fuse word or the last write left in them, so software masks reads to lc_state.</td></tr>
 <tr><td>7:0</td><td>lc_state</td><td>R</td><td>0xF</td><td>Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}</td></tr>
 </table>
 <h3 id="SBOOT_DIS">SBOOT_DIS</h3>

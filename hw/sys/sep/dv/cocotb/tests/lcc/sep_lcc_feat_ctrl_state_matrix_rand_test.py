@@ -8,7 +8,8 @@ stages the t=0 image from): the follow-on leg (B 3, C 2, RMA bypass 1, earlier
 owner 1, walk 2, E 2), the raw code r of the leg, the strap s of the leg A read,
 the disable-vector pair (or the exception of the leg) and the leg dimensions.
 
-Leg A runs in every leaf; then only the follow-on leg runs. Every ``FEAT_CTRL`` read
+Leg A runs in every leaf: the strap-s read, the SEC_DIS demotion step, then a cold
+reset at strap 0. Then only the follow-on leg runs. Every ``FEAT_CTRL`` read
 is a 64-bit frontdoor read with a sample of ``lcc_feat_ctrl_probe_o``. The golden is
 ``feat_ctrl_profile`` (``hw/sys/sep/doc/lifecycle_controller.adoc``, Per-LC-state
 Feature Control Profile, row by row) on the model shadow values (the staged pair
@@ -16,18 +17,63 @@ OR-merged with the writes of the leaf).
 
   CHK-FEAT-CELL     legs A and C: ``FEAT_CTRL`` (register and probe) equals the
                     profile row of the (raw, demotion, SEC_DIS, strap) cell; the
-                    ``LC_STATE`` shadow word holds ``{~r, r}``; ``sep_ras_o.lc_sigint_err`` = 0.
+                    ``LC_STATE`` shadow word holds ``{~r, r}``; ``sep_ras_o.lc_sigint_err`` = 0;
+                    ``DEMOTE_1`` and ``DEMOTE_2`` read the RW1S golden in every state (``dem=``
+                    is the readback); each output pair is complementary, differs from the
+                    undemoted reference pair of the first leg A read when its register is
+                    demoted and equals it otherwise. Leg C also grades a cell right after
+                    its first cold reset (``after=reset``): both registers read 0.
                     Hook control at the leg A read: the strap port and the latched
                     ``secure_tm_o`` equal s (``CHK-HOOK FAIL`` otherwise).
                     In leg C the SEC_DIS cell is all ones with ``security_disable_o``
                     high and the cell after the mismatch is the demotion row with it
-                    low. The RMA_CHIPLET SEC_DIS cell is logged ``ctl=1``.
+                    low. The RMA_CHIPLET SEC_DIS cell is logged ``ctl=1``. Each
+                    leg C demotion cell also requires both DEMOTE registers equal
+                    to the RW1S golden; its write response is logged
+                    (``OBS-LCC-WR-RESP``), not graded. Leg A also
+                    grades the cell after the SEC_DIS demotion step
+                    (``after=sdis_demote_mismatch``): the DEMOTE_1 row of the state.
+  CHK-LC-STATE-PORT every CHK-FEAT-CELL cell: the ``lc_state_o`` port (tap
+                    ``lc_state_probe_o``) equals the ``LC_STATE`` shadow byte and
+                    ``{~r, r}`` (``doc/integrator/src/smu-sep.adoc``, ``lc_state_o``;
+                    ``otp_fuse_controller.adoc``, LC_STATE encoding).
+  CHK-SDIS-DEMOTE-SET leg A, every leaf: after a TOKEN_ZERO match raises
+                    ``security_disable_o``, a write of ``demote`` (with a marker bit) to
+                    ``DEMOTE_1`` reads back ``demote`` 1 and ``lock`` 0, and
+                    ``FEAT_CTRL`` (register and probe) is all ones with
+                    ``security_disable_o`` still high. ``demote`` sets while ``lock``
+                    is 0 with no SEC_DIS term (``lifecycle_controller.adoc``,
+                    Programming and Locking). A TOKEN_OTHER mismatch then clears
+                    SEC_DIS and the next CHK-FEAT-CELL is the DEMOTE_1 row. Both
+                    lines log ``sdis_contrast`` and ``demote_contrast``; the
+                    ``FEAT_CTRL`` part shows the override only with
+                    ``sdis_contrast=1`` and the demotion only with
+                    ``demote_contrast=1`` (TEST_DEV with zero disable vectors, as in
+                    leg E, gives all ones in all three rows).
+  CHK-DEMOTE-MARK   every ``DEMOTE_1``/``DEMOTE_2`` write that leaves the register
+                    unchanged by the RW1S golden (a blocked ``demote``, a repeated
+                    ``lock``, a ``zero`` write, ...) and the leg A SEC_DIS write carry
+                    one ``rsvd`` bit k in [63:32] that no write since the cold reset
+                    set (k drawn with ``SepSeededRng``); the 64-bit readback right
+                    after the write has bit k set. ``rsvd`` is write-one-to-set with no write enable
+                    (``sep_lifecycle_ctrl.rdl`` DEMOTE_1/2), so bit k proves that the
+                    write reached the register.
   CHK-GATE-BOUND    every read with SEC_DIS 0: no bit outside the OR of the SEC_DIS 0
                     rows of the state (model shadows). A read whose mask is all ones
                     logs ``INFO-GATE-BOUND LOG ... graded=0``.
-  CHK-DEMOTE-STEP   leg B: after each operation both demotion registers (bits [63:2]
-                    at 0) equal the RW1S golden (``demote`` sets only while ``lock``
-                    is 0) and ``FEAT_CTRL`` equals the row of the cumulative demotion.
+  CHK-DEMOTE-STEP   leg B: after each operation both demotion registers equal the
+                    RW1S golden (``demote`` sets only while ``lock`` is 0; the
+                    ``rsvd`` bits [63:2] are write-one-to-set with no lock and hold
+                    every bit written since the cold reset,
+                    ``sep_lifecycle_ctrl.rdl`` DEMOTE_1/2 ``rsvd``) and ``FEAT_CTRL``
+                    equals the row of the cumulative demotion (``rsvd`` is "Not
+                    used"). The random sequence draws ``rsvd.<k>`` writes of one
+                    bit k in [63:2]. The model holds the marker bits of
+                    CHK-DEMOTE-MARK. The write response is not graded.
+                    A write of both bits while ``lock`` is 0 has no stated demote
+                    golden: its demote bit is logged (``OBS-DEMOTE-LOCK-ONE-WRITE``,
+                    every both-bits write) and the model takes the readback; the lock
+                    bit and ``FEAT_CTRL`` stay graded.
   CHK-DEMOTE-ENC    leg B: each output pair is complementary, the pair of a demoted
                     register differs from the undemoted reference pair and an
                     undemoted register keeps it, and each lock probe equals the lock
@@ -45,8 +91,13 @@ OR-merged with the writes of the leaf).
                     after the next sense.
   CHK-RMA-BYPASS    leg D: in RMA_SIP and RMA_CHIPLET both disable shadows read the
                     staged values and ``FEAT_CTRL`` equals the row.
-  CHK-DIS-EARLIER   leg D: after a write of 0 to ``SIP_DIS`` and of ~S to ``SYS_DIS``,
-                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0.
+  CHK-DIS-EARLIER   leg D: after a write of ~S to ``SYS_DIS`` and a write to
+                    ``SIP_DIS`` that is 0 at S plus one marker bit outside S,
+                    ``SIP_DIS`` reads S plus the marker (the marker shows the write
+                    landed) and ``FEAT_CTRL`` AND S is 0 (both write
+                    responses are logged, not graded); ``DEMOTE_1``
+                    and ``DEMOTE_2`` read the RW1S golden after the PROD demotion writes
+                    (``dem_regs=``).
   CHK-DIS-STEP      leg D: after each walk write the owner shadow equals the OR-merge
                     golden and ``FEAT_CTRL`` the row; after the cold reset both shadows
                     read the staged 0 and ``FEAT_CTRL`` the undemoted row.
@@ -59,6 +110,12 @@ OR-merged with the writes of the leaf).
                     SIP_DBG, CHIPLET_DBG and SMC_FUSE_DBG. No level is named. Control:
                     the two control cells differ on each port.
   CHK-BIND          leg C: the SHA-256 of 32 zero bytes equals the bench SEC_DIS digest.
+
+Logged, not graded: ``OBS-LCC-WR-RESP`` gives the response of every DEMOTE write with
+``applied=0`` for a write the RW1S golden leaves without effect (no document states the
+response of a write the block does not apply); ``OBS-DEMOTE-PAIR-LEVEL`` gives, once
+per register and leaf, the undemoted and the demoted ``lcc_demote_state_<n>_probe_o``
+level (no document states which level means demoted).
 
 ``secure_tm_req_i`` is s in leg A and 0 in every follow-on leg. The leg E walk sets
 the five named bits in the drawn order; the plan draws a permutation of the bits
@@ -78,6 +135,7 @@ from env.sep_efuse_image import LC_FIELD_MASK, LC_WORD_IDX, lc_encode
 from env.sep_efuse_plan import (
     CODE_MATCH,
     CODE_MISMATCH,
+    DFT_GATE_BITS,
     DIS_GROUPS,
     LEG_B,
     LEG_C,
@@ -111,6 +169,7 @@ from env.sep_efuse_test_lib import (
     wait_bit,
 )
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL
 
@@ -120,16 +179,32 @@ FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 DEMOTE_ADDR = {1: SEP_LIFECYCLE_CTRL.addr("DEMOTE_1"), 2: SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")}
 DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
 LOCK_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "lock")
-DEMOTE_OP = {"demote": DEMOTE_BIT, "lock": LOCK_BIT, "zero": 0}
-OP_NAME = {"demote": "set_demote", "lock": "set_lock", "zero": "zero"}
+DEMOTE_OP = {"demote": DEMOTE_BIT, "lock": LOCK_BIT, "zero": 0, "both": DEMOTE_BIT | LOCK_BIT}
+OP_NAME = {"demote": "set_demote", "lock": "set_lock", "zero": "zero", "both": "set_both"}
+RSVD_MASK = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "rsvd")
+RSVD_BITS = tuple(b for b in range(64) if (RSVD_MASK >> b) & 1)
+# Marker bits sit in the upper 32-bit lane: the FCOV write class of a DEMOTE write
+# (sep_lc_demote_lock_cg) reads the low lane, which then carries the op value alone.
+MARK_BITS = tuple(b for b in RSVD_BITS if b >= 32)
+# Salt of the marker-bit stream; the leaf plan draws nothing from it.
+_MARK_SALT = 0x4D41_524B_4445_4D4F
+
+
+def _op_value(op: str) -> int:
+    """Write data of a leg-B op; ``rsvd.<k>`` sets bit k of the ``rsvd`` field."""
+    if op.startswith("rsvd."):
+        return 1 << int(op.split(".")[1])
+    return DEMOTE_OP[op]
+
+
 DIS_ADDR = {"SIP_DIS": shadow_addr("SIP_DIS"), "SYS_DIS": shadow_addr("SYS_DIS")}
 PROGRAM_DONE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 M32 = 0xFFFF_FFFF
 M64 = (1 << 64) - 1
 ALL_ONES = M64
-# Leg E disable bits (lifecycle_controller.adoc, Disable Vector Format and Debug and
-# Test Port Path Gating, rows DFT-inserted SEP fuse path and DFT-inserted SMC fuse path).
-SEP_DBG, CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG, SIP_DBG = 0, 1, 2, 3, 24
+# Leg E disable bits, positions from the RDL LC_DISABLE fields (lifecycle_controller.adoc,
+# Disable Vector Format and Debug and Test Port Path Gating).
+SEP_DBG, CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG, SIP_DBG = DFT_GATE_BITS
 LEG_E_ORDER = (SEP_DBG, CHIPLET_DBG, SEP_FUSE_DBG, SMC_FUSE_DBG, SIP_DBG)
 SEP_CASE_BITS = (SIP_DBG, CHIPLET_DBG, SEP_DBG, SEP_FUSE_DBG)
 SMC_CASE_BITS = (SIP_DBG, CHIPLET_DBG, SMC_FUSE_DBG)
@@ -167,12 +242,30 @@ def gate_bound_graded(p) -> bool:
 class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     """FEAT_CTRL, demotion, disable-vector owners and DFT fuse ports follow the profile."""
 
-    required_evidence = ("CHK-FEAT-CELL",)
+    required_evidence = (
+        "CHK-FEAT-CELL",
+        "CHK-LC-STATE-PORT",
+        "CHK-SDIS-DEMOTE-SET",
+        "CHK-DEMOTE-MARK",
+    )
 
     # -- samples and model ---------------------------------------------------
 
     def _pair(self, reg: int) -> int:
         return self.rd_known(getattr(cocotb.top, f"lcc_demote_state_{reg}_probe_o")) & 0x3
+
+    def _pair_level(self, reg: int, pair: int) -> None:
+        """Log the demoted and undemoted output pair level of ``reg`` once per leaf."""
+        if reg in self.pair_level_logged or self.ref_pairs is None:
+            return
+        self.pair_level_logged.add(reg)
+        self.chk.obs(
+            "DEMOTE-PAIR-LEVEL",
+            reg=reg,
+            state=self.state,
+            undemoted=f"0b{self.ref_pairs[reg]:02b}",
+            demoted=f"0b{pair:02b}",
+        )
 
     def _golden(self):
         return feat_ctrl_profile(
@@ -186,7 +279,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
 
     def _dem_value(self, reg: int) -> int:
         d, lk = self.dem[reg]
-        return (DEMOTE_BIT if d else 0) | (LOCK_BIT if lk else 0)
+        return (DEMOTE_BIT if d else 0) | (LOCK_BIT if lk else 0) | self.rsvd[reg]
 
     def _vec(self) -> int:
         return self.dem[1][0] << 3 | self.dem[1][1] << 2 | self.dem[2][0] << 1 | self.dem[2][1]
@@ -194,10 +287,19 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     def _apply_op(self, reg: int, op: str) -> None:
         """RW1S golden (sep_lifecycle_ctrl.adoc DEMOTE_1/2; lifecycle_controller.adoc,
         Programming and Locking): demote sets only while lock is 0, lock always sets,
-        a zero write changes nothing."""
-        if op == "demote" and not self.dem[reg][1]:
+        a zero write changes nothing. A write of both bits sets lock; its demote bit is
+        stated only when lock is already 1 (no change). With lock 0 the demote bit is
+        open: ``_cycle`` takes it from the readback."""
+        self.open_demote = None
+        if op.startswith("rsvd."):
+            self.rsvd[reg] |= _op_value(op) & RSVD_MASK
+        elif op == "demote" and not self.dem[reg][1]:
             self.dem[reg][0] = 1
         elif op == "lock":
+            self.dem[reg][1] = 1
+        elif op == "both":
+            if not self.dem[reg][1]:
+                self.open_demote = reg
             self.dem[reg][1] = 1
 
     async def _feat(self) -> tuple[int, int]:
@@ -237,9 +339,11 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.cfg.reset_done.set()
         self.sip_m, self.sys_m = self.p.sip_dis, self.p.sys_dis
         self.dem = {1: [0, 0], 2: [0, 0]}
+        self.open_demote: int | None = None
+        self.rsvd = {1: 0, 2: 0}
         self.sdis = 0
 
-    def _feat_cell(
+    async def _feat_cell(
         self,
         leg: str,
         reg: int,
@@ -254,6 +358,31 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         lcw = shadow_word(self, LC_WORD_IDX)
         sigint = bit(self, "lcc_sigint_err_probe_o")
         sdis_ok = sdis_port == "na" or sdis_port == self.sdis
+        got = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
+        exp = {r: self._dem_value(r) for r in (1, 2)}
+        pairs = {r: self._pair(r) for r in (1, 2)}
+        port = self.rd_known(cocotb.top.lc_state_probe_o) & LC_FIELD_MASK
+        if self.ref_pairs is None and exp[1] == exp[2] == 0:
+            self.ref_pairs = dict(pairs)
+        for r in (1, 2):
+            if exp[r] & DEMOTE_BIT:
+                self._pair_level(r, pairs[r])
+        self.chk.ok(
+            "LC-STATE-PORT",
+            port == lcw & LC_FIELD_MASK == lc_encode(self.raw),
+            leg=leg,
+            raw=f"0x{self.raw:x}",
+            lc_state_o=f"0x{port:02x}",
+            lc_shadow=f"0x{lcw & LC_FIELD_MASK:02x}",
+            exp=f"0x{lc_encode(self.raw):02x}",
+            secdis=self.sdis,
+            after=extra.get("after", "na"),
+        )
+        pairs_ok = self.ref_pairs is not None and all(
+            pairs[r] in (0b01, 0b10)
+            and (pairs[r] != self.ref_pairs[r]) == bool(exp[r] & DEMOTE_BIT)
+            for r in (1, 2)
+        )
         self.chk.ok(
             "FEAT-CELL",
             reg == row.value
@@ -261,11 +390,19 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             and lcw & LC_FIELD_MASK == lc_encode(self.raw)
             and sigint == 0
             and sdis_ok
+            and got == exp
+            and pairs_ok
             and step_ok,
             leg=leg,
             raw=f"0x{self.raw:x}",
             state=self.state,
-            dem=f"{self.dem[1][0]}{self.dem[2][0]}",
+            dem=f"{got[1] & DEMOTE_BIT}{got[2] & DEMOTE_BIT}",
+            dem_regs=f"0x{got[1]:x}/0x{got[2]:x}",
+            dem_exp=f"0x{exp[1]:x}/0x{exp[2]:x}",
+            pairs=f"0b{pairs[1]:02b}/0b{pairs[2]:02b}",
+            pairs_ref=(
+                f"0b{self.ref_pairs[1]:02b}/0b{self.ref_pairs[2]:02b}" if self.ref_pairs else "na"
+            ),
             secdis=self.sdis,
             stm=self._strap,
             sip=f"0x{self.sip_m:016x}",
@@ -305,11 +442,81 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
     async def _leg_a(self) -> None:
         reg, probe = await self._feat()
         self._strap_hook()
-        self._feat_cell("a", reg, probe, sdis_port=bit(self, "lcc_security_disable_probe_o"))
-        if self._strap:
-            close_graded_window(self.logger)
-            await self._cold_reset(strap=0)
-            open_graded_window(TEST, self.logger)
+        await self._feat_cell("a", reg, probe, sdis_port=bit(self, "lcc_security_disable_probe_o"))
+        await self._leg_a_sdis_demote()
+        close_graded_window(self.logger)
+        await self._cold_reset(strap=0)
+        open_graded_window(TEST, self.logger)
+
+    async def _leg_a_sdis_demote(self) -> None:
+        """DEMOTE_1 write while SEC_DIS is 1, then the cell after the mismatch.
+
+        ``demote`` sets while ``lock`` is 0 with no SEC_DIS term
+        (``lifecycle_controller.adoc``, Programming and Locking), and SEC_DIS forces
+        ``FEAT_CTRL`` all ones (Overrides and Final Gates). After the TOKEN_OTHER
+        mismatch the cell is the DEMOTE_1 row of the state. Both lines carry
+        ``sdis_contrast`` (the undemoted row is not all ones) and ``demote_contrast``
+        (the DEMOTE_1 row differs from the undemoted row): a value of 0 means the drawn
+        state and vectors give equal rows, so that line cannot show the override or
+        the demotion.
+        """
+        undemoted = self._golden().value
+        code, reads = await sec_dis_go(self.fd, TOKEN_ZERO, CODE_MATCH, max_reads=MATCH_READS)
+        rose = await wait_bit(self, "lcc_security_disable_probe_o", 1, SDIS_BOUND)
+        if code != CODE_MATCH or rose is None:
+            hook_fail(
+                self.chk,
+                reason="security_disable_o did not rise on the leg A TOKEN_ZERO match",
+                code=f"0x{(code or 0):02x}",
+                reads=reads,
+            )
+        self.sdis = 1
+        sdis_wr = bit(self, "lcc_security_disable_probe_o")
+        got = await self._write_demote(1, "demote", mark=True)
+        self.sdis = 0
+        contrast = {
+            "sdis_contrast": int(undemoted != ALL_ONES),
+            "demote_contrast": int(self._golden().value != undemoted),
+        }
+        self.sdis = 1
+        reg, probe = await self._feat()
+        sdis_rd = bit(self, "lcc_security_disable_probe_o")
+        row = self._golden()
+        self.chk.ok(
+            "SDIS-DEMOTE-SET",
+            sdis_wr == 1
+            and sdis_rd == 1
+            and got is not None
+            and got & (DEMOTE_BIT | LOCK_BIT) == DEMOTE_BIT
+            and reg == row.value == ALL_ONES
+            and probe == row.value,
+            state=self.state,
+            stm=self._strap,
+            sdis_port=f"{sdis_wr}/{sdis_rd}",
+            demote1_rd=f"0x{(got or 0):016x}",
+            demote=int(bool((got or 0) & DEMOTE_BIT)),
+            lock=int(bool((got or 0) & LOCK_BIT)),
+            feat=f"0x{reg:016x}",
+            probe=f"0x{probe:016x}",
+            exp=f"0x{row.value:016x}",
+            row=row.row,
+            **contrast,
+        )
+        code, reads = await sec_dis_go(self.fd, TOKEN_OTHER, CODE_MISMATCH, max_reads=MATCH_READS)
+        fell = await wait_bit(self, "lcc_security_disable_probe_o", 0, SDIS_BOUND)
+        self.sdis = 0
+        reg, probe = await self._feat()
+        await self._feat_cell(
+            "a",
+            reg,
+            probe,
+            sdis_port=bit(self, "lcc_security_disable_probe_o"),
+            step_ok=code == CODE_MISMATCH and fell is not None,
+            after="sdis_demote_mismatch",
+            code_mismatch=f"0x{(code or 0):02x}",
+            mismatch_reads=reads,
+            **contrast,
+        )
 
     # -- leg B ---------------------------------------------------------------
 
@@ -325,15 +532,34 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         lcw = shadow_word(self, LC_WORD_IDX)
         diff = self.bank.diff_since(self.snap)
         progs = self.shim.programs_since(self.otp_mark)
-        row = self._golden()
         got = {1: r1, 2: r2}
+        ungraded = {1: 0, 2: 0}
+        if op == "both":
+            self.chk.obs(
+                "DEMOTE-LOCK-ONE-WRITE",
+                reg=reg,
+                pre_lock=int(self.open_demote is None),
+                demote_rd=int(bool(got[reg] & DEMOTE_BIT)),
+                lock_rd=int(bool(got[reg] & LOCK_BIT)),
+                feat=f"0x{feat:016x}",
+                probe=f"0x{probe:016x}",
+            )
+        if self.open_demote is not None:
+            # The demote bit of a both-bits write with lock 0 has no stated golden: the
+            # model takes the readback, and the lock bit and FEAT_CTRL stay graded.
+            self.dem[self.open_demote][0] = int(bool(got[self.open_demote] & DEMOTE_BIT))
+            ungraded[self.open_demote] = DEMOTE_BIT
+            self.open_demote = None
+        row = self._golden()
         exp = {1: self._dem_value(1), 2: self._dem_value(2)}
         self.chk.ok(
             "DEMOTE-STEP",
-            got[1] == exp[1] and got[2] == exp[2] and feat == row.value and probe == row.value,
+            all((got[r] ^ exp[r]) & ~ungraded[r] == 0 for r in (1, 2))
+            and feat == row.value
+            and probe == row.value,
             step=step,
             reg=reg if reg is not None else "na",
-            op=OP_NAME.get(op, "none") if op else "none",
+            op=OP_NAME.get(op, op) if op else "none",
             reg_exp=f"0x{exp[reg or 1]:x}",
             reg_got=f"0x{got[reg or 1]:x}",
             other_exp=f"0x{exp[3 - (reg or 1)]:x}",
@@ -345,6 +571,8 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         )
         for r in (1, 2):
             demoted = bool(got[r] & DEMOTE_BIT)
+            if demoted:
+                self._pair_level(r, pairs[r])
             comp = pairs[r] in (0b01, 0b10)
             distinct = pairs[r] != self.ref_pairs[r]
             self.chk.ok(
@@ -370,9 +598,51 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         if bad:
             self.otp_bad.append(f"{step}:lc=0x{lcw:x},diff={diff_log(diff)},progs={len(progs)}")
 
-    async def _write_demote(self, reg: int, op: str) -> None:
-        await self.fd.wr64(DEMOTE_ADDR[reg], DEMOTE_OP[op])
+    async def _write_demote(self, reg: int, op: str, *, mark: bool = False) -> int | None:
+        """DEMOTE write; a write that leaves the register unchanged carries a marker.
+
+        The marker is one ``rsvd`` bit k that no write since the cold reset set; ``rsvd``
+        is write-one-to-set with no lock, so the readback of bit k proves that the
+        write reached the register (``CHK-DEMOTE-MARK``). ``mark`` adds the marker to a
+        write that changes the register too. Returns that readback, or None for a write
+        with no marker. The response is logged, not graded (``OBS-LCC-WR-RESP``).
+        """
+        before = self._dem_value(reg)
         self._apply_op(reg, op)
+        applied = self._dem_value(reg) != before
+        value = _op_value(op)
+        k = None
+        if mark or not applied:
+            free = [b for b in MARK_BITS if not (self.rsvd[reg] >> b) & 1]
+            if not free:
+                hook_fail(self.chk, reason="no free rsvd marker bit", reg=reg, op=op)
+            k = self.mark_rng.choice(free)
+            value = value | (1 << k)
+            self.rsvd[reg] |= 1 << k
+        resp = await self.fd.wr_graded_by_readback(DEMOTE_ADDR[reg], value, length=8)
+        self.chk.obs(
+            "LCC-WR-RESP",
+            reg=f"DEMOTE_{reg}",
+            op=OP_NAME.get(op, op),
+            applied=applied,
+            secdis=self.sdis,
+            wdata=f"0x{value:016x}",
+            resp=resp,
+        )
+        if k is None:
+            return None
+        got = await self.fd.rd64(DEMOTE_ADDR[reg])
+        self.chk.ok(
+            "DEMOTE-MARK",
+            (got >> k) & 1 == 1,
+            reg=reg,
+            op=OP_NAME.get(op, op),
+            applied=applied,
+            mark_bit=k,
+            got=(got >> k) & 1,
+            readback=f"0x{got:016x}",
+        )
+        return got
 
     async def _reset_check(self, stage: str) -> None:
         vec = self._vec()
@@ -561,7 +831,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.sdis_seen = True
         self.sdis = 1
         reg, probe = await self._feat()
-        self._feat_cell(
+        await self._feat_cell(
             "c",
             reg,
             probe,
@@ -576,7 +846,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         fell = await wait_bit(self, "lcc_security_disable_probe_o", 0, SDIS_BOUND)
         self.sdis = 0
         reg, probe = await self._feat()
-        self._feat_cell(
+        await self._feat_cell(
             "c",
             reg,
             probe,
@@ -587,24 +857,43 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             mismatch_reads=reads,
         )
 
+    async def _demote_cell(self, reg_n: int) -> None:
+        """Leg C demote write, then a FEAT_CTRL cell that also grades the write.
+
+        DEMOTE_1/2 read back the RW1S golden, so a lost write fails also in a state
+        whose profile row does not depend on demotion. The write response is logged
+        (``OBS-LCC-WR-RESP``), not graded.
+        """
+        await self._write_demote(reg_n, "demote")
+        got = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
+        exp = {r: self._dem_value(r) for r in (1, 2)}
+        reg, probe = await self._feat()
+        await self._feat_cell(
+            "c",
+            reg,
+            probe,
+            sdis_port="na",
+            step_ok=got == exp,
+            demote1_exp=f"0x{exp[1]:x}",
+            demote1_rd=f"0x{got[1]:x}",
+            demote2_exp=f"0x{exp[2]:x}",
+            demote2_rd=f"0x{got[2]:x}",
+        )
+
     async def _leg_c(self) -> None:
         await chk_bind(self.chk)
         self.sdis_seen = False
         reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._feat_cell("c", reg, probe, sdis_port="na")
         await self._sdis_cell()
-        await self._write_demote(1, "demote")
-        reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._demote_cell(1)
         await self._sdis_cell()
-        await self._write_demote(2, "demote")
-        reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._demote_cell(2)
         await self._sdis_cell()
         await self._cold_reset()
-        await self._write_demote(2, "demote")
         reg, probe = await self._feat()
-        self._feat_cell("c", reg, probe, sdis_port="na")
+        await self._feat_cell("c", reg, probe, sdis_port="na", after="reset")
+        await self._demote_cell(2)
         await self._sdis_cell()
         close_graded_window(self.logger)
         await self._cold_reset()
@@ -649,31 +938,42 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         if self.state == ST_PROD:
             await self._write_demote(1, "demote")
             await self._write_demote(2, "demote")
+        dem = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
+        dem_exp = {r: self._dem_value(r) for r in (1, 2)}
         reg0, _ = await self._feat()
         self.logger.info("INFO-LEG-D earlier owner start FEAT_CTRL=0x%016x", reg0)
         not_s = ~s & M64
         resp_sys = await self.fd.wr_graded_by_readback(DIS_ADDR["SYS_DIS"], not_s, length=8)
         self.sys_m |= not_s
-        resp_sip = await self.fd.wr_graded_by_readback(DIS_ADDR["SIP_DIS"], 0, length=8)
+        free = [b for b in range(64) if not (s >> b) & 1]
+        if not free:
+            hook_fail(self.chk, reason="no SIP_DIS bit outside S for the marker", S=f"0x{s:016x}")
+        mark = 1 << self.mark_rng.choice(free)
+        resp_sip = await self.fd.wr_graded_by_readback(DIS_ADDR["SIP_DIS"], mark, length=8)
+        self.sip_m |= mark
         sip, sys_ = await self._rd_dis()
         reg, probe = await self._feat()
         row = self._golden()
         self.chk.ok(
             "DIS-EARLIER",
             s != 0
-            and sip == s
+            and sip == s | mark
             and sys_ == self.sys_m
+            and dem == dem_exp
             and reg & s == 0
             and reg == row.value
             and probe == row.value,
             state=self.state,
             S=f"0x{s:016x}",
+            sip_mark=f"0x{mark:016x}",
             sip_got=f"0x{sip:016x}",
             sys=f"0x{sys_:016x}",
             sys_exp=f"0x{self.sys_m:016x}",
             feat=f"0x{reg:016x}",
             feat_exp=f"0x{row.value:016x}",
             feat_and_S=f"0x{reg & s:x}",
+            dem_regs=f"0x{dem[1]:x}/0x{dem[2]:x}",
+            dem_exp=f"0x{dem_exp[1]:x}/0x{dem_exp[2]:x}",
             resp_sys_wr=resp_sys,
             resp_sip_wr=resp_sip,
         )
@@ -768,6 +1068,13 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             ctl_open=f"{ctl_open['sep']},{ctl_open['smc']}",
             ctl_closed=f"{ctl_closed['sep']},{ctl_closed['smc']}",
         )
+        self.chk.obs(
+            "DTP-PORT-LEVEL",
+            sep_open=ctl_open["sep"],
+            sep_closed=ctl_closed["sep"],
+            smc_open=ctl_open["smc"],
+            smc_closed=ctl_closed["smc"],
+        )
         for c in cells:
             bits = "".join(str((c["sip"] >> b) & 1) for b in LEG_E_ORDER)
             fbits = "".join(str((c["feat"] >> b) & 1) for b in LEG_E_ORDER)
@@ -793,8 +1100,6 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
                 sep_class="open_case" if sep_open else "other",
                 smc_port=c["smc"],
                 smc_class="open_case" if smc_open else "other",
-                ctl_open=f"{ctl_open['sep']},{ctl_open['smc']}",
-                ctl_closed=f"{ctl_closed['sep']},{ctl_closed['smc']}",
             )
 
     # -- scenario ------------------------------------------------------------
@@ -828,7 +1133,12 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.fd = SepEfuseFd(self)
         self.sip_m, self.sys_m = p.sip_dis, p.sys_dis
         self.dem = {1: [0, 0], 2: [0, 0]}
+        self.open_demote: int | None = None
+        self.rsvd = {1: 0, 2: 0}
         self.sdis = 0
+        self.ref_pairs = None
+        self.pair_level_logged: set[int] = set()
+        self.mark_rng = SepSeededRng(seed ^ _MARK_SALT)
 
         self.write_efuse_image(p.image)
         open_graded_window(TEST, self.logger)

@@ -29,7 +29,7 @@ PR-DMACSR  ``pr_dmacsr``    aw, ar: addr
 PR-CPU-LSU ``pr_cpu_lsu``   aw, ar: prot (raw CPU LSU request; graded)
 PR-CPU-IFU ``pr_cpu_ifu``   ar: prot (raw CPU IFU request; graded)
 PR-DMA-RAW ``pr_dma_raw``   aw, ar: prot (raw DMA master request; graded)
-PR-INFLT   ``pr_inflt``     aw, ar: addr (global, out of the inbound filter)
+PR-INFLT   ``pr_inflt``     aw, ar: addr user (global, out of the inbound filter)
 PR-ALIAS   ``pr_alias_in``, aw, ar: addr cache prot (input and output of the
            ``pr_alias_out`` local-master alias remap)
 PR-XEXT    ``xbar_ext_in``  aw, ar: addr (approved probe)
@@ -140,7 +140,7 @@ TAPS: dict[str, tuple[str, dict[str, tuple[str, ...]], str]] = {
     "PR-CPU-LSU": ("pr_cpu_lsu", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
     "PR-CPU-IFU": ("pr_cpu_ifu", {"ar": ("prot",)}, "axi"),
     "PR-DMA-RAW": ("pr_dma_raw", {"aw": ("prot",), "ar": ("prot",)}, "axi"),
-    "PR-INFLT": ("pr_inflt", {"aw": ("addr",), "ar": ("addr",)}, "axi"),
+    "PR-INFLT": ("pr_inflt", {"aw": ("addr", "user"), "ar": ("addr", "user")}, "axi"),
     "PR-ALIAS-IN": (
         "pr_alias_in",
         {"aw": ("addr", "cache", "prot"), "ar": ("addr", "cache", "prot")},

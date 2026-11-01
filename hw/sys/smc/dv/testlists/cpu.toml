@@ -133,6 +133,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_wdt_timeout_zero_idle_test"
+module = "smc_wdt_timeout_zero_idle_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpu_ctrl_dummy_rom_test"
 module = "smc_cpu_ctrl_dummy_rom_test"
 seed = 1

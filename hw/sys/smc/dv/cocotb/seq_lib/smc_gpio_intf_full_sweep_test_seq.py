@@ -21,7 +21,7 @@ class smc_gpio_intf_full_sweep_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         lsio_enabled = 0
         for idx in range(_GPIO_INTF_COUNT):
-            addr = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", idx)
+            addr = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", idx)
             got = await self.csr_read(f"GPIO_INTF_{idx}", addr)
             assert got in (0x0, _GPIO_INTF_DEFAULT_BIT25), (
                 f"GPIO_INTF_{idx} @ 0x{addr:08x}: unexpected DATA_CTRL "

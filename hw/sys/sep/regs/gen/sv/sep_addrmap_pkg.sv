@@ -170,63 +170,78 @@ localparam longint unsigned SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_7_SIZE = 64'h5
 localparam longint unsigned SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_7_BASE_ADDR = 64'h10A07800;
 localparam longint unsigned SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_7_SIZE = 64'h50;
 
-function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_BASE_ADDR(input int unsigned local_master_alias_remap_ctrl_idx);
-    return 64'h10A10000 + (local_master_alias_remap_ctrl_idx * 64'h20);
-endfunction
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_NUM = 64'h10;
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_SIZE = 64'h18;
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_TOTAL_SIZE = 64'h200;
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_BASE_ADDR = 64'h10A10000;
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_SIZE = 64'h200;
 
-function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_BASE_ADDR(input int unsigned local_master_alias_remap_ctrl_idx);
-    return 64'h10A10000 + (local_master_alias_remap_ctrl_idx * 64'h20);
+function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'h10A10000 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_NUM = 64'h10;
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_SIZE = 64'h18;
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_NUM = 64'h10;
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_SIZE = 64'h18;
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_STRIDE = 64'h20;
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_TOTAL_SIZE = 64'h200;
 
-function automatic longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_BASE_ADDR(input int unsigned ap_output_remap_ctrl_idx);
-    return 64'h10A10200 + (ap_output_remap_ctrl_idx * 64'h8);
+function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'h10A10000 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_NUM = 64'h10;
-localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_SIZE = 64'h8;
-localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_STRIDE = 64'h8;
-localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_TOTAL_SIZE = 64'h80;
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_NUM = 64'h10;
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_SIZE = 64'h18;
 
-function automatic longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_BASE_ADDR(input int unsigned ap_output_remap_ctrl_idx);
-    return 64'h10A10200 + (ap_output_remap_ctrl_idx * 64'h8);
-endfunction
-localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_NUM = 64'h10;
-localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_SIZE = 64'h8;
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR = 64'h10A10200;
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_SIZE = 64'h80;
 
-function automatic longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_BASE_ADDR(input int unsigned stee_output_remap_ctrl_idx);
-    return 64'h10A10300 + (stee_output_remap_ctrl_idx * 64'h8);
+function automatic longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'h10A10200 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_NUM = 64'h10;
-localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_SIZE = 64'h8;
-localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_STRIDE = 64'h8;
-localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_TOTAL_SIZE = 64'h80;
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_NUM = 64'h10;
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_SIZE = 64'h8;
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE = 64'h8;
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_TOTAL_SIZE = 64'h80;
 
-function automatic longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_BASE_ADDR(input int unsigned stee_output_remap_ctrl_idx);
-    return 64'h10A10300 + (stee_output_remap_ctrl_idx * 64'h8);
+function automatic longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'h10A10200 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_NUM = 64'h10;
-localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_SIZE = 64'h8;
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM = 64'h10;
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_SIZE = 64'h8;
 
-function automatic longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_BASE_ADDR(input int unsigned outbound_filter_ctrl_idx);
-    return 64'h10A20000 + (outbound_filter_ctrl_idx * 64'h20);
-endfunction
-localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_NUM = 64'h20;
-localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_SIZE = 64'h18;
-localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_TOTAL_SIZE = 64'h400;
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_BASE_ADDR = 64'h10A10300;
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_SIZE = 64'h80;
 
-function automatic longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(input int unsigned inbound_filter_ctrl_idx);
-    return 64'h10A21000 + (inbound_filter_ctrl_idx * 64'h20);
+function automatic longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'h10A10300 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_NUM = 64'h10;
-localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_SIZE = 64'h18;
-localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_TOTAL_SIZE = 64'h200;
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_NUM = 64'h10;
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_SIZE = 64'h8;
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_STRIDE = 64'h8;
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_TOTAL_SIZE = 64'h80;
+
+function automatic longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'h10A10300 + (output_remap_idx * 64'h8);
+endfunction
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_NUM = 64'h10;
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_SIZE = 64'h8;
+
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR = 64'h10A20000;
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_SIZE = 64'h400;
+
+function automatic longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'h10A20000 + (filter_ctrl_idx * 64'h20);
+endfunction
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM = 64'h20;
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE = 64'h18;
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE = 64'h20;
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE = 64'h400;
+
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR = 64'h10A21000;
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_SIZE = 64'h200;
+
+function automatic longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'h10A21000 + (filter_ctrl_idx * 64'h20);
+endfunction
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM = 64'h10;
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE = 64'h18;
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE = 64'h20;
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE = 64'h200;
 
 localparam longint unsigned SEP_TOP_SEP_CPU_CTRL_BASE_ADDR = 64'h10A30000;
 localparam longint unsigned SEP_TOP_SEP_CPU_CTRL_SIZE = 64'h1008;
@@ -851,50 +866,50 @@ localparam longint unsigned SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQS_BASE_ADD
 localparam longint unsigned SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQEN_BASE_ADDR = 64'h10A07838;
 localparam longint unsigned SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_7_IRQP_BASE_ADDR = 64'h10A07840;
 localparam longint unsigned SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_7_CTRL_BASE_ADDR = 64'h10A07848;
-function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_BASE_ADDR(input int unsigned local_master_alias_remap_ctrl_idx);
-    return 64'h10A10000 + (local_master_alias_remap_ctrl_idx * 64'h20);
+function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'h10A10000 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_START_NUM = 64'h10;
-function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_BASE_ADDR(input int unsigned local_master_alias_remap_ctrl_idx);
-    return 64'h10A10008 + (local_master_alias_remap_ctrl_idx * 64'h20);
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_REGION_START_NUM = 64'h10;
+function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'h10A10008 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_END_NUM = 64'h10;
-function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned local_master_alias_remap_ctrl_idx);
-    return 64'h10A10010 + (local_master_alias_remap_ctrl_idx * 64'h20);
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_REGION_END_NUM = 64'h10;
+function automatic longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'h10A10010 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_NUM = 64'h10;
-function automatic longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned ap_output_remap_ctrl_idx);
-    return 64'h10A10200 + (ap_output_remap_ctrl_idx * 64'h8);
+localparam longint unsigned SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_NUM = 64'h10;
+function automatic longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'h10A10200 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_NUM = 64'h10;
-function automatic longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned stee_output_remap_ctrl_idx);
-    return 64'h10A10300 + (stee_output_remap_ctrl_idx * 64'h8);
+localparam longint unsigned SEP_TOP_AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_NUM = 64'h10;
+function automatic longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'h10A10300 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_NUM = 64'h10;
-function automatic longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned outbound_filter_ctrl_idx);
-    return 64'h10A20000 + (outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SEP_TOP_STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_NUM = 64'h10;
+function automatic longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'h10A20000 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h20;
-function automatic longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned outbound_filter_ctrl_idx);
-    return 64'h10A20008 + (outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h20;
+function automatic longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'h10A20008 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_NUM = 64'h20;
-function automatic longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned outbound_filter_ctrl_idx);
-    return 64'h10A20010 + (outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_NUM = 64'h20;
+function automatic longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'h10A20010 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_NUM = 64'h20;
-function automatic longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned inbound_filter_ctrl_idx);
-    return 64'h10A21000 + (inbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SEP_TOP_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_NUM = 64'h20;
+function automatic longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'h10A21000 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
-function automatic longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned inbound_filter_ctrl_idx);
-    return 64'h10A21008 + (inbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
+function automatic longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'h10A21008 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_NUM = 64'h10;
-function automatic longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned inbound_filter_ctrl_idx);
-    return 64'h10A21010 + (inbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_NUM = 64'h10;
+function automatic longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'h10A21010 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_NUM = 64'h10;
+localparam longint unsigned SEP_TOP_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_NUM = 64'h10;
 localparam longint unsigned SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR = 64'h10A30008;
 localparam longint unsigned SEP_TOP_SEP_CPU_CTRL_REFERENCE_COUNTER_BASE_ADDR = 64'h10A30010;
 localparam longint unsigned SEP_TOP_SEP_CPU_CTRL_TIMEOUT_INTERRUPT_BASE_ADDR = 64'h10A30018;

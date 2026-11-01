@@ -175,6 +175,19 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             "the software-usable mask and restored reset",
             bash.touch_ok,
         )
+
+        def _users(vals: set) -> str:
+            known = sorted(u for u in vals if u is not None)
+            text = [f"0x{u:03x}" for u in known] + (["X"] if None in vals else [])
+            return ",".join(text) or "none"
+
+        for block, users in bash.resp_user_by_block().items():
+            self.logger.info(
+                "OBS-LSU-RESP-USER block=%s ruser=%s buser=%s",
+                block,
+                _users(users["R"]),
+                _users(users["B"]),
+            )
         # Completeness (CHK-RANDCFG): the whole seed-built
         # configuration ran in this one invocation. The counts are cfg-computed,
         # so this is not evidence about the DUT -- it is evidence that no part of

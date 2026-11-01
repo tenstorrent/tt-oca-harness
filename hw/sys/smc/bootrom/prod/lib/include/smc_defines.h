@@ -194,13 +194,15 @@ static inline uint32_t read_gpio_shim(uint8_t gpio_num, uint32_t offset) {
 
 static inline void write_gpio(uint8_t gpio_num, uint32_t offset, uint32_t value) {
     volatile uint32_t *p_addr =
-        (volatile uint32_t *)(uintptr_t)(SMC_TOP_GPIO_INTF_BASE_ADDR(gpio_num) + offset);
+        (volatile uint32_t *)(uintptr_t)(SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(gpio_num) +
+                                         offset);
     *p_addr = value;
 }
 
 static inline uint32_t read_gpio(uint8_t gpio_num, uint32_t offset) {
     volatile uint32_t *p_addr =
-        (volatile uint32_t *)(uintptr_t)(SMC_TOP_GPIO_INTF_BASE_ADDR(gpio_num) + offset);
+        (volatile uint32_t *)(uintptr_t)(SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(gpio_num) +
+                                         offset);
     return *p_addr;
 }
 

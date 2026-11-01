@@ -18,7 +18,9 @@ write-only and read back zero.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -65,12 +67,31 @@ HMAC_STATUS_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
 HMAC_INTR_DONE = HMAC.field_mask("INTR_STATE", "hmac_done")
 HMAC_INTR_ERR = HMAC.field_mask("INTR_STATE", "hmac_err")
 
-# CFG field encodings, one-hot, from the enum values of
-# vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson: digest_size (:242)
-# SHA2_256 = 1, SHA2_384 = 2, SHA2_512 = 4 (:250-263); key_length (:280) Key_128 = 1,
-# Key_256 = 2, Key_384 = 4, Key_512 = 8, Key_1024 = 16 (:296-321).
-HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}
-HMAC_KEY_LENGTH = {128: 0x1, 256: 0x2, 384: 0x4, 512: 0x8, 1024: 0x10}
+# CFG field encodings: the enum lists of digest_size and key_length in
+# vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson.
+_HMAC_HJSON = (
+    Path(__file__).resolve().parents[6]
+    / "vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson"
+)
+
+
+def _cfg_enum(field: str, prefix: str, bits: tuple[int, ...]) -> dict[int, int]:
+    """Size in bits -> code of the ``CFG.field`` enum rows named ``<prefix><bits>``."""
+    text = _HMAC_HJSON.read_text(encoding="utf-8")
+    at = text.find('{ name: "CFG"')
+    fld = text.find(f'name: "{field}"', at) if at >= 0 else -1
+    start = text.find("enum: [", fld) if fld >= 0 else -1
+    end = text.find("]", start) if start >= 0 else -1
+    rows = re.findall(r'value:\s*"(\w+)",\s*name:\s*"(\w+)"', text[start:end] if end >= 0 else "")
+    codes = {name: int(value, 0) for value, name in rows}
+    missing = [b for b in bits if f"{prefix}{b}" not in codes]
+    if missing:
+        raise KeyError(f"hmac.hjson CFG.{field}: no {prefix}{missing} in {codes}")
+    return {b: codes[f"{prefix}{b}"] for b in bits}
+
+
+HMAC_DIGEST_SIZE = _cfg_enum("digest_size", "SHA2_", (256, 384, 512))
+HMAC_KEY_LENGTH = _cfg_enum("key_length", "Key_", (128, 256, 384, 512, 1024))
 # Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.adoc).
 HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
 # SHA-2 block size per digest size, in bits. hmac.adoc: "the key length cannot
@@ -182,7 +203,7 @@ class SepHmac(SepAxiRegDriver):
         These key registers are declared write-only and the generated register
         block ties their read data to '0, so a zero readback is not by itself
         evidence that the sideloaded key is unexposed; it catches only a register
-        that becomes readable. Nothing in this run writes them.
+        that becomes readable.
 
         For that to be worth anything the read path must be known alive, so this
         also returns STATUS, a readable register in the same window over the same

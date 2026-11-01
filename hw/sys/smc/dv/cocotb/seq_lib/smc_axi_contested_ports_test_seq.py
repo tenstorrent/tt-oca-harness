@@ -69,7 +69,7 @@ assert GLOBAL_SCRATCH_0 == 0x4000_2800, f"global SCRATCH_COLD(0) is 0x{GLOBAL_SC
 
 
 def _filt(reg: str) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_INBOUND_FILTER_CTRL_{reg}_BASE_ADDR", 0)
+    return smc_indexed_addr(f"SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", 0)
 
 
 FILTER_START, FILTER_END, FILTER_CONFIG = (

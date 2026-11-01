@@ -165,6 +165,12 @@ follows:
 * A write to a read-only register, or to the read-only fields of a register,
   answers `OKAY` and has no effect on those bits. It sets no error flag and
   raises no interrupt.
+* An offset inside the block that no register occupies answers `OKAY`. A read
+  returns 0, and a write has no effect.
+* An offset past the end of the block's last register answers `SLVERR` if it
+  reaches the block, including the part of a wider access that runs past that
+  end. The remap tables and filter controls answer `OKAY` there instead: each
+  is an array, and the padding between its entries is a hole.
 * Exclusive access is not supported. The AXI-to-AXI-Lite conversion in front
   of each block discards `AxLOCK`, so an exclusive read or write is performed
   as a normal access and answers `OKAY`, never `EXOKAY`.

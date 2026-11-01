@@ -76,7 +76,9 @@ def _new(addr: int) -> int:
 
 
 def _reg(reg: str, entry: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_INBOUND_FILTER_CTRL_{reg}_BASE_ADDR", entry)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{reg}_BASE_ADDR", entry
+    )
 
 
 def _pair_page(index: int) -> int:

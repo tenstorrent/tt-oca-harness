@@ -481,6 +481,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
 
             if pf.arg == pl.ARG_LOGGED:
                 arg_ok, golden = True, "logged"
+                self.chk.obs("PAIR-LEN-ARG", pair=idx, arg=_a(pr.arg))
             elif pf.arg is None:
                 arg_ok, golden = pr.arg is None, "none"
             else:

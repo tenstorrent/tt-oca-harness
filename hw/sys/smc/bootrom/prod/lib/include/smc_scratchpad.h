@@ -17,6 +17,7 @@
  * Registers 0-7: Maintain value across watchdog resets
  * Registers 8-15: Reset on watchdog resets
  *
+ * Register 3:  SEP request to park hart 0 (SMC_PARK_REQ_VALUE); written only by the SEP
  * Register 8:  Manifest offset handoff from SMC ROM to SEP ROM (offset from SMC_SRAM_BASE)
  * Register 9:  SMC Status to SEP (coordination protocol)
  * Register 11: Offset of status reporting structure in SMC SRAM (offset from SMC_SRAM_BASE)
@@ -45,11 +46,13 @@
 #define SMC_SEP_STATUS_MANIFEST_READY_BIT 1 /* Manifest ready */
 #define SMC_SEP_STATUS_BUFFER_READY_BIT 2   /* Status buffer ready */
 #define SMC_SEP_STATUS_SRAM_PROTECTED_BIT 3 /* SRAM protected */
+#define SMC_SEP_STATUS_HART0_PARKED_BIT 4   /* Hart 0 parked with its D-cache written back */
 
 #define SMC_SEP_STATUS_SRAM_INIT (1U << SMC_SEP_STATUS_SRAM_INIT_BIT)
 #define SMC_SEP_STATUS_MANIFEST_READY (1U << SMC_SEP_STATUS_MANIFEST_READY_BIT)
 #define SMC_SEP_STATUS_BUFFER_READY (1U << SMC_SEP_STATUS_BUFFER_READY_BIT)
 #define SMC_SEP_STATUS_SRAM_PROTECTED (1U << SMC_SEP_STATUS_SRAM_PROTECTED_BIT)
+#define SMC_SEP_STATUS_HART0_PARKED (1U << SMC_SEP_STATUS_HART0_PARKED_BIT)
 
 /*
  * SMC/SEP Coordination API

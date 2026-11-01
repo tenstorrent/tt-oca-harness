@@ -37,7 +37,8 @@ direction {encrypt, decrypt}, the key, the IV and the input. CFB and OFB: 2 to 4
 whole blocks. GCM: a 96-bit IV, an AAD length of 0 to 40 bytes and a text length of
 0 to 48 bytes, so the last AAD or text block can be partial. The DATA_IN bytes
 past NUM_VALID_BYTES of a partial block are 16 drawn non-zero bytes, so a DUT that
-does not mask them by NUM_VALID_BYTES shows a wrong text or tag. One cell runs per
+does not mask them by NUM_VALID_BYTES shows a wrong text or tag. Last, one invalid
+CTRL_GCM_SHADOWED.PHASE value. One cell runs per
 seed; the 18 cells close over merged regressions (docs/SEP_FCOV.adoc).
 
 Checkers (each logs mode, key size, direction and the first mismatched word):
@@ -46,6 +47,10 @@ Checkers (each logs mode, key size, direction and the first mismatched word):
   CHK-AES-GCM   part=text: every TEXT-phase DATA_OUT block equals the SP 800-38D
                 golden (the valid bytes of a partial last block);
                 part=tag: the DATA_OUT block after GCM_TAG equals the SP 800-38D tag.
+  CHK-AES-GCM-PHASE-MAP  GCM only, after the tag: a drawn invalid PHASE value
+                (0 or more than one bit set) written to CTRL_GCM_SHADOWED reads
+                back GCM_INIT (upstream aes/doc/registers.md:525). Control: the
+                PHASE field reads GCM_TAG before that write.
 Controls (from the plan, before the first stimulus):
   CTRL-AES-OUT-NE-IN       every golden output block differs from its input block,
                            so a DUT that returns DATA_IN fails the check.
@@ -143,6 +148,11 @@ AES_CTRL_GCM_SHADOWED = AES.addr("CTRL_GCM_SHADOWED")
 GCM_PHASE_LSB = AES.field_lsb("CTRL_GCM_SHADOWED", "phase")
 GCM_NVB_LSB = AES.field_lsb("CTRL_GCM_SHADOWED", "num_valid_bytes")
 GCM_NVB_WIDTH = AES.field_width("CTRL_GCM_SHADOWED", "num_valid_bytes")
+GCM_PHASE_WIDTH = AES.field_width("CTRL_GCM_SHADOWED", "phase")
+GCM_PHASE_MASK = AES.field_mask("CTRL_GCM_SHADOWED", "phase")
+# PHASE values that registers.md (CTRL_GCM_SHADOWED.PHASE) calls invalid: 0 and
+# every value with more than one bit set.
+GCM_BAD_PHASES = tuple(v for v in range(1 << GCM_PHASE_WIDTH) if bin(v).count("1") != 1)
 assert 16 < 1 << GCM_NVB_WIDTH, "NUM_VALID_BYTES must hold 16"
 
 
@@ -175,6 +185,8 @@ class Plan:
     # DATA_IN bytes past NUM_VALID_BYTES of a partial last block: non-zero, so a
     # DUT that does not mask them by NUM_VALID_BYTES shows a wrong text or tag.
     pad_fill: bytes = bytes(16)
+    # An invalid CTRL_GCM_SHADOWED.PHASE value: 0 or more than one bit set.
+    bad_phase: int = 0
 
     @property
     def key_words(self) -> list[int]:
@@ -204,7 +216,7 @@ class Plan:
         return (
             f"mode={self.mode} keylen={self.key_bits} dir={self.direction} "
             f"key={self.key.hex()} iv={self.iv.hex()} data_len={len(self.data)} "
-            f"aad_len={len(self.aad)}"
+            f"aad_len={len(self.aad)} bad_phase=0x{self.bad_phase:02x}"
         )
 
 
@@ -260,7 +272,8 @@ def draw_plan(seed: int) -> Plan:
         if all(plan_guards(plan).values()):
             break
     pad_fill = bytes(rng.randrange(1, 256) for _ in range(16))
-    return replace(plan, pad_fill=pad_fill)
+    bad_phase = rng.choice(GCM_BAD_PHASES)
+    return replace(plan, pad_fill=pad_fill, bad_phase=bad_phase)
 
 
 def _whole_words(buf: bytes) -> list[int]:
@@ -315,6 +328,8 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
         plan = draw_plan(seed)
         self.plan = plan
         self.required_evidence = (f"CHK-{CHK_NAME[plan.mode]}",)
+        if plan.mode == "gcm":
+            self.required_evidence += ("CHK-AES-GCM-PHASE-MAP",)
         self.logger.info("PLAN seed=%d %s", seed, plan.describe())
 
         await self.bring_up_no_cpu(park=("otbn", "hmac", "kmac", "abr"))
@@ -337,6 +352,7 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
         )
         if plan.mode == "gcm":
             await self._run_gcm(plan)
+            await self._gcm_phase_map(plan)
         else:
             await self._run_cfb_ofb(plan)
         await self.aes.check_status_clean(plan.cell())
@@ -445,3 +461,33 @@ class sep_aes_cfb_ofb_gcm_rand_test(sep_base_test):
         )
         if text_ok and tag_ok:
             await aes_mode_fcov(plan)
+
+    async def _gcm_phase_rb(self) -> int:
+        return (await self.aes._rd(AES_CTRL_GCM_SHADOWED) & GCM_PHASE_MASK) >> GCM_PHASE_LSB
+
+    async def _gcm_phase_map(self, plan: Plan) -> None:
+        """An invalid PHASE write reads back GCM_INIT.
+
+        registers.md (CTRL_GCM_SHADOWED.PHASE): "Invalid input values, i.e., values
+        with multiple bits set and value 6'b00_0000, are mapped to GCM_INIT". The
+        unit is in GCM_TAG here, and GCM_INIT is a legal next phase, so only the
+        mapping decides the readback. Control: the PHASE field reads GCM_TAG before
+        the write, so a GCM_INIT readback comes from the write.
+        """
+        before = await self._gcm_phase_rb()
+        self.chk.ctrl(
+            "AES-GCM-PHASE-MAP",
+            before == GCM_TAG,
+            before=f"0x{before:02x}",
+            want=f"0x{GCM_TAG:02x}",
+        )
+        await self._gcm_phase(plan.bad_phase)
+        mapped = await self._gcm_phase_rb()
+        self.chk.ok(
+            "AES-GCM-PHASE-MAP",
+            mapped == GCM_INIT,
+            written=f"0x{plan.bad_phase:02x}",
+            before=f"0x{before:02x}",
+            phase=f"0x{mapped:02x}",
+            want=f"0x{GCM_INIT:02x}",
+        )

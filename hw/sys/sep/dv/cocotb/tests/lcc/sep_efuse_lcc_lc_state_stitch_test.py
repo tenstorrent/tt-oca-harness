@@ -34,8 +34,10 @@ is not blocked by ``efuse_guard``.
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
 The test injects a broken pair at the LCC decoder input through the tb_top
 ``lc_sigint_inject_i`` port after the walk. Observation is the DUT
-``sep_ras_o.lc_sigint_err`` probe plus an AXI ``FEAT_CTRL`` readback of 0 (fail-closed),
-then release and both restore.
+``sep_ras_o.lc_sigint_err`` probe plus an AXI ``FEAT_CTRL`` readback of 0 (fail-closed).
+No document states what follows the release of the inject, so after the inject
+falls the leaf logs ``sep_ras_o.lc_sigint_err``, ``FEAT_CTRL`` and
+``lcc_feat_ctrl_probe_o`` (``OBS-LC-SIGINT-RELEASE``) and grades nothing.
 
 FCOV owner window (``env/sep_fcov_gate.py``): it opens after the eFuse image is
 staged and before the first sense, and closes after the last state check of the
@@ -57,6 +59,7 @@ from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_field_map import spec_secret_regs
 from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage
+from env.sep_efuse_test_lib import SepEfuseFd
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -350,7 +353,6 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         *,
         secure_tm: int,
         sigint_err: int = 0,
-        sigint_chk: str = "CHK-LC-INPUT",
         prev_raw: int | None,
     ) -> int:
         """Value-check LC shadow + FEAT_CTRL; return the DUT-observed LC code.
@@ -377,7 +379,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             f"(test_en_strap_i={strap}, LC=0x{raw:x})"
         )
         assert observed_sigint == sigint_err, (
-            f"{'CHK-SIGINT' if sigint_err else sigint_chk} FAIL: "
+            f"{'CHK-SIGINT' if sigint_err else 'CHK-LC-INPUT'} FAIL: "
             f"lc_sigint_err={observed_sigint} expected {sigint_err} at LC=0x{raw:x}"
         )
         seq = sep_lcc_stitch_check_seq(
@@ -392,7 +394,6 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         self.assert_sb_judged(mark, f"CHK-GOLDEN {tag}")
         assert seq.observed_feat is not None, "sequence did not publish AXI FEAT_CTRL"
         feat = seq.observed_feat
-        self._last_observed_feat = feat
         if not sigint_err:
             self._feat_by_state[raw] = feat
 
@@ -631,17 +632,17 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         )
         cocotb.top.lc_sigint_inject_i.value = 0
         await ClockCycles(cocotb.top.clk_i, 2)
-        await self._check_state(
-            image,
-            last_raw,
-            secure_tm=0,
-            sigint_err=0,
-            sigint_chk="CHK-SIGINT-RELEASE",
-            prev_raw=prev_raw,
-        )
+        sigint = str(cocotb.top.lcc_sigint_err_probe_o.value)
+        probe_v = cocotb.top.lcc_feat_ctrl_probe_o.value
+        probe = f"0x{int(probe_v):016x}" if probe_v.is_resolvable else str(probe_v)
+        feat = await SepEfuseFd(self).feat_ctrl()
         self.logger.info(
-            "CHK-SIGINT-RELEASE PASS: lcc_sigint_err_probe_o=0, AXI FEAT_CTRL=0x%016x restored",
-            self._last_observed_feat,
+            "OBS-LC-SIGINT-RELEASE lc_state=%s clocks_after_release=2 "
+            "lcc_sigint_err_probe_o=%s feat_ctrl=0x%016x lcc_feat_ctrl_probe_o=%s",
+            lc_state_name(last_raw),
+            sigint,
+            feat,
+            probe,
         )
 
         assert self._total_program_retries >= 1, (

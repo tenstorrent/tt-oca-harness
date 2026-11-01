@@ -55,11 +55,11 @@ KMAC_NUM_PREFIX = len(KMAC_PREFIX)
 KMAC_KEY_WORDS = 8  # 256-bit key
 KMAC_DIGEST_WORDS = 8  # 256-bit MAC
 
-# CMD.cmd command codes from the enum of field ``cmd`` in register ``CMD`` of
-# vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson (start = 29,
-# process = 46, run = 49, done = 22). The overlay kmac.rdl CMD.cmd desc says
-# "the field is defined as enum" but carries no values, so the hjson enum is the
-# source. The field position comes from the generated register metadata.
+# CMD.cmd command codes and the CFG_SHADOWED mode and kstrength codes come from
+# the field enums of vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson
+# (CMD.cmd: start = 29, process = 46, run = 49, done = 22). The overlay kmac.rdl
+# fields carry no enum values, so the hjson enums are the source. The field
+# positions come from the generated register metadata.
 _KMAC_HJSON = (
     Path(__file__).resolve().parents[6]
     / "vendor"
@@ -74,18 +74,26 @@ _KMAC_HJSON = (
 )
 
 
-def kmac_cmd_codes() -> dict[str, int]:
-    """Name -> value of the CMD.cmd enum in kmac.hjson. Raises if it is not found."""
+def _hjson_enum(reg: str, field: str, need: tuple[str, ...]) -> dict[str, int]:
+    """Name -> value of the ``reg``.``field`` enum in kmac.hjson. Raises if ``need`` is not parsed."""
     text = _KMAC_HJSON.read_text(encoding="utf-8")
-    reg = text.find('{ name: "CMD"')
-    fld = text.find('name: "cmd"', reg) if reg >= 0 else -1
+    at = text.find(f'{{ name: "{reg}"')
+    m = re.compile(rf'name:\s*"?{field}"?\s').search(text, at) if at >= 0 else None
+    fld = m.start() if m else -1
     start = text.find("enum:", fld) if fld >= 0 else -1
-    end = text.find("] // enum", start) if start >= 0 else -1
+    end = text.find("]", start) if start >= 0 else -1
     body = text[start:end] if end >= 0 else ""
     codes = {n: int(v, 0) for v, n in re.findall(r'value:\s*"(\w+)"\s*name:\s*"(\w+)"', body)}
-    if not {"start", "process", "done"} <= set(codes):
-        raise KeyError(f"CMD.cmd enum (start/process/done) not parsed from {_KMAC_HJSON}: {codes}")
+    if not set(need) <= set(codes):
+        raise KeyError(
+            f"{reg}.{field} enum ({'/'.join(need)}) not parsed from {_KMAC_HJSON}: {codes}"
+        )
     return codes
+
+
+def kmac_cmd_codes() -> dict[str, int]:
+    """Name -> value of the CMD.cmd enum in kmac.hjson. Raises if it is not found."""
+    return _hjson_enum("CMD", "cmd", ("start", "process", "done"))
 
 
 _CMD_LSB = KMAC.field_lsb("CMD", "cmd")
@@ -118,13 +126,27 @@ KMAC_INTR_KMAC_ERR = KMAC.field_mask("INTR_STATE", "kmac_err")
 KMAC_KEYED_PREFIX = encode_string(b"KMAC") + encode_string(b"")
 KMAC_KEYED_OUT_BITS = 256
 
-# CFG_SHADOWED write map. kmac.adoc names mode[5:4] and kstrength[3:1];
-# the RDL fields have no enum. These are the DV-owned programming values.
+# CFG_SHADOWED mode[5:4] and kstrength[3:1] codes from the kmac.hjson enums
+# (SHA3/SHAKE/cSHAKE and L128..L512), keyed by mode name and strength in bits.
 # Keyed KMAC is mode=cSHAKE with kmac_en=1: PREFIX is absorbed only in
 # cSHAKE, so SHAKE+kmac_en is not the SP800-185 KMAC construction.
-KMAC_MODE = {"sha3": 0, "shake": 2, "cshake": 3}
-KMAC_STRENGTH = {128: 0, 224: 1, 256: 2, 384: 3, 512: 4}
-KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}
+KMAC_MODE = {
+    n.lower(): v
+    for n, v in _hjson_enum("CFG_SHADOWED", "mode", ("SHA3", "SHAKE", "cSHAKE")).items()
+}
+KMAC_STRENGTH = {
+    int(n[1:]): v
+    for n, v in _hjson_enum(
+        "CFG_SHADOWED", "kstrength", ("L128", "L224", "L256", "L384", "L512")
+    ).items()
+}
+KMAC_KEYLEN = {
+    int(n[3:]): v
+    for n, v in _hjson_enum(
+        "KEY_LEN", "len", ("Key128", "Key192", "Key256", "Key384", "Key512")
+    ).items()
+}
+KMAC_ENTROPY_EDN = _hjson_enum("CFG_SHADOWED", "entropy_mode", ("edn_mode",))["edn_mode"]
 KMAC_KEY_LEN_256 = KMAC_KEYLEN[256]
 
 
@@ -137,7 +159,7 @@ def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool, sideload: bool =
         | (kstrength << KMAC.field_lsb("CFG_SHADOWED", "kstrength"))
         | (mode << KMAC.field_lsb("CFG_SHADOWED", "mode"))
         | (int(bool(sideload)) << KMAC.field_lsb("CFG_SHADOWED", "sideload"))
-        | (0x1 << KMAC.field_lsb("CFG_SHADOWED", "entropy_mode"))
+        | (KMAC_ENTROPY_EDN << KMAC.field_lsb("CFG_SHADOWED", "entropy_mode"))
         | KMAC.field_mask("CFG_SHADOWED", "entropy_ready")
     )
 

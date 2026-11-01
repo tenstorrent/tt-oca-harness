@@ -52,7 +52,9 @@ Checkers:
   CHK-HT-PASS      bits 0, 4 and 5 of GENERATOR_k_HEALTH_STATUS read 0 in the
                    same trial (clean limits).
   CHK-HT-OTHERS    the other 11 generator statuses read 0 in the same trial.
-  CHK-HT-ENABLE    with ENABLE bit 1 clear the same bias trial latches no bit 3;
+  CHK-HT-ENABLE    with ENABLE bit 1 clear the same bias trial latches no bit 3
+                   (control CTRL-HT-ENABLE-APT-CFG: the trip limit and ENABLE = 5
+                   read back before the pattern starts);
                    with ENABLE bit 0 cleared while REPETITION_TEST_COUNT reads
                    at least 100, the count reads below 100 and below its value
                    before the write after one window (the run state is cleared).
@@ -82,6 +84,8 @@ Checkers:
                    instance); controls: APT_PROPORTION_LO reads back 0,
                    APT_LO_TOTAL_FAILS does not change over the ones windows, and
                    APT_HI_TOTAL_FAILS reads 0 after the constant-zero leg.
+Logged only: OBS-ESRC-HT-TOTALS, the five total-fail counters after each limit
+trial (no text states how the totals count the per-generator failures).
 """
 
 from __future__ import annotations
@@ -543,6 +547,19 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         open_graded_window(TEST, self.logger)
         await self._ht_ctrl(enable=5)
         await self._write_trip_limit(trial)
+        reg = "APT_PROPORTION_1BIT" if trial.name == "bias70" else "APT_PROPORTION_LO"
+        a_lim = A_APT_1BIT if trial.name == "bias70" else A_APT_LO
+        lim = (await self._rd(a_lim) & _fbm(reg, "LIMIT")) >> _fbp(reg, "LIMIT")
+        enable = (await self._rd(A_HT_CTRL) & M_HT_ENABLE) >> P_HT_ENABLE
+        self.chk.ctrl(
+            "HT-ENABLE-APT-CFG",
+            lim == trial.limit and enable == 5,
+            reg=reg,
+            limit=lim,
+            want_limit=trial.limit,
+            enable=enable,
+            want_enable=5,
+        )
         await self._pattern_window(self._lanes_with(k, trial.pattern), 3 * w, w)
         gk = (await self._rd(A_GEN_STATUS[k])) & M_GEN
         close_graded_window(self.logger)
@@ -684,6 +701,8 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         self.chk.ctrl("NOISE-BYTES", m1 == m0 and c1 > c0, compared=c1 - c0, mismatched=m1 - m0)
         words[trial] = self.noise.words_since(mark)
         out[trial] = await self._gen_statuses()
+        _, totals, _ = await self._top_regs()
+        self.chk.obs("ESRC-HT-TOTALS", tester=trial, windows=2, **totals)
         close_graded_window(self.logger)
         for addr, s in zip(A_GEN_STATUS, out[trial]):
             if s:

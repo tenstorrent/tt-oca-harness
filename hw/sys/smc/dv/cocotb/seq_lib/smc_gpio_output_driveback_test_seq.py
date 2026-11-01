@@ -47,7 +47,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_pad_table import gpio_pad_count, pad_index
 from .smc_regblock_field_sweep_utils import reg_instances
 
-GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+GPIO0_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
 
 _CORE2PAD = 1 << 0
 _TX_ENABLE = 1 << 4  # enable_rx_tx = 2'b01
@@ -58,10 +58,10 @@ OUT_DRIVE_LOW = _IF_ENABLE | _TX_ENABLE
 OUT_DISABLE = 0
 
 _DATA_CTRL = (
-    "gpio_intf/DATA_CTRL",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 #: Interfaces left out of the walk, as the testcase contract names them.
 EXCLUDED_PADS = {
