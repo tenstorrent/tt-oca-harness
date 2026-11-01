@@ -412,15 +412,18 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
     async def _program(self, bit_addr: int) -> dict[str, int]:
         """Program one bit with the full W wait, then read status and the OTP word.
 
-        Two writes: enable, data and address, then the same with the go bit. The
-        command record runs from the go write to the end of W. ``program_enable`` is
+        Two writes: enable and address with data 0 and no go, then the same with
+        data 1 and the go bit. The data bit differs between the two writes, so the
+        request fields read back show the go write landed; the first write has no
+        go and starts no program (``efuse_interface_ctrl.rdl``). The command record
+        runs from the go write to the end of W. ``program_enable`` is
         dropped before the direct read, so the read interface reaches the bank. A
         refused program sets the sticky ``efuse_req_error``, which holds off every
         later read and program request until software writes
         ``efuse_req_error_clear`` (``efuse_interface_ctrl.adoc``); the flag is
         returned (logged, not graded) and cleared before the direct read.
         """
-        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=0))
+        await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, data=0, go=0))
         mark = self.shim.mark()
         await self.fd.wr(PROGRAM_CTRL_ADDR, program_ctrl_word(bit_addr, go=1))
         await ClockCycles(cocotb.top.clk_i, self.w)
@@ -447,7 +450,10 @@ class sep_efuse_transient_rma_rand_test(sep_base_test):
         }
 
     def _go_issued(self, bit: int, bit_addr: int, res: dict) -> bool:
-        """The request fields of a refused program read back as the go wrote them."""
+        """The request fields of a refused program read back as the go wrote them.
+
+        ``efuse_data`` is 0 before the go write and 1 in it, so a lost go write fails.
+        """
         exp = program_ctrl_word(bit_addr, go=0)
         return self._ctrl(
             "PROG-LC-GO",

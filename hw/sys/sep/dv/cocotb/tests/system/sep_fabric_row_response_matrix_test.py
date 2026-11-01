@@ -976,9 +976,11 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                     else:
                         self._fail("CHK-ROW-KM", line)
         self._close()
+        ctl = []
         for v in (rr.KM_IRQ_ENABLE_CTL, 0):
             s = await self._si(SepAxiOp.WRITE, rr.KM_IRQ_ENABLE, wdata=v)
             r = await self._si(SepAxiOp.READ, rr.KM_IRQ_ENABLE)
+            ctl.append(f"wrote=0x{v:x}/read=0x{r.rdata & 0xFFFF_FFFF:x}")
             if s.resp_code != OKAY or r.resp_code != OKAY or (r.rdata & 0xFFFF_FFFF) != v:
                 self._abort(
                     "CHK-ROW-KM",
@@ -988,7 +990,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 )
         self.regval[rr.KM_IRQ_ENABLE] = 0
         for line in lines:
-            self.logger.info("CHK-ROW-KM PASS: %s baseline_ctl=0x%x", line, rr.KM_IRQ_ENABLE_CTL)
+            self.logger.info("CHK-ROW-KM PASS: %s baseline_ctl %s", line, " ".join(ctl))
         await self._release()
 
     async def _snapshot(self, key: str) -> dict[int, tuple[int, int]]:

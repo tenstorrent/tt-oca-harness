@@ -30,6 +30,10 @@ Checkers:
   CHK-RW1C     per cell: INTR_STATE.hmac_done reads 1 right before its W1C and 0
                after it (hmac.adoc INTR_STATE: hmac_done RW1C)
   CHK-ERR      per cell: ERR_CODE == 0 and INTR_STATE.hmac_err == 0
+  CTRL-HMAC-KEY-FILL per keyed cell: every KEY register above key_length is
+               written with a seeded non-zero word before the key, so a key_length
+               decoded too long changes the digest and fails CHK-CELL (hmac.hjson
+               KEY: key_length determines which registers are relevant)
   CHK-RAND-REP every legal cell produced its own golden-matching digest, and all
                digests are distinct (seed logged)
 """
@@ -50,6 +54,7 @@ from seq_lib.sep_hmac_seq import (
     HMAC_ILLEGAL_KEYED,
     HMAC_INTR_DONE,
     HMAC_INTR_STATE,
+    HMAC_KEY,
     HMAC_KEY_LENGTH,
     HMAC_MSG_FIFO,
     SepHmac,
@@ -230,6 +235,25 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         )
         return dict(self._SW_KEY_CONV)
 
+    async def _fill_upper_key(self, key_bits: int, mode: str) -> int:
+        """Write a seeded non-zero word to every KEY register above key_bits.
+
+        The golden zero-pads the key to the block size, so a zero upper KEY word
+        cannot tell the programmed key_length from a longer one.
+        """
+        first = key_bits // 32
+        for i in range(first, len(HMAC_KEY)):
+            await self.hmac._wr(HMAC_KEY[i], self.rng.randrange(1, 1 << 32))
+        filled = len(HMAC_KEY) - first
+        self.logger.info(
+            "CTRL-HMAC-KEY-FILL %s: %d seeded non-zero words in KEY_%d..KEY_%d",
+            mode,
+            filled,
+            first,
+            len(HMAC_KEY) - 1,
+        )
+        return filled
+
     async def _run_cell(
         self, sha_bits: int, hmac_en: bool, key_bits: int | None, conv: dict
     ) -> tuple[int, ...]:
@@ -246,7 +270,9 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         mode = f"HMAC-SHA{sha_bits}/Key_{key_bits}" if hmac_en else f"SHA{sha_bits}"
 
         await self.hmac.configure(cfg.cfg_word())
+        filled = 0
         if hmac_en:
+            filled = await self._fill_upper_key(key_bits, mode)
             await self.hmac.write_key(key)
         digest, pre, post = await self.hmac.run_mac_rw1c(msg, sha_bits=sha_bits)
         pre_done = int(bool(pre & HMAC_INTR_DONE))
@@ -272,8 +298,10 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         await self.hmac.check_status_clean(mode)
         self.logger.info("CHK-ERR PASS %s: ERR_CODE == 0 and INTR_STATE.hmac_err == 0", mode)
         self.logger.info(
-            "CHK-CELL PASS %s: DIGEST==golden, RW1C done, ERR clean, non-vacuous (msg=%d words)",
+            "CHK-CELL PASS %s: DIGEST==golden, RW1C done, ERR clean, non-vacuous "
+            "(msg=%d words, upper KEY fill=%d)",
             mode,
             len(msg),
+            filled,
         )
         return tuple(digest)

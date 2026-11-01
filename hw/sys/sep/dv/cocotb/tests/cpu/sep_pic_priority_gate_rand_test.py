@@ -50,7 +50,9 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  bit is the pending indication of one source). Control:
                  ``CTRL-PICIO`` of the same round.
 * CHK-FLIP       (host) after priord flips and the raw priorities are mirrored
-                 the handlers run in the same order, from the same winner.
+                 the handlers run in the same order, from the same winner;
+                 ``mpiccfg.priord`` reads back the flipped order
+                 (``priord_rd`` equal to ``priord_to``).
 * CHK-MIE-LIVE, CHK-MIP-IDLE, CHK-NO-TIMER-TRAP, CHK-CONTROL (firmware) the
                  timer and software interrupt paths stay idle while the trap
                  path is live.
@@ -429,9 +431,11 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         )
         return first == exp and ids == order, body, order
 
-    def _flip_verdict(self, i: int, fids: list[int]) -> tuple[bool, str]:
-        """CHK-FLIP of round ``i``: (pass, body)."""
+    def _flip_verdict(self, i: int, kv: dict) -> tuple[bool, str]:
+        """CHK-FLIP of round ``i`` from its flip INFO-ORDER line: (pass, body)."""
         rd = self.tcfg.rounds[i]
+        fids = _ids(kv.get("ids", ""))
+        priord_rd = int(kv["priord_rd"]) if "priord_rd" in kv else None
         raws = rd.raw_map()
         exp = winner(raws, rd.priord)
         to = rd.priord ^ 1
@@ -441,10 +445,11 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
         ffirst = fids[0] if fids else None
         body = _fmt(
             f"seed={self.tcfg.seed} round={i} priord_from={rd.priord} priord_to={to} "
-            f"first={ffirst} exp={exp_f} raw_to={mraw} order={','.join(str(x) for x in fids)} "
+            f"priord_rd={priord_rd} first={ffirst} exp={exp_f} raw_to={mraw} order={','.join(str(x) for x in fids)} "
             f"exp_order={','.join(str(x) for x in order_f)}"
         )
-        return ffirst == exp_f and exp_f == exp and fids == order_f, body
+        ok = priord_rd == to and ffirst == exp_f and exp_f == exp and fids == order_f
+        return ok, body
 
     def _chk_order(self) -> int:
         seed = self.tcfg.seed
@@ -465,7 +470,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             self.logger.info("CHK-WINNER PASS %s", body)
             n += 1
             ties += int(_has_top_tie(self.tcfg.rounds[i].raw_map(), self.tcfg.rounds[i].priord))
-            ok, fbody = self._flip_verdict(i, _ids(flips[i].get("ids", "")))
+            ok, fbody = self._flip_verdict(i, flips[i])
             if not ok:
                 raise AssertionError(f"CHK-FLIP FAIL {fbody}")
             self.logger.info("CHK-FLIP PASS %s", fbody)
@@ -532,7 +537,7 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
             return False
         if not self._winner_verdict(i, _ids(wins[0].get("ids", "")))[0]:
             return False
-        return self._flip_verdict(i, _ids(flips[0].get("ids", "")))[0]
+        return self._flip_verdict(i, flips[0])[0]
 
     async def _label_follower(self) -> None:
         """Write pic_fw_pass from the console: the drop bit at each ``M G``

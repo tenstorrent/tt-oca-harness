@@ -196,7 +196,7 @@ the injection point is real logic and is golden-checked.
 
 [arabic]
 . Bring up in `no_cpu` with `+skip_fuse_sense`.
-. Walk the 17 HMAC/SHA cells against `sep_hmac_golden`.
+. Walk the 17 HMAC/SHA cells against `sep_hmac_golden`. Before each keyed cell, write a seeded non-zero word to every `KEY` register above `key_length`.
 
 *Checkers*:
 
@@ -206,9 +206,11 @@ the injection point is real logic and is golden-checked.
 |CHK-CONV
 |The engine honours the *specified* software-key register convention. `hmac.hjson` (the `KEY` multireg) defines `key[1023:0] = {KEY0, ... , KEY31}`, so `KEY_0` is the most-significant word and no word reversal is needed; `hmac.sv` implements it (`secret_key_d` from `reg2hw.key[31-i]`). The convention is pinned from the specification, not discovered by asking the engine which one it agrees with, and not transcribed from the RTL it checks — see <<audit>>. On mismatch the failure reports whether the reversed order would have matched, which separates a key word-order regression from a general digest fault.
 |CHK-CELL
-|Per cell: the digest equals the golden, the done interrupt sets and clears on write-one-to-clear, and the error status is clean.
+|Per cell: the digest equals the golden, the done interrupt sets and clears on write-one-to-clear, and the error status is clean. Each keyed cell first writes every `KEY` register above `key_length` with a seeded non-zero word (CTRL-HMAC-KEY-FILL), so a `key_length` decoded as a longer length hashes those words and fails the digest compare. Spec: `key_length` determines how many `KEY` registers are relevant for the HMAC operation (`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/doc/registers.md:351`, `KEY`; `vendor/lowRISC/opentitan/upstream/hw/ip/hmac/README.md:38-39`: only the relevant secret key registers are consumed). Evidence: `CHK-CELL PASS <mode>: ... (msg=<n> words, upper KEY fill=<m>)`.
 |CHK-RW1C
 |Per cell: `INTR_STATE.hmac_done` reads 1 on the read right before its write-one-to-clear and 0 on the read right after it (`vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc`, `INTR_STATE.hmac_done`: RW1C). A DUT that does not set the bit, or whose write-one-to-clear does not clear it, fails. Anchor: frontdoor `INTR_STATE` readback. Evidence: `CHK-RW1C PASS <mode>: hmac_done before W1C=1 (0x<v>), after W1C=0 (0x<v>)`.
+|CTRL-HMAC-KEY-FILL
+|Per keyed cell, before the key write: `KEY_<key_bits/32>` to `KEY_31` hold seeded non-zero words. A control, not a checker: `KEY` is write-only, so the fill has no readback; CHK-CELL is the failable check. Evidence: `CTRL-HMAC-KEY-FILL <mode>: <m> seeded non-zero words in KEY_<lo>..KEY_31` (m = 0 for Key_1024).
 |CHK-RAND-REP
 |Every legal cell ran, each producing a distinct digest. The matrix is derived from the generated digest-size and key-length banks minus `HMAC_ILLEGAL_KEYED`, which the sequence computes from the register specification's block-size rule (`hmac.adoc`: the key length cannot exceed the block size, 512-bit for SHA-2 256) rather than from the engine's own bound. It is the single source of truth for legality, so the sequence and this walk cannot drift apart. As on the AES sweep, the key and message are re-drawn per cell, so distinctness alone does not prove the cells programmed different variants — the per-cell golden compare is what proves that.
 |SKIP-ILLEGAL-KEYED

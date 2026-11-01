@@ -334,5 +334,6 @@ class sep_efuse_image_test(sep_base_test):
         )
         await self._check_sense_shadow(golden, chk="CHK-W1S-PERSIST")
         self.logger.info(
-            "CHK-W1S-PERSIST PASS: resense shadow == initial image + %d W1S bits", _NUM_BURN
+            "CHK-W1S-PERSIST PASS: resense shadow == initial image + %d W1S bits",
+            len(burn_offsets) + len((nc_a, nc_b)),
         )

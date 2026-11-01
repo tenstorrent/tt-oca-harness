@@ -39,6 +39,9 @@ Checkers:
                     last term, and both rise within the release bound after it.
                     On VCS the ``sep_reset_n`` tap is also never X while
                     ``rst_ni`` is low.
+                    Control (CTRL-REL-ORDER): the sampled order of the
+                    ``rst_ni`` release, the sense rise and the term rise is
+                    the order the epoch kind places, or the leaf fails.
   CHK-REL-HOLD      in the H = yes epoch both taps read 0 for the whole hold (at
                     least 2 T samples after the sense rise) and rise after
                     ``ext_boot_seq_done_i`` rises.
@@ -154,6 +157,14 @@ BOOT_AFTER = "BOOT_AFTER_SENSE_H0"
 BOOT_HOLD = "BOOT_AFTER_SENSE_H1"
 # Drawn epoch E with the weights 2, 2, 2, 1.
 _EPOCH_WEIGHTS = ((BOOT_FIRST, 2), (BOOT_WITH_RST, 2), (BOOT_MID, 2), (BOOT_AFTER, 1))
+# Observed order of the term samples (t_rst_rel, t_sense, t_boot) that each kind places.
+_ORDER = {
+    BOOT_FIRST: ("t_boot < t_rst_rel < t_sense", lambda r, s, b: b < r < s),
+    BOOT_WITH_RST: ("t_boot == t_rst_rel < t_sense", lambda r, s, b: b == r < s),
+    BOOT_MID: ("t_rst_rel < t_boot < t_sense", lambda r, s, b: r < b < s),
+    BOOT_AFTER: ("t_rst_rel < t_sense < t_boot", lambda r, s, b: r < s < b),
+    BOOT_HOLD: ("t_rst_rel < t_sense < t_boot", lambda r, s, b: r < s < b),
+}
 
 _LC_SET = (LC_TEST_DEV, LC_RMA_SIP_0, LC_RMA_CHIP_0)
 # DV set of (SIP_DIS, SYS_DIS) pairs: the disable vectors the real-sense fabric
@@ -547,6 +558,19 @@ class sep_boot_release_terms_test(sep_base_test):
             f"CHK-REL-GATE FAIL: {tag} taps did not rise within {_REL_BOUND} clk_i cycles of "
             f"the last term ({last_name} at sample {last}): sep_reset_n rise={sep_rise} "
             f"sep_cpu_reset_n rise={cpu_rise}"
+        )
+        order, in_order = _ORDER[ep.kind]
+        assert in_order(t_rel, t_sense, t_boot), (
+            f"CTRL-REL-ORDER FAIL: {tag} observed t_rst_rel={t_rel} t_sense={t_sense} "
+            f"t_boot={t_boot} is not the placed order {order}"
+        )
+        self.logger.info(
+            "CTRL-REL-ORDER seen: kind=%s order=%s t_rst_rel=%d t_sense=%d t_boot=%d",
+            ep.kind,
+            order,
+            t_rel,
+            t_sense,
+            t_boot,
         )
         x_low = 0
         if four_state:

@@ -783,6 +783,7 @@ static void run_round(uint32_t r) {
     disable_set(r);
     mstatus_mie(0);
     set_order(p ^ 1u);
+    uint32_t flip_rd = pic_read_mpiccfg() & EL2_PIC__MPICCFG__PRIORD_bm;
     for (uint32_t i = 0; i < n; i++) {
         uint32_t s = rprm(r, R_SRC + i);
         pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), PRI_MAX - rprm(r, R_RAW + i));
@@ -802,6 +803,7 @@ static void run_round(uint32_t r) {
     rec_num("r", r);
     rec_num("priord_from", p);
     rec_num("priord_to", p ^ 1u);
+    rec_num("priord_rd", flip_rd);
     rec_num("n", g_log_n);
     put_ids("ids", 0u, g_log_n);
     rec_end();

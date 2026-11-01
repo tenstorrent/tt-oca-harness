@@ -255,7 +255,17 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             resp = await self._jwr(TOKEN_EOP_ADDR, acc["data"])
             code, codes, resps = await self._jtag_poll(ch, golden)
             others = [c for c in codes if c not in (CODE_IDLE, golden)]
-            ok = code == golden and golden == acc["golden"] and pre != golden and not others
+            # The go golden is computed from last_wr, so each word of the array must
+            # read back as written (``efuse_mmr.rdl``: the token words are sw = rw).
+            back = [(await self._jrd(TOKEN_ARRAY_ADDR[ch][k]))[1] for k in range(8)]
+            words_equal = back == content
+            ok = (
+                code == golden
+                and golden == acc["golden"]
+                and pre != golden
+                and not others
+                and words_equal
+            )
             self._allow_resp(acc, resp)
             self.last_result[ch] = golden
             self._jtag_line(
@@ -272,6 +282,9 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
                 polls=len(codes),
                 poll_resps=",".join(str(r) for r in resps[-4:]),
                 codes=",".join(f"{c:02x}" for c in codes[-4:]),
+                words_back=len(back),
+                words_equal=int(words_equal),
+                **({} if words_equal else {"back": ",".join(f"{w:08x}" for w in back)}),
             )
         else:
             ch = acc["channel"]

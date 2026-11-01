@@ -40,8 +40,10 @@ The token fault raises no other source, so no bit is exempt for the same clock. 
 cell with no rise of bit 39 fails.
 
 Checkers: CHK-BIND, CHK-FAULT-CELL, CHK-SRC40-EXCL, CHK-FAULT-STICKY,
-CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-LATCH-FREEZE. A common-mode cell logs the
-N/A line of the three fault-only checkers. A failing hook control logs
+CHK-FAULT-NO-W1C, CHK-FAULT-RESET, CHK-LATCH-FREEZE. Controls: CTRL-SEC-DIS-MATCH
+(code ``0x15`` and ``security_disable_o`` 1) and CTRL-SEC-DIS-DROP (code ``0x2a``
+and ``security_disable_o`` 0), before each cell that uses the SEC_DIS channel. A
+common-mode cell logs the N/A line of the three fault-only checkers. A failing hook control logs
 ``CHK-HOOK FAIL`` and ends the leaf.
 
 FCOV: the graded window is open only over a graded step, from right before its DUT
@@ -91,6 +93,7 @@ from env.sep_efuse_plan import (
     write_token,
 )
 from env.sep_efuse_test_lib import SepEfuseFd, chk_bind, hook_fail, sig_bits
+from env.sep_fabric_common import RESP_NAME
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -383,17 +386,25 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         The match must raise security_disable_o (the revision-enable assumption and
         the control of every "never" check on it); the mismatch drops it.
         """
-        code = await self._present_until(CH_SEC_DIS, TOKEN_ZERO, CODE_MATCH, f"{label}.zero")
-        await ClockCycles(cocotb.top.clk_i, 2)
-        sdis = self._sdis()
-        if code != CODE_MATCH or sdis != 1:
-            hook_fail(self.chk, reason="sec_dis_match", code=code, secdis=sdis)
-        self.sdis_ctl_seen = True
-        code = await self._present_until(CH_SEC_DIS, TOKEN_OTHER, CODE_MISMATCH, f"{label}.other")
-        await ClockCycles(cocotb.top.clk_i, 2)
-        sdis = self._sdis()
-        if code != CODE_MISMATCH or sdis != 0:
-            hook_fail(self.chk, reason="sec_dis_drop", code=code, secdis=sdis)
+        for name, token, step, want, want_sdis in (
+            ("SEC-DIS-MATCH", TOKEN_ZERO, "zero", CODE_MATCH, 1),
+            ("SEC-DIS-DROP", TOKEN_OTHER, "other", CODE_MISMATCH, 0),
+        ):
+            code = await self._present_until(CH_SEC_DIS, token, want, f"{label}.{step}")
+            await ClockCycles(cocotb.top.clk_i, 2)
+            sdis = self._sdis()
+            if not self.chk.ctrl(
+                name,
+                code == want and sdis == want_sdis,
+                label=label,
+                code="none" if code is None else f"0x{code:02x}",
+                exp=f"0x{want:02x}",
+                secdis=sdis,
+                exp_secdis=want_sdis,
+            ):
+                hook_fail(self.chk, reason=name.lower().replace("-", "_"), code=code, secdis=sdis)
+            if want_sdis:
+                self.sdis_ctl_seen = True
 
     def _drive_inject(self, ch: str, pattern: int, copy: int) -> None:
         dut = cocotb.top
@@ -558,9 +569,16 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
 
         flags_before = flags_r
         tag = await self._open_step(_STEP_NO_W1C)
-        await self.fd.access(
+        wr = await self.fd.access(
             SepAxiOp.WRITE, TOKEN_MATCH_FAULT_ADDR, _W1C_ALL, unverified_write=True
         )
+        # The write must complete and decode: TOKEN_MATCH_FAULT lies inside the
+        # decoded extent of the eFuse token registers, and DECERR is the answer past
+        # that extent (hw/sys/sep/regs/gen/adoc/memory_map.adoc, eFuse Token
+        # Registers row). No document states the in-extent write code, so the code
+        # is logged and only DECERR fails.
+        wr_done = int(not wr.timed_out)
+        wr_resp = RESP_NAME.get(-1 if wr.timed_out else int(wr.resp_code), str(wr.resp_code))
         await ClockCycles(dut.clk_i, _WR_SETTLE)
         flags_w = await self._faults()
         await ReadOnly()
@@ -568,8 +586,14 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         ok = self._grade(
             "FAULT-NO-W1C",
-            flags_before & _FAULT_BIT[ch] and flags_w == flags_before and pic_w == 1,
+            flags_before & _FAULT_BIT[ch]
+            and flags_w == flags_before
+            and pic_w == 1
+            and wr_done
+            and wr_resp != "DECERR",
             wr=f"0x{_W1C_ALL:x}",
+            wr_done=wr_done,
+            wr_resp=wr_resp,
             flags_before=f"0x{flags_before:x}",
             flags=f"0x{flags_w:x}",
             pic40=pic_w,
