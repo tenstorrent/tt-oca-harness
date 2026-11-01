@@ -25,13 +25,20 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_fabric_tap import SepFabricTap
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL, sym
-from seq_lib.sep_address_map_seq import CPU_CTRL_INTERIOR_HOLES, sep_address_map_seq
+from seq_lib.sep_address_map_seq import (
+    CPU_CTRL_INTERIOR_HOLES,
+    FABRIC_BLOCKS,
+    sep_address_map_seq,
+)
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_fabric_filter_bank_seq import SMU_PAGE, SMU_PAGE_WORD, SepFilterBank
 
 RESP_OKAY = 0
 RESP_DECERR = 3
 MASK32 = 0xFFFF_FFFF
+# Rows of FABRIC_BLOCKS: one CSR in each LSU-reachable block that the
+# sep_address_map_seq docstring lists.
+FABRIC_WALK_ROWS = 22
 # Outbound filter entries opened over the SMU page for the PR-OUT liveness read.
 OUT_PAIR = (0, 1)
 
@@ -128,7 +135,7 @@ class sep_address_map_test(sep_base_test):
         walk_ars = seq.fabric_walk_out_ars
         probe_ars = seq.out_probe_ars
         walk = (
-            f"rows={seq.fabric_walk_checks} pr_out_ar={len(walk_ars)} "
+            f"rows={len(seq.fabric_walk_rows)} pr_out_ar={len(walk_ars)} "
             f"[{' '.join(b.fmt() for b in walk_ars)}] "
             f"live_addr=0x{SMU_PAGE_WORD:x} live_ar={len(probe_ars)} "
             f"[{' '.join(b.fmt() for b in probe_ars)}]"
@@ -141,9 +148,25 @@ class sep_address_map_test(sep_base_test):
             self.logger.error("CTRL-MISSING FABRIC-WALK-LOCAL: %s", walk)
             raise AssertionError(f"CTRL-MISSING FABRIC-WALK-LOCAL: {walk}")
         self.logger.info("CTRL-FABRIC-WALK-LOCAL seen: %s", walk)
+        # The scoreboard grades the response of every row and the value of a row
+        # with an expectation; the gate above stops the leaf on any error. This
+        # check requires that every row was read and answered OKAY, so a shorter
+        # walk fails.
+        planned = [name for name, _addr, _exp in FABRIC_BLOCKS]
+        walked = [name for name, _ok in seq.fabric_walk_rows]
+        not_ok = [name for name, ok in seq.fabric_walk_rows if not ok]
+        rows = (
+            f"rows={len(walked)} planned={len(planned)} expected={FABRIC_WALK_ROWS} "
+            f"not_okay={not_ok} missing={[n for n in planned if n not in walked]}"
+        )
+        assert len(planned) == FABRIC_WALK_ROWS and walked == planned and not not_ok, (
+            f"CHK-FABRIC-WALK FAIL: {rows}"
+        )
         self.logger.info(
-            "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",
-            seq.fabric_walk_checks,
+            "CHK-FABRIC-WALK PASS: rows=%d of %d, each LSU-reachable block CSR read and "
+            "answered OKAY",
+            len(walked),
+            FABRIC_WALK_ROWS,
         )
 
         # 0x158-0x177 owns no register: sep_cpu_ctrl.rdl places
