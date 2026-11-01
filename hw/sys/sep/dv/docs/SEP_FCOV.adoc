@@ -7187,7 +7187,7 @@ each leg runs on every seed of its owner.
 |4 |`dma_alert_pair_force` |`sep_pic_pending_map_walk_rand_test` |The DMA alert pair reads the drawn value on both wires on `dma_alert_rx_probe_o` for at least one clock while the inject input is 1 (DMA alert sender inject, `docs/SEP_TB_ARCH.adoc`; CTRL-DMA-ALERT-INJ).
 |5 |`smc_aperture_change_quiet` |`sep_fabric_smc_route_test` |The SMC aperture inputs moved to the other configuration after reset with no LSU access in flight, and held the new pair on every clock of the two probe reads (CTRL-SMC-APERTURE-CHANGE).
 |6 |`smu_moved_irregular` |`sep_fabric_outbound_route_attr_test` |A moved SMU aperture whose size is not a power of two or whose base is not size-aligned, both registers read back as written (CTRL-SMU-MOVED).
-|7 |`row_attr_drawn_read` |`sep_fabric_row_response_matrix_test` |A System Interface read of a live row cell with drawn AR attributes, seen on the `m_axi` AR handshake (CTRL-ROW-ATTR).
+|7 |`row_attr_drawn_read` |`sep_fabric_row_response_matrix_test` |A System Interface read of a live row cell with drawn AR attributes, seen on the `m_axi` AR handshake (CTRL-ROW-ATTR), graded by CHK-ROW.
 |8 |`row_attr_pool_cell` |`sep_fabric_row_response_matrix_test` |A pool or ABR live cell read with drawn AR attributes, exclusive included (CTRL-ROW-ATTR).
 |9 |`row_narrow_unbacked` |`sep_fabric_row_response_matrix_test` |1- and 2-byte accesses to Reserved, Past and Hole cells, AxSIZE 0 and 1 seen on the `m_axi` handshake (CTRL-ROW-NARROW).
 |10 |`row_attr_drawn_write` |`sep_fabric_row_response_matrix_test` |A System Interface write with drawn AW attributes and WUSER, seen on the `m_axi` AW and W handshakes (CTRL-ROW-ATTR).

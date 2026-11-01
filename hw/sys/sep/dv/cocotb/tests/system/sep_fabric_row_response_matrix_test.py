@@ -110,9 +110,11 @@ synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``
 the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
 write and the other sub-word targets are logged (``OBS-REG-SUBWORD``).
 
-OBS-ROW-ATTR: after the graded window closes, SI accesses with attributes that
-no specification gives a response for: each live word again with the AxPROT[2],
-AxUSER, AxCACHE, AxQOS, AxREGION and AxLOCK drawn at its CHK-ROW cell; exclusive
+After the graded window closes, each live word is read again from SI with the
+AxPROT[2], AxUSER, AxCACHE, AxQOS, AxREGION and AxLOCK drawn at its CHK-ROW cell;
+the table states one cell per row for any attributes, so CHK-ROW grades the read
+as at the default-attribute read. OBS-ROW-ATTR: SI accesses with attributes that
+no specification gives a response for: exclusive
 reads with drawn attributes of the pool ``STATUS`` (one 64-bit access), an ABR
 register, the SPI host ``CSID`` and the DMA live word; an SI write of ``CSID``
 with drawn AW attributes and WUSER. The line logs the response, the read data or the LSU read-back, and
@@ -1518,13 +1520,21 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, _LABEL_CLOCKS)
 
     async def _attr_read(
-        self, row: str, reg: rr.Reg | None, drawn: dict[str, int], *, addr: int = 0
+        self,
+        row: str,
+        reg: rr.Reg | None,
+        drawn: dict[str, int],
+        *,
+        addr: int = 0,
+        graded: bool = False,
     ) -> bool:
         """SI read of a register word with ``drawn`` attributes between two LSU reads.
 
         ``reg`` None: one 64-bit SI read of the pool ``STATUS`` at ``addr``, the
         only pool access shape the pool states, with no LSU reads (``fifo_level``
-        moves while the pool fills)."""
+        moves while the pool fills). ``graded``: the word is a live row cell, and
+        CHK-ROW grades the read against the table as at its default-attribute
+        read; otherwise the read is logged (OBS-ROW-ATTR)."""
         if reg is None:
             a, size, mask = addr, 3, (1 << 64) - 1
             lsu_b = lsu_a = None
@@ -1534,6 +1544,19 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         s, seen = await self._si_attrs(SepAxiOp.READ, a, drawn, size=size)
         if reg is not None:
             lsu_a = (await self._lsu(SepAxiOp.READ, a))[1] & mask
+        ctrl = self._attr_ctrl(row, "R", {**drawn, "addr": a, "size": size}, seen)
+        if graded:
+            exp = self._expect_reg(a) & mask
+            got = s.rdata & 0xFFFF_FFFF
+            ok = s.resp_code == OKAY and (got & mask) == exp and lsu_b == exp and lsu_a == exp
+            self._row_line(
+                ok,
+                f"row={row} kind=live init=SI dir=R size=2 addr=0x{a:08x} wdata=na "
+                f"resp={_RN.get(s.resp_code)} rdata=0x{got & mask:08x} expect=OKAY/0x{exp:08x} "
+                f"field_mask=0x{mask:08x} lsu_before=0x{lsu_b:08x} lsu_after=0x{lsu_a:08x} "
+                f"rsvd=0x{got & ~mask & 0xFFFF_FFFF:08x} reg={reg.name} attrs=[{_attr_txt(drawn)}]",
+            )
+            return ctrl and ok
         self.logger.info(
             "OBS-ROW-ATTR LOG: row=%s dir=R size=%d addr=0x%08x attrs=[%s] resp=%s "
             "rdata=0x%x lsu_before=%s lsu_after=%s field_mask=0x%x graded=0",
@@ -1547,10 +1570,10 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             _hex(lsu_a),
             mask,
         )
-        return self._attr_ctrl(row, "R", {**drawn, "addr": a, "size": size}, seen)
+        return ctrl
 
     async def _attr_read_leg(self) -> None:
-        """Each live SI word read again with the attributes drawn at its CHK-ROW cell."""
+        """Each live SI word read again with the attributes drawn at its CHK-ROW cell (CHK-ROW)."""
         missing = sorted(set(rr.LIVE_SI_ROWS) - set(self.live_draw))
         ok = self._ctrl(
             "ROW-ATTR",
@@ -1558,7 +1581,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             f"rows={len(self.live_draw)} live_rows={len(rr.LIVE_SI_ROWS)} missing={missing}",
         )
         for key, (reg, drawn) in self.live_draw.items():
-            ok = await self._attr_read(key, reg, drawn) and ok
+            ok = await self._attr_read(key, reg, drawn, graded=True) and ok
         await self._leg_cov("row_attr_drawn_read", ok)
 
     async def _attr_cell_leg(self) -> None:
