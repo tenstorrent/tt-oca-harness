@@ -38,6 +38,7 @@ import cocotb
 import pyuvm
 from env.sep_fabric_tap import SepFabricTap
 from sep_base_test import sep_base_test
+from seq_lib.sep_fabric_csr_bank_seq import FILTER_STRIDE, OUTFILT_BASE, OUTFILT_ENTRIES
 from seq_lib.sep_fabric_filter_bank_seq import SMU_PAGE, SMU_PAGE_WORD, SepFilterBank
 from seq_lib.sep_fabric_local_alias_seq import (
     N_REGIONS,
@@ -48,8 +49,16 @@ from seq_lib.sep_fabric_local_alias_seq import (
 
 DBG_LANE_LSB = 192
 DBG_LANE_MSB = 207
-# Outbound filter entries opened over the SMU page for the PR-OUT liveness read.
-OUT_PAIR = (0, 1)
+
+
+def out_pair(addr: int) -> tuple[int, int]:
+    """The first two outbound filter entries whose registers do not hold ``addr``.
+
+    They are opened over the SMU page for the PR-OUT liveness read; the gated
+    read of ``addr`` must see the value the source page held before.
+    """
+    free = [i for i in range(OUTFILT_ENTRIES) if (addr - OUTFILT_BASE) // FILTER_STRIDE != i]
+    return free[0], free[1]
 
 
 @pyuvm.test()
@@ -138,7 +147,8 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         # holds, so this compare fails if the remap ignores the valid bit.
         await alias.program(cfg, valid=False)
         outf = SepFilterBank(self, "out")
-        await outf.program_pair(OUT_PAIR, SMU_PAGE, SMU_PAGE + 0xFFF)
+        pair = out_pair(cfg.access_addr)
+        await outf.program_pair(pair, SMU_PAGE, SMU_PAGE + 0xFFF)
         out = SepFabricTap("PR-OUT").start()
         out_mark = out.mark()
         gated = alias_probe_seq(cfg.access_addr)
@@ -149,7 +159,7 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         await self.start_seq(live)
         live_ars = out.since(live_mark, "ar")
         await out.stop()
-        for idx in OUT_PAIR:
+        for idx in pair:
             await outf.restore_reset(idx)
         local = (
             f"addr=0x{cfg.access_addr:08x} pr_out_ar={len(out_ars)} "
