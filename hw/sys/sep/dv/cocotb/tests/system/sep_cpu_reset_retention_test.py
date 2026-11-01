@@ -162,7 +162,12 @@ Controls (not counted): ``CTRL-CPU-RST`` (a ``wdt_rst_ni`` pulse drops
 ``sep_cpu_reset_n`` with ``sep_reset_n`` high, and the ``rst_ni`` pulse drops
 ``sep_reset_n``); ``CTRL-BANK-WRITE`` (each scratch bank reads its drawn words
 after the write); ``CTRL-OVL-ARMED`` (the domain-D probe reads its armed
-non-reset value before each overlap run); ``CTRL-DMA-COLD-MID`` (``STATUS``
+non-reset value before each overlap run); ``CTRL-OVL-PLACE`` (the first low
+clock of each overlap pulse lies in its drawn band: before the write AW
+handshake, from that handshake to the domain ``ip_rst_n`` fall, or at or after
+that fall); ``CTRL-WDT-INFLIGHT-PLACE`` (the cold-recover pulse falls after the
+write AW handshake with no ID-0 B seen, and rises before the calibrated B
+clock); ``CTRL-DMA-COLD-MID`` (``STATUS``
 reads BUSY=1 and DONE=0 before the cold reset, which falls less than one
 calibrated copy time after GO); ``CTRL-DEMOTE-COLD-CLEAR`` (the ``rst_ni`` pulse
 at the end of the demotion-hold leg returns ``DEMOTE_1`` and ``DEMOTE_2`` to
@@ -1219,23 +1224,13 @@ class sep_cpu_reset_retention_test(sep_base_test):
                 "between": p_first is not None and h <= p_first < fall,
                 "after": p_first is not None and p_first >= fall,
             }[run.band]
-            self.logger.info(
-                "INFO-OVL-PLACE run=%d pulse=%s band=%s issue=%d aw=%d fall=%d pulse_first_low=%s "
-                "offset_measured=%s offset_target=%d band_ok=%d%s",
-                n,
-                run.cls,
-                run.band,
-                base,
-                h,
-                fall,
-                p_first,
-                meas,
-                want,
-                int(band_ok),
-                legal_note,
+            self._ctl(
+                "CTRL-OVL-PLACE",
+                band_ok,
+                f"run={n} pulse={run.cls} band={run.band} issue={base} aw={h} fall={fall} "
+                f"pulse_first_low={p_first} offset_measured={meas} offset_target={want}"
+                f"{legal_note}",
             )
-            if not band_ok:
-                raise AssertionError(f"overlap run={n}: pulse not in band {run.band}")
             # Release after the pulse. A WDT pulse that cut the write (late or
             # dropped B) is followed by the cold reset before the release write: the
             # platform follows every watchdog timeout with a cold reset, which clears
@@ -1419,31 +1414,20 @@ class sep_cpu_reset_retention_test(sep_base_test):
         p_rel = rel[0] if rel else None
         b_open = not b_before
         b_due = None if self.lat_b is None else aw + self.lat_b
-        self.logger.info(
-            "INFO-WDT-INFLIGHT-PLACE: aw_clk=%d pulse_first_low=%s pulse_release=%s width=%d "
-            "b_outstanding_at_pulse=%d calibrated_b_after_aw=%s calibrated_b_clk=%s",
-            aw,
-            p_first,
-            p_rel,
-            INFLIGHT_WIDTH,
-            int(b_open),
-            self.lat_b,
-            b_due,
-        )
         # The pulse lands with the B outstanding and is released before the clock
         # the pulse-free B returns.
-        if not (
+        self._ctl(
+            "CTRL-WDT-INFLIGHT-PLACE",
             b_open
             and p_first is not None
             and p_first > aw
             and p_rel is not None
             and b_due is not None
-            and p_rel < b_due
-        ):
-            raise AssertionError(
-                "cold-recover leg: the pulse did not land with the B outstanding and end "
-                f"before the calibrated B (pulse_release={p_rel} calibrated_b_clk={b_due})"
-            )
+            and p_rel < b_due,
+            f"aw_clk={aw} pulse_first_low={p_first} pulse_release={p_rel} "
+            f"width={INFLIGHT_WIDTH} b_outstanding_at_pulse={int(b_open)} "
+            f"calibrated_b_after_aw={self.lat_b} calibrated_b_clk={b_due}",
+        )
         # Watch the write's B and the CPU reset for the bound; log the B outcome.
         b_clk = b_resp = c_fall = c_rise = None
         for _ in range(WRITE_BOUND):
