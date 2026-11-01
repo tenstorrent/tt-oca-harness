@@ -572,13 +572,19 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         wr = await self.fd.access(
             SepAxiOp.WRITE, TOKEN_MATCH_FAULT_ADDR, _W1C_ALL, unverified_write=True
         )
-        # The write must complete and decode: TOKEN_MATCH_FAULT lies inside the
-        # decoded extent of the eFuse token registers, and DECERR is the answer past
-        # that extent (hw/sys/sep/regs/gen/adoc/memory_map.adoc, eFuse Token
-        # Registers row). No document states the in-extent write code, so the code
-        # is logged and only DECERR fails.
+        # The readback proves no clear only if the write reached the register. No TT
+        # text states the response at this CPU-side port, so OKAY is a reach control,
+        # not a graded check.
         wr_done = int(not wr.timed_out)
         wr_resp = RESP_NAME.get(-1 if wr.timed_out else int(wr.resp_code), str(wr.resp_code))
+        if not self.chk.ctrl(
+            "FAULT-W1C-REACH",
+            wr_done and wr_resp == "OKAY",
+            label=label,
+            wr_done=wr_done,
+            wr_resp=wr_resp,
+        ):
+            hook_fail(self.chk, reason="fault_w1c_reach", wr_done=wr_done, wr_resp=wr_resp)
         await ClockCycles(dut.clk_i, _WR_SETTLE)
         flags_w = await self._faults()
         await ReadOnly()
@@ -586,14 +592,8 @@ class sep_efuse_token_fault_matrix_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         ok = self._grade(
             "FAULT-NO-W1C",
-            flags_before & _FAULT_BIT[ch]
-            and flags_w == flags_before
-            and pic_w == 1
-            and wr_done
-            and wr_resp != "DECERR",
+            flags_before & _FAULT_BIT[ch] and flags_w == flags_before and pic_w == 1,
             wr=f"0x{_W1C_ALL:x}",
-            wr_done=wr_done,
-            wr_resp=wr_resp,
             flags_before=f"0x{flags_before:x}",
             flags=f"0x{flags_w:x}",
             pic40=pic_w,

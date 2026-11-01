@@ -39,8 +39,8 @@ Inter-stage framing (matches ``SepDrbgScoreboard``):
     later accepted seed -> reseed; generate glen 128b blocks.
   - EDN->KM: each 128b block -> 4x32b beats, LSW-first
     beat0=block[31:0], beat1=[63:32], beat2=[95:64], beat3=[127:96].
-    (Documented; scoreboard confirms against the DUT probe and may flip to
-    MSW-first via ``km_word_order``.)
+    No TT text states this beat order; the golden assumes it, and the
+    scoreboard grades the DUT probe against it.
 """
 
 from collections import deque
