@@ -117,8 +117,10 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
+from env.sep_chk_log import word_digest
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
 from env.sep_efuse_image import SHADOW_BASE, WORD_BITS, WORD_MASK, SepEfuseImage
+from env.sep_efuse_plan import DIGEST_FIELDS
 from env.sep_fcov_gate import (
     KM_EFW_PROG_PASS_DENY,
     KM_EFW_PROG_PASS_SPARE,
@@ -128,7 +130,13 @@ from env.sep_fcov_gate import (
     set_km_efw_tm_pass,
     set_km_xbar_pass,
 )
-from env.sep_km_fuse_plan import T_XBAR_EFUSE, FuseTarget, KmFusePlan, plan
+from env.sep_km_fuse_plan import (
+    OTP_DUAL_RAIL_FIELDS,
+    T_XBAR_EFUSE,
+    FuseTarget,
+    KmFusePlan,
+    plan,
+)
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL, EFUSE_MMR, ip_c_header
@@ -191,6 +199,12 @@ KM_EFUSE_LOW = KM_EFUSE_WINDOW - 1
 KM_EFUSE_LOW_BITS = KM_EFUSE_LOW.bit_length()
 # Words of the eFuse shadow map.
 N_SHADOW_WORDS = _ROW["main:otp_efuse_map"]["occupied_size"] // 4
+# Shadow words of the UID, key, ID and token-digest fields: a log prints them only as a digest.
+_HIDDEN_WORDS = frozenset(
+    SepEfuseImage.field(n).word + k
+    for n in (*OTP_DUAL_RAIL_FIELDS, *DIGEST_FIELDS)
+    for k in range(SepEfuseImage.field(n).n_words)
+)
 KM_IRQ_ENABLE = _ROW["main:kmcsr"]["base"] + _KM_CSR.IRQ_ENABLE_REG_ADDR
 KM_MBX_STATUS = _ROW["main:mailbox_km"]["base"] + _KM_MBX.KM_STATUS_REG_ADDR
 KM_DRBG_STATUS = _ROW["main:drbg_sampler"]["base"] + _KM_DRBG.STATUS_REG_ADDR
@@ -315,6 +329,11 @@ class Cell:
     resp: str = "OKAY"
     rdata: int | None = None  # None: data not graded
     control: bool = False
+
+
+def _wh(word: int, v: int) -> str:
+    """Shadow word ``word`` with value ``v`` in hex; a hidden word as ``sha:<word_digest>``."""
+    return f"sha:{word_digest([v])}" if word in _HIDDEN_WORDS else f"0x{v:08x}"
 
 
 def _short(key: str) -> str:
@@ -1164,9 +1183,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             mask = d["mask"]
             kd, (h1d, h1c), (h2d, h2c) = d["km_data"], d["h1"], d["h2"]
             maps.add(d["map"])
+            w = (d["km"] - KM_EFUSE_MAP) // 4 if d["map"] == "map" else -1
             line = (
-                f"k={d['k']} map={d['map']} km=0x{d['km']:05x} km_rd=0x{kd:08x} "
-                f"km_cls={d['km_cls']} host_rd=0x{h1d:08x}/0x{h2d:08x} host_cls={h1c}/{h2c} "
+                f"k={d['k']} map={d['map']} km=0x{d['km']:05x} km_rd={_wh(w, kd)} "
+                f"km_cls={d['km_cls']} host_rd={_wh(w, h1d)}/{_wh(w, h2d)} host_cls={h1c}/{h2c} "
                 f"mask=0x{mask:08x}"
             )
             self.logger.info("%s draw %s", "LOG-EFW-RD-TM" if tm else "LOG-EFW-RD", line)
@@ -1195,7 +1215,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             else:
                 problems.append(
                     f"host read of shadow word {word} is not the staged model "
-                    f"0x{d['model']:08x}: {line}"
+                    f"{_wh(word, d['model'])}: {line}"
                 )
         if len(maps) != 3:
             problems.append(f"draws cover maps {sorted(maps)}, not all three")
@@ -1638,11 +1658,12 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             # A refused program changes no fuse, so the whole OTP word of the
             # target equals the staged word, not only the target bit.
             r["eq"] = int(r["otp"]["word"] == staged)
+            sw = tgt.address // WORD_BITS
             line = (
                 f"path={path} field={tgt.field} word={tgt.word} bit={tgt.bit} "
                 f"req_err_before={r['req_err_before']} req_err={r['req_err']} "
-                f"done={r['done']} status={r['status']} otp_word=0x{r['otp']['word']:08x} "
-                f"staged=0x{staged:08x} otp_word_eq={r['eq']} rd_cmds={r['otp']['rd_cmds']}"
+                f"done={r['done']} status={r['status']} otp_word={_wh(sw, r['otp']['word'])} "
+                f"staged={_wh(sw, staged)} otp_word_eq={r['eq']} rd_cmds={r['otp']['rd_cmds']}"
             )
             r["line"] = line
             bad = []

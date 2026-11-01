@@ -112,6 +112,16 @@ synchronously" (``hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393``
 the watchdog block is ``PERIPH_BUS_ERR_STATUS.wdt``, ``:442``). The word after the
 write and the other sub-word targets are logged (``OBS-REG-SUBWORD``).
 
+CHK-OTBN-IMEM-SUBWORD-CRC: OTBN ``LOAD_CHECKSUM`` reads the same value before and
+after each AxSIZE 0 and AxSIZE 1 write to the ``otbn_imem`` word: "Writes that are
+less than 32b or not aligned on a 32b boundary are ignored and not factored into
+the CRC calculation" (``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/
+theory_of_operation.md:454``). Control CTRL-OTBN-CRC-LIVE: after ``LOAD_CHECKSUM``
+is written 0, the full-word write to that word makes ``LOAD_CHECKSUM`` read the
+CRC-32-IEEE of its 48b record ``{imem, idx, wdata}`` (``:447-453``) in one of the
+two byte orders (the text fixes the layout, not the order), so the register
+follows the writes to that memory.
+
 After the graded window closes, each live word is read again from SI with the
 AxPROT[2], AxUSER, AxCACHE, AxQOS, AxREGION and AxLOCK drawn at its CHK-ROW cell;
 the table states one cell per row for any attributes, so CHK-ROW grades the read
@@ -136,6 +146,7 @@ probe.
 
 from __future__ import annotations
 
+import binascii
 from collections import Counter
 
 import cocotb
@@ -260,6 +271,19 @@ SUBWORD_TARGETS = (
 # answers SLVERR (hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:388-393;
 # the watchdog block is PERIPH_BUS_ERR_STATUS.wdt, :442).
 SUBWORD_GRADED = "wdt_wkup_thold_lo"
+OTBN_LOAD_CHECKSUM = sep_reg.OTBN_LOAD_CHECKSUM_REG_ADDR
+# LOAD_CHECKSUM record byte orders: theory_of_operation.md:449-453 fixes the 48b
+# layout, not the order.
+_CKSUM_ORDERS = ("little", "big")
+
+
+def _load_checksum_golden(writes: list[tuple[int, int, int]], order: str) -> int:
+    """CRC-32-IEEE over 48b ``{imem, idx[14:0], wdata}`` records (theory_of_operation.md:447-453)."""
+    crc = 0
+    for imem, idx, wdata in writes:
+        rec = ((imem & 1) << 47) | ((idx & 0x7FFF) << 32) | (wdata & 0xFFFF_FFFF)
+        crc = binascii.crc32(rec.to_bytes(6, order), crc)
+    return crc
 
 
 def _kmac_prefix_count() -> int:
@@ -349,6 +373,7 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         "CHK-SI-ID-ECHO",
         "CHK-ROW-FILTER-SRC",
         "CHK-ROW-FABRIC-CSR",
+        "CHK-OTBN-IMEM-SUBWORD-CRC",
     )
 
     # ------------------------------------------------------------------ access
@@ -1756,12 +1781,28 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 after & 0xFFFF_FFFF,
             )
 
+    async def _load_checksum(self) -> int:
+        _r, crc = await self._lsu(SepAxiOp.READ, OTBN_LOAD_CHECKSUM)
+        return crc & 0xFFFF_FFFF
+
     async def _subword_leg(self) -> None:
         """LSU AxSIZE 0 and 1 reads and writes to registers and memories."""
         for name, addr, restore in SUBWORD_TARGETS:
-            if name == "otbn_imem":
+            otbn = name == "otbn_imem"
+            if otbn:
                 # A memory word holds a written value before its first read.
-                await self._lsu(SepAxiOp.WRITE, addr, wdata=self.rng.getrandbits(32))
+                await self._lsu(SepAxiOp.WRITE, OTBN_LOAD_CHECKSUM, wdata=0)
+                wd = self.rng.getrandbits(32)
+                await self._lsu(SepAxiOp.WRITE, addr, wdata=wd)
+                idx = (addr - sep_reg.OTBN_IMEM_MEM_BASE_ADDR) // 4
+                crc = await self._load_checksum()
+                cands = [_load_checksum_golden([(1, idx, wd)], o) for o in _CKSUM_ORDERS]
+                self._ctrl(
+                    "OTBN-CRC-LIVE",
+                    crc in cands,
+                    f"crc=0x{crc:08x} candidates=[{', '.join(f'0x{c:08x}' for c in cands)}] "
+                    f"idx={idx} wdata=0x{wd:08x}",
+                )
             _r, cur = await self._lsu(SepAxiOp.READ, addr)
             cur &= 0xFFFF_FFFF
             for size, off in ((0, 1), (1, 2)):
@@ -1769,9 +1810,30 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
                 old = (cur >> (8 * off)) & mask
                 wv = (~old & mask) if restore else old
                 rd_resp, rdata = await self._lsu(SepAxiOp.READ, addr + off, size=size, expect="any")
+                if otbn:
+                    crc_before = await self._load_checksum()
+                    tl_before = int(cocotb.top.otbn_imem_tl_partial_wr_count_o.value)
                 wr_resp, _w = await self._lsu(
                     SepAxiOp.WRITE, addr + off, size=size, wdata=wv, expect="any"
                 )
+                if otbn:
+                    tl_writes = int(cocotb.top.otbn_imem_tl_partial_wr_count_o.value) - tl_before
+                    self._ctrl(
+                        "OTBN-SUBWORD-TL",
+                        tl_writes == 1,
+                        f"addr=0x{addr + off:08x} size={size} tl_partial_writes={tl_writes} "
+                        "expect=1",
+                    )
+                    crc_after = await self._load_checksum()
+                    line = (
+                        f"target={name} addr=0x{addr + off:08x} size={size} "
+                        f"crc_before=0x{crc_before:08x} crc_after=0x{crc_after:08x} "
+                        "expect=crc_before"
+                    )
+                    if crc_after == crc_before:
+                        self.logger.info("CHK-OTBN-IMEM-SUBWORD-CRC PASS: %s", line)
+                    else:
+                        self._fail("CHK-OTBN-IMEM-SUBWORD-CRC", line)
                 _r, rb = await self._lsu(SepAxiOp.READ, addr)
                 self.logger.info(
                     "OBS-REG-SUBWORD target=%s addr=0x%08x size=%d rd_resp=%s rdata=0x%x "

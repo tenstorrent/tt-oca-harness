@@ -100,6 +100,12 @@ and bank diff of the in-range program after the out-of-range programs
 flags (``INFO-IF-ENABLE-CLEAR-ORDER``). The both-enables case clears
 ``read_enable`` before ``program_enable``, so the held read there cannot reach
 the bank before its cold reset.
+The bench record ``INFO-EFUSE-SHIM-DBG`` logs ``efuse_debug_bus_o``
+sampled on every ``clk_i`` from the first case frame to the end of the leaf: the OR of
+the write and read counter-error bits [12] and [4], the write and read FSM states
+[11:8] and [3:0] seen, and the OR of the other bits. No legal stimulus makes a
+counter error, so the line shows only that the bits stay 0 under these reads and
+programs; it cannot show that a counter error sets them.
 """
 
 from __future__ import annotations
@@ -108,7 +114,7 @@ from typing import Any
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import (
     PROGRAM_COMMANDS,
@@ -193,6 +199,10 @@ _CLEAR_SETTLE = 16  # clocks after a status clear write before the next write
 _RST_HOLD = 20
 _FCOV_SETTLE = 4  # clocks after the sense-done rise before the post-sense JTAG read
 _PASS_HOLD = 2  # clocks the step tag stays on the pass label
+# efuse_debug_bus_o: {3'b0, write counter err, write FSM, 3'b0, read counter err, read FSM}.
+_DBG_WR_ERR = 1 << 12
+_DBG_RD_ERR = 1 << 4
+_DBG_OTHER = 0xE0E0
 # The in-range program after the out-of-range ones draws its bit from a separate
 # stream, so the plan draws keep their seed mapping.
 _OOR_TWIN_SALT = 0x4F4F_5254
@@ -1111,6 +1121,8 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
         )
         self.bank = SepEfuseBank(dut)
         self.cmds = SepShimCmdMonitor(dut).start()
+        dbg = {"on": True, "clocks": 0, "unknown": 0, "or": 0, "wr": set(), "rd": set()}
+        dbg_task = cocotb.start_soon(self._debug_bus_watch(dbg))
         await ClockCycles(dut.clk_i, 2)
 
         cases = {
@@ -1131,4 +1143,33 @@ class sep_efuse_interface_status_rand_test(sep_base_test):
                 await self._case_presense_jtag()
         close_graded_window(self.logger)
         await self.cmds.stop()
+        dbg["on"] = False
+        await dbg_task
+        self.chk.info(
+            "EFUSE-SHIM-DBG",
+            clocks=dbg["clocks"],
+            unknown=dbg["unknown"],
+            wr_cnt_err=_b(dbg["or"], _DBG_WR_ERR),
+            rd_cnt_err=_b(dbg["or"], _DBG_RD_ERR),
+            wr_states=sorted(dbg["wr"]),
+            rd_states=sorted(dbg["rd"]),
+            other_bits=f"0x{dbg['or'] & _DBG_OTHER:04x}",
+        )
         self.chk.finish()
+
+    async def _debug_bus_watch(self, st: dict[str, Any]) -> None:
+        """Sample ``efuse_debug_bus_o`` on every ``clk_i`` while ``st["on"]``."""
+        dut = cocotb.top
+        while st["on"]:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            st["clocks"] += 1
+            v = dut.efuse_debug_bus_o.value
+            if not v.is_resolvable:
+                st["unknown"] += 1
+                continue
+            v = int(v)
+            st["or"] |= v
+            st["wr"].add((v >> 8) & 0xF)
+            st["rd"].add(v & 0xF)
+        await NextTimeStep()

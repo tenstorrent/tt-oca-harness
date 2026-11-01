@@ -119,6 +119,12 @@ log the tapped counts and the distance to the next strobe or FIFO word. No text
 states the FIFO words when the compressor bypass is set and cleared again
 between two outputs of the compressor: ``OBS-COND-BYPASS-MIDGROUP`` logs the
 FIFO words pushed between the two writes and the next three words.
+No text states which input bytes and coefficients the BIW stage combines into
+one word (architecture.adoc:115 names the grouping and the field only):
+``OBS-ESRC-BIW-MAP`` logs, in the pass-through window, the first FIFO words on
+``esrc_compress_data_o`` with the 12 lane bytes of the last two strobes before
+each word, the clocks from the last strobe, and whether the word is in the BIW
+observe words read after the window.
 """
 
 from __future__ import annotations
@@ -199,6 +205,7 @@ SHA_PUSH_MIN = 16
 PASSTHRU_BIW_MIN = 16
 PASSTHRU_FIFO_MIN = 8
 PASSTHRU_MAX_OFFSET = 8
+BIW_MAP_WORDS = 4  # FIFO words paired with their strobe bytes in OBS-ESRC-BIW-MAP
 HT_WAIT_FACTOR = 3
 # Period walk: strobes after a lane enable (the first distance and five gaps).
 PERIOD_STROBES = 6
@@ -1395,12 +1402,16 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             ESRC_SHA256_STATUS, "SHA256_STATUS", "BUSY", lambda v: v == 0, busy_cap
         )
         pass_tap = SepEsrcShaTap(self.rd).start()
+        biw_map: list[tuple[int, int, int, int]] = []
+        map_task = cocotb.start_soon(self._biw_map_trace(biw_map, cap))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=1))
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
         p_ok, _, _, out_reads = await self._poll_biw(PASSTHRU_BIW_MIN, cap)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         await pass_tap.stop()
+        if not map_task.done():
+            map_task.cancel()
         # The tap task ends in ReadOnly; a gate write needs the next time step.
         await NextTimeStep()
         close_graded_window(self.logger)
@@ -1430,6 +1441,15 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             compared=len(fifo_words),
             biw_words=len(biw_words),
             mismatches=0 if offset is not None else "all_offsets",
+        )
+        self.chk.obs(
+            "ESRC-BIW-MAP",
+            pairs=len(biw_map),
+            word=[f"0x{p[2]:08x}" for p in biw_map],
+            bytes=[f"0x{p[1]:024x}" for p in biw_map],
+            bytes_prev=[f"0x{p[0]:024x}" for p in biw_map],
+            lag_clk=[p[3] for p in biw_map],
+            in_biw_obs=[p[2] in biw_words for p in biw_map],
         )
         outs = [_get(v, "SHA256_STATUS", "OUTPUT_COUNT") for v in out_reads]
         nonzero = sum(1 for o in outs if o)
@@ -1469,6 +1489,29 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             bypass_out_count_max=pass_tap.out_max,
             bypass_clocks=pass_tap.clocks,
         )
+
+    async def _biw_map_trace(self, pairs: list, bound: int) -> None:
+        """The first BIW_MAP_WORDS words of ``esrc_compress_vld_o`` with their strobe bytes.
+
+        On every ``clk_i`` (ReadOnly) a strobe of ``esrc_decor_valid_o`` records
+        ``esrc_decor_bytes_o``; a word appends (bytes of the strobe before the last,
+        bytes of the last strobe, ``esrc_compress_data_o``, clocks from the last strobe).
+        A strobe and a word on one clock: the strobe first. Words before the second
+        strobe are not paired.
+        """
+        dut = cocotb.top
+        prev = last = None
+        last_clk = 0
+        for clk in range(bound):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if self.rd(dut.esrc_decor_valid_o):
+                prev, last, last_clk = last, self.rd(dut.esrc_decor_bytes_o), clk
+            if self.rd(dut.esrc_compress_vld_o) and prev is not None:
+                pairs.append((prev, last, self.rd(dut.esrc_compress_data_o), clk - last_clk))
+                if len(pairs) == BIW_MAP_WORDS:
+                    break
+        await NextTimeStep()
 
     async def _poll_biw(self, minimum: int, bound: int):
         """Poll BIW_OBS_STATUS.LEVEL >= minimum; reads SHA256_STATUS after each poll."""

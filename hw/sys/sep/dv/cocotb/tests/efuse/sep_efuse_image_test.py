@@ -36,6 +36,14 @@ Checkers:
                       W1S bit; the done field and the reserved bits are logged
                       OBS.
 
+Bench record: INFO-EFUSE-OTP-PLAIN, after the first sense, the AXI read of every
+shadow word of CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID with its response,
+compared with the image word the bench loaded; only the match and the indexes of
+differing words are logged, not the values. No text states whether these fields are
+stored obfuscated. The line shows only that the sense and read path returns the
+stored word unchanged; it cannot show how the stored value relates to the secret
+or UID it carries, or any transform firmware applies after the read.
+
 FCOV graded window (owner sep_efuse_image_test): it opens after the reset
 release and before the pre-sense FEAT_CTRL read, and closes after
 CHK-SENSE-SHADOW, or on the first FAIL inside it. It owns
@@ -57,11 +65,13 @@ from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_efuse_feat_ctrl import feat_ctrl_nonvacuous_fixed
 from env.sep_efuse_image import SEP_FUSE_SENSE_STATUS, WORD_BITS, SepEfuseImage
+from env.sep_fabric_common import RESP_NAME
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_efimg_pass
 from env.sep_lcc_golden import feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import SEP_CPU_CTRL, sym
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 from seq_lib.sep_efuse_shadow_check_seq import sep_efuse_shadow_check_seq
@@ -82,6 +92,7 @@ _UID_WORD0 = sym("SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET") // 4
 assert _UID_FIELD.word == _UID_WORD0, "CHIPLET_UID offset disagrees with the generated map"
 _UID_NBITS = _UID_FIELD.n_words * WORD_BITS
 _NUM_BURN = 10
+_PLAIN_FIELDS = ("CLASS_KEY", "CHIPLET_UID", "SIP_UID", "SYS_UID")
 
 
 class _ShadowStatusSeq(sep_efuse_shadow_check_seq):
@@ -168,6 +179,27 @@ class sep_efuse_image_test(sep_base_test):
             seq.status & ~_SENSE_DONE_MASK & 0xFFFF_FFFF,
         )
 
+    async def _log_otp_plain(self, img: SepEfuseImage) -> None:
+        """INFO-EFUSE-OTP-PLAIN: each shadow word of the key and UID fields beside its image word."""
+        for name in _PLAIN_FIELDS:
+            fld = SepEfuseImage.field(name)
+            shadow, resp = [], []
+            for i in range(fld.n_words):
+                addr = fld.shadow_addr + 4 * i
+                seq = SepAxiAccessSeq(f"plain_rd_0x{addr:08x}", op=SepAxiOp.READ, addr=addr, size=2)
+                await self.start_seq(seq)
+                shadow.append(seq.rdata & 0xFFFF_FFFF)
+                resp.append(RESP_NAME.get(seq.resp_code, seq.resp_code))
+            image = img.words[fld.word : fld.word + fld.n_words]
+            self.logger.info(
+                "INFO-EFUSE-OTP-PLAIN: field=%s words=%d equal=%d resp=[%s] diff_words=[%s]",
+                name,
+                fld.n_words,
+                int(shadow == image),
+                ",".join(str(r) for r in resp),
+                ",".join(str(i) for i, (s, w) in enumerate(zip(shadow, image)) if s != w),
+            )
+
     async def _watch_resense(self) -> tuple[str | None, int | None]:
         """``sep_fuse_sense_done_o`` on the last clock of the next ``rst_ni`` hold, and
         the clocks from the ``rst_ni`` release to the next done rise."""
@@ -211,6 +243,7 @@ class sep_efuse_image_test(sep_base_test):
         await self._grade(self._check_sense_shadow(img))
         await self._pass_label()
         close_graded_window(self.logger)
+        await self._log_otp_plain(img)
         opened = feat_ctrl_expected(
             img.lc_raw(), img.field_int("SIP_DIS"), img.field_int("SYS_DIS")
         )

@@ -591,6 +591,23 @@
 // value STATUS.READY reports. Zero in a build without
 // Adams Bridge. Owner: sep_abr_zeroize_latency_test.
 `SEP_TB_OUT(logic [1:0], abr_zeroize_ready_probe_o)
+// Adams Bridge AHB-lite counters on the wrapper bus into abr_top, reset with
+// the bench reset: abr_ahb_xfer_count_o the accepted address phases (HTRANS
+// bit 1 with HREADYOUT high), abr_ahb_wait_count_o the clocks with HREADYOUT
+// low, abr_ahb_err_count_o the clocks with HRESP high. Zero in a build without
+// Adams Bridge. Observation-only. User: sep_abr_access_size_test.
+`SEP_TB_OUT(logic [31:0], abr_ahb_xfer_count_o)
+`SEP_TB_OUT(logic [31:0], abr_ahb_wait_count_o)
+`SEP_TB_OUT(logic [31:0], abr_ahb_err_count_o)
+// AES masking parameters of the OpenTitan AES core: bit 0 SecMasking, bit 1
+// SecAllowForcingMasks. VCS only; the Verilator build ties it to 0.
+// Observation-only. User: sep_crypto_shadow_update_err_rand_test.
+`SEP_TB_OUT(logic [1:0], aes_sec_params_o)
+// CSRNG gate inputs at the DRBG instance: the OTP enable of the software
+// application read (MuBi8) and the lifecycle hardware-debug enable (lc_tx_t).
+// Observation-only. User: sep_drbg_cmd_sequence_rand_test.
+`SEP_TB_OUT(logic [7:0], csrng_sw_app_read_en_o)
+`SEP_TB_OUT(logic [3:0], csrng_lc_hw_debug_en_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
 // design does not implement -- see the SMC address decode check in tb_top.
@@ -604,6 +621,24 @@
 `SEP_TB_OUT(logic [31:0], km_sram_write_count_o)
 `SEP_TB_OUT(logic [31:0], km_cpu_fetch_count_o)
 `SEP_TB_OUT(logic [31:0], km_kmcsr_irq_entry_count_o)
+// KM CPU ready-mux counters, reset with the bench reset. Per source (ROM, SRAM,
+// AXI adapter): *_ready_on_target_count_o counts the clocks with the source
+// ready high while the KM CPU request is valid for that source,
+// *_ready_off_target_count_o the clocks with the source ready high while it
+// is not. Observation-only. User: sep_km_mailbox_km_side_rand_test.
+`SEP_TB_OUT(logic [31:0], km_rom_ready_on_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_ready_on_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_axi_ready_on_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_rom_ready_off_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_ready_off_target_count_o)
+`SEP_TB_OUT(logic [31:0], km_axi_ready_off_target_count_o)
+// KM CPU AXI-adapter write capture, reset with the bench reset: the address
+// and strobes of the last adapter write handshake (valid, ready and a non-zero
+// strobe in one clock), and the count of those handshakes whose strobes are
+// not 4'hf. Observation-only. User: sep_km_key_bank_register_rand_test.
+`SEP_TB_OUT(logic [31:0], km_axi_wr_addr_o)
+`SEP_TB_OUT(logic [3:0], km_axi_wr_strb_o)
+`SEP_TB_OUT(logic [31:0], km_axi_subword_wr_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_word0_o)
 // KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
 // for km_rom_otp_id.S, which writes its results to those words.
@@ -738,6 +773,10 @@
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_write_count_o)
+// Count of accepted OTBN TL-UL A-channel writes into the IMEM window whose
+// byte mask is not 4'hf, reset with the bench reset. Observation-only. User:
+// sep_fabric_row_response_matrix_test.
+`SEP_TB_OUT(logic [31:0], otbn_imem_tl_partial_wr_count_o)
 // ESRC -> DRBG -> CSRNG -> EDN -> KM entropy datapath probes. The driven noise
 // (esrc_noise_o) is the deterministic stimulus; the rest are DUT observation
 // points for the alive smoke and CHK1-CHK5 golden-vs-probe scoreboard.

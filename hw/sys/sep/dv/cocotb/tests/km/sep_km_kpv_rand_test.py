@@ -119,7 +119,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_reg_meta import SEP_CPU_CTRL
 from env.sep_seeded_rng import SepSeededRng
@@ -180,6 +180,11 @@ _KPV_READ_OPS = (kp.OP_RD, kp.OP_RDBLK, kp.OP_RDLOOP, kp.OP_POLL)
 
 def _h(v: int) -> str:
     return f"0x{v:08x}"
+
+
+def _hk(v: int) -> str:
+    """A scrambler key value: ``_h`` when it is 0, else ``sha:<word_digest>``."""
+    return f"sha:{word_digest(v)}" if v else _h(v)
 
 
 def _erase_ops(slot: int) -> list[kp.PokeOp]:
@@ -992,7 +997,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         self.chk.obs(
             "KPV-ACCESS",
             case="scr_key_locked",
-            rdata=_h(key.value) if key.known else "X",
+            rdata=_hk(key.value) if key.known else "X",
             axi_slverr=key.slv,
             erase=0,
         )
@@ -1203,7 +1208,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         self.controls["wipe_pre_vault"] = self.chk.ctrl(
             "WIPE-KPV-PRE",
             vault_pre,
-            key=_h(key_pre),
+            key=_hk(key_pre),
             sealed_ctrl=_h(self._ctrl(pre[3].value)),
             retired_ctrl=_h(self._ctrl(pre[4].value)),
             scr=_h(self._scr(pre[5].value)),
@@ -1244,7 +1249,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             words_nonzero=loop.data[0],
             words_or=_h(loop.data[1]),
             ctrl_nonzero=ctrl_nonzero,
-            kpv_key=_h(key),
+            kpv_key=_hk(key),
             en=int(bool(scr & m.SCR_ENABLE)),
             lock=int(bool(scr & m.SCR_LOCK)),
             status=int(status),
@@ -1422,8 +1427,8 @@ class sep_km_kpv_rand_test(sep_base_test):
             word_k=[_h(sa[i]) for i in idx_k],
             idx_k2=idx_k2,
             word_k2=[_h(under_k2[i]) for i in idx_k2],
-            inverse_diff="none" if got_diff is None else _h(got_diff),
-            golden=_h(key_diff),
+            inverse_diff="none" if got_diff is None else _hk(got_diff),
+            golden=_hk(key_diff),
         )
         self._gate(True)
 

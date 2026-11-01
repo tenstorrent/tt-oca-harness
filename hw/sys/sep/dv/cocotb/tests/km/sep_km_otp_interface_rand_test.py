@@ -90,7 +90,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env import sep_km_poke as kp
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_image import WORD_MASK, SepEfuseImage
 from env.sep_efuse_plan import PROGRAM_CTRL_ADDR, program_ctrl_word
 from env.sep_fcov_gate import close_graded_window, open_graded_window
@@ -154,6 +154,11 @@ NOTKM_MAX_BITS = 3  # programmed bits of the drawn class field: 1 to 3
 
 def _h(v: int) -> str:
     return f"0x{v:08x}"
+
+
+def _hf(f: int, v: int) -> str:
+    """``_h`` of a word of KM OTP field ``f``; a 256-bit UID, key or ID word as ``sha:<word_digest>``."""
+    return f"sha:{word_digest([v])}" if f in m.DUAL else _h(v)
 
 
 def _ok(res: kp.PokeResult, k: int = 0) -> bool:
@@ -328,9 +333,9 @@ class sep_km_otp_interface_rand_test(sep_base_test):
                 first = cycle
             if self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True):
                 return {
-                    "chiplet": _h(vals[0]),
-                    "sip": _h(vals[1]),
-                    "sys": _h(vals[2]),
+                    "chiplet_sha": word_digest(vals[0]),
+                    "sip_sha": word_digest(vals[1]),
+                    "sys_sha": word_digest(vals[2]),
                     "first_nonzero_cycle": "none" if first is None else first,
                     "sense_done_cycle": cycle,
                 }
@@ -551,7 +556,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         for slot, want in exp.items():
             got = self._field_bits(slot, ro.words[slot])
             if got != want:
-                out[slot[0]].append(f"{slot[1]}{slot[2]}={_h(got)}!={_h(want)}")
+                out[slot[0]].append(f"{slot[1]}{slot[2]}={_hf(slot[0], got)}!={_hf(slot[0], want)}")
         return out
 
     def _expected(self, eff: int, tm: int = 0) -> dict[m.Slot, int]:
@@ -1250,8 +1255,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             field=_FN[hp.f],
             lock=_h(locks[1].value),
             lock_cold=_h(locks[2].value),
-            readout_pre=_h(pre_field or 0),
-            readout_want=_h(want_rd),
+            readout_pre=_hf(hp.f, pre_field or 0),
+            readout_want=_hf(hp.f, want_rd),
         )
         both = (leg.pre_dem & m.DEM_FIELDS) == (self.dem_b.dem & m.DEM_FIELDS)
         self.chk.ctrl(
@@ -1274,8 +1279,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             both_rail=1,
             held=1,
             readout_addr=f"0x{rd_addr:x}",
-            readout_pre=_h(leg.pre_rd or 0),
-            readout_post=_h(leg.post_rd or 0),
+            readout_pre=_hf(hp.f, leg.pre_rd or 0),
+            readout_post=_hf(hp.f, leg.post_rd or 0),
             read_through=int(thru),
             **info,
         )
@@ -1460,7 +1465,7 @@ class sep_km_otp_interface_rand_test(sep_base_test):
         exp = self._expected(0)
         diff = self._diff(b, exp)
         moved = [
-            f"{_FN[s[0]]}.{s[1]}{s[2]}={_h(b.words[s])}!={_h(ref[s])}"
+            f"{_FN[s[0]]}.{s[1]}{s[2]}={_hf(s[0], b.words[s])}!={_hf(s[0], ref[s])}"
             for s in m.READOUT_SLOTS
             if b.words[s] != ref[s]
         ]
@@ -1500,8 +1505,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             field=_FN[leg.pub_f],
             word=leg.pub_word,
             bit=leg.pub_bit,
-            val=f"{_h(b.words[val])}->{_h(c.words[val])}",
-            cpl=f"{_h(b.words[cpl])}->{_h(c.words[cpl])}",
+            val=f"{_hf(leg.pub_f, b.words[val])}->{_hf(leg.pub_f, c.words[val])}",
+            cpl=f"{_hf(leg.pub_f, b.words[cpl])}->{_hf(leg.pub_f, c.words[cpl])}",
             others_moved=len(others),
             fields_model=model,
         )
@@ -1534,8 +1539,8 @@ class sep_km_otp_interface_rand_test(sep_base_test):
             and not sig
             and sig_ctrl,
             tm=tm,
-            secret_val=_h(max(secret_val)),
-            secret_cpl=_h(min(secret_cpl)),
+            secret_val_nonzero=sum(1 for v in secret_val if v),
+            secret_cpl_not_ones=sum(1 for v in secret_cpl if v != WORD_MASK),
             sigint_ctrl=int(sig_ctrl),
             sigint=int(sig),
             public_ok=public_ok,

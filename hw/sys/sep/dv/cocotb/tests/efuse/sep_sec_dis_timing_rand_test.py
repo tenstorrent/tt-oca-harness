@@ -62,14 +62,16 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
 from env.sep_efuse_image import LC_FIELD_MASK, lc_encode
 from env.sep_efuse_plan import (
     CH_SEC_DIS,
     CODE_MATCH,
     CODE_MISMATCH,
+    DIGEST_FIELDS,
     FIELD_NAMES,
+    SECRET_FIELDS,
     T_SEC_DIS_TIMING,
     TOKEN_ARRAY_ADDR,
     TOKEN_OTHER,
@@ -546,8 +548,10 @@ class sep_sec_dis_timing_rand_test(sep_base_test):
             mask, exp = _reset_compare(name, k)
             rsvd |= data & ~mask & 0xFFFF_FFFF
             if resp != RESP_OKAY or data & mask != exp or sd:
+                hidden = name in SECRET_FIELDS or name in DIGEST_FIELDS
+                got = f"sha:{word_digest([data])}" if hidden else f"0x{data:08x}"
                 bad.append(
-                    f"{name}[{k}]=0x{data:08x}/exp0x{exp:08x}/m0x{mask:08x}"
+                    f"{name}[{k}]={got}/exp0x{exp:08x}/m0x{mask:08x}"
                     f"/{RESP_NAME.get(resp, resp)}/sd{sd}"
                 )
             if name in staged_fields and data & mask != exp:

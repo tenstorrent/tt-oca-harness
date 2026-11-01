@@ -30,7 +30,7 @@ name = "sep_efuse_image_test"
 module = "efuse.sep_efuse_image_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "efuse", "sep_spec_log"]
+tags = ["smoke", "efuse", "sep_spec_log", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
@@ -441,7 +441,7 @@ module = "efuse.sep_efuse_interface_status_rand_test"
 seed = 1
 # No reseed: every run walks the eight cases; the seed selects only order, slots and values.
 timeout_sec = 3600
-tags = ["efuse", "interface", "rand_rep", "subsystem", "sep_spec_log", "lcc_gate_checks"]
+tags = ["efuse", "interface", "rand_rep", "subsystem", "sep_spec_log", "lcc_gate_checks", "logs_open_spec_value"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 

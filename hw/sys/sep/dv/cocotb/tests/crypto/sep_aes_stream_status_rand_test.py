@@ -130,7 +130,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes_cbc_decrypt, aes_decrypt_block, aes_encrypt_words
 from env.sep_bit_watch import SepBitWatch
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_crypto_kat_rows import AES_IV_ROWS, AES_KEY_ROWS
 from env.sep_edge_timer import SepEdgeTimer
 from env.sep_fcov_gate import (
@@ -297,7 +297,7 @@ class BusyPlan:
 
     def describe(self) -> str:
         return (
-            f"busy_key_word={self.key_word} busy_key_mask=0x{self.key_mask:08x} "
+            f"busy_key_word={self.key_word} busy_key_mask_sha={word_digest(self.key_mask)} "
             f"busy_iv_new={[hex(w) for w in self.iv_new]} piv_missing={self.piv_missing}"
         )
 
@@ -1098,7 +1098,7 @@ class sep_aes_stream_status_rand_test(sep_base_test):
         fields = {
             **self._bw_fields(before, after),
             "key_word": bp.key_word,
-            "key_mask": f"0x{bp.key_mask:08x}",
+            "key_mask_sha": word_digest(bp.key_mask),
             "ct==old_key_golden": ct_ok,
             "twin_new_key": int(twin_ok),
         }

@@ -44389,7 +44389,7 @@ module sep_fcov (
   // another owner samples nothing. A window close and a reset do not clear the
   // last owner, because firmware leaves grade after the window closed. The
   // label is the bin value and drives nothing.
-  localparam int unsigned OvLegCount = 23;
+  localparam int unsigned OvLegCount = 30;
   function automatic int unsigned ov_leg_owner(input int unsigned leg);
     case (leg)
       5'd1: return FcovOwnSepDmaIrqErrorLockRandTest;
@@ -44415,6 +44415,13 @@ module sep_fcov (
       5'd21: return FcovOwnSepSramAxiShapeMatrixTest;
       5'd22: return FcovOwnSepSpiOtHostCsrIrqRandTest;
       5'd23: return FcovOwnSepTimerClockContractTest;
+      5'd24: return FcovOwnSepDrbgCmdSequenceRandTest;
+      5'd25: return FcovOwnSepDrbgCmdSequenceRandTest;
+      5'd26: return FcovOwnSepEsrcHealthPatternRandTest;
+      5'd27: return FcovOwnSepKmSideloadShareWalkTest;
+      5'd28: return FcovOwnSepKmKeyBankRegisterRandTest;
+      5'd29: return FcovOwnSepKmKeyBankRegisterRandTest;
+      5'd30: return FcovOwnSepKmMailboxKmSideRandTest;
       default: return FcovOwnNone;
     endcase
   endfunction
@@ -44447,6 +44454,13 @@ module sep_fcov (
       bins sram_macro_bit_flip = {5'd21};
       bins spi_cmdinval_spien1 = {5'd22};
       bins wdt_pause_in_sleep_set = {5'd23};
+      bins csrng_bus_cmp_replay = {5'd24};
+      bins csrng_vctr_wrap = {5'd25};
+      bins esrc_ht_bypass_zero = {5'd26};
+      bins km_xfer_short_key = {5'd27};
+      bins km_bank_subword_byte = {5'd28};
+      bins km_bank_subword_half = {5'd29};
+      bins km_mbox_flush_race = {5'd30};
     }
   endgroup
 

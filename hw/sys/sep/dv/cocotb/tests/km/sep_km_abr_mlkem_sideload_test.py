@@ -56,6 +56,7 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_chk_log import diff_words, word_digest
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import kv_field_mask
 from sep_base_test import sep_base_test
@@ -325,10 +326,10 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             f"{chk} FAIL: {what} is {len(got)} words, expected {len(exp)} -- a short "
             "readback would narrow the compare to the overlap"
         )
-        bad = self._first_mismatch(got, exp)
-        assert bad is None, (
-            f"{chk} FAIL: {what} differs at word {bad} of {len(exp)}: "
-            f"got=0x{got[bad]:08x} exp=0x{exp[bad]:08x}"
+        bad = diff_words(got, exp)
+        assert not bad, (
+            f"{chk} FAIL: {what} differs at words {bad} of {len(exp)}: "
+            f"got_sha={word_digest(got)} exp_sha={word_digest(exp)}"
         )
 
     async def run_scenario(self) -> None:
@@ -381,17 +382,16 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         bad = self._first_mismatch(z_ref_eng, _Z_REF)
         assert bad is None, (
             "CTRL-MISSING KEM-SEED-REF: the engine's Z after the REF register write "
-            f"differs at word {bad}: got=0x{z_ref_eng[bad]:08x} exp=0x{_Z_REF[bad]:08x}"
+            f"differs at word {bad}: got_sha={word_digest(z_ref_eng)} exp_sha={word_digest(_Z_REF)}"
         )
         self.logger.info(
             "CTRL-KEM-SEED-REF seen: the two (D, Z) pairs give distinct %d-word "
             "encapsulation keys (ek_alt[0]=0x%08x ek_ref[0]=0x%08x); the engine Z "
-            "probe reads the REF Z z[0]=0x%08x z[3]=0x%08x",
+            "probe reads the REF Z z_sha=%s",
             KEM_EK_WORDS,
             ek_alt[0],
             ek_ref[0],
-            z_ref_eng[0],
-            z_ref_eng[3],
+            word_digest(z_ref_eng),
         )
         await self._zeroize(kem, what="after ref keygen")
 
@@ -432,14 +432,13 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             "CHK-KEM-SEED-SIDELOAD PASS: the 16-dword kv_read[1] lane delivered "
             "D[0..%d] and Z[0..%d] -- the %d-word encapsulation key equals the "
             "direct-register keygen of the same words (ek[0]=0x%08x), and the "
-            "engine Z moved from z[0]=0x%08x to the ALT Z z[0]=0x%08x z[3]=0x%08x",
+            "engine Z moved from z_sha=%s to the ALT Z z_sha=%s",
             KEM_SEED_WORDS - 1,
             KEM_SEED_WORDS - 1,
             KEM_EK_WORDS,
             ek_km[0],
-            z_pre[0],
-            z_km[0],
-            z_km[3],
+            word_digest(z_pre),
+            word_digest(z_km),
         )
         await self._zeroize(kem, what="after sideload keygen")
 
@@ -492,11 +491,12 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
 
         # The shared key of the vault-sourced ENCAPS is logged, not graded: no
         # spec states the read value of MLKEM_SHARED_KEY after it.
-        first_nz = next((w for w in sk_km if w != 0), None)
+        nonzero_at = [i for i, w in enumerate(sk_km) if w]
         self.logger.info(
-            "OBS-KEM-SK-CONFIDENTIAL LOG words_zero=%d first_nonzero=%s",
-            int(first_nz is None),
-            "none" if first_nz is None else f"0x{first_nz:08x}",
+            "OBS-KEM-SK-CONFIDENTIAL LOG words_zero=%d nonzero_at=%s words_sha=%s",
+            int(not nonzero_at),
+            nonzero_at,
+            word_digest(sk_km),
         )
 
         await self._kv_entry_obs(kem)
@@ -594,10 +594,9 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         self.logger.info(
             "CHK-KEM-SK-VALUE PASS: AES-256 under the written-back shared key == golden "
             "keyed with the engine's MLKEM_SHARED_KEY words (ct[0]=0x%08x, "
-            "sk[0]=0x%08x sk[7]=0x%08x); the dword-reversed key's golden ct[0]=0x%08x differs",
+            "sk_sha=%s); the dword-reversed key's golden ct[0]=0x%08x differs",
             ct_sk[0],
-            sk_alt[0],
-            sk_alt[7],
+            word_digest(sk_alt),
             golden_rev[0],
         )
 

@@ -74,7 +74,7 @@ just before the transfer (like OTBN), keeping the EDN stream dedicated to the KM
 from __future__ import annotations
 
 import pyuvm
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_hmac_golden import hmac_sha256_words
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -186,7 +186,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
                 word = rng.getrandbits(32)
             decoy.append(word)
         await self.hmac.write_key(decoy)
-        self.chk.info("DECOY-KEY", key=",".join(hex(w) for w in decoy))
+        self.chk.info("DECOY-KEY", key_sha=word_digest(decoy))
         # Decoy goldens under both key byte conventions: the SW-key register
         # convention (KEY_0 first, big-endian per word; hmac.hjson KEY and
         # CFG.key_swap = 0) and the sideload convention the KM key golden uses.
@@ -262,7 +262,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             rewrite_ok,
             words=len(decoy),
             all_okay=int(rewrite_ok),
-            key=",".join(hex(w) for w in decoy),
+            key_sha=word_digest(decoy),
         )
 
         # Keyed HMAC-SHA256 with the SIDELOAD key live and the decoy in the CSRs.

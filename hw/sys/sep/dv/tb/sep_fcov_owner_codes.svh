@@ -180,6 +180,7 @@ localparam int unsigned FcovOwnSepKmMailboxKmSideRandTest = 733;
 localparam int unsigned FcovOwnSepKmDrbgSamplerRandTest = 734;
 localparam int unsigned FcovOwnSepKmOtpInterfaceRandTest = 735;
 localparam int unsigned FcovOwnSepKmKeyBankRegisterRandTest = 736;
+localparam int unsigned FcovOwnSepKmSideloadShareWalkTest = 783;
 localparam int unsigned FcovOwnSepKmSramScramblerKeyRandTest = 737;
 localparam int unsigned FcovOwnSepKmDrbgSamplerTimeoutResetTest = 775;
 localparam int unsigned FcovOwnSepKmHandoverTest = 776;

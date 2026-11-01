@@ -853,8 +853,15 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     async def _presense_si_read_log(self, addr: int, rec: dict, watch, read) -> None:
         """OBS-SI-PRESENSE-READ: no line states what an SI read before sensing ends gets."""
         dut = cocotb.top
-        while not self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
+        for _ in range(_MAX_SENSE_CYCLES):
+            if self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True):
+                break
             await RisingEdge(dut.clk_i)
+        else:
+            raise AssertionError(
+                f"CTRL-MISSING PRESENSE-RELEASE: sep_reset_n stayed low {_MAX_SENSE_CYCLES} "
+                "clocks after fuse sense ended"
+            )
         await ClockCycles(dut.clk_i, _PRESENSE_WAIT)
         rec["stop"] = True
         await watch

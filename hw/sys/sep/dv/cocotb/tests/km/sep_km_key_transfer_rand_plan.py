@@ -30,6 +30,7 @@ import importlib.util
 from dataclasses import dataclass
 from pathlib import Path
 
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 
 WORD = 0xFFFF_FFFF
@@ -347,17 +348,13 @@ def in_shard(shard: int | None, r: Round) -> bool:
     return aes_width
 
 
-def _words(ws: tuple[int, ...]) -> str:
-    return "[" + ",".join(f"0x{w:08x}" for w in ws) + "]"
-
-
 def draw_lines(plan: Plan) -> list[str]:
     lines = [f"INFO-DRAW witness_size_{BANK_NAME[e]}={plan.witness_drawn[e]}" for e in WITNESS]
     lines += [f"INFO-DRAW size_class_{BANK_NAME[e]}={plan.other_class[e]}" for e in NO_WITNESS]
     for i, r in enumerate(plan.rounds):
         lines.append(
             f"INFO-DRAW round{i}=eng:{BANK_NAME[r.eng]},size:{r.size},class:{r.size_class},"
-            f"runs:{int(r.runs)} key={_words(r.words)}"
+            f"runs:{int(r.runs)} key_sha={word_digest(r.words)}"
         )
     lines += [
         f"INFO-DRAW p1=0x{plan.p1:02x}",
@@ -369,9 +366,9 @@ def draw_lines(plan: Plan) -> list[str]:
         f"INFO-DRAW v=0x{plan.v:02x}",
         f"INFO-DRAW s=0x{plan.s:02x}",
         f"INFO-DRAW leg_order={','.join(plan.leg_order)}",
-        f"INFO-DRAW k1={_words(plan.k1)}",
-        f"INFO-DRAW k2={_words(plan.k2)}",
-        f"INFO-DRAW k3={_words(plan.k3)}",
+        f"INFO-DRAW k1_sha={word_digest(plan.k1)}",
+        f"INFO-DRAW k2_sha={word_digest(plan.k2)}",
+        f"INFO-DRAW k3_sha={word_digest(plan.k3)}",
     ]
     return lines
 
