@@ -13,12 +13,15 @@ other token-block accesses, and per denied access its address and pattern. The
 required interface-control write of every leaf is a denied ``EFUSE_PROGRAM_CTRL``
 program of p, so the p read at the end grades a refused burn in every leaf.
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
-builds the same plan. JTAG and frontdoor accesses never overlap, except one
-frontdoor read and one JTAG read of the shadow word of p, started on the same clock
-at the end of the leaf. CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the
-frontdoor read data equal to the staged word; ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires
-both AR handshakes before either read completes; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
-the clock each read completes on and the command count at the post-guard tap.
+builds the same plan. After sense, ``CTRL-JTAG-LC-STATE`` reads the ``LC_STATE``
+shadow word at the frontdoor and requires the code of the drawn state. JTAG and
+frontdoor accesses never overlap, except one frontdoor read and one JTAG read of the
+shadow word of p, started on the same clock at the end of the leaf.
+CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the frontdoor read data
+equal to the staged word, and logs the frontdoor response code;
+``CTRL-JTAG-CONCURRENT-OVERLAP`` requires both AR handshakes before either read
+completes; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data, the clock each read
+completes on and the command count at the post-guard tap.
 
 Contract (``hw/sys/sep/doc/otp_fuse_controller.adoc``, section Shadow Register and
 JTAG Access Control; ``hw/sys/sep/doc/lifecycle_controller.adoc``, row SEP OTP
@@ -74,7 +77,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_bank_watch import SepShimCmdMonitor
-from env.sep_efuse_image import SHADOW_BASE
+from env.sep_efuse_image import LC_FIELD_MASK, LC_WORD_IDX, SHADOW_BASE, lc_encode
 from env.sep_efuse_plan import (
     CH_CHIPLET,
     CH_SIP,
@@ -521,6 +524,18 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             "INFO-WINDOW W=%d sense_clks=%d mult=%d secure_tm_o=%d", w, sense_clks, W_MULT, stm
         )
         self.chk.ctrl("JTAG-STM", stm == 0, secure_tm_o=stm)
+        # sep_efuse_map.rdl LC_STATE.lc_state: {~raw[3:0], raw[3:0]}.
+        lc_resp, lc_word = await self.fd.rd_graded_by_data(SHADOW_BASE + 4 * LC_WORD_IDX)
+        lc = lc_word & LC_FIELD_MASK
+        self.chk.ctrl(
+            "JTAG-LC-STATE",
+            lc == lc_encode(p.lc_raw),
+            state=self.state,
+            sensed=lc_state_class(lc),
+            lc_state=f"0x{lc:02x}",
+            exp=f"0x{lc_encode(p.lc_raw):02x}",
+            resp=lc_resp,
+        )
 
         feat, probe = await self._feat_dbg()
         if feat != probe or feat & DBG_MASK:

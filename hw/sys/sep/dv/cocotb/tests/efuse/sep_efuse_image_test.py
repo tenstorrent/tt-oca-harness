@@ -70,9 +70,8 @@ from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 TEST = "sep_efuse_image_test"
 _MAX_SENSE_CYCLES = 20_000
 
-# SEP_FUSE_SENSE_STATUS after sense-done: the done field reads 1
-# (regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:322). Bits 63:1 are reserved with no
-# stated reset (:321), so they are logged, not graded.
+# SEP_FUSE_SENSE_STATUS (regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:321-322) states no
+# value after sense-done, so the register is logged, not graded.
 _SENSE_DONE_MASK = SEP_CPU_CTRL.field_mask("SEP_FUSE_SENSE_STATUS", "sep_fuse_sense_done")
 
 # CHIPLET_UID is a benign, shadow-visible data field pinned to zero in the initial
