@@ -226,6 +226,27 @@ async def capture_ax(channel: str, prefix: str = "m_axi") -> dict[str, int]:
             return {f: int(s.value) for f, s in sig.items()}
 
 
+async def capture_wuser(prefix: str = "m_axi") -> list[int]:
+    """WUSER of every W handshake on a TB port, up to and including the first
+    one with WLAST set.
+
+    Start with ``cocotb.start_soon`` before the write and read the result after
+    it. The values are what the master presented on the W channel, so a compare
+    against the drawn WUSER proves it reached the port on every beat."""
+    dut = cocotb.top
+    valid = getattr(dut, f"{prefix}_wvalid")
+    ready = getattr(dut, f"{prefix}_wready")
+    user = getattr(dut, f"{prefix}_wuser")
+    last = getattr(dut, f"{prefix}_wlast")
+    beats: list[int] = []
+    while True:
+        await RisingEdge(dut.clk_i)
+        if valid.value == 1 and ready.value == 1:
+            beats.append(int(user.value))
+            if int(last.value):
+                return beats
+
+
 async def capture_rlast(rid: int, prefix: str = "m_axi") -> list[int]:
     """RLAST of every R handshake that carries ``rid`` on a TB port, up to and
     including the first one with RLAST set.

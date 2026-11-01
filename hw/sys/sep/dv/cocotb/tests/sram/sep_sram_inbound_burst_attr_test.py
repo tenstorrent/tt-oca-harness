@@ -24,7 +24,8 @@ refuses leaves memory unchanged, so its data result is not defined.
 
 CHK-SRAM-IN-STIM: each AW / AR handshake on the m_axi port carries the drawn
 ID, address, AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS, AxREGION
-and AxUSER, so the verdicts below are about the attributes the log names.
+and AxUSER, and every W beat of a write carries the drawn WUSER, so the
+verdicts below are about the attributes the log names.
 
 CHK-SRAM-IN-WRITE: every inbound write answers OKAY with BID equal to AWID.
 
@@ -90,6 +91,7 @@ from seq_lib.sep_sram_inbound_burst_seq import (
     SepSramInboundCfg,
     capture_ax,
     capture_rlast,
+    capture_wuser,
 )
 
 TEST = "sep_sram_inbound_burst_attr_test"
@@ -318,9 +320,15 @@ class sep_sram_inbound_burst_attr_test(sep_base_test):
             **a.kwargs(),
         )
         task = cocotb.start_soon(capture_ax("aw"))
+        w_task = cocotb.start_soon(capture_wuser())
         await self.start_ext_seq(seq)
         self._grade_stim(
             take_handshake(task), a, addr=addr, beats=beats, what=f"{what} @0x{addr:08x}"
+        )
+        wusers = take_handshake(w_task)
+        assert wusers == [a.attrs["wuser"]] * beats, (
+            f"CHK-SRAM-IN-STIM FAIL: {what} @0x{addr:08x} W beats wuser={wusers} "
+            f"expected {beats} x 0x{a.attrs['wuser']:03x}"
         )
         assert seq.resp_code == RESP_OKAY and seq.resp_id == a.axi_id, (
             f"CHK-SRAM-IN-WRITE FAIL: {what} @0x{addr:08x} {len(data)} B ({a}) answered "

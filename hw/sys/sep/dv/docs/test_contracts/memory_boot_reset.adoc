@@ -317,7 +317,7 @@ the case draws keep their values.
 |===
 |Checker |Contract
 |CHK-SRAM-IN-STIM
-|Each AW / AR handshake on `m_axi` carries the drawn ID, address, AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS, AxREGION and AxUSER, so the verdicts are about the attributes the log names.
+|Each AW / AR handshake on `m_axi` carries the drawn ID, address, AxLEN, AxSIZE, AxBURST, AxLOCK, AxCACHE, AxPROT, AxQOS, AxREGION and AxUSER, and every W beat of a write carries the drawn WUSER up to WLAST, so the verdicts are about the attributes the log names.
 |CHK-SRAM-IN-WRITE
 |Every inbound write answers OKAY with BID equal to AWID.
 |CHK-SRAM-IN-READ
