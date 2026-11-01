@@ -60,16 +60,37 @@ Its JTAG write response has no golden and is logged (OBS-SECDIS-LC-WR). The
 external debug bus is watched around those writes and in a quiet window on each
 side of them and logged (OBS-SECDIS-DBG-BUS): no specification puts eFuse state on that bus.
 
+Before sense and before any token, on the first ``clk_i`` edge with ``rst_ni``
+high, ``lc_state_o`` reads the ``LC_STATE`` reset value 0x0F, the INVALID
+encoding (CHK-LC-STATE-PORT). The debug and test gate ports are read in two
+windows with sense still open: before the token (SEC_DIS 0, the INVALID
+profile, every feature closed) and after the stopped-sense match (SEC_DIS 1,
+every feature open). ``dbg_disable_<path>_o`` has a stated level in both
+(CHK-DBG-DISABLE). No document states the level of ``sep_fuse_dft_disable_o``
+and ``smc_fuse_dft_disable_o``, so they are graded against two controls of the
+same leaf, read after the full sense: the fail-closed PROD profile (closed) and
+the post-sense match (open). The pre-sense read equals the closed control, the
+stopped-sense SEC_DIS read equals the open control, and the two controls differ
+(CHK-FUSE-DFT-CLASS); OBS-DTP-PORT-LEVEL logs the levels.
+
 After a later full sense, a fresh match on the PROD image opens
 ``FEAT_CTRL`` with the ``TEST_EN`` strap at 0: the register and the
 feature-control probe are all ones and ``secure_tm_o`` is 0.
 
 Checks (``CHK-<ID> PASS`` lines; every failure raises; OBS-SECDIS-LC-WR,
-OBS-SECDIS-SHADOW-WR and OBS-SECDIS-DBG-BUS are log lines):
+OBS-SECDIS-SHADOW-WR, OBS-SECDIS-DBG-BUS and OBS-DTP-PORT-LEVEL are log lines):
 
+  CHK-LC-STATE-PORT      first clk_i edge after the rst_ni release, sense open:
+                         lc_state_o == LC_STATE reset value 0x0F (INVALID)
   CHK-OVR-ALONE          the IC_RESET override alone releases the reset, FEAT_CTRL closed
+  CHK-DBG-DISABLE        sense open: every gated dbg_disable path 1 and the ungated
+                         paths 0 before the token; every path 0 under the match
   CHK-SENSE-GATED-RESET  a match does not release the sense-gated reset
-  CHK-FEAT-PRESENSE      the match opens FEAT_CTRL before sense-done
+  CHK-FEAT-PRESENSE      at one clock after the match, with no override, sense not
+                         done: lcc_feat_ctrl_probe_o all ones and
+                         sep_cpu_reset_n_o = dbg_sep_reset_n_o = 0. Control window:
+                         an override release in the same window reads both resets
+                         1 and a frontdoor FEAT_CTRL of all ones
   CHK-OVR-AFTER          the override releases the reset after the match
   CHK-MAP-OPEN           LC_STATE shadow read answers OKAY under SEC_DIS
   CHK-SENSE-STUCK        sense stays stopped and the reset held under SEC_DIS
@@ -87,6 +108,8 @@ OBS-SECDIS-SHADOW-WR and OBS-SECDIS-DBG-BUS are log lines):
   CHK-MATCH, CHK-OVERRIDE        match code and the all-ones FEAT_CTRL
   CHK-OVERRIDE-TM0       at CHK-OVERRIDE with the strap at 0 (control: CHK-HOOK):
                          FEAT_CTRL == lcc_feat_ctrl_probe_o == all ones, secure_tm_o == 0
+  CHK-FUSE-DFT-CLASS     each fuse DFT port: pre-sense read == closed control,
+                         stopped-sense SEC_DIS read == open control, controls differ
   CHK-DEACTIVATE, CHK-RESTORE    mismatch code and the PROD FEAT_CTRL again
 
 FCOV owner windows (``env/sep_fcov_gate.py``). The sampler holds each owned
@@ -94,6 +117,13 @@ event as pending and samples it only on the rise of its bit of the pass label
 ``ovr_pass``, which the leaf writes after the check of that event passes. A
 FAIL closes the window before the label, which drops the pending event.
 
+* From before the first ``rst_ni`` release to the stopped-sense gate read: the
+  port value at the first clock after the release
+  (``sep_lc_port_gate_cg.cp_presense_port``) and the before-sense and SEC_DIS
+  cells of ``x_cond_gate``. Both points carry their level in ``illegal_bins``
+  (the fuse DFT cells record the condition only). The window closes before the
+  first override release under SEC_DIS, so the pending events below start
+  empty.
 * CHK-OVR-AFTER in the first stopped-sense window: the override release with
   SEC_DIS on (``sep_sec_dis_boot_cg.cp_alone`` ``override_open``), released by
   bit 0 after CHK-OVR-AFTER passes.
@@ -102,7 +132,9 @@ FAIL closes the window before the label, which drops the pending event.
   (``x_secdis_stm_feat`` ``secure_tm_0``), released by bit 1 after
   CHK-OVERRIDE-TM0 passes.
 
-The stuck-sense match and CHK-RETAIN-OVR run with no window open: there
+CHK-RETAIN-OVR and the matches after it until the full sense run with no window
+open; the stuck-sense match runs in the first window, which closes before any
+pass label rises, so its pending ``x_secdis_stm_feat`` event drops: there
 ``secure_tm_o`` holds its reset value, not a strap sample.
 """
 
@@ -123,9 +155,12 @@ from env.sep_fcov_gate import (
     set_override_pass,
 )
 from env.sep_lcc_golden import (
+    DBG_DISABLE_FIELDS,
     LC_PROD,
     M64,
+    dbg_disable_expected,
     feat_ctrl_expected,
+    fuse_dft_disable_expected,
     is_invalid_lc,
     lc_state_name,
 )
@@ -170,6 +205,10 @@ _M32 = 0xFFFF_FFFF
 # event window).
 _DBG_SETTLE_CYCLES = 16
 _DBG_QUIET_CYCLES = 256
+# Clocks the stopped-sense SEC_DIS condition holds before the gate ports are read;
+# the FCOV sampler records a gate condition after 8 stable clocks.
+_GATE_SETTLE_CYCLES = 16
+_FUSE_DFT_PORTS = ("sep_fuse_dft_disable", "smc_fuse_dft_disable")
 
 
 class _BusChangeWatch:
@@ -310,7 +349,9 @@ class sep_sec_dis_override_test(sep_base_test):
         )
         return ctl.feat_ctrl
 
-    def _check_reset_stays_sense_gated(self, label: str = "CHK-SENSE-GATED-RESET") -> None:
+    def _check_reset_stays_sense_gated(
+        self, label: str = "CHK-SENSE-GATED-RESET", *, feat_label: str | None = None
+    ) -> None:
         """A SEC_DIS match alone must NOT release the sense-gated reset.
 
         hw/sys/sep/doc/reset_controller.adoc: ``sep_reset_n`` holds every
@@ -318,6 +359,14 @@ class sep_sec_dis_override_test(sep_base_test):
         ``ext_boot_seq_done_i`` is already 1, so sense is the only term
         still holding the reset -- this checker fails if a match releases
         it.
+
+        With ``feat_label``, the same clock also grades the open feature
+        control: security_disable.adoc, "A match does not release the SEP
+        reset, which stays held until fuse sensing completes", and
+        lifecycle_controller.adoc (Overrides and Final Gates): SEC_DIS = 1
+        forces ``feat_ctrl`` to all ones. So ``lcc_feat_ctrl_probe_o`` reads
+        all ones while both reset probes read 0, with the IC_RESET override
+        pins at 0.
         """
         dut = cocotb.top
         assert not self.rd_known(dut.sep_fuse_sense_done_o), (
@@ -333,6 +382,8 @@ class sep_sec_dis_override_test(sep_base_test):
         assert sec_dis == 1, f"{label} FAIL: sec_dis={sec_dis} want 1 before the reset check"
         cpu_rst = self.rd_known(dut.sep_cpu_reset_n_o)
         fabric_rst = self.rd_known(dut.dbg_sep_reset_n_o)
+        probe = self.rd_known(dut.lcc_feat_ctrl_probe_o) if feat_label else 0
+        ovrd = self.rd_known(dut.jtag_sep_reset_n_ovrd_i)
         assert cpu_rst == 0 and fabric_rst == 0, (
             f"{label} FAIL: sec_dis=1 sense_done=0 ext_boot_seq_done=1 "
             f"but sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 0/0 "
@@ -342,6 +393,25 @@ class sep_sec_dis_override_test(sep_base_test):
             "%s PASS: sec_dis=1 sense_done=0 ext_boot_seq_done=1 "
             "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 (match alone leaves the reset held)",
             label,
+        )
+        if feat_label is None:
+            return
+        assert ovrd == 0, (
+            f"{feat_label} WINDOW-CLOSED: jtag_sep_reset_n_ovrd_i={ovrd}, so the held "
+            "reset is not the sense gate alone"
+        )
+        want = feat_ctrl_expected(_WITHHELD_LC, 0, 0, sec_dis=1)
+        assert want == M64, f"{feat_label} FAIL: override golden 0x{want:016x} is not all ones"
+        assert probe == want, (
+            f"{feat_label} FAIL: sec_dis=1 sense_done=0 sep_cpu_reset_n_o=0 "
+            f"dbg_sep_reset_n_o=0 lcc_feat_ctrl_probe_o=0x{probe:016x} want 0x{want:016x}"
+        )
+        self.logger.info(
+            "%s PASS: held: sec_dis=1 sense_done=0 ovrd=0 sep_cpu_reset_n_o=0 "
+            "dbg_sep_reset_n_o=0 lcc_feat_ctrl_probe_o=0x%016x exp=0x%016x",
+            feat_label,
+            probe,
+            want,
         )
 
     def _require_sense_open(self, label: str, *, sec_dis: int | None = None) -> None:
@@ -404,6 +474,137 @@ class sep_sec_dis_override_test(sep_base_test):
             observed,
             ctl.feat_ctrl,
         )
+
+    async def _first_clock_port(self) -> tuple[str, str]:
+        """``lc_state_o`` and sense done on the first clk_i edge with rst_ni high after a low."""
+        dut = cocotb.top
+        seen_low = False
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            rst = str(dut.rst_ni.value)
+            if rst == "0":
+                seen_low = True
+            elif seen_low and rst == "1":
+                return str(dut.lc_state_probe_o.value), str(dut.sep_fuse_sense_done_o.value)
+
+    def _check_presense_port(self, port: str, done: str) -> None:
+        """CHK-LC-STATE-PORT: ``lc_state_o`` holds the INVALID reset value before sense.
+
+        lifecycle_controller.adoc: the OTP controller holds the shadow output at
+        the INVALID encoding 4'b1111 until fuse sensing completes.
+        otp_fuse_controller.adoc (Fuse Fields, ``LC_STATE``) and
+        doc/integrator/src/smu-sep.adoc: ``lc_state_o`` is ``{~raw, raw}``.
+        sep_efuse_map.rdl: ``lc_state`` resets to 0x0F. The sample is the first
+        clk_i edge after the rst_ni release, with sense not done.
+        """
+        label = "CHK-LC-STATE-PORT"
+        lc_addr = SepEfuseImage.field("LC_STATE").shadow_addr
+        want = word_reset(lc_addr) & LC_FIELD_MASK
+        assert want == lc_encode(_WITHHELD_LC), (
+            f"test bug: LC_STATE RDL reset 0x{want:02x} is not INVALID "
+            f"0x{lc_encode(_WITHHELD_LC):02x}"
+        )
+        assert done == "0", (
+            f"{label} WINDOW-CLOSED: sep_fuse_sense_done_o={done} on the first clock "
+            "after the rst_ni release"
+        )
+        got = int(port, 2) if set(port) <= {"0", "1"} else None
+        assert got == want, (
+            f"{label} FAIL: first clk_i edge after the rst_ni release, sense_done=0: "
+            f"lc_state_o={port} want 0x{want:02x} (LC_STATE reset value, INVALID)"
+        )
+        self.logger.info(
+            "%s PASS: first clk_i edge after the rst_ni release sense_done=0 "
+            "got_port=0x%02x exp=0x%02x",
+            label,
+            got,
+            want,
+        )
+
+    def _gate_ports(self) -> dict[str, int]:
+        """Every ``dbg_disable_<path>_o`` and both fuse DFT disable ports, read by name."""
+        dut = cocotb.top
+        ports = {n: self.rd_known(getattr(dut, f"dbg_disable_{n}_o")) for n in DBG_DISABLE_FIELDS}
+        for n in _FUSE_DFT_PORTS:
+            ports[n] = self.rd_known(getattr(dut, f"{n}_o"))
+        return ports
+
+    def _read_gates(self, window: str, feat: int) -> None:
+        """Read the gate ports for ``window`` and grade ``dbg_disable`` against ``feat``.
+
+        doc/integrator/src/smu-sep.adoc: ``dbg_disable_o`` is active-high (1 =
+        path disabled). lifecycle_controller.adoc (Debug and Test Port Path
+        Gating) and hw/sys/dtp/doc/jtag.adoc: each path opens with its case
+        (Case 1 SIP_DBG, Case 2 adds CHIPLET_DBG, Case 3 adds SEP_DBG), and the
+        OTP JTAG2AXI paths are ungated. ``feat`` is the feature-control golden
+        of the window. The fuse DFT ports are kept for CHK-FUSE-DFT-CLASS.
+        """
+        ports = self._gate_ports()
+        want = dbg_disable_expected(feat)
+        bad = [f"{n}={ports[n]}/{want[n]}" for n in DBG_DISABLE_FIELDS if ports[n] != want[n]]
+        word = "".join(str(ports[n]) for n in DBG_DISABLE_FIELDS)
+        assert not bad, (
+            f"CHK-DBG-DISABLE FAIL: window={window} feat=0x{feat:016x} "
+            f"field=got/want {','.join(bad)} (fields {','.join(DBG_DISABLE_FIELDS)}: {word})"
+        )
+        self.logger.info(
+            "CHK-DBG-DISABLE PASS: window=%s sense_done=0 feat=0x%016x dbg_disable=%s (fields %s)",
+            window,
+            feat,
+            word,
+            ",".join(DBG_DISABLE_FIELDS),
+        )
+        self._gates[window] = (ports, feat)
+
+    def _keep_gates(self, window: str, feat: int) -> None:
+        """Read the fuse DFT ports of a control window (feature control known, no grade)."""
+        self._gates[window] = (self._gate_ports(), feat)
+
+    def _check_fuse_dft_class(self) -> None:
+        """CHK-FUSE-DFT-CLASS: each fuse DFT port sits in the class its window states.
+
+        lifecycle_controller.adoc (Debug and Test Port Path Gating) and
+        port_table.adoc: ``sep_fuse_dft_disable_o`` follows Case 3 AND
+        SEP_FUSE_DBG, ``smc_fuse_dft_disable_o`` Case 2 AND SMC_FUSE_DBG. No
+        text states the port level, so each window is compared with the same
+        leaf's closed control (the sensed fail-closed PROD profile) and open
+        control (the sensed match). The INVALID profile before sense closes
+        every case; the stopped-sense match opens every feature (SEC_DIS =
+        1). OBS-DTP-PORT-LEVEL logs the levels.
+        """
+        label = "CHK-FUSE-DFT-CLASS"
+        for window, opened in (("presense", 0), ("sec_dis", 1), ("closed", 0), ("open", 1)):
+            feat = self._gates[window][1]
+            klass = {n: int(fuse_dft_disable_expected(feat)[n] == 0) for n in _FUSE_DFT_PORTS}
+            assert set(klass.values()) == {opened}, (
+                f"test bug: window={window} feat=0x{feat:016x} does not put both fuse DFT "
+                f"ports in the {'open' if opened else 'closed'} class: {klass}"
+            )
+        lv = {w: self._gates[w][0] for w in ("presense", "sec_dis", "closed", "open")}
+        self.logger.info(
+            "OBS-DTP-PORT-LEVEL: sep_open=%d sep_closed=%d smc_open=%d smc_closed=%d "
+            "sep_presense=%d sep_sec_dis=%d smc_presense=%d smc_sec_dis=%d",
+            *(lv[w][n] for n in _FUSE_DFT_PORTS for w in ("open", "closed")),
+            *(lv[w][n] for n in _FUSE_DFT_PORTS for w in ("presense", "sec_dis")),
+        )
+        for n in _FUSE_DFT_PORTS:
+            closed, opened = lv["closed"][n], lv["open"][n]
+            pre, sdis = lv["presense"][n], lv["sec_dis"][n]
+            assert closed != opened and pre == closed and sdis == opened, (
+                f"{label} FAIL: {n}_o closed_ctl={closed} open_ctl={opened} "
+                f"presense={pre} (want closed_ctl) sec_dis={sdis} (want open_ctl)"
+            )
+            self.logger.info(
+                "%s PASS: %s_o presense=%d == closed_ctl=%d, sec_dis=%d == open_ctl=%d, "
+                "controls differ",
+                label,
+                n,
+                pre,
+                closed,
+                sdis,
+                opened,
+            )
 
     async def _check_override_alone(self) -> None:
         """The override releases reset and leaves feature control closed.
@@ -862,8 +1063,14 @@ class sep_sec_dis_override_test(sep_base_test):
         opened = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=1)
         assert closed != opened, "CHK-OVERRIDE FAIL: fail-closed and override goldens are identical"
 
+        self._gates: dict[str, tuple[dict[str, int], int]] = {}
+        open_graded_window(_TEST, self.logger)
+        first = cocotb.start_soon(self._first_clock_port())
         await self.release_no_cpu_reset()
+        self._check_presense_port(*(await first))
         await self._check_override_alone()
+        self._require_sense_open("CHK-DBG-DISABLE", sec_dis=0)
+        self._read_gates("presense", feat_ctrl_expected(_WITHHELD_LC, 0, 0, sec_dis=0))
         # Until sense completes the core is held in reset, so the OTP JTAG port is
         # the master that presents the token, and every frontdoor access while
         # sense stays stopped runs inside an override release (_released).
@@ -872,7 +1079,13 @@ class sep_sec_dis_override_test(sep_base_test):
             f"CHK-SENSE-GATED-RESET FAIL: zero token code=0x{(pre.match_code or 0):02x} "
             f"want MATCH 0x{TOKEN_MATCH:02x} before sense-done"
         )
-        self._check_reset_stays_sense_gated()
+        self._check_reset_stays_sense_gated(feat_label="CHK-FEAT-PRESENSE")
+        await ClockCycles(cocotb.top.clk_i, _GATE_SETTLE_CYCLES)
+        self._require_sense_open("CHK-DBG-DISABLE", sec_dis=1)
+        self._read_gates("sec_dis", feat_ctrl_expected(_WITHHELD_LC, 0, 0, sec_dis=1))
+        close_graded_window(self.logger)
+        # Control window of CHK-FEAT-PRESENSE: the override releases both resets and a
+        # frontdoor read shows the same open feature control.
         await self._released("CHK-FEAT-PRESENSE", self._check_window_feat(1, "CHK-FEAT-PRESENSE"))
         await self._graded(self._check_override_after_match("CHK-OVR-AFTER"), OVR_PASS_ALONE_OPEN)
         lc_pre_reset = await self._released("CHK-MAP-OPEN", self._read_shadow_map("CHK-MAP-OPEN"))
@@ -941,9 +1154,10 @@ class sep_sec_dis_override_test(sep_base_test):
             mm.match_code,
             mm.idle_reads,
         )
-        await self._check_feat(0, "CHK-NO-OVERRIDE")
+        self._keep_gates("closed", await self._check_feat(0, "CHK-NO-OVERRIDE"))
 
         await self._graded(self._match_override_tm0(), OVR_PASS_STM0)
+        self._check_fuse_dft_class()
         await self._deactivate_restore()
 
     async def _graded(self, step: Awaitable[None], bit: int) -> None:
@@ -973,6 +1187,7 @@ class sep_sec_dis_override_test(sep_base_test):
             "CHK-MATCH PASS: SEC_DISABLE_TOKEN_MATCH=0x%02x after all-zero token", hit.match_code
         )
         feat_open = await self._check_feat(1, "CHK-OVERRIDE")
+        self._keep_gates("open", feat_open)
         self._check_override_tm0(feat_open)
 
     async def _deactivate_restore(self) -> None:

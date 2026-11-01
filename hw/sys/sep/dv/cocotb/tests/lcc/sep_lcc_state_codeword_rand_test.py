@@ -11,21 +11,56 @@ from ``env/sep_efuse_plan.py`` and the leaf builds the same plan. A leaf that dr
 drawn bit of ``SIP_DIS`` (two bits the staged ``SIP_DIS`` lacks), the counts c1
 and c2, and the word order of the token write.
 
-Contract (``hw/sys/sep/doc/lifecycle_controller.adoc``, sections Overrides and
-Final Gates (SEC_DIS), Per-LC-state Feature Control Profile, Debug and Test Port
-Path Gating, row SEP OTP JTAG2AXIL path; ``hw/sys/sep/doc/security_disable.adoc``,
-sections Token Activation, Implementation Requirements):
+Contract (``hw/sys/sep/doc/lifecycle_controller.adoc``, sections Lifecycle States,
+Demotion, Overrides and Final Gates (SEC_DIS), Per-LC-state Feature Control Profile,
+Debug and Test Port Path Gating, row SEP OTP JTAG2AXIL path;
+``hw/sys/sep/doc/security_disable.adoc``, sections Token Activation, Implementation
+Requirements; ``doc/integrator/src/smu-sep.adoc``, ``dbg_disable_o`` polarity):
 
   CHK-BIND          the SHA-256 of 32 zero bytes equals the SEC_DIS digest that the
                     bench binds, read through the simulator handle of
                     ``SecDisTbDigest`` (``tb/tb_top.sv``).
-  CHK-SIGINT        with ``lc_sigint_inject_i`` raised (both rails of the byte at
-                    the lifecycle decoder input at 0), ``sep_ras_o.lc_sigint_err`` = 1 and
-                    ``FEAT_CTRL`` = 0 at the register and at ``lcc_feat_ctrl_probe_o``.
-                    Control: the epoch before the inject reads the non-zero profile
-                    row with ``sep_ras_o.lc_sigint_err`` = 0. Nibble 0111 is logged
+  CHK-SIGINT        leg A, one line per inject epoch. The leaf walks the 30 pairs
+                    (pair mask 1 to 15, bad rail value 0 or 1) in seeded order with
+                    no demotion, sets the drawn demotion, and walks the 30 pairs
+                    again in a second seeded order. An epoch raises
+                    ``lc_sigint_inject_i`` with ``lc_sigint_pair_mask_i`` and
+                    ``lc_sigint_bad_value_i``: each selected pair of the byte at the
+                    lifecycle decoder input has both rails at the bad value. On
+                    every clock from the first clock ``sep_ras_o.lc_sigint_err``
+                    (``lcc_sigint_err_probe_o``) reads 1 until the inject falls,
+                    ``sep_ras_o.lc_sigint_err`` = 1 and ``lcc_feat_ctrl_probe_o`` = 0,
+                    and one ``FEAT_CTRL`` register read inside the epoch is 0.
+                    Control: the epoch before the walk reads the non-zero profile row
+                    with ``sep_ras_o.lc_sigint_err`` = 0. Nibble 0111 is logged
                     ``role=control``.
-  CHK-SIGINT-SECDIS with the inject still raised, a ``TOKEN_ZERO`` SEC_DIS match
+  CTRL-SIGINT-EPOCHS the number of epochs whose stimulus reached the lifecycle
+                    decoder input (``u_lc_state_dec.data_i`` shows exactly the pairs
+                    of the epoch's mask broken, both rails at its bad value) equals
+                    the number of epochs of the two walks (60).
+  CHK-SIGINT-PAIRS  in each epoch, on every clock, each demote pair
+                    (``lcc_demote_state_1_probe_o``, ``lcc_demote_state_2_probe_o``)
+                    equals its own level read before the walk. Control of the demoted
+                    walk: the pair of a demoted register differs from its level after
+                    the cold reset and the pair of the other register does not. The
+                    levels are logged (``OBS-DEMOTE-PAIR-LEVEL``) and not graded.
+  CHK-SIGINT-DEMOTE-REG in the last epoch of the demoted walk, the 64-bit
+                    ``DEMOTE_1`` and ``DEMOTE_2`` readbacks equal the value written
+                    before the walk: the drawn demote bit and one drawn ``rsvd``
+                    marker bit (``sep_lifecycle_ctrl.rdl``, ``rsvd`` is ``woset``), lock
+                    0. The same readback before the walk shows the write landed.
+  CHK-DBG-DISABLE   in each epoch, every ``dbg_disable_<name>_o`` port of a gated
+                    path (Case 1, 2 or 3 of the path table) reads 1. Control: under
+                    the leg B ``TOKEN_ZERO`` match every gated port reads 0.
+  CHK-FUSE-DFT-CLASS ``sep_fuse_dft_disable_o`` and ``smc_fuse_dft_disable_o`` read
+                    their closed control in every epoch. Controls from the same leaf:
+                    closed is the value at the first clock after the bring-up
+                    ``rst_ni`` release with fuse sense running, SEC_DIS 0 and the
+                    port at 0 or 1; open is the
+                    value under the leg B ``TOKEN_ZERO`` match; the two differ. The
+                    levels are logged (``OBS-DTP-PORT-LEVEL``) and not graded.
+  CHK-SIGINT-SECDIS with the inject raised again on every pair (both rails 0, the
+                    drawn demotion still set), a ``TOKEN_ZERO`` SEC_DIS match
                     gives an all-ones ``FEAT_CTRL`` with ``sep_ras_o.lc_sigint_err`` = 1, and
                     a ``TOKEN_OTHER`` mismatch returns it to 0. Control:
                     ``security_disable_o`` rises on the match (else ``CHK-HOOK FAIL``).
@@ -42,7 +77,16 @@ sections Token Activation, Implementation Requirements):
                     nibble logs ``CHK-JTAG-SIGINT N/A``.
 
 Nothing is graded after an inject input falls: the specification states no release
-of ``sep_ras_o.lc_sigint_err``. ``sep_ras_o.lc_sigint_err`` under the filter-side inject is logged
+of ``sep_ras_o.lc_sigint_err``. After the first epoch of the walk the leaf logs
+``sep_ras_o.lc_sigint_err``, ``FEAT_CTRL`` and ``lcc_feat_ctrl_probe_o``
+(``OBS-LC-SIGINT-RELEASE``). An epoch that finds the error still 1 or
+``lcc_feat_ctrl_probe_o`` off the row of its walk first restores a clean start: a cold
+reset and, in the demoted walk, the demotion write again (``INFO-SIGINT-RESTORE``).
+``CTRL-SIGINT-FRESH`` is the bench control of that start: the error at 0 and the probe at
+the row of the walk. Each DEMOTE write response is logged (``OBS-LCC-WR-RESP``), not
+graded. The value of ``lc_state_o`` in each epoch is logged
+(``OBS-LC-PORT-SIGINT``): no text states the port under the error.
+``sep_ras_o.lc_sigint_err`` under the filter-side inject is logged
 (``OBS-LC-SIGINT-FILTER``) and not graded.
 """
 
@@ -50,7 +94,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_chk_log import SepChkLog
 from env.sep_efuse_plan import (
     CH_SIP,
@@ -79,6 +123,8 @@ from env.sep_efuse_test_lib import (
     wait_bit,
 )
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_lcc_golden import DBG_DISABLE_FIELDS, dbg_disable_expected
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL
 
@@ -89,7 +135,22 @@ READ_TIMEOUT = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_REQ_TIMEOUT")
 READ_TIMEOUT_FIELDS = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_READ_REQ_TIMEOUT", "read_req_timeout_cycles"
 ) | EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_REQ_TIMEOUT", "read_req_timout_enable")
+DEMOTE_ADDR = {1: SEP_LIFECYCLE_CTRL.addr("DEMOTE_1"), 2: SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")}
+DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
+RSVD_MASK = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "rsvd")
+RSVD_BITS = tuple(b for b in range(64) if (RSVD_MASK >> b) & 1)
 ALL_ONES = (1 << 64) - 1
+# Bad rail values of an inject epoch: both rails 0, both rails 1.
+BAD_VALUES = (0, 1)
+# Demotion set between the two walks: (DEMOTE_1, DEMOTE_2).
+DEMOTE_SETS = ((1, 0), (0, 1), (1, 1))
+# Clocks an epoch holds before its register reads; the FCOV gate-port point
+# samples a condition once it has held 8 clocks.
+EPOCH_HOLD = 16
+# dbg_disable ports of a gated path: the ones that FEAT_CTRL = 0 closes.
+GATED_DBG = tuple(k for k, v in dbg_disable_expected(0).items() if v == 1)
+FUSE_PORTS = {"sep": "sep_fuse_dft_disable_o", "smc": "smc_fuse_dft_disable_o"}
+_WALK_SALT = 0x5349_4749_4E54_5741
 NIBBLE_CONTROL = 0b0111
 OKAY = 0
 # Bounds (clocks or reads). A timeout fails the check the wait feeds.
@@ -103,7 +164,15 @@ SENSE_BOUND = 20_000
 class sep_lcc_state_codeword_rand_test(sep_base_test):
     """Integrity error forces FEAT_CTRL to 0, SEC_DIS overrides it, the JTAG filter refuses."""
 
-    required_evidence = ("CHK-BIND", "CHK-SIGINT", "CHK-SIGINT-SECDIS")
+    required_evidence = (
+        "CHK-BIND",
+        "CHK-SIGINT",
+        "CHK-SIGINT-PAIRS",
+        "CHK-SIGINT-DEMOTE-REG",
+        "CHK-DBG-DISABLE",
+        "CHK-FUSE-DFT-CLASS",
+        "CHK-SIGINT-SECDIS",
+    )
 
     # -- samples -------------------------------------------------------------
 
@@ -116,7 +185,286 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         await RisingEdge(cocotb.top.clk_i)
         await self.resense(max_cycles=SENSE_BOUND)
 
+    def _pairs(self) -> tuple[int, int]:
+        return tuple(
+            self.rd_known(getattr(cocotb.top, f"lcc_demote_state_{r}_probe_o")) & 0x3
+            for r in (1, 2)
+        )
+
+    @staticmethod
+    def _port(name: str) -> int | None:
+        """Bit 0 of a top-level port; None when it is X or Z."""
+        v = getattr(cocotb.top, name).value
+        return int(v) & 1 if v.is_resolvable else None
+
+    def _fuse_ports(self) -> dict[str, int | None]:
+        return {k: self._port(sig) for k, sig in FUSE_PORTS.items()}
+
+    async def _presense_sample(self) -> dict:
+        """Gate ports before sense: the first clock after the bring-up ``rst_ni``
+        release with sense running, SEC_DIS 0 and both fuse DFT ports known."""
+        dut = cocotb.top
+        seen_low = False
+        clk = 0
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            rst = dut.rst_ni.value
+            if not rst.is_resolvable or int(rst) == 0:
+                seen_low = True
+                continue
+            if not seen_low:
+                continue
+            got = {
+                **self._fuse_ports(),
+                "sense_done": self._port("sep_fuse_sense_done_o"),
+                "sdis": self._port("lcc_security_disable_probe_o"),
+                "clk": clk,
+            }
+            clk += 1
+            known = got["sep"] is not None and got["smc"] is not None
+            if got["sense_done"] != 0 or (got["sdis"] == 0 and known) or clk > SENSE_BOUND:
+                return got
+
+    async def _gate_levels(self, label: str) -> None:
+        """Gated ``dbg_disable`` ports and fuse DFT ports before a walk, after ``ReadOnly``."""
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        dbg = {k: self._port(f"dbg_disable_{k}_o") for k in GATED_DBG}
+        self.pre_levels.append((label, dbg, self._fuse_ports()))
+        await RisingEdge(cocotb.top.clk_i)
+
     # -- checks --------------------------------------------------------------
+
+    async def _epoch_watch(self, st: dict) -> None:
+        """Every clock until ``st["stop"]``: the error, FEAT_CTRL and the demote pairs."""
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if st["stop"]:
+                return
+            self._epoch_sample(st)
+
+    def _epoch_sample(self, st: dict) -> None:
+        clk = st["clocks"]
+        st["clocks"] += 1
+        sig = self._port("lcc_sigint_err_probe_o")
+        v = cocotb.top.lcc_feat_ctrl_probe_o.value
+        feat = int(v) if v.is_resolvable else None
+        if st["bad"] is None and (sig != 1 or feat != 0):
+            st["bad"] = f"clk{clk}:sigint={sig},feat={'x' if feat is None else hex(feat)}"
+        pairs = tuple(
+            int(p.value) & 0x3 if p.value.is_resolvable else None
+            for p in (cocotb.top.lcc_demote_state_1_probe_o, cocotb.top.lcc_demote_state_2_probe_o)
+        )
+        if st["pair_bad"] is None and pairs != st["exp_pairs"]:
+            st["pair_bad"] = f"clk{clk}:" + ",".join(
+                "x" if p is None else f"0b{p:02b}" for p in pairs
+            )
+
+    async def _epoch(self, mask: int, value: int, walk: dict) -> None:
+        """One inject epoch: raise the error on the pairs of ``mask`` at ``value``."""
+        dut = cocotb.top
+        n, sip, sys_ = walk["n"], walk["sip"], walk["sys"]
+        cell = dict(
+            n=f"0x{n:x}",
+            mask=f"0x{mask:x}",
+            value=value,
+            demoted=walk["dem_label"],
+        )
+        pre_sigint, pre_feat = await self._pre_sample()
+        if pre_sigint != 0 or pre_feat != walk["pre_exp"]:
+            self.chk.info(
+                "SIGINT-RESTORE",
+                **cell,
+                sigint=pre_sigint,
+                feat="x" if pre_feat is None else f"0x{pre_feat:016x}",
+                exp_feat=f"0x{walk['pre_exp']:016x}",
+                action="cold_reset" + ("+demotion" if "dem_written" in walk else ""),
+            )
+            await self._cold_reset()
+            if "dem_written" in walk:
+                await self._write_demotion(walk["dem_written"])
+            pre_sigint, pre_feat = await self._pre_sample()
+        await RisingEdge(dut.clk_i)
+        self._set_pin(dut, "lc_sigint_pair_mask_i", mask)
+        self._set_pin(dut, "lc_sigint_bad_value_i", value)
+        self._set_pin(dut, "lc_sigint_inject_i", 1)
+        applied, waited = None, None
+        for k in range(SIGINT_BOUND + 1):
+            await ReadOnly()
+            if applied is None and self._dec_broken() == (mask, value):
+                applied = k
+            if waited is None and self._port("lcc_sigint_err_probe_o") == 1:
+                waited = k
+            if applied is not None and waited is not None:
+                break
+            await RisingEdge(dut.clk_i)
+        st = {"stop": False, "clocks": 0, "bad": None, "pair_bad": None}
+        st["exp_pairs"] = walk["exp_pairs"]
+        task = None
+        if waited is not None:
+            self._epoch_sample(st)
+            task = cocotb.start_soon(self._epoch_watch(st))
+        await ClockCycles(dut.clk_i, EPOCH_HOLD)
+        feat, probe = await self._feat()
+        last = walk["last"] and (mask, value) == walk["final"]
+        if last:
+            dem_rb = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
+        await RisingEdge(dut.clk_i)
+        await ReadOnly()
+        dbg = {k: self._port(f"dbg_disable_{k}_o") for k in DBG_DISABLE_FIELDS}
+        fuse = self._fuse_ports()
+        pv = dut.lc_state_probe_o.value
+        port = f"0x{int(pv):02x}" if pv.is_resolvable else str(pv)
+        await RisingEdge(dut.clk_i)
+        st["stop"] = True
+        self._set_pin(dut, "lc_sigint_inject_i", 0)
+        if task is not None:
+            await task
+        await RisingEdge(dut.clk_i)
+        released = await wait_bit(self, "lcc_sigint_err_probe_o", 0, SIGINT_BOUND)
+
+        self.walk_count += 1
+        if applied is not None:
+            self.applied += 1
+        fail_row = feat_ctrl_profile(n, sip, sys_, sigint_err=1)
+        self.chk.ctrl(
+            "SIGINT-FRESH",
+            pre_sigint == 0 and pre_feat == walk["pre_exp"],
+            **cell,
+            pre_sigint=pre_sigint,
+            pre_feat="x" if pre_feat is None else f"0x{pre_feat:016x}",
+            exp_feat=f"0x{walk['pre_exp']:016x}",
+        )
+        self.chk.ok(
+            "SIGINT",
+            walk["ctl_ok"]
+            and waited is not None
+            and st["clocks"] > 0
+            and st["bad"] is None
+            and feat == fail_row.value
+            and probe == fail_row.value,
+            **cell,
+            role=walk["role"],
+            clocks=st["clocks"],
+            first_bad=st["bad"] or "none",
+            exp_feat=f"0x{fail_row.value:x}",
+            got_feat=f"0x{feat:x}",
+            got_probe=f"0x{probe:x}",
+            sigint_wait_clks=waited if waited is not None else "timeout",
+            applied_clks=applied if applied is not None else "none",
+            pre_sigint=pre_sigint,
+            pre_feat="x" if pre_feat is None else f"0x{pre_feat:016x}",
+            ctl=walk["ctl"],
+            src=fail_row.source,
+        )
+        self.chk.ok(
+            "SIGINT-PAIRS",
+            walk["pair_ctl_ok"] and st["clocks"] > 0 and st["pair_bad"] is None,
+            **cell,
+            clocks=st["clocks"],
+            exp=",".join(f"0b{p:02b}" for p in walk["exp_pairs"]),
+            first_bad=st["pair_bad"] or "none",
+            ctl=walk["pair_ctl"],
+        )
+        self.chk.obs("LC-PORT-SIGINT", **cell, port=port, legal=f"0x{(~n & 0xF) << 4 | n:02x}")
+        tag = f"{mask:x}/{value}/{walk['dem_label']}"
+        self.epoch_fuse.append((tag, fuse))
+        self.epoch_dbg.append((tag, dbg))
+        if last:
+            exp = walk["dem_written"]
+            before = walk["dem_before"]
+            self.chk.ok(
+                "SIGINT-DEMOTE-REG",
+                all(dem_rb[r] == exp[r] and before[r] == exp[r] for r in (1, 2)),
+                **cell,
+                exp_1=f"0x{exp[1]:016x}",
+                got_1=f"0x{dem_rb[1]:016x}",
+                before_1=f"0x{before[1]:016x}",
+                exp_2=f"0x{exp[2]:016x}",
+                got_2=f"0x{dem_rb[2]:016x}",
+                before_2=f"0x{before[2]:016x}",
+            )
+        if not self.release_logged:
+            self.release_logged = True
+            await RisingEdge(dut.clk_i)
+            rel_feat, rel_probe = await self._feat()
+            self.chk.obs(
+                "LC-SIGINT-RELEASE",
+                **cell,
+                release_clks=released if released is not None else "none",
+                sigint=self._port("lcc_sigint_err_probe_o"),
+                feat=f"0x{rel_feat:016x}",
+                probe=f"0x{rel_probe:016x}",
+            )
+
+    async def _pre_sample(self) -> tuple[int | None, int | None]:
+        """``lcc_sigint_err_probe_o`` and ``lcc_feat_ctrl_probe_o`` at the next clock."""
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        v = cocotb.top.lcc_feat_ctrl_probe_o.value
+        return self._port("lcc_sigint_err_probe_o"), int(v) if v.is_resolvable else None
+
+    def _dec_broken(self) -> tuple[int, int | str] | None:
+        """Broken pairs at the lifecycle decoder input: (pair mask, rail value).
+
+        Pair i is ``{data_i[pairs + i], data_i[i]}``; a broken pair has equal rails.
+        The value is ``mixed`` when broken pairs differ in rail value.
+        """
+        v = self.dec_in.value
+        if not v.is_resolvable:
+            return None
+        pairs = len(self.dec_in) // 2
+        d = int(v)
+        lo, hi = d & ((1 << pairs) - 1), d >> pairs
+        broken = ~(lo ^ hi) & ((1 << pairs) - 1)
+        rails = {(lo >> i) & 1 for i in range(pairs) if (broken >> i) & 1}
+        return broken, (rails.pop() if len(rails) == 1 else "mixed")
+
+    async def _walk(self, walk: dict) -> None:
+        pairs = len(cocotb.top.lc_state_probe_o) // 2
+        order = [(m, v) for m in range(1, 1 << pairs) for v in BAD_VALUES]
+        self.epochs_exp += len(order)
+        self.rng.shuffle(order)
+        walk["final"] = order[-1]
+        self.chk.info(
+            "SIGINT-WALK",
+            demoted=walk["dem_label"],
+            order=",".join(f"{m:x}/{v}" for m, v in order),
+        )
+        for mask, value in order:
+            await self._epoch(mask, value, walk)
+
+    async def _write_demotion(self, written: dict[int, int]) -> None:
+        """64-bit write of ``written[r]`` to ``DEMOTE_<r>``; the response is logged only."""
+        for r in (1, 2):
+            resp = await self.fd.wr_graded_by_readback(DEMOTE_ADDR[r], written[r], length=8)
+            self.chk.obs("LCC-WR-RESP", reg=f"DEMOTE_{r}", wdata=f"0x{written[r]:016x}", resp=resp)
+
+    async def _set_demotion(self) -> dict:
+        """Write the drawn demotion with one ``rsvd`` marker bit in each register."""
+        await RisingEdge(cocotb.top.clk_i)
+        dsel = self.rng.choice(DEMOTE_SETS)
+        written = {
+            r: (DEMOTE_BIT if dsel[r - 1] else 0) | (1 << self.rng.choice(RSVD_BITS))
+            for r in (1, 2)
+        }
+        await self._write_demotion(written)
+        before = {r: await self.fd.rd64(DEMOTE_ADDR[r]) for r in (1, 2)}
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        pairs = self._pairs()
+        await RisingEdge(cocotb.top.clk_i)
+        label = {(1, 0): "d1", (0, 1): "d2", (1, 1): "d1d2"}[dsel]
+        return {
+            "dsel": dsel,
+            "label": label,
+            "written": written,
+            "before": before,
+            "pairs": pairs,
+        }
 
     async def _legs_a_b(self, n: int, sip: int, sys_: int) -> None:
         dut = cocotb.top
@@ -125,44 +473,100 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         self.logger.info("GOLDEN ctl n=0x%x %s value=0x%016x", n, ctl_row.log(), ctl_row.value)
         ctl_feat, ctl_probe = await self._feat()
         ctl_sigint = bit(self, "lcc_sigint_err_probe_o")
+        ref_pairs = self._pairs()
+        ctl_ok = (
+            ctl_row.value != 0
+            and ctl_feat == ctl_row.value
+            and ctl_probe == ctl_row.value
+            and ctl_sigint == 0
+        )
+        ctl = (
+            f"feat=0x{ctl_feat:016x},probe=0x{ctl_probe:016x},"
+            f"exp=0x{ctl_row.value:016x},sigint={ctl_sigint},row={ctl_row.row}"
+        )
 
-        # Leg A, injection epoch. The 0111 cell of leg A is a control and is not
+        # Leg A, inject walks. The 0111 cell of leg A is a control and is not
         # credited, so its window opens at leg B.
         if role == "new":
             open_graded_window(TEST, self.logger)
-        self._set_pin(dut, "lc_sigint_inject_i", 1)
-        waited = await wait_bit(self, "lcc_sigint_err_probe_o", 1, SIGINT_BOUND)
-        await RisingEdge(dut.clk_i)
-        feat, probe = await self._feat()
-        sigint = bit(self, "lcc_sigint_err_probe_o")
-        fail_row = feat_ctrl_profile(n, sip, sys_, sigint_err=1)
-        self.chk.ok(
-            "SIGINT",
-            waited is not None
-            and sigint == 1
-            and feat == fail_row.value
-            and probe == fail_row.value
-            and ctl_row.value != 0
-            and ctl_feat == ctl_row.value
-            and ctl_probe == ctl_row.value
-            and ctl_sigint == 0,
-            n=f"0x{n:x}",
-            role=role,
-            exp_feat=f"0x{fail_row.value:x}",
-            got_feat=f"0x{feat:x}",
-            got_probe=f"0x{probe:x}",
-            sigint=sigint,
-            sigint_wait_clks=waited if waited is not None else "timeout",
-            ctl_feat=f"0x{ctl_feat:016x}",
-            ctl_probe=f"0x{ctl_probe:016x}",
-            ctl_exp=f"0x{ctl_row.value:016x}",
-            ctl_sigint=ctl_sigint,
-            row=ctl_row.row,
-            src=f"{fail_row.source}",
+        self.walk_count = 0
+        self.applied = 0
+        self.epochs_exp = 0
+        self.dec_in = dut.lc_dec_data_probe_o
+        self.epoch_fuse: list[tuple[str, dict]] = []
+        self.epoch_dbg: list[tuple[str, dict]] = []
+        self.release_logged = False
+        self.pre_levels: list[tuple[str, dict, dict]] = []
+        await self._gate_levels("none")
+        walk = {
+            "n": n,
+            "sip": sip,
+            "sys": sys_,
+            "role": role,
+            "ctl_ok": ctl_ok,
+            "ctl": ctl,
+            "pre_exp": ctl_row.value,
+            "dem_label": "none",
+            "exp_pairs": ref_pairs,
+            "pair_ctl_ok": True,
+            "pair_ctl": "undemoted",
+            "last": False,
+        }
+        await self._walk(walk)
+
+        d = await self._set_demotion()
+        pair_ctl_ok = all(
+            (d["pairs"][r - 1] != ref_pairs[r - 1]) == bool(d["dsel"][r - 1]) for r in (1, 2)
+        )
+        self.chk.obs(
+            "DEMOTE-PAIR-LEVEL",
+            demoted=d["label"],
+            undemoted_1=f"0b{ref_pairs[0]:02b}",
+            undemoted_2=f"0b{ref_pairs[1]:02b}",
+            level_1=f"0b{d['pairs'][0]:02b}",
+            level_2=f"0b{d['pairs'][1]:02b}",
+        )
+        walk.update(
+            dem_label=d["label"],
+            exp_pairs=d["pairs"],
+            pair_ctl_ok=pair_ctl_ok,
+            pair_ctl=(
+                f"ref={ref_pairs[0]:02b}{ref_pairs[1]:02b},"
+                f"demoted={d['pairs'][0]:02b}{d['pairs'][1]:02b},sel={d['label']}"
+            ),
+            dem_written=d["written"],
+            dem_before=d["before"],
+            pre_exp=feat_ctrl_profile(
+                n, sip, sys_, demote_1=d["dsel"][0], demote_2=d["dsel"][1]
+            ).value,
+            last=True,
+        )
+        await self._gate_levels(d["label"])
+        await self._walk(walk)
+        self.chk.ctrl(
+            "SIGINT-EPOCHS",
+            self.applied == self.epochs_exp,
+            count=self.applied,
+            exp=self.epochs_exp,
+            epochs=self.walk_count,
         )
 
-        # Leg B: SEC_DIS over the integrity error, then a mismatch.
+        # Leg B: SEC_DIS over the integrity error on every pair, then a mismatch.
+        # The walk returns in the read-only phase; the clock edge leaves it before
+        # the gate write.
+        await RisingEdge(dut.clk_i)
         open_graded_window(TEST, self.logger)
+        self._set_pin(dut, "lc_sigint_pair_mask_i", 0)
+        self._set_pin(dut, "lc_sigint_bad_value_i", 0)
+        self._set_pin(dut, "lc_sigint_inject_i", 1)
+        if await wait_bit(self, "lcc_sigint_err_probe_o", 1, SIGINT_BOUND) is None:
+            hook_fail(
+                self.chk,
+                n=f"0x{n:x}",
+                reason="lcc_sigint_err_probe_o stayed 0 under the leg B inject",
+                bound=SIGINT_BOUND,
+            )
+        await RisingEdge(dut.clk_i)
         code_m, reads_m = await sec_dis_go(self.fd, TOKEN_ZERO, CODE_MATCH, max_reads=MATCH_READS)
         rose = await wait_bit(self, "lcc_security_disable_probe_o", 1, SDIS_BOUND)
         if code_m != CODE_MATCH or rose is None:
@@ -173,9 +577,12 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
                 code=f"0x{(code_m or 0):02x}",
                 reads=reads_m,
             )
+        await RisingEdge(dut.clk_i)
         on_feat, _on_probe = await self._feat()
         on_sigint = bit(self, "lcc_sigint_err_probe_o")
         on_sdis = bit(self, "lcc_security_disable_probe_o")
+        opened = self._fuse_ports()
+        opened_dbg = {k: self._port(f"dbg_disable_{k}_o") for k in DBG_DISABLE_FIELDS}
         on_row = feat_ctrl_profile(n, sip, sys_, sec_dis=1, sigint_err=1)
         code_mm, reads_mm = await sec_dis_go(
             self.fd, TOKEN_OTHER, CODE_MISMATCH, max_reads=MATCH_READS
@@ -193,6 +600,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             and off_feat == off_row.value
             and off_sigint == 1,
             n=f"0x{n:x}",
+            demoted=d["label"],
             got_feat=f"0x{on_feat:016x}",
             sigint=on_sigint,
             sdis=on_sdis,
@@ -203,9 +611,85 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
             mismatch_reads=reads_mm,
             src=on_row.source,
         )
+        self._dbg_class(opened_dbg, on_sdis)
+        self._fuse_class(opened, on_sdis)
         close_graded_window(self.logger)
         self._set_pin(dut, "lc_sigint_inject_i", 0)
+        await RisingEdge(dut.clk_i)
+        self._set_pin(dut, "lc_sigint_pair_mask_i", 0)
         await self._cold_reset()
+
+    def _dbg_class(self, opened: dict, open_sdis: int) -> None:
+        """Gated ``dbg_disable`` ports: 1 in every epoch, 0 under the leg B match."""
+        bad = [
+            f"{tag}:" + ",".join(f"{k}={d[k]}" for k in GATED_DBG if d[k] != 1)
+            for tag, d in self.epoch_dbg
+            if any(d[k] != 1 for k in GATED_DBG)
+        ]
+        open_bad = [f"{k}={opened[k]}" for k in GATED_DBG if opened[k] != 0]
+        pre_open = [f"{lbl}:{k}" for lbl, d, _f in self.pre_levels for k in GATED_DBG if d[k] == 0]
+        if not pre_open:
+            self.chk.info(
+                "DBG-DISABLE-NODISC",
+                reason="every gated port read 1 before both walks",
+                walks=len(self.pre_levels),
+            )
+        self.chk.ok(
+            "DBG-DISABLE",
+            open_sdis == 1 and not open_bad and len(self.epoch_dbg) == self.epochs_exp and not bad,
+            stage="sigint",
+            gated=len(GATED_DBG),
+            epochs=len(self.epoch_dbg),
+            mismatches=len(bad),
+            first_bad=bad[0] if bad else "none",
+            open_ctl_bad=",".join(open_bad) or "none",
+            pre_open=len(pre_open),
+        )
+
+    def _fuse_class(self, opened: dict, open_sdis: int) -> None:
+        """Each fuse DFT port under the error against its same-leaf controls."""
+        closed = self.closed_ctl
+        presense_ok = closed["sense_done"] == 0 and closed["sdis"] == 0 and open_sdis == 1
+        self.chk.obs(
+            "DTP-PORT-LEVEL",
+            stage="sigint",
+            sep_open=opened["sep"],
+            sep_closed=closed["sep"],
+            smc_open=opened["smc"],
+            smc_closed=closed["smc"],
+        )
+        for k in FUSE_PORTS:
+            bad = [tag for tag, f in self.epoch_fuse if f[k] is None or f[k] != closed[k]]
+            moved = [
+                lbl for lbl, _d, f in self.pre_levels if f[k] is not None and f[k] != closed[k]
+            ]
+            if not moved:
+                self.chk.info(
+                    "FUSE-DFT-NODISC",
+                    port=FUSE_PORTS[k],
+                    reason="the port read its closed control before both walks",
+                    walks=len(self.pre_levels),
+                )
+            self.chk.ok(
+                "FUSE-DFT-CLASS",
+                presense_ok
+                and closed[k] is not None
+                and opened[k] is not None
+                and closed[k] != opened[k]
+                and len(self.epoch_fuse) == self.epochs_exp
+                and not bad,
+                stage="sigint",
+                port=FUSE_PORTS[k],
+                closed=closed[k],
+                open=opened[k],
+                epochs=len(self.epoch_fuse),
+                mismatches=len(bad),
+                first_bad=bad[0] if bad else "none",
+                closed_sense_done=closed["sense_done"],
+                closed_sdis=closed["sdis"],
+                closed_clk=closed["clk"],
+                pre_open_walks=len(moved),
+            )
 
     # -- leg C ---------------------------------------------------------------
 
@@ -264,6 +748,7 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         self._set_pin(dut, "jtag_filter_lc_sigint_inject_i", 1)
         waited = await wait_bit(self, "jtag_filter_lc_sigint_err_probe_o", 1, SIGINT_BOUND)
         if waited is None:
+            await RisingEdge(dut.clk_i)
             close_graded_window(self.logger)
             hook_fail(
                 self.chk,
@@ -380,10 +865,13 @@ class sep_lcc_state_codeword_rand_test(sep_base_test):
         )
         close_graded_window(self.logger)
         self.fd = SepEfuseFd(self)
+        self.rng = SepSeededRng(seed ^ _WALK_SALT)
 
         await chk_bind(self.chk)
         self.write_efuse_image(p.image)
+        presense = cocotb.start_soon(self._presense_sample())
         await self.bring_up_no_cpu(max_cycles=SENSE_BOUND)
+        self.closed_ctl = await presense
         await self._legs_a_b(n, p.sip_dis, p.sys_dis)
 
         if leg_c:

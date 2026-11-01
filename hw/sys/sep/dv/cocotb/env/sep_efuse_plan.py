@@ -981,10 +981,21 @@ def draw_dis_pair(
 
 
 def _pick_bit(
-    d: SepEfuseDraws, name: str, image: SepEfuseImage, field_name: str, *, zero: bool = True
+    d: SepEfuseDraws,
+    name: str,
+    image: SepEfuseImage,
+    field_name: str,
+    *,
+    zero: bool = True,
+    keep: Callable[[tuple[int, int]], bool] | None = None,
 ) -> dict[str, Any]:
-    """Draw a (word, bit) of ``field_name``: a used bit at 0 in ``image`` (or any used bit)."""
+    """Draw a (word, bit) of ``field_name``: a used bit at 0 in ``image`` (or any used bit).
+
+    ``keep``, when given, drops the (word, bit) candidates it rejects.
+    """
     cands = zero_bits(image, field_name) if zero else used_bits(field_name)
+    if keep is not None:
+        cands = [c for c in cands if keep(c)]
     if not cands:
         raise RuntimeError(f"{name}: {field_name} has no candidate bit")
     w, b = d.rng.choice(cands)
@@ -1025,7 +1036,9 @@ PRESTAGED_TESTS: tuple[str, ...] = (
     T_SEC_DIS_TIMING,
 )
 
-_TIMEOUT_CYCLES_RESET = 0x80_0000
+_TIMEOUT_CYCLES_RESET = EFUSE_INTERFACE_CTRL.field_reset(
+    "EFUSE_READ_REQ_TIMEOUT", "read_req_timeout_cycles"
+) << EFUSE_INTERFACE_CTRL.field_lsb("EFUSE_READ_REQ_TIMEOUT", "read_req_timeout_cycles")
 
 
 def _timeout_count(d: SepEfuseDraws, name: str) -> int:
@@ -1843,6 +1856,30 @@ def _twin_word_bits(
     return [fd1, j1, fd0, j0]
 
 
+def _stm_dis_keeps_demotions(
+    raw: int, sip: int, sys_: int, field_name: str
+) -> Callable[[tuple[int, int]], bool]:
+    """Accept a disable bit whose program leaves every demoted profile row different from
+    the undemoted row.
+
+    The strap-0 disable program is part of the golden of the closing demotion leg. A bit
+    that closes the last open bit of a demotion group would make that demotion change
+    nothing, so CHK-STM-FEAT-DEMOTED could not fail for it.
+    """
+
+    def keep(c: tuple[int, int]) -> bool:
+        bit = 1 << (32 * c[0] + c[1])
+        s = sip | bit if field_name == "SIP_DIS" else sip
+        y = sys_ | bit if field_name == "SYS_DIS" else sys_
+        base = feat_ctrl_profile(raw, s, y).value
+        return all(
+            feat_ctrl_profile(raw, s, y, demote_1=d1, demote_2=d2).value != base
+            for d1, d2 in ((1, 0), (0, 1), (1, 1))
+        )
+
+    return keep
+
+
 def plan_secure_tm_matrix(seed: int) -> SepEfusePlan:
     """State, pair, target order, five program classes, written bits of both sources.
 
@@ -1866,8 +1903,13 @@ def plan_secure_tm_matrix(seed: int) -> SepEfusePlan:
     progs["narrow32"] = _pick_bit(
         d, "program.narrow32", img, d.choice("program.narrow32.field", NARROW_FIELDS)
     )
+    dis_field = d.choice("program.dis.field", ("SIP_DIS", "SYS_DIS"))
     progs["dis"] = _pick_bit(
-        d, "program.dis", img, d.choice("program.dis.field", ("SIP_DIS", "SYS_DIS"))
+        d,
+        "program.dis",
+        img,
+        dis_field,
+        keep=_stm_dis_keeps_demotions(raw, sip, sys_, dis_field) if raw == LC_PROD else None,
     )
     spare_field = d.choice("program.spare.field", SPARE_FIELDS)
     used_slots = {SLOT_OF_FIELD[f] for f in ("SIP_DIS", "SYS_DIS", *SECRET_FIELDS)}
