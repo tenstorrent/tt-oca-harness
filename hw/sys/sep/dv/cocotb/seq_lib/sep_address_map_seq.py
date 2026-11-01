@@ -227,16 +227,20 @@ FABRIC_BLOCKS = [
 
 
 class sep_address_map_seq(uvm_sequence):
-    def __init__(self, name: str = "sep_address_map_seq") -> None:
+    def __init__(self, name: str, out_probe: int) -> None:
         super().__init__(name)
+        # A word that routes to the outbound port, read after the walk inside the
+        # same PR-OUT window.
+        self.out_probe = out_probe
         self.ref_counter_low = 0
         self.ref_counter_high = 0
         self.base_addr_rw_checks = 0
         self.reset_reads: list[tuple[str, int, int]] = []
         self.write_readback_checks = 0
         self.fabric_walk_checks = 0
-        # PR-OUT AR beats during the fabric walk.
+        # PR-OUT AR beats during the fabric walk, and during the read of out_probe.
         self.fabric_walk_out_ars: list[TapBeat] = []
+        self.out_probe_ars: list[TapBeat] = []
         # Registers whose only fields are RDL `reserved` fields. They are
         # still fully checked above (real sw=rw storage), but what they prove is
         # storage rather than an implemented-field readback -- noted so the
@@ -370,13 +374,17 @@ class sep_address_map_seq(uvm_sequence):
         await self._read(cg_addr, expected=cg_mask, name="CLOCK_GATE_CTRL")
 
         # Walk the SEP-local fabric: every block must decode on the LSU bus, so
-        # no walk read may leave on PR-OUT.
+        # no walk read may leave on PR-OUT. The out_probe read after the walk, in
+        # the same tap window, shows that the tap records an outbound read.
         out = SepFabricTap("PR-OUT").start()
         out_mark = out.mark()
         for name, addr, expected in FABRIC_BLOCKS:
             await self._read(addr, expected=expected, name=name)
             self.fabric_walk_checks += 1
         self.fabric_walk_out_ars = out.since(out_mark, "ar")
+        probe_mark = out.mark()
+        await self._read(self.out_probe, expected=None, name="out_probe")
+        self.out_probe_ars = out.since(probe_mark, "ar")
         await out.stop()
 
         # Restore CLOCK_GATE_CTRL to its reset value.
