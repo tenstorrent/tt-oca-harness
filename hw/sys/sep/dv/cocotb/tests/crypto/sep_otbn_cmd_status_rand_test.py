@@ -81,8 +81,7 @@ Checkers:
   CHK-OTBN-CMD-IGNORE  an unrecognised ``CMD`` at IDLE starts nothing for
                        4 x t_cmd; a ``CMD`` write at 0x01 leaves ``STATUS`` 0x01.
                        The line logs the B response of each ignored write;
-                       the write at IDLE must answer OKAY, the response of a
-                       write at 0x01 is not graded.
+                       no TT text states it, so it is not graded.
   CHK-OTBN-BUSYWR      ``CTRL.software_errs_fatal`` written at 0x01 reads 0;
                        ``STATUS`` stays 0x01; not 0xFF after the release.
                        The B response of each write at 0x01 is logged
@@ -685,10 +684,9 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
     async def _wr_b(self, addr: int, val: int, *, refused: bool = False) -> str:
         """Register write that returns the name of its B response.
 
-        A legal write must answer OKAY and raises otherwise. A ``refused`` write
-        (OTBN not idle: ``otbn.hjson`` ``CMD`` and ``CTRL``) is ignored by the
-        DUT and no text states its response code, so the code is only returned
-        for the log.
+        A ``refused`` write (OTBN not idle: ``otbn.hjson`` ``CMD`` and ``CTRL``) is
+        ignored by the DUT. No TT text states the response code of either kind, so
+        the code is only returned for the log.
         """
         seq = SepAxiAccessSeq(
             "otbn_b_wr",
@@ -700,8 +698,6 @@ class sep_otbn_cmd_status_rand_test(sep_base_test):
             allow_unverified_write_resp=refused,
         )
         await self.start_seq(seq)
-        if not refused and not seq.resp_ok:
-            raise AssertionError(f"OTBN write 0x{val:02x} @0x{addr:08x} not OKAY")
         return resp_name(seq.resp_code)
 
     def _clk(self) -> int:

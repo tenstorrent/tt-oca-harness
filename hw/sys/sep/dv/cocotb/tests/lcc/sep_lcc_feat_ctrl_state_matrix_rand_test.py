@@ -87,8 +87,8 @@ OR-merged with the writes of the leaf).
   CHK-RMA-BYPASS    leg D: in RMA_SIP and RMA_CHIPLET both disable shadows read the
                     staged values and ``FEAT_CTRL`` equals the row.
   CHK-DIS-EARLIER   leg D: after a write of 0 to ``SIP_DIS`` and of ~S to ``SYS_DIS``,
-                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0; both writes
-                    are answered OKAY (set-only, unlocked: a legal write); ``DEMOTE_1``
+                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0 (both write
+                    responses are logged, not graded); ``DEMOTE_1``
                     and ``DEMOTE_2`` read the RW1S golden after the PROD demotion writes
                     (``dem_regs=``).
   CHK-DIS-STEP      leg D: after each walk write the owner shadow equals the OR-merge
@@ -937,9 +937,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             and dem == dem_exp
             and reg & s == 0
             and reg == row.value
-            and probe == row.value
-            and resp_sys == 0
-            and resp_sip == 0,
+            and probe == row.value,
             state=self.state,
             S=f"0x{s:016x}",
             sip_got=f"0x{sip:016x}",

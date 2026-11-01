@@ -337,6 +337,7 @@ tests = [
     "sep_otbn_cmd_status_rand_test",
     "sep_otbn_cmd_status_rand_test_shard2",
     "sep_otbn_cmd_status_rand_test_shard3",
+    "sep_otbn_load_checksum_read_test",
     "sep_abr_command_matrix_rand_test",
     "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",
@@ -626,6 +627,7 @@ tests = [
     "sep_otbn_cmd_status_rand_test",
     "sep_otbn_cmd_status_rand_test_shard2",
     "sep_otbn_cmd_status_rand_test_shard3",
+    "sep_otbn_load_checksum_read_test",
     "sep_abr_command_matrix_rand_test",
     "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",
@@ -986,7 +988,7 @@ tests = [
 # Convenience group of the crypto and entropy tests.
 # It is not a VPLAN group: `all` and `cpu_stub` hold the same tests.
 name = "phase3_crypto_entropy"
-expected_count = 38
+expected_count = 39
 tests = [
     "sep_irq_ip_to_aggregator_test",
     "sep_crypto_edn_multisink_arbitration_test",
@@ -1005,6 +1007,7 @@ tests = [
     "sep_otbn_cmd_status_rand_test",
     "sep_otbn_cmd_status_rand_test_shard2",
     "sep_otbn_cmd_status_rand_test_shard3",
+    "sep_otbn_load_checksum_read_test",
     "sep_abr_command_matrix_rand_test",
     "sep_abr_combined_cmd_kat_test",
     "sep_esrc_csr_rw_walk_rand_test",

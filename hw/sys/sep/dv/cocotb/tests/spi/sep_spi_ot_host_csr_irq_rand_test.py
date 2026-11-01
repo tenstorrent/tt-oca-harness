@@ -173,6 +173,10 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       0 (no error event, hw/sys/sep/doc/spi.adoc:79; no event
                       source selected, hw/sys/sep/doc/spi.adoc:84-86) and
                       ERROR_STATUS.ACCESSINVAL reads 0.
+                      No frontdoor stimulus sets ACCESSINVAL (its only cause
+                      is the forwarded empty write), so CHK-SPI-STRB-EMPTY and
+                      CHK-SPI-STRB-ACCESSINVAL show that the bit is not raised,
+                      not that the core can raise it.
   L3 CHK-SPI-STRB-TX: the TXDATA half queues one word only when strobed.
   L3 CHK-SPI-STRB-CTRL : strobe 0xFF changes both halves of each pair.
   L4 CHK-SPI-SWRST  : SW_RST written at a drawn sck cycle of a Tx segment reads

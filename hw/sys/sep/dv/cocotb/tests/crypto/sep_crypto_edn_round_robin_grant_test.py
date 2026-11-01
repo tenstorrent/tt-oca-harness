@@ -10,9 +10,9 @@ configuration. This test holds AES (crypto_edn[0]) and OTBN URND
 the real entropy chain so ``prim_arbiter_ppc`` inside ``drbg_axis_edn_adapter``
 has to grant both. CHK-NO-STARVE grades sharing. The grant order is logged
 only (``OBS-EDN-GRANT-SEQ``): ``hw/sys/sep/doc/trng.adoc`` names round-robin
-arbitration, but the arbiter fills a one-entry FIFO per client, so the
-``edn_ack`` order at the client ports is not the arbitration order, and no
-text states it.
+arbitration, and its distribution figure (``sep-trng-distribution.svg``) shows
+the arbiter filling a one-entry FIFO per client, so the ``edn_ack`` order at the
+client ports is not the arbitration order, and no text states it.
 
 The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
@@ -261,9 +261,10 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             grants.count(_URND_BIT),
         )
 
-        # The round-robin arbiter fills a one-entry FIFO per client
-        # (hw/sys/sep/doc/trng.adoc), so the edn_ack order at the client ports
-        # is not the arbitration order and no text states it.
+        # The round-robin arbiter fills a one-entry FIFO per client (the
+        # sep-trng-distribution.svg figure of hw/sys/sep/doc/trng.adoc), so the
+        # edn_ack order at the client ports is not the arbitration order and no
+        # text states it.
         alt_pairs = 0
         for a, b in zip(grants, grants[1:]):
             if a == b:
