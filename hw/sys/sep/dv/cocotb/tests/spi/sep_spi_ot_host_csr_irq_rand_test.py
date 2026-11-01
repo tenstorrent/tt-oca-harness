@@ -184,6 +184,30 @@ and CSID 0, and read the pads through ``env/sep_spi_pad_sampler.py``.
                       registers, and a clean command then runs.
   L4 CHK-SPI-SPIEN  : SPIEN=0 holds 1 to 3 queued commands (ACTIVE=0) off the pads
                       for 4*T clocks; SPIEN=1 runs them in order.
+  L4 CHK-SPI-CMDINVAL-SPIEN1 : with SPIEN=1, a COMMAND with the reserved SPEED
+                      sets ERROR_STATUS to CMDINVAL alone, and a legal Tx
+                      COMMAND queued behind it, with its TXDATA word in the
+                      FIFO, drives no sck edge in 4*T clocks before the write
+                      of 1 to ERROR_STATUS.CMDINVAL. Sources:
+                      theory_of_operation.md:596 "Specifying a command segment
+                      with an invalid width (speed) ... will trigger a
+                      ERROR_STATUS.CMDINVAL error event"; :601 "They will also
+                      halt the IP until the corresponding bit is cleared".
+                      Neither depends on SPIEN. T is a reference Dummy segment
+                      of the same sck count, run just before on the same
+                      sampler, so a dead sck tap fails that reference.
+                      Control (CTRL-SPI-CMDINVAL-SPIEN1, else CTRL-MISSING):
+                      CONTROL reads SPIEN=1 and ERROR_STATUS reads 0 before
+                      the reserved COMMAND. Control
+                      (CTRL-SPI-CMDINVAL-QUEUED, else CTRL-MISSING): the
+                      write of the Tx COMMAND raises STATUS.CMDQD by 1 and
+                      STATUS.TXQD reads at least 1 after it, or the window
+                      shows sck edges. Logged only
+                      (OBS-SPI-CMDINVAL-SPIEN1): STATUS (CMDQD, ACTIVE, TXQD)
+                      and the chip select windows while CMDINVAL halts the
+                      IP. SW_RST then empties both queues before the write of
+                      1, because the core assumes a valid speed and no text
+                      states what a popped reserved command does.
 
 Run mode: no_cpu with +skip_fuse_sense. The graded window carries this test's
 code during the stimulus and checks of the four legs only. It is closed during
@@ -251,6 +275,7 @@ from env.sep_fcov_gate import (
     SPI_CSR_IRQ_PASS_RELEASE,
     close_graded_window,
     open_graded_window,
+    set_open_value_leg_pass,
     set_spi_csr_irq_graded_read,
     set_spi_csr_irq_pass,
     set_spi_tx_wm_pass,
@@ -383,6 +408,8 @@ _WO_READS = (
 )
 _RO_WRITES = (("STATUS", STATUS), ("RXDATA", RXDATA))
 _WO_RO_SALT = 0x574F_524F
+# Draws of the SPIEN=1 CMDINVAL leg: the Tx word and its byte count.
+_CMDINVAL_SALT = 0x4349_4E31
 _LEG_CHECKS = (
     "CHK-SPI-EVENT",
     "CHK-SPI-EVENT-SRC",
@@ -398,6 +425,7 @@ _LEG_CHECKS = (
     "CHK-SPI-STRB-ACCESSINVAL",
     "CHK-SPI-SWRST",
     "CHK-SPI-SPIEN",
+    "CHK-SPI-CMDINVAL-SPIEN1",
 )
 _OPEN_CHECKS = 8
 # Separates the leg stream from the SepSpiHostCfg stream of the same seed.
@@ -2418,6 +2446,7 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
     async def _leg_l4(self) -> None:
         await self._l4_swrst()
         await self._l4_spien()
+        await self._l4_cmdinval_spien1()
 
     async def _l4_swrst(self) -> None:
         sw = self.draw["swrst"]
@@ -2578,4 +2607,74 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         )
         await self._release(_FAM_SPIEN)
         self._window(False)
+        await self._clean()
+
+    async def _l4_cmdinval_spien1(self) -> None:
+        """A reserved-SPEED COMMAND with SPIEN=1 and a legal Tx COMMAND queued behind it."""
+        rng = SepSeededRng(self.seed ^ _CMDINVAL_SALT)
+        word = rng.getrandbits(32)
+        n_bytes = rng.randrange(1, 5)
+        await self._clean()
+        self._window(False)
+        await self.ops.wr(CONTROL, _CTRL_BASE)
+        ref = await self._segment(command_word(8 * n_bytes - 1, direction=DIR_DUMMY))
+        t_seg = ref[0].end - ref[0].start
+        window = 4 * t_seg
+        await self._idle_done("CMDINVAL reference")
+        ctrl = await self.ops.rd(CONTROL)
+        es0 = await self.ops.rd(ERROR_STATUS)
+        ctrl_line = (
+            f"control=0x{ctrl:08x} spien={int(bool(ctrl & CTRL_SPIEN))} error_status=0x{es0:08x}"
+        )
+        if not ctrl & CTRL_SPIEN or es0:
+            self._ctrl_missing("CTRL-SPI-CMDINVAL-SPIEN1", ctrl_line)
+        self.logger.info("CTRL-SPI-CMDINVAL-SPIEN1 PASS seed=%d %s", self.seed, ctrl_line)
+        mark = self.pads.mark()
+        await self.ops.wr(COMMAND, command_word(0, speed=_SPEED_RESERVED))
+        await self.ops.push_tx(word)
+        st_before = await self.ops.issue_command(command_word(n_bytes - 1, direction=DIR_TX))
+        st_after = await self.ops.read_status()
+        await ClockCycles(cocotb.top.clk_i, window)
+        es = await self.ops.rd(ERROR_STATUS)
+        st_pre = await self.ops.read_status()
+        held_edges = len(self.pads.sck_edges_between(mark.clk + 1, self.pads.now() + 1))
+        held_wins = len(self.pads.windows_since(mark, complete_only=False))
+        # A host that runs the Tx command pops it at once; its sck edges show
+        # that it was queued, and the check below fails on them.
+        queued = st_after.cmdqd == st_before.cmdqd + 1 and st_after.txqd >= 1
+        queued_line = (
+            f"cmdqd_before={st_before.cmdqd} cmdqd_after={st_after.cmdqd} "
+            f"txqd_after={st_after.txqd} sck_edges_before_w1c={held_edges}"
+        )
+        if not (queued or held_edges):
+            self._ctrl_missing("CTRL-SPI-CMDINVAL-QUEUED", queued_line)
+        self.logger.info("CTRL-SPI-CMDINVAL-QUEUED PASS seed=%d %s", self.seed, queued_line)
+        self._grade(
+            "CHK-SPI-CMDINVAL-SPIEN1",
+            es == ERR_CMDINVAL and held_edges == 0 and t_seg > 0,
+            f"error_status=0x{es:08x} expect=0x{ERR_CMDINVAL:08x} "
+            f"sck_edges_before_w1c={held_edges} window_clk={window} t_seg={t_seg} "
+            f"tx_bytes={n_bytes}",
+        )
+        set_open_value_leg_pass("spi_cmdinval_spien1", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        self.logger.info(
+            "OBS-SPI-CMDINVAL-SPIEN1 LOG seed=%d tx_word=0x%08x tx_bytes=%d cs_windows_held=%d "
+            "cmdqd_held=%d active_held=%d txqd_held=%d",
+            self.seed,
+            word,
+            n_bytes,
+            held_wins,
+            st_pre.cmdqd,
+            st_pre.active,
+            st_pre.txqd,
+        )
+        # SW_RST empties the command queue while CMDINVAL still halts the core,
+        # so the core never pops the reserved speed; ERROR_STATUS keeps CMDINVAL.
+        await self._sw_rst()
+        await self.ops.poll_status(
+            lambda s: s.cmdqd == 0 and s.active == 0, 2_000, "CMDINVAL flush: CMDQD=0"
+        )
+        await self.ops.wr(ERROR_STATUS, ERR_STATUS_MASK)
         await self._clean()

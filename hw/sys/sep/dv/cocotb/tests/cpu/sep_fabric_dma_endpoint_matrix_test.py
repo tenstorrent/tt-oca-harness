@@ -77,6 +77,12 @@ model of the staged data and the fabric taps:
                   with the entry locked, the write answers DECERR, the DMA
                   reports a bus error and the word keeps its value.
 
+Two lines grade nothing. OBS-FILTER-RANGE gives, per out_setup filter entry,
+the time of the START and END write on the system-CSR AXI-Lite port and of
+the first read of the same register after it. OBS-DMA-RESP-USER gives, per
+leg, the B and R USER values the DMA master receives (secure DMA response
+USER tap).
+
 The model of every expected value is the stimulus itself (the seeded words the
 firmware stages) and the RDL field layout; no expected value is read from the
 DUT. cpu run mode, ``+skip_fuse_sense``, BH-SMC through the SMC aperture
@@ -110,6 +116,7 @@ from cocotb.triggers import ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
 from env.sep_bh_smc import aperture_plusargs
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_dma_tap import FIELDS as DMA_PROBE_FIELDS
 from env.sep_dma_tap import SepDmaTap
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_ext_trng_stream import SepExtTrngStream
@@ -197,6 +204,12 @@ REMAP_VALID_FIELD = AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0.field_mask(
 LOCAL_ALIAS_SPAN = 0x3000_0000
 EXT_TOP_WORD = sym("SEP_TOP_REG_MAP_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
 EXT_TOP_ALIAS = SEP_CPU_CTRL.reset("SEP_LOCAL_BASE_ADDR") + LOCAL_ALIAS_SPAN - 8
+# B VALID and READY bits of dma_axi_req_probe_o.
+_DMA_B_VALID, _DMA_B_READY = (
+    lsb for name, lsb, _w in DMA_PROBE_FIELDS if name in ("b_valid", "b_ready")
+)
+# Outbound filter entries the out_setup leg programs (firmware out_entry 1..8).
+OUT_SETUP_ENTRIES = range(1, 9)
 # The console word the bench responder decodes (tb/sep_outbound_mbx.sv, StdoutAddr).
 STDOUT = SEP_CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR")
 # Region index bits of the AP output remap (generated map, sep_outbound_remap_seq).
@@ -471,6 +484,13 @@ class Leg:
     sram_mark: int = 0
     irq_mark: int = 0
     dma_mark: object = None
+    resp_mark: int = 0
+
+
+def _user_set(beats, ch: str) -> str:
+    """The distinct USER values of the ``ch`` beats, X for an unknown one."""
+    vals = sorted({u for c, u, _ in beats if c == ch}, key=lambda u: (u is None, u or 0))
+    return "[" + ",".join("X" if u is None else f"0x{u:03x}" for u in vals) + "]"
 
 
 def _kv(line: str) -> dict:
@@ -549,6 +569,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
                 leg.dma_mark = self.dma_tap.mark()
                 leg.sram_mark = len(self.sram_wr)
                 leg.irq_mark = len(self.irq_edges)
+                leg.resp_mark = len(self.dma_resp)
                 self.legs.append(leg)
                 gate = leg.kind == "G"
                 feed = text == "M C pool_pre" and self.pool_task is None
@@ -643,6 +664,26 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             if rise:
                 self.irq_edges.append((get_sim_time("ps"), rise))
             prev = now
+
+    async def _dma_resp_user(self) -> None:
+        """USER of every B and R handshake of the DMA master response.
+
+        ``dma_resp_buser_o`` on a B handshake of ``dma_axi_req_probe_o``,
+        ``dma_resp_ruser_o`` with RLAST on an R handshake of
+        ``dma_resp_r_hs_o``. A USER that holds X or Z is kept as None.
+        """
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            req = dut.dma_axi_req_probe_o.value.binstr
+            r_hs = dut.dma_resp_r_hs_o.value.binstr
+            if req[-1 - _DMA_B_VALID] + req[-1 - _DMA_B_READY] == "11":
+                v = dut.dma_resp_buser_o.value
+                self.dma_resp.append(("b", int(v) if v.is_resolvable else None, None))
+            if r_hs[-2:] == "11":
+                v = dut.dma_resp_ruser_o.value
+                self.dma_resp.append(("r", int(v) if v.is_resolvable else None, r_hs[0]))
 
     # ---- record and window helpers ----
     def _leg_index(self, name: str, nth: int = 0) -> int:
@@ -1714,6 +1755,74 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             )
         self._recovery_after("filt_wr_lock")
 
+    def _obs_filter_range(self) -> None:
+        """OBS-FILTER-RANGE: when START/END of an out_setup entry is read after its write.
+
+        Each entry is programmed as [a, a + 7] with ``allow_burst`` 0, so START
+        and END share one granule and hardware writes the rounded pair back
+        (``hw/ip/axi_filter/regs/filter_ctrl.rdl``, start_addr). No document
+        states on which clock that write-back lands. Per entry the line gives
+        the time of the START and END AW on the system-CSR AXI-Lite port, the
+        time of the first AR of the same register after it, the Lite
+        handshakes between the two, and the firmware read-back difference
+        count of the leg (CHK-DMA-FILT-RANGE grades the count).
+        """
+        leg_i = self._leg_index("out_setup")
+        _, r, _ = self._one("OUTSET")
+        beats = sorted(
+            self._beats("PR-CSR", leg_i, "aw") + self._beats("PR-CSR", leg_i, "ar"),
+            key=lambda b: b.seq,
+        )
+        for i in OUT_SETUP_ENTRIES:
+            ent = RegBlock(f"OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{i}_")
+            parts = []
+            for reg in ("START_ADDR", "END_ADDR"):
+                addr = ent.addr(reg)
+                wr = next((b for b in beats if b.ch == "aw" and b.addr == addr), None)
+                rd = None
+                if wr is not None:
+                    rd = next(
+                        (b for b in beats if b.seq > wr.seq and b.ch == "ar" and b.addr == addr),
+                        None,
+                    )
+                between = (
+                    sum(1 for b in beats if wr.seq < b.seq < rd.seq)
+                    if wr is not None and rd is not None
+                    else None
+                )
+                parts.append(
+                    f"{reg.lower()}=0x{addr:08x} wr_ps={None if wr is None else wr.t_ps} "
+                    f"rd_ps={None if rd is None else rd.t_ps} lite_between={between}"
+                )
+            self.logger.info(
+                "OBS-FILTER-RANGE leg=out_setup entry=%d %s rng_diff=%d",
+                i,
+                " ".join(parts),
+                r["rng_diff"],
+            )
+
+    def _obs_dma_resp_user(self) -> None:
+        """OBS-DMA-RESP-USER: the USER of the DMA master response beats, per leg.
+
+        ``hw/sys/sep/doc/dma.adoc`` states the AxUSER the DMA issues; no
+        document states the B or R USER it receives. Values that hold X or Z
+        print as X.
+        """
+        bounds = [leg.resp_mark for leg in self.legs] + [len(self.dma_resp)]
+        for leg_i, leg in enumerate(self.legs):
+            beats = self.dma_resp[bounds[leg_i] : bounds[leg_i + 1]]
+            if not beats:
+                continue
+            self.logger.info(
+                "OBS-DMA-RESP-USER leg=%s b=%d buser=%s r=%d ruser=%s rlast=%d",
+                leg.name,
+                sum(1 for c, _, _ in beats if c == "b"),
+                _user_set(beats, "b"),
+                sum(1 for c, _, _ in beats if c == "r"),
+                _user_set(beats, "r"),
+                sum(1 for c, _, last in beats if c == "r" and last == "1"),
+            )
+
     async def _release_labels(self) -> None:
         """Write the pass labels once, after every check of the run passed."""
         clk = cocotb.top.clk_i
@@ -1743,6 +1852,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self.legs: list[Leg] = []
         self.recs: list[tuple[int, str]] = []
         self.sram_wr: list = []
+        self.dma_resp: list[tuple[str, int | None, str | None]] = []
         self.irq_edges: list = []
         self.irq_xz: list[tuple[int, str, str]] = []
         self.pool_task = None
@@ -1752,7 +1862,14 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self.pool_feed_err: str | None = None
         dtcm = self._stage_dtcm()
         self.taps = start_taps(
-            "PR-OUT", "PR-OUT-RSP", "PR-EXT", "PR-EXT-RSP", "PR-SMC", "PR-ROM", "PR-DMACSR"
+            "PR-OUT",
+            "PR-OUT-RSP",
+            "PR-EXT",
+            "PR-EXT-RSP",
+            "PR-SMC",
+            "PR-ROM",
+            "PR-DMACSR",
+            "PR-CSR",
         )
         # CHK-DMA-AXPROT: the AxPROT the DMA master drives, before its window remap.
         self.dma_raw = SepFabricTap("PR-DMA-RAW").start()
@@ -1762,6 +1879,7 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
             cocotb.start_soon(self._console()),
             cocotb.start_soon(self._sram_writes()),
             cocotb.start_soon(self._irq_edges()),
+            cocotb.start_soon(self._dma_resp_user()),
         ]
         close_graded_window(self.logger)
         set_dma_smc_cpu_pass(False, self.logger)
@@ -1819,4 +1937,6 @@ class sep_fabric_dma_endpoint_matrix_test(sep_base_test):
         self._chk_smc()
         self._chk_notconn()
         self._chk_filt_wr()
+        self._obs_filter_range()
+        self._obs_dma_resp_user()
         await self._release_labels()

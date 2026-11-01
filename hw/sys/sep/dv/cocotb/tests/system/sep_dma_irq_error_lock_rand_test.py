@@ -188,6 +188,18 @@ Checkers:
                     ends with DONE=1, ERROR=0, ERROR_CODE=0 and at least one
                     DMA AR and one AW beat (CTRL-DMA-CFG-ERR), so a dead DMA
                     master tap fails the control.
+  OBS-DMA-ALIGN     a copy at width 1 (encoding 0) from a source on a 4-byte
+                    boundary to a destination a drawn 1 to 3 bytes past one,
+                    both aligned to the width: the end, STATUS.ERROR,
+                    ERROR_CODE, the AR, AW and W counts and whether the
+                    destination equals the source, logged. DST_ADDR_LO "Source
+                    and destination address must have the same alignment."
+                    (``secure_dma.rdl:92``) states no unit for the alignment
+                    and no ERROR_CODE bit for it (``:333-372``).
+                    Control, else CTRL-MISSING (CTRL-DMA-ALIGN-GO):
+                    TRANSFER_WIDTH and DST_ADDR_LO read back as written before
+                    the GO write, and after it a STATUS read shows DONE or
+                    ERROR, or the DMA master tap shows an AR beat.
   CHK-DMA-INTR-RELEASE per L2 kind: after the write of 1 to STATUS.ERROR,
                     INTR_STATE.DMA_ERROR reads 0 and source 11 is low. Control:
                     INTR_STATE.DMA_ERROR reads 1 and source 11 is high just
@@ -249,7 +261,11 @@ from env.sep_axi_agent import SepAxiOp
 from env.sep_bit_watch import SepBitWatch
 from env.sep_dma_model import draw_source_words
 from env.sep_dma_tap import SepDmaTap
-from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_fcov_gate import (
+    close_graded_window,
+    open_graded_window,
+    set_open_value_leg_pass,
+)
 from env.sep_field_compare import field_compare
 from env.sep_lcc_golden import LC_PROD
 from env.sep_seeded_rng import SepSeededRng
@@ -259,6 +275,7 @@ from seq_lib.sep_dma_ops import (
     _D,
     CHUNK_DATA_SIZE,
     CONTROL,
+    DST_ADDR_LO,
     ERROR_CODE,
     ERROR_CODE_MASK,
     INTR_CHUNK_DONE,
@@ -342,6 +359,10 @@ CFG_ERR_CHK = {
     "asid": "CHK-DMA-ASID-ERR",
     "align": "CHK-DMA-ALIGN-ERR",
 }
+# Width-1 copy with the source on a 4-byte boundary and the destination off it;
+# its draws come from their own stream, so the draws above keep their seed mapping.
+ALIGN_SALT = 0x414C_4D53
+ALIGN_WIDTH_ENC = 0
 # Opcodes above the enum, 5 left to the zero-fill leaf; ASIDs other than OT/SOC/SYS.
 OPC_INVALID = range(6, _D.field_mask("CONTROL", "opcode") + 1)
 ASID_ALL = _D.field_mask("ADDR_SPACE_ID", "src_asid") >> _D.field_lsb("ADDR_SPACE_ID", "src_asid")
@@ -449,6 +470,9 @@ class _Cfg:
         self.bad_opcode = rng.choice(list(OPC_INVALID))
         self.bad_asid = rng.choice([v for v in range(ASID_ALL + 1) if v not in ASID_VALID])
         self.bad_asid_side = rng.choice(HI_SIDES)
+        arng = SepSeededRng(seed ^ ALIGN_SALT)
+        self.align_dst_off = arng.randrange(1, 4)
+        self.align_size = 4 * arng.randrange(4, MAX_BYTES // 4)
 
     def _place(self, rng, size: int) -> tuple[int, int]:
         span = size + 2 * self.guard
@@ -483,6 +507,7 @@ class _Cfg:
             + f" nonmubi=0x{self.nonmubi:x} edge_size={self.edge_size} "
             + " ".join(f"cfgerr_{k}={self.cfg_err_size[k]}" for k in CFG_ERR_KINDS)
             + f" bad_opcode={self.bad_opcode} bad_asid={self.bad_asid_side}:0x{self.bad_asid:x}"
+            + f" align_dst_off={self.align_dst_off} align_size={self.align_size}"
         )
 
 
@@ -802,6 +827,7 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             await self._release_trial(event)
         await self._obs_size_edge()
         await self._leg_cfg_err()
+        await self._obs_align_mismatch()
 
     async def _cfg_err_run(self, kind: str, bad: bool) -> tuple[DmaStatus, bool, int, int, int]:
         """One copy with the ``kind`` fault (``bad``) or its legal value.
@@ -890,6 +916,69 @@ class sep_dma_irq_error_lock_rand_test(sep_base_test):
             if not ok:
                 self._fail(chk, line)
             self._pass(chk, line)
+
+    async def _obs_align_mismatch(self) -> None:
+        """A width-1 copy whose source and destination differ in 4-byte alignment."""
+        c = self.cfg_t
+        ops = self.ops
+        size = c.align_size
+        dst = c.dst + c.align_dst_off
+        await self._cold_reset()
+        await self._base_config(MAX_BYTES // 4)
+        written = await ops.program_transfer(
+            src=c.src, dst=dst, total=size, chunk=size, width_enc=ALIGN_WIDTH_ENC
+        )
+        width_rb = await ops.rd(TRANSFER_WIDTH)
+        dst_rb = await ops.rd(DST_ADDR_LO)
+        tap = SepDmaTap().start()
+        await ClockCycles(cocotb.top.clk_i, 1)
+        m = tap.mark()
+        await ops.go(opcode=OP_COPY, initial=1)
+        go = (await ops.rd(CONTROL) >> _D.field_lsb("CONTROL", "go")) & 1
+        # Four bytes per beat fewer than at width 4: four times the width-4 bound.
+        st = None
+        ended = False
+        for _ in range(4 * ops.done_bound(size)):
+            st = await ops.read_status()
+            if st.done or st.error:
+                ended = True
+                break
+        ecode = await ops.rd(ERROR_CODE)
+        await ClockCycles(cocotb.top.clk_i, POST_WAIT)
+        ev = tap.since(m)
+        await tap.stop()
+        img = await self.mem.read(c.dst, (MAX_BYTES + c.guard) // 4)
+        data = b"".join(w.to_bytes(4, "little") for w in img)
+        src = b"".join(w.to_bytes(4, "little") for w in c.words)[:size]
+        copied = data[c.align_dst_off : c.align_dst_off + size] == src
+        await ops.clean_state()
+        await ops.wr(CONTROL, control_word())
+        line = (
+            f"width_enc={ALIGN_WIDTH_ENC} size={size} src=0x{c.src:08x} dst=0x{dst:08x} "
+            f"src_mod4={c.src % 4} dst_mod4={dst % 4} "
+            f"transfer_width_rb=0x{width_rb:x} dst_addr_lo_rb=0x{dst_rb:08x} go={go} "
+            f"ended={int(ended)} ar_seen={int(bool(ev.ar))} status={st.fmt()}"
+        )
+        landed = width_rb == written["TRANSFER_WIDTH"] and dst_rb == written["DST_ADDR_LO"]
+        if not (landed and (ended or ev.ar)):
+            self._ctrl_missing("CTRL-DMA-ALIGN-GO", line)
+        self.logger.info("CTRL-DMA-ALIGN-GO PASS seed=%d %s", c.seed, line)
+        set_open_value_leg_pass("dma_align_mismatch", self.logger)
+        await ClockCycles(cocotb.top.clk_i, 2)
+        set_open_value_leg_pass(None, self.logger)
+        self.logger.info(
+            "OBS-DMA-ALIGN seed=%d %s done=%d error=%d error_code=0x%x ar=%d aw=%d w=%d "
+            "dst_equals_src=%d",
+            c.seed,
+            line,
+            st.done,
+            st.error,
+            ecode,
+            len(ev.ar),
+            len(ev.aw),
+            len(ev.w),
+            int(copied),
+        )
 
     async def _release_trial(self, event: str) -> None:
         """A write of 1 to STATUS.DONE or STATUS.CHUNK_DONE releases its interrupt."""

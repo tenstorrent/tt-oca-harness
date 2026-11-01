@@ -12312,7 +12312,8 @@ module sep_fcov (
   logic exo34_q;
   // Exclusive rises of sources 35, 36 and 41 to 43 (bit = source - 1) in the
   // window of their owner. They are not sampled here: the exo_pass hold below
-  // holds them and samples them on the pass label of their EXCL check.
+  // holds them and samples them on the pass label of the check of their
+  // source.
   localparam logic [42:0] ExoHoldMask = (43'd1 << 34) | (43'd1 << 35) | (43'd1 << 40) |
       (43'd1 << 41) | (43'd1 << 42);
   logic [42:0] exo_hold_ev_q;
@@ -37986,11 +37987,14 @@ module sep_fcov (
   // cp_src_exclusive_other bins s35, s36 and s41 to s43: an exclusive rise in
   // the window of its owner (exo_hold_ev_q) is held as pending and samples
   // only when bit (source - 32) of exo_pass rises: the owner writes that bit
-  // after CHK-SRC<source>-EXCL passed over every rise of the run. The release
+  // after CHK-SRC<source>-EXCL (sources 35 and 36) or CHK-SRC<source>-RISE
+  // (sources 41 to 43) passed over the run. For sources 41 to 43 the
+  // exclusivity of a held rise is this sampler's compare only; the owner
+  // grades that the bit rose and logs the other bits that moved. The release
   // does not depend on the window, because the bridge-fault owner grades its
-  // EXCL checks at the end of the run, after the window closed. A reset drops
-  // every pending rise; a leaf whose EXCL check fails never writes the bit, so
-  // its rises never sample. exo_pass gates a sample; it is never a DUT value
+  // RISE checks at the end of the run, after the window closed. A reset drops
+  // every pending rise; a leaf whose check fails never writes the bit, so its
+  // rises never sample. exo_pass gates a sample; it is never a DUT value
   // and drives nothing.
   int unsigned exo_pass = 0;
   int unsigned exo_pass_q = 0;
@@ -44371,6 +44375,93 @@ module sep_fcov (
         default: km_cc_v <= 1'b0;
       endcase
     end
+  end
+
+  // ---------------------------------------------------------------------
+  // sep_open_value_leg_cg: stimulus legs that log a value no specification
+  // states (docs/SEP_FCOV.adoc, open-value stimulus legs).
+  // ---------------------------------------------------------------------
+  // Bin k is the leg of code k (OPEN_VALUE_LEGS index k - 1 in
+  // cocotb/env/sep_fcov_gate.py). The owner of the leg writes the code to
+  // open_value_leg_pass after the CTRL reach line of that leg passed, holds it
+  // two clocks and writes 0. A rise from 0 samples the code only when the last
+  // window opened in the run belongs to the owner of that leg; a code of
+  // another owner samples nothing. A window close and a reset do not clear the
+  // last owner, because firmware leaves grade after the window closed. The
+  // label is the bin value and drives nothing.
+  localparam int unsigned OvLegCount = 23;
+  function automatic int unsigned ov_leg_owner(input int unsigned leg);
+    case (leg)
+      5'd1: return FcovOwnSepDmaIrqErrorLockRandTest;
+      5'd2: return FcovOwnSepSpiDmaHandshakeRandTest;
+      5'd3: return FcovOwnSepSpiDmaHandshakeRandTest;
+      5'd4: return FcovOwnSepPicPendingMapWalkRandTest;
+      5'd5: return FcovOwnSepFabricSmcRouteTest;
+      5'd6: return FcovOwnSepFabricOutboundRouteAttrTest;
+      5'd7: return FcovOwnSepFabricRowResponseMatrixTest;
+      5'd8: return FcovOwnSepFabricRowResponseMatrixTest;
+      5'd9: return FcovOwnSepFabricRowResponseMatrixTest;
+      5'd10: return FcovOwnSepFabricRowResponseMatrixTest;
+      5'd11: return FcovOwnSepFabricRowResponseMatrixTest;
+      5'd12: return FcovOwnSepFabricSlotCsrStrobeRandTest;
+      5'd13: return FcovOwnSepFabricInboundRebaseTest;
+      5'd14: return FcovOwnSepSramInboundBurstAttrTest;
+      5'd15: return FcovOwnSepPicPendingMapWalkRandTest;
+      5'd16: return FcovOwnSepPicPendingMapWalkRandTest;
+      5'd17: return FcovOwnSepNmiVectorBarkRandTest;
+      5'd18: return FcovOwnSepPicPriorityGateRandTest;
+      5'd19: return FcovOwnSepSramAxiShapeMatrixTest;
+      5'd20: return FcovOwnSepSramAxiShapeMatrixTest;
+      5'd21: return FcovOwnSepSramAxiShapeMatrixTest;
+      5'd22: return FcovOwnSepSpiOtHostCsrIrqRandTest;
+      5'd23: return FcovOwnSepTimerClockContractTest;
+      default: return FcovOwnNone;
+    endcase
+  endfunction
+
+  covergroup sep_open_value_leg_cg with function sample (logic [4:0] leg);
+    option.per_instance = 1;
+    option.name = "sep_open_value_leg_cg";
+    // A stimulus leg whose CTRL reach line passed, in the window of its owner.
+    cp_leg: coverpoint leg {
+      bins dma_align_mismatch = {5'd1};
+      bins dma_clr_outside_range = {5'd2};
+      bins dma_clr_bus0 = {5'd3};
+      bins dma_alert_pair_force = {5'd4};
+      bins smc_aperture_change_quiet = {5'd5};
+      bins smu_moved_irregular = {5'd6};
+      bins row_attr_drawn_read = {5'd7};
+      bins row_attr_pool_cell = {5'd8};
+      bins row_narrow_unbacked = {5'd9};
+      bins row_attr_drawn_write = {5'd10};
+      bins row_attr_spi_dma_cell = {5'd11};
+      bins slot_csr_prot_drawn = {5'd12};
+      bins syscsr_prot_drawn = {5'd13};
+      bins sram_in_excl_write = {5'd14};
+      bins gw_level_to_edge = {5'd15};
+      bins gwclr_same_cycle = {5'd16};
+      bins nmi_during_handler = {5'd17};
+      bins priord_flip_pending = {5'd18};
+      bins sram_wstrb_sparse = {5'd19};
+      bins sram_wstrb_zero = {5'd20};
+      bins sram_macro_bit_flip = {5'd21};
+      bins spi_cmdinval_spien1 = {5'd22};
+      bins wdt_pause_in_sleep_set = {5'd23};
+    }
+  endgroup
+
+  sep_open_value_leg_cg u_sep_open_value_leg_cg = new();
+
+  int unsigned open_value_leg_pass = 0;
+  logic        ov_pass_q = 1'b0;
+  int unsigned ov_owner_q = FcovOwnNone;
+  wire         ov_rise = (open_value_leg_pass != 0) && !ov_pass_q;
+  wire         ov_own = (open_value_leg_pass <= OvLegCount) &&
+      (ov_leg_owner(open_value_leg_pass) == ov_owner_q);
+  always @(posedge clk_i) begin
+    ov_pass_q <= (open_value_leg_pass != 0);
+    if (graded_owner != FcovOwnNone) ov_owner_q <= graded_owner;
+    if (ov_rise && ov_own) u_sep_open_value_leg_cg.sample(5'(open_value_leg_pass));
   end
 
 endmodule : sep_fcov

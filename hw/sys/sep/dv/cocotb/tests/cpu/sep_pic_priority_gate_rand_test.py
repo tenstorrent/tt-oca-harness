@@ -104,6 +104,19 @@ live (``env/sep_fw_console``: graded window on ``M G`` / ``M C``) and grades:
                  ``mip.MTIP``; EL2 PRM tables 13.1 and 13.2 for ``mie.mtie``
                  and ``mip.mtip``, table 13.3 for ``mcause`` 0x8000_0007).
 
+Open-value leg (logged, not graded): the priord flip leg arms a drawn source
+set at drawn ``meipl`` values (never the never value of either order) in one
+order, raises the sources with mstatus.MIE 0, flips priord with no ``meipl``
+write and sets mstatus.MIE. ``CTRL-PRIORD-PENDING`` (fails the leaf) needs
+``mpiccfg.priord`` to read the drawn starting order, the drawn set to read 1
+in ``meip`` before the flip, 0 before the raise, and no handler run with
+mstatus.MIE 0. ``CTRL-PRIORD-FLIP`` (fails the leaf)
+needs ``mpiccfg.priord`` to read the flipped order after the write.
+``OBS-PRIORD-PENDING`` logs the first claimed source and the handler order,
+with the winner of each order from the priority model for reference. After
+both controls pass, the test raises the ``priord_flip_pending`` bin of
+``sep_open_value_leg_cg``.
+
 The host also checks that each record of the threshold, nesting and timer
 legs carries the drawn stimulus. Log only: ``OBS-INT-TIMER-TRAP-LATENCY``. Expected values
 come from the drawn stimulus and the priority model, never from a DUT read. cpu run mode, ``+skip_fuse_sense``,
@@ -124,7 +137,7 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_fcov_gate import (
@@ -136,6 +149,7 @@ from env.sep_fcov_gate import (
     PFP_THRESHOLD,
     PFP_TIMER,
     close_graded_window,
+    set_open_value_leg_pass,
     set_pic_fw_pass,
 )
 from env.sep_fw_console import ConsoleRec, SepFwConsole, parse_kv
@@ -144,6 +158,7 @@ from env.sep_pic_map import (
     effective,
     meip_idle_mask_words,
     mirror,
+    never_value,
     raw_for_effective,
     winner,
 )
@@ -184,6 +199,10 @@ IT_BOUND_MIN, IT_BOUND_MAX = 256, 4096
 IT_HOLD_MITB = 0
 # Clocks the follower holds a pic_fw_pass bit before it writes 0.
 PFP_HOLD_CLK = 2
+# Salt of the open-value leg draws, so the draws above keep their seed mapping.
+_LEG_SALT = 0x4F56_4C47 << 32
+# meipl values of the priord flip leg: none is the never value of either order.
+PF_RAWS = tuple(v for v in range(NUM_LEVELS) if v not in (never_value(0), never_value(1)))
 
 
 @dataclass
@@ -215,6 +234,9 @@ class PrioCfg:
     nest_pl: int = LEVEL_LO
     it_first: int = 0
     it_bound: list[int] = field(default_factory=lambda: [IT_BOUND_MIN, IT_BOUND_MIN])
+    pf_from: int = 0
+    pf_srcs: list[int] = field(default_factory=list)
+    pf_raws: list[int] = field(default_factory=list)
 
     @classmethod
     def from_seed(cls, seed: int) -> "PrioCfg":
@@ -249,6 +271,11 @@ class PrioCfg:
         cfg.nest_a, cfg.nest_b = rng.sample(CATALOG, 2)
         cfg.it_first = rng.randrange(2)
         cfg.it_bound = [rng.randrange(IT_BOUND_MIN, IT_BOUND_MAX + 1) for _ in range(2)]
+        leg = SepSeededRng(seed ^ _LEG_SALT)
+        cfg.pf_from = leg.randrange(2)
+        n = leg.randrange(2, S_MAX + 1)
+        cfg.pf_srcs = leg.sample(CATALOG, n)
+        cfg.pf_raws = leg.sample(PF_RAWS, n)
         return cfg
 
     def _draw_tie(self, rng: SepSeededRng, r_eff1: int) -> None:
@@ -295,6 +322,8 @@ class PrioCfg:
         out += [self.nest_a, self.nest_b, self.nest_pl, self.nest_pl, self.nest_pl + 1]
         out += [self.it_first] + self.it_bound + self.it_bound + [IT_HOLD_MITB]
         out += [LEG_HOLD_ITERS]
+        pad = [0] * (S_MAX - len(self.pf_srcs))
+        out += [self.pf_from, len(self.pf_srcs)] + self.pf_srcs + pad + self.pf_raws + pad
         return out
 
     def draw_lines(self) -> list[str]:
@@ -311,6 +340,9 @@ class PrioCfg:
             f"INFO-DRAW LOG legs thr_src={self.thr_src} thr_t={self.thr_t} nest_a={self.nest_a} "
             f"nest_b={self.nest_b} nest_pl={self.nest_pl} it_first={self.it_first} "
             f"it_bound={self.it_bound}"
+        )
+        out.append(
+            f"INFO-DRAW LOG priord_flip from={self.pf_from} srcs={self.pf_srcs} raws={self.pf_raws}"
         )
         return out
 
@@ -614,6 +646,52 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 set_pic_fw_pass(out, self.logger)
                 hold = PFP_HOLD_CLK
 
+    def _leg_priord_flip(self) -> None:
+        cfg = self.tcfg
+        want = sum(1 << s for s in cfg.pf_srcs)
+        recs = self.con.records("CTRL-PRIORD-PENDING")
+        kv = recs[0].kv if len(recs) == 1 else {}
+        meip = kv.get("meip", 0)
+        body = (
+            f"seed={cfg.seed} meip=0x{meip:x} expect=0x{want:x} set=0x{kv.get('set', 0):x} "
+            f"meip_before=0x{kv.get('meip_before', 0):x} raised={kv.get('raised')} "
+            f"runs={kv.get('runs')} priord={kv.get('priord')} priord_expect={cfg.pf_from} "
+            f"records={len(recs)}"
+        )
+        reach = (
+            int(kv.get("priord", -1)) == cfg.pf_from
+            and kv.get("set") == want
+            and meip == want
+            and kv.get("meip_before") == 0
+            and int(kv.get("raised", -1)) == len(cfg.pf_srcs)
+            and int(kv.get("runs", -1)) == 0
+        )
+        if not reach:
+            raise AssertionError(f"CTRL-MISSING PRIORD-PENDING: {body}")
+        self.logger.info("CTRL-PRIORD-PENDING LOG %s", body)
+        flip_recs = self.con.records("CTRL-PRIORD-FLIP")
+        priord = flip_recs[0].kv.get("priord") if len(flip_recs) == 1 else None
+        flip_body = (
+            f"seed={cfg.seed} priord={priord} expect={cfg.pf_from ^ 1} records={len(flip_recs)}"
+        )
+        if priord is None or int(priord) != cfg.pf_from ^ 1:
+            raise AssertionError(f"CTRL-MISSING PRIORD-FLIP: {flip_body}")
+        self.logger.info("CTRL-PRIORD-FLIP LOG %s", flip_body)
+        flips = [parse_kv(t) for t in self.con.text_lines("INFO-PRIORD-FLIP")]
+        ids = _ids(flips[0].get("ids", "")) if len(flips) == 1 else []
+        raws = dict(zip(cfg.pf_srcs, cfg.pf_raws, strict=True))
+        self.logger.info(
+            "OBS-PRIORD-PENDING LOG priord_from=%d priord_to=%d raw=%s first=%s order=%s "
+            "winner_from=%d winner_to=%d",
+            cfg.pf_from,
+            cfg.pf_from ^ 1,
+            _fmt(str(raws)),
+            ids[0] if ids else "none",
+            ",".join(str(x) for x in ids) or "none",
+            winner(raws, cfg.pf_from),
+            winner(raws, cfg.pf_from ^ 1),
+        )
+
     async def _req_tint(self, kv: dict) -> None:
         await RisingEdge(cocotb.top.clk_i)
         cocotb.top.timer_int_i.value = 1 if int(kv["on"]) else 0
@@ -707,4 +785,10 @@ class sep_pic_priority_gate_rand_test(sep_base_test):
                 trap_clk,
                 trap_clk - bound,
             )
+        self._leg_priord_flip()
+        clk = cocotb.top.clk_i
+        await RisingEdge(clk)
+        set_open_value_leg_pass("priord_flip_pending", self.logger)
+        await ClockCycles(clk, 2)
+        set_open_value_leg_pass(None, self.logger)
         self.result_pass(TEST, seed, n_fw + n_host)

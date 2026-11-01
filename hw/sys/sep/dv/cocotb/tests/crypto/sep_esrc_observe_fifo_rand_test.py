@@ -97,12 +97,12 @@ Checkers:
                     the main datapath").
                     Controls: two windows with capture off give the same non-zero
                     count, and both observe LEVELs are above 0 after the on window.
-Logged only: ``OBS-OBS-FAST``
+Logged only: ``OBS-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
-``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-OBS-LANESEL-SAME`` logs
+``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-LANESEL-SAME`` logs
 LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (the ``LANE_SEL`` text
 flushes on a lane change, the ``FLUSH`` text on a ``LANE_SEL`` change; they disagree
-here). ``OBS-OBS-OVF-KEEP`` logs the overflow bit, LEVEL and the sequence bit index
+here). ``OBS-OVF-KEEP`` logs the overflow bit, LEVEL and the sequence bit index
 of the first and last popped word after FIFO_DEPTH_MAX + 2 words of a known sequence
 (no stated rule which word a full FIFO discards).
 """
@@ -665,7 +665,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         fields = {"sel": sel, "level_before": before, "level_after": after}
         if not ok4:
             fields["reason"] = f"timeout:level_before bound={b4}"
-        self.chk.obs("OBS-LANESEL-SAME", **fields)
+        self.chk.obs("LANESEL-SAME", **fields)
 
     def _grade_lane(self, v, cur, z, ok4, ok8, before, after, words, b4, b8) -> None:
         expect = _word(z)
@@ -1114,7 +1114,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
 
     async def _seq_leg(self) -> None:
         """CHK-OBS-SEQ and CHK-SYNC-DEPTH at a sample period of 8 x clk_i + 2 ps, then
-        OBS-OBS-FAST at 2 x clk_i + 2 ps."""
+        OBS-FAST at 2 x clk_i + 2 ps."""
         plan = self.plan
         lane = plan.seq_lane
         t = self._clk_ps()
@@ -1149,7 +1149,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         got = [(w >> j) & 1 for w in fast["words"] for j in range(32)]
         lost, rep = _indel_align(got, plan.fast)
         self.chk.obs(
-            "OBS-FAST",
+            "FAST",
             lane=lane,
             period_ps=fast["period_ps"],
             edges=fast["edges"],
@@ -1178,7 +1178,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
 
         words = res["words"]
         self.chk.obs(
-            "OBS-OVF-KEEP",
+            "OVF-KEEP",
             lane=lane,
             seq_words=OVF_SEQ_WORDS,
             edges=res["edges"],

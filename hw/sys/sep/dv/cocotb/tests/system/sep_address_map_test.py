@@ -28,6 +28,7 @@ from sep_reg_meta import SEP_CPU_CTRL, sym
 from seq_lib.sep_address_map_seq import (
     CPU_CTRL_INTERIOR_HOLES,
     FABRIC_BLOCKS,
+    WRITE_READBACK,
     sep_address_map_seq,
 )
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -121,9 +122,15 @@ class sep_address_map_test(sep_base_test):
             "CHK-BASEADDR-RW PASS: %d SEP base/size CSR(s) write->readback->restore",
             seq.base_addr_rw_checks,
         )
+        planned_rw = [name for name, _pattern in WRITE_READBACK] + ["CLOCK_GATE_CTRL"]
+        assert seq.write_readback_regs == planned_rw, (
+            f"CHK-RW-READBACK FAIL: checked={seq.write_readback_regs} planned={planned_rw}"
+        )
         self.logger.info(
-            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore->readback%s",
+            "CHK-RW-READBACK PASS: %d pure-RW CSR(s) write->masked readback->restore->readback "
+            "regs=%s%s",
             seq.write_readback_checks,
+            ",".join(seq.write_readback_regs),
             (
                 f" ({len(seq.write_readback_storage_only)} of them storage-only -- RDL "
                 f"`reserved` placeholders with no software-usable fields: "

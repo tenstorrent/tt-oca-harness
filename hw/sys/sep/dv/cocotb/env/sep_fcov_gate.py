@@ -1285,13 +1285,14 @@ def exo_pass_bit(src: int) -> int:
 
 
 def set_exo_pass(mask: int, log=None) -> bool:
-    """Write ``u_sep_fcov.exo_pass`` (one bit per passed EXCL check, or 0).
+    """Write ``u_sep_fcov.exo_pass`` (one bit per passed source check, or 0).
 
     The pass label of ``sep_pic_source_map_cg.cp_src_exclusive_other`` bins
     s35, s36 and s41 to s43. The sampler holds each exclusive rise of those
     sources in the window of their owner and samples a held rise only when bit
     ``source - 32`` (``exo_pass_bit``) rises; the release does not depend on
-    the window. The owner writes the bit after CHK-SRC<source>-EXCL passes,
+    the window. The owner writes the bit after CHK-SRC<source>-EXCL (sources
+    35 and 36) or CHK-SRC<source>-RISE (sources 41 to 43) passes,
     keeps the bits of the checks that passed before it, holds the value at
     least one clock and writes 0 at the end. Same rules as ``graded_owner``: a
     no-op that returns False on Verilator. On VCS a sampler without the
@@ -1842,3 +1843,49 @@ def set_dma_zero_tcm_pass(mask: int, log=None) -> bool:
             f"dma_zero_tcm_pass 0x{mask:x} sets a bit outside 0x{DMA_ZERO_TCM_PASS_ALL:x}"
         )
     return _set_bound("dma_zero_tcm_pass", mask, "FCOV-DMA-ZERO-TCM-PASS", log)
+
+
+# ``sep_open_value_leg_cg.cp_leg`` bin of code index + 1 (cov/sv/sep_fcov.sv,
+# ``ov_leg_owner`` names the owner of each code).
+OPEN_VALUE_LEGS = (
+    "dma_align_mismatch",
+    "dma_clr_outside_range",
+    "dma_clr_bus0",
+    "dma_alert_pair_force",
+    "smc_aperture_change_quiet",
+    "smu_moved_irregular",
+    "row_attr_drawn_read",
+    "row_attr_pool_cell",
+    "row_narrow_unbacked",
+    "row_attr_drawn_write",
+    "row_attr_spi_dma_cell",
+    "slot_csr_prot_drawn",
+    "syscsr_prot_drawn",
+    "sram_in_excl_write",
+    "gw_level_to_edge",
+    "gwclr_same_cycle",
+    "nmi_during_handler",
+    "priord_flip_pending",
+    "sram_wstrb_sparse",
+    "sram_wstrb_zero",
+    "sram_macro_bit_flip",
+    "spi_cmdinval_spien1",
+    "wdt_pause_in_sleep_set",
+)
+
+
+def set_open_value_leg_pass(leg: str | None, log=None) -> bool:
+    """Write ``u_sep_fcov.open_value_leg_pass`` (the code of ``leg``, or 0 for None).
+
+    The pass label of ``sep_open_value_leg_cg``. The leaf writes the code of a
+    leg (its ``OPEN_VALUE_LEGS`` index + 1) after the CTRL reach line of that
+    leg passed, holds it two clocks and writes 0. A rise from 0 samples the bin
+    only when the last graded window opened in the run belongs to the owner of
+    that leg. A leg whose CTRL line fails writes nothing. Same rules as
+    ``graded_owner``: a no-op that returns False on Verilator. On VCS a sampler
+    without the variable is a testbench error.
+    """
+    if leg is not None and leg not in OPEN_VALUE_LEGS:
+        raise ValueError(f"{leg} is not in OPEN_VALUE_LEGS")
+    value = 0 if leg is None else OPEN_VALUE_LEGS.index(leg) + 1
+    return _set_bound("open_value_leg_pass", value, "FCOV-OPEN-VALUE-LEG-PASS", log)

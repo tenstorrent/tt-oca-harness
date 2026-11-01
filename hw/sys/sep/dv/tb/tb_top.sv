@@ -162,6 +162,8 @@ module sep_uvm_top
             bh_smc_size = '0;
         end
     end
+    assign smc_base_probe_o = u_dut.smc_global_base_addr_i;
+    assign smc_size_probe_o = u_dut.smc_region_size_i;
     // SEP-OTP JTAG AXI-Lite: assembled from the flat j_axi_* master inputs (below).
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
@@ -1373,6 +1375,13 @@ module sep_uvm_top
         `SEP_CORE.dma_axi_req.ar.addr[31:0],
         `SEP_CORE.dma_axi_resp.ar_ready,
         `SEP_CORE.dma_axi_req.ar_valid
+    };
+    assign dma_resp_buser_o = `SEP_CORE.dma_axi_resp.b.user;
+    assign dma_resp_ruser_o = `SEP_CORE.dma_axi_resp.r.user;
+    assign dma_resp_r_hs_o  = {
+        `SEP_CORE.dma_axi_resp.r.last,
+        `SEP_CORE.dma_axi_req.r_ready,
+        `SEP_CORE.dma_axi_resp.r_valid
     };
     assign dma_status_probe_o = {
         `SEP_CORE.u_sep_dma_wrap.u_secure_dma.u_secure_dma_reg.status_chunk_done_qs,
@@ -3437,6 +3446,27 @@ module sep_uvm_top
     end
 `undef CRYPTO_ALERT_INJ
 `undef CRYPTO_ALERT_RX
+
+    // ------------------------------------------------------------------
+    // DMA alert sender inject.
+    // ------------------------------------------------------------------
+    // While dma_alert_inject_i is 1, the alert pair (alert_p, alert_n) at the
+    // input of the one secure DMA alert receiver
+    // (u_sep_dma_wrap.gen_alert_receivers[0].u_alert_receiver.alert_tx_i) is
+    // forced to {v, v}, v = dma_alert_inject_val_i. Both wires at one value is
+    // not a differential code, so the receiver signals an integrity fail into
+    // dma_alert. The DMA cannot send a malformed pair, so this has no
+    // frontdoor. Re-issued every clock for Verilator, released when the input
+    // drops. Default 0: no force.
+`define DMA_ALERT_RX `SEP_CORE.u_sep_dma_wrap.gen_alert_receivers[0].u_alert_receiver.alert_tx_i
+    always @(negedge clk_i) begin
+        if (dma_alert_inject_i === 1'b1)
+            force `DMA_ALERT_RX = {dma_alert_inject_val_i, dma_alert_inject_val_i};
+        else
+            release `DMA_ALERT_RX;
+    end
+    assign dma_alert_rx_probe_o = `DMA_ALERT_RX;
+`undef DMA_ALERT_RX
 
     // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
     // every command write, leaving the block powered, idle and error-free while
@@ -5716,6 +5746,8 @@ module sep_uvm_top
     assign crypto_alert_inject_i    = 1'b0;
     assign crypto_alert_inject_idx_i = '0;
     assign crypto_alert_inject_val_i = 1'b0;
+    assign dma_alert_inject_i       = 1'b0;
+    assign dma_alert_inject_val_i   = 1'b0;
     assign esrc_fifo_parity_inject_i = 1'b0;
     assign esrc_fifo_parity_bit_i   = '0;
     assign esrc_fifo_ptr_inject_i   = 1'b0;

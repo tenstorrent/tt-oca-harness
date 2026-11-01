@@ -35,9 +35,10 @@ generated symbol expresses. Blocks whose reset value IS exported
 (reset_ctrl/OTBN/HMAC/KMAC) take it from the header.
 
 CLOCK_GATE_CTRL has one implemented bit (`pka_cg_enable[0:0]`, reset 0).
-This sequence writes that implemented mask, reads it back, and restores
-reset. Per-block CSR clocks are not gated in this RDL, so every walked
-block is unconditionally clocked.
+This sequence writes that implemented mask, reads it back, restores reset
+after the fabric walk and reads the reset value back; it counts as one
+WRITE_READBACK register. Per-block CSR clocks are not gated in this RDL, so
+every walked block is unconditionally clocked.
 
 Most side-effecting registers are NOT written. The only address-aperture
 exception is the SEP local/global base/size triplet: it is written, read back
@@ -64,6 +65,7 @@ from sep_reg_meta import (
     OTBN,
     SEP_CPU_CTRL,
     SEP_RESET_CTRL,
+    RegBlock,
     iter_registers,
     sym,
 )
@@ -72,6 +74,7 @@ from seq_lib.sep_abr_keygen_seq import ABR_NAME0
 from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
 BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
+ENTROPY_SRC = RegBlock("ENTROPY_SOURCE")
 
 # Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
 # (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
@@ -206,12 +209,19 @@ FABRIC_BLOCKS = [
     ("KMAC", KMAC.addr("INTR_STATE"), KMAC.reset32("INTR_STATE")),
     ("DRBG_CSRNG", sym("CSRNG_INTR_STATE_REG_ADDR"), CSRNG.reset("INTR_STATE")),
     ("DRBG_EDN", sym("EDN_INTR_STATE_REG_ADDR"), EDN.reset("INTR_STATE")),
-    ("ENTROPY_SRC", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR"), None),
+    # COMPONENT_ID: every field sw=r with a constant RDL reset.
+    (
+        "ENTROPY_SRC",
+        ENTROPY_SRC.addr("COMPONENT_ID"),
+        ENTROPY_SRC.reset32("COMPONENT_ID"),
+    ),
     # MLDSA_NAME[0]. abr_reg.rdl declares it sw=r with no reset, and no SEP
     # document gives its value, so the row checks accessibility only.
     ("ADAMS_BRIDGE", ABR_NAME0, None),
     ("ENTROPY_POOL", POOL_STATUS, None),  # status only: DATA pop is destructive
     ("SEP_LIFECYCLE", sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"), None),
+    # SEP_STATUS holds hw=w FIFO flags that move once the Key Manager uses the
+    # mailbox after boot, so its RDL reset is not the read value.
     ("KM_MAILBOX", sym("KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR"), None),
     ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
     ("AXIL_MAILBOX", sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"), None),
@@ -237,6 +247,8 @@ class sep_address_map_seq(uvm_sequence):
         self.base_addr_rw_checks = 0
         self.reset_reads: list[tuple[str, int, int]] = []
         self.write_readback_checks = 0
+        # Registers of the write->readback->restore->readback check, in order.
+        self.write_readback_regs: list[str] = []
         # (row name, OKAY) of each fabric-walk read, in walk order.
         self.fabric_walk_rows: list[tuple[str, bool]] = []
         # PR-OUT AR beats during the fabric walk, and during the read of out_probe.
@@ -360,6 +372,7 @@ class sep_address_map_seq(uvm_sequence):
                 name=f"{name}_restored",
             )
             self.write_readback_checks += 1
+            self.write_readback_regs.append(name)
             # Informational only: these have no software-usable fields, so what was
             # proven is storage, not an implemented-field readback.
             if mask == 0:
@@ -368,8 +381,8 @@ class sep_address_map_seq(uvm_sequence):
         for name, value in WRITE_ONLY:
             await self._write(BASE + SEP_CPU_CTRL.offset(name), value, name=name)
 
-        # CLOCK_GATE_CTRL write path: drive every implemented bit, read it back,
-        # restore the reset value. See the module docstring for why this does not
+        # CLOCK_GATE_CTRL write path: drive every implemented bit and read it
+        # back; the restore and its readback follow the fabric walk. See the module docstring for why this does not
         # ungate per-block clocks (those fields do not exist in this RDL).
         cg_addr = BASE + SEP_CPU_CTRL.offset("CLOCK_GATE_CTRL")
         cg_mask = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
@@ -391,5 +404,7 @@ class sep_address_map_seq(uvm_sequence):
         self.out_probe_ars = out.since(probe_mark, "ar")
         await out.stop()
 
-        # Restore CLOCK_GATE_CTRL to its reset value.
         await self._write(cg_addr, cg_reset, name="CLOCK_GATE_CTRL_restore")
+        await self._read(cg_addr, expected=cg_reset, name="CLOCK_GATE_CTRL_restored")
+        self.write_readback_checks += 1
+        self.write_readback_regs.append("CLOCK_GATE_CTRL")
