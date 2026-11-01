@@ -91,8 +91,10 @@ OR-merged with the writes of the leaf).
                     after the next sense.
   CHK-RMA-BYPASS    leg D: in RMA_SIP and RMA_CHIPLET both disable shadows read the
                     staged values and ``FEAT_CTRL`` equals the row.
-  CHK-DIS-EARLIER   leg D: after a write of 0 to ``SIP_DIS`` and of ~S to ``SYS_DIS``,
-                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0 (both write
+  CHK-DIS-EARLIER   leg D: after a write of ~S to ``SYS_DIS`` and a write to
+                    ``SIP_DIS`` that is 0 at S plus one marker bit outside S,
+                    ``SIP_DIS`` reads S plus the marker (the marker shows the write
+                    landed) and ``FEAT_CTRL`` AND S is 0 (both write
                     responses are logged, not graded); ``DEMOTE_1``
                     and ``DEMOTE_2`` read the RW1S golden after the PROD demotion writes
                     (``dem_regs=``).
@@ -943,14 +945,19 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         not_s = ~s & M64
         resp_sys = await self.fd.wr_graded_by_readback(DIS_ADDR["SYS_DIS"], not_s, length=8)
         self.sys_m |= not_s
-        resp_sip = await self.fd.wr_graded_by_readback(DIS_ADDR["SIP_DIS"], 0, length=8)
+        free = [b for b in range(64) if not (s >> b) & 1]
+        if not free:
+            hook_fail(self.chk, reason="no SIP_DIS bit outside S for the marker", S=f"0x{s:016x}")
+        mark = 1 << self.mark_rng.choice(free)
+        resp_sip = await self.fd.wr_graded_by_readback(DIS_ADDR["SIP_DIS"], mark, length=8)
+        self.sip_m |= mark
         sip, sys_ = await self._rd_dis()
         reg, probe = await self._feat()
         row = self._golden()
         self.chk.ok(
             "DIS-EARLIER",
             s != 0
-            and sip == s
+            and sip == s | mark
             and sys_ == self.sys_m
             and dem == dem_exp
             and reg & s == 0
@@ -958,6 +965,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             and probe == row.value,
             state=self.state,
             S=f"0x{s:016x}",
+            sip_mark=f"0x{mark:016x}",
             sip_got=f"0x{sip:016x}",
             sys=f"0x{sys_:016x}",
             sys_exp=f"0x{self.sys_m:016x}",
