@@ -64,7 +64,8 @@ Checks (each anchored on a POKE readback, ``SEP_STATUS`` or a reset probe):
   CHK-RST-SOFT-MBOX after SOFT the mailbox word survives: the restarted image reads it
                     as its list header and stops in ERROR with ERR_HDR and the word's
                     low 24 bits
-  CHK-KMCSR-READ-RESP   each read of a virtual UART or testbench word completes OKAY
+  OBS-KMCSR-READ-RESP   the error flags of each read of a virtual UART or testbench
+                    word (no TT text states the response code of these reads)
   CHK-KMCSR-RESET-READ  VUART_TX, TB_RESULT, TB_SIGNATURE, TB_ERRCODE, TB_SUBTEST and
                     TB_CMD_ARG (sw = rw, hw = r, no writer in this leaf) read their
                     RDL reset
@@ -285,7 +286,6 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
         "CHK-HOLD",
         "CHK-ISO",
         "CHK-RST-SOFT-MBOX",
-        "CHK-KMCSR-READ-RESP",
         "CHK-KMCSR-RESET-READ",
         "CHK-KMCSR-VUART-STATUS",
     )
@@ -631,9 +631,8 @@ class sep_km_kmcsr_reset_rand_test(sep_base_test):
                 self.chk.obs("KMCSR-ACCESS", reg=reg, op="rd", rdata=rdata, axi_slverr=x.slv)
                 self.chk.ok("CSR-SET-READ", x.known and x.value == 0, rdata=rdata, golden=_h(0))
                 continue
-            self.chk.ok(
+            self.chk.obs(
                 "KMCSR-READ-RESP",
-                x.flags_known and x.slv == 0 and x.dec == 0,
                 reg=reg,
                 axi_slverr=x.slv,
                 axi_decerr=x.dec,

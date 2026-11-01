@@ -44,7 +44,12 @@ OR-merged with the writes of the leaf).
                     ``security_disable_o`` still high. ``demote`` sets while ``lock``
                     is 0 with no SEC_DIS term (``lifecycle_controller.adoc``,
                     Programming and Locking). A TOKEN_OTHER mismatch then clears
-                    SEC_DIS and the next CHK-FEAT-CELL is the DEMOTE_1 row.
+                    SEC_DIS and the next CHK-FEAT-CELL is the DEMOTE_1 row. Both
+                    lines log ``sdis_contrast`` and ``demote_contrast``; the
+                    ``FEAT_CTRL`` part shows the override only with
+                    ``sdis_contrast=1`` and the demotion only with
+                    ``demote_contrast=1`` (TEST_DEV with zero disable vectors, as in
+                    leg E, gives all ones in all three rows).
   CHK-DEMOTE-MARK   every ``DEMOTE_1``/``DEMOTE_2`` write that leaves the register
                     unchanged by the RW1S golden (a blocked ``demote``, a repeated
                     ``lock``, a ``zero`` write, ...) and the leg A SEC_DIS write carry
@@ -86,9 +91,11 @@ OR-merged with the writes of the leaf).
                     after the next sense.
   CHK-RMA-BYPASS    leg D: in RMA_SIP and RMA_CHIPLET both disable shadows read the
                     staged values and ``FEAT_CTRL`` equals the row.
-  CHK-DIS-EARLIER   leg D: after a write of 0 to ``SIP_DIS`` and of ~S to ``SYS_DIS``,
-                    ``SIP_DIS`` reads S and ``FEAT_CTRL`` AND S is 0; both writes
-                    are answered OKAY (set-only, unlocked: a legal write); ``DEMOTE_1``
+  CHK-DIS-EARLIER   leg D: after a write of ~S to ``SYS_DIS`` and a write to
+                    ``SIP_DIS`` that is 0 at S plus one marker bit outside S,
+                    ``SIP_DIS`` reads S plus the marker (the marker shows the write
+                    landed) and ``FEAT_CTRL`` AND S is 0 (both write
+                    responses are logged, not graded); ``DEMOTE_1``
                     and ``DEMOTE_2`` read the RW1S golden after the PROD demotion writes
                     (``dem_regs=``).
   CHK-DIS-STEP      leg D: after each walk write the owner shadow equals the OR-merge
@@ -447,8 +454,13 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         ``demote`` sets while ``lock`` is 0 with no SEC_DIS term
         (``lifecycle_controller.adoc``, Programming and Locking), and SEC_DIS forces
         ``FEAT_CTRL`` all ones (Overrides and Final Gates). After the TOKEN_OTHER
-        mismatch the cell is the DEMOTE_1 row of the state.
+        mismatch the cell is the DEMOTE_1 row of the state. Both lines carry
+        ``sdis_contrast`` (the undemoted row is not all ones) and ``demote_contrast``
+        (the DEMOTE_1 row differs from the undemoted row): a value of 0 means the drawn
+        state and vectors give equal rows, so that line cannot show the override or
+        the demotion.
         """
+        undemoted = self._golden().value
         code, reads = await sec_dis_go(self.fd, TOKEN_ZERO, CODE_MATCH, max_reads=MATCH_READS)
         rose = await wait_bit(self, "lcc_security_disable_probe_o", 1, SDIS_BOUND)
         if code != CODE_MATCH or rose is None:
@@ -461,6 +473,12 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         self.sdis = 1
         sdis_wr = bit(self, "lcc_security_disable_probe_o")
         got = await self._write_demote(1, "demote", mark=True)
+        self.sdis = 0
+        contrast = {
+            "sdis_contrast": int(undemoted != ALL_ONES),
+            "demote_contrast": int(self._golden().value != undemoted),
+        }
+        self.sdis = 1
         reg, probe = await self._feat()
         sdis_rd = bit(self, "lcc_security_disable_probe_o")
         row = self._golden()
@@ -482,6 +500,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             probe=f"0x{probe:016x}",
             exp=f"0x{row.value:016x}",
             row=row.row,
+            **contrast,
         )
         code, reads = await sec_dis_go(self.fd, TOKEN_OTHER, CODE_MISMATCH, max_reads=MATCH_READS)
         fell = await wait_bit(self, "lcc_security_disable_probe_o", 0, SDIS_BOUND)
@@ -496,6 +515,7 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
             after="sdis_demote_mismatch",
             code_mismatch=f"0x{(code or 0):02x}",
             mismatch_reads=reads,
+            **contrast,
         )
 
     # -- leg B ---------------------------------------------------------------
@@ -925,23 +945,27 @@ class sep_lcc_feat_ctrl_state_matrix_rand_test(StrapHold, sep_base_test):
         not_s = ~s & M64
         resp_sys = await self.fd.wr_graded_by_readback(DIS_ADDR["SYS_DIS"], not_s, length=8)
         self.sys_m |= not_s
-        resp_sip = await self.fd.wr_graded_by_readback(DIS_ADDR["SIP_DIS"], 0, length=8)
+        free = [b for b in range(64) if not (s >> b) & 1]
+        if not free:
+            hook_fail(self.chk, reason="no SIP_DIS bit outside S for the marker", S=f"0x{s:016x}")
+        mark = 1 << self.mark_rng.choice(free)
+        resp_sip = await self.fd.wr_graded_by_readback(DIS_ADDR["SIP_DIS"], mark, length=8)
+        self.sip_m |= mark
         sip, sys_ = await self._rd_dis()
         reg, probe = await self._feat()
         row = self._golden()
         self.chk.ok(
             "DIS-EARLIER",
             s != 0
-            and sip == s
+            and sip == s | mark
             and sys_ == self.sys_m
             and dem == dem_exp
             and reg & s == 0
             and reg == row.value
-            and probe == row.value
-            and resp_sys == 0
-            and resp_sip == 0,
+            and probe == row.value,
             state=self.state,
             S=f"0x{s:016x}",
+            sip_mark=f"0x{mark:016x}",
             sip_got=f"0x{sip:016x}",
             sys=f"0x{sys_:016x}",
             sys_exp=f"0x{self.sys_m:016x}",

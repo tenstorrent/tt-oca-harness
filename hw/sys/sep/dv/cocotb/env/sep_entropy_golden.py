@@ -39,8 +39,8 @@ Inter-stage framing (matches ``SepDrbgScoreboard``):
     later accepted seed -> reseed; generate glen 128b blocks.
   - EDN->KM: each 128b block -> 4x32b beats, LSW-first
     beat0=block[31:0], beat1=[63:32], beat2=[95:64], beat3=[127:96].
-    (Documented; scoreboard confirms against the DUT probe and may flip to
-    MSW-first via ``km_word_order``.)
+    No TT text states this beat order; the golden assumes it, and the
+    scoreboard grades the DUT probe against it.
 """
 
 from collections import deque
@@ -245,7 +245,13 @@ class SepEntropyGolden:
         """CSRNG accepted the next assembled seed (seed_valid && es_ack): apply it.
 
         An assembled seed changes no DRBG state until CSRNG takes it with an
-        Instantiate or Reseed command."""
+        Instantiate or Reseed command.
+
+        MODELLING DEPENDENCY: the caller drives this from the DUT's own seed
+        handshake, so the golden follows the DUT on when a seed takes effect. The
+        seed value is graded by CHK3 and each block value by CHK4; the timing of
+        the handshake is not graded.
+        """
         if self._drbg_seeds:
             self._run_drbg(self._drbg_seeds.popleft())
 

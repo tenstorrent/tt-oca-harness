@@ -52,14 +52,16 @@ Checkers:
   CHK-PF-TRIP-COUNT  every trip: exactly T failing windows (an exact burst,
                   below), then clean noise. ALERT reads 1 within LAT_WINDOWS
                   windows of words from the start of window T (a wait bound,
-                  not a graded latency) and PF reads 1. The peak of
-                  ANY_FAIL_COUNT is graded (exactly T) by CHK-PF-TRIP-HOLD, not
-                  here. Control: ALERT = PF = 0 and ANY_FAIL_COUNT = 0 before
-                  the burst. Its FCOV cells are released only when the peak is
+                  not a graded latency), PF reads 1, and the peak of
+                  ANY_FAIL_COUNT is at least T, in every shard;
+                  CHK-PF-TRIP-HOLD grades it as exactly T. Control: ALERT = PF
+                  = 0 and ANY_FAIL_COUNT = 0 before the burst, and
+                  ALERT_THRESHOLD read back T after the start of the trip. Its FCOV cells are released only when the peak is
                   exactly T, the value CHK-PF-TRIP-HOLD grades; otherwise the
                   leaf logs INFO-PF-TRIP-COUNT-HOLD with the peak and releases
                   none. This holds in shard 3 too, which does not grade the
-                  peak: with a peak other than T it fills no trip cell.
+                  peak as exactly T: with a peak other than T it fills no trip
+                  cell.
   CHK-PF-TRIP-HOLD   every trip: at a read after the clean window that follows
                   window T has ended, ALERT = PF = 1, and ANY_FAIL_COUNT never
                   read above T. Control: the clean noise ran for at least
@@ -93,7 +95,8 @@ Checkers:
                   the alert.
   CHK-PF-HALT     after a trip, BUSY = 0 and a drain: LEVEL stays 0 and
                   ``esrc_compress_vld_o`` is silent for H = t_ref. Control: the
-                  clean run shows 24 stream strobes in t_ref.
+                  clean run shows 24 stream strobes in t_ref (CTRL-PF-STREAM;
+                  the CHK line prints the counted strobes as ctrl_stream_vld).
   CHK-SM-ERR      the last leg, after a TRNG reset. ``leg=set``: ERR reads 0,
                   then the counter-copy inject (``esrc_cntr_inject_i``: one
                   copy of the ``REPCNT_TOTAL_FAILS`` counter differs from the
@@ -117,15 +120,16 @@ Checkers:
                   ERR at the next read. Logged, not graded: no text states
                   whether a write of 1 clears ERR while its cause persists.
                   Both OBS writes run with the coverage window closed.
-  OBS-SM-ILLEGAL  VCS only, after the ERR leg: ERR reads 0 (control
-                  CTRL-SM-ILLEGAL), then the leaf forces a drawn encoding
+  OBS-SM-ILLEGAL  VCS only, after the ERR leg, when ERR reads 0 (logged in
+                  the OBS line): the leaf forces a drawn encoding
                   outside the state set of the main state machine design
                   package on its state flops for 2 clocks and releases it; after
                   SM_ERR_WAIT_CLKS clocks ERR is logged. Logged, not graded: no
                   .adoc or RDL lists the legal encodings of MAIN_SM_STATUS.STATE,
                   so no specification makes the forced value an illegal state.
-                  Under Verilator the state flops are not public and the leg
-                  logs ``INFO-SM-ILLEGAL-SKIP``.
+                  The leg cannot fail the leaf: under Verilator (the state
+                  flops are not public), with no handle, or with ERR not 0
+                  before the force it logs ``INFO-SM-ILLEGAL-SKIP`` and ends.
   OBS-SM-ILLEGAL-PF  INTR_STATUS.PERSISTENT_FAILURE after the illegal state.
                   Logged, not graded: the RDL names a health-test failure or a
                   counter error for it, not an illegal state.
@@ -134,8 +138,9 @@ Checkers:
                   (PIC source 16, the entropy-source interrupt;
                   ``hw/sys/sep/doc/interrupts.adoc:23``, ``:109-111``) reads 1,
                   with INTR_ENABLE.PERSISTENT_FAILURE set by the clean start
-                  (``entropy_source.adoc:164``). Control: PERSISTENT_FAILURE
-                  read 1 (CTRL-PIC16).
+                  (``entropy_source.adoc:164``). Every other INTR_STATUS bit
+                  is cleared (W1C) before the read. Control: INTR_STATUS then
+                  reads PERSISTENT_FAILURE and no other bit (CTRL-PIC16).
   CHK-PF-RECOVER  W1C: both bits 0 and the output stays halted for H; a
                   MODULE_ENABLE cycle or a TRNG reset restarts the output
                   (BOOT_PHASE_DONE = 1, LEVEL rises); the reset clears both bits.
@@ -325,6 +330,7 @@ SM_W0 = 0
 THR_FIELDS = ENTROPY_SOURCE.mask("ALERT_THRESHOLD")
 THR_RESET = ENTROPY_SOURCE.reset("ALERT_THRESHOLD")  # 0x4 (entropy_source.adoc:762)
 INTR_ENABLE_ALL = ENTROPY_SOURCE.mask("INTR_ENABLE")
+INTR_STATUS_ALL = ENTROPY_SOURCE.mask("INTR_STATUS")
 CTRL_OFF = ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0)
 CTRL_ON = ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=1)
 
@@ -522,6 +528,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         self.p: int | None = None
         self.setup = SepEsrcLeafSetup(self, self.swrst, self.noise)
         self.stream_clean: int | None = None
+        self.t_ref_strobes: int | None = None
         # Per trip block that has run: the alert of each of its trips (control of
         # CHK-PF-DISABLE).
         self.block_trips: dict[int, list[int]] = {}
@@ -636,10 +643,15 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         PIC source 16 is the entropy-source interrupt on vector bit 15
         (interrupts.adoc:23, :109-111), and INTR_ENABLE.PERSISTENT_FAILURE, set by
         the clean start, enables the persistent-failure interrupt
-        (entropy_source.adoc:18, :164). Control: PERSISTENT_FAILURE read 1.
+        (entropy_source.adoc:18, :164). The clean start enables every interrupt,
+        so every other INTR_STATUS bit is cleared (W1C) first. Control: the
+        INTR_STATUS read after that clear has PERSISTENT_FAILURE set and no other
+        bit, so only PERSISTENT_FAILURE can drive the source.
         """
+        await self._wr(ESRC_INTR_STATUS, INTR_STATUS_ALL & ~M_PF)
+        st = (await self._rd(ESRC_INTR_STATUS)) & INTR_STATUS_ALL
         pic = self._pic16()
-        self._ctrl("PIC16", pf == 1, thr=thr, pf=pf)
+        self._ctrl("PIC16", pf == 1 and st == M_PF, thr=thr, pf=pf, intr_status=f"0x{st:x}")
         await self._grade("PIC16", pic == 1, 0, thr=thr, value=pic, expect_value=1)
 
     # --- reset and start -----------------------------------------------------------
@@ -732,7 +744,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         return False
 
     async def _count_stream(self, n: int, bound: int, box: list[int]) -> None:
-        """Count high clocks of esrc_compress_vld_o up to ``n``; box gets the clocks taken."""
+        """Count high clocks of esrc_compress_vld_o up to ``n``; box gets the clocks and the count."""
         dut = cocotb.top
         seen = 0
         for clk in range(1, bound + 1):
@@ -741,7 +753,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             if self.rd(dut.esrc_compress_vld_o):
                 seen += 1
                 if seen >= n:
-                    box.append(clk)
+                    box += [clk, seen]
                     return
 
     async def _measure_t_ref(self) -> int | None:
@@ -764,7 +776,8 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 "PF-STREAM", False, strobes_lt=STREAM_STROBES, reason="timeout:stream", bound=bound
             )
             return None
-        t_ref = box[0]
+        t_ref, self.t_ref_strobes = box
+        self._ctrl("PF-STREAM", True, strobes=self.t_ref_strobes, t_ref=t_ref)
         if self.stream_clean is None:
             self.stream_clean = t_ref
         self.logger.info("INFO-T-REF t_ref=%d clk_i (24 stream strobes) bound=%d", t_ref, bound)
@@ -1057,8 +1070,12 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         reason = {"reason": r["reason"]} if r["reason"] else {}
         self._ctrl(
             "PF-TRIP-COUNT",
-            r["alert_before"] == 0 and r["pf_before"] == 0 and r["count_before"] == 0,
+            r["alert_before"] == 0
+            and r["pf_before"] == 0
+            and r["count_before"] == 0
+            and self.thr_rb == thr,
             thr=thr,
+            thr_readback=self.thr_rb,
             alert_before=r["alert_before"],
             pf_before=r["pf_before"],
             count_before=r["count_before"],
@@ -1071,12 +1088,14 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
             self.chk.info("PF-TRIP-COUNT-HOLD", thr=thr, any_fail_peak=r["peak"], released=0)
         await self._grade(
             "PF-TRIP-COUNT",
-            r["reason"] is None and r["alert_any"] and r["pf_final"],
+            r["reason"] is None and r["peak"] >= thr and r["alert_any"] and r["pf_final"],
             ESRC_PA_TRIP_COUNT if exact else 0,
             **reason,
             thr=thr,
             win=win,
             failing_windows=thr,
+            any_fail_peak=r["peak"],
+            expect_any_fail_peak_min=thr,
             alert=r["alert_any"],
             pf=r["pf_final"],
             wrap_obs=r.get("wrap_obs"),
@@ -1346,7 +1365,7 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
                 level_max=level_max,
                 stream_vld=vld,
                 hold_clk=hold,
-                ctrl_stream_vld=STREAM_STROBES,
+                ctrl_stream_vld=self.t_ref_strobes,
             )
         # Clear leg: W1C of ALERT and PERSISTENT_FAILURE, hold H, enable cycle.
         sm_before = await self._rd(ESRC_MAIN_SM_STATUS)
@@ -1626,24 +1645,27 @@ class sep_esrc_persistent_alert_rand_test(sep_base_test):
         specification makes the forced value an illegal state. The leaf forces the
         drawn encoding on the state flops (MAIN_SM_FLOPS) for ILLEGAL_HOLD_CLKS
         clocks, releases it, waits SM_ERR_WAIT_CLKS clocks and reads ERR once.
-        Control: ERR reads 0 before the force (the ERR leg ended with a TRNG
-        reset). The main state machine stays in its error state until a reset, so
-        this leg is the last. Under Verilator the state flop is not public to
-        cocotb and the leg is skipped (INFO-SM-ILLEGAL-SKIP).
+        ERR reads 0 before the force (the ERR leg ended with a TRNG reset). The
+        main state machine stays in its error state until a reset, so this leg is
+        the last. The leg only logs: under Verilator (the state flop is not public
+        to cocotb), with no handle, or with ERR not 0 before the force it logs
+        INFO-SM-ILLEGAL-SKIP and ends.
         """
         if "verilator" in str(getattr(cocotb, "SIM_NAME", "") or "").lower():
             self.chk.info("SM-ILLEGAL-SKIP", reason="verilator: the main state flop is not public")
             return
         flops = [_handle(f"{MAIN_SM_PATH}.{f}") for f in MAIN_SM_FLOPS]
         if flops[0] is None:
-            self.chk.ctrl(
-                "SM-ILLEGAL", False, reason=f"no handle:{MAIN_SM_PATH}.{MAIN_SM_FLOPS[0]}"
-            )
+            self.chk.info("SM-ILLEGAL-SKIP", reason=f"no handle:{MAIN_SM_PATH}.{MAIN_SM_FLOPS[0]}")
             return
         close_graded_window(self.logger)
         illegal = self.plan.illegal_state
         err0, w0 = await self._err_read()
-        self.chk.ctrl("SM-ILLEGAL", err0 == 0, err_before=err0, word_before=f"0x{w0:08x}")
+        if err0 != 0:
+            self.chk.info(
+                "SM-ILLEGAL-SKIP", reason="ERR not 0 before the force", word=f"0x{w0:08x}"
+            )
+            return
         flops = [h for h in flops if h is not None]
         await RisingEdge(cocotb.top.clk_i)
         for h in flops:

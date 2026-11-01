@@ -41,13 +41,15 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 * CHK-SLOTLESS     an AES encryption, an OTP read and a life-cycle controller
                    read move no vector bit; the AES output-valid flag rises,
                    DATA_OUT equals the FIPS-197 C.1 ciphertext and the AES
-                   status reads done after the encryption.
+                   status reads done after the encryption; the OTP and
+                   life-cycle reads return (``CTRL-SLOTLESS-READS``).
 * CHK-ALERT-MEIP   meip[1] bit 1 (edge source 33) reads 1 after each alert
                    kind, before its meigwclr write.
 * CHK-MASKED-VISIBLE the held edge bits of sources 12 and 33 read 1 in
                    ``meip`` with ``meie`` 0 and ``meipl`` 0, both read back
                    for each source (VeeR EL2 PRM
-                   ``docs/source/interrupts.md:504`` at the Bender pin:
+                   ``docs/source/interrupts.md:504`` at the ``veer_el2``
+                   ``rev`` in ``Bender.yml`` (upstream ``tt-Cores-VeeR-EL2``):
                    disabled requests are reported by default; ``:159``,
                    step 5 before the priority and enable steps). Control:
                    ``CTRL-PICIO`` reads ``picio=1`` (``:343``), else
@@ -63,15 +65,17 @@ field of ``sep_io_spi_req_o`` (``sep_io_spi_irq_w`` in ``tb_top``),
 * CHK-GW-EL        each EL cell reads 1 at idle (input low after the
                    meigwclr, the active level) and 1 after the input rises
                    (the latched bit holds): VeeR EL2 PRM
-                   ``docs/source/interrupts.md:68-69`` at the Bender pin (no
+                   ``docs/source/interrupts.md:68-69`` at the same ``rev`` (no
                    edge detection; an input left at its active level after
                    the clear stays pending) and ``:59-60`` (the IP flop holds
                    until firmware clears it).
 * CHK-GWCLR-LEVEL  each LH cell reads 1 after a meigwclr write with its input
                    asserted: a level source keeps no IP bit, so pending follows
-                   the active input (PRM ``interrupts.md:157-159``, steps 3 to
-                   5; ``:840`` and ``el2_pic.rdl:108-109``: meigwclr clears
-                   the IP bit of edge-triggered sources).
+                   the active input (PRM ``interrupts.md:69``; ``:157-159``,
+                   steps 3 to 5; ``:840`` and ``el2_pic.rdl:108-109``: meigwclr clears
+                   the IP bit of edge-triggered sources). Control: on the
+                   same source, an edge latched in edge mode reads 0 after a
+                   meigwclr write of the same value.
 * CHK-EXT-IN       one (two) asserted boundary bits show as one (two) pending
                    sources above 43, the assigned sources stay at their
                    baseline, and the band drops at the release.
@@ -1012,6 +1016,14 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
                 other == 0 and ctrl_high == clks and clks > 0 and cleared == 1
                 and changes[ctrl_bit] == 0
             )  # fmt: skip
+            if op in ("otp", "lcc"):
+                # The reads must complete, so the window is not idle.
+                rd_rec = [kv for _, kv in self._lines("CTRL-SLOTLESS-READS")]
+                if len(rd_rec) != 1:
+                    raise AssertionError(
+                        f"CTRL-MISSING SLOTLESS-READS seed={self.wc.seed} records={rd_rec}"
+                    )
+                text += f" {op}_read=0x{rd_rec[0][op]:08x}"
             if op == "aes":
                 # The encryption must also complete, so the window is not idle.
                 st = [kv for _, kv in self._lines("CTRL-AES-STATUS")]
@@ -1080,10 +1092,14 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
             if cell == "LH":
                 # A level source keeps no IP bit, so the clear leaves the active
                 # input pending.
+                # Control: the same meigwclr write drops an edge latched on
+                # this source, so the write reaches the source.
+                ctl = (int(kv["ectl_latched"]), int(kv["ectl_clr"]))
                 self._check(
-                    int(kv["lclr"]) == 1,
+                    int(kv["lclr"]) == 1 and ctl == (1, 0),
                     "CHK-GWCLR-LEVEL",
-                    f"src={src} class={cls} cell=LH lclr={int(kv['lclr'])} want=1",
+                    f"src={src} class={cls} cell=LH lclr={int(kv['lclr'])} want=1 "
+                    f"ctl_edge_latched={ctl[0]} ctl_edge_after_clr={ctl[1]} want_ctl=1,0",
                 )
             elif cell == "LL":
                 self.logger.info(

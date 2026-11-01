@@ -18,10 +18,9 @@ Contract (``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc``,
   change ``nmi_vec`` (bits 31:1), bit 0 (``rsvd``, "always 0") reads 0, and a write of 0 or all-ones to the lock
   leaves it at 1.
 * ``SEP_FUSE_SENSE_STATUS`` and ``SMC_FUSE_SENSE_STATUS`` (R) ignore a write
-  of the complement of bit 0. Every access gets a response. The legal
-  writes (``SEP_NMI_VEC_LOCK.lock`` RW1S; ``TIMEOUT_CLEAR`` and
-  ``TIMEOUT_MODE``, ``W`` fields with no lock) answer OKAY (AMBA AXI IHI0022,
-  OKAY: normal access success).
+  of the complement of bit 0. Every access gets a response. No TT text states
+  the response code of these writes, so ``OBS-CC-WR-RESP`` logs the code of
+  each ``SEP_NMI_VEC_LOCK`` and timeout write.
 * Each scratch register stores the low word of every write, for every write
   order and shape. Bits 63:32 have no field.
 
@@ -38,10 +37,10 @@ Checkers:
                   ``hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:342-347``).
   CHK-NMI-LOCK    ``SEP_NMI_VEC[31:0]`` after each of the 8 locked writes
                   (bits 31:1 the vector before the write, bit 0 zero), and
-                  ``lock`` and the OKAY response of each of the 4 lock writes.
+                  ``lock`` after each of the 4 lock writes.
   CHK-CC-INERT    bit 0 of both sense status registers after the complement
-                  write; the OKAY response of each of the 16 timeout writes;
-                  every write response arrives.
+                  write; every write response arrives, the 16 timeout writes
+                  included.
   CHK-CC-TIMEOUT-INTR ``TIMEOUT_INTERRUPT[0]`` after the 16 timeout writes
                   equals its RDL reset 0 (``R``, "timeout interrupt status not
                   yet implemented";
@@ -94,7 +93,6 @@ NMI_LOCK = SEP_CPU_CTRL.addr("SEP_NMI_VEC_LOCK")
 LOCK_FIELD = SEP_CPU_CTRL.field_mask("SEP_NMI_VEC_LOCK", "lock")
 TIMEOUT_CLEAR = SEP_CPU_CTRL.addr("TIMEOUT_CLEAR")
 TIMEOUT_MODE = SEP_CPU_CTRL.addr("TIMEOUT_MODE")
-RESP_OKAY = 0
 RESP_DECERR = 3
 TIMEOUT_INTERRUPT = SEP_CPU_CTRL.addr("TIMEOUT_INTERRUPT")
 TI_FIELD = SEP_CPU_CTRL.field_mask("TIMEOUT_INTERRUPT", "reserved")
@@ -306,10 +304,9 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
     async def _write(self, addr: int, value: int, lane: str, *, tolerant: bool) -> int:
         """One full-strobe write on ``lane``. Returns the response code.
 
-        ``tolerant`` accepts any response code here, and the caller grades the
-        code of a legal write (OKAY) itself; the code of a write to a read-only
-        register or of a write the lock refuses is not stated, and only its
-        arrival is scored. A missing response fails at the AXI response timeout
+        ``tolerant`` accepts any response code here: no TT text states the code
+        of these writes, so only their arrival is scored and the caller logs the
+        code. A missing response fails at the AXI response timeout
         of the agent.
         """
         if lane == "64":
@@ -441,9 +438,10 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
             resp = await self._write(NMI_LOCK, k, lane, tolerant=True)
             got = await self._read64(NMI_LOCK)
             fc = field_compare(got, LOCK_FIELD, LOCK_FIELD)
-            line = f"wdata=0x{k:x} lane={lane} resp={resp} expect_resp={RESP_OKAY} {fc.fields()}"
-            assert fc.ok and resp == RESP_OKAY, f"CHK-NMI-LOCK FAIL: lock write: {line}"
+            line = f"wdata=0x{k:x} lane={lane} resp={resp} {fc.fields()}"
+            assert fc.ok, f"CHK-NMI-LOCK FAIL: lock write: {line}"
             self.logger.info("CHK-NMI-LOCK PASS: %s", line)
+            self.logger.info("OBS-CC-WR-RESP reg=SEP_NMI_VEC_LOCK wdata=0x%x resp=%d", k, resp)
             self._rsvd("SEP_NMI_VEC_LOCK", got, LOCK_FIELD)
             n0 += int(k == 0)
             n1 += int(k == M64)
@@ -464,11 +462,9 @@ class sep_cpu_ctrl_reg_shape_test(sep_base_test):
         for name, addr in (("TIMEOUT_CLEAR", TIMEOUT_CLEAR), ("TIMEOUT_MODE", TIMEOUT_MODE)):
             for v, lane in cfg.timeout[name]:
                 resp = await self._write(addr, v, lane, tolerant=True)
-                line = (
-                    f"reg={name} wdata=0x{v:016x} lane={lane} resp={resp} expect_resp={RESP_OKAY}"
+                self.logger.info(
+                    "OBS-CC-WR-RESP reg=%s wdata=0x%016x lane=%s resp=%d", name, v, lane, resp
                 )
-                assert resp == RESP_OKAY, f"CHK-CC-INERT FAIL: {line}"
-                self.logger.info("CHK-CC-INERT PASS: %s", line)
         close_graded_window(self.logger)
         n_timeout = self.responses - n_before
         assert n_timeout == 2 * N_WRITES, (

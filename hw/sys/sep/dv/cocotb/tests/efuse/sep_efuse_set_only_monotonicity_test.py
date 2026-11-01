@@ -32,6 +32,18 @@ _MAX_SENSE_CYCLES = 20_000
 class sep_efuse_set_only_monotonicity_test(sep_base_test):
     """Sensed ones survive write-0; new ones stick; writable shadows overwrite."""
 
+    async def _write_zero(self, shadow: SepEfuseShadow, field, step: str) -> None:
+        # write_word returns only on an OKAY write response.
+        name, word = field.name, field.word_idx
+        await shadow.write_word(name, word, field.drive_word(0))
+        self.logger.info(
+            "CTRL-WR0-RESP seen: %s %s[%d] @0x%08x write 0x0 resp=OKAY",
+            step,
+            name,
+            word,
+            shadow._addr(name, word),
+        )
+
     async def _check_field(self, shadow: SepEfuseShadow, field) -> None:
         name, word = field.name, field.word_idx
         got = await shadow.read_word(name, word)
@@ -41,16 +53,13 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         self.logger.info("CHK-SENSE PASS: %s[%d] sensed 0x%08x", name, word, got)
 
         if field.sensed:
-            await shadow.write_word(name, word, field.drive_word(0))
+            await self._write_zero(shadow, field, "CLEAR-REJECT")
             got = await shadow.read_word(name, word)
             assert got == field.sensed, (
                 f"CHK-CLEAR-REJECT FAIL: {name}[{word}] write-0 cleared "
                 f"0x{field.sensed:08x} -> 0x{got:08x}"
             )
-            # write_word raises on a response other than OKAY.
-            self.logger.info(
-                "CHK-CLEAR-REJECT PASS: %s[%d] write-0 resp=OKAY left 0x%08x", name, word, got
-            )
+            self.logger.info("CHK-CLEAR-REJECT PASS: %s[%d] write-0 left 0x%08x", name, word, got)
 
         await shadow.write_word(name, word, field.drive_word(field.set_bits))
         got = await shadow.read_word(name, word)
@@ -68,15 +77,13 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
             got,
         )
 
-        await shadow.write_word(name, word, field.drive_word(0))
+        await self._write_zero(shadow, field, "OR-MERGE")
         got = await shadow.read_word(name, word)
         assert got == field.after_set, (
             f"CHK-OR-MERGE FAIL: {name}[{word}] write-0 cleared "
             f"0x{field.after_set:08x} -> 0x{got:08x}"
         )
-        self.logger.info(
-            "CHK-OR-MERGE PASS: %s[%d] write-0 resp=OKAY left OR 0x%08x", name, word, got
-        )
+        self.logger.info("CHK-OR-MERGE PASS: %s[%d] write-0 left OR 0x%08x", name, word, got)
 
     async def _check_writable_contrast(self, shadow: SepEfuseShadow, field) -> None:
         name, word, pattern = field.name, field.word_idx, field.pattern

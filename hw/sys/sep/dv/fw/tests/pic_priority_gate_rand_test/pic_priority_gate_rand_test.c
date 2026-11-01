@@ -247,6 +247,7 @@ static volatile uint32_t g_it_n[2], g_it_mc[2], g_it_cyc[2];
 // Nesting leg: first source, in-handler flag, and what its handler saw.
 static volatile uint32_t g_nest_a, g_nest_in, g_nest_done;
 static volatile uint32_t g_nest_cidpl, g_nest_blocked, g_nest_bmeip, g_nest_nested;
+static volatile uint32_t g_nest_bpl_rd;
 static volatile uint32_t g_nest_b_in_a, g_nest_b_raised, g_nest_hclk;
 
 // ---- Inbound filter allow window over the inbound port of mailbox m ----
@@ -470,6 +471,7 @@ static void nest_body(uint32_t a) {
     g_nest_cidpl = cid;
     uint32_t b0 = g_runs[b];
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(b), g_prm[P_NEST_PL_SAME]);
+    g_nest_bpl_rd = pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(b)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
     pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(b), EL2_PIC__MEIE__INTEN_bm);
     g_nest_b_raised = src_raise(b);
     mstatus_mie(1);
@@ -791,6 +793,7 @@ static void run_round(uint32_t r) {
     disable_set(r);
     mstatus_mie(0);
     set_order(p ^ 1u);
+    uint32_t flip_rd = pic_read_mpiccfg() & EL2_PIC__MPICCFG__PRIORD_bm;
     for (uint32_t i = 0; i < n; i++) {
         uint32_t s = rprm(r, R_SRC + i);
         pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), PRI_MAX - rprm(r, R_RAW + i));
@@ -810,6 +813,7 @@ static void run_round(uint32_t r) {
     rec_num("r", r);
     rec_num("priord_from", p);
     rec_num("priord_to", p ^ 1u);
+    rec_num("priord_rd", flip_rd);
     rec_num("n", g_log_n);
     put_ids("ids", 0u, g_log_n);
     rec_end();
@@ -889,6 +893,7 @@ static void leg_threshold(void) {
     set_order(0u);
     pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), g_prm[P_THR_PL_HELD]);
+    uint32_t pl_rd = pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
     pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), EL2_PIC__MEIE__INTEN_bm);
     __asm__ volatile("csrw %0, %1" ::"i"(CSR_MEIPT), "r"(t));
     uint32_t t_rd;
@@ -910,13 +915,14 @@ static void leg_threshold(void) {
     pic_wr32(SEP_TOP_PIC_MEIE_BASE_ADDR(s), 0u);
     pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(s), 0u);
     set_order(0u);
-    int pass = raised == 1u && held == 0u && pend == 1u && hclk >= LEG_HOLD_MIN_CLK && open == 1u &&
-               other == 0u;
+    int pass = pl_rd == g_prm[P_THR_PL_HELD] && raised == 1u && held == 0u && pend == 1u &&
+               hclk >= LEG_HOLD_MIN_CLK && open == 1u && other == 0u;
     rec_chk("THRESHOLD", pass);
     rec_num("src", s);
     rec_num("meipt", t);
     rec_num("pl_held", g_prm[P_THR_PL_HELD]);
     rec_num("pl_open", g_prm[P_THR_PL_OPEN]);
+    rec_num("pl_held_rd", pl_rd);
     rec_num("raised", raised);
     rec_num("held_runs", held);
     rec_num("held_meip", pend);
@@ -945,6 +951,7 @@ static void leg_nest(void) {
     g_nest_bmeip = 0u;
     g_nest_b_raised = 0u;
     g_nest_cidpl = 0u;
+    g_nest_bpl_rd = 0u;
     g_nest_hclk = 0u;
     uint32_t a0 = g_runs[a], b0 = g_runs[b], t0 = g_total;
     g_nest_a = a;
@@ -967,14 +974,15 @@ static void leg_nest(void) {
     }
     set_order(0u);
     int pass = done && raised == 1u && aruns == 1u && g_nest_cidpl == g_prm[P_NEST_PL_A] &&
-               g_nest_b_raised == 1u && g_nest_blocked == 0u && g_nest_bmeip == 1u &&
-               g_nest_hclk >= LEG_HOLD_MIN_CLK && g_nest_nested == 1u && g_nest_b_in_a == 1u &&
-               other == 0u;
+               g_nest_bpl_rd == g_prm[P_NEST_PL_SAME] && g_nest_b_raised == 1u &&
+               g_nest_blocked == 0u && g_nest_bmeip == 1u && g_nest_hclk >= LEG_HOLD_MIN_CLK &&
+               g_nest_nested == 1u && g_nest_b_in_a == 1u && other == 0u;
     rec_chk("NEST", pass);
     rec_num("a", a);
     rec_num("b", b);
     rec_num("pl_a", g_prm[P_NEST_PL_A]);
     rec_num("pl_same", g_prm[P_NEST_PL_SAME]);
+    rec_num("pl_same_rd", g_nest_bpl_rd);
     rec_num("pl_high", g_prm[P_NEST_PL_HIGH]);
     rec_num("done", (uint32_t)done);
     rec_num("a_runs", aruns);
@@ -1308,20 +1316,30 @@ int main(void) {
     rec_num("raised", raised);
     chk_end(pass);
 
-    // Encoding sweep: meipl.intpriority is RW, so each value reads back as
-    // written in either priority order (window closed, no source pending).
+    // Encoding sweep: meipl.intpriority and mpiccfg.priord are RW, so each
+    // value reads back as written in either priority order (window closed, no
+    // source pending). Each cell first writes the complement of v, so the
+    // destination differs from v before the graded write.
     rec_mark(0, "sweep");
     uint32_t sw = g_prm[P_SWEEP];
     for (uint32_t p = 0; p < 2u; p++) {
         set_order(p);
+        uint32_t priord_rd = pic_read_mpiccfg() & EL2_PIC__MPICCFG__PRIORD_bm;
         for (uint32_t v = 0; v < 16u; v++) {
+            uint32_t pre = v ^ EL2_PIC__MEIPL__INTPRIORITY_bm;
+            pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), pre);
+            uint32_t pre_rb =
+                pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
             pic_wr32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw), v);
             uint32_t rb =
                 pic_rd32(SEP_TOP_PIC_MEIPL_BASE_ADDR(sw)) & EL2_PIC__MEIPL__INTPRIORITY_bm;
-            pass = rb == v;
+            pass = priord_rd == p && pre_rb == pre && rb == v;
             rec_chk("LEVEL-SWEEP", pass);
             rec_num("src", sw);
             rec_num("priord", p);
+            rec_num("priord_rd", priord_rd);
+            rec_num("pre", pre);
+            rec_num("pre_read", pre_rb);
             rec_num("wrote", v);
             rec_num("read", rb);
             chk_end(pass);

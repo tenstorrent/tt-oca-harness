@@ -39,6 +39,9 @@ Checkers:
                     last term, and both rise within the release bound after it.
                     On VCS the ``sep_reset_n`` tap is also never X while
                     ``rst_ni`` is low.
+                    Control (CTRL-REL-ORDER): the sampled order of the
+                    ``rst_ni`` release, the sense rise and the term rise is
+                    the order the epoch kind places, or the leaf fails.
   CHK-REL-HOLD      in the H = yes epoch both taps read 0 for the whole hold (at
                     least 2 T samples after the sense rise) and rise after
                     ``ext_boot_seq_done_i`` rises.
@@ -73,10 +76,11 @@ Checkers:
   CHK-SENSE-STATUS  after ``sep_fuse_sense_done_o`` has held 1 for
                     ``_REL_BOUND`` ``clk_i`` cycles, one 64-bit read of
                     ``SEP_FUSE_SENSE_STATUS`` per epoch and the final polls
-                    answer OKAY within the bound, and the port reads 1 around
-                    each read. The field ``sep_fuse_sense_done`` and the
-                    reserved bits 63:1 have no stated value after sensing:
-                    they are logged (``OBS-SENSE-STATUS-DONE``), not graded.
+                    complete within the bound, and the port reads 1 around
+                    each read. The response code, the field
+                    ``sep_fuse_sense_done`` and the reserved bits 63:1 have no
+                    stated value after sensing: they are logged
+                    (``OBS-SENSE-STATUS-DONE``), not graded.
 
 Controls: in BOOT_FIRST, BOOT_WITH_RST and BOOT_MID the sensing is the last
 term, so those cells are controls of CHK-REL-GATE. The post-sense reads of
@@ -153,6 +157,14 @@ BOOT_AFTER = "BOOT_AFTER_SENSE_H0"
 BOOT_HOLD = "BOOT_AFTER_SENSE_H1"
 # Drawn epoch E with the weights 2, 2, 2, 1.
 _EPOCH_WEIGHTS = ((BOOT_FIRST, 2), (BOOT_WITH_RST, 2), (BOOT_MID, 2), (BOOT_AFTER, 1))
+# Observed order of the term samples (t_rst_rel, t_sense, t_boot) that each kind places.
+_ORDER = {
+    BOOT_FIRST: ("t_boot < t_rst_rel < t_sense", lambda r, s, b: b < r < s),
+    BOOT_WITH_RST: ("t_boot == t_rst_rel < t_sense", lambda r, s, b: b == r < s),
+    BOOT_MID: ("t_rst_rel < t_boot < t_sense", lambda r, s, b: r < b < s),
+    BOOT_AFTER: ("t_rst_rel < t_sense < t_boot", lambda r, s, b: r < s < b),
+    BOOT_HOLD: ("t_rst_rel < t_sense < t_boot", lambda r, s, b: r < s < b),
+}
 
 _LC_SET = (LC_TEST_DEV, LC_RMA_SIP_0, LC_RMA_CHIP_0)
 # DV set of (SIP_DIS, SYS_DIS) pairs: the disable vectors the real-sense fabric
@@ -547,6 +559,19 @@ class sep_boot_release_terms_test(sep_base_test):
             f"the last term ({last_name} at sample {last}): sep_reset_n rise={sep_rise} "
             f"sep_cpu_reset_n rise={cpu_rise}"
         )
+        order, in_order = _ORDER[ep.kind]
+        assert in_order(t_rel, t_sense, t_boot), (
+            f"CTRL-REL-ORDER FAIL: {tag} observed t_rst_rel={t_rel} t_sense={t_sense} "
+            f"t_boot={t_boot} is not the placed order {order}"
+        )
+        self.logger.info(
+            "CTRL-REL-ORDER seen: kind=%s order=%s t_rst_rel=%d t_sense=%d t_boot=%d",
+            ep.kind,
+            order,
+            t_rel,
+            t_sense,
+            t_boot,
+        )
         x_low = 0
         if four_state:
             x_low = sum(1 for r in rec if r["rst"] == 0 and r["sep"] is None)
@@ -706,9 +731,9 @@ class sep_boot_release_terms_test(sep_base_test):
 
         The reads start after ``sep_fuse_sense_done_o`` held 1 on ``_REL_BOUND``
         consecutive ``clk_i`` edges; the port must read 1 before and after
-        every read, and every read must answer OKAY. No specification line
-        states the field value after sensing, so the 64-bit words are logged
-        as ``OBS-SENSE-STATUS-DONE``.
+        every read, and every read must complete. No TT text states the
+        response code or the field value after sensing, so both are logged in
+        ``OBS-SENSE-STATUS-DONE``.
         """
         dut = cocotb.top
         for c in range(_REL_BOUND):
@@ -719,31 +744,39 @@ class sep_boot_release_terms_test(sep_base_test):
                 f"at settle cycle {c}, expected 1 for {_REL_BOUND} cycles"
             )
         words = []
+        resps = []
         for i in range(n):
             before = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
             seq = SepAxiAccessSeq(
-                f"sep_status_{tag}{i}", op=SepAxiOp.READ, addr=SEP_STATUS, length=8, size=3
+                f"sep_status_{tag}{i}",
+                op=SepAxiOp.READ,
+                addr=SEP_STATUS,
+                length=8,
+                size=3,
+                allow_ungraded_read_resp=True,
             )
             await self.start_seq(seq)
             after = self.rd(dut.sep_fuse_sense_done_o, allow_unknown=True)
             word = self._status_data(seq)
-            ok = before == 1 and after == 1 and not seq.timed_out and seq.resp_code == RESP_OKAY
+            ok = before == 1 and after == 1 and not seq.timed_out
             assert ok, (
                 f"CHK-SENSE-STATUS FAIL: {tag} phase=post_sense poll {i} "
-                f"resp={_RESP_NAME.get(seq.resp_code, seq.resp_code)} "
-                f"timed_out={int(seq.timed_out)} exp_resp=OKAY port_before={before} "
+                f"timed_out={int(seq.timed_out)} port_before={before} "
                 f"port_after={after} word=0x{word:016x}"
             )
             words.append(word)
+            resps.append(_RESP_NAME.get(seq.resp_code, str(seq.resp_code)))
         self.logger.info(
-            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d resp=OKAY port=1 settle=%d",
+            "CHK-SENSE-STATUS PASS: %s phase=post_sense polls=%d completed=%d port=1 settle=%d",
             tag,
+            n,
             n,
             _REL_BOUND,
         )
         self.logger.info(
-            "OBS-SENSE-STATUS-DONE: %s field_mask=0x%x field=%s word=%s (not scored)",
+            "OBS-SENSE-STATUS-DONE: %s resp=%s field_mask=0x%x field=%s word=%s (not scored)",
             tag,
+            ",".join(resps),
             SEP_FIELD,
             ",".join(f"0x{v:x}" for v in sorted({w & SEP_FIELD for w in words})),
             ",".join(f"0x{v:016x}" for v in sorted(set(words))),

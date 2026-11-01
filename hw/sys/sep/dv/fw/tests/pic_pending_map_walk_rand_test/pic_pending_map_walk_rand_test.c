@@ -706,6 +706,20 @@ static void gw_cell(uint32_t g) {
     }
     pic_set_priority(id, 1u);
     pic_enable_source(id);
+    uint32_t ectl_latched = 0u, ectl_clr = 1u;
+    if (!(cell >> 1)) {
+        // Control for the level clear: the same meigwclr write on this source
+        // drops an edge latched in active-high edge mode.
+        pic_set_gateway(id, 1u, 0u);
+        pic_write_meigwclr(id, clr);
+        gw_assert(s);
+        wait_clk(g_p[P_SETTLE]);
+        gw_deassert(s);
+        wait_clk(g_p[P_SETTLE]);
+        ectl_latched = meip_bit(id);
+        pic_write_meigwclr(id, clr);
+        ectl_clr = meip_bit(id);
+    }
     pic_set_gateway(id, cell >> 1, cell & 1u);
     if (cell >> 1) {
         // The edge latch holds any earlier assertion of the source (the map
@@ -751,6 +765,8 @@ static void gw_cell(uint32_t g) {
     rec_num("reasserted", a2);
     rec_num("after_clr2", c2);
     rec_num("lclr", lclr);
+    rec_num("ectl_latched", ectl_latched);
+    rec_num("ectl_clr", ectl_clr);
     rec_hex("clr_val", clr);
     rec_end();
     pic_set_gateway(id, 0u, 0u);
@@ -1284,7 +1300,7 @@ int main(void) {
     uint32_t lcc = rd(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
     wait_clk(g_p[P_SETTLE]);
     req_kv("win", "lcc", 0u);
-    rec_info("SLOTLESS-READS");
+    rec_ctl("SLOTLESS-READS");
     rec_hex("otp", otp);
     rec_hex("lcc", lcc);
     rec_end();

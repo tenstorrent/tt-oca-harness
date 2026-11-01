@@ -69,10 +69,12 @@ Checkers:
   CHK-SHADOW-RESTART   after R written twice the next AES block equals its golden.
   CHK-GCM-SHADOW-ERR   AES GCM mismatched pair after GCM_INIT: no bit 32 rise up
                        to the second write, the first rise within 4 x c_err
-                       clocks of it, ALERT_FATAL_FAULT 0.
+                       clocks of it, ALERT_FATAL_FAULT 0. Control:
+                       CTRL-GCM-INIT, CTRL_SHADOWED.MODE reads AES_GCM after the
+                       GCM_INIT set-up of the leg.
   CHK-GCM-SHADOW-WRITE AES GCM equal pair of A_GCM: no bit 32 rise over 4 x c_err
                        clocks, PHASE and NUM_VALID_BYTES read A_GCM and the
-                       update error reads 0. Control:
+                       update error reads 0. Controls: CTRL-GCM-INIT as above;
                        CTRL-GCM-SHADOW-PRE, the read before the pair gives the
                        RDL reset value (GCM_INIT, 16), which differs from A_GCM.
   CHK-SHADOW-FATAL-QUIET every AES STATUS read inside an FCOV window that shows
@@ -256,6 +258,8 @@ for _reg, _fld, _code in [("CTRL_SHADOWED", "mode", AES_MODE_GCM)] + [
     if _code >= 1 << AES.field_width(_reg, _fld) or bin(_code).count("1") != 1:
         raise ValueError(f"AES {_reg}.{_fld} code 0b{_code:b} is not one-hot")
 AES_GCM = AES.addr("CTRL_GCM_SHADOWED")
+AES_CTRL_MODE = AES.field_mask("CTRL_SHADOWED", "mode")
+AES_CTRL_MODE_LSB = AES.field_lsb("CTRL_SHADOWED", "mode")
 GCM_PHASE_LSB = AES.field_lsb("CTRL_GCM_SHADOWED", "phase")
 GCM_NVB_LSB = AES.field_lsb("CTRL_GCM_SHADOWED", "num_valid_bytes")
 GCM_FIELDS = AES.field_mask("CTRL_GCM_SHADOWED", "phase") | AES.field_mask(
@@ -848,8 +852,12 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         await self._gcm_mismatched(base)
         await self._gcm_matched(base)
 
-    async def _gcm_init(self) -> int:
-        """AES reset, then GCM_INIT with a key and an IV; returns a CTRL_GCM_SHADOWED read.
+    async def _gcm_init(self, pair: str) -> tuple[int, bool]:
+        """AES reset, then GCM_INIT with a key and an IV.
+
+        Returns a CTRL_GCM_SHADOWED read and the result of ``CTRL-GCM-INIT``: a
+        CTRL_SHADOWED read whose MODE field is AES_GCM, so a lost mode write is
+        visible.
 
         GCM mode, GCM_INIT, the key and the IV (IV_3 = 0) start the two
         encryptions of GCM_INIT; once the unit is idle again, GCM_RESTORE,
@@ -869,7 +877,16 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         await self._aes_idle("gcm_idle_after_key")
         await self.aes.write_iv([*self.plan.gcm_iv, 0])
         await self._aes_idle("gcm_idle_after_iv")
-        return await self.aes._rd(AES_GCM)
+        ctrl_rb = await self.aes._rd(AES_CTRL_SHADOWED)
+        mode = (ctrl_rb & AES_CTRL_MODE) >> AES_CTRL_MODE_LSB
+        mode_ok = self._control(
+            "GCM-INIT",
+            mode == AES_MODE_GCM,
+            pair=pair,
+            mode=f"0b{mode:b}",
+            exp_mode=f"0b{AES_MODE_GCM:b}",
+        )
+        return await self.aes._rd(AES_GCM), mode_ok
 
     async def _gcm_mismatched(self, base: int) -> None:
         plan = self.plan
@@ -877,8 +894,9 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         reason = ""
         early = cycles = fatal = status_err = -1
         rise_clk = None
+        mode_ok = False
         try:
-            await self._gcm_init()
+            _, mode_ok = await self._gcm_init("mismatched")
             self._open()
             m1, m2 = await self._pair(self.aes, AES_GCM, plan.gcm_a, plan.gcm_b, plan.gcm_gaps[0])
             await self._until(m2, window)
@@ -907,7 +925,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         if reason:
             fields["reason"] = reason
         ok = not reason and early == 0 and rise_clk is not None and rise_clk <= window
-        if self._grade("GCM-SHADOW-ERR", ok and fatal == 0, **fields):
+        if self._grade("GCM-SHADOW-ERR", ok and mode_ok and fatal == 0, **fields):
             await self._passed(AES_SHADOW_PASS_GCM_MISMATCHED)
         self._close()
 
@@ -917,8 +935,9 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         a = plan.gcm_a & GCM_FIELDS
         reason = ""
         pre = rb = cycles = status_err = -1
+        mode_ok = False
         try:
-            pre = await self._gcm_init()
+            pre, mode_ok = await self._gcm_init("equal")
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         pre_f = pre & GCM_FIELDS if pre >= 0 else -1
@@ -927,7 +946,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         # that does not land reads that value.
         if not self._control(
             "GCM-SHADOW-PRE",
-            not reason and pre_f == GCM_RESET and GCM_RESET != a,
+            not reason and mode_ok and pre_f == GCM_RESET and GCM_RESET != a,
             ctrl_pre=ctrl_pre,
             reset=f"0x{GCM_RESET:x}",
             a=f"0x{a:x}",
@@ -1214,7 +1233,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             dut.crypto_alert_inject_i.value = 0
             await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
             post = self._bit32()
-            # Quiet window after the release: bit 32 stays 0 for WINDOW_FACTOR x c clocks.
+            # Quiet window after the release, logged with the level.
             mp = self.vec.mark()
             await ClockCycles(dut.clk_i, WINDOW_FACTOR * c)
             quiet_post = self.vec.high_clocks_since(mp, "alert")
