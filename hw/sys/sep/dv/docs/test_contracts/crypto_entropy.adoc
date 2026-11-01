@@ -4858,6 +4858,6 @@ every memory word; the readable windows read 0 until VALID whatever they hold.
 
 *Known limitation*: This design advances `LOAD_CHECKSUM` on a host read of IMEM or DMEM, so both checks fail on every seed and the leaf is RED until the RTL is fixed (Known limitations of `SEP_VPLAN.adoc`).
 
-*Issue*: RTL ticket to be filed.
+*Issue*: #3543
 
 '''''
