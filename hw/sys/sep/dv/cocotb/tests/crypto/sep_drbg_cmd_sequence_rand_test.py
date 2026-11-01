@@ -763,6 +763,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         "CHK-CSRNG-KAT",
         "CHK-EDN-AUTO-SEQ",
         "CHK-EDN-INST-SEED",
+        "CHK-CSRNG-VCTR-DISTINCT",
     )
 
     async def run_scenario(self) -> None:
