@@ -140,7 +140,7 @@ remapped routes to the error slave and never executes.
 [arabic]
 . Release reset and wait for fuse sensing to end. This brings the lifecycle controller up in PROD so the inbound filter is active.
 . Walk entries 0 and 7, two windows, `{rw, r, w}`, and the source-ID match / mismatch cells — 16 cells.
-. Walk `allow_burst` deny then allow on AR and AW of the scratch window (2-beat INCR, AxLEN=1). The allow window spans two 4 KB pages. The allowed burst becomes two Lite singles; the denied burst reaches none. The R beats of the denied 2-beat read are logged (OBS-FILT-BURST-BEATS).
+. Walk `allow_burst` deny then allow on AR and AW of the scratch window (2-beat INCR, AxLEN=1). The allow window spans two 4 KB pages. The allowed burst becomes two Lite singles; the denied burst reaches none.
 . Program an 8-byte `allow_burst=1` window inside one 4 KB page on entry 15. Prove the page grant on the bus, both page edges, then freeze `allow_burst` with `FILTER_CONFIG.locked`. The lock is sticky, so this step is the last filter step.
 . Pulse `rst_ni`, send one external read of SRAM word 0 with ARID 63 while fuse sensing runs, wait for sensing to end and watch that read for 256 cycles after the SEP reset releases (OBS-SI-PRESENSE-READ). No other read uses ARID 63, so a read that gets no response leaves no later read to pair with. This step runs after every graded step: the coverage sampler pairs each System Interface read completion with the one read outstanding, so a read that gets no response must not overlap the graded reads.
 
@@ -168,7 +168,7 @@ remapped routes to the error slave and never executes.
 |CTRL-RAND-REP
 |Entries 0 and 7, two address windows, `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch — 16 cells in one invocation. Entry 15 carries the granule, bound, and lock cells.
 |CHK-BURST-DENY
-|With `allow_burst=0`, a single-beat external read of the scratch window is OKAY (anti-vacuous) and a 2-beat INCR (AxLEN=1) to the same address is DECERR. `traffic_filter.sv` `pass_burst` is not vacuously true. The denied burst answers DECERR (`hw/ip/axi_filter/doc/index.adoc` "Blocked Transactions") and does not return the staged value. Its R beats are logged as OBS-FILT-BURST-BEATS, not graded.
+|With `allow_burst=0`, a single-beat external read of the scratch window is OKAY (anti-vacuous) and a 2-beat INCR (AxLEN=1) to the same address is DECERR. `traffic_filter.sv` `pass_burst` is not vacuously true. The R beats of the denied burst on the `m_axi` pins are graded too: two beats, each with RRESP DECERR and RID equal to the ARID, RLAST on the second beat only (AMBA AXI IHI 0022; `hw/ip/axi_filter/doc/index.adoc` "Blocked Transactions" for DECERR). The ARID is drawn from 1 to 62 (63 is the pre-sense read), so an RID that drops to 0 fails.
 |CHK-BURST-ALLOW
 |With `allow_burst=1` and a programmed window that already spans two 4 KB pages, the same 2-beat INCR is OKAY and returns the staged scratch value. START/END read back as programmed (the same-page 4 KB granule widen does not fire). The granule widen itself is `CHK-PAGE-WIDEN`.
 |CHK-BURST-WRITE-DENY
@@ -193,8 +193,6 @@ remapped routes to the error slave and never executes.
 |Logged only, no pass or fail. One external read of SRAM word 0 with ARID 63, sent after the release of the `rst_ni` pulse that ends the leaf and before fuse sensing ends: whether its AR handshake happened (`accepted`), `sep_reset_n` at that handshake, whether an R beat with ARID 63 came within 256 cycles after the SEP reset released (`response`, `rresp`). No specification line names the reset of the inbound port or what an inbound request gets before `sep_reset_n` releases.
 |OBS-FILT-DENY-RDATA
 |Logged only, no pass or fail. The address, the AxUSER, the response and the read data of every denied external read (`addr`, `user`, `resp`, `rdata`). The specification names no read data for a denial and no way to tell a denial from a reserved-address DECERR.
-|OBS-FILT-BURST-BEATS
-|Logged only, no pass or fail. The R beats of the denied 2-beat INCR read on the `m_axi` pins: address, the drawn ARID, the beat count and (RRESP, RID, RLAST) per beat. `hw/ip/axi_filter/doc/index.adoc` states DECERR for a blocked transaction but no beat count, RLAST position or RID; no TT document names the AXI rule for the error subordinate. Format: `OBS-FILT-BURST-BEATS addr=0x<a> arid=<n> beats=<n> R beats (rresp, rid, rlast)=[(<r>, <id>, <0\|1>), ...]`.
 |CTRL-FILT-RSVD-ALLOW
 |Premise of CHK-FILT-RSVD-READ. Entry 0 alone is enabled, read-allowed, with a window from the last SRAM granule (`SEP_SRAM_MEM_BASE_ADDR` + `SEP_SRAM_MEM_SIZE` - 8) to the Reserved base 0x10050000. The LSU stages a seeded word in that SRAM granule, and the external read of it answers OKAY with the staged word, so the entry admits reads in its window. Evidence: `CTRL-FILT-RSVD-ALLOW PASS: entry=0 window=0x1003fff8..0x10050000 addr=0x1003fff8 resp=0 rdata=0x<staged> expect=0/0x<staged>`.
 |CHK-FILT-RSVD-READ

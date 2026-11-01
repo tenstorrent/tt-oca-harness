@@ -46,12 +46,13 @@ singles (fabric.adoc: axi_to_axi_lite splits bursts into individual
 transactions). CTRL-BURST-LITE-LIVE: the single-beat access of each deny cell
 reaches the Lite port as one single at its address, so the watch is live
 when the denied burst shows none. WRAP/FIXED/AxLEN>1 are
-not walked. The filter answers the denied 2-beat read DECERR
-(``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions").
-OBS-FILT-BURST-BEATS logs the R beats of that read on the m_axi pins
-(RRESP, RID and RLAST per beat, and the beat count); no TT document states
-them, so they grade nothing. The ARID is drawn from 1 to 62 (ARID 63 is the
-pre-sense read).
+not walked. The denied 2-beat read also grades its R beats on the m_axi
+pins: an error response still returns every beat of the burst with RLAST
+on the last beat only, each beat with RID equal to the ARID (AMBA AXI
+IHI 0022), and the filter answers DECERR on RRESP
+(``hw/ip/axi_filter/doc/index.adoc``, "Blocked Transactions"). The ARID is
+drawn from 1 to 62 (ARID 63 is the pre-sense read), so an RID that drops
+to 0 fails.
 OBS-SI-PRESENSE-READ runs last: after an ``rst_ni`` pulse, one external
 read with ARID 63 is sent while fuse sensing runs and is watched for 256
 clocks after ``sep_reset_n`` releases. It grades nothing.
@@ -360,6 +361,11 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
                 f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of "
                 f"0x{burst_addr:08x} resp={resp}, expected DECERR"
             )
+            want = [(RESP_DECERR, arid, 0), (RESP_DECERR, arid, 1)]
+            assert beats == want, (
+                f"CHK-BURST-DENY FAIL: allow_burst=0 2-beat INCR read of 0x{burst_addr:08x} "
+                f"arid={arid} R beats (rresp, rid, rlast)={beats}, expected {want}"
+            )
             assert data != burst_val, (
                 f"CHK-BURST-DENY FAIL: denied burst returned the staged value "
                 f"0x{data:08x}; the blocked burst reached the target"
@@ -370,18 +376,14 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             self._release_lite_split()
         self.logger.info(
             "CHK-BURST-DENY PASS: allow_burst=0 single-beat OKAY rdata=0x%08x as Lite AR %s; "
-            "2-beat INCR DECERR at 0x%08x, rdata=0x%08x, Lite AR %s",
+            "2-beat INCR DECERR at 0x%08x, rdata=0x%08x, Lite AR %s, arid=%d "
+            "R beats (rresp, rid, rlast)=%s",
             burst_val,
             [hex(a) for a in lite_sb],
             burst_addr,
             data,
             [hex(a) for a in lite_ar],
-        )
-        self.logger.info(
-            "OBS-FILT-BURST-BEATS addr=0x%08x arid=%d beats=%d R beats (rresp, rid, rlast)=%s",
-            burst_addr,
             arid,
-            len(beats),
             beats,
         )
 
