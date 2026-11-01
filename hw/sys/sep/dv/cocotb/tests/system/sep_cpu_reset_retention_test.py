@@ -102,8 +102,8 @@ Checkers (log shape ``CHK-<ID> PASS|FAIL: ...``):
                           ``CONFIGOPTS``, DMA ``SRC_ADDR_LO`` and DMA range
                           registers written before the run read their written
                           values after the ``SW_RESET_N`` engine reset and the
-                          pulse (``reset_controller.adoc:44-49``, SW_RESET_N
-                          fields table: no SPI or DMA bit). The WDT pulse
+                          pulse (``reset_controller.adoc:45-50``; SW_RESET_N
+                          fields table ``:91-103``: no SPI or DMA bit). The WDT pulse
                           of the "before" band cannot cut the write, so every
                           seed has such a run; a leaf with none fails.
   CHK-WDT-COLD-RECOVER    last leg, every seed and build: a ``wdt_rst_ni`` pulse
@@ -1318,8 +1318,8 @@ class sep_cpu_reset_retention_test(sep_base_test):
     async def _chk_swrst_keep(self, d: str, cls: str, band: str) -> None:
         """CHK-SWRST-KEEP: a SW_RESET_N engine reset leaves the SPI host and the DMA.
 
-        ``hw/sys/sep/doc/reset_controller.adoc:44-49``: ``sep_reset_no`` resets
-        the SPI host and the DMA; the ``SW_RESET_N`` fields table (``:88-100``)
+        ``hw/sys/sep/doc/reset_controller.adoc:45-50``: ``sep_reset_no`` resets
+        the SPI host and the DMA; the ``SW_RESET_N`` fields table (``:91-103``)
         has no SPI or DMA bit. Each SPI, DMA and DMA range register written
         before the run reads its written value after the engine reset and the
         CPU reset pulse.

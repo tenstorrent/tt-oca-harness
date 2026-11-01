@@ -1285,13 +1285,14 @@ def exo_pass_bit(src: int) -> int:
 
 
 def set_exo_pass(mask: int, log=None) -> bool:
-    """Write ``u_sep_fcov.exo_pass`` (one bit per passed EXCL check, or 0).
+    """Write ``u_sep_fcov.exo_pass`` (one bit per passed source check, or 0).
 
     The pass label of ``sep_pic_source_map_cg.cp_src_exclusive_other`` bins
     s35, s36 and s41 to s43. The sampler holds each exclusive rise of those
     sources in the window of their owner and samples a held rise only when bit
     ``source - 32`` (``exo_pass_bit``) rises; the release does not depend on
-    the window. The owner writes the bit after CHK-SRC<source>-EXCL passes,
+    the window. The owner writes the bit after CHK-SRC<source>-EXCL (sources
+    35 and 36) or CHK-SRC<source>-RISE (sources 41 to 43) passes,
     keeps the bits of the checks that passed before it, holds the value at
     least one clock and writes 0 at the end. Same rules as ``graded_owner``: a
     no-op that returns False on Verilator. On VCS a sampler without the

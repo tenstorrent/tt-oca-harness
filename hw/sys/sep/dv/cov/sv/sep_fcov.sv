@@ -12312,7 +12312,8 @@ module sep_fcov (
   logic exo34_q;
   // Exclusive rises of sources 35, 36 and 41 to 43 (bit = source - 1) in the
   // window of their owner. They are not sampled here: the exo_pass hold below
-  // holds them and samples them on the pass label of their EXCL check.
+  // holds them and samples them on the pass label of the check of their
+  // source.
   localparam logic [42:0] ExoHoldMask = (43'd1 << 34) | (43'd1 << 35) | (43'd1 << 40) |
       (43'd1 << 41) | (43'd1 << 42);
   logic [42:0] exo_hold_ev_q;
@@ -37986,11 +37987,14 @@ module sep_fcov (
   // cp_src_exclusive_other bins s35, s36 and s41 to s43: an exclusive rise in
   // the window of its owner (exo_hold_ev_q) is held as pending and samples
   // only when bit (source - 32) of exo_pass rises: the owner writes that bit
-  // after CHK-SRC<source>-EXCL passed over every rise of the run. The release
+  // after CHK-SRC<source>-EXCL (sources 35 and 36) or CHK-SRC<source>-RISE
+  // (sources 41 to 43) passed over the run. For sources 41 to 43 the
+  // exclusivity of a held rise is this sampler's compare only; the owner
+  // grades that the bit rose and logs the other bits that moved. The release
   // does not depend on the window, because the bridge-fault owner grades its
-  // EXCL checks at the end of the run, after the window closed. A reset drops
-  // every pending rise; a leaf whose EXCL check fails never writes the bit, so
-  // its rises never sample. exo_pass gates a sample; it is never a DUT value
+  // RISE checks at the end of the run, after the window closed. A reset drops
+  // every pending rise; a leaf whose check fails never writes the bit, so its
+  // rises never sample. exo_pass gates a sample; it is never a DUT value
   // and drives nothing.
   int unsigned exo_pass = 0;
   int unsigned exo_pass_q = 0;
