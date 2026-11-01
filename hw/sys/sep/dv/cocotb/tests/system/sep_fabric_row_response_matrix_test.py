@@ -1548,7 +1548,14 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
         if graded:
             exp = self._expect_reg(a) & mask
             got = s.rdata & 0xFFFF_FFFF
-            ok = s.resp_code == OKAY and (got & mask) == exp and lsu_b == exp and lsu_a == exp
+            nonzero_ok = row not in rr.NONZERO_LIVE or exp != 0
+            ok = (
+                s.resp_code == OKAY
+                and (got & mask) == exp
+                and lsu_b == exp
+                and lsu_a == exp
+                and nonzero_ok
+            )
             self._row_line(
                 ok,
                 f"row={row} kind=live init=SI dir=R size=2 addr=0x{a:08x} wdata=na "
@@ -1581,7 +1588,13 @@ class sep_fabric_row_response_matrix_test(sep_base_test):
             f"rows={len(self.live_draw)} live_rows={len(rr.LIVE_SI_ROWS)} missing={missing}",
         )
         for key, (reg, drawn) in self.live_draw.items():
+            # ABR is graded at the control value, as at its default-attribute read.
+            restore = self._expect_reg(reg.addr) if key == "abr" else None
+            if restore is not None:
+                await self._lsu_write_reg(reg.addr, ~restore & 0xFFFF_FFFF, "abr live-word value")
             ok = await self._attr_read(key, reg, drawn, graded=True) and ok
+            if restore is not None:
+                await self._lsu_write_reg(reg.addr, restore, "abr neighbour restore")
         await self._leg_cov("row_attr_drawn_read", ok)
 
     async def _attr_cell_leg(self) -> None:
