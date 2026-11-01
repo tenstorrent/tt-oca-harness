@@ -17,7 +17,10 @@ so a window whose bounds and offset are programmed with the valid bit
 clear must leave the beat at the address the master issued. Programming
 the window and clearing only the enable is what separates a working gate
 from an address that was never in range. The PR-OUT tap shows that the
-gated read puts no AR on the outbound port (CTRL-VALID-GATE-LOCAL).
+gated read puts no AR on the outbound port, and that a read of an
+SMU-aperture word behind an enabled outbound filter pair, in the same tap
+window after the gated read, puts exactly one AR at that address on the port
+(CTRL-VALID-GATE-LOCAL).
 
 The cacheable flag that ``fabric.adoc`` lists per region is not checked
 here: this bench has no observable on the outbound cache bits.
@@ -35,6 +38,7 @@ import cocotb
 import pyuvm
 from env.sep_fabric_tap import SepFabricTap
 from sep_base_test import sep_base_test
+from seq_lib.sep_fabric_filter_bank_seq import SMU_PAGE, SMU_PAGE_WORD, SepFilterBank
 from seq_lib.sep_fabric_local_alias_seq import (
     N_REGIONS,
     SepLocalAlias,
@@ -44,6 +48,8 @@ from seq_lib.sep_fabric_local_alias_seq import (
 
 DBG_LANE_LSB = 192
 DBG_LANE_MSB = 207
+# Outbound filter entries opened over the SMU page for the PR-OUT liveness read.
+OUT_PAIR = (0, 1)
 
 
 @pyuvm.test()
@@ -131,20 +137,32 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         # guard above proved it differs from the marker the destination now
         # holds, so this compare fails if the remap ignores the valid bit.
         await alias.program(cfg, valid=False)
+        outf = SepFilterBank(self, "out")
+        await outf.program_pair(OUT_PAIR, SMU_PAGE, SMU_PAGE + 0xFFF)
         out = SepFabricTap("PR-OUT").start()
         out_mark = out.mark()
         gated = alias_probe_seq(cfg.access_addr)
         await self.start_seq(gated)
         out_ars = out.since(out_mark, "ar")
+        live_mark = out.mark()
+        live = alias_probe_seq(SMU_PAGE_WORD)
+        await self.start_seq(live)
+        live_ars = out.since(live_mark, "ar")
         await out.stop()
+        for idx in OUT_PAIR:
+            await outf.restore_reset(idx)
         local = (
             f"addr=0x{cfg.access_addr:08x} pr_out_ar={len(out_ars)} "
-            f"[{' '.join(b.fmt() for b in out_ars)}]"
+            f"[{' '.join(b.fmt() for b in out_ars)}] "
+            f"live_addr=0x{SMU_PAGE_WORD:x} live_ar={len(live_ars)} "
+            f"[{' '.join(b.fmt() for b in live_ars)}]"
         )
         # Same text as SepChkLog.ctrl(): the outbound responder also answers OKAY
         # with zero, so CHK-VALID-GATE needs the gated read to stay off the
-        # outbound port. An AR on PR-OUT fails the leaf.
-        if out_ars:
+        # outbound port. An AR on PR-OUT fails the leaf. The liveness read in the
+        # same window must show its one AR there, so an absence cannot come from
+        # a tap that records nothing.
+        if out_ars or len(live_ars) != 1 or live_ars[0].addr != SMU_PAGE_WORD:
             self.logger.error("CTRL-MISSING VALID-GATE-LOCAL: %s", local)
             raise AssertionError(f"CTRL-MISSING VALID-GATE-LOCAL: {local}")
         self.logger.info("CTRL-VALID-GATE-LOCAL seen: %s", local)
