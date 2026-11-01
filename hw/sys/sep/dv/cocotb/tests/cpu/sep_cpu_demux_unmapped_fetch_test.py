@@ -147,7 +147,7 @@ if ROM_BYTES // 8 != ROM_WORDS:
     raise RuntimeError("the ROM image model and the memory map disagree on the ROM size")
 
 _CPU_CTRL = RegBlock("SEP_CPU_CTRL")
-_OUTF = RegBlock("OUTBOUND_FILTER_CTRL_0_")
+_OUTF = RegBlock("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_")
 NMI_VEC_ADDR = _CPU_CTRL.addr("SEP_NMI_VEC")
 MBX = _CPU_CTRL.reset("SMU_GLOBAL_BASE_ADDR") & _CPU_CTRL.mask("SMU_GLOBAL_BASE_ADDR")
 # The mailbox address has bit 55 clear, so the SMU path delivers it non-secure.

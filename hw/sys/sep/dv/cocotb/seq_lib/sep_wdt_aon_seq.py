@@ -38,6 +38,10 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 WDT_BASE = sym("WDT_TIMER_REG_MAP_BASE_ADDR")
+# Bench-LSU timeout for a watchdog register access, in clk_wdt_i periods: a read
+# of an AON-domain register waits for the register CDC of the previous write to
+# land (about 11 to 17 periods; theory_of_operation.md:25-28 of the aon_timer).
+WDT_CDC_CLKS = 50
 WKUP_CTRL = WDT_TIMER.addr("WKUP_CTRL")
 WKUP_THOLD_HI = WDT_TIMER.addr("WKUP_THOLD_HI")
 WKUP_THOLD_LO = WDT_TIMER.addr("WKUP_THOLD_LO")

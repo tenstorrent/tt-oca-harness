@@ -176,7 +176,7 @@ passing each time.
 ===== 4. `aou_fdi_t1_bringup_test`
 Class `aou_fdi_t1_bringup_test` extends `uvm_test` (`uvm/tests/fdi/aou_fdi_t1_bringup_test.svh`).
 
-*Purpose.* FDI bringup on the real DUT, RTL state encoding:
+*Purpose.* FDI bringup on the real DUT, with UCIe state encodings:
 1. reset; the L2 agent runs the Adapter side of bringup (clk_req
 handshake, inband_pres) with pl_clk_req released, so the DUT waits in
 WAIT_PRESENCE until I_SW_ACTIVATE_START;
@@ -185,7 +185,12 @@ poisoned cancelled halves and bubbles go to the DUT RX;
 3. APB AOU_INIT.activate_start (0x08 bit 0) makes the core send an
 ActivateReq, which the L1 monitor must capture on the DUT TX;
 4. link events (Retrain, L1 entry/exit) and more flits.
-The bringup model and the L1/L2 rule checks run throughout.
+The bringup model and the L1/L2 rule checks run throughout. Software's
+part of LinkError recovery (MAS §7.3.6) runs in the background: once
+O_FDI_FSM_STATE reports LinkError it writes AOU_CON0.AOU_SW_RESET after a
+random delay (+sw_reset_delay_max=N bounds it), before or after the
+Adapter has reached Reset. Until then the DUT must hold the link down
+(guide §6.6.3), which the bringup model checks.
 
 *Procedure.* The class's own `run_phase` (see the file).
 
@@ -210,13 +215,13 @@ The bringup model and the L1/L2 rule checks run throughout.
 ===== 5. `aou_fdi_t1_bringup_spec_test`
 Class `aou_fdi_t1_bringup_spec_test` extends `aou_fdi_t1_bringup_test` (`uvm/tests/fdi/aou_fdi_t1_bringup_spec_test.svh`).
 
-*Purpose.* The bringup test with UCIe state encodings. Reset/Active bringup works
-(those codes agree), then the Adapter reports Retrain as 1011b. A
-compliant DUT leaves Active and ends Retrain with a NOP->Active request;
-with BUGS/001 the DUT ignores the code. Expected to fail
-(expected_fail.yaml).
+*Purpose.* The bringup test with UCIe state encodings and a Retrain alone as its link
+event: the Adapter reports Retrain as 1011b, and a compliant DUT leaves
+Active and ends Retrain with a NOP->Active request (FDI-R48).
 
 *Procedure.* The class's own `run_phase` (see the file).
+
+*Rules named.* `FDI-R48`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -239,10 +244,9 @@ Class `aou_fdi_t1_linkerror_spec_test` extends `aou_fdi_t1_bringup_test` (`uvm/t
 *Purpose.* The bringup test with UCIe state encodings and a LinkError the protocol
 layer raises itself (I_SW_LINKERROR_INJECT). UCIe r1.1 Table 8-2: the
 protocol layer signals it on lp_linkerror, and the Adapter takes the link
-to LinkError, then Reset, once it sees it. AOU_TOP has no lp_linkerror
-(BUGS/002), so the bringup model reports FDI-M07. The Adapter then takes
-the link down anyway, which brings the DUT back. Expected to fail
-(expected_fail.yaml).
+to LinkError, then Reset, once it sees it. The bringup model checks the
+raise and hold on the DUT's O_LP_LINKERROR (FDI-M07); the Adapter then
+takes the link down, which brings the DUT back.
 
 *Procedure.* The class's own `run_phase` (see the file).
 
@@ -268,23 +272,31 @@ the link down anyway, which brings the DUT back. Expected to fail
 Class `aou_fdi_t1_linkdown_spec_test` extends `aou_fdi_t1_bringup_test` (`uvm/tests/fdi/aou_fdi_t1_linkdown_spec_test.svh`).
 
 *Purpose.* The bringup test with UCIe state encodings and every way the link goes
-down (BUGS/001 item 4). NOP is ignored outside Reset (r1.1 Table 8-3), so:
-1. teardown: I_SW_DEACTIVATE_START with the AoU core deactivated; the DUT
-requests LinkReset or Disabled, the Adapter goes there and returns to
-Reset on the DUT's Active request (§8.3.3.5/8.3.3.6); then bringup,
-whose training trigger the DUT holds until software pulses
-I_SW_ACTIVATE_START (the Adapter model does it);
-2. Adapter-initiated LinkReset, then Disabled: Link Status Down
-(Table 8-2), so O_FDI_LINK_UP drops; Reset and bringup follow (the
-DUT restarts by itself after the LinkReset, and after the Disabled, a
-software Link Disable, only on I_SW_ACTIVATE_START);
+down. The DUT never takes the link down except on an error, and never
+restarts it: software does both on the UCIe controller (integrator guide
+§6.6.2 "After a link-down"), which the Adapter model plays after
+sw_restart_delay cycles in Reset. So:
+1. a software Link Disable with the AoU core still deactivated: the
+Adapter reports Disabled (Link Status Down, Table 8-2: O_FDI_LINK_UP
+drops, O_FDI_FSM_STATE follows), the DUT requests nothing (NOP,
+lp_wake_req low), then Reset and the Adapter's bringup;
+2. Adapter-initiated LinkReset, then Disabled, with AoU activated: the
+same, with flits around them;
 3. I_SW_LINKERROR_INJECT: lp_linkerror, the Adapter enters LinkError and
-leaves it only on Active with lp_linkerror=0 (§8.3.3.7, FDI-R49).
+holds it while lp_linkerror is 1 (FDI-R49), then leaves on its own;
+the DUT holds the link down until AOU_SW_RESET (the base test's
+software) and requests nothing.
+Every link-down that finds the AoU core out of DISABLED (here: ACTIVATE,
+its ActivateReq never answered) raises INT_FDI_LINK_DOWN and the core
+disables itself; one that finds it DISABLED (1.) raises nothing (T1-L51).
+This test's software clears the sticky bit with write 1, as the MAS
+handler does; the ACTIVATE_START it never cleared re-activates the core
+once the link is up again, so each later link-down finds it in ACTIVATE.
 The bringup model checks the DUT side throughout.
 
 *Procedure.* The class's own `run_phase` (see the file).
 
-*Rules named.* `FDI-R49`
+*Rules named.* `FDI-R49`, `T1-L51`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -301,7 +313,7 @@ The bringup model checks the DUT side throughout.
 * 18.18: Disabled: Adapter-initiated entry and exit
 * 22.1: Verify `AOU_FDI_BRINGUP_CTRL` state transitions
 * 22.4: Verify bringup error handling
-* 22.7: Restart after link-down needs NOP to Active on lp_state_req
+* 22.7: Restart after link-down is software's on the UCIe controller: the DUT requests nothing in LinkError, LinkReset, Disabled or Reset
 
 [[aou-proc-aou_t1_link_event_test]]
 ===== 8. `aou_t1_link_event_test`
@@ -345,7 +357,10 @@ Class `aou_t1_lp_mode_test` extends `aou_base_test` (`uvm/tests/aou_t1_lp_mode_t
 TX low-power mode (plan 21.x). With TX_LP_MODE=0 the DUT keeps sending
 flits on an idle ENABLED link; with TX_LP_MODE=1 and threshold 0 it sends
 none without work (BUGS/017 interim: threshold 0 = no heartbeat). Traffic
-must pass in both modes.
+must pass in both modes. TX_LP_MODE is static configuration (T1-LP03), so
+each mode is its own activation session: deactivate, program, activate.
+
+*Rules named.* `T1-LP03`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -362,7 +377,7 @@ must pass in both modes.
 * 21.1: `tx_lp_mode=0`; verify continuous FDI transmission
 * 21.2: `tx_lp_mode=1`; verify TX only on pending traffic
 * 21.4: `tx_lp_mode_threshold = 0`; verify no idle flits
-* 21.7: Switch between LP mode enabled/disabled
+* 21.7: Switch between LP mode enabled/disabled across activation sessions (programmed only while DISABLED)
 
 [[aou-proc-aou_t1_inject_test]]
 ===== 10. `aou_t1_inject_test`
@@ -374,8 +389,8 @@ Class `aou_t1_inject_test` extends `aou_base_test` (`uvm/tests/aou_t1_inject_tes
 
 L3 error injection through the expectation registry: after traffic, the
 remote die sends a CrdtGrant with RsvdZero bits set (AOU-R11) and then a
-message with a reserved MSGTYPE (AOU-R3); the checkers must flag both. The DUT's reaction is unspecified (BUGS/012):
-INT_REQ_LINKRESET is allowed, nothing else.
+message with a reserved MSGTYPE (AOU-R3); the checkers must flag both. The DUT's reaction is left to the
+implementation (AoU v0.8 8.3.3): INT_REQ_LINKRESET is allowed, nothing else.
 
 *Rules named.* `AOU-R11`, `AOU-R3`
 
@@ -401,9 +416,9 @@ Class `aou_t1_sw_reset_test` extends `aou_base_test` (`uvm/tests/aou_t1_sw_reset
 
 *Procedure.* Virtual sequence `aou_t1_sw_reset_vseq` (`uvm/seq_lib/aou_t1_sw_reset_vseq.svh`):
 
-AOU_SW_RESET between traffic phases: BUGS/007 interim expectation (every
-SFR and the activation state reset); the remote side recovers, activation
-runs again and traffic passes.
+AOU_SW_RESET between traffic phases (MAS 7.3.6: every SFR, the activation
+state and the RX FIFOs reset); the remote side recovers, activation runs
+again and traffic passes.
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -475,13 +490,11 @@ directions at once (+dp_dir=both; D41). +dp_profile picks a profile
 | `aou_dp_random_test.dp_dir-both.active_phy-1.park_idle_phy-1.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-50.2xmix-tp64_128` | `+dp_dir=both +active_phy=1 +park_idle_phy=1 +fdi_trdy=holes +fdi_stall_pct=5 +fdi_stall_mid_pct=50` | 1-2 | `2xmix-tp64_128` | 18.25
 | `aou_dp_random_test.dp_dir-both.active_phy-1.park_idle_phy-1.fdi_trdy-holes.fdi_stall_pct-5.fdi_stall_mid_pct-50.2x512-tp32_64` | `+dp_dir=both +active_phy=1 +park_idle_phy=1 +fdi_trdy=holes +fdi_stall_pct=5 +fdi_stall_mid_pct=50` | 1-2 | `2x512-tp32_64` | 18.25
 | `aou_dp_random_test.dp_dir-r2l` | `+dp_dir=r2l` | 1-5 |  | 6.10,6.11,6.12,6.13,6.15,7.16,8.9,8.10,12.1,12.16,18.2
+| `aou_dp_random_test.dp_dir-r2l.wdata_first_pct-100` | `+dp_dir=r2l +wdata_first_pct=100` | 1-3 |  | 4.32
 | `aou_dp_random_test.dp_dir-both` | `+dp_dir=both` | 1-5 |  | 10.3,7.16,8.9,8.10
 | `aou_dp_random_test.dp_dir-both.dp_profile-stall` | `+dp_dir=both +dp_profile=stall` | 1-3 |  | 7.16
 | `aou_dp_random_test.dp_dir-both.small_size_pct-5` | `+dp_dir=both +small_size_pct=5` | 1-3 |  | 4.1,5.1,14.10,14.11
-| `aou_dp_random_test.dp_dir-both.1x512-sp64-p512` | `+dp_dir=both` | 1-3 | `1x512-sp64-p512` | 14.17
 | `aou_dp_random_test.dp_dir-both.1x512-sp64-nxt` | `+dp_dir=both` | 1-3 | `1x512-sp64-nxt` | 10.3,7.16,8.9,8.10
-| `aou_dp_random_test.dp_dir-both.4xmix4211-sp128-p512` | `+dp_dir=both` | 1-2 | `4xmix4211-sp128-p512` | 14.17
-| `aou_dp_random_test.dp_dir-both.4xmix4211-sp128-p256` | `+dp_dir=both` | 1-2 | `4xmix4211-sp128-p256` | 14.17
 | `aou_dp_random_test.small_size_pct-5.remote_bytes-32_128_64_32` | `+dp_dir=both +small_size_pct=5 +remote_bytes=32,128,64,32` | 1-2 | `4xmix4211-sp128` | 4.1,5.1,14.10,14.11
 | `aou_dp_random_test.small_size_pct-5.remote_bytes-128_64_32_128` | `+dp_dir=both +small_size_pct=5 +remote_bytes=128,64,32,128` | 1-2 | `4xmix2144-sp64` | 4.1,5.1,14.10,14.11
 | `aou_dp_random_test.small_size_pct-5.remote_bytes-64_32_128_64` | `+dp_dir=both +small_size_pct=5 +remote_bytes=64,32,128,64` | 1-2 | `4xmix4211-sp128` | 4.1,5.1,14.10,14.11
@@ -492,6 +505,7 @@ directions at once (+dp_dir=both; D41). +dp_profile picks a profile
 *Plan items.*
 
 * 4.1: Single 1-byte write request with WriteData and WriteResp
+* 4.32: Remote WriteData sent ahead of its WriteReq (one message to the whole burst, on several RPs at once) is held and written once the WriteReq arrives
 * 5.1: Single 1-byte read
 * 6.10: Verify granules 0-11 positioned at byte offset 2. All granules are verified when decoded
 * 6.11: Verify granules 12-23 positioned at byte offset 66. All granules are verified when decoded
@@ -507,7 +521,6 @@ directions at once (+dp_dir=both; D41). +dp_profile picks a profile
 * 12.16: Test RP with 512-bit AXI data width
 * 14.10: Verify WLAST regenerated correctly for single-beat
 * 14.11: Verify WLAST regenerated correctly for multi-beat burst
-* 14.17: AXI_PEER_DIE_MAX_DATA_WD below 1024
 * 18.2: Configure `FDI_CFG_SP_64B`; verify 64-byte chunks
 * 18.22: Stall corners: stallreq mid-flit (ack at the boundary), stallreq while trdy=0, stallreq with LP mode
 * 18.24: Flit-cancel corners: during a multi-flit message, repeated cancel, cancel of the second half, cancel with stall
@@ -552,6 +565,7 @@ in the flits to the DUT); none runs every channel at full rate
 | Scenario | Arguments | Seeds | Target | Plan items
 | `aou_stress_test.st_pol-random.st_crd-slow.fdi_trdy-random.fdi_stall_pct-8.fdi_stall_mid_pct-50` | `+st_pol=random +st_crd=slow +fdi_trdy=random +fdi_stall_pct=8 +fdi_stall_mid_pct=50` | 1-2 | `1x512-sp64` | 18.22
 | `aou_stress_test.st_pol-sparse.st_crd-mixed` | `+st_pol=sparse +st_crd=mixed` | 1-2 |  | 6.3,7.16
+| `aou_stress_test.st_pol-sparse.wdata_first_pct-100` | `+st_pol=sparse +wdata_first_pct=100` | 1-3 |  | 4.32,7.16
 | `aou_stress_test.st_pol-random.st_crd-slow` | `+st_pol=random +st_crd=slow` | 1-3 |  | 7.16
 | `aou_stress_test.st_pol-split.st_crd-grant` | `+st_pol=split +st_crd=grant` | 1-2 |  | 6.9,7.16
 | `aou_stress_test.st_pol-min.st_crd-hdr` | `+st_pol=min +st_crd=hdr` | 1-2 |  | 7.16
@@ -573,6 +587,7 @@ in the flits to the DUT); none runs every channel at full rate
 *Plan items.*
 
 * 4.1: Single 1-byte write request with WriteData and WriteResp
+* 4.32: Remote WriteData sent ahead of its WriteReq (one message to the whole burst, on several RPs at once) is held and written once the WriteReq arrives
 * 5.1: Single 1-byte read
 * 6.3: Pack different message types (WriteReq + ReadReq + WriteResp) in same flit. Sparse packing with bubble between messages
 * 6.9: Reassemble message spanning multiple flits on receive
@@ -638,7 +653,8 @@ Then traffic runs again, so leaving the idle state is covered too.
 Class `aou_dp_packing_test` extends `aou_dp_base_test` (`uvm/tests/datapath/aou_dp_packing_test.svh`).
 
 *Purpose.* Message packing (+dp_pack=wresp|crossflit|granule; plan 6.2, 6.9, 11.4,
-11.6, 11.7). aou_msg_stats requires the targeted layout to occur:
+11.6, 11.7). aou_msg_stats reports targeted layouts that did not occur
+(coverage, not an error):
 - wresp: many single-beat remote writes with zero-latency local B, so the
 DUT packs several 1-granule WriteResp into one flit.
 - crossflit: mixed sizes and lengths with the L3 packer allowed to span
@@ -677,7 +693,8 @@ Class `aou_fdi_t1_link_stress_test` extends `aou_fdi_t1_bringup_test` (`uvm/test
 *Purpose.* The bringup test followed by random Adapter-initiated link events
 (Retrain, L1, LinkError, LinkReset, clk_req wake) with flits between them,
 a random pl_trdy policy and random stand-alone stalls. pl_clk_req is held
-through bringup so the DUT restarts by itself after LinkError/LinkReset.
+through bringup so the DUT leaves WAIT_PRESENCE on it after the Adapter's
+restart from LinkError/LinkReset.
 
 *Procedure.* The class's own `run_phase` (see the file).
 
@@ -709,9 +726,8 @@ inband_pres (aou_link_event_vseq).
 
 *Procedure.* Virtual sequence `aou_link_event_vseq` (`uvm/seq_lib/lifecycle/aou_link_event_vseq.svh`):
 
-Adapter-initiated FDI link events while AoU is ENABLED and traffic runs
-(fdi_enc=RTL). AoU's reaction is unspecified (BUGS/015); the interim
-expectations are:
+Adapter-initiated FDI link events while AoU is ENABLED and traffic runs.
+AoU's reaction is unspecified (BUGS/015); the interim expectations are:
 retrain, clk_wake  transparent: AoU stays ENABLED, no interrupt, every
 transaction completes with correct data;
 l1                 software deactivates first (MAS §7.3.6), the adapter
@@ -722,23 +738,33 @@ link_reset,        rise; software resets AOU_CORE while the link is down,
 inband_drop,       brings it up and activates again. In-flight
 disabled           transactions are aborted by the reset (an M-port ID
 mismatch interrupt is tolerated); all later traffic
-must complete. Disabled is Adapter-initiated and needs
-fdi_enc=SPEC, which the test selects for it.
-teardown_int       a deliberate teardown (software deactivation, then
-I_SW_DEACTIVATE_START): the DUT holds the training
-trigger until an activation request. Only
-I_INT_ACTIVATE_START gives it here, raised by local
-traffic queued while the link is down; the Adapter's
-software pulse is off, so a DUT that ignores the
-interrupt fails FDI-R51. fdi_enc=SPEC.
+must complete. Disabled is Adapter-initiated.
+sw_disable         software deactivates AoU (the FDI link stays Active:
+the bringup model holds BRG_ACTIVE) and then disables
+the link on the UCIe controller (Adapter Disabled).
+Local traffic queued while the link is down raises
+INT_ACTIVATE_START; the DUT must request nothing of
+the link until software restarts it (the model's NOP
+in LINKDOWN and RESET), and the activation then runs
+on the interrupt once the link is up.
+l1_act             software deactivates, the adapter enters L1, and
+software writes ACTIVATE_START while the link is in
+L1: the link stays in L1 (the write wakes nothing),
+the handshake starts and its ActivateReq waits; the
+Adapter's PM exit (clk_req, Retrain, Active) lets the
+activation complete (T1-L50).
+retrain_act        software deactivates and writes ACTIVATE_START while
+the Adapter holds the link in Retrain: the handshake
+completes once the link is Active again (T1-L50).
+A link loss with AoU in use (linkerror, link_reset, inband_drop, disabled)
+raises INT_FDI_LINK_DOWN once and the DUT disables itself (T1-L48/L49,
+aou_base_test_seq); with +link_down_mask=1 the pin stays low and the
+sticky bit is checked instead.
 Knobs: +event=retrain|clk_wake|l1|linkerror|link_reset|inband_drop|disabled|
-teardown_int|rand (rand never picks disabled or teardown_int)
+sw_disable|l1_act|retrain_act|rand (rand never picks disabled, sw_disable,
+l1_act or retrain_act) +link_down_mask +loops +T1_TXN.
 
-----
-+loops +T1_TXN.
-----
-
-*Rules named.* `FDI-R51`
+*Rules named.* `T1-L48`, `T1-L50`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -749,7 +775,7 @@ teardown_int|rand (rand never picks disabled or teardown_int)
 | Scenario | Arguments | Seeds | Target | Plan items
 | `aou_link_event_test.event-linkerror.le_mid_flit_pct-100` | `+event=linkerror +le_mid_flit_pct=100` | 1-2 |  | 18.23
 | `aou_link_event_test.event-disabled` | `+event=disabled` | 1-2 |  | 18.18
-| `aou_link_event_test.event-teardown_int` | `+event=teardown_int` | 1-2 |  | 18.17
+| `aou_link_event_test.event-sw_disable` | `+event=sw_disable` | 1-2 |  | 18.18
 | `aou_link_event_test.event-l1.active_phy-1.park_idle_phy-1.2xmix-tp64_128` | `+event=l1 +active_phy=1 +park_idle_phy=1` | 1 | `2xmix-tp64_128` | 18.25
 | `aou_link_event_test.event-retrain.active_phy-1.park_idle_phy-1.2xmix-tp64_128` | `+event=retrain +active_phy=1 +park_idle_phy=1` | 1 | `2xmix-tp64_128` | 18.25
 | `aou_link_event_test.event-l1.active_phy-1.park_idle_phy-1.2x512-tp32_64` | `+event=l1 +active_phy=1 +park_idle_phy=1` | 1 | `2x512-tp32_64` | 18.25
@@ -760,6 +786,9 @@ teardown_int|rand (rand never picks disabled or teardown_int)
 | `aou_link_event_test.event-linkerror` | `+event=linkerror` | 1-2 |  | 22.1,22.4,11.11,18.14
 | `aou_link_event_test.event-link_reset` | `+event=link_reset` | 1 |  | 22.1,22.4,11.11,18.17
 | `aou_link_event_test.event-inband_drop` | `+event=inband_drop` | 1 |  | 22.1,22.4,18.21
+| `aou_link_event_test.event-link_reset.link_down_mask-1` | `+event=link_reset +link_down_mask=1` | 1 |  | 22.1,22.4,11.11,18.17
+| `aou_link_event_test.event-l1_act` | `+event=l1_act` | 1-2 |  | 22.1,2.4,18.15
+| `aou_link_event_test.event-retrain_act` | `+event=retrain_act` | 1-2 |  | 22.1,18.13
 | `aou_link_event_test` |  | 1-2 |  | 22.1,22.4,22.6
 | `aou_link_event_test.event-retrain.rtl_asserts-1` | `+event=retrain +rtl_asserts=1` | 1 | `1x512-sp64-assert` | 11.18
 |===
@@ -807,7 +836,6 @@ scoreboard checks bytes, OKAY responses and RLAST on every transfer (4.22,
 | `aou_dp_size_test.dp_size-0_1_2_3_4_5_6` | `+dp_size=0,1,2,3,4,5,6` | 1-3 |  | 4.1,4.2,4.3,4.4,4.5,4.6,4.7,4.22,5.1,5.2,5.3,5.4,5.5,5.6,5.7,5.18,5.20,7.1,7.2,7.10,11.13,14.8
 | `aou_dp_size_test.dp_size-7.remote_bytes-128.dp_dir-r2l` | `+dp_size=7 +remote_bytes=128 +dp_dir=r2l` | 1-2 |  | 4.8,5.8,7.3,14.6
 | `aou_dp_size_test.dp_size-6.dp_len-1.dp_dir-l2r` | `+dp_size=6 +dp_len=1 +dp_dir=l2r` | 1-2 |  | 4.8,5.8,7.3
-| `aou_dp_size_test.dp_size-0_1_2_3_4_5_6.1x512-sp64-p512` | `+dp_size=0,1,2,3,4,5,6` | 1-2 | `1x512-sp64-p512` | 14.17
 |===
 
 *Plan items.*
@@ -838,7 +866,6 @@ scoreboard checks bytes, OKAY responses and RLAST on every transfer (4.22,
 * 11.13: AWLEN=0 / ARLEN=0 (single beat)
 * 14.6: Local 512-bit receives 1024-bit remote data; verify downsizing
 * 14.8: Local and remote both 512-bit; verify bypass path
-* 14.17: AXI_PEER_DIE_MAX_DATA_WD below 1024
 
 [[aou-proc-aou_dp_burst_test]]
 ===== 20. `aou_dp_burst_test`
@@ -859,6 +886,7 @@ size and start address, each write read back; RLAST only on the last beat
 | Scenario | Arguments | Seeds | Target | Plan items
 | `aou_dp_burst_test.dp_len-1_3_7_15` | `+dp_len=1,3,7,15` | 1-3 |  | 4.9,4.10,4.11,4.12,5.9,5.10,5.11,5.12,5.19
 | `aou_dp_burst_test.dp_len-31_63_255` | `+dp_len=31,63,255` | 1-2 |  | 4.13,4.14,4.15,5.13,5.14,5.15
+| `aou_dp_burst_test.dp_len-31_63_255.wdata_first_pct-100.wdata_first_beats-256` | `+dp_len=31,63,255 +wdata_first_pct=100 +wdata_first_beats=256` | 1-2 |  | 4.13,4.14,4.15,4.32
 | `aou_dp_burst_test.dp_len-31_63_255.rtl_asserts-1` | `+dp_len=31,63,255 +rtl_asserts=1` | 1 | `1x512-sp64-assert` | 11.18
 |===
 
@@ -871,6 +899,7 @@ size and start address, each write read back; RLAST only on the last beat
 * 4.13: 32-beat incrementing burst write
 * 4.14: 64-beat incrementing burst write
 * 4.15: Write burst with AWLEN=255 (256 beats)
+* 4.32: Remote WriteData sent ahead of its WriteReq (one message to the whole burst, on several RPs at once) is held and written once the WriteReq arrives
 * 5.9: 2-beat incrementing burst read
 * 5.10: 4-beat incrementing burst read
 * 5.11: 8-beat incrementing burst read
@@ -947,12 +976,11 @@ Class `aou_dp_b_zero_test` extends `aou_dp_base_test` (`uvm/tests/datapath/aou_d
 
 *Purpose.* Issue #64 (plan 16.16): back-to-back single-beat writes with zero delays end
 to end, so the M-port subordinate presents B in the cycle after the AW/W
-handshakes (and R after AR); both directions. The AXI monitors cover the
-zero-cycle case (zero_cg); DP-R01 fails the test if the M port never saw it.
+handshakes (and R after AR); both directions. The AXI monitors count the
+zero-cycle case as coverage (axi.zero_cg); report_phase notes when the M port
+never saw it. That is stimulus quality, never an error.
 
 *Procedure.* The base class's virtual sequence `aou_dp_vseq`, configured by this class and its arguments.
-
-*Rules named.* `DP-R01`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -984,8 +1012,9 @@ response to its request by ID and order. Both directions.
 
 subordinate answers every burst that many cycles late and the remote die
 keeps 64 requests of one kind in flight per RP, so the M-port pending-ID
-tables fill: the env's aou_t1_mo_chk holds the M port to 32 (FEAT-R22) and
-its cg_mo full bin records that the limit was reached; the DUT must
+tables fill: the env's aou_t1_mo_chk holds the RP to 32 requests in service
+at the M port (FEAT-R22) and its cg_mo full bin records that the limit was
+reached; the DUT must
 back-pressure without an error or a lost transfer.
 
 *Procedure.* The base class's virtual sequence `aou_dp_vseq`, configured by this class and its arguments.
@@ -1040,8 +1069,8 @@ the legal AxCACHE encodings, separately for writes and reads
 its AXI messages. The env's aou_t1_attr_chk checks the attributes on both
 ends of the link and FLEX 0 from the DUT, the scoreboard the data (FLEX the
 DUT receives must be ignored; it has no USER ports), and xfer_cov.attr_cg
-shows every value was carried. FLEX[15:12] (v0.7 PROFEXTLEN) stays 0,
-BUGS/027.
+shows every value was carried. FLEX[15:12] (v0.7 PROFEXTLEN) stays 0: the
+Base Profile ignores it and v0.8 removes it.
 
 ----
 +attr_excl=1 (plan 4.25, 5.23) adds the exclusive rounds of aou_attr_vseq
@@ -1339,7 +1368,8 @@ stall and its release (FEAT-R15/R16), the vseq WRITE_RESP_DONE once drained.
 ----
 
 reports INT_EARLY_WDT_ERR while an AW waits at the limit (FEAT-R21 is not
-checked: O_PENDING_CNT_OVER, BUGS/005, was removed by PR #89 for the watchdog).
+checked: PR #89 replaced O_PENDING_CNT_OVER with the write watchdog, which
+aou_t1_wdt_chk checks and aou_wdt_test exercises).
 
 ----
 +early_toggle=1 (16.14): two traffic phases; between them, with every write
@@ -1403,7 +1433,7 @@ inverted (MAS 3.7.8); the checker judges the second phase by the new value.
 * 16.13: Verify `write_resp_done` bit when no pending writes
 * 16.14: Change `early_bresp_en` when `write_resp_done=1`
 * 16.15: Different `early_bresp_en` per RP
-* 16.17: Write kept waiting at the early-response limit (O_PENDING_CNT_OVER removed by PR #89; watchdog INT_EARLY_WDT_ERR observed, not checked)
+* 16.17: Write kept waiting at the early-response limit (O_PENDING_CNT_OVER removed by PR #89; the write watchdog that replaced it is 16.18-16.23)
 
 [[aou-proc-aou_qos_test]]
 ===== 31. `aou_qos_test`
@@ -1487,14 +1517,86 @@ returns to its own plane. With one RP the permutation is identity.
 * 12.10: Configure `dest_rp` register; verify correct routing
 * 12.11: Test all valid `dest_rp` permutations
 
+[[aou-proc-aou_wdt_test]]
+===== 33. `aou_wdt_test`
+Class `aou_wdt_test` extends `aou_dp_base_test` (`uvm/tests/features/aou_wdt_test.svh`).
+
+*Purpose.* Write-transaction watchdog (plan 16.17-16.23; MAS software-operation 7.2.6):
+aou_wdt_vseq hangs writes until the watchdog expires, clears it, resets the
+device and hangs them again; the env's aou_t1_wdt_chk judges every step.
+The case is +wdt_case=expiry|near_miss|masked|multi_rp (default expiry).
+near_miss: AW handshakes restart the count just before the threshold
+(needs a threshold of at least 8); masked: INT_EARLY_WDT_MASK set, then
+cleared with the status set; multi_rp: every RP hangs (several RPs).
+The threshold is +wdt_thr=T core cycles (default 300; 0 is legal). The
+device reset (+wdt_reset=sw|hard: AOU_SW_RESET or I_RESETN), the RP that
+hangs (+wdt_rp=r, not with multi_rp) and EARLY_BRESP_EN on every RP
+(+early_en=0|1; the watchdog counts either way) are random per seed unless
+given. WDT_EN is set on every RP; only the RPs that hang have writes
+outstanding.
+
+*Procedure.* Virtual sequence `aou_wdt_vseq` (`uvm/seq_lib/aou_wdt_vseq.svh`):
+
+Write-transaction watchdog (MAS software-operation 7.2.6; plan 16.17-16.23),
+stimulus only: the env's aou_t1_wdt_chk judges the DUT (FEAT-R23 to R28).
+The watchdog is for error capture: software reads it before it resets the
+device. aou_wdt_test programs the threshold T, WDT_EN on every RP and the
+mask before activation. A hang is the remote die answering every write
+`lat` cycles late (remote B latency with forked responses), so each write
+lands and only its B waits. The flow:
+1. 3T + 100 cycles with WDT_EN set and nothing outstanding;
+2. hang: writes on each RP in `rps` (multi_rp: starts staggered by T/2 +
+50 cycles). near_miss first restarts the count with single writes whose
+AW lands T-3..T idle cycles after the last handshake, the last ones in
+the cycle that would have expired;
+3. wait for each RP's expiry and read WRITE_EARLY_RESPONSE_RPn; masked:
+clear the mask, so the pin rises with the status set;
+4. W1C of WDT_TRANS_TIMEOUT_ERR on each RP, read-modify-write (the read
+updates the mirror, the write carries WDT_EN and EARLY_BRESP_EN back),
+then 3T + 200 cycles still hung with no second expiry, and a read;
+5. a device reset, AOU_SW_RESET (the MAS 7.3.6 sequence) or I_RESETN, then
+reprogram and activate;
+6. hang again: the reset re-armed the watchdog, so it expires again;
+7. the remote latency returns to normal and every write completes.
+A hang that ends with no expiry the checker could judge (the writes were
+answered before the threshold) proves nothing, so the sequence reports it
+as a stimulus failure. It is a check of the test, not of the DUT, and has
+no rule ID; it polls the checker's model once per cycle for a bounded time.
+
+*Rules named.* `FEAT-R23`
+
+*Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
+
+*Scenarios.*
+
+[cols="3,2,1,1,3",options="header"]
+|===
+| Scenario | Arguments | Seeds | Target | Plan items
+| `aou_wdt_test` |  | 1-2 |  | 16.18,16.22
+| `aou_wdt_test.wdt_case-near_miss.wdt_thr-64` | `+wdt_case=near_miss +wdt_thr=64` | 1-2 | `1x512-sp64` | 16.18,16.19,16.22
+| `aou_wdt_test.wdt_thr-0.wdt_reset-sw` | `+wdt_thr=0 +wdt_reset=sw` | 1-2 | `1x512-sp64` | 16.18,16.20,16.22
+| `aou_wdt_test.wdt_case-masked` | `+wdt_case=masked` | 1-2 | `1x512-sp64` | 16.18,16.21,16.22
+| `aou_wdt_test.wdt_case-multi_rp.4x512-sp64` | `+wdt_case=multi_rp` | 1-2 | `4x512-sp64` | 16.18,16.22,16.23
+| `aou_wdt_test.wdt_case-multi_rp.4xmix4211-sp128` | `+wdt_case=multi_rp` | 1-2 | `4xmix4211-sp128` | 16.18,16.22,16.23
+|===
+
+*Plan items.*
+
+* 16.18: Write watchdog expiry: writes outstanding with no AW or B handshake for WDT_THRESHOLD cycles set WDT_TRANS_TIMEOUT_ERR and INT_EARLY_WDT_ERR, with early response on or off
+* 16.19: Write watchdog count restarted by an AW handshake up to the cycle that would have expired: no expiry
+* 16.20: Write watchdog with WDT_THRESHOLD 0: expiry on the first cycle with a write outstanding and no handshake
+* 16.21: INT_EARLY_WDT_MASK gates INT_EARLY_WDT_ERR, not the status; clearing the mask with the status set raises the pin
+* 16.22: Write watchdog expires once per reset: the W1C clears status and pin, no second expiry while the RP stays hung, and a software or hard reset re-arms it
+* 16.23: Write watchdog on several RPs: each expires on its own, and the pin stays high while any RP is set
+
 [[aou-proc-aou_pack_test]]
-===== 33. `aou_pack_test`
+===== 34. `aou_pack_test`
 Class `aou_pack_test` extends `aou_dp_base_test` (`uvm/tests/stress/aou_pack_test.svh`).
 
 *Purpose.* Flit packing in both directions (plan 6.3-6.8, 6.14, 6.18-6.21, 11.1, 11.2,
 11.5, 11.9, 11.14). The remote die's L3 packer runs non-DUT-like policies;
-aou_pack_stats requires the targeted layouts to occur (DP-R01), and the
-scoreboard and L3 rule checks judge them. +pk=:
+aou_pack_stats reports targeted layouts that did not occur (coverage, not
+an error), and the scoreboard and L3 rule checks judge them. +pk=:
 crossflit  every L3 data message longer than split_at (1-7) is forced
 across the flit boundary; sizes 256/512/1024 (+remote_bytes)
 mixed      sparse layout (holes, random order, mixed credit grants) with
@@ -1515,8 +1617,6 @@ twists some modes use: `bursts` makes L3 hold its credited messages back in rand
 while traffic runs, so they leave as dense backlogs (full flits, mixed
 types); `act_cycles` deactivates and reactivates the link between traffic
 phases, so Activation messages meet traffic and credit grants.
-
-*Rules named.* `DP-R01`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -1565,7 +1665,7 @@ phases, so Activation messages meet traffic and credit grants.
 * 11.14: Test various `prof` and `profextlen` values
 
 [[aou-proc-aou_pattern_test]]
-===== 34. `aou_pattern_test`
+===== 35. `aou_pattern_test`
 Class `aou_pattern_test` extends `aou_dp_base_test` (`uvm/tests/stress/aou_pattern_test.svh`).
 
 *Purpose.* Data patterns written and read back in both directions (plan 7.4-7.9):
@@ -1603,14 +1703,14 @@ scoreboard compares every byte against the golden memories.
 * 7.9: Write address value as data; verify
 
 [[aou-proc-aou_addr_test]]
-===== 35. `aou_addr_test`
+===== 36. `aou_addr_test`
 Class `aou_addr_test` extends `aou_dp_base_test` (`uvm/tests/stress/aou_addr_test.svh`).
 
 *Purpose.* Address corners in both directions at once (plan 7.12-7.15): +dp_addr=
 zero|top|sweep|4k runs aou_addr_seq on the local manager (to the remote
 memory) and the remote manager (to the local memory) of RP0. A burst
-across 4KB is illegal AXI4 and is not sent; what the DUT does with one
-from the remote die is unspecified (BUGS/026 draft).
+across 4KB is illegal AXI4 (and the AoU v0.8 Basic Profile binds the
+remote die to that), so it is not sent and the DUT owes no result for one.
 
 *Procedure.* Virtual sequence `aou_addr_vseq` (`uvm/seq_lib/stress/aou_addr_vseq.svh`):
 
@@ -1637,7 +1737,7 @@ Runs aou_addr_seq (+dp_addr=) in both directions on RP0 (aou_addr_test).
 * 7.15: Sequential access across entire configured address space. AOU has no memory map
 
 [[aou-proc-aou_qos_order_test]]
-===== 36. `aou_qos_order_test`
+===== 37. `aou_qos_order_test`
 Class `aou_qos_order_test` extends `aou_dp_base_test` (`uvm/tests/stress/aou_qos_order_test.svh`).
 
 *Purpose.* QoS arbitration order with a TX backlog (plan 13.1-13.3, 13.5-13.11,
@@ -1739,7 +1839,7 @@ priorities) puts every RP in one tier.
 * 13.22: QoS timer extremes: TIMER_RESOLUTION and TIMER_THRESHOLD at 0 and at maximum
 
 [[aou-proc-aou_link_act_deact_test]]
-===== 37. `aou_link_act_deact_test`
+===== 38. `aou_link_act_deact_test`
 Class `aou_link_act_deact_test` extends `aou_base_test` (`uvm/tests/link/aou_link_act_deact_test.svh`).
 
 *Purpose.* Activation/deactivation loops from either side and each CREDIT_MANAGE value
@@ -1781,6 +1881,7 @@ keeps the Adapter from bringing the link up after reset.
 | `aou_link_act_deact_test.who-both.order-simul.deact_who-both.busy-0` | `+who=both +order=simul +deact_who=both +busy=0` | 1-2 |  | 1.2,2.1
 | `aou_link_act_deact_test.who-remote.deact_who-remote.credit_manage-1.busy-1` | `+who=remote +deact_who=remote +credit_manage=1 +busy=1` | 1-2 |  | 1.1,2.2,2.3,2.9,19.1,19.2,2.13,2.14
 | `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1` | `+who=apb +deact_who=apb +credit_manage=0 +busy=1` | 1-2 |  | 2.2,2.3,2.8,2.13,2.14
+| `aou_link_act_deact_test.who-both.order-simul.deact_who-both.credit_manage-0.busy-1.fdi_trdy-random.4x512-sp64` | `+who=both +order=simul +deact_who=both +credit_manage=0 +busy=1 +fdi_trdy=random` | 1-13 | `4x512-sp64` | 2.2,2.3,2.8,2.13
 | `aou_link_act_deact_test.early_act-1` | `+early_act=1` | 1-3 |  | 1.11,1.1
 | `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1.pclk_ps-40000` | `+who=apb +deact_who=apb +credit_manage=0 +busy=1 +pclk_ps=40000` | 1 |  | 11.17
 | `aou_link_act_deact_test.who-apb.deact_who-apb.credit_manage-0.busy-1.pclk_ps-600` | `+who=apb +deact_who=apb +credit_manage=0 +busy=1 +pclk_ps=600` | 1 |  | 11.17
@@ -1811,7 +1912,7 @@ keeps the Adapter from bringing the link up after reset.
 * 19.2: Trigger and clear `int_deactivate_start`
 
 [[aou-proc-aou_link_force_deact_test]]
-===== 38. `aou_link_force_deact_test`
+===== 39. `aou_link_force_deact_test`
 Class `aou_link_force_deact_test` extends `aou_base_test` (`uvm/tests/link/aou_link_force_deact_test.svh`).
 
 *Purpose.* Forced deactivation through DEACTIVATE_FORCE (aou_link_force_deact_vseq).
@@ -1837,7 +1938,7 @@ with PropertyReq=1, which the spec does not allow (BUGS/010).
 * 2.7: Test `deactivate_force` CSR field; verify immediate deactivation
 
 [[aou-proc-aou_act_after_deact_test]]
-===== 39. `aou_act_after_deact_test`
+===== 40. `aou_act_after_deact_test`
 Class `aou_act_after_deact_test` extends `aou_base_test` (`uvm/tests/link/aou_act_after_deact_test.svh`).
 
 *Purpose.* ACTIVATE_START swept across the end of a deactivation (aou_act_after_deact_vseq,
@@ -1887,7 +1988,7 @@ Knobs: +offsets=<o,o,..> (cycles, may be negative; default -12..44)
 * 6.20: Verify rules for activation messages
 
 [[aou-proc-aou_credit_return_test]]
-===== 40. `aou_credit_return_test`
+===== 41. `aou_credit_return_test`
 Class `aou_credit_return_test` extends `aou_base_test` (`uvm/tests/link/aou_credit_return_test.svh`).
 
 *Purpose.* Credit advertisement and return corners (aou_credit_return_vseq).
@@ -1947,7 +2048,7 @@ withheld|rand +depth=<granules, all classes> +overgrant=0|1 +T1_TXN.
 * 11.18: Regression on a build with the RTL's embedded ASSERTION_ON checks
 
 [[aou-proc-aou_zero_credit_test]]
-===== 41. `aou_zero_credit_test`
+===== 42. `aou_zero_credit_test`
 Class `aou_zero_credit_test` extends `aou_base_test` (`uvm/tests/link/aou_zero_credit_test.svh`).
 
 *Purpose.* Zero credit for one class, then a late grant (aou_zero_credit_vseq).
@@ -2043,7 +2144,7 @@ completes (scoreboard).
 * 8.6: Send maximum outstanding reads per credit limit
 
 [[aou-proc-aou_act_rx_drain_test]]
-===== 42. `aou_act_rx_drain_test`
+===== 43. `aou_act_rx_drain_test`
 Class `aou_act_rx_drain_test` extends `aou_base_test` (`uvm/tests/link/aou_act_rx_drain_test.svh`).
 
 *Purpose.* Re-activation with remote requests still in the DUT's RX FIFO
@@ -2080,7 +2181,7 @@ Knobs: +hold=<cycles> +loops +T1_TXN=<per RP>.
 * 1.10: Activation waits while the RX FIFO holds data: ACTIVATE_START is not acted on until the RX FIFO drains (re-activation with the M port back-pressured)
 
 [[aou-proc-aou_rx_credit_test]]
-===== 43. `aou_rx_credit_test`
+===== 44. `aou_rx_credit_test`
 Class `aou_rx_credit_test` extends `aou_base_test` (`uvm/tests/link/aou_rx_credit_test.svh`).
 
 *Purpose.* The DUT's advertised RX credit against its FIFO depths, and credit held while
@@ -2122,10 +2223,10 @@ while held>.
 * 3.25: Non-default RX FIFO depths and RS_EN=0: maximum credit follows the depth
 
 [[aou-proc-aou_deact_ctrl_test]]
-===== 44. `aou_deact_ctrl_test`
+===== 45. `aou_deact_ctrl_test`
 Class `aou_deact_ctrl_test` extends `aou_base_test` (`uvm/tests/link/aou_deact_ctrl_test.svh`).
 
-*Purpose.* AOU_INIT deactivation controls: the DEACTIVATE_TIME_OUT_VALUE gate and
+*Purpose.* AOU_INIT deactivation controls: the DEACTIVATE_TIME_OUT_VALUE quiet window and
 INT_DEACTIVATE_PROPERTY (aou_deact_ctrl_vseq, +mode=tov|property).
 
 *Procedure.* Virtual sequence `aou_deact_ctrl_vseq` (`uvm/seq_lib/link/aou_deact_ctrl_vseq.svh`):
@@ -2139,9 +2240,9 @@ Deactivation controls in AOU_INIT.
 value v in +tov_values (default 0..7, shuffled) the remote die starts a few
 reads and software sets DEACTIVATE_START (CREDIT_MANAGE=1) +0..200 cycles
 later, so the DUT's last ReadData lands near the deactivation and its
-DeactivateReq has to wait out the 2^(v+3)-cycle quiet window behind it.
-aou_t1_rx_fifo_chk checks the window on every DeactivateReq (T1-L46; the
-quiet-window reading is the BUGS/057 interim).
+DeactivateReq has to wait out the 2^(v+3)-cycle quiet window behind it
+(MAS 7.1: the window may already have elapsed when the TX was idle).
+aou_t1_rx_fifo_chk checks the window on every DeactivateReq (T1-L46).
 
 ----
 +mode=property (plan 2.10; BUGS/010, which covers the bit too): the remote
@@ -2170,10 +2271,10 @@ before any DeactivateReq, in DEACTIVATE and again in the next ENABLED epoch
 *Plan items.*
 
 * 2.10: Verify `int_deactivate_property` status bit during deactivation
-* 2.12: DEACTIVATE_TIME_OUT_VALUE sweep: the DeactivateReq gate delay is 2^(v+3) cycles
+* 2.12: DEACTIVATE_TIME_OUT_VALUE sweep: a quiet window of 2^(v+3) cycles with nothing to transmit
 
 [[aou-proc-aou_remote_react_test]]
-===== 45. `aou_remote_react_test`
+===== 46. `aou_remote_react_test`
 Class `aou_remote_react_test` extends `aou_base_test` (`uvm/tests/link/aou_remote_react_test.svh`).
 
 *Purpose.* The remote die re-activates in the flit after its DeactivateAck
@@ -2184,24 +2285,11 @@ Class `aou_remote_react_test` extends `aou_base_test` (`uvm/tests/link/aou_remot
 The remote die deactivates and re-activates at once: its ActivateReq follows
 its own DeactivateAck by one flit, which AoU 8.4 allows (DISABLED may send
 ActivateReq). The DUT reaches DISABLED a couple of cycles after that Ack, so
-the Req must find it DISABLED, not DEACTIVATE (no INVALID_ACTMSG).
-A remote-initiated deactivation also takes the DUT's FDI link down
-too: the DUT requests LinkReset once DISABLED. That is a deliberate
-teardown, so the DUT holds the training trigger until an activation request
-(UCIe r3.0 10.3.3.8). When the remote's ActivateReq reaches the DUT before the link is
-down, it gives that request (INT_ACTIVATE_START): the Adapter's software
-pulse is then off, so the trigger must come from the DUT itself (FDI-R51).
-When the teardown closes the mainband first, nothing local asks for the
-link and software restarts it (the Adapter's sw_restart_delay pulse).
-Either way the activation exchange straddles the FDI reset, so the system
-model resets both dies while the link is down (cfg.sysrst_on_linkdown,
-relink()): the remote's Req and any answer the DUT queued are void, both
-dies come back DISABLED, the test activates them again, and an answer from
-before the reset that still goes out is an illegal message to the checkers
-(AOU-R40).
+the Req must find it DISABLED, not DEACTIVATE (no INVALID_ACTMSG). The FDI
+link stays Active across the deactivation (a deactivation never takes it
+down; the bringup model holds BRG_ACTIVE), so the Req raises
+INT_ACTIVATE_START and software activates the DUT again from there.
 Knobs: +rounds=N (default 2..4) +T1_TXN.
-
-*Rules named.* `AOU-R40`, `FDI-R51`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -2220,7 +2308,7 @@ Knobs: +rounds=N (default 2..4) +T1_TXN.
 * 18.17: LinkReset: Adapter state and the DUT's request, O_AOU_REQ_LINKRESET and its mask
 
 [[aou-proc-aou_act_flit_test]]
-===== 46. `aou_act_flit_test`
+===== 47. `aou_act_flit_test`
 Class `aou_act_flit_test` extends `aou_base_test` (`uvm/tests/link/aou_act_flit_test.svh`).
 
 *Purpose.* Credited messages waiting as the DUT sends an Activation message
@@ -2263,7 +2351,7 @@ within a flit time. g sweeps 9..12 (default 12 loops).
 * 2.14: Requests received after DeactivateReq are still answered in DEACTIVATE
 
 [[aou-proc-aou_invalid_actmsg_test]]
-===== 47. `aou_invalid_actmsg_test`
+===== 48. `aou_invalid_actmsg_test`
 Class `aou_invalid_actmsg_test` extends `aou_base_test` (`uvm/tests/errors/aou_invalid_actmsg_test.svh`).
 
 *Purpose.* Activation messages in the wrong state, LinkReset and recovery (aou_invalid_actmsg_vseq).
@@ -2325,7 +2413,7 @@ deact_req|deact_ack|all +mask=0|1 +reps=N (each case N times, default 1)
 * 19.10: Set link reset masks; verify interrupt masked
 
 [[aou-proc-aou_linkreset_timeout_test]]
-===== 48. `aou_linkreset_timeout_test`
+===== 49. `aou_linkreset_timeout_test`
 Class `aou_linkreset_timeout_test` extends `aou_base_test` (`uvm/tests/errors/aou_linkreset_timeout_test.svh`).
 
 *Purpose.* Ack and MsgCredit time-outs, LinkReset and recovery (aou_linkreset_timeout_vseq).
@@ -2365,7 +2453,7 @@ Knobs: +src=act_ack|deact_ack|msgcredit|rand +mask=0|1 +tmo=0..7.
 * 20.10: Read/write/clear error info
 
 [[aou-proc-aou_rx_msg_error_test]]
-===== 49. `aou_rx_msg_error_test`
+===== 50. `aou_rx_msg_error_test`
 Class `aou_rx_msg_error_test` extends `aou_base_test` (`uvm/tests/errors/aou_rx_msg_error_test.svh`).
 
 *Purpose.* Malformed messages from the remote die (aou_rx_msg_error_vseq).
@@ -2416,7 +2504,7 @@ Knobs: +kind=<one of the above>|all +T1_TXN.
 * 9.16: Reserved MISCOP/DLENGTH, RsvdZero set or a stray MsgStart received: the testbench checkers report it; the DUT reaction is undefined (v0.8 8.3.3) and software recovers
 
 [[aou-proc-aou_slv_id_mismatch_test]]
-===== 50. `aou_slv_id_mismatch_test`
+===== 51. `aou_slv_id_mismatch_test`
 Class `aou_slv_id_mismatch_test` extends `aou_base_test` (`uvm/tests/errors/aou_slv_id_mismatch_test.svh`).
 
 *Purpose.* Subordinate-side ID mismatch on every RP (aou_slv_id_mismatch_vseq). No
@@ -2434,10 +2522,9 @@ T1-E18  white-box: of AOU_CORE's two aggregates that AOU_CORE_TOP ORs
 into INT_SI0_ID_MISMATCH, only the one of that kind is set. At
 the DUT's ports the two are indistinguishable, so this is the
 only place #76 (RP1-RP3 crossed) shows.
-The checker is enabled through bit 22 of AXI_SLV_ID_MISMATCH_ERR_RPn, which
-the RDL calls reserved and the MAS says is tied off (BUGS/003 interim:
-the bit enables the checker; the #76 commit describes the per-RP bits and
-aggregates).
+The checker is enabled by AXI_SLV_ID_MISMATCH_ERR_RPn.AXI_SLV_ID_MISMATCH_EN
+while the activation FSM is still DISABLED, before any AXI traffic
+(MAS 7.2.2).
 Knobs: +kind=b|r|both (default both) +id=<hex>.
 
 *Rules named.* `T1-E16`, `T1-E17`, `T1-E18`
@@ -2459,7 +2546,7 @@ Knobs: +kind=b|r|both (default both) +id=<hex>.
 * 9.12: RRESP with RID not matching pending (subordinate side), on every RP; per-RP status and the RID mismatch interrupt
 
 [[aou-proc-aou_axi_err_resp_test]]
-===== 51. `aou_axi_err_resp_test`
+===== 52. `aou_axi_err_resp_test`
 Class `aou_axi_err_resp_test` extends `aou_base_test` (`uvm/tests/errors/aou_axi_err_resp_test.svh`).
 
 *Purpose.* AXI error responses both ways and the response error debug FIFO
@@ -2473,12 +2560,13 @@ AXI error responses on both sides and the R/B response error debug FIFO
 fifo (every RP at once): software enables remote access to each RP's FIFO
 at its own debug address before activation. The remote die's writes and
 reads into local SLVERR/DECERR regions come back with that response
-(scoreboard) and each pushes {ID, ADDR, RESP}; the remote die reads the
-head entry at the debug address and pops it with a write there
-(aou_t1_dbg_fifo_chk checks every read and pop):
+(scoreboard) and each pushes {ID, ADDR, RESP} per M-port error response
+(one per R beat, so a remote beat wider than the RP pushes once per RP
+beat); the remote die reads the head entry at the debug address and pops
+it with a write there (aou_t1_dbg_fifo_chk checks every read and pop):
 - one B error, then one R error;
 - six errors in a row, four pops, one more error: the fifth and sixth
-meet a full FIFO;
+(earlier on an RP narrower than the remote die) meet a full FIFO;
 - a B error and an R error issued 0..7 cycles apart, so some land in the
 same cycle (two pushes at once).
 resp (every RP, both directions): single and burst writes and reads into
@@ -2500,14 +2588,88 @@ Knobs:
 ----
 
 programmed on every RP before activation; with +part=fifo
-debug accesses longer than N+1 RP beats meet the splitter
-(BUGS/043).
+debug accesses longer than N+1 RP beats meet the splitter,
+which must not cut them.
 
 ----
-+dbg_len=N|max  AxLEN of every debug-window read and pop (default 0, one
++dbg_len=N|max  AxLEN of every debug-window read and pop (default 0, the
 ----
 
-beat; max: the longest burst inside the 4 KB window).
+single beat software issues; max: the longest burst inside
+the 4 KB window; the window answers any length).
+
+----
++dbg_cache=N    AxCACHE of every debug-window read and pop (default 0).
++agg_en=0|1     RPn_AXI_AGGREGATOR_EN on every RP before activation. With
++dbg_cache=2, +dbg_len above 0 and a remote die narrower
+----
+
+than the RP (+remote_bytes), a debug pop is a write the
+aggregator would otherwise merge; the window must still
+answer it (MAS 3.8.2 condition 4).
+
+----
++err_len=N +err_cache=N +err_off=N  AxLEN, AxCACHE and an address offset
+----
+
+of the fifo part's failing transactions (default 0). With
+
+----
++agg_en=1, +err_len=1 and a remote die narrower than the
+----
+
+RP, each failing read is one aggregated M-port beat that
+pushes one entry per remote beat; +err_off=32 with a
+remote die wider than the RP is an unaligned write whose
+entry carries the address aligned down to AWSIZE. With
+
+----
++max_arburstlen below +err_len the failing reads are
+----
+
+split as well: each sub-burst is aggregated on its own.
+
+----
++rdata_crd=N +crd_delay=T +flood=F +flood_len=L +pair_gap=G  the remote
+----
+
+die grants N ReadData credits and returns each T ticks
+after use, F OKAY reads of L+1 beats are issued just
+ahead of each of the fifo part's B/R error pairs and the
+pair's write waits G cycles, so the read's data is
+accepted at the M port but backs up behind the flood on
+its way to the remote die while the later B flows: the R
+entries enter the FIFO after the B although the M port
+saw them first (a short flood; a long one holds the
+read's data back before the M port). +pair_writes=W
+issues W failing writes per pair (W B errors, default 1).
+With +err_len=7 and an RP four times the remote die's
+width, a failing read is two M-port error beats, each
+re-expanded into four entries.
+
+----
++take_overlap=G +take_flood=L  each debug pop is issued G cycles after
+----
+
+the debug read without waiting for the read's data
+(default: after it), and an OKAY read of L+1 beats just
+ahead of the debug read (default: none): the read's data
+queues behind the flood's, the pop completes first and the
+read returns the entry the pop removed, sampled when the
+read became active.
+
+----
++pop_lead=G +wresp_crd=N  each take is an OKAY write on the RP, then the
+----
+
+debug pop and, G cycles after it, the debug read, then a
+second debug read once both have completed. The remote
+die grants N WriteResp credits and returns each crd_delay
+ticks after use: with N = 1 the write's B uses the credit,
+so the pop's B waits for its return while the read, which
+became active after the pop, completes first with the
+entry behind the popped one. The second read, with nothing
+in flight, returns the same entry.
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -2523,6 +2685,16 @@ beat; max: the longest burst inside the 4 KB window).
 | `aou_axi_err_resp_test.part-fifo.dbg_len-31` | `+part=fifo +dbg_len=31` | 1-2 |  | 9.13,9.14
 | `aou_axi_err_resp_test.part-fifo.dbg_len-max` | `+part=fifo +dbg_len=max` | 1 |  | 9.13,9.14
 | `aou_axi_err_resp_test.part-fifo.dbg_len-3.max_awburstlen-0.max_arburstlen-0` | `+part=fifo +dbg_len=3 +max_awburstlen=0 +max_arburstlen=0` | 1-2 |  | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.dbg_len-63.dbg_cache-2.agg_en-1.remote_bytes-32.4x512-sp64` | `+part=fifo +dbg_len=63 +dbg_cache=2 +agg_en=1 +remote_bytes=32` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.err_len-1.agg_en-1.remote_bytes-32.4x512-sp64` | `+part=fifo +err_len=1 +agg_en=1 +remote_bytes=32` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.err_len-1.err_off-32.agg_en-1.remote_bytes-32.4x512-sp64` | `+part=fifo +err_len=1 +err_off=32 +agg_en=1 +remote_bytes=32` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.err_len-3.err_off-32.agg_en-1.remote_bytes-32.max_awburstlen-3.max_arburstlen-1.4x512-sp64` | `+part=fifo +err_len=3 +err_off=32 +agg_en=1 +remote_bytes=32 +max_awburstlen=3 +max_arburstlen=1` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.err_len-1.agg_en-1.remote_bytes-32.rdata_crd-8.crd_delay-64.flood-1.flood_len-3.pair_gap-64.4x512-sp64` | `+part=fifo +err_len=1 +agg_en=1 +remote_bytes=32 +rdata_crd=8 +crd_delay=64 +flood=1 +flood_len=3 +pair_gap=64` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.err_len-1.agg_en-1.remote_bytes-32.rdata_crd-8.crd_delay-64.flood-1.flood_len-3.pair_gap-64.pair_writes-3.4x512-sp64` | `+part=fifo +err_len=1 +agg_en=1 +remote_bytes=32 +rdata_crd=8 +crd_delay=64 +flood=1 +flood_len=3 +pair_gap=64 +pair_writes=3` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.err_len-7.agg_en-1.remote_bytes-32.pair_gap-64.4xmix2144-sp64` | `+part=fifo +err_len=7 +agg_en=1 +remote_bytes=32 +pair_gap=64` | 1-2 | `4xmix2144-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.take_overlap-4.take_flood-15.4x512-sp64` | `+part=fifo +take_overlap=4 +take_flood=15` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.pop_lead-16.wresp_crd-1.crd_delay-256.4x512-sp64` | `+part=fifo +pop_lead=16 +wresp_crd=1 +crd_delay=256` | 1-2 | `4x512-sp64` | 9.13,9.14
+| `aou_axi_err_resp_test.part-fifo.err_off-32.1x256-sp32` | `+part=fifo +err_off=32` | 1-2 | `1x256-sp32` | 9.13,9.14
 | `aou_axi_err_resp_test.T1_VSEQ-aou_dbg_off_vseq` | `+T1_VSEQ=aou_dbg_off_vseq` | 1-2 | `1x512-sp64` | 9.18
 | `aou_axi_err_resp_test.T1_VSEQ-aou_dbg_off_vseq.dbg_on-5` | `+T1_VSEQ=aou_dbg_off_vseq +dbg_on=5` | 1-2 | `4x512-sp64` | 9.18,9.13,9.14
 | `aou_axi_err_resp_test.part-fifo.1x256-sp32` | `+part=fifo` | 1-3 | `1x256-sp32` | 9.19
@@ -2551,7 +2723,7 @@ beat; max: the longest burst inside the 4 KB window).
 * 20.12: Read/write debug addresses
 
 [[aou-proc-aou_before_enable_test]]
-===== 52. `aou_before_enable_test`
+===== 53. `aou_before_enable_test`
 Class `aou_before_enable_test` extends `aou_base_test` (`uvm/tests/errors/aou_before_enable_test.svh`).
 
 *Purpose.* AXI requests before AoU activation (aou_before_enable_vseq).
@@ -2584,7 +2756,7 @@ Knobs: +hold=<cycles to wait before activating> (default 500..3000).
 * 9.6: Attempt transaction before link enabled (`activate_state_enabled=0`)
 
 [[aou-proc-aou_id_mismatch_test]]
-===== 53. `aou_id_mismatch_test`
+===== 54. `aou_id_mismatch_test`
 Class `aou_id_mismatch_test` extends `aou_base_test` (`uvm/tests/errors/aou_id_mismatch_test.svh`).
 
 *Purpose.* AXI ID mismatch on the M and S ports, every RP (aou_id_mismatch_vseq).
@@ -2611,15 +2783,18 @@ cleared and traffic goes on; when it doesn't, the error would re-set after
 every clear, so the status is checked without the clear and the scenario
 ends with I_RESETN/I_PRESETN, the only legal way to end it.
 sub: the remote die sends a WriteResp, then a ReadData, for no request of
-RP r. With the subordinate checker enabled (AXI_SLV_ID_MISMATCH_ERR_RPr bit
-22, which the RDL calls reserved: BUGS/003 interim) the DUT keeps it off the
-S port, sets AXI_SLV_BID/RID_MISMATCH_ERR with the ID and raises
-INT_SI0_ID_MISMATCH. With the checker disabled nothing is detected, so
-there is nothing in scope to check (no +slv_en=0 scenario in the lists).
+RP r. AXI_SLV_ID_MISMATCH_EN is set while the activation FSM is still
+DISABLED (MAS 7.2.2). With the checker enabled the DUT keeps the stray
+response off the S port, sets AXI_SLV_BID/RID_MISMATCH_ERR with the ID and
+raises INT_SI0_ID_MISMATCH. With the checker disabled nothing is detected:
+the stray response goes out on the S port, where the bench's manager
+rejects it as a response with nothing outstanding, and SLV_TR_COMPLETE
+stays low afterwards. The owners have not defined that handling, so there
+is no +slv_en=0 scenario in the lists.
 With +mask=1 the interrupt mask is set first: the status bit is still set
-but the interrupt stays low until the mask is cleared (interim, BUGS/029:
-interrupt = status & ~mask). Write 1 clears the error, its INFO and the
-interrupt.
+but the interrupt stays low until the mask is cleared (interrupt = status &
+~mask: the mask only suppresses the interrupt signal, MAS 7.2.2). Write 1
+clears the error, its INFO and the interrupt.
 
 ----
 +detect_only=1 (M port only): after the orphan it checks the status, INFO,
@@ -2659,7 +2834,7 @@ Knobs: +side=all|mgr|sub +kind=all|b|r +mask=0|1 +slv_en=0|1 +detect_only=0|1.
 * 20.13: Read/W1C slave ID errors
 
 [[aou-proc-aou_int_test]]
-===== 54. `aou_int_test`
+===== 55. `aou_int_test`
 Class `aou_int_test` extends `aou_base_test` (`uvm/tests/errors/aou_int_test.svh`).
 
 *Purpose.* Interrupt status, masks and write-1-to-clear (aou_int_vseq).
@@ -2678,15 +2853,20 @@ early every RP gets a bufferable write whose remote completion is an
 error at the same time: early OKAY, then WRITE_RESP_ERR with ID and
 type, and INT_EARLY_RESP_ERR until the last RP is cleared. +mask=1
 sets INT_EARLY_RESP_MASK: status still set, interrupt low until the
-mask is cleared (interim, BUGS/029).
+mask is cleared (the mask gates the pin, not the status: MAS 7.2.2
+and interrupts-errors 4).
 multi on every RP at once an early-response error and a WriteResp
-nobody asked for (subordinate checker on, BUGS/003), then an
+nobody asked for (AXI_SLV_ID_MISMATCH_EN programmed while the
+activation FSM is DISABLED, MAS 7.2.2), then an
 ActivateAck in ENABLED (LinkReset). All three interrupts and every
 status bit are set; clearing one source leaves the others; the link
-is recovered. (An M-port ID mismatch cannot join: BUGS/029.)
+is recovered. (An M-port ID mismatch cannot join: the unrequested
+response it needs is illegal AXI, and a DUT that never takes it ends
+the scenario with a hard reset; aou_id_mismatch_vseq covers it.)
 race  a write-1-to-clear of WRITE_RESP_ERR swept across the cycle a new
 early-response error sets it: the new error must never be lost
-(interim, BUGS/029: a set in the clearing cycle wins).
+(interim expectation: no document says whether a set or a clear in
+the same cycle wins; the bench requires the set to win).
 Knobs: +mode=all|w1c|early|multi|race +mask=0|1 +race_span=<cycles>.
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
@@ -2719,7 +2899,7 @@ Knobs: +mode=all|w1c|early|multi|race +mask=0|1 +race_span=<cycles>.
 * 19.12: Multiple interrupt sources active; verify all captured
 
 [[aou-proc-aou_lp_mode_traffic_test]]
-===== 55. `aou_lp_mode_traffic_test`
+===== 56. `aou_lp_mode_traffic_test`
 Class `aou_lp_mode_traffic_test` extends `aou_base_test` (`uvm/tests/lifecycle/aou_lp_mode_traffic_test.svh`).
 
 *Purpose.* TX low-power mode and heartbeat with traffic (aou_lp_mode_traffic_vseq).
@@ -2736,9 +2916,13 @@ TX_LP_MODE=1, threshold T    a heartbeat: at least one flit and at most
 ceil(W / max(T+1, flit cycles)) + 1
 (BUGS/017 interim).
 Traffic both ways runs in LP mode, so the remote side completes only if the
-DUT still returns credits (21.6), and the mode is switched on and off
-mid-traffic (21.7).
+DUT still returns credits (21.6). TX_LP_MODE and its threshold are static
+configuration, written only while the DUT is DISABLED (T1-LP03), so every
+mode change is a new activation session: deactivate, program, activate,
+run traffic (21.7).
 Knobs: +threshold=0..255 (random, 0 one time in three) +T1_TXN.
+
+*Rules named.* `T1-LP03`
 
 *Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
 
@@ -2758,62 +2942,7 @@ Knobs: +threshold=0..255 (random, 0 one time in three) +T1_TXN.
 * 21.4: `tx_lp_mode_threshold = 0`; verify no idle flits
 * 21.5: Test various `tx_lp_mode_threshold` values
 * 21.6: Verify credit-only flits still sent in LP mode
-* 21.7: Switch between LP mode enabled/disabled
-
-[[aou-proc-aou_lp_mode_align_test]]
-===== 56. `aou_lp_mode_align_test`
-Class `aou_lp_mode_align_test` extends `aou_base_test` (`uvm/tests/lifecycle/aou_lp_mode_align_test.svh`).
-
-*Purpose.* TX_LP_MODE written on the edge a flit's first half-chunk goes out, with a
-message waiting for the next cycle (aou_lp_mode_align_vseq, BUGS/034). The
-Adapter keeps pl_trdy high, and the remote die uses PHY0, the half-width
-path of the two-PHY builds.
-
-*Procedure.* Virtual sequence `aou_lp_mode_align_vseq` (`uvm/seq_lib/lifecycle/aou_lp_mode_align_vseq.svh`):
-
-TX_LP_MODE switched on at the edge where the lower half of a flit's first
-chunk goes out on a half-width FDI path (BUGS/034; MAS software-operation
-7.1 "Low Power mode": once a flit is started it always finishes). On
-SP_32B, and on PHY0 of the two-PHY builds, a 64- or 128-byte packing chunk
-leaves as two FDI beats, so the DUT has to keep the flit going between
-them even when the write makes it idle, and must not let a new message into
-that chunk.
-
-Each step, with pl_trdy high on every cycle the Adapter allows it:
-1. TX_LP_MODE=0, so the DUT sends empty flits back to back;
-2. pl_trdy is held low at a flit boundary, so the DUT waits on beat 0
-(chunk 0, lower half) of an empty flit;
-3. a local write to remote memory is started; it waits in the DUT behind
-the held TX, ready to enter the very next chunk;
-4. an APB read ends on a pclk edge, then TX_LP_MODE=1 with threshold 0 is
-written while pl_trdy returns `off` core cycles later, so beat 0
-transfers on one fixed edge relative to the register write;
-5. the write must complete and the link must drain.
-`off` sweeps a range that holds the edge where the register takes effect,
-so one step makes LP mode engage on exactly the beat-0 edge with the
-write's message waiting for the next cycle. Any bubble inside the flit is
-FDI-R02; a message that enters the half-sent chunk corrupts the flit (L3
-and AOU_FDI_CHECKER), or the write is lost (T1-V06) or wrong (scoreboard).
-The sweep stops at the first error.
-Knobs: +align_min=N +align_max=N (core cycles, default 0..63).
-
-*Rules named.* `FDI-R02`, `T1-V06`
-
-*Pass criteria.* The base test's end-of-test checks: scoreboard drained, every declared expectation met, no unexpected `UVM_ERROR`/`UVM_FATAL`, the FDI checker clean; `scripts/check_run.py` judges the log against `expected_fail.yaml`.
-
-*Scenarios.*
-
-[cols="3,2,1,1,3",options="header"]
-|===
-| Scenario | Arguments | Seeds | Target | Plan items
-| `aou_lp_mode_align_test.1x256-sp32` |  | 1-2 | `1x256-sp32` | 21.7
-| `aou_lp_mode_align_test.2x512-tp32_64` |  | 1 | `2x512-tp32_64` | 21.7
-| `aou_lp_mode_align_test.2xmix-tp64_128` |  | 1 | `2xmix-tp64_128` | 21.7
-|===
-
-*Plan items.*
-
-* 21.7: Switch between LP mode enabled/disabled
+* 21.7: Switch between LP mode enabled/disabled across activation sessions (programmed only while DISABLED)
 
 [[aou-proc-aou_reset_test]]
 ===== 57. `aou_reset_test`
@@ -2828,14 +2957,14 @@ Resets at awkward moments, then recovery and traffic (plan 11.10-11.12,
 picks a reset and a moment:
 
 ----
-+reset  sw    AOU_SW_RESET inside the MAS LinkReset sequence (BUGS/007
++reset  sw    AOU_SW_RESET inside the MAS LinkReset sequence (7.3.6:
 ----
 
-interim: every register returns to its reset value)
-core  I_RESETN only     } BUGS/016 interim: the registers are on
-apb   I_PRESETN only    } the core reset, so they return to their
-both  both resets       } reset values on I_RESETN and keep their
-} values on I_PRESETN alone
+every register returns to its reset value)
+core  I_RESETN only     } integration guide 3.1.1: the registers
+apb   I_PRESETN only    } are on the core reset, so they return to
+both  both resets       } their reset values on I_RESETN and keep
+} their values on I_PRESETN alone
 
 ----
 +when   idle, traffic (transactions in flight), activating (in the
@@ -3048,8 +3177,8 @@ and 1024 bits covers every upsize, downsize and bypass pairing. Both
 directions, every size up to each side's width, 1-16 beats, each batch
 read back (+dp_loopback): the scoreboard checks bytes end to end, the AXI
 monitors WLAST at the M port, L3 the ReadData DLENGTH per ARSIZE (AOU-R13),
-and aou_dw_chk replication of narrow read data, the DUT's WriteData
-DLENGTH and that every targeted conversion happened.
+and aou_dw_chk replication of narrow read data; aou_dw_chk also reports
+any targeted conversion the run never produced (coverage, not an error).
 
 *Procedure.* The base class's virtual sequence `aou_dp_vseq`, configured by this class and its arguments.
 
@@ -3085,14 +3214,10 @@ DLENGTH and that every targeted conversion happened.
 | `aou_dw_test.remote_bytes-32.2x512-tp32_64` | `+remote_bytes=32` | 1-2 | `2x512-tp32_64` | 14.1,14.13,14.10,14.11,14.14,14.15,14.16
 | `aou_dw_test.remote_bytes-64.2x512-tp32_64` | `+remote_bytes=64` | 1-2 | `2x512-tp32_64` | 14.8,14.10,14.11,14.14,14.15,14.16,18.4
 | `aou_dw_test.remote_bytes-128.2x512-tp32_64` | `+remote_bytes=128` | 1-2 | `2x512-tp32_64` | 14.6,14.12,14.10,14.11,14.14,14.15,14.16
-| `aou_dw_test.remote_bytes-32.1x512-sp64-p512` | `+remote_bytes=32` | 1-2 | `1x512-sp64-p512` | 14.17
 | `aou_dw_test.remote_bytes-128.remote_max_burst-4.4xmix4211-sp128` | `+remote_bytes=128 +dp_align=aligned +remote_max_burst=4` | 1-2 | `4xmix4211-sp128` | 14.10,14.11
-| `aou_dw_test.remote_bytes-32.4xmix4211-sp128-p512` | `+remote_bytes=32` | 1-2 | `4xmix4211-sp128-p512` | 14.17
-| `aou_dw_test.remote_bytes-64.4xmix4211-sp128-p512` | `+remote_bytes=64` | 1-2 | `4xmix4211-sp128-p512` | 14.17
 | `aou_dw_test.remote_bytes-128.remote_wreq-upsize.4xmix4211-sp128` | `+remote_bytes=128 +remote_wreq=upsize` | 1-2 | `4xmix4211-sp128` | 14.10,14.11
 | `aou_dw_test.remote_bytes-32_128_64_32.remote_wreq-upsize` | `+remote_bytes=32,128,64,32 +remote_wreq=upsize` | 1-2 | `4xmix4211-sp128` | 14.10,14.11
 | `aou_dw_test.remote_bytes-128.remote_wreq-upsize.4xmix2144-sp64` | `+remote_bytes=128 +remote_wreq=upsize` | 1-2 | `4xmix2144-sp64` | 14.10,14.11
-| `aou_dw_test.remote_bytes-32.4xmix4211-sp128-p256` | `+remote_bytes=32` | 1-2 | `4xmix4211-sp128-p256` | 14.17
 | `aou_dw_test.remote_bytes-128.remote_max_burst_rand-1` | `+remote_bytes=128 +remote_max_burst_rand=1` | 1-2 | `4xmix4211-sp128` | 14.10,14.11
 | `aou_dw_test.remote_bytes-128.remote_wreq-dut_like.4xmix4211-sp128` | `+remote_bytes=128 +remote_wreq=dut_like` | 1-2 | `4xmix4211-sp128` | 14.10,14.11
 | `aou_dw_test.remote_bytes-32_128_64_32.remote_wreq-dut_like` | `+remote_bytes=32,128,64,32 +remote_wreq=dut_like` | 1-2 | `4xmix4211-sp128` | 14.10,14.11
@@ -3123,7 +3248,6 @@ DLENGTH and that every targeted conversion happened.
 * 14.14: Verify DLEN field correctly routes to width adapter
 * 14.15: Verify ARSIZE routes read response to correct adapter
 * 14.16: Verify narrow R data duplicated to match local bus width
-* 14.17: AXI_PEER_DIE_MAX_DATA_WD below 1024
 * 18.1: Configure `FDI_CFG_SP_32B`; verify 32-byte chunks
 * 18.3: Configure `FDI_CFG_SP_128B`; verify 128-byte chunks
 * 18.4: Configure `FDI_CFG_TP_32B_64B` with `+define+TWO_PHY`
@@ -3757,11 +3881,12 @@ errors are demoted to info and counted; the test fails if either count is 0.
 ===== 81. `aou_axi_sb_reset_test`
 Class `aou_axi_sb_reset_test` extends `uvm_test` (`uvm/tests/axi_selftest/aou_axi_sb_reset_test.svh`).
 
-*Purpose.* Directed check of the scoreboard's reset rule (BUGS/015 interim), with no
-bus: transactions are fed to the scoreboard directly. A reset_outstanding
-transaction may end with SLVERR, and the bytes such a write addresses may
-then hold their old value or the write's, until a checked write; anything
-else is still an error. Each step expects an exact set of errors.
+*Purpose.* Directed check of the scoreboard's reset rule, with no bus: transactions are
+fed to the scoreboard directly. A reset_outstanding write is lost or landed
+whatever its response, and the bytes it addresses may then hold their old
+value or the write's, until a checked write; a reset_outstanding read may
+end with SLVERR beats (BUGS/015 interim); anything else is still an error.
+Each step expects an exact set of errors.
 
 *Procedure.* The class's own `run_phase` (see the file).
 

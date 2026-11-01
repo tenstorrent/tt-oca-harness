@@ -74,9 +74,15 @@
 `SEP_TB_IN(logic, jtag_ic_reset_tdi_i)
 `SEP_TB_OUT(logic, jtag_ic_reset_tdo_o)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
-// pair onto the LCC decoder input (no legal OTP image can present one). See
-// the force block in tb_top.sv.
+// pair onto the selected pairs of the LCC decoder input (no legal OTP image can
+// present one). See the force block in tb_top.sv.
 `SEP_TB_IN(logic, lc_sigint_inject_i)
+// Pairs the inject breaks: bit i is pair i, {data_i[4+i], data_i[i]} of the
+// decoder input. 0, or a value with an X or Z bit, selects all four pairs.
+`SEP_TB_IN(logic [sep_pkg::LcStateBitWidth-1:0], lc_sigint_pair_mask_i)
+// Rail value of a broken pair: 1 drives both rails to 1; 0, X or Z drives both
+// rails to 0.
+`SEP_TB_IN(logic, lc_sigint_bad_value_i)
 // Token-comparator redundancy fault inject. Default 0. Encoding:
 //   3'b000 off
 //   3'b001 collapse instance 0 of the selected comparator (both rails 0).
@@ -157,6 +163,15 @@
 `SEP_TB_IN(logic, crypto_alert_inject_i)
 `SEP_TB_IN(logic [3:0], crypto_alert_inject_idx_i)
 `SEP_TB_IN(logic, crypto_alert_inject_val_i)
+// DMA alert sender inject. Default 0. While dma_alert_inject_i is 1, tb forces
+// alert_p and alert_n of the secure DMA alert receiver both to
+// dma_alert_inject_val_i, which is not a differential code. Error inject,
+// docs/SEP_TB_ARCH.adoc. See the force block in tb_top.sv.
+`SEP_TB_IN(logic, dma_alert_inject_i)
+`SEP_TB_IN(logic, dma_alert_inject_val_i)
+// The secure DMA alert receiver pair {alert_p, alert_n}, as the receiver sees
+// it (after the dma_alert_inject_i force). Observation-only.
+`SEP_TB_OUT(logic [1:0], dma_alert_rx_probe_o)
 // OTBN memory integrity flip. Live only in a run with +sep_otbn_intg_flip.
 // While otbn_intg_flip_en_i is 1, every read response that the OTBN core takes
 // from the memory otbn_intg_flip_mem_i selects (0 IMEM, 1 DMEM) reaches the
@@ -305,6 +320,9 @@
 // extintsrc_req_i of sep). Default 0. A leaf drives one or two bits to raise a
 // pending source above PIC source 43 (top-port drive, docs/SEP_TB_ARCH.adoc).
 `SEP_TB_IN(logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0], sep_ext_interrupts_i)
+// Machine timer interrupt pin of sep (sep_wrapper timer_int, mip.MTIP). A value
+// other than 1 drives 0. Default 0 (top-port drive, docs/SEP_TB_ARCH.adoc).
+`SEP_TB_IN(logic, timer_int_i)
 // Outbound responder response control (tb/sep_outbound_mbx.sv), default 0.
 // smn_outbound_resp_hold_i=1 keeps the responder from raising a B or R
 // response; one already on offer completes, and the requests are still
@@ -737,6 +755,7 @@
 `SEP_TB_OUT(logic, esrc_compress_vld_o)  // CHK2: compressor output valid
 `SEP_TB_OUT(logic [31:0], esrc_compress_data_o)  // CHK2: compressor output word
 `SEP_TB_OUT(logic, drbg_seed_valid_o)  // seed accumulated/presented to CSRNG
+`SEP_TB_OUT(logic, drbg_seed_word_ready_o)  // seed packer ready for an entropy word
 `SEP_TB_OUT(logic, drbg_es_ack_o)  // CSRNG seed-handshake ack
 `SEP_TB_OUT(logic [383:0], drbg_es_bits_o)  // CHK4: 384-bit hardware seed
 `SEP_TB_OUT(logic, drbg_genbits_vld_o)  // CHK4: CTR_DRBG genbits valid
@@ -936,9 +955,11 @@
 // stage in the same order as crypto_isolated_probe_o: the AW, AR, B and R handshakes
 // (valid and ready on the same clock) and the B and R response codes (two bits per
 // stage, stage i at [2i+1:2i]). Read-only taps of the isolate units' slv_req_i and
-// slv_resp_o ports.
+// slv_resp_o ports. iso_slv_ar_valid_probe_o is the AR valid alone, so a read can be
+// seen pending at a stage before its handshake.
 `SEP_TB_OUT(logic [13:0], iso_slv_aw_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_ar_hs_probe_o)
+`SEP_TB_OUT(logic [13:0], iso_slv_ar_valid_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_b_hs_probe_o)
 `SEP_TB_OUT(logic [13:0], iso_slv_r_hs_probe_o)
 `SEP_TB_OUT(logic [27:0], iso_slv_bresp_probe_o)
@@ -958,6 +979,9 @@
 // (u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q, clocked by clk_wdt_i).
 // Read-only.
 `SEP_TB_OUT(logic [31:0], wdt_wdog_count_o)
+// AON timer wakeup core (u_wdt_aon_timer.u_core): bit 32 wkup_intr_o, bits 31:0
+// the low word of the wakeup count it compares. clk_wdt_i domain. Read-only XMR.
+`SEP_TB_OUT(logic [32:0], aon_wkup_probe_o)
 // sep_reset_n override select at the SEP boundary
 // (u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd): the value SEP receives
 // after the pin-or-TDR mux.
@@ -972,6 +996,8 @@
 // mux (u_sep_cpu.u_el2_veer_wrapper): bit 8 dmi_en, bit 7 dmi_wr_en, bits 6:0
 // dmi_addr. Read-only. Tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic [8:0], dmi_req_probe_o)
+// dmi_active output of sep (frontdoor DUT output).
+`SEP_TB_OUT(logic, dmi_active_probe_o)
 // Read source of SEP_CPU_CTRL.TIMEOUT_INTERRUPT.reserved (sw=r, hw=w, no storage):
 // the hwif_in value that the register block returns on a read, on each clock.
 `SEP_TB_OUT(logic, timeout_interrupt_probe_o)
@@ -1007,6 +1033,14 @@
 // cocotb/env/sep_dma_tap.py decodes it. A handshake is VALID and READY high on
 // one clk_i edge. Outside every tb ready/valid cone.
 `SEP_TB_OUT(logic [104:0], dma_axi_req_probe_o)
+// Secure DMA master response USER, observation-only (net u_sep.dma_axi_resp):
+// dma_resp_buser_o is b.user, valid on a B handshake of dma_axi_req_probe_o;
+// dma_resp_ruser_o is r.user, valid on a clock with bits 0 and 1 of
+// dma_resp_r_hs_o high. dma_resp_r_hs_o layout: [0] r_valid, [1] r_ready,
+// [2] r.last. Outside every tb ready/valid cone.
+`SEP_TB_OUT(logic [11:0], dma_resp_buser_o)
+`SEP_TB_OUT(logic [11:0], dma_resp_ruser_o)
+`SEP_TB_OUT(logic [2:0], dma_resp_r_hs_o)
 // Secure DMA STATUS levels, observation-only: bit i is the stored value of
 // STATUS bit i (0 BUSY, 1 DONE, 2 ABORTED, 3 ERROR, 4 SHA2_DIGEST_VALID,
 // 5 CHUNK_DONE), read from the register flops on each clock.
@@ -1204,13 +1238,15 @@
 `SEP_TB_OUT(logic, pr_dmacsr_arready_o)
 `SEP_TB_OUT(logic [31:0], pr_dmacsr_araddr_o)
 // PR-INFLT: the request out of the inbound filter (u_inbound_filter), before
-// the global-to-local remap; it carries the global address.
+// the global-to-local remap; it carries the global address and AxUSER.
 `SEP_TB_OUT(logic, pr_inflt_awvalid_o)
 `SEP_TB_OUT(logic, pr_inflt_awready_o)
 `SEP_TB_OUT(logic [55:0], pr_inflt_awaddr_o)
+`SEP_TB_OUT(logic [11:0], pr_inflt_awuser_o)
 `SEP_TB_OUT(logic, pr_inflt_arvalid_o)
 `SEP_TB_OUT(logic, pr_inflt_arready_o)
 `SEP_TB_OUT(logic [55:0], pr_inflt_araddr_o)
+`SEP_TB_OUT(logic [11:0], pr_inflt_aruser_o)
 // PR-CPU: AxPROT of the raw CPU LSU (AR, AW) and IFU (AR) requests, before any
 // remap (u_sep_cpu lsu_axi_req_raw, ifu_axi_req_raw); tied to 0 on the CPU stub build.
 `SEP_TB_OUT(logic, pr_cpu_lsu_awvalid_o)
@@ -1467,6 +1503,10 @@
 `SEP_TB_IN(logic, bh_smc_en_i)
 `SEP_TB_IN(logic [55:0], bh_smc_base_i)
 `SEP_TB_IN(logic [55:0], bh_smc_size_i)
+// SMC aperture inputs of the DUT (smc_global_base_addr_i, smc_region_size_i),
+// observation-only. Outside every tb ready/valid cone.
+`SEP_TB_OUT(logic [55:0], smc_base_probe_o)
+`SEP_TB_OUT(logic [55:0], smc_size_probe_o)
 // Lifecycle status observability. security_disable and lc_sigint_err are DUT
 // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
 // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
@@ -1505,6 +1545,8 @@
 `SEP_TB_OUT(logic, jtag_filter_lc_sigint_err_probe_o)
 // The sep input jtag_id_i as the DUT receives it. Read-only tap.
 `SEP_TB_OUT(logic [31:1], jtag_id_probe_o)
+// The sep input jtag_trst_ni as the DUT receives it. Read-only tap.
+`SEP_TB_OUT(logic, jtag_trst_probe_o)
 // Post-guard fuse command at the sep output efuse_shim_command_req_o: valid,
 // command, bit address, program data and word count. Read-only taps.
 `SEP_TB_OUT(logic, efuse_shim_cmd_valid_o)
@@ -1566,6 +1608,19 @@
 // The packed 64-bit sep_efuse_map_lc_disable_reg_t feature-control vector,
 // read-only XMR.
 `SEP_TB_OUT(logic [63:0], lcc_feat_ctrl_probe_o)
+// lc_state_o of sep: the differentially encoded lifecycle state (frontdoor DUT
+// output).
+`SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_state_probe_o)
+// Input of the lifecycle-state decoder (read-only XMR): pair i is
+// {data_i[LcStateBitWidth+i], data_i[i]}, after any sigint inject force.
+`SEP_TB_OUT(logic [2*sep_pkg::LcStateBitWidth-1:0], lc_dec_data_probe_o)
+// AXI-Lite write port of the lifecycle controller register block. Read-only
+// taps: the number of write-address handshakes since time 0 (wraps), the
+// register offset of the last one, and the data of the last write-data
+// handshake.
+`SEP_TB_OUT(logic [15:0], lcc_wr_count_probe_o)
+`SEP_TB_OUT(logic [4:0], lcc_wr_addr_probe_o)
+`SEP_TB_OUT(logic [63:0], lcc_wr_data_probe_o)
 // Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
 // read these by name so a packed-struct reorder cannot swap two same-case
 // bits past the golden. The flattened vector stays for a width self-test.

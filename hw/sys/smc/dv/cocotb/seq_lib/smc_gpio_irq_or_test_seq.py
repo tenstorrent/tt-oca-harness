@@ -47,7 +47,7 @@ CHK_ORDER = (
 
 
 def _data_ctrl(wrap: int) -> int:
-    return smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", wrap)
+    return smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", wrap)
 
 
 class smc_gpio_irq_or_test_seq(SmcCsrSeq):

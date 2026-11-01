@@ -40,10 +40,10 @@ from .smc_pad_table import AVS_SDATA_PAD, pad_index
 from .smc_regblock_field_sweep_utils import RegInstance, SmcRegblockFieldSweepSeq, reg_instances
 
 _DATA_CTRL = (
-    "gpio_intf/DATA_CTRL",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
-    "SMC_TOP_GPIO_INTF_DATA_CTRL_NUM",
-    "GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
+    "gpio_intf_wrap/gpio_intf/DATA_CTRL",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR",
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM",
+    "GPIO_INTF_WRAP_GPIO_INTF_{index}__DATA_CTRL_REG_ADDR",
 )
 _LSIO_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_ENABLE_bm")
 _PAD2CORE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")

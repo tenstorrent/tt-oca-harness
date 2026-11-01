@@ -21,15 +21,18 @@
 // every clear, so the status is checked without the clear and the scenario
 // ends with I_RESETN/I_PRESETN, the only legal way to end it.
 // sub: the remote die sends a WriteResp, then a ReadData, for no request of
-// RP r. With the subordinate checker enabled (AXI_SLV_ID_MISMATCH_ERR_RPr bit
-// 22, which the RDL calls reserved: BUGS/003 interim) the DUT keeps it off the
-// S port, sets AXI_SLV_BID/RID_MISMATCH_ERR with the ID and raises
-// INT_SI0_ID_MISMATCH. With the checker disabled nothing is detected, so
-// there is nothing in scope to check (no +slv_en=0 scenario in the lists).
+// RP r. AXI_SLV_ID_MISMATCH_EN is set while the activation FSM is still
+// DISABLED (MAS 7.2.2). With the checker enabled the DUT keeps the stray
+// response off the S port, sets AXI_SLV_BID/RID_MISMATCH_ERR with the ID and
+// raises INT_SI0_ID_MISMATCH. With the checker disabled nothing is detected:
+// the stray response goes out on the S port, where the bench's manager
+// rejects it as a response with nothing outstanding, and SLV_TR_COMPLETE
+// stays low afterwards. The owners have not defined that handling, so there
+// is no +slv_en=0 scenario in the lists.
 // With +mask=1 the interrupt mask is set first: the status bit is still set
-// but the interrupt stays low until the mask is cleared (interim, BUGS/029:
-// interrupt = status & ~mask). Write 1 clears the error, its INFO and the
-// interrupt.
+// but the interrupt stays low until the mask is cleared (interrupt = status &
+// ~mask: the mask only suppresses the interrupt signal, MAS 7.2.2). Write 1
+// clears the error, its INFO and the interrupt.
 // +detect_only=1 (M port only): after the orphan it checks the status, INFO,
 // interrupt and mask, then always ends the scenario with a hard reset instead
 // of the write-1 clear and more traffic.
@@ -64,6 +67,8 @@ class aou_id_mismatch_vseq extends aou_err_base_vseq;
     end
     if (side inside {"all", "sub"} && slv_en) expect_event("INT_SI0_ID_MISMATCH", 1, 0);
     link_up();
+    // MAS 7.2.2: program the checker while DISABLED, before any AXI traffic.
+    if (side inside {"all", "sub"} && slv_en) enable_slv_id_check();
     sw_activate();
     check_traffic(num_txns);
     setup_regs(side);
@@ -87,17 +92,17 @@ class aou_id_mismatch_vseq extends aou_err_base_vseq;
       wr(p_sequencer.regs.aou_interrupt_mask.int_mi0_id_mismatch_mask, 1);
       wr(p_sequencer.regs.aou_interrupt_mask.int_si0_id_mismatch_mask, 1);
     end
-    if (which inside {"all", "sub"} && slv_en)
-      for (int unsigned r = 0; r < cfg.n_rp; r++)
-        raw_write(p_sequencer.regs.get_reg_by_name($sformatf("axi_slv_id_mismatch_err_rp%0d", r)),
-                  32'h0040_0000);
   endtask
 
   // Ends a scenario the DUT did not handle with a core and APB reset, then
-  // brings the link back and programs the registers again.
+  // brings the link back. The checker enable is written while DISABLED,
+  // before activation (MAS 7.2.2).
   task contain(string which);
     `uvm_info(get_type_name(), "containing: I_RESETN and I_PRESETN, then re-activation", UVM_LOW)
-    hard_reset(AOU_T1_RST_BOTH);
+    hard_reset(AOU_T1_RST_BOTH, 1'b0);
+    link_up();
+    if (which inside {"all", "sub"} && slv_en) enable_slv_id_check();
+    activate(AOU_T1_BY_APB, AOU_T1_DUT_FIRST);
     setup_regs(which);
   endtask
 
@@ -115,7 +120,7 @@ class aou_id_mismatch_vseq extends aou_err_base_vseq;
     if (!expect_set) return;
     if (masked) begin
       wr(mask, 0);
-      check_pin(irq, 1'b1, "T1-E07", {what, ": mask cleared with the error pending (BUGS/029)"});
+      check_pin(irq, 1'b1, "T1-E07", {what, ": mask cleared with the error pending"});
       wr(mask, 1);
       check_pin(irq, 1'b0, "T1-E06", {what, ": masked again"});
     end

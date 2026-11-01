@@ -115,25 +115,31 @@ _TIMER_UNIT = (
 _BASE_CONFIG_UNIT = ("smc_base_config", "BCFG", CLOCK_GATE_CONTROL)
 _FABRIC_UNITS = (
     (
-        "smc_alias_remap",
+        "smc_alias_remap_wrap",
         "ALIAS",
-        smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0),
+        smc_indexed_addr(
+            "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR", 0
+        ),
     ),
-    ("smc_mmode_remap", "MMODE", smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_BASE_ADDR", 0)),
     (
-        "smc_xvisor_remap",
+        "smc_mmode_remap_wrap",
+        "MMODE",
+        smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0),
+    ),
+    (
+        "smc_xvisor_remap_wrap",
         "XVISOR",
-        smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR", 0),
     ),
     (
-        "smc_inbound_filter_ctrl",
+        "smc_inbound_filter_ctrl_wrap",
         "INFILT",
-        smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0),
     ),
     (
-        "smc_outbound_filter_ctrl",
+        "smc_outbound_filter_ctrl_wrap",
         "OUTFILT",
-        smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0),
     ),
 )
 _SPARE_LIVE = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)
@@ -150,9 +156,9 @@ _SPARE_OFFSETS = (
 )
 _PERIPH_UNITS = (
     (
-        "gpio_intf",
+        "gpio_intf_wrap",
         "GPIO",
-        smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", 0),
+        smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", 0),
     ),
     ("smc_avsbus_controller", "AVS", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR")),
     (

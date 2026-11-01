@@ -45,6 +45,7 @@ from typing import Any
 
 import cocotb
 from sep_bit_watch import BitMark, SepBitWatch
+from sep_reg_meta import SEP_RESET_CTRL, register_fields
 
 # VPLAN bench index x -> path name.
 ISO_BENCH: tuple[str, ...] = (
@@ -65,17 +66,13 @@ ISO_BENCH: tuple[str, ...] = (
 )
 ISO_WIDTH = len(ISO_BENCH)
 
-# ip_rst_n[i] -> tb_top port.
-IP_RST_PORTS: tuple[str, ...] = (
-    "km_gated_rst_n_probe_o",
-    "otbn_gated_rst_n_probe_o",
-    "aes_gated_rst_n_probe_o",
-    "hmac_gated_rst_n_probe_o",
-    "kmac_gated_rst_n_probe_o",
-    "trng_gated_rst_n_probe_o",
-    "abr_gated_rst_n_probe_o",
+# ip_rst_n[i] follows the SW_RESET_N field at bit i: field <ip>_sw_rst_n -> name
+# <ip> and tb_top port <ip>_gated_rst_n_probe_o.
+IP_RST_NAMES: tuple[str, ...] = tuple(
+    f.name.removesuffix("_sw_rst_n")
+    for f in sorted(register_fields(SEP_RESET_CTRL.addr("SW_RESET_N"))[1], key=lambda f: f.lsb)
 )
-IP_RST_NAMES: tuple[str, ...] = ("km", "otbn", "aes", "hmac", "kmac", "trng", "abr")
+IP_RST_PORTS: tuple[str, ...] = tuple(f"{n}_gated_rst_n_probe_o" for n in IP_RST_NAMES)
 
 # Reset taps that are single ports of tb_top.
 RESET_TAP_PORTS: dict[str, str] = {

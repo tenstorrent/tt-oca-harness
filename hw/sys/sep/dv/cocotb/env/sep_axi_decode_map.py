@@ -112,11 +112,15 @@ _SYS_ROWS = _rdl_window_rows(
     0x10A3_FFFF,
     (
         ("AXIL_MAILBOX", "SYS mailbox", "Mailbox pairs"),
-        ("LOCAL_MASTER_ALIAS_REMAP_CTRL", "SYS alias remap", "Local master alias remap"),
-        ("AP_OUTPUT_REMAP_CTRL", "SYS AP remap", "AP output remap"),
-        ("STEE_OUTPUT_REMAP_CTRL", "SYS STEE remap", "STEE output remap"),
-        ("OUTBOUND_FILTER_CTRL", "SYS outbound filter", "Outbound filter control"),
-        ("INBOUND_FILTER_CTRL", "SYS inbound filter", "Inbound filter control"),
+        (
+            "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP",
+            "SYS alias remap",
+            "Local master alias remap",
+        ),
+        ("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", "SYS AP remap", "AP output remap"),
+        ("STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP", "SYS STEE remap", "STEE output remap"),
+        ("OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", "SYS outbound filter", "Outbound filter control"),
+        ("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL", "SYS inbound filter", "Inbound filter control"),
         ("SEP_CPU_CTRL", "SYS CPU control", "SEP CPU control and interrupt registers"),
     ),
 )
@@ -296,7 +300,9 @@ def _selftest() -> None:
     ):
         hit = region_of(sym(f"{stem}_REG_MAP_BASE_ADDR"), regions)
         assert hit is not None and hit.unit == unit, f"{stem} base -> {hit}"
-    infilt = region_of(sym("INBOUND_FILTER_CTRL_15__REG_MAP_BASE_ADDR") + 0x18, regions)
+    infilt = region_of(
+        sym("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_15__REG_MAP_BASE_ADDR") + 0x18, regions
+    )
     assert infilt is not None and infilt.unit == "SYS inbound filter", f"array padding -> {infilt}"
     assert len(regions) >= 25, f"only {len(regions)} memory-map rows after holes"
 

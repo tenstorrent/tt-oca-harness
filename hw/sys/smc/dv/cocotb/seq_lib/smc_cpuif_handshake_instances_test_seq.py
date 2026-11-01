@@ -334,14 +334,14 @@ def build_instances() -> tuple[Inst, ...]:
     out: list[Inst] = []
     assert GPIO_INTF_NUM == 65, f"GPIO_INTF_NUM is {GPIO_INTF_NUM}, the contract names 0..64"
     for i in range(GPIO_INTF_NUM):
-        sym = "SMC_TOP_GPIO_INTF_BASE_ADDR"
-        a = _indexed(sym, "gpio_intf[{}]/ACCESS_FILTER", i)
-        b = _indexed(sym, "gpio_intf[{}]/DATA_CTRL", i)
+        sym = "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR"
+        a = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", i)
+        b = _indexed(sym, "gpio_intf_wrap/gpio_intf[{}]/DATA_CTRL", i)
         _check_probe(a, written=True)
         _check_probe(b, written=True)
         out.append(
             Inst(
-                f"gpio_intf[{i}]",
+                f"gpio_intf_wrap/gpio_intf[{i}]",
                 "gpio_intf",
                 a.addr,
                 a.width_bytes,
@@ -356,9 +356,9 @@ def build_instances() -> tuple[Inst, ...]:
             )
         )
     for bank in ("inbound", "outbound"):
-        sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_BASE_ADDR"
+        sym = f"SMC_TOP_SMC_{bank.upper()}_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR"
         for i in range(16):
-            path = f"smc_{bank}_filter_ctrl[{{}}]/"
+            path = f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[{{}}]/"
             cfg = _indexed(sym, path + "FILTER_CONFIG", i)
             a = _indexed(sym, path + "START_ADDR", i)
             b = _indexed(sym, path + "END_ADDR", i)
@@ -389,8 +389,11 @@ def build_instances() -> tuple[Inst, ...]:
                 )
             )
     for fam in ("mmode", "xvisor"):
-        sym = f"SMC_TOP_SMC_{fam.upper()}_REMAP_BASE_ADDR"
-        regs = [_indexed(sym, f"smc_{fam}_remap[{{}}]/REGION/region_attrs", i) for i in range(8)]
+        sym = f"SMC_TOP_SMC_{fam.upper()}_REMAP_WRAP_OUTPUT_REMAP_BASE_ADDR"
+        regs = [
+            _indexed(sym, f"smc_{fam}_remap_wrap/output_remap[{{}}]/REGION/region_attrs", i)
+            for i in range(8)
+        ]
         for i, a in enumerate(regs):
             b = regs[(i + 1) % len(regs)]
             _check_probe(a, written=True)
@@ -411,11 +414,11 @@ def build_instances() -> tuple[Inst, ...]:
                     b_zero=_mask(b, "valid"),
                 )
             )
-    sym = "SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR"
+    sym = "SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR"
     for i in range(8):
-        a = _indexed(sym, "smc_alias_remap[{}]/REGION/region_start", i)
-        b = _indexed(sym, "smc_alias_remap[{}]/REGION/region_end", i)
-        attrs = _indexed(sym, "smc_alias_remap[{}]/REGION/region_attrs", i)
+        a = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", i)
+        b = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_end", i)
+        attrs = _indexed(sym, "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_attrs", i)
         for reg in (a, b, attrs):
             _check_probe(reg, written=reg is not attrs)
         out.append(

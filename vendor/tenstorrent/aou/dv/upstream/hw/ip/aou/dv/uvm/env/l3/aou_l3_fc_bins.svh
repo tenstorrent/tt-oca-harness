@@ -52,9 +52,23 @@
 `define AOU_L3_FC_X_SIZE_SPAN(B) \
   `B``_XIGN("g1,multi_flit") \
   `B``_TAG("g4,*", "v0.8")
+// Messages that span flits, by kind (msg_kind() numbers) and direction
+// (cg_span). A WriteResp is one granule and an Activation travels alone at G0,
+// so neither can span; a CrdtGrant can, but it is no packing target.
+`define AOU_L3_FC_SPAN_KIND(B) \
+  `B``_BIN(wreq, 0, 0) `B``_BIN(rreq, 1, 1) \
+  `B``_BIN(w256, 2, 2) `B``_BIN(w512, 3, 3) `B``_BIN(w1024, 4, 4) \
+  `B``_BIN(wf256, 5, 5) `B``_BIN(wf512, 6, 6) `B``_BIN(wf1024, 7, 7) \
+  `B``_BIN(r256, 8, 8) `B``_BIN(r512, 9, 9) `B``_BIN(r1024, 10, 10) \
+  `B``_IGN(other, 11, 15)
 `define AOU_L3_FC_NMSGS(B) \
   `B``_BIN(none, 0, 0) `B``_BIN(one, 1, 1) `B``_BIN(few, 2, 4) `B``_BIN(many, 5, 15) \
   `B``_BIN(dense, 16, 48)
+// WriteResp starting in one flit (cg_wresp_flit; flits with none aren't
+// sampled). A WriteResp is one granule, so a flit holds at most 48.
+`define AOU_L3_FC_NWRESP(B) \
+  `B``_BIN(one, 1, 1) `B``_BIN(two, 2, 2) `B``_BIN(few, 3, 4) `B``_BIN(many, 5, 15) \
+  `B``_BIN(dense, 16, 47) `B``_BIN(full, 48, 48)
 `define AOU_L3_FC_MISC(B) `B``_VALS(n, 0, 2) `B``_BIN(over, 3, 24)
 `define AOU_L3_FC_CARRY(B) \
   `B``_BIN(none, 0, 0) `B``_BIN(short_carry, 1, 11) `B``_BIN(long_carry, 12, 30)
@@ -78,3 +92,17 @@
   `B``_XIGN("dut_saturate,*,rx") \
   `B``_XIGN("inj_overflow,*,rx")
 `define AOU_L3_FC_CLS(B) `B``_VALS(c, 0, 4)
+// A WriteReq the model sent (cg_wr_order), by how many of its own WriteData
+// messages went before it (AoU v0.8 5.7 leaves the order open; the DUT's RX
+// holds the early data in its RX W FIFO), whether that was the whole burst,
+// and how many other RPs had WriteData ahead of their WriteReq at the time.
+`define AOU_L3_FC_WF_AHEAD(B) \
+  `B``_BIN(none, 0, 0) `B``_BIN(one, 1, 1) `B``_BIN(few, 2, 3) `B``_BIN(many, 4, 15) \
+  `B``_BIN(deep, 16, 256)
+`define AOU_L3_FC_WF_WHOLE(B) `B``_BIN(part, 0, 0) `B``_BIN(whole, 1, 1)
+`define AOU_L3_FC_WF_OTHERS(B) `B``_BIN(alone, 0, 0) `B``_BIN(one, 1, 1) `B``_BIN(more, 2, 3)
+// Nothing ahead is never the whole burst; other RPs count only when this RP's
+// data went first too.
+`define AOU_L3_FC_X_WF(B) \
+  `B``_XIGN("none,whole,*") \
+  `B``_XIGN("none,*,one|more")

@@ -191,7 +191,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
             low_after = await self._irq_low()
             self.logger.info(
                 "CHK-SECTM-BLOCK PASS: %s[%d] stayed 0x%08x, shadow word %d = 0x%08x "
-                "(staged 0x%08x, payload 0x%08x; BRESP=%d, not graded)",
+                "(staged 0x%08x, payload 0x%08x)",
                 name,
                 word,
                 after,
@@ -199,7 +199,9 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
                 probe,
                 staged,
                 payload,
-                wr.resp_code,
+            )
+            self.logger.info(
+                "OBS-LOCK-WR-RESP: case=sectm field=%s[%d] BRESP=%d", name, word, wr.resp_code
             )
             # No specification sentence ties a SECURE_TM refusal to source 34,
             # so the [33] level of the refused write is logged only.
@@ -507,11 +509,12 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
             f"0x{cfg.write_pattern:08x}",
         )
         self.logger.info(
-            "CHK-WRITE-LOCK PASS: run=%d [33] during write, following read=0x%08x "
-            "(unchanged; BRESP=%d, not graded)",
+            "CHK-WRITE-LOCK PASS: run=%d [33] during write, following read=0x%08x (unchanged)",
             run,
             post.rdata,
-            wr.resp_code,
+        )
+        self.logger.info(
+            "OBS-LOCK-WR-RESP: case=write_lock field=%s BRESP=%d", cfg.write_field, wr.resp_code
         )
         self._check_excl(vec, mark, run, "write_lock")
         await self._release(tag)

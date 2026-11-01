@@ -111,7 +111,10 @@ OCAH_REG_MEMORY_MAP_BLOCKS ?= \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
 OCAH_REG_MEMORY_MAP_BLOCKS += $(OCAH_REG_MEMORY_MAP_BLOCKS_EXTRA)
 OCAH_REG_MEMORY_MAP_DEPS_hw_sys_sep := \
-  $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_cpu_logical.rdl
+  $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_cpu_logical.rdl \
+  $(OCAH_ROOT)/hw/sys/sep/regs/include/sep_memory_map.rdl
+OCAH_REG_MEMORY_MAP_DEPS_hw_sys_smc := \
+  $(OCAH_ROOT)/hw/sys/smc/regs/include/smc_memory_map.rdl
 OCAH_REG_MEMORY_MAP_DEPS_hw_ip_axi_lite_mailbox_unit_regs_axil_mailbox := \
   $(OCAH_ROOT)/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap.rdl \
   $(OCAH_ROOT)/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap.rdl
@@ -136,6 +139,14 @@ OCAH_REG_ERR_CHECK_BLOCKS ?= \
   kmac_wrapper_key \
   otbn_wrapper_key
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
+
+# Blocks whose regblock answers OKAY even past its last register: each is arrayed
+# at a stride wider than one instance, and the maps state OKAY between instances.
+OCAH_REG_NO_ERR_BLOCKS ?= \
+  alias_remap \
+  cross_trigger_port \
+  filter_ctrl \
+  gpio_intf
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
 ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))

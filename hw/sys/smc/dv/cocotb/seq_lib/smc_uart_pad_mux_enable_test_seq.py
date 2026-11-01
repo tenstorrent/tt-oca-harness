@@ -50,7 +50,7 @@ from .smc_uart_protocol_vip import SmcUartVip, SmcUartVipError
 
 TX_PAD = 12
 TX_PAD_FUNCTION = "UART[0].TX"
-GPIO_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", TX_PAD)
+GPIO_DATA_CTRL = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", TX_PAD)
 
 UART_EN = uart_log_engine_ctrl_u32("UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 LSR_THRE = uart_16550_main_u32("UART_16550_MAIN__LSR__THRE_bm")

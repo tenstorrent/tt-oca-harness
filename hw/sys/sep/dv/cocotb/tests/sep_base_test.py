@@ -115,6 +115,8 @@ class _EvidenceFilter(logging.Filter):
             "CHK-KM-SRAM",
             "CHK-NOISE-FORCE",
             "CHK-PRE-SENSE-FAIL-CLOSED",
+            "CHK-CHK1-RO-ENABLE",
+            "CHK-SENSE-BACKDOOR",
         }
     )
 
@@ -1598,6 +1600,8 @@ class sep_base_test(uvm_test):
         """
         from env.sep_drbg_scoreboard import SepDrbgScoreboard
         from seq_lib.sep_esrc_bringup_seq import (
+            GENERATORS_OFF,
+            GENERATORS_ON,
             SepEntropyCfg,
             SepEsrcConfigSeq,
             SepEsrcEnableEdnSeq,
@@ -1619,10 +1623,12 @@ class sep_base_test(uvm_test):
         self.drbg_sb.start()
         await self.assert_noise_force_active()
         await self.start_seq(SepEsrcConfigSeq("esrc_config", cfg=cfg))
+        await self.drbg_sb.grade_ro_enable(self, GENERATORS_OFF)
         await self.start_seq(SepEsrcEnableGeneratorsSeq("esrc_enable_gens"))
         if not await self.wait_seed_ready():
             await self.report_entropy_stall()
             raise AssertionError("ESRC never produced a seed (drbg_seed_valid_o)")
+        await self.drbg_sb.grade_ro_enable(self, GENERATORS_ON)
         self.drbg_sb.enable_chk5()
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
         return self.drbg_sb

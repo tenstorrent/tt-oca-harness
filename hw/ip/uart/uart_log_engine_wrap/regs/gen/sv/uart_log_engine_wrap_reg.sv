@@ -249,18 +249,22 @@ module uart_log_engine_wrap_reg (
         automatic logic is_valid_rw;
         automatic logic is_external;
         is_external = '0;
-        is_valid_addr = '1; // No valid address check
+        is_valid_addr = '0;
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.uart_log_engine_ctrl = cpuif_req_masked & (cpuif_addr >= 10'h0) & (cpuif_addr <= 10'h0 + 10'h3);
         is_external |= cpuif_req_masked & (cpuif_addr >= 10'h0) & (cpuif_addr <= 10'h0 + 10'h3);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 10'h0) & (cpuif_addr <= 10'h0 + 10'h3);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 10'h0) & (cpuif_addr <= 10'h0 + 10'h3);
         decoded_reg_strb.uart = cpuif_req_masked & (cpuif_addr >= 10'h100) & (cpuif_addr <= 10'h100 + 10'h27);
         is_external |= cpuif_req_masked & (cpuif_addr >= 10'h100) & (cpuif_addr <= 10'h100 + 10'h27);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 10'h100) & (cpuif_addr <= 10'h100 + 10'h27);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 10'h100) & (cpuif_addr <= 10'h100 + 10'h27);
         decoded_reg_strb.log_engine = cpuif_req_masked & (cpuif_addr >= 10'h200) & (cpuif_addr <= 10'h200 + 10'h7f);
         is_external |= cpuif_req_masked & (cpuif_addr >= 10'h200) & (cpuif_addr <= 10'h200 + 10'h7f);
+        is_valid_addr |= cpuif_req_masked & (cpuif_addr >= 10'h200) & (cpuif_addr <= 10'h200 + 10'h7f);
         is_valid_rw |= cpuif_req_masked & (cpuif_addr >= 10'h200) & (cpuif_addr <= 10'h200 + 10'h7f);
-        decoded_err = '0;
+        is_valid_addr = cpuif_addr < 10'h280;
+        decoded_err = ~is_valid_addr & decoded_req;
         decoded_req_is_external = is_external;
     end
     logic external_wr_ack;
@@ -326,7 +330,7 @@ module uart_log_engine_wrap_reg (
     end
     assign cpuif_wr_ack = external_wr_ack | (decoded_req & decoded_req_is_wr & ~decoded_req_is_external);
     // Writes are always granted with no error response
-    assign cpuif_wr_err = '0;
+    assign cpuif_wr_err = decoded_err;
 
     //--------------------------------------------------------------------------
     // Readback
@@ -374,7 +378,7 @@ module uart_log_engine_wrap_reg (
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr & ~decoded_req_is_external;
-        readback_err = '0;
+        readback_err = decoded_err;
     end
 
     assign external_rd_ack = readback_external_rd_ack;

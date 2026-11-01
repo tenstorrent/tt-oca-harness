@@ -253,7 +253,8 @@ Checkers:
                  ``BOOT_MODE`` = 0 (sep-programming.adoc:457-462, :466-468;
                  edn.adoc:107). In the hold both seed handshake signals are
                  read with no unknown bit allowed; an X or Z on either fails.
-The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``). The
+The unstated effects are logged only (``OBS-EDN-*``, ``OBS-CSRNG-*``,
+``OBS-DRBG-*``). The
 ``CMD_STS`` of the CSRNG instantiate stays an observation (``OBS-CSRNG-STS``): no
 sentence states that a first instantiate on the software instance succeeds.
 """
@@ -298,6 +299,8 @@ CSRNG_RECOV_ALERT_STS = sym("CSRNG_RECOV_ALERT_STS_REG_ADDR")
 CSRNG_INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR")
 CSRNG_INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR")
 CSRNG_HW_EXC_STS = sym("CSRNG_HW_EXC_STS_REG_ADDR")
+CSRNG_ERR_CODE = sym("CSRNG_ERR_CODE_REG_ADDR")
+CSRNG_MAIN_SM_STATE = sym("CSRNG_MAIN_SM_STATE_REG_ADDR")
 EDN_CTRL = sym("EDN_CTRL_REG_ADDR")
 EDN_SW_CMD_REQ = sym("EDN_SW_CMD_REQ_REG_ADDR")
 EDN_SW_CMD_STS = sym("EDN_SW_CMD_STS_REG_ADDR")
@@ -305,6 +308,8 @@ EDN_HW_CMD_STS = sym("EDN_HW_CMD_STS_REG_ADDR")
 EDN_INTR_STATE = sym("EDN_INTR_STATE_REG_ADDR")
 EDN_INTR_ENABLE = sym("EDN_INTR_ENABLE_REG_ADDR")
 EDN_RECOV_ALERT_STS = sym("EDN_RECOV_ALERT_STS_REG_ADDR")
+EDN_ERR_CODE = sym("EDN_ERR_CODE_REG_ADDR")
+EDN_MAIN_SM_STATE = sym("EDN_MAIN_SM_STATE_REG_ADDR")
 
 # Field bits from the generated register headers (csrng.rdl, edn.rdl).
 CS_STS_RDY = CSRNG.fields("SW_CMD_STS")["CMD_RDY"]["bm"]
@@ -554,6 +559,43 @@ class _NoiseDrive:
         await self._task
 
 
+class _SeedIngress:
+    """Per-clock count of ESRC entropy words offered to the DRBG seed packer.
+
+    Each clock with ``esrc_compress_vld_o`` = 1 counts as accepted when
+    ``drbg_seed_word_ready_o`` = 1 and as dropped otherwise. ``depth`` is the
+    number of accepted words before the first offered word with ready = 0.
+    ``stop`` lets the loop leave at its next clock edge.
+    """
+
+    def __init__(self, test) -> None:
+        self.t = test
+        self.accepted = 0
+        self.dropped = 0
+        self.depth: int | None = None
+        self._run = True
+        self._task = cocotb.start_soon(self._watch())
+
+    async def _watch(self) -> None:
+        dut = cocotb.top
+        rd = self.t.rd
+        while self._run:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if not rd(dut.esrc_compress_vld_o, allow_unknown=True):
+                continue
+            if rd(dut.drbg_seed_word_ready_o, allow_unknown=True):
+                self.accepted += 1
+            else:
+                self.dropped += 1
+                if self.depth is None:
+                    self.depth = self.accepted
+
+    async def stop(self) -> None:
+        self._run = False
+        await self._task
+
+
 class _InstSeedWatch:
     """Per-clock record of the instantiate-seed leg on one clock count.
 
@@ -624,7 +666,9 @@ class _InstSeedWatch:
                     seed_hs = 0
                     if self.hold_x is None:
                         self.hold_x = self.clk
-                        self.t.logger.info("INST-SEED hold read at clock %d: %s", self.clk, exc)
+                        self.t.logger.info(
+                            "INFO-INST-SEED-HOLD read at clock %d: %s", self.clk, exc
+                        )
             else:
                 seed_hs = 0
                 if rd(dut.drbg_seed_valid_o, allow_unknown=True):
@@ -668,10 +712,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac", "abr"))
         self.reg = _Reg(self)
         await self.reg._wr(EXT_TRNG_SRC_SEL, 0)
-        self.logger.info("BASELINE sw_reset_n=0x%02x ext_trng_src_sel=0x0", self.swrst.value)
+        self.logger.info("INFO-BASELINE sw_reset_n=0x%02x ext_trng_src_sel=0x0", self.swrst.value)
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self._seq_mark = 0
@@ -683,6 +727,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         ).start()
         self._gap_i = 0
         self.sb = None
+        ingress = _SeedIngress(self)
         failed = True
         try:
             await self._boot_cmd_reset()
@@ -699,6 +744,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             await self._auto_leg()
             await self._inst_seed_leg()
             await self._acmd_hi_leg()
+            await self._enable_order_leg()
             failed = False
         finally:
             if failed:
@@ -707,6 +753,13 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             close_graded_window(self.logger)
             if self.sb is not None:
                 self.sb.stop()
+        await ingress.stop()
+        self.chk.obs(
+            "DRBG-SEED-INGRESS",
+            accepted=ingress.accepted,
+            dropped=ingress.dropped,
+            depth="na" if ingress.depth is None else ingress.depth,
+        )
         await self.vec.stop()
         await self.clk.stop()
         self.chk.finish()
@@ -765,7 +818,9 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         await self.swrst.release("trng")
         fall = await self._wait_probe(dut.trng_reset_active_probe_o, True, "trng reset fall")
         await RisingEdge(dut.clk_i)
-        self.logger.info("TRNG reset: rise_clk=%d fall_clk=%d cap=%d", rise, fall, TRNG_RESET_CAP)
+        self.logger.info(
+            "INFO-TRNG-RESET: rise_clk=%d fall_clk=%d cap=%d", rise, fall, TRNG_RESET_CAP
+        )
 
     async def _clean_start(self, group: str) -> int:
         """TRNG reset, bring-up without the EDN step, CSRNG enable. Returns bit 14."""
@@ -776,7 +831,15 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         recov = await self.reg._rd(CSRNG_RECOV_ALERT_STS)
         bit14 = int(bool(recov & CS_INVSEQ))
         self.chk.ctrl("CLEAN-START", bit14 == 0, group=group, csrng_invseq=bit14)
+        await self._main_sm("idle")
         return bit14
+
+    async def _main_sm(self, step: str) -> None:
+        """OBS-DRBG-MAIN-SM: the CSRNG and EDN ``MAIN_SM_STATE`` readbacks at ``step``.
+        No text states the encoding of either state machine."""
+        for unit, addr in (("csrng", CSRNG_MAIN_SM_STATE), ("edn", EDN_MAIN_SM_STATE)):
+            state = await self.reg._rd(addr)
+            self.chk.obs("DRBG-MAIN-SM", unit=unit, step=step, state=f"0x{state:x}")
 
     def _grade(self, name: str, cond: bool, **fields) -> bool:
         """Grade one check inside a coverage window: a FAIL is logged, then the window closes."""
@@ -949,6 +1012,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         hw = await self._auto_hw(f"auto_{kind}")
         if graded:
             close_graded_window(self.logger)
+        await self._main_sm("edn_auto")
         await self.reg._wr(EDN_CTRL, _edn_ctrl(False, False, False))
         return int(bool(pre & ED_AUTO_MODE)), hw
 
@@ -1444,6 +1508,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             vec25=self.vec.level("cs_exc"),
             cmd_rdy_after=int(bool(sts & ED_STS_RDY)),
         )
+        await self._main_sm("edn_invseq")
         if sts & ED_STS_ACK:
             open_graded_window(TEST, self.logger)
         set_before_clear = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
@@ -1504,6 +1569,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             hs["vec_clk"] = await self._wait_vec(m, "cs_done", VEC_CAP)
             hs["vec23"] = 1
             self.chk.obs("CSRNG-STS", cmd_sts=_field(done, CS_STS_STS), t_cmd=t_cmd)
+            await self._main_sm("csrng_inst_ack")
             await r._wr(CSRNG_INTR_STATE, CS_DONE)
             # Control: bit 14 is 0 after the first command.
             first = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
@@ -1532,6 +1598,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 cmd_sts=_field(sts, CS_STS_STS),
                 hw_exc=f"0x{await r._rd(CSRNG_HW_EXC_STS):x}",
             )
+            await self._main_sm("csrng_invseq")
             await r._wr(CSRNG_RECOV_ALERT_STS, 0)
             cleared = int(not await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ)
         except TrialTimeout as exc:
@@ -2030,3 +2097,41 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         except TrialTimeout as exc:
             hi["reason"] = f"timeout:{exc.what} bound={exc.bound} step={step}"
         self.chk.obs("CSRNG-ACMD-HI", **hi)
+
+    async def _enable_order_leg(self) -> None:
+        """OBS-DRBG-ENABLE-ORDER: EDN on first, then CSRNG, then ESRC, and one EDN
+        software instantiate. No text states the result of this order, so the status
+        registers are logged."""
+        close_graded_window(self.logger)
+        await self._trng_reset()
+        r = self.reg
+        f: dict = {"ack_seen": 0}
+        # The TRNG reset stops the scoreboard and its noise driver; this leg drives
+        # the raw noise itself, as the instantiate-seed leg does.
+        noise = _NoiseDrive()
+        try:
+            await self.assert_noise_force_active()
+            await r._wr(EDN_CTRL, _edn_ctrl(False, False, True))
+            await r._wr(CSRNG_CTRL, CSRNG_CTRL_ON)
+            await self.start_seq(SepEsrcConfigSeq("enable_order_esrc_config", reset_trng=False))
+            await self.start_seq(SepEsrcEnableGeneratorsSeq("enable_order_enable_gens"))
+            rdy = ED_STS_REG_RDY | ED_STS_RDY
+            try:
+                await self._wait(EDN_SW_CMD_STS, rdy, rdy, FIRST_CAP, "enable_order_rdy")
+                await r._wr(EDN_SW_CMD_REQ, CMD_INSTANTIATE)
+                await self._wait(
+                    EDN_SW_CMD_STS, ED_STS_ACK, ED_STS_ACK, FIRST_CAP, "enable_order_ack"
+                )
+                f["ack_seen"] = 1
+            except TrialTimeout as exc:
+                f["reason"] = f"timeout:{exc.what} bound={exc.bound}"
+            f["edn_sw_cmd_sts"] = f"0x{await r._rd(EDN_SW_CMD_STS):x}"
+            f["csrng_sw_cmd_sts"] = f"0x{await r._rd(CSRNG_SW_CMD_STS):x}"
+            f["edn_err_code"] = f"0x{await r._rd(EDN_ERR_CODE):x}"
+            f["csrng_err_code"] = f"0x{await r._rd(CSRNG_ERR_CODE):x}"
+            f["edn_recov"] = f"0x{await r._rd(EDN_RECOV_ALERT_STS):x}"
+            f["csrng_recov"] = f"0x{await r._rd(CSRNG_RECOV_ALERT_STS):x}"
+            self.chk.obs("DRBG-ENABLE-ORDER", **f)
+            await r._wr(EDN_CTRL, _edn_ctrl(False, False, False))
+        finally:
+            await noise.stop()

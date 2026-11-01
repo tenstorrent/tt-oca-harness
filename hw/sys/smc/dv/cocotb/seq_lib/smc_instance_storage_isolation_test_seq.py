@@ -229,7 +229,8 @@ class smc_instance_storage_isolation_test_seq(SmcCsrSeq):
     async def _alias_step(self) -> None:
         pats = [((0x0A5A_5000 + i * 0x0001_1000) << 12) & ADDR_FIELD_MASK for i in range(8)]
         entries = [
-            (f"A{i}", _array("SMC_ALIAS_REMAP_REGION_REGION_START", i), pats[i]) for i in range(8)
+            (f"A{i}", _array("SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START", i), pats[i])
+            for i in range(8)
         ]
         obs = await self._coresident("ALIAS_START", entries, 8, 0)
         self._mark_step("ALIAS")
@@ -244,9 +245,11 @@ class smc_instance_storage_isolation_test_seq(SmcCsrSeq):
         xpat = [((0x0E5E_5000 + i * 0x0002_0300) << 12) & ADDR_FIELD_MASK for i in range(8)]
         assert not set(mpat) & set(xpat), "M-mode and Xvisor patterns collide"
         entries = [
-            (f"M{i}", _array("SMC_MMODE_REMAP_REGION_REGION_ATTRS", i), mpat[i]) for i in range(8)
+            (f"M{i}", _array("SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS", i), mpat[i])
+            for i in range(8)
         ] + [
-            (f"X{i}", _array("SMC_XVISOR_REMAP_REGION_REGION_ATTRS", i), xpat[i]) for i in range(8)
+            (f"X{i}", _array("SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS", i), xpat[i])
+            for i in range(8)
         ]
         obs = await self._coresident("REMAP_ATTRS", entries, 8, 0)
         for i in range(REMAP_COUNT):
@@ -264,9 +267,11 @@ class smc_instance_storage_isolation_test_seq(SmcCsrSeq):
         opat = [0x005A_5A00_0000_2000 + (i + 1) * 0x0000_0002_0000_0321 for i in range(16)]
         assert not set(ipat) & set(opat), "inbound and outbound patterns collide"
         entries = [
-            (f"I{i}", _array("SMC_INBOUND_FILTER_CTRL_START_ADDR", i), ipat[i]) for i in range(16)
+            (f"I{i}", _array("SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR", i), ipat[i])
+            for i in range(16)
         ] + [
-            (f"O{i}", _array("SMC_OUTBOUND_FILTER_CTRL_START_ADDR", i), opat[i]) for i in range(16)
+            (f"O{i}", _array("SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR", i), opat[i])
+            for i in range(16)
         ]
         obs = await self._coresident("FILTER_START", entries, 8, FILTER_CTRL_START_ADDR_REG_DEFAULT)
         for i in range(FILTER_COUNT):
@@ -280,7 +285,7 @@ class smc_instance_storage_isolation_test_seq(SmcCsrSeq):
         )
 
     async def _gpio_step(self) -> None:
-        addrs = [_array("GPIO_INTF_ACCESS_FILTER", i) for i in range(GPIO_INTF_NUM)]
+        addrs = [_array("GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER", i) for i in range(GPIO_INTF_NUM)]
         rounds = (
             [(i % 64) for i in range(GPIO_INTF_NUM)],
             [((i + i // 64) % 64) for i in range(GPIO_INTF_NUM)],

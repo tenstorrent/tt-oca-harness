@@ -132,11 +132,15 @@ CHECKERS = (
 
 
 def _alias(kind: str, entry: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", entry)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", entry
+    )
 
 
 def _ormp(table: str, entry: int) -> int:
-    return getattr(_regs, f"SMC_{table}_REMAP_{entry}__REGION_REGION_ATTRS_REG_ADDR")
+    return getattr(
+        _regs, f"SMC_{table}_REMAP_WRAP_OUTPUT_REMAP_{entry}__REGION_REGION_ATTRS_REG_ADDR"
+    )
 
 
 # (label, address, documented-field mask) of all 40 remap registers.

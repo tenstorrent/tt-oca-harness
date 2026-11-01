@@ -85,6 +85,25 @@ returned when address bit 2 is set.
   its Size column gives.
 * A `Reserved` row is an address between unit apertures.
 
+A register block generated from SystemRDL answers an access that reaches it as
+follows:
+
+* An offset between its registers answers `OKAY`: a read returns 0 and a write
+  has no effect.
+* An offset past the end of its last register answers `SLVERR` with read data 0.
+  That end is a multiple of the block's register width, so an access wider than
+  the registers that runs past it, such as a 64-bit read of the last register of
+  a block with 32-bit registers, answers `SLVERR`.
+
+A block instantiated as an array at a stride wider than one instance answers
+`OKAY` at every offset, so the padding between instances behaves as a hole. The
+alias and output remap regions, the traffic filter entries, the GPIO interfaces
+and the cross-trigger ports are such blocks.
+
+Whether a unit's _Past Extent_ cell shows this `SLVERR` depends on the decoder in
+front of the block. Where the fabric decodes the unit's extent exactly, the
+fabric answers first.
+
 [[ocah-decode-response-codes-table]]
 .Decode response codes
 [cols="<24%,<76%",options="header"]

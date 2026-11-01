@@ -191,6 +191,7 @@ from sep_reg_meta import sym
 from seq_lib.sep_dma_ops import (
     CFG_REGWEN,
     CONTROL,
+    DIGEST_WORDS,
     DST_ADDR_HI,
     ERROR_CODE,
     ERROR_CODE_MASK,
@@ -498,6 +499,23 @@ class Plan:
         self._leg_c(rng)
         self._leg_d(rng)
         self._leg_d_cont(rng)
+        self._logged(rng)
+
+    def _logged(self, rng: SepSeededRng) -> None:
+        """Logged runs, drawn after every graded leg so the graded draws keep their values."""
+        chunk = 4 * rng.randrange(1, 17)
+        # Fixed source (INCREMENT=0, WRAP=0), incrementing destination, two chunks.
+        src, dst = place(rng, [2 * chunk, 2 * chunk])
+        s = rng.randrange(256)
+        self.fixed = (src, dst, chunk, s, draw_source_words(rng, 2 * chunk // 4, s))
+        # One CONTROL write at BUSY=1 during a long single-chunk copy.
+        self.busy_go = rng.randrange(2)
+        self.busy_copy = self._copy(rng, dict(total=4096, chunk=4096, width_enc=2), order=False)
+        self.lines.append(
+            f"DRAW logged fixed_src=0x{src:08x} fixed_dst=0x{dst:08x} fixed_chunk={chunk} "
+            f"busy_ctrl_go={self.busy_go} busy_src=0x{self.busy_copy.x.src_base:08x} "
+            f"busy_dst=0x{self.busy_copy.x.dst_base:08x}"
+        )
 
     # Leg A ---------------------------------------------------------------
     def _copy(
@@ -790,7 +808,9 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 dut.sep_internal_interrupts_probe_o, {"chunk": 9}, name="pic_src10"
             ).start()
             await self._leg_a(plan)
+            await self._obs_fixed_chunk(plan)
             await self._leg_b(plan)
+            await self._obs_ctrl_busy(plan)
             await self._leg_c(plan)
             await self._leg_d(plan)
             await self._leg_d_cont(plan)
@@ -869,6 +889,14 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
         sw = self.ops.status_writes(rec.clk0, rec.clk1)
         ok_count = (r == 0) if n == 1 else (n - 1 <= r <= n)
         ok = ok_count and hw_falls >= need and sw == 0
+        self.logger.info(
+            "OBS-DMA-LAST-CHUNKDONE seed=%d n=%d rises=%d last_rise_exempt=%d %s",
+            self.seed,
+            n,
+            r,
+            int(n > 1 and r == n),
+            tag,
+        )
         self._pass(
             "CHK-DMA-CHUNKRISE",
             ok,
@@ -892,6 +920,27 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
             f"bytes={total} aw={aw} b={b} done_rises={len(done_rises)} last_b_clk={last_b} "
             f"done_rise_clk={done_rises[-1] if done_rises else None} early_rises={len(early)} "
             f"bresp_nonzero={bad_resp} {tag}",
+        )
+
+    def _obs_edge_order(self, ev: DmaTapEvents, clk0: int, tag: str) -> None:
+        """STATUS edge clocks and the last B of one transfer, relative to its GO."""
+
+        def rel(clks: list[int]) -> str:
+            return ",".join(str(c - clk0) for c in clks) or "-"
+
+        last_b = max((x.clk for x in ev.b), default=None)
+        self.logger.info(
+            "OBS-DMA-EDGE-ORDER seed=%d %s busy_rise=%s chunk_done_rise=%s done_rise=%s "
+            "done_fall=%s digest_valid_rise=%s digest_valid_fall=%s last_b=%s",
+            self.seed,
+            tag,
+            rel(ev.rises("busy")),
+            rel(ev.rises("chunk_done")),
+            rel(ev.rises("done")),
+            rel(ev.falls("done")),
+            rel(ev.rises("sha2_digest_valid")),
+            rel(ev.falls("sha2_digest_valid")),
+            "-" if last_b is None else str(last_b - clk0),
         )
 
     def _check_go_chunks(self, rec: XferRecord, x: DmaXfer, tag: str) -> int:
@@ -1186,6 +1235,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 x.total, m_busy, x.total >= LONG_TOTAL, tag
             )
             rec = self._record(m_tap, m_irq, go_writes, [s for s, _ in reads])
+            self._obs_edge_order(rec.ev, rec.clk0, f"leg=B {tag}")
             busy_trace = (
                 f"rises={self.busy.rise_clks_since(m_busy)} "
                 f"falls={self.busy.fall_clks_since(m_busy)} from_clk={m_busy.clk}"
@@ -1268,6 +1318,85 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 f"control_multi_polls={multi_chunk_polls} "
                 f"control_chunk_irq_rises={multi_irq_rises} total={total}",
             )
+
+    # ---- logged runs --------------------------------------------------------
+    async def _obs_fixed_chunk(self, plan: Plan) -> None:
+        """Source address of the second chunk of a two-chunk copy from a fixed source."""
+        ops = self.ops
+        src, dst, chunk, s, words = plan.fixed
+        await self.mem.fill(src, words)
+        await self.mem.fill(dst, [sentinel_word(s)] * (2 * chunk // 4))
+        await ops.program_transfer(
+            src=src, dst=dst, total=2 * chunk, chunk=chunk, width_enc=2, src_inc=False
+        )
+        m_tap = self.tap.mark()
+        await ops.go(opcode=OP_COPY, initial=1)
+        res = await ops.run_to_done(
+            poll_size(2 * chunk), busy=self.busy, busy_bound=BUSY_RISE_BOUND, tag=" fixed-src"
+        )
+        if res.status.done:
+            await self._wait_idle_done("fixed-src")
+        ev = self.tap.since(m_tap)
+        gos = [
+            c0
+            for c0, _, addr, data in ops.writes
+            if addr == CONTROL and data & GO_MASK and c0 >= m_tap.clk
+        ]
+        second = [b.addr for b in ev.ar if len(gos) > 1 and b.clk >= gos[1]]
+        err = await ops.rd(ERROR_CODE)
+        self.logger.info(
+            "OBS-DMA-FIXED-CHUNK seed=%d chunk=%d go_writes=%d done=%d error=%d error_code=0x%x "
+            "src=0x%08x chunk2_ar=%s chunk2_first_off=%s",
+            self.seed,
+            chunk,
+            res.go_writes,
+            res.status.done,
+            res.status.error,
+            err,
+            src,
+            ",".join("-" if a is None else f"0x{a:08x}" for a in second) or "-",
+            "-" if not second or second[0] is None else str(second[0] - src),
+        )
+        await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
+
+    async def _obs_ctrl_busy(self, plan: Plan) -> None:
+        """A CONTROL write with a drawn GO bit while BUSY=1, during a long single-chunk copy."""
+        ops = self.ops
+        c, x = plan.busy_copy, plan.busy_copy.x
+        await self._fill_copy(c)
+        await self._program(c)
+        m_tap, m_busy = self.tap.mark(), self.busy.mark()
+        await ops.go(opcode=OP_COPY, initial=1)
+        await self.busy.wait_rise(m_busy, BUSY_RISE_BOUND)
+        value = (ops.last_control & ~GO_MASK) | (GO_MASK if plan.busy_go else 0)
+        m_wr = self.busy.mark()
+        await ops.wr(CONTROL, value)
+        busy_through = int(self.busy.level() == 1 and not self.busy.fall_clks_since(m_wr))
+        st = None
+        for _ in range(ops.done_bound(poll_size(x.total))):
+            st = await ops.read_status()
+            if (st.done and not st.busy) or st.error or st.aborted:
+                break
+        err = await ops.rd(ERROR_CODE)
+        ev = self.tap.since(m_tap)
+        got = await self.mem.read(c.dst_region, c.dst_region_words)
+        exp = c.expected_dst()
+        mism = sum(1 for g, e in zip(got[1:-1], exp[1:-1]) if g != e)
+        self.logger.info(
+            "OBS-DMA-CTRL-BUSY seed=%d go=%d control=0x%08x busy_through_write=%d ar=%d aw=%d "
+            "n_txn=%d %s error_code=0x%x dst_mismatch=%d",
+            self.seed,
+            plan.busy_go,
+            value,
+            busy_through,
+            len(ev.ar),
+            len(ev.aw),
+            x.n_txn,
+            st.fmt(),
+            err,
+            mism,
+        )
+        await ops.wr(STATUS, ST_DONE | ST_CHUNK_DONE | ST_ERROR)
 
     # ---- Leg C ------------------------------------------------------------
     async def _range_write(self, base: int, limit: int, tag: str) -> tuple[int, int]:
@@ -1411,6 +1540,7 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 ctrl_state["before_second"] = pre.digest_valid
         if graded:
             self._open()
+        m_tap = self.tap.mark()
         await ops.go(opcode=alg_op, digest_swap=swap, initial=1)
         try:
             res = await ops.run_to_done(
@@ -1444,6 +1574,17 @@ class sep_dma_transfer_matrix_rand_test(sep_base_test):
                 break
         st, err, _ = await self._read_regs()
         words = await ops.read_digest(n_words)
+        if split:
+            self._obs_edge_order(self.tap.since(m_tap), m_tap.clk, f"leg=D {tag}")
+        if n_words < DIGEST_WORDS:
+            rest = (await ops.read_digest(DIGEST_WORDS))[n_words:]
+            self.logger.info(
+                "OBS-DMA-DIGEST-UNUSED seed=%d %s first_unused=%d words=%s",
+                self.seed,
+                tag,
+                n_words,
+                ",".join(f"0x{w:08x}" for w in rest),
+            )
         dst = await self.mem.read(m.dst, length // 4)
         copy_mm = sum(
             1 for i, w in enumerate(dst) if w != int.from_bytes(m.msg[4 * i : 4 * i + 4], "little")

@@ -128,21 +128,23 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |DUT Interface |`tb_top` Handling
 |CPU-LSU AXI |Flattens to `s_axi_*`. On the `lsu_stub_*` targets the no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). On the full-CPU `default` build, which runs the no_cpu tests on VCS and produces the graded cocotb coverage logs, a no_cpu leaf holds the core off and `tb_top` forces `u_sep_cpu.lsu_axi_req` from the same ports and holds `u_sep_cpu.lsu_axi_resp_raw` at zero; VIP addresses bypass `u_lsu_local_alias_remap`. Response XMR-read back into the flat bus on both builds.
 |SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
+|SMN-inbound WSTRB |Existing top port, driven by the test. `m_axi_wstrb` is a TB input that `ocah_axi_vip` drives with each W beat; the VIP places a full strobe on an aligned 8-byte beat and issues no sparse or zero strobe. A leaf that needs one writes the strobe to the input at each falling edge of `clk_i` while `m_axi_wvalid` is 1, after the VIP drive on the rising edge, until the W handshake, so the DUT and the `ocah_axi_sva` checker of `m_axi` see that strobe on every edge of the beat. The write data, the response and the read-back the leaf logs are not driven. User: `sep_sram_axi_shape_matrix_test`.
 |SEP->SMC AXI |`rom_boot` target: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Every other target answers the port through the BH-SMC responder `u_smc_route_mem` (`tb/sep_smc_route_mem.sv`), which is idle unless BH-SMC is enabled; the decode check is not compiled there.
-|BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
+|BH-SMC: SMC aperture inputs and SMC responder |Added hook (top-port drive) on every target without `SEP_SMC_MEM_MODEL`. `tb_top` drives `smc_global_base_addr_i` and `smc_region_size_i` from `bh_smc_base_i` and `bh_smc_size_i` when the leaf sets `bh_smc_en_i` to 1 before it releases reset (`env/sep_bh_smc.py`); with the hook on, a later write of `bh_smc_base_i` or `bh_smc_size_i` reaches the inputs on the same clock (`sep_fabric_smc_route_test` aperture-change leg), or else from `+sep_smc_aperture_base=<hex>` and `+sep_smc_aperture_size=<hex>`; with neither, both inputs are 0. While the hook is on, `u_smc_route_mem` answers `sep_ext_to_smc_axi_resp_i`: OKAY with the request ID, one burst per channel in flight, written bytes stored and returned, and `{~a, a}` (`a` the low 32 bits of the 8-byte-aligned address) for a word no write touched. `smc_base_probe_o` and `smc_size_probe_o` are read-only copies of the two DUT inputs on every target, so a leaf sees the aperture the DUT decodes on each clock (CTRL-SMC-APERTURE-CHANGE). Owners: `sep_fabric_smc_route_test` (leaf drive), `sep_fabric_dma_endpoint_matrix_test` (plusargs).
 |AXI Extension port responder |Added hook (top-port drive). The integration wrapper answers the `sep` extension port (`sep_external_axi_resp_i`) from an error slave: DECERR, read data `0xBADCAB1E`. In a run with `+sep_ext_port_responder`, `tb_top` forces the wrapper net `axi_extension_axi_resp` from its own responder instead, re-issued on each falling edge of `clk_i`; without the plusarg the net is never forced and the responder stays in reset. The responder accepts one write burst and one read burst at a time and returns the request ID. The B code of a write is `ext_port_rsp_bresp_i` at the AW handshake. R beat k of a read answers RRESP `ext_port_rsp_rresp_i[2k +: 2]` and RDATA `ext_port_rsp_rdata_i[64k +: 64]`, sampled at the AR handshake, beat k modulo 8. `ext_port_rsp_on_o` reads 1 while the responder is on. Owners: `sep_fabric_extension_port_window_test` (CHK-EXT-REPLY, CHK-EXT-PORT, CHK-EXT-BURST) and the `_sba` entry of `sep_debug_master_target_matrix_test` (CHK-DBG-EXT), each of which sets the reply before each access.
 |TRNG AXI-Lite passthrough responder |Added hook (top-port drive). The integration wrapper answers the `sep` TRNG AXI-Lite port (`ext_trng_axil_resp_i`) from an error slave: DECERR. In a run with `+sep_ext_trng_axil_responder`, from the first clock with `ext_trng_axil_rsp_en_i` at 1, `tb_top` forces the wrapper net `ext_trng_axil_resp` from its own responder instead, re-issued on each falling edge of `clk_i`. The responder then stays on for the rest of the run and the net is never released. Without the plusarg the net is never forced. The responder accepts one write and one read at a time. B handshake k answers BRESP `ext_trng_axil_rsp_bresp_i[2j +: 2]`, sampled when B becomes valid, and R handshake k answers RRESP `ext_trng_axil_rsp_rresp_i[2j +: 2]` and RDATA `ext_trng_axil_rsp_rdata_i[32j +: 32]`, sampled at the AR handshake, with j = k modulo 8. k counts the handshakes of each channel from 0 at each rise of the enable and at the bench reset. `ext_trng_axil_rsp_on_o` reads 1 while the responder is on, and `ext_trng_axil_rsp_bcnt_o` and `ext_trng_axil_rsp_rcnt_o` read the two counts. All inputs are 0 by default. Users: the dead-space decode entry of the fabric and remap area of `docs/SEP_VPLAN.adoc`, which turns the responder on after its reference-slave legs, with the port idle.
-|Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN).
+|Boundary PIC input |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `sep_ext_interrupts_i` (`extintsrc_req_i` of `sep`, the PIC sources above 43) from the TB input of the same name, which is 0 unless a leaf drives it. Owner: `sep_pic_pending_map_walk_rand_test` (CHK-EXT-IN; one-clock pulses timed against a `meigwclr` write for CTRL-GWCLR-RACE and OBS-GWCLR-RACE).
+|CPU machine timer interrupt pin |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `timer_int` (the core pin that drives `mip.MTIP`) from the TB input `timer_int_i`. A value other than 1 drives 0, so a leaf that does not drive it keeps the pin at 0; the SV-UVM top ties the input to 0. `hw/sys/sep/doc/interrupts.adoc:289-292` states that the pin is tied to zero at the SMU integration boundary; the bench drives the open wrapper port. Owner: `sep_pic_priority_gate_rand_test` (CHK-TIMER-PIN).
 |External TRNG streams |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_axis_req_i[2:0]` to zero. While bit i of `ext_trng_drive_en_i` is 1, `tb_top` forces the wrapper net `ext_trng_axis_req[i]` (the `sep` input of stream i) from `ext_trng_tvalid_i[i]`, `ext_trng_tdata_i[32*i +: 32]` and `ext_trng_tstrb_i[4*i +: 4]`, re-issued on each falling edge of `clk_i`; with the bit 0 the force is released and the stream keeps the tie-off. The response `ext_trng_axis_rsp_o` is not forced; the external stream response monitor reads it. Driver and monitor: `env/sep_ext_trng_stream.py`, which also resets the source of a stream (drops the beat it holds and its queue) when a leaf asks, and logs it. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`, the DRBG stall point of `sep_km_fault_inject_rand_test`, and the pool leg of `sep_fabric_dma_endpoint_matrix_test` (stream 2: a drawn number of word pairs below the pool depth).
 |External TRNG interrupt |Added hook (top-port drive). The integration wrapper ties the `sep` input `ext_trng_irq_i` (PIC source 17) to zero. While `ext_trng_irq_drive_i` is 1, `tb_top` forces the wrapper net `ext_trng_irq` to 1; at 0 the force is released. Users: the external stream entries of the crypto and entropy area of `docs/SEP_VPLAN.adoc`.
 |DFT pins |Added hook (top-port drive). `tb_top` drives the `sep` inputs `test_en_i` and `scan_rst_ni` from the TB inputs `test_en_i` and `scan_rst_ni_i`. A value of `test_en_i` other than 1 drives 0 and a value of `scan_rst_ni_i` other than 0 drives 1, so a leaf that does not drive them keeps the functional mode. Owner: `sep_scan_reset_override_test`.
 |CPU lockstep control |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `lockstep_ctrl_i` (`err_injection_en`, `disable_corruption_detection`) from the `tb_top` variable `lockstep_ctrl_i`, 0 from time 0, and observes `lockstep_status_o` in the variable of the same name. A leaf writes the variable through the `tb_top` handle. Owner: `sep_cpu_isa_pmp_csr_test`.
 |DMI enables |Added hook (top-port drive). `tb_top` drives the `sep` inputs `dmi_core_enable_i` and `dmi_uncore_enable_i` (wrapper ports `dmi_core_enable`, `dmi_uncore_enable`) from the TB inputs of the same name; a value other than 1 drives 0. `dmi_uncore_rdata` is held at 0. Owner: `sep_debug_master_target_matrix_test`.
 |Core JTAG TAP pins |Added hook (top-port drive). With `jtag_bench_own_i` = 1 the TB inputs `jtag_tck_i`, `jtag_tms_i`, `jtag_tdi_i` and `jtag_trst_n_i` drive the core TAP, and cocotb shifts it (`env/sep_jtag_dmi.py` on `OcahJtagMasterDriver`). Any other value keeps the pins on the `tb_top` registers that the `+cpu_boot` reset-vector TDR task drives. TRST of those registers starts high and falls at 1 ps, so the TAP and its reset-vector TDR take their reset values on a four-state simulator, and stays low outside that task. Owners: `sep_cpu_reset_entry_test`, `sep_debug_master_target_matrix_test`.
-|JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`.
+|JTAG reset overrides and IC_RESET TDR |Existing bench hook. The TB inputs `jtag_<ip>_rst_hold_i` (OTBN, AES, HMAC, KMAC, TRNG, Adams Bridge), `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` drive the override and value fields of `jtag_sep_reset_ctrl_i` while `jtag_ic_reset_tdr_en_i` is 0. With `jtag_ic_reset_tdr_en_i` = 1 the IC_RESET TDR `jtag_ic_reset_reg` of `tb_top` drives every field, shifted through the `jtag_ic_reset_*` inputs by `env/sep_ic_reset_tdr.py`. Users: `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_crypto_per_ip_reset_isolation_test`.
 |Reset vector |Existing bench hook. `rst_vec_i` drives the wrapper input `rst_vec`, which `sep_wrapper` does not connect further. At a non-zero value under `+cpu_boot`, `tb_top` also shifts the value into the reset-vector TDR (IR 0x18) while `rst_ni` is low. User: `sep_cpu_reset_entry_test`.
 |JTAG ID |Added hook (top-port drive). `tb_top` drives the `sep_wrapper` input `jtag_id` (`jtag_id_i[31:1]` of `sep`) from the TB input `jtag_id_i`; an undriven or unknown value drives 0. Readback: `jtag_id_probe_o`. Owner: `sep_efuse_field_layout_rand_test` (CHK-JTAGID).
-|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`.
+|Bench plusargs |Existing bench hooks. `+sep_smc_fuse_sense_hold` holds the bench SMC fuse-sense model at "not done" from time 0 for the whole leaf; user `sep_boot_release_terms_test` (entry `sep_boot_release_terms_test_smc_hold`). `+sep_edn_jtag_reset_waive` turns off the crypto EDN arbiter and adapter request-hold assertions for a leaf that drives a JTAG reset override; users `sep_ip_reset_override_matrix_test`, `sep_secure_tm_strap_sampling_test`, `sep_timer_clock_contract_test`, `sep_sec_dis_timing_rand_test`, `sep_sec_dis_override_test`, `sep_sec_dis_reset_reach_test`, `sep_scan_reset_override_test`, `sep_scan_mode_state_hold_test`. `+sep_lsu_demux_underflow_waive` turns off the CPU LSU demux assertions from each `wdt_rst_ni_i` fall to the next `rst_ni` fall: the watchdog reset does not drain transactions, and the cold reset that follows every watchdog timeout clears that state (`doc/trm/src/reset.adoc:44-53`). Full-CPU build only; user `sep_cpu_reset_retention_test` (both entries; the stub entry runs the full-CPU build on VCS). `+sep_trng_errslv_assert_waive` turns off every assertion of the wrapper TRNG error slave `u_ext_trng_axil_err_slv`, among them the AXI-Lite valid-stable assertions `AwValidStable_A`, `WValidStable_A` and `ArValidStable_A`, from the clock where the TRNG AXI-Lite passthrough responder turns on (first clock with `ext_trng_axil_rsp_en_i` at 1 under `+sep_ext_trng_axil_responder`) to the end of the run; before that clock they stay on. The responder replaces the error slave on the port, so the error slave sees requests whose handshake it does not complete, and its assertions grade a handshake that does not occur. VCS only: Verilator compiles these assertions out. User: `sep_fabric_deadspace_decode_test`.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`, `clk_ref_i`. `sep_base_test.start_clocks` takes an optional start delay per clock (`phases_ns`, or `clock_phases_ns` set by the leaf before bring-up), and `restart_clock` restarts one clock at a new period and start delay
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar ports for `OcahSpiFlash` and `OcahSpiMonitor`: `spi_cs_n_o`, `spi_sck_o`, `spi_mosi_o` (`sep_io_spi_req_o.sd[0]`) and `spi_miso_i` (`sep_io_spi_rsp_i.sd[1]`). Monitor-only taps of the DUT output struct `sep_io_spi_req_o`: `spi_sd_o[3:0]` (`sd`), `spi_sd_oe_o[3:0]` (`sd_oe`), `spi_cs_oe_o` (`cs_oe`) and `spi_sck_oe_o` (`sck_oe`); `env/sep_spi_wire_monitor.py` attaches them to `OcahSpiMonitor`, which grades the output-enable rules of `doc/integrator/src/smu-sep.adoc` ("SEP SPI Host Pin Assignment"). SEP top-port drive: `spi_sd_i[3:0]` drives all four response lanes of `sep_io_spi_rsp_i.sd` in a run with `+sep_spi_four_lane`; otherwise lane 1 is `spi_miso_i` and lanes 0, 2 and 3 are 0. `sep_base_test` holds `spi_sd_i` at 0. Monitor-only tap `spi_sd_rsp_o[3:0]`: the four lanes the DUT receives, which `env/sep_spi_wire_monitor.py` gives the monitor as its input lanes.
@@ -196,7 +198,8 @@ Observation probe groups:
   `sep_ip_reset_override_matrix_test`.
 * Isolate-stage slave-side taps: `iso_slv_aw_hs_probe_o`,
   `iso_slv_ar_hs_probe_o`, `iso_slv_b_hs_probe_o`, `iso_slv_r_hs_probe_o`
-  (one bit per isolate stage, valid and ready on the same clock) and
+  (one bit per isolate stage, valid and ready on the same clock),
+  `iso_slv_ar_valid_probe_o` (the AR valid alone, one bit per stage) and
   `iso_slv_bresp_probe_o`, `iso_slv_rresp_probe_o` (two bits per stage, stage i
   at `[2i+1:2i]`), read from the `slv_req_i` and `slv_resp_o` ports of the 14
   isolate units of `sep_crypto_axi_interconnect.sv` (`u_*_host_isolate`,
@@ -205,9 +208,10 @@ Observation probe groups:
   when it returns the response, the point where the specification drains a
   domain before its reset. No frontdoor shows the stage side of the fabric.
   Owners `sep_sw_reset_isolation_matrix_test` and
-  `sep_crypto_per_ip_reset_isolation_test`, which reads the `ar` handshake of
-  stages 2 (`host_hmac`) and 4 (`host_abr`) and logs it, with the isolate
-  request at it, for each drain read (an observation; no check grades it).
+  `sep_crypto_per_ip_reset_isolation_test`, which reads the `ar` handshake and
+  the first `ar` valid clock of stages 2 (`host_hmac`) and 4 (`host_abr`) and
+  logs both, with the isolate request at each, for each drain read (an
+  observation; no check grades it).
 * Reset and clock taps: `aon_rst_n_probe_o`, the watchdog timer-domain reset
   (`u_sep_wdt_wrap.rst_wdt_aon_clk_n`, `rst_aon_ni` of the AON timer); owners
   `sep_cold_reset_phase_test`, `sep_ip_reset_override_matrix_test`,
@@ -219,7 +223,9 @@ Observation probe groups:
   the watchdog alert (`wdt_alert`) and bark interrupt (`intr_wdog_timer_bark`)
   at the outputs of `u_sep_wdt_wrap`; owner `sep_timer_clock_contract_test`
   (the bark line, sampled at the AR of each `INTR_STATE` read of a graded
-  watchdog run, is the bark-line clause of CHK-WDT-ORDER and CHK-WDT-MAX).
+  watchdog run, is the bark-line clause of CHK-WDT-ORDER and CHK-WDT-MAX);
+  user `sep_nmi_vector_bark_rand_test` (CTRL-NMI-NESTED: the bark clocks
+  while the NMI handler runs).
   `jtag_sep_reset_n_ovrd_probe_o`, the
   `sep_reset_n` override select on the SEP input port
   (`u_sep.jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd`), the value SEP receives
@@ -236,12 +242,23 @@ Observation probe groups:
   `dmi_addr` of `u_sep_cpu.u_el2_veer_wrapper`), tied to 0 on the CPU stub
   build. No frontdoor shows a DMI request that the enable gates block. Read-only;
   owner `sep_debug_master_target_matrix_test` (CHK-DMI-GATE, CHK-DMI-UNCORE).
+  `dmi_active_probe_o`, the wrapper output `dmi_active`. No register shows
+  it. Read-only; owner `sep_debug_master_target_matrix_test`, which counts
+  its rises and high clocks while the DTM is on and logs them
+  (OBS-DMI-ACTIVE).
 * Watchdog count tap (`wdt_wdog_count_o`): the `WDOG_COUNT` register of the
   watchdog AON timer (`u_sep_wdt_wrap.u_wdt_aon_timer.u_reg.u_wdog_count.q`),
   clocked by `clk_wdt_i`. A bus read of `WDOG_COUNT` needs `clk_i`, so no
   frontdoor shows the count while `clk_i` is stopped. Read-only. Users: the
   timer and clock contract entry of the memory, boot, reset, WDT and clock
   area.
+* AON wakeup tap (`aon_wkup_probe_o[32:0]`): bit 32 the wakeup interrupt
+  request `wkup_intr_o` and bits 31:0 the low word of the wakeup count
+  `wkup_count` of the watchdog AON timer core
+  (`u_sep_wdt_wrap.u_wdt_aon_timer.u_core`), clocked by `clk_wdt_i`. No bus
+  read shows the count on the clock the request rises. Read-only. Owner:
+  `sep_wdt_aon_timer_internals_test`, which logs the count at the first
+  `clk_wdt_i` edge with the request high (OBS-WKUP-EXPIRE-COUNT).
 * `TIMEOUT_INTERRUPT` read-source tap (`timeout_interrupt_probe_o`): the
   hardware input `sep_cpu_ctrl_hwif_in.TIMEOUT_INTERRUPT.reserved.next` of
   the `SEP_CPU_CTRL` register block in `u_sep_system_csr`. The field has no
@@ -278,6 +295,13 @@ Observation probe groups:
   `u_otbn.u_prim_sync_reqack_data_urnd`): the word the client takes on its
   handshake clock. No register shows that word for KMAC or OTBN URND. Owner:
   `sep_trng_ext_sink_reset_rand_test`.
+* DRBG seed-packer ready tap (`drbg_seed_word_ready_o`, read-only, no
+  force): `csrng_word_ready_o` of the CSRNG seed adapter of the DRBG
+  (`u_csrng_seed_adapter`), the ready of the packer that takes each ESRC
+  word that `esrc_compress_vld_o` offers. No register shows whether an
+  offered word was taken or dropped. Owner: `sep_drbg_cmd_sequence_rand_test`,
+  which counts the offered words taken and dropped and logs the counts
+  (OBS-DRBG-SEED-INGRESS).
 * RMA-SIP token-digest latch probes (`token_digest_*`).
 * eFuse and lifecycle taps (read-only, no force). `efuse_shim_cmd_*_o`, the
   post-guard fuse command at the `sep` output `efuse_shim_command_req_o`
@@ -303,14 +327,23 @@ Observation probe groups:
   `jtag_filter_lc_sigint_err_probe_o`, the integrity-error flag of the JTAG
   lifecycle filter decoder; `lcc_sigint_err_probe_o` stays 0 under a
   filter-side inject. `jtag_id_probe_o`, the `sep` input `jtag_id_i`. `sec_dis_digest_probe_o`, the SEC_DIS
-  expected digest that the bench binds to `SEP_SEC_DISABLE_TOKEN`. Owners:
+  expected digest that the bench binds to `SEP_SEC_DISABLE_TOKEN`.
+  `lc_state_probe_o`, the `sep` output `lc_state_o`, the differentially
+  encoded lifecycle state; no register shows the port value.
+  `sep_lcc_lc_state_transition_matrix_test` grades it against the `LC_STATE`
+  shadow word (CHK-LC-STATE-PORT). Owners:
   `sep_lcc_feat_ctrl_state_matrix_rand_test`,
   `sep_efuse_transient_rma_rand_test`, `sep_efuse_token_channel_rand_test`,
   `sep_efuse_token_fault_matrix_test`, `sep_efuse_interface_status_rand_test`,
   `sep_efuse_lock_slot_matrix_rand_test`,
   `sep_efuse_secure_tm_matrix_rand_test`, `sep_efuse_jtag_access_rand_test`,
   `sep_sec_dis_timing_rand_test`, `sep_lcc_state_codeword_rand_test`,
-  `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`.
+  `sep_efuse_field_layout_rand_test`, `sep_efuse_shim_response_fault_test`,
+  `sep_lcc_lc_state_transition_matrix_test`.
+* Lifecycle decoder input tap (`lc_dec_data_probe_o`): the decoder input
+  `u_lc_state_dec.data_i` of `u_sep_lifecycle_ctrl`, read-only XMR, after the
+  LC differential-integrity inject. Owner: `sep_lcc_state_codeword_rand_test`
+  (CTRL-SIGINT-EPOCHS counts the epochs whose broken pairs reach it).
 * eFuse and lifecycle FCOV sampler taps (read-only XMR inputs of
   `u_sep_fcov`): `tok_sdis_i` (SEC_DIS token status), `tok_fault_i` (sticky
   comparator fault bits), `token_go_i` (hash start pulses),
@@ -323,8 +356,22 @@ Observation probe groups:
   `efuse_shadow_resp_valid_o` and `efuse_shadow_sense_done_o`).
   The sampler also reads `cmp_match_p_i` and `cmp_match_n_i`, `tok_words_i`,
   the digest latch inputs and `jtag_filt_sigint_i` from the taps above. No
-  check reads them. Users: the owners of the eFuse and lifecycle groups of
-  `docs/SEP_FCOV.adoc`.
+  check reads them. `lc_state_i` is `lc_state_probe_o`, and `lc_dec_data_i`
+  is `lc_dec_data_probe_o`, the decoder input tap above. Users: the owners of the eFuse
+  and lifecycle groups of `docs/SEP_FCOV.adoc`.
+* Lifecycle controller register write tap (`lcc_wr_count_probe_o[15:0]`,
+  `lcc_wr_addr_probe_o[4:0]`, `lcc_wr_data_probe_o[63:0]`): the number of
+  write-address handshakes at the AXI-Lite port of the register block of
+  `u_sep_lifecycle_ctrl` since time 0 (it wraps), the register offset of the
+  last one, and the data of the last write-data handshake, on the clock of
+  `u_sep_lifecycle_ctrl`. `FEAT_CTRL` is `sw = r`
+  (`hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl`), so no
+  readback shows that a write to it reached the register block. Read-only; no
+  force. Owner: `sep_efuse_window_decode_reset_test` (CTRL-LCC-WR-TAP).
+* JTAG TRST tap (`jtag_trst_probe_o`): the `sep` input `jtag_trst_ni` as the
+  DUT receives it, after the core TAP pin select of `tb_top`. No register
+  shows it. Read-only. Owner: `sep_cpu_reset_retention_test`
+  (CTRL-JTAG-TRST-EDGE).
 * KM OTP ID probes (`km_otp_sep_*_id_o`).
 * Secure test mode output (`secure_tm_o`): the `sep` output that shows the
   latched secure test mode. Users: `sep_km_crossbar_efuse_window_rand_test`
@@ -435,7 +482,7 @@ Observation probe groups:
 * Memory-interface reset taps (`pr_sram_memif_rst_n_o` /
   `pr_rom_memif_rst_n_o`): the `rst_ni` inputs of the SEP SRAM and boot ROM
   memory interfaces (`u_sram_memory_interface`, `u_boot_rom_memory_interface`).
-  Monitor only. Owner: `sep_cpu_reset_entry_test` (OBS-MEMIF-WDT-RST).
+  Monitor only. Owner: `sep_cpu_reset_entry_test` (CHK-MEMIF-WDT-RST).
 * The DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`).
 * SPI-to-DMA transmit pacing probes (`spi_tx_qd_probe_o`,
   `spi_lsio_trigger_probe_o`, `dma_busy_probe_o`). Owner:
@@ -521,7 +568,10 @@ Observation probe groups:
   (`u_generator_complex.jitter_ro_enable_i`, the stored
   `RING_OSC_ENABLE.ENABLE`). Read-only. A check that anchors on it assumes only
   a fixed delay from this tap to the lane. Users: the ESRC conditioning entry
-  of the crypto and entropy area (the lane enable clock of the period walk).
+  of the crypto and entropy area (the lane enable clock of the period walk), and
+  `SepDrbgScoreboard`, which compares it with the `RING_OSC_ENABLE.ENABLE`
+  readback twice in every entropy bring-up, with the generators off (0) and on
+  (0xFFF) (CHK-CHK1-RO-ENABLE).
 * PIC read-data probe (`pic_rd_data_probe_o`): `picm_rd_data` of the VeeR
   EL2 PIC with the registered read strobe and read address
   (`u_sep_cpu.u_el2_veer_wrapper.veer.pic_ctrl_inst`), four-state on VCS;
@@ -535,6 +585,8 @@ Observation probe groups:
   build. Read-only copy of DUT nets; no force. Owner: `sep_pic_reg_rand_test`
   (CHK-MEIP-WR-STORE, the count of PIC writes at the `meip[0]` offset;
   CHK-PIC-STORE, the count at each hole, entry-0 and `meigwclr[N]` offset).
+  User: `sep_pic_pending_map_walk_rand_test` (CTRL-GWCLR-RACE: the clock of
+  the `meigwclr[N]` write that a boundary pulse is timed against).
 * Bridge-fault pulse probe (`sep_cpu_ctrl_err_pulse_probe_o`): the set term
   and the `err_clr_i` pulse of the seven peripheral register-bridge latches
   and of the two DMA latches (`reg_path_err`, `host_path_err`). Owner:
@@ -552,7 +604,8 @@ Observation probe groups:
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`, `sep_fabric_smc_route_test`,
    `sep_cpu_demux_unmapped_fetch_test`, `sep_debug_master_target_matrix_test`
-   (CHK-DBG-REMAP).
+   (CHK-DBG-REMAP), `sep_address_map_test` (CTRL-FABRIC-WALK-LOCAL),
+   `sep_fabric_local_alias_datapath_test` (CTRL-VALID-GATE-LOCAL).
    Its replies (monitor PR-OUT-RSP): B (`resp`, `id`) and R (`resp`, `id`,
    `last`, `data`) on `smn_outbound_axi_resp_i`, with READY from the request net.
    Owners: `sep_cpu_bridge_fault_matrix_rand_test` (CHK-HOST, CHK-DMA-HOST-HOLD),
@@ -569,7 +622,8 @@ Observation probe groups:
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_fabric_dma_endpoint_matrix_test`,
    `sep_cpu_demux_unmapped_fetch_test`, `sep_debug_master_target_matrix_test`
-   (CHK-DBG-EXT).
+   (CHK-DBG-EXT), `sep_address_map_test` (CTRL-EXT-DEMUX-PORT,
+   CTRL-EXT-DEMUX-SHIM).
 ** PR-TRNG (`pr_trng_*`): the TRNG AXI-Lite passthrough port, wrapper net
    `u_dut.ext_trng_axil_req`: AW and AR address and AxPROT, and W data and
    strobe; and its replies (monitor PR-TRNG-RSP): B (`resp`) and R (`resp`,
@@ -595,7 +649,8 @@ Observation probe groups:
    `sep_fabric_filter_match_priority_rand_test`,
    `sep_sram_axi_shape_matrix_test` and
    `sep_cpu_demux_unmapped_fetch_test` (PR-SRAM);
-   `sep_sram_datapath_breadth_test` (PR-SRAM-MACRO);
+   `sep_sram_datapath_breadth_test` and `sep_sram_axi_shape_matrix_test`
+   (PR-SRAM-MACRO);
    `sep_fabric_dma_endpoint_matrix_test`, `sep_cpu_reset_entry_test`,
    `sep_boot_rom_aperture_sweep_test`,
    `sep_cpu_demux_unmapped_fetch_test` and
@@ -650,9 +705,11 @@ Observation probe groups:
    `sep_fabric_dma_endpoint_matrix_test`.
 ** PR-INFLT (`pr_inflt_*`): the request out of the inbound filter
    (`u_inbound_filter`, net `smn_inbound_filtered_axi_req`), before the
-   global-to-local remap: AW and AR address, global. Owners:
+   global-to-local remap: AW and AR address, global, and AxUSER (the filter
+   passes the request unchanged, so AxUSER at its output is the AxUSER it
+   decoded). Owners:
    `sep_fabric_inbound_rebase_test`,
-   `sep_fabric_filter_match_priority_rand_test`,
+   `sep_fabric_filter_match_priority_rand_test` (also AxUSER, CTRL-FILT-USER),
    `sep_outbound_contention_rand_test` (CHK-SYSIF-NO-OUTBOUND-PATH),
    `sep_outbound_stall_saturation_test` (CHK-SYSIF-NO-OUTBOUND-PATH).
 ** PR-CPU (`pr_cpu_lsu_*`, `pr_cpu_ifu_*`): AxPROT of the raw CPU LSU (AR, AW)
@@ -825,6 +882,18 @@ Exceptions (a closed set):
   until the next entropy-source reset (the TRNG reset). `MAIN_SM_STATUS` and
   the other registers the checkers read stay frontdoor. Users: the ESRC
   persistent-alert entry of the crypto and entropy area.
+* *ESRC main state machine illegal-state force* — a cocotb `Force` in the
+  leaf, with no `tb_top` input. The leaf forces one drawn 9-bit encoding
+  outside the state set of the entropy-source main state machine on both
+  state flops (`u_main_sm.u_state_regs.u_state_flop.q_o` and the parallel
+  `u_main_sm.state_q`) for 2 clocks after a clock edge, then releases them.
+  Software cannot put the state machine in an undefined state, so the
+  illegal-state error has no frontdoor. The encodings come from the design
+  package because no .adoc or RDL lists them, so the leg logs `ERR` after the
+  force (`OBS-SM-ILLEGAL`) and grades nothing. VCS only: the flops are not
+  public under Verilator, and the leaf logs `INFO-SM-ILLEGAL-SKIP`.
+  `MAIN_SM_STATUS` and `INTR_STATUS` stay frontdoor. Users: the ESRC
+  persistent-alert entry of the crypto and entropy area (OBS-SM-ILLEGAL).
 * *Crypto alert sender inject* — while `crypto_alert_inject_i` is 1, the alert
   pair (`alert_p`, `alert_n`) at the input of crypto alert receiver
   `crypto_alert_inject_idx_i` (0 to 10, the index order of
@@ -834,6 +903,17 @@ Exceptions (a closed set):
   default, and the force is released when the input drops. The interrupt
   vector the checker reads is not forced. Users: the shadow-update and alert
   entry of the crypto and entropy area.
+* *DMA alert sender inject* — while `dma_alert_inject_i` is 1, the alert pair
+  (`alert_p`, `alert_n`) at the input of the one secure DMA alert receiver
+  (`u_sep_dma_wrap.gen_alert_receivers[0].u_alert_receiver.alert_tx_i`) is
+  forced to `dma_alert_inject_val_i` on both wires, which is not a
+  differential code. The DMA cannot send a malformed pair, so the integrity
+  fail of that receiver has no frontdoor. Both inputs are 0 by default, the
+  SV-UVM top ties them to 0, and the force is released when the input drops.
+  `dma_alert`, the PIC source it drives and `sep_ras_o` are not forced.
+  `dma_alert_rx_probe_o` is a read-only copy of the pair as the receiver sees
+  it, so the user counts the clocks on which the force holds. Users:
+  `sep_pic_pending_map_walk_rand_test`.
 * *OTBN memory integrity flip* — in a run with `+sep_otbn_intg_flip`, while
   `otbn_intg_flip_en_i` is 1, every read response that the OTBN core takes
   from the memory that `otbn_intg_flip_mem_i` selects reaches the integrity
@@ -945,6 +1025,17 @@ Exceptions (a closed set):
   `km_par_rstrb_o` (the byte lanes that the KM parity-checks on the flipped
   response). User: `sep_km_fault_inject_rand_test` (CHK-PARITY,
   CHK-PARITY-VAC).
+* *Key Manager VUART print-enable drive* — the bench drives the
+  `VUART_STATUS.PRINT_ENABLE` input of the KMCSR register block
+  (`hwif_in.VUART_STATUS.print_enable.next` of `u_kmcsr`) for the whole run:
+  1 with the plusarg `+VUART_PRINT`, else 0. The field has no storage and no
+  RTL driver; `hw/ip/key_manager/regs/km_csr.rdl` (`PRINT_ENABLE`, "Set by
+  testbench to enable printf output") puts its driver in the bench. The
+  drive is a `force` on VCS and a hierarchical assignment on Verilator, set
+  at time 0 in every build. Readback: `VUART_STATUS` bit 2 over the KM CSR
+  bus. User: `sep_km_kmcsr_reset_rand_test` (CHK-KMCSR-VUART-STATUS), drive 1
+  in the testlist entry with `+VUART_PRINT` and drive 0 in the entry
+  `sep_km_kmcsr_reset_rand_test_print_off`.
 * Each Key Manager hook above is idle while its arm or enable input is 0 or
   unknown, and `sep_base_test.drive_idle_defaults` drives every hook input to
   0 at bring-up.
@@ -957,7 +1048,20 @@ Exceptions (a closed set):
   detune of a lane, a state code on every clock, a hardware command that EDN
   sends to CSRNG, a push into an endpoint FIFO, or a sample-clock period; a
   register read samples a status once. Read-only; no force.
-* *LC differential / token-comparator fault inject* — fail-closed paths with no
+* *LC differential-integrity inject* — the fail-closed path of the lifecycle
+  controller has no legal OTP frontdoor: the sense FSM regenerates the
+  `{~raw, raw}` pair of `LC_STATE`. While `lc_sigint_inject_i` is 1, `tb_top`
+  forces the decoder input `u_lc_state_dec.data_i` of `u_sep_lifecycle_ctrl`
+  to its source value, the `LC_STATE` shadow byte, with each pair that
+  `lc_sigint_pair_mask_i` selects broken: both rails at
+  `lc_sigint_bad_value_i`. Pair i is `{data_i[4+i], data_i[i]}`. A mask of 0,
+  or one with an X or Z bit, selects all four pairs, and a bad value other
+  than 1 is 0, so a leaf that drives only `lc_sigint_inject_i` forces every
+  rail to 0. The `LC_STATE` shadow is not forced. The force is re-issued on
+  each rising edge of `clk_i` and released when the inject drops. Readback:
+  `lcc_sigint_err_probe_o`. Users: `sep_lcc_state_codeword_rand_test` (pair
+  mask and bad value), `sep_efuse_lcc_lc_state_stitch_test`.
+* *Token-comparator fault inject* — fail-closed paths with no
   legal OTP frontdoor. `token_cmp_fault_copy_i` selects the comparator copy
   (0, 1 or 2) of a collapse or disagree pattern; 0, also when undriven, is
   copy 0, and 3 forces nothing. The common-mode patterns force all three
@@ -1076,6 +1180,14 @@ Exceptions (a closed set):
   it tracks the request as a single-beat burst and checks every other rule; the
   DUT gets the WRAP burst. The SRAM response and the read-back the checkers read
   are not forced. Owner: `sep_sram_axi_shape_matrix_test`.
+* *SRAM stored-bit flip* — the leaf XORs one drawn bit into one 64-bit word of
+  the scratch SRAM macro array (`u_sep_sram.gen_ram_inst[0].u_mem.mem`, public
+  under Verilator) by a cocotb backdoor write, after a frontdoor write of the
+  word and with no access in flight. Software cannot store a word other than
+  the one it writes, so a stored-bit error has no frontdoor. The leaf reads the
+  array before and after the flip (CTRL-SRAM-FLIP). The AXI response, the read
+  data and the PR-SRAM read data it logs are not forced. Owner:
+  `sep_sram_axi_shape_matrix_test`.
 * *Adams Bridge ML-DSA command drop* — `+sep_abr_cmd_drop` makes `tb_top`
   hold `mldsa_cmd_reg` of `abr_ctrl_inst` in the Adams Bridge top at
   `MLDSA_NONE` on every rising edge of `clk_i`. The decoded ML-DSA command is
@@ -1122,6 +1234,13 @@ Exceptions (a closed set):
   sample STATUS on each clock to order DONE, CHUNK_DONE and the last beat.
   Read-only; no force. Owners: `sep_dma_transfer_matrix_rand_test`,
   `sep_dma_abort_recovery_rand_test`.
+* *Secure DMA response USER tap* — `b.user` and `r.user` of the DMA master
+  response after the DMA local-alias remap (`dma_resp_buser_o`,
+  `dma_resp_ruser_o`) and the R handshake with RLAST (`dma_resp_r_hs_o`:
+  bit 0 `r_valid`, bit 1 `r_ready`, bit 2 `r.last`). `b.user` is valid on a
+  B handshake of `dma_axi_req_probe_o`, `r.user` on a clock with bits 0 and 1
+  of `dma_resp_r_hs_o` high. No CSR shows the USER field of a response beat.
+  Read-only; no force. Users: `sep_fabric_dma_endpoint_matrix_test`.
 * *Mailbox, IRQ and PIC observation taps* — the crypto alert receiver pulses
   (`crypto_alert_pulse_probe_o`), the PIC register read data
   (`pic_rd_data_probe_o`), the PIC register write strobe
@@ -1788,9 +1907,18 @@ them.
 |`INFO-<NAME>` |A bench record: a set-up value, a stimulus draw or redraw, a reference timing that sizes a bench window, a leg marker, or bookkeeping. No specification states it. |no
 |===
 
+A bench wait that runs past its bound before a check can grade fails the
+leaf with `FAIL-DMA-TIMEOUT`; it grades nothing on its own.
+
 Machine records keep their own names: `RUN-IDENTITY*`, `EVIDENCE_SUMMARY`,
-`EVIDENCE-REQUIRED`, `FCOV-GATE`, `FCOV-QUIET`, `FW-CONSOLE`, `RESULT`, and
-the firmware `M G`, `M C` and `REQ` lines.
+`EVIDENCE-REQUIRED`, `FCOV-GATE`, `FCOV-QUIET`, `FW-CONSOLE`, `RESULT`, the
+firmware `M G`, `M C` and `REQ` lines, and the firmware data records of
+`sep_pic_pending_map_walk_rand_test` (`MEIP`, `PARAMS`, `PARAMS2`, `FILL`, `FE`,
+`SINGLE`, `ALERT`, `GW`, `GWCLR`, `HOLD`, `CLRIDLE`, `IDLE-STATUS`, `MASKED`,
+`UNMASKED`) and of `sep_cpu_isa_pmp_csr_test` (`SEED`, `PARAMS`, `ROW`, `CROW`,
+`ZBS`, `PMP0`, `PMPC`, `PMPX`, `MSECCFG`, `MRAC`, `INSTRET`). A data
+record carries register reads and parameter echoes that the host parses and
+grades in its own `CHK-` and `CTRL-` lines.
 
 === Coverage Strategy
 

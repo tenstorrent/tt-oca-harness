@@ -215,8 +215,10 @@ class smc_avsbus_pad_enable_test_seq(SmcCsrSeq):
         pad2core: dict[int, int] = {}
         after: dict[int, tuple[int, int, int]] = {}
         for _, pad in PADS:
-            ctrl = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
-            ctrl_en = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad)
+            ctrl = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR", pad)
+            ctrl_en = smc_indexed_addr(
+                "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR", pad
+            )
             en = await self._read_okay(f"LSIO_DCE_{pad}", ctrl_en)
             assert en == 0x0, f"GPIO_INTF[{pad}] DATA_CTRL_ENABLE reads 0x{en:08x}, not its reset 0"
             await self.csr_write(f"LSIO_SEL_{pad}", ctrl, LSIO_SELECT)

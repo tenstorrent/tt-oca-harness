@@ -366,6 +366,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             assert err == 0, f"pool_err set in status 0x{st:x}"
             if pool_flag(st, ST_POOL_LOW) == expect:
                 return st
+            self._fill_prev_level = level
             await ClockCycles(cocotb.top.clk_i, 20)
         raise AssertionError(
             f"CHK-POOL-FILL FAIL: status pool_low never became {expect} in {iters} "
@@ -385,10 +386,15 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             f"pool_low={low} at level={level}"
         )
         self._edge_levels.append(level)
+        self._edge_trace.append((level, low))
         return level
 
     async def run_scenario(self) -> None:
         self._edge_levels: list[int] = []
+        # (level, pool_low) of every _check_low_edge read, and the last fill
+        # poll level that still read pool_low 1.
+        self._edge_trace: list[tuple[int, int]] = []
+        self._fill_prev_level: int | None = None
         self._pool_beats: list[int] = []
         self._pop_next = 0
         self._pop_hi_first = False
@@ -466,6 +472,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         st_fill = await self._wait_pool_low(pool, 0)
         level_fill = pool_level(st_fill)
+        self._fill_level = level_fill
         low_fill = pool_flag(st_fill, ST_POOL_LOW)
         irq_fill = await self._irq(IRQ_POOL_LOW)
         # A clear is claimed only after pool_low and [36] read 1 together at
@@ -728,6 +735,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
         # Drain to empty so the empty-pop SLVERR is a real empty, not a race.
         drain_iters = 0
+        drain_mark = len(self._edge_trace)
         while True:
             st_drain = await pool.status()
             level = await self._check_low_edge(st_drain)
@@ -749,6 +757,17 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             drain_iters,
             self._pop_next,
             len(self._pool_beats),
+        )
+        # No line states the low watermark: the levels where pool_low changes are logged.
+        drain = self._edge_trace[drain_mark:]
+        first_low = next((lv for lv, lo in drain if lo == 1), None)
+        self.logger.info(
+            "OBS-POOL-LOW-LEVEL drain_first_low_level=%s fill_clear_level=%d "
+            "fill_last_low_level=%s drain_trace=%s",
+            first_low,
+            self._fill_level,
+            self._fill_prev_level,
+            ",".join(f"{lv}:{lo}" for lv, lo in drain),
         )
         # The drain loop graded [36] against STATUS pool_low down to level 0
         # (CHK-POOL-LOW-EDGE); the pool_low value at empty is not stated.
