@@ -10,6 +10,8 @@
 //             "available" encoding when the lock was free and 0 when it was
 //             already held -- and EITHER WAY the lock is held afterwards, so
 //             the state advances on a read. A write of any value releases it.
+//             An OKAY 32-bit upper-word read acquires too and predicts zero
+//             across the whole returned word, as cpu_ctrl.rdl specifies.
 //   SEMA[i]   a write adds its value to the accumulator as a 16-bit two's
 //             complement signed number; a read returns the accumulator.
 //
@@ -17,11 +19,10 @@
 // state advances -- the reverse order would predict what the *next* read
 // should see and would let a DUT that never acquires anything pass.
 //
-// Only the RDL field bits are predicted: both registers are declared
-// regwidth 64 with their live field inside the low 32 bits, so the bits above
-// the field have no field to hold and the scoreboard compares under
-// SmcMutexMask / SmcSemaMask rather than being handed an invented expectation
-// for them.
+// For lower-word and semaphore accesses, only the RDL field bits are predicted.
+// Both registers have regwidth 64 with their live field inside the low 32 bits,
+// so the scoreboard compares under SmcMutexMask / SmcSemaMask without assigning
+// an expectation to the bits above the field.
 //
 // Every mutex and semaphore instance is modelled, not just the ones a given
 // scenario drives, so a test that touches MUTEX[2] gets the same checking as
@@ -69,6 +70,11 @@ class smc_mutex_sema_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_
     bit [31:0]   wdata;
     bit [31:0]   value;
     sync_cold_reset();
+    if (smc_is_mutex_upper_read(t, idx)) begin
+      expected_ap.write(expected_read(t, t.address, 32'h0, SmcMutexMask));
+      m_mutex_taken[idx] = 1'b1;
+      return;
+    end
     if (!smc_is_mutex_sema_access(t, idx, is_sema)) return;
     word_addr = smc_csr_word_addr(t.address);
 

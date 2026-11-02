@@ -21,7 +21,11 @@ RING_OSC_TUNE):
     bit clear, entropy_source.rdl:595) runs at that clock divided by 1, 2, 4,
     8, 16 or 32 for ``SAMPLE_CLK_DIVIDE`` 0 to 5, and by 4 for any other value;
     software changes the division only while the generator is disabled
-    (architecture.adoc:75; entropy_source.rdl:674).
+    (architecture.adoc:75; entropy_source.rdl:674). The programming guide
+    disables ``RING_OSC_ENABLE.ENABLE`` while software programs the
+    entropy-source policy (``doc/programmer/src/sep-programming.adoc:409``), so a
+    divide written with that field clear and ``CTRL.MODULE_ENABLE`` set takes
+    the stated ratio once the field is restored.
 
 Run mode: no_cpu (``lsu_stub_all_live``), ``+skip_fuse_sense``,
 ``+esrc_noise_force``. SW_RESET_N baseline 0x20: only the TRNG is released.
@@ -36,7 +40,10 @@ or 4 windows), the non-zero masks m1 != m2, the non-zero mask m3 that is not
 all ones (its complement m3c is non-zero), the ``balanced`` masks and
 permutation, the order of the divide values 0 to 5, one divide value of 6 to
 the field maximum, the one enable (module or ring) of the one-enable step and
-its new divide value (0 to 5, at a ratio other than that of the last value).
+its new divide value (0 to 5, at a ratio other than that of the last value), and
+the divide value of the guide step (0 to 5, at a ratio other than that of the
+one-enable value and of the value before it, so the guide ratio differs from the
+lane ratio before the guide write).
 
 Checkers:
   CHK-TUNE-MANUAL   probe == DETUNE readback == written mask for 0, m1, m2; with
@@ -71,14 +78,26 @@ Checkers:
                     periods of ``entropy_rosc_sample_clk_i`` equal the bench
                     period. After a pass, three more lane periods are graded
                     the same way inside the graded window.
+  CHK-SCLK-GUIDE    with the graded window closed, after the one-enable step:
+                    RING_OSC_ENABLE.ENABLE written 0 with SAMPLE_CLK_ENABLE at
+                    its reset value and CTRL.MODULE_ENABLE left 1, the drawn
+                    guide divide written, the RING_OSC_ENABLE reset value
+                    restored; after two discarded periods, four lane 0 periods
+                    each equal the stated ratio of the guide value times the
+                    source period, exact in ps. Positive probes in the same
+                    line: RING_OSC_ENABLE reads the written word and
+                    MODULE_ENABLE reads 1 while the field is clear, and the
+                    DIVIDE readback is the guide value after the restore.
 
 Logged only: OBS-ESRC-ANY-FAIL-GEN, ALERT_SUMMARY_FAIL_COUNTS before and after
 each burst (no text states whether a generator failure counts in it).
 OBS-SCLK-ONE-ENABLE, with the graded window closed: only one of
 CTRL.MODULE_ENABLE and RING_OSC_ENABLE.ENABLE bit 0 is cleared, the lane 0 edges
 are counted for four old periods, a new divide is written, the enable is
-restored and the lane periods are logged against the new and old ratio (no text
-names the enable that disables a generator).
+restored and the lane periods are logged against the new and old ratio. The
+guide names the whole ``RING_OSC_ENABLE.ENABLE`` field (CHK-SCLK-GUIDE); no text
+states whether ``MODULE_ENABLE`` alone or one bit of that field disables a
+generator.
 
 Functional coverage (owner code of this leaf, docs/SEP_FCOV.adoc): the
 tuning bins are held by the sampler and sampled only when the pass label
@@ -172,6 +191,7 @@ SHARD_EVIDENCE = {
         "CHK-TUNE-TOGGLE",
         "CHK-TUNE-OFF",
         "CHK-SCLK-DIV",
+        "CHK-SCLK-GUIDE",
     ),
     2: ("CHK-TUNE-AUTO", "CHK-TUNE-TOGGLE"),
 }
@@ -254,6 +274,7 @@ class Plan:
     div_other: int
     one_enable: str
     div_v2: int
+    div_guide: int
 
     @property
     def m3c(self) -> int:
@@ -268,7 +289,8 @@ class Plan:
             f"lane={self.lane} window={self.window} gaps={list(self.gaps)} "
             f"m1=0x{self.m1:03x} m2=0x{self.m2:03x} m3=0x{self.m3:03x} m3c=0x{self.m3c:03x} "
             f"{describe(self.balanced)} divide={list(self.div_values)} "
-            f"one_enable={self.one_enable} divide_v2={self.div_v2}"
+            f"one_enable={self.one_enable} divide_v2={self.div_v2} "
+            f"divide_guide={self.div_guide}"
         )
 
 
@@ -295,6 +317,15 @@ def draw_plan(seed: int) -> Plan:
     div_v2 = rng.choice(
         [v for v in range(len(DIV_RATIOS)) if DIV_RATIOS[v] != div_ratio(div_other)]
     )
+    # The lane runs at the ratio of div_other or of div_v2 after the one-enable step
+    # (OBS-SCLK-ONE-ENABLE logs which), so the guide ratio differs from both.
+    div_guide = rng.choice(
+        [
+            v
+            for v in range(len(DIV_RATIOS))
+            if DIV_RATIOS[v] not in (DIV_RATIOS[div_v2], div_ratio(div_other))
+        ]
+    )
     return Plan(
         seed,
         lane,
@@ -308,6 +339,7 @@ def draw_plan(seed: int) -> Plan:
         div_other,
         one_enable,
         div_v2,
+        div_guide,
     )
 
 
@@ -330,6 +362,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         "CHK-TUNE-TOGGLE",
         "CHK-TUNE-OFF",
         "CHK-SCLK-DIV",
+        "CHK-SCLK-GUIDE",
     )
 
     async def run_scenario(self) -> None:
@@ -796,6 +829,7 @@ class sep_esrc_autotune_detune_test(sep_base_test):
         for i, v in enumerate(self.plan.div_values):
             await self._sclk_one(v, select=i == 0, src_ps=src_ps)
         await self._sclk_one_enable(src_ps)
+        await self._sclk_guide(src_ps)
 
     async def _sclk_one_enable(self, src_ps: int) -> None:
         """OBS-SCLK-ONE-ENABLE: clear only one generator enable of lane 0, count
@@ -842,6 +876,37 @@ class sep_esrc_autotune_detune_test(sep_base_test):
             period_ps_after=",".join(str(p) for p in periods) or "none",
             want_ps_new=want_new,
             want_ps_old=want_old,
+        )
+
+    async def _sclk_guide(self, src_ps: int) -> None:
+        """CHK-SCLK-GUIDE: the divide change of the programming guide on lane 0, with
+        RING_OSC_ENABLE.ENABLE clear and MODULE_ENABLE set. The graded window is closed."""
+        v = self.plan.div_guide
+        wr, rd = self.esrc._wr, self.esrc._rd
+        ring_off = ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0)
+        await wr(A_RING_OSC_ENABLE, ring_off)
+        en_rb = await rd(A_RING_OSC_ENABLE) & M_RING_OSC_ENABLE
+        men_rb = int(bool(await rd(A_CTRL) & M_MODULE_ENABLE))
+        await wr(A_DIV0, ENTROPY_SOURCE.value(REG_DIV0, SAMPLE_CLK_DIVIDE=v))
+        await wr(A_RING_OSC_ENABLE, RING_OSC_ENABLE_RESET)
+        div_rb = (await rd(A_DIV0) & M_DIVIDE) >> BP_DIVIDE
+        want = div_ratio(v) * src_ps
+        lane = cocotb.top.esrc_sample_clk_lane0_o
+        periods = _periods(await self._rises(lane, SCLK_DISCARD + SCLK_GRADE + 1))[SCLK_DISCARD:]
+        ring_want = ring_off & M_RING_OSC_ENABLE
+        probes_ok = en_rb == ring_want and men_rb == 1 and div_rb == v
+        self.chk.ok(
+            "SCLK-GUIDE",
+            probes_ok and len(periods) == SCLK_GRADE and all(p == want for p in periods),
+            v=v,
+            ratio=div_ratio(v),
+            period_ps=",".join(str(p) for p in periods) or "none",
+            want_ps=want,
+            ring_osc_enable_off_rb=f"0x{en_rb:06x}",
+            ring_osc_enable_off_want=f"0x{ring_want:06x}",
+            module_enable_rb=men_rb,
+            divide_rb=div_rb,
+            src_ps=src_ps,
         )
 
     async def _sclk_one(self, v: int, *, select: bool, src_ps: int) -> None:
