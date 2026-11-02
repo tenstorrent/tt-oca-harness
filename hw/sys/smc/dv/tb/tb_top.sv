@@ -4415,8 +4415,8 @@ module smc_uvm_top
         $write(" SEP-REMAP=aw_evaluated=%0d", gen_sep_remap_atop_sva.aw_evaluated);
         $write(" SYS-OUT=aw_evaluated=%0d", gen_sys_out_atop_sva.aw_evaluated);
         $display(" sf=SF-014 (open: whether an SMC AXI4 master may issue a non-zero ",
-                 "AWATOP; the SMC_AXI_AWATOP_ZERO assertions grade every AW against the ",
-                 "fabric's AtopSupport 0 build)");
+                 "AWATOP; the SMC_AXI_AWATOP_ZERO assertions require AWATOP 0 on every AW, ",
+                 "as IHI 0022 E2.1 does for a manager that issues no atomic transaction)");
         if ($test$plusargs("axi_sva_need_stall_sys_in") &&
             `SMC_AXI_STALL_SUM(axi_stall_sys_in) == 0)
             $error("%s", {"u_sys_in_axi_sva: ",
