@@ -155,6 +155,23 @@ ifdef::backend-pdf[]
 the SMU AXI Crossbar section of the Technical Reference Manual.
 endif::backend-pdf[]
 
+[[smu-axi-boundary-contract]]
+=== AXI boundary contract
+
+The SMU does not check that requests on `smu_axi_in` are legal for it. The
+system fabric that drives the port must meet the following rules in both
+`CFG.SEP` configurations.
+
+Burst encodings::
+Every request must be a legal AXI4 burst. The crossbar routes a burst by its
+start address and does not inspect `AxBURST`, `AxLEN` or the end address, so a
+WRAP burst with `AxLEN` 0, the reserved `AxBURST` encoding 2'b11 and an INCR
+burst that crosses a 4 KiB boundary are forwarded unchanged and their effect is
+set by the target. The SEP SRAM refuses a multi-beat burst that is not INCR,
+and the SMC scratchpad accepts all three with `OKAY`. The inbound traffic
+filters decide a burst by its start address, so a burst that crosses a 4 KiB
+boundary also escapes the filter entries of the page it enters.
+
 [[smu-firmware-programming-order]]
 === Firmware programming order
 
