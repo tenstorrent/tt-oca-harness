@@ -481,11 +481,11 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         return self._g("tb_cpu_l2_pending_ar") > 0 and self._g("tb_sep_axi_r_raw_valid") == 1
 
     def _held(self, a: int, b: int) -> list[int]:
-        """Samples in [a, b] at which either bench R hold reads other than 0."""
+        """Samples in [a, b] at which either bench R hold reads 1."""
         return [
             i
             for i in range(a, min(b + 1, self.n))
-            if self._c("sh", i) != 0 or self._c("yh", i) != 0
+            if self._c("sh", i) == 1 or self._c("yh", i) == 1
         ]
 
     def _in_ctrl(self, i: int) -> bool:
@@ -1437,7 +1437,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                 if held:
                     bench_held.append(
                         f"OBS-DRAIN-BENCH-HELD: read={p.k} rlast={self._opt(p.frl)} "
-                        f"hold_release={hrel} drained={b} held_samples={held[:3]} ruling=#2449"
+                        f"hold_release={hrel} drained={b} held_samples={held[:3]}"
                     )
                 else:
                     late.append((p.k, p.frl))

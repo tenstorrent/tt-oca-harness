@@ -11972,15 +11972,15 @@ IHI 0022 burst footprint unchanged.
   `ISOLATE_REQ_VIS`/`ISOLATE_REQ_FLR_COUNTER_VALUE`, WSTRB=0x0F to the misc pairs, WSTRB=0x30 to
   the cold pair, WSTRB=0xF0 all-ones to `CPU_CTRL.SCRATCH[12]`, and a 64-bit read of each misc pair.
 * GPIO burst slots 20..22 (k = 20) with AxPROT privileged: INCR write and read from slot 20 + 0x8,
-  FIXED write and read of the slot 21 word, WRAP write and read (AxLEN=1) from slot 21 + 0x8. The
-  burst slots are never seeded: every write carries the values read before it. The neighbour slots
-  19 and 23 are seeded from SEP_IN before the bursts with distinct non-zero values of the writable
-  fields the generated header names, `DATA_CTRL` (`core2pad`, `interrupt_type`), `DATA_CTRL_ENABLE`
+  FIXED write and read of the slot 21 word, WRAP write and read (AxLEN=1) from slot 21 + 0x8. Every
+  write carries the values read before it. The burst slots 20..22 and the neighbour slots 19 and 23
+  are seeded from SEP_IN before the bursts with distinct non-zero values of the writable fields the
+  generated header names, `DATA_CTRL` (`core2pad`, `interrupt_type`), `DATA_CTRL_ENABLE`
   (`use_reg_*`, `use_reg_tx` set whenever `use_reg_core2pad` is) and `ACCESS_FILTER`
   (`awprot_requirement`, `arprot_requirement`), with `interface_enable`, `enable_rx_tx` and both
-  filter enables 0, each differing from every beat, and restored afterwards. A burst-slot register
-  outside the footprint is compared with its read-before value and counted as a compare that cannot
-  fail when that value equals a beat. `DATA_CTRL` `pad2core` and `lsio_enable` are read-only fields
+  filter enables 0, each differing in its seeded fields from both halves of every beat, and
+  restored afterwards. Every slot register outside a write footprint is compared with its seed
+  read-back. `DATA_CTRL` `pad2core` and `lsio_enable` are read-only fields
   that the pad and LSIO hardware drive, so every unchanged `DATA_CTRL` compare (bank and slot 64)
   excludes them.
 * Scratchpad: INCR write and read with AxLEN 0, 7 and 255 crossing 64-byte stripes in one page,
@@ -12053,10 +12053,8 @@ reset-unit FLR counters
 |`CHK-BT-STRB-UPPER` |WSTRB=0xF0: OKAY, +4 takes D[63:32], +0 keeps its value (`ISOLATE_REQ_VIS`
 its reset value); WSTRB=0x0F: +0 takes D[31:0], +4 kept; WSTRB=0x30: +0 kept; CPU-control
 `SCRATCH` reads bits [63:32]=0 and its value in [31:0]; the 64-bit pair read assembles +0 and +4
-|`CHK-BT-GPIO` |GPIO burst protocol as above and the seeded neighbour slots k-1 (19) and k+3
-(23) keep their seeds, which no beat carries, liveness OKAY; a burst-slot register outside the
-footprint is graded only when no beat carries its read-before value, and is otherwise printed as
-`INFO-PROTOCOL-ONLY` and left out of the reference-compare count
+|`CHK-BT-GPIO` |GPIO burst protocol as above, and every register of the seeded slots k-1..k+3
+(19..23) outside a write footprint keeps its seed, which no beat carries; liveness OKAY
 |`CHK-BT-SPM` |INCR: OKAY and every beat reads the data written; WRAP and FIXED: protocol held and
 the guard words outside the window or the neighbouring words kept; narrow and strobed writes change
 only the strobed bytes with OKAY; the ROM write answers one B with SLVERR and the ROM words are
@@ -12093,9 +12091,8 @@ SF-010, SF-011, SF-022, SF-024 and SF-025 and are OBS lines. The reset-unit isla
 the decoded extent of the reset unit, so its WRAP first beat and the upper words of its INCR bursts
 address the past-extent region. `ISOLATE_REQ_VIS`, `CHIP_CONFIG.VERSION_LO` and
 `NDMRESET_REQUEST` are read-only in the RDL, so a stray beat cannot change them: their reads are
-protocol graded and printed as `INFO-PROTOCOL-ONLY`, and no integrity claim is made for them. The
-GPIO burst slots carry their read-first values, so an unchanged compare there whose reference
-equals a beat cannot fail; the seeded neighbour slots carry that claim. `ocah_axi_sva` fires are
+protocol graded and printed as `INFO-PROTOCOL-ONLY`, and no integrity claim is made for them.
+`ocah_axi_sva` fires are
 read from the kept log.
 
 '''''
@@ -17431,7 +17428,7 @@ reported as the precondition.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-COOL-GLITCH-NO-ASSERT` |After a 31-sample low pulse the primary resets and `rst_cold_n_o` read 1 at all 95 sampled `clk_ref_i` edges
+|`CHK-COOL-GLITCH-NO-ASSERT` |After a 31-sample low pulse the primary resets and `rst_cold_n_o` read 1 at all 95 sampled `clk_ref_i` edges, and `SCRATCH[0]` then still reads the reference value written before the pulse
 |`CHK-COOL-PIN-PRIMARY-EFFECTS` |After the 40-sample pin the primary reset is asserted with `rst_cold_n_o` at 1, the cores are held at every sample, `SCRATCH[0]` reads 0x0 (was 0xC001_0001) and the threshold reads 0x1000 (was 0x2345)
 |`CHK-JTAG-COOL-OVERRIDE-ENTRY` |With the pin and FLR idle the override value 0 asserts the primary reset with the same effects as the pin
 |`CHK-FLR-ENTRY-PRIMARY` |The FLR edge drives `tb_rst_cool_from_flr` low then high with the primary reset asserted; `ISOLATE_REQ_SMC_REG` reads 0x1 after the edge and 0x0 after a written 1

@@ -143,6 +143,9 @@ SPM_SIZE = smc_addr("SMC_TOP_SPM_MEMORY_SIZE")
 SPM_ROM_BASE = smc_addr("SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR")
 CLA_BASE = smc_addr("SMC_TOP_SMC_CLA_BASE_ADDR")
 GPIO_K = 20
+# _gpio_seeds index for slots k-1..k+3: no seeded field equals a half of any beat a GPIO
+# burst carries, so every out-of-footprint compare can fail.
+GPIO_SEED_J = (0, 3, 1, 2, 4)
 ALIAS_ISLAND_SLOT = 2
 ALIAS_EDGE_K = 4
 ALIAS_LAST_SLOT = smc_addr("SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM") - 1
@@ -1382,8 +1385,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
     async def _gpio(self, port: str, pidx: int) -> int:
         fam = self.fams["GPIO"]
         isl = self.gpio_isl
-        lower, upper = isl.neighbours[:3], isl.neighbours[3:]
-        regs = list(lower) + list(isl.regs) + list(upper)
+        regs = [*isl.neighbours[:3], *isl.regs, *isl.neighbours[3:]]
         by_addr = {reg.addr: reg for reg in regs}
 
         async def read_all(tag: str) -> dict[int, int | None]:
@@ -1411,8 +1413,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
         )
         orig = await read_all("ORIG")
         seeds = {}
-        for j, group in ((0, lower), (4, upper)):
-            for reg, value in zip(group, _gpio_seeds(j)):
+        for j, slot in zip(GPIO_SEED_J, range(0, len(regs), 3)):
+            for reg, value in zip(regs[slot : slot + 3], _gpio_seeds(j)):
                 await self._wr(
                     fam, "SEP_IN", f"GPIO_SEED_{reg.name}", reg.addr, value, 4, PROT_PRIVILEGED
                 )
@@ -1450,31 +1452,9 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                     if reg.word in set(words):
                         inside.append(f"{reg.name}:{_hx(after[reg.addr])}")
                         continue
-                    ref = before[reg.addr]
-                    if reg.addr in seeds:
-                        self._unchanged(
-                            fam, isl.key, ctx, reg, after[reg.addr], seed_ref[reg.addr], data
-                        )
-                        continue
-                    # Burst slots hold their read-first values, which the beats also carry.
-                    if not can_fail(reg.seed_mask, ref or 0, data, 4):
-                        fam.tally(isl.key, reg, None)
-                        cocotb.log.info(
-                            "INFO-PROTOCOL-ONLY: %s %s @ 0x%x reads %s, its read-before %s is "
-                            "carried by a beat of this burst; protocol graded, no unchanged claim",
-                            ctx,
-                            reg.name,
-                            reg.addr,
-                            _hx(after[reg.addr]),
-                            _hx(ref),
-                        )
-                        continue
-                    fam.tally(isl.key, reg, True)
-                    if not reg.same(after[reg.addr], ref):
-                        fam.findings.append(
-                            f"{ctx}: out-of-footprint {reg.name} reads {_hx(after[reg.addr])}, "
-                            f"read-before {_hx(ref)}"
-                        )
+                    self._unchanged(
+                        fam, isl.key, ctx, reg, after[reg.addr], seed_ref[reg.addr], data
+                    )
                 self._obs(
                     fam,
                     port=port,
@@ -1507,7 +1487,7 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             fam.bursts += 1
             self._cell(fam, scen, f"{port}/{shape}")
             n += 1
-        for reg in lower + upper:
+        for reg in regs:
             if orig[reg.addr] is not None:
                 await self._wr(
                     fam,
@@ -2379,10 +2359,8 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             f"out-of-footprint registers unchanged, liveness OKAY",
             "STRB": f"{fam.bursts} strobed writes and pair reads, only strobed lanes changed, "
             f"64-bit pair assembly as stated",
-            "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, seeded neighbour "
-            f"slots k-1 (GPIO{GPIO_K - 1}) and k+3 (GPIO{GPIO_K + 3}) unchanged, burst-slot "
-            f"words outside the footprint graded only where no beat carries their read-before "
-            f"value (the rest INFO-PROTOCOL-ONLY), liveness OKAY",
+            "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, seeded slots "
+            f"GPIO{GPIO_K - 1}..GPIO{GPIO_K + 3} unchanged outside each footprint, liveness OKAY",
             "SPM": "INCR data match, WRAP/FIXED protocol held, strobes exact, ROM write SLVERR "
             "unchanged, liveness OKAY",
             "SLOTEDGE": f"{fam.bursts} slot-edge bursts x 3 ports, protocol held, "

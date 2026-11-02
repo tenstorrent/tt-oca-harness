@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_002 ANCHOR: smc_warm_reset_inflight_links_test
-# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: ee66ec136cc40520ee3b583fa72c0439bf9680d9f9e962afad4ee03706e6d996
+# DV-TESTCASE-CONTRACT-REVISION: 6 RECORD-SHA256: 5d706447f26ce92e147c6f5d2e610a91fc64fea61d6fcfb82d03414e563d8133
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Warm reset through the watchdog input and the JTAG override with accesses pending on every link.
 

@@ -655,7 +655,8 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         self.glitch.bad = bad
         self._bound("S2.glitch_window", f"{total}clk_ref_i", f"{stable}/{total} edges stable")
         assert low_driven == GLITCH_LOW_SAMPLES, f"the pulse was {low_driven} samples long"
-        await self.csr_read("GLITCH_SCRATCH_STILL", SCRATCH0, length=8)
+        scratch = await self.csr_read("GLITCH_SCRATCH_STILL", SCRATCH0, length=8)
+        self.glitch.scratch = scratch & 0xFFFF_FFFF
         self._stamp("GLITCH", total)
 
     # --- pending set --------------------------------------------------------------------
@@ -1064,11 +1065,17 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         glitch = self.glitch
         if glitch.stable != glitch.total or glitch.total != 95 or glitch.low_driven != 31:
             fails.append(f"CHK-COOL-GLITCH-NO-ASSERT: {glitch.bad[:3]}")
+        if glitch.scratch != SCRATCH_REF:
+            fails.append(
+                f"CHK-COOL-GLITCH-NO-ASSERT: SCRATCH[0] reads 0x{glitch.scratch:x} after the pulse, "
+                f"want 0x{SCRATCH_REF:x}"
+            )
         lines.append(
             (
                 "CHK-COOL-GLITCH-NO-ASSERT",
                 f"{glitch.low_driven}-sample low pulse; primary_smc/primary_ref/cold stayed 1 at "
-                f"{glitch.stable}/{glitch.total} edges",
+                f"{glitch.stable}/{glitch.total} edges; SCRATCH[0] 0x{glitch.scratch:X} "
+                f"(want 0x{SCRATCH_REF:X})",
             )
         )
 
