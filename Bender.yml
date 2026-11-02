@@ -20,7 +20,7 @@ vendor_package:
   # OpenTitan: prim, per-IP rtl/hjson, reference figures, and reggen/mubi.
   - name: opentitan
     target_dir: vendor/lowRISC/opentitan/upstream
-    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "d1ce369cb357a7a4718c75f11567742a78a7ed07" }
+    upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "11c270dc66a34763f634f83ff65d5e4fa68f3af9" }
     include_from_upstream:
       # Core reference figures used by the TRM.
       - "hw/ip/aes/doc/aes_block_diagram.svg"
@@ -81,6 +81,8 @@ vendor_package:
       - "hw/ip/dma/data/dma.hjson"
       - "hw/ip/spi_host/rtl"
       - "hw/ip/spi_host/data/spi_host.hjson"
+      - "hw/top_earlgrey/ip_autogen/pwm/rtl"
+      - "hw/top_earlgrey/ip_autogen/pwm/data/pwm.hjson"
       - "hw/ip/aes/rtl"
       - "hw/ip/aes/data/aes.hjson"
       - "hw/ip/hmac/rtl"
@@ -732,7 +734,7 @@ sources:
       - hw/common/ocah_prim_generic/rtl/prim_or2.sv
       - hw/common/ocah_prim_generic/rtl/prim_or4.sv
       - hw/common/ocah_prim_generic/rtl/prim_stdmux2.sv
-  - target: any(drbg, sep)
+  - target: any(drbg, sep, smc)
     files:
       - hw/common/tlul/rtl/tlul_adapter_host.sv
       - hw/common/tlul/rtl/tlul_adapter_reg.sv
