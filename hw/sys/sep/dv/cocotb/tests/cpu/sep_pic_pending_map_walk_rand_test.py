@@ -110,9 +110,6 @@ if any failed:
   CHK-RAS-DMA_ALERT-RISE   at least one rise in ``d1``..``d2`` (the DMA
                            ``ALERT_TEST`` write).
   CHK-RAS-DMA_ALERT-SHAPE  every high run there is one clock.
-  CHK-RAS-DMA_ALERT-MODE2  under the alert pair force, the field rises within
-                           ``RAS_INTEG_BOUND`` clocks of the first forced clock
-                           and stays 1 on every clock to the release mark ``di1``.
 * CHK-RAS-CRYPTO_ALERT-IDLE   0 on every clock of each ``aq<k>``..``aw<k>`` and
                               of ``nw0``..``nw1``.
   CHK-RAS-CRYPTO_ALERT-RISE   at least one rise in each ``aw<k>``..``ae<k>`` of
@@ -124,9 +121,13 @@ if any failed:
   run there is one clock; exactly one rise there ("ALERT_TEST sends one").
 
 Logged, not graded: ``OBS-RAS-<FIELD>-DELAY`` (clocks from the opening mark to
-the first rise, and the pulse count), ``OBS-RAS-DMA_ALERT-INTEG-FALL`` (the
-fall after the pair release), ``OBS-RAS-CRYPTO_ALERT-PAIR`` (the run lengths
-of the pair window, where two pulses can be adjacent) and
+the first rise, and the pulse count), ``OBS-RAS-DMA_ALERT-MODE2`` (the field
+under the alert pair force: the rise after the first forced clock, the high
+clocks to the release mark ``di1`` and any fall before it; the port table names
+``dma_alert`` a one-cycle pulse and states no integrity-fail level),
+``OBS-RAS-DMA_ALERT-INTEG-FALL`` (the fall after the pair release),
+``OBS-RAS-CRYPTO_ALERT-PAIR`` (the run lengths of the pair window, where two
+pulses can be adjacent) and
 ``OBS-RAS-CRYPTO_ALERT-MODE2`` (no crypto alert pair force and no crypto EDN
 adapter fault in this leaf).
 
@@ -270,14 +271,11 @@ RACE_BOUND = 4096
 RAS_FIELDS = ("dma_alert", "crypto_alert", "csrng_fatal", "edn_fatal")
 RAS_FATAL_KIND = {"csrng_fatal": ("csrng", "fatal"), "edn_fatal": ("edn", "fatal")}
 RAS_HALVES = {
-    "dma_alert": ("IDLE", "RISE", "SHAPE", "MODE2"),
+    "dma_alert": ("IDLE", "RISE", "SHAPE"),
     "crypto_alert": ("IDLE", "RISE", "SHAPE"),
     "csrng_fatal": ("IDLE", "RISE", "SHAPE", "TEST"),
     "edn_fatal": ("IDLE", "RISE", "SHAPE", "TEST"),
 }
-# DV bound, in clocks, from the first clock the forced DMA alert pair reads its
-# value to the rise of sep_ras_o.dma_alert; the delay itself is not stated.
-RAS_INTEG_BOUND = 64
 
 # Status fields of the idle window and the KMAC fifo_empty state (register export).
 HMAC_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
@@ -1299,7 +1297,7 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         )
 
     def _ras_dma_alert_mode2(self) -> None:
-        """Under the pair force the field rises within the bound and holds to ``di1``."""
+        """Log the field under the pair force: its rise, its high clocks to ``di1``, any fall."""
         f = "dma_alert"
         (m0, _), (m1, _) = self._mark("di0")[5], self._mark("di1")[5]
         self.wr.high_clocks_since(m1, f)
@@ -1310,16 +1308,13 @@ class sep_pic_pending_map_walk_rand_test(sep_base_test):
         drop = [c for c in falls if rise is not None and rise < c <= m1.clk]
         span = m1.clk - rise + 1 if rise is not None else 0
         lat = rise - first if rise is not None and first is not None else None
-        self._ras(
-            lat is not None and -1 <= lat <= RAS_INTEG_BOUND and not drop and span >= 2,
-            f,
-            "MODE2",
-            mode="integrity_level",
+        self.ras_chk.obs(
+            "RAS-DMA_ALERT-MODE2",
+            mode="pair_force",
             val=self.wc.dinj_val,
             first_forced_clk=first,
             rise_clk=rise,
             rise_after_forced_clk=lat,
-            bound=RAS_INTEG_BOUND,
             hold_clk=span,
             falls_before_release=drop[:4],
         )

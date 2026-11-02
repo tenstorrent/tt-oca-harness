@@ -38,8 +38,9 @@ named fields; bits 31:8 have no stated reset and the firmware prints them on OBS
 CHK-RESET grades the named fields of each register; its reserved bits print on OBS-RESET-RSVD.
 
 CHK-RAS-DMA_HOST_INTG_ERR grades ``sep_ras_o.dma_host_intg_err`` on the bench tap
-``sep_ras_probe_o`` against its ``sep_pkg::sep_ras_t`` field comment ("DMA host integrity
-fault; sticky until DMA_BUS_ERR_CLEAR") as four checks, each on its own line:
+``sep_ras_probe_o`` against ``hw/sys/sep/doc/dma.adoc:67-69`` ("The register and host bridges
+latch faults on ``dma_reg_bus_err_o`` and ``dma_host_intg_err_o``, cleared through
+``DMA_BUS_ERR_CLEAR``") as four checks, each on its own line:
 CHK-RAS-DMA_HOST_INTG_ERR-IDLE (0 on every clock from the CPU release to
 ``dma_host_intg_inject_i`` = 1), -RISE (a rise before the firmware prints
 CHK-HOSTINTG-RELEASE), -SHAPE (no fall from the rise through the first DMA_BUS_ERR_CLEAR
@@ -47,6 +48,11 @@ clear pulse of the host-path latch, across the pin release) and -CLEAR (a fall w
 ``_PIC_POLL`` clocks of that pulse). Each logs PASS or FAIL; the leaf raises once after
 all four are logged. The rise and fall delays and the field in the fabric-DECERR leg
 are logged only (OBS-RAS-DMA_HOST_INTG_ERR-*): no document states them.
+
+OBS-HOSTINTG-ARM-PIN logs ``dma_host_intg_inject_i`` on the clock of the firmware
+control read of DMA_BUS_ERR_STATUS before GO and of the read after the injected
+command, from the CPU reads of that register on the PR-LSU-XBAR tap
+(``env/sep_fabric_tap.py``).
 
 FCOV: the graded window of this leaf opens when the CPU is released and closes after
 the host has parsed the console. ``cp_error_class_exclusive`` holds each cell at the
@@ -66,10 +72,12 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from cocotb.utils import get_sim_time
 from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_fabric_tap import SepFabricTap
 from env.sep_fcov_gate import (
     DMA_BASIC_PASS_ASID,
     DMA_BASIC_PASS_BASE_LIMIT,
@@ -103,6 +111,8 @@ _PARAM_MAGIC = 0xDA0A11C0
 _BUSY_LEN = 0x100
 _PIC_POLL = 200_000
 _DMA_PATH_BITS = (1 << IRQ_DMA_HOST_PATH) | (1 << IRQ_DMA_REG_PATH)
+# DMA_BUS_ERR_STATUS is alone in its 8-byte word of the 64-bit LSU port.
+_STATUS_WORD = sym("SEP_CPU_CTRL_DMA_BUS_ERR_STATUS_REG_ADDR") // 8
 
 # The firmware check that grades each error leg, and the cp_error_class_exclusive
 # cells those legs hold. A cell is released only after that PASS line is found.
@@ -173,6 +183,7 @@ class sep_dma_basic_test(sep_base_test):
         self._ras_task = None
         self._ras_logged: set[str] = set()
         self._ras_chk = RasChkLines(self.logger, self.random_seed())
+        self._status_reads: list[tuple[int, int | None]] = []
 
     def _stage_dtcm(self) -> str:
         cfg = SepDmaBasicCfg.from_seed(self.random_seed())
@@ -253,6 +264,17 @@ class sep_dma_basic_test(sep_base_test):
         else:
             raise AssertionError("firmware never printed CHK-HOSTINTG-RELEASE")
 
+        # The last two DMA_BUS_ERR_STATUS reads before CHK-HOSTINTG-RELEASE are the
+        # control read before GO and the read after the injected command.
+        ctrl, after = ([(None, None)] * 2 + self._status_reads)[-2:]
+        self._ras_chk.obs(
+            "HOSTINTG-ARM-PIN",
+            status_reads=len(self._status_reads),
+            control_read_ps=ctrl[0],
+            pin_at_control_read=ctrl[1],
+            after_cmd_read_ps=after[0],
+            pin_at_after_cmd_read=after[1],
+        )
         dut.dma_host_intg_inject_i.value = 0
         self.logger.info("STEP host-intg: dma_host_intg_inject_i=0")
 
@@ -291,6 +313,23 @@ class sep_dma_basic_test(sep_base_test):
             await RisingEdge(dut.clk_i)
         raise AssertionError("firmware never printed CHK-HOSTFABRIC-ARM")
 
+    async def _sample_status_reads(self, tap: SepFabricTap) -> None:
+        """Record the inject pin level on the edge of each CPU read of DMA_BUS_ERR_STATUS."""
+        dut = cocotb.top
+        pin_at: dict[int, int] = {}
+        seen = 0
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            pin_at[get_sim_time("ps")] = self.rd_known(dut.dma_host_intg_inject_i)
+            for beat in tap.beats[seen:]:
+                addr = beat.fields.get("addr")
+                if beat.ch == "ar" and addr is not None and addr // 8 == _STATUS_WORD:
+                    self._status_reads.append((beat.t_ps, pin_at.get(beat.t_ps)))
+            seen = len(tap.beats)
+            if len(pin_at) > 4:
+                del pin_at[next(iter(pin_at))]
+
     def _ras_start(self) -> None:
         """Start the CHK-RAS-DMA_HOST_INTG_ERR watchers and grader at the CPU release."""
         dut = cocotb.top
@@ -303,6 +342,8 @@ class sep_dma_basic_test(sep_base_test):
             dut.sep_cpu_ctrl_err_pulse_probe_o, {"set": _PULSE_HOST_SET, "clr": _PULSE_HOST_CLR}
         ).start()
         self._ras_task = cocotb.start_soon(self._check_ras_host_intg(self._ras.mark()))
+        self._lsu_tap = SepFabricTap("PR-LSU-XBAR").start()
+        self._status_task = cocotb.start_soon(self._sample_status_reads(self._lsu_tap))
 
     def _ras_verdict(self, half: str, ok: bool, **fields) -> None:
         self._ras_logged.add(half)
@@ -383,7 +424,7 @@ class sep_dma_basic_test(sep_base_test):
                 if half not in self._ras_logged:
                     self._ras_verdict(half, False, not_reached=str(exc))
             return
-        # The host-path latch also sets on a non-OKAY fabric response; the field comment
+        # The host-path latch also sets on a non-OKAY fabric response; the cited spec text
         # names only the integrity fault, so this leg is logged and not graded.
         await self._wait_console("CHK-HOSTFABRIC-ARM")
         mf = self._ras.mark()
@@ -513,6 +554,9 @@ class sep_dma_basic_test(sep_base_test):
                 await self._ras_task
             await inj
             await fabric
+            if self._ras_task is not None:
+                self._status_task.cancel()
+                await self._lsu_tap.stop()
             mask = self._parse_console()
             if self._ras_chk.fails:
                 raise AssertionError(

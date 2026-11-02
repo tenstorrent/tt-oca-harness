@@ -47,11 +47,14 @@ AWADDR to 8 bytes outside side-effect regions). This test grades, from the firmw
                      their NMI in that wait.
 
 RAS port. ``sep_ras_probe_o`` (the DUT ``sep_ras_o``, bit map ``env/sep_ras_map.py``) is
-watched on every ``clk_i`` edge from the CPU release (``env/sep_bit_watch.py``). The golden is
-``hw/sys/sep/doc/port_table.adoc`` (row ``sep_ras_o``: every field other than the eight
-pulse fields is a level) and the ``sep_pkg::sep_ras_t`` field comments it points to:
-``wdt_bark`` is the bark interrupt state, held until INTR_STATE is cleared, and ``wdt_bite``
-is the bite request synchronized from ``clk_wdt_i``, held until ``wdt_rst_ni``. Each check
+watched on every ``clk_i`` edge from the CPU release (``env/sep_bit_watch.py``). The golden:
+``hw/sys/sep/doc/port_table.adoc:130`` (row ``sep_ras_o``: the watchdog bark and the bite
+synchronized from ``clk_wdt_i``, both levels); the bark is a level interrupt cleared by a
+write of 1 to ``INTR_STATE.wdog_timer_bark``
+(``vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:77``), so ``wdt_bark`` is
+held until INTR_STATE is cleared; ``wdt_rst_ni`` "resets the watchdog, which clears the
+bite" (``hw/sys/sep/doc/watchdog.adoc:29``), so ``wdt_bite`` is held until ``wdt_rst_ni``.
+Each check
 below logs its own PASS or FAIL line, and the leaf fails once at its end if any failed:
   CHK-RAS-WDT_BARK-IDLE   0 on every clock from the CPU release to the console line of the
                           bad-address count (the watchdog is enabled after it).

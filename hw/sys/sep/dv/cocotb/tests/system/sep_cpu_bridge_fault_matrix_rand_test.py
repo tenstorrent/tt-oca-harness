@@ -156,8 +156,10 @@ the end of the run: after CHK-SRC41/42/43-RISE passes, the leaf sets the bit
 of its source in ``exo_pass`` (``env/sep_fcov_gate.set_exo_pass``), which
 samples the held rises of that source.
 
-``sep_ras_o`` (``hw/sys/sep/rtl/sep_pkg.sv``, ``sep_ras_t``;
-``hw/sys/sep/doc/port_table.adoc``, row ``sep_ras_o``): ``dma_reg_bus_err`` is
+``sep_ras_o`` (``hw/sys/sep/doc/port_table.adoc:130``, row ``sep_ras_o``, which indexes
+``periph_bus_err`` "by ``periph_bus_err_e``" and states "The ``sep_pkg::sep_ras_t`` field
+comments state how each one is held and cleared"; ``hw/sys/sep/rtl/sep_pkg.sv``,
+``sep_ras_t`` and ``periph_bus_err_e``): ``dma_reg_bus_err`` is
 the DMA register-bridge fault, a level sticky until DMA_BUS_ERR_CLEAR;
 ``periph_bus_err[i]`` is the register-bridge fault of block ``i`` of
 ``periph_bus_err_e`` (aes 0, hmac 1, kmac 2, otbn 3, csrng 4, edn 5, wdt 6), a

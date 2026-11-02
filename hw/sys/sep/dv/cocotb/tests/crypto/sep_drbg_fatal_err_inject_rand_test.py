@@ -64,8 +64,9 @@ Checkers:
 Every ERR_CODE compare uses the field bits of the register text; the Reserved
 bits are logged as ``rsvd``.
 
-RAS port checks (``hw/sys/sep/doc/port_table.adoc:130``, row ``sep_ras_o``, and
-the ``sep_pkg::sep_ras_t`` field comments it points to): ``csrng_fatal`` and
+RAS port checks (``hw/sys/sep/doc/port_table.adoc:130``, row ``sep_ras_o``, which
+states "The ``sep_pkg::sep_ras_t`` field comments state how each one is held and
+cleared", and those field comments in ``hw/sys/sep/rtl/sep_pkg.sv``): ``csrng_fatal`` and
 ``edn_fatal`` are one-``clk_i``-cycle pulses per fatal alert handshake, and a
 fatal error repeats the pulse until reset. The tap ``sep_ras_probe_o`` is
 watched on every ``clk_i`` from the start of the scenario. Each half is its own

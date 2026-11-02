@@ -4,7 +4,9 @@
 
 The tap carries the packed ``sep_pkg::sep_ras_t`` (``hw/sys/sep/rtl/sep_pkg.sv``,
 "RAS" section). ``periph_bus_err`` bit ``k`` belongs to the block at index ``k``
-of ``periph_bus_err_e`` in the same package.
+of ``periph_bus_err_e`` in the same package: ``hw/sys/sep/doc/port_table.adoc:130``
+(row ``sep_ras_o``) indexes ``periph_bus_err`` "by ``periph_bus_err_e``" and states
+"The ``sep_pkg::sep_ras_t`` field comments state how each one is held and cleared".
 
 Usage::
 

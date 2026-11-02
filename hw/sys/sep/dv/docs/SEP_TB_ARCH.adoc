@@ -699,6 +699,8 @@ Observation probe groups:
    address, ID, AxLEN, AxSIZE; W strobe and last; B and R response. Owners:
    `sep_boot_rom_aperture_sweep_test`, `sep_cpu_demux_unmapped_fetch_test`,
    `sep_reset_wdt_sanity_test` (PR-LSU-XBAR B response of its stores),
+   `sep_dma_basic_test` (PR-LSU-XBAR AR address of its `DMA_BUS_ERR_STATUS`
+   reads),
    `sep_cpu_lsu_alias_window_twin_test` (AxLEN of both ports,
    CHK-CPU-SINGLE-BEAT).
 ** PR-XBAR-TCM (`pr_xbar_tcm_*`): the local crossbar `cpu_tcm` target, the

@@ -17,7 +17,9 @@ compare is not fuse-gated.
 
 ``sep_ras_o.token_match_fault`` is "the token comparator redundancy fault on
 any token, a level sticky until reset" (``hw/sys/sep/rtl/sep_pkg.sv``,
-``sep_ras_t``; ``hw/sys/sep/doc/port_table.adoc``, row ``sep_ras_o``). The
+``sep_ras_t``, the field comments that ``hw/sys/sep/doc/port_table.adoc:130``, row
+``sep_ras_o``, names: "The ``sep_pkg::sep_ras_t`` field comments state how each one is
+held and cleared"). The
 host watches it on every clock on the bench tap ``sep_ras_probe_o``
 (``env/sep_ras_map``) and grades it as three checks, each on its own line:
 
@@ -28,6 +30,10 @@ host watches it on every clock on the bench tap ``sep_ras_probe_o``
 * CHK-RAS-TOKEN_MATCH_FAULT-SHAPE  no fall from the rise to the end of the
   run, which holds ``_RAS_HOLD_CYCLES`` clocks after the inject is released,
   and 1 at the end.
+
+Control: two clocks after the release, CTRL-RAS-TOKEN_MATCH_FAULT-RELEASE reads
+back ``token_cmp_fault_inject_i`` and fails the leaf unless it is off; the line
+also logs the SEC_DIS comparator rails.
 
 The leaf applies no reset after the fault, so the clear is
 ``OBS-RAS-TOKEN_MATCH_FAULT-CLEAR``; the rise delay after the inject is
@@ -161,6 +167,30 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         )
         chk.obs(f"{_RAS}-CLEAR", reset_in_leaf=0, held="to_end_of_window", level_at_end=level)
 
+    def _ras_release_ctrl(self) -> None:
+        """Read back the comparator inject after its release; anything but off fails.
+
+        The SEC_DIS comparator rails (``token_cmp_match_{p,n}_o`` bits 8:6) are
+        logged with it.
+        """
+        dut = cocotb.top
+        inj = self.rd_known(dut.token_cmp_fault_inject_i)
+        ok = inj == TOKEN_CMP_INJECT_OFF
+        head = (
+            "CTRL-RAS-TOKEN_MATCH_FAULT-RELEASE seen"
+            if ok
+            else "CTRL-MISSING RAS-TOKEN_MATCH_FAULT-RELEASE"
+        )
+        line = (
+            f"{head}: seed={self.random_seed()} inject={inj} exp={TOKEN_CMP_INJECT_OFF} "
+            f"sec_match_p={str(dut.token_cmp_match_p_o.value)[:3]} "
+            f"sec_match_n={str(dut.token_cmp_match_n_o.value)[:3]}"
+        )
+        if not ok:
+            self.logger.error(line)
+            raise AssertionError(line)
+        self.logger.info(line)
+
     async def _inject_after_ready(self) -> None:
         for _ in range(_READY_POLL):
             await ClockCycles(cocotb.top.clk_i, 1)
@@ -199,7 +229,10 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         )
         cocotb.top.token_cmp_fault_inject_i.value = TOKEN_CMP_INJECT_OFF
         self.ras_rel_clk = self.ras_w.clk
-        await ClockCycles(cocotb.top.clk_i, _RAS_HOLD_CYCLES + 1)
+        # Two clocks cover the falling-edge drain and release of the comparator force.
+        await ClockCycles(cocotb.top.clk_i, 2)
+        self._ras_release_ctrl()
+        await ClockCycles(cocotb.top.clk_i, _RAS_HOLD_CYCLES - 1)
         claim.cancel()
         console = self.sb.console_text()
         for needle in (

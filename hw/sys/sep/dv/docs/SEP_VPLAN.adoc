@@ -1962,8 +1962,16 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 [[sep-vplan-sep-ras]]
 ==== `sep_ras_o` checks
 
-Golden for every row: `hw/sys/sep/doc/port_table.adoc:130` (row `sep_ras_o`) and
-the field comments of `sep_ras_t` in `hw/sys/sep/rtl/sep_pkg.sv`. The checks
+Golden for every row: `hw/sys/sep/doc/port_table.adoc:130` (row `sep_ras_o`), which
+names the pulse fields and the levels, indexes `periph_bus_err` "by
+`periph_bus_err_e`" and states "The `sep_pkg::sep_ras_t` field comments state how
+each one is held and cleared"; so those field comments in
+`hw/sys/sep/rtl/sep_pkg.sv` give the hold and clear of a field that no document
+states. Where a document states the hold or clear, the leaf cites it: the bark
+clear in `vendor/lowRISC/opentitan/upstream/hw/ip/aon_timer/README.md:77`, the
+bite clear in `hw/sys/sep/doc/watchdog.adoc:29`, the DMA latch clear in
+`hw/sys/sep/doc/dma.adoc:67-69` and the KM recoverable bit in
+`hw/ip/key_manager/regs/km_csr.rdl:660-666`. The checks
 read the monitor tap `sep_ras_probe_o` (`docs/SEP_TB_ARCH.adoc`); the bits are
 named by `env/sep_ras_map.py`. A half is one of `IDLE` (0 while the source is
 idle), `RISE`, `SHAPE` (pulse width or level hold), and, where the comment
@@ -1978,7 +1986,7 @@ logged as `OBS-RAS-<FIELD>-<WHAT>`.
 |`wdt_bite` |`sep_reset_wdt_sanity_test` |`CHK-RAS-WDT_BITE-IDLE`, `-RISE`, `-SHAPE`
 |`iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue` |`sep_tcm_ecc_cpu_trap_test` |`CHK-RAS-<FIELD>-IDLE`, `-RISE`, `-SHAPE` (every high run is one clock)
 |`km_correctable` |`sep_km_command_protocol_rand_test` |`CHK-RAS-KM_CORRECTABLE-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR`
-|`dma_alert` |`sep_pic_pending_map_walk_rand_test` |`CHK-RAS-DMA_ALERT-IDLE`, `-RISE`, `-SHAPE`, `-MODE2`
+|`dma_alert` |`sep_pic_pending_map_walk_rand_test` |`CHK-RAS-DMA_ALERT-IDLE`, `-RISE`, `-SHAPE`; the field under the alert pair force is logged only (`OBS-RAS-DMA_ALERT-MODE2`): the port table names it a one-cycle pulse and states no integrity-fail level
 |`crypto_alert` |`sep_pic_pending_map_walk_rand_test` |`CHK-RAS-CRYPTO_ALERT-IDLE`, `-RISE`, `-SHAPE`
 |`csrng_fatal`, `edn_fatal` |`sep_drbg_fatal_err_inject_rand_test`, `sep_pic_pending_map_walk_rand_test` |`CHK-RAS-<FIELD>-IDLE`, `-RISE`, `-SHAPE`, `-MODE2` (repeat until reset) in the first leaf; `-TEST` (ALERT_TEST sends one pulse) in the second
 |`dma_reg_bus_err` |`sep_cpu_bridge_fault_matrix_rand_test` |`CHK-RAS-DMA_REG_BUS_ERR-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR`

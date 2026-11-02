@@ -496,7 +496,8 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             ok = (cnt == 0 if want == 0 else cnt >= thr) and mceip == want and other == 0
             body = (
                 f"mem=ICCM order={order} t={cfg.t} sample={tag} counter={cnt} mceip={mceip} "
-                f"mcause=none other_counter={other} reset_ic=0x0 reset_dc=0x0"
+                f"mcause=none other_counter={other} "
+                f"reset_ic=0x{int(csr0[0].kv['ic']):x} reset_dc=0x{int(csr0[0].kv['dc']):x}"
             )
             if not ok:
                 raise AssertionError(f"CHK-TCM-CE FAIL: {body}")
@@ -729,6 +730,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             key=lambda x: x[0],
         )
         prev_traps = None
+        trap_deltas = []
         for _i, kind, kv in seq:
             if kind == "a":
                 prev_traps = int(kv["traps_after"])
@@ -736,8 +738,10 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             if kv["tag"] in ("silent", "post"):
                 if int(kv["mie"]) & MIE_MCEIE:
                     sbad.append(f"k={kv['k']} mie30=1")
-                if prev_traps is not None and int(kv["traps"]) != prev_traps:
-                    sbad.append(f"k={kv['k']} traps {prev_traps}->{kv['traps']}")
+                if prev_traps is not None:
+                    trap_deltas.append(int(kv["traps"]) - prev_traps)
+                    if trap_deltas[-1]:
+                        sbad.append(f"k={kv['k']} traps {prev_traps}->{kv['traps']}")
                 win = self._window("dccm_ce", int(kv["k"]))
                 if self._intr_events(win):
                     sbad.append(f"k={kv['k']} trace interrupt event")
@@ -745,7 +749,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         top = max(int(kv["dc"]) & CNT_MASK for kv in silent) if silent else -1
         top_kv = next((kv for kv in silent if int(kv["dc"]) & CNT_MASK == top), None)
         body = (
-            f"mie30=0 mem=DCCM accesses={len(silent)} counter={top} traps=0 "
+            f"mie30=0 mem=DCCM accesses={len(silent)} counter={top} traps={sum(trap_deltas)} "
             f"mceip={(int(top_kv['mip']) & MIP_MCEIP) >> 30 if top_kv else -1} "
             f"control_trap_at_arming={len(dtrap)}"
         )

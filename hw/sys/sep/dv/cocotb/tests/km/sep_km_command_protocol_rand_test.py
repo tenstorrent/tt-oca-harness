@@ -29,7 +29,8 @@ Checks:
                    first response sequence 0, the old sequence refused with -3 arg 0,
                    sequence 0 accepted
   CHK-RECOVER      one RESP_RECOVERABLE_FAULT, no paired RESP_CMD, the gate, the
-                   acknowledge and probe bit 31 (graded in full for rx_buff_oflow)
+                   acknowledge and probe bit 31, with the code of the cause (-2
+                   rx_buff_oflow, -5 SEP flush)
   CHK-GATE         every gated command returns -1 with no argument while
                    RECOVERABLE_ERR is set
   CHK-VALID-FIRST  under the gate a wrong header CRC gives -2, a wrong payload CRC -6
@@ -104,11 +105,12 @@ TEST = "sep_km_command_protocol_rand_test"
 _KM_RECOV = agg_from_pic("KM recoverable error")
 
 # sep_ras_o.km_correctable is the level of the firmware-written KM RECOVERABLE_ERR
-# bit (hw/sys/sep/rtl/sep_pkg.sv, sep_ras_t; hw/sys/sep/doc/port_table.adoc,
-# sep_ras_o). The handler sets the bit before it writes the fault response and
-# CMD_RECOV_ACK clears it before its success response (hw/ip/key_manager/doc/
-# firmware.adoc, "Error Recovery"); a warm reset clears it (architecture.adoc,
-# "Reset Conditioning").
+# bit (hw/sys/sep/doc/port_table.adoc:130, sep_ras_o: a level field;
+# hw/ip/key_manager/regs/km_csr.rdl:660-666: firmware writes 1 to set and 0 to
+# clear, and the register drives the recoverable error event output). The handler
+# sets the bit before it writes the fault response and CMD_RECOV_ACK clears it
+# before its success response (hw/ip/key_manager/doc/firmware.adoc, "Error
+# Recovery"); a warm reset clears it (architecture.adoc, "Reset Conditioning").
 _RAS_KM = "km_correctable"
 
 _POLL_GAP = 20  # clocks between two status polls
@@ -973,12 +975,18 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         ack_ok = ack.code == 0 and ack.arg is None
         stat_after_ok = st2.code == 0 and st2.arg == 0
         pic_ok = pic_fault and pic_after == 0
-        cond = frames_one and first_seq_ok and gated_ok and gated_after_ok and control_ok
-        if src == "rx_oflow":
-            cond = cond and code_ok and stat_ok and ack_ok and stat_after_ok and pic_ok
         self.chk.ok(
             "RECOVER",
-            cond,
+            frames_one
+            and first_seq_ok
+            and gated_ok
+            and gated_after_ok
+            and control_ok
+            and code_ok
+            and stat_ok
+            and ack_ok
+            and stat_after_ok
+            and pic_ok,
             cause=src,
             frames=1 if frames_one else "paired",
             code=pl.signed8(fault_word) if fault_word is not None else "none",
@@ -993,7 +1001,6 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             gated_after=clear[pl.CMD_KEY_TRANSFER].code,
             pic31=[int(pic_fault), pic_after],
             pre_fault_code=pre[pl.CMD_KEY_TRANSFER],
-            control=1 if src == "flush" else 0,
         )
 
     # -------------------------------------------------------- handover legs

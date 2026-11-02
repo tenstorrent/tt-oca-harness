@@ -45,7 +45,8 @@ the [36] fall at the first fill is inside it, and closes after
 CHK-EMPTY-SLVERR and the CHK-POOL-LEVEL-STEP class floor. A raise closes it.
 
 CHK-RAS-ENTROPY_FILL_STALL-<HALF> (``hw/sys/sep/doc/port_table.adoc:130``, row
-``sep_ras_o``, and its ``sep_pkg::sep_ras_t`` field comment): the field is a
+``sep_ras_o``, which states "The ``sep_pkg::sep_ras_t`` field comments state how each
+one is held and cleared", and that field comment in ``hw/sys/sep/rtl/sep_pkg.sv``): the field is a
 hang level, high from STALL_THRESH cycles without an EDN acknowledge until the
 next acknowledge. The tap ``sep_ras_probe_o`` and ``pool_edn_ack_o`` are watched
 on every ``clk_i``. Each half is its own check line
