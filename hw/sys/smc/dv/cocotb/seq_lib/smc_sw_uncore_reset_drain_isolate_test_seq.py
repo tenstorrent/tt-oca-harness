@@ -730,8 +730,11 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         await self._wr(label, RESET_CTRL, value, token)
         return issue, self.n
 
-    def _release_holds(self) -> None:
+    async def _release_holds(self) -> None:
+        """Drop the bench holds at a falling edge, so the DUT and the SVA see the same
+        rising edge as the first one without the hold."""
         dut = cocotb.top
+        await FallingEdge(dut.clk_smc_i)
         for name in ("tb_sep_axi_r_hold", "tb_sys_axi_r_hold", "tb_output_axi_resp_hold"):
             getattr(dut, name).value = 0
 
@@ -807,7 +810,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             await self._recover()
 
     async def _recover(self) -> None:
-        self._release_holds()
+        await self._release_holds()
         for _ in range(2):
             await self._wr(
                 "RECOVER_RC", RESET_CTRL, self.rc_base, "CHK-NONVAC", port="SEP", obs=True
@@ -843,7 +846,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             await self._s8_not_driven()
             await self._step("S9", self._s9_cold())
         finally:
-            self._release_holds()
+            await self._release_holds()
             self._sampler_stop = True
             await RisingEdge(dut.clk_smc_i)
         self._report()
@@ -1156,6 +1159,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
     # S4 -------------------------------------------------------------------------------------------
     async def _arm_four(self, tag: str, token: str):
         """Hold R on SEP_IN and park four single-beat reads in the L2 frontend."""
+        await FallingEdge(cocotb.top.clk_smc_i)
         cocotb.top.tb_sep_axi_r_hold.value = 1
         since = self.n
         reads = self._front_reads(4, tag)
@@ -1223,7 +1227,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
             good, total, first_bad = self._all("isoreq", 1, a_idx, end)
             if good != total:
                 bad1.append(f"isolate_req falls inside the window at sample {first_bad}")
-        self._release_holds()
+        await self._release_holds()
         await self._wait_reset_applied("S4a", T1)
         res_idx = self._first("unc", 0, iss)
         if res_idx is None:
@@ -1307,7 +1311,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
         _i, r1 = await self._write_rc("S4b_PULSE_START", self.rc_base | CORE3_PULSE_START, TP)
         iss2, _r2 = await self._write_rc("S4b_UNCORE_CLEAR", self.rc_base & ~UNCORE_RESET_N, TP)
         await self._edges(PULSE_HOLD_EDGES // 4)
-        self._release_holds()
+        await self._release_holds()
         await self._wait_reset_applied("S4b", TP)
         early2 = [r.event.is_set() for r in reads2]
         _i, r_set2 = await self._write_rc("S4b_UNCORE_SET", self.rc_base, TP)
@@ -1376,7 +1380,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
                         f"(first bad sample {first_bad}); reset not withheld"
                     )
         hrel = self.n
-        self._release_holds()
+        await self._release_holds()
         await self._wait_reset_applied("S5", T)
         a = self._first("isoreq", 1, iss)
         b = self._first("drn", 1, a if a is not None else iss)
@@ -1697,7 +1701,7 @@ class smc_sw_uncore_reset_drain_isolate_test_seq(SmcResetSeqBase, output_fabric_
     async def _s9_cold(self) -> None:
         T = "CHK-COLD-ISOLATION-RELEASE"
         bad: list[str] = []
-        self._release_holds()
+        await self._release_holds()
         start = self.n
         await self._send(SmcResetOp.COLD_RST_LO)
         await self._wait_state(
