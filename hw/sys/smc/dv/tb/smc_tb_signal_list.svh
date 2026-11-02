@@ -469,6 +469,9 @@
 // stays outstanding. DATA hang detector snoops data_accel (DMA/zeroer
 // master), which stalls when SYS_OUT never completes. Idle 0.
 `SMC_TB_IN(logic, tb_output_axi_resp_hold)
+// FCOV graded-window gate. The owning leaf of a cov/sv covergroup that
+// samples only inside a graded window holds it 1 over that window. Idle 0.
+`SMC_TB_IN(logic, tb_fcov_gate)
 
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)

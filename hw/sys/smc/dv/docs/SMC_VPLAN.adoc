@@ -49838,6 +49838,17 @@ stays tied 0)
 |Holds the bank model's response to a read or program request for a chosen number of clock cycles (the counts are forced onto `efuse_bank_reg.sv`, whose default is no stall), so a request can be stalled on either side of the programmed timeout.
 |The eFuse bank model's response (a memory-macro response)
 |`smc_efuse_read_program_timeout_test`
+|<<smc-vplan-area-power,POWER>>, <<smc-vplan-area-reset,RESET>>
+|`tb_fcov_gate`
+|Added hook
+|A bench input, idle 0, that the owning leaf of a live planned covergroup holds at 1 over its
+graded window, so `cov/sv` samples that window only. It is one net: high, it opens both groups and
+the four `c_reset_kind_*_graded` points at once, so an owner's window must hold no sample event of
+the other group (the DMA owner drives no reset, and the reset owner's DMA launch precedes its
+gate). Drives no `smc_wrapper` port and changes no stimulus.
+|The `fcov_gate_i` inputs of `smc_dma_fcov` and `smc_reset_fcov` in
+`hw/sys/smc/dv/tb/tb_top.sv` (tied 0 under SV-UVM)
+|`smc_dma_transfer_matrix_rand_test`, `smc_reset_mid_transaction_rand_test`
 |===
 
 [[smc-vplan-phase3-proposed-drives]]

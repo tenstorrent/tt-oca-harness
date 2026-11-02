@@ -311,6 +311,9 @@ them, isolation and FLR, and the protection and inbound filters.
 |===
 |Points |Records
 |`c_reset_op_*`, `c_release_*`, `c_reassert_*`, `c_reset_state_*` |Each reset source asserted, each release edge, and the held, partial and released states
+|`c_reset_kind_cold_graded`, `c_reset_kind_cool_pin_graded`, `c_reset_kind_flr_graded`,
+`c_reset_kind_wdt_graded` |Each reset kind asserted inside the graded window of
+`smc_reset_mid_transaction_rand_test`, the twins of `smc_reset_kind_inflight_cg`
 |`c_powergood_rise_stretched`, `c_cold_reset_*`, `c_async_assert_observed`, `c_sync_deassert_observed`, `c_multi_stage_sync_present`, `c_release_primary_periph`, `c_*_held_in_primary_reset`, `c_warm_cascaded_from_primary`, `c_region_size_reset_16mib`, `c_config_registers_at_reset_value`, `c_ss_config_driven`, `c_reset_*_boot_seq_done`, `c_telemetry_reset_*` |Power-on ordering, what the primary reset holds, the boot-sequence gate
 |`c_sw_isolate_per_subsystem`, `c_flr_isolate_*`, `c_single_sequence_per_rising_edge`, `c_no_sequence_on_level_hold`, `c_warm_from_*_wdt`, `c_cool_reset_from_gpio_pin_61` |Isolation terms, FLR sequencing, warm and cool reset sources
 |`c_awprot_*`, `c_arprot_*`, `c_jtag2axi_remapped`, `c_jtag2axi_filtered`, `c_inbound_filter_*` |Protection filter exact and nearest-miss matches, the JTAG2AXI path, the inbound filter
@@ -322,7 +325,10 @@ them, isolation and FLR, and the protection and inbound filters.
 Every covergroup bin and cross cell is either walked by an `all`-group leaf
 or left out of the model, as an `ignore_bins` or as a combination a tuple
 coverpoint has no bin for, with a comment that states the specification or
-bench fact that keeps it out of reach, the way the cover points are held. The
+bench fact that keeps it out of reach, the way the cover points are held. A
+live planned group (<<smc-fcov-planned>>) has a third kind: a cell its owner's
+draw reaches only over merged regressions, or does not reach under the draw's
+timing, is neither walked in one run nor left out; it stays a goal cell. The
 bins and cells that fact removes:
 
 [cols="2,2,4",options="header"]
@@ -363,6 +369,21 @@ clears `CLOCK_GATE_CONTROL.ZEROER_CG_EN`, which sets `disable_cg`
 |`smc_dma_fcov::cg_dma_gates` |Frontend clock held, backend clock running
 |The frontend clock runs whenever the backend clock does, with the same
 hysteresis (`dma.adoc`, SMC DMA Clock Gating Configuration)
+|`smc_dma_fcov::smc_dma_geometry_cg` |`LENGTH` 0 in the copy rows; a no-data
+launch in `cp_length_reps`, `cp_start`, `cp_start_x_length_reps` and
+`cp_burst_cfg` |The owner issues one zero-length launch with one configuration
+(`dma.adoc`, a length-0 command moves no data), and both no-data launches
+reuse a drawn transfer's geometry and `CONFIG`; they are the two cells of
+`cp_no_data`
+|`smc_reset_fcov::smc_reset_kind_inflight_cg` |`cp_kind_op_phase` watchdog x
+SPM write and SPM read, 6 cells |A watchdog warm reset with an SPM access in
+flight leaves the cluster boundary unanswering until a primary reset (#3510),
+so the owner never draws the pair; `ignore_bins wdt_spm`
+|`smc_reset_fcov::smc_reset_kind_inflight_cg` |`cp_kind_op_phase` with no
+operation in flight |The owner draws every pass from the four operations; a
+pass whose operation finished before the assertion (an engine idle at the FLR
+cool-reset fall) or whose SPM address is not yet presented (`AWVALID` or
+`ARVALID` not raised) samples no cell
 |===
 
 Verilator and VCS build the same goal bins for each covergroup because no
@@ -372,7 +393,9 @@ ignores with only a `COVERIGN` warning that `smc_sim_cfg.toml` makes an error.
 A cross whose unreachable cells only a select expression could remove is a
 tuple coverpoint, with one bin per reachable cell named for the bins it pairs:
 `cp_gate_contract`, `cp_gaters`, `cp_claim`, `cp_terms`, `cp_region_resp`,
-`cp_transition`, `cp_axi_terms` and `cp_reg_terms`. On Verilator, a value that
+`cp_transition`, `cp_axi_terms`, `cp_reg_terms`, the four copy coverpoints of
+`smc_dma_geometry_cg` (led by a copy flag that every bin sets) and both
+coverpoints of `smc_reset_kind_inflight_cg`. On Verilator, a value that
 a bin and an `ignore_bins` both list counts in the bin, without a warning, so
 no goal bin overlaps an `ignore_bins`: `cg_reset_state` lists the four
 partial-release states its ignore bins leave, and `cg_clk_ratio` has no
@@ -446,7 +469,8 @@ reads it back
 [[smc-fcov-planned]]
 === Planned Groups
 
-The planned groups are covergroups whose sampler does not exist yet: the functional coverage of the
+The planned groups are covergroups whose sampler does not exist yet, or, once a group's Class
+reads live, has been written: the functional coverage of the
 Phase 3 entries of SMC_VPLAN, either a new entry (with or without its test) or the planned upgrade
 of an existing one, and of the two existing entries named at the end of this paragraph. Each is a
 covergroup to be written in
@@ -456,7 +480,11 @@ coverpoint samples a port of `smc_wrapper` or of `smc` (under `u_dut.u_smc`), a 
 instance such as `u_output_axi_if`, a `tb_*` net or another `tb_top.sv` net of the signal list (or
 a count the planned sampler keeps from such nets), or a register field the owner reads back. A
 group marked planned is not compiled, is not in the Coverage Summary and is in
-no closure total; it earns credit when its sampler exists and its owner is in `all`. A single-event
+no closure total; it earns credit when its sampler exists and its owner is in `all`. A group whose
+Class reads live has its sampler: it is compiled, it samples only while its owner holds the bench
+input `tb_fcov_gate` high around the graded window (one net that opens every live group at once,
+so no owner's window holds another group's sample event), and its recorded bins (`rec_*`) are goal
+bins in a Verilator database, read apart from the cells by that prefix. A single-event
 bin may get a Verilator
 `OCAH_FCOV_COVER` cover-property twin in the hosted `user` family; the twin lands with its owning
 leaf, because `cov/config/verilator/coverage_policy.toml` keeps `max_unclassified_points` at 0. This
@@ -653,10 +681,14 @@ under the holds (printed by the owner, not asserted).
 *Description*: Reset kind against the operation in flight, its phase and the register domain the
 reset clears.
 
-*Tool*: Verilator, the simulator of the scheduled runs (the owner prints the X-resolution leg of
-`CHK-RMT-ALLZERO-X-FREE` there and grades it only on a four-state simulator, none of which is in the
-scheduled runs). *Class*: planned (owner `smc_reset_mid_transaction_rand_test`, the test that draws
-these cells; no sampler exists). Owner's draw: "the seed draws, for 6 passes, the reset kind (the
+*Tool*: written for Verilator and VCS and built on Verilator; the scheduled runs are Verilator (the
+owner prints
+the X-resolution leg of `CHK-RMT-ALLZERO-X-FREE` there and grades it only on a four-state
+simulator, none of which is in the scheduled runs). *Class*: live (sampler
+`smc_reset_fcov::smc_reset_kind_inflight_cg`, handle `u_cg_reset_kind_inflight`, sampled only while
+the owner `smc_reset_mid_transaction_rand_test` holds `tb_fcov_gate` high, from before each
+injected reset to the end of that pass's compare).
+Owner's draw: "the seed draws, for 6 passes, the reset kind (the
 first four passes a permutation of cool pin, FLR, cold and watchdog, the last two one kind each),
 the in-flight operation (SPM burst write, SPM burst read, DMA chunk of 4 KiB, zeroer job of 8 KiB)";
 the field goes on to the assertion cycle in it, the hold length and the non-zero patterns;
@@ -675,18 +707,78 @@ cluster boundary unanswering until a primary reset (#3510; not graded here)."
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_kind_op_phase` |reset kind (cold, cool pin, FLR cool reset, watchdog: 4) x in-flight operation (SPM write, SPM read, DMA chunk, zeroer job: 4) x phase at the assertion cycle (before the address handshake, in the data phase, awaiting the response: 3); 48 cells, of which the 6 watchdog x SPM write and SPM read cells are a documented ignore (the owner never draws the pair: a watchdog warm reset with an SPM access in flight leaves the cluster boundary unanswering until a primary reset, #3510, the RESET row of the Blocked legs table of SMC_VPLAN), so 42 goal cells; for the SPM operations the owner counts the SEP_IN address handshakes and completed responses up to the reset's assertion and samples the L2-frontend isolate's pending count, prints whether the burst was inside the reset (issued into the cluster, response not returned) and requires one such pass per seed, so an SPM pass whose burst completed before the assertion is a recorded bin, not one of the 42; each reset kind also has an `OCAH_FCOV_COVER` twin; the stated outcome is warm reset low at every sample at which primary is low, and for the watchdog warm low with primary high (`clk_rst.adoc`, Reset Architecture, the reset equations) |`rst_cold_ni`, `rst_cool_n_from_pin_i`, `tb_cfg_flr_pf_active`, `tb_sep_wdt_reset_n`; `sep_axi_in_req_i` handshakes; `tb_cpu_l2_pending_aw`, `tb_cpu_l2_pending_ar`; `rst_primary_smc_clk_no`, `tb_rst_warm_smc_clk_n` |`smc_reset_mid_transaction_rand_test` |planned
-|`cp_kind_domain` |reset kind (4) x register class (cold-only: the isolation registers and the FLR counters; primary: `SS_COLD_RESET_N`, `CPU_CTRL.RESET_VECTOR[0]`, `CPU_CTRL.SCRATCH[0]`; warm scratch: `misc_wrap.SCRATCH_COLD_WARM(0)`: 3); 8 cells plus 4 recorded bins; the value after the reset is the stated function of the cell for the 8 cells of the first two classes (the cold reset clears both; the cool pin and the FLR clear the primary class and keep the cold-only class; the watchdog keeps both, the CPU control registers being on the primary reset and keeping their values across a warm reset), and the 4 cells of `misc_wrap.SCRATCH_COLD_WARM(0)` are recorded bins (`clk_rst.adoc`, Reset Architecture, states that `rst_warm_smc_clk_no` resets "the warm scratch register" without naming which register it is; the Blocked features row of SMC_VPLAN); `SS_CONFIG` is in no class (the owner prints it; its reset domain is stated, the primary reset of `clk_rst.adoc`, Reset Architecture, and only whether it stores a software write is open, the Blocked legs row of SMC_VPLAN on `SS_CONFIG`) (`clk_rst.adoc`, Primary and Warm Reset, Isolation Controls, Reset Architecture) |register fields read back by the owner after the reset: `ISOLATE_REQ_*`, `SS_COLD_RESET_N`, `CPU_CTRL.RESET_VECTOR[0]`, `CPU_CTRL.SCRATCH[0]`, `misc_wrap.SCRATCH_COLD_WARM(0)` |`smc_reset_mid_transaction_rand_test` |planned
+|`cp_kind_op_phase` |reset kind (cold, cool pin, FLR cool reset, watchdog: 4) x in-flight
+operation (SPM write, SPM read, DMA chunk, zeroer job: 4) x phase at the assertion cycle (before
+the address handshake, in the data phase, awaiting the response: 3); 48 cells, of which the 6
+watchdog x SPM write and SPM read cells are a documented ignore (the owner never draws the pair: a
+watchdog warm reset with an SPM access in flight leaves the cluster boundary unanswering until a
+primary reset, #3510, the RESET row of the Blocked legs table of SMC_VPLAN), so 42 goal cells; for
+the SPM operations the owner counts the SEP_IN address handshakes and completed responses up to the
+reset's assertion and samples the L2-frontend isolate's pending count, prints whether the burst was
+inside the reset (issued into the cluster, response not returned) and requires one such pass per
+seed, so an SPM pass whose burst completed before the assertion is a recorded bin, not one of the
+42: 6 recorded bins (`rec_*`: cold, cool pin and FLR x SPM write and SPM read with the burst's
+response returned before the assertion); one tuple coverpoint `{kind, op, phase}` with one bin per
+goal cell and per recorded bin; one sample per pass, at the first assertion edge on `clk_ref_i`
+after the gate rises (the fall of `rst_cold_ni`, of the cool pin, of the FLR cool reset and not the
+FLR request, or of the watchdog reset); the operation and phase are frozen at the first `clk_smc_i`
+edge at which any of those four sources is seen low, so they are those at the last `clk_smc_i` edge
+before the kind's source fell (for FLR the FLR cool-reset fall), not at the later `clk_ref_i` sample
+edge, or before the primary or the warm reset asserted if that comes first, since the trackers stop
+there; the phases are bench buckets: an SPM write is
+before its AW handshake, in data from AW to WLAST and awaiting from WLAST to B; an SPM read is
+before its AR handshake, awaiting from AR to its first R beat (the R beats are the response) and
+in data from the first R beat to RLAST; an engine is in data while SYS_OUT write data is owed or an
+R or W burst is under way, awaiting while only a read address or a write response is outstanding,
+and before when nothing is outstanding; an SPM burst is in flight from its `AWVALID` or `ARVALID`,
+so a burst whose address is not yet presented samples no cell; a pass with no operation in flight
+at the assertion (an engine that finished first) samples no cell; each reset kind also has an
+`OCAH_FCOV_COVER` twin, the kind's assertion inside the graded window: `c_reset_kind_cold_graded`,
+`c_reset_kind_cool_pin_graded`, `c_reset_kind_flr_graded`, `c_reset_kind_wdt_graded`; the stated
+outcome is warm reset low at every sample at which primary is low, and for the watchdog warm low
+with primary high (`clk_rst.adoc`, Reset Architecture, the reset equations), graded by the owner
+|`rst_cold_ni`, `rst_cool_ni` (`rst_cool_n_from_pin_i`), `tb_rst_cool_from_flr`,
+`tb_sep_wdt_reset_n` on `clk_ref_i`; `sep_axi_in_req_i` handshakes (`s_axi_*`); `tb_dma_busy`,
+`tb_zeroer_busy`; `u_output_axi_if` handshakes, `wlast`, `rlast`; `rst_primary_smc_clk_no`,
+`tb_rst_warm_smc_clk_n`; `tb_fcov_gate` |`smc_reset_mid_transaction_rand_test` |live
+|`cp_kind_domain` |reset kind (4) x register class (cold-only: the isolation registers and the FLR
+counters; primary: `SS_COLD_RESET_N`, `CPU_CTRL.RESET_VECTOR[0]`, `CPU_CTRL.SCRATCH[0]`; warm
+scratch: `misc_wrap.SCRATCH_COLD_WARM(0)`: 3); 8 cells plus 4 recorded bins (`rec_*`); the value
+after the reset is the stated function of the cell for the 8 cells of the first two classes (the
+cold reset clears both; the cool pin and the FLR clear the primary class and keep the cold-only
+class; the watchdog keeps both, the CPU control registers being on the primary reset and keeping
+their values across a warm reset), and the 4 cells of `misc_wrap.SCRATCH_COLD_WARM(0)` are
+recorded bins (`clk_rst.adoc`, Reset Architecture, states that `rst_warm_smc_clk_no` resets "the
+warm scratch register" without naming which register it is; the Blocked features row of
+SMC_VPLAN); one tuple coverpoint `{kind, class}`; each class is sampled once per pass, at the
+SEP_IN read after the pass's sampled assertion that completes the class, when every register of
+the class has been read in the window and each read returned OKAY with that function (the RDL
+reset value where the kind clears the class, the pattern last written over SEP_IN where it keeps
+it); one read of a member that misses keeps the class unsampled for the pass; a recorded bin is
+sampled at the OKAY read of its register; the reads before the reset and
+the restore after the compare fall outside the gate; `SS_CONFIG` is in no class (the owner prints
+it; its reset domain is stated, the primary reset of `clk_rst.adoc`, Reset Architecture, and only
+whether it stores a software write is open, the Blocked legs row of SMC_VPLAN on `SS_CONFIG`)
+(`clk_rst.adoc`, Primary and Warm Reset, Isolation Controls, Reset Architecture) |register fields
+read back by the owner after the reset, decoded from `sep_axi_in_req_i` and `sep_axi_in_resp_o`
+(`s_axi_*`): `ISOLATE_REQ_SMCEN_REG`, `ISOLATE_REQ_FLR_COUNTER_VALUE`,
+`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`, `SS_COLD_RESET_N`, `CPU_CTRL.RESET_VECTOR[0]`,
+`CPU_CTRL.SCRATCH[0]`, `misc_wrap.SCRATCH_COLD_WARM(0)`, with the patterns of the SEP_IN writes to
+them; `tb_fcov_gate` |`smc_reset_mid_transaction_rand_test` |live
 |===
 
-*Ignore bins*: an in-flight operation of `none` (the owner draws every pass from the four operations
-and never asserts a reset with nothing in flight); a register value contrary to the function (the
-failing outcome of the owner's compare); the fate of the interrupted operation (printed); the
-mailbox push, the UART frame, the JTAG reset overrides and the power-good path (the owner's Scope
-limit); holds below 40 reference cycles (the owner's filter; the de-glitcher is the cell of
-`smc_deglitch_cg`); `SS_CONFIG` as a member of the primary class (printed by the owner; its primary
-reset domain is stated by `clk_rst.adoc`, Reset Architecture, and its storage is the Blocked legs
-row of SMC_VPLAN on `SS_CONFIG`).
+*Ignore bins*: the 6 watchdog x SPM write and SPM read cells of `cp_kind_op_phase`
+(`ignore_bins wdt_spm`, #3510; no bin lists them); an in-flight operation of `none` (the owner
+draws every pass from the four operations; a pass whose operation finished before the assertion,
+such as an engine idle at the FLR cool-reset fall, or whose SPM address is not yet presented
+samples no cell); the X-resolution leg of `CHK-RMT-ALLZERO-X-FREE`
+(a check leg graded on a four-state simulator, not a cell); a register value contrary to the
+function (the failing outcome of the owner's compare; such a read samples nothing); the fate of
+the interrupted operation (printed); the mailbox push, the UART frame, the JTAG reset overrides and
+the power-good path (the owner's Scope limit); holds below 40 reference cycles (the owner's filter;
+the de-glitcher is the cell of `smc_deglitch_cg`); `SS_CONFIG` as a member of the primary class
+(printed by the owner; its primary reset domain is stated by `clk_rst.adoc`, Reset Architecture,
+and its storage is the Blocked legs row of SMC_VPLAN on `SS_CONFIG`).
 
 ==== `smc_deglitch_cg`
 *Description*: Cool-reset pin pulse width against the 32-cycle de-glitch filter, and the overlap of
@@ -831,8 +923,10 @@ longer stall fits its bounded wait); the out-of-range, last-in-range, upper-ones
 ==== `smc_dma_geometry_cg`
 *Description*: DMA row width, row count, unaligned starts and burst-shaping configuration.
 
-*Tool*: Verilator and VCS. *Class*: planned (owner `smc_dma_transfer_matrix_rand_test`, the test
-that draws these cells; no sampler exists). Owner's draw: "the seed draws, for 12 transfers, the
+*Tool*: Verilator and VCS. *Class*: live (sampler `smc_dma_fcov::smc_dma_geometry_cg`, handle
+`u_cg_dma_geometry`, one sample per `NEXT_ID_0` read while the owner
+`smc_dma_transfer_matrix_rand_test` holds `tb_fcov_gate` high, from after its draw to the end of
+its zero-length launch). Owner's draw: "the seed draws, for 12 transfers, the
 row width (`LENGTH`, 1 to 2048 bytes), the row count (`NUM_REPETITIONS`, 1 to 16), the source and
 destination strides (each the row width plus 0 to 256 bytes), the source and destination start
 offsets within a 64-bit word (0 to 7), `DECOUPLE_AW`, `SRC_REDUCE_LEN`, `SRC_MAX_LLEN` (0 to 7),
@@ -841,10 +935,38 @@ offsets within a 64-bit word (0 to 7), `DECOUPLE_AW`, `SRC_REDUCE_LEN`, `SRC_MAX
 [cols="2,6,3,3,2",options="header"]
 |===
 |Coverpoint |Bins and crosses |Sampled signal |Owning tests |Reach
-|`cp_length_reps` |`LENGTH` (1, 2 to 7, 8, 9 to 255, 256 and above: 5) x `NUM_REPETITIONS` (1, 2, 3 to 15, 16 and above: 4); 20 cells; a byte-exact copy and the retired ID are the stated outcome (`dma.adoc`, Transfer Configuration; `dma_ctrl.rdl`, repetition enable) |`tb_dma_length`, `tb_dma_reps` |`smc_dma_transfer_matrix_rand_test` |planned
-|`cp_start` |source start offset in the word (0, 1 to 7: 2) x destination start offset (0, 1 to 7: 2); 4 cells, crossed with `cp_length_reps` for 80 cells (`dma.adoc`, Linear and Two-Dimensional Copies) |`tb_dma_src_addr`, `tb_dma_dst_addr` |`smc_dma_transfer_matrix_rand_test` |planned
-|`cp_burst_cfg` |`SRC_REDUCE_LEN` (0, 1) x `DST_REDUCE_LEN` (0, 1) x `DECOUPLE_AW` (0, 1); 8 cells; every sampled burst lies inside the bound its field states: with the reduce bit set at most 2^`*_MAX_LLEN` beats inside the 2^(`*_MAX_LLEN`+3)-byte boundary, with it clear 256 beats inside a 2 KiB-aligned block, so the (0, x) and (x, 0) cells are graded on the reduce-clear bound of the clear side (`dma_ctrl.rdl`, `SRC_REDUCE_LEN`, `DST_REDUCE_LEN`, `SRC_MAX_LLEN`, `DST_MAX_LLEN`, `DECOUPLE_AW`) |the `CONFIG` write data on `sep_axi_in_req_i` decoded to the DMA `CONFIG` register; `tb_dma_mst_awlen`; `u_output_axi_if` `arlen`, `awlen` at the handshakes |`smc_dma_transfer_matrix_rand_test` |planned
-|`cp_no_data` |`LENGTH` 0 launch (1 bin: a non-zero ID and no destination byte changes, `DONE_0` after it `NUM_REPETITIONS` ahead of its pre-launch value, the owner's `CHK-DXM-ZERO-LENGTH-DONE`); `ENABLED_ND` clear launch (1 bin: a non-zero ID, no destination byte changes and `DONE_0` reaches the ID); 2 cells, one launch each with one drawn configuration (`dma.adoc`, Transfer Configuration, the two commands that move no data; `dma_ctrl.rdl`, `NEXT_ID`, `ENABLED_ND`) |`tb_dma_length`; `DONE_0`, `NEXT_ID_0` as the owner reads them |`smc_dma_transfer_matrix_rand_test` |planned
+|`cp_length_reps` |`LENGTH` (1, 2 to 7, 8, 9 to 255, 256 and above: 5) x `NUM_REPETITIONS` (1, 2,
+3 to 15, 16 and above: 4); 20 cells, one tuple coverpoint with one bin per cell; copy launches
+only (`ENABLED_ND` set and `LENGTH` non-zero): the `ENABLED_ND` clear and zero-length launches
+reuse a drawn transfer's geometry and count in `cp_no_data` only; a byte-exact copy and the
+retired ID are the stated outcome (`dma.adoc`, Transfer Configuration; `dma_ctrl.rdl`, repetition
+enable) |`tb_dma_length`, `tb_dma_reps`; the decoded `CONFIG` `ENABLED_ND` (copy flag)
+|`smc_dma_transfer_matrix_rand_test` |live
+|`cp_start` |source start offset in the word (0, 1 to 7: 2) x destination start offset (0, 1 to
+7: 2): 4 cells (`cp_start`), and their cross with `cp_length_reps`: 80 cells
+(`cp_start_x_length_reps`, a tuple coverpoint with one bin per cell), so 84 counted bins in this
+row; copy launches only (`dma.adoc`, Linear and Two-Dimensional Copies) |`tb_dma_src_addr`,
+`tb_dma_dst_addr`; the decoded `CONFIG` `ENABLED_ND` (copy flag)
+|`smc_dma_transfer_matrix_rand_test` |live
+|`cp_burst_cfg` |`SRC_REDUCE_LEN` (0, 1) x `DST_REDUCE_LEN` (0, 1) x `DECOUPLE_AW` (0, 1); 8 cells,
+one tuple coverpoint; copy launches only; the stated outcome, graded by the owner's
+`CHK-DXM-BURST-BOUND` on `u_output_axi_if` `arlen` and `awlen` at the handshakes: every burst lies
+inside the bound its field states: with the reduce bit set at most 2^`*_MAX_LLEN` beats inside the
+2^(`*_MAX_LLEN`+3)-byte boundary, with it clear 256 beats inside a 2 KiB-aligned block, so the (0,
+x) and (x, 0) cells are graded on the reduce-clear bound of the clear side (`dma_ctrl.rdl`,
+`SRC_REDUCE_LEN`, `DST_REDUCE_LEN`, `SRC_MAX_LLEN`, `DST_MAX_LLEN`, `DECOUPLE_AW`) |the `CONFIG`
+write data on `sep_axi_in_req_i` decoded to the DMA `CONFIG` register (the last SEP_IN write that
+completed OKAY at its address; the decode assumes one SEP_IN write outstanding at a time, all four
+strobes of the low 32-bit lane set and no DMA reset inside the window, which the owner's writes
+meet) |`smc_dma_transfer_matrix_rand_test` |live
+|`cp_no_data` |`LENGTH` 0 launch (1 bin: a non-zero ID and no destination byte changes, `DONE_0`
+after it `NUM_REPETITIONS` ahead of its pre-launch value, the owner's `CHK-DXM-ZERO-LENGTH-DONE`);
+`ENABLED_ND` clear launch (1 bin: a non-zero ID, no destination byte changes and `DONE_0` reaches
+the ID); 2 cells, one launch each with one drawn configuration (`dma.adoc`, Transfer
+Configuration, the two commands that move no data; `dma_ctrl.rdl`, `NEXT_ID`, `ENABLED_ND`)
+|`tb_dma_length`, the decoded `CONFIG`
+`ENABLED_ND` and the `NEXT_ID_0` read strobe `tb_dma_next_id_re`; `DONE_0` as the owner reads it
+(graded by the owner) |`smc_dma_transfer_matrix_rand_test` |live
 |===
 
 *Ignore bins*: a write width axis (not a dimension of the owner's draw; the strobe cells of the
