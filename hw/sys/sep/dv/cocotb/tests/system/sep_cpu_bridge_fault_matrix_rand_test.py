@@ -156,6 +156,43 @@ the end of the run: after CHK-SRC41/42/43-RISE passes, the leaf sets the bit
 of its source in ``exo_pass`` (``env/sep_fcov_gate.set_exo_pass``), which
 samples the held rises of that source.
 
+``sep_ras_o`` (``hw/sys/sep/rtl/sep_pkg.sv``, ``sep_ras_t``;
+``hw/sys/sep/doc/port_table.adoc``, row ``sep_ras_o``): ``dma_reg_bus_err`` is
+the DMA register-bridge fault, a level sticky until DMA_BUS_ERR_CLEAR;
+``periph_bus_err[i]`` is the register-bridge fault of block ``i`` of
+``periph_bus_err_e`` (aes 0, hmac 1, kmac 2, otbn 3, csrng 4, edn 5, wdt 6), a
+level sticky until its PERIPH_BUS_ERR_CLEAR bit. A write of 1 is the clear
+(``sep_cpu_ctrl.adoc:60``, ``:66``, ``:76``). The leaf compares the bench tap
+``sep_ras_probe_o`` (``env/sep_ras_map``) on every clock with its latch model
+(the faults it drove minus the bits it cleared), per field and per block bit
+of ``periph_bus_err_e``, never through the PERIPH_BUS_ERR_STATUS field mask.
+The span from a fault access to the next status read, and from a clear write
+to the next status read, is a transition span; inside it the field keeps its
+old value up to the clear pulse of its own latch on
+``sep_cpu_ctrl_err_pulse_probe_o`` and is not compared after that pulse.
+Each half is its own check on its own line, named
+``CHK-RAS-DMA_REG_BUS_ERR-<HALF>`` and ``CHK-RAS-PERIPH_BUS_ERR_<BLOCK>-<HALF>``
+for BLOCK in AES, HMAC, KMAC, OTBN, WDT:
+
+                  IDLE  0 on every clock from the first graded step to the
+                        first fault of that latch.
+                  RISE  1 at the status read after each fault of that latch.
+                  SHAPE 1 on every clock of each model-1 span, across every
+                        clear of another bit, every mask clear that excludes it
+                        and every DMA_BUS_ERR_CLEAR write of 0.
+                  CLEAR 0 at the status read after each clear of that latch,
+                        the clear pulse seen, and 0 on every clock after it to
+                        the next fault.
+
+The leaf raises once at its end if any half failed. Not compared: the raced
+block bit during its same-cycle trials (``OBS-RAS-PERIPH_BUS_ERR-RACE``) and
+the bits at 0 during the accesses to blocks outside the seven bits and from
+the SI (``OBS-RAS-PERIPH_BUS_ERR-HOLE``): no sentence states the field there.
+The csrng and edn bits are not graded: no access of this leaf raises them
+(``OBS-RAS-PERIPH_BUS_ERR-CSRNG_EDN``). The delays from the fault access to
+the rise and from the clear pulse to the fall are logged as
+``OBS-RAS-DMA_REG_BUS_ERR-DELAY`` and ``OBS-RAS-PERIPH_BUS_ERR-DELAY``.
+
 Observed only (``OBS-DMA-HOST-CLR``): STATUS.ERROR and ERROR_CODE.BUS_ERROR
 after a write of 1 to DMA_BUS_ERR_CLEAR while both are set. No sentence states
 whether DMA_BUS_ERR_CLEAR changes the DMA report, so the leaf logs the values
@@ -187,6 +224,7 @@ from env.sep_fcov_gate import (
 from env.sep_field_compare import field_compare
 from env.sep_filter_model import FilterEntry
 from env.sep_pic_map import vec_bit
+from env.sep_ras_map import PERIPH_BUS_ERR_BLOCKS, RasChkLines, check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import AES, HMAC, KMAC, OTBN, SEP_CPU_CTRL, WDT_TIMER, register_fields, sym
@@ -311,6 +349,22 @@ def _unbacked_words(block: str) -> tuple[str, list[int]]:
 
 # The three bridge-fault sources whose vector bits the leaf watches on every clock.
 RISE_SRC = (41, 42, 43)
+
+# sep_ras_o latches the leaf grades: key -> (check name, tap bit). The csrng and
+# edn bits have no access in this leaf that raises them.
+RAS_PBE_GRADED = ("aes", "hmac", "kmac", "otbn", "wdt")
+RAS_PBE_UNRAISED = ("csrng", "edn")
+RAS_LATCH = {
+    "dma_reg": ("RAS-DMA_REG_BUS_ERR", ras_bit("dma_reg_bus_err")),
+    **{
+        n: (
+            f"RAS-PERIPH_BUS_ERR_{n.upper()}",
+            ras_bit("periph_bus_err", PERIPH_BUS_ERR_BLOCKS.index(n)),
+        )
+        for n in RAS_PBE_GRADED
+    },
+}
+RAS_HALVES = ("IDLE", "RISE", "SHAPE", "CLEAR")
 
 
 def _owned_bytes(mask: int) -> int:
@@ -473,6 +527,136 @@ class _PulseRec:
             self._task = None
 
 
+class _RasCmp:
+    """Per-clock compare of the graded sep_ras_o latches with the leaf's latch model.
+
+    Each latch is in one state: ``cmp`` (compared with ``exp``), ``rise`` (a
+    fault is in flight; not compared), ``clr_wait`` (a clear write is in
+    flight; still compared with 1 up to the clear pulse of its own latch),
+    ``clr`` (the clear pulse was seen; not compared), ``off`` (suspended) and
+    ``resume`` (suspended until the next status read). ``settle`` ends the
+    ``rise``, ``clr_wait``, ``clr`` and ``resume`` states at a status read.
+    A mismatch while ``exp`` is 1 is a SHAPE miss; while ``exp`` is 0 it is an
+    IDLE miss before the first fault of the latch and a CLEAR miss after it.
+    """
+
+    def __init__(self) -> None:
+        self.clk = 0
+        self.bits = ""
+        self.exp = dict.fromkeys(RAS_LATCH, 0)
+        self.state = dict.fromkeys(RAS_LATCH, "cmp")
+        self.faulted = dict.fromkeys(RAS_LATCH, False)
+        self.n = {(k, h): 0 for k in RAS_LATCH for h in ("IDLE", "SHAPE", "CLEAR")}
+        self.ev = {(k, h): 0 for k in RAS_LATCH for h in ("RISE", "CLEAR")}
+        self.miss: dict[tuple[str, str], list] = {(k, h): [] for k in RAS_LATCH for h in RAS_HALVES}
+        self.t0 = dict.fromkeys(RAS_LATCH, 0)
+        self.seen: dict[str, int | None] = dict.fromkeys(RAS_LATCH)
+        self.rise_lat: dict[str, list] = {k: [] for k in RAS_LATCH}
+        self.fall_lat: dict[str, list] = {k: [] for k in RAS_LATCH}
+        self.off_high = dict.fromkeys(RAS_LATCH, 0)
+        self.unraised_high = dict.fromkeys(RAS_PBE_UNRAISED, 0)
+        self._task = None
+
+    def start(self) -> "_RasCmp":
+        check_tap_width(cocotb.top.sep_ras_probe_o)
+        self._task = cocotb.start_soon(self._run())
+        return self
+
+    async def stop(self) -> None:
+        if self._task is not None:
+            self._task.kill()
+            self._task = None
+
+    def level(self, k: str) -> str:
+        """The last sampled value of latch ``k`` ('0', '1', or an X/Z character)."""
+        return self.bits[len(self.bits) - 1 - RAS_LATCH[k][1]] if self.bits else "-"
+
+    def _half(self, k: str) -> str:
+        if self.exp[k]:
+            return "SHAPE"
+        return "CLEAR" if self.faulted[k] else "IDLE"
+
+    async def _run(self) -> None:
+        dut = cocotb.top
+        tap, pulse = dut.sep_ras_probe_o, dut.sep_cpu_ctrl_err_pulse_probe_o
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            self.clk += 1
+            v = tap.value
+            b = getattr(v, "binstr", None)
+            self.bits = (b if b is not None else str(v)).strip()
+            pv = pulse.value
+            pw = int(pv) if pv.is_resolvable else 0
+            for n in RAS_PBE_UNRAISED:
+                bit = ras_bit("periph_bus_err", PERIPH_BUS_ERR_BLOCKS.index(n))
+                self.unraised_high[n] += self.bits[len(self.bits) - 1 - bit] == "1"
+            for k, st in self.state.items():
+                got = self.level(k)
+                if st == "rise" and got == "1" and self.seen[k] is None:
+                    self.seen[k] = self.clk
+                if st == "clr" and got == "0" and self.seen[k] is None:
+                    self.seen[k] = self.clk
+                if st in ("off", "resume"):
+                    self.off_high[k] += got == "1"
+                    continue
+                if st == "clr_wait" and pw >> PROBE_CLR[k] & 1:
+                    self.state[k] = "clr"
+                    self.t0[k] = self.clk
+                    self.seen[k] = self.clk if got == "0" else None
+                    continue
+                if st not in ("cmp", "clr_wait"):
+                    continue
+                h = self._half(k)
+                self.n[(k, h)] += 1
+                if got != str(self.exp[k]):
+                    self.miss[(k, h)].append((self.clk, got))
+
+    def begin_rise(self, k: str) -> None:
+        if self.state[k] in ("off", "resume") or (self.exp[k] and self.state[k] == "cmp"):
+            return
+        self.state[k] = "rise"
+        self.t0[k] = self.clk
+        self.seen[k] = None
+
+    def begin_clear(self, k: str) -> None:
+        if self.state[k] == "cmp" and self.exp[k]:
+            self.state[k] = "clr_wait"
+
+    def suspend(self, keys) -> None:
+        for k in keys:
+            self.state[k] = "off"
+
+    def resume(self, keys) -> None:
+        for k in keys:
+            self.state[k] = "resume"
+
+    def settle(self, keys, model: dict[str, int]) -> None:
+        """End the transition of each of ``keys`` at a status read; ``model`` is the latch model."""
+        for k in keys:
+            st, got = self.state[k], self.level(k)
+            if st == "rise":
+                self.ev[(k, "RISE")] += 1
+                if got != "1":
+                    self.miss[(k, "RISE")].append((self.clk, got))
+                self.rise_lat[k].append(None if self.seen[k] is None else self.seen[k] - self.t0[k])
+                self.exp[k], self.faulted[k] = 1, True
+            elif st in ("clr_wait", "clr"):
+                self.ev[(k, "CLEAR")] += 1
+                if st == "clr_wait" or got != "0":
+                    pulse = "seen" if st == "clr" else "missing"
+                    self.miss[(k, "CLEAR")].append((self.clk, f"{got}/pulse_{pulse}"))
+                self.fall_lat[k].append(
+                    None if st != "clr" or self.seen[k] is None else self.seen[k] - self.t0[k]
+                )
+                self.exp[k] = 0
+            elif st == "resume":
+                self.exp[k] = model[k]
+            else:
+                continue
+            self.state[k] = "cmp"
+
+
 @pyuvm.test()
 class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
     """Bridge-fault latches: multi-block set, clear matrix, masks, re-trigger, DMA host path, races."""
@@ -498,6 +682,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         "CHK-HOST",
         "CHK-DMA-HOST-HOLD",
         "CHK-RACE",
+        *(f"CHK-{name}-{h}" for name, _ in RAS_LATCH.values() for h in RAS_HALVES),
     )
 
     # ---- log helpers -----------------------------------------------------------
@@ -584,17 +769,34 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         return v
 
     async def _wr_ok(self, addr: int, v: int) -> str:
-        """Write ``v``; a response other than OKAY raises. Returns the response name."""
+        """Write ``v``; a response other than OKAY raises. Returns the response name.
+
+        A write of a 1 to a clear register starts the clear span of each
+        sep_ras_o latch it names.
+        """
+        if addr == PERIPH_CLEAR_ADDR:
+            for n in RAS_PBE_GRADED:
+                if v & BIT[n]:
+                    self.ras.begin_clear(n)
+        elif addr == DMA_CLEAR_ADDR and v & DMA_CLR_MASK:
+            self.ras.begin_clear("dma_reg")
         resp, _ = await self._acc(SepAxiOp.WRITE, addr, v)
         if resp != RESP_OKAY:
             raise AssertionError(f"write 0x{addr:08x} answered {RESP_NAME.get(resp, resp)}")
         return RESP_NAME[resp]
 
+    def _ras_model(self) -> dict[str, int]:
+        return {n: int(bool(self.latched & BIT[n])) for n in RAS_PBE_GRADED}
+
     async def _periph(self) -> int:
-        return await self._rd_ok(PERIPH_STATUS_ADDR)
+        v = await self._rd_ok(PERIPH_STATUS_ADDR)
+        self.ras.settle(RAS_PBE_GRADED, self._ras_model())
+        return v
 
     async def _dma(self) -> int:
-        return await self._rd_ok(DMA_STATUS_ADDR)
+        v = await self._rd_ok(DMA_STATUS_ADDR)
+        self.ras.settle(("dma_reg",), {})
+        return v
 
     async def _vec(self) -> int:
         await ClockCycles(cocotb.top.clk_i, VEC_SETTLE)
@@ -616,6 +818,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
     async def _fault(self, b: str, op: str) -> int:
         """One access to the hole of ``b``; grades the response; updates the model."""
         addr = self.c.hole[b]
+        self.ras.begin_rise(b)
         if op == "wr":
             self.wr_faults += 1
             resp, _ = await self._acc(SepAxiOp.WRITE, addr, 0xA5A5_0000 | (addr & 0xFFFF))
@@ -711,6 +914,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         await self._open()
         mk = self.pulses.mark()
         exp_resp = RESP_SLVERR
+        self.ras.begin_rise(b)
         resp, _ = await self._acc(SepAxiOp.WRITE, addr + off, data, nbytes=n)
         st = await self._periph()
         vec = await self._vec()
@@ -869,6 +1073,10 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
 
     async def _leg_other_holes(self) -> None:
         close_graded_window(self.logger)
+        # No sentence states whether these accesses latch a bit, so the bits at
+        # 0 are not compared until the next status read after the leg.
+        hole_off = [n for n in RAS_PBE_GRADED if not self.latched & BIT[n]]
+        self.ras.suspend(hole_off)
         mon = self.env.axi_monitor
         for name, (_kind, addr) in self.c.other.items():
 
@@ -920,8 +1128,15 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             self._fail("CHK-BRIDGE-HOLE-SI", line)
         self._pass("CHK-BRIDGE-HOLE-SI", line)
         await ibank.restore_reset(0)
+        self.ras_chk.obs(
+            "RAS-PERIPH_BUS_ERR-HOLE",
+            not_compared=hole_off or "none",
+            high_clk=[f"{n}:{self.ras.off_high[n]}" for n in hole_off] or "none",
+        )
+        self.ras.resume(hole_off)
 
     async def _dma_reg_fault(self) -> tuple[int, int]:
+        self.ras.begin_rise("dma_reg")
         resp, _ = await self._acc(SepAxiOp.READ, dma_reg_unmapped_addr())
         self.logger.info(
             "CTRL-RESP LOG seed=%d block=dma_reg op=rd addr=0x%08x resp=%s",
@@ -1341,6 +1556,7 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         # touch PERIPH_BUS_ERR_STATUS, so every other bit keeps its model value.
         close_graded_window(self.logger)
         exp_others = self.latched & ~BIT[b] & PERIPH_MASK
+        self.ras.suspend((b,))
         for trial in range(1, RACE_TRIALS + 1):
             if not self.latched & BIT[b] or not (await self._periph()) & BIT[b]:
                 self.race_wr_faults += 1
@@ -1387,6 +1603,8 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
                 await self._release()
                 close_graded_window(self.logger)
                 self.latched = exp
+                self.ras_chk.obs("RAS-PERIPH_BUS_ERR-RACE", block=b, level_after=self.ras.level(b))
+                self.ras.resume((b,))
                 return
             st = await self._periph()
             # The race outcome of ``b`` in a trial without a coincidence depends on
@@ -1477,6 +1695,35 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             d = nd
         self._fail("CHK-RACE", f"kind=dma coincident=0 after {len(tried)} trials")
 
+    # ---- sep_ras_o latches -----------------------------------------------------------
+    def _ras_grade(self) -> None:
+        """Log each CHK-RAS-<FIELD>-<HALF> check per latch, then the OBS-RAS lines."""
+        r = self.ras
+        for k, (name, bit) in RAS_LATCH.items():
+            for h in RAS_HALVES:
+                n, ev, miss = r.n.get((k, h)), r.ev.get((k, h)), r.miss[(k, h)]
+                self.ras_chk.ok(
+                    f"{name}-{h}",
+                    n != 0 and ev != 0 and not miss,
+                    tap_bit=bit,
+                    clocks="na" if n is None else n,
+                    events="na" if ev is None else ev,
+                    misses=len(miss),
+                    first=miss[:4],
+                )
+            field = "RAS-DMA_REG_BUS_ERR" if k == "dma_reg" else "RAS-PERIPH_BUS_ERR"
+            self.ras_chk.obs(
+                f"{field}-DELAY",
+                **({} if k == "dma_reg" else {"block": k}),
+                fault_to_rise_clk=r.rise_lat[k][:8],
+                clear_pulse_to_fall_clk=r.fall_lat[k][:8],
+            )
+        self.ras_chk.obs(
+            "RAS-PERIPH_BUS_ERR-CSRNG_EDN",
+            raised_by_leaf=0,
+            high_clk=[f"{n}:{v}" for n, v in r.unraised_high.items()],
+        )
+
     # ---- scenario ----------------------------------------------------------------------
     async def run_scenario(self) -> None:
         seed = self.random_seed()
@@ -1507,6 +1754,8 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
         self.vw = pic_vector_watch({f"s{s}": vec_bit(s) for s in RISE_SRC}).start()
         self.vw_mark = self.vw.mark()
         self._go_word = control_word(go=1, initial=1)
+        self.ras = _RasCmp().start()
+        self.ras_chk = RasChkLines(self.logger, seed)
 
         await self._open()
         await self._leg_ctrl()
@@ -1538,8 +1787,14 @@ class sep_cpu_bridge_fault_matrix_rand_test(sep_base_test):
             self.race_wr_faults,
         )
         close_graded_window(self.logger)
+        self._ras_grade()
+        await self.ras.stop()
         await self.vw.stop()
         await self.pulses.stop()
         await self.out.stop()
         await self.out_rsp.stop()
+        if self.ras_chk.fails:
+            raise AssertionError(
+                f"{len(self.ras_chk.fails)} RAS check(s) failed: " + "; ".join(self.ras_chk.fails)
+            )
         self.result_pass(TEST, seed, self.n_checks, f" counts={self.counts}")

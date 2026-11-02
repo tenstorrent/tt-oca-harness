@@ -38,6 +38,16 @@ Checks:
   CHK-RESET-CLR    a warm reset clears RECOVERABLE_ERR and probe bit 31
   CHK-OFLOW-PEND   after rx_buff_oflow with responses pending, the first word read is
                    the fault header and no pending word comes before or after the frame
+  CHK-RAS-KM_CORRECTABLE-<HALF>  sep_ras_o.km_correctable on the tap sep_ras_probe_o,
+                   compared on every clock with the RECOVERABLE_ERR model of the leaf.
+                   Each half is its own check line: -IDLE (0 in each model-0 span that
+                   follows no fault), -RISE (1 at _PIC_BOUND clocks after each fault
+                   frame), -SHAPE (1 on every clock from there to the next
+                   CMD_RECOV_ACK or warm reset) and -CLEAR (0 from the CMD_RECOV_ACK
+                   response or the end of the warm reset to the next fault). The spans
+                   from a cause to its fault frame plus _PIC_BOUND and the spans of each
+                   CMD_RECOV_ACK command and warm reset are not compared;
+                   OBS-RAS-KM_CORRECTABLE-DELAY logs the rise and fall clocks there.
 
 Controls (``control=1``): CHK-WRAP-CTRL (sequence 0 at e = 1 returns -3 arg 1),
 CHK-ALIVE (CMD_STAT reports recov_fault 0 after the pair leg) and CHK-RESPSEQ (the
@@ -56,8 +66,10 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
+from env.sep_bit_watch import SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_ras_map import check_tap_width, ras_bit
 from env.sep_spec_tables import agg_from_pic
 from km import sep_km_command_protocol_rand_plan as pl
 from sep_base_test import sep_base_test
@@ -90,6 +102,14 @@ TEST = "sep_km_command_protocol_rand_test"
 # Probe bit 31 of sep_internal_interrupts_probe_o is sep_ras_o.km_correctable
 # (PIC source 32, hw/sys/sep/doc/interrupts.adoc).
 _KM_RECOV = agg_from_pic("KM recoverable error")
+
+# sep_ras_o.km_correctable is the level of the firmware-written KM RECOVERABLE_ERR
+# bit (hw/sys/sep/rtl/sep_pkg.sv, sep_ras_t; hw/sys/sep/doc/port_table.adoc,
+# sep_ras_o). The handler sets the bit before it writes the fault response and
+# CMD_RECOV_ACK clears it before its success response (hw/ip/key_manager/doc/
+# firmware.adoc, "Error Recovery"); a warm reset clears it (architecture.adoc,
+# "Reset Conditioning").
+_RAS_KM = "km_correctable"
 
 _POLL_GAP = 20  # clocks between two status polls
 _RESP_POLLS = 50_000  # polls for one response word
@@ -141,6 +161,10 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         "CHK-ADMIT",
         "CHK-PERSIST",
         "CHK-RESET-CLR",
+        "CHK-RAS-KM_CORRECTABLE-IDLE",
+        "CHK-RAS-KM_CORRECTABLE-RISE",
+        "CHK-RAS-KM_CORRECTABLE-SHAPE",
+        "CHK-RAS-KM_CORRECTABLE-CLEAR",
         "CHK-WRAP-CTRL",
         "CHK-ALIVE",
         "CHK-RESPSEQ",
@@ -162,6 +186,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         self.n_resp = 0
         self.resp_seq_err: list[str] = []
         self.resp_seq_graded = False
+        self.ras_ev: list[tuple[str, int]] | None = None
 
         # Step 1: PROD fuse image sensed for real, every engine out of reset
         # (SW_RESET_N reset value 0x7E), entropy up with noise forced.
@@ -174,6 +199,10 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
         await self._wait_sep_reset_release()
+        check_tap_width(self.dut.sep_ras_probe_o)
+        self.ras = SepBitWatch(
+            self.dut.sep_ras_probe_o, {_RAS_KM: ras_bit(_RAS_KM)}, name="sep_ras_probe_o"
+        ).start()
         await self.swrst.release("km")
         ready = await self._read_frame("boot RESP_KM_READY", polls=_READY_POLLS)
         if ready.rid != pl.RESP_KM_READY or ready.seq != 0:
@@ -184,6 +213,11 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         # Step 2: the models.
         self.r, self.e = 1, 0
         open_graded_window(TEST, self.logger)
+        self.ras_m0 = self.ras.mark()
+        self.ras_l0 = self.ras.level()
+        if self.ras_l0 is None:
+            raise AssertionError("sep_ras_probe_o watcher took no sample before the graded window")
+        self.ras_ev = [("zero", self.ras_m0.clk)]
 
         await self._pair_leg()
         await self._alive_and_twins()
@@ -213,6 +247,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         close_graded_window(self.logger)
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        await self._grade_ras()
         assert self.drbg_sb.report()
         self.chk.finish()
 
@@ -378,14 +413,21 @@ class sep_km_command_protocol_rand_test(sep_base_test):
     async def _cmd(self, cmd: int, payload=(), tag: str = "") -> _Resp:
         """Send a well-formed frame at e; e advances (it passes the sequence check)."""
         seq = self.e
+        ack = cmd == pl.CMD_RECOV_ACK
+        if ack:
+            self._ras_mark("ack")
         await self._write_words(pl.cmd_frame(cmd, seq, list(payload)), separator=True, tag=tag)
         self.e = (self.e + 1) & 0xFF
-        return await self._resp_cmd(cmd, seq, tag or f"cmd 0x{cmd:02x}")
+        resp = await self._resp_cmd(cmd, seq, tag or f"cmd 0x{cmd:02x}")
+        if ack:
+            self._ras_mark("zero")
+        return resp
 
     # --------------------------------------------------------- reset causes
 
     async def _warm_reset(self, tag: str) -> _Frame:
         """SW_RESET_N bit 0 low, then high, the other bits 1; read RESP_KM_READY."""
+        self._ras_mark("reset")
         await self.swrst.park("km")
         await self.swrst.release("km")
         self.r = 0
@@ -396,6 +438,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
                 f"RESP_KM_READY 0x{pl.RESP_KM_READY:02x}"
             )
         self.r, self.e = 1, 0
+        self._ras_mark("zero")
         return f
 
     async def _assert_idle(self, tag: str) -> None:
@@ -420,6 +463,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         """Apply one transport cause and read the frame that answers it (sequence 0)."""
         if cause == "warm_reset":
             return await self._warm_reset(tag)
+        self._ras_mark("cause")
         if cause == "rx_oflow":
             assert len(oflow_words) == pl.RX_BUFFER_WORDS and all(oflow_words)
             await self._write_words(oflow_words, separator=False, tag=f"{tag} rx_oflow")
@@ -429,6 +473,7 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             raise ValueError(cause)
         self.r = 0
         f = await self._read_frame(f"{tag} fault frame")
+        self._ras_mark("frame")
         self.r, self.e = 1, 0
         return f
 
@@ -1047,9 +1092,11 @@ class sep_km_command_protocol_rand_test(sep_base_test):
             )
         words = self.plan.oflow_words
         assert len(words) == pl.RX_BUFFER_WORDS and all(words)
+        self._ras_mark("cause")
         await self._write_words(words, separator=False, tag=f"{tag} rx_oflow")
         await ClockCycles(self.clk, _OFLOW_SETTLE)
         got = await self._drain_raw(tag)
+        self._ras_mark("frame")
 
         fault_hdr = pl.header(pl.RESP_RECOVERABLE_FAULT, 0, 1)
         hdr = got[0] if got else None
@@ -1081,3 +1128,126 @@ class sep_km_command_protocol_rand_test(sep_base_test):
         self.r, self.e = 1, 0
         ack = await self._cmd(pl.CMD_RECOV_ACK, (), f"{tag} CMD_RECOV_ACK")
         self.logger.info("LOG %s CMD_RECOV_ACK code=%d arg=%s", tag, ack.code, _a(ack.arg))
+
+    # ------------------------------------------------- sep_ras_o.km_correctable
+
+    def _ras_mark(self, phase: str) -> None:
+        """Start a model phase at the current clock of the tap watcher.
+
+        ``zero`` model 0; ``cause`` a fault cause starts; ``frame`` its fault
+        frame is read (model 1 from ``_PIC_BOUND`` clocks later); ``ack`` and
+        ``reset`` a CMD_RECOV_ACK command or a warm reset starts.
+        """
+        if self.ras_ev is not None:
+            self.ras_ev.append((phase, self.ras.clk))
+
+    async def _grade_ras(self) -> None:
+        """CHK-RAS-KM_CORRECTABLE-<HALF>: the per-clock record of the tap against the model."""
+        end = self.ras.clk
+        rises = self.ras.rise_clks_since(self.ras_m0)
+        falls = self.ras.fall_clks_since(self.ras_m0)
+        await self.ras.stop()
+        # (first clock, level): the level holds up to the next entry.
+        runs = [(self.ras_m0.clk, self.ras_l0)]
+        runs += sorted([(c, 1) for c in rises] + [(c, 0) for c in falls])
+        moves = [c for c, _ in runs[1:]]
+
+        def high(a: int, b: int) -> int:
+            """Clocks in (a, b] on which the field read 1."""
+            n = 0
+            for (s, lvl), e in zip(runs, [*moves, b + 1], strict=True):
+                if lvl:
+                    n += max(0, min(e, b + 1) - max(s, a + 1))
+            return n
+
+        def level_at(c: int) -> int:
+            return [lvl for s, lvl in runs if s <= c][-1]
+
+        idle: list[tuple[int, int, int]] = []
+        clear: list[tuple[int, int, int]] = []
+        hold: list[tuple[int, int, int]] = []
+        rise_bad: list[str] = []
+        rise_graded = rise_open = 0
+        rise_delay: list[int | str] = []
+        fall_delay: list[int | str] = []
+        changes: list[int] = []
+        cause_clk = 0
+        fault_set = next_zero_clear = False
+        ev = [*self.ras_ev, ("end", end)]
+        for (ph, a), (_, b) in zip(ev, ev[1:], strict=False):
+            if ph == "zero":
+                if b > a:
+                    (clear if next_zero_clear else idle).append((a, b, high(a, b)))
+                next_zero_clear = False
+            elif ph == "cause":
+                cause_clk = a
+                changes.append(sum(a < c <= b for c in moves))
+            elif ph == "frame":
+                r = a + _PIC_BOUND
+                if r <= b:
+                    rise_graded += 1
+                    if level_at(r) != 1:
+                        rise_bad.append(f"frame@{a}:lvl@{r}=0")
+                    if b > r:
+                        hold.append((r, b, high(r, b)))
+                elif level_at(b) == 1:
+                    rise_graded += 1
+                else:
+                    rise_open += 1
+                up = [c for c in rises if cause_clk < c <= b]
+                rise_delay.append(up[0] - a if up else "none")
+                fault_set = True
+            else:  # ack, reset
+                changes.append(sum(a < c <= b for c in moves))
+                if fault_set:
+                    down = [c for c in falls if a < c <= b]
+                    fall_delay.append(f"{ph}:{down[0] - a}" if down else f"{ph}:none")
+                    next_zero_clear = True
+                fault_set = False
+
+        def bad(spans, want_high: bool) -> list[str]:
+            return [f"{a}-{b}:high={h}" for a, b, h in spans if h != (b - a if want_high else 0)]
+
+        def clocks(spans) -> int:
+            return sum(b - a for a, b, _ in spans)
+
+        idle_bad, hold_bad, clear_bad = bad(idle, False), bad(hold, True), bad(clear, False)
+        self.chk.ok(
+            "RAS-KM_CORRECTABLE-IDLE",
+            idle and not idle_bad,
+            spans=len(idle),
+            clocks=clocks(idle),
+            high=sum(h for _, _, h in idle),
+            bad=idle_bad[:4],
+        )
+        self.chk.ok(
+            "RAS-KM_CORRECTABLE-RISE",
+            rise_graded > 0 and not rise_bad,
+            faults=rise_graded + rise_open,
+            graded=rise_graded,
+            acked_before_bound=rise_open,
+            bound=_PIC_BOUND,
+            bad=rise_bad[:4],
+        )
+        self.chk.ok(
+            "RAS-KM_CORRECTABLE-SHAPE",
+            hold and not hold_bad,
+            hold_spans=len(hold),
+            clocks=clocks(hold),
+            low=sum(b - a - h for a, b, h in hold),
+            bad=hold_bad[:4],
+        )
+        self.chk.ok(
+            "RAS-KM_CORRECTABLE-CLEAR",
+            clear and not clear_bad,
+            spans=len(clear),
+            clocks=clocks(clear),
+            high=sum(h for _, _, h in clear),
+            bad=clear_bad[:4],
+        )
+        self.chk.obs(
+            "RAS-KM_CORRECTABLE-DELAY",
+            rise_after_frame_clk=rise_delay,
+            fall_after_clear_start_clk=fall_delay,
+            transition_changes=changes,
+        )

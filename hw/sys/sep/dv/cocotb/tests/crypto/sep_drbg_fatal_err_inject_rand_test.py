@@ -64,6 +64,30 @@ Checkers:
 Every ERR_CODE compare uses the field bits of the register text; the Reserved
 bits are logged as ``rsvd``.
 
+RAS port checks (``hw/sys/sep/doc/port_table.adoc:130``, row ``sep_ras_o``, and
+the ``sep_pkg::sep_ras_t`` field comments it points to): ``csrng_fatal`` and
+``edn_fatal`` are one-``clk_i``-cycle pulses per fatal alert handshake, and a
+fatal error repeats the pulse until reset. The tap ``sep_ras_probe_o`` is
+watched on every ``clk_i`` from the start of the scenario. Each half is its own
+check on its own line (``CHK-RAS-<FIELD>-IDLE``, ``-RISE``, ``-MODE2``,
+``-SHAPE``); a FAIL is recorded and the leaf fails at its end.
+  CHK-RAS-CSRNG_FATAL-<HALF>, CHK-RAS-EDN_FATAL-<HALF>
+    IDLE   both fields read 0 on every clock of the first cell from the end of
+           its set-up to its ERR_CODE_TEST write, before any error of the leaf.
+    RISE   in each fatal-alert cell of the unit, the field rises after the
+           ERR_CODE_TEST write and at most 16 x t_ref clocks after the write
+           completes.
+    MODE2  in each fatal-alert cell of the unit, the field rises at least twice
+           after the ERR_CODE_TEST write, and once more within 16 x t_ref clocks
+           after the write-one clear of the state: the repeat continues to the
+           end of the cell window, before its TRNG reset.
+    SHAPE  every high run of the field over the whole leaf is exactly one clock.
+  The text does not name the reset that stops the repeat, so the field after
+  each TRNG reset is logged only (OBS-RAS-<FIELD>-RESET-STOP), as are the rise
+  delay (OBS-RAS-<FIELD>-DELAY), the repeat intervals (OBS-RAS-<FIELD>-REPEAT)
+  and the field in the FIFO-error cells and the EDN FIFO trials
+  (OBS-RAS-<FIELD>-FIFO). ALERT_TEST is not written in this leaf.
+
 FCOV (owner of the graded window, ``env/sep_fcov_gate.py``): each source-bit
 cell and each FIFO trial opens the window after its set-up and sets the pass
 label ``drbg_fatal_pass`` only after every check of that step passed; the
@@ -78,9 +102,10 @@ from dataclasses import dataclass
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly, RisingEdge
-from env.sep_bit_watch import SepBitWatch
+from env.sep_bit_watch import BitWatchTimeout, SepBitWatch
 from env.sep_chk_log import SepChkLog
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_drbg_fatal_pass
+from env.sep_ras_map import check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import CSRNG, EDN, sym
@@ -200,6 +225,24 @@ EDN_CMD_FIFO = {
 # interrupts.adoc: source N is vector bit N-1; CSRNG fatal error 27, EDN fatal
 # error 29, Crypto alert 33.
 VEC_BITS = {"cs_fatal": 26, "edn_fatal": 28, "alert": 32}
+# sep_ras_o field of the fatal alert of each unit (port_table.adoc:130).
+RAS_FIELD = {"csrng": "csrng_fatal", "edn": "edn_fatal"}
+RAS_HALVES = ("IDLE", "RISE", "MODE2", "SHAPE")
+
+
+def long_runs(rises: list[int], falls: list[int], end: int) -> list[tuple[int, int]]:
+    """``(rise clock, length)`` of each high run that is not one clock long.
+
+    A run with no fall before ``end`` lasts to ``end``; its length counts the
+    clock of ``end``.
+    """
+    out = []
+    for r in rises:
+        f = next((c for c in falls if c > r), None)
+        n = (f if f is not None else end + 1) - r
+        if n != 1:
+            out.append((r, n))
+    return out
 
 
 @dataclass(frozen=True)
@@ -274,6 +317,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         "CHK-DRBG-RESET",
         "CHK-EDN-FIFO13",
         "CHK-EDN-FIFO14",
+        *(f"CHK-RAS-{f}-{h}" for f in ("CSRNG_FATAL", "EDN_FATAL") for h in RAS_HALVES),
     )
 
     async def run_scenario(self) -> None:
@@ -290,6 +334,14 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         self.vec = SepBitWatch(
             cocotb.top.sep_internal_interrupts_probe_o, dict(VEC_BITS), name="pic_vec"
         ).start()
+        check_tap_width(cocotb.top.sep_ras_probe_o)
+        self.ras = SepBitWatch(
+            cocotb.top.sep_ras_probe_o,
+            {f: ras_bit(f) for f in RAS_FIELD.values()},
+            name="sep_ras",
+        ).start()
+        ras_m0 = self.ras.mark()
+        self.ras_faulted = False
 
         for unit, bit in plan.cells:
             await self._cell(UNITS[unit], bit)
@@ -297,8 +349,10 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             await self._fifo_trial(fifo)
         close_graded_window(self.logger)
         set_drbg_fatal_pass(False, self.logger)
+        self._ras_shape(ras_m0)
         self._stop_sb()
         await self.vec.stop()
+        await self.ras.stop()
         self.chk.finish()
 
     # --- graded window and pass label ---------------------------------------------
@@ -422,10 +476,84 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             **self._err_fields(unit, after),
         )
 
+    # --- sep_ras_o fatal-alert fields ----------------------------------------------------
+    def _ras_idle(self, mark, **key) -> None:
+        """IDLE half before the first error of the leaf; after it, the field is logged."""
+        for f in RAS_FIELD.values():
+            name = f.upper()
+            fields = {
+                **key,
+                "clocks": self.ras.clk - mark.clk,
+                "rises": self.ras.rises_since(mark, f),
+                "high_clocks": self.ras.high_clocks_since(mark, f),
+            }
+            if self.ras_faulted:
+                self.chk.obs(f"RAS-{name}-RESET-STOP", after_trng_reset=1, **fields)
+            else:
+                self._ok(f"RAS-{name}-IDLE", fields["high_clocks"] == 0, **fields)
+
+    async def _ras_rise_by(self, mark, deadline: int, f: str) -> int | None:
+        """Clock of the first rise of ``f`` after ``mark`` and at or before ``deadline``."""
+        if not self.ras.rise_clks_since(mark, f) and self.ras.clk < deadline:
+            try:
+                await self.ras.wait_rise(mark, deadline - self.ras.clk, f)
+            except BitWatchTimeout:
+                pass
+        return next((c for c in self.ras.rise_clks_since(mark, f) if c <= deadline), None)
+
+    async def _ras_cell(self, unit: Unit, bit: int, m_err, m_wrote, m_w1c) -> None:
+        """RISE and MODE2 halves of a fatal-alert cell, before its TRNG reset."""
+        f = RAS_FIELD[unit.name]
+        name = f.upper()
+        bound = LAT_FACTOR * self.t_ref
+        rise = await self._ras_rise_by(m_err, m_wrote.clk + bound, f)
+        self._ok(
+            f"RAS-{name}-RISE",
+            rise is not None,
+            unit=unit.name,
+            bit=bit,
+            bound=bound,
+            rose=int(rise is not None),
+        )
+        if rise is not None:
+            self.chk.obs(f"RAS-{name}-DELAY", unit=unit.name, bit=bit, clocks=rise - m_wrote.clk)
+        late = await self._ras_rise_by(m_w1c, m_w1c.clk + bound, f)
+        rises = self.ras.rise_clks_since(m_err, f)
+        self._ok(
+            f"RAS-{name}-MODE2",
+            len(rises) >= 2 and late is not None,
+            unit=unit.name,
+            bit=bit,
+            rises=len(rises),
+            rise_after_w1c=int(late is not None),
+            bound=bound,
+        )
+        self.chk.obs(
+            f"RAS-{name}-REPEAT",
+            unit=unit.name,
+            bit=bit,
+            intervals=[b - a for a, b in zip(rises, rises[1:])][:8],
+        )
+
+    def _ras_shape(self, m0) -> None:
+        """SHAPE half: every high run of each field over the whole leaf is one clock."""
+        for f in RAS_FIELD.values():
+            rises = self.ras.rise_clks_since(m0, f)
+            high = self.ras.high_clocks_since(m0, f)
+            bad = long_runs(rises, self.ras.fall_clks_since(m0, f), self.ras.clk)
+            self._ok(
+                f"RAS-{f.upper()}-SHAPE",
+                len(rises) >= 1 and high == len(rises) and not bad,
+                rises=len(rises),
+                high_clocks=high,
+                long_runs=[f"{c}:{n}" for c, n in bad[:8]],
+            )
+
     # --- source-bit cells (steps 3-8) -------------------------------------------------
     async def _cell(self, unit: Unit, bit: int) -> None:
         await self._setup()
         self._open_window()
+        m_ras = self.ras.mark()
         vec_key = unit.vec_key
         fifo_bit = bit in unit.fifo_bits
         alert_src = bit in unit.alert_bits
@@ -442,7 +570,11 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         # clear, so a rise after the forced error is a change the error causes.
         vec_pre = self.vec.level(vec_key)
         m_err = self.vec.mark()
+        self._ras_idle(m_ras, unit=unit.name, bit=bit)
+        ras_err = self.ras.mark()
         await self._wr(unit.err_code_test, unit.block.value("ERR_CODE_TEST", ERR_CODE_TEST=bit))
+        ras_wrote = self.ras.mark()
+        self.ras_faulted = True
         set_ok, err, bound = await self._wait_err_bit(unit, src)
         st = await self._rd(unit.intr_state)
         en = await self._rd(unit.intr_enable)
@@ -496,6 +628,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         # Sticky leg (step 8).
         s_before = int(bool(await self._rd(unit.intr_state) & unit.fatal_bm))
         await self._wr(unit.intr_state, unit.fatal_bm)
+        ras_w1c = self.ras.mark()
         s_after = int(bool(await self._rd(unit.intr_state) & unit.fatal_bm))
         err2 = await self._rd(unit.err_code)
         kept = int(bool(err2 & src))
@@ -538,6 +671,18 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             fatal_state=s_after,
         )
 
+        if alert_src:
+            await self._ras_cell(unit, bit, ras_err, ras_wrote, ras_w1c)
+        else:
+            f = RAS_FIELD[unit.name]
+            self.chk.obs(
+                f"RAS-{f.upper()}-FIFO",
+                unit=unit.name,
+                bit=bit,
+                rises=self.ras.rises_since(ras_err, f),
+                high_clocks=self.ras.high_clocks_since(ras_err, f),
+            )
+
         # Reset leg (step 9).
         await self._reset_leg(unit, bit=bit)
         await self._release()
@@ -551,6 +696,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
         e = plan.extra[fifo]
         k = plan.pre[fifo]
         await self._setup()
+        ras_t = self.ras.mark()
         # Control, no clear: the k held words count toward the 13-word limit, so the
         # FIFO stays clean through word 13 and errs at word 14, which is test data
         # word 14 - k. A held word that did not land moves the error later.
@@ -619,6 +765,7 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
                 vec32_high_cycles=hi32,
             )
         m14 = self.vec.mark()
+        m14_ras = self.ras.mark()
         await self._wr(addr, words[FIFO_WORDS])
         # The graded ERR_CODE value is the first read that shows the FIFO source bit.
         set_ok, err, bound = await self._wait_err_bit(unit, err_meta["bm"])
@@ -648,6 +795,12 @@ class sep_drbg_fatal_err_inject_rand_test(sep_base_test):
             and vec28 == 1
             and alert >= 1,
             **fields,
+        )
+        self.chk.obs(
+            "RAS-EDN_FATAL-FIFO",
+            trial=f"fifo_{fifo}",
+            rises=self.ras.rises_since(ras_t, "edn_fatal"),
+            rises_after_word14=self.ras.rises_since(m14_ras, "edn_fatal"),
         )
         await self._reset_leg(unit, trial=f"fifo_{fifo}")
         await self._release()

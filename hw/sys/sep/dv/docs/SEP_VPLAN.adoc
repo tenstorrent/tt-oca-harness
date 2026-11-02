@@ -511,6 +511,7 @@ they leave out; the checker table of each linked entry is the full set.
 |SPI host control plane (CSR, interrupt, error status, watermark, enable) |<<sep_spi_ot_host_csr_irq_rand_test,`sep_spi_ot_host_csr_irq_rand_test`>> |all, cpu_stub |`sep_spi_flash_cg`, `sep_spi_host_rand_cg` |Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the OpenTitan Event-versus-Status interrupt contract (`INTR_STATE.ERROR` latches and clears only on write-one-to-clear; `INTR_STATE.SPI_EVENT` is set by the `INTR_TEST` force and, with EVENT_ENABLE 0, returns to 0 with PIC source 14 when `INTR_TEST` is written back to 0, because it is a level-sensitive status of the EVENT_ENABLE conditions: `spi.adoc:84-86`, `sep-programming.adoc:819-820`), `INTR_ENABLE` gating of `sep_internal_interrupts[13]`, five of the six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others (ACCESSINVAL is not claimed as a trigger: its documented trigger is a write with no bytes enabled, which neither this AXI master nor the wrapper bridge presents to the core; the extension grades that an 8-byte write with an empty TXDATA half leaves it at 0, CHK-SPI-STRB-EMPTY), a 64-bit CONTROL write whose empty STATUS half the wrapper must ack, the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane. |YES for the claimed part; the evidence cell names the rest
 |SECURE_TM shadow-write lock |<<sep_efuse_secure_tm_write_lock_test,`sep_efuse_secure_tm_write_lock_test`>> |all, cpu_stub |None |Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands (set-only rows OR-merge; `LC_STATE[31:8]` takes a plain shadow write), and after the strap is raised and the image re-sensed the stored value does not move: the bus readback equals the read before the write and the sensed shadow word on `efuse_shadow_probe_o` equals the staged OTP word. `CTRL-SECTM-LATCH` logs `secure_tm_o` after each sense (0 before the strap-low half, 1 before the deny half). The write response and the `sep_internal_interrupts[33]` level of the refused write, and of the contrast write after it, are logged, not graded (`OBS-SECTM-IRQ`: no specification sentence ties a SECURE_TM refusal to source 34). A `SecureTmUnlock` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`. |YES for the claimed part; the evidence cell names the rest
 |eFuse locked-field access violation interrupt |<<sep_locked_field_access_irq_path_test,`sep_locked_field_access_irq_path_test`>> |all, cpu_stub |None |A write to a write-locked spare and a read of a read-locked spare each raise `sep_internal_interrupts[33]` (PIC source 34) during the access. Each locked access is the first one after a SEP reset, with `[33]` low before it (`CTRL-IRQ-IDLE`). The `[33]` level after a locked access is logged, not graded (`OBS-LF-IRQ-DEASSERT`): no specification sentence states it. The write-locked spare keeps its pre-write value, and the read-locked read does not return the stored value, which the leaf reads from the sensed shadow (`efuse_shadow_probe_o`) and requires to equal the staged pattern first (`CTRL-READ-STAGED`). An unlocked spare in the same OTP image is the negative control. The response code of a locked access is logged, not graded. Real fuse sense at `LC_PROD`. No other vector bit moves at the rise of `[33]` (`CHK-SRC34-EXCL`). |YES for the claimed part; the evidence cell names the rest
+|[[sep-vplan-sep-ras-matrix]]`sep_ras_o` fault and alert port |<<sep_reset_wdt_sanity_test,`sep_reset_wdt_sanity_test`>>, <<sep_tcm_ecc_cpu_trap_test,`sep_tcm_ecc_cpu_trap_test`>>, <<sep_km_command_protocol_rand_test,`sep_km_command_protocol_rand_test`>>, <<sep_pic_pending_map_walk_rand_test,`sep_pic_pending_map_walk_rand_test`>>, <<sep_cpu_bridge_fault_matrix_rand_test,`sep_cpu_bridge_fault_matrix_rand_test`>>, <<sep_dma_basic_test,`sep_dma_basic_test`>>, <<sep_drbg_fatal_err_inject_rand_test,`sep_drbg_fatal_err_inject_rand_test`>>, <<sep_entropy_pool_aperture_test,`sep_entropy_pool_aperture_test`>>, <<sep_efuse_token_match_fault_pic_test,`sep_efuse_token_match_fault_pic_test`>>, <<sep_km_cpu_protect_rand_test,`sep_km_cpu_protect_rand_test`>>, <<sep_lcc_state_codeword_rand_test,`sep_lcc_state_codeword_rand_test`>> |all, cpu, cpu_stub |`sep_ras_cg` |Each field of `sep_ras_o` that the leaf raises is read on the monitor tap `sep_ras_probe_o` on every `clk_i`: 0 while its source is idle, a rise after the source event, and the shape the port table and the `sep_ras_t` comments state (one-cycle pulse, or a level that holds and clears). One check per half, named `CHK-RAS-<FIELD>-<HALF>`; the per-field rows are in <<sep-vplan-sep-ras>>. |YES
 |Token comparator redundancy fault delivery to the CPU |<<sep_efuse_token_match_fault_pic_test,`sep_efuse_token_match_fault_pic_test`>> |all, cpu |None |EL2 claims PIC source 40, reads the sticky `TOKEN_MATCH_FAULT` bit, and masks `meie[40]`; because the fault bits are software-read-only and clear only on reset, the check requires the source to be still requesting across the quiet window, which is what makes the mask the reason for the quiet. `RMA token match -> LC update` grades the comparator matrix on `sep_efuse_rma_token_rand_test` and is not re-credited here. |YES
 |===
 
@@ -1956,6 +1957,39 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |no_cpu, IMG-SCR, +skip_fuse_sense
 |KM scrambler image with a preloaded parameter block (`HK-IMG-PARAM`) and mailbox report, KM SRAM write counter, scrambled SRAM write monitor and `KM-SRAM` observation tap
 |Proves that the stored form of an SRAM word depends on key and address, that the old key reads its data back after a key change, that a key write after the lock is ignored, and that a lock set with the enable clear keeps the scrambler on.
+|===
+
+[[sep-vplan-sep-ras]]
+==== `sep_ras_o` checks
+
+Golden for every row: `hw/sys/sep/doc/port_table.adoc:130` (row `sep_ras_o`) and
+the field comments of `sep_ras_t` in `hw/sys/sep/rtl/sep_pkg.sv`. The checks
+read the monitor tap `sep_ras_probe_o` (`docs/SEP_TB_ARCH.adoc`); the bits are
+named by `env/sep_ras_map.py`. A half is one of `IDLE` (0 while the source is
+idle), `RISE`, `SHAPE` (pulse width or level hold), and, where the comment
+states it, `CLEAR` or `MODE2` (repeat until reset). Each half logs its own
+`CHK-RAS-<FIELD>-<HALF>` line. Rise and fall delays that no text states are
+logged as `OBS-RAS-<FIELD>-<WHAT>`.
+
+[cols="2,3,4",options="header"]
+|===
+|Field |Host leaf |Checks
+|`wdt_bark` |`sep_reset_wdt_sanity_test` |`CHK-RAS-WDT_BARK-IDLE`, `-RISE` (each bark), `-SHAPE`, `-CLEAR`
+|`wdt_bite` |`sep_reset_wdt_sanity_test` |`CHK-RAS-WDT_BITE-IDLE`, `-RISE`, `-SHAPE`
+|`iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue` |`sep_tcm_ecc_cpu_trap_test` |`CHK-RAS-<FIELD>-IDLE`, `-RISE`, `-SHAPE` (every high run is one clock)
+|`km_correctable` |`sep_km_command_protocol_rand_test` |`CHK-RAS-KM_CORRECTABLE-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR`
+|`dma_alert` |`sep_pic_pending_map_walk_rand_test` |`CHK-RAS-DMA_ALERT-IDLE`, `-RISE`, `-SHAPE`, `-MODE2`
+|`crypto_alert` |`sep_pic_pending_map_walk_rand_test` |`CHK-RAS-CRYPTO_ALERT-IDLE`, `-RISE`, `-SHAPE`
+|`csrng_fatal`, `edn_fatal` |`sep_drbg_fatal_err_inject_rand_test`, `sep_pic_pending_map_walk_rand_test` |`CHK-RAS-<FIELD>-IDLE`, `-RISE`, `-SHAPE`, `-MODE2` (repeat until reset) in the first leaf; `-TEST` (ALERT_TEST sends one pulse) in the second
+|`dma_reg_bus_err` |`sep_cpu_bridge_fault_matrix_rand_test` |`CHK-RAS-DMA_REG_BUS_ERR-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR`
+|`periph_bus_err` bits AES, HMAC, KMAC, OTBN, WDT |`sep_cpu_bridge_fault_matrix_rand_test` |`CHK-RAS-PERIPH_BUS_ERR_<BLOCK>-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR` per bit
+|`dma_host_intg_err` |`sep_dma_basic_test` |`CHK-RAS-DMA_HOST_INTG_ERR-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR`
+|`entropy_fill_stall` |`sep_entropy_pool_aperture_test` |`CHK-RAS-ENTROPY_FILL_STALL-IDLE`, `-RISE`, `-SHAPE`, `-CLEAR`
+|`token_match_fault` |`sep_efuse_token_match_fault_pic_test` |`CHK-RAS-TOKEN_MATCH_FAULT-IDLE`, `-RISE`, `-SHAPE`
+|`km_uncorrectable` |`sep_km_cpu_protect_rand_test` |Graded without a new check: `CHK-TRAP` (the port equals PIC bit 30 on every clock) and `CHK-TRAP-CLR` (port 0 after reset)
+|`lc_sigint_err` |`sep_lcc_state_codeword_rand_test` |Graded without a new check: `CHK-SIGINT` (reads 1 from the first clock to the inject fall, 0 in the control epoch)
+|`lockstep_err`, `entropy_pool_err` |None |No check. Both fields are constant 0 in this build: the lockstep corruption status reads 0 unless the core is built with `RV_LOCKSTEP_ENABLE` (`hw/sys/sep/doc/port_table.adoc:59`), and the `sep_ras_t` comment of `entropy_pool_err` states the tie. A "stays 0" check cannot fail.
+|`periph_bus_err` bits CSRNG, EDN |None |No check. The CSRNG and EDN windows of the crypto demux answer an unmapped offset with DECERR before the register bridge, so no access raises these bits.
 |===
 
 === Test Procedures

@@ -87,6 +87,7 @@ legal cells a named `all`-group test already walks.
 |Lifecycle |`sep_lc_state_cg`, `sep_feat_ctrl_cg`, `sep_sec_dis_boot_cg`
 |Mailbox / PIC |`sep_mailbox_pic_cg`, `sep_mailbox_channel_cg`
 |WDT |`sep_wdt_bark_cg`
+|`sep_ras_o` rise |`sep_ras_cg` (<<sep-fcov-p2-ras>>)
 |CPU store bus error |`sep_store_bus_error_cg`
 |Warm / cold scratch |`sep_scratch_reset_cg`
 |eFuse program / lock |`sep_efuse_program_lock_cg`
@@ -7210,6 +7211,39 @@ each leg runs on every seed of its owner.
 |28 |`km_bank_subword_byte` |`sep_km_key_bank_register_rand_test` |A KM CPU byte store to an AES key-share word, seen with one strobe bit set on the KM AXI-adapter write capture (CTRL-BANK-SUBWORD).
 |29 |`km_bank_subword_half` |`sep_km_key_bank_register_rand_test` |A KM CPU halfword store to an AES key-share word, seen with two adjacent strobe bits set on the KM AXI-adapter write capture (CTRL-BANK-SUBWORD).
 |30 |`km_mbox_flush_race` |`sep_km_mailbox_km_side_rand_test` |A KM write to KM_WRITE_DATA inside the SEP flush write (from its start to its response), with flushed_by_sep seen by the image, in one attempt (CTRL-KMBOX-FLUSH-RACE).
+|===
+
+[[sep-fcov-p2-ras]]
+==== `sep_ras_o` rise group
+
+`sep_ras_cg` (`cov/sv/sep_fcov.sv`) has one coverpoint, `cp_ras_rise`, with one
+bin per `sep_ras_o` field and, for `periph_bus_err`, one bin per bit. A bin
+samples on the rise of its bit of the monitor tap `sep_ras_probe_o`
+(`docs/SEP_TB_ARCH.adoc`) while the last window opened in the run belongs to
+the owner of that field, with no X or Z on the sample. The bit positions follow
+the declaration order of `sep_pkg::sep_ras_t`, and the sampler stops the
+compile when the width of that type differs from the map. A bin is a reach
+record on the DUT output; the `CHK-RAS-*` lines of the host leaves
+(<<sep-vplan-sep-ras>>) grade the shape of the field.
+
+*Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>). Not seed-dependent.
+
+[cols="3,5,5",options="header"]
+|===
+|Bin |Owning test |Note
+|`lc_sigint_err` |`sep_lcc_state_codeword_rand_test` |
+|`wdt_bark`, `wdt_bite` |`sep_reset_wdt_sanity_test` |
+|`iccm_ecc_ce`, `iccm_ecc_ue`, `dccm_ecc_ce`, `dccm_ecc_ue` |`sep_tcm_ecc_cpu_trap_test` |
+|`km_uncorrectable` |`sep_km_cpu_protect_rand_test` |
+|`km_correctable` |`sep_km_command_protocol_rand_test` |
+|`dma_alert`, `crypto_alert` |`sep_pic_pending_map_walk_rand_test` |
+|`dma_reg_bus_err`, `periph_bus_err_aes`, `periph_bus_err_hmac`, `periph_bus_err_kmac`, `periph_bus_err_otbn`, `periph_bus_err_wdt` |`sep_cpu_bridge_fault_matrix_rand_test` |
+|`dma_host_intg_err` |`sep_dma_basic_test` |
+|`csrng_fatal`, `edn_fatal` |`sep_drbg_fatal_err_inject_rand_test`, `sep_pic_pending_map_walk_rand_test` |Either owner fills the bin.
+|`entropy_fill_stall` |`sep_entropy_pool_aperture_test` |
+|`token_match_fault` |`sep_efuse_token_match_fault_pic_test` |
+|`lockstep_err`, `entropy_pool_err` |None |`ignore_bins`: constant 0 in this build (`hw/sys/sep/doc/port_table.adoc` row `lockstep_status_o`; the `sep_ras_t` comment of `entropy_pool_err`).
+|`periph_bus_err_csrng`, `periph_bus_err_edn` |None |`ignore_bins`: the CSRNG and EDN windows of the crypto demux answer an unmapped offset with DECERR before the register bridge, so no access raises these bits.
 |===
 
 [[sep-fcov-p2-dropped]]

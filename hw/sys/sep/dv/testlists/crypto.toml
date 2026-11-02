@@ -747,7 +747,7 @@ module = "crypto.sep_drbg_fatal_err_inject_rand_test"
 seed = 1
 # No reseed: every run walks all 12 cells and both FIFO trials; the seed selects only the interior count and data.
 timeout_sec = 1800
-tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem", "sep_spec_log"]
+tags = ["crypto", "drbg", "entropy", "rand_rep", "subsystem", "sep_spec_log", "sep_ras"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]

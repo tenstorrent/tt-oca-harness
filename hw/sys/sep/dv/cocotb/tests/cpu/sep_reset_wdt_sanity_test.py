@@ -46,6 +46,35 @@ AWADDR to 8 bytes outside side-effect regions). This test grades, from the firmw
                      the register. Control: the two error stores of CHK-STORE-ERR-NMI raise
                      their NMI in that wait.
 
+RAS port. ``sep_ras_probe_o`` (the DUT ``sep_ras_o``, bit map ``env/sep_ras_map.py``) is
+watched on every ``clk_i`` edge from the CPU release (``env/sep_bit_watch.py``). The golden is
+``hw/sys/sep/doc/port_table.adoc`` (row ``sep_ras_o``: every field other than the eight
+pulse fields is a level) and the ``sep_pkg::sep_ras_t`` field comments it points to:
+``wdt_bark`` is the bark interrupt state, held until INTR_STATE is cleared, and ``wdt_bite``
+is the bite request synchronized from ``clk_wdt_i``, held until ``wdt_rst_ni``. Each check
+below logs its own PASS or FAIL line, and the leaf fails once at its end if any failed:
+  CHK-RAS-WDT_BARK-IDLE   0 on every clock from the CPU release to the console line of the
+                          bad-address count (the watchdog is enabled after it).
+  CHK-RAS-WDT_BARK-RISE   one line per bark: a rise after that line and before
+                          ``CHK-WDT-NMI PASS`` (bark=1), and a rise after
+                          ``CHK-WDT-PET PASS`` and before ``CHK-WDT-REBARK PASS`` (bark=2).
+  CHK-RAS-WDT_BARK-SHAPE  after the first rise, no fall before the first CPU write to the
+                          WDT ``INTR_STATE`` register on the PR-LSU-XBAR tap (AW address
+                          word and W strobe lane).
+  CHK-RAS-WDT_BARK-CLEAR  0 at ``CHK-WDT-CLEAR PASS``, which the firmware prints after it
+                          reads the bark state cleared.
+  CHK-RAS-WDT_BITE-IDLE   0 on every clock from the CPU release to ``CHK-WDT-REBARK PASS``.
+  CHK-RAS-WDT_BITE-RISE   high within ``_BITE_POLL_CYCLES`` of ``wdt_timer_rst_req_o``
+                          reading 1.
+  CHK-RAS-WDT_BITE-SHAPE  no fall for ``_RAS_BITE_HOLD`` clocks after the rise.
+Log only: ``OBS-RAS-WDT_BARK-DELAY`` (clocks from the ``WDOG_CTRL`` enable write to each
+rise), ``OBS-RAS-WDT_BARK-FALL`` (clocks from the ``INTR_STATE`` write to the fall),
+``OBS-RAS-WDT_BARK-BARK2`` (the field after the second bark, whose clear the leaf does not
+grade: the watchdog stays enabled toward the bite), ``OBS-RAS-WDT_BITE-DELAY`` (clocks from
+``wdt_timer_rst_req_o`` to the rise) and ``OBS-RAS-WDT_BITE-CLEAR`` (the leaf drives no
+``wdt_rst_ni``, so the field is held to the end of the window). The leaf opens its FCOV
+graded window from the CPU release to the end of the bite hold.
+
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``. OTBN/AES/HMAC/KMAC are
 JTAG-held across ``rst_ni`` release and fuse sense so they raise no crypto ``edn_req`` while the
 fabric opens. The hold must end with sense: a held engine's registers are unreachable, so the
@@ -60,9 +89,12 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge
+from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_fabric_tap import SepFabricTap, TapBeat
+from env.sep_fcov_gate import close_graded_window, open_graded_window
+from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from sep_base_test import sep_base_test
 from sep_reg_meta import OTBN, sym
 from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N
@@ -125,6 +157,23 @@ _STORE_OK_RE = re.compile(
 # a few ticks of bark->bite margin, give generous headroom for the reset request.
 _BITE_POLL_CYCLES = 40_000
 
+TEST = "sep_reset_wdt_sanity_test"
+# Console lines that bound the RAS windows (fw/tests/reset_wdt_sanity_test).
+_WDT_NMI_LINE = "CHK-WDT-NMI PASS"
+_WDT_CLEAR_LINE = "CHK-WDT-CLEAR PASS"
+_WDT_PET_LINE = "CHK-WDT-PET PASS"
+_WDT_REBARK_LINE = "CHK-WDT-REBARK PASS"
+_RAS_LINES = (_BADADDR_LINE, _WDT_NMI_LINE, _WDT_CLEAR_LINE, _WDT_PET_LINE, _WDT_REBARK_LINE)
+# WDT registers whose CPU writes bound the bark windows, from the register map.
+_WDT_REGS = {
+    "intr_state": sym("WDT_TIMER_INTR_STATE_REG_ADDR"),
+    "wdog_ctrl": sym("WDT_TIMER_WDOG_CTRL_REG_ADDR"),
+}
+_LSU_BYTES = 8  # data bytes of the 64-bit LSU AXI port
+# Clocks the leaf watches the bite field after its rise (environment choice: two
+# watchdog ticks at the bench clocks).
+_RAS_BITE_HOLD = 8_000
+
 
 @pyuvm.test()
 class sep_reset_wdt_sanity_test(sep_base_test):
@@ -140,14 +189,28 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         self.sb.expected_line = _BANNER
 
         lsu_tap = SepFabricTap("PR-LSU-XBAR")
+        check_tap_width(cocotb.top.sep_ras_probe_o)
+        self.ras = SepBitWatch(
+            cocotb.top.sep_ras_probe_o,
+            {f: ras_bit(f) for f in ("wdt_bark", "wdt_bite")},
+            name="sep_ras_probe_o",
+        )
+        self.ras_chk = RasChkLines(self.logger, self.random_seed())
+        self.ras_lines: dict[str, BitMark] = {}
+        self.ras_writes: list[tuple[str, BitMark]] = []
+        follow = None
 
         async def _bite_idle() -> None:
+            nonlocal follow
             assert self.rd_known(cocotb.top.wdt_timer_rst_req_o) == 0, (
                 "CHK-BITE FAIL: wdt_timer_rst_req_o asserted before firmware "
                 "enabled the WDT, so a later 1 cannot be attributed to BITE"
             )
             # The CPU is released; the tap records every LSU access of the firmware.
             lsu_tap.start()
+            self.ras.start()
+            self.ras_rel = self.ras.mark()
+            follow = cocotb.start_soon(self._ras_follow(lsu_tap))
 
         await self.boot_firmware(
             self.sb,
@@ -162,6 +225,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             after_bring_up_hook=_bite_idle,
         )
         await lsu_tap.stop()
+        self._grade_bark()
 
         # The firmware scores the reset_ctrl legs into its own error count, and the
         # PASS magic alone cannot say which of them ran: an image without a leg
@@ -231,6 +295,262 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         )
         self.logger.info(
             "CHK-BITE PASS: wdt_timer_rst_req_o asserted -> WDT BITE reset request observed"
+        )
+        await self._grade_bite(self.ras.mark())
+        follow.cancel()
+        await RisingEdge(dut.clk_i)
+        close_graded_window(self.logger)
+        await self.ras.stop()
+        if self.ras_chk.fails:
+            raise AssertionError(
+                f"{len(self.ras_chk.fails)} RAS check(s) failed: " + "; ".join(self.ras_chk.fails)
+            )
+
+    # ---- sep_ras_o watchdog fields ----
+    def _ras(self, fld: str, half: str, ok: bool, **fields) -> None:
+        """Log CHK-RAS-<FIELD>-<HALF> and record a FAIL for the end of the leaf."""
+        self.ras_chk.ok(f"RAS-{fld.upper()}-{half}", ok, **fields)
+
+    @staticmethod
+    def _wdt_reg(aw: TapBeat, w: TapBeat) -> str | None:
+        """The WDT register of ``_WDT_REGS`` that a write's address word and strobe hit."""
+        addr, strb = aw.fields.get("addr"), w.fields.get("strb")
+        if addr is None or strb is None:
+            return None
+        for reg, a in _WDT_REGS.items():
+            lane = a % _LSU_BYTES
+            if addr // _LSU_BYTES == a // _LSU_BYTES and (strb >> lane) & 0xF:
+                return reg
+        return None
+
+    async def _ras_follow(self, tap: SepFabricTap) -> None:
+        """Open the graded window, then mark the watcher at each bounding console line
+        and each CPU write to a WDT register.
+
+        A mark is taken on the clock that shows the line or the write, or one clock later.
+        """
+        dut = cocotb.top
+        seen_len = 0
+        seen_beats = 0
+        aws: list[TapBeat] = []
+        ws: list[TapBeat] = []
+        burst: list[TapBeat] = []
+        await RisingEdge(dut.clk_i)
+        open_graded_window(TEST, self.logger)
+        while True:
+            await ReadOnly()
+            if len(self.sb.console) != seen_len:
+                seen_len = len(self.sb.console)
+                text = self.sb.console_text()
+                for line in _RAS_LINES:
+                    if line not in self.ras_lines and line in text:
+                        self.ras_lines[line] = self.ras.mark()
+            while seen_beats < len(tap.beats):
+                beat = tap.beats[seen_beats]
+                seen_beats += 1
+                if beat.ch == "aw":
+                    aws.append(beat)
+                elif beat.ch == "w":
+                    burst.append(beat)
+                    if beat.fields.get("last") != 0:
+                        ws.append(burst[0])
+                        burst = []
+                while aws and ws:
+                    # W bursts follow the AW order; the first beat carries the strobe
+                    # of the AW address.
+                    reg = self._wdt_reg(aws.pop(0), ws.pop(0))
+                    if reg is not None:
+                        self.ras_writes.append((reg, self.ras.mark()))
+            await RisingEdge(dut.clk_i)
+
+    def _span(self, fld: str, kind: str, lo: int, hi: int) -> list[int]:
+        """Rise or fall clocks of ``fld`` in the clocks (lo, hi]."""
+        clks = (
+            self.ras.rise_clks_since(self.ras_rel, fld)
+            if kind == "rise"
+            else self.ras.fall_clks_since(self.ras_rel, fld)
+        )
+        return [c for c in clks if lo < c <= hi]
+
+    def _write_after(self, reg: str, lo: int, hi: int) -> BitMark | None:
+        """The mark of the first write to ``reg`` in the clocks (lo, hi]."""
+        return next((m for r, m in self.ras_writes if r == reg and lo < m.clk <= hi), None)
+
+    def _grade_bark(self) -> None:
+        """CHK-RAS-WDT_BARK-*: idle window, both rises, hold to the clear write, clear."""
+        fld = "wdt_bark"
+        rel = self.ras_rel
+        mk = {line: self.ras_lines.get(line) for line in _RAS_LINES}
+        missing = [line for line, m in mk.items() if m is None]
+        if missing:
+            for half in ("IDLE", "RISE", "SHAPE", "CLEAR"):
+                self._ras(fld, half, False, console_lines_not_seen=missing)
+            return
+        bad, nmi, clr = mk[_BADADDR_LINE], mk[_WDT_NMI_LINE], mk[_WDT_CLEAR_LINE]
+        pet, rebark = mk[_WDT_PET_LINE], mk[_WDT_REBARK_LINE]
+        hi = bad.high[fld] - rel.high[fld]
+        self._ras(
+            fld,
+            "IDLE",
+            hi == 0 and bad.clk > rel.clk,
+            window="release..bad-address_line",
+            clocks=bad.clk - rel.clk,
+            high_clocks=hi,
+            exp=0,
+        )
+        r1 = self._span(fld, "rise", bad.clk, nmi.clk)
+        self._ras(
+            fld,
+            "RISE",
+            bool(r1),
+            bark=1,
+            window="bad-address_line..CHK-WDT-NMI",
+            rises=len(r1),
+            exp=">=1",
+        )
+        r2 = self._span(fld, "rise", pet.clk, rebark.clk)
+        self._ras(
+            fld,
+            "RISE",
+            bool(r2),
+            bark=2,
+            window="CHK-WDT-PET..CHK-WDT-REBARK",
+            rises=len(r2),
+            exp=">=1",
+        )
+        for bark, rises, lo in ((1, r1, bad.clk), (2, r2, pet.clk)):
+            en = self._write_after("wdog_ctrl", lo, rises[0]) if rises else None
+            self.ras_chk.obs(
+                "RAS-WDT_BARK-DELAY",
+                bark=bark,
+                clocks_from_wdog_ctrl_write_to_rise=rises[0] - en.clk if en is not None else "none",
+            )
+        if not r1:
+            self._ras(fld, "SHAPE", False, rise_clk="none")
+        else:
+            wr = self._write_after("intr_state", r1[0], clr.clk)
+            f1 = self._span(fld, "fall", r1[0], self.ras.clk)
+            first_fall = f1[0] if f1 else None
+            if not any(r == "intr_state" for r, _ in self.ras_writes):
+                self.ras_chk.obs(
+                    "RAS-WDT_BARK-TAP", intr_state_writes=0, shape="one_rise_one_fall_before_clear"
+                )
+                nr1 = len(self._span(fld, "rise", bad.clk, clr.clk))
+                nf1 = len(self._span(fld, "fall", bad.clk, clr.clk))
+                self._ras(
+                    fld,
+                    "SHAPE",
+                    nr1 == 1 and nf1 == 1,
+                    window="bad-address_line..CHK-WDT-CLEAR",
+                    rises=nr1,
+                    falls=nf1,
+                    exp="1/1",
+                )
+            elif wr is None:
+                self._ras(
+                    fld,
+                    "SHAPE",
+                    False,
+                    rise_clk=r1[0],
+                    intr_state_write_clk="none",
+                    exp="write_before_CHK-WDT-CLEAR",
+                )
+            else:
+                self._ras(
+                    fld,
+                    "SHAPE",
+                    first_fall is None or first_fall >= wr.clk,
+                    rise_clk=r1[0],
+                    intr_state_write_clk=wr.clk,
+                    first_fall_clk=first_fall if first_fall is not None else "none",
+                    exp="no_fall_before_write",
+                )
+                self.ras_chk.obs(
+                    "RAS-WDT_BARK-FALL",
+                    clocks_from_intr_state_write_to_fall=(
+                        first_fall - wr.clk if first_fall is not None else "none"
+                    ),
+                )
+        nr = len(self._span(fld, "rise", bad.clk, clr.clk))
+        nf = len(self._span(fld, "fall", bad.clk, clr.clk))
+        self._ras(
+            fld,
+            "CLEAR",
+            nr >= 1 and nr == nf,
+            at="CHK-WDT-CLEAR",
+            level=nr - nf,
+            rises=nr,
+            falls=nf,
+            exp=0,
+        )
+        w2 = self._write_after("intr_state", r2[0], self.ras.clk) if r2 else None
+        self.ras_chk.obs(
+            "RAS-WDT_BARK-BARK2",
+            level_at_rebark_line=len(self._span(fld, "rise", bad.clk, rebark.clk))
+            - len(self._span(fld, "fall", bad.clk, rebark.clk)),
+            intr_state_write_clk=w2.clk if w2 is not None else "none",
+            falls_after_rise=self._span(fld, "fall", r2[0], self.ras.clk)[:4] if r2 else "none",
+        )
+
+    async def _grade_bite(self, req: BitMark) -> None:
+        """CHK-RAS-WDT_BITE-*: idle window, rise near the bite request, hold."""
+        fld = "wdt_bite"
+        rel = self.ras_rel
+        rebark = self.ras_lines.get(_WDT_REBARK_LINE)
+        if rebark is None:
+            for half in ("IDLE", "RISE", "SHAPE"):
+                self._ras(fld, half, False, console_lines_not_seen=[_WDT_REBARK_LINE])
+            return
+        hi = rebark.high[fld] - rel.high[fld]
+        self._ras(
+            fld,
+            "IDLE",
+            hi == 0 and rebark.clk > rel.clk,
+            window="release..CHK-WDT-REBARK",
+            clocks=rebark.clk - rel.clk,
+            high_clocks=hi,
+            exp=0,
+        )
+        rises = self._span(fld, "rise", rebark.clk, self.ras.clk)
+        if not rises:
+            try:
+                rises = [await self.ras.wait_rise(req, _BITE_POLL_CYCLES, fld)]
+            except BitWatchTimeout:
+                rises = []
+        self._ras(
+            fld,
+            "RISE",
+            bool(rises),
+            rise_clk=rises[0] if rises else "none",
+            wdt_timer_rst_req_o_clk=req.clk,
+            bound=_BITE_POLL_CYCLES,
+        )
+        if not rises:
+            self._ras(fld, "SHAPE", False, rise_clk="none")
+            return
+        self.ras_chk.obs(
+            "RAS-WDT_BITE-DELAY", clocks_from_wdt_timer_rst_req_o_to_rise=rises[0] - req.clk
+        )
+        for _ in range(_RAS_BITE_HOLD + 2):
+            if self.ras.clk >= rises[0] + _RAS_BITE_HOLD:
+                break
+            await RisingEdge(cocotb.top.clk_i)
+        falls = self._span(fld, "fall", rises[0], self.ras.clk)
+        held = self.ras.clk - rises[0]
+        self._ras(
+            fld,
+            "SHAPE",
+            not falls and held >= _RAS_BITE_HOLD,
+            rise_clk=rises[0],
+            held_clocks=held,
+            falls=falls[:4] or "none",
+            exp_hold=_RAS_BITE_HOLD,
+        )
+        self.ras_chk.obs(
+            "RAS-WDT_BITE-CLEAR",
+            wdt_rst_ni="not_driven",
+            level=self.ras.level(fld),
+            clk=self.ras.clk,
         )
 
     @staticmethod

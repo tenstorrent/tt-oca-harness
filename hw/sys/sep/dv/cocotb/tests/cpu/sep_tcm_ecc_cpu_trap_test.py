@@ -10,12 +10,15 @@ words and the DCCM vector table into a reserved DCCM window that the image
 leaves unused (``env/sep_dtcm_param_patch``), and writes the time-0 flip list
 of the TCM bit-flip hook (``env/sep_tcm_flip``, ``+sep_tcm_flip_list``):
 2^t + 1 single-bit flips in the ICCM straight-line block and in the DCCM
-window, and three double-bit flips in the DCCM (the load word, the store word
-and the vector-table word of PIC source 2). It follows the console
-(``env/sep_fw_console``: graded window on ``M G`` / ``M C``), samples the CPU
-trace, ``ext_debug_bus_o[367:364]`` and ``sep_internal_interrupts_probe_o`` on
-every ``clk_i`` edge, and grades from the firmware CSR reads, the trap records,
-the trace events and the pulse counts:
+window, three double-bit flips in the DCCM (the load word, the store word and
+the vector-table word of PIC source 2), and one double-bit flip of the ICCM
+word ``iccm_ue_word`` that only the ``iccm_ue`` leg fetches. It follows the
+console (``env/sep_fw_console``: graded window on ``M G`` / ``M C``), samples
+the CPU trace, ``ext_debug_bus_o[367:364]`` and
+``sep_internal_interrupts_probe_o`` on every ``clk_i`` edge, watches the ECC
+fields of ``sep_ras_probe_o`` (``env/sep_ras_map``, the DUT ``sep_ras_o``) with
+``env/sep_bit_watch``, and grades from the firmware CSR reads, the trap
+records, the trace events, the pulse counts and the field record:
 
 * CHK-TCM-CE      the counters read 0 after reset; MCEIP is set exactly when
                   the count field reaches 2^t (DCCM in every sample, ICCM at the
@@ -37,8 +40,23 @@ the trace events and the pulse counts:
 * CHK-TCM-NO-PIC  the meip words equal their baseline and MICECT reads 0 after
                   the correctable leg and after each uncorrectable trap; the PIC
                   vector does not move around a correctable pulse.
+* CHK-RAS-<FIELD>-IDLE, -RISE, -SHAPE
+                  for ``sep_ras_o.iccm_ecc_ce``, ``iccm_ecc_ue``, ``dccm_ecc_ce``
+                  and ``dccm_ecc_ue`` (``hw/sys/sep/doc/port_table.adoc``, row
+                  ``sep_ras_o``, and the ``sep_pkg::sep_ras_t`` field comments:
+                  one ``clk_i`` cycle high per error), each its own check: IDLE
+                  the field is 0 on every clock from the CPU release to the leg
+                  marker before its first flipped access, RISE it rises inside
+                  each access window of its kind, SHAPE every high run after the
+                  release is one clock wide. Each logs PASS or FAIL; the leaf
+                  fails once after its other checks if any of them failed.
 
-Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366``.
+Log only: ``OBS-TCM-INCR`` (corrections per access), ``OBS-TCM-DBG366``,
+``OBS-RAS-<FIELD>-DELAY`` (clocks from the debug-bus pulse to the field rise in
+each window), ``OBS-RAS-<FIELD>-COUNT`` (rises per window) and
+``OBS-RAS-ICCM_ECC_UE-TRAP`` (the trap or NMI of the uncorrectable fetch,
+which the interrupt chapter and the ``SEP_NMI_VEC`` register text state
+differently).
 Expected values come from the cited interrupt chapter, the draws and the image
 layout (the firmware symbol listing), never from a DUT read. cpu run mode,
 ``+skip_fuse_sense``, Verilator and VCS.
@@ -61,10 +79,12 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
+from env.sep_bit_watch import BitMark, SepBitWatch
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import parse_hex_cells, patch_param_block, place_words
 from env.sep_fcov_gate import close_graded_window, set_tcm_trap_pass
 from env.sep_fw_console import ConsoleRec, SepFwConsole, parse_kv
+from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_tcm_flip import DCCM_BASE, DCCM_BYTES, ICCM_BASE, WORD_BITS, bit_mask, write_flip_list
 from sep_base_test import sep_base_test
@@ -96,6 +116,8 @@ STACK_RESERVE = 0x1000  # bytes kept free below the stack top (environment choic
 
 # ICCM block: slot i is the word 0xE1C00037 + (i << 12) (lui x0, 0xE1C00 + i).
 NSLOT = 33
+# iccm_ue_word of the uncorrectable fetch leg: lui x0, 0xE1F00.
+IUE_WORD = 0xE1F0_0037
 
 # hw/sys/sep/doc/interrupts.adoc: MCEIP cause, uncorrectable traps, NMI cause.
 MCAUSE_MCEIP = 0x8000_001E
@@ -114,6 +136,21 @@ PIC_SRC = 2  # mailbox interrupt 1; vector bit PIC_SRC - 1
 BIT_I_SB, BIT_I_DB, BIT_D_SB, BIT_D_DB = 367, 366, 365, 364
 DBG_BITS = (BIT_I_SB, BIT_I_DB, BIT_D_SB, BIT_D_DB)
 VEC_WINDOW = 4  # clocks around a correctable pulse (environment choice)
+# sep_ras_o ECC fields and the debug-bus bit of the same error kind.
+RAS_DBG = {
+    "iccm_ecc_ce": BIT_I_SB,
+    "iccm_ecc_ue": BIT_I_DB,
+    "dccm_ecc_ce": BIT_D_SB,
+    "dccm_ecc_ue": BIT_D_DB,
+}
+# Leg marker that ends the idle window of each field: no flipped word of
+# that kind is accessed before it.
+RAS_IDLE_END = {
+    "iccm_ecc_ce": "pic_setup",
+    "iccm_ecc_ue": "iccm_ue",
+    "dccm_ecc_ce": "pic_setup",
+    "dccm_ecc_ue": "ue_load",
+}
 _LABEL_CLK = 2  # clocks the leaf holds tcm_trap_pass at 1 before it writes 0
 
 
@@ -168,6 +205,7 @@ class TcmCfg:
     tbl_bits: tuple[int, int] = (0, 1)
     lane: int = 0
     byte: int = 0
+    iue_bits: tuple[int, int] = (0, 1)
 
     @property
     def n(self) -> int:
@@ -204,6 +242,7 @@ class TcmCfg:
         c.tbl_bits = tuple(rng.sample(range(WORD_BITS), 2))
         c.lane = rng.randrange(4)
         c.byte = rng.randrange(256)
+        c.iue_bits = tuple(rng.sample(range(WORD_BITS), 2))
         return c
 
     def addr(self, idx: int) -> int:
@@ -238,7 +277,7 @@ class TcmCfg:
         out += [0] * (NFLIP_MAX - len(self.singles))
         return out
 
-    def flips(self, slots: list[int]) -> list[tuple[int, int, str]]:
+    def flips(self, slots: list[int], iue_addr: int) -> list[tuple[int, int, str]]:
         out = []
         for s, b in zip(self.islots, self.ibits, strict=True):
             out.append((ICCM_BASE + slots[s], bit_mask(b), f"iccm_slot{s}"))
@@ -247,6 +286,7 @@ class TcmCfg:
         out.append((self.addr(self.ld), bit_mask(*self.ld_bits), "dccm_load"))
         out.append((self.addr(self.st), bit_mask(*self.st_bits), "dccm_store"))
         out.append((TBL_BASE + 4 * PIC_SRC, bit_mask(*self.tbl_bits), "vector_table_src2"))
+        out.append((iue_addr, bit_mask(*self.iue_bits), "iccm_ue"))
         return out
 
     def draw_lines(self) -> list[str]:
@@ -261,6 +301,7 @@ class TcmCfg:
             f"neighbour=0x{self.addr(self.ld_nbr):08x} dccm_store=0x{self.addr(self.st):08x} "
             f"bits={list(self.st_bits)} neighbour=0x{self.addr(self.st_nbr):08x} "
             f"lane={self.lane} byte=0x{self.byte:02x} vector_table_bits={list(self.tbl_bits)}",
+            f"DRAW iccm_ue_bits={list(self.iue_bits)}",
         ]
 
 
@@ -285,6 +326,11 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         "CHK-TCM-NMI",
         "CHK-TCM-DBG",
         "CHK-TCM-NO-PIC",
+        *(
+            f"CHK-RAS-{fld.upper()}-{half}"
+            for fld in ("iccm_ecc_ce", "iccm_ecc_ue", "dccm_ecc_ce", "dccm_ecc_ue")
+            for half in ("IDLE", "RISE", "SHAPE")
+        ),
     )
 
     def build_phase(self) -> None:
@@ -904,9 +950,124 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         self.logger.info("CHK-TCM-NO-PIC PASS: %s", body)
         return n + 1
 
+    # ---- sep_ras_o ECC fields ----
+    def _ras(self, fld: str, half: str, ok: bool, **fields) -> None:
+        """Log CHK-RAS-<FIELD>-<HALF> and record a FAIL for the end of the leaf."""
+        if self.ras_chk.ok(f"RAS-{fld.upper()}-{half}", ok, **fields):
+            self.ras_pass += 1
+
+    def _clk_win(self, win: tuple[int, int]) -> tuple[int, int]:
+        """(open, close] watcher clocks of a console window: the clocks of its B and E lines."""
+        return self.con.lines[win[0] - 1][0], self.con.lines[win[1]][0]
+
+    def _ras_runs(self, fld: str) -> list[tuple[int, int]]:
+        """(rise clock, width) of every high run of ``fld`` after the CPU release.
+
+        A run still high at the last sample counts to that sample.
+        """
+        rises = self.ras.rise_clks_since(self.ras_rel, fld)
+        falls = self.ras.fall_clks_since(self.ras_rel, fld)
+        out = []
+        j = 0
+        for r in rises:
+            while j < len(falls) and falls[j] <= r:
+                j += 1
+            out.append((r, (falls[j] if j < len(falls) else self.ras.clk + 1) - r))
+        return out
+
+    def _ras_windows(self, fld: str) -> list[tuple[str, tuple[int, int]]]:
+        """The access windows in which ``fld`` must rise, as (name, console window)."""
+        if fld == "iccm_ecc_ce":
+            return [("iccm_block", self._window("iccm_block"))]
+        if fld == "iccm_ecc_ue":
+            return [("iccm_ue", self._window("iccm_ue"))]
+        if fld == "dccm_ecc_ce":
+            return [
+                (f"dccm_ce k={int(kv['k'])}", self._window("dccm_ce", int(kv["k"])))
+                for kv in self._samples("dccm")
+                if kv["tag"] in ("silent", "cross", "post")
+            ]
+        return [(w, self._window(w)) for w in ("ue_load", "ue_store", "nmi")]
+
+    def _grade_ras(self) -> None:
+        """CHK-RAS-<FIELD>-IDLE, -RISE and -SHAPE for the four ECC fields of sep_ras_o."""
+        rel = self.ras_rel
+        for fld, dbg in RAS_DBG.items():
+            leg = RAS_IDLE_END[fld]
+            end = self.ras_marks.get(leg)
+            if end is None:
+                self._ras(fld, "IDLE", False, window=f"release..M_{leg}", marker="none")
+            else:
+                hi = end.high[fld] - rel.high[fld]
+                self._ras(
+                    fld,
+                    "IDLE",
+                    hi == 0 and end.clk > rel.clk,
+                    window=f"release..M_{leg}",
+                    clocks=end.clk - rel.clk,
+                    high_clocks=hi,
+                    exp=0,
+                )
+            rises = self.ras.rise_clks_since(rel, fld)
+            hits = []
+            delays = []
+            for name, win in self._ras_windows(fld):
+                lo, hi_clk = self._clk_win(win)
+                inside = [r for r in rises if lo < r <= hi_clk]
+                hits.append((name, len(inside)))
+                pul = self._pulses_in(win)[dbg]
+                delays.append(f"{name}:{inside[0] - pul[0].clk if inside and pul else 'none'}")
+            missed = [n for n, c in hits if not c]
+            self._ras(
+                fld,
+                "RISE",
+                bool(hits) and not missed,
+                windows=len(hits),
+                with_rise=len(hits) - len(missed),
+                missed=[n.replace(" ", "_") for n in missed[:6]] or "none",
+            )
+            self.ras_chk.obs(
+                f"RAS-{fld.upper()}-COUNT",
+                rises_per_window=[f"{n.replace(' ', '_')}:{c}" for n, c in hits],
+            )
+            self.ras_chk.obs(
+                f"RAS-{fld.upper()}-DELAY",
+                debug_bit=dbg,
+                clocks_from_pulse_to_rise=[d.replace(" ", "_") for d in delays],
+            )
+            runs = self._ras_runs(fld)
+            wide = [(r, w) for r, w in runs if w != 1]
+            self._ras(
+                fld,
+                "SHAPE",
+                bool(runs) and not wide,
+                high_runs=len(runs),
+                exp_width=1,
+                wider=[f"{r}:{w}" for r, w in wide[:6]] or "none",
+                high_clocks=self.ras.high_clocks_since(rel, fld),
+            )
+        iue = self._recs("IUE")
+        traps = self._traps("iccm_ue")
+        self.ras_chk.obs(
+            "RAS-ICCM_ECC_UE-TRAP",
+            iue_record=iue[0].text if iue else "missing",
+            traps=[
+                f"mcause=0x{int(t['mcause']):08x}/mscause=0x{int(t['mscause']):x}" for t in traps
+            ]
+            or "none",
+        )
+
     # ---- stimulus ----
     def _stage(self, cfg: TcmCfg, sy: dict[str, int]) -> str:
-        need = ("BSS_END", "STACK", "_nmi_handler", "_dummy_int_handler", "src2_isr", "iccm_block")
+        need = (
+            "BSS_END",
+            "STACK",
+            "_nmi_handler",
+            "_dummy_int_handler",
+            "src2_isr",
+            "iccm_block",
+            "iccm_ue_word",
+        )
         missing = [k for k in need if k not in sy]
         if missing:
             raise AssertionError(f"firmware symbol listing lacks {missing} in {_FW_DIR}")
@@ -918,13 +1079,21 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         slots = slot_offsets(_ITCM_HEX)
         if any(ICCM_BASE + s < sy["iccm_block"] for s in slots):
             raise AssertionError("an ICCM slot word lies before the iccm_block symbol")
+        iue = sy["iccm_ue_word"]
+        cells = parse_hex_cells(_ITCM_HEX)
+        word = sum(cells.get(iue - ICCM_BASE + b, 0) << (8 * b) for b in range(4))
+        if word != IUE_WORD or iue - ICCM_BASE in slots:
+            raise AssertionError(
+                f"iccm_ue_word at 0x{iue:08x} holds 0x{word:08x}, expected 0x{IUE_WORD:08x} "
+                "outside the iccm_block slots"
+            )
         tbl = [sy["_dummy_int_handler"]] * TBL_WORDS
         tbl[PIC_SRC] = sy["src2_isr"]
         mid = os.path.join(os.getcwd(), "sep_dtcm_tcm_ecc_prm.hex")
         dtcm = os.path.join(os.getcwd(), "sep_dtcm_tcm_ecc.hex")
         patch_param_block(_DTCM_HEX, mid, P_MAGIC, cfg.words())
         place_words(mid, dtcm, WIN_BASE - DCCM_BASE, cfg.data + tbl, limit=DCCM_BYTES)
-        flips = cfg.flips(slots)
+        flips = cfg.flips(slots, iue)
         write_flip_list(os.path.join(os.getcwd(), _FLIP_LIST), [(a, m) for a, m, _ in flips])
         for a, m, what in flips:
             self.logger.info("INFO-TCM-FLIP LOG addr=0x%08x mask=0x%010x what=%s", a, m, what)
@@ -944,8 +1113,23 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
         self.clk = 0
         self.smp_nl = 0
         self.sb.expected_line = _BANNER
+        dut = cocotb.top
+        check_tap_width(dut.sep_ras_probe_o)
+        self.ras_chk = RasChkLines(self.logger, seed)
+        self.ras_pass = 0
+        self.ras_marks: dict[str, BitMark] = {}
+        # The console follower, the field watcher and the sampler start on the
+        # same edge, so a console line clock is a watcher clock and a pulse clock.
         self.con = SepFwConsole(self, graded_test=TEST).start()
+        self.ras = SepBitWatch(
+            dut.sep_ras_probe_o, {f: ras_bit(f) for f in RAS_DBG}, name="sep_ras_probe_o"
+        ).start()
+        self.con.on_mark(lambda leg, _kind: self.ras_marks.setdefault(leg, self.ras.mark()))
         smp = cocotb.start_soon(self._sample())
+
+        async def _released() -> None:
+            self.ras_rel = self.ras.mark()
+
         close_graded_window(self.logger)
         set_tcm_trap_pass(False, self.logger)
         try:
@@ -956,6 +1140,7 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
                 rst_vec=ICCM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
+                after_bring_up_hook=_released,
             )
         finally:
             # The sampler loops until it is cancelled: a sampler that has already ended
@@ -966,21 +1151,35 @@ class sep_tcm_ecc_cpu_trap_test(sep_base_test):
             self.smp_nl_end = self.smp_nl
             self.smp_clk_end = self.clk
             await self.con.stop()
+            await self.ras.stop()
         if ended:
             smp.result()
             raise AssertionError(f"per-clock sampler ended early at clk={self.clk}")
+        # The run can end inside a read-only phase that some of the three have
+        # already handled, so their counts may differ by one edge, not more.
+        counts = (self.smp_clk_end, self.con.clk, self.ras.clk)
+        if max(counts) - min(counts) > 1:
+            raise AssertionError(
+                f"sampler, console and sep_ras_probe_o watcher stopped at clocks {counts}; "
+                "they must count the same edges"
+            )
         assert self.sb.fw_done and self.sb.fw_pass, "firmware did not complete with PASS"
         seeds = self.con.text_lines("SEED")
         if not seeds or f"seed=0x{seed & _M32:08x}" not in seeds[0]:
             raise AssertionError(f"firmware did not run the patched block: {seeds}")
+        self._grade_ras()
         n = self._chk_clamp()
         n += self._chk_ce_silent()
         n += self._chk_ue()
         n += self._chk_nmi(sy)
         n += self._chk_dbg()
         n += self._chk_no_pic()
+        if self.ras_chk.fails:
+            raise AssertionError(
+                f"{len(self.ras_chk.fails)} RAS check(s) failed: " + "; ".join(self.ras_chk.fails)
+            )
         await self._release()
-        self.result_pass(TEST, seed, n)
+        self.result_pass(TEST, seed, n + self.ras_pass)
 
     async def _release(self) -> None:
         """Every check of the run passed: tcm_trap_pass 1 samples the pending counts."""

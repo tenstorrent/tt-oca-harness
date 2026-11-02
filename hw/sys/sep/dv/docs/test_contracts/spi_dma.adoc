@@ -344,7 +344,7 @@ this leaf are graded in firmware (CHK-READ, CHK-FAST-READ) only. The flash model
 . While the range registers are still writable: `RANGE_VALID=0` raises `range_valid_error` *exclusively*, and an enabled range whose limit sits below its base raises exclusive `base_limit_error` with `STATUS.done` clear. Then lock `RANGE_REGWEN`.
 . Walk INCR / FIXED / WRAP × 1B/2B/4B; consume the seed-patched SCENARIO line.
 . Provoke one invalid opcode, then four exclusive address-alignment refusals; a clean copy after each error class proves the engine recovers.
-. With `dma_host_intg_inject_i` high, one legal SRAM copy raises exclusive `host_path_err` and aggregator bit 41. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 41 to 0. A legal copy with the pin low then matches the source snapshot.
+. With `dma_host_intg_inject_i` high, one legal SRAM copy raises exclusive `host_path_err` and aggregator bit 41. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 41 to 0. A legal copy with the pin low then matches the source snapshot. From the CPU release to the clear, the host watches `sep_ras_o.dma_host_intg_err` on every clock (CHK-RAS-DMA_HOST_INTG_ERR-IDLE, -RISE, -SHAPE, -CLEAR).
 . With the pin low, one copy whose destination is the first word past the DMA CSR window raises exclusive `host_path_err` from the fabric DECERR. CLEAR and a legal recovery copy follow.
 . After the run the host parses the console and requires the PASS line of each firmware check that grades an error leg (CHK-ERR-CLASS), then releases the held cells and closes the window.
 
@@ -381,6 +381,20 @@ this leaf are graded in firmware (CHK-READ, CHK-FAST-READ) only. The flash model
 |While the injected DMA command runs, the aggregated interrupt vector shows bit 41 (host path) at 1 and bit 40 (register path) at 0. An X or Z on either bit fails. Anchor: `sep_internal_interrupts_probe_o`. Evidence: `CHK-HOSTINTG-PIC PASS: sep_internal_interrupts[41]=1 exclusive (vec=0x<v>)`.
 |CHK-HOSTINTG-CLR
 |After the firmware writes `DMA_BUS_ERR_CLEAR`, bit 41 of the aggregated interrupt vector reads a known 0 within the bounded poll. Anchor: `sep_internal_interrupts_probe_o`. Evidence: `CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[41] resolved 0 after DMA_BUS_ERR_CLEAR`.
+|CHK-RAS-DMA_HOST_INTG_ERR-IDLE
+|`sep_ras_o.dma_host_intg_err` is the DMA host integrity fault, a level sticky until `DMA_BUS_ERR_CLEAR` (`hw/sys/sep/rtl/sep_pkg.sv:504`; `hw/sys/sep/doc/port_table.adoc:130`); a write of 1 to `DMA_BUS_ERR_CLEAR` is the clear (`hw/sys/sep/regs/gen/adoc/blocks/sep_cpu_ctrl.adoc:60`). Anchor for this and the next three checks: the bench tap `sep_ras_probe_o`, read through `env/sep_ras_map.py` on every `clk_i` edge after `ReadOnly()` (`SepBitWatch`); an X or Z sample fails. Graded on the integrity fault only: the field comment names no other cause. The field is 0 on every clock from the CPU release to the clock `dma_host_intg_inject_i` reads 1, so a field stuck at 1 fails. The leaf logs all four checks and then raises once if any failed. Evidence: `CHK-RAS-DMA_HOST_INTG_ERR-IDLE PASS: seed=<n> high_clocks=0 ...`.
+|CHK-RAS-DMA_HOST_INTG_ERR-RISE
+|The field rises after `dma_host_intg_inject_i` reads 1 and before the firmware prints `CHK-HOSTINTG-RELEASE`. Evidence: `CHK-RAS-DMA_HOST_INTG_ERR-RISE PASS: seed=<n> rises=<k> ...`.
+|CHK-RAS-DMA_HOST_INTG_ERR-SHAPE
+|The field has no fall from its rise through the first clear pulse of the host-path latch on `sep_cpu_ctrl_err_pulse_probe_o` after the inject (the firmware `DMA_BUS_ERR_CLEAR` write), across the pin release, so a one-cycle pulse fails. Evidence: `CHK-RAS-DMA_HOST_INTG_ERR-SHAPE PASS: seed=<n> rise_clk=<c> clear_pulse_clk=<c> falls_to_pulse=[] ...`.
+|CHK-RAS-DMA_HOST_INTG_ERR-CLEAR
+|The field falls within 200000 clocks after that clear pulse, so a field that never clears fails. Evidence: `CHK-RAS-DMA_HOST_INTG_ERR-CLEAR PASS: seed=<n> clear_pulse_clk=<c> fall_clk=<c> bound=200000`.
+|OBS-RAS-DMA_HOST_INTG_ERR-DELAY
+|Logged, not graded: the clocks from `dma_host_intg_inject_i` = 1 and from the first host-path set term on `sep_cpu_ctrl_err_pulse_probe_o` to the field rise. No document states the rise delay.
+|OBS-RAS-DMA_HOST_INTG_ERR-FALL
+|Logged, not graded: the clocks from the clear pulse to the field fall. No document states the fall delay; CLEAR grades only its bound.
+|OBS-RAS-DMA_HOST_INTG_ERR-FABRIC
+|Logged, not graded: the rises, falls and last level of the field from `CHK-HOSTFABRIC-ARM` to the end of the firmware. The same host-path latch sets on the fabric DECERR, and no document states whether the field, a "host integrity fault", rises on a non-integrity host error.
 |CHK-HOSTFABRIC
 |A DMA transfer whose destination is the first word past the DMA CSR window, with the inject pin low, raises exactly `host_path_err`. `DMA_BUS_ERR_CLEAR` returns STATUS to 0. The CLEAR register is a write-only single-pulse field that always reads 0, so its read value is not graded. A legal copy then matches the independent source snapshot.
 |CHK-ERR-CLASS
@@ -391,9 +405,9 @@ this leaf are graded in firmware (CHK-READ, CHK-FAST-READ) only. The flash model
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: `CHK-HOSTINTG-ARM`, `CHK-HOSTINTG-RELEASE` and `CHK-HOSTFABRIC-ARM` are firmware handshake markers: the host drives `dma_host_intg_inject_i` high from the first to the second and requires it low at the third. `CHK-HOSTINTG-PIC` (aggregator bit 41 set, bit 40 clear) and `CHK-HOSTINTG-CLR` (bit 41 back to 0 after the clear) are the host-side records of CHK-HOSTINTG.
+*Evidence*: `CHK-HOSTINTG-ARM`, `CHK-HOSTINTG-RELEASE` and `CHK-HOSTFABRIC-ARM` are firmware handshake markers: the host drives `dma_host_intg_inject_i` high from the first to the second and requires it low at the third. `CHK-HOSTINTG-PIC` (aggregator bit 41 set, bit 40 clear) and `CHK-HOSTINTG-CLR` (bit 41 back to 0 after the clear) are the host-side records of CHK-HOSTINTG. `CHK-RAS-DMA_HOST_INTG_ERR-IDLE`, `-RISE`, `-SHAPE` and `-CLEAR` grade the same fault at the `sep_ras_o` port.
 
-*Not claimed*: the read value of the reserved bits of the DMA registers (`OBS-RESET-RSVD`) and of ERROR_CODE bits 31:8 (`OBS-ERR-RSVD`), and lockstep punch-through. The register path (`reg_path_err`) is not
+*Not claimed*: the read value of the reserved bits of the DMA registers (`OBS-RESET-RSVD`) and of ERROR_CODE bits 31:8 (`OBS-ERR-RSVD`), the rise and fall delays of `sep_ras_o.dma_host_intg_err` and its value in the fabric-DECERR leg (OBS-RAS-DMA_HOST_INTG_ERR-*), and lockstep punch-through. The register path (`reg_path_err`) is not
 exercised by this leaf at all; the unmapped-window term is proven by
 <<sep_irq_ip_to_aggregator_test>>. Persistence across a watchdog reset, and
 the rule that a fault arriving in the clear cycle still latches — both stated in

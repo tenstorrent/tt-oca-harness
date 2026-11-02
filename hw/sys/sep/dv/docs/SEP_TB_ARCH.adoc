@@ -287,6 +287,13 @@ Observation probe groups:
   counter (bit 1 `prstb_synced_rd` on `clk_ref_i`, bit 0 `prstb_synced_write`
   on `clk_i`, of `u_sep_system_csr.u_reference_counter_counter`); owner
   `sep_scan_reset_override_test`.
+* RAS struct tap (`sep_ras_probe_o`): the whole `sep_ras_o` output of the DUT
+  (`sep_ras_w`, type `sep_pkg::sep_ras_t`) on one monitor output of `tb_top`. It
+  is monitor-only: it drives nothing and adds no force. The bit of each field
+  follows the declaration order of `sep_ras_t`, first field at the MSB, and
+  `env/sep_ras_map.py` names the bits (`ras_bit`, `ras_field`). `sep_fcov`
+  reads the same tap for `sep_ras_cg`. Owners: the host leaves of the
+  `sep_ras_o` rows of `docs/SEP_VPLAN.adoc` (`CHK-RAS-*`).
 * Core JTAG and DMI outputs: `jtag_tdo_o` (core TAP TDO), `dmi_uncore_en_o`
   and `dmi_uncore_wr_en_o` (wrapper ports `dmi_uncore_en`,
   `dmi_uncore_wr_en`). Owner: `sep_debug_master_target_matrix_test`.

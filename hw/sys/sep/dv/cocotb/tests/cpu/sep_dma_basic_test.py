@@ -37,6 +37,17 @@ scoreboard also checks the banner + ICCM execution. Every ERROR_CODE compare gra
 named fields; bits 31:8 have no stated reset and the firmware prints them on OBS-ERR-RSVD.
 CHK-RESET grades the named fields of each register; its reserved bits print on OBS-RESET-RSVD.
 
+CHK-RAS-DMA_HOST_INTG_ERR grades ``sep_ras_o.dma_host_intg_err`` on the bench tap
+``sep_ras_probe_o`` against its ``sep_pkg::sep_ras_t`` field comment ("DMA host integrity
+fault; sticky until DMA_BUS_ERR_CLEAR") as four checks, each on its own line:
+CHK-RAS-DMA_HOST_INTG_ERR-IDLE (0 on every clock from the CPU release to
+``dma_host_intg_inject_i`` = 1), -RISE (a rise before the firmware prints
+CHK-HOSTINTG-RELEASE), -SHAPE (no fall from the rise through the first DMA_BUS_ERR_CLEAR
+clear pulse of the host-path latch, across the pin release) and -CLEAR (a fall within
+``_PIC_POLL`` clocks of that pulse). Each logs PASS or FAIL; the leaf raises once after
+all four are logged. The rise and fall delays and the field in the fabric-DECERR leg
+are logged only (OBS-RAS-DMA_HOST_INTG_ERR-*): no document states them.
+
 FCOV: the graded window of this leaf opens when the CPU is released and closes after
 the host has parsed the console. ``cp_error_class_exclusive`` holds each cell at the
 ERROR_CODE read of its error leg; the firmware check of that leg also grades
@@ -56,6 +67,7 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_bit_watch import BitMark, BitWatchTimeout, SepBitWatch
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_fcov_gate import (
@@ -69,6 +81,7 @@ from env.sep_fcov_gate import (
     open_graded_window,
     set_dma_basic_pass,
 )
+from env.sep_ras_map import PERIPH_BUS_ERR_BLOCKS, RasChkLines, check_tap_width, ras_bit
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
@@ -101,6 +114,14 @@ _CLASS_CHECKS = (
 )
 # Firmware OBS lines: reserved register bits that no document states.
 _OBS_LINES = ("OBS-RESET-RSVD:", "OBS-ERR-RSVD:")
+
+_RAS = "RAS-DMA_HOST_INTG_ERR"
+_RAS_HALVES = ("IDLE", "RISE", "SHAPE", "CLEAR")
+# sep_cpu_ctrl_err_pulse_probe_o (tb/sep_tb_signal_list.svh): the low half holds the set
+# term of each bridge-fault latch in periph_bus_err_e order, then DMA reg_path_err and
+# host_path_err; the high half holds the clear pulse of the same latches.
+_PULSE_HOST_SET = len(PERIPH_BUS_ERR_BLOCKS) + 1
+_PULSE_HOST_CLR = _PULSE_HOST_SET + len(PERIPH_BUS_ERR_BLOCKS) + 2
 
 
 @dataclass(frozen=True)
@@ -138,11 +159,20 @@ class sep_dma_basic_test(sep_base_test):
 
     build_env = False
     # The leaf's own graded records; the base-class records do not count.
-    required_evidence = ("CHK-HOSTINTG-PIC", "CHK-HOSTINTG-CLR", "CHK-ERR-CLASS", "CHK-RAND-REP")
+    required_evidence = (
+        "CHK-HOSTINTG-PIC",
+        "CHK-HOSTINTG-CLR",
+        "CHK-ERR-CLASS",
+        "CHK-RAND-REP",
+        *(f"CHK-{_RAS}-{half}" for half in _RAS_HALVES),
+    )
 
     def build_phase(self) -> None:
         super().build_phase()
         self.sb = SepBootScoreboard("sb", self)
+        self._ras_task = None
+        self._ras_logged: set[str] = set()
+        self._ras_chk = RasChkLines(self.logger, self.random_seed())
 
     def _stage_dtcm(self) -> str:
         cfg = SepDmaBasicCfg.from_seed(self.random_seed())
@@ -261,6 +291,117 @@ class sep_dma_basic_test(sep_base_test):
             await RisingEdge(dut.clk_i)
         raise AssertionError("firmware never printed CHK-HOSTFABRIC-ARM")
 
+    def _ras_start(self) -> None:
+        """Start the CHK-RAS-DMA_HOST_INTG_ERR watchers and grader at the CPU release."""
+        dut = cocotb.top
+        check_tap_width(dut.sep_ras_probe_o)
+        # Both watchers start on the same clock, so their clock counts name the same edges.
+        self._ras = SepBitWatch(
+            dut.sep_ras_probe_o, {"host_intg": ras_bit("dma_host_intg_err")}, name="sep_ras_o"
+        ).start()
+        self._pulse = SepBitWatch(
+            dut.sep_cpu_ctrl_err_pulse_probe_o, {"set": _PULSE_HOST_SET, "clr": _PULSE_HOST_CLR}
+        ).start()
+        self._ras_task = cocotb.start_soon(self._check_ras_host_intg(self._ras.mark()))
+
+    def _ras_verdict(self, half: str, ok: bool, **fields) -> None:
+        self._ras_logged.add(half)
+        self._ras_chk.ok(f"{_RAS}-{half}", ok, **fields)
+
+    async def _wait_console(self, needle: str) -> None:
+        dut = cocotb.top
+        for _ in range(_MAX_RUN_CYCLES):
+            if needle in self.sb.console_text():
+                return
+            if self.sb.fw_done:
+                raise AssertionError(f"firmware finished without printing {needle}")
+            await RisingEdge(dut.clk_i)
+        raise AssertionError(f"firmware never printed {needle}")
+
+    async def _grade_ras_host_intg(self, m0: BitMark) -> None:
+        dut = cocotb.top
+        ras, pulse = self._ras, self._pulse
+        for _ in range(_MAX_RUN_CYCLES):
+            await RisingEdge(dut.clk_i)
+            if self.rd_known(dut.dma_host_intg_inject_i):
+                break
+            if self.sb.fw_done:
+                raise AssertionError("firmware finished before dma_host_intg_inject_i rose")
+        else:
+            raise AssertionError("dma_host_intg_inject_i never rose")
+        m1, mp = ras.mark(), pulse.mark()
+        high = ras.high_clocks_since(m0)
+        self._ras_verdict("IDLE", high == 0, high_clocks=high, inject_clk=m1.clk, exp=0)
+
+        await self._wait_console("CHK-HOSTINTG-RELEASE")
+        rises = ras.rise_clks_since(m1)
+        self._ras_verdict(
+            "RISE", bool(rises), rises=len(rises), inject_clk=m1.clk, release_clk=ras.clk, exp=">=1"
+        )
+        if rises:
+            sets = pulse.rise_clks_since(mp, "set")
+            self._ras_chk.obs(
+                f"{_RAS}-DELAY",
+                rise_clk=rises[0],
+                after_inject=rises[0] - m1.clk,
+                after_set_term=rises[0] - sets[0] if sets else "n/a",
+            )
+
+        clr = await pulse.wait_rise(mp, _PIC_POLL, "clr")
+        rise = rises[0] if rises else None
+        held_falls = [f for f in ras.fall_clks_since(m1) if f <= clr]
+        self._ras_verdict(
+            "SHAPE",
+            rise is not None and rise <= clr and not held_falls,
+            rise_clk=rise,
+            clear_pulse_clk=clr,
+            falls_to_pulse=held_falls,
+            exp="rise_before_pulse_no_fall",
+        )
+
+        try:
+            await ras.wait_level(0, _PIC_POLL, "host_intg")
+        except BitWatchTimeout:
+            pass
+        after = [f for f in ras.fall_clks_since(m1) if f > clr]
+        self._ras_verdict(
+            "CLEAR",
+            bool(after) and after[0] - clr <= _PIC_POLL,
+            clear_pulse_clk=clr,
+            fall_clk=after[0] if after else None,
+            bound=_PIC_POLL,
+        )
+        if after:
+            self._ras_chk.obs(f"{_RAS}-FALL", after_clear_pulse=after[0] - clr)
+
+    async def _check_ras_host_intg(self, m0: BitMark) -> None:
+        """Grade the four CHK-RAS-DMA_HOST_INTG_ERR halves, then log the fabric-leg field."""
+        try:
+            await self._grade_ras_host_intg(m0)
+        except AssertionError as exc:
+            for half in _RAS_HALVES:
+                if half not in self._ras_logged:
+                    self._ras_verdict(half, False, not_reached=str(exc))
+            return
+        # The host-path latch also sets on a non-OKAY fabric response; the field comment
+        # names only the integrity fault, so this leg is logged and not graded.
+        await self._wait_console("CHK-HOSTFABRIC-ARM")
+        mf = self._ras.mark()
+        dut = cocotb.top
+        for _ in range(_MAX_RUN_CYCLES):
+            if self.sb.fw_done:
+                break
+            await RisingEdge(dut.clk_i)
+        self._ras_chk.obs(
+            f"{_RAS}-FABRIC",
+            span="CHK-HOSTFABRIC-ARM_to_fw_end",
+            rises=self._ras.rises_since(mf),
+            falls=len(self._ras.fall_clks_since(mf)),
+            level=self._ras.level(),
+        )
+        await self._ras.stop()
+        await self._pulse.stop()
+
     def _class_release_mask(self, console: str) -> int:
         """CHK-ERR-CLASS: every firmware check that grades an error leg printed its PASS line."""
         lines = console.splitlines()
@@ -350,6 +491,7 @@ class sep_dma_basic_test(sep_base_test):
             # is graded stimulus of this leaf.
             set_dma_basic_pass(0, self.logger)
             open_graded_window("sep_dma_basic_test", self.logger)
+            self._ras_start()
 
         try:
             inj = cocotb.start_soon(self._drive_host_intg_inject())
@@ -364,9 +506,19 @@ class sep_dma_basic_test(sep_base_test):
                 progress_every=_PROGRESS_EVERY,
                 after_bring_up_hook=_open_window,
             )
+            if self._ras_task is None:
+                for half in _RAS_HALVES:
+                    self._ras_verdict(half, False, not_reached="the CPU was not released")
+            else:
+                await self._ras_task
             await inj
             await fabric
             mask = self._parse_console()
+            if self._ras_chk.fails:
+                raise AssertionError(
+                    f"{len(self._ras_chk.fails)} RAS check(s) failed: "
+                    + "; ".join(self._ras_chk.fails)
+                )
         except BaseException:
             close_graded_window(self.logger)
             raise
