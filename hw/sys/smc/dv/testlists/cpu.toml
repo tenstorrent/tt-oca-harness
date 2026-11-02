@@ -568,3 +568,12 @@ tests = [
     "smc_mutex_semaphore_test",
     "smc_spm_mem_boundary_test",
 ]
+
+[[tests]]
+name = "smc_dfd_mmr_rand_test"
+module = "smc_dfd_mmr_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

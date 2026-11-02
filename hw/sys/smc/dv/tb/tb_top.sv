@@ -666,6 +666,16 @@ module smc_uvm_top
         end
     end
 
+    // +smc_sep_security_disable: hold sep_security_disable_i at 1 from t=0 for
+    // the whole run; without the plusarg it stays 0.
+    initial begin
+        tb_sep_security_disable = 1'b0;
+        if ($test$plusargs("smc_sep_security_disable")) begin
+            tb_sep_security_disable = 1'b1;
+            $display("[tb_top] +smc_sep_security_disable: sep_security_disable_i held 1 from t=0");
+        end
+    end
+
     // Minimal LSIO open-drain resolver for I2C0. The SMC padring maps I2C0
     // SCL/SDA to the I2C0 GPIO pads. Released lines resolve high; either the DUT
     // or cocotb side may pull a line low.
@@ -1395,10 +1405,9 @@ module smc_uvm_top
         .smc_fuse_reset_n_delayed_o (tb_fuse_reset_n),
         .skip_mem_repair_o          (tb_skip_mem_repair_o),
         .ext_boot_seq_done_i        (ext_boot_seq_done),
-        // Tied low: the eFuse sense bypass (sense FSM never routed to the bank,
-        // shadow regs exposed unsensed, warm domain held in reset) is unreachable
-        // here; docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
-        .sep_security_disable_i     (1'b0),
+        // 0 unless +smc_sep_security_disable (eFuse sense bypass: sense FSM never
+        // routed to the bank, shadow regs exposed unsensed, warm domain held in reset).
+        .sep_security_disable_i     (tb_sep_security_disable),
         .lc_state_i                 (lc_state_drv),
         .smc_ndmreset_request_i     (tb_ndmreset_request),
         .smc_ndmreset_process_o     (tb_ndmreset_process),

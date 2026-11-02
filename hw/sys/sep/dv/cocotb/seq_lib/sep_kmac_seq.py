@@ -91,6 +91,15 @@ def _hjson_enum(reg: str, field: str, need: tuple[str, ...]) -> dict[str, int]:
     return codes
 
 
+def kmac_hjson_int_param(name: str) -> int:
+    """The ``default`` of the int parameter ``name`` in kmac.hjson. Raises if it is not parsed."""
+    text = _KMAC_HJSON.read_text(encoding="utf-8")
+    m = re.search(rf'name:\s*"{name}"\s*type:\s*"int"\s*default:\s*"(\d+)"', text)
+    if m is None:
+        raise KeyError(f"int parameter {name} not parsed from {_KMAC_HJSON}")
+    return int(m.group(1))
+
+
 def kmac_cmd_codes() -> dict[str, int]:
     """Name -> value of the CMD.cmd enum in kmac.hjson. Raises if it is not found."""
     return _hjson_enum("CMD", "cmd", ("start", "process", "done"))

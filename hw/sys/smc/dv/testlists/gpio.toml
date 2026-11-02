@@ -101,6 +101,7 @@ tests = [
     "smc_gpio_filter_access_sep_test",
     "smc_gpio_irq_mask_deassert_test",
     "smc_gpio_intf_data_ctrl_write_sweep_test",
+    "smc_gpio_pad_config_rand_test",
 ]
 
 [[tests]]
@@ -221,5 +222,14 @@ name = "smc_gpio_intf_data_ctrl_write_sweep_test"
 module = "smc_gpio_intf_data_ctrl_write_sweep_test"
 seed = 1
 timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_pad_config_rand_test"
+module = "smc_gpio_pad_config_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
 tags = ["ci", "gpio"]
 run_modes = ["smoke"]

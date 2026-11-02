@@ -27,6 +27,13 @@ Whitening; ``hw/ip/entropy_source/regs/gen/adoc/entropy_source.adoc``):
     word with a lane at 1 fails the 32-bit APT high test: bit 3. It also makes
     ``APT_HI_TOTAL_FAILS`` non-zero (entropy_source.adoc:67, :326); which tester
     instances that counter counts is not stated.
+  * The BIW stage computes y = a*b + c in GF(2^8) on the 12 lane bytes
+    (architecture.adoc:115), so constant-zero lanes give a zero 32-bit word: its
+    one count and alternation count are 0, below the maximum one count
+    (``APT_PROPORTION_1BIT``, entropy_source.rdl:394) and the maximum alternation
+    count (``PROB_01_THRESHOLD``, entropy_source.rdl:340). No high-side test fails:
+    ``HEALTH_TEST_STATUS`` bit 4 (architecture.adoc:126), ``APT_HI_TOTAL_FAILS`` and
+    ``MARKOV_HI_TOTAL_FAILS`` (entropy_source.rdl:831, :851) stay 0.
   * With whitening on, 16 input words give 8 digest words
     (architecture.adoc:142; entropy_source.adoc:104).
 
@@ -78,6 +85,14 @@ Checkers:
                    12 generators.
   CHK-HT-TOP-ZERO  constant zero: HEALTH_TEST_STATUS bits 3 and 5, non-zero
                    APT_LO and MARKOV_LO totals, INTR_STATUS.HEALTH_TEST_FAILED.
+  CHK-HT-TOP-HI    the same constant-zero windows: HEALTH_TEST_STATUS bit 4 reads 0,
+                   APT_HI_TOTAL_FAILS and MARKOV_HI_TOTAL_FAILS read 0. Controls:
+                   every total reads 0 at the start (CTRL-HT-TOP-ZERO); the same
+                   windows trip the APT and Markov low side of the same tester
+                   (CHK-HT-TOP-ZERO); the ones leg of the same shard makes
+                   APT_HI_TOTAL_FAILS non-zero (CHK-HT-TOP-ONE); the Markov high
+                   limit trial (shard 2) sets bit 4 in all 12 generators
+                   (CHK-HT-LIMIT tester=mkv_hi).
   CHK-HT-TOP-ONE   constant ones, compressor in use, whitening off,
                    APT_PROPORTION_LO = 0: HEALTH_TEST_STATUS bit 3 (the 32-bit
                    tester, high side only) and a non-zero APT_HI_TOTAL_FAILS (any
@@ -157,7 +172,7 @@ DRAIN_POPS = 160
 SHARD_EVIDENCE = {
     1: ("CHK-HT-TRIP", "CHK-HT-PASS", "CHK-HT-OTHERS", "CHK-HT-W1C", "CHK-HT-ENABLE"),
     2: ("CHK-HT-ENABLE", "CHK-HT-LIMIT"),
-    3: ("CHK-HT-PRESHA", "CHK-HT-TOP-ZERO", "CHK-HT-TOP-ONE"),
+    3: ("CHK-HT-PRESHA", "CHK-HT-TOP-ZERO", "CHK-HT-TOP-HI", "CHK-HT-TOP-ONE"),
 }
 
 
@@ -312,6 +327,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
         "CHK-HT-PRESHA",
         "CHK-HT-LIMIT",
         "CHK-HT-TOP-ZERO",
+        "CHK-HT-TOP-HI",
         "CHK-HT-TOP-ONE",
     )
 
@@ -363,7 +379,7 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             limit_status = await self._limit_trials()
             self._grade_rep_enable(rep_before, rep_after, limit_status)
         if runs(3):
-            apt_hi_zero = await self._guard(self._zero_leg(), ("HT-TOP-ZERO",), None)
+            apt_hi_zero = await self._guard(self._zero_leg(), ("HT-TOP-ZERO", "HT-TOP-HI"), None)
             await self._guard(self._ones_leg(apt_hi_zero), ("HT-TOP-ONE",), None)
             await self._bypass_zero_leg()
         close_graded_window(self.logger)
@@ -798,11 +814,16 @@ class sep_esrc_health_pattern_rand_test(sep_base_test):
             intr_health_failed=int(bool(i1)),
             ctrl_before=f"0x{s0:02x}",
         )
-        self.chk.obs(
+        bit4 = (s1 >> BIT_MKV_HI) & 1
+        self.chk.ok(
             "HT-TOP-HI",
-            status_bit4=(s1 >> BIT_MKV_HI) & 1,
+            bit4 == 0 and t1["APT_HI_TOTAL_FAILS"] == 0 and t1["MARKOV_HI_TOTAL_FAILS"] == 0,
+            status=f"0x{s1:02x}",
+            status_bit4=bit4,
             apt_hi_total=t1["APT_HI_TOTAL_FAILS"],
             mkv_hi_total=t1["MARKOV_HI_TOTAL_FAILS"],
+            expect="0_0_0",
+            window=w,
         )
         await self._presha(s1, t1["REPCNT_TOTAL_FAILS"], w)
         close_graded_window(self.logger)

@@ -15,8 +15,9 @@ HT_WATERMARK :810-818; hw/ip/entropy_source/doc/architecture.adoc:130-132):
                    0xFFFF for a low-watermark mode (rdl:811). The entry arm of each leg
                    (the opposite polarity) is graded the same way.
   CHK-UNSUPPORTED  after a write of an unsupported selector, a MODULE_ENABLE pulse arms
-                   0x0000, the REPCNT_HI value (rdl:805: "Unsupported values select
-                   REPCNT_HI"). The entry holds 0xFFFF, so a dropped write fails.
+                   0x0000, the high-mode arm value (rdl:805: "Unsupported values select
+                   REPCNT_HI"; rdl:811). The entry holds 0xFFFF, so a dropped write
+                   fails. Which counter the watermark then tracks is not graded.
   OBS-HT-UNSUP-SEL the HT_WATERMARK_NUM readback after that write. Logged, not graded:
                    no text states the stored or read value of an unsupported selector.
   CHK-LOW-FALL     a low-mode watermark arms 0xFFFF and falls from it once health
@@ -147,7 +148,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             "CHK-UNSUPPORTED",
             got == ARM_HIGH,
             f"after MODULE_ENABLE HT_WATERMARK=0x{got:04x} want 0x{ARM_HIGH:04x} "
-            f"(0x{sel:x} resolves to REPCNT_HI)",
+            f"(0x{sel:x}: high-mode arm value)",
         )
 
     async def _check_low_fall(self, ht: SepHtWatermark, sel: int) -> None:

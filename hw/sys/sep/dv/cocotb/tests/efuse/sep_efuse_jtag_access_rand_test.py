@@ -11,14 +11,16 @@ control bit c and the probe bit p (two 0 spare bits), the access count N (15 to
 channel with the word order and the vector of each word write, the positions of the
 other token-block accesses, and per denied access its address and pattern. The
 required interface-control write of every leaf is a denied ``EFUSE_PROGRAM_CTRL``
-program of p, so the p read at the end grades a refused burn in every leaf.
+program of p, so the p read at the end grades a refused burn in every leaf. After the
+plan, the same stream draws one JTAG read address and one JTAG write address in the
+shim span and the write data.
 ``dv_sim_prestage.py`` stages the image from ``env/sep_efuse_plan.py`` and the leaf
 builds the same plan. After sense, ``CTRL-JTAG-LC-STATE`` reads the ``LC_STATE``
 shadow word at the frontdoor and requires the code of the drawn state. JTAG and
 frontdoor accesses never overlap, except one frontdoor read and one JTAG read of the
 shadow word of p, started on the same clock after every other graded access and
 before the deny-write controls, while no shadow write of the leaf has landed.
-CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the frontdoor read data
+CHK-JTAG-CONCURRENT grades the JTAG response SLVERR or DECERR and the frontdoor read data
 equal to the staged word, and logs the frontdoor response code;
 ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires both AR handshakes before either read
 completes; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data, the clock each read
@@ -34,7 +36,7 @@ Mechanism and Token Submission):
                     is reached; in RMA_SIP a token word read returns the word last
                     written; a match read of a channel with a go returns the SHA-256
                     golden of its last go (Match 0x15, Mismatch 0x2a). A shadow word or
-                    interface-control access answers a response that is not OKAY and
+                    interface-control access answers SLVERR or DECERR and
                     the target reads the same at the frontdoor before and after; the
                     bit p reads 0 at the direct read at the end. PROD and RMA_SIP
                     grade the same way. No program command reaches
@@ -52,8 +54,15 @@ Mechanism and Token Submission):
                     probe), a JTAG write of ``TOKEN_T1`` into the SIP array and a go
                     give the SIP match 0x15 at a frontdoor read.
   CHK-JTAG-CONCURRENT  the concurrent pair, after every other graded access and before
-                    the deny-write controls: JTAG response not OKAY, frontdoor data
+                    the deny-write controls: JTAG response SLVERR or DECERR, frontdoor data
                     equal to the staged word.
+  CHK-JTAG-SHIM-DENY  a JTAG read and a JTAG write of the shim span (every address
+                    outside the MAP window to the end of the last register window, which
+                    the controller sends to the shim's bank control registers) answer
+                    SLVERR or DECERR.
+  OBS-JTAG-SHIM-DENY-DATA  the frontdoor value of ``EFUSE_BANK_INIT_TIME`` before and
+                    after the two shim accesses, and the data of the JTAG read: no TT
+                    text maps a JTAG address to a shim register offset.
   OBS-JTAG-ALLOW-RESP  the response code of each token-block access: no TT text states
                     the response of an access JTAG may make.
 
@@ -68,7 +77,8 @@ whose go is on the chiplet channel runs it too: the 0x15 of CHK-JTAG-TOKEN alway
 follows a known 0x2a on the SIP channel.
 
 A match read of a channel with no go since power-on logs ``OBS-JTAG-MATCH-NOGO``.
-The response code of a denied access and the data of a denied read are not graded.
+Which of the two error codes a denied access answers, and the data of a denied read,
+are not graded.
 """
 
 from __future__ import annotations
@@ -98,6 +108,7 @@ from env.sep_efuse_plan import (
     TOKEN_EOP_ADDR,
     TOKEN_OTHER,
     TOKEN_T1,
+    SepEfusePlan,
     field_word,
     lc_state_class,
     match_code,
@@ -109,8 +120,9 @@ from env.sep_efuse_plan import (
 )
 from env.sep_efuse_test_lib import SenseClock, SepEfuseFd, bit, direct_word, hook_fail
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from ocah_axi_vip import RESP_DECERR, RESP_SLVERR
 from sep_base_test import sep_base_test
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL, register_fields
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL, RegBlock, register_fields, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 TEST = "sep_efuse_jtag_access_rand_test"
@@ -119,6 +131,8 @@ FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 DBG_MASK = DBG1_MASK | DBG2_MASK
 M32 = 0xFFFF_FFFF
 OKAY = 0
+# otp_fuse_controller.adoc states an error response for a denied access, not which one.
+ERROR_RESP = (RESP_SLVERR, RESP_DECERR)
 READ_ADDR_ERROR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_read_addr_error"
 )
@@ -133,6 +147,32 @@ OUT_OF_RANGE_BIT = 8192
 W_MULT = 2
 MATCH_READS = 400
 SENSE_BOUND = 20_000
+# The controller sends every address outside [MAP base, end of the last register window)
+# to the shim's bank control registers (otp_fuse_controller.adoc, eFuse controller figure).
+EFUSE_WINDOWS = ("SEP_EFUSE_MAP", "EFUSE_INTERFACE_CTRL", "EFUSE_MMR")
+SHIM_SPAN_GAP_LO = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
+SHIM_SPAN_GAP_HI = max(
+    sym(f"{w}_REG_MAP_BASE_ADDR") + sym(f"{w}_REG_MAP_SIZE") for w in EFUSE_WINDOWS
+)
+# The SEP address map, and so the JTAG address, is 32 bits wide.
+ADDR_END = 1 << 32
+SHIM_BLOCK = RegBlock("SEP_EXTERNAL_EFUSE_SHIM_CTRL")
+SHIM_REG = "EFUSE_BANK_INIT_TIME"
+SHIM_REG_ADDR = SHIM_BLOCK.addr(SHIM_REG)
+
+
+def _shim_addr(p: SepEfusePlan, op: str) -> int:
+    """One 8-byte-aligned address of the shim span: below the MAP window, above the last
+    register window, or the map address of ``EFUSE_BANK_INIT_TIME``. The shim control
+    model decodes address bit 2 and answers SLVERR when it is set, so an aligned address
+    that passes the lifecycle filter answers OKAY, and only the filter gives the error."""
+    if SHIM_SPAN_GAP_LO <= SHIM_REG_ADDR < SHIM_SPAN_GAP_HI:
+        raise AssertionError(f"test bug: 0x{SHIM_REG_ADDR:08x} is not in the shim span")
+    region = p.draw.choice(f"shim_{op}_region", ("below", "above", "reg"))
+    if region == "reg":
+        return p.draw.put(f"shim_{op}_addr", SHIM_REG_ADDR)
+    lo, hi = (0, SHIM_SPAN_GAP_LO) if region == "below" else (SHIM_SPAN_GAP_HI, ADDR_END)
+    return 8 * p.draw.randrange(f"shim_{op}_dword", -(-lo // 8), hi // 8)
 
 
 def _field_bits(addr: int) -> int:
@@ -143,9 +183,15 @@ def _field_bits(addr: int) -> int:
 
 @pyuvm.test()
 class sep_efuse_jtag_access_rand_test(sep_base_test):
-    """PROD and RMA_SIP JTAG reaches only the token block; denied accesses change nothing."""
+    """PROD and RMA_SIP JTAG reaches only the token block; a denied shadow or
+    interface-control access changes nothing; a shim-span access answers an error."""
 
-    required_evidence = ("CHK-JTAG", "CHK-JTAG-TOKEN", "CHK-JTAG-CONCURRENT")
+    required_evidence = (
+        "CHK-JTAG",
+        "CHK-JTAG-TOKEN",
+        "CHK-JTAG-CONCURRENT",
+        "CHK-JTAG-SHIM-DENY",
+    )
 
     # -- helpers -------------------------------------------------------------
 
@@ -219,7 +265,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         after = await self.fd.rd(addr)
         unchanged = before & mask == after & mask
         self._jtag_line(
-            unchanged and resp != OKAY,
+            unchanged and resp in ERROR_RESP,
             acc,
             "deny",
             resp,
@@ -229,6 +275,41 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
             after=f"0x{after & mask:08x}",
             rsvd=f"0x{after & ~mask & M32:x}",
             wdata=f"0x{acc.get('data', 0):08x}" if acc["op"] == "wr" else "na",
+        )
+
+    async def _shim_deny(self) -> None:
+        """CHK-JTAG-SHIM-DENY: the JTAG read and the JTAG write of the drawn shim-span
+        addresses answer SLVERR or DECERR (``otp_fuse_controller.adoc``, Shadow Register
+        and JTAG Access Control: in PROD and RMA_SIP every JTAG access to the SHIM
+        completes with an error response). ``OBS-JTAG-SHIM-DENY-DATA`` logs the frontdoor
+        value of ``EFUSE_BANK_INIT_TIME`` before and after, and the data of the JTAG read.
+        """
+        s = self.shim_draw
+        before_resp, before = await self.fd.rd_graded_by_data(SHIM_REG_ADDR)
+        rd_resp, rd_data = await self._jrd(s["rd_addr"])
+        wr_resp = await self._jwr(s["wr_addr"], s["wdata"])
+        after_resp, after = await self.fd.rd_graded_by_data(SHIM_REG_ADDR)
+        self.chk.ok(
+            "JTAG-SHIM-DENY",
+            rd_resp in ERROR_RESP and wr_resp in ERROR_RESP,
+            state=self.state,
+            rd_addr=f"0x{s['rd_addr']:08x}",
+            rd_resp=rd_resp,
+            wr_addr=f"0x{s['wr_addr']:08x}",
+            wr_resp=wr_resp,
+            wdata=f"0x{s['wdata']:08x}",
+        )
+        self.chk.obs(
+            "JTAG-SHIM-DENY-DATA",
+            state=self.state,
+            reg=SHIM_REG,
+            reg_addr=f"0x{SHIM_REG_ADDR:08x}",
+            fd_before=f"0x{before:08x}",
+            fd_before_resp=before_resp,
+            fd_after=f"0x{after:08x}",
+            fd_after_resp=after_resp,
+            rd_addr=f"0x{s['rd_addr']:08x}",
+            jtag_rdata=f"0x{rd_data:08x}",
         )
 
     # -- token block ---------------------------------------------------------
@@ -353,13 +434,18 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         cannot be undone. The status clear goes first, then ``EFUSE_READ_CTRL`` (its RW
         fields read back the written ``read_enable`` and ``efuse_addr`` after a write of 0
         and then of the pattern; it is then written 0), so a lock bit that a shadow
-        control sets cannot refuse their reads.
+        control sets cannot refuse their reads. The ``LOCKS`` and ``LOCKS_SPARE`` controls
+        run after the other shadow controls, so a lock bit they set cannot refuse the
+        frontdoor read or write of a field whose control comes later.
         """
         await self._status_clear_control(w)
         seen: set[tuple[int, int]] = set()
         accs = [a for a in self.p.leg["denied"] if a["op"] == "wr"]
         rd_ctl = [a for a in accs if a.get("reg") == "EFUSE_READ_CTRL"]
-        shadow = [a for a in accs if a["cls"] == "shadow"]
+        shadow = sorted(
+            (a for a in accs if a["cls"] == "shadow"),
+            key=lambda a: a["field"] in ("LOCKS", "LOCKS_SPARE"),
+        )
         for acc in rd_ctl + shadow:
             key = (acc["addr"], acc["data"])
             if key in seen:
@@ -395,7 +481,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
     async def _concurrent_read(self, word: int, ignore_mask: int) -> None:
         """A frontdoor read and a JTAG read of one shadow word, started on the same clock.
 
-        CHK-JTAG-CONCURRENT: the JTAG read answers a response that is not OKAY
+        CHK-JTAG-CONCURRENT: the JTAG read answers SLVERR or DECERR
         (``otp_fuse_controller.adoc``, Shadow Register and JTAG Access Control), and the
         frontdoor read returns the staged word, outside ``ignore_mask`` (the bit c when
         it shares the word). The frontdoor response code is logged in the same line. ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
@@ -465,7 +551,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         keep = ~ignore_mask & M32
         self.chk.ok(
             "JTAG-CONCURRENT",
-            jtag_resp != OKAY and fd_rdata & keep == staged & keep,
+            jtag_resp in ERROR_RESP and fd_rdata & keep == staged & keep,
             state=self.state,
             word=word,
             jtag_resp=jtag_resp,
@@ -498,6 +584,11 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         seed = self.random_seed()
         p = plan(TEST, seed)
         self.p = p
+        self.shim_draw = {
+            "rd_addr": _shim_addr(p, "rd"),
+            "wr_addr": _shim_addr(p, "wr"),
+            "wdata": p.draw.randrange("shim_wdata", 0, M32 + 1),
+        }
         self.state = lc_state_class(p.lc_raw)
         for line in p.log_lines(state=self.state):
             self.logger.info("%s", line)
@@ -594,6 +685,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         deny_mark = self.shim.mark()
         for acc in p.leg["denied"]:
             await self._denied(acc)
+        await self._shim_deny()
         await ClockCycles(dut.clk_i, w)
         p_word = await direct_word(self, field_word(p_bit["field"]) + p_bit["word"])
         denied_progs = self.shim.programs_since(deny_mark)
