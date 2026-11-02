@@ -111,8 +111,13 @@ Checkers:
                        8 x (n div 16) > k and 0 when equal; OUTPUT_COUNT == 0 when no
                        digest word is pending, == the pending words when a digest has
                        given some but not all of its words, and 0 or 8 when it has
-                       given none. Control: at least one graded read expects BUSY = 1
-                       and one expects a non-zero INPUT_COUNT.
+                       given none. Digest words reach the FIFO with no backpressure
+                       (architecture.adoc:148), so no quiet read falls inside the
+                       output of a digest and no graded read expects a non-zero
+                       OUTPUT_COUNT; the check grades the 0 only, and
+                       CHK-COND-SHA-COUNT grades the count on the status tap. Control:
+                       at least one graded read expects BUSY = 1 and one expects a
+                       non-zero INPUT_COUNT.
   CHK-COND-PASSTHRU    every FIFO word == BIW observe word i + d at one d in 0..8.
 Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
 ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
@@ -1521,10 +1526,14 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
 
         A read samples the register on a clock of its bus window ``[start - 1, end]``.
         Only a read with no input or FIFO word within ``QUIET_GUARD`` clocks of that
-        window is graded, so the expected fields hold on every clock it can sample."""
+        window is graded, so the expected fields hold on every clock it can sample.
+        With no backpressure on the FIFO words (architecture.adoc:148) no graded read
+        falls inside the output of a digest, so each graded read expects
+        OUTPUT_COUNT = 0 (or 0 or 8 before a digest gives its first word). The control
+        logs the graded reads that expect a non-zero OUTPUT_COUNT."""
         tr = tap.trace
         quiet = tap.quiet_clocks()
-        graded = busy_graded = in_graded = 0
+        graded = busy_graded = in_graded = out_graded = 0
         errors: list[str] = []
         q0 = quiet[0] if quiet else None
         a = None
@@ -1557,6 +1566,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             graded += 1
             busy_graded += want_busy
             in_graded += int(want_in != 0)
+            out_graded += int(0 not in want_out)
             if (
                 n < 0
                 or pending < 0
@@ -1576,6 +1586,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             graded=graded,
             busy_graded=busy_graded,
             in_nonzero_graded=in_graded,
+            out_nonzero_graded=out_graded,
             quiet_clock="none" if q0 is None else q0,
             anchor_clock="none" if a is None else a,
         )

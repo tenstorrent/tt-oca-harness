@@ -286,7 +286,8 @@ Checkers:
                  AUTO_ZERO_HDRS (3) command headers on the EDN to CSRNG port after
                  the instantiate is a generate; a port with no handshake for 60000
                  clocks ends the watch early. Control (``CTRL-EDN-AUTO-ZERO``): the
-                 first header on the port is the software instantiate.
+                 first header on the port is the software instantiate, and
+                 ``HW_CMD_STS.AUTO_MODE`` reads 1 after the watch (edn.adoc:213).
   CHK-CSRNG-HW-INST-EXC  the second instantiate through EDN is a sequencing error
                  on hardware instance 0: ``INTR_STATE.cs_hw_inst_exc`` reads 1
                  after it (theory_of_operation.md:425).
@@ -1144,7 +1145,10 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         software instantiate, until AUTO_ZERO_HDRS headers or AUTO_CAP clocks with
         no handshake. No header may carry the Generate acmd. Control
         (``CTRL-EDN-AUTO-ZERO``): the first header is the software instantiate, so
-        the watch sees the port. The headers EDN sends are logged
+        the watch sees the port, and ``HW_CMD_STS.AUTO_MODE`` reads 1 after the
+        watch ("0b1: The EDN is in the hardware controlled part of auto mode.",
+        edn.adoc:213), so a quiet port is not an EDN that never left software
+        port mode. The headers EDN sends are logged
         (``OBS-EDN-AUTO-ZERO``): no text states them for the value 0. The trial
         opens no coverage window, so the check has its own release.
         """
@@ -1170,6 +1174,7 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
         seq = hdrs[1:]
         # A quiet port after the instantiate ends the watch with no generate seen.
         quiet = reason.startswith("timeout:edn_cmd") and first is not None
+        hw = await r._rd(EDN_HW_CMD_STS)
         f = {
             "max_num_reqs": 0,
             "first_word": "na" if first is None else f"0x{first:x}",
@@ -1178,19 +1183,19 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             "generates": sum(decode_hdr(w)["acmd"] == ACMD_GENERATE for w in seq),
             "expected_generates": 0,
             "end": reason or "headers",
+            "auto_mode": int(bool(hw & ED_AUTO_MODE)),
+            "expected_auto_mode": 1,
         }
-        self.chk.ctrl("EDN-AUTO-ZERO", first == CMD_INSTANTIATE, **f)
+        self.chk.ctrl("EDN-AUTO-ZERO", first == CMD_INSTANTIATE and f["auto_mode"] == 1, **f)
         self.chk.ok(
             "EDN-AUTO-ZERO",
             (not reason or quiet) and first == CMD_INSTANTIATE and f["generates"] == 0,
             **f,
         )
-        hw = await r._rd(EDN_HW_CMD_STS)
         self.chk.obs(
             "EDN-AUTO-ZERO",
             words=[f"0x{w:x}" for w in seq],
             hw_type=_field(hw, ED_HW_TYPE),
-            hw_auto=int(bool(hw & ED_AUTO_MODE)),
             hw_boot=int(bool(hw & ED_BOOT_MODE)),
             hw_ack=int(bool(hw & ED_HW_ACK)),
         )

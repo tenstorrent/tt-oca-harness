@@ -62,7 +62,8 @@ Checkers:
                     the eight defined bits before the reset, and every ``INTR_STATUS``
                     bit reads 1 before the reset. The health and alert latches read 0
                     before the reset too, so only the eight ``INTR_STATUS`` bits are
-                    graded from a set value.
+                    graded from a set value. The walked volatile fields must be
+                    exactly the 23 the contract names (``CONTRACT_VOLATILE``).
   CHK-LOCK-MEN      locked trial: ``IDLE`` = 0 and ``LEVEL`` > 0 within 2 t_ref after a
                     drain and the write of 0. Control: the unlocked trial of the same
                     seed reads ``IDLE`` = 1 and an empty FIFO for 2 t_ref after
@@ -133,6 +134,14 @@ CONTRACT_RESTORE = frozenset(
         ("HT_WATERMARK_NUM", "WATERMARK_NUM"),
         ("NOISE_OBS_CTRL", "LANE_SEL"),
     }
+)
+# The 23 volatile fields the contract names (Checker Table, CHK-ESRC-VOLATILE). The
+# run-time walk must give exactly this set.
+CONTRACT_VOLATILE = frozenset(
+    {("INTR_STATUS", f) for r, f in CONTRACT_RESTORE if r == "INTR_ENABLE"}
+    | {("HEALTH_TEST_STATUS", "HEALTH_STATUS")}
+    | {(f"GENERATOR_{k}_HEALTH_STATUS", "STATUS") for k in range(12)}
+    | {("MAIN_SM_STATUS", "ALERT"), ("MAIN_SM_STATUS", "ERR")}
 )
 # Restore-value draws with a stated legal range (contract, Randomization).
 V1_RANGE = {
@@ -764,10 +773,16 @@ class sep_esrc_csr_rw_walk_rand_test(sep_base_test):
             if post[name] != want:
                 bad.append(f"{name}=0x{post[name]:x}/0x{want:x}")
         nonzero_pre = [f"{n}=0x{v:x}" for n, v in sorted(pre.items()) if v]
+        walked = set(self.plan.volatile)
+        missing = sorted(f"{r}.{f}" for r, f in CONTRACT_VOLATILE - walked)
+        extra = sorted(f"{r}.{f}" for r, f in walked - CONTRACT_VOLATILE)
         self.chk.ok(
             "ESRC-VOLATILE",
-            not bad,
+            not bad and not missing and not extra,
             fields=len(self.plan.volatile),
+            expected_fields=len(CONTRACT_VOLATILE),
+            missing=",".join(missing) or "none",
+            extra=",".join(extra) or "none",
             pre=",".join(nonzero_pre) or "none",
             post="reset",
             mismatches=len(bad),
