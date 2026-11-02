@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SMC_ADOPTER_FUSE_MAP_RDL
+`define SMC_ADOPTER_FUSE_MAP_RDL
+
+// Example adopter-owned payload for the SMC adopter fuse region. The harness RTL does not read this
+// file; it takes the region from smu_pkg CFG. An adopter's RDL documents the payload and generates
+// its software headers and an SV struct for smc_adopter_shadow_regs_o. The payload carries no
+// locks: the 32 write/read pairs that govern it are ADOPTER_LOCKS in smc_efuse_map.
+//
+// Lock pair n governs lock region n, which ends at word CFG.SMC_ADOPTER_LOCK_REGION_END[n]. This
+// example makes each top-level register instance a region, with each array element counted
+// separately, and defines all 32:
+//   regions  0-15  MEM_REPAIR[16]   one repair entry per region, ends 4, 8, ... 64
+//   regions 16-23  SENSOR_TRIM[8]   one sensor per region, ends 68, ... 96
+//   regions 24-31  ADOPTER_SPARE[8] adopter-reserved, ends 100, ... 128
+// with CFG.SMC_ADOPTER_FUSE_WORDS = 128. Once parts carry burned lock bits, grow the map only by
+// appending regions.
+//
+// Contents must not be secret: the region has no secure-test masking or scan protection.
+
+addrmap smc_adopter_fuse_map {
+    name = "Example SMC adopter fuse map";
+    desc = "Memory repair entries and sensor trims for adopter logic outside the harness.";
+
+    default regwidth = 128;
+    default accesswidth = 64;
+    default sw = rw;
+    default hw = r;
+
+    reg MEM_REPAIR {
+        desc = "Repair entry for one adopter memory instance. Written to the shadow during test for soft
+                repair, then burned; the adopter's firmware sets the region write lock in production.";
+
+        field {
+            desc = "When set, the repair in this entry is applied.";
+        } enable[0:0] = 0x0;
+
+        field {
+            desc = "Index of the adopter memory instance this entry repairs.";
+        } instance_id[15:1] = 0x0;
+
+        field {
+            desc = "Redundant row selection. Zero selects no row repair.";
+        } row_repair[47:16] = 0x0;
+
+        field {
+            desc = "Redundant column selection. Zero selects no column repair.";
+        } col_repair[79:48] = 0x0;
+
+        field {
+            desc = "Reserved for the adopter's repair encoding.";
+        } rsvd[127:80] = 0x0;
+    };
+
+    reg SENSOR_TRIM {
+        desc = "Calibration for one adopter sensor. Trial values may be written to the shadow before the
+                chosen value is burned.";
+
+        field {
+            desc = "When set, the sensor uses these trims instead of its defaults.";
+        } trim_valid[0:0] = 0x0;
+
+        field {
+            desc = "Reference voltage trim.";
+        } vref_trim[8:1] = 0x0;
+
+        field {
+            desc = "Gain trim.";
+        } gain_trim[16:9] = 0x0;
+
+        field {
+            desc = "Offset trim, two's complement.";
+        } offset_trim[28:17] = 0x0;
+
+        field {
+            desc = "Reserved for the adopter's trim encoding.";
+        } rsvd[127:29] = 0x0;
+    };
+
+    reg ADOPTER_SPARE {
+        desc = "Adopter-reserved spare region. Separate from the harness spares, which stay reserved for the
+                harness.";
+
+        field {
+            desc = "Spare fuse bits for future adopter use.";
+        } rsvd[127:0] = 0x0;
+    };
+
+    MEM_REPAIR    MEM_REPAIR[16]    @0x000 += 0x10;
+    SENSOR_TRIM   SENSOR_TRIM[8]    @0x100 += 0x10;
+    ADOPTER_SPARE ADOPTER_SPARE[8]  @0x180 += 0x10;
+};
+
+`endif

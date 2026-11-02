@@ -17,6 +17,11 @@
 // before they are issued, and export shadow_regs_o. ext_boot_seq_done_i gates
 // boot until memory repair / shadow override completes.
 //
+// With ADOPTER_FUSE_WORDS non-zero, the fuse words after the shadow register file form an
+// adopter region: one sense READ covers both, a second shadow file serves it through its own
+// window at ADOPTER_REG_MAP_BASE_ADDR, and the lock pairs that follow the harness locks in the
+// shadow register file govern its regions. Sensing completes once both files are loaded.
+//
 // Raise locked_field_access_interrupt_o and token_match_fault_o. Debug outputs expose
 // lock, timeout, and token-match state.
 
@@ -87,6 +92,16 @@ module efuse_interface_controller #(
   localparam int unsigned LcStateWidth = efuse_pkg::LcStateRawWidth,       // Lifecycle-state field width.
   parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
+  parameter int unsigned ADOPTER_FUSE_WORDS = 0,  // Adopter fuse region size in words, starting at fuse
+                                                  // bit SHADOW_REG_BITS; 0 omits the region.
+  parameter bit [31:0] ADOPTER_REG_MAP_BASE_ADDR = 32'h0,  // Base address of the adopter window; needs only
+                                                           // word alignment.
+  parameter int unsigned ADOPTER_LOCK_REGIONS = 32,  // Adopter field-map entry count; one lock pair each,
+                                                     // after the harness pairs in the shadow register file.
+  localparam bit HasAdopter = ADOPTER_FUSE_WORDS > 0,  // Adopter fuse region present.
+  localparam int unsigned AdopterPortWords = HasAdopter ? ADOPTER_FUSE_WORDS : 1,  // Adopter shadow port width
+                                                                                   // in words.
+
   parameter type efuse_map_t = logic    // Shadow eFuse map type.
 ) (
   input  logic                     clk_i,  // System clock.
@@ -118,6 +133,9 @@ module efuse_interface_controller #(
   input  logic                                  security_disable_i,  // Security disable override, active-high; skips fuse
                                                                      // sensing and opens APB access to the shadow registers.
   input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,  // Per-field access-control rules.
+  input  efuse_pkg::rule_t [ADOPTER_LOCK_REGIONS-1:0] adopter_field_map_i,  // Per-region access-control rules
+                                                                            // at adopter window offsets; unused
+                                                                            // without the adopter region.
 
   output logic                                  reset_n_o,  // Active-low reset, released through a
                                                             // synchronizer once fuse sensing and
@@ -135,6 +153,12 @@ module efuse_interface_controller #(
                                                                 // (with HAS_LC_STATE) or
                                                                 // security_disable_i (without it)
                                                                 // is set.
+  output logic [AdopterPortWords-1:0][EFUSE_MACRO_WORD_WIDTH-1:0] adopter_shadow_regs_o,  // Adopter shadow register
+                                                                                          // contents; zero until fuse
+                                                                                          // sensing completes unless
+                                                                                          // security_disable_i is set,
+                                                                                          // and always without the
+                                                                                          // adopter region.
 
   input  logic                                  ext_boot_seq_done_i,  // External boot sequence complete, such as memory
                                                                       // repair and shadow override; gates the
@@ -178,6 +202,20 @@ module efuse_interface_controller #(
   localparam fuse_command_req_t FuseCommandReqDefault = '0;
 
   localparam logic [5:0] TokenMatchCode = 6'b010101;
+
+  localparam int unsigned NumShadowWords = SHADOW_REG_BITS / EFUSE_MACRO_WORD_WIDTH;
+  localparam int unsigned SenseWords = NumShadowWords + ADOPTER_FUSE_WORDS;
+  // Program and read CSR bit addresses at or above this are rejected as out of bounds.
+  localparam int unsigned FuseBits = SenseWords * EFUSE_MACRO_WORD_WIDTH;
+  localparam int unsigned HarnessLockBits = 2 * (EFUSE_FIELDS - 1);
+  localparam int unsigned AdopterLockBits = 2 * ADOPTER_LOCK_REGIONS;
+  localparam int unsigned ShadowLockBits = HarnessLockBits + (HasAdopter ? AdopterLockBits : 0);
+
+  localparam bit [31:0] InterfaceEndAddr =
+      HAS_LC_STATE ? EfuseMmrRegMapEndAddr : EfuseCtrlRegMapEndAddr;
+  localparam bit [31:0] AdopterRegMapEndAddr = ADOPTER_REG_MAP_BASE_ADDR + 32'(4 * AdopterPortWords) - 32'd1;
+  localparam int unsigned AdopterRegAddrWidth =
+      $clog2(4 * AdopterPortWords) > 4 ? $clog2(4 * AdopterPortWords) : 4;
 
   ////////////////////////////////////////////////////////////////////////////
   // Signal Declarations
@@ -269,41 +307,18 @@ module efuse_interface_controller #(
 
   efuse_pkg::efuse_req_decode_select_e efuse_req_decode_select_aw, efuse_req_decode_select_ar;
 
-  // Write select
-  always_comb begin
-    if (HAS_LC_STATE) begin
-      // ASSUMPTION: ADDRESS SPACE ORDER IS FUSE MAP, INTERFACE CSR, MMR, SHIM
-      unique if (axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
-        efuse_req_decode_select_aw = efuse_pkg::INTERFACE_SEL;
-      end else begin
-        efuse_req_decode_select_aw = efuse_pkg::SHIM_SEL;
-      end
-    end else begin
-      unique if (axil_mux_req.aw.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
-        efuse_req_decode_select_aw = efuse_pkg::INTERFACE_SEL;
-      end else begin
-        efuse_req_decode_select_aw = efuse_pkg::SHIM_SEL;
-      end
+  // ASSUMPTION: ADDRESS SPACE ORDER IS FUSE MAP, INTERFACE CSR, MMR (SEP only); the adopter
+  // window may sit anywhere outside that span.
+  function automatic efuse_pkg::efuse_req_decode_select_e decode_select(logic [ADDR_WIDTH-1:0] addr);
+    if ((addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:InterfaceEndAddr]}) ||
+        (HasAdopter && (addr inside {[ADOPTER_REG_MAP_BASE_ADDR:AdopterRegMapEndAddr]}))) begin
+      return efuse_pkg::INTERFACE_SEL;
     end
-  end
+    return efuse_pkg::SHIM_SEL;
+  endfunction
 
-  // Read select
-  always_comb begin
-    if (HAS_LC_STATE) begin
-      // ASSUMPTION: ADDRESS SPACE ORDER IS FUSE MAP, INTERFACE CSR, MMR, SHIM
-      unique if (axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
-        efuse_req_decode_select_ar = efuse_pkg::INTERFACE_SEL;
-      end else begin
-        efuse_req_decode_select_ar = efuse_pkg::SHIM_SEL;
-      end
-    end else begin
-      unique if (axil_mux_req.ar.addr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
-        efuse_req_decode_select_ar = efuse_pkg::INTERFACE_SEL;
-      end else begin
-        efuse_req_decode_select_ar = efuse_pkg::SHIM_SEL;
-      end
-    end
-  end
+  assign efuse_req_decode_select_aw = decode_select(axil_mux_req.aw.addr);
+  assign efuse_req_decode_select_ar = decode_select(axil_mux_req.ar.addr);
 
   axi_lite_demux #(
     .aw_chan_t(efuse_axil_aw_chan_t),
@@ -401,24 +416,18 @@ module efuse_interface_controller #(
 
   // APB slave select logic
   always_comb begin
-    if (HAS_LC_STATE) begin
-      unique if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}) begin
-        efuse_reg_select = efuse_pkg::SHADOW_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
-        efuse_reg_select = efuse_pkg::EFUSE_CSR_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_MMR_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]}) begin
-        efuse_reg_select = efuse_pkg::EFUSE_MMR_REG_MAP;
-      end else begin
-        efuse_reg_select = efuse_pkg::ERR_DECODE;
-      end
+    if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}) begin
+      efuse_reg_select = efuse_pkg::SHADOW_REG_MAP;
+    end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
+      efuse_reg_select = efuse_pkg::EFUSE_CSR_REG_MAP;
+    end else if (HAS_LC_STATE &&
+                 (apb_mux_req.paddr inside {[EFUSE_MMR_REG_MAP_BASE_ADDR:EfuseMmrRegMapEndAddr]})) begin
+      efuse_reg_select = efuse_pkg::EFUSE_MMR_REG_MAP;
+    end else if (HasAdopter &&
+                 (apb_mux_req.paddr inside {[ADOPTER_REG_MAP_BASE_ADDR:AdopterRegMapEndAddr]})) begin
+      efuse_reg_select = efuse_pkg::ADOPTER_SHADOW_REG_MAP;
     end else begin
-      unique if (apb_mux_req.paddr inside {[EFUSE_MAP_REG_MAP_BASE_ADDR:EfuseMapRegMapEndAddr]}) begin
-        efuse_reg_select = efuse_pkg::SHADOW_REG_MAP;
-      end else if (apb_mux_req.paddr inside {[EFUSE_CTRL_REG_MAP_BASE_ADDR:EfuseCtrlRegMapEndAddr]}) begin
-        efuse_reg_select = efuse_pkg::EFUSE_CSR_REG_MAP;
-      end else begin
-        efuse_reg_select = efuse_pkg::ERR_DECODE;
-      end
+      efuse_reg_select = efuse_pkg::ERR_DECODE;
     end
   end
 
@@ -572,7 +581,7 @@ module efuse_interface_controller #(
   assign reg_interface_program_go = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_program_go.value;
   assign reg_interface_program_addr_csr = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_addr.value;
   assign reg_interface_program_addr = efuse_addr_t'(reg_interface_program_addr_csr);
-  assign reg_interface_program_addr_oob = ({16'h0, reg_interface_program_addr_csr} >= SHADOW_REG_BITS);
+  assign reg_interface_program_addr_oob = ({16'h0, reg_interface_program_addr_csr} >= FuseBits);
   assign reg_interface_program_data = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_data.value;
   assign reg_interface_program_read_back_enable = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value;
 
@@ -651,7 +660,7 @@ module efuse_interface_controller #(
   assign reg_interface_read_enable = fuse_interface_ctrl_hwif_out.EFUSE_READ_CTRL.read_enable.value && ~efuse_req_err;
   assign reg_interface_read_addr_csr = fuse_interface_ctrl_hwif_out.EFUSE_READ_CTRL.efuse_addr.value;
   assign reg_interface_read_addr = efuse_addr_t'(reg_interface_read_addr_csr);
-  assign reg_interface_read_addr_oob = ({16'h0, reg_interface_read_addr_csr} >= SHADOW_REG_BITS);
+  assign reg_interface_read_addr_oob = ({16'h0, reg_interface_read_addr_csr} >= FuseBits);
   assign reg_interface_read_go = fuse_interface_ctrl_hwif_out.EFUSE_READ_CTRL.efuse_read_go.value;
 
   logic               efuse_read_busy;
@@ -709,6 +718,10 @@ module efuse_interface_controller #(
   fuse_command_req_t fuse_command_req_shadow_regs;
   fuse_command_resp_t fuse_command_resp_shadow_regs;
 
+  logic                       harness_sense_done;
+  logic                       harness_write_locked, harness_read_locked, harness_locked_access;
+  logic [ShadowLockBits-1:0]  shadow_lock_vector;
+
   efuse_shadow_regs #(
     .FUSE_MAP_REG_MAP_BASE_ADDR(EFUSE_MAP_REG_MAP_BASE_ADDR),
 
@@ -721,6 +734,8 @@ module efuse_interface_controller #(
     .HAS_LC_STATE        (HAS_LC_STATE),
     .CLASS1_SHADOW_RANGES(CLASS1_SHADOW_RANGES),
     .SECRET_SHADOW_RANGES(SECRET_SHADOW_RANGES),
+    .SENSE_WORDS         (SenseWords),
+    .LOCK_VECTOR_BITS    (ShadowLockBits),
 
     .TOKEN_MATCH_CODE    (TokenMatchCode),
 
@@ -754,7 +769,7 @@ module efuse_interface_controller #(
 
     .apb_resp_o              (apb_endpoint_resps[efuse_pkg::SHADOW_REG_MAP]),
 
-    .fuse_sense_done_o       (fuse_sense_done),
+    .fuse_sense_done_o       (harness_sense_done),
     .shadow_efuse_o          (shadow_regs),
 
     // RMA Token Match
@@ -765,14 +780,123 @@ module efuse_interface_controller #(
     .fuse_command_req_o   (fuse_command_req_shadow_regs),
     .fuse_command_resp_i  (fuse_command_resp_shadow_regs),
 
+    .ext_locks_i          ('0),
+    .lock_vector_o        (shadow_lock_vector),
+
     // Debug ports
-    .is_write_locked_o        (is_write_locked_shadow_regs_o),
+    .is_write_locked_o        (harness_write_locked),
     .is_write_setup_only_o   (is_write_setup_only_o),
     .is_lc_state_access_o    (is_lc_state_access_o),
-    .is_read_locked_o        (is_read_locked_shadow_regs_o),
+    .is_read_locked_o        (harness_read_locked),
 
-    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
+    .locked_field_access_interrupt_o  (harness_locked_access)
   );
+
+  ////////////////////////////////////////////////////////////////////////////
+  // Adopter Shadow Registers
+  ////////////////////////////////////////////////////////////////////////////
+
+  logic [AdopterLockBits-1:0] adopter_lock_vector;
+
+  if (HasAdopter) begin : gen_adopter_shadow_regs
+    typedef struct packed {
+      logic [ADOPTER_FUSE_WORDS-1:0][EFUSE_MACRO_WORD_WIDTH-1:0] values;
+    } adopter_map_t;
+
+    adopter_map_t adopter_shadow_regs;
+    logic         adopter_sense_done;
+    logic         adopter_write_locked, adopter_read_locked, adopter_locked_access;
+    logic [31:0]  adopter_paddr;
+
+    assign adopter_lock_vector = shadow_lock_vector[HarnessLockBits +: AdopterLockBits];
+    assign adopter_paddr = 32'(apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].paddr) -
+        ADOPTER_REG_MAP_BASE_ADDR;
+
+    efuse_shadow_regs #(
+      .SHADOW_REG_BITS      (ADOPTER_FUSE_WORDS * EFUSE_MACRO_WORD_WIDTH),
+      .SHADOW_REG_BYTES     (ADOPTER_FUSE_WORDS * EFUSE_MACRO_WORD_WIDTH / 8),
+      .SHADOW_REG_WORD_WIDTH(EFUSE_MACRO_WORD_WIDTH),
+      .EFUSE_FIELDS         (ADOPTER_LOCK_REGIONS),
+      .REG_ADDR_WIDTH       (AdopterRegAddrWidth),
+
+      .HAS_LC_STATE         (1'b0),
+      .SENSE_WORDS          (SenseWords),
+      .LOAD_WORD_OFFSET     (NumShadowWords),
+      .ISSUE_SENSE          (1'b0),
+      .LOCK_VECTOR_BITS     (AdopterLockBits),
+      .EXT_LOCKS            (1'b1),
+      .PRELOAD_PLUSARG      ("adopter_shadow_reg_preload"),
+
+      .TOKEN_MATCH_CODE     (TokenMatchCode),
+
+      .efuse_apb_resp_t     (efuse_apb_resp_t),
+
+      .efuse_addr_t         (efuse_addr_t),
+      .efuse_data_t         (efuse_data_t),
+      .efuse_word_counter_t (efuse_word_counter_t),
+      .fuse_command_req_t   (fuse_command_req_t),
+      .fuse_command_resp_t  (fuse_command_resp_t),
+
+      .efuse_map_t          (adopter_map_t)
+    ) u_efuse_adopter_shadow_regs (
+      .clk_i                (clk_i),
+      .rst_ni               (rst_ni),
+
+      .security_disable_i   (security_disable_i),
+
+      .secure_tm_i          (secure_tm_i),
+
+      .efuse_field_map_i    (adopter_field_map_i),
+
+      .apb_req_paddr_i      (adopter_paddr[AdopterRegAddrWidth-1:0]),
+      .apb_req_psel_i       (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].psel),
+      .apb_req_penable_i    (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].penable),
+      .apb_req_pwrite_i     (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].pwrite),
+      .apb_req_pwdata_i     (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].pwdata),
+      .apb_req_pstrb_i      (apb_endpoint_reqs[efuse_pkg::ADOPTER_SHADOW_REG_MAP].pstrb),
+
+      .apb_resp_o           (apb_endpoint_resps[efuse_pkg::ADOPTER_SHADOW_REG_MAP]),
+
+      .fuse_sense_done_o    (adopter_sense_done),
+      .shadow_efuse_o       (adopter_shadow_regs),
+
+      .rma_chiplet_token_match_i (rma_chiplet_token_match),
+      .rma_sip_token_match_i     (rma_sip_token_match),
+
+      .fuse_command_req_o   (),
+      .fuse_command_resp_i  (fuse_command_resp_shadow_regs),
+
+      .ext_locks_i          (adopter_lock_vector),
+      .lock_vector_o        (),
+
+      .is_write_locked_o    (adopter_write_locked),
+      .is_write_setup_only_o(),
+      .is_lc_state_access_o (),
+      .is_read_locked_o     (adopter_read_locked),
+
+      .locked_field_access_interrupt_o (adopter_locked_access)
+    );
+
+    assign fuse_sense_done = harness_sense_done && adopter_sense_done;
+    assign adopter_shadow_regs_o = (fuse_sense_done || security_disable_i) ?
+        adopter_shadow_regs.values : '0;
+
+    assign is_write_locked_shadow_regs_o   = harness_write_locked || adopter_write_locked;
+    assign is_read_locked_shadow_regs_o    = harness_read_locked || adopter_read_locked;
+    assign locked_field_access_interrupt_o = harness_locked_access || adopter_locked_access;
+  end else begin : gen_no_adopter_shadow_regs
+    assign apb_endpoint_resps[efuse_pkg::ADOPTER_SHADOW_REG_MAP].pready = 1'b1;
+    assign apb_endpoint_resps[efuse_pkg::ADOPTER_SHADOW_REG_MAP].prdata = data_t'('hbadcab1e);
+    assign apb_endpoint_resps[efuse_pkg::ADOPTER_SHADOW_REG_MAP].pslverr = 1'b1;
+
+    assign adopter_lock_vector = '0;
+    assign fuse_sense_done = harness_sense_done;
+    assign adopter_shadow_regs_o = '0;
+
+    assign is_write_locked_shadow_regs_o   = harness_write_locked;
+    assign is_read_locked_shadow_regs_o    = harness_read_locked;
+    assign locked_field_access_interrupt_o = harness_locked_access;
+  end
 
   ////////////////////////////////////////////////////////////////////////////
   // Demux between shadow register request, read CSR request, and write CSR request
@@ -806,10 +930,12 @@ module efuse_interface_controller #(
     .HAS_LC_STATE(HAS_LC_STATE),
     .LC_STATE_BIT_POSITION(LC_STATE_BIT_POSITION),
     .EFUSE_FIELDS(EFUSE_FIELDS),
+    .LOCK_VECTOR_BITS(HarnessLockBits),
+    .ADOPTER_FIELDS(HasAdopter ? ADOPTER_LOCK_REGIONS : 0),
+    .ADOPTER_BIT_BASE(SHADOW_REG_BITS),
+    .ADOPTER_LOCK_VECTOR_BITS(AdopterLockBits),
 
     .TOKEN_MATCH_CODE(TokenMatchCode),
-
-    .efuse_map_t(efuse_map_t),
 
     .efuse_addr_t(efuse_addr_t),
     .efuse_data_t(efuse_data_t)
@@ -819,6 +945,7 @@ module efuse_interface_controller #(
     .secure_tm_i               (secure_tm_i),
 
     .efuse_field_map_i         (efuse_field_map_i),
+    .adopter_field_map_i       (adopter_field_map_i[(HasAdopter ? ADOPTER_LOCK_REGIONS : 1)-1:0]),
 
     .rma_sip_token_match_i     (rma_sip_token_match),
     .rma_chiplet_token_match_i (rma_chiplet_token_match),
@@ -828,7 +955,8 @@ module efuse_interface_controller #(
     // A signal from the efuse_interface_ctrl_reg to clear the error
     .error_clear_i             (efuse_err_clear),
 
-    .shadow_regs_i             (shadow_regs),
+    .locks_i                   (shadow_lock_vector[HarnessLockBits-1:0]),
+    .adopter_locks_i           (adopter_lock_vector),
     .program_target_addr_i     (reg_interface_program_addr),
     .read_target_addr_i        (reg_interface_read_addr),
     .program_blocked_i         (program_blocked),
