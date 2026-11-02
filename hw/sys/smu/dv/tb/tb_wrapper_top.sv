@@ -1914,9 +1914,9 @@ module smu_wrapper_uvm_top
   // external inbound port, and the SEP aperture leaf up to 36 on the
   // crossbar SEP port.
   //
-  // The two-state rules grade on VCS and on Verilator, whose targets turn the
-  // Verilator assertion switch on; the X-hygiene and data-known rules, the
-  // count lines and the need checks below are VCS only. The handshake
+  // The two-state rules grade on VCS and on Verilator, whose targets turn
+  // the assertion switch on; the X-hygiene and data-known rules, the count
+  // lines and the need checks below are VCS only. The handshake
   // counters below count the AW and AR handshakes each checker graded; a
   // test that names a port with +axi_sva_need_<port> fails when that count
   // is zero.
