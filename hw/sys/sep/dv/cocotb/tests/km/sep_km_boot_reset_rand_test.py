@@ -49,6 +49,12 @@ Checks:
   CHK-FWSIZE      CMD_SRAM_EXEC returns -7 with no argument after the cold reset
                   and after the next warm reset
   CHK-SRAM-VER    CMD_SRAM_VER returns -1 with no argument with an image stored
+  CHK-BOOT-FLUSHED-BY-KM
+                  ``KM_IRQ_STATUS.flushed_by_km`` on the SEP side reads 1 at the
+                  first read after the boots and before the leaf clears it: the
+                  KM boot flush sets the peer's flushed-by-other status and the
+                  KM clears only its own side (``architecture.adoc:232-233``,
+                  ``firmware.adoc:1382``)
   CHK-RST-AXI-VALID
                   at each AXI reset point (rst_ni driven low in the half clock
                   of a pending KM CPU read, then of a pending write) the three
@@ -218,6 +224,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         "CHK-SRAM-VER",
         "CHK-RST-AXI-VALID",
         "CHK-SEQ0",
+        "CHK-BOOT-FLUSHED-BY-KM",
     )
 
     # ------------------------------------------------------------------ main
@@ -769,12 +776,25 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         n = self.plan.image_n
         code, arg = await self._cmd(pl.CMD_SRAM_LOAD_EXEC, (n,), f"{tag} load")
         confirm = code == pl.RC_SUCCESS and arg is None
-        # Clear FLUSHED_BY_KM if the boot flush set it, so that only the
-        # handover flush sets it again. That flush follows the store of the image
-        # size ("SRAM Firmware Handover"), so the warm reset of step 16 waits for it.
+        # The KM boot flush sets FLUSHED_BY_KM on the SEP side and the KM clears
+        # only its own side, so the bit reads 1 here, at the first read of the
+        # SEP IRQ status since the boots. The W1C below makes the handover flush
+        # the only one that sets it again. That flush follows the store of the
+        # image size ("SRAM Firmware Handover"), so the warm reset of step 16
+        # waits for it.
         pre = await self._rd(KM_MBOX_IRQ_STATUS)
-        self.chk.obs(
-            "BOOT-FLUSHED-BY-KM", boot=tag, flushed_by_km=(pre >> KM_IRQ_FLUSHED_BY_KM) & 1
+        flushed_by_km = (pre >> KM_IRQ_FLUSHED_BY_KM) & 1
+        self.chk.ok(
+            "BOOT-FLUSHED-BY-KM",
+            flushed_by_km == 1,
+            contract=(
+                "key_manager/doc/architecture.adoc:232-233(Mailbox_Transport),"
+                "firmware.adoc:1382(Boot_Sequence)"
+            ),
+            boot=tag,
+            irq_status=_a(pre),
+            flushed_by_km=flushed_by_km,
+            expected=1,
         )
         await self._wr(KM_MBOX_IRQ_STATUS, 1 << KM_IRQ_FLUSHED_BY_KM)
         irq = await self._rd(KM_MBOX_IRQ_STATUS)

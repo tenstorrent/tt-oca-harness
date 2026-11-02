@@ -37,11 +37,27 @@ with K and sets KEY_VALID, and the host encrypts one block with AES-256 ECB
 from the sideload key.
 
 Checks (each anchored on a POKE readback or the POKE handler count):
+  CHK-BANK-SHARES-RST all 136 share words read 0 after reset, before any write:
+                   "One 32-bit word of key data. Write-only; reads return 0."
+                   (``hw/ip/key_manager/regs/aes_wrapper_key.rdl:37``, the same
+                   in the hmac, kmac, otbn and abr wrapper RDL); "The
+                   ``KEY_SHARE0`` and ``KEY_SHARE1`` words are write-only, and
+                   reads return zero." (``architecture.adoc:282-283``). The
+                   stored value after reset is undefined
+                   (``aes_wrapper_key.rdl:38``) and is not observable on the bus
   CHK-BANK-SHARES  all 136 share words read 0 after a non-zero write, key_valid 0
   CHK-BANK-VALID   KEY_CTRL.key_valid resets to 0, a write of 1 sets it (twice),
                    a write of 0 clears it, and no other bank moves
   CHK-BANK-SK      the encapsulation delivers the shared key: KEY_CTRL.key_valid 1,
                    IRQ_STATUS.key_valid sticky, kept by a write of 0, W1C
+  CHK-SK-WORDS     the 8 KEY words of the first delivery equal the FIPS 203
+                   shared key of the encapsulation vector (``NIST_KEM_ENC_K``)
+                   word for word: "``KEY[i]`` holds bytes ``4i`` to ``4i+3`` of
+                   the FIPS 203 shared key, in the same order as the engine's own
+                   ``MLKEM_SHARED_KEY`` register array."
+                   (``hw/sys/sep/doc/adams_bridge.adoc:155-157``). The delivered
+                   message is ``MLKEM_MSG`` word ``i`` (``adams_bridge.adoc:143-147``),
+                   and the staged shares XOR to ``NIST_KEM_ENC_M``
   CHK-BANK-SK-CONSUME  a write of 0 clears key_valid; a software write of 1
                    afterwards leaves it 0; both writes are accepted
   CHK-BANK-SK-SW   the 8 KEY words read 0 after the consume and after the
@@ -53,6 +69,26 @@ Checks (each anchored on a POKE readback or the POKE handler count):
                    ciphertext equals the AES-256 golden of K (whole 128 bits);
                    in the same line KEY_VALID reads 1 before the wipe, 0 after
                    it and 1 after the share write, and every write is accepted
+  CHK-SS-KEY-CTRL-RSVD the AES KEY_CTRL reserved bits [31:1] read 0 before the
+                   wipe, after it and after the share write
+                   (``hw/ip/key_manager/regs/aes_wrapper_key.rdl:78-84``,
+                   ``rsvd[31:1]``, ``sw = r``, ``reset = 31'h0``)
+  CHK-BANK-RST     after each engine ``SW_RESET_N`` park and release, that
+                   engine's own banks read KEY_CTRL.key_valid 0; after the ABR
+                   reset the shared-key KEY_CTRL.key_valid and the 8 KEY words
+                   also read 0. "Each engine wrapper, ``u_sep_trng`` and the Key
+                   Manager crossbar are reset by their ``gated_rst_ni`` bit"
+                   (``hw/sys/sep/doc/reset_controller.adoc:129-131``);
+                   ``KEY_VALID`` ``reset = 1'b0`` (``aes_wrapper_key.rdl:75``,
+                   the same field in each wrapper), shared-key ``KEY``
+                   ``reset = 32'h0`` and ``KEY_VALID`` ``reset = 1'b0``
+                   (``abr_wrapper_key.rdl:103``, ``:129``). Right before each
+                   reset the leaf writes key_valid 1 to the engine's own banks
+                   (and for ABR redelivers the shared key when it is not held);
+                   its control ``CTRL-BANK-RST-LIVE`` requires those writes
+                   accepted and the banks read set. The state of the own banks
+                   before that write, and the other banks after the reset, are
+                   logged (``OBS-BANK-RST``)
 
 Controls: the non-zero, accepted write of each share word before its read; the
 vector 0 after the share reads; the status and key_valid 0 before each delivery;
@@ -86,16 +122,17 @@ their seed mapping.
                    ``aes_wrapper_key.rdl`` states a strobe rule for the share
                    words.
 
-Shards (``env/sep_shard.py``): without ``+sep_shard`` the leaf runs every leg.
-``+sep_shard=1`` runs steps 2 to 7. ``+sep_shard=2`` runs steps 2 to 7 and
-the single-share leg; its step 6 grades CHK-BANK-SK-CONSUME and logs the KEY
-words (``OBS-SK-WORDS``) without CHK-BANK-SK-SW.
+Shards (``env/sep_shard.py``): without ``+sep_shard`` the leaf runs every leg,
+and only this run grades CHK-BANK-RST. ``+sep_shard=1`` runs steps 2 to 7.
+``+sep_shard=2`` runs steps 2 to 7 and the single-share leg; its step 6 grades
+CHK-BANK-SK-CONSUME and logs the KEY words after the consume and after the
+refused set (``OBS-SK-WORDS``) without CHK-BANK-SK-SW.
 
-Logged only: the share-read responses and reserved KEY_CTRL bits; the 8
-shared-key words (``OBS-SK-WORDS``; the leaf has no graded golden for them);
-the bank state after each engine ``SW_RESET_N`` reset (``OBS-BANK-RST``; no
-sentence states that the engine reset clears the KM-side key registers); the
-bank state after a KM PARK (``OBS-KM-PARK``; not stated).
+Logged only: the share-read responses; the reserved KEY_CTRL bits of the eight
+banks at reset; the shared-key words before the consume (``OBS-SK-WORDS``,
+``phase=before_consume``); whether an engine reset keeps the banks of the other
+engines and the shared-key IRQ_STATUS after it (``OBS-BANK-RST``; no sentence
+states either); the bank state after a KM PARK (``OBS-KM-PARK``; not stated).
 """
 
 from __future__ import annotations
@@ -107,7 +144,7 @@ from env import sep_km_poke as kp
 from env.sep_abr_kem_nist import NIST_KEM_ENC_C, NIST_KEM_ENC_EK, NIST_KEM_ENC_K
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_axi_agent import SepAxiOp
-from env.sep_chk_log import SepChkLog, word_digest
+from env.sep_chk_log import SepChkLog, diff_words, word_digest
 from env.sep_fcov_gate import (
     KM_SK_PASS_CONSUME,
     KM_SK_PASS_IRQ,
@@ -179,9 +216,11 @@ _KM_WIPE_CTRL = SEP_CPU_CTRL.addr("KM_WIPE_CTRL")
 _KM_WIPE_BIT = SEP_CPU_CTRL.field_mask("KM_WIPE_CTRL", "wipe_state")
 
 _STEPS_EVIDENCE = (
+    "CHK-BANK-SHARES-RST",
     "CHK-BANK-SHARES",
     "CHK-BANK-VALID",
     "CHK-BANK-SK",
+    "CHK-SK-WORDS",
     "CHK-BANK-SK-CONSUME",
     "CHK-BANK-SK-SW",
     "CHK-BANK-SK-IRQ",
@@ -189,12 +228,15 @@ _STEPS_EVIDENCE = (
 _SHARD_EVIDENCE = {
     1: _STEPS_EVIDENCE,
     2: (
+        "CHK-BANK-SHARES-RST",
         "CHK-BANK-SHARES",
         "CHK-BANK-VALID",
         "CHK-BANK-SK",
+        "CHK-SK-WORDS",
         "CHK-BANK-SK-CONSUME",
         "CHK-BANK-SK-IRQ",
         "CHK-SINGLE-SHARE",
+        "CHK-SS-KEY-CTRL-RSVD",
     ),
 }
 
@@ -264,7 +306,7 @@ def _stage_msg_ops(plan: pl.Plan) -> list[kp.PokeOp]:
 class sep_km_key_bank_register_rand_test(sep_base_test):
     """KM-bus view of the wrapper key registers and the ML-KEM shared-key block."""
 
-    required_evidence = (*_STEPS_EVIDENCE, "CHK-SINGLE-SHARE")
+    required_evidence = (*_STEPS_EVIDENCE, "CHK-SINGLE-SHARE", "CHK-SS-KEY-CTRL-RSVD")
 
     # ------------------------------------------------------------------ main
 
@@ -272,6 +314,8 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         seed = self.random_seed()
         self.logger.info("SEED seed=%d", seed)
         shard = sep_shard(self, _SHARD_EVIDENCE)
+        if shard is None:
+            self.required_evidence = (*self.required_evidence, "CHK-BANK-RST")
         self.chk = SepChkLog(self, TEST, seed)
         self.failed = False
         self.plan = pl.draw_plan(seed)
@@ -447,6 +491,7 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         plan = self.plan
         wr_ok: dict[tuple[int, int], bool] = {}
         reads: dict[tuple[int, int], tuple[tuple[int, ...], tuple]] = {}
+        rst_reads: dict[tuple[int, int], tuple[int, ...]] = {}
 
         def on_wr(key):
             def fn(res):
@@ -460,12 +505,30 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
 
             return fn
 
-        wr_items, rd_items = [], []
+        def on_rst(key):
+            def fn(res):
+                rst_reads[key] = tuple(res[0].data)
+
+            return fn
+
+        wr_items, rd_items, rst_items = [], [], []
         for bit in plan.bank_order:
             b = pl.BANKS[bit]
             for s, base in enumerate((b.share0[0], b.share1[0])):
                 wr_items.append(([kp.wrblk(base, plan.shares[bit][s])], on_wr((bit, s))))
                 rd_items.append(([kp.rdblk(base, b.words)], on_rd((bit, s))))
+                rst_items.append(([kp.rdblk(base, b.words)], on_rst((bit, s))))
+        await self._run_items(rst_items)
+        rst_words = [(k, i, d) for k, data in sorted(rst_reads.items()) for i, d in enumerate(data)]
+        rst_bad = [f"{pl.BANKS[bit].name}.s{s}[{i}]={_h(d)}" for (bit, s), i, d in rst_words if d]
+        self._grade(
+            "BANK-SHARES-RST",
+            len(rst_words) == pl.N_SHARE_WORDS and not rst_bad,
+            words=len(rst_words),
+            expect_words=pl.N_SHARE_WORDS,
+            reads_zero=len(rst_words) - len(rst_bad),
+            first_nonzero=rst_bad[:4] or "none",
+        )
         await self._run_items(wr_items)
         await self._run_items(rd_items)
         post = _decode_state(await self._run(_state_ops(words=False)))
@@ -598,11 +661,14 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             stage_ok=stage_ok,
         )
         words = tuple(r[10].data)
-        self.chk.obs(
+        self._grade(
             "SK-WORDS",
-            phase="delivery1",
+            list(words) == list(NIST_KEM_ENC_K) and _ok(r[10]),
+            contract="sep/doc/adams_bridge.adoc:155-157",
             words_sha=word_digest(words),
-            match_vector=list(words) == list(NIST_KEM_ENC_K),
+            expect_sha=word_digest(NIST_KEM_ENC_K),
+            diff_at=diff_words(words, NIST_KEM_ENC_K),
+            resp_ok=_ok(r[10]),
         )
         valid = r[9].value & pl.SK_VALID
         irq1, irq2 = r[11].value & pl.SK_IRQ, r[12].value & pl.SK_IRQ
@@ -854,13 +920,18 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         v_wipe = int(bool(post[0].value & mask))
         v_post = int(bool(post[3].value & mask))
         resp = all(_ok(x) for x in pre + post)
-        # KEY_CTRL is graded on key_valid only; the whole words are logged.
-        self.chk.obs(
-            "SS-KEY-CTRL",
+        rsvd = [x.value & pl.AES_KEY_CTRL_RSVD for x in (pre[3], post[0], post[3])]
+        self._grade(
+            "SS-KEY-CTRL-RSVD",
+            not any(rsvd) and resp,
+            contract="key_manager/regs/aes_wrapper_key.rdl:78-84",
             share=leg.share,
             before_wipe=_h(pre[3].value),
             after_wipe=_h(post[0].value),
             after_write=_h(post[3].value),
+            rsvd_mask=_h(pl.AES_KEY_CTRL_RSVD),
+            expect_rsvd=_h(0),
+            resp_ok=resp,
         )
         passed = self._grade(
             "SINGLE-SHARE",
@@ -1036,9 +1107,35 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
                 return f"isolated_after={k + 1}"
         raise AssertionError(f"{probe} did not read isolated within {_ISO_BOUND} clocks")
 
+    async def _rearm(self, eng: str) -> dict:
+        """Set key_valid of the banks of ``eng`` (and redeliver the ABR shared key
+        when it is not held) right before its reset; return the state read after."""
+        own = pl.ENGINE_BANKS[eng]
+        ops = [kp.wr(b.ctrl, b.valid_mask) for b in pl.BANKS if (own >> b.bit) & 1]
+        prior = self.state
+        redeliver = eng == "abr" and not (prior["sk_valid"] and any(prior["sk_words"]))
+        on_sync = None
+        if redeliver:
+            ops += _stage_msg_ops(self.plan)
+        n_wr = len(ops)
+        if redeliver:
+            ops += [kp.sync(), self._poll_sk()]
+
+            async def on_sync(_k: int) -> None:
+                await self._encaps(4)
+
+        r = await self._run(ops + _state_ops(words=True), on_sync=on_sync)
+        if redeliver:
+            self._need_delivery(r[len(ops) - 1], "encapsulation before the ABR reset")
+        state = _decode_state(r[len(ops) :])
+        state["rearm_ok"] = all(_ok(x) for x in r[:n_wr])
+        state["redelivered"] = int(redeliver)
+        return state
+
     async def _engine_resets(self) -> None:
         for eng in self.plan.engine_order:
-            before = self.state
+            prior = self.state
+            before = await self._rearm(eng)
             await self.poke.prepare_reset()
             await self.swrst.park(eng)
             how = await self._hold_reset(eng)
@@ -1046,20 +1143,52 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
             await ClockCycles(self.dut.clk_i, _SETTLE_CLKS)
             after = _decode_state(await self._run(_state_ops(words=True)))
             own = pl.ENGINE_BANKS[eng]
-            fields = {
-                "eng": eng,
-                "sw_reset_n_bit": SW_RESET_N_BIT[eng],
-                "before": _v(before["vec"]),
-                "after": _v(after["vec"]),
-                "own_cleared": (after["vec"] & own) == 0,
-                "others_kept": (after["vec"] & ~own) == (before["vec"] & ~own),
-                "sk_valid": after["sk_valid"],
-                "sk_irq": after["sk_irq"],
-                "sk_words_zero": not any(after["sk_words"]),
-                "resp_ok": after["ok"],
-                "how": how,
-            }
-            self.chk.obs("BANK-RST", **fields)
+            abr = eng == "abr"
+            own_cleared = (after["vec"] & own) == 0
+            sk_cleared = not after["sk_valid"] and not any(after["sk_words"])
+            self._control(
+                "BANK-RST-LIVE",
+                (before["vec"] & own) == own
+                and before["ok"]
+                and before["rearm_ok"]
+                and (not abr or (before["sk_valid"] and any(before["sk_words"]))),
+                eng=eng,
+                before=_v(before["vec"]),
+                own=_v(own),
+                rearm_ok=before["rearm_ok"],
+                sk_valid_before=before["sk_valid"] if abr else "not_graded",
+                sk_words_nonzero_before=sum(1 for w in before["sk_words"] if w)
+                if abr
+                else "not_graded",
+            )
+            self._grade(
+                "BANK-RST",
+                own_cleared and (not abr or sk_cleared) and after["ok"],
+                contract="sep/doc/reset_controller.adoc:129-131,"
+                "key_manager/regs/aes_wrapper_key.rdl:75,key_manager/regs/abr_wrapper_key.rdl:103,129",
+                eng=eng,
+                sw_reset_n_bit=SW_RESET_N_BIT[eng],
+                after=_v(after["vec"]),
+                own_valid_after=_v(after["vec"] & own),
+                expect_own_valid=_v(0),
+                sk_valid=after["sk_valid"] if abr else "not_graded",
+                sk_words_nonzero=sum(1 for w in after["sk_words"] if w) if abr else "not_graded",
+                resp_ok=after["ok"],
+                how=how,
+            )
+            self.chk.obs(
+                "BANK-RST",
+                eng=eng,
+                own_before_rearm=_v(prior["vec"] & own),
+                sk_valid_before_rearm=prior["sk_valid"],
+                sk_redelivered=before["redelivered"],
+                before=_v(before["vec"]),
+                after=_v(after["vec"]),
+                others_kept=(after["vec"] & ~own) == (before["vec"] & ~own),
+                sk_valid=after["sk_valid"],
+                sk_irq=after["sk_irq"],
+                sk_words_zero=not any(after["sk_words"]),
+            )
             self.state = after
 
     # ------------------------------------------------- step 10: KM PARK

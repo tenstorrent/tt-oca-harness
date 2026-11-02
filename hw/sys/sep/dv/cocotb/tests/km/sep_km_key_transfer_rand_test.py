@@ -71,6 +71,16 @@ Checks:
                     (``hw/sys/sep/doc/crypto.adoc``, words per share;
                     ``hw/ip/key_manager/doc/firmware.adoc``, "Crypto Engine
                     Drivers": the two shares, then set key_valid).
+  CHK-KM-BUS-PERM   in the transfer of K1 to M and of K3 to 0xFF, the
+                    ``KM-BUS`` share-word writes of each selected bank cover each
+                    of its 2 x width ``KEY_SHARE0``/``KEY_SHARE1`` offsets exactly
+                    once: "must use the Fisher-Yates shuffle to generate the
+                    access order. The crypto-engine drivers use this for
+                    key-share writes and shredding." and "produces a uniformly
+                    random permutation." (``hw/ip/key_manager/doc/firmware.adoc``
+                    :1471-1475). The offsets come from the generated Key Manager
+                    register header. The order inside a bank is not graded:
+                    whether the shuffle is uniform is a probability.
 
 Controls: CTRL-GOLD (the 8, 9 and 16 word rounds equal the golden of the
 leading 8 words), CTRL-REFUSE-Z (the mask Z outside P1 returns -1 with no
@@ -216,6 +226,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         "CHK-ENG-ORDER",
         "CHK-AES-NOKEY",
         "CHK-DELIV-COUNT",
+        "CHK-KM-BUS-PERM",
     )
 
     # ------------------------------------------------------------------ main
@@ -778,6 +789,19 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         )
 
     def _grade_order(self, writes: list[tuple[int, int]], mask: int, leg: str) -> None:
+        perm = pl.grade_perm(writes, mask)
+        self.chk.ok(
+            "KM-BUS-PERM",
+            perm.ok,
+            contract="key_manager/doc/firmware.adoc:1471-1475",
+            leg=leg,
+            mask=_h(mask),
+            banks=perm.banks,
+            share_writes=perm.share_writes,
+            expect_share_writes=sum(2 * pl.WIDTH[b] for b in pl.WIDTH if (mask >> b) & 1),
+            repeated=",".join(perm.repeated) or "-",
+            missing=",".join(perm.missing) or "-",
+        )
         # Single KM master: its key-path stores issue one at a time, so the AW
         # handshake order is the write order.
         res = pl.grade_order(writes, mask)

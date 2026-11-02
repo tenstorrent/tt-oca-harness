@@ -7172,7 +7172,8 @@ leg code to `open_value_leg_pass` after that CTRL line passed (setter
 belongs to the owner of the leg. A CTRL line that fails writes no code, so its
 bin stays empty. The bin samples no DUT signal: the CTRL line grades the DUT
 value that shows the leg reached its state. A bin is a reach record, not a
-golden comparison.
+golden comparison. Where a leg also grades a stated part with a `CHK-`
+line, that line is its reach line and the bin samples after it passes (row 27).
 
 *Tool*: VCS. *Class*: executable (<<sep-fcov-parked>>). Not seed-dependent:
 each leg runs on every seed of its owner.
@@ -7206,7 +7207,7 @@ each leg runs on every seed of its owner.
 |24 |`csrng_bus_cmp_replay` |`sep_drbg_cmd_sequence_rand_test` |A second software-port Instantiate and Generate with the seed of the first: both 4-word blocks equal each other and the golden block, and `RECOV_ALERT_STS` bit 12 reads 0 after the clear before the second Generate (CTRL-CSRNG-BUS-CMP).
 |25 |`csrng_vctr_wrap` |`sep_drbg_cmd_sequence_rand_test` |A software-port Generate of two blocks from an Instantiate that sets V[31:0] to `0xfffffffe`: block 1 equals the golden block and the Generate acknowledges with status 0 (CTRL-CSRNG-VCTR-WRAP).
 |26 |`esrc_ht_bypass_zero` |`sep_esrc_health_pattern_rand_test` |A constant-zero noise window with `BYPASS_ENTROPY_COMPRESSOR` read back 1 before the window (CTRL-ESRC-HT-BYPASS).
-|27 |`km_xfer_short_key` |`sep_km_sideload_share_walk_test` |A key transfer of fewer than 12 words: words 0 to n-1 of the OTBN key dump equal the key and `ERR_BITS` reads 0 (CTRL-XFER-SHORT-KEY).
+|27 |`km_xfer_short_key` |`sep_km_sideload_share_walk_test` |A key transfer of fewer than 12 words: words 0 to n-1 of the OTBN key dump equal the key, `ERR_BITS` reads 0 and each of the 24 OTBN share-word offsets is written once (CHK-XFER-SHORT-KEY); the pad words are the open value (`OBS-XFER-PAD`).
 |28 |`km_bank_subword_byte` |`sep_km_key_bank_register_rand_test` |A KM CPU byte store to an AES key-share word, seen with one strobe bit set on the KM AXI-adapter write capture (CTRL-BANK-SUBWORD).
 |29 |`km_bank_subword_half` |`sep_km_key_bank_register_rand_test` |A KM CPU halfword store to an AES key-share word, seen with two adjacent strobe bits set on the KM AXI-adapter write capture (CTRL-BANK-SUBWORD).
 |30 |`km_mbox_flush_race` |`sep_km_mailbox_km_side_rand_test` |A KM write to KM_WRITE_DATA inside the SEP flush write (from its start to its response), with flushed_by_sep seen by the image, in one attempt (CTRL-KMBOX-FLUSH-RACE).

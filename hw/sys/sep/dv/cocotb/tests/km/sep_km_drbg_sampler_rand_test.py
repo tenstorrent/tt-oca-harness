@@ -98,8 +98,12 @@ Checkers:
   CHK-SMP-STRM    a withdrawal sets STREAM_ERR and DRBG_ERR (0 before the
                   withdrawal, 1 after it) with no read active
                   (COUNT_BAD + 1) and in the first active cycle of a read at
-                  timeout 256, 1 and 2 (SLVERR, data 0, TIMEOUT_ERR 0 before the
-                  read, COUNT_BAD + 1 plus TIMEOUT_ERR after the read);
+                  timeout 256, 1 and 2 (the DATA read completes SLVERR with
+                  data 0, TIMEOUT_ERR 0 before the read, COUNT_BAD + 1 plus
+                  TIMEOUT_ERR after the read): a stream error takes priority
+                  over timeout and ``ST_STREAM_ERR`` completes with SLVERR and
+                  zero data (``architecture.adoc`` "Errors and reset", the
+                  state table and the priority sentence below it);
                   a write of 0 keeps STREAM_ERR and a write of 1 clears it.
                   Controls: the stalled timeouts and the first read after the
                   TRNG reset leave STREAM_ERR 0; the sink TREADY is low in the
@@ -1515,13 +1519,21 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 bad_want = _withdraw_bad_want(st_pre, st)
                 cond = (
                     cond
+                    and r.slv == 1
+                    and r.dec == 0
                     and r.value == 0
                     and pl.st(st_pre, "TIMEOUT_ERR") == 0
                     and delta == bad_want
                 )
                 fields.update(
+                    contract=(
+                        "key_manager/doc/architecture.adoc:878-879,883-885(Errors_and_reset)"
+                    ),
                     slv=r.slv,
+                    dec=r.dec,
+                    exp_resp="SLVERR(slv=1,dec=0)",
                     data=_h(r.value),
+                    exp_data=_h(0),
                     count_bad_delta_want=bad_want,
                     timeout_err=[pl.st(st_pre, "TIMEOUT_ERR"), pl.st(st, "TIMEOUT_ERR")],
                 )

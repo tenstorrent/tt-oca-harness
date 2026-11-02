@@ -38,6 +38,19 @@ Checks (anchor):
                   (POKE result + IRQ_STATUS + KM-BUS)
   CHK-XBAR-SIZE   ROM top, SRAM base and top, the SRAM top store and the first
                   and last decoded word of each row answer clean (POKE result)
+  CHK-XBAR-SRAM-TOP
+                  the KM read of the SRAM top word 0xFFFC after the store of a
+                  drawn non-zero word returns that word: the main KM SRAM is
+                  32 KB, 0x8000 to 0xFFFF (``architecture.adoc`` "Parameters";
+                  ``key_manager.rdl:62``) (POKE readback)
+  CHK-XBAR-SHARE-ZERO
+                  the first-word read of each of the five key windows (otbn,
+                  aes, kmac, hmac and abr ``_wrapper_key``, the word
+                  ``KEY_SHARE0[0]``) returns 0x00000000: the share words are
+                  write-only and reads return zero (``architecture.adoc`` "Key
+                  Delivery"; ``<eng>_wrapper_key.rdl`` ``KEY_SHARE0``) (POKE
+                  readback). The response class of these reads is logged on
+                  ``OBS-XBAR-UNSTATED``
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
                   register (KM readback vs host readback, staged fuse model)
   CHK-EFW-RD-TM   the same with ``secure_tm_o`` = 1; register reads keep their
@@ -90,15 +103,16 @@ Checks (anchor):
   CHK-REMAP-BUS   ``efuse_req_o`` after the remap keeps bits [11:0] of the KM
                   offset and holds one constant [31:12] (``KM-BUS`` tap)
 
-Logged only (no verdict): ``OBS-XBAR-UNSTATED`` (the first word of the mailbox,
-the DRBG sampler and the five key windows, which have no stated read response),
+Logged only (no verdict): ``OBS-XBAR-UNSTATED`` (the first word of the mailbox
+and the DRBG sampler, which have no stated read response, and the response class
+of the first word of the five key windows, whose read data CHK-XBAR-SHARE-ZERO
+grades),
 ``CTRL-XBAR`` (cells another open test grades: 0x4000, 0x13108 store),
 ``INFO-EFW-PROG`` / ``INFO-EFW-DENY`` (the host path line of each
 program check), ``OBS-EFW-TM-TUPLE`` (the secure test program done, busy and
 efuse_req_error values and the read done, status and word; no text states that
 read_status carries the error of a blocked read, and efuse_req_error is stated
-for lock refusals only), ``OBS-REMAP-BASE`` (the value of ``OTP_EFUSE_REMAP_BASE``),
-``OBS-XBAR-SRAM-TOP`` (the SRAM top readback after the store).
+for lock refusals only), ``OBS-REMAP-BASE`` (the value of ``OTP_EFUSE_REMAP_BASE``).
 
 Every drawn value is a pure function of the seed (``SepSeededRng``), and each
 draw is logged on a ``DRAW`` line.
@@ -182,6 +196,23 @@ _FIRST_UNSTATED = (
     "main:kmac_wrapper_key",
     "main:hmac_wrapper_key",
     "main:abr_wrapper_key",
+)
+# Key windows of _FIRST_UNSTATED whose first word is KEY_SHARE0[0]: "Write-only;
+# reads return 0." (``<eng>_wrapper_key.rdl`` KEY_SHARE0, ``architecture.adoc``
+# "Key Delivery"). The response class of that read is not stated.
+_SHARE_ZERO_KEYS = (
+    "main:otbn_wrapper_key",
+    "main:aes_wrapper_key",
+    "main:kmac_wrapper_key",
+    "main:hmac_wrapper_key",
+    "main:abr_wrapper_key",
+)
+_SHARE_ZERO_CONTRACT = (
+    "key_manager/doc/architecture.adoc:282-283(Key_Delivery),"
+    "{aes,otbn,kmac,hmac}_wrapper_key.rdl:37,abr_wrapper_key.rdl:44(KEY_SHARE0)"
+)
+_SRAM_TOP_CONTRACT = (
+    "key_manager/doc/architecture.adoc:90(Parameters),key_manager.rdl:62(SRAM_Region)"
 )
 
 KM_ROM_BASE = _ROW["main:rom"]["base"]
@@ -568,6 +599,8 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         "CHK-XBAR-RSV",
         "CHK-XBAR-EFUSE",
         "CHK-XBAR-SIZE",
+        "CHK-XBAR-SRAM-TOP",
+        "CHK-XBAR-SHARE-ZERO",
         "CHK-EFW-RD",
         "CHK-EFW-RD-TM",
         "CHK-EFW-PROG",
@@ -908,11 +941,20 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             ],
             allow_unknown=True,
         )
+        top = res[4]
+        top_ok = top.known and top.value == data
+        rd_txt = f"0x{top.value:08x}" if top.known else "X"
+        self._fail(
+            "CHK-XBAR-SRAM-TOP",
+            [] if top_ok else [f"off=0x{KM_SRAM_TOP:05x} read={rd_txt}, expected 0x{data:08x}"],
+        )
         self.logger.info(
-            "OBS-XBAR-SRAM-TOP stored=0x%08x read=0x%08x equal=%d",
+            "CHK-XBAR-SRAM-TOP PASS contract=%s off=0x%05x stored=0x%08x read=%s exp=0x%08x",
+            _SRAM_TOP_CONTRACT,
+            KM_SRAM_TOP,
             data,
-            res[4].value,
-            int(res[4].value == data),
+            rd_txt,
+            data,
         )
         return res
 
@@ -948,8 +990,10 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             "CHK-XBAR-RSV": [],
             "CHK-XBAR-EFUSE": [],
             "CHK-XBAR-SIZE": [],
+            "CHK-XBAR-SHARE-ZERO": [],
         }
         passes: dict[str, list[str]] = {k: [] for k in problems}
+        share_zero_wins = {_short(k) for k in _SHARE_ZERO_KEYS}
         first_last_clean = 0
         first_last_logged = 0
         vrom_graded = {"rd": 0, "wr": 0}
@@ -962,6 +1006,12 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 self.logger.info(
                     "OBS-XBAR-UNSTATED %s rd=%s slv=%d dec=%d", tag, rd_txt, res.slv, res.dec
                 )
+                if cell.win in share_zero_wins:
+                    line = f"contract={_SHARE_ZERO_CONTRACT} {tag} rd={rd_txt} exp=0x00000000"
+                    if res.known and res.value == 0:
+                        passes["CHK-XBAR-SHARE-ZERO"].append(f"seed={seed} {line}")
+                    else:
+                        problems["CHK-XBAR-SHARE-ZERO"].append(line)
                 continue
             want = _EXP_BITS[cell.resp]
             if d == "rd" and cell.rdata is not None:
@@ -1017,7 +1067,12 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         for d, name in (("rd", "load"), ("wr", "store")):
             if not vrom_graded[d]:
                 problems["CHK-XBAR-RSV"].append(f"no VROM {name} cell answered DECERR")
-        for chk in ("CHK-XBAR", "CHK-XBAR-RSV", "CHK-XBAR-EFUSE", "CHK-XBAR-SIZE"):
+        n_share = len(passes["CHK-XBAR-SHARE-ZERO"]) + len(problems["CHK-XBAR-SHARE-ZERO"])
+        if n_share != len(_SHARE_ZERO_KEYS):
+            problems["CHK-XBAR-SHARE-ZERO"].append(
+                f"{n_share} key-window first-word reads, expected {len(_SHARE_ZERO_KEYS)}"
+            )
+        for chk in problems:
             self._fail(chk, problems[chk])
             if not passes[chk]:
                 self._fail(chk, ["no graded cell"])

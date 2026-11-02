@@ -87,12 +87,22 @@ Ordering that the compares rely on:
     word permutation in KM-to-ABR delivery changes the engine input and fails
     the KV-vs-direct compare.
 
-Open-value leg (logged, not graded; its control fails the leaf). After CHK-ROUND
-one OTBN key of n words, n drawn in 1..11 from its own ``SepSeededRng`` stream
-(the run seed XOR a leg salt, so the round draws keep their seed mapping), is
-loaded and transferred, and the key-dump program runs once:
-  CTRL-XFER-SHORT-KEY  ERR_BITS reads 0 and share0 ^ share1 words 0..n-1 equal
-                the short key.
+Short-key leg. After CHK-ROUND one OTBN key of n words, n drawn in 1..11 from
+its own ``SepSeededRng`` stream (the run seed XOR a leg salt, so the round draws
+keep their seed mapping), is loaded and transferred, and the key-dump program
+runs once:
+  CHK-XFER-SHORT-KEY  ERR_BITS reads 0, share0 ^ share1 words 0..n-1 equal the
+                short key, and in the transfer the KM-BUS key-path tap
+                (``km_key_aw_{valid,ready,addr}_o``, port 0 OTBN) shows each of
+                the 12 ``KEY_SHARE0`` and 12 ``KEY_SHARE1`` offsets of the OTBN
+                bank written exactly once: "Form one full-width key share from
+                the supplied key, padding short keys with DRBG words. ... The
+                helper writes the destination's share width."
+                (``hw/ip/key_manager/doc/firmware.adoc:1805-1808``;
+                ``KEY_SHARE0[12]``, ``KEY_SHARE1[12] @ 0x030``,
+                ``hw/ip/key_manager/regs/otbn_wrapper_key.rdl:51``, ``:57``).
+                The offsets come from the generated Key Manager register
+                header.
   OBS-XFER-PAD  share0 ^ share1 words n..11 and the positions that are not 0.
                 firmware.adoc, "Crypto Engine Drivers", pads short keys with
                 DRBG words and states no pad position; the pad values are
@@ -101,9 +111,12 @@ loaded and transferred, and the key-dump program runs once:
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_chk_log import diff_words, word_digest
 from env.sep_fcov_gate import close_graded_window, open_graded_window, set_open_value_leg_pass
@@ -235,6 +248,68 @@ _KMAC_ERR_POLLS = 200
 _AES_REFUSE_POLLS = 50
 
 
+# OTBN key-path port of the KM-BUS tap and the share-word offsets of its bank,
+# from the generated Key Manager register header.
+_KM_GEN_PY = Path(__file__).resolve().parents[6] / "ip" / "key_manager" / "regs" / "gen" / "py"
+_KM_REG_SPEC = importlib.util.spec_from_file_location(
+    "km_share_walk_key_manager_reg", _KM_GEN_PY / "key_manager_reg.py"
+)
+if _KM_REG_SPEC is None or _KM_REG_SPEC.loader is None:
+    raise FileNotFoundError(_KM_GEN_PY / "key_manager_reg.py")
+_KM_REG = importlib.util.module_from_spec(_KM_REG_SPEC)
+_KM_REG_SPEC.loader.exec_module(_KM_REG)
+_OTBN_KEY_PORT = 0
+_BLOCK_SPAN = 0x1000
+_OTBN_KEY_BASE = int(_KM_REG.OTBN_WRAPPER_KEY_REG_MAP_BASE_ADDR)
+if _OTBN_KEY_BASE % _BLOCK_SPAN or int(_KM_REG.OTBN_WRAPPER_KEY_REG_MAP_SIZE) > _BLOCK_SPAN:
+    raise AssertionError("OTBN_WRAPPER_KEY: not a 4 KiB-aligned block below 4 KiB")
+OTBN_SHARE_OFFSETS = frozenset(
+    int(getattr(_KM_REG, f"OTBN_WRAPPER_KEY_KEY_SHARE{s}_{i}__REG_ADDR")) - _OTBN_KEY_BASE
+    for s in (0, 1)
+    for i in range(DEST_WORDS[KM_DEST_OTBN])
+)
+if len(OTBN_SHARE_OFFSETS) != 2 * DEST_WORDS[KM_DEST_OTBN]:
+    raise AssertionError("OTBN_WRAPPER_KEY: share offsets are not 2 x 12 distinct words")
+
+
+class _OtbnKeyWrites:
+    """AW handshakes on the OTBN key-path port (``KM-BUS``), as block offsets."""
+
+    def __init__(self, test: sep_base_test) -> None:
+        top = cocotb.top
+        self.test = test
+        self.clk = top.clk_i
+        self.valid = top.km_key_aw_valid_o
+        self.ready = top.km_key_aw_ready_o
+        self.addr = top.km_key_aw_addr_o
+        self.offsets: list[int] = []
+        self._on = False
+
+    def start(self) -> None:
+        self.offsets = []
+        self._on = True
+        cocotb.start_soon(self._run())
+
+    async def stop(self) -> list[int]:
+        self._on = False
+        await ClockCycles(self.clk, 2)
+        return list(self.offsets)
+
+    async def _run(self) -> None:
+        bit = 1 << _OTBN_KEY_PORT
+        while True:
+            await RisingEdge(self.clk)
+            await ReadOnly()
+            if not self._on:
+                return
+            hs = self.test.rd(self.valid, allow_unknown=True) & self.test.rd(
+                self.ready, allow_unknown=True
+            )
+            if hs & bit:
+                addr = (self.test.rd_known(self.addr) >> (32 * _OTBN_KEY_PORT)) & 0xFFFF_FFFF
+                self.offsets.append(addr % _BLOCK_SPAN)
+
+
 def _distinct_words(rng: SepSeededRng, n: int, avoid: list[int] | None) -> list[int]:
     """``n`` random words; word ``i`` differs from ``avoid[i]``, and no word is 0."""
     out = []
@@ -316,6 +391,7 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         "CHK-ROUND",
         "CHK-KMAC-CLR",
         "CHK-AES-CLR",
+        "CHK-XFER-SHORT-KEY",
     )
 
     # ------------------------------------------------------------------ ABR --
@@ -824,16 +900,27 @@ class sep_km_sideload_share_walk_test(sep_base_test):
         key = _distinct_words(rng, n, None)
         self.logger.info("INFO-XFER-SHORT-KEY n=%d", n)
         handle = await self.km.key_load(key_words=list(key), dest=KM_DEST_OTBN)
+        bus = _OtbnKeyWrites(self)
+        bus.start()
         await self._transfer(ROUNDS, handle, KM_DEST_OTBN)
+        offsets = await bus.stop()
         await self.otbn.execute()
         errbits = await self.otbn.read_errbits()
         _, s0, s1, _ = await self.otbn.read_keydump_outputs()
         got = [a ^ b for a, b in zip(s0, s1)]
         bad = [i for i in range(n) if got[i] != key[i]]
-        line = f"n={n} key_match={n - len(bad)}/{n} bad_words={bad} err_bits=0x{errbits:x}"
-        if errbits != 0 or got[:n] != key:
-            raise AssertionError(f"CTRL-MISSING XFER-SHORT-KEY: {line}")
-        self.logger.info("CTRL-XFER-SHORT-KEY seen: %s", line)
+        shares = [o for o in offsets if o in OTBN_SHARE_OFFSETS]
+        repeated = sorted({o for o in shares if shares.count(o) > 1})
+        missing = sorted(OTBN_SHARE_OFFSETS - set(shares))
+        line = (
+            f"contract=key_manager/doc/firmware.adoc:1805-1808 n={n} "
+            f"key_match={n - len(bad)}/{n} bad_words={bad} err_bits=0x{errbits:x} "
+            f"share_writes={len(shares)} expect_share_writes={len(OTBN_SHARE_OFFSETS)} "
+            f"repeated={[hex(o) for o in repeated]} missing={[hex(o) for o in missing]}"
+        )
+        if errbits != 0 or got[:n] != key or repeated or missing:
+            raise AssertionError(f"CHK-XFER-SHORT-KEY FAIL: {line}")
+        self.logger.info("CHK-XFER-SHORT-KEY PASS: %s", line)
         set_open_value_leg_pass("km_xfer_short_key", self.logger)
         await ClockCycles(cocotb.top.clk_i, 2)
         set_open_value_leg_pass(None, self.logger)
