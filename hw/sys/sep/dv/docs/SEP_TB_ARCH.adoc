@@ -1204,6 +1204,12 @@ Exceptions (a closed set):
   beat, so a reader samples the tap after the falling edge: a handshake seen
   there is the one taken at the next rising edge, with the data taken. Owner:
   `sep_mailbox_plic_test`.
+* *DMA host-path response error inject* — `dma_host_rsp_err_inject_i` forces
+  the `resp` of the host adapter's AXI-lite read and write responses to
+  SLVERR, so every secure-DMA host transfer ends in a bus error on its first
+  beat. Data, valid and ready are not forced. Nothing is forced until the input
+  first rises; a release can keep SLVERR until the response driver changes.
+  Owner: `sep_rom_spi_retry_exhaust_test`.
 * *Crypto message-FIFO drain stall* — `hmac_fifo_drain_stall_i` holds the
   read-ready of the HMAC message FIFO (`fifo_rready`) and the word valid that
   `hmac_core` gives the SHA-2 engine (`u_hmac.sha_rvalid_o`, the core's view of

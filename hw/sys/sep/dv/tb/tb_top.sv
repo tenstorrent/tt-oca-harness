@@ -3119,6 +3119,22 @@ module sep_uvm_top
     end
 `undef DMA_HOST_CMD_INTG_DI
 
+    // Fast SLVERR end for every secure-DMA host transfer; no force or release until the input rises.
+`define DMA_HOST_AXIL_RSP `SEP_CORE.u_sep_dma_wrap.axi_lite_mst_resp
+    logic dma_host_rsp_err_forced;
+    always @(posedge clk_i) begin
+        if (dma_host_rsp_err_inject_i === 1'b1) begin
+            force `DMA_HOST_AXIL_RSP.r.resp = axi_pkg::RESP_SLVERR;
+            force `DMA_HOST_AXIL_RSP.b.resp = axi_pkg::RESP_SLVERR;
+            dma_host_rsp_err_forced <= 1'b1;
+        end else if (dma_host_rsp_err_forced === 1'b1) begin
+            release `DMA_HOST_AXIL_RSP.r.resp;
+            release `DMA_HOST_AXIL_RSP.b.resp;
+            dma_host_rsp_err_forced <= 1'b0;
+        end
+    end
+`undef DMA_HOST_AXIL_RSP
+
     // ------------------------------------------------------------------
     // Mailbox WRITE_DATA unstrobed-lane inject.
     // ------------------------------------------------------------------
@@ -5934,6 +5950,7 @@ module sep_uvm_top
     assign mbox_lane_inject_arm_i   = 1'b0;
     assign mbox_lane_inject_mbx_i   = '0;
     assign mbox_lane_inject_data_i  = '0;
+    assign dma_host_rsp_err_inject_i = 1'b0;
     assign hmac_fifo_drain_stall_i  = 1'b0;
     assign kmac_fifo_drain_stall_i  = 1'b0;
     assign crypto_alert_inject_i    = 1'b0;

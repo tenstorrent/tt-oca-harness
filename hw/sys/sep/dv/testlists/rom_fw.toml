@@ -4127,3 +4127,19 @@ args = [
   "+esrc_noise_force",
   "+sep_rom_decrypt_exit=aes_dec_fail",
 ]
+
+[[tests]]
+# SPI-030 (partial): every secure-DMA host response is SLVERR from the first slot attempt, so each
+# OpenTitan SPI flash read fails; at most 4 attempts per slot, backup fallback, then the FAIL verdict.
+name = "sep_rom_spi_retry_exhaust_test"
+module = "rom_fw.sep_rom_spi_retry_exhaust_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "dma", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
