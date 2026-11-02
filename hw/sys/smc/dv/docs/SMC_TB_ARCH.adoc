@@ -724,8 +724,8 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 . `uvm/env/smc_env_pkg.sv` — `smc_types` (SEP_IN geometry, the scratch CSR
   windows from the generated `smc_top_addrmap_pkg`, 32-bit-CSR lane helpers
   for the 64-bit bus), `smc_test_cfg`, `smc_env_cfg`,
-  `smc_virtual_sequencer`, `smc_scratch_csr_ref_model`, `smc_scoreboard`, and
-  `smc_env`.
+  `smc_virtual_sequencer`, `smc_scratch_csr_ref_model`, `smc_scoreboard`,
+  `smc_sep_in_history`, and `smc_env`.
 . `uvm/seq_lib/smc_seq_lib_pkg.sv` — the reusable operation sequences
   (`smc_axi_csr_write_seq`, `smc_axi_csr_read_seq`) and the scenario
   virtual sequences on `smc_base_test_seq`.
@@ -854,6 +854,7 @@ The narrow-access side-effect scenario grades mailbox operations in the
 sequence without requiring `mailbox_fifo`. It uses the SYS_OUT responder's
 memory APIs for Zeroer payload and guard checks. Filter programming and restore
 have readbacks; responder memory accesses are not counted as SEP_IN transactions.
+
 The environment-owned `smc_sep_in_history` subscribes to SEP_IN `item_ap`
 and counts completed reads and writes without publishing or checking items.
 The base test passes it to scenario sequences through `plumb_scenario_seq`

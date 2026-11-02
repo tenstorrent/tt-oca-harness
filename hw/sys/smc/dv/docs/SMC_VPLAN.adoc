@@ -50823,9 +50823,9 @@ controls; their own clearing is not graded independently. Lower-half 32-bit
 and byte ERROR_FLAGS reads, and an error arriving in the same cycle as the
 clearing read, are not exercised. The SYS_OUT backing store is not checked for
 retention across passes. Poll and compare bounds are bench limits, not DUT
-latency promises. The initial MUTEX release has a same-pass free-read control;
-the release before the upper read is checked by that acquire. The final
-release has no passive readback because every read acquires. Restore values
+latency promises. The initial MUTEX release has a same-pass free-read control.
+ACQUIRE assumes the release before the upper read rather than checking it. The
+final release has no passive readback because every read acquires. Restore values
 equal to the programmed filter values are logged as nondiscriminating. Neither
 the Zeroer completion polling nor a completed control job proves an exact
 START cycle. Mailbox interrupts beyond the EIRQ error controls and cleanup are

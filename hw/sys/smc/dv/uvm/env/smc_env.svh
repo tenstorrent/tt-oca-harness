@@ -17,6 +17,9 @@
 //     the VIP's memory-shadow reference model cannot describe a CSR block
 //     (reset values, read-only fields, side effects), so the bench's own
 //     reference models predict on its item stream;
+//   * smc_sep_in_history on that passive env's item_ap, counting completed
+//     SEP_IN reads and writes for scenario access accounting; it publishes
+//     and checks nothing;
 //   * one reference model per scoreboard feature on the SEP_IN stream
 //     (smc_scratch_csr_ref_model, smc_default_reg_ref_model,
 //     smc_lock_csr_ref_model, smc_mutex_sema_ref_model,
