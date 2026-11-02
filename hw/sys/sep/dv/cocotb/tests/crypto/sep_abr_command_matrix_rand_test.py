@@ -42,12 +42,12 @@ Checkers:
                     ``CTRL-ABR-PARKED-Y`` is its control: the signature of the
                     run alone verifies under the ACVP keyGen public key, so it
                     is a filled window and not a zeroized one.
-                    ``CTRL-ABR-SIGN-FILL`` is its second control: before the
-                    trial command the leaf writes the bitwise complement of
-                    that signature to ``MLDSA_SIGNATURE`` (``abr_reg.rdl``:252-261,
-                    ``sw = rw``) and reads it back, so every word differs from
-                    the compared signature and a trial that does not write the
-                    window fails the check.
+                    ``CTRL-ABR-SIGN-ALT`` is its second control: after Y, the
+                    last software write of that signature, KEYGEN+SIGN runs
+                    with the complement of mu, and its signature, read at VALID
+                    (``abr_reg.rdl``:252-261, "read by MLDSA user after signing
+                    operation"), differs from the compared signature, so a
+                    trial that does not write the window fails the check.
   CHK-ABR-RESET-VALID
                     after an ABR reset (``SW_RESET_N`` bit 6,
                     ``reset_controller.adoc``:102) the first STATUS read with
@@ -785,7 +785,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
         if combined:
             await self._parked_pre(cell)
             if cell == "dsa_keygen_sign":
-                await self._sign_fill(cell)
+                await self._sign_alt(cell)
         self.ops.append(cell)
 
         st, why = await self._command(blk, inputs, cmd)
@@ -917,28 +917,47 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
     def _ops(self) -> str:
         return ">".join(self.ops) or "none"
 
-    async def _sign_fill(self, cell: str) -> None:
-        """CTRL-ABR-SIGN-FILL: before the trial ``MLDSA_SIGNATURE`` holds a value other than S_pre.
+    async def _sign_alt(self, cell: str) -> None:
+        """CTRL-ABR-SIGN-ALT: before the trial ``MLDSA_SIGNATURE`` holds a signature other than S_pre.
 
-        The leaf writes the bitwise complement of S_pre to the window
-        (``abr_reg.rdl``:252-261, ``sw = rw``, the window is "set before verifying
-        operation") and reads it back. Every word then differs from S_pre, so the
-        trial signature equals S_pre only when the trial writes the window.
+        After Y, the last software write of S_pre, KEYGEN+SIGN runs once more with
+        the inputs of the cell and the bitwise complement of mu. Its signature S_alt
+        is read at VALID, when the window is "read by MLDSA user after signing
+        operation" (``abr_reg.rdl``:252-261), and must differ from S_pre in at least
+        one word. ZEROIZE follows. The trial signature then equals S_pre only when
+        the trial writes the window. The graded window is closed.
         """
         if self.pk_sig_pre is None:
             return
-        fill = [~w & 0xFFFF_FFFF for w in self.pk_sig_pre]
-        await self.abr.write_words(ABR_SIGNATURE, fill)
-        back = await self.abr.read_words(ABR_SIGNATURE, SIG_WORDS)
-        bad = _first_diff(back, fill)
-        same = sum(1 for a, b in zip(back, self.pk_sig_pre) if a == b)
+        blk, inputs, cmd = self._cell_inputs(cell, self.plan.row)
+        alt_mu = [~w & 0xFFFF_FFFF for w in NIST_SG_MU]
+        inputs = [(addr, alt_mu if addr == ABR_EXTERNAL_MU else words) for addr, words in inputs]
+        was_open = self._win_open
+        self._win(False)
+        st, why = await self._command(blk, inputs, cmd)
+        if st is None:
+            self._ctl("ABR-SIGN-ALT", False, cell=cell, step="command", reason=why)
+            await self._recover(f"{cell}/sign-alt")
+            self._win(was_open)
+            return
+        alt = await self.abr.read_words(ABR_SIGNATURE, SIG_WORDS)
+        diff = [i for i, (a, b) in enumerate(zip(alt, self.pk_sig_pre)) if a != b]
+        valid = int(bool(st & blk.valid))
+        if await self._zeroize(blk) is None:
+            self._ctl("ABR-SIGN-ALT", False, cell=cell, step="zeroize", reason="ready_timeout")
+            await self._recover(f"{cell}/sign-alt")
+            self._win(was_open)
+            return
+        self._win(was_open)
         self._ctl(
-            "ABR-SIGN-FILL",
-            bad is None and same == 0,
+            "ABR-SIGN-ALT",
+            valid == 1 and len(alt) == SIG_WORDS and len(diff) > 0,
             cell=cell,
-            first_diff="none" if bad is None else bad,
-            words_equal_pre=same,
-            fill_sha=word_digest(back),
+            valid=valid,
+            words=len(alt),
+            words_diff=len(diff),
+            first_diff="none" if not diff else diff[0],
+            alt_sha=word_digest(alt),
             pre_sha=word_digest(self.pk_sig_pre),
         )
 
