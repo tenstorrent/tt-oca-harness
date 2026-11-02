@@ -155,7 +155,6 @@ the two non-zero masks.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 import cocotb
@@ -172,7 +171,6 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_kmac_seq import (
-    _KMAC_HJSON,
     KMAC_CFG_SHADOWED,
     KMAC_CMD,
     KMAC_CMD_CODES,
@@ -188,6 +186,7 @@ from seq_lib.sep_kmac_seq import (
     KMAC_STRENGTH,
     SepKmac,
     build_kmac_cfg,
+    kmac_hjson_int_param,
 )
 
 TEST = "sep_kmac_stream_cfg_rand_test"
@@ -271,19 +270,6 @@ _RESET_EDGE_CLK = 200
 _FULL_WRITE_BOUND = 64
 _HELD_WRITE_CLK = 2_000
 _FULL_FILL_WORD = 0x5A5A_0000
-
-
-def _kmac_hjson_int_param(name: str) -> int:
-    """The ``default`` of the int parameter ``name`` in kmac.hjson. Raises if absent."""
-    text = _KMAC_HJSON.read_text(encoding="utf-8")
-    m = re.search(rf'name:\s*"{name}"\s*type:\s*"int"\s*default:\s*"(\d+)"', text)
-    if m is None:
-        raise KeyError(f"int parameter {name} not parsed from {_KMAC_HJSON}")
-    return int(m.group(1))
-
-
-# Message FIFO entries (kmac.hjson NumEntriesMsgFifo, a local parameter).
-_MSG_FIFO_ENTRIES = _kmac_hjson_int_param("NumEntriesMsgFifo")
 
 
 def keccak_rate_bytes(strength: int) -> int:
@@ -1218,12 +1204,13 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         await self._reset_kmac()
 
     async def _fifo_full_leg(self) -> None:
-        """CHK-KMAC-FIFO-FULL: the message FIFO reads full at ``_MSG_FIFO_ENTRIES`` entries.
+        """CHK-KMAC-FIFO-FULL: the message FIFO reads full at the kmac.hjson ``NumEntriesMsgFifo`` depth.
 
         The graded FCOV window stays closed. No write follows a read that ends the
         fill, so no write waits on a full FIFO unless the DUT hides it.
         """
         dut = cocotb.top
+        entries = kmac_hjson_int_param("NumEntriesMsgFifo")
         await self._reset_kmac()
         await self._write_cfg(_cfg_word("sha3", 256))
         t0 = self._now_clk()
@@ -1256,7 +1243,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
                 status = await self._rd(KMAC_STATUS)
                 depth = (status & _FIFO_DEPTH) >> _FIFO_DEPTH_LSB
                 full = _bits(status, _FIFO_FULL)
-                if full or depth >= _MSG_FIFO_ENTRIES:
+                if full or depth >= entries:
                     break
             else:
                 reason = f"no_full bound={_FULL_WRITE_BOUND}"
@@ -1264,11 +1251,11 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             dut.kmac_fifo_drain_stall_i.value = 0
         self._ok(
             "KMAC-FIFO-FULL",
-            not reason and not refused and full == 1 and depth == _MSG_FIFO_ENTRIES,
+            not reason and not refused and full == 1 and depth == entries,
             writes=writes,
             fifo_full=full,
             fifo_depth=depth,
-            expected_fifo_depth=_MSG_FIFO_ENTRIES,
+            expected_fifo_depth=entries,
             status=f"0x{status:08x}",
             refused_lane_width_resp=",".join(refused) or "-",
             **({"reason": reason} if reason else {}),
