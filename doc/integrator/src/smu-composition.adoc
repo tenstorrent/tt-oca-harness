@@ -155,6 +155,53 @@ ifdef::backend-pdf[]
 the SMU AXI Crossbar section of the Technical Reference Manual.
 endif::backend-pdf[]
 
+[[smu-axi-boundary-contract]]
+=== AXI boundary contract
+
+The SEP and SMC filters decide what a request may reach from two attributes
+that cross the SMU boundary: its security state in AxPROT[1] (NS) and its
+source ID in AxUSER[3:0]. The SMU ports carry them unchanged in both `CFG.SEP`
+configurations, and the integrator decides what the system fabric drives into
+`smu_axi_in` and keeps from `smu_axi_out`.
+
+<<smu-axi-source-id-table>> gives the source ID and NS that each SMC and SEP
+outbound path drives on `smu_axi_out`.
+
+[[smu-axi-source-id-table]]
+.Source ID and NS on `smu_axi_out`
+[cols="2,3,1,1,2",options="header"]
+|===
+|Subsystem |Path |Source ID (AxUSER[3:0]) |Value |NS (AxPROT[1])
+|SMC |Direct path |`SMC_ID` |0x3 |Initiator's
+|SMC |M-mode remap window, for another processor's machine-mode firmware |`MMODE_ID` |0xC |Initiator's
+|SMC |Xvisor remap window, for another processor's hypervisor and guests |`OTHER_ID` |0x0 |Initiator's
+|SEP |SMU aperture, or an address at or above `0x1_0000_0000`, from any SEP master |SEP |0xF |Inverse of address bit 55
+|SEP |AP region, through the AP-controlled remapper |`OTHERS` |0x0 |1
+|SEP |STEE region, through the STEE-controlled remapper |`OTHERS` |0x0 |Inverse of bit 55 of the remapped address
+|===
+
+AxUSER[11:4] are reserved: the harness drives them as 0 on `smu_axi_out` and
+the filters ignore them on `smu_axi_in`. WUSER carries the same value as
+AWUSER. BUSER and RUSER carry no defined attribute.
+
+Inbound attributes::
+The system fabric must drive AxPROT[1] of each `smu_axi_in` request from the
+requester's own security state, and AxUSER[3:0] from its requester identity,
+using the encodings above. A filter entry with a non-zero `src_id` matches only
+that source ID, and `allow_ns` matches only that security state. A constant
+AxUSER makes every request arrive as one requester, so entries for any other
+source ID never match. A constant AxPROT[1] of 0 presents every request as
+Secure, so an entry meant for Secure requesters also admits Non-secure
+software.
+
+Outbound attributes::
+The system fabric must carry NS from `smu_axi_out` into its own security
+attribute (AXI AxPROT[1], or CHI NS or PAS), and AxUSER[3:0] wherever a
+downstream filter matches on the requester. The SMC and SEP outbound paths set
+both per path, including the SEP rule that NS is the inverse of address bit 55.
+Overriding or dropping either attribute is a security decision of the
+integrator and must be recorded.
+
 [[smu-firmware-programming-order]]
 === Firmware programming order
 
