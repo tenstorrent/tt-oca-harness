@@ -92,6 +92,20 @@ Checkers:
                       and the first read after a write of 1 to
                       ``INTR_TEST.fifo_empty`` reads 1 (kmac.adoc lines 50
                       and 80: "Write 1 to force !!INTR_STATE.fifo_empty to 1.").
+  CHK-KMAC-FIFO-FULL  after a KMAC reset, in absorb with the graded FCOV window
+                      closed and ``kmac_fifo_drain_stall_i`` holding the read side
+                      of the message FIFO: 32-bit message writes, each followed
+                      by a ``STATUS`` read, until a read shows ``fifo_full`` 1 or
+                      ``fifo_depth`` at the golden. That read shows
+                      ``fifo_full`` 1 and ``fifo_depth`` equal to the golden, and
+                      every write completes OKAY. Golden: ``NumEntriesMsgFifo``
+                      ``default: "10"``, ``local: "true"``
+                      (``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson``
+                      lines 163-167, read from that file;
+                      ``vendor/lowRISC/opentitan/upstream/hw/ip/kmac/README.md``
+                      line 25 "64b x 10 depth Message FIFO"). A write with no
+                      response within ``_HELD_WRITE_CLK`` clocks fails the check;
+                      the stall is then released so the write completes.
 
 The cells write each message beat at byte lane 0 of ``MSG_FIFO`` in the drawn
 width, so the cell checks grade the stages, endianness, corners and lock on
@@ -141,6 +155,7 @@ the two non-zero masks.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 import cocotb
@@ -157,6 +172,7 @@ from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_kmac_seq import (
+    _KMAC_HJSON,
     KMAC_CFG_SHADOWED,
     KMAC_CMD,
     KMAC_CMD_CODES,
@@ -250,6 +266,24 @@ _OUTER_CLK = 20_000
 # OBS-KMAC-FE-INTRTEST. A testbench timing, not a spec value.
 _FE_SETTLE_CLK = 64
 _RESET_EDGE_CLK = 200
+# Outer limit of the CHK-KMAC-FIFO-FULL fill: 32-bit writes, and the clocks one
+# write may wait for its response. Termination bounds of the leg, not spec values.
+_FULL_WRITE_BOUND = 64
+_HELD_WRITE_CLK = 2_000
+_FULL_FILL_WORD = 0x5A5A_0000
+
+
+def _kmac_hjson_int_param(name: str) -> int:
+    """The ``default`` of the int parameter ``name`` in kmac.hjson. Raises if absent."""
+    text = _KMAC_HJSON.read_text(encoding="utf-8")
+    m = re.search(rf'name:\s*"{name}"\s*type:\s*"int"\s*default:\s*"(\d+)"', text)
+    if m is None:
+        raise KeyError(f"int parameter {name} not parsed from {_KMAC_HJSON}")
+    return int(m.group(1))
+
+
+# Message FIFO entries (kmac.hjson NumEntriesMsgFifo, a local parameter).
+_MSG_FIFO_ENTRIES = _kmac_hjson_int_param("NumEntriesMsgFifo")
 
 
 def keccak_rate_bytes(strength: int) -> int:
@@ -383,6 +417,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         "CHK-KMAC-FIFO-DONE",
         "CHK-KMAC-REGWEN-GATED",
         "CHK-KMAC-FE-INTRTEST",
+        "CHK-KMAC-FIFO-FULL",
     )
 
     # --- FCOV window and grading ----------------------------------------------
@@ -602,6 +637,7 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
         self._close()
 
         await self._fe_intrtest_leg()
+        await self._fifo_full_leg()
         await self._narrow_lane_leg(seed)
 
         await self.vec.stop()
@@ -1178,6 +1214,64 @@ class sep_kmac_stream_cfg_rand_test(sep_base_test):
             state_settle=st_settle,
             settle_clk=_FE_SETTLE_CLK,
             state_after_w1c=st_w1c,
+        )
+        await self._reset_kmac()
+
+    async def _fifo_full_leg(self) -> None:
+        """CHK-KMAC-FIFO-FULL: the message FIFO reads full at ``_MSG_FIFO_ENTRIES`` entries.
+
+        The graded FCOV window stays closed. No write follows a read that ends the
+        fill, so no write waits on a full FIFO unless the DUT hides it.
+        """
+        dut = cocotb.top
+        await self._reset_kmac()
+        await self._write_cfg(_cfg_word("sha3", 256))
+        t0 = self._now_clk()
+        await self._wr(KMAC_CMD, KMAC_CMD_START)
+        ok, status, _ = await self._poll(KMAC_STATUS, _ABSORB, _ABSORB, t0, _OUTER_CLK)
+        if not ok:
+            self._ok("KMAC-FIFO-FULL", False, reason="start_timeout", bound=_OUTER_CLK)
+            await self._reset_kmac()
+            return
+        writes = 0
+        refused: list[str] = []
+        reason = ""
+        depth = full = 0
+        dut.kmac_fifo_drain_stall_i.value = 1
+        try:
+            await RisingEdge(dut.clk_i)
+            while writes < _FULL_WRITE_BOUND:
+                task = cocotb.start_soon(self._write_beats(((0, 4),), (_FULL_FILL_WORD | writes,)))
+                for _ in range(_HELD_WRITE_CLK):
+                    if task.done():
+                        break
+                    await RisingEdge(dut.clk_i)
+                if not task.done():
+                    reason = f"write_held bound={_HELD_WRITE_CLK}"
+                    dut.kmac_fifo_drain_stall_i.value = 0
+                refused += await task
+                writes += 1
+                if reason:
+                    break
+                status = await self._rd(KMAC_STATUS)
+                depth = (status & _FIFO_DEPTH) >> _FIFO_DEPTH_LSB
+                full = _bits(status, _FIFO_FULL)
+                if full or depth >= _MSG_FIFO_ENTRIES:
+                    break
+            else:
+                reason = f"no_full bound={_FULL_WRITE_BOUND}"
+        finally:
+            dut.kmac_fifo_drain_stall_i.value = 0
+        self._ok(
+            "KMAC-FIFO-FULL",
+            not reason and not refused and full == 1 and depth == _MSG_FIFO_ENTRIES,
+            writes=writes,
+            fifo_full=full,
+            fifo_depth=depth,
+            expected_fifo_depth=_MSG_FIFO_ENTRIES,
+            status=f"0x{status:08x}",
+            refused_lane_width_resp=",".join(refused) or "-",
+            **({"reason": reason} if reason else {}),
         )
         await self._reset_kmac()
 

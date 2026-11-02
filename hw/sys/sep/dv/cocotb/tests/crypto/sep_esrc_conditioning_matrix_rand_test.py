@@ -97,6 +97,19 @@ Checkers:
                        0 -> 8 of a new digest; each run from 8 holds exactly 8 steps
                        and ends at 0, and at least one run completes. In the
                        pass-through window OUTPUT_COUNT is 0 on every clock.
+  CHK-COND-SHA-STATUS-READS  every ``SHA256_STATUS`` bus read polled in the whitened
+                       window after the first quiet clock of the status tap, with no
+                       whitener input word and no FIFO word within ``QUIET_GUARD``
+                       clocks of its bus window, holds the field meanings
+                       (entropy_source.rdl:78, :83, :88; architecture.adoc:142, one
+                       block is 16 words and gives 8 digest words). With n the
+                       INPUT_COUNT at the quiet clock plus the input words since, and
+                       k the FIFO words since: INPUT_COUNT == n mod 16; BUSY == 1 when
+                       8 x (n div 16) > k and 0 when equal; OUTPUT_COUNT == 0 when no
+                       digest word is pending, == the pending words when a digest has
+                       given some but not all of its words, and 0 or 8 when it has
+                       given none. Control: at least one graded read expects BUSY = 1
+                       and one expects a non-zero INPUT_COUNT.
   CHK-COND-PASSTHRU    every FIFO word == BIW observe word i + d at one d in 0..8.
 Logged only: ``OBS-COND-PASSTHRU-OUTCOUNT`` logs every
 ``SHA256_STATUS.OUTPUT_COUNT`` read polled in the pass-through window
@@ -143,7 +156,7 @@ from env.sep_esrc_pattern_noise import (
     balanced_lanes,
     describe,
 )
-from env.sep_esrc_sha_tap import DIGEST_WORDS, SepEsrcShaTap
+from env.sep_esrc_sha_tap import BLOCK_WORDS, DIGEST_WORDS, QUIET_GUARD, SepEsrcShaTap
 from env.sep_fcov_gate import (
     ESRC_CNT_PASS_FIRST_PUSH,
     ESRC_CNT_PASS_FIRST_STROBE,
@@ -350,6 +363,7 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         "CHK-COND-DOWNSAMPLE",
         "CHK-COND-SHA",
         "CHK-COND-SHA-COUNT",
+        "CHK-COND-SHA-STATUS-READS",
         "CHK-COND-PASSTHRU",
         "CHK-COND-FIRST-PUSH",
         "CHK-COND-PERIOD-RATIO",
@@ -1339,14 +1353,13 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         push0 = white.pushes
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=1))
         cap = SHA_BIW_MIN * 4 * self._period() * 20
-        ok, biw_seen, _, sha_reads = await self._poll_biw(SHA_BIW_MIN, cap)
+        sha_windows: list[tuple[int, int]] = []
+        ok, biw_seen, _, sha_reads = await self._poll_biw(SHA_BIW_MIN, cap, white, sha_windows)
         await self._wr(ESRC_FIFO_CTRL, _val("FIFO_CTRL", ENABLE=0))
         pushes = white.pushes - push0
         await self._wr(ESRC_BIW_OBS_CTRL, _val("BIW_OBS_CTRL", RAW_ENABLE=0))
         await white.stop()
-        self.chk.obs(
-            "COND-SHA-STATUS-READS", reads=len(sha_reads), values=[f"0x{v:x}" for v in sha_reads]
-        )
+        self._grade_sha_status_reads(white, sha_reads, sha_windows)
         biw = _get(await self._rd(ESRC_BIW_OBS_STATUS), "BIW_OBS_STATUS", "LEVEL")
         fifo = _get(await self._rd(ESRC_FIFO_STATUS), "FIFO_STATUS", "LEVEL")
         intr = await self._rd(ESRC_INTR_STATUS)
@@ -1490,6 +1503,67 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             bypass_clocks=pass_tap.clocks,
         )
 
+    def _grade_sha_status_reads(
+        self, tap: SepEsrcShaTap, reads: list[int], windows: list[tuple[int, int]]
+    ) -> None:
+        """CHK-COND-SHA-STATUS-READS: the polled SHA256_STATUS reads of the whitened
+        window against the field meanings, counted from the first quiet tap clock.
+
+        A read samples the register on a clock of its bus window ``[start - 1, end]``.
+        Only a read with no input or FIFO word within ``QUIET_GUARD`` clocks of that
+        window is graded, so the expected fields hold on every clock it can sample."""
+        tr = tap.trace
+        quiet = tap.quiet_clocks()
+        graded = busy_graded = in_graded = 0
+        errors: list[str] = []
+        q0 = quiet[0] if quiet else None
+        for value, (start, end) in zip(reads, windows):
+            lo, hi = start - 1 - QUIET_GUARD, end + QUIET_GUARD
+            if q0 is None or lo <= q0 or hi >= len(tr):
+                continue
+            if tr[hi][3] != tr[lo - 1][3] or tr[hi][4] != tr[lo - 1][4]:
+                continue
+            n = tr[q0][2] + tr[hi][3] - tr[q0][3]
+            pending = DIGEST_WORDS * (n // BLOCK_WORDS) - (tr[hi][4] - tr[q0][4])
+            want_in = n % BLOCK_WORDS
+            want_busy = int(pending > 0)
+            if pending <= 0:
+                want_out: tuple[int, ...] = (0,)
+            elif pending % DIGEST_WORDS:
+                want_out = (pending % DIGEST_WORDS,)
+            else:
+                want_out = (0, DIGEST_WORDS)
+            busy = _get(value, "SHA256_STATUS", "BUSY")
+            got_in = _get(value, "SHA256_STATUS", "INPUT_COUNT")
+            got_out = _get(value, "SHA256_STATUS", "OUTPUT_COUNT")
+            graded += 1
+            busy_graded += want_busy
+            in_graded += int(want_in != 0)
+            if pending < 0 or busy != want_busy or got_in != want_in or got_out not in want_out:
+                errors.append(
+                    f"read{graded}=0x{value:x}:busy={busy}/{want_busy},"
+                    f"in={got_in}/{want_in},out={got_out}/{'|'.join(map(str, want_out))},"
+                    f"pending={pending}"
+                )
+        self.chk.ctrl(
+            "COND-SHA-STATUS-READS",
+            busy_graded >= 1 and in_graded >= 1,
+            reads=len(reads),
+            graded=graded,
+            busy_graded=busy_graded,
+            in_nonzero_graded=in_graded,
+            quiet_clock="none" if q0 is None else q0,
+        )
+        self.chk.ok(
+            "COND-SHA-STATUS-READS",
+            graded > 0 and not errors,
+            reads=len(reads),
+            graded=graded,
+            mismatches=len(errors),
+            first_errors=errors[:4],
+            values=[f"0x{v:x}" for v in reads],
+        )
+
     async def _biw_map_trace(self, pairs: list, bound: int) -> None:
         """The first BIW_MAP_WORDS words of ``esrc_compress_vld_o`` with their strobe bytes.
 
@@ -1513,14 +1587,26 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
                     break
         await NextTimeStep()
 
-    async def _poll_biw(self, minimum: int, bound: int):
-        """Poll BIW_OBS_STATUS.LEVEL >= minimum; reads SHA256_STATUS after each poll."""
+    async def _poll_biw(
+        self,
+        minimum: int,
+        bound: int,
+        tap: SepEsrcShaTap | None = None,
+        windows: list[tuple[int, int]] | None = None,
+    ):
+        """Poll BIW_OBS_STATUS.LEVEL >= minimum; reads SHA256_STATUS after each poll.
+
+        With ``tap`` and ``windows``, each SHA256_STATUS read appends the tap trace
+        lengths before the request and after the response: its bus window."""
         t0 = self._now()
         sha: list[int] = []
         level = 0
         for _ in range(bound + 1):
             level = _get(await self._rd(ESRC_BIW_OBS_STATUS), "BIW_OBS_STATUS", "LEVEL")
+            start = len(tap.trace) if tap is not None else 0
             sha.append(await self._rd(ESRC_SHA256_STATUS))
+            if tap is not None and windows is not None:
+                windows.append((start, len(tap.trace)))
             if level >= minimum:
                 return True, level, self._now() - t0, sha
             if self._now() - t0 > bound:

@@ -49,6 +49,14 @@ CHK-EXT-NOSRC-POP: after the back-pressure leg, with stream 2 external and no be
 offered, one DATA pop after the second level read answers SLVERR when that level is
 0 and OKAY otherwise, with no timeout (``entropy_pool.adoc``, Access Policy).
 
+CHK-EXT-NOSRC-LEVEL: in the same step, a transfer needs ``tvalid`` (``trng.adoc``,
+random-data stream contract: "A word is available; transfer occurs with ``tready``
+high"), so over the hold of ``DRAIN_WINDOW`` clocks no beat completes at external
+port 2, the pool takes no word (``pool_edn_ack_o`` 0) and fifo_level after the hold
+equals fifo_level before it. Control: port 2 ``tvalid`` reads a known 0 on every
+clock of the hold, the source holds no beat, and the transfer leg of the same pass
+moved stream-2 beats.
+
 CHK-SEL-READY0: in the ready leg, when the select read back has bit 0 clear, the
 external stream 0 input sees ``tready`` 1 on every clock it holds ``tvalid`` 1
 (``trng.adoc``: an unselected external input receives ready high). Control:
@@ -58,8 +66,8 @@ passes whose s has bit 0 clear, so it is not in ``required_evidence``.
 Logged only (no stated outcome): ``OBS-SEL-READY0`` when bit 0 is set (no text
 states when the Key Manager sink lowers ready); ``OBS-EXT-WITHDRAW`` when a source drops a beat it
 holds at the end of a leg: the held word, tready at the drop and the next word that
-completes at that port. ``OBS-EXT-NOSRC`` in the same step: the pool fifo_level before
-and after a hold of ``DRAIN_WINDOW`` clocks, and the data of the pop.
+completes at that port. ``OBS-EXT-NOSRC`` in the same step: the data of the pop (no
+text states the data of a SLVERR pop), with the levels of CHK-EXT-NOSRC-LEVEL.
 
 Coverage gate: a FAIL closes the graded window and keeps it closed for the rest of
 the leaf. The sampler holds the cells of the external beats, the external stalls,
@@ -516,6 +524,7 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         "CHK-EDN-FIFO-DEPTH",
         "CHK-SEL-RESET",
         "CHK-EXT-NOSRC-POP",
+        "CHK-EXT-NOSRC-LEVEL",
     )
 
     async def run_scenario(self) -> None:
@@ -1040,8 +1049,11 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
         """Pool STATUS and one DATA pop with stream 2 external and no beat offered."""
         old = await self.reg._rd(SEL_ADDR) & SEL_MASK
         sel = await self._sel(old | 1 << 2)
-        level0 = pool_level(await self.pool.status())
+        level0, settle_reads = await self._status_settled()
+        pending = self.ext.pending(2)
+        self.trace.begin()
         await self._clocks(DRAIN_WINDOW)
+        rows = self.trace.end()
         level1 = pool_level(await self.pool.status())
         seq = await self.pool.access(POOL_POP, allow_timeout=True)
         await self._sel(old)
@@ -1052,6 +1064,35 @@ class sep_trng_ext_stream_handshake_rand_test(sep_base_test):
             level=level1, resp=resp_name(seq.resp_code), expect=resp_name(want),
             timed_out=int(seq.timed_out),
         )  # fmt: skip
+        tvalid_low = sum(1 for r in rows if _bit(r.ev, 2) == 0)
+        self.chk.ctrl(
+            "EXT-NOSRC-LEVEL",
+            bool(rows)
+            and tvalid_low == len(rows)
+            and pending == 0
+            and self.xfer_seen.get(2, 0) >= 1,
+            sel=f"0x{sel:x}",
+            hold_clk=len(rows),
+            tvalid_low_clk=tvalid_low,
+            pending=pending,
+            pass_xfers=self.xfer_seen.get(2, 0),
+        )
+        xfers = len(ext_xfers(rows, 2))
+        acks = sum(1 for r in rows if r.pack != 0)
+        fields = {
+            "level_before": level0,
+            "level_after": level1,
+            "port_xfers": xfers,
+            "pool_acks": acks,
+            "settle_reads": settle_reads,
+        }
+        if settle_reads < 0:
+            fields["reason"] = "timeout:settle"
+        self.chk.ok(
+            "EXT-NOSRC-LEVEL",
+            settle_reads > 0 and level1 == level0 and xfers == 0 and acks == 0,
+            **fields,
+        )
         self.chk.obs(
             "EXT-NOSRC",
             sel=f"0x{sel:x}",

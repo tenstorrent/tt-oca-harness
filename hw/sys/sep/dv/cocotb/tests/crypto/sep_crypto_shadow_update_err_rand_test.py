@@ -72,6 +72,10 @@ Checkers:
                        clocks of it, ALERT_FATAL_FAULT 0. Control:
                        CTRL-GCM-INIT, CTRL_SHADOWED.MODE reads AES_GCM after the
                        GCM_INIT set-up of the leg.
+  CHK-GCM-SHADOW-STATUS AES GCM mismatched pair: STATUS.ALERT_RECOV_CTRL_UPDATE_ERR
+                       reads 0 before the pair and 1 after it (``aes.hjson:1024``
+                       "(See Status Register)", ``:1032`` ``recov_ctrl_update_err``,
+                       ``:992-996``).
   CHK-GCM-SHADOW-WRITE AES GCM equal pair of A_GCM: no bit 32 rise over 4 x c_err
                        clocks, PHASE and NUM_VALID_BYTES read A_GCM and the
                        update error reads 0. Controls: CTRL-GCM-INIT as above;
@@ -86,6 +90,12 @@ Checkers:
                        write, the first rise within 4 x c_err clocks of it.
                        Control:
                        CTRL-AUX-SHADOW-EQ, the equal pair gives no pulse.
+  CHK-AUX-SHADOW-STATUS AES AUX mismatched pair: STATUS.ALERT_RECOV_CTRL_UPDATE_ERR
+                       reads 0 before the pair and 1 after it. CTRL_AUX_SHADOWED
+                       points its recoverable alert at the Status Register
+                       (``aes.hjson:826``) and names ``recov_ctrl_update_err``
+                       as its update-error alert (``:833``); the update-error
+                       field of STATUS is that bit (``:992-996``).
   CHK-AUX-SHADOW-WRITE AES AUX equal pair of A_AUX: the register reads A_AUX and
                        the update error reads 0. Control: CTRL-AUX-SHADOW-PRE, the read before the pair
                        gives the reset value 0x1 (``aes.adoc:131``), which
@@ -125,11 +135,9 @@ condition is the per-read compare of CHK-SHADOW-FATAL-QUIET.
 SecAllowForcingMasks at leaf start (``aes_sec_params_o``): ``aes.hjson`` gives
 only the OpenTitan defaults and no SEP text states the build values.
 
-``OBS-SHADOW-AUX`` logs ``STATUS.ALERT_RECOV_CTRL_UPDATE_ERR`` after the
-mismatched AES AUX pair: the status text names "the shadowed Control Register"
-(aes.hjson:995) and no text states that it covers CTRL_AUX_SHADOWED;
-``OBS-SHADOW-GCM`` logs the same bit after the mismatched GCM pair for the same
-reason, and the reserved bits of CTRL_GCM_SHADOWED after the equal pair. Every KMAC result
+``OBS-SHADOW-GCM`` logs ``STATUS.IDLE`` after the mismatched GCM pair, and the
+reserved bits of CTRL_GCM_SHADOWED after the equal pair: no text states either
+value. Every KMAC result
 (``CFG_SHADOWED`` and ``ENTROPY_REFRESH_THRESHOLD_SHADOWED``) is logged as
 ``OBS-SHADOW-KMAC`` and not graded: no KMAC text defines the update-error write
 sequence of those registers; one equal CFG_SHADOWED pair with a read between
@@ -481,8 +489,10 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         "CHK-SHADOW-RESTART",
         "CHK-GCM-SHADOW-ERR",
         "CHK-GCM-SHADOW-WRITE",
+        "CHK-GCM-SHADOW-STATUS",
         "CHK-SHADOW-FATAL-QUIET",
         "CHK-AUX-SHADOW-ERR",
+        "CHK-AUX-SHADOW-STATUS",
         "CHK-AUX-SHADOW-WRITE",
         "CHK-AUX-REGWEN",
         "CHK-AUX-RESET",
@@ -809,6 +819,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             await self._passed(AES_SHADOW_PASS_AUX_MATCHED)
         self._close()
         await self._aes_reset()
+        aux_pre_err = int(bool(await self.aes._rd(AES_STATUS) & AES_ST_ERR))
         self._open()
         m1, m2 = await self._pair(self.aes, AES_AUX, aux1, aux2, plan.gaps["aux_mis"])
         await self._until(m2, window)
@@ -817,8 +828,17 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         aux_rise = next((r - m2.clk for r in rises if r > m2.clk), None)
         mis_cycles = self.vec.high_clocks_since(m1, "alert")
         st = await self.aes._rd(AES_STATUS)
-        self.chk.obs(
-            "SHADOW-AUX", reg="aes_aux", pair="mismatched", status_err=int(bool(st & AES_ST_ERR))
+        aux_err = int(bool(st & AES_ST_ERR))
+        aux_status_ok = self._grade(
+            "AUX-SHADOW-STATUS",
+            aux_pre_err == 0 and aux_err == 1,
+            reg="aes_aux",
+            first=f"0x{aux1:x}",
+            second=f"0x{aux2:x}",
+            status_err_pre=aux_pre_err,
+            status_err=aux_err,
+            expected_status_err=1,
+            status=f"0x{st:08x}",
         )
         if (
             self._grade(
@@ -834,6 +854,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
                 ctrl_eq_alert_cycles=eq_cycles,
             )
             and eq_ok
+            and aux_status_ok
         ):
             await self._passed(AES_SHADOW_PASS_AUX_MISMATCHED)
         self._close()
@@ -892,11 +913,12 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         plan = self.plan
         window = WINDOW_FACTOR * base
         reason = ""
-        early = cycles = fatal = status_err = -1
+        early = cycles = fatal = status_err = pre_err = idle = -1
         rise_clk = None
         mode_ok = False
         try:
             _, mode_ok = await self._gcm_init("mismatched")
+            pre_err = int(bool(await self.aes._rd(AES_STATUS) & AES_ST_ERR))
             self._open()
             m1, m2 = await self._pair(self.aes, AES_GCM, plan.gcm_a, plan.gcm_b, plan.gcm_gaps[0])
             await self._until(m2, window)
@@ -907,9 +929,21 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
             st = await self.aes._rd(AES_STATUS)
             fatal = int(bool(st & AES_ST_FATAL))
             status_err = int(bool(st & AES_ST_ERR))
+            idle = int(bool(st & AES_ST_IDLE))
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
-        self.chk.obs("SHADOW-GCM", pair="mismatched", status_err=status_err)
+        self.chk.obs("SHADOW-GCM", pair="mismatched", idle=idle)
+        status_ok = self._grade(
+            "GCM-SHADOW-STATUS",
+            not reason and pre_err == 0 and status_err == 1,
+            reg="aes_gcm",
+            a=f"0x{plan.gcm_a:x}",
+            b=f"0x{plan.gcm_b:x}",
+            status_err_pre=pre_err,
+            status_err=status_err,
+            expected_status_err=1,
+            **({"reason": reason} if reason else {}),
+        )
         fields = {
             "reg": "aes_gcm",
             "a": f"0x{plan.gcm_a:x}",
@@ -925,7 +959,7 @@ class sep_crypto_shadow_update_err_rand_test(sep_base_test):
         if reason:
             fields["reason"] = reason
         ok = not reason and early == 0 and rise_clk is not None and rise_clk <= window
-        if self._grade("GCM-SHADOW-ERR", ok and mode_ok and fatal == 0, **fields):
+        if self._grade("GCM-SHADOW-ERR", ok and mode_ok and fatal == 0, **fields) and status_ok:
             await self._passed(AES_SHADOW_PASS_GCM_MISMATCHED)
         self._close()
 

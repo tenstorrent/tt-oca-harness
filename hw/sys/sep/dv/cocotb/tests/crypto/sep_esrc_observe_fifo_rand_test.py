@@ -14,6 +14,9 @@ Entropy Source):
   * A ``FLUSH`` write discards the buffered words (entropy_source.adoc:827).
   * A word offered while full is discarded and sets ``NOISE_OBS_OVERFLOW`` or
     ``BIW_OBS_OVERFLOW``, which clear by write-one (entropy_source.adoc:134, :136).
+    The observe FIFOs use the same FIFO as the output FIFO (architecture.adoc:189),
+    whose overflow is a write discarded while full (entropy_source.rdl:129): a full
+    observe FIFO keeps its words and discards the incoming word.
   * ``FIPS_LOCK.LOCK`` prevents changes of both ``RAW_ENABLE`` fields
     (entropy_source.adoc:752, :792, :828; architecture.adoc:243-245).
 
@@ -97,14 +100,23 @@ Checkers:
                     the main datapath").
                     Controls: two windows with capture off give the same non-zero
                     count, and both observe LEVELs are above 0 after the on window.
+  CHK-OBS-OVF-KEEP  after the sample-clock sequence leg, the same lane takes
+                    FIFO_DEPTH_MAX + 2 words of a seeded sequence with the noise
+                    observe FIFO empty and nothing popped: the edges driven equal the
+                    sequence length, LEVEL is 64, NOISE_OBS_OVERFLOW is 1, 64 words
+                    pop, and popped words 1 to 63 equal written words 1 to 63 (the
+                    two last words are the discarded ones). Words are compared at the
+                    one sample offset, 0 or 1, that matches all 63 of them; the
+                    offset and word 0 are the packing, which CHK-OBS-PACK and
+                    CHK-OBS-SEQ grade. Control: for this sequence the kept words at
+                    each offset differ from popped words 1 to 63 of a FIFO that
+                    discards its two oldest words, at each offset.
 Logged only: ``OBS-FAST``
 logs the lost and repeated samples of a 64-bit sequence at a sample period of
 ``2 x clk_i + 2 ps`` (no stated maximum sample rate). ``OBS-LANESEL-SAME`` logs
 LEVEL before and after a ``LANE_SEL`` write that keeps lane 0 (the ``LANE_SEL`` text
 flushes on a lane change, the ``FLUSH`` text on a ``LANE_SEL`` change; they disagree
-here). ``OBS-OVF-KEEP`` logs the overflow bit, LEVEL and the sequence bit index
-of the first and last popped word after FIFO_DEPTH_MAX + 2 words of a known sequence
-(no stated rule which word a full FIFO discards).
+here).
 """
 
 from __future__ import annotations
@@ -191,6 +203,9 @@ ALL_ONES = 0xFFFF_FFFF
 OBS_FIFO_DEPTH = 64
 # Words of the overflow sequence: two more than the drain bound.
 OVF_SEQ_WORDS = FIFO_DEPTH_MAX + 2
+# Sample offsets of a packed observe word against its 32-sample boundary that the
+# keep check accepts; the packing itself is graded by CHK-OBS-PACK and CHK-OBS-SEQ.
+PACK_OFFSETS = (0, 1)
 
 # Sample-clock sequence leg (test parameters).
 SCLK = "entropy_rosc_sample_clk_i"
@@ -300,6 +315,15 @@ def _draw_seq(rng: SepSeededRng, words: int) -> tuple[int, ...]:
         bits += word
     bits[-1] = 1 - bits[-2]
     return tuple(bits)
+
+
+def _offset_words(bits, first: int, count: int, offset: int) -> list[int]:
+    """Words ``first`` to ``first + count - 1`` of ``bits``, 32 samples LSB first, each
+    starting ``offset`` samples before its word boundary (``first`` >= ``offset``)."""
+    return [
+        sum(b << j for j, b in enumerate(bits[32 * w - offset : 32 * w - offset + 32]))
+        for w in range(first, first + count)
+    ]
 
 
 def _indel_align(got: list[int], want: tuple[int, ...]) -> tuple[int, int]:
@@ -420,6 +444,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         "CHK-OBS-SEQ",
         "CHK-SYNC-DEPTH",
         "CHK-OBS-MAIN",
+        "CHK-OBS-OVF-KEEP",
     )
 
     async def run_scenario(self) -> None:
@@ -1114,7 +1139,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
 
     async def _seq_leg(self) -> None:
         """CHK-OBS-SEQ and CHK-SYNC-DEPTH at a sample period of 8 x clk_i + 2 ps, then
-        OBS-FAST at 2 x clk_i + 2 ps."""
+        OBS-FAST at 2 x clk_i + 2 ps, then CHK-OBS-OVF-KEEP at 8 x clk_i + 2 ps."""
         plan = self.plan
         lane = plan.seq_lane
         t = self._clk_ps()
@@ -1143,7 +1168,7 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
         self._grade_seq(lane, plan.seq, slow)
         fast = await self._seq_window(lane, plan.fast, FAST_PERIOD_CLK, depth=False)
         close_graded_window(self.logger)
-        await self._ovf_keep_obs(lane)
+        await self._ovf_keep_leg(lane)
         self.restart_clock(SCLK, self.cfg.entropy_clk_period_ns)
         self._release_stuck()
         got = [(w >> j) & 1 for w in fast["words"] for j in range(32)]
@@ -1163,30 +1188,52 @@ class sep_esrc_observe_fifo_rand_test(sep_base_test):
             **fast["pre"],
         )
 
-    async def _ovf_keep_obs(self, lane: int) -> None:
-        """Which words a full noise observe FIFO keeps, from a known sample sequence."""
+    async def _ovf_keep_leg(self, lane: int) -> None:
+        """CHK-OBS-OVF-KEEP: a full noise observe FIFO keeps its oldest words."""
         bits = self.plan.ovf_seq
         await self._wr(ESRC_INTR_STATUS, NOISE_OVF)
         res = await self._seq_window(lane, bits, SEQ_PERIOD_CLK, depth=False)
         ovf = int(bool(await self._rd(ESRC_INTR_STATUS) & NOISE_OVF))
         await self._wr(ESRC_INTR_STATUS, NOISE_OVF)
-        text = "".join(map(str, bits))
-
-        def at(word: int) -> int | str:
-            i = text.find("".join(str((word >> j) & 1) for j in range(32)))
-            return i if i >= 0 else "none"
-
-        words = res["words"]
-        self.chk.obs(
-            "OVF-KEEP",
+        n = OBS_FIFO_DEPTH - 1
+        dropped = OVF_SEQ_WORDS - OBS_FIFO_DEPTH
+        keep = {o: _offset_words(bits, 1, n, o) for o in PACK_OFFSETS}
+        drop = {o: _offset_words(bits, 1 + dropped, n, o) for o in PACK_OFFSETS}
+        self.chk.ctrl(
+            "OBS-OVF-KEEP",
+            all(keep[a] != drop[b] for a in PACK_OFFSETS for b in PACK_OFFSETS),
             lane=lane,
             seq_words=OVF_SEQ_WORDS,
-            edges=res["edges"],
-            overflow=ovf,
-            level=res["level"],
-            popped=len(words),
-            first_at_bit=at(words[0]) if words else "none",
-            last_at_bit=at(words[-1]) if words else "none",
+        )
+        words = res["words"]
+        offset = next((o for o in PACK_OFFSETS if words[1:] == keep[o]), None)
+        ref = keep[0 if offset is None else offset]
+        oldest_dropped = next((o for o in PACK_OFFSETS if words[1:] == drop[o]), None)
+        timeout = res["edges"] != len(bits)
+        bad = [w for w in range(1, min(OBS_FIFO_DEPTH, len(words))) if words[w] != ref[w - 1]]
+        fields = {
+            "lane": lane,
+            "seq_words": OVF_SEQ_WORDS,
+            "edges": res["edges"],
+            "expect_edges": len(bits),
+            "overflow": ovf,
+            "level": res["level"],
+            "expect_level": OBS_FIFO_DEPTH,
+            "popped": len(words),
+            "pack_offset": "none" if offset is None else offset,
+            "matches_oldest_dropped": int(oldest_dropped is not None),
+            "bad_words": bad[:8],
+        }
+        if timeout:
+            fields["reason"] = f"timeout:sample_edges driven={res['edges']}"
+        self.chk.ok(
+            "OBS-OVF-KEEP",
+            not timeout
+            and ovf == 1
+            and res["level"] == OBS_FIFO_DEPTH
+            and len(words) == OBS_FIFO_DEPTH
+            and offset is not None,
+            **fields,
         )
 
     async def _seq_window(self, lane: int, bits, period_clk: int, *, depth: bool) -> dict:

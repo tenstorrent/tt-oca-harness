@@ -17,7 +17,8 @@ Each seed runs three trials in drawn order: ML-DSA KEYGEN+SIGN, ML-KEM
 KEYGEN+DECAPS and one drawn single-step cell (ML-DSA KEYGEN, SIGNING or
 VERIFYING; ML-KEM KEYGEN, ENCAPS or DECAPS). Each trial ends with a drawn
 re-arm, a ZEROIZE or an ABR reset (``SW_RESET_N`` bit 6). Then the leaf
-verifies the combined signature (logged only), runs the ACVP accept case as
+verifies the combined signature against the public key of a
+KEYGEN on the same seed (logged only), runs the ACVP accept case as
 the tamper control, one drawn ACVP external-mu sigVer reject case of a drawn
 reason class, the ACVP valid decapsulation case as the KEM control, and two
 drawn ACVP modified-ciphertext decapsulation cases.
@@ -25,6 +26,34 @@ drawn ACVP modified-ciphertext decapsulation cases.
 Checkers:
   CHK-ABR-COMBO     a combined command shows VALID=1 and READY=0 at the first
                     VALID read.
+  CHK-ABR-SINGLE-STATUS
+                    a single-step command shows VALID=1 and READY=0 at the
+                    first STATUS read with VALID or ERROR set
+                    (``adams_bridge.adoc``:191-195: the sequencer parks at the
+                    end state of any operation with ``STATUS.VALID`` set, and
+                    ``STATUS.READY`` re-asserts only after a zeroize or a reset).
+  CHK-ABR-SIGN-DETERMINISTIC
+                    the ``MLDSA_SIGNATURE`` of the KEYGEN+SIGN trial equals, in
+                    every word, the signature of the same KEYGEN+SIGN run alone
+                    before it: same seed, mu and entropy, ``MLDSA_SIGN_RND``
+                    written all zero before both runs (``abr_reg.rdl``:145,
+                    "sign_rnd should be all zero for deterministic variant";
+                    :115, the entropy makes "no change on the outputs").
+                    ``CTRL-ABR-PARKED-Y`` is its control: the signature of the
+                    run alone verifies under the ACVP keyGen public key, so it
+                    is a filled window and not a zeroized one.
+  CHK-ABR-RESET-VALID
+                    after an ABR reset (``SW_RESET_N`` bit 6,
+                    ``reset_controller.adoc``:102) the first STATUS read with
+                    READY set shows VALID=0, the reset value of the field
+                    (``abr_reg.rdl``:102-104 MLDSA, :349-351 MLKEM,
+                    ``resetsignal = reset_b``, ``VALID = 1'b0``). VALID read 1
+                    at the park before the reset (CHK-ABR-COMBO,
+                    CHK-ABR-SINGLE-STATUS). Graded on every trial whose re-arm
+                    is the reset; a seed that draws no reset re-arm does not
+                    reach it and does not require it. Seed 1 draws the reset
+                    re-arm on its single-step cell. ``OBS-ABR-VALID`` logs VALID
+                    at the READY read after a ZEROIZE re-arm.
   CHK-ABR-PARK      after the result reads and before the re-arm READY reads 0;
                     a combined cell also holds VALID=1.
   CHK-ABR-REARM     after a combined cell, ZEROIZE or an ABR reset gives
@@ -46,7 +75,7 @@ Checkers:
                     park, and STATUS still reads VALID 1 and READY 0
                     (``abr_reg.rdl``:77, :81-83, :328, ``swwe = abr_ready`` on
                     the command fields; :91-92, :340-341, READY is "ready to
-                    take a control command"; ``adams_bridge.adoc``:186-190).
+                    take a control command"; ``adams_bridge.adoc``:191-195).
                     Y is ML-DSA VERIFYING (output ``MLDSA_VERIFY_RES``) after
                     KEYGEN+SIGN, and ML-KEM ENCAPS (outputs
                     ``MLKEM_CIPHERTEXT``, ``MLKEM_SHARED_KEY``) after
@@ -58,9 +87,9 @@ Checkers:
 ``STATUS.ERROR`` is logged and not graded. The RDL describes the bit
 (``integration/rdl/sep/abr_reg.rdl``:97 and :344, "the process ended with an
 error"; field text :106 and :352, "Status error bit") and states no rule for
-the value at the end of a combined command, and ``adams_bridge.adoc``:186-189
-names only ``VALID`` and ``READY``. CHK-ABR-COMBO and CHK-ABR-PARK carry it in
-an ``obs_error`` field.
+the value at the end of a command, and ``adams_bridge.adoc``:191-195
+names only ``VALID`` and ``READY``. CHK-ABR-COMBO, CHK-ABR-SINGLE-STATUS and
+CHK-ABR-PARK carry it in an ``obs_error`` field.
 
 Controls: ``CTRL-ABR-PARK`` (READY reads 1 after the re-arm of the
 single-step cell), ``CTRL-ABR-VALID-PRE`` (VALID reads 0 at the READY read
@@ -128,7 +157,7 @@ from env.sep_abr_nist import (
     NIST_SV_OK_SIG,
     NIST_SV_REJECTS,
 )
-from env.sep_chk_log import SepChkLog
+from env.sep_chk_log import SepChkLog, word_digest
 from env.sep_fcov_gate import (
     close_graded_window,
     open_graded_window,
@@ -136,7 +165,7 @@ from env.sep_fcov_gate import (
     set_abr_reject_class,
 )
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spec_tables import abr_ctrl_cmd, abr_field_mask, abr_off
+from env.sep_spec_tables import abr_ctrl_cmd, abr_field_mask, abr_off, abr_words
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_keygen_seq import (
     ABR_BASE,
@@ -146,6 +175,7 @@ from seq_lib.sep_abr_keygen_seq import (
     ABR_PRIVKEY_IN,
     ABR_PUBKEY,
     ABR_SEED,
+    ABR_SIGN_RND,
     ABR_SIGNATURE,
     ABR_STATUS,
     ABR_VERIFY_RES,
@@ -205,6 +235,8 @@ PASS_HOLD_CYCLES = 2
 
 # MLDSA_CTRL.CTRL 100 = KEYGEN+SIGN (abr_reg.rdl:75), parsed from the RDL text.
 CMD_KEYGEN_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN_SIGN")
+# MLDSA_SIGN_RND all zero selects the deterministic signing variant (abr_reg.rdl:145).
+SIGN_RND_ZERO = [0] * abr_words("MLDSA_SIGN_RND")
 # Secret output window of ML-DSA KEYGEN (abr_reg.rdl MLDSA_PRIVKEY_OUT).
 ABR_PRIVKEY_OUT = ABR_BASE + abr_off("MLDSA_PRIVKEY_OUT")
 
@@ -368,6 +400,8 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
 
     required_evidence = (
         "CHK-ABR-COMBO",
+        "CHK-ABR-SINGLE-STATUS",
+        "CHK-ABR-SIGN-DETERMINISTIC",
         "CHK-ABR-PARK",
         "CHK-ABR-REARM",
         "CHK-ABR-ORDER",
@@ -675,6 +709,7 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
                     *PARKED_Y_INPUTS[cell],
                     (ABR_SEED, NIST_KG_SEED),
                     (ABR_EXTERNAL_MU, NIST_SG_MU),
+                    (ABR_SIGN_RND, SIGN_RND_ZERO),
                     ent,
                 ],
                 CMD_KEYGEN_SIGN | CTRL_EXTERNAL_MU,
@@ -754,18 +789,20 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             return
         f = self._fields(blk, st)
         if combined:
-            # First STATUS read with VALID: VALID=1 and READY=0 (adams_bridge.adoc:186-189).
+            # First STATUS read with VALID: VALID=1 and READY=0 (adams_bridge.adoc:191-195).
             combo_ok = self._ok(
                 "ABR-COMBO", f["valid"] == 1 and f["ready"] == 0, cell=cell, via=via, **f
             )
             if combo_ok:
                 await self._pass_label(COMBO_PASS, blk)
         else:
-            self.chk.obs("ABR-SINGLE-STATUS", cell=cell, **f)
+            # The single-step end state parks the same way (adams_bridge.adoc:191-195).
+            self._ok("ABR-SINGLE-STATUS", f["valid"] == 1 and f["ready"] == 0, cell=cell, **f)
 
         # Step 6: result windows.
         if cell == "dsa_keygen_sign":
             self.combo_sig = await self.abr.read_words(ABR_SIGNATURE, SIG_WORDS)
+            self._sign_deterministic(cell)
         elif not combined:
             mism = []
             for name, addr, exp in self._cell_expect(cell, self.plan.row):
@@ -822,7 +859,11 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
             await self._recover(f"{cell}/rearm")
             return
         fr = self._fields(blk, st_r)
-        self.chk.obs("ABR-VALID", cell=cell, via=via, valid=fr["valid"])
+        if via == "reset":
+            # VALID returns to its reset value 0 (abr_reg.rdl:104, :351).
+            self._ok("ABR-RESET-VALID", fr["valid"] == 0, cell=cell, via=via, **fr)
+        else:
+            self.chk.obs("ABR-VALID", cell=cell, via=via, valid=fr["valid"])
         if not combined:
             self._ctl("ABR-PARK", fr["ready"] == 1, cell=cell, via=via, ready_after_rearm=1)
             return
@@ -867,6 +908,25 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
 
     def _ops(self) -> str:
         return ">".join(self.ops) or "none"
+
+    def _sign_deterministic(self, cell: str) -> None:
+        """CHK-ABR-SIGN-DETERMINISTIC: the trial signature equals the run-alone signature."""
+        pre = self.pk_sig_pre
+        if pre is None:
+            self._ok("ABR-SIGN-DETERMINISTIC", False, cell=cell, reason="no_pre_run")
+            return
+        got = list(self.combo_sig)
+        bad = _first_diff(got, pre)
+        self._ok(
+            "ABR-SIGN-DETERMINISTIC",
+            bad is None and len(got) == SIG_WORDS,
+            cell=cell,
+            sign_rnd="zero",
+            words=len(got),
+            first_diff="none" if bad is None else bad,
+            sig_sha=word_digest(got),
+            pre_sha=word_digest(pre),
+        )
 
     # --- after the trials ---------------------------------------------------
     async def _verify(self, pk, mu, sig) -> tuple[list[int] | None, int | None, str]:
@@ -1022,6 +1082,10 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
 
         # Step 2.
         self.logger.info("%s", self.plan.line())
+        resets = sum(1 for via in self.plan.rearm.values() if via == "reset")
+        self.chk.info("ABR-RESET-VALID-LEGS", drawn=resets)
+        if resets:
+            self.required_evidence = (*type(self).required_evidence, "CHK-ABR-RESET-VALID")
 
         try:
             await self._graded_steps()
