@@ -419,22 +419,28 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
         )
 
     async def _await_settle(self, x: _Xfer, want: int) -> None:
-        """Polls DONE_0 until it reads `want` with tb_dma_busy low; fails when POLL_LIMIT reads
-        pass first. The DONE_0 values are kept for the caller's compare."""
+        """Polls DONE_0 until two reads POLL_CYCLES apart both return `want` with tb_dma_busy low
+        after each; fails when POLL_LIMIT reads pass first. A single matching read is not enough:
+        DONE_0 is sampled inside the AXI read and tb_dma_busy after it, so a retirement landing
+        between the two samples would pass a value that is still moving. The DONE_0 values are
+        kept for the caller's compare."""
         idle = False
+        stable = 0
         for poll in range(1, POLL_LIMIT + 1):
             done = await self.csr_read(f"{x.name}_DONE", DMA_CTRL_DONE_0)
             x.done_reads.append(done)
             x.polls = poll
             busy = cocotb.top.tb_dma_busy.value
             idle = busy.is_resolvable and int(busy) == 0
-            if done == want and idle:
+            stable = stable + 1 if done == want and idle else 0
+            if stable == 2:
                 break
             await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
         else:
             raise AssertionError(
-                f"CHK-DXM-ZERO-LENGTH-DONE FAIL: {x.name}: DONE_0 did not read {want} with "
-                f"tb_dma_busy low within {POLL_LIMIT} reads {POLL_CYCLES} clk_smc_i cycles apart: "
+                f"CHK-DXM-ZERO-LENGTH-DONE FAIL: {x.name}: DONE_0 did not read {want} on two "
+                f"reads in a row with tb_dma_busy low after each within {POLL_LIMIT} reads "
+                f"{POLL_CYCLES} clk_smc_i cycles apart: "
                 f"idle={idle}, DONE_0 before the launch {x.done_before}, drawn reps {x.reps}, "
                 f"last reads {x.done_reads[-3:]}; {x.cells()}"
             )
@@ -574,6 +580,16 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
         tag = 0x40 + src.idx
         self._seed_rows(x, tag)
         await self._program(x, config, length)
+        reps_rb = -1
+        if label == "ZERO_LENGTH":
+            # The N the compare expects is the count in the register the DMA reads, so the
+            # register has to hold the value this leg drew before the launch.
+            reps_rb = await self.csr_read(f"{x.name}_REPS", DMA_CTRL_NUM_REPETITIONS_LO)
+            assert reps_rb == x.reps, (
+                f"CHK-DXM-ZERO-LENGTH-DONE FAIL: {x.name}: NUM_REPETITIONS_LO reads {reps_rb} "
+                f"before the LENGTH 0 launch, not the drawn {x.reps} (ND leg reps "
+                f"{self.xfers[self.nd_src].reps}); {src.cells()}"
+            )
         resp = await self._launch(x)
         if label == "ZERO_LENGTH":
             want = _retired(x.done_before, x.reps)
@@ -602,7 +618,8 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
                 f"launch read returned the non-zero id {x.id} = DONE_0 before the launch "
                 f"{x.done_before} plus one, all {x.span(x.dst_stride) + 2 * GUARD} destination "
                 f"bytes kept the sentinel and the source rows are unchanged after {x.polls} "
-                f"DONE_0 reads that ended at {want} with tb_dma_busy low; "
+                f"DONE_0 reads that ended with two reads of {want} with tb_dma_busy low after "
+                f"each; NUM_REPETITIONS_LO read back {reps_rb} before the launch; "
                 f"launch read response {resp}, STATUS_0 0x{x.status:x}; CONFIG 0x{config:x} "
                 f"LENGTH {length}; drawn={src.cells()}"
             )
@@ -657,8 +674,8 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
             f"SEP_IN driver guard {self.cfg.axi_timeout_ns} ns per access ({self.accesses})",
             f"DONE_0 poll <= {POLL_LIMIT} reads {POLL_CYCLES} clk_smc_i cycles apart per launch "
             f"({N_LAUNCHES - 1} launches, clk_smc_i {period} ns), the zero-length launch's "
-            f"DONE_0 settle poll <= {POLL_LIMIT} reads, failing unless DONE_0 reads its "
-            f"pre-launch value plus NUM_REPETITIONS with tb_dma_busy low",
+            f"DONE_0 settle poll <= {POLL_LIMIT} reads, failing unless two reads in a row "
+            f"return its pre-launch value plus NUM_REPETITIONS with tb_dma_busy low after each",
         ]
         cocotb.log.info(
             "CHK-TIMEOUT-PATHS: %d bounded waits: %s; expiry raises AssertionError",
