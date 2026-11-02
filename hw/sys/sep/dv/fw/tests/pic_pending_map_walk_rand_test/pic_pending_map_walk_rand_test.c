@@ -238,7 +238,7 @@ static const uint8_t k_gw_map[N_GW] = {0, 1, 2, 3, 4, 5, 6, 7, 10, 13, 16, 20}; 
 #define MCGC_PICIO (1u << 9)
 
 static int g_err;
-static uint32_t g_ip_en[6]; // INTR_ENABLE values the map pass wrote
+static uint32_t g_ip_en[6];               // INTR_ENABLE values the map pass wrote
 static uint16_t g_gwclr_n[LAST_SRC + 1u]; // meigwclr writes per source
 
 // Every meigwclr write of the leaf goes through here, so the host can match
