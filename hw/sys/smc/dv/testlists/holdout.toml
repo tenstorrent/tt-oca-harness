@@ -213,6 +213,22 @@ run_modes = ["smoke"]
 expect_fail = "DONE_0 after a LENGTH 0 launch advances by NUM_REPETITIONS, not to the one returned ID (#3509)"
 expect_fail_match = "CHK-DXM-ZERO-LENGTH-DONE FAIL"
 
+[[tests]]
+# A watchdog warm reset asserted while an SPM write burst from SEP_IN is inside
+# the CPU cluster boundary (AW handshake done, B not returned, the L2-frontend
+# isolate's pending write count above 0) leaves the boundary unanswering until
+# a primary reset: the cut write gets no B, and later SPM and CPU_CTRL writes
+# with the same AXI ID bits [2:0] never complete. cpu.adoc (CPU AXI Isolation)
+# says each cluster port is drained before the reset takes effect.
+name = "smc_spm_write_cut_by_warm_reset_test"
+module = "smc_spm_write_cut_by_warm_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "an SPM write cut by a watchdog warm reset receives no B after the release and later writes with its AXI ID bits [2:0] never complete"
+expect_fail_match = "CHK-SPM-WRITE-CUT-BY-WARM-RESET FAIL"
+
 [[groups]]
 # Register-clock gate mapping, traffic-bearing wakes and closure.
 name = "cg_uvm_extended"
@@ -270,12 +286,13 @@ tests = [
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 4
+expected_count = 5
 tests = [
     "smc_warm_domain_access_during_reset_test",
     "smc_dfd_cla_irq_w2c_release_test",
     "smc_dfd_cla_clock_halt_release_test",
     "smc_dma_zero_length_done_id_test",
+    "smc_spm_write_cut_by_warm_reset_test",
 ]
 
 [[groups]]
