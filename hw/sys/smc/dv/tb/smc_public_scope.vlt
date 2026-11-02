@@ -8,8 +8,8 @@ public_flat_rw -module "smc_uvm_top" -var "*"
 // The shared AXI VIP interface on the SYS_OUT boundary: cocotb binds the slave
 // agent to its members.
 public_flat_rw -module "ocah_axi_if" -var "*"
-// The AXI protocol checkers' enable: the partial-reset leaf reads every bound
-// instance's en_i to show the checkers were armed while it graded. READ-ONLY.
+// The AXI protocol checkers' enable: the partial-reset leaf reads en_i of the
+// twelve instances it names to show they were armed while it graded. READ-ONLY.
 public_flat_rd -module "ocah_axi_sva" -var "en_i"
 // SEP-aligned CPU / output / I3C mem: backdoor $readmemh into prim_* arrays.
 // prim_ram_2p is the I3C RLT memory, instantiated in smc_ip_integration.
