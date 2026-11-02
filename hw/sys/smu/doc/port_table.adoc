@@ -81,7 +81,7 @@
 |`rst_primary_ref_clk_no` |`logic` |Output |1 |Primary reset synchronized to reference clock domain (active low). |Downstream subsystems |N/A
 |`rst_primary_smc_clk_no` |`logic` |Output |1 |Primary reset synchronized to SMC clock domain (active low). |Downstream subsystems |N/A
 
-|`smu_axi_in_req_i` |`smu_axi_xbar_pkg::axi_56_64_req_t` |Input |- |SMU AXI crossbar inbound request (from SMN). |SMN fabric |Tie to '0 if unused
+|`smu_axi_in_req_i` |`smu_axi_xbar_pkg::axi_56_64_req_t` |Input |- |SMU AXI crossbar inbound request (from SMN). No atomic transactions: `aw.atop` must be 0. |SMN fabric |Tie to '0 if unused
 |`smu_axi_in_resp_o` |`smu_axi_xbar_pkg::axi_56_64_resp_t` |Output |- |SMU AXI crossbar inbound response. |SMN fabric |N/A
 |`smu_axi_out_req_o` |`smu_axi_xbar_pkg::axi_out_req_t` |Output |- |SMU AXI crossbar outbound request (to SMN). |SMN fabric |N/A
 |`smu_axi_out_resp_i` |`smu_axi_xbar_pkg::axi_out_resp_t` |Input |- |SMU AXI crossbar outbound response. |SMN fabric |Tie to '0 if unused

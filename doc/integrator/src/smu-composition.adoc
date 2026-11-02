@@ -155,6 +155,20 @@ ifdef::backend-pdf[]
 the SMU AXI Crossbar section of the Technical Reference Manual.
 endif::backend-pdf[]
 
+[[smu-axi-boundary-contract]]
+=== AXI boundary contract
+
+The SMU does not check that requests on `smu_axi_in` are legal for it. The
+system fabric that drives the port must meet the following rules in both
+`CFG.SEP` configurations.
+
+Atomic transactions::
+The SMU does not support AXI atomic transactions: `AWATOP` must be 0. Nothing
+in the SMU refuses or answers an atomic request. It is forwarded as an ordinary
+write, and an atomic that expects read data never receives it, so the requester
+waits indefinitely. If the system fabric can issue atomics towards the SMU,
+filter them in front of `smu_axi_in`.
+
 [[smu-firmware-programming-order]]
 === Firmware programming order
 
