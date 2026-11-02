@@ -1659,7 +1659,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>chip_id</ipxact:name>
-              <ipxact:description>Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)</ipxact:description>
+              <ipxact:description>Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1677,7 +1677,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>lc_state</ipxact:name>
-              <ipxact:description>Lifecycle state value from SEP. Default to invalid state</ipxact:description>
+              <ipxact:description>Lifecycle state from SEP, differentially encoded: {~raw[3:0], raw[3:0]}. The register has no storage: each read returns the value SEP drives at that moment, neither latched nor decoded. The reset value 0x0F is the INVALID encoding 4'b1111, the fail-safe state, and is what SEP itself drives until fuse sensing completes. An SMU built without SEP drives 0xF0 (TEST_DEV).</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
