@@ -39946,12 +39946,15 @@ draws nothing from the seed.
 * UART1-3 MCR.LOOP keeps the byte inside the instance and off its peer; with LOOP=0 the byte reaches the peer only.
 * UART1-3 IIR THRE lifecycle: set with the TX FIFO empty, cleared by the IIR read with LSR.THRE still 1, re-armed by a drained character, ranked below a pending parity error and reported again once RBR is drained and LSR read. The IIR read right after the first LSR read is logged, not compared (SF-041).
 * UART1-3 ITR.TTBEI forces IIR ID 0x1 while the TX FIFO is non-empty and releases it.
-* UART1-3 FCR.XMIT_FIFO_RESET discards the queued characters (at most the first leaves the line) and leaves the received byte in place.
+* UART1-3 FCR.XMIT_FIFO_RESET discards the queued characters (LSR.THRE reads 0 once they are queued; at most the first leaves the line) and leaves the received byte in place.
 * UART1-3 THR writes past the FIFO depth inside one frame and an RBR read with the RX FIFO empty: LSR.DR stays 0; the bus responses, IIR, LSR, the combined interrupt line and the characters the peer receives are logged against SF-018.
-* The combined interrupt line `tb_uart_irq_combined` is logged at each error, OUT2, ITR and FIFO-access observation and never compared (SF-001).
-* UART1-3 MCR.OUT2 leaves the interrupt identification unchanged: with ITR.TTBEI forcing, IIR reads
-  0xC2 after each OUT2 write. Whether OUT2 gates `irq_o` (`architecture.adoc`) is not compared; the
-  combined line is logged (SF-001).
+* The combined interrupt line `tb_uart_irq_combined` is compared in the OUT2 leg and logged at each error, ITR and FIFO-access observation (SF-001 for those).
+* UART1-3 MCR.OUT2 gates neither the interrupt identification nor the interrupt line: MCR reads
+  back with OUT2 set after the OUT2=1 write and clear after the OUT2=0 write, and with ITR.TTBEI
+  forcing, IIR reads 0xC2 and the instance's combined interrupt line reads 1 after each of those
+  writes (`architecture.adoc`: MCR.OUT2 does not gate the interrupt; `interrupts.adoc`: the line
+  is the OR of the UART, UART error and log-engine interrupts of the instance), and the line
+  reads 0 once ITR and IER are cleared.
 * Not covered: the MCR DTR / OUT1 / OUT2 pad levels (SF-042). `smc_peripherals` leaves `uart_dtr_no`, `uart_out1_no` and `uart_out2_no` unconnected and the bench has no probe for them; MCR=0x0D / 0x00 is written as stimulus only.
 
 *Test Procedure*:
@@ -39975,17 +39978,17 @@ Drive `smc_uart_error_conditions_test_seq`. Each checker below is a named compar
 |`CHK-UART13-FRAMING` |A 0 at the 5-bit receiver's stop position gives FE=1 with BI=0, IIR=0xC6 under ELSI=1 and no ID 0x3 under ELSI=0; LSR bits 4:2 = 0 after the RBR drain
 |`CHK-UART13-LSR-RC` |For every BI, PE and FE leg the first LSR read returns the error and the LSR read after the RBR drain returns bits 4:2 = 0; the second read before the drain is logged (LINKED-ISSUE SF-041)
 |`CHK-UART13-MCR-LOOP` |LOOP=1: the instance reads its byte back and the peer reads DR=0; LOOP=0: the peer reads the byte and the instance reads DR=0
-|`CHK-UART13-OUT2-IIR` |With ITR.TTBEI forcing, IIR reads 0xC2 after each MCR.OUT2 write; the combined line is logged (SF-001)
+|`CHK-UART13-OUT2-LINE` |MCR reads back OUT2 set after the OUT2=1 write and clear after the OUT2=0 write; with ITR.TTBEI forcing, the combined interrupt line reads 1 and IIR reads 0xC2 after each of those writes, and the line reads 0 once ITR and IER are cleared
 |`CHK-UART13-IIR-THRE` |IIR 0xC2 then 0xC1 with LSR.THRE=1 on an empty TX FIFO, 0xC2 after a drained character, 0xC6 with a parity error also pending and 0xC2 after the RBR drain and an LSR read; the IIR read right after the first LSR read is logged (LINKED-ISSUE SF-041)
 |`CHK-UART13-ITR-THRE` |With the TX FIFO non-empty ITR.TTBEI=1 makes IIR read 0xC2 and ITR=0 makes it read 0xC1
-|`CHK-UART13-XMIT-RESET` |After FCR.XMIT_FIFO_RESET LSR.THRE=1, the peer receives at most the first queued character, and the received byte 0x6E stays readable
+|`CHK-UART13-XMIT-RESET` |After the eight THR writes LSR.THRE=0 (the TX FIFO holds data); after FCR.XMIT_FIFO_RESET LSR.THRE=1, the peer receives at most the first queued character, and the received byte 0x6E stays readable
 |`CHK-UART13-FIFO-ACCESS-OBS` |LSR.DR=0 after an RBR read with the RX FIFO empty; the THR-overflow and RBR-underflow indications are logged (LINKED-ISSUE SF-018)
 |`CHK-NONVAC` |Ordered fence BRINGUP < UART13_BREAK < ... < UART13_FIFO_ACCESS after the UART0 legs, each step stamped after its checker lines
 |`CHK-TIMEOUT-PATHS` |One entry per bounded wait of the UART1-3 legs with its bound and last observed state (an expiry fails naming the UART and its last LSR, IIR and line), the fixed collection windows listed as windows, and the pre-existing UART0-leg waits with their bounds and expiry messages
 |===
 
 
-*Pass Criteria*: `CHK-UART-ERR-BASIC`, `CHK-UART-ERR-BI`, `CHK-UART-ERR-OE`, `CHK-UART-ERR-OE-NEG`, `CHK-UART-ERR-PE`, `CHK-UART-ERR-PE-NEG`, `CHK-UART13-BREAK`, `CHK-UART13-PARITY`, `CHK-UART13-FRAMING`, `CHK-UART13-LSR-RC`, `CHK-UART13-MCR-LOOP`, `CHK-UART13-OUT2-IIR`, `CHK-UART13-IIR-THRE`, `CHK-UART13-ITR-THRE`, `CHK-UART13-XMIT-RESET`, `CHK-UART13-FIFO-ACCESS-OBS`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
+*Pass Criteria*: `CHK-UART-ERR-BASIC`, `CHK-UART-ERR-BI`, `CHK-UART-ERR-OE`, `CHK-UART-ERR-OE-NEG`, `CHK-UART-ERR-PE`, `CHK-UART-ERR-PE-NEG`, `CHK-UART13-BREAK`, `CHK-UART13-PARITY`, `CHK-UART13-FRAMING`, `CHK-UART13-LSR-RC`, `CHK-UART13-MCR-LOOP`, `CHK-UART13-OUT2-LINE`, `CHK-UART13-IIR-THRE`, `CHK-UART13-ITR-THRE`, `CHK-UART13-XMIT-RESET`, `CHK-UART13-FIFO-ACCESS-OBS`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `hosted`, `uart`.
 
 *Scope limit*: None stated.
 '''''
