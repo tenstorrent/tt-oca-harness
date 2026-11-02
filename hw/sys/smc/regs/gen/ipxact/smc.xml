@@ -1659,7 +1659,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>chip_id</ipxact:name>
-              <ipxact:description>Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)</ipxact:description>
+              <ipxact:description>Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1677,7 +1677,7 @@ leaves it unchanged; a rising edge in the same cycle as a clearing write wins.</
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>lc_state</ipxact:name>
-              <ipxact:description>Lifecycle state value from SEP. Default to invalid state</ipxact:description>
+              <ipxact:description>Lifecycle state from SEP, differentially encoded: {~raw[3:0], raw[3:0]}. The register has no storage: each read returns the value SEP drives at that moment, neither latched nor decoded. The reset value 0x0F is the INVALID encoding 4'b1111, the fail-safe state, and is what SEP itself drives until fuse sensing completes. An SMU built without SEP drives 0xF0 (TEST_DEV).</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -8880,12 +8880,12 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD</ipxact:name>
-          <ipxact:description>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</ipxact:description>
+          <ipxact:description>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.</ipxact:description>
           <ipxact:addressOffset>'h28</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>value</ipxact:name>
-            <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
+            <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -8953,12 +8953,12 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD</ipxact:name>
-          <ipxact:description>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</ipxact:description>
+          <ipxact:description>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.</ipxact:description>
           <ipxact:addressOffset>'h38</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>value</ipxact:name>
-            <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
+            <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -9026,12 +9026,12 @@ Muxselseg0 to Muxselseg3.</ipxact:description>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</ipxact:name>
-          <ipxact:description>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</ipxact:description>
+          <ipxact:description>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires. The timeout rises on the next cycle and holds until the stall ends.</ipxact:description>
           <ipxact:addressOffset>'h48</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>value</ipxact:name>
-            <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
+            <ipxact:description>Threshold in clock cycles. Default 0x1000. 20 bits =&gt; up to ~1M cycles (~1ms at 1GHz). A timeout fires only if the threshold loaded when the stall count last restarted is non-zero, so 0 disables timeout detection: a stalled bus never times out, though irq_test still asserts irq_o. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
