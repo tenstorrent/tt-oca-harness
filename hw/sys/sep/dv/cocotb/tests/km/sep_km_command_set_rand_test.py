@@ -272,6 +272,11 @@ DEST_NAME = {
 _KM_CSR = CHeaderRegBlock("KM_CSR", ip_c_header("key_manager").with_name("km_csr.h"))
 OTP_CHANGE = int(_KM_CSR.fields("IRQ_STATUS_REG")["OTP_CHANGE"]["bm"])
 OTP_CHANGE_EN = int(_KM_CSR.fields("IRQ_ENABLE_REG")["OTP_CHANGE_EN"]["bm"])
+# OTP_READ_LOCK_COLD after the first identity lock: its cold-reset value with the
+# SEP_SYS_ID read-lock bit set.
+_OTP_LOCK_COLD_AFTER_ID = _KM_CSR.reset("OTP_READ_LOCK_COLD_REG") | int(
+    _KM_CSR.fields("OTP_READ_LOCK_COLD_REG")["SEP_SYS_ID"]["bm"]
+)
 
 # Quiet window of CHK-OTP-CHG-DORMANT, in clocks. An enabled handler enters
 # and clears the bit within this many clocks (sep_km_otp_change_irq_test
@@ -803,12 +808,11 @@ class sep_km_command_set_rand_test(sep_base_test):
         rc, arg = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_IDENTITY])
         assert rc == KM_RC_SUCCESS, f"CHK-OTP FAIL: lock identity bit rc={rc}"
         # firmware.adoc, "0x28 - CMD_OTP_READ_LOCK_COLD": RETURN_ARG is the
-        # OTP_READ_LOCK_COLD value after the write. The register resets to 0 on
-        # a cold reset (km_csr.rdl) and this is the leaf's first lock, so the
-        # value is exactly the identity bit.
-        assert arg == _OTP_LOCK_IDENTITY, (
-            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x}, expected 0x{_OTP_LOCK_IDENTITY:08x} "
-            "(only the identity bit, from a cold-reset 0)"
+        # OTP_READ_LOCK_COLD value after the write. This is the leaf's first lock,
+        # so the value is the register's cold-reset value with SEP_SYS_ID set.
+        assert arg == _OTP_LOCK_COLD_AFTER_ID, (
+            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x}, expected 0x{_OTP_LOCK_COLD_AFTER_ID:08x} "
+            "(OTP_READ_LOCK_COLD reset value with the SEP_SYS_ID bit set)"
         )
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_RESERVED])
         assert rc == KM_RC_INVALID_ARG, (

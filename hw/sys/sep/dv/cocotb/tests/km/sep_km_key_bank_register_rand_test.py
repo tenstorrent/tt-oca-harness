@@ -122,11 +122,11 @@ their seed mapping.
                    ``aes_wrapper_key.rdl`` states a strobe rule for the share
                    words.
 
-Shards (``env/sep_shard.py``): without ``+sep_shard`` the leaf runs every leg,
-and only this run grades CHK-BANK-RST. ``+sep_shard=1`` runs steps 2 to 7.
-``+sep_shard=2`` runs steps 2 to 7 and the single-share leg; its step 6 grades
-CHK-BANK-SK-CONSUME and logs the KEY words after the consume and after the
-refused set (``OBS-SK-WORDS``) without CHK-BANK-SK-SW.
+Shards (``env/sep_shard.py``): without ``+sep_shard`` the leaf runs every leg.
+``+sep_shard=1`` runs steps 2 to 7. ``+sep_shard=2`` runs every leg too; its
+step 6 grades CHK-BANK-SK-CONSUME and logs the KEY words after the consume and
+after the refused set (``OBS-SK-WORDS``) without CHK-BANK-SK-SW. Both the run
+without a shard and shard 2 grade CHK-BANK-RST.
 
 Logged only: the share-read responses; the reserved KEY_CTRL bits of the eight
 banks at reset; the shared-key words before the consume (``OBS-SK-WORDS``,
@@ -238,6 +238,7 @@ _SHARD_EVIDENCE = {
         "CHK-BANK-SK-IRQ",
         "CHK-SINGLE-SHARE",
         "CHK-SS-KEY-CTRL-RSVD",
+        "CHK-BANK-RST",
     ),
 }
 
@@ -357,11 +358,10 @@ class sep_km_key_bank_register_rand_test(sep_base_test):
         await self._irq_gate()
         close_graded_window(self.logger)
 
-        if shard is None:
+        if shard != 1:
             await self._all_set()
             await self._engine_resets()
             await self._park()
-        if shard != 1:
             await self._single_share()
 
         if not (self.swrst.value >> SW_RESET_N_BIT["km"]) & 1:

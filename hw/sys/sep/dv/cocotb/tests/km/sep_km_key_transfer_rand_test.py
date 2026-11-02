@@ -180,12 +180,14 @@ class _BusWatch:
         self.addr = top.km_key_aw_addr_o
         self.writes: list[tuple[int, int]] = []
         self.same_clock = 0
+        self.xz = 0
         self._on = False
         self._task = None
 
     def start(self) -> None:
         self.writes = []
         self.same_clock = 0
+        self.xz = 0
         self._on = True
         self._task = cocotb.start_soon(self._run())
 
@@ -200,9 +202,13 @@ class _BusWatch:
             await ReadOnly()
             if not self._on:
                 return
-            hs = self.test.rd(self.valid, allow_unknown=True) & self.test.rd(
-                self.ready, allow_unknown=True
-            )
+            try:
+                hs = self.test.rd(self.valid) & self.test.rd(self.ready)
+            except AssertionError:
+                # An unknown VALID or READY bit is no handshake; the checks
+                # that read this watch require a count of 0.
+                self.xz += 1
+                continue
             if not hs:
                 continue
             addrs = self.test.rd_known(self.addr)
@@ -653,17 +659,20 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         self.bus.start()
         code_x, arg_x = await self._transfer(h1, p.x)
         writes_x = len(await self.bus.stop())
+        xz_x = self.bus.xz
         self.bus.start()
         code_z, arg_z = await self._transfer(h1, p.z)
         writes_z = len(await self.bus.stop())
+        xz_z = self.bus.xz
         self.chk.ctrl(
             "REFUSE-Z",
-            code_z == KM_RC_FAILURE and arg_z is None and writes_z == 0,
+            code_z == KM_RC_FAILURE and arg_z is None and writes_z == 0 and xz_z == 0,
             p1=_h(p.p1),
             z=_h(p.z),
             code=code_z,
             arg="none" if arg_z is None else f"0x{arg_z:08x}",
             writes=writes_z,
+            xz_cycles=xz_z,
         )
         hmac = await self._hmac_read(p.k1)
         aes_in = bool((p.x | p.z) & (1 << pl.AES))
@@ -676,6 +685,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             code_x == KM_RC_FAILURE
             and arg_x is None
             and writes_x == 0
+            and xz_x == 0
             and hmac == "nokey"
             and aes != "key",
             p1=_h(p.p1),
@@ -683,6 +693,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             code=code_x,
             arg="none" if arg_x is None else f"0x{arg_x:08x}",
             writes=writes_x,
+            xz_cycles=xz_x,
             witness_hmac=hmac,
             aes_key=int(aes == "key"),
             keyvalid=_h(kv),
@@ -802,7 +813,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
         perm = pl.grade_perm(writes, mask)
         self.chk.ok(
             "KM-BUS-PERM",
-            perm.ok,
+            perm.ok and self.bus.xz == 0,
             contract="key_manager/doc/firmware.adoc:1471-1475",
             leg=leg,
             mask=_h(mask),
@@ -811,6 +822,7 @@ class sep_km_key_transfer_rand_test(sep_base_test):
             expect_share_writes=sum(2 * pl.WIDTH[b] for b in pl.WIDTH if (mask >> b) & 1),
             repeated=",".join(perm.repeated) or "-",
             missing=",".join(perm.missing) or "-",
+            xz_cycles=self.bus.xz,
         )
         # Single KM master: its key-path stores issue one at a time, so the AW
         # handshake order is the write order.

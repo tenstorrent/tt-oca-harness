@@ -40,17 +40,20 @@ Checks (anchor):
                   and last decoded word of each row answer clean (POKE result)
   CHK-XBAR-SRAM-TOP
                   the KM read of the SRAM top word 0xFFFC after the store of a
-                  drawn non-zero word returns that word: the main KM SRAM is
-                  32 KB, 0x8000 to 0xFFFF (``architecture.adoc`` "Parameters";
-                  ``key_manager.rdl:62``) (POKE readback)
+                  drawn non-zero word returns that word, and the two words that
+                  alias it under half and a quarter of the size keep their own
+                  stored words: the main KM SRAM is 32 KB, 0x8000 to 0xFFFF
+                  (``architecture.adoc`` "Parameters"; ``key_manager.rdl:62``)
+                  (POKE readback)
   CHK-XBAR-SHARE-ZERO
                   the first-word read of each of the five key windows (otbn,
                   aes, kmac, hmac and abr ``_wrapper_key``, the word
                   ``KEY_SHARE0[0]``) returns 0x00000000: the share words are
                   write-only and reads return zero (``architecture.adoc`` "Key
                   Delivery"; ``<eng>_wrapper_key.rdl`` ``KEY_SHARE0``) (POKE
-                  readback). The response class of these reads is logged on
-                  ``OBS-XBAR-UNSTATED``
+                  readback), in the decode walk and again after a clean write of
+                  a drawn non-zero word. The response class of these reads is
+                  logged
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
                   register (KM readback vs host readback, staged fuse model)
   CHK-EFW-RD-TM   the same with ``secure_tm_o`` = 1; register reads keep their
@@ -219,6 +222,10 @@ KM_ROM_BASE = _ROW["main:rom"]["base"]
 KM_ROM_TOP = _ROW["main:rom"]["end"] - 3
 KM_SRAM_BASE = _ROW["main:sram"]["base"]
 KM_SRAM_TOP = _ROW["main:sram"]["end"] - 3
+# The words that alias the SRAM top word if the array had half or a quarter of
+# the stated size (above the poke image's words 0-255).
+_SRAM_SIZE = _ROW["main:sram"]["end"] + 1 - KM_SRAM_BASE
+KM_SRAM_ALIAS = (KM_SRAM_TOP - _SRAM_SIZE // 2, KM_SRAM_TOP - _SRAM_SIZE * 3 // 4)
 KM_EFUSE_MAP = _ROW["main:otp_efuse_map"]["base"]
 KM_EFUSE_CTRL = _ROW["main:otp_efuse_ctrl"]["base"]
 KM_EFUSE_MMR = _ROW["main:otp_efuse_mmr"]["base"]
@@ -780,13 +787,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         set_km_xbar_pass(0, 0, self.logger)
         walk = await self._decode_walk(rng)
         fwd = await self._efuse_forward_probe(walk)
+        share_wr = await self._share_write_read(rng)
         size = await self._size_boundaries(rng)
         vrom = await self._vrom_walk(rng)
         clean = await self._run(
             [kp.rd(KM_MBX_STATUS), kp.rd(KM_DRBG_STATUS), kp.rd(KM_ROM_BASE), kp.rd(KM_SRAM_BASE)]
         )
         rd1 = await self._efw_reads(rng, model, tm=0, bus=True)
-        self._grade_walk(seed, walk, size, vrom, clean, rd1)
+        self._grade_walk(seed, walk, size, vrom, clean, rd1, share_wr)
         self._grade_forward(seed, fwd)
         self._grade_efw_rd(seed, rd1, tm=0, tm_seen=tm0)
         self._grade_remap(rd1)
@@ -929,35 +937,71 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         res = await self._run(ops, allow_unknown=True)
         return list(zip(cells, res, strict=True))
 
+    async def _share_write_read(
+        self, rng: SepSeededRng
+    ) -> list[tuple[str, int, kp.PokeResult, kp.PokeResult]]:
+        """KEY_SHARE0[0] of each key window: write a drawn non-zero word, then read it."""
+        ops: list[kp.PokeOp] = []
+        data: list[int] = []
+        for key in _SHARE_ZERO_KEYS:
+            d = rng.randrange(1, 1 << WORD_BITS)
+            self._draw(f"share.wdata.{_short(key)}", d)
+            data.append(d)
+            ops += [kp.wr(_ROW[key]["base"], d), kp.rd(_ROW[key]["base"])]
+        res = await self._run(ops, allow_unknown=True)
+        return [
+            (key, d, res[2 * i], res[2 * i + 1])
+            for i, (key, d) in enumerate(zip(_SHARE_ZERO_KEYS, data, strict=True))
+        ]
+
     async def _size_boundaries(self, rng: SepSeededRng) -> list[kp.PokeResult]:
         data = rng.randrange(1, 1 << WORD_BITS)
         self._draw("size.sram_top_wdata", data)
+        alias_data = []
+        for addr in KM_SRAM_ALIAS:
+            d = rng.randrange(1, 1 << WORD_BITS)
+            while d == data or d in alias_data:
+                d = rng.randrange(1, 1 << WORD_BITS)
+            self._draw(f"size.sram_alias_wdata.0x{addr:05x}", d)
+            alias_data.append(d)
         res = await self._run(
             [
                 kp.rd(KM_ROM_TOP),
                 kp.rd(KM_RSV_ROM_GROWTH),
                 kp.wr(KM_SRAM_TOP, data),
                 kp.rd(KM_SRAM_BASE),
+                *(kp.wr(a, d) for a, d in zip(KM_SRAM_ALIAS, alias_data, strict=True)),
                 kp.rd(KM_SRAM_TOP),
+                *(kp.rd(a) for a in KM_SRAM_ALIAS),
             ],
             allow_unknown=True,
         )
-        top = res[4]
-        top_ok = top.known and top.value == data
-        rd_txt = f"0x{top.value:08x}" if top.known else "X"
-        self._fail(
-            "CHK-XBAR-SRAM-TOP",
-            [] if top_ok else [f"off=0x{KM_SRAM_TOP:05x} read={rd_txt}, expected 0x{data:08x}"],
-        )
+        n_alias = len(KM_SRAM_ALIAS)
+        top = res[4 + n_alias]
+        cells = [(KM_SRAM_TOP, data, top)] + [
+            (a, d, res[5 + n_alias + i])
+            for i, (a, d) in enumerate(zip(KM_SRAM_ALIAS, alias_data, strict=True))
+        ]
+        problems = []
+        for addr, exp, r in cells:
+            rd_txt = f"0x{r.value:08x}" if r.known else "X"
+            if not (r.known and r.value == exp):
+                problems.append(f"off=0x{addr:05x} read={rd_txt}, expected 0x{exp:08x}")
+        for i, r in enumerate(res[4 : 4 + n_alias]):
+            if not (r.known and r.clean and (r.slv, r.dec) == (0, 0)):
+                problems.append(f"alias store off=0x{KM_SRAM_ALIAS[i]:05x} slv={r.slv} dec={r.dec}")
+        self._fail("CHK-XBAR-SRAM-TOP", problems)
         self.logger.info(
-            "CHK-XBAR-SRAM-TOP PASS contract=%s off=0x%05x stored=0x%08x read=%s exp=0x%08x",
+            "CHK-XBAR-SRAM-TOP PASS contract=%s off=0x%05x stored=0x%08x read=0x%08x "
+            "exp=0x%08x alias=%s",
             _SRAM_TOP_CONTRACT,
             KM_SRAM_TOP,
             data,
-            rd_txt,
+            top.value,
             data,
+            ",".join(f"0x{a:05x}:0x{r.value:08x}/0x{d:08x}" for a, d, r in cells[1:]),
         )
-        return res
+        return [res[0], res[1], res[2], res[3], top]
 
     def _grade_walk(
         self,
@@ -967,6 +1011,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         vrom: list[tuple[Cell, kp.PokeResult]],
         clean: list[kp.PokeResult],
         rd1: list[dict],
+        share_wr: list[tuple[str, int, kp.PokeResult, kp.PokeResult]],
     ) -> None:
         # Controls: the clean in-map reads show both bits at 0, and the in-map
         # eFuse reads answer OKAY, so a 0 bit and an OKAY can be seen.
@@ -1068,10 +1113,22 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         for d, name in (("rd", "load"), ("wr", "store")):
             if not vrom_graded[d]:
                 problems["CHK-XBAR-RSV"].append(f"no VROM {name} cell answered DECERR")
+        for key, data, wr, rd in share_wr:
+            rd_txt = f"0x{rd.value:08x}" if rd.known else "X"
+            line = (
+                f"contract={_SHARE_ZERO_CONTRACT} win={_short(key)} off=0x{_ROW[key]['base']:05x} "
+                f"kind=after_write wrote=0x{data:08x} wr_slv={wr.slv} wr_dec={wr.dec} "
+                f"rd={rd_txt} rd_slv={rd.slv} rd_dec={rd.dec} exp=0x00000000"
+            )
+            wr_ok = wr.known and wr.clean and (wr.slv, wr.dec) == (0, 0)
+            if wr_ok and rd.known and rd.value == 0:
+                passes["CHK-XBAR-SHARE-ZERO"].append(f"seed={seed} {line}")
+            else:
+                problems["CHK-XBAR-SHARE-ZERO"].append(line)
         n_share = len(passes["CHK-XBAR-SHARE-ZERO"]) + len(problems["CHK-XBAR-SHARE-ZERO"])
-        if n_share != len(_SHARE_ZERO_KEYS):
+        if n_share != 2 * len(_SHARE_ZERO_KEYS):
             problems["CHK-XBAR-SHARE-ZERO"].append(
-                f"{n_share} key-window first-word reads, expected {len(_SHARE_ZERO_KEYS)}"
+                f"{n_share} key-window first-word reads, expected {2 * len(_SHARE_ZERO_KEYS)}"
             )
         for chk in problems:
             self._fail(chk, problems[chk])
@@ -1496,13 +1553,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                 if not rc & RC_BUSY and (not need_done or (rc & RC_DONE and fresh)):
                     waited = True
                     break
-            data = await self._hr(R_RDATA)
+            data, rcls = await self._host(SepAxiOp.READ, EFUSE_INTERFACE_CTRL.addr(R_RDATA))
             rd_cmds = len(mon.reads_since(mark, address=addr))
             await self._hw(R_READ, 0)
         finally:
             await mon.stop()
         return {
             "word": data,
+            "rcls": rcls,
             "done": _bit(rc, RC_DONE),
             "status": _bit(rc, RC_STATUS),
             "waited": waited,
@@ -1526,8 +1584,11 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             ]
         )
         rc = res[4].value
+        rd = res[5]
+        okay = rd.clean and (rd.slv, rd.dec) == (0, 0)
         return {
-            "word": res[5].value,
+            "word": rd.value,
+            "rcls": "OKAY" if okay else f"slv={rd.slv},dec={rd.dec}",
             "done": _bit(rc, RC_DONE),
             "status": _bit(rc, RC_STATUS),
             "waited": not res[3].data[0] & RC_BUSY,
@@ -2031,6 +2092,14 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
                     f"{r['otp']['shim_cmds']} read-window fuse commands issued in secure "
                     "test mode, expected none"
                 )
+            # EFUSE_READ_RDATA is a readable register (efuse_interface_ctrl.rdl), so
+            # its read answers OKAY with the test mode off; the blocked read keeps
+            # that response.
+            if r["otp"]["rcls"] != "OKAY":
+                problems.append(
+                    f"path={path}: the RDATA read in secure test mode answered "
+                    f"{r['otp']['rcls']}, expected OKAY"
+                )
             if word == 0 and staged != 0:
                 read_zero += 1
             else:
@@ -2050,7 +2119,7 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         # efuse_req_error is cleared before each program, so each path reads
         # its own.
         keys = ("req_err", "prog_reqs", "read_reqs", "prog_done_tap", "prog_busy_tap", "status")
-        otp_keys = ("word", "done_tap", "busy_tap")
+        otp_keys = ("word", "rcls", "done_tap", "busy_tap")
 
         def _tuple(path: str) -> tuple:
             r = tm_res[path]

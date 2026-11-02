@@ -489,11 +489,13 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         async def at_ready() -> None:
             rows_state["s1"] = await self._snapshot()
             rows_state["w1"] = self.rd_known(self.dut.km_sram_write_count_o)
+            rows_state["sw1"] = self.rd_known(self.dut.km_sram_scr_wr_count_o)
             rows_state["live"] = self.rd_known(self.dut.km_sram_scr_wr_cell_o)
 
         async def at_done() -> None:
             rows_state["s2"] = await self._snapshot()
             rows_state["w2"] = self.rd_known(self.dut.km_sram_write_count_o)
+            rows_state["sw2"] = self.rd_known(self.dut.km_sram_scr_wr_count_o)
 
         ready = await self._recv(1, "ready", "SSCR-ROWS", before=at_ready)
         done = await self._recv(1, "done", "SSCR-ROWS", before=at_done)
@@ -716,16 +718,19 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             self.chk.ctrl("SSCR-ROWS-TAP", False, reason="kept rows not captured")
         changed = sum(1 for a, b in zip(s1, s2, strict=True) if a != b)
         writes = st["w2"] - st["w1"]
+        scr_writes = st["sw2"] - st["sw1"]
         self.chk.ok(
             "SSCR-ROWS",
             ready == [MSG_READY]
             and done == [MSG_DONE]
             and unknown == 0
             and writes == 64
+            and scr_writes == 64
             and changed <= 64,
             logical=64,
             changed_rows_max=64,
             sram_writes=writes,
+            scr_writes=scr_writes,
             unknown_rows=unknown,
             ready=_h(ready[0]),
             done=_h(done[0]),
@@ -800,10 +805,12 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         """Lock written with the enable at 0: the next store is a scrambled write."""
         await self._cold_release(4)
         cnt: dict[str, int] = {}
+        wr: dict[str, int] = {}
 
         def sample(name: str):
             async def fn() -> None:
                 cnt[name] = self.rd_known(self.dut.km_sram_scr_wr_count_o)
+                wr[name] = self.rd_known(self.dut.km_sram_write_count_o)
 
             return fn
 
@@ -813,13 +820,18 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         close_graded_window(self.logger)
         d10 = cnt["c1"] - cnt["c0"]
         d21 = cnt["c2"] - cnt["c1"]
+        w10 = wr["c1"] - wr["c0"]
+        w21 = wr["c2"] - wr["c1"]
         frames = r0 == [MSG_READY] and r1 == [MSG_ONE] and g[1] == MSG_DONE
-        self.chk.ctrl("SSCR-LOCK0-OFF", d10 == 0 and frames, c1_minus_c0=d10)
+        self.chk.ctrl(
+            "SSCR-LOCK0-OFF", d10 == 0 and w10 == 1 and frames, c1_minus_c0=d10, writes_c0_c1=w10
+        )
         self.chk.ok(
             "SSCR-LOCK0",
-            d21 == 1 and frames,
+            d21 == 1 and w21 == 1 and frames,
             c1_minus_c0=f"{d10}(control)",
             c2_minus_c1=d21,
+            writes_c1_c2=w21,
             ctrl_rd_logged=_h(g[0]),
             frames_ok=frames,
         )

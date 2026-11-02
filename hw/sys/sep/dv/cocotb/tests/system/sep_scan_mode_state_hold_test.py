@@ -476,7 +476,11 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         line = self._wr_line(0, 0, ctl)
         # Same text as SepChkLog.ctrl(): CHK-SCAN-SHADOW-WR at strap 1 needs a write
         # that lands on the same word at SECURE_TM = 0 with no write-lock.
-        if not (ctl["before"] == _SIP_DIS_W0 and ctl["after"] == ctl["new"]):
+        if not (
+            ctl["before"] == _SIP_DIS_W0
+            and ctl["after"] == ctl["new"]
+            and ctl["r0"] == ctl["r1"] == 0
+        ):
             self.logger.error("CTRL-MISSING SCAN-SHADOW-WR-LIVE: %s", line)
             raise AssertionError(f"CTRL-MISSING SCAN-SHADOW-WR-LIVE: {line}")
         self.shadow_wr_ctl = line
@@ -496,9 +500,15 @@ class sep_scan_mode_state_hold_test(sep_base_test):
         for test_en in (0, 1):
             r = await self._shadow_write(test_en)
             line = self._wr_line(1, test_en, r)
-            assert r["stm"] == 1 and r["before"] == _SIP_DIS_W0 and r["after"] == r["before"], (
-                f"CHK-SCAN-SHADOW-WR FAIL: secure_tm_o=1 SIP_DIS shadow word changed or did not "
-                f"read its staged value (exp after=before=0x{_SIP_DIS_W0:08x}; "
+            assert (
+                r["stm"] == 1
+                and r["r0"] == r["r1"] == 0
+                and r["before"] == _SIP_DIS_W0
+                and r["after"] == r["before"]
+            ), (
+                f"CHK-SCAN-SHADOW-WR FAIL: secure_tm_o=1 SIP_DIS shadow word changed, did not "
+                f"read its staged value or a read was not OKAY (exp rresp=0,0 "
+                f"after=before=0x{_SIP_DIS_W0:08x}; "
                 f"{_SHADOW_WR_CONTRACT}): {line}"
             )
             lines.append(line)

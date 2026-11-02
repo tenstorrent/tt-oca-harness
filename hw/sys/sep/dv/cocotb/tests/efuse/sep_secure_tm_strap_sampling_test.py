@@ -559,6 +559,11 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             )
         events = [e for e in order if vcs or e != "dbg_rstb_i"]
         graded = [e for e in events if self.full_cpu or e != "dbg_rstb_i"]
+        if "sep_require_full_cpu" in cocotb.plusargs and "dbg_rstb_i" not in graded:
+            raise AssertionError(
+                "CTRL-FULL-CPU FAIL: +sep_require_full_cpu and dbg_rstb_i is not graded "
+                f"(sim={getattr(cocotb, 'SIM_NAME', '')})"
+            )
         ungraded = "" if graded == events else " ungraded=dbg_rstb_i(stub: no load)"
         self.logger.info(
             "INFO-CFG H=%d rst_low=%d pulse=%d ovrd=%d full_cpu=%d events_run=%s%s%s",

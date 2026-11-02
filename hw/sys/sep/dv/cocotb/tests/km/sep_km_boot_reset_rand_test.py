@@ -52,9 +52,10 @@ Checks:
   CHK-BOOT-FLUSHED-BY-KM
                   ``KM_IRQ_STATUS.flushed_by_km`` on the SEP side reads 1 at the
                   first read after the boots and before the leaf clears it: the
-                  KM boot flush sets the peer's flushed-by-other status and the
-                  KM clears only its own side (``architecture.adoc:232-233``,
-                  ``firmware.adoc:1382``)
+                  KM boot flush sets the peer's flushed-by-other status
+                  (``architecture.adoc:232-233``), and the SEP-side IRQ_STATUS
+                  is not in the KM address map (``key_manager.rdl:107`` maps
+                  only ``km_mailbox_km``; ``km_mailbox_sep.rdl:255-263``)
   CHK-RST-AXI-VALID
                   at each AXI reset point (rst_ni driven low in the half clock
                   of a pending KM CPU read, then of a pending write) the three
@@ -393,10 +394,13 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             (st >> KM_STATUS_OUTBOUND_DEPTH_LSB) & KM_STATUS_OUTBOUND_DEPTH_MASK,
         )
 
-    async def _write_words(self, words, *, separator: bool, tag: str) -> None:
-        """Write ``words`` while the inbound FIFO has room; the separator goes on the last word."""
+    async def _write_words(self, words, *, separator: bool, tag: str) -> int:
+        """Write ``words`` while the inbound FIFO has room; the separator goes on the last word.
+
+        Returns the count of data writes with an OKAY response.
+        """
         n = len(words)
-        i = 0
+        i = okay = 0
         while i < n:
             for _ in range(INBOUND_POLLS):
                 in_d, _ = await self._depths()
@@ -410,10 +414,15 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             for _ in range(KM_MBOX_DEPTH - in_d):
                 if separator and i == n - 1:
                     await self._wr(KM_MBOX_WRITE_SEPARATOR, 1)
-                await self._wr(KM_MBOX_WRITE_DATA, words[i] & pl.WORD_MASK)
+                if await self._wr_resp(KM_MBOX_WRITE_DATA, words[i] & pl.WORD_MASK) != RESP_OKAY:
+                    raise AssertionError(
+                        f"KM mailbox write @0x{KM_MBOX_BASE + KM_MBOX_WRITE_DATA:08x} not OKAY"
+                    )
+                okay += 1
                 i += 1
                 if i == n:
                     break
+        return okay
 
     async def _wait_depth(self, *, inbound: int | None, outbound: int | None, tag: str) -> None:
         for _ in range(DEPTH_POLLS):
@@ -700,9 +709,10 @@ class sep_km_boot_reset_rand_test(sep_base_test):
                     raise AssertionError(f"[{tag}] CMD_STAT {i} returned {code}")
                 cmds_ok += 1
         elif d.point == pl.POINT_PARTIAL:
-            await self._write_words(d.partial, separator=False, tag=f"{tag} partial")
+            partial_words = await self._write_words(
+                d.partial, separator=False, tag=f"{tag} partial"
+            )
             await self._wait_depth(inbound=0, outbound=None, tag=f"{tag} partial consumed")
-            partial_words = len(d.partial)
         elif d.point == pl.POINT_UNREAD:
             for _ in range(d.r):
                 await self._write_words(
@@ -794,8 +804,8 @@ class sep_km_boot_reset_rand_test(sep_base_test):
         n = self.plan.image_n
         code, arg = await self._cmd(pl.CMD_SRAM_LOAD_EXEC, (n,), f"{tag} load")
         confirm = code == pl.RC_SUCCESS and arg is None
-        # The KM boot flush sets FLUSHED_BY_KM on the SEP side and the KM clears
-        # only its own side, so the bit reads 1 here, at the first read of the
+        # The KM boot flush sets FLUSHED_BY_KM on the SEP side, which is not in
+        # the KM address map, so the bit reads 1 here, at the first read of the
         # SEP IRQ status since the boots. The W1C below makes the handover flush
         # the only one that sets it again. That flush follows the store of the
         # image size ("SRAM Firmware Handover"), so the warm reset of step 16
@@ -807,7 +817,7 @@ class sep_km_boot_reset_rand_test(sep_base_test):
             flushed_by_km == 1,
             contract=(
                 "key_manager/doc/architecture.adoc:232-233(Mailbox_Transport),"
-                "firmware.adoc:1382(Boot_Sequence)"
+                "key_manager.rdl:107(mailbox_km),km_mailbox_sep.rdl:255-263(FLUSHED_BY_KM)"
             ),
             boot=tag,
             irq_status=_a(pre),

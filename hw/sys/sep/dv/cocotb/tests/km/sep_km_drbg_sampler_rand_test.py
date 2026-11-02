@@ -70,7 +70,10 @@ Checkers:
                   and the next prefetched word (PREFETCH_DATA and DATA) is the
                   second live beat, with no byte of the partial beat
                   (architecture.adoc:851-855, 816-820, 825; trng.adoc:118 for
-                  the full live beats). Control: the same partial beat with no
+                  the full live beats). The check does not show whether the
+                  withdrawal or the start of the DATA read drops the partial
+                  byte; ``OBS-SMP-PARTIAL-NOWD`` logs PREFETCHED after the same
+                  partial beat with no withdrawal. Control: the same partial beat with no
                   withdrawal (a TVALID drop after a completed handshake) leaves
                   STREAM_ERR 0, COUNT_BAD and DRBG_ERR unchanged.
   CHK-SMP-PRE-ACTIVE
@@ -100,10 +103,12 @@ Checkers:
                   (COUNT_BAD + 1) and in the first active cycle of a read at
                   timeout 256, 1 and 2 (the DATA read completes SLVERR with
                   data 0, TIMEOUT_ERR 0 before the read, COUNT_BAD + 1 plus
-                  TIMEOUT_ERR after the read): a stream error takes priority
-                  over timeout and ``ST_STREAM_ERR`` completes with SLVERR and
-                  zero data (``architecture.adoc`` "Errors and reset", the
-                  state table and the priority sentence below it);
+                  TIMEOUT_ERR after the read): ``ST_STREAM_ERR`` completes with
+                  SLVERR and zero data (``architecture.adoc`` "Errors and
+                  reset" and the state table). These values hold whichever
+                  event ends the read, so the stated priority of a stream error
+                  over a timeout is not graded; ``OBS-SMP-STRM`` logs
+                  TIMEOUT_ERR after the read;
                   a write of 0 keeps STREAM_ERR and a write of 1 clears it.
                   Controls: the stalled timeouts and the first read after the
                   TRNG reset leave STREAM_ERR 0; the sink TREADY is low in the
@@ -925,6 +930,11 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
 
         # Control: the partial beat alone is a completed handshake, not a withdrawal.
         tw0, tw1 = stv("tw_before"), stv("tw_after")
+        self.chk.obs(
+            "SMP-PARTIAL-NOWD",
+            prefetched=pl.st(tw1, "PREFETCHED"),
+            stream_err=pl.st(tw1, "STREAM_ERR"),
+        )
         tw_irq = self._irq(res[at["tw_irq"]].value)
         twin_ok = (
             hook.get("twin_fired") == 0

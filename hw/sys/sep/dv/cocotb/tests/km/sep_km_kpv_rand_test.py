@@ -1237,6 +1237,8 @@ class sep_km_kpv_rand_test(sep_base_test):
 
         await self.poke.post(hb.ops, handle=hb, header_sent=True)
         await self.poke.wait(hb)
+        hb_state = self.poke.state()
+        hb_ops_done = self.poke.progress()[0]
         post = self.poke.results(hb, allow_unknown=True)
         for r in post:
             self._check_result(r)
@@ -1299,7 +1301,9 @@ class sep_km_kpv_rand_test(sep_base_test):
             and ctrl_nonzero == 0
             and key == 0
             and scr == 0
-            and status,
+            and status
+            and hb_state == (kp.ST_DONE, hb.tag)
+            and hb_ops_done == len(opsb),
             words_nonzero=loop.data[0],
             words_or=_h(loop.data[1]),
             ctrl_nonzero=ctrl_nonzero,
@@ -1307,7 +1311,7 @@ class sep_km_kpv_rand_test(sep_base_test):
             en=int(bool(scr & m.SCR_ENABLE)),
             lock=int(bool(scr & m.SCR_LOCK)),
             status=int(status),
-            cpu_alive=1,
+            cpu_ops_done=f"{hb_ops_done}/{len(opsb)}",
             W=p.wipe_hold,
         )
         sram_same = sum(1 for a, b in zip(sram_post, p.sram_values, strict=True) if a == b)
