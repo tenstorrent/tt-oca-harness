@@ -756,22 +756,18 @@ module smc_uvm_top
     for (genvar i = 0; i < smc_config_pkg::NumI3c; i++) begin : gen_i3c_csr_count
         logic [31:0] reads_q;
         logic [31:0] writes_q;
-        always_ff @(posedge u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.clk_i or
-                    negedge u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.rst_ni) begin
-            if (!u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.rst_ni) begin
+        always_ff @(posedge u_dut.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.clk_i or
+                    negedge u_dut.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.rst_ni) begin
+            if (!u_dut.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.rst_ni) begin
                 reads_q  <= '0;
                 writes_q <= '0;
             end else begin
-                if (u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
-                        .u_i3c_wrapper.rvalid_o &&
-                    u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
-                        .u_i3c_wrapper.rready_i) begin
+                if (u_dut.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.axil_resp_demuxed[i].r_valid &&
+                    u_dut.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.axil_req_demuxed[i].r_ready) begin
                     reads_q <= reads_q + 32'd1;
                 end
-                if (u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
-                        .u_i3c_wrapper.bvalid_o &&
-                    u_dut.u_smc.u_smc_peripherals.u_i3ccore_wrapper.gen_i3c_inst[i]
-                        .u_i3c_wrapper.bready_i) begin
+                if (u_dut.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.axil_resp_demuxed[i].b_valid &&
+                    u_dut.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.axil_req_demuxed[i].b_ready) begin
                     writes_q <= writes_q + 32'd1;
                 end
             end
@@ -3131,10 +3127,10 @@ module smc_uvm_top
         if (!rst_cold_ni) begin
             bfm_i3c_awaddr_q <= '0;
             bfm_i3c_wsel_q   <= '0;
-        end else if (u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.u_i3ccore_wrapper.awvalid_i &&
-                     u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.u_i3ccore_wrapper.awready_o) begin
-            bfm_i3c_awaddr_q <= 32'(u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.u_i3ccore_wrapper.awaddr_i);
-            bfm_i3c_wsel_q   <= 8'(u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.u_i3ccore_wrapper.write_select);
+        end else if (u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.awvalid_i &&
+                     u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.awready_o) begin
+            bfm_i3c_awaddr_q <= 32'(u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.awaddr_i);
+            bfm_i3c_wsel_q   <= 8'(u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.u_ot_i3c_wrapper.write_select);
         end
     end
     assign tb_bfm_i3c_awaddr = bfm_i3c_awaddr_q;

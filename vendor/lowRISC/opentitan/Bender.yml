@@ -93,11 +93,11 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_subreg_ext.sv
 
   # Held out of the big any(opentitan_smu, sep, smu) list for the same reason as
-  # the group above, but smc has no LFSR consumer so it stays off this target.
-  - target: any(drbg, opentitan_smu, sep, smu, key_manager)
+  # the group above.
+  - target: any(drbg, opentitan_smu, sep, smc, smu, key_manager, ot_i3c)
     files:
-      # prim_cipher_pkg supplies the PRINCE/PRESENT S-boxes prim_lfsr uses, so it
-      # has to be compiled ahead of it.
+      # prim_cipher_pkg supplies the PRINCE/PRESENT S-boxes prim_lfsr,
+      # prim_present and prim_prince use, so it has to be compiled ahead of them.
       - upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_lfsr.sv
 

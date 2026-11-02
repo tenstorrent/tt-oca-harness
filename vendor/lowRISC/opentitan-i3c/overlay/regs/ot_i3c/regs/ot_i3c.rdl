@@ -1,0 +1,3453 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef _OT_I3C_RDL_DEFINED
+`define _OT_I3C_RDL_DEFINED
+
+`include "opentitan_udps.rdl"
+
+addrmap ot_i3c {
+    name = "I3C";
+    desc = "I3C Controller/Target";
+    reg {
+        field {
+            sw = r;
+            hw = rw;
+            desc = "HCI interrupt.";
+        } hci[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target interrupt.";
+        } targ[1:1] = 0x0;
+    } INTR_STATE @ 0x0;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable interrupt when !!INTR_STATE.hci is set.";
+        } hci[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable interrupt when !!INTR_STATE.targ is set.";
+        } targ[1:1] = 0x0;
+    } INTR_ENABLE @ 0x4;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to force !!INTR_STATE.hci to 1.";
+        } hci[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to force !!INTR_STATE.targ to 1.";
+        } targ[1:1] = 0x0;
+    } external INTR_TEST @ 0x8;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to trigger one alert event of this kind.";
+        } fatal_fault[0:0] = 0x0;
+        field {
+            sw = rw;
+            onwrite = wzc;
+            hw = na;
+            desc = "Write 0 to disable alert testing until the next reset.";
+        } regwen[31:31] = 0x1;
+    } external ALERT_TEST @ 0xC;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Revision number of the IP block.";
+        } REVISION[3:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Version number of the IP block.";
+        } VERSION[7:4] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Index of the final entry of the HCI Device Address Table.
+            i.e. one less than the number of entries.";
+        } DAT_ENTRY_MAX[12:8] = 0x1F;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Index of the final entry of the HCI Device Characteristics Table.
+            i.e. one less than the number of entries.";
+        } DCT_ENTRY_MAX[17:13] = 0x1F;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Index of the final DWORD of the shared Message Buffer.
+            i.e. one less than its size in DWORDs.";
+        } BUF_DWORD_MAX[28:18] = 0x3FF;
+    } external INFO @ 0x10;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates the presence of Controller functionality.";
+        } PRESENT[31:31] = 0x1;
+    } external CTRL_STATUS @ 0x14;
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 0 Controller Errors.";
+        } CE0[3:0] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 1 Controller Errors.";
+        } CE1[7:4] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 2 Controller Errors.";
+        } CE2[11:8] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 3 Controller Errors.";
+        } CE3[15:12] = 0x0;
+    } CTRL_ERROR @ 0x18;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target enable.
+
+            Enable the Target-side logic as a separate I3C device, instead of supporting Standby Controller mode.
+            In this configuration the Controller-side logic must remain the Active Controller and cannot perform Controller Role Handoff.";
+        } EN[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Standby Controller role supported.
+
+            When set the Controller shall have the option of performing Controller Role Handoff and switching into Standby Controller mode.
+            If this field is clear the Controller will refuse to hand off the bus when requested and will instead remain the Active Controller,
+            thus freeing up the first Virtual Target to operate independently as a dedicated Target device.
+            This version of the IP block does not support Controller Role Handoff.";
+        } STBY_CR_SUPPORT[1:1] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Controller Handoff Activity State.
+            This information is returned in response to the CRHDLY form of the GETMXDS CCC.";
+        } CRHDLY1_AS[3:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Set Bus Activity State.
+            This information is returned in response to the CRHDLY form of the GETMXDS CCC.";
+        } CRHDLY1_SET_AS[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Declare support for HDR-DDR mode in the GETCAPS response of the Target.
+
+            HDR-DDR mode should normally be enabled, and the ability for software to deactivate HDR-DDR mode is included only as a contingency.
+            This configuration bit shall be modified only before the Target is enabled.
+            For the Controller, the issuing of HDR-DDR communications may be avoided in software by the construction of appropriate Command Descriptors.";
+        } EN_HDR_DDR[8:8] = 0x1;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Issue Hot-Join request.
+
+            This applies to all Virtual Targets since they share a single physical Target.
+            Software shall set this to '1' to issue the request, and the hardware will clear it when the request has been sent and acknowledged.";
+        } HJ_REQUEST[30:30] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Software reset of Target logic.
+
+            Writing '1' to this field will reset all of the Target-side logic and registers.
+            When the Standby Controller is enabled, this will also reset the registers of the Standby Controller, disabling it.
+            To reset only the Standby Controller whilst it is enabled, software should use the `SOFT_RST` field of the HCI-specified `RESET_CONTROL` register instead, to avoid impacting other Virtual Targets.";
+        } SW_RESET[31:31] = 0x0;
+    } TARG_CONTROL @ 0x1C;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Extension-specific information.";
+        } EXT_INFO[14:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates whether one or more additional protocols is implemented in the Target hardware.
+
+            Some protocols require a sufficiently fast response that software involvement is not possible.
+            These may be implemented as an extension within the Target core.";
+        } EXT_PRESENT[15:15] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Configured Target Reset action.";
+        } RSTACT[23:16] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "The number of Targets in this implementation.";
+        } NUM_TARGETS[26:24] = 0x2;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Vendor Test Mode active, in response to ENTTM.";
+        } VTM[27:27] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            swmod = true;
+            desc = "Protocol error detected since the last GETSTATUS CCC to read this indicator.";
+        } PROTOCOL_ERROR[28:28] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates whether the Target logic is connected to the bus and monitoring traffic.";
+        } CONNECTED[29:29] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates whether the Target logic is presently active, as opposed to under reset.";
+        } ACTIVE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates the presence of Target functionality.";
+        } PRESENT[31:31] = 0x1;
+    } external TARG_STATUS @ 0x20;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Specifies the transmission buffer from which DWORDs are to be removed.
+
+            0 - IBI Data buffer.
+            1 - Virtual Target 0 Tx buffer
+            2 - Virtual Target 1 Tx buffer...";
+        } BUFFER[14:12] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Specifies the number of DWORDs to be removed, minus 1.
+
+            This field instructs the 'data sink' logic to remove a specified number of DWORDs of data from the specified source.
+            Software shall program 'n-1' into this field to remove 'n' DWORDs.";
+        } LENGTH[26:16] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Initiate removal of DWORDs from a transmission buffer.
+
+            The 'data sink' logic is a mechanism for recovering from aborting or failed transmissions without impacting subsequent, already-queued transfers.
+            Software shall write '1' to this field to start the 'data sink' logic.
+            The ACTIVE field in the corresponding `TARG_SINK_STATUS` register shows whether the logic is still active.";
+        } START[31:31] = 0x0;
+    } TARG_SINK_CONTROL @ 0x24;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates whether the data sink logic is active.
+            This bit becomes set when the operation is started and will be cleared at most a few tens of microseconds later when the operation is complete.";
+        } ACTIVE[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates whether the data sink mechanism stopped prematurely.
+            If the specified buffer did not contain sufficient data for the logic to remove the specified number of DWORDs it will set this bit when becoming inactive.";
+        } ERROR[1:1] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Reports the numbers of DWORDs still to be removed when `ERROR` is asserted.
+
+            In the event of an error, this value may be used to ascertain how much of the operation was performed.
+            When this field reports 'm', there are still 'm+1' DWORDs to be removed.
+            In the event of successful completion ('ACTIVE' and 'ERROR' both reset) this field is not meaningful and the DWORDs were removed as expected.";
+        } LENGTH[26:16] = 0x0;
+    } external TARG_SINK_STATUS @ 0x28;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Activate the reset detector prior to entry into 'Deepest Sleep' state.";
+        } SLEEP_REQ[1:1] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Wake acknowledgement.";
+        } WAKE_ACK[16:16] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Enable response to a Peripheral reset request.";
+        } RST_PERIPH_EN[20:20] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Enable response to a Whole Target reset request.";
+        } RST_TARGET_EN[21:21] = 0x0;
+    } external RESET_DET_CTRL @ 0x2C;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates whether the reset detector is active.";
+        } ACTIVE[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates that a Wake Up request was received.";
+        } WAKE_UP[1:1] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates that a Peripheral reset request was received.";
+        } RST_PERIPH[2:2] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates that a Whole Target reset request was received.";
+        } RST_TARGET[3:3] = 0x0;
+    } RESET_DET_STATUS @ 0x30;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Half of the delay between SCL rising and SDA rising in STOP timing, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCBP_DIV2[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Half of the delay between SDA falling and SCL falling in START timing, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCAS_DIV2[25:16] = 0x3FF;
+    } CTRL_TIME_SP @ 0x34;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Half of the SCL low interval during Open Drain signaling, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } SCLLO_DIV2[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Half of the SCL high interval during Open Drain signaling, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } SCLHI_DIV2[25:16] = 0x3FF;
+    } CTRL_TIME_OD @ 0x38;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of hold phase after rising SCL during Push-Pull signaling, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCHH[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable half-cycle SCL extension.
+            If the field `TCHS` has been set to something other than 0x3ff, this bit controls whether the half-cycle SCL extension is enabled.
+            If `TCHS` has all bits set then the hardware will determine this setting automatically.
+            Extending SCL high by half a cycle of the IP clock enables support for other clock frequencies such as 96 MHz.";
+        } HCEXT[15:15] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of setup phase before falling SCL during Push-Pull signaling, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCHS[25:16] = 0x3FF;
+    } CTRL_TIME_PP @ 0x3C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of hold phase after falling SCL when using Push-Pull signaling at SDR0 rate/HDR-DDR, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLH[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of setup phase before rising SCL when using Push-Pull signaling at SDR0 rate/HDR-DDR, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLS[25:16] = 0x3FF;
+    } CTRL_TIME_SDR0 @ 0x40;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of hold phase after falling SCL when using Push-Pull signaling at SDR1 rate, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLH[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of setup phase before rising SCL when using Push-Pull signaling at SDR1 rate, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLS[25:16] = 0x3FF;
+    } CTRL_TIME_SDR1 @ 0x44;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of hold phase after falling SCL when using Push-Pull signaling at SDR2 rate, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLH[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of setup phase before rising SCL when using Push-Pull signaling at SDR2, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLS[25:16] = 0x3FF;
+    } CTRL_TIME_SDR2 @ 0x48;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of hold phase after falling SCL when using Push-Pull signaling at SDR3 rate, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLH[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of setup phase before rising SCL when using Push-Pull signaling at SDR3 rate, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLS[25:16] = 0x3FF;
+    } CTRL_TIME_SDR3 @ 0x4C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of hold phase after falling SCL when using Push-Pull signaling at SDR4 rate, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLH[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Duration of setup phase before rising SCL when using Push-Pull signaling at SDR4 rate, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } TCLS[25:16] = 0x3FF;
+    } CTRL_TIME_SDR4 @ 0x50;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Half of the SCL low interval during I2C Fast Mode Plus signaling, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } SCLLO_DIV2[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Half of the SCL high interval during I2C Fast Mode Plus signaling, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } SCLHI_DIV2[25:16] = 0x3FF;
+    } CTRL_TIME_FMP @ 0x54;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Half of the SCL low interval during I2C Fast Mode signaling, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } SCLLO_DIV2[9:0] = 0x3FF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Half of the SCL high interval during I2C Fast Mode signaling, minus 1.
+            This interval is in terms of the IP clock period.
+            If this field has all bits set then the hardware will calculate a suitable value.";
+        } SCLHI_DIV2[25:16] = 0x3FF;
+    } CTRL_TIME_FM @ 0x58;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Adjustment to the interval of the Target Bus Available timer.
+
+            Default interval: 1 microsecond.
+            Base weighting: 1 IP clock cycle.";
+        } TARG_BUS_AVAIL[7:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Adjustment to the interval of the SDA read stall (no Controller SCL activity during Read Transfer) timer.
+
+            Default interval: 150 microseconds.
+            Base weighting: 0x40 IP clock cycles.";
+        } READ_STALLED[15:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Adjustment to the interval of the Controller Bus Available timer.
+
+            Default interval: 1 microsecond.
+            Base weighting: 1 IP clock cycle.";
+        } CTRL_BUS_AVAIL[23:16] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Adjustment to the interval of the Dead Bus timer.
+
+            Default interval: 50 milliseconds.
+            Base weighting: 0x4000 IP clock cycles.";
+        } DEAD_BUS[31:24] = 0x0;
+    } INTERVAL_TIME0 @ 0x5C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Adjustment to the interval after which NACKed commands are retried.
+
+            Default interval: 800 microseconds.
+            Base weighting: 0x100 IP clock cycles.";
+        } COMMAND_RETRY[7:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Adjustment to the interval of the Target Bus Idle timer.
+
+            Default interval: 200 microseconds.
+            Base weighting: 0x40 IP clock cycles.";
+        } TARG_BUS_IDLE[15:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Adjustment to the interval after which the Target shall attempt recovery from a Target Error 0 (TE0) condition.
+
+            Default interval: 60 microseconds.
+            Base weighting: 0x10 IP clock cycles.";
+        } TE0_RECOV[23:16] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Adjustment to the Target Reset timer.
+
+            Default interval: 5 microseconds.
+            Base weighting: 1 IP clock cycle.";
+        } TARG_TRX_RST[31:24] = 0x0;
+    } INTERVAL_TIME1 @ 0x60;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "High-keeper enable for the SCL line.";
+        } SCL_HK_EN[0:0] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "High-keeper enable for the SDA lane.";
+        } SDA_HK_EN[1:1] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "State of the SDA line when direct-driving is enabled.";
+        } CTRL_SDA[20:20] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable pull-up on SDA in direct-driving mode.";
+        } CTRL_SDA_PU_EN[21:21] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable open drain driving of SDA in direct-driving mode.";
+        } CTRL_SDA_OD_EN[22:22] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable push-pull driving of SDA in direct-driving mode, when open drain driving is not also enabled.";
+        } CTRL_SDA_PP_EN[23:23] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "State of the SCL line when direct-driving is enabled.";
+        } CTRL_SCL[24:24] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable pull-up on SCL in direct-driving mode.";
+        } CTRL_SCL_PU_EN[25:25] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable push-pull driving of SCL in direct-driving mode.";
+        } CTRL_SCL_PP_EN[27:27] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable direct driving of the Serial Clock (SCL) and Serial Data (SDA) lines by software.";
+        } CTRL_DIRECT_DRIVE_EN[31:31] = 0x0;
+    } PHY_CONFIG @ 0x64;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "First blocked address.
+
+            Accesses to the target address (`TARG_ADDR`) will be blocked if the following expression matches:
+              `(TARG_ADDR & MASK0) == ADDR0`
+            The reset values of `MASK0` and `ADDR0` cannot yield a match, deactivating this check.";
+        } ADDR0[6:0] = 0x7F;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Address mask for the first set of blocked addresses.
+
+            This mask determines which bits of the device address will be tested and matched against the address in 'ADDR0'.
+            I2C devices are commonly configured with one of a small set of static addresses, differing in only one or two address bits.";
+        } MASK0[14:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Second blocked address.
+
+            Accesses to the target address (`TARG_ADDR`) will be blocked if the following expression matches:
+              `(TARG_ADDR & MASK1) == ADDR1`
+            The reset values of `MASK1` and `ADDR1` cannot yield a match, deactivating this check.";
+        } ADDR1[22:16] = 0x7F;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Address mask for the second set of blocked addresses.
+
+            This mask determines which bits of the device address will be tested and matched against the address in 'ADDR1'.
+            I2C devices are commonly configured with one of a small set of static addresses, differing in only one or two address bits.";
+        } MASK1[30:24] = 0x0;
+    } BLOCKED_ADDR @ 0x68;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Supplies the high address bits when software performs direct accesses to the internal message buffer.
+            The IP may be configured to map part of its internal message buffer into the upper half of the IP address space.
+            This provides more RAM to a memory-limited system when the I3C is not being used, and may be diagnostically useful when it is used.
+            Since half of the IP address space is typically 2 KiB but the message buffer is larger, this field allows software-controlled paging.";
+        } SW_ADDR_HI[29:28] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Software clear of buffer state including the following:
+            All `WPTR` and `RPTR` values are set to the corresponding `MIN` values, emptying all circular buffers.
+            This shall only be used when both the Controller- and the Target-side functionality are disabled.";
+        } CLEAR[31:31] = 0x0;
+    } external BUFFER_CTRL @ 0x6C;
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = w;
+            desc = "Diagnostic error indicator for the Target Transaction Interface (TTI) queues.
+            The hardware sets this bit in the event of a write to a full or read-only queue, or a read from an empty or write-only queue.
+            Software shall clear this bit by writing '1'.";
+        } TTIQ_ERR[30:30] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = w;
+            desc = "Diagnostic error indicator for the Host Controller Interface (HCI) queues.
+            The hardware sets this bit in the event of a write to a full or read-only queue, or a read from an empty or write-only queue.
+            Software shall clear this bit by writing '1'.";
+        } HCIQ_ERR[31:31] = 0x0;
+    } BUFFER_STATUS @ 0x70;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Controller TX use.";
+        } MIN_ADDR[9:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Controller TX use (inclusive).";
+        } MAX_ADDR[25:16] = 0x7F;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Size value presented as `QUEUE_SIZE.TX_DATA_BUFFER_SIZE`.
+            This value is log2(size in DWORDs) - 1.";
+        } SIZE_VAL[30:28] = 0x6;
+    } CTRL_TXBUF_CONFIG @ 0x74;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the buffer is full.";
+        } FULL[31:31] = 0x0;
+    } external CTRL_TXBUF_STATE @ 0x78;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Controller RX use.";
+        } MIN_ADDR[9:0] = 0x80;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Controller RX use (inclusive).";
+        } MAX_ADDR[25:16] = 0xFF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Size value presented as `QUEUE_SIZE.RX_DATA_BUFFER_SIZE`.
+            This value is log2(size in DWORDs) - 1.";
+        } SIZE_VAL[30:28] = 0x6;
+    } CTRL_RXBUF_CONFIG @ 0x7C;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x80;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x80;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the buffer is full.";
+        } FULL[31:31] = 0x0;
+    } external CTRL_RXBUF_STATE @ 0x80;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Command Queue use.";
+        } MIN_ADDR[9:0] = 0x100;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Command Queue use (inclusive).";
+        } MAX_ADDR[21:12] = 0x11F;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Size value presented as `QUEUE_SIZE.CR_QUEUE_SIZE`.";
+        } SIZE_VAL[31:24] = 0x10;
+    } COMMAND_QUEUE_CONFIG @ 0x84;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x100;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x100;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the queue is full.";
+        } FULL[31:31] = 0x0;
+    } external COMMAND_QUEUE_STATE @ 0x88;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Response Queue use.";
+        } MIN_ADDR[9:0] = 0x120;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Response Queue use (inclusive).";
+        } MAX_ADDR[21:12] = 0x12F;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Size value presented as `ALT_QUEUE_SIZE.ALT_RSP_QUEUE_SIZE`.";
+        } SIZE_VAL[31:24] = 0x10;
+    } RESPONSE_QUEUE_CONFIG @ 0x8C;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x120;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x120;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the queue is full.";
+        } FULL[31:31] = 0x0;
+    } external RESPONSE_QUEUE_STATE @ 0x90;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for IBI Queue use.";
+        } MIN_ADDR[9:0] = 0x130;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for IBI Queue use (inclusive).";
+        } MAX_ADDR[21:12] = 0x1AF;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Size value presented as `QUEUE_SIZE.IBI_STATUS_SIZE`.
+
+            This value represents the sum of the IBI Queue and the IBI Status Descriptor FIFO.
+            Since EXT_IBI_QUEUE_EN is set, the actual number of DWORDs is 8 times this value.";
+        } SIZE_VAL[31:24] = 0x14;
+    } IBI_CONFIG @ 0x94;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x130;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x130;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the queue is full.";
+        } FULL[31:31] = 0x0;
+    } external IBI_STATE @ 0x98;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for IBI Status Descriptor FIFO use.";
+        } MIN_ADDR[9:0] = 0x1B0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for IBI Status Descriptor FIFO use (inclusive).";
+        } MAX_ADDR[21:12] = 0x1CF;
+    } IBI_STAT_CONFIG @ 0x9C;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x1B0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x1B0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the FIFO is full.";
+        } FULL[31:31] = 0x0;
+    } external IBI_STAT_STATE @ 0xA0;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Target TX use.
+            The default addressing apportions the available storage space among the maximum number of Virtual Targets.
+            For configurations employing fewer Virtual Targets, software should modify the configuration.";
+        } MIN_ADDR_0[9:0] = 0x1D0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Target TX use (inclusive).
+            The default addressing apportions the available storage space among the maximum number of Virtual Targets.
+            For configurations employing fewer Virtual Targets, software should modify the configuration.";
+        } MAX_ADDR_0[25:16] = 0x20F;
+    } TARG_TXBUF_CONFIG[4] @ 0xA4 += 0x4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR_0[9:0] = 0x1D0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR_0[25:16] = 0x1D0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE_0[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the buffer is full.";
+        } FULL_0[31:31] = 0x0;
+    } external TARG_TXBUF_STATE[4] @ 0xB4 += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Target RX use.";
+        } MIN_ADDR[9:0] = 0x2D0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Target RX use (inclusive).";
+        } MAX_ADDR[25:16] = 0x36F;
+    } TARG_RXBUF_CONFIG @ 0xC4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x2D0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x2D0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the buffer is full.";
+        } FULL[31:31] = 0x0;
+    } external TARG_RXBUF_STATE @ 0xC8;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Target IBI data use.";
+        } MIN_ADDR[9:0] = 0x370;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Target RX data use (inclusive).";
+        } MAX_ADDR[25:16] = 0x3AF;
+    } TARG_IBI_CONFIG @ 0xCC;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x370;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x370;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the buffer is full.";
+        } FULL[31:31] = 0x0;
+    } external TARG_IBI_STATE @ 0xD0;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Target 0 Tx Descriptor Queue use.";
+        } MIN_ADDR_0[9:0] = 0x3B0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Target 0 Tx Descriptor Queue use (inclusive).";
+        } MAX_ADDR_0[25:16] = 0x3B7;
+    } TARG_TXDESC_CONFIG[4] @ 0xD4 += 0x4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR_0[9:0] = 0x3B0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR_0[25:16] = 0x3B0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE_0[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the queue is full.";
+        } FULL_0[31:31] = 0x0;
+    } external TARG_TXDESC_STATE[4] @ 0xE4 += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Target Rx Descriptor Queue use.";
+        } MIN_ADDR[9:0] = 0x3D0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Target Rx Descriptor Queue use (inclusive).";
+        } MAX_ADDR[25:16] = 0x3DF;
+    } TARG_RXDESC_CONFIG @ 0xF4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x3D0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x3D0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the queue is full.";
+        } FULL[31:31] = 0x0;
+    } external TARG_RXDESC_STATE @ 0xF8;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Target IBI Descriptor Queue use.";
+        } MIN_ADDR[9:0] = 0x3E0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Target IBI Descriptor Queue use (inclusive).";
+        } MAX_ADDR[25:16] = 0x3EF;
+    } TARG_IBIDESC_CONFIG @ 0xFC;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x3E0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x3E0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the queue is full.";
+        } FULL[31:31] = 0x0;
+    } external TARG_IBIDESC_STATE @ 0x100;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Minimum address for Target Asynchronous Event Queue use.";
+        } MIN_ADDR[9:0] = 0x3F0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum address for Target Asynchronous Event Queue use (inclusive).";
+        } MAX_ADDR[25:16] = 0x3FF;
+    } TARG_ASYNC_CONFIG @ 0x104;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current write pointer.";
+        } WPTR[9:0] = 0x3F0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current read pointer.";
+        } RPTR[25:16] = 0x3F0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if prefetched data is available.";
+        } PRE[30:30] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Indicates if the queue is full.";
+        } FULL[31:31] = 0x0;
+    } external TARG_ASYNC_STATE @ 0x108;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "HCI Version.";
+        } VERSION[31:0] = 0x120;
+    } external HCI_VERSION @ 0x180;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Include I3C Broadcast Address.";
+        } IBA_INCLUDE[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Auto-Command Data Report.";
+        } AUTOCMD_DATA_RPT[3:3] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Data Byte Ordering Mode.";
+        } DATA_BYTE_ORDER_MODE[4:4] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "DMA/PIO Mode Selector.";
+        } MODE_SELECTOR[6:6] = 0x1;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "I2C Device Present on Bus.";
+        } I2C_DEV_PRESENT[7:7] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Hot-Join ACK/NACK Control.";
+        } HOT_JOIN_CTRL[8:8] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Halt on Command Sequence Timeout.";
+        } HALT_ON_CMD_SEQ_TIMEOUT[12:12] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Host Controller Abort.";
+        } ABORT[29:29] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Host Controller Resume.";
+        } RESUME[30:30] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Host Controller Bus Enable.";
+        } BUS_ENABLE[31:31] = 0x0;
+    } external HC_CONTROL @ 0x184;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Device Dynamic Address.";
+        } DYNAMIC_ADDR[22:16] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Dynamic Address is Valid.";
+        } DYNAMIC_ADDR_VALID[31:31] = 0x0;
+    } external CONTROLLER_DEVICE_ADDR @ 0x188;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports Combo Transfer Command transfers.";
+        } COMBO_COMMAND[2:2] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports Auto-Command functionality.";
+        } AUTO_COMMAND[3:3] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports handoff of the Active Controller role.";
+        } STANDBY_CR_CAP[5:5] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports HDR-DDR transfers.";
+        } HDR_DDR_EN[6:6] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports HDR-Ternary transfers.";
+        } HDR_TS_EN[7:7] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports Transfer Commands that indicate CCCs with Defining Bytes.";
+        } CMD_CCC_DEFBYTE[10:10] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports the IBI Data Abort operation.";
+        } IBI_DATA_ABORT_EN[11:11] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports Target IBI Credit Counting.";
+        } IBI_CREDIT_COUNT_EN[12:12] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports Scheduled Commands capabilities.";
+        } SCHEDULED_COMMANDS_EN[13:13] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines the size and structure of the Command Descriptor supported by the Host Controller.";
+        } CMD_SIZE[21:20] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports Scatter-Gather for Command and Response Rings.";
+        } SG_CAPABILITY_CR_EN[28:28] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports Scatter-Gather for IBI Status and IBI Data Rings.";
+        } SG_CAPABILITY_IBI_EN[29:29] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Defines whether the Host Controller supports Scatter-Gather for Device Context memory.";
+        } SG_CAPABILITY_DC_EN[30:30] = 0x0;
+    } external HC_CAPABILITIES @ 0x18C;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Core Software Reset.";
+        } SOFT_RST[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Command Queue Software Reset.";
+        } CMD_QUEUE_RST[1:1] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Response Queue Software Reset.";
+        } RESP_QUEUE_RST[2:2] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Transmit Queue Buffer Software Reset.";
+        } TX_FIFO_RST[3:3] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Receive Queue Buffer Software Reset.";
+        } RX_FIFO_RST[4:4] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "IBI Queue Buffer Software Reset.";
+        } IBI_QUEUE_RST[5:5] = 0x0;
+    } external RESET_CONTROL @ 0x190;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Active Controller.";
+        } AC_CURRENT_OWN[2:2] = 0x0;
+    } external PRESENT_STATE @ 0x194;
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Host Controller Internal Error.";
+        } HC_INTERNAL_ERR_STAT[10:10] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Host Controller Cancelled Transaction Sequence.";
+        } HC_SEQ_CANCEL_STAT[11:11] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Host Controller Command Sequence Stall.";
+        } HC_WARN_CMD_SEQ_STALL_STAT[12:12] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Host Controller Command Sequence Timeout.";
+        } HC_ERR_CMD_SEQ_TIMEOUT_STAT[13:13] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Scheduled Command Missed Tick.";
+        } SCHED_CMD_MISSED_TICK_STAT[14:14] = 0x0;
+    } INTR_STATUS @ 0x1A0;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Host Controller Internal Error Status Enable.";
+        } HC_INTERNAL_ERR_STAT_EN[10:10] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Host Controller Cancelled Transaction Sequence Status Enable.";
+        } HC_SEQ_CANCEL_STAT_EN[11:11] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Host Controller Command Sequence Stall Status Enable.";
+        } HC_WARN_CMD_SEQ_STALL_STAT_EN[12:12] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Host Controller Command Sequence Timeout Status Enable.";
+        } HC_ERR_CMD_SEQ_TIMEOUT_STAT_EN[13:13] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Scheduled Command Missed Tick Status Enable.";
+        } SCHED_CMD_MISSED_TICK_STAT_EN[14:14] = 0x0;
+    } INTR_STATUS_ENABLE @ 0x1A4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Host Controller Internal Error Signal Enable.";
+        } HC_INTERNAL_ERR_SIGNAL_EN[10:10] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Host Controller Cancelled Transaction Sequence Signal Enable.";
+        } HC_SEQ_CANCEL_SIGNAL_EN[11:11] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Host Controller Command Sequence Stall Signal Enable.";
+        } HC_WARN_CMD_SEQ_STALL_SIGNAL_EN[12:12] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Host Controller Command Sequence Timeout Signal Enable.";
+        } HC_ERR_CMD_SEQ_TIMEOUT_SIGNAL_EN[13:13] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Scheduled Command Missed Tick Signal Enable.";
+        } SCHED_CMD_MISSED_TICK_SIGNAL_EN[14:14] = 0x0;
+    } INTR_SIGNAL_ENABLE @ 0x1A8;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Host Controller Internal Error.";
+        } HC_INTERNAL_ERR_FORCE[10:10] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Host Controller Cancelled Transaction Sequence.";
+        } HC_SEQ_CANCEL_FORCE[11:11] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Host Controller Command Sequence Stall.";
+        } HC_WARN_CMD_SEQ_STALL_FORCE[12:12] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Host Controller Command Sequence Timeout.";
+        } HC_ERR_CMD_SEQ_TIMEOUT_FORCE[13:13] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Scheduled Command Missed Tick.";
+        } SCHED_CMD_MISSED_TICK_FORCE[14:14] = 0x0;
+    } external INTR_FORCE @ 0x1AC;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "DAT Table Offset.";
+        } TABLE_OFFSET[11:0] = 0x880;
+        field {
+            sw = r;
+            hw = w;
+            desc = "DAT Table Size.";
+        } TABLE_SIZE[18:12] = 0x20;
+        field {
+            sw = r;
+            hw = w;
+            desc = "DAT Entry size.";
+        } ENTRY_SIZE[31:28] = 0x0;
+    } external DAT_SECTION_OFFSET @ 0x1B0;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "DCT Table Offset.";
+        } TABLE_OFFSET[11:0] = 0xA80;
+        field {
+            sw = r;
+            hw = w;
+            desc = "DCT Table Size.";
+        } TABLE_SIZE[18:12] = 0x20;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "DCT Table Index.";
+        } TABLE_INDEX[23:19] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "DCT Entry size.";
+        } ENTRY_SIZE[31:28] = 0x0;
+    } external DCT_SECTION_OFFSET @ 0x1B4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Ring Headers Section Offset.";
+        } SECTION_OFFSET[15:0] = 0x0;
+    } external RING_HEADERS_SECTION_OFFSET @ 0x1B8;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "PIO Section Offset.";
+        } SECTION_OFFSET[15:0] = 0x80;
+    } external PIO_SECTION_OFFSET @ 0x1BC;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capabilities Section Offset.";
+        } SECTION_OFFSET[15:0] = 0x120;
+    } external EXT_CAPS_SECTION_OFFSET @ 0x1C0;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Internal Control Commands Supported.";
+        } ICC_SUPPORT[0:0] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "MIPI Alliance Commands Supported.";
+        } MIPI_CMDS_SUPPORTED[15:1] = 0x107A;
+    } external INT_CTRL_CMDS_EN @ 0x1CC;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Notify Rejected Hot-Join Control.";
+        } NOTIFY_HJ_REJECTED[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Notify Rejected Controller Role Request Control.";
+        } NOTIFY_CRR_REJECTED[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Notify Rejected In-Band Interrupt Request Control.";
+        } NOTIFY_IBI_REJECTED[3:3] = 0x0;
+    } IBI_NOTIFY_CTRL @ 0x1D8;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            desc = "Match IBI Target Address.";
+        } MATCH_IBI_ID[15:8] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            desc = "Abort After N Chunks.";
+        } AFTER_N_CHUNKS[17:16] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            desc = "Match IBI Status Type.";
+        } MATCH_STATUS_TYPE[20:18] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "IBI Data Abort Monitor.";
+        } IBI_DATA_ABORT_MON[31:31] = 0x0;
+    } IBI_DATA_ABORT_CTRL @ 0x1DC;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Device Context Base Low.";
+        } BASE_LO[31:0] = 0x0;
+    } external DEV_CTX_BASE_LO @ 0x1E0;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Device Context Base High.";
+        } BASE_HI[31:0] = 0x0;
+    } external DEV_CTX_BASE_HI @ 0x1E4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "List Size.";
+        } LIST_SIZE[15:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Buffer Vs. List Pointer.";
+        } BLP[31:31] = 0x0;
+    } external DEV_CTX_SG @ 0x1E8;
+    mem {
+        memwidth = 0x20;
+        mementries = 0x4;
+    } external HCI_PORTS @ 0x200;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Command Ready Buffer Threshold.";
+        } CMD_EMPTY_BUF_THLD[7:0] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Response Ready Buffer Threshold.";
+        } RESP_BUF_THLD[15:8] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "IBI Data Segment Size.";
+        } IBI_DATA_SEGMENT_SIZE[23:16] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "IBI Status Threshold.";
+        } IBI_STATUS_THLD[31:24] = 0x1;
+    } QUEUE_THLD_CTRL @ 0x210;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transmit Buffer Threshold.
+            Interrupt triggers when there are at least 2^(N+1) Tx Buffer DWORD entries available.";
+        } TX_BUF_THLD[2:0] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Receive Buffer Threshold.
+            Interrupt triggers when there are at least 2^(N+1) Rx Buffer DWORDs of data available.";
+        } RX_BUF_THLD[10:8] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transmit (Transfer) Start Threshold in DWORDs.
+            Wait until there are at least 2^(N+1) DWORDs of data available before starting a Write Transfer.";
+        } TX_START_THLD[18:16] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Receive Start Threshold in DWORDs.
+            Wait until there are at least 2^(N+1) DWORD entries available before starting a Read Transfer.";
+        } RX_START_THLD[26:24] = 0x1;
+    } DATA_BUFFER_THLD_CTRL @ 0x214;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Command/Response Queue Size.";
+        } CR_QUEUE_SIZE[7:0] = 0x10;
+        field {
+            sw = r;
+            hw = w;
+            desc = "IBI Queue Size.";
+        } IBI_STATUS_SIZE[15:8] = 0x14;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Receive Data Buffer Size.";
+        } RX_DATA_BUFFER_SIZE[23:16] = 0x6;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Transmit Data Buffer Size.";
+        } TX_DATA_BUFFER_SIZE[31:24] = 0x6;
+    } external QUEUE_SIZE @ 0x218;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Alternate Response Queue Size.";
+        } ALT_RESP_QUEUE_SIZE[7:0] = 0x10;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Alternate Response Queue.";
+        } ALT_RESP_QUEUE_EN[24:24] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended IBI Queue Size.";
+        } EXT_IBI_QUEUE_EN[28:28] = 0x1;
+    } external ALT_QUEUE_SIZE @ 0x21C;
+    reg {
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Tx Data Buffer Threshold Status.";
+        } TX_THLD_STAT[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Rx Data Buffer Threshold Status.";
+        } RX_THLD_STAT[1:1] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "IBI Status Threshold Status.";
+        } IBI_STATUS_THLD_STAT[2:2] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Command Queue Ready Status.";
+        } CMD_QUEUE_READY_STAT[3:3] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Response Ready Status.";
+        } RESP_READY_STAT[4:4] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Transfer Abort Status.";
+        } TRANSFER_ABORT_STAT[5:5] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Transfer Error Status.";
+        } TRANSFER_ERR_STAT[9:9] = 0x0;
+    } PIO_INTR_STATUS @ 0x220;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Tx Data Buffer Threshold Status Enable.";
+        } TX_THLD_STAT_EN[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Rx Data Buffer Threshold Status Enable.";
+        } RX_THLD_STAT_EN[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "IBI Status Threshold Status Enable.";
+        } IBI_STATUS_THLD_STAT_EN[2:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Command Queue Ready Status Enable.";
+        } CMD_QUEUE_READY_STAT_EN[3:3] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Response Ready Status Enable.";
+        } RESP_READY_STAT_EN[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transfer Abort Status Enable.";
+        } TRANSFER_ABORT_STAT_EN[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transfer Error Status Enable.";
+        } TRANSFER_ERR_STAT_EN[9:9] = 0x0;
+    } PIO_INTR_STATUS_ENABLE @ 0x224;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Tx Data Buffer Threshold Signal Enable.";
+        } TX_THLD_SIGNAL_EN[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Rx Data Buffer Threshold Signal Enable.";
+        } RX_THLD_SIGNAL_EN[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "IBI Status Threshold Signal Enable.";
+        } IBI_STATUS_THLD_SIGNAL_EN[2:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Command Queue Ready Signal Enable.";
+        } CMD_QUEUE_READY_SIGNAL_EN[3:3] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Response Ready Signal Enable.";
+        } RESP_READY_SIGNAL_EN[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transfer Abort Signal Enable.";
+        } TRANSFER_ABORT_SIGNAL_EN[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transfer Error Signal Enable.";
+        } TRANSFER_ERR_SIGNAL_EN[9:9] = 0x0;
+    } PIO_INTR_SIGNAL_ENABLE @ 0x228;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Tx Data Buffer Threshold.";
+        } TX_THLD_FORCE[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Rx Data Buffer Threshold.";
+        } RX_THLD_FORCE[1:1] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force IBI Status Threshold.";
+        } IBI_THLD_FORCE[2:2] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Command Queue Ready.";
+        } CMD_QUEUE_READY_FORCE[3:3] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Response Ready.";
+        } RESP_READY_FORCE[4:4] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Transfer Abort.";
+        } TRANSFER_ABORT_FORCE[5:5] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Transfer Error.";
+        } TRANSFER_ERR_FORCE[9:9] = 0x0;
+    } PIO_INTR_FORCE @ 0x22C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "PIO Queues Enable Request.";
+        } ENABLE[0:0] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "PIO Run/Stop Request.";
+        } RS[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "PIO Abort Request.";
+        } ABORT[2:2] = 0x0;
+    } PIO_CONTROL @ 0x230;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capability ID";
+        } CAP_ID[7:0] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Capability Structure Length in DWORDs.";
+        } CAP_LENGTH[23:8] = 0x4;
+    } external ID_EXTCAP_HEADER @ 0x2A0;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "MIPI-assigned Manufacturer ID for the Host Controller.";
+        } MIPI_VENDOR_ID[31:0] = 0x0;
+    } external COMP_MANUFACTURER @ 0x2A4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Vendor-assigned component version for the Host Controller.";
+        } I3C_VER_ID[31:0] = 0x0;
+    } external COMP_VERSION @ 0x2A8;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Vendor-assigned component type for the Host Controller.";
+        } I3C_PRODUCT_ID[31:0] = 0x0;
+    } external COMP_TYPE @ 0x2AC;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capability ID";
+        } CAP_ID[7:0] = 0x2;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Capability Structure Length in DWORDs.";
+        } CAP_LENGTH[23:8] = 0x2;
+    } external CTRL_CFG_EXTCAP_HEADER @ 0x2B0;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Controller Operation Mode.
+            0x1 : Controller Role functionality only.
+            0x2 : Target Role functionality only.
+            0x3 : Both Controller Role and Target Role functionality.";
+        } OPERATION_MODE[5:4] = 0x1;
+    } external CONTROLLER_CONFIG @ 0x2B4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capability ID";
+        } CAP_ID[7:0] = 0xB;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Capability Structure Length in DWORDs.";
+        } CAP_LENGTH[23:8] = 0x2;
+    } external DBR_EXTCAP_HEADER @ 0x2B8;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Verification Key.";
+        } DBR_VERIF_KEY[3:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Engagement Mode.";
+        } DBR_MODE[6:4] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Activity State Timing.";
+        } DBR_ASX_TIMING[9:8] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "IBI Address.";
+        } DBR_IBI_ADDRESS[22:16] = 0x0;
+    } external DBR_ENGAGE @ 0x2BC;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capability ID";
+        } CAP_ID[7:0] = 0xC;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Capability Structure Length in DWORDs.";
+        } CAP_LENGTH[23:8] = 0x6;
+    } external DEBUG_EXTCAP_HEADER @ 0x2C0;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Command Queue Free Buffer Level.";
+        } CMD_QUEUE_FREE_LVL[7:0] = 0x10;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Response Buffer Level.";
+        } RESPONSE_BUFFER_LVL[15:8] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "IBI Buffer Level.";
+        } IBI_BUFFER_LVL[23:16] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "IBI Buffer Status Count.";
+        } IBI_STATUS_CNT[28:24] = 0x0;
+    } external QUEUE_STATUS_LEVEL @ 0x2C4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Tx Data Buffer Status Count.";
+        } TX_BUF_FREE_LVL[7:0] = 0x80;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Rx Data Buffer Status Count.";
+        } RX_BUF_LVL[15:8] = 0x0;
+    } external DATA_BUFFER_STATUS_LEVEL @ 0x2C8;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "SCL Line Signal Level.";
+        } SCL_LINE_SIGNAL_LEVEL[0:0] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "SDA Line Signal Level.";
+        } SDA_LINE_SIGNAL_LEVEL[1:1] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Bus Controller Logic Transfer Type Status.";
+        } BCL_TFR_STATUS[13:8] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Bus Controller Logic State.";
+        } BCL_TFR_ST_STATUS[21:16] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Command Transaction ID.";
+        } CMD_TID[27:24] = 0x0;
+    } external PRESENT_STATE_DEBUG @ 0x2CC;
+    reg {
+        hwre = true;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "CE2 Error Counter; resets to zero when read.";
+        } CE2_ERROR_COUNT[7:0] = 0x0;
+    } external MX_ERROR_COUNTERS @ 0x2D0;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Scheduled Command Handler Type.";
+        } SCHED_HANDLER[3:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Instance ID.";
+        } INST_ID[6:4] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Error Type.";
+        } ERR_TYPE[7:7] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Entity ID.";
+        } ENTITY_ID[15:8] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Tick Interval Number.";
+        } TICK_INTERVAL[20:16] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Error Occurred.";
+        } ERR_OCCURRED[21:21] = 0x0;
+    } external SCHED_CMDS_DEBUG @ 0x2D4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capability ID";
+        } CAP_ID[7:0] = 0x12;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Capability Structure Length in DWORDs.";
+        } CAP_LENGTH[23:8] = 0xE;
+    } external STBY_CR_EXTCAP_HEADER @ 0x2D8;
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            swmod = true;
+            desc = "Pending RX NACK.";
+        } PENDING_RX_NACK[0:0] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            swmod = true;
+            desc = "Handoff Delay NACK.";
+        } HANDOFF_DELAY_NACK[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Active Controller Select.";
+        } ACR_FSM_OP_SELECT[2:2] = 0x1;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Prime to Accept Controller Role.";
+        } PRIME_ACCEPT_GETACCCR[3:3] = 0x1;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Handoff Deep Sleep.";
+        } HANDOFF_DEEP_SLEEP[4:4] = 0x0;
+        field {
+            sw = w;
+            hw = rw;
+            swmod = true;
+            desc = "Send Controller Role Request.";
+        } CR_REQUEST_SEND[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Ring Bundle IBI Selector for Broadcast CCC Capture.";
+        } BCAST_CCC_IBI_RING[10:8] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Target Transaction Interface Servicing Enable.";
+        } TARGET_XACT_ENABLE[12:12] = 0x1;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Dynamic Address Method Enable.";
+        } DAA_SETAASA_ENABLE[13:13] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Dynamic Address Method Enable.";
+        } DAA_SETDASA_ENABLE[14:14] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Dynamic Address Method Enable.";
+        } DAA_ENTDAA_ENABLE[15:15] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "RSTACT Support DefByte 0x02";
+        } RSTACT_DEFBYTE_02[20:20] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Host Controller Secondary Controller Enable.
+            0 - DISABLED: Secondary Controller operation is disabled.
+            1 - ACM_INIT: Enabled, but Host Controller initializes in Active Controller mode.
+            2 - SCM_RUNNING: Enabled, initializes in Standby Controller mode.
+            3 - SCM_HOT_JOIN: Enabled, Host Controller conditionally becomes a Hot-Joining Device before operating in Standby Controller mode.";
+        } STBY_CR_ENABLE_INIT[31:30] = 0x0;
+    } external STBY_CR_CONTROL @ 0x2DC;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Device Static Address.";
+        } STATIC_ADDR[6:0] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Static Address is Valid.";
+        } STATIC_ADDR_VALID[15:15] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            swmod = true;
+            desc = "Device Dynamic Address.";
+        } DYNAMIC_ADDR[22:16] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            swmod = true;
+            desc = "Dynamic Address is Valid.";
+        } DYNAMIC_ADDR_VALID[31:31] = 0x0;
+    } external STBY_CR_DEVICE_ADDR @ 0x2E0;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Simple Controller Role Request is supported.";
+        } SIMPLE_CRR_SUPPORT[5:5] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "I3C Target Transaction Interface is supported.";
+        } TARGET_XACT_SUPPORT[12:12] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Dynamic Address Assignment with SETAASA is supported.";
+        } DAA_SETAASA_SUPPORT[13:13] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Dynamic Address Assignment with SETDASA is supported.";
+        } DAA_SETDASA_SUPPORT[14:14] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Dynamic Address Assignment with ENTDAA is supported.";
+        } DAA_ENTDAA_SUPPORT[15:15] = 0x1;
+    } external STBY_CR_CAPABILITIES @ 0x2E4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Active Controller.";
+        } AC_CURRENT_OWN[2:2] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Simple Controller Role Request Status.";
+        } SIMPLE_CRR_STATUS[7:5] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Hot-Join Request Status.";
+        } HJ_REQ_STATUS[8:8] = 0x0;
+    } external STBY_CR_STATUS @ 0x2EC;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Device Provisioned ID High.";
+        } PID_HI[15:1] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Device Characteristics Register.";
+        } DCR[23:16] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Bus Characteristics Register Variable.";
+        } BCR_VAR[28:24] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            swmod = true;
+            desc = "Bus Characteristics Register Fixed.";
+        } BCR_FIXED[31:29] = 0x3;
+    } external STBY_CR_DEVICE_CHAR @ 0x2F0;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Device Provisioned ID Low.";
+        } PID_LO[31:0] = 0x0;
+    } external STBY_CR_DEVICE_PID_LO @ 0x2F4;
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Controller Role Handoff OK and Will Remain Secondary Controller.";
+        } ACR_HANDOFF_OK_REMAIN_STAT[0:0] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Controller Role Handoff OK and Primed to Accept.";
+        } ACR_HANDOFF_OK_PRIMED_STAT[1:1] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Controller Role Handoff Error Due To Failure.";
+        } ACR_HANDOFF_ERR_FAIL_STAT[2:2] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Controller Role Handoff Error Type CE3 Recovery.";
+        } ACR_HANDOFF_ERR_M3_STAT[3:3] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Controller Role Request Response Status.";
+        } CRR_RESPONSE_STAT[10:10] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Secondary Controller Dynamic Address Status.";
+        } STBY_CR_DYN_ADDR_STAT[11:11] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Secondary Controller Transition NACKed.";
+        } STBY_CR_ACCEPT_NACKED_STAT[12:12] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Secondary Controller Transition OK Status.";
+        } STBY_CR_ACCEPT_OK_STAT[13:13] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Secondary Controller Transition Error Status.";
+        } STBY_CR_ACCEPT_ERR_STAT[14:14] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Secondary Controller Operation Reset Action.";
+        } STBY_CR_OP_RSTACT_STAT[16:16] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "CCC Parameter Modified Status.";
+        } CCC_PARAM_MODIFIED_STAT[17:17] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "CCC Unhandled NACK Status.";
+        } CCC_UNHANDLED_NACK_STAT[18:18] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "CCC Fatal RSTDAA Error Status.";
+        } CCC_FATAL_RSTDAA_ERR_STAT[19:19] = 0x0;
+    } STBY_CR_INTR_STATUS @ 0x2F8;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Controller Role Handoff OK and Will Remain Secondary Signal Enable.";
+        } ACR_HANDOFF_OK_REMAIN_SIGNAL_EN[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Controller Role Handoff OK and Primed to Accept Signal Enable.";
+        } ACR_HANDOFF_OK_PRIMED_SIGNAL_EN[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Controller Role Handoff Error Due To Failure Signal Enable.";
+        } ACR_HANDOFF_ERR_FAIL_SIGNAL_EN[2:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Controller Role Handoff Error Type CE3 Recovery Signal Enable.";
+        } ACR_HANDOFF_ERR_M3_SIGNAL_EN[3:3] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Controller Role Request Response Signal Enable.";
+        } CRR_RESPONSE_SIGNAL_EN[10:10] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Secondary Controller Dynamic Address Signal Enable.";
+        } STBY_CR_DYN_ADDR_SIGNAL_EN[11:11] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Secondary Controller Transition NACKed Signal Enable.";
+        } STBY_CR_ACCEPT_NACKED_SIGNAL_EN[12:12] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Secondary Controller Transition OK Signal Enable.";
+        } STBY_CR_ACCEPT_OK_SIGNAL_EN[13:13] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Secondary Controller Transition Error Signal Enable.";
+        } STBY_CR_ACCEPT_ERR_SIGNAL_EN[14:14] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Secondary Controller Operation Reset Action Signal Enable.";
+        } STBY_CR_OP_RSTACT_SIGNAL_EN[16:16] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "CCC Parameter Modified Signal Enable.";
+        } CCC_PARAM_MODIFIED_SIGNAL_EN[17:17] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "CCC Unhandled NACK Signal Enable.";
+        } CCC_UNHANDLED_NACK_SIGNAL_EN[18:18] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "CCC Fatal RSTDAA Error Signal Enable.";
+        } CCC_FATAL_RSTDAA_ERR_SIGNAL_EN[19:19] = 0x1;
+    } STBY_CR_INTR_SIGNAL_ENABLE @ 0x300;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Controller Role Request Response.";
+        } CRR_RESPONSE_FORCE[10:10] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Secondary Controller Dynamic Address Status.";
+        } STBY_CR_DYN_ADDR_FORCE[11:11] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Secondary Controller Transition NACKed.";
+        } STBY_CR_ACCEPT_NACKED_FORCE[12:12] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Secondary Controller Transition OK.";
+        } STBY_CR_ACCEPT_OK_FORCE[13:13] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Secondary Controller Transition Error.";
+        } STBY_CR_ACCEPT_ERR_FORCE[14:14] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Secondary Controller Operation Reset Action.";
+        } STBY_CR_OP_RSTACT_FORCE[16:16] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force CCC Parameter Modified.";
+        } CCC_PARAM_MODIFIED_FORCE[17:17] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force CCC Unhandled NACK.";
+        } CCC_UNHANDLED_NACK_FORCE[18:18] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force CCC Fatal RSTDAA Error.";
+        } CCC_FATAL_RSTDAA_ERR_FORCE[19:19] = 0x0;
+    } external STBY_CR_INTR_FORCE @ 0x304;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "GETCAPS CCC CRCAPS Byte 1.";
+        } F2_CRCAP1_BUS_CONFIG[2:0] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "GETCAPS CCC CRCAPS Byte 2.";
+        } F2_CRCAP2_DEV_INTERACT[11:8] = 0x0;
+    } external STBY_CR_CCC_CONFIG_GETCAPS @ 0x308;
+    reg {
+        field {
+            sw = r;
+            hw = rw;
+            swmod = true;
+            desc = "Defining Byte of the RSTACT CCC.";
+        } RST_ACTION[7:0] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Time to Reset Peripheral.";
+        } RESET_TIME_PERIPHERAL[15:8] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Time to Reset Target.";
+        } RESET_TIME_TARGET[23:16] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Reset Dynamic Address After Target Reset.";
+        } RESET_DYNAMIC_ADDR[31:31] = 0x1;
+    } external STBY_CR_CCC_CONFIG_RSTACT_PARAMS @ 0x30C;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capability ID";
+        } CAP_ID[7:0] = 0xC8;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Capability Structure Length in DWORDs.";
+        } CAP_LENGTH[23:8] = 0x59;
+    } external TTI_EXTCAP_HEADER @ 0x310;
+    reg {
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Rx Descriptor Queue Ready Status.";
+        } RX_DESC_READY_STAT[0:0] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "IBI Status Threshold Status.";
+        } IBI_STATUS_THLD_STAT[1:1] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Asynchronous Event Queue Ready Status.";
+        } ASYNC_EVT_READY_STAT[2:2] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Transfer Abort Status.";
+        } TRANSFER_ABORT_STAT[3:3] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Transfer Error Status.";
+        } TRANSFER_ERR_STAT[4:4] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Rx Data Buffer Overflow Status.";
+        } RX_BUFFER_OVF_STAT[5:5] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Asynchronous Event Queue Overflow Status.";
+        } ASYNC_EVT_OVF_STAT[6:6] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target 0 Tx Data Buffer Threshold Status.
+            Asserted when the requested amount of space is available in the Tx Data Buffer, see `TARG_TX_THLD_CTRL.TX_BUF_FREE_THLD`.";
+        } TX0_THLD_STAT[8:8] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target 1 Tx Data Buffer Threshold Status.
+            Asserted when the requested amount of space is available in the Tx Data Buffer, see `TARG_TX_THLD_CTRL.TX_BUF_FREE_THLD`.";
+        } TX1_THLD_STAT[9:9] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target 2 Tx Data Buffer Threshold Status.
+            Asserted when the requested amount of space is available in the Tx Data Buffer, see `TARG_TX_THLD_CTRL.TX_BUF_FREE_THLD`.";
+        } TX2_THLD_STAT[10:10] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target 3 Tx Data Buffer Threshold Status.
+            Asserted when the requested amount of space is available in the Tx Data Buffer, see `TARG_TX_THLD_CTRL.TX_BUF_FREE_THLD`.";
+        } TX3_THLD_STAT[11:11] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target 0 Tx Descriptor Queue Ready Status.
+            Asserted when the Tx Descriptor Queue has at least the requested amount of space, see `TARG_TX_THLD_CTRL.TX_DESC_EMPTY_THLD`.";
+        } TX0_DESC_READY_STAT[16:16] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target 1 Tx Descriptor Queue Ready Status.
+            Asserted when the Tx Descriptor Queue has at least the requested amount of space, see `TARG_TX_THLD_CTRL.TX_DESC_EMPTY_THLD`.";
+        } TX1_DESC_READY_STAT[17:17] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target 2 Tx Descriptor Queue Ready Status.
+            Asserted when the Tx Descriptor Queue has at least the requested amount of space, see `TARG_TX_THLD_CTRL.TX_DESC_EMPTY_THLD`.";
+        } TX2_DESC_READY_STAT[18:18] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target 3 Tx Descriptor Queue Ready Status.
+            Asserted when the Tx Descriptor Queue has at least the requested amount of space, see `TARG_TX_THLD_CTRL.TX_DESC_EMPTY_THLD`.";
+        } TX3_DESC_READY_STAT[19:19] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Target Error Status.";
+        } TE_STAT[31:31] = 0x0;
+    } TARG_INTR_STATUS @ 0x314;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Rx Descriptor Queue Ready Status Enable.";
+        } RX_DESC_READY_STAT_EN[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "IBI Status Threshold Status Enable.";
+        } IBI_STATUS_THLD_STAT_EN[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Asynchronous Event Queue Ready Status Enable.";
+        } ASYNC_EVT_READY_STAT_EN[2:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transfer Abort Status Enable.";
+        } TRANSFER_ABORT_STAT_EN[3:3] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transfer Error Status Enable.";
+        } TRANSFER_ERR_STAT_EN[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Rx Data Buffer Overflow Status Enable.";
+        } RX_BUFFER_OVF_STAT_EN[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Asynchronous Event Queue Overflow Status Enable.";
+        } ASYNC_EVT_OVF_STAT_EN[6:6] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 0 Tx Data Buffer Threshold Status Enable.";
+        } TX0_THLD_STAT_EN[8:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 1 Tx Data Buffer Threshold Status Enable.";
+        } TX1_THLD_STAT_EN[9:9] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 2 Tx Data Buffer Threshold Status Enable.";
+        } TX2_THLD_STAT_EN[10:10] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 3 Tx Data Buffer Threshold Status Enable.";
+        } TX3_THLD_STAT_EN[11:11] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 0 Tx Descriptor Queue Ready Status Enable.";
+        } TX0_DESC_READY_STAT_EN[16:16] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 1 Tx Descriptor Queue Ready Status Enable.";
+        } TX1_DESC_READY_STAT_EN[17:17] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 2 Tx Descriptor Queue Ready Status Enable.";
+        } TX2_DESC_READY_STAT_EN[18:18] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 3 Tx Descriptor Queue Ready Status Enable.";
+        } TX3_DESC_READY_STAT_EN[19:19] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target Error Status Enable.";
+        } TE_STAT_EN[31:31] = 0x0;
+    } TARG_INTR_STATUS_ENABLE @ 0x318;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Rx Descriptor Queue Ready Signal Enable.";
+        } RX_DESC_READY_SIGNAL_EN[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "IBI Status Threshold Signal Enable.";
+        } IBI_STATUS_THLD_SIGNAL_EN[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Asynchronous Event Queue Ready Signal Enable.";
+        } ASYNC_EVT_READY_SIGNAL_EN[2:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transfer Abort Signal Enable.";
+        } TRANSFER_ABORT_SIGNAL_EN[3:3] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transfer Error Signal Enable.";
+        } TRANSFER_ERR_SIGNAL_EN[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Rx Data Buffer Overflow Signal Enable.";
+        } RX_BUFFER_OVF_SIGNAL_EN[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Asynchronous Event Queue Overflow Signal Enable.";
+        } ASYNC_EVT_OVF_SIGNAL_EN[6:6] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 0 Tx Data Buffer Threshold Signal Enable.";
+        } TX0_THLD_SIGNAL_EN[8:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 1 Tx Data Buffer Threshold Signal Enable.";
+        } TX1_THLD_SIGNAL_EN[9:9] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 2 Tx Data Buffer Threshold Signal Enable.";
+        } TX2_THLD_SIGNAL_EN[10:10] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 3 Tx Data Buffer Threshold Signal Enable.";
+        } TX3_THLD_SIGNAL_EN[11:11] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 0 Tx Descriptor Queue Ready Signal Enable.";
+        } TX0_DESC_READY_SIGNAL_EN[16:16] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 1 Tx Descriptor Queue Ready Signal Enable.";
+        } TX1_DESC_READY_SIGNAL_EN[17:17] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 2 Tx Descriptor Queue Ready Signal Enable.";
+        } TX2_DESC_READY_SIGNAL_EN[18:18] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target 3 Tx Descriptor Queue Ready Signal Enable.";
+        } TX3_DESC_READY_SIGNAL_EN[19:19] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Target Error Signal Enable.";
+        } TE_SIGNAL_EN[31:31] = 0x0;
+    } TARG_INTR_SIGNAL_ENABLE @ 0x31C;
+    reg {
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Rx Descriptor Queue Ready.";
+        } RX_DESC_READY_FORCE[0:0] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force IBI Status Threshold.";
+        } IBI_THLD_FORCE[1:1] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Asynchronous Event Queue Ready.";
+        } ASYNC_EVT_READY_FORCE[2:2] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Transfer Abort.";
+        } TRANSFER_ABORT_FORCE[3:3] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Transfer Error.";
+        } TRANSFER_ERR_FORCE[4:4] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Rx Data Buffer Overflow.";
+        } RX_BUFFER_OVF_FORCE[5:5] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Asynchronous Event Queue Overflow.";
+        } ASYNC_EVT_OVF_FORCE[6:6] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target 0 Tx Data Buffer Threshold.";
+        } TX0_THLD_FORCE[8:8] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target 1 Tx Data Buffer Threshold.";
+        } TX1_THLD_FORCE[9:9] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target 2 Tx Data Buffer Threshold.";
+        } TX2_THLD_FORCE[10:10] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target 3 Tx Data Buffer Threshold.";
+        } TX3_THLD_FORCE[11:11] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target 0 Tx Descriptor Queue Ready.";
+        } TX0_DESC_READY_FORCE[16:16] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target 1 Tx Descriptor Queue Ready.";
+        } TX1_DESC_READY_FORCE[17:17] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target 2 Tx Descriptor Queue Ready.";
+        } TX2_DESC_READY_FORCE[18:18] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target 3 Tx Descriptor Queue Ready.";
+        } TX3_DESC_READY_FORCE[19:19] = 0x0;
+        field {
+            sw = w;
+            hw = r;
+            swmod = true;
+            desc = "Force Target Error.";
+        } TE_FORCE[31:31] = 0x0;
+    } TARG_INTR_FORCE @ 0x320;
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            swmod = true;
+            desc = "Indicates whether transmission of In-Band Interrupts has been suspended.
+            If an error occurs during transmission, this bit will be set automatically by hardware.
+            Software use of the IBI Abort mechanism described above also causes this bit to become set.
+            It remains asserted until the software writes a 1 to clear this bit.";
+        } IBI_SUSPENDED[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Allows software to abort transmission of In-Band Interrupts.
+            Writing 1 to this bit will abort any in-progress IBI transmission.
+            IBI transmission will enter the Suspended stateand will not resume until the Suspended state is cleared.";
+        } IBI_ABORT[1:1] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            swmod = true;
+            desc = "Indicates, for each Virtual Target in turn, whether transmission has been suspended.
+            If an error occurs during transmission, the corresponding bit will be set automatically by hardware.
+            Software use of the Abort mechanism described above also causes this bit to become set.
+            It remains asserted until the software writes a 1 to clear this bit.";
+        } SUSPENDED[19:16] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
+            desc = "Allows software to abort transmission for each Virtual Target in turn.
+            Writing 1 to the corresponding bit will abort any in-progress transmission from that Virtual Target.
+            Transmission will enter the Suspended state and will not resume until the Suspended state is cleared.";
+        } ABORT[27:24] = 0x0;
+    } TARG_PIO_CONTROL @ 0x324;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Capture `Broadcast CCC` traffic.";
+        } BCST_CCC[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Capture `Direct SET` CCC traffic.";
+        } DIR_SET_CCC[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Capture `Direct GET` CCC traffic.";
+        } DIR_GET_CCC[2:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Notify results of Target transmissions.";
+        } TX_NOTIFY[3:3] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Notify results of In-Band Interrupt transmissions.";
+        } IBI_NOTIFY[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Report Suspension of Target transmissions.";
+        } TX_SUSPEND[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Report Suspension of In-Band Interrupt transmission.";
+        } IBI_SUSPEND[6:6] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            swmod = true;
+            desc = "Report I3C Bus Events.";
+        } BUS_EVENTS[7:7] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = r;
+            swmod = true;
+            desc = "Write 1 to reset the Asynchronous Event Queue.";
+        } QUEUE_RESET[31:31] = 0x0;
+    } TARG_ASYNC_EVT_CONTROL @ 0x328;
+    reg {
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 0 Target Errors.
+            Write 4'hf to clear the error count.";
+        } TE0[3:0] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 1 Target Errors.
+            Write 4'hf to clear the error count.";
+        } TE1[7:4] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 2 Target Errors.
+            Write 4'hf to clear the error count.";
+        } TE2[11:8] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 3 Target Errors.
+            Write 4'hf to clear the error count.";
+        } TE3[15:12] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 4 Target Errors.
+            Write 4'hf to clear the error count.";
+        } TE4[19:16] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 5 Target Errors.
+            Write 4'hf to clear the error count.";
+        } TE5[23:20] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of type 6 Target Errors.
+            Write 4'hf to clear the error count.";
+        } TE6[27:24] = 0x0;
+        field {
+            sw = rw;
+            onwrite = woclr;
+            hw = rw;
+            desc = "Count of Dead Bus Recovery attempts.
+            Write 4'hf to clear the error count.";
+        } DBR[31:28] = 0x0;
+    } TARG_ERROR @ 0x32C;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Rx Descriptor Queue Threshold.
+            Interrupt is issued when the Rx Descriptor Queue contains at least N descriptors.
+            0: Do not raise any interrupts.";
+        } RX_DESC_THLD[15:8] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "IBI Status Threshold.
+            Interrupt is issued when the IBI Status Descriptor Queue has space available for at least N entries.
+            0: Do not raise any interrupts.";
+        } IBI_STATUS_THLD[31:24] = 0x1;
+    } TARG_QUEUE_THLD_CTRL @ 0x330;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "The number of descriptors present in the Rx Descriptor queue.";
+        } RX_DESC_LVL[7:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "The number of Asynchronous Event descriptors in the queue.";
+        } ASYNC_EVT_LVL[27:16] = 0x0;
+    } external TARG_QUEUE_STATUS_LEVEL @ 0x334;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum length of received data segment, minus 1.
+            Received data is divided into DWORDs of no more than this length.";
+        } RX_SEGMENT_SIZE[11:0] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Receive Start Threshold in DWORDs.
+            Wait until there are at least 2^(N+1) DWORD available before accepting a Private Write transfer.
+            If the Active Controller attempts to perform a write transfer when this condition is not met, it will be NACKed.";
+        } RX_START_THLD[30:28] = 0x1;
+    } TARG_BUF_THLD_CTRL @ 0x338;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "The number of DWORDs of data present in the Rx Buffer.";
+        } RX_BUF_LVL[11:0];
+        field {
+            sw = r;
+            hw = w;
+            desc = "The available space (in DWORDs) in the Target IBI queue.";
+        } IBI_FREE_LVL[27:16] = 0x40;
+    } external TARG_BUF_STATUS_LEVEL @ 0x33C;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Maximum Read transfer Length, in bytes.";
+        } MRL_0[15:0] = 0xFFFF;
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Maximum Write transfer Length, in bytes.";
+        } MWL_0[31:16] = 0xFFFF;
+    } TARG_RW_LEN[4] @ 0x340 += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Maximum length of IBI data payload, in bytes.";
+        } IBI_LEN_0[7:0] = 0xFF;
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Maximum length of IBI data payload, in bytes.";
+        } IBI_LEN_1[15:8] = 0xFF;
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Maximum length of IBI data payload, in bytes.";
+        } IBI_LEN_2[23:16] = 0xFF;
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Maximum length of IBI data payload, in bytes.";
+        } IBI_LEN_3[31:24] = 0xFF;
+    } TARG_IBI_LEN[1] @ 0x350 += 0x4;
+    reg {
+        field {
+            sw = r;
+            hw = rw;
+            desc = "If 1 then In-Band Interrupts are enabled for this Target.";
+        } ENINT_0[0:0] = 0x1;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "If 1 then Controller Role Requests are enabled for this Target.";
+        } ENCR_0[1:1] = 0x1;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "If 1 then Hot-Join requests are enabled for this Target.";
+        } ENHJ_0[2:2] = 0x1;
+    } TARG_EVENT_ENABLE[4] @ 0x354 += 0x4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "SCL Line Signal Level.";
+        } SCL_LINE_SIGNAL_LEVEL[0:0] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "SDA Line Signal Level.";
+        } SDA_LINE_SIGNAL_LEVEL[1:1] = 0x1;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Reports whether the Bus Available condition is met at this instant.";
+        } BUS_AVAIL[8:8] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Reports whether the Bus Idle condition is met at this instant.";
+        } BUS_IDLE[9:9] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Current bus mode.";
+        } BUS_MODE[15:12] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Core FSM state.";
+        } FSM_STATE[23:16] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Transceiver state.";
+        } TRX_STATE[31:24] = 0x0;
+    } external TARG_STATE_DEBUG @ 0x364;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable virtual target.
+            A disabled target will not participate in address assignment or respond to bus traffic.";
+        } ENABLE_0[0:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable virtual target.
+            A disabled target will not participate in address assignment or respond to bus traffic.";
+        } ENABLE_1[1:1] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable virtual target.
+            A disabled target will not participate in address assignment or respond to bus traffic.";
+        } ENABLE_2[2:2] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Enable virtual target.
+            A disabled target will not participate in address assignment or respond to bus traffic.";
+        } ENABLE_3[3:3] = 0x0;
+    } TARG_ENABLE[1] @ 0x368 += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Group address, iff the entry is used.
+            If software sets this address to zero and TARGETS to non-zero, all I3C traffic will be captured as if addressed to the selected Target(s).";
+        } GROUP_ADDR_0[6:0] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "The set of virtual targets subscribed to this group address.
+            If zero, this entry in the list of group addresses is unused.";
+        } TARGETS_0[11:8] = 0x0;
+    } TARG_GROUP[8] @ 0x36C += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transmit Buffer Threshold.
+            Interrupt triggers when there are at least N DWORDs of free space in the Tx Data Buffer.
+            0: Do not raise an interrupt.";
+        } TX_BUF_FREE_THLD_0[11:0] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Tx Descriptor Queue Threshold.
+            Interrupt is issued when the Tx Descriptor Queue contains at least N empty entries.
+            0: Do not raise an interrupt.";
+        } TX_DESC_EMPTY_THLD_0[23:16] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Transmit (Transfer) Start Threshold in DWORDs.
+            Wait until there are at least 2^(N+1) DWORDs of data available before responding to a Read Transfer request.";
+        } TX_START_THLD_0[31:28] = 0x1;
+    } TARG_TX_THLD_CTRL[4] @ 0x38C += 0x4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "The number of free DWORDs in the Tx Buffer.";
+        } TX_BUF_FREE_LVL_0[11:0] = 0x40;
+        field {
+            sw = r;
+            hw = w;
+            desc = "The number of free Tx Descriptor Queue entries.";
+        } TX_DESC_FREE_LVL_0[23:16] = 0x8;
+    } external TARG_TX_QUEUE_STATUS_LEVEL[4] @ 0x39C += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Device Static Address.";
+        } STATIC_ADDR_0[6:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Static Address is Valid.";
+        } STATIC_ADDR_VALID_0[15:15] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Device Dynamic Address.";
+        } DYNAMIC_ADDR_0[22:16] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            desc = "Dynamic Address is Valid.";
+        } DYNAMIC_ADDR_VALID_0[31:31] = 0x0;
+    } TARG_ADDR[4] @ 0x3AC += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "High part of Provisioned ID.";
+        } PID_HI_0[15:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Device Characteristics Register.";
+        } DCR_0[23:16] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Bus Characteristics Register.";
+        } BCR_0[31:24] = 0x3E;
+    } TARG_CHAR[4] @ 0x3BC += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Low part of Provisioned ID.";
+        } PID_LO_0[31:0] = 0x0;
+    } TARG_PID_LO[4] @ 0x3CC += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Virtual Target Type.";
+        } VTCAP1_TYPE_0[2:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Side Effects.";
+        } VTCAP1_SIDE_FX_0[4:4] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Shared Peripheral Detect.";
+        } VTCAP1_SHARED_DET_0[5:5] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Interrupt Requests.";
+        } VTCAP2_IRQ_0[9:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Address Remapping.";
+        } VTCAP2_ADDR_REMAP_0[10:10] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Bus Context and Conditions.";
+        } VTCAP2_BUS_CTX_0[12:11] = 0x0;
+    } TARG_CAPS[4] @ 0x3DC += 0x4;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Activity State (ENTASn).";
+        } AS_0[1:0] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Enable ACK/NACK Capability for WRITE Command.";
+        } ENDXFER_WR_NACK_0[3:3] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Enable WRITE Early Termination Request.";
+        } ENDXFER_WR_EARLY_TERM_0[4:4] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "CRC Word Indicator.";
+        } ENDXFER_CRC_EARLY_0[5:5] = 0x1;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Candidate setting for 'Enable ACK/NACK Capability for WRITE Command.'";
+        } ENDXFER_CAND_WR_NACK_0[11:11] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Candidate setting for 'Enable WRITE Early Termination Request.'";
+        } ENDXFER_CAND_WR_EARLY_TERM_0[12:12] = 0x0;
+        field {
+            sw = r;
+            hw = rw;
+            desc = "Candidate setting for 'CRC Word Indicator.'";
+        } ENDXFER_CAND_CRC_EARLY_0[13:13] = 0x1;
+    } TARG_INFO[4] @ 0x3EC += 0x4;
+    reg {
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum Read Settings";
+        } MAXRD_0[6:0] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum Write Settings.";
+        } MAXWR_0[15:8] = 0x0;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum Read Turnaround Time Value.";
+        } RDTURN_VAL_0[27:16] = 0x1;
+        field {
+            sw = rw;
+            hw = r;
+            desc = "Maximum Read Turnaround Time Scale.
+
+            This value scales the Turnaround Time Value, giving the Maximum Read Turnaround Time in microseconds.
+            max time = RDTURN_VAL << (RDTURN_SCALE + 1)";
+        } RDTURN_SCALE_0[31:28] = 0x0;
+    } TARG_MAX_RDWR[4] @ 0x3FC += 0x4;
+    mem {
+        memwidth = 0x20;
+        mementries = 0xd;
+    } external TTI_PORTS @ 0x440;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capability ID";
+        } CAP_ID[7:0] = 0xC0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Capability Structure Length in DWORDs.";
+        } CAP_LENGTH[23:8] = 0x1;
+    } external TARGEXT_EXTCAP_HEADER @ 0x474;
+    reg {
+        field {
+            sw = r;
+            hw = w;
+            desc = "Extended Capability ID";
+        } CAP_ID[7:0] = 0x0;
+        field {
+            sw = r;
+            hw = w;
+            desc = "Capability Structure Length in DWORDs.";
+        } CAP_LENGTH[23:8] = 0x1;
+    } external TERM_EXTCAP_HEADER @ 0x478;
+    mem {
+        memwidth = 0x20;
+        mementries = 0x40;
+    } external DAT @ 0xA00;
+    mem {
+        memwidth = 0x20;
+        mementries = 0x80;
+    } external DCT @ 0xC00;
+};
+
+`endif // _OT_I3C_RDL_DEFINED

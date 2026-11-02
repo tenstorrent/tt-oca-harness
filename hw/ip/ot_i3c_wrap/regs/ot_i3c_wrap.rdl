@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef OT_I3C_WRAP_RDL_DEFINED
+`define OT_I3C_WRAP_RDL_DEFINED
+
+`include "ot_i3c.rdl"
+
+addrmap ot_i3c_wrap #(
+    longint unsigned NUM_I3CS = 6
+) {
+    name = "OpenTitan I3C Controller Wrapper Address Map";
+    desc = "Wrapper address map instantiating the per-controller OpenTitan I3C register blocks.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    ot_i3c      i3c_csr     [NUM_I3CS]      @0x0    += 0x1000;
+};
+
+`endif

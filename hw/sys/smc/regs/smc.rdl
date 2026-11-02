@@ -28,7 +28,7 @@
 `include "efuse_interface_ctrl.rdl"
 `include "error_device.rdl"
 `include "ext_memory.rdl"
-`include "oca_i3c_wrap.rdl"
+`include "ot_i3c_wrap.rdl"
 `include "plic.rdl"
 `include "cpu_ctrl.rdl"
 `include "smc_base_config.rdl"
@@ -88,7 +88,7 @@ addrmap smc_top #(
 
     cpu_ctrl                       smc_cpu_ctrl                   @BASE_ADDR + 0x003_9000;
 
-    oca_i3c_wrap                   oca_i3c_wrap                   @BASE_ADDR + 0x003_a000;
+    ot_i3c_wrap                    oca_i3c_wrap                   @BASE_ADDR + 0x003_a000;
 
     external spm_rom_memory        spm_rom_memory              @BASE_ADDR + 0x004_0000;
 

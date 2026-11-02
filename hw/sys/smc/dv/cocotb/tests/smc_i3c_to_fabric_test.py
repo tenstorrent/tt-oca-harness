@@ -53,8 +53,8 @@ class smc_i3c_to_fabric_test(smc_base_test):
             details=(
                 "I3C0 CSR-window decode over SEP_IN AXI: HCI_VERSION and "
                 "HC_CONTROL value-compared against the vendor SystemRDL "
-                "(base_registers.rdl) declared resets, and HC_CONTROL.BUS_ENABLE "
-                "written and read back, so the real i3ccore is enabled over the "
+                "(ot_i3c.rdl) declared resets, and HC_CONTROL.BUS_ENABLE "
+                "written and read back, so the real I3C core is enabled over the "
                 "fabric. I3C0 SCL/SDA external pull-low steps driven with the "
                 "core enabled: pad levels and resolvability recorded "
                 "OBSERVED-ONLY (no positive control exists for those nets in "

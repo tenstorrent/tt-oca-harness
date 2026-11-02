@@ -44,7 +44,7 @@
 #include "clint.h"
 #include "efuse_interface_ctrl.h"
 #include "efuse_shim_ctrl.h"
-#include "oca_i3c_wrap.h"
+#include "ot_i3c.h"
 #include "plic.h"
 #include "cpu_ctrl.h"
 #include "smc_base_config.h"

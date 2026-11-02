@@ -18,3 +18,9 @@ Edits applied:
 - `ceil_udiv` in `i3c_consts_pkg`, in place of `prim_util_pkg::ceil_udiv`.
 - RAM configuration types renamed to the harness's `prim_ram_1p_pkg`.
 - Buffer, DAT and DCT memories exported as ports.
+
+`upstream/hw/ip/i3c/data/i3c.hjson` is copied from the same commit, without the
+`BUFFER` window, which `SWDirectMsgBuf = 0` removes from the register block.
+`overlay/regs/ot_i3c/regs/ot_i3c.rdl` is exported from it as addrmap `ot_i3c` by
+upstream reggen at that commit together with `tools/regs/reggen_wrapper.py`'s
+SystemRDL exporter; the harness's vendored reggen predates this hjson's format.

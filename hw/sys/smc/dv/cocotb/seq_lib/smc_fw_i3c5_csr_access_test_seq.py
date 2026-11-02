@@ -15,7 +15,7 @@ access-count check requires on instances 0-4 are measurements.
 
 The bench grades three things the PASS word does not carry:
 
-* The four published values against the vendor RDL (`base_registers.rdl`),
+* The four published values against the vendor RDL (`ot_i3c.rdl`),
   parsed by `smc_i3c_to_fabric_test_seq`, not the image's own constants.
 * The accesses that reached the I3C cores. `tb_i3c_csr_read_count` and
   `tb_i3c_csr_write_count` count R and B handshakes at each core's AXI-Lite
@@ -42,11 +42,9 @@ from .smc_i3c_to_fabric_test_seq import (
 I3C_INSTANCE = 5
 I3C_CSR_NUM = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
 I3C_HCI_VERSION = smc_indexed_addr(
-    "SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_BASE_ADDR", I3C_INSTANCE
+    "SMC_TOP_OCA_I3C_WRAP_I3C_CSR_HCI_VERSION_BASE_ADDR", I3C_INSTANCE
 )
-I3C_HC_CONTROL = smc_indexed_addr(
-    "SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CONTROL_BASE_ADDR", I3C_INSTANCE
-)
+I3C_HC_CONTROL = smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_HC_CONTROL_BASE_ADDR", I3C_INSTANCE)
 
 # The image's loads and stores in the window: HCI_VERSION, HC_CONTROL at entry,
 # after BUS_ENABLE and after the restore; the BUS_ENABLE and restore stores.
@@ -110,7 +108,7 @@ class smc_fw_i3c5_csr_access_test_seq(smc_fw_image_boot_seq):
         for i in range(I3C_CSR_NUM):
             await self.csr_read(
                 f"I3C{i}_HCI_VERSION_PROBE",
-                smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_BASE_ADDR", i),
+                smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_HCI_VERSION_BASE_ADDR", i),
                 expected=I3C_HCI_VERSION_RESET,
             )
         after_reads, after_writes = i3c_csr_counts()
@@ -169,7 +167,7 @@ class smc_fw_i3c5_csr_access_test_seq(smc_fw_image_boot_seq):
             )
         cocotb.log.info(
             "CHK-FW-I3C5-HCI-VERSION: the CPU read HCI_VERSION at 0x%08x as 0x%08x == "
-            "base_registers.rdl reset 0x%08x",
+            "ot_i3c.rdl reset 0x%08x",
             I3C_HCI_VERSION,
             self.published[4],
             I3C_HCI_VERSION_RESET,
@@ -188,7 +186,7 @@ class smc_fw_i3c5_csr_access_test_seq(smc_fw_image_boot_seq):
         cocotb.log.info(
             "CHK-FW-I3C5-HC-CONTROL-BUS-ENABLE: the CPU read HC_CONTROL at 0x%08x as 0x%08x, "
             "wrote BUS_ENABLE (bm 0x%08x) and read 0x%08x, wrote the entry word back and read "
-            "0x%08x, each equal to the base_registers.rdl word; SEP_IN read the restored 0x%08x "
+            "0x%08x, each equal to the ot_i3c.rdl word; SEP_IN read the restored 0x%08x "
             "after PASS and instance %d's read counter advanced by that one read",
             I3C_HC_CONTROL,
             self.published[5],

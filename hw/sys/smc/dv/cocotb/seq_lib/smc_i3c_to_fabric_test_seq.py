@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""I3C-window → fabric decode smoke (real OCA I3C core).
+"""I3C-window → fabric decode smoke (real I3C core).
 
 Toggles the I3C CSR clock-gate control, restores it, proves the I3C wrapper CSR
 window is decoded by reading HCI_VERSION and comparing it against the reset
@@ -33,72 +33,44 @@ I3C_CG_EN_RESET = _field_mask(
 #
 # Both the register's offset inside the I3C CSR window and its reset value are
 # read here from the I3C core's SystemRDL register source
-# ``vendor/chipsalliance/i3c-core/upstream/src/rdl/base_registers.rdl`` (reg
-# ``HCI_VERSION``; the generated doc ``.../src/rdl/docs/README.md`` tables the
-# same reset).
+# ``vendor/lowRISC/opentitan-i3c/overlay/regs/ot_i3c/regs/ot_i3c.rdl`` (reg
+# ``HCI_VERSION``), exported from the core's ``i3c.hjson``.
 #
 # The expected value is therefore independent of the RTL readback mux
-# (``I3CCSR.sv``), and the register identity printed in the log derives from the
-# same symbols that formed the address: the window base from the generated
-# ``smc_addr.h`` plus the HCI_VERSION offset from the RDL
+# (``i3c_reg_top.sv``), and the register identity printed in the log derives
+# from the same symbols that formed the address: the window base from the
+# generated ``smc_addr.h`` plus the HCI_VERSION offset from the RDL
 # ([INDEPENDENT-EXPECTED-MODEL], [ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _I3C_BASE_RDL = (
     Path(__file__).resolve().parents[6]
     / "vendor"
-    / "chipsalliance"
-    / "i3c-core"
-    / "upstream"
-    / "src"
-    / "rdl"
-    / "base_registers.rdl"
+    / "lowRISC"
+    / "opentitan-i3c"
+    / "overlay"
+    / "regs"
+    / "ot_i3c"
+    / "regs"
+    / "ot_i3c.rdl"
 )
-_RDL_REG_END_RE = re.compile(r"\}\s*(\w+)\s*@\s*(0x[0-9A-Fa-f]+)\s*;")
-_RDL_RESET_RE = re.compile(r"reset\s*=\s*\d+'h([0-9A-Fa-f]+)")
-
-
-def _i3c_reg_from_rdl(reg_name: str) -> tuple[int, int]:
-    """Return ``(offset, reset)`` for ``reg_name`` from ``base_registers.rdl``.
-
-    Raises rather than guessing: if the RDL is restructured or the register is
-    renamed, this fails loudly at import instead of silently keeping a stale
-    hand-copied literal alive.
-    """
-    text = _I3C_BASE_RDL.read_text(encoding="utf-8")
-    for match in _RDL_REG_END_RE.finditer(text):
-        if match.group(1) != reg_name:
-            continue
-        offset = int(match.group(2), 0)
-        body_start = text.rfind("reg {", 0, match.start())
-        if body_start < 0:
-            break
-        resets = _RDL_RESET_RE.findall(text[body_start : match.start()])
-        if len(resets) != 1:
-            raise RuntimeError(
-                f"{reg_name} in {_I3C_BASE_RDL} does not declare exactly one "
-                f"field reset (found {len(resets)}); the expected value can no "
-                f"longer be derived unambiguously"
-            )
-        return offset, int(resets[0], 16)
-    raise RuntimeError(f"register {reg_name} not found in {_I3C_BASE_RDL}")
-
-
+_RDL_REG_END_RE = re.compile(r"\}\s*(?:external\s+)?(\w+)\s*@\s*(0x[0-9A-Fa-f]+)\s*;")
 _RDL_FIELD_RE = re.compile(
     r"field\s*\{(?P<body>[^{}]*)\}\s*(?P<name>\w+)\s*\[\s*(?P<hi>\d+)\s*:\s*"
-    r"(?P<lo>\d+)\s*\]\s*;",
+    r"(?P<lo>\d+)\s*\]\s*=\s*(?P<reset>0x[0-9A-Fa-f]+|\d+)\s*;",
     re.S,
 )
-_RDL_ANY_RESET_RE = re.compile(r"reset\s*=\s*\d+'([hbd])([0-9A-Fa-f]+)")
-_RADIX = {"h": 16, "b": 2, "d": 10}
 
 
 def _i3c_multifield_reg_from_rdl(reg_name: str) -> tuple[int, int, dict[str, int]]:
     """Return ``(offset, reset_word, {field: bitmask})`` from the vendor RDL.
 
-    Same authority and the same reason as :func:`_i3c_reg_from_rdl`, generalised
-    to a register with several fields: every field's declared reset is summed
-    into the whole-register reset word and every field name is exported as a
-    bitmask, so both the expected entry value and the bit to write come from the
-    RDL rather than from a hand-copied literal or an observed readback.
+    Every field's declared reset is summed into the whole-register reset word and
+    every field name is exported as a bitmask, so both the expected entry value
+    and the bit to write come from the RDL rather than from a hand-copied literal
+    or an observed readback.
+
+    Raises rather than guessing: if the RDL is restructured or the register is
+    renamed, this fails loudly at import instead of silently keeping a stale
+    hand-copied literal alive.
     """
     text = _I3C_BASE_RDL.read_text(encoding="utf-8")
     for match in _RDL_REG_END_RE.finditer(text):
@@ -115,19 +87,22 @@ def _i3c_multifield_reg_from_rdl(reg_name: str) -> tuple[int, int, dict[str, int
             lo = int(field.group("lo"))
             width_mask = (1 << (hi - lo + 1)) - 1
             masks[field.group("name")] = width_mask << lo
-            reset = _RDL_ANY_RESET_RE.search(field.group("body"))
-            if reset is None:
-                raise RuntimeError(
-                    f"{reg_name}.{field.group('name')} in {_I3C_BASE_RDL} "
-                    f"declares no reset; the expected entry word cannot be "
-                    f"derived"
-                )
-            value = int(reset.group(2), _RADIX[reset.group(1)])
-            reset_word |= (value & width_mask) << lo
+            reset_word |= (int(field.group("reset"), 0) & width_mask) << lo
         if not masks:
             raise RuntimeError(f"no fields parsed for {reg_name} in {_I3C_BASE_RDL}")
         return offset, reset_word, masks
     raise RuntimeError(f"register {reg_name} not found in {_I3C_BASE_RDL}")
+
+
+def _i3c_reg_from_rdl(reg_name: str) -> tuple[int, int]:
+    """Return ``(offset, reset)`` for a single-field register from the vendor RDL."""
+    offset, reset, masks = _i3c_multifield_reg_from_rdl(reg_name)
+    if len(masks) != 1:
+        raise RuntimeError(
+            f"{reg_name} in {_I3C_BASE_RDL} declares {len(masks)} fields, not one; "
+            f"the expected value can no longer be derived unambiguously"
+        )
+    return offset, reset
 
 
 I3C0_CSR_WINDOW = smc_indexed_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_BASE_ADDR", 0)
@@ -136,8 +111,9 @@ I3C0_HCI_VERSION = I3C0_CSR_WINDOW + HCI_VERSION_OFFSET
 
 # HC_CONTROL: the register that enables the host controller. Offset, whole-
 # register reset word and the BUS_ENABLE bit all come from the same vendor RDL.
-# (base_registers.rdl: ``HC_CONTROL @ 0x4``, ``BUS_ENABLE[31:31] sw=rw reset=0``,
-# ``MODE_SELECTOR[6:6] reset=1`` -- so the reset word is 0x0000_0040.)
+# (ot_i3c.rdl: ``HC_CONTROL @ 0x184``, ``BUS_ENABLE[31:31] sw=rw = 0x0``,
+# ``MODE_SELECTOR[6:6] = 0x1``, ``AUTOCMD_DATA_RPT[3:3] = 0x1`` -- so the reset
+# word is 0x0000_0048.)
 HC_CONTROL_OFFSET, I3C_HC_CONTROL_RESET, _HC_CONTROL_MASKS = _i3c_multifield_reg_from_rdl(
     "HC_CONTROL"
 )
@@ -233,7 +209,7 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         cocotb.log.info(
             "CHK-I3C0-HCI-VERSION: HCI_VERSION @ window 0x%08x + RDL offset "
             "0x%03x = 0x%08x resp=OKAY rdata=0x%08X == 0x%08X "
-            "(expected = base_registers.rdl HCI_VERSION.VERSION reset; "
+            "(expected = ot_i3c.rdl HCI_VERSION.VERSION reset; "
             "CSR-window decode only, no I3C protocol claim)",
             I3C0_CSR_WINDOW,
             HCI_VERSION_OFFSET,
@@ -249,7 +225,7 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         # so the helper records the pad state of a running controller. All three
         # expectations are RDL-sourced:
         #   * entry word == the sum of HC_CONTROL's declared field resets
-        #     (BUS_ENABLE=0, MODE_SELECTOR=1 -> 0x00000040),
+        #     (BUS_ENABLE=0, MODE_SELECTOR=1, AUTOCMD_DATA_RPT=1 -> 0x00000048),
         #   * after the write == that word with BUS_ENABLE set, proving the
         #     sw=rw field is really writable in the real core, and
         #   * after the restore == the declared reset word again.
@@ -263,7 +239,7 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         cocotb.log.info(
             "CHK-I3C0-HC-CONTROL-BUS-ENABLE: HC_CONTROL @ window 0x%08x + RDL "
             "offset 0x%03x = 0x%08x read its RDL-declared reset 0x%08X, then "
-            "BUS_ENABLE (bm 0x%08X, sw=rw in base_registers.rdl) wrote and read "
+            "BUS_ENABLE (bm 0x%08X, sw=rw in ot_i3c.rdl) wrote and read "
             "back 0x%08X: the real I3C core's host-controller enable is "
             "software-writable over the fabric",
             I3C0_CSR_WINDOW,

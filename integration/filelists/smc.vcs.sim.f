@@ -259,6 +259,8 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_ext.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lfsr.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_pad_wrapper_pkg.sv

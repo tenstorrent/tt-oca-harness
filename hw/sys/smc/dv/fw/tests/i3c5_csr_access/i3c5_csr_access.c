@@ -20,14 +20,11 @@
 #include "smc_test.h"
 
 #define I3C_INSTANCE 5
-#define HCI_VERSION \
-    ((uint64_t)SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_BASE_ADDR(I3C_INSTANCE))
-#define HC_CONTROL \
-    ((uint64_t)SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CONTROL_BASE_ADDR(I3C_INSTANCE))
+#define HCI_VERSION ((uint64_t)SMC_TOP_OCA_I3C_WRAP_I3C_CSR_HCI_VERSION_BASE_ADDR(I3C_INSTANCE))
+#define HC_CONTROL ((uint64_t)SMC_TOP_OCA_I3C_WRAP_I3C_CSR_HC_CONTROL_BASE_ADDR(I3C_INSTANCE))
 
-/* Field macros generated from the I3C core's base_registers.rdl. */
-#define I3C_BASEREGS(name) \
-    BASEREGS_PIO_OFFSET_80_EXT_OFFSET_100_DAT_TABLE_SIZE_7F_DAT_OFFSET_400_DCT_TABLE_SIZE_7F_DCT_OFFSET_800_MIPI_COMMANDS_35__##name
+/* Field macros generated from the I3C core's ot_i3c.rdl. */
+#define I3C_BASEREGS(name) OT_I3C__##name
 #define HC_CONTROL_FIELD_RESET(field) \
     ((uint32_t)I3C_BASEREGS(HC_CONTROL__##field##_reset) << I3C_BASEREGS(HC_CONTROL__##field##_bp))
 
