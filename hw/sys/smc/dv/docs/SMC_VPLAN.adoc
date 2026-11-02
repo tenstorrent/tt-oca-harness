@@ -7262,9 +7262,9 @@ reported.
 destination byte changes, compared after the `DONE_0` poll ended with `DONE_0` moved from its
 pre-launch value and `tb_dma_busy` low (a liveness bound; the poll fails at its bound otherwise);
 `DONE_0` before and after the launch, with the drawn `NUM_REPETITIONS`, and `STATUS_0` after it are
-printed, not compared (Scope limit, #3509); `smc_dma_zero_length_done_id_test` (`rtl_issue`,
-`testlists/holdout.toml`) runs the same draw and asserts `DONE_0` equal to the returned ID under
-`expect_fail` against #3509.
+printed, not compared; `smc_dma_zero_length_done_id_test` (`testlists/dma.toml`) runs the same draw
+and asserts `DONE_0` advanced by the drawn `NUM_REPETITIONS`, one retirement per repetition of the
+zero-length command (`dma.adoc`, Retirement Counting).
 |`CHK-NONVAC` |The step stamps S1 to S6 are in increasing time order, the 5 checker lines above
 were printed in step order each after its own step, and 14 launches were issued with at least one
 of the 12 drawn transfers a copy of two or more rows (`NUM_REPETITIONS` 2 or more), each row at its
@@ -7284,26 +7284,118 @@ is a printed report with no compare, each wait raising its own failure when its 
 `CHK-DXM-ZERO-LENGTH`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed; every drawn copy is
 byte-exact with its sentinel intact and retires its ID, every burst stays inside its configured
 bound, and the `ENABLED_ND` clear and zero-length launches move no data; `DONE_0` after the
-zero-length launch is printed, not graded (#3509). Enrolled in: `all`, `hosted`.
+zero-length launch is printed, not graded. Enrolled in: `all`, `hosted`.
 
 *Scope limit*: `STATUS_0` after every launch, the place the no-data launches' error response is
 reported (<<smc-vplan-phase3-blocked-legs>>) are printed, not compared; the order in which the rows
 are issued is neither printed nor compared.
-`DONE_0` after the zero-length launch is printed, not compared: `dma.adoc` gives `DONE_0` as the
-"Most recently retired transfer ID" and says "A command with a length of 0 ... still retire[s] a
-transfer ID", and the `dma_ctrl.rdl` `NEXT_ID` description says such a command "still retires an
-ID without copying any data", which reads as `DONE_0` reaching the one returned ID; on this bench
-`DONE_0` advances by the drawn `NUM_REPETITIONS` after a length-0 launch, and by one after every
-other launch of this entry; #3509 holds the question. The leaf prints the returned ID, `DONE_0`
-before and after and the drawn `NUM_REPETITIONS`; `smc_dma_zero_length_done_id_test` (`rtl_issue`)
-runs the same draw and asserts the compare the documents state, expected to fail until #3509
-closes (<<smc-vplan-phase3-blocked-legs>>).
+`DONE_0` after the zero-length launch is printed, not compared, by this entry: `dma.adoc`
+(Retirement Counting) gives `DONE_0` as a retirement counter that a command with `ENABLED_ND` set,
+`LENGTH` 0 and `NUM_REPETITIONS` N advances by N, and by one after every other command. The leaf
+prints the returned ID, `DONE_0` before and after and the drawn `NUM_REPETITIONS`;
+`smc_dma_zero_length_done_id_test` (`testlists/dma.toml`) runs the same draw and asserts that
+advance.
 Zero or overlapping strides, `DECOUPLE_RW` 1, addresses near 2^56 and the backpressure and abort
 cells are not drawn, because the DMA chapter states no order or outcome for them. This entry
 consolidates the cells of `smc_dma_2d_copy_test` and `smc_dma_burst_shaping_test`, which stay
 enrolled.
 
 '''''
+
+[[sec-570-smc_dma_zero_length_done_id_test]]
+===== 570 `smc_dma_zero_length_done_id_test`
+
+*Phase*: 3
+
+*Area*: POWER
+
+*Source Module*: `smc_dma_zero_length_done_id_test`
+
+*BFM / Model*: the bench of `smc_dma_transfer_matrix_rand_test` (559): SEP_IN AXI sequencer
+(`env.sys_axi_agent`, no protocol VIP) for the DMA registers, the TB SYS_OUT output-fabric
+responder memory (`cfg.sys_out_mem`) preloaded and read back through its backdoor with a sentinel
+in every destination byte, the passive AR, AW and `tb_dma_busy` probes sampled at every `clk_smc_i`
+rise; DMA registers `CONFIG`, `SRC_ADDRESS`, `DST_ADDRESS`, `LENGTH`, `SRC_STRIDE`, `DST_STRIDE`,
+`NUM_REPETITIONS`, `NEXT_ID_0`, `DONE_0` and `STATUS_0`.
+
+*Run mode*: one testlist entry in `testlists/dma.toml`; groups `all`, `hosted`; `run_modes`
+`smoke`; `timeout_sec` 1800; tags `ci`; seed 1, `reseed` 3; tool Verilator (cocotb).
+
+*Randomization*: RAND-REP; the draw of entry 559 (12 copies, the `ENABLED_ND`-clear launch and the
+zero-length launch on the geometry and `CONFIG` of a drawn copy), with the same filters. The drawn
+`NUM_REPETITIONS` of the zero-length launch, 1 to 16, is the retirement count the leaf compares.
+
+*Objective*: A command with `ENABLED_ND` set, `LENGTH` 0 and N repetitions retires N times:
+`DONE_0` after the launch reads its pre-launch value plus N, while every other command of the draw
+retires once.
+
+*Test Coverage*:
+
+* `DONE_0` is a retirement counter, reset to 1, adding 1 per retirement; a command retires once,
+  except a command with `ENABLED_ND` set, `LENGTH` 0 and `NUM_REPETITIONS` N of 1 or more, whose
+  rows the backend each answers with an error response marked as the command's last, so it retires
+  N times (`dma.adoc`, Retirement Counting, the "Retirements per DMA command" table;
+  `dma_ctrl.rdl`, `DONE`).
+* The counter never reads 0 and reads 1 from the cycle after `0xFFFFFFFF`, so `0xFFFFFFFF` and 1
+  denote the same count and the expected value is ((D - 1 + N) mod (2^32 - 2)) + 1 for a reading D
+  before the launch (`dma.adoc`, Retirement Counting); the compare takes that form.
+* The 12 copies and the `ENABLED_ND`-clear launch run first and each retires once (`DONE_0` reaches
+  the returned ID), so the returned ID of the zero-length launch is still `DONE_0` plus one
+  (`dma.adoc`, Retirement Counting: the ID equals the `DONE_0` value after retirement only while
+  every earlier command retired once).
+
+*Test Procedure*:
+
+[arabic]
+. Steps 1 to 4 of entry 559: the 12 seeded copies retire, are byte-exact and burst-bounded, and the
+`ENABLED_ND`-clear launch retires once and moves no data (`CHK-DXM-BYTE-EXACT`, `CHK-DXM-DONE-ID`,
+`CHK-DXM-BURST-BOUND`, `CHK-DXM-ND-CLEAR`).
+. Error injection. Point: `LENGTH` 0 with `ENABLED_ND` set on the geometry and `CONFIG` of a drawn
+copy, in a fresh slot. Kind: launch with one `NEXT_ID_0` read. Expected response: the launch returns
+the non-zero ID `DONE_0` plus one, no destination byte changes, and after the `DONE_0` poll has
+ended with `DONE_0` moved from its pre-launch value and two consecutive reads agreeing with
+`tb_dma_busy` low (within 3000 reads 50 `clk_smc_i` cycles apart), `DONE_0` equals its pre-launch
+value plus the drawn `NUM_REPETITIONS`, wrap-aware; a mismatch fails with
+`CHK-DXM-ZERO-LENGTH-DONE FAIL` and the before, after, returned-ID and drawn-repetition values.
+. Require 14 launches; print `CHK-TIMEOUT-PATHS`, then run the fence that prints `CHK-NONVAC`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DXM-BYTE-EXACT` |As entry 559: each of the 12 destination spans equals the golden image byte
+for byte with the sentinel intact and the source unchanged.
+|`CHK-DXM-DONE-ID` |As entry 559: each of the 12 launches returns `DONE_0` plus one (zero skipped)
+and `DONE_0` reaches that ID within the poll bound, one retirement per copy.
+|`CHK-DXM-BURST-BOUND` |As entry 559: every sampled AR and AW burst stays inside the bound its
+`CONFIG` bits set.
+|`CHK-DXM-ND-CLEAR` |As entry 559: with `ENABLED_ND` clear the launch returns `DONE_0` plus one,
+moves no destination byte and `DONE_0` reaches that ID, one retirement.
+|`CHK-DXM-ZERO-LENGTH` |With `LENGTH` 0 and `ENABLED_ND` set the launch returns the non-zero ID
+`DONE_0` plus one, no destination byte changes, and the settled `DONE_0` equals its pre-launch value
+plus the drawn `NUM_REPETITIONS`, computed as ((D - 1 + N) mod (2^32 - 2)) + 1 (`dma.adoc`,
+Retirement Counting: one retirement per zero-length row); the line carries `DONE_0` before and after,
+the delta, the drawn repetitions and the expected value; `STATUS_0` and the launch read's response
+code are printed, not compared.
+|`CHK-NONVAC` |As entry 559: the step stamps S1 to S6 are in increasing time order, the 5 checker
+lines were printed in step order, 14 launches were issued, and a binding reduce-set transfer per
+side had its bursts observed; a control-flow invariant, not a DUT compare.
+|`CHK-TIMEOUT-PATHS` |As entry 559: every bounded wait with its bound, the zero-length launch's
+settle poll included; a printed report with no compare.
+|===
+
+*Pass Criteria*: `CHK-DXM-BYTE-EXACT`, `CHK-DXM-DONE-ID`, `CHK-DXM-BURST-BOUND`, `CHK-DXM-ND-CLEAR`,
+`CHK-DXM-ZERO-LENGTH`, `CHK-NONVAC` and `CHK-TIMEOUT-PATHS` are all printed, and `DONE_0` after the
+zero-length launch equals its pre-launch value plus the drawn `NUM_REPETITIONS`. Enrolled in: `all`,
+`hosted`.
+
+*Scope limit*: The wrap of `DONE_0` through `0xFFFFFFFF` is in the compare's arithmetic but not
+driven: the bench cannot issue 2^32 retirements. `STATUS_0` after the no-data launches and the
+place their error response is reported are printed, not compared (<<smc-vplan-phase3-blocked-legs>>).
+`NUM_REPETITIONS` 0, and `ENABLED_ND` clear at any length, are the one-retirement rows of the
+table; `CHK-DXM-ND-CLEAR` grades the `ENABLED_ND`-clear launch at the drawn nonzero length, and
+`LENGTH` 0 with `NUM_REPETITIONS` 0 or with `ENABLED_ND` clear is not drawn.
 
 [[sec-560-smc_dma_backpressure_rand_test]]
 ===== 560 `smc_dma_backpressure_rand_test`
@@ -48897,7 +48989,7 @@ ordered by area.
 |<<smc-vplan-area-power,POWER>>
 |The `NEXT_ID` and `DONE` reset values and the meaning of `DONE_0` after a command.
 |`hw/sys/smc/doc/dma.adoc` and the register description `integration/rdl/smc/dma_ctrl.rdl` state different reset values for `NEXT_ID` and `DONE` and a different meaning for `DONE` (the last retired id versus a cumulative count); which one is normative. Source: `hw/sys/smc/doc/dma.adoc` (Stream and Register Ownership); `integration/rdl/smc/dma_ctrl.rdl` (`NEXT_ID`, `DONE`); GitHub issue tenstorrent/tt-oca-harness#2455.
-|`smc_dma_invalid_descriptor_test` grades every `NEXT_ID_0` read non-zero and logs `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states. `smc_dma_transfer_matrix_rand_test` prints `DONE_0` before and after its zero-length launch with the drawn `NUM_REPETITIONS`, without comparing it, and grades the returned ID and the untouched destination; `smc_dma_zero_length_done_id_test` (`rtl_issue`) asserts `DONE_0` equal to the returned ID against #3509.
+|`smc_dma_invalid_descriptor_test` grades every `NEXT_ID_0` read non-zero and logs `DONE_0` and `STATUS_0[9:0]` for the `ENABLED_ND`-cleared and zero-length commands without comparing them until the issue is resolved; `smc_dma_completion_status_test` grades the values the chapter states. `smc_dma_transfer_matrix_rand_test` prints `DONE_0` before and after its zero-length launch with the drawn `NUM_REPETITIONS`, without comparing it, and grades the returned ID and the untouched destination; `smc_dma_zero_length_done_id_test` asserts `DONE_0` advanced by the drawn `NUM_REPETITIONS`, the retirement count `dma.adoc` (Retirement Counting) states for a zero-length command.
 |<<smc-vplan-area-power,POWER>>
 |A DMA row address that steps past 2^56 wraps within 56 bits.
 |Whether the effective address wraps at bit 56, saturates or errors. Source: `hw/sys/smc/doc/dma.adoc` (Transfer Configuration; the register storage and effective field widths).
@@ -49820,7 +49912,6 @@ Every leaf outside `all`, with the issue it reproduces or waits on:
 |#3408 |`smc_warm_domain_access_during_reset_test` |`rtl_issue` |A `SCRATCH_COLD_WARM` read during the warm reset is never answered and hangs the peripheral crossbar after the release; the leaf records the in-reset response and asserts every post-release read completes
 |#3389 |`smc_dfd_cla_irq_w2c_release_test` |`rtl_issue` |`cla_interrupt` stays asserted after the single `CDbgEapStatus` W2C write; the leaf asserts the line drops with the status
 |#3390 |`smc_dfd_cla_clock_halt_release_test` |`rtl_issue` |`halt_clock_global_or_o` stays asserted after the clock-halt action drops and `DisableGlobalClockHalt` is set; the leaf asserts it deasserts
-|#3509 |`smc_dma_zero_length_done_id_test` |`rtl_issue` |`DONE_0` after a `LENGTH` 0 launch advances by the drawn `NUM_REPETITIONS` where `dma.adoc` and the `NEXT_ID` description retire one ID; the leaf runs the `smc_dma_transfer_matrix_rand_test` draw and asserts `DONE_0` equal to the returned ID
 |#3510 |`smc_spm_write_cut_by_warm_reset_test` |`rtl_issue` |An SPM write burst from SEP_IN cut by the watchdog warm reset after its AW handshake receives no B after the release, and later SPM and `CPU_CTRL` writes with its AXI ID bits [2:0] never complete; the leaf arms the path, cuts one burst, and asserts the cut write's B and the two later writes completing OKAY
 |#3422 |`smc_zeroer_busy_trigger_obs_test` |`held_out` |A `CTRL_STATUS` trigger while the zeroer is busy has no stated rule; the `OBS-ZEROER-BUSY` lines record the issue and drain windows, the CHK line grades liveness only
 |#3423 |`smc_flr_counter_timing_obs_test` |`held_out` |The FLR counters' clock and the N+1 pre-delay are not stated; the `OBS-FLR` lines record each (N, M) leg, the CHK line grades liveness only
@@ -51770,8 +51861,8 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_warm_domain_access_during_reset_test` (#3408),
-`smc_dfd_cla_irq_w2c_release_test` (#3389), `smc_dfd_cla_clock_halt_release_test` (#3390),
-`smc_dma_zero_length_done_id_test` (#3509) and `smc_spm_write_cut_by_warm_reset_test` (#3510).
+`smc_dfd_cla_irq_w2c_release_test` (#3389), `smc_dfd_cla_clock_halt_release_test` (#3390)
+and `smc_spm_write_cut_by_warm_reset_test` (#3510).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in

@@ -122,6 +122,12 @@ def _next_id(done: int) -> int:
     return nxt if nxt else 1
 
 
+def _after_retirements(done: int, retirements: int) -> int:
+    """DONE_0 after `retirements` more retirements from a reading of `done`: the counter never
+    reads 0 and 0xFFFFFFFF and 1 denote the same count, so it cycles through 2^32 - 2 values."""
+    return (done - 1 + retirements) % (ID_MASK - 1) + 1
+
+
 class _Sampler:
     """Records every SYS_OUT AR and AW handshake with its length and size."""
 
@@ -411,8 +417,8 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
 
     async def _await_settle(self, x: _Xfer) -> None:
         """Polls DONE_0 until it has moved from its pre-launch value and two consecutive reads
-        agree with tb_dma_busy low; fails when POLL_LIMIT reads pass first. The DONE_0 values
-        are printed, not compared."""
+        agree with tb_dma_busy low; fails when POLL_LIMIT reads pass first. The caller compares
+        or prints the settled DONE_0."""
         moved = False
         idle = False
         for poll in range(1, POLL_LIMIT + 1):
@@ -584,21 +590,22 @@ class smc_dma_transfer_matrix_rand_test_seq(SmcCsrSeq):
                 x.done_reads,
                 x.reps,
             )
+            want = _after_retirements(x.done_before, x.reps)
             if self.grade_zero_length_done:
-                assert x.done_after == x.id, (
+                assert x.done_after == want, (
                     f"CHK-DXM-ZERO-LENGTH-DONE FAIL: DONE_0 {x.done_after} after the LENGTH 0 "
-                    f"launch, returned id {x.id} (DONE_0 before the launch {x.done_before}, "
-                    f"delta {x.done_after - x.done_before}, drawn reps {x.reps}); {src.cells()}"
+                    f"launch, want {want} = DONE_0 before the launch {x.done_before} plus one "
+                    f"retirement per drawn repetition ({x.reps}); returned id {x.id}; {src.cells()}"
                 )
             return (
                 f"launch read returned the non-zero id {x.id} = DONE_0 before the launch "
                 f"{x.done_before} plus one, all {x.span(x.dst_stride) + 2 * GUARD} destination "
                 f"bytes kept the sentinel and the source rows are unchanged after {x.polls} "
                 f"DONE_0 reads that ended moved and idle (tb_dma_busy low, two equal reads); "
-                f"{grade}: DONE_0 before {x.done_before} after "
-                f"{x.done_after} (delta {x.done_after - x.done_before}, drawn reps {x.reps}), "
-                f"launch read response {resp}, STATUS_0 0x{x.status:x}; CONFIG 0x{config:x} "
-                f"LENGTH {length}; drawn={src.cells()}"
+                f"{grade}: DONE_0 before {x.done_before} after {x.done_after} (delta "
+                f"{x.done_after - x.done_before}, drawn reps {x.reps}, one retirement per "
+                f"repetition gives {want}), launch read response {resp}, STATUS_0 0x{x.status:x}; "
+                f"CONFIG 0x{config:x} LENGTH {length}; drawn={src.cells()}"
             )
         await self._await_done(x)
         self._check_id(x, label)
