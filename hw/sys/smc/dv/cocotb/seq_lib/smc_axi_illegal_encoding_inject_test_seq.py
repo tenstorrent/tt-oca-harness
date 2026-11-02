@@ -796,8 +796,8 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
                         stored = [f"0x{a:x}=0x{after[a]:x}" for a in (addr, addr + 4)]
                         obs[shape].append(f"{port}:BRESP={code} footprint_after={stored}")
                     else:
-                        datas = [r["data"] for r in req.resps if r["id"] == req.axi_id]
-                        obs[shape].append(f"{port}:RRESP={code} RDATA={datas}")
+                        data_words = [r["data"] for r in req.resps if r["id"] == req.axi_id]
+                        obs[shape].append(f"{port}:RRESP={code} RDATA={data_words}")
             self._stage(shape, f"reqs={2 * len(PORTS)}")
             if shape == "wrap_len0":
                 cocotb.log.info(
