@@ -1457,7 +1457,19 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
                         )
                         continue
                     # Burst slots hold their read-first values, which the beats also carry.
-                    fam.tally(isl.key, reg, can_fail(reg.seed_mask, ref or 0, data, 4))
+                    if not can_fail(reg.seed_mask, ref or 0, data, 4):
+                        fam.tally(isl.key, reg, None)
+                        cocotb.log.info(
+                            "INFO-PROTOCOL-ONLY: %s %s @ 0x%x reads %s, its read-before %s is "
+                            "carried by a beat of this burst; protocol graded, no unchanged claim",
+                            ctx,
+                            reg.name,
+                            reg.addr,
+                            _hx(after[reg.addr]),
+                            _hx(ref),
+                        )
+                        continue
+                    fam.tally(isl.key, reg, True)
                     if not reg.same(after[reg.addr], ref):
                         fam.findings.append(
                             f"{ctx}: out-of-footprint {reg.name} reads {_hx(after[reg.addr])}, "
@@ -2367,8 +2379,10 @@ class smc_axi_fabric_burst_type_islands_test_seq(SmcCsrSeq):
             f"out-of-footprint registers unchanged, liveness OKAY",
             "STRB": f"{fam.bursts} strobed writes and pair reads, only strobed lanes changed, "
             f"64-bit pair assembly as stated",
-            "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, neighbour slots "
-            f"unchanged, liveness OKAY",
+            "GPIO": f"{fam.bursts} GPIO bursts x 3 ports, protocol held, seeded neighbour "
+            f"slots k-1 (GPIO{GPIO_K - 1}) and k+3 (GPIO{GPIO_K + 3}) unchanged, burst-slot "
+            f"words outside the footprint graded only where no beat carries their read-before "
+            f"value (the rest INFO-PROTOCOL-ONLY), liveness OKAY",
             "SPM": "INCR data match, WRAP/FIXED protocol held, strobes exact, ROM write SLVERR "
             "unchanged, liveness OKAY",
             "SLOTEDGE": f"{fam.bursts} slot-edge bursts x 3 ports, protocol held, "

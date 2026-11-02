@@ -1345,7 +1345,7 @@ class smc_err_slv_response_content_test_seq(SmcCsrSeq):
                 if reset is None:
                     cocotb.log.info(
                         "OBS-ERRC-SPLITSLOT-NDMCOUNT: cell=%s addr=0x%x rresp=%s word=%s "
-                        "field=NDMRESET_CLUSTER_COUNT",
+                        "field=NDMRESET_CLUSTER_COUNT issue=#1857",
                         base,
                         addr,
                         _rname(r[0].resp) if r else "none",
