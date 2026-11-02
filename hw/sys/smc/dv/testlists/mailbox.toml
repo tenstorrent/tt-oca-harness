@@ -26,6 +26,7 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+args = ["+axi_sva_need_mailbox"]
 
 [[tests]]
 name = "smc_mailbox_multi_instance_test"

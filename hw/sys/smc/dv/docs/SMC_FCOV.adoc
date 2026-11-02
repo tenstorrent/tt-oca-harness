@@ -201,6 +201,23 @@ eFuse JTAG port, SYS_OUT, and per-manager channel handshakes.
 |`u_<manager>.c_aw_accept` .. `u_<manager>.c_r_last`, `u_<manager>.c_*_single_beat`, `u_<manager>.c_*_multi_beat`, `u_<manager>.c_bresp_*`, `u_<manager>.c_rresp_*` |Per inbound manager: each channel accepted and stalled, burst length, and the OKAY, SLVERR and DECERR responses. EXOKAY has no point: no subordinate in the SMC fabric supports an exclusive access
 |===
 
+==== `smc_axi_order_fcov`
+
+*Description*: ordering and depth on each inbound manager, one instance per
+port (`u_sep_in_order_fcov`, `u_sys_in_order_fcov`, `u_jtag_in_order_fcov`)
+with a 16-entry outstanding table per direction. A point counts when the
+sampled transaction completes and every response of it is OKAY.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_rd_depth_one`, `c_rd_depth_few`, `c_rd_depth_many`, `c_wr_depth_one`, `c_wr_depth_few`, `c_wr_depth_many` |Reads or writes in flight at the address accept, the accepted one included: 1, 2-4 and 5-16
+|`c_aw_first`, `c_w_first`, `c_aw_w_same_cycle` |Whether the manager raised AWVALID or the first WVALID of a write first, or both in one cycle
+|`c_ar_during_write` |A read accepted while an accepted AW had no WVALID yet, with both the read and the write completed OKAY
+|`c_rid_out_of_order`, `c_bid_out_of_order` |A read with an R beat, or a write with a B, whose ID was not the oldest outstanding ID of its direction
+|`c_rd_eight_ids` |Eight distinct ARIDs accepted between two points where no read was outstanding. JTAG_IN carries a 2-bit ID, so its instance cannot reach the point
+|===
+
 ==== `smc_efuse_fcov`
 
 *Description*: fuse sense, the delayed fuse reset, the shadow output, the
