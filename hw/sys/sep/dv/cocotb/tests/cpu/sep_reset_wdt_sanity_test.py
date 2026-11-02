@@ -159,7 +159,7 @@ _BADADDR_RE = re.compile(
 )
 _SWRST_DEFAULT_RE = re.compile(r"CHK-SWRST-DEFAULT REC read=0x([0-9a-f]{8})")
 _STORE_OK_RE = re.compile(
-    r"CHK-STORE-OK-QUIET REC addr=0x([0-9a-f]{8}) wrote=0x([0-9a-f]{8}) "
+    r"CHK-STORE-OK-QUIET REC addr=0x([0-9a-f]{8}) pre=0x([0-9a-f]{8}) wrote=0x([0-9a-f]{8}) "
     r"readback=0x([0-9a-f]{8}) restored=0x([0-9a-f]{8}) nmi=0x([0-9a-f]{8})"
 )
 # After the firmware PASSes (2nd bark), the WDT runs on to BITE. At ~5 us/tick and
@@ -653,17 +653,17 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             f"CHK-STORE-OK-QUIET FAIL: {len(oks)} OKAY-store records, expected 1. "
             f"Console was:\n{console}"
         )
-        addr, wrote, rb, restored, nmi = (int(x, 16) for x in oks[0])
+        addr, pre, wrote, rb, restored, nmi = (int(x, 16) for x in oks[0])
         # The OKAY leg runs after the SLVERR store; earlier writes to the same
         # register belong to the reset-wire legs.
         slv = [p[0].seq for p in self._to(pairs, _STORE_ERR_ADDR["SLVERR"])]
         ok_hits = [p for p in self._to(pairs, _OKAY_ADDR) if slv and p[0].seq > slv[-1]]
         ok_bresp = [None if b is None else b.resp for _, b in ok_hits]
         line = (
-            f"addr=0x{addr:08x} wrote=0x{wrote:08x} readback=0x{rb:08x} "
+            f"addr=0x{addr:08x} pre=0x{pre:08x} wrote=0x{wrote:08x} readback=0x{rb:08x} "
             f"restored=0x{restored:08x} aw_count={len(ok_hits)} "
             f"aw/bresp={self._bresp_text(ok_hits) or 'none'} nmi={nmi} expected "
-            f"addr=0x{_OKAY_ADDR:08x} aw_count=2 bresp=0b00,0b00 nmi=0 "
+            f"addr=0x{_OKAY_ADDR:08x} pre=0x{_OKAY_RESET:08x} aw_count=2 bresp=0b00,0b00 nmi=0 "
             f"readback=wrote restored=0x{_OKAY_RESET:08x} (RDL reset, differs from wrote) "
             f"control_err_store_nmis=" + ",".join(f"{k}:{v}" for k, v in sorted(err_nmis.items()))
         )
@@ -671,6 +671,7 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             addr == _OKAY_ADDR
             and ok_bresp == [_BRESP["OKAY"]] * 2
             and nmi == 0
+            and pre == _OKAY_RESET
             and rb == wrote
             and restored == _OKAY_RESET
             and wrote != _OKAY_RESET

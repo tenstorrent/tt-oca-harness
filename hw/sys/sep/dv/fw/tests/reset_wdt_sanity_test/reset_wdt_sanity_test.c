@@ -244,8 +244,14 @@ static void store_err_leg(const char *kind, uint32_t addr, uint32_t data) {
 // A store that the target answers with OKAY, and the store that restores the
 // register, each followed by the same wait as an error store. Reports the NMI
 // count over both stores and the readback of the written value:
-//   CHK-STORE-OK-QUIET REC addr=<a> wrote=<w> readback=<r> restored=<s> nmi=<n>
+//   CHK-STORE-OK-QUIET REC addr=<a> pre=<p> wrote=<w> readback=<r> restored=<s> nmi=<n>
 static void store_ok_leg(void) {
+    // The reset-wire legs leave the register at the value this leg writes; a
+    // pulse of the OTBN reset returns it to its reset value first, so the
+    // readback shows the store landed.
+    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, SEP_SW_RESET_N_DEFAULT & ~SEP_SW_RESET_N_OTBN_BIT);
+    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, SEP_SW_RESET_N_DEFAULT);
+    uint32_t pre = *(volatile uint32_t *)STORE_OKAY_ADDR;
     uint32_t base = g_bad_addr_nmi;
     __asm__ volatile("fence" ::: "memory");
     *(volatile uint32_t *)STORE_OKAY_ADDR = STORE_OKAY_DATA;
@@ -257,6 +263,8 @@ static void store_ok_leg(void) {
     uint32_t n = g_bad_addr_nmi - base;
     sep_mbx_puts("CHK-STORE-OK-QUIET REC addr=");
     sep_mbx_puthex(STORE_OKAY_ADDR);
+    sep_mbx_puts(" pre=");
+    sep_mbx_puthex(pre);
     sep_mbx_puts(" wrote=");
     sep_mbx_puthex(STORE_OKAY_DATA);
     sep_mbx_puts(" readback=");
