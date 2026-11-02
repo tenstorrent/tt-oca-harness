@@ -213,12 +213,15 @@ Checkers:
                  to bad command syntax" (theory_of_operation.md:269-272), and bit
                  14 is set only for an instantiate "sent for a state that was
                  already instantiated" (csrng.rdl:397-398). Control
-                 (``CTRL-CSRNG-UNINST-RESET``): bit 14 reads 0 before each of the
-                 two instantiates; a 1 left by the Uninstantiate is cleared first
-                 by a write of 0 to bit 14 only. The ``CMD_STS`` of each
-                 Uninstantiate is logged only (``OBS-CSRNG-UNINST``): no text
-                 states whether the reserved acmd or the invalid-flag0 instantiate
-                 left the instance instantiated.
+                 (``CTRL-CSRNG-UNINST-RESET``): before each Uninstantiate the
+                 instance is instantiated: with bit 14 at 0, a probe instantiate
+                 sets bit 14 (a probe that leaves it 0 instantiated the instance,
+                 and one more probe follows; ``probes`` logs the count), and a
+                 write of 0 to bit 14 only clears it again; bit 14 reads 0 before
+                 each of the two graded instantiates; a 1 left by the
+                 Uninstantiate (logged as ``raw_uni``) is cleared first by a write
+                 of 0 to bit 14 only. The ``CMD_STS`` of each Uninstantiate is
+                 logged only (``OBS-CSRNG-UNINST``).
   CHK-CSRNG-RESEED-LIMIT  with ``RESEED_INTERVAL`` = K, the first Generate
                  that acks with ``CMD_STS`` = 4 is Generate K + 1, and bit 15
                  reads 1 at that ack; a write of 0 clears bit 15. K is the
@@ -1998,9 +2001,12 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             acmd["alert_set"] = 1
             acmd["cleared_by_write0"] = await self._clear_bit(CS_ACMD_INV)
             # Uninstantiate, then an instantiate with flag0 True: bit 4 stays 0.
+            step = "live_f6"
+            await self._live_probe(uni, "f6", bound)
             step = "uninst1"
             _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
             self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="acmd_inv")
+            uni["raw_uni_f6"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
             uni["pre_f6"] = await self._invseq_pre()
             step = "ins_f6"
             _, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE, flag0=MUBI_TRUE), bound, step)
@@ -2038,9 +2044,12 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
                 "CSRNG-FLAG0-HELD", cmd_sts=_field(sts, CS_STS_STS), cleared_after_ack=held
             )
             # An instantiate with a legal flag0 sets the field back to a legal value.
+            step = "live_f9b"
+            await self._live_probe(uni, "f9b", bound)
             step = "uninst3"
             _, sts = await self._sw_cmd(cmd_word(ACMD_UNINSTANTIATE), bound, step)
             self.chk.obs("CSRNG-UNINST", cmd_sts=sts, after="ins_fbad")
+            uni["raw_uni_f9b"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
             uni["pre_f9b"] = await self._invseq_pre()
             step = "ins_f9b"
             _, sts = await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), bound, step)
@@ -2077,7 +2086,13 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             expected_held=1,
         )
         self.chk.ctrl(
-            "CSRNG-UNINST-RESET", uni.get("pre_f6") == 0 and uni.get("pre_f9b") == 0, **uni
+            "CSRNG-UNINST-RESET",
+            all(
+                uni.get(f"{k}_{leg}") == want
+                for leg in ("f6", "f9b")
+                for k, want in (("probe_pre", 0), ("live", 1), ("live_clr", 0), ("pre", 0))
+            ),
+            **uni,
         )
         self.chk.ok(
             "CSRNG-UNINST-RESET",
@@ -2086,6 +2101,27 @@ class sep_drbg_cmd_sequence_rand_test(sep_base_test):
             expected_post=0,
         )
         await self._release()
+
+    async def _live_probe(self, uni: dict, leg: str, bound: int) -> None:
+        """Show that the instance is instantiated before the Uninstantiate of ``leg``.
+
+        Bit 14 is set for an instantiate "sent for a state that was already
+        instantiated" (csrng.rdl:396-398). Bit 14 reads 0 first; then an instantiate
+        is sent. A probe that leaves bit 14 at 0 instantiated the instance itself, so
+        one more probe follows. The last probe must set bit 14, which is then cleared
+        by a write of 0 to bit 14 only. Records ``probe_pre``, ``probes``, ``live``
+        and ``live_clr`` of ``leg`` in ``uni``.
+        """
+        r = self.reg
+        uni[f"probe_pre_{leg}"] = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
+        live = probes = 0
+        while probes < 2 and not live:
+            probes += 1
+            await self._sw_cmd(cmd_word(ACMD_INSTANTIATE), bound, f"live_{leg}_{probes}")
+            live = int(bool(await r._rd(CSRNG_RECOV_ALERT_STS) & CS_INVSEQ))
+        uni[f"probes_{leg}"] = probes
+        uni[f"live_{leg}"] = live
+        uni[f"live_clr_{leg}"] = await self._invseq_pre()
 
     async def _invseq_pre(self) -> int:
         """Bit 14 before an instantiate. Read it; when it reads 1, write 0 to bit 14

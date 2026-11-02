@@ -42,7 +42,8 @@ permutation, the order of the divide values 0 to 5, one divide value of 6 to
 the field maximum, the one enable (module or ring) of the one-enable step and
 its new divide value (0 to 5, at a ratio other than that of the last value), and
 the divide value of the guide step (0 to 5, at a ratio other than that of the
-one-enable value).
+one-enable value and of the value before it, so the guide ratio differs from the
+lane ratio before the guide write).
 
 Checkers:
   CHK-TUNE-MANUAL   probe == DETUNE readback == written mask for 0, m1, m2; with
@@ -316,8 +317,14 @@ def draw_plan(seed: int) -> Plan:
     div_v2 = rng.choice(
         [v for v in range(len(DIV_RATIOS)) if DIV_RATIOS[v] != div_ratio(div_other)]
     )
+    # The lane runs at the ratio of div_other or of div_v2 after the one-enable step
+    # (OBS-SCLK-ONE-ENABLE logs which), so the guide ratio differs from both.
     div_guide = rng.choice(
-        [v for v in range(len(DIV_RATIOS)) if DIV_RATIOS[v] != DIV_RATIOS[div_v2]]
+        [
+            v
+            for v in range(len(DIV_RATIOS))
+            if DIV_RATIOS[v] not in (DIV_RATIOS[div_v2], div_ratio(div_other))
+        ]
     )
     return Plan(
         seed,

@@ -102,9 +102,12 @@ Checkers:
                        whitener input word and no FIFO word within ``QUIET_GUARD``
                        clocks of its bus window, holds the field meanings
                        (entropy_source.rdl:78, :83, :88; architecture.adoc:142, one
-                       block is 16 words and gives 8 digest words). With n the
-                       INPUT_COUNT at the quiet clock plus the input words since, and
-                       k the FIFO words since: INPUT_COUNT == n mod 16; BUSY == 1 when
+                       block is 16 words and gives 8 digest words). The count starts
+                       at the first BUSY rise after the quiet clock, where a block of
+                       16 words is complete. With n = 16 plus the input words from
+                       that rise, and k the FIFO words from it: INPUT_COUNT == n mod
+                       16; the INPUT_COUNT the tap reads at the quiet clock equals 16
+                       minus the input words from it to the rise; BUSY == 1 when
                        8 x (n div 16) > k and 0 when equal; OUTPUT_COUNT == 0 when no
                        digest word is pending, == the pending words when a digest has
                        given some but not all of its words, and 0 or 8 when it has
@@ -1507,7 +1510,14 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         self, tap: SepEsrcShaTap, reads: list[int], windows: list[tuple[int, int]]
     ) -> None:
         """CHK-COND-SHA-STATUS-READS: the polled SHA256_STATUS reads of the whitened
-        window against the field meanings, counted from the first quiet tap clock.
+        window against the field meanings, counted from the first block boundary.
+
+        The anchor is the first clock after the first quiet tap clock q0 where BUSY
+        rises: a digest is then in processing (entropy_source.rdl:78), so the 16 words
+        of one block (architecture.adoc:142) are complete and the open input block
+        holds 0 words. The words in the open block at clock c are 16 plus the input
+        words from the anchor to c (negative before the anchor). The INPUT_COUNT that
+        the tap reads at q0 is graded against that count too.
 
         A read samples the register on a clock of its bus window ``[start - 1, end]``.
         Only a read with no input or FIFO word within ``QUIET_GUARD`` clocks of that
@@ -1517,14 +1527,22 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
         graded = busy_graded = in_graded = 0
         errors: list[str] = []
         q0 = quiet[0] if quiet else None
+        a = None
+        if q0 is not None:
+            a = next((c for c in range(q0 + 1, len(tr)) if tr[c][0] and not tr[c - 1][0]), None)
+        want_q0 = "none"
+        if a is not None:
+            want_q0 = BLOCK_WORDS - (tr[a][3] - tr[q0][3])
+            if tr[q0][2] != want_q0:
+                errors.append(f"q0:in={tr[q0][2]}/{want_q0}")
         for value, (start, end) in zip(reads, windows):
             lo, hi = start - 1 - QUIET_GUARD, end + QUIET_GUARD
-            if q0 is None or lo <= q0 or hi >= len(tr):
+            if a is None or lo <= q0 or hi >= len(tr):
                 continue
             if tr[hi][3] != tr[lo - 1][3] or tr[hi][4] != tr[lo - 1][4]:
                 continue
-            n = tr[q0][2] + tr[hi][3] - tr[q0][3]
-            pending = DIGEST_WORDS * (n // BLOCK_WORDS) - (tr[hi][4] - tr[q0][4])
+            n = BLOCK_WORDS + tr[hi][3] - tr[a][3]
+            pending = DIGEST_WORDS * (n // BLOCK_WORDS) - (tr[hi][4] - tr[a][4])
             want_in = n % BLOCK_WORDS
             want_busy = int(pending > 0)
             if pending <= 0:
@@ -1539,7 +1557,13 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             graded += 1
             busy_graded += want_busy
             in_graded += int(want_in != 0)
-            if pending < 0 or busy != want_busy or got_in != want_in or got_out not in want_out:
+            if (
+                n < 0
+                or pending < 0
+                or busy != want_busy
+                or got_in != want_in
+                or got_out not in want_out
+            ):
                 errors.append(
                     f"read{graded}=0x{value:x}:busy={busy}/{want_busy},"
                     f"in={got_in}/{want_in},out={got_out}/{'|'.join(map(str, want_out))},"
@@ -1553,12 +1577,15 @@ class sep_esrc_conditioning_matrix_rand_test(sep_base_test):
             busy_graded=busy_graded,
             in_nonzero_graded=in_graded,
             quiet_clock="none" if q0 is None else q0,
+            anchor_clock="none" if a is None else a,
         )
         self.chk.ok(
             "COND-SHA-STATUS-READS",
             graded > 0 and not errors,
             reads=len(reads),
             graded=graded,
+            input_count_q0="none" if q0 is None else tr[q0][2],
+            expected_input_count_q0=want_q0,
             mismatches=len(errors),
             first_errors=errors[:4],
             values=[f"0x{v:x}" for v in reads],

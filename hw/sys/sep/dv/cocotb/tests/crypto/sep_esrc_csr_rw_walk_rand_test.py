@@ -231,7 +231,8 @@ def register_lists() -> tuple[
     does not write it alone (hw is not ``w``), outside the locked list and outside
     ``NOT_WALKED``. A volatile field is an sw = rw field outside ``NOT_WALKED`` that
     hardware updates or software clears by write-one (status and alert latches); the
-    restore leg reads it as ``OBS-ESRC-VOLATILE`` only (contract step 2).
+    restore leg grades it against its RDL reset value after the TRNG reset
+    (``CHK-ESRC-VOLATILE``).
     """
     ro = tuple(sorted(reg_sw_readonly("entropy_source") - DATA_PORTS))
     rdl = _rdl_field_text()

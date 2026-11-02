@@ -42,6 +42,12 @@ Checkers:
                     ``CTRL-ABR-PARKED-Y`` is its control: the signature of the
                     run alone verifies under the ACVP keyGen public key, so it
                     is a filled window and not a zeroized one.
+                    ``CTRL-ABR-SIGN-FILL`` is its second control: before the
+                    trial command the leaf writes the bitwise complement of
+                    that signature to ``MLDSA_SIGNATURE`` (``abr_reg.rdl``:252-261,
+                    ``sw = rw``) and reads it back, so every word differs from
+                    the compared signature and a trial that does not write the
+                    window fails the check.
   CHK-ABR-RESET-VALID
                     after an ABR reset (``SW_RESET_N`` bit 6,
                     ``reset_controller.adoc``:102) the first STATUS read with
@@ -778,6 +784,8 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
         blk, inputs, cmd = self._cell_inputs(cell, self.plan.row)
         if combined:
             await self._parked_pre(cell)
+            if cell == "dsa_keygen_sign":
+                await self._sign_fill(cell)
         self.ops.append(cell)
 
         st, why = await self._command(blk, inputs, cmd)
@@ -908,6 +916,31 @@ class sep_abr_command_matrix_rand_test(sep_base_test):
 
     def _ops(self) -> str:
         return ">".join(self.ops) or "none"
+
+    async def _sign_fill(self, cell: str) -> None:
+        """CTRL-ABR-SIGN-FILL: before the trial ``MLDSA_SIGNATURE`` holds a value other than S_pre.
+
+        The leaf writes the bitwise complement of S_pre to the window
+        (``abr_reg.rdl``:252-261, ``sw = rw``, the window is "set before verifying
+        operation") and reads it back. Every word then differs from S_pre, so the
+        trial signature equals S_pre only when the trial writes the window.
+        """
+        if self.pk_sig_pre is None:
+            return
+        fill = [~w & 0xFFFF_FFFF for w in self.pk_sig_pre]
+        await self.abr.write_words(ABR_SIGNATURE, fill)
+        back = await self.abr.read_words(ABR_SIGNATURE, SIG_WORDS)
+        bad = _first_diff(back, fill)
+        same = sum(1 for a, b in zip(back, self.pk_sig_pre) if a == b)
+        self._ctl(
+            "ABR-SIGN-FILL",
+            bad is None and same == 0,
+            cell=cell,
+            first_diff="none" if bad is None else bad,
+            words_equal_pre=same,
+            fill_sha=word_digest(back),
+            pre_sha=word_digest(self.pk_sig_pre),
+        )
 
     def _sign_deterministic(self, cell: str) -> None:
         """CHK-ABR-SIGN-DETERMINISTIC: the trial signature equals the run-alone signature."""
