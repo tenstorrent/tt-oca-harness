@@ -3,7 +3,7 @@
 schema_version = 1
 
 # ROM firmware boot tests: the production Boot ROM on the `rom_boot` target with the
-# `boot_rom` / `boot_rom_pio` firmware profiles. They run only in the `rom_fw` group.
+# `boot_rom` / `boot_rom_pio` firmware profiles. The `rom_fw` group in all.toml omits the ISSUE-024 and ISSUE-008 entries.
 
 [[tests]]
 # Non-secure boot of the production Boot ROM with the manifest served from SMC SRAM (SPI stubbed).
@@ -3470,7 +3470,8 @@ args = [
 ]
 
 [[tests]]
-# Fails on the current ROM: ISSUE-008 in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
+# Fails on the default ROM build (ISSUE-008), which turns the SRAM and full ICCM clears off to save sim time;
+# rom.adoc marks CPU-100 an implementation gap, so the `rom_fw` group omits this entry.
 # CPU-100 in part: every SRAM byte and ICCM bank row is zero-written, and the probed SRAM residue
 # words read zero, before the first manifest read. ICCM residue is planted but not graded.
 name = "sep_rom_sram_iccm_clear_test"
@@ -4027,8 +4028,7 @@ args = [
 # unsigned (secure_boot_control 0); each slot is refused, no decryption starts (no decrypt-path
 # PC, no CPU AES access) and the boot ends on MANIFEST_LOAD_FAILED and the FAIL verdict. The spec
 # names two codes for the refusal (SECURE_BOOT_INVARIANT in PL-050, ENCRYPTION_REQUIRES_SECURE_BOOT
-# in MAN-030 and the registry); bl0_state.error_code must be one of them. Spec conflict: ISSUE-023
-# in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
+# in MAN-030 and the registry); bl0_state.error_code must be one of them. Spec conflict: ISSUE-023.
 name = "sep_rom_encryption_requires_secure_boot_test"
 module = "rom_fw.sep_rom_encryption_requires_secure_boot_test"
 target = "rom_boot"
@@ -4067,7 +4067,7 @@ args = [
 ]
 
 [[tests]]
-# Blocked: ISSUE-024 in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
+# ISSUE-024: the ROM AES idle wait takes about 9-13 h per run here, so the `rom_fw` group omits this entry.
 # PL-080 (partial): entropy complex in reset and an AES reset pulse at the decryption stage entry,
 # so the cipher never starts; no key material in DCCM when the stage returns and at the verdict.
 name = "sep_rom_decrypt_exit_zeroize_test_aes_init_fail"
@@ -4108,7 +4108,7 @@ args = [
 ]
 
 [[tests]]
-# Blocked: ISSUE-024 in docs/superpowers/plans/sep_rom/sep_rom_gap_issue_log.md.
+# ISSUE-024: the ROM AES idle wait takes about 9-13 h per run here, so the `rom_fw` group omits this entry.
 # PL-080 (partial): entropy complex in reset at the stage entry, so the AES stalls at the key load;
 # no key material in DCCM when the stage returns and at the verdict.
 name = "sep_rom_decrypt_exit_zeroize_test_aes_dec_fail"
