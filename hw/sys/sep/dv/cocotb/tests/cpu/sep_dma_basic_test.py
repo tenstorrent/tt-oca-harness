@@ -141,7 +141,7 @@ _PULSE_HOST_CLR = _PULSE_HOST_SET + len(PERIPH_BUS_ERR_BLOCKS) + 2
 class SepDmaBasicCfg:
     """Single source of truth for DMA basic-breadth continuous knobs.
 
-    Discrete cells (INCR/FIXED/WRAP x 1B/2B/4B) are walked every invocation.
+    Discrete cells are walked every invocation: INCR/FIXED/WRAP at 4B, widths 1B/2B/4B at INCR.
     src/dst offsets, copy length and fill seed come from the run seed.
     """
 
