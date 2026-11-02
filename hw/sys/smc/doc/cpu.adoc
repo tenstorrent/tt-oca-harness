@@ -422,6 +422,29 @@ debug memory accesses independent of cluster reset or boundary isolation.
 Per-core boot addresses are controlled by the `RESET_VECTOR` registers
 described above.
 
+[[smc-debug-transport-module]]
+=== Debug Transport Module
+
+The cluster's JTAG debug transport module follows the instruction assignments
+of version 0.13 of the RISC-V External Debug Support specification.
+<<smc-debug-transport-module-table>> lists its instruction register and the
+fixed `dtmcs` fields. An instruction not listed selects the 1-bit bypass
+register.
+
+[[smc-debug-transport-module-table]]
+[cols="30%,15%,55%",options="header"]
+.SMC debug transport module
+|===
+|Item |Value |Meaning
+|Instruction register length |5 bits |Resets to `IDCODE`
+|`IDCODE` instruction |0x01 |Selects the 32-bit identification register
+|`dtmcs` instruction |0x10 |Selects the 32-bit DTM control and status register
+|`dmi` instruction |0x11 |Selects the DMI access register, `abits` + 34 bits long
+|`dtmcs.version` |1 |Debug Specification 0.13
+|`dtmcs.abits` |7 |DMI address width in bits
+|`dtmcs.idle` |5 |Run-Test/Idle cycles to spend between DMI accesses
+|===
+
 [[smc-debug-module-configuration]]
 === Debug Module Configuration
 
