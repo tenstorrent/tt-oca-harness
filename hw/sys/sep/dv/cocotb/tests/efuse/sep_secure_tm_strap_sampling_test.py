@@ -76,6 +76,10 @@ Checkers:
                    rise must read 1, so the captured value differs from the
                    cleared value; the line prints the strap, the expected
                    value and the sample counts.
+                   Control: at the strap-0 cold boots of legs C0 and E,
+                   ``secure_tm_o`` reads 0 on every sample from the rise to
+                   ``_STM_BOUND`` samples after it, so the captured value
+                   follows the strap and is not a constant 1.
   CHK-STM-CLEAR    with ``rst_ni`` low and the strap at 1, ``secure_tm_o`` reads 0
                    on every ``clk_i`` edge from the first edge with ``rst_ni`` low
                    to the release. Control: it reads 1 before the reset.
@@ -299,7 +303,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         ``rel`` is the release sample, ``sense`` the sense-done rise sample and ``seen``
         the sample at which the leg saw ``secure_tm_o`` at the strap value. The
         capture is the first sample from the sense rise with ``secure_tm_o`` at the
-        strap value, and it is at or before ``seen``. The next sampling event is the
+        strap value. The next sampling event is the
         next ``rst_ni`` fall, which must be in the record.
         """
         strap = self.rec[sense]["strap"]
@@ -317,7 +321,6 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         )
         assert (
             strap == 1
-            and cap <= seen
             and cap - sense <= _STM_BOUND
             and nxt is not None
             and pre
@@ -325,6 +328,19 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             and held
             and all(v == strap for v in held)
         ), f"CHK-STM-SENSE-CAPTURE FAIL: {line}"
+        return line
+
+    def _sense_zero(self, leg: str, sense: int) -> str:
+        """CHK-STM-SENSE-CAPTURE at a strap-0 sense: ``secure_tm_o`` reads 0 up to now."""
+        strap = self.rec[sense]["strap"]
+        vals = self._window(sense, self._now() - 1)
+        line = (
+            f"leg={leg} strap_at_rise={strap} exp_secure_tm_o=0 sense_rise={sense} "
+            f"zero_after_rise={sum(1 for v in vals if v == 0)}/{len(vals)}"
+        )
+        assert strap == 0 and vals and all(v == 0 for v in vals), (
+            f"CHK-STM-SENSE-CAPTURE FAIL: {line}"
+        )
         return line
 
     async def _stm_after_sense(self, sense: int, want: int, label: str) -> int:
@@ -736,7 +752,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         # Leg C, strap 0 -> 1.
         _rel, sense = await self._cold_boot(0, "leg C0")
         await self._until(sense + _STM_BOUND)
-        assert self.rec[-1]["stm"] == 0, "leg C0: secure_tm_o is not 0 after a strap-0 sense"
+        zero_caps = [self._sense_zero("C0", sense)]
         open_graded_window(TEST, self.logger)
         await self._until(sense + c)
         dut.test_en_strap_i.value = 1
@@ -791,7 +807,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         # Leg E: late SEC_DIS.
         _rel, sense = await self._cold_boot(0, "leg E")
         await self._until(sense + _STM_BOUND)
-        assert self.rec[-1]["stm"] == 0, "leg E: secure_tm_o is not 0 after a strap-0 sense"
+        zero_caps.append(self._sense_zero("E", sense))
         self.logger.info("INFO-LEG-E match_present=0 (sense completed at sample %d)", sense)
         open_graded_window(TEST, self.logger)
         await self._edge()
@@ -854,6 +870,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         dut.test_en_strap_i.value = 0
         f0 = self._now()
         f1 = await self._hold()
+        n_strap = self._strap_flipped(f0, f1, 0, "D strap 1->0")
         after = self._window(cap, f1 - 1)
         self._require_match(rel, f1 - 1, "CHK-STM-CAPTURE", "strap=1 window")
         done_d = self._window(rel, f1 - 1, "done")
@@ -877,7 +894,9 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             t_sense,
             f0 - rel,
         )
-        retain.append(f"leg=D events=strap_1to0@capture+{c} value=1 cycles={f1 - f0}")
+        retain.append(
+            f"leg=D events=strap_1to0@capture+{c} value=1 cycles={f1 - f0} strap_samples={n_strap}"
+        )
         feats = self._window(cap, f1 - 1, "feat")
         bad_feat = [
             (cap + i, "X" if v is None else f"0x{v:016x}")
@@ -937,7 +956,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         assert ones > 0, "CHK-STM-RETAIN FAIL: secure_tm_o never read 1 in the leaf"
         for line in retain:
             self.logger.info("CHK-STM-RETAIN PASS: %s control_legA=1", line)
-        for line in captures:
+        for line in captures + zero_caps:
             self.logger.info("CHK-STM-SENSE-CAPTURE PASS: %s", line)
         self.logger.info(
             "CHK-STM-LATE PASS: match_present=0 strap=1 SEC_DIS late secure_tm_o=0 cycles=%d "

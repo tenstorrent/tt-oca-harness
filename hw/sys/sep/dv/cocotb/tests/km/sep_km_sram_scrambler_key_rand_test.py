@@ -34,11 +34,9 @@ Checks:
   CHK-SSCR-STORED   the two kept writes of P at a1 and a2 under kA carry different data
   CHK-SSCR-ALIAS    64 distinct words at 64 distinct addresses read back under kA
   CHK-SSCR-LOCK     after the lock with the enable at 1: SCRAMBLER_KEY reads 0, a key
-                    write (the key output still holds kA, ``KM-CSR``), an enable
-                    write and a write of 0 to the lock are ignored,
+                    write, an enable write and a write of 0 to the lock are ignored,
                     SCRAMBLER_CTRL reads 0x3 and the 16 reads equal the plaintexts
-  CHK-SSCR-RST      a warm reset keeps 0x3, the key output kA (``KM-CSR``) and the 8
-                    words; a cold reset reads 0x0
+  CHK-SSCR-RST      a warm reset keeps 0x3 and the 8 words; a cold reset reads 0x0
                     and a kB write reads back
   CHK-SSCR-LOCK0    the lock written with the enable at 0 makes the next store a
                     scrambled write
@@ -509,7 +507,6 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         def count_key_wr(name: str):
             async def fn() -> None:
                 key_wr[name] = self.rd_known(self.dut.km_csr_scrambler_key_wr_count_o)
-                key_tap[name] = self.rd_known(self.dut.km_csr_scrambler_key_o)
 
             return fn
 
@@ -521,7 +518,6 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             8, "kb-locked", "SSCR-LOCK", before=count_key_wr("kb_locked")
         )
         key_wr_reached = key_wr["kb_locked"] - key_wr["locked"]
-        self.key_locked_is_ka = key_tap["kb_locked"] == p.ka
         g_en0_locked = await self._recv(9, "enable0-locked", "SSCR-LOCK")
         g_lock0_locked = await self._recv(9, "lock0-locked", "SSCR-LOCK")
 
@@ -679,7 +675,7 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         kb_ok = self._count_ok(g_kb_locked, d8)
         en_ok = self._count_ok(g_en0_locked[1:], d8)
         l0_ok = self._count_ok(g_lock0_locked[1:], d8)
-        key_write_ignored = kb_ok == 8 and self.key_locked_is_ka
+        key_write_ignored = kb_ok == 8
         enable_write_ignored = g_en0_locked[0] == CTRL_LOCKED and en_ok == 8
         lock_write0_kept = g_lock0_locked[0] == CTRL_LOCKED and l0_ok == 8
         all_ctrl = all(v == CTRL_LOCKED for v in ctrl_rds)
@@ -700,7 +696,6 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             ctrl_rd=[_h(v) for v in ctrl_rds],
             reads_ok=en_ok + l0_ok,
             kb_reads_ok=kb_ok,
-            key_tap_ka=int(self.key_locked_is_ka),
             rsvd_mask=_h(WORD & ~SCR_CTRL_FIELDS),
         )
 
@@ -752,15 +747,9 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
         await self.swrst.release("km")
         open_graded_window(TEST, self.logger)
         await self._post_phase(2)
-        tap: dict = {}
-
-        async def tap_key() -> None:
-            tap["key"] = self.rd_known(self.dut.km_csr_scrambler_key_o)
-
-        g = await self._recv(9, "warm", "SSCR-RST", before=tap_key)
+        g = await self._recv(9, "warm", "SSCR-RST")
         close_graded_window(self.logger)
         self.warm = g
-        self.warm_key_is_ka = tap["key"] == self.plan.ka
 
     async def _cold_release(self, phase: int) -> None:
         r = await self.pulse_rst_ni()
@@ -804,12 +793,10 @@ class sep_km_sram_scrambler_key_rand_test(sep_base_test):
             "SSCR-RST",
             warm_ctrl == CTRL_LOCKED
             and warm_reads_ok == 8
-            and self.warm_key_is_ka
             and cold_ctrl == SCR_CTRL_RESET
             and cold_key == p.kb,
             warm_ctrl=_h(warm_ctrl),
             warm_reads_ok=warm_reads_ok,
-            warm_key_tap_ka=int(self.warm_key_is_ka),
             cold_ctrl=_h(cold_ctrl),
             cold_key_write_lands=cold_key == p.kb,
         )

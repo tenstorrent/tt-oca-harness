@@ -68,11 +68,15 @@ Checkers:
                    (KM-KPV snapshot; the scrambler is off) of the slots next to
                    its slot. Control: CTRL of the slot itself changes in each
                    sequence.
-  CHK-KPV-NEIGH-PORT the KM-port read of word 0 of each watched neighbour equals
-                   its first such read, over every snapshot that overlaps no
-                   erase: "the KM port sees the logical (unscrambled) data on
-                   the bus" (``architecture.adoc:474-476``), and the stored word
-                   does not change (CHK-KPV-NEIGH). A snapshot overlaps an erase
+  CHK-KPV-NEIGH-PORT the KM-port read of word 0 of each watched neighbour, over
+                   every snapshot that overlaps no erase, returns the stored
+                   word of the same snapshot (KM-KPV, the scrambler is off) with
+                   OKAY: "the KM port sees the logical (unscrambled) data on the
+                   bus" (``architecture.adoc:474-476``); on a neighbour whose
+                   CTRL read shows lock_use it returns 0 with SLVERR ("Key-data
+                   reads return zero with SLVERR", ``architecture.adoc:419-420``).
+                   The graded reads must include one without lock_use. A
+                   snapshot overlaps an erase
                    when the CTRL read of the slot or of a neighbour that the
                    snapshot takes before the word reads, or the KM-KPV CTRL tap
                    (``km_kpv_ctrl_o``) at its sync, shows an erase bit set on
@@ -347,8 +351,8 @@ class sep_km_kpv_rand_test(sep_base_test):
             w.own.append(self._ctrl(snap[0].value))
             # Graded: neighbour CTRL and the 16 stored words from KM-KPV (the
             # scrambler is off in steps 6 to 9, so slot n is tap words 16 n to
-            # 16 n + 15). Logged: the port read of word 0, which reads 0 with
-            # SLVERR on a read-locked neighbour.
+            # 16 n + 15), and the port read of word 0: the stored word with
+            # OKAY, or 0 with SLVERR on a neighbour with lock_use set.
             w.snaps.append(
                 tuple(
                     (
@@ -358,7 +362,18 @@ class sep_km_kpv_rand_test(sep_base_test):
                     for j, n in enumerate(nbs)
                 )
             )
-            w.port.append(tuple(snap[2 + 2 * j].value for j in range(len(nbs))))
+            w.port.append(
+                tuple(
+                    (
+                        snap[2 + 2 * j].value if snap[2 + 2 * j].known else None,
+                        snap[2 + 2 * j].slv,
+                        (0, 1)
+                        if snap[1 + 2 * j].value & m.LOCK_USE
+                        else (stored[n * m.N_WORDS], 0),
+                    )
+                    for j, n in enumerate(nbs)
+                )
+            )
             w.erase_overlap.append(
                 bool(snap[0].value & m.ERASE)
                 or any(snap[1 + 2 * j].value & m.ERASE for j in range(len(nbs)))
@@ -954,18 +969,21 @@ class sep_km_kpv_rand_test(sep_base_test):
         for w in self.watches:
             by_slot.setdefault(w.slot, []).append(w)
         changes = 0
-        port_changes = port_graded = port_excluded = 0
+        port_bad = port_graded = port_locked = port_excluded = 0
         ops = 0
         moved = True
         for slot, ws in by_slot.items():
             snaps = [sn for w in ws for sn in w.snaps]
             own = [o for w in ws for o in w.own]
-            port = [pv for w in ws for pv, ov in zip(w.port, w.erase_overlap) if not ov]
+            port = [
+                rd for w in ws for pv, ov in zip(w.port, w.erase_overlap) if not ov for rd in pv
+            ]
             port_excluded += sum(1 for w in ws for ov in w.erase_overlap if ov)
-            port_graded += max(len(port) - 1, 0)
+            port_graded += len(port)
+            port_locked += sum(1 for _v, _slv, exp in port if exp == (0, 1))
+            port_bad += sum(1 for v, slv, exp in port if (v, slv) != exp)
             ops += sum(w.ops for w in ws)
             changes += sum(1 for i in range(1, len(snaps)) if snaps[i] != snaps[0])
-            port_changes += sum(1 for i in range(1, len(port)) if port[i] != port[0])
             slot_moved = any(o != own[0] for o in own)
             moved &= slot_moved
             if not slot_moved:
@@ -973,13 +991,13 @@ class sep_km_kpv_rand_test(sep_base_test):
         self.controls["neigh_twin"] = self.chk.ctrl("KPV-NEIGH-TWIN", moved, slots=len(by_slot))
         self.chk.ok(
             "KPV-NEIGH-PORT",
-            port_changes == 0 and port_graded > 0,
+            port_bad == 0 and port_graded > port_locked,
             contract="key_manager/doc/architecture.adoc:474-476",
             slots=len(by_slot),
             compared=port_graded,
+            lock_use_reads=port_locked,
             excluded_erase_overlap=port_excluded,
-            port_word0_changes=port_changes,
-            expect_changes=0,
+            port_word0_mismatch=port_bad,
         )
         self.chk.ok(
             "KPV-NEIGH", changes == 0, ops=ops, slots=len(by_slot), neighbor_changes=changes
