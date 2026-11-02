@@ -4002,3 +4002,22 @@ args = [
   "+esrc_noise_force",
   "+sep_rsa_signed_exponent=65537",
 ]
+
+[[tests]]
+# SB-110 (partial): on the signed SPI boot the CPU alone writes the manifest modulus into OTBN DMEM
+# before EXECUTE, and from the first retirement to the hand-off mret the Key Manager key paths,
+# sideload key valids, CPU and mailbox stay idle.
+name = "sep_rom_rsa_key_direct_otbn_test"
+module = "rom_fw.sep_rom_rsa_key_direct_otbn_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "km", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
