@@ -66,7 +66,8 @@ below logs its own PASS or FAIL line, and the leaf fails once at its end if any 
                           word and W strobe lane).
   CHK-RAS-WDT_BARK-CLEAR  0 at ``CHK-WDT-CLEAR PASS``, which the firmware prints after it
                           reads the bark state cleared.
-  CHK-RAS-WDT_BITE-IDLE   0 on every clock from the CPU release to ``CHK-WDT-REBARK PASS``.
+  CHK-RAS-WDT_BITE-IDLE   0 on every clock from the CPU release to the clock
+                          ``wdt_timer_rst_req_o`` reads 1, after ``CHK-WDT-REBARK PASS``.
   CHK-RAS-WDT_BITE-RISE   high within ``_BITE_POLL_CYCLES`` of ``wdt_timer_rst_req_o``
                           reading 1.
   CHK-RAS-WDT_BITE-SHAPE  no fall for ``_RAS_BITE_HOLD`` clocks after the rise.
@@ -515,13 +516,13 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             for half in ("IDLE", "RISE", "SHAPE"):
                 self._ras(fld, half, False, console_lines_not_seen=[_WDT_REBARK_LINE])
             return
-        hi = rebark.high[fld] - rel.high[fld]
+        hi = req.high[fld] - rel.high[fld]
         self._ras(
             fld,
             "IDLE",
-            hi == 0 and rebark.clk > rel.clk,
-            window="release..CHK-WDT-REBARK",
-            clocks=rebark.clk - rel.clk,
+            hi == 0 and req.clk > rebark.clk > rel.clk,
+            window="release..wdt_timer_rst_req_o",
+            clocks=req.clk - rel.clk,
             high_clocks=hi,
             exp=0,
         )
