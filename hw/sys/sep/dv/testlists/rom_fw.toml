@@ -3924,3 +3924,23 @@ args = [
   # The noise driver stays off; the force holds every decorrelator input at 0.
   "+esrc_noise_force",
 ]
+
+[[tests]]
+# ENT-030/040 order: FIPS_LOCK is written after the last MAIN_SM_STATUS poll read and the last
+# sample held back by the ESRC boot gate, and takes effect before entropy reaches CSRNG, a DRBG
+# stream or a crypto EDN client; the source lock follows the Instantiate wait and the seed ack and
+# takes effect before hand-off. Blocking not graded.
+name = "sep_rom_entropy_lock_order_test"
+module = "rom_fw.sep_rom_entropy_lock_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "crypto", "entropy", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  # DV shortcut: ring oscillators do not oscillate in simulation, so force the ESRC noise input.
+  "+esrc_noise_force",
+]
