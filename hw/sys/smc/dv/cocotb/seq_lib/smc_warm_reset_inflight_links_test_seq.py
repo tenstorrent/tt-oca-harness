@@ -62,15 +62,20 @@ from ocah_axi_vip import AxiTimingProfile, OcahAxiLiteMasterAgent, clear_profile
 
 from ._one_shot import _OneShot
 from .smc_addr_map import (
+    _REPO,
     cpu_ctrl_u32,
     jtag_smc_reset_ctrl_bit,
+    reg_reset_word,
     smc_addr,
     smc_indexed_addr,
     uart_log_engine_ctrl_u32,
+    wdt_u32,
 )
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_output_fabric_vip_utils import (
+    _FILTER_CTRL_H,
     OUTBOUND0_FILTER_CONFIG,
+    PASS_ALL_CONFIG,
     output_fabric_pass_all_cfg_seq,
 )
 from .smc_reset_seq_base import SmcResetSeqBase
@@ -120,7 +125,7 @@ ATTRIBUTE_FIELDS = tuple(
 # wdt.adoc: the KEY write that unlocks every other write in the block, and the FEED value.
 WDT_MAGIC_KEY = 0x51F15E
 WDT_FEED_VALUE = 0x0D09_F00D
-WDT_CTRL_ARM = (1 << 8) | (1 << 12)
+WDT_CTRL_ARM = wdt_u32("WDT__CTRL__WDOGRSTEN_bm") | wdt_u32("WDT__CTRL__WDOGENALWAYS_bm")
 WDT_CMP_VALUE = 0x0010
 
 SEP_READ_A = SPM_BASE + 0x20_000
@@ -210,7 +215,13 @@ REQUIRED_TOKENS = (
     "CHK-NONVAC",
     "CHK-TIMEOUT-PATHS",
 )
-REF_RELEASE_MIN = 32
+# clk_rst.adoc: the watchdog reset is held 32 reference cycles after the input returns.
+WARM_HOLD_REF = 32
+_SCRATCH_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "scratch.h"
+WARM_SCRATCH_RESET = reg_reset_word(_SCRATCH_H, "SCRATCH", "SCRATCH")
+OUTBOUND_FILTER_RESET = reg_reset_word(_FILTER_CTRL_H, "FILTER_CTRL", "FILTER_CONFIG")
+assert PASS_ALL_CONFIG != OUTBOUND_FILTER_RESET, "pass-all equals the filter reset word"
+assert WARM_REF != WARM_SCRATCH_RESET, "the warm scratch reference equals its reset value"
 PLANNED_ITEMS = {"SEP_IN": 4, "SYS_IN": 3, "JTAG_IN": 2, "EFUSE_JTAG": 1}
 
 CHANNELS = ("aw", "w", "b", "ar", "r")
@@ -780,7 +791,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         return code, value
 
     # --- S1 ---------------------------------------------------------------------------
-    async def _write_check(self, label: str, addr: int, value: int, length: int) -> None:
+    async def _write_check(self, label: str, addr: int, value: int, length: int) -> int:
         await self.csr_write(f"{label}_SET", addr, value, length=length)
         got = await self._rd(f"{label}_RB", addr, length)
         if got != value:
@@ -788,6 +799,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
                 raise AssertionError(f"{label}: reads 0x{got:x} after writing 0x{value:x}")
             if "SEP" not in self.wedged:
                 self._fail(self._token, f"{label}: reads {got} after writing 0x{value:x}")
+        return got
 
     async def _setup(self) -> None:
         assert self._v("rst_primary_smc_clk_no") == 1, "SETUP: primary reset is asserted"
@@ -1182,12 +1194,12 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         if (
             mon.window_samples == 0
             or mon.primary_high != mon.window_samples
-            or rec.measured_ref < REF_RELEASE_MIN
+            or rec.measured_ref != WARM_HOLD_REF
         ):
             self._fail(
                 "CHK-WDT-INPUT-WARM-ONLY",
                 f"primary high {mon.primary_high}/{mon.window_samples}, warm held "
-                f"{rec.measured_ref} ref cycles after the input rose",
+                f"{rec.measured_ref} ref cycles after the input rose (spec {WARM_HOLD_REF})",
             )
         self._stamp("WDT_RELEASE", mon.window_samples, mon.release_ps)
         dut.tb_sep_axi_r_hold.value = 0
@@ -1532,7 +1544,9 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         self._token = "CHK-NONVAC"
         await self._core3_held()
         # Written after the JTAG entry so that only this warm reset can clear it.
-        await self._write_check("CHAIN_SCRATCH_COLD_WARM", SCRATCH_COLD_WARM, WARM_REF, 4)
+        self.warm_scratch_pre = await self._write_check(
+            "CHAIN_SCRATCH_COLD_WARM", SCRATCH_COLD_WARM, WARM_REF, 4
+        )
         self.uart_orig = await self._rd("UART0_ORIG", UART0_REG, 4)
         await self.csr_write("UART0_PROGRAM", UART0_REG, UART0_PROGRAMMED, length=4)
         self.uart_pre = await self._rd("UART0_PRE", UART0_REG, 4)
@@ -1600,6 +1614,8 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         )
         await self.csr_write("chain2_CYCLE_COUNT_RESET", WDT_TIMEOUT_RESET, RESET_CYCLE_COUNT_3)
         await self.csr_write("chain2_KEY_FEED", WDT3_KEY, WDT_MAGIC_KEY)
+        rec.first_before_feed = self._v("tb_wdt_first_timeout")
+        feed_fall = cocotb.start_soon(self._first_timeout_fall())
         await self.csr_write("chain2_FEED", WDT3_FEED, WDT_FEED_VALUE)
         rec.warm_at_feed = self._v("tb_rst_warm_smc_clk_n")
         ft = SimpleNamespace(n=0, prev=self._v("tb_wdt_first_timeout"), rises=[], low=0)
@@ -1621,6 +1637,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             each=_watch_first,
         )
         rec.first_rises, rec.first_low = ft.rises, ft.low
+        rec.feed_fall = await feed_fall
         await self._wait_release("chain2", mon)
         rec.mon2 = mon
         await mon.finish()
@@ -1633,6 +1650,23 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         rec.reasserted = reasserted
         self._bound("S7.quiet", f"{WDT_QUIET_EDGES}clk_smc_i", f"re-assertions {reasserted}")
         return rec
+
+    async def _first_timeout_fall(self) -> int | None:
+        """Edges to the first fall of ``tb_wdt_first_timeout`` while the warm reset reads 1.
+
+        The FEED resets the count below the compare value, which drops the first-timeout level;
+        without a FEED that lands the count stays above compare until the warm reset asserts.
+        """
+        prev = self._v("tb_wdt_first_timeout")
+        for n in range(WDT_SECOND_BOUND_SMC):
+            await RisingEdge(cocotb.top.clk_smc_i)
+            if self._v("tb_rst_warm_smc_clk_n") == 0:
+                return None
+            value = self._v("tb_wdt_first_timeout")
+            if prev and not value:
+                return n
+            prev = value
+        return None
 
     # --- S8: reset vector observation ------------------------------------------------------
     async def _vector(self) -> SimpleNamespace:
@@ -1731,7 +1765,8 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             (
                 "CHK-WDT-INPUT-WARM-ONLY",
                 f"warm low, primary high at {mon.primary_high}/{mon.window_samples} edges; warm "
-                f"low >= {REF_RELEASE_MIN} ref cycles after release (measured {w.measured_ref})",
+                f"low == {WARM_HOLD_REF} ref cycles after release (measured {w.measured_ref}, "
+                f"clk_rst.adoc)",
             )
         )
 
@@ -1827,31 +1862,36 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             threshold != THRESHOLD_REF
             or c.uart_after != UART0_PROGRAMMED
             or self.uart_pre != UART0_PROGRAMMED
-            or c.outfilt_after != self.outfilt_pre
+            or self.outfilt_pre != PASS_ALL_CONFIG
+            or c.outfilt_after != PASS_ALL_CONFIG
         ):
             self._fail(
                 "CHK-INTERCONNECT-KEPT-ACROSS-WDT-WARM",
                 f"threshold 0x{threshold:x}, UART0 0x{c.uart_after:x} (read back 0x{self.uart_pre:x}"
                 f" before the entry) vs programmed 0x{UART0_PROGRAMMED:x}, "
-                f"outbound filter 0x{c.outfilt_after:x} vs 0x{self.outfilt_pre:x}",
+                f"outbound filter 0x{c.outfilt_after:x} (read back 0x{self.outfilt_pre:x} before "
+                f"the entry) vs pass-all 0x{PASS_ALL_CONFIG:x}",
             )
         lines.append(
             (
                 "CHK-INTERCONNECT-KEPT-ACROSS-WDT-WARM",
                 f"threshold 0x{threshold:x} kept, UART0 log-engine CTRL == programmed non-reset "
                 f"value 0x{UART0_PROGRAMMED:x} (UART_EN, read back 0x{self.uart_pre:x} before "
-                f"the entry), outbound filter == pre-reset value (wdt-chain)",
+                f"the entry), outbound filter 0x{c.outfilt_after:x} == pass-all "
+                f"0x{PASS_ALL_CONFIG:x} (read back 0x{self.outfilt_pre:x} before the entry, reset "
+                f"0x{OUTBOUND_FILTER_RESET:x}) (wdt-chain)",
             )
         )
 
         # CHK-WARM-SCRATCH-RESET
-        if c.warm_scratch != 0:
+        if c.warm_scratch != WARM_SCRATCH_RESET:
             self._fail("CHK-WARM-SCRATCH-RESET", f"SCRATCH_COLD_WARM[0] reads 0x{c.warm_scratch:x}")
         lines.append(
             (
                 "CHK-WARM-SCRATCH-RESET",
-                f"SCRATCH_COLD_WARM[0] 0x{WARM_REF:X} -> 0x{c.warm_scratch:x} after release "
-                f"(wdt-chain)",
+                f"SCRATCH_COLD_WARM[0] 0x{self.warm_scratch_pre:X} (read back after writing "
+                f"0x{WARM_REF:X}) -> 0x{c.warm_scratch:x} == reset 0x{WARM_SCRATCH_RESET:x} after "
+                f"release (wdt-chain)",
             )
         )
 
@@ -1973,17 +2013,26 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
                 f"{m1.assert_ps} ps, first timeout {c.t_first} ps, assertion seen {c.t_second} ps)",
             )
         )
-        if c.warm_at_feed != 1 or c.reasserted or c.mon2.primary_high != c.mon2.window_samples:
+        if (
+            c.first_before_feed != 1
+            or c.feed_fall is None
+            or c.warm_at_feed != 1
+            or c.reasserted
+            or c.mon2.primary_high != c.mon2.window_samples
+        ):
             self._fail(
                 "CHK-WDT-LATCH-NOT-WITHDRAWN",
-                f"warm at the FEED {c.warm_at_feed}, re-assertions {c.reasserted}, primary high "
-                f"{c.mon2.primary_high}/{c.mon2.window_samples} warm-window edges",
+                f"tb_wdt_first_timeout {c.first_before_feed} before the FEED, fall after the FEED "
+                f"write at edge {c.feed_fall}, warm at the FEED {c.warm_at_feed}, re-assertions "
+                f"{c.reasserted}, primary high {c.mon2.primary_high}/{c.mon2.window_samples} "
+                f"warm-window edges",
             )
         lines.append(
             (
                 "CHK-WDT-LATCH-NOT-WITHDRAWN",
-                f"feed written, warm asserted at edge {c.b2} after the FEED; no re-assertion in "
-                f"{WDT_QUIET_EDGES} edges",
+                f"feed landed: tb_wdt_first_timeout {c.first_before_feed} before the FEED, fell "
+                f"{c.feed_fall} edges after the FEED write started with warm high; warm asserted "
+                f"at edge {c.b2} after the FEED; no re-assertion in {WDT_QUIET_EDGES} edges",
             )
         )
         # The contract stimulus re-reaches compare right after the FEED, so a fresh
