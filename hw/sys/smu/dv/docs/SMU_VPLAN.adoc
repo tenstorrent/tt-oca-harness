@@ -11667,7 +11667,7 @@ sequence's own raise, outside the scoreboard
 
 *Observations* (measured, never compared): `OBS-G11-WRAP0-RESP`, `OBS-G11-RSVD-RESP` and `OBS-G11-4K-RESP` (SF-018, SF-020), `OBS-G11-HOOK` (SF-019), `OBS-G11-ATOP-FIELD` (SF-017), `OBS-G11-WRAP-STRB` (SF-030), `OBS-G11-SLVERR-RDATA` (SF-021), `OBS-G11-ADDR` (SF-023, SF-018).
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. The leaf is red on `CHK-G11-BURSTLEGAL` and on the target-side checker fires it provokes until issue #3573 states what the SMU does with an illegal encoding on `smu_axi_in`; it is enrolled in `axi_sva` and `all`, not in a scheduled group, and is not masked.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. The leaf is red on `CHK-G11-BURSTLEGAL` and on the target-side checker reports it provokes until issue #3573 states what the SMU does with an illegal encoding on `smu_axi_in`; it is enrolled in `axi_sva` and `all`, not in a scheduled group, and is not masked.
 
 *Scope limit*: the response code, beat count and memory effect of each illegal request are measured only, and the illegal requests run only under the bench hook, which masks the three encodings on the three external-inbound checker instances (`u_smu_in_axi_sva`, `u_incut_axi_sva`, `u_xbar_ext_in_axi_sva`) for the whole run and nothing else; no verdict reads `BURST_LEGAL`, `LEN_WRAP_LEGAL` or `4KB_BOUNDARY` on those instances.
 

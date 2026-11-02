@@ -4355,8 +4355,9 @@ tests = [
 ]
 expected_count = 160
 
-# The VCS run of record of the AXI protocol checkers in tb_wrapper_top.sv: every
-# leaf that names a checker with a +axi_sva_need_* plusarg. Run it as
+# The VCS run of record of the AXI protocol checkers in tb_wrapper_top.sv: the
+# leaves that drive the checked links, all but one of which name a checker with a
+# +axi_sva_need_* plusarg while smu_axi_out_outstanding_test drives smu_out. Run it as
 # `--dut smu --items axi_sva --tool vcs`; the Verilator targets evaluate only the
 # two-state rules and none of the X, data-known, count or need checks.
 [[groups]]
