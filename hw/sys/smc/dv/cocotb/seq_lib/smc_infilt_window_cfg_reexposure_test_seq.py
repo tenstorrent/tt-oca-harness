@@ -101,7 +101,7 @@ FILTER_IB_REG_CG_EN = _field_mask(
 )
 SCRATCH_MASK = _field_mask(_CPU_CTRL_H, "CPU_CTRL__SCRATCH__DATA_bm")
 
-NUM_ENTRIES = smc_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_NUM")
+NUM_ENTRIES = smc_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM")
 E_IDX, J_IDX, L_IDX, U_IDX, G_IDX, B_IDX, F_IDX, H_IDX, N9_IDX, UNTOUCHED_IDX = (
     4,
     2,
@@ -117,15 +117,21 @@ E_IDX, J_IDX, L_IDX, U_IDX, G_IDX, B_IDX, F_IDX, H_IDX, N9_IDX, UNTOUCHED_IDX = 
 
 
 def FC(i: int) -> int:
-    return smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", i)
+    return smc_indexed_addr(
+        "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", i
+    )
 
 
 def SA(i: int) -> int:
-    return smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", i)
+    return smc_indexed_addr(
+        "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR", i
+    )
 
 
 def EA(i: int) -> int:
-    return smc_indexed_addr("SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", i)
+    return smc_indexed_addr(
+        "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR", i
+    )
 
 
 def cfg(**fields: int) -> int:
