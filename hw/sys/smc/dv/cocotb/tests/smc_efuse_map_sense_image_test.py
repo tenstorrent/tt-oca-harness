@@ -4,15 +4,20 @@
 
 Sources: smu-smc.adoc (eFuse Interface), port_table.adoc (smc_fuse_sense_done_o, shadow_regs_o).
 
-One module, six testlist entries. Without ``+smc_efuse_image`` the bench default asset is sensed;
-``+smc_efuse_image=<zero|ones|walking|random|unique>`` writes that image into the run directory
-during ``build_phase``: words 2..255 carry the pattern and the LOCKS words 0 and 1 carry
-write-lock bits only.
+The image kind is the bench default asset or one of zero, ones, walking, random and unique. The
+``+smc_efuse_image`` run argument or a subclass ``KIND`` pins it; otherwise build_phase draws it
+uniformly from the seed. A generated kind is written into the run directory at the relative
+``+smc_efuse_hex`` path during ``build_phase``: words 2..255 carry the pattern and the LOCKS words
+0 and 1 carry write-lock bits only. A drawn default kind copies the asset's bytes to that path.
+The random kind's words and lock bits come from ``random.Random(seed ^ _WORDS_STREAM)``, a stream
+separate from the kind draw.
 """
 
 from __future__ import annotations
 
+import hashlib
 import random
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +34,8 @@ from smc_base_test import smc_base_test
 _EFUSE_DIR = Path(__file__).resolve().parents[2] / "efuse_preload"
 _MASK32 = 0xFFFF_FFFF
 _KINDS = ("zero", "ones", "walking", "random", "unique")
+# Seeds the image words apart from the kind draw, which uses the run seed itself.
+_WORDS_STREAM = 0x9E37_79B9
 _COMMON = ("CHK-EMAP-SENSE-FIRST-DONE", "CHK-EMAP-SENSE-DONE-ONCE")
 _TAIL = ("CHK-EMAP-SHADOW-OUT-SENSED", "CHK-NONVAC", "CHK-TIMEOUT-PATHS")
 _SENSE_CHK = {
@@ -149,37 +156,82 @@ class smc_efuse_map_sense_image_test(smc_base_test):
     auto_protocol_vip = False
 
     run_written_file_plusargs: tuple[str, ...] = ()
-    # The default image; build_phase replaces the sense checker with the selected image's.
+    # Every kind's checkers; build_phase narrows the tuple to the selected kind's.
     required_evidence = (
         "CHK-EMAP-SENSE-DEFAULT",
         "CHK-EMAP-SENSE-DONE-ONCE",
         "CHK-EMAP-SENSE-FIRST-DONE",
+        "CHK-EMAP-SENSE-PATTERNS",
+        "CHK-EMAP-SENSE-UNIQUE",
         "CHK-EMAP-SHADOW-OUT-SENSED",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    KIND = "default"
+    # None draws the kind from the seed; a variant subclass pins one.
+    KIND: str | None = None
     min_evidence = 5
 
     def build_phase(self) -> None:
-        self.kind = str(cocotb.plusargs.get("smc_efuse_image", self.KIND))
+        # The kind is drawn before super().build_phase(): a written kind must exempt
+        # +smc_efuse_hex from the base's time-0 file check.
+        seed = self.random_seed()
+        pinned = cocotb.plusargs.get("smc_efuse_image", self.KIND)
+        self.kind = (
+            str(pinned)
+            if pinned is not None
+            else random.Random(seed).choice(sorted(("default", *_KINDS)))
+        )
         assert self.kind == "default" or self.kind in _KINDS, (
-            f"+smc_efuse_image={self.kind} is not one of {_KINDS}"
+            f"image kind {self.kind} is not default or one of {_KINDS}"
+        )
+        if pinned is None:
+            source = "drawn"
+        elif "smc_efuse_image" in cocotb.plusargs:
+            source = "pinned by +smc_efuse_image"
+        else:
+            source = "pinned by the class"
+        words_seed = seed ^ _WORDS_STREAM
+        self.words_seed = words_seed
+        if self.kind == "random":
+            words_note = f"image words seed 0x{words_seed:x} (seed ^ 0x{_WORDS_STREAM:x})"
+        else:
+            words_note = f"image words seed unused for {self.kind}"
+        self.logger.info(
+            "RAND-SEED: %d; RAND-DRAW: cell=%s (%s); %s", seed, self.kind, source, words_note
         )
         sense = _SENSE_CHK.get(self.kind, "CHK-EMAP-SENSE-PATTERNS")
         self.required_evidence = (_COMMON[0], sense, _COMMON[1], *_TAIL)
         self.min_evidence = len(self.required_evidence)
-        if self.kind != "default":
+        named = cocotb.plusargs.get("smc_efuse_hex")
+        copy_default = (
+            self.kind == "default" and named is not None and not Path(str(named)).is_absolute()
+        )
+        if self.kind != "default" or copy_default:
             self.run_written_file_plusargs = ("smc_efuse_hex",)
         super().build_phase()
-        if self.kind == "default":
-            named = cocotb.plusargs.get("smc_efuse_hex")
+        if copy_default:
+            # The bank model opens the relative +smc_efuse_hex path; it must hold the asset.
+            path = Path.cwd() / str(named)
+            shutil.copyfile(EFUSE_DEFAULT_HEX, path)
+            asset_sha = hashlib.sha256(EFUSE_DEFAULT_HEX.read_bytes()).hexdigest()
+            copy_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+            assert copy_sha == asset_sha, (
+                f"{path.name} sha256 {copy_sha} differs from the asset's {asset_sha}"
+            )
+            self.logger.info(
+                "eFuse default asset %s copied to %s sha256=%s",
+                EFUSE_DEFAULT_HEX.name,
+                path.name,
+                copy_sha,
+            )
+            self.image = load_image(path)
+        elif self.kind == "default":
             assert named is None or Path(str(named)).resolve() == EFUSE_DEFAULT_HEX.resolve(), (
                 f"+smc_efuse_hex={named} is not the bench default asset {EFUSE_DEFAULT_HEX}"
             )
             self.image = load_image(EFUSE_DEFAULT_HEX)
         else:
-            path, words = write_image(self.kind, self.random_seed())
+            path, words = write_image(self.kind, words_seed)
             self.image = load_image(path)
             assert list(self.image.words) == words, (
                 f"{path.name} words differ from the requested {self.kind} pattern at word "
@@ -207,7 +259,7 @@ class smc_efuse_map_sense_image_test(smc_base_test):
         seq = smc_efuse_map_sense_image_test_seq("smc_efuse_map_sense_image_test_seq")
         seq.image = self.image
         seq.kind = self.kind
-        seq.seed = self.random_seed()
+        seq.words_seed = self.words_seed
 
         async def dispatch_reset(item):
             await _OneShot(item, "reset_os").start(self.env.reset_agent.sequencer)
