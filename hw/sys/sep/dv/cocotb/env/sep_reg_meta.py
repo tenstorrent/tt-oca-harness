@@ -79,9 +79,17 @@ _TYPE_ALIAS = {
 # ambiguous (more than one ``*_REG_DEFAULT`` ends with the register name).
 _TYPE_KEY_OVERRIDE = {
     ("AXIL_MAILBOX_OUTBOUND_MAILBOX_0", "ERROR_FLAGS"): "AXIL_MAILBOX_ERROR",
-    ("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): ("REMAP_REGION_REGION_ATTRS"),
-    ("AP_OUTPUT_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): "OUTPUT_REMAP_REGION_REGION_ATTRS",
-    ("STEE_OUTPUT_REMAP_CTRL_0_", "REGION_REGION_ATTRS"): "OUTPUT_REMAP_REGION_REGION_ATTRS",
+    ("LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0_", "REGION_REGION_ATTRS"): (
+        "REMAP_REGION_REGION_ATTRS"
+    ),
+    (
+        "AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0_",
+        "REGION_REGION_ATTRS",
+    ): "OUTPUT_REMAP_REGION_REGION_ATTRS",
+    (
+        "STEE_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0_",
+        "REGION_REGION_ATTRS",
+    ): "OUTPUT_REMAP_REGION_REGION_ATTRS",
 }
 
 
@@ -495,6 +503,10 @@ def iter_ipxact_registers():
                 for index in range(ipxact_num(text(child, "dim")) or 1):
                     yield base + offset + index * (width // 8), width, fields
             elif kind == "addressBlock":
+                # Once sep_top has no array child, peakrdl-ipxact exports each unit as its own
+                # addressBlock, memories included; a memory holds no registers.
+                if text(child, "usage") == "memory":
+                    continue
                 yield from walk(child, base + (ipxact_num(text(child, "baseAddress")) or 0))
             else:
                 yield from walk(child, base)
@@ -705,8 +717,8 @@ def block_names() -> list[str]:
 def indexed_block_count(prefix: str) -> int:
     """How many ``<prefix>_<n>_`` blocks the generated header declares.
 
-    The filter banks are RDL arrays -- ``outbound_filter_ctrl[32]`` and
-    ``inbound_filter_ctrl[16]`` in ``hw/sys/sep/regs/sep.rdl``. The entry count
+    The filter banks are ``filter_ctrl_wrap`` instances in ``hw/sys/sep/regs/sep.rdl``,
+    with ``NUM_ENTRIES`` 32 outbound and 16 inbound. The entry count
     comes from the register export, not from a sequence, so every sweep reaches
     the tail entries.
 
@@ -1069,9 +1081,11 @@ EFUSE_MMR = RegBlock("EFUSE_MMR")
 AXIL_MAILBOX_OUTBOUND_0 = RegBlock("AXIL_MAILBOX_OUTBOUND_MAILBOX_0")
 SEP_LIFECYCLE_CTRL = RegBlock("SEP_LIFECYCLE_CTRL")
 KM_MAILBOX_SEP = RegBlock("KM_MAILBOX_SEP")
-INBOUND_FILTER_CTRL_0 = RegBlock("INBOUND_FILTER_CTRL_0_")
-LOCAL_MASTER_ALIAS_REMAP_CTRL_0 = RegBlock("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_")
-AP_OUTPUT_REMAP_CTRL_0 = RegBlock("AP_OUTPUT_REMAP_CTRL_0_")
+INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0 = RegBlock("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_")
+LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0 = RegBlock(
+    "LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0_"
+)
+AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0 = RegBlock("AP_OUTPUT_REMAP_CTRL_WRAP_OUTPUT_REMAP_0_")
 
 
 def _selftest() -> int:
@@ -1210,16 +1224,19 @@ def _selftest() -> int:
     scratch = by_key.get(("SEP_SCRATCH_COLD", "SCRATCH_0_"))
     if scratch is None or scratch.addr != 0x1080_2000 or scratch.reset != 0:
         failures.append(f"iter_registers missed scratch[0]: {scratch}")
-    filt = by_key.get(("INBOUND_FILTER_CTRL_0_", "FILTER_CONFIG"))
+    filt = by_key.get(("INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0_", "FILTER_CONFIG"))
     if filt is None or (filt.reset & 0xFFFF) != 0x3000:
         failures.append(f"iter_registers missed inbound filter config: {filt}")
-    if INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed") != 0x1:
+    if INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed") != 0x1:
         failures.append("inbound filter read_allowed mask is not bit 0")
     if AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "empty") != 0x1:
         failures.append("mailbox STATUS.empty mask is not bit 0")
     if AXIL_MAILBOX_OUTBOUND_0.field_mask("ERROR_FLAGS", "read_error") != 0x1:
         failures.append("mailbox ERROR_FLAGS.read_error mask is not bit 0")
-    if LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") != 63:
+    if (
+        LOCAL_MASTER_ALIAS_REMAP_CTRL_WRAP_ALIAS_REMAP_0.field_lsb("REGION_REGION_ATTRS", "valid")
+        != 63
+    ):
         failures.append("alias-remap REGION_ATTRS.valid is not bit 63")
     if block_size("KM_MAILBOX_SEP") != 0x1C:
         failures.append(f"KM_MAILBOX_SEP size {hex(block_size('KM_MAILBOX_SEP'))} != 0x1c")

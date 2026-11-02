@@ -62,12 +62,16 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
+    _ALIAS_REMAP_H,
+    _REPO,
     CLOCK_GATE_CONTROL,
     LOCAL_BASE_RESET,
     TELEMETRY_CG_EN,
     UART_CG_EN,
+    _field_mask,
     generated_decoded_extent,
     generated_window,
+    reg_reset_word,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_register
@@ -82,12 +86,12 @@ WINDOW_GROUP = 16
 # S1: family -> (IP-XACT path of the reference register, documented count).
 # A "{}" marks the instance index.
 FAMILIES = (
-    ("alias_remap", "smc_alias_remap[{}]/REGION/region_start", 8),
-    ("mmode_remap", "smc_mmode_remap[{}]/REGION/region_attrs", 8),
-    ("xvisor_remap", "smc_xvisor_remap[{}]/REGION/region_attrs", 8),
-    ("inbound_filter", "smc_inbound_filter_ctrl[{}]/END_ADDR", 16),
-    ("outbound_filter", "smc_outbound_filter_ctrl[{}]/END_ADDR", 16),
-    ("gpio_intf", "gpio_intf[{}]/ACCESS_FILTER", 65),
+    ("alias_remap", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_start", 8),
+    ("mmode_remap", "smc_mmode_remap_wrap/output_remap[{}]/REGION/region_attrs", 8),
+    ("xvisor_remap", "smc_xvisor_remap_wrap/output_remap[{}]/REGION/region_attrs", 8),
+    ("inbound_filter", "smc_inbound_filter_ctrl_wrap/filter_ctrl[{}]/END_ADDR", 16),
+    ("outbound_filter", "smc_outbound_filter_ctrl_wrap/filter_ctrl[{}]/END_ADDR", 16),
+    ("gpio_intf", "gpio_intf_wrap/gpio_intf[{}]/ACCESS_FILTER", 65),
     ("cpu_ctrl", "smc_cpu_ctrl/RESET_VECTOR[0]", 1),
     ("telemetry", "smc_telemetry_receiver_wrap/telemetry_receiver[{}]/STATUS", 3),
     ("timer", "smc_system_timer_octs/CTRL", 1),
@@ -99,15 +103,38 @@ FAMILIES = (
 INSTANCES = 133
 RESET_COMPARED = 117
 
-# alias_remap.adoc:47, :49, :50; output_remap.adoc:23, :25.
-ALIAS_ATTRS_FIELDS = (1 << 63) | (0xF << 56) | (((1 << 56) - 1) & ~((1 << 12) - 1))
-ORMP_FIELDS = (1 << 63) | ((1 << 56) - 1)
+_HW_IP = _REPO / "hw" / "ip"
+_OUTPUT_REMAP_H = _HW_IP / "output_remap" / "regs" / "gen" / "c" / "output_remap.h"
+_FILTER_H = _HW_IP / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+_TIMER_H = _HW_IP / "system_timer_octs" / "regs" / "gen" / "c" / "system_timer_octs.h"
+
+
+def _alias_attrs(field: str) -> int:
+    return _field_mask(_ALIAS_REMAP_H, f"ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__{field}_bm")
+
+
+def _ormp_attrs(field: str) -> int:
+    return _field_mask(
+        _OUTPUT_REMAP_H, f"OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__{field}_bm"
+    )
+
+
+def _fcfg(field: str, suffix: str = "bm") -> int:
+    return _field_mask(_FILTER_H, f"FILTER_CTRL__FILTER_CONFIG__{field}_{suffix}")
+
+
+def _timer(reg: str, field: str) -> int:
+    return _field_mask(_TIMER_H, f"SYSTEM_TIMER_OCTS__{reg}__{field}_bm")
+
+
+ALIAS_ATTRS_FIELDS = _alias_attrs("VALID") | _alias_attrs("CACHEABLE") | _alias_attrs("OFFSET")
+ORMP_FIELDS = _ormp_attrs("VALID") | _ormp_attrs("OFFSET")
 
 # S13: (family, IP-XACT path of region_attrs, declared fields).
 VALID_LANE_FAMILIES = (
-    ("alias", "smc_alias_remap[{}]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
-    ("mmode", "smc_mmode_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
-    ("xvisor", "smc_xvisor_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
+    ("alias", "smc_alias_remap_wrap/alias_remap[{}]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
+    ("mmode", "smc_mmode_remap_wrap/output_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
+    ("xvisor", "smc_xvisor_remap_wrap/output_remap[{}]/REGION/region_attrs", ORMP_FIELDS),
 )
 VALID_LANE_REGIONS = 8
 REGION_VALID = 1 << 63
@@ -115,17 +142,16 @@ LANE7 = 0xFF << 56
 VALID_LANE_ACCESSES = 7
 VALID_ZERO_ACCESSES = 2
 
-# filter_ctrl.adoc:24-51.
-F_LOCKED = 1 << 63
-F_ALLOW_BURST = 1 << 24
-F_GROUP_ID = 0xF << 20
-F_SRC_ID = 0xF << 16
-F_DBW = 0x7 << 12
-F_ALLOW_NS = 1 << 8
-F_ENTRY_EN = 1 << 4
-F_WRITE = 1 << 1
-F_READ = 1 << 0
-F_DBW_VALUE = 0x3
+F_LOCKED = _fcfg("LOCKED")
+F_ALLOW_BURST = _fcfg("ALLOW_BURST")
+F_GROUP_ID = _fcfg("GROUP_ID")
+F_SRC_ID = _fcfg("SRC_ID")
+F_DBW = _fcfg("DATA_BUS_WIDTH")
+F_ALLOW_NS = _fcfg("ALLOW_NS")
+F_ENTRY_EN = _fcfg("ENTRY_ENABLED")
+F_WRITE = _fcfg("WRITE_ALLOWED")
+F_READ = _fcfg("READ_ALLOWED")
+F_DBW_VALUE = _fcfg("DATA_BUS_WIDTH", "reset")
 F_RW = F_ALLOW_BURST | F_GROUP_ID | F_SRC_ID | F_ALLOW_NS | F_ENTRY_EN | F_WRITE | F_READ
 F_DECLARED = F_LOCKED | F_RW | F_DBW
 # S7: (strobed lane, byte written on it).
@@ -153,19 +179,22 @@ PRELOAD_PRE = -1
 
 # system_timer_octs.adoc:32-116 (word offset -> name, documented reset of the
 # declared fields); STATUS.MODE is NOT(is_primary_i).
-TIMER_REGS = (
-    ("TIMER_START", 0x0),
-    ("CTRL", 0x0001_020A),
-    ("STATUS", None),
-    ("TIMER_PRESET_LO", 0x0),
-    ("TIMER_PRESET_HI", 0x0),
-    ("TIMER_COUNT_LO", 0x0),
-    ("TIMER_COUNT_HI", 0x0),
-    ("CREDIT_EXPIRED", 0x0),
-    ("TIMER_GPIO_ENABLE", 0x0),
+TIMER_REGS = tuple(
+    (name, None if name == "STATUS" else reg_reset_word(_TIMER_H, "SYSTEM_TIMER_OCTS", name))
+    for name in (
+        "TIMER_START",
+        "CTRL",
+        "STATUS",
+        "TIMER_PRESET_LO",
+        "TIMER_PRESET_HI",
+        "TIMER_COUNT_LO",
+        "TIMER_COUNT_HI",
+        "CREDIT_EXPIRED",
+        "TIMER_GPIO_ENABLE",
+    )
 )
-TIMER_STATUS_RUNNING = 1 << 4
-TIMER_STATUS_MODE = 1 << 0
+TIMER_STATUS_RUNNING = _timer("STATUS", "RUNNING")
+TIMER_STATUS_MODE = _timer("STATUS", "MODE")
 TIMER_EXTENT = 36
 TIMER_APERTURE = 0x1000
 # telemetry_receiver.adoc:21-28, :68; memory_map.adoc:44.
@@ -259,7 +288,7 @@ def build_entries() -> tuple[Entry, ...]:
     for bank in ("inbound", "outbound"):
         for i in range(16):
             regs = [
-                rdl_register(f"smc_{bank}_filter_ctrl[{i}]/{r}")
+                rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[{i}]/{r}")
                 for r in ("FILTER_CONFIG", "START_ADDR", "END_ADDR")
             ]
             out.append(Entry(f"{bank}{i}", *(r.addr for r in regs)))
@@ -267,7 +296,7 @@ def build_entries() -> tuple[Entry, ...]:
 
 
 def _cfg_mask_check() -> None:
-    reg = rdl_contract("smc_outbound_filter_ctrl[0]/FILTER_CONFIG")
+    reg = rdl_contract("smc_outbound_filter_ctrl_wrap/filter_ctrl[0]/FILTER_CONFIG")
     assert reg.declared_mask == F_DECLARED, (
         f"FILTER_CONFIG declared fields 0x{reg.declared_mask:016x}, filter_ctrl.adoc gives "
         f"0x{F_DECLARED:016x}"
@@ -538,8 +567,8 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
             *(
                 (
                     f"{bank.upper()}15_START",
-                    rdl_register(f"smc_{bank}_filter_ctrl[15]/START_ADDR"),
-                    rdl_register(f"smc_{bank}_filter_ctrl[15]/END_ADDR"),
+                    rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[15]/START_ADDR"),
+                    rdl_register(f"smc_{bank}_filter_ctrl_wrap/filter_ctrl[15]/END_ADDR"),
                     PRELOAD_PRE,
                     (1, 3, 5),
                     0x5A,
@@ -582,9 +611,13 @@ class smc_regblock_subword_strobe_sweep_test_seq(SmcCsrSeq):
     async def _fullwidth_remap(self) -> None:
         # S4.
         legs = (
-            ("ALIAS7", "smc_alias_remap[7]/REGION/region_attrs", ALIAS_ATTRS_FIELDS),
-            ("MMODE7", "smc_mmode_remap[7]/REGION/region_attrs", ORMP_FIELDS),
-            ("XVISOR7", "smc_xvisor_remap[7]/REGION/region_attrs", ORMP_FIELDS),
+            (
+                "ALIAS7",
+                "smc_alias_remap_wrap/alias_remap[7]/REGION/region_attrs",
+                ALIAS_ATTRS_FIELDS,
+            ),
+            ("MMODE7", "smc_mmode_remap_wrap/output_remap[7]/REGION/region_attrs", ORMP_FIELDS),
+            ("XVISOR7", "smc_xvisor_remap_wrap/output_remap[7]/REGION/region_attrs", ORMP_FIELDS),
         )
         ok = []
         zeroed = 0

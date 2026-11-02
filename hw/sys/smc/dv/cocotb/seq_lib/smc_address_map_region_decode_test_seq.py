@@ -90,10 +90,12 @@ MISC_WRAP_BASE = smc_addr("SMC_TOP_SMC_MISC_WRAP_BASE_ADDR")
 MISC_WRAP_SIZE = smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
 
 # --- GPIO: 65 interface instances ----------------------------------------------------
-GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_NUM")
-GPIO0_ACCESS_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0)
+GPIO_NUM = smc_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM")
+GPIO0_ACCESS_FILTER = smc_indexed_addr(
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 0
+)
 GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
-    "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
 )
 
 # --- Words past a generated block's extent -------------------------------------------------
@@ -101,8 +103,8 @@ GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
 # go to the error slave: past the GPIO_INTF instances (TOTAL_SIZE), past
 # misc_wrap (SIZE), and, in the data-accelerator range, past the DMA block
 # (the gap below the zeroer) and past the zeroer block.
-GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
-    "SMC_TOP_GPIO_INTF_TOTAL_SIZE"
+GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
+    "SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE"
 )
 MISC_PAST_LAST = MISC_WRAP_BASE + MISC_WRAP_SIZE + 4
 DMA_DESC_FIRST = smc_addr("SMC_TOP_DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR")
@@ -154,13 +156,15 @@ assert DFX_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
 
 # --- fabric control ----------------------------------------------------------------------------
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
-OUTBOUND_NUM = smc_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_NUM")
+OUTBOUND_NUM = smc_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM")
 OUTBOUND_LAST_END = smc_indexed_addr(
-    "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", OUTBOUND_NUM - 1
+    "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR", OUTBOUND_NUM - 1
 )
 # First 4 KiB page after the outbound filter array; the mailbox array starts one
 # page later, so nothing in the generated map claims this address.
-FABRIC_CTRL_BEYOND = smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0) + 0x1000
+FABRIC_CTRL_BEYOND = (
+    smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR", 0) + 0x1000
+)
 assert FABRIC_CTRL_BEYOND < smc_addr("SMC_TOP_SMC_MAILBOX_BASE_ADDR")
 
 # --- mailbox: 32 outbound + 32 inbound -------------------------------------------------------

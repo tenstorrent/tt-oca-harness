@@ -2438,7 +2438,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-RMA-START",
             "CHK-SEP-RMA-START",
             "the chiplet result read right after TOKEN_EOP 0x1 is 0x00 and the SIP result read "
-            "right after TOKEN_EOP 0x100 is 0x15, each lane starting its own hash only",
+            "right after TOKEN_EOP 0x100, with the SIP words rewritten one bit off, is 0x15, each "
+            "lane starting its own hash only",
         ),
         (
             "CHK-SEP-RMA-SIP-MATCH",

@@ -24,17 +24,29 @@ Each cell runs in its own trial after an AES reset pulse, with its legal
 neighbour as the control of the same trial. The calibration block gives the
 clean block time t_blk; the MODE window is 20 x t_blk clocks.
 
+An OPERATION or MODE trial first writes a legal CTRL_SHADOWED pair whose field
+differs from both the reset value and the mapped value, and reads it back
+(``CTRL-AES-INV-OP-PRE`` / ``CTRL-AES-INV-MODE-PRE``). The register is read
+only after both writes of a pair (``aes.hjson`` CTRL_SHADOWED: a read clears
+the phase tracking).
+
 Checkers:
   CHK-AES-INV-KEYLEN  the ciphertext of P equals the AES-256 golden (and so
                       differs from the AES-128 golden). Control: KEY_LEN =
                       AES_128 gives the AES-128 golden.
   CHK-AES-INV-OP      the result for C = E_K(P) equals E_K(C) and not P.
                       Control: OPERATION = AES_DEC returns P.
+  CHK-AES-INV-OP-RB   after the invalid pair, CTRL_SHADOWED reads OPERATION =
+                      AES_ENC and the other fields as written; the written
+                      OPERATION is an invalid code.
   CHK-AES-INV-MODE    after START, OUTPUT_VALID reads 0 at every sample of the
                       window and DATA_OUT keeps its base words. Control:
                       MODE = ECB with a new key load sets OUTPUT_VALID in a
                       bounded wait.
-The readback of each invalid field is logged (``OBS-AES-ENC-RB``) and not
+  CHK-AES-INV-MODE-RB after the invalid pair, CTRL_SHADOWED reads MODE =
+                      AES_NONE, KEY_LEN = AES_256 and MANUAL_OPERATION = 1;
+                      the written MODE is an invalid code.
+The readback of an invalid KEY_LEN is logged (``OBS-AES-ENC-RB``) and not
 graded.
 """
 
@@ -101,8 +113,29 @@ MODE_WINDOW_FACTOR = 20  # MODE window = 20 x t_blk (test parameter)
 OV_BOUND_FACTOR = 64  # bounded OUTPUT_VALID wait = 64 x t_blk
 
 
+def _field(word: int, field: str) -> int:
+    lsb, width = CTRL_FIELD[field]
+    return (word >> lsb) & ((1 << width) - 1)
+
+
+def _ctrl_fields(word: int) -> dict[str, int]:
+    """OPERATION, MODE, KEY_LEN and MANUAL_OPERATION of a CTRL_SHADOWED word."""
+    fields = {f: _field(word, f) for f in CTRL_FIELD}
+    fields["manual"] = int(bool(word & CTRL_MANUAL))
+    return fields
+
+
+def _invalid_code(field: str, value: int) -> bool:
+    """aes.hjson CTRL_SHADOWED: the codes are one-hot; MODE also has AES_NONE."""
+    return bin(value).count("1") != 1 and not (field == "mode" and value == MODE_NONE)
+
+
 def _le_words(data: bytes) -> list[int]:
     return [int.from_bytes(data[i : i + 4], "little") for i in range(0, len(data), 4)]
+
+
+def _hex_fields(fields: dict[str, int]) -> dict[str, str]:
+    return {("key_len" if k == "keylen" else k): f"0x{v:x}" for k, v in fields.items()}
 
 
 def _le_bytes(words: list[int]) -> bytes:
@@ -170,7 +203,13 @@ def draw_plan(seed: int) -> Plan:
 class sep_aes_encoding_inject_rand_test(sep_base_test):
     """Invalid KEY_LEN, OPERATION and MODE encodings map to AES_256, AES_ENC and AES_NONE."""
 
-    required_evidence = ("CHK-AES-INV-KEYLEN", "CHK-AES-INV-OP", "CHK-AES-INV-MODE")
+    required_evidence = (
+        "CHK-AES-INV-KEYLEN",
+        "CHK-AES-INV-OP",
+        "CHK-AES-INV-OP-RB",
+        "CHK-AES-INV-MODE",
+        "CHK-AES-INV-MODE-RB",
+    )
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu(park=("otbn", "hmac", "kmac", "abr"))
@@ -260,14 +299,39 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
         await self._wait(ST_OV, ST_OV, bound, "output_valid")
         return await self._read_out()
 
+    async def _legal_pre(self, name: str, cell: str, word: int) -> None:
+        """Legal pair before the invalid one; its readback must equal the written fields."""
+        await self._ctrl(word)
+        read = _ctrl_fields(await self.aes._rd(AES_CTRL_SHADOWED))
+        self.chk.ctrl(name, read == _ctrl_fields(word), cell=cell, **_hex_fields(read))
+        await self._wait(ST_IDLE, ST_IDLE, WAIT_LIMIT, "idle_after_pre")
+
+    def _grade_mapped(
+        self, name: str, cell: str, field: str, word: int, mapped: int, rb: int | None, reason: str
+    ) -> None:
+        """Readback after the invalid pair: the field reads its mapped code, the rest as written."""
+        written = _field(word, field)
+        want = _ctrl_fields(word)
+        want[field] = mapped
+        fields: dict[str, object] = {
+            "cell": cell,
+            "written": f"0b{written:0{CTRL_FIELD[field][1]}b}",
+            "written_invalid": int(_invalid_code(field, written)),
+        }
+        if rb is None:
+            fields["reason"] = reason or "no_readback"
+        else:
+            fields.update(_hex_fields(_ctrl_fields(rb)))
+        self.chk.ok(
+            name,
+            rb is not None and _invalid_code(field, written) and _ctrl_fields(rb) == want,
+            **fields,
+        )
+
     async def _readback(self, field: str, written: int) -> None:
-        lsb, width = CTRL_FIELD[field]
         rb = await self.aes._rd(AES_CTRL_SHADOWED)
         self.chk.obs(
-            "AES-ENC-RB",
-            field=field,
-            written=f"0x{written:x}",
-            read=f"0x{(rb >> lsb) & ((1 << width) - 1):x}",
+            "AES-ENC-RB", field=field, written=f"0x{written:x}", read=f"0x{_field(rb, field):x}"
         )
 
     # --- calibration ------------------------------------------------------------
@@ -338,21 +402,25 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
 
     async def _op_cell(self, kind: str, key: list[int], pt: list[int]) -> None:
         v = self.plan.written("op", kind)
+        cell = f"op.{kind}"
         c = _enc(key, pt)
         enc_c = _enc(key, c)
         assert _dec(key, c) == pt, "decrypt golden does not invert the encrypt golden"
+        pre = self._ctrl_word(key_len=AES_KEY_LEN_256, operation=AES_OP_DEC, mode=AES_MODE_ECB)
+        word = self._ctrl_word(key_len=AES_KEY_LEN_256, operation=v, mode=AES_MODE_ECB)
         res: list[int] | None = None
+        rb: int | None = None
         reason = ""
         open_graded_window(TEST, self.logger)
         try:
-            await self._key_load(
-                self._ctrl_word(key_len=AES_KEY_LEN_256, operation=v, mode=AES_MODE_ECB), key
-            )
-            await self._readback("op", v)
+            await self._legal_pre("AES-INV-OP-PRE", cell, pre)
+            await self._key_load(word, key)
+            rb = await self.aes._rd(AES_CTRL_SHADOWED)
             res = await self._block(c, WAIT_LIMIT)
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         close_graded_window(self.logger)
+        self._grade_mapped("AES-INV-OP-RB", cell, "op", word, AES_OP_ENC, rb, reason)
         ctrl_ok = False
         try:
             # A decryption needs the key written after the control register.
@@ -379,20 +447,22 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
 
     async def _mode_cell(self, kind: str, key: list[int], pt: list[int], t_blk: int) -> None:
         v = self.plan.written("mode", kind)
+        cell = f"mode.{kind}"
         window = MODE_WINDOW_FACTOR * t_blk
         start = AES.field_mask("TRIGGER", "start")
+        pre = self._ctrl_word(key_len=AES_KEY_LEN_128, operation=AES_OP_ENC, mode=AES_MODE_ECB)
+        word = self._ctrl_word(key_len=AES_KEY_LEN_256, operation=AES_OP_ENC, mode=v, manual=True)
         ov_seen = None
         base: list[int] | None = None
         after: list[int] | None = None
+        rb: int | None = None
         n_samples = 0
         reason = ""
         open_graded_window(TEST, self.logger)
         try:
-            await self._key_load(
-                self._ctrl_word(key_len=AES_KEY_LEN_256, operation=AES_OP_ENC, mode=v, manual=True),
-                key,
-            )
-            await self._readback("mode", v)
+            await self._legal_pre("AES-INV-MODE-PRE", cell, pre)
+            await self._key_load(word, key)
+            rb = await self.aes._rd(AES_CTRL_SHADOWED)
             base = await self._read_out()
             await self._write_block(pt)
             await self.aes._wr(AES_TRIGGER, start)
@@ -405,6 +475,7 @@ class sep_aes_encoding_inject_rand_test(sep_base_test):
         except TrialTimeout as exc:
             reason = f"timeout:{exc.what} bound={exc.bound}"
         close_graded_window(self.logger)
+        self._grade_mapped("AES-INV-MODE-RB", cell, "mode", word, MODE_NONE, rb, reason)
         ctrl_clk = -1
         try:
             await self._key_load(

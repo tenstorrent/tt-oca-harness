@@ -17,10 +17,13 @@ this leaf grades the other three:
     CSR and latched with KEY_CTRL.key_valid on the final dword.
 
 Each leg compares a sideloaded run against a direct-register run of the same
-words, and each is preceded by a run on *different* words, so the compare
-fails both when the sideload delivers nothing (a stale register produces the
-earlier value) and when it delivers the wrong block (D and Z swapped, or the
-16-dword lane split at the wrong bit).
+words, and each is preceded by a run on *different* words and a ZEROIZE, so
+the compare fails both when the sideload delivers nothing (a cleared register
+fails the equality, a register still holding the earlier words fails the
+inequality) and when it delivers the wrong block (D and Z swapped, or the
+16-dword lane split at the wrong bit). CTRL-KEM-SEED-REF is the control of
+the seed leg: the two reference pairs give different keys and the Z probe
+follows a register-written Z.
 
 The encapsulation key depends on D only, and software cannot read Z back, so
 the seed leg grades Z at the engine: the read-only probe
@@ -53,7 +56,9 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_chk_log import diff_words, word_digest
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import kv_field_mask
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_mlkem_seq import (
     KEM_CMD_ENCAPS,
@@ -73,6 +78,7 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_CTRL,
     MLKEM_ENCAPS_KEY,
     MLKEM_KV_MSG_RD_CTRL,
+    MLKEM_KV_MSG_RD_STATUS,
     MLKEM_KV_SEED_RD_CTRL,
     MLKEM_KV_SK_WR_CTRL,
     MLKEM_MSG,
@@ -200,7 +206,6 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
     """ML-KEM seed, message and shared-key transfers across the KV facade."""
 
     required_evidence = (
-        "CHK-KEM-SEED-REF",
         "CHK-KEM-SEED-SIDELOAD",
         "CHK-KEM-MSG-SIDELOAD",
         "CHK-KEM-SK-NOTIFY",
@@ -281,6 +286,32 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             f"dest 0x{dest:02x}"
         )
 
+    async def _kv_entry_obs(self, kem) -> None:
+        """One message-lane KV read that names the last vault entry instead of entry 0.
+
+        The zeroize before it clears the message lane's data-present latch, which
+        holds READ_CTRL write-protected after the sideloaded ENCAPS. The zeroize
+        before the writeback ENCAPS clears it again, so the read leaves no state
+        the later legs use.
+        """
+        await self._zeroize(kem, what="before the KV entry read")
+        entry = kv_field_mask("kv_read_ctrl_reg", "read_entry")
+        await kem.wr32(MLKEM_KV_MSG_RD_CTRL, KV_READ_EN | entry)
+        ctrl = await kem.rd32(MLKEM_KV_MSG_RD_CTRL)
+        for _ in range(_POLL_ITERS):
+            if not ctrl & KV_READ_EN:
+                break
+            await ClockCycles(cocotb.top.clk_i, _POLL_GAP)
+            ctrl = await kem.rd32(MLKEM_KV_MSG_RD_CTRL)
+        await ClockCycles(cocotb.top.clk_i, _POLL_GAP)
+        self.logger.info(
+            "OBS-ABR-KV-ENTRY LOG ctrl_wr=0x%08x ctrl=0x%08x mlkem_status=0x%08x kv_rd_status=0x%08x",
+            KV_READ_EN | entry,
+            ctrl,
+            await kem.rd32(MLKEM_STATUS),
+            await kem.rd32(MLKEM_KV_MSG_RD_STATUS),
+        )
+
     def _seed_z_probe(self) -> list[int]:
         """The eight Z words the ABR engine holds, word i at bits [32*i +: 32]."""
         v = self.rd_known(cocotb.top.abr_mlkem_seed_z_probe_o)
@@ -295,10 +326,10 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             f"{chk} FAIL: {what} is {len(got)} words, expected {len(exp)} -- a short "
             "readback would narrow the compare to the overlap"
         )
-        bad = self._first_mismatch(got, exp)
-        assert bad is None, (
-            f"{chk} FAIL: {what} differs at word {bad} of {len(exp)}: "
-            f"got=0x{got[bad]:08x} exp=0x{exp[bad]:08x}"
+        bad = diff_words(got, exp)
+        assert not bad, (
+            f"{chk} FAIL: {what} differs at words {bad} of {len(exp)}: "
+            f"got_sha={word_digest(got)} exp_sha={word_digest(exp)}"
         )
 
     async def run_scenario(self) -> None:
@@ -307,8 +338,8 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         seed = self.random_seed()
         # q >= 1, so every seed queues a command ahead of the notification.
         rearm_q = SepSeededRng(seed).randrange(1, _REARM_MAX_Q + 1)
-        self.logger.info("SEED seed=%d", seed)
-        self.logger.info("DRAW q=%d", rearm_q)
+        self.logger.info("INFO-SEED seed=%d", seed)
+        self.logger.info("INFO-DRAW q=%d", rearm_q)
 
         image = self.select_efuse_image(lc_raw=0x1)
         self.write_efuse_image(image)
@@ -323,46 +354,44 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
 
         await self.swrst.release("km")
         await self.km.wait_km_ready()
-        self.logger.info("CHK0 PASS: rom_main booted, RESP_KM_READY over the mailbox")
+        self.logger.info("CHK-KM-READY PASS: rom_main booted, RESP_KM_READY over the mailbox")
 
-        # Logged for the record, not graded: abr_reg.rdl declares NAME sw=r
-        # with no reset, and no SEP document gives its value. A dead decode
-        # reads both reference keys as zero and fails CHK-KEM-SEED-REF.
+        # Not graded: abr_reg.rdl declares NAME sw=r with no reset, and no SEP
+        # document gives its value. A dead decode reads both reference keys as
+        # zero and fails CTRL-KEM-SEED-REF.
         name0 = await kem.rd32(MLKEM_NAME0)
         name1 = await kem.rd32(MLKEM_NAME1)
         self.logger.info(
-            "ABR ML-KEM identity words (information only): NAME0=0x%08x NAME1=0x%08x",
+            "OBS-ABR-MLKEM-NAME LOG name0=0x%08x name1=0x%08x",
             name0,
             name1,
         )
 
-        # --- CHK-KEM-SEED-REF: the two reference keygens ----------------------
-        ek_alt = await self._keygen(kem, _D_ALT, _Z_ALT, what="CHK-KEM-SEED-REF alt")
+        # --- CTRL-KEM-SEED-REF: the two reference keygens ---------------------
+        ek_alt = await self._keygen(kem, _D_ALT, _Z_ALT, what="CTRL-KEM-SEED-REF alt")
         await self._zeroize(kem, what="after alt keygen")
-        ek_ref = await self._keygen(kem, _D_REF, _Z_REF, what="CHK-KEM-SEED-REF ref")
+        ek_ref = await self._keygen(kem, _D_REF, _Z_REF, what="CTRL-KEM-SEED-REF ref")
         assert ek_alt != ek_ref, (
-            "CHK-KEM-SEED-REF FAIL: the two seed pairs produce the same "
+            "CTRL-MISSING KEM-SEED-REF: the two seed pairs produce the same "
             "encapsulation key, so the sideload compare could not tell them apart"
         )
         # The probe follows a register-written Z. This is the positive control
         # for the Z compare below: the probe is live and shows a Z that is not
         # the one the sideload delivers.
         z_ref_eng = self._seed_z_probe()
-        self._same(
-            z_ref_eng,
-            _Z_REF,
-            chk="CHK-KEM-SEED-REF",
-            what="the engine's Z after the REF register write",
+        bad = self._first_mismatch(z_ref_eng, _Z_REF)
+        assert bad is None, (
+            "CTRL-MISSING KEM-SEED-REF: the engine's Z after the REF register write "
+            f"differs at word {bad}: got_sha={word_digest(z_ref_eng)} exp_sha={word_digest(_Z_REF)}"
         )
         self.logger.info(
-            "CHK-KEM-SEED-REF PASS: the two (D, Z) pairs give distinct %d-word "
+            "CTRL-KEM-SEED-REF seen: the two (D, Z) pairs give distinct %d-word "
             "encapsulation keys (ek_alt[0]=0x%08x ek_ref[0]=0x%08x); the engine Z "
-            "probe reads the REF Z z[0]=0x%08x z[3]=0x%08x",
+            "probe reads the REF Z z_sha=%s",
             KEM_EK_WORDS,
             ek_alt[0],
             ek_ref[0],
-            z_ref_eng[0],
-            z_ref_eng[3],
+            word_digest(z_ref_eng),
         )
         await self._zeroize(kem, what="after ref keygen")
 
@@ -403,14 +432,13 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
             "CHK-KEM-SEED-SIDELOAD PASS: the 16-dword kv_read[1] lane delivered "
             "D[0..%d] and Z[0..%d] -- the %d-word encapsulation key equals the "
             "direct-register keygen of the same words (ek[0]=0x%08x), and the "
-            "engine Z moved from z[0]=0x%08x to the ALT Z z[0]=0x%08x z[3]=0x%08x",
+            "engine Z moved from z_sha=%s to the ALT Z z_sha=%s",
             KEM_SEED_WORDS - 1,
             KEM_SEED_WORDS - 1,
             KEM_EK_WORDS,
             ek_km[0],
-            z_pre[0],
-            z_km[0],
-            z_km[3],
+            word_digest(z_pre),
+            word_digest(z_km),
         )
         await self._zeroize(kem, what="after sideload keygen")
 
@@ -422,10 +450,16 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         # Reference first on the OTHER message, so the register holds _M_REF
         # when the sideload leg runs.
         ct_alt, sk_alt = await self._encaps(kem, ek_alt, _M_ALT, what="CHK-KEM-MSG-REF alt")
-        self.logger.info(
-            "CTRL-KEM-SK-READBACK LOG words_nonzero=%d",
-            int(any(w != 0 for w in sk_alt)),
+        # Control of OBS-KEM-SK-CONFIDENTIAL: the shared-key registers return a
+        # non-zero key after a register-driven ENCAPS of fixed inputs, so an
+        # all-zero read after the vault-sourced ENCAPS is not a dead read path.
+        sk_alt_nonzero = int(any(w != 0 for w in sk_alt))
+        assert sk_alt_nonzero == 1, (
+            "CTRL-MISSING KEM-SK-READBACK: the shared key of the register-driven "
+            "ENCAPS read all zero, so OBS-KEM-SK-CONFIDENTIAL cannot tell a "
+            "withheld key from a dead read path"
         )
+        self.logger.info("CTRL-KEM-SK-READBACK seen: words_nonzero=%d", sk_alt_nonzero)
         await self._zeroize(kem, what="after alt encaps")
         ct_ref, _ = await self._encaps(kem, ek_alt, _M_REF, what="CHK-KEM-MSG-REF ref")
         assert ct_alt != ct_ref, (
@@ -457,12 +491,15 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
 
         # The shared key of the vault-sourced ENCAPS is logged, not graded: no
         # spec states the read value of MLKEM_SHARED_KEY after it.
-        first_nz = next((w for w in sk_km if w != 0), None)
+        nonzero_at = [i for i, w in enumerate(sk_km) if w]
         self.logger.info(
-            "OBS-KEM-SK-CONFIDENTIAL LOG words_zero=%d first_nonzero=%s",
-            int(first_nz is None),
-            "none" if first_nz is None else f"0x{first_nz:08x}",
+            "OBS-KEM-SK-CONFIDENTIAL LOG words_zero=%d nonzero_at=%s words_sha=%s",
+            int(not nonzero_at),
+            nonzero_at,
+            word_digest(sk_km),
         )
+
+        await self._kv_entry_obs(kem)
 
         # --- CHK-KEM-SK-WRITEBACK: kv_write, and its negative control ---------
         # Nothing has armed the write lane yet, so the sideload block's
@@ -557,10 +594,9 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         self.logger.info(
             "CHK-KEM-SK-VALUE PASS: AES-256 under the written-back shared key == golden "
             "keyed with the engine's MLKEM_SHARED_KEY words (ct[0]=0x%08x, "
-            "sk[0]=0x%08x sk[7]=0x%08x); the dword-reversed key's golden ct[0]=0x%08x differs",
+            "sk_sha=%s); the dword-reversed key's golden ct[0]=0x%08x differs",
             ct_sk[0],
-            sk_alt[0],
-            sk_alt[7],
+            word_digest(sk_alt),
             golden_rev[0],
         )
 
@@ -569,7 +605,7 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
-        self.logger.info("entropy alerts clear and DRBG scoreboard reports PASS")
+        self.logger.info("INFO-ENTROPY-CLEAN entropy alerts clear, DRBG scoreboard reports pass")
 
     async def _rearm_leg(self, kem, ek: list[int], ct_ref: list[int], q: int) -> None:
         """CHK-KEM-SK-REARM: a later delivery gives exactly one more notification.

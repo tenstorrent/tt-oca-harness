@@ -17,6 +17,7 @@
 
 #include "smc_io.h"
 #include "smc_test.h"
+#include "uart_16550_main_wo.h"
 
 #define WRAP0_CTRL_REG \
     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR(0)
@@ -51,6 +52,8 @@
 #define LE_REGION_ADDR_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_REGION_ADDR_HI_OFF \
+    (LE_REGION_ADDR_OFF + LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bp / 8u)
 #define LE_WRITE_ADDR_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
@@ -61,23 +64,26 @@
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, 0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 
+#define LE_INTR_ERRORS \
+    (LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm | LOG_ENGINE__INTR_STATUS__LOG_WRITE_ERR_bm)
+
 #define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
 
 // Enable the UART pads and set the fastest baud rate, 8N1 framing, internal loopback and FIFOs.
 static void setup_uart_8n1_fifo(void) {
-    write_reg(WRAP0_CTRL_REG, 1u);
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u);
+    write_reg(WRAP0_CTRL_REG, UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm);
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, UART_16550_MAIN__LCR__DLAB_bm);
     write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u);
     write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u);
-    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u);
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u);
-    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u);
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, UART_16550_MAIN__LCR__WLS_bm);
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, UART_16550_MAIN__MCR__LOOP_bm);
+    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm);
 }
 
 // Wait for the engine to clear the entry's length, which marks the log as written.
 static int wait_log_done(uint32_t ctrl_off, uint32_t timeout) {
     while (timeout > 0u) {
-        if ((read_reg(WRAP0_LE_BASE + ctrl_off) & 0xFFFFu) == 0u) return 0;
+        if ((read_reg(WRAP0_LE_BASE + ctrl_off) & LOG_ENGINE__LOG_CTRL__LOG_LEN_bm) == 0u) return 0;
         timeout--;
     }
     return -1;
@@ -85,7 +91,8 @@ static int wait_log_done(uint32_t ctrl_off, uint32_t timeout) {
 
 static int wait_uart_tx_empty(uint32_t timeout) {
     while (timeout > 0u) {
-        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x40u) != 0u) return 0;
+        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & UART_16550_MAIN__LSR__TEMT_bm) != 0u)
+            return 0;
         timeout--;
     }
     return -1;
@@ -93,7 +100,7 @@ static int wait_uart_tx_empty(uint32_t timeout) {
 
 static int read_uart_byte(uint8_t *value, uint32_t timeout) {
     while (timeout > 0u) {
-        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) != 0u) {
+        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & UART_16550_MAIN__LSR__DR_bm) != 0u) {
             *value = (uint8_t)(read_reg(WRAP0_UART_BASE + UART_RBR_OFF) & 0xFFu);
             return 0;
         }
@@ -106,12 +113,15 @@ static int reset_uart_fifos(void) {
     if (wait_uart_tx_empty(2000000u) != 0) return -1;
 
     // Reset both FIFOs, then drain any received byte still visible and fail if data remains.
-    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x07u);
+    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, (UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm |
+                                               UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_bm |
+                                               UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_bm));
     for (uint32_t count = 0; count < 32u; count++) {
-        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) == 0u) return 0;
+        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & UART_16550_MAIN__LSR__DR_bm) == 0u)
+            return 0;
         (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
     }
-    return (read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) == 0u ? 0 : -1;
+    return (read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & UART_16550_MAIN__LSR__DR_bm) == 0u ? 0 : -1;
 }
 
 static int verify_uart_transfer(uint8_t first_value, uint32_t byte_count) {
@@ -125,7 +135,7 @@ static int verify_uart_transfer(uint8_t first_value, uint32_t byte_count) {
     // transmitter. Once the transmitter is idle every byte has looped back, so no further received
     // data may remain.
     if (wait_uart_tx_empty(2000000u) != 0) return -3;
-    if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) != 0u) {
+    if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & UART_16550_MAIN__LSR__DR_bm) != 0u) {
         (void)read_reg(WRAP0_UART_BASE + UART_RBR_OFF);
         return -4;
     }
@@ -149,12 +159,12 @@ int main(void) {
         for (int i = 0; i < 16; i++) buf[i] = (uint8_t)(0xA0u + i);
 
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, LE_INTR_ERRORS);
         write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
-        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
+        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_HI_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
-        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
         write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 8u);
 
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
@@ -165,7 +175,7 @@ int main(void) {
             info_msg_s(0, "FAIL: scenario A: expected exactly bytes 0xA0 through 0xA7");
             test_fail(0);
         }
-        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u) != 0u) {
+        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & LE_INTR_ERRORS) != 0u) {
             info_msg_s(0, "FAIL: scenario A: unexpected INTR_STATUS");
             test_fail(0);
         }
@@ -184,12 +194,12 @@ int main(void) {
         for (int i = 0; i < 64; i++) buf[i] = (uint8_t)(0x40u + i);
 
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, LE_INTR_ERRORS);
         write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x400u);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
-        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
+        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_HI_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
-        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
         write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 64u);
 
         // Read the 64 bytes back as they arrive. The receive FIFO is 32 deep,
@@ -217,11 +227,11 @@ int main(void) {
             info_msg_s(0, "FAIL: scenario B: transmitter never drained");
             test_fail(0);
         }
-        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) != 0u) {
+        if ((read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & UART_16550_MAIN__LSR__DR_bm) != 0u) {
             info_msg_s(0, "FAIL: scenario B: a 65th byte reached the receiver");
             test_fail(0);
         }
-        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u) != 0u) {
+        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & LE_INTR_ERRORS) != 0u) {
             info_msg_s(0, "FAIL: scenario B: unexpected INTR_STATUS");
             test_fail(0);
         }
@@ -243,12 +253,12 @@ int main(void) {
             test_fail(0);
         }
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, LE_INTR_ERRORS);
         write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0x100u);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
-        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
+        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_HI_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
-        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
         write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 24u);
 
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
@@ -259,7 +269,7 @@ int main(void) {
             info_msg_s(0, "FAIL: scenario D: expected exactly bytes 0x80 through 0x8F");
             test_fail(0);
         }
-        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u) != 0u) {
+        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & LE_INTR_ERRORS) != 0u) {
             info_msg_s(0, "FAIL: scenario D: unexpected INTR_STATUS");
             test_fail(0);
         }
@@ -282,12 +292,12 @@ int main(void) {
             test_fail(0);
         }
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
-        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, 0x11u);
+        write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, LE_INTR_ERRORS);
         write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, 0xF0u);
         write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
-        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
+        write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_HI_OFF, 0u);
         write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
-        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
+        write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, LOG_ENGINE__CTRL__EN_bm);
         write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 15u);
 
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
@@ -298,7 +308,7 @@ int main(void) {
             info_msg_s(0, "FAIL: scenario E: expected exactly bytes 0xE0 through 0xE7");
             test_fail(0);
         }
-        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u) != 0u) {
+        if ((read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & LE_INTR_ERRORS) != 0u) {
             info_msg_s(0, "FAIL: scenario E: unexpected INTR_STATUS");
             test_fail(0);
         }

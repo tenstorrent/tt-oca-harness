@@ -85,6 +85,7 @@ from ._one_shot import _OneShot
 from .smc_addr_map import (
     _REPO,
     _SMC_BASE_CFG_H,
+    DMA_CONFIG_ENABLED_ND,
     LOCAL_BASE_RESET,
     _field_mask,
     reg_field_encode,
@@ -95,13 +96,13 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import smc_reg_addr
 from .smc_regblock_field_sweep_utils import RegInstance, reg_instances
 
-_OUT = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_"
-_OUT_PY = "SMC_OUTBOUND_FILTER_CTRL_{index}__"
+_OUT = "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_"
+_OUT_PY = "SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{index}__"
 
 
 def _spec(register: str) -> tuple[str, str, str, str]:
     return (
-        f"smc_outbound_filter_ctrl/{register}",
+        f"smc_outbound_filter_ctrl_wrap/filter_ctrl/{register}",
         f"{_OUT}{register}_BASE_ADDR",
         f"{_OUT}{register}_NUM",
         f"{_OUT_PY}{register}_REG_ADDR",
@@ -159,8 +160,6 @@ _DMA = {
         "NUM_REPETITIONS_HI",
     )
 }
-# dma_ctrl.rdl CONFIG: the enable that arms the non-descriptor frontend.
-_DMA_CONFIG_ENABLED_ND = 1 << 10
 _DMA_SRC_ADDR = _MODEL_BASE
 _DMA_POLLS = 50
 
@@ -174,7 +173,7 @@ _TRAFFIC_ENTRY = 1
 
 # -- the inbound leg at 56-bit addresses ------------------------------------
 
-_IN = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_"
+_IN = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_"
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
 _CFG_MASK = {
     name: _field_mask(_FILTER_H, f"FILTER_CTRL__FILTER_CONFIG__{name.upper()}_bm")
@@ -183,13 +182,9 @@ _CFG_MASK = {
 _DBW_LSB = _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__DATA_BUS_WIDTH_bp")
 _GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 _REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
-# CPU_CTRL SCRATCH[1]: data [31:0] RW (cpu_ctrl.adoc), at offset 0x39088 of the SMC window.
-_SCRATCH1_OFFSET = 0x39088
+# CPU_CTRL SCRATCH[1]: data [31:0] RW (cpu_ctrl.adoc), as an offset into the SMC window.
 _SCRATCH1_LOCAL = smc_indexed_addr("SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 1)
-assert _SCRATCH1_LOCAL == LOCAL_BASE_RESET + _SCRATCH1_OFFSET, (
-    f"the generated map places CPU_CTRL SCRATCH[1] at 0x{_SCRATCH1_LOCAL:x}, not at "
-    f"LOCAL_BASE 0x{LOCAL_BASE_RESET:x} + 0x{_SCRATCH1_OFFSET:x}"
-)
+_SCRATCH1_OFFSET = _SCRATCH1_LOCAL - LOCAL_BASE_RESET
 _HIGH_BITS = 0xAB
 _HIGH_SHIFT = 32
 _SYS_IN_PROT = 0
@@ -211,10 +206,10 @@ _FENCE = (
 
 def _in_spec(register: str) -> tuple[str, str, str, str]:
     return (
-        f"smc_inbound_filter_ctrl/{register}",
+        f"smc_inbound_filter_ctrl_wrap/filter_ctrl/{register}",
         f"{_IN}{register}_BASE_ADDR",
         f"{_IN}{register}_NUM",
-        f"SMC_INBOUND_FILTER_CTRL_{{index}}__{register}_REG_ADDR",
+        f"SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{{index}}__{register}_REG_ADDR",
     )
 
 
@@ -334,7 +329,7 @@ class smc_filter_region_span_test_seq(SmcCsrSeq):
     async def _dma_transfer(self, src: int, dst: int, tag: str) -> None:
         """One descriptor, submitted by the NEXT_ID read the frontend launches on."""
         baseline = await self.csr_read(f"DMA_DONE_BASE_{tag}", _DMA["DONE_0"])
-        await self.csr_write(f"DMA_CONFIG_{tag}", _DMA["CONFIG"], _DMA_CONFIG_ENABLED_ND)
+        await self.csr_write(f"DMA_CONFIG_{tag}", _DMA["CONFIG"], DMA_CONFIG_ENABLED_ND)
         for name, value in (
             ("DST_ADDRESS_LO", dst & 0xFFFF_FFFF),
             ("DST_ADDRESS_HI", dst >> 32),

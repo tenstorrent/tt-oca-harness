@@ -326,6 +326,23 @@ class sep_fabric_inbound_filter_window_walk_test(sep_base_test):
         for leg, s, e_ in legs:
             await self._writeback_leg(filt, wb_entry, leg, s, e_, staged, graded=True)
 
+        # START above END: START at the granule after X, END at the end of X's granule.
+        await filt.program_window(wb_entry, xng, xg | GRAN_MASK)
+        inv = await filt.read_window(wb_entry)
+        await filt.set_enabled(wb_entry, True)
+        resp, data = await self._ext_read(X)
+        self.logger.info(
+            "OBS-FILTER-INVERTED entry=%d start=0x%014x end=0x%014x addr=0x%08x resp=%d "
+            "rdata=0x%08x",
+            wb_entry,
+            inv[0],
+            inv[1],
+            X,
+            resp,
+            data,
+        )
+        await filt.restore(wb_entry)
+
         n = len(plans)
         self.logger.info(
             "CHK-WALK-READBACK PASS: %d filter readbacks over %d entries match the 56-bit model",

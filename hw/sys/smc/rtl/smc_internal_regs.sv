@@ -765,7 +765,7 @@ module smc_internal_regs #(
   );
 
   localparam int unsigned MmodeRemapSelStartIdx = $clog2(
-      smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_SIZE
+      smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_SIZE
   );
   localparam int unsigned MmodeRemapSelEndIdx = MmodeRemapSelStartIdx + smc_pkg::MmodeRemapSelW - 1;
 
@@ -864,7 +864,7 @@ module smc_internal_regs #(
   );
 
   localparam int unsigned XvisorRemapSelStartIdx = $clog2(
-      smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_SIZE
+      smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_SIZE
   );
   localparam int unsigned XvisorRemapSelEndIdx = XvisorRemapSelStartIdx + smc_pkg::XvisorRemapSelW - 1;
 
@@ -963,7 +963,7 @@ module smc_internal_regs #(
   );
 
   localparam int unsigned AliasRemapSelStartIdx = $clog2(
-      smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_SIZE
+      smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_SIZE
   );
   localparam int unsigned AliasRemapSelEndIdx = AliasRemapSelStartIdx + smc_pkg::AliasRemapSelW - 1;
 

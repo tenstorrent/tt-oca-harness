@@ -56,16 +56,16 @@ from .smc_reset_seq_base import SmcResetSeqBase
 
 _FILTER_CONFIG = (
     (
-        "smc_inbound_filter_ctrl/FILTER_CONFIG",
-        "SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR",
-        "SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_NUM",
-        "SMC_INBOUND_FILTER_CTRL_{index}__FILTER_CONFIG_REG_ADDR",
+        "smc_inbound_filter_ctrl_wrap/filter_ctrl/FILTER_CONFIG",
+        "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR",
+        "SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_NUM",
+        "SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{index}__FILTER_CONFIG_REG_ADDR",
     ),
     (
-        "smc_outbound_filter_ctrl/FILTER_CONFIG",
-        "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR",
-        "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_NUM",
-        "SMC_OUTBOUND_FILTER_CTRL_{index}__FILTER_CONFIG_REG_ADDR",
+        "smc_outbound_filter_ctrl_wrap/filter_ctrl/FILTER_CONFIG",
+        "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR",
+        "SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_NUM",
+        "SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_{index}__FILTER_CONFIG_REG_ADDR",
     ),
 )
 
@@ -75,29 +75,33 @@ _ACCESSES_PER_LOCK_LEG = 6
 _PREDICTED_READS_PER_LOCK_LEG = 3
 _ACCESSES_PER_COLD_RESET_LEG = 7
 
-# Documented resets, hw/ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc: data_bus_width R 0x3 and
-# every other FILTER_CONFIG field 0x0; start_addr[55:0] 0x0; end_addr[55:0] 0x7; locked is bit 63.
+# Documented resets and masks, hw/ip/axi_filter/regs/gen/c/filter_ctrl.h.
 _FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+_CFG_FIELDS = (
+    "locked",
+    "allow_burst",
+    "group_id",
+    "src_id",
+    "data_bus_width",
+    "allow_ns",
+    "entry_enabled",
+    "write_allowed",
+    "read_allowed",
+)
 _CFG_FIELD_RESETS = {
-    "locked": 0x0,
-    "allow_burst": 0x0,
-    "group_id": 0x0,
-    "src_id": 0x0,
-    "data_bus_width": 0x3,
-    "allow_ns": 0x0,
-    "entry_enabled": 0x0,
-    "write_allowed": 0x0,
-    "read_allowed": 0x0,
+    name: _field_mask(_FILTER_H, f"FILTER_CTRL__FILTER_CONFIG__{name.upper()}_reset")
+    for name in _CFG_FIELDS
 }
 _CFG_MASKS = {
     name: _field_mask(_FILTER_H, f"FILTER_CTRL__FILTER_CONFIG__{name.upper()}_bm")
-    for name in _CFG_FIELD_RESETS
+    for name in _CFG_FIELDS
 }
 _CFG_DECLARED = sum(_CFG_MASKS.values())
-_LOCKED_BIT = 1 << 63
-_ADDR_FIELD = (1 << 56) - 1
-_START_RESET = 0x0
-_END_RESET = 0x7
+_LOCKED_BIT = 1 << _field_mask(_FILTER_H, "FILTER_CTRL__FILTER_CONFIG__LOCKED_bp")
+_START_FIELD = _field_mask(_FILTER_H, "FILTER_CTRL__START_ADDR__START_ADDR_bm")
+_END_FIELD = _field_mask(_FILTER_H, "FILTER_CTRL__END_ADDR__END_ADDR_bm")
+_START_RESET = _field_mask(_FILTER_H, "FILTER_CTRL__START_ADDR__START_ADDR_reset")
+_END_RESET = _field_mask(_FILTER_H, "FILTER_CTRL__END_ADDR__END_ADDR_reset")
 _ALLOW_NS_WRITE = _CFG_MASKS["allow_ns"]
 _LOWER_HALF_BYTES = 4
 _OKAY = 0
@@ -218,17 +222,17 @@ class smc_filter_config_field_sweep_test_seq(SmcResetSeqBase, SmcRegblockFieldSw
             )
             unlocked.append(inst.addr)
             self._check_cfg(inst.label, inst.addr, cfg, _CFG_FIELD_RESETS)
-            assert start & _ADDR_FIELD == _START_RESET, (
+            assert start & _START_FIELD == _START_RESET, (
                 f"{inst.label} START_ADDR @ 0x{start_addr:08x}: [55:0] reads "
-                f"0x{start & _ADDR_FIELD:x}, filter_ctrl.adoc gives 0x{_START_RESET:x}"
+                f"0x{start & _START_FIELD:x}, filter_ctrl.adoc gives 0x{_START_RESET:x}"
             )
-            assert end & _ADDR_FIELD == _END_RESET, (
+            assert end & _END_FIELD == _END_RESET, (
                 f"{inst.label} END_ADDR @ 0x{end_addr:08x}: [55:0] reads "
-                f"0x{end & _ADDR_FIELD:x}, filter_ctrl.adoc gives 0x{_END_RESET:x}"
+                f"0x{end & _END_FIELD:x}, filter_ctrl.adoc gives 0x{_END_RESET:x}"
             )
             cfg_rsvd[cfg & ~_CFG_DECLARED] += 1
-            start_rsvd[start & ~_ADDR_FIELD] += 1
-            end_rsvd[end & ~_ADDR_FIELD] += 1
+            start_rsvd[start & ~_START_FIELD] += 1
+            end_rsvd[end & ~_END_FIELD] += 1
             self.reset_words_read += 1
         return unlocked, cfg_rsvd, start_rsvd, end_rsvd
 

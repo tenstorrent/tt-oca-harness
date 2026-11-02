@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef OUTPUT_REMAP_WRAP_RDL
+`define OUTPUT_REMAP_WRAP_RDL
+
+`include "output_remap.rdl"
+
+addrmap output_remap_wrap #(
+    longint unsigned NUM_REGIONS = 8
+) {
+    name = "Output Remap Wrapper Address Map";
+    desc = "Wrapper address map instantiating one output remap register block per remap region.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    output_remap    output_remap[NUM_REGIONS]    @0x0 += 0x8;
+};
+
+`endif

@@ -13,9 +13,11 @@
 #define TOTAL_GPIOS 65
 
 #define GPIO_INTF_DATA_CTRL_OFF \
-    (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0))
+    (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - \
+     SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0))
 #define GPIO_INTF_ACCESS_FILTER_OFF \
-    (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0))
+    (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - \
+     SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0))
 #define GPIO_CTRL_CONTROL_OFF \
     (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0))
 
@@ -187,8 +189,9 @@ void test_rw_core2pad(void) {
 
     for (int gpio_num = 0; gpio_num < TOTAL_GPIOS; gpio_num++) {
 
-        uint32_t read_data_control = read_gpio(
-            gpio_num, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+        uint32_t read_data_control =
+            read_gpio(gpio_num, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                                 SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
 
         gpio_intf.w = read_data_control;
 
@@ -202,11 +205,13 @@ void test_rw_core2pad(void) {
         }
 
         write_gpio(gpio_num,
-                   (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+                   (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                    SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                    gpio_intf.w);
 
-        uint32_t read_data_control_updated = read_gpio(
-            gpio_num, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+        uint32_t read_data_control_updated =
+            read_gpio(gpio_num, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                                 SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
 
         write_scratch(1, gpio_num);
         write_scratch(1, gpio_intf.w);
@@ -224,23 +229,27 @@ void test_read_filter(void) {
     // Read filter on GPIO 0
     gpio_intf__ACCESS_FILTER_t gpio_filter_0;
 
-    gpio_filter_0.w = read_gpio(
-        0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+    gpio_filter_0.w = read_gpio(0, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                                    SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
     gpio_filter_0.f.read_filter_enable = 1;
 
     // Require the protection value the CPU's reads carry; reads must still pass
     gpio_filter_0.f.arprot_requirement = 2;
-    write_gpio(0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+    write_gpio(0,
+               (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                gpio_filter_0.w);
 
-    uint32_t read_filter = read_gpio(
-        0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+    uint32_t read_filter =
+        read_gpio(0, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                      SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
     if (read_filter != gpio_filter_0.w) {
         fail_gpio(0xBAD00140u, "read filter program readback fail");
     }
 
     uint32_t read_data_allowed =
-        read_gpio(0, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+        read_gpio(0, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                      SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
     write_scratch(3, read_data_allowed);
 
     if (read_data_allowed == BLOCKED_REQUEST) {
@@ -249,18 +258,21 @@ void test_read_filter(void) {
 
     // Require a protection value the CPU's reads do not carry; the filter itself becomes unreadable
     gpio_filter_0.f.arprot_requirement = 4;
-    write_gpio(0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+    write_gpio(0,
+               (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                gpio_filter_0.w);
 
-    read_filter = read_gpio(
-        0, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+    read_filter = read_gpio(0, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
     if (read_filter == gpio_filter_0.w) {
         fail_gpio(0xBAD00142u, "read filter should block filter CSR readback");
     }
 
     // Data control reads are blocked too
     uint32_t read_data_blocked =
-        read_gpio(0, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+        read_gpio(0, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                      SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
     write_scratch(4, read_data_blocked);
 
     if (read_data_blocked != BLOCKED_REQUEST) {
@@ -278,18 +290,21 @@ void test_write_filter(void) {
     gpio_intf__ACCESS_FILTER_t gpio_filter_1;
     gpio_intf__DATA_CTRL_t gpio_intf_1;
 
-    gpio_intf_1.w =
-        read_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
-    gpio_filter_1.w = read_gpio(
-        1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+    gpio_intf_1.w = read_gpio(1, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                                  SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
+    gpio_filter_1.w = read_gpio(1, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                                    SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
     gpio_filter_1.f.write_filter_enable = 1;
     gpio_filter_1.f.awprot_requirement = 2;
 
-    write_gpio(1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+    write_gpio(1,
+               (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                gpio_filter_1.w);
 
-    uint32_t read_filter = read_gpio(
-        1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+    uint32_t read_filter =
+        read_gpio(1, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                      SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
     if (read_filter != gpio_filter_1.w) {
         fail_gpio(0xBAD00150u, "write filter program readback fail");
     }
@@ -297,10 +312,13 @@ void test_write_filter(void) {
     gpio_intf_1.f.core2pad = 1;
     gpio_intf_1.f.interface_enable = 1;
     // The CPU's writes carry the required protection value, so this write lands
-    write_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+    write_gpio(1,
+               (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                gpio_intf_1.w);
     uint32_t read_data_allowed =
-        read_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+        read_gpio(1, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                      SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
 
     if (read_data_allowed != gpio_intf_1.w) {
         write_scratch(2, gpio_intf_1.w);
@@ -310,21 +328,26 @@ void test_write_filter(void) {
 
     // Require a protection value the CPU's writes do not carry
     gpio_filter_1.f.awprot_requirement = 4;
-    write_gpio(1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+    write_gpio(1,
+               (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                gpio_filter_1.w);
 
-    read_filter = read_gpio(
-        1, (SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+    read_filter = read_gpio(1, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(0) -
+                                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
     if (read_filter != gpio_filter_1.w) {
         fail_gpio(0xBAD00152u, "write filter prot=4 program readback fail");
     }
 
     // A data control write must now be dropped
     gpio_intf_1.f.core2pad = 0;
-    write_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+    write_gpio(1,
+               (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                gpio_intf_1.w);
     uint32_t read_data_unchanged =
-        read_gpio(1, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+        read_gpio(1, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                      SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
 
     if (read_data_unchanged == gpio_intf_1.w) {
         write_scratch(2, gpio_intf_1.w);
@@ -346,10 +369,10 @@ void test_rx_tx(void) {
     gpio_intf__DATA_CTRL_t gpio_intf_11;
     gpio_intf__DATA_CTRL_t gpio_intf_24;
 
-    gpio_intf_11.w =
-        read_gpio(11, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
-    gpio_intf_24.w =
-        read_gpio(24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+    gpio_intf_11.w = read_gpio(11, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                                    SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
+    gpio_intf_24.w = read_gpio(24, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                                    SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
 
     gpio_intf_24.f.enable_rx_tx = 2; /* receive */
     gpio_intf_24.f.interface_enable = 1;
@@ -357,17 +380,21 @@ void test_rx_tx(void) {
     gpio_intf_11.f.enable_rx_tx = 1; /* transmit */
     gpio_intf_11.f.interface_enable = 1;
 
-    write_gpio(24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+    write_gpio(24,
+               (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                gpio_intf_24.w);
 
     /* The sampled pad input must follow the driven output at both levels. */
     for (level = 0; level < 2; level++) {
         gpio_intf_11.f.core2pad = (uint32_t)level;
-        write_gpio(11, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+        write_gpio(11,
+                   (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                    SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)),
                    gpio_intf_11.w);
 
-        read_data_24 = read_gpio(
-            24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
+        read_data_24 = read_gpio(24, (SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) -
+                                      SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(0)));
         pad2core_bit = read_data_24 & PAD2SOC_MASK;
 
         if (level == 0) {

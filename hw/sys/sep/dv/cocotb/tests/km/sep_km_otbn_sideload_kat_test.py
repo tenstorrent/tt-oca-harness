@@ -50,6 +50,7 @@ so a valid PROD-lifecycle image is staged.
 from __future__ import annotations
 
 import pyuvm
+from env.sep_chk_log import diff_words, word_digest
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_mailbox_seq import KM_DEST_OTBN, SepKmMailbox
 from seq_lib.sep_otbn_seq import SepOtbn
@@ -173,12 +174,12 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
 
         # CHK-D/E: DMEM key == the exact known key; high-WDR padding == 0.
         assert key == kat, (
-            "OTBN sideload key mismatch:\n"
-            f"  got      = {[hex(w) for w in key]}\n"
-            f"  expected = {[hex(w) for w in kat]}"
+            f"OTBN sideload key mismatch at words {diff_words(key, kat)}: "
+            f"got_sha={word_digest(key)} expected_sha={word_digest(kat)}"
         )
         assert all(w == 0 for w in key_pad), (
-            f"OTBN result_hi padding words [4..7] not zero: {[hex(w) for w in key_pad]}"
+            "OTBN result_hi padding words [4..7] not zero at "
+            f"{[i for i, w in enumerate(key_pad) if w]}"
         )
         self.logger.info("CHK-D PASS: KM->OTBN sideload KAT, DMEM == known 384b key")
         self.logger.info("CHK-E PASS: KM->OTBN sideload KAT, high-WDR padding == 0")
@@ -188,16 +189,15 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # masking is real and not defeated: shares non-trivial, distinct, neither
         # equals the key, and share0 ^ share1 reconstructs the known key.
         assert [a ^ b for a, b in zip(s0, s1)] == kat, (
-            "share0 ^ share1 != known key:\n"
-            f"  s0^s1 = {[hex(a ^ b) for a, b in zip(s0, s1)]}\n"
-            f"  key   = {[hex(w) for w in kat]}"
+            "share0 ^ share1 != known key at words "
+            f"{diff_words([a ^ b for a, b in zip(s0, s1)], kat)}"
         )
         assert any(w != 0 for w in s0) and any(w != 0 for w in s1), (
-            f"degenerate share (all-zero): s0={[hex(w) for w in s0]} s1={[hex(w) for w in s1]}"
+            f"degenerate share (all-zero): s0_sha={word_digest(s0)} s1_sha={word_digest(s1)}"
         )
         assert s0 != kat and s1 != kat, "a share equals the raw key -> 2-share masking defeated"
         assert s0 != s1, "shares identical -> masking defeated"
-        assert len(set(s0)) > 1, f"SHARE0 (mask) degenerate (constant): {[hex(w) for w in s0]}"
+        assert len(set(s0)) > 1, f"SHARE0 (mask) degenerate (constant): s0_sha={word_digest(s0)}"
         self.logger.info(
             "CHK-F PASS: mask non-degeneracy, shares non-trivial/distinct, neither==key, "
             "share0^share1==K"

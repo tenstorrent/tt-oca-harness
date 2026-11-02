@@ -110,3 +110,12 @@ reseed = 3
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_fifo_model_rand_test"
+module = "smc_mailbox_fifo_model_rand_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

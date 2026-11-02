@@ -32,6 +32,12 @@ of them except index 7, which BL0 addresses by literal index:
 |None
 |SMC debug text channel.
 
+|3
+|Park request
+|None
+|Written by later SEP boot stages to ask the SMC ROM to park hart 0 before
+a core reset; the SMC ROM clears it on entry.
+
 |7
 |Scratch round-trip probe
 |Writes
@@ -70,10 +76,10 @@ keep its own state here.
 |SMC memory-repair result.
 |===
 
-Scratch register 9 defines four readiness flags: SRAM initialized, manifest
-ready, status buffer ready, and SRAM protected. BL0 reads the flags relevant to
-the operation it is about to perform rather than treating the word as one
-global ready indication.
+Scratch register 9 defines five flags: SRAM initialized, manifest ready, status
+buffer ready, SRAM protected, and hart 0 parked. BL0 does not use the last; it
+reads the flags relevant to the operation it is about to perform rather than
+treating the word as one global ready indication.
 
 === Manifest handoff
 

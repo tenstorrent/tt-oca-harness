@@ -41,13 +41,16 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE = 64'h10;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR = 64'hC0002A00;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE = 64'hC;
 
-function automatic longint unsigned SMC_TOP_GPIO_INTF_BASE_ADDR(input int unsigned gpio_intf_idx);
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_BASE_ADDR = 64'hC0003000;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_SIZE = 64'h410;
+
+function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_NUM = 64'h41;
-localparam longint unsigned SMC_TOP_GPIO_INTF_SIZE = 64'hC;
-localparam longint unsigned SMC_TOP_GPIO_INTF_STRIDE = 64'h10;
-localparam longint unsigned SMC_TOP_GPIO_INTF_TOTAL_SIZE = 64'h410;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_SIZE = 64'hC;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_STRIDE = 64'h10;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_TOTAL_SIZE = 64'h410;
 
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR = 64'hC0004000;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_SIZE = 64'h5C;
@@ -124,63 +127,78 @@ localparam longint unsigned SMC_TOP_DFX_CTRL_SIZE = 64'h18;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR = 64'hC0010000;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_SIZE = 64'h4C;
 
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012000 + (smc_alias_remap_idx * 64'h20);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_SIZE = 64'h18;
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_STRIDE = 64'h20;
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE = 64'h100;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_BASE_ADDR = 64'hC0012000;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_SIZE = 64'h100;
 
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012000 + (smc_alias_remap_idx * 64'h20);
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012000 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_SIZE = 64'h18;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_SIZE = 64'h18;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_STRIDE = 64'h20;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_TOTAL_SIZE = 64'h100;
 
-function automatic longint unsigned SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(input int unsigned smc_mmode_remap_idx);
-    return 64'hC0013000 + (smc_mmode_remap_idx * 64'h8);
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012000 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_SIZE = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_STRIDE = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_TOTAL_SIZE = 64'h40;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_SIZE = 64'h18;
 
-function automatic longint unsigned SMC_TOP_SMC_MMODE_REMAP_REGION_BASE_ADDR(input int unsigned smc_mmode_remap_idx);
-    return 64'hC0013000 + (smc_mmode_remap_idx * 64'h8);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_REGION_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_REGION_SIZE = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_BASE_ADDR = 64'hC0013000;
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_SIZE = 64'h40;
 
-function automatic longint unsigned SMC_TOP_SMC_XVISOR_REMAP_BASE_ADDR(input int unsigned smc_xvisor_remap_idx);
-    return 64'hC0014000 + (smc_xvisor_remap_idx * 64'h8);
+function automatic longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'hC0013000 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_SIZE = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_STRIDE = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_TOTAL_SIZE = 64'h40;
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_SIZE = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_STRIDE = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_TOTAL_SIZE = 64'h40;
 
-function automatic longint unsigned SMC_TOP_SMC_XVISOR_REMAP_REGION_BASE_ADDR(input int unsigned smc_xvisor_remap_idx);
-    return 64'hC0014000 + (smc_xvisor_remap_idx * 64'h8);
+function automatic longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'hC0013000 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_REGION_NUM = 64'h8;
-localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_REGION_SIZE = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_SIZE = 64'h8;
 
-function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(input int unsigned smc_inbound_filter_ctrl_idx);
-    return 64'hC0015000 + (smc_inbound_filter_ctrl_idx * 64'h20);
-endfunction
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_NUM = 64'h10;
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_SIZE = 64'h18;
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_TOTAL_SIZE = 64'h200;
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_BASE_ADDR = 64'hC0014000;
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_SIZE = 64'h40;
 
-function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(input int unsigned smc_outbound_filter_ctrl_idx);
-    return 64'hC0016000 + (smc_outbound_filter_ctrl_idx * 64'h20);
+function automatic longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'hC0014000 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_NUM = 64'h10;
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_SIZE = 64'h18;
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_STRIDE = 64'h20;
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_TOTAL_SIZE = 64'h200;
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_SIZE = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_STRIDE = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_TOTAL_SIZE = 64'h40;
+
+function automatic longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'hC0014000 + (output_remap_idx * 64'h8);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_NUM = 64'h8;
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_SIZE = 64'h8;
+
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_BASE_ADDR = 64'hC0015000;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_SIZE = 64'h200;
+
+function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0015000 + (filter_ctrl_idx * 64'h20);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM = 64'h10;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE = 64'h18;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE = 64'h20;
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE = 64'h200;
+
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_BASE_ADDR = 64'hC0016000;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_SIZE = 64'h200;
+
+function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0016000 + (filter_ctrl_idx * 64'h20);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_NUM = 64'h10;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_SIZE = 64'h18;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_STRIDE = 64'h20;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_TOTAL_SIZE = 64'h200;
 
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_BASE_ADDR = 64'hC0018000;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_SIZE = 64'h1F850;
@@ -638,18 +656,18 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR = 64'hC0002A00;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR = 64'hC0002A04;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR = 64'hC0002A08;
-function automatic longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(input int unsigned gpio_intf_idx);
+function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003000 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_NUM = 64'h41;
-function automatic longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR(input int unsigned gpio_intf_idx);
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_NUM = 64'h41;
+function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003004 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h41;
-function automatic longint unsigned SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(input int unsigned gpio_intf_idx);
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_DATA_CTRL_ENABLE_NUM = 64'h41;
+function automatic longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR(input int unsigned gpio_intf_idx);
     return 64'hC0003008 + (gpio_intf_idx * 64'h10);
 endfunction
-localparam longint unsigned SMC_TOP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_ACCESS_FILTER_NUM = 64'h41;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CMD_BASE_ADDR = 64'hC0004000;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_READBACK_BASE_ADDR = 64'hC0004004;
 localparam longint unsigned SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR = 64'hC0004008;
@@ -948,50 +966,50 @@ localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_CTRL_BASE_A
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_SEP_AXI_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010038;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_CTRL_BASE_ADDR = 64'hC0010040;
 localparam longint unsigned SMC_TOP_SMC_BASE_CONFIG_HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD_BASE_ADDR = 64'hC0010048;
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012000 + (smc_alias_remap_idx * 64'h20);
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012000 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_START_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012008 + (smc_alias_remap_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_START_NUM = 64'h8;
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012008 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_END_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned smc_alias_remap_idx);
-    return 64'hC0012010 + (smc_alias_remap_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_END_NUM = 64'h8;
+function automatic longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned alias_remap_idx);
+    return 64'hC0012010 + (alias_remap_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned smc_mmode_remap_idx);
-    return 64'hC0013000 + (smc_mmode_remap_idx * 64'h8);
+localparam longint unsigned SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
+function automatic longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'hC0013000 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned smc_xvisor_remap_idx);
-    return 64'hC0014000 + (smc_xvisor_remap_idx * 64'h8);
+localparam longint unsigned SMC_TOP_SMC_MMODE_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
+function automatic longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_BASE_ADDR(input int unsigned output_remap_idx);
+    return 64'hC0014000 + (output_remap_idx * 64'h8);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
-function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned smc_inbound_filter_ctrl_idx);
-    return 64'hC0015000 + (smc_inbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_XVISOR_REMAP_WRAP_OUTPUT_REMAP_REGION_REGION_ATTRS_NUM = 64'h8;
+function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0015000 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned smc_inbound_filter_ctrl_idx);
-    return 64'hC0015008 + (smc_inbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0015008 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned smc_inbound_filter_ctrl_idx);
-    return 64'hC0015010 + (smc_inbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0015010 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned smc_outbound_filter_ctrl_idx);
-    return 64'hC0016000 + (smc_outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_INBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0016000 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned smc_outbound_filter_ctrl_idx);
-    return 64'hC0016008 + (smc_outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_FILTER_CONFIG_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0016008 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_START_ADDR_NUM = 64'h10;
-function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned smc_outbound_filter_ctrl_idx);
-    return 64'hC0016010 + (smc_outbound_filter_ctrl_idx * 64'h20);
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_START_ADDR_NUM = 64'h10;
+function automatic longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_BASE_ADDR(input int unsigned filter_ctrl_idx);
+    return 64'hC0016010 + (filter_ctrl_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_NUM = 64'h10;
+localparam longint unsigned SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_WRAP_FILTER_CTRL_END_ADDR_NUM = 64'h10;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR = 64'hC0018000;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR = 64'hC0018008;
 localparam longint unsigned SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR = 64'hC0018010;
