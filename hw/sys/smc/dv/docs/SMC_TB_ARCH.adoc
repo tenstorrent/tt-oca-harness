@@ -843,6 +843,22 @@ for the same output tap. Readback is compared against a shadow computed from
 the issued data and strobes, independently of DUT readback. No shared
 scoreboard feature is added.
 
+The `mutex_sema` predictor also accepts OKAY single-beat 32-bit reads of the
+upper MUTEX word. Such a read acquires the mutex and predicts zero across
+the complete returned 32-bit word; lower-word and SEMA reads are compared
+under their field masks.
+The model and observed stream use the same upper-read filter. Error responses,
+upper-word writes and narrow SEMA accesses are not modelled.
+
+The narrow-access side-effect scenario grades mailbox operations in the
+sequence without requiring `mailbox_fifo`. It uses the SYS_OUT responder's
+memory APIs for Zeroer payload and guard checks. Filter programming and restore
+have readbacks; responder memory accesses are not counted as SEP_IN transactions.
+The environment-owned `smc_sep_in_history` subscribes to SEP_IN `item_ap`
+and counts completed reads and writes without publishing or checking items.
+The base test passes it to scenario sequences through `plumb_scenario_seq`
+for observed transaction accounting.
+
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
 subscribes to the SEP_IN monitor stream, rebuilds a shadow of the
