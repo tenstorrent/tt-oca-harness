@@ -560,7 +560,6 @@ module efuse_interface_controller #(
   logic reg_interface_program_go;
   efuse_addr_t reg_interface_program_addr;
   logic reg_interface_program_data;
-  logic reg_interface_program_read_back_enable;
 
   // Full-width CSR address and out-of-bounds flag. The cast to efuse_addr_t
   // truncates upper bits; without this comparator the OOB check would run on
@@ -574,7 +573,6 @@ module efuse_interface_controller #(
   assign reg_interface_program_addr = efuse_addr_t'(reg_interface_program_addr_csr);
   assign reg_interface_program_addr_oob = ({16'h0, reg_interface_program_addr_csr} >= SHADOW_REG_BITS);
   assign reg_interface_program_data = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_data.value;
-  assign reg_interface_program_read_back_enable = fuse_interface_ctrl_hwif_out.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value;
 
   // CSR driven Program Request
   fuse_command_req_t  fuse_command_req_interface_ctrl_w;
@@ -603,7 +601,6 @@ module efuse_interface_controller #(
     .program_addr_i               (reg_interface_program_addr),
     .program_data_in_i            (reg_interface_program_data),
     .program_go_i                 (reg_interface_program_go),
-    .program_read_back_enable_i   (reg_interface_program_read_back_enable),
 
     .program_busy_o               (efuse_program_busy),
     .program_done_o               (efuse_program_done),

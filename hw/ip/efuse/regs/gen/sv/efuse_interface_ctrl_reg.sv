@@ -170,10 +170,6 @@ module efuse_interface_ctrl_reg (
             struct {
                 logic next;
                 logic load_next;
-            } efuse_program_read_back;
-            struct {
-                logic next;
-                logic load_next;
             } program_enable;
         } EFUSE_PROGRAM_CTRL;
         struct {
@@ -235,9 +231,6 @@ module efuse_interface_ctrl_reg (
             struct {
                 logic value;
             } efuse_program_go;
-            struct {
-                logic value;
-            } efuse_program_read_back;
             struct {
                 logic value;
             } program_enable;
@@ -422,29 +415,6 @@ module efuse_interface_ctrl_reg (
         end
     end
     assign hwif_out.EFUSE_PROGRAM_CTRL.efuse_program_go.value = field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value;
-    // Field: efuse_interface_ctrl.EFUSE_PROGRAM_CTRL.efuse_program_read_back
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.EFUSE_PROGRAM_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value & ~decoded_wr_biten[18:18]) | (decoded_wr_data[18:18] & decoded_wr_biten[18:18]);
-            load_next_c = '1;
-        end
-        field_combo.EFUSE_PROGRAM_CTRL.efuse_program_read_back.next = next_c;
-        field_combo.EFUSE_PROGRAM_CTRL.efuse_program_read_back.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value <= 1'h0;
-        end else begin
-            if(field_combo.EFUSE_PROGRAM_CTRL.efuse_program_read_back.load_next) begin
-                field_storage.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value <= field_combo.EFUSE_PROGRAM_CTRL.efuse_program_read_back.next;
-            end
-        end
-    end
-    assign hwif_out.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value = field_storage.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value;
     // Field: efuse_interface_ctrl.EFUSE_PROGRAM_CTRL.program_enable
     always_comb begin
         automatic logic [0:0] next_c;
@@ -663,7 +633,6 @@ module efuse_interface_ctrl_reg (
             readback_data_var[15:0] = field_storage.EFUSE_PROGRAM_CTRL.efuse_addr.value;
             readback_data_var[16] = field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value;
             readback_data_var[17] = field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value;
-            readback_data_var[18] = field_storage.EFUSE_PROGRAM_CTRL.efuse_program_read_back.value;
             readback_data_var[24] = hwif_in.EFUSE_PROGRAM_CTRL.program_busy.next;
             readback_data_var[25] = hwif_in.EFUSE_PROGRAM_CTRL.program_done.next;
             readback_data_var[26] = hwif_in.EFUSE_PROGRAM_CTRL.program_status.next;

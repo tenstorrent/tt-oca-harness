@@ -113,6 +113,13 @@ typedef struct packed {
 
 *Command Types*:
 
-* `FUSE_COMMAND_READ (2'b00)`: Read operation
-* `FUSE_COMMAND_PROGRAM (2'b01)`: Program operation
-* `FUSE_COMMAND_PROGRAM_READ_BACK (2'b10)`: Program with verification
+* `FUSE_COMMAND_READ (1'b0)`: Read one or more words from the bank.
+* `FUSE_COMMAND_PROGRAM (1'b1)`: Program one bit into the bank.
+
+The meaning of `status` and `data` in a program response is defined by the
+adopter's SHIM. For example, a reference SHIM that reads back after every write
+returns the verified word in `data` and sets `status` when the bit did not
+stick. A SHIM backed by a macro that does not verify internally can return
+`status = macro_done_error` and leave `data` undefined; firmware then issues a
+follow-up read through `EFUSE_READ_CTRL` before setting any read lock on the
+field.

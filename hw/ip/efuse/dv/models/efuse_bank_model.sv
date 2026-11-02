@@ -35,7 +35,7 @@ module efuse_bank_model #(
   //
   // A "failure" zeroes the write data: efuse bits are write-one-to-set, so the
   // program silently does nothing. The bank reports no error -- like real OTP,
-  // the failure is only visible via the shim's PROGRAM_READ_BACK compare.
+  // the failure is only visible via the shim's program verify step.
   //
   // Both the count and PRNG state reset to their configured values on every rst_ni.
   logic prog_fail_act;

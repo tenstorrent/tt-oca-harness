@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Program one fuse bit through the fuse-command interface with optional read-back and timeouts.
+// Program one fuse bit through the fuse-command interface with timeouts.
 //
-// program_go_i starts a program to program_addr_i with program_data_in_i;
-// program_read_back_enable_i requests post-program read-back.
+// program_go_i starts a program to program_addr_i with program_data_in_i.
 // program_addr_oob_i is computed upstream against the full-width CSR field because
 // casting to efuse_addr_t truncates upper bits.
 // A start that secure_tm_blocked_i or program_locked_i refuses completes with an error without
@@ -39,16 +38,15 @@ module efuse_program_interface #(
   input logic        program_data_in_i,  // Bit value to program; a start with zero is rejected with
                                          // an error.
   input logic        program_go_i,      // Starts a program operation when high in the idle state.
-  input logic        program_read_back_enable_i,  // Selects the program-with-read-back command,
-                                                  // which returns the programmed word.
 
   output logic        program_busy_o,   // High while a program operation waits for its response.
   output logic        program_done_o,   // Set when the last program operation completed; cleared by
                                         // the next start.
   output logic        program_error_o,  // Set when the last program operation failed: rejected,
                                         // blocked, errored by the bank, or timed out.
-  output efuse_data_t program_read_back_data_o,  // Data word returned with the last successful
-                                                 // program response.
+  output efuse_data_t program_read_back_data_o,  // Data word returned by the shim with the last
+                                                 // successful program response; meaning is
+                                                 // adopter-defined.
 
   input  logic program_addr_oob_i,      // High when the full-width CSR program address is beyond
                                         // the fuse array; a start is then rejected.
@@ -159,7 +157,7 @@ module efuse_program_interface #(
             program_busy_d = 1'b1;
             fuse_command_req_d.address = program_addr_i;
             fuse_command_req_d.program_data = program_data_in_i;
-            fuse_command_req_d.command = program_read_back_enable_i ? efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK : efuse_pkg::FUSE_COMMAND_PROGRAM;
+            fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_PROGRAM;
             fuse_command_req_d.valid = 1'b1;
             fuse_command_req_d.access_length_words = efuse_word_counter_t'(1);
 

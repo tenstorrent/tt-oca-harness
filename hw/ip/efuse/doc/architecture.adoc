@@ -89,12 +89,14 @@ support robust error handling and retry logic.
 
 The program interface FSM (efuse_program_interface.sv) enforces the
 write-once nature of OTP hardware, ensuring that programmed data cannot
-be altered once set. It supports write-and-verify procedures for
-reliability, integrating verification steps that check programmed values
-against intended data, and fully blocks any unauthorized overwrites to
-maintain data integrity.
+be altered once set. It issues a single `FUSE_COMMAND_PROGRAM` to the SHIM
+and fully blocks any unauthorized overwrites to maintain data integrity.
+Whether to verify the programmed bit is the adopter's decision: the SHIM
+implements the foundry-specific program flow, including any mandatory verify
+step, and reports the outcome in `status`. Any data returned by the SHIM in the
+program response is stored in `EFUSE_PROGRAM_INTERFACE_READ_DATA`.
 
-*Readback Capture Behavior:*
+*Read-data Capture Behavior:*
 
 When a read command completes successfully, the read interface captures data from
 the SHIM response into the read-data CSR during the ST_WAIT_RESP state. This data
@@ -186,14 +188,18 @@ the controller's generic commands into the signaling expected by a particular
 OTP macro; in this reference version the macro-side interface is APB, but a
 real integration would replace this with the foundry's native signals.
 
-The SHIM decodes three command types from the controller:
+The SHIM decodes two command types from the controller:
 
 * *Read* — fetch one or more words from the bank.
-* *Program* — burn new bits into the bank.
-* *Program/read-back* — program, then read back to verify success.
+* *Program* — burn new bits into the bank using the foundry's native program
+  sequence (including any mandatory verify step the foundry requires).
 
 It implements these with dedicated read and program FSMs that sequence the
 macro-side transactions and return a `fuse_command_resp_t` to the controller.
+The reference SHIM (`efuse_interface_shim.sv`) always reads back the programmed
+word after the write and returns it in `data`, setting `status` when the bit did
+not stick. A real integration replaces the program FSM with the foundry's own
+sequence.
 Foundry-specific timing and configuration (for example, program pulse widths)
 are exposed through the SHIM Control CSRs, accessed over the
 `fuse_bank_ctrl` AXI4-Lite interface.

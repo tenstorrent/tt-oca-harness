@@ -1617,7 +1617,9 @@ Read --> Idle : clear read_enable
 . Confirm `EFUSE_READ_CTRL.read_enable` is 0.
 . In `EFUSE_PROGRAM_CTRL`, set `program_enable`, write the target bit address
   to `efuse_addr`, and set `efuse_data` to 1; only ones can be programmed.
-  Optionally set `efuse_program_read_back` to verify the bit.
+  If the platform's macro flow does not verify the bit automatically, issue a
+  follow-up read through `EFUSE_READ_CTRL` before setting any read lock on the
+  field. Setting the read lock first blocks that read through the guard.
 . Set `efuse_program_go`.
 . Poll until `program_busy` clears and `program_done` is set.
 . Read `program_status`: 0 is success and 1 is an error. The one-bit field does

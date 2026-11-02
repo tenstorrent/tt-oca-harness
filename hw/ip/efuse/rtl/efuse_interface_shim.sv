@@ -40,8 +40,7 @@ module efuse_interface_shim #(
                                                            // init time.
 
   input  fuse_command_req_t        fuse_command_req_i,  // Filtered fuse command from the interface
-                                                        // controller: read, program, or program
-                                                        // with read-back.
+                                                        // controller: read or program.
   output fuse_command_resp_t       fuse_command_resp_o,  // Fuse command response, one valid pulse
                                                          // per word read or per program.
 
@@ -351,7 +350,7 @@ module efuse_interface_shim #(
     unique case (efuse_write_state_q)
 
       ST_WRITE_IDLE: begin
-        if (fuse_command_req_i.valid && (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM || fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK)) begin
+        if (fuse_command_req_i.valid && fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM) begin
           fuse_bank_init_cycles_count_set_en_w = 1'b0;    // Allow counter to start counting
           fuse_bank_init_cycles_count_commit_en_w = 1'b1;
           efuse_write_state_d = ST_WRITE_INIT;
@@ -396,18 +395,9 @@ module efuse_interface_shim #(
           apb_fuse_bank_req_write.psel = 1'b0;
           apb_fuse_bank_req_write.penable = 1'b0;
 
-          if (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK) begin
-            // Enable the write readback phase
-            write_readback_phase_en = 1'b1;
-            efuse_write_state_d = ST_WRITE_READ_BACK_SETUP;
-          end else begin
-            fuse_command_resp_w.data = '0;
-            fuse_command_resp_w.status = apb_fuse_bank_resp_w.pslverr;
-            fuse_command_resp_w.valid = 1'b1;
-            // Disable the write readback phase, back to write idle
-            write_readback_phase_en = 1'b0;
-            efuse_write_state_d = ST_WRITE_FINISH;
-          end
+          // Always read back to verify the programmed bit.
+          write_readback_phase_en = 1'b1;
+          efuse_write_state_d = ST_WRITE_READ_BACK_SETUP;
 
         end else begin
           apb_fuse_bank_req_write.psel = 1'b1;
@@ -418,7 +408,6 @@ module efuse_interface_shim #(
           apb_fuse_bank_req_write.pstrb = efuse_write_strob;
         end
       end
-      // Commence a read sequence to read back the written data if command is write read back
       ST_WRITE_READ_BACK_SETUP: begin
 
         // Generate bank read command
@@ -471,11 +460,8 @@ module efuse_interface_shim #(
           apb_fuse_bank_req_write_readback.pstrb = '0;
         end
       end
-      // End of write readback sequence
-
       ST_WRITE_FINISH: begin
-        // Clear the write-readback phase set by ST_WRITE_WAIT's
-        // PROGRAM_READ_BACK, so the demux routes the next program's
+        // Clear the readback phase so the demux routes the next program's
         // write request to the write path.
         write_readback_phase_en = 1'b0;
         efuse_write_state_d = ST_WRITE_IDLE;
@@ -503,44 +489,29 @@ module efuse_interface_shim #(
       efuse_model_otp_req_o = apb_fuse_bank_req_read_flopped;
       apb_fuse_bank_resp_r = efuse_model_otp_resp_i;
 
-      // Write and write readback responses are not used
       apb_fuse_bank_resp_w = EfuseApbRespDefault;
       apb_fuse_bank_resp_w_readback = EfuseApbRespDefault;
 
-    end else if (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM || fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK) begin
+    end else begin  // FUSE_COMMAND_PROGRAM
       if (write_readback_phase_en_flopped) begin
-        // Route the write readback request to the fuse model
+        // Read-back phase: route the read-back request to the fuse model.
         efuse_model_otp_req_o = apb_fuse_bank_req_write_readback_flopped;
-        // Route the write readback response back to the command interface
         apb_fuse_bank_resp_w_readback = efuse_model_otp_resp_i;
-        // Write response is not used
         apb_fuse_bank_resp_w = EfuseApbRespDefault;
-
       end else begin
-        // Route the write request to the fuse model
+        // Write phase: route the write request to the fuse model.
         efuse_model_otp_req_o = apb_fuse_bank_req_write_flopped;
-        // Route the write response back to the command interface
         apb_fuse_bank_resp_w = efuse_model_otp_resp_i;
-        // Write readback response is not used
         apb_fuse_bank_resp_w_readback = EfuseApbRespDefault;
-
       end
 
-      // Read back response is not used
       apb_fuse_bank_resp_r = EfuseApbRespDefault;
-
-    end else begin
-      efuse_model_otp_req_o = EfuseApbReqDefault;
-      apb_fuse_bank_resp_r = EfuseApbRespDefault;
-      apb_fuse_bank_resp_w = EfuseApbRespDefault;
-      apb_fuse_bank_resp_w_readback = EfuseApbRespDefault;
     end
   end
 
-  // Multiplex the command responses back to the command interface
-  assign fuse_command_resp_o = (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_READ)  ? fuse_command_resp_r :
-                                 (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM || fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_PROGRAM_READ_BACK) ? fuse_command_resp_w :
-                                 FuseCommandRespDefault;
+  // Multiplex the command responses back to the command interface.
+  assign fuse_command_resp_o = (fuse_command_req_i.command == efuse_pkg::FUSE_COMMAND_READ) ?
+                                 fuse_command_resp_r : fuse_command_resp_w;
 
 
   // Calculate APB address for bank, must convert from bit to byte address

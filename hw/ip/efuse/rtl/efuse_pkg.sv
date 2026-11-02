@@ -187,10 +187,9 @@ NumEndPointsReg
   // Fuse Command Parameters  //
   //////////////////////////////
 
-  typedef enum logic [1:0] {
-    FUSE_COMMAND_READ = 2'b00,
-    FUSE_COMMAND_PROGRAM = 2'b01,
-    FUSE_COMMAND_PROGRAM_READ_BACK = 2'b10
+  typedef enum logic {
+    FUSE_COMMAND_READ    = 1'b0,
+    FUSE_COMMAND_PROGRAM = 1'b1
   } fuse_command_e;
 
   typedef struct packed {
