@@ -20,6 +20,7 @@ from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
+    _REPO,
     AVS_CG_EN,
     CLOCK_GATE_CONTROL,
     I3C_CG_EN,
@@ -28,9 +29,11 @@ from .smc_addr_map import (
     UART_CG_EN,
     ZEROER_CTRL_DEST_ADDR,
     ZEROER_CTRL_STATUS,
+    _field_mask,
     generated_decoded_extent,
     generated_past_extent_resp,
     generated_window,
+    reg_reset_word,
     smc_addr,
     smc_indexed_addr,
 )
@@ -199,14 +202,20 @@ _GATE_BITS = (
 )
 # smc_cla.adoc: dst_sink gap 0x44-0xFF4, funnel gap 0x100C-0x1FF4, dst gap 0x31A4-0x3FF4.
 CLA_GAP_OFFSETS = (0x0800, 0x1800, 0x3800)
-CLA_TRDSTRAMIMPL_OFF = 0x4
-CLA_TRDSTRAMIMPL_RESET = 0x0100_3901
+_DFD_GEN_C = _REPO / "hw" / "ip" / "dfd" / "regs" / "gen" / "c"
+CLA_TRDSTRAMIMPL_OFF = _field_mask(
+    _DFD_GEN_C / "smc_cla_addr.h", "SMC_CLA_DST_SINK_TRDSTRAMIMPL_BASE_ADDR"
+)
+CLA_TRDSTRAMIMPL_RESET = reg_reset_word(_DFD_GEN_C / "smc_cla.h", "DFD_DST_SINK", "TRDSTRAMIMPL")
 DMA_PAST_OFF = 0x3_8180
-DMA_CTRL0_OFF = 0x3_8000
+DMA_CTRL0_OFF = generated_window("dma_ctrl")[0]
 ZEROER_PAST_OFF = 0x3_8280
 ZEROER_DEST_ADDR_OFF = 0x3_8200
 ZEROER_CTRL_STATUS_OFF = 0x3_8210
-ZEROER_STATUS_BIT = 32
+ZEROER_STATUS_BIT = _field_mask(
+    _REPO / "hw" / "ip" / "zeroer" / "regs" / "gen" / "c" / "zeroer_ctrl.h",
+    "ZEROER_CTRL__CTRL_STATUS__STATUS_bp",
+)
 # Wrapper 0: UART window offsets, then (log-engine bank offset, wrapper offset).
 UART_PROBE_OFFSETS = (0x1C0, 0x3F0)
 UART_SCR_OFF = 0x11C
@@ -217,7 +226,7 @@ LOG_WRITE_ADDR_VALUE = 0x1357_9BDF
 EFUSE_CTRL_PAST_OFF = 0x8800
 EFUSE_CTRL_STATUS_OFF = 0x8000
 EFUSE_SHADOW_PAST_OFF = 0x7800
-EFUSE_SHADOW_FIRST_OFF = 0x7000
+EFUSE_SHADOW_FIRST_OFF = generated_window("smc_efuse_map")[0]
 # I3C window offset and the unimplemented offset inside it.
 I3C_WINDOW_OFF = 0x3_A000
 I3C_HOLE_OFF = 0x3F0
@@ -225,7 +234,7 @@ TELEMETRY_HOLE_OFF = 0x9040
 TELEMETRY_PAST_OFF = 0x9800
 TELEMETRY_CTRL_OFF = 0x9000
 AVS_PAST_OFF = 0x4800
-AVS_FIRST_OFF = 0x4000
+AVS_FIRST_OFF = generated_window("smc_avsbus_controller")[0]
 EXTERNAL_UNCLAIMED_OFF = 0x40_6000
 EXTERNAL_PAST_OFF = 0x40_6548
 # Probes whose documented answer is an error, or one of a pair that includes DECERR.

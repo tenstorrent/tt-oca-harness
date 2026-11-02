@@ -77,11 +77,13 @@ from ocah_axi_vip import AxiTimingProfile
 
 from .smc_addr_map import GPIO_INTF_NUM, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_log_engine_utils import DLL_OFFSET, LCR_DLAB, uart_base, uart_reg
+from .smc_log_engine_utils import DLL_OFFSET, DLM_OFFSET, LCR_DLAB, uart_base, uart_reg
 from .smc_mailbox_data_error_test_seq import CLOCK_GATE_CONTROL, MAILBOX_CG_EN
 from .smc_rdl_regmap import RdlReg, rdl_contract, rdl_register
 
 RESP_OKAY = 0
+# The divisor-latch window places DLL and DLM back to back, one register apart.
+DLL_WIDTH = DLM_OFFSET - DLL_OFFSET
 
 # Each group wait is bounded below the driver's own 50 us per-access bound, so
 # an expiry reports the outstanding count before the driver raises.
@@ -312,6 +314,10 @@ def _deposit(k: int, mask: int) -> int:
     return out
 
 
+def _lcr_width(wrap: int) -> int:
+    return rdl_contract(f"smc_uart_wrap/uart_log_engine_wrap[{wrap}]/uart/LCR").width_bytes
+
+
 def _indexed(sym: str, path: str, idx: int) -> RdlReg:
     """Instance ``idx`` of ``path`` (a ``{}`` marks the index), held to both maps."""
     reg = rdl_contract(path.format(idx))
@@ -458,7 +464,7 @@ def build_instances() -> tuple[Inst, ...]:
                 f"uart_16550_dl[{w}]",
                 "uart_16550_dl",
                 uart_base(w) + DLL_OFFSET,
-                4,
+                DLL_WIDTH,
                 False,
                 dlab_wrap=w,
             )
@@ -511,7 +517,7 @@ def build_instances() -> tuple[Inst, ...]:
             "straps",
             "straps",
             smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_STRAPS_STRAPS_LO_BASE_ADDR"),
-            4,
+            rdl_register("smc_external/mandatory/straps/STRAPS_LO").width_bytes,
             False,
         )
     )
@@ -1209,10 +1215,12 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         saved_lcr = None
         if x.dlab_wrap is not None:
             lcr = uart_reg(x.dlab_wrap, "LCR")
-            item = self._rd(x, "lcr_saved", addr=lcr, width=4)
+            item = self._rd(x, "lcr_saved", addr=lcr, width=_lcr_width(x.dlab_wrap))
             await self._run(f"{x.name}_lcr_saved", [item])
             saved_lcr = item.rdata
-            await self._write(x, "lcr_dlab", saved_lcr | LCR_DLAB, addr=lcr, width=4)
+            await self._write(
+                x, "lcr_dlab", saved_lcr | LCR_DLAB, addr=lcr, width=_lcr_width(x.dlab_wrap)
+            )
         values = None
 
         cocotb.log.info("STEP S1: %s reference read of 0x%x", x.name, x.addr)
@@ -1264,8 +1272,9 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
 
         if saved_lcr is not None:
             lcr = uart_reg(x.dlab_wrap, "LCR")
-            await self._write(x, "lcr_restore", saved_lcr, addr=lcr, width=4)
-            got = await self._read(x, "lcr_restore_rb", addr=lcr, width=4, expected=saved_lcr)
+            width = _lcr_width(x.dlab_wrap)
+            await self._write(x, "lcr_restore", saved_lcr, addr=lcr, width=width)
+            got = await self._read(x, "lcr_restore_rb", addr=lcr, width=width, expected=saved_lcr)
             assert got == saved_lcr, f"{x.name}: LCR restore read 0x{got:x}, saved 0x{saved_lcr:x}"
         return times
 
@@ -1289,7 +1298,13 @@ class smc_cpuif_handshake_instances_test_seq(SmcCsrSeq):
         mon_task = cocotb.start_soon(self.mon.run())
         try:
             # The mailbox apertures answer only with their clock enabled.
-            cg = Inst("clock_gate_control", "smc_base_config", CLOCK_GATE_CONTROL, 8, False)
+            cg = Inst(
+                "clock_gate_control",
+                "smc_base_config",
+                CLOCK_GATE_CONTROL,
+                rdl_register("smc_base_config/CLOCK_GATE_CONTROL").width_bytes,
+                False,
+            )
             saved_cg = await self._read(cg, "saved")
             await self._write(cg, "mailbox_on", saved_cg | MAILBOX_CG_EN)
             await self._read(cg, "mailbox_on_rb", expected=saved_cg | MAILBOX_CG_EN)

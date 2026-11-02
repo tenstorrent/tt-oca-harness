@@ -27,6 +27,7 @@ from .smc_i2c_field_masks import (
     I2C_ACQ_SIGNAL_NONE,
     I2C_ACQ_SIGNAL_START,
     I2C_ACQ_SIGNAL_STOP,
+    I2C_ACQDATA_ABYTE,
     I2C_ACQDATA_SIGNAL,
     I2C_ACQDATA_SIGNAL_BP,
     I2C_CONTROLLER_EVENTS_NACK,
@@ -64,6 +65,8 @@ from .smc_i2c_target_smbus_test_seq import (
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 INTR_ACQ_STRETCH = _i2c_u32("I2C__INTR_STATE__ACQ_STRETCH_bm")
 INTR_CONTROLLER_HALT = _i2c_u32("I2C__INTR_STATE__CONTROLLER_HALT_bm")
+NEXT_DATA_BM = _i2c_u32("I2C__ACQ_FIFO_NEXT_DATA__DATA_bm")
+NACK_COUNT_BM = _i2c_u32("I2C__TARGET_NACK_COUNT__TARGET_NACK_COUNT_bm")
 EV_NACK = I2C_CONTROLLER_EVENTS_NACK
 
 INSTANCES = (0, 1, 2)
@@ -81,7 +84,6 @@ RANGE_NS = (1, 64, 0x1FF)
 NBYTES_MAX = 0x1FF
 #: Format FIFO level the S5 feeder tops up to.
 FMT_FILL = 32
-_ABYTE_BM = 0xFF
 
 HOLD_POLLS = 2000
 HOLD_STEP = 4
@@ -256,7 +258,9 @@ class smc_i2c1_target_ack_ctrl_test_seq(SmcCsrSeq):
         level = (fifo & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP
         for _ in range(level):
             word = await self.csr_read(f"{label}_ACQDATA", _reg("ACQDATA", idx))
-            into.append(((word & I2C_ACQDATA_SIGNAL) >> I2C_ACQDATA_SIGNAL_BP, word & _ABYTE_BM))
+            into.append(
+                ((word & I2C_ACQDATA_SIGNAL) >> I2C_ACQDATA_SIGNAL_BP, word & I2C_ACQDATA_ABYTE)
+            )
         return level
 
     async def _sample_hold(self, name: str, tgt: int) -> tuple[int, int, bool]:
@@ -391,7 +395,7 @@ class smc_i2c1_target_ack_ctrl_test_seq(SmcCsrSeq):
         assert intr & INTR_ACQ_STRETCH, (
             f"{label}: INTR_STATE.ACQ_STRETCH=0 at the second hold (0x{intr:08x})"
         )
-        assert nxt & _ABYTE_BM == NBYTES_PAYLOAD[3], (
+        assert nxt & NEXT_DATA_BM == NBYTES_PAYLOAD[3], (
             f"{label}: ACQ_FIFO_NEXT_DATA=0x{nxt:08x} at the second hold, expected "
             f"0x{NBYTES_PAYLOAD[3]:02x}"
         )
@@ -399,7 +403,7 @@ class smc_i2c1_target_ack_ctrl_test_seq(SmcCsrSeq):
             f"target I2C{tgt} (controller I2C{ctl}): first hold at acked={hold_counts[0]}, "
             f"{acked2} bytes ACKed after NBYTES=3 (wire {self._frame()}), second hold "
             f"STATUS=0x{status:08x} ACK_CTRL_STRETCH=1 ACQFULL=0 INTR_STATE=0x{intr:08x} "
-            f"ACQ_STRETCH=1 ACQ_FIFO_NEXT_DATA=0x{nxt & _ABYTE_BM:02x}"
+            f"ACQ_STRETCH=1 ACQ_FIFO_NEXT_DATA=0x{nxt & NEXT_DATA_BM:02x}"
         )
         if last:
             self._chk("CHK-I2C1-ACKCTRL-NBYTES3", "; ".join(self.nbytes3_rows))
@@ -456,7 +460,7 @@ class smc_i2c1_target_ack_ctrl_test_seq(SmcCsrSeq):
         )
         self.reload_rows.append(
             f"target I2C{tgt}: each reload released the hold and the pending byte was ACKed "
-            f"(third hold pending 0x{nxt3 & _ABYTE_BM:02x}); wire {frame}; ACQ "
+            f"(third hold pending 0x{nxt3 & NEXT_DATA_BM:02x}); wire {frame}; ACQ "
             f"{[(s, hex(b)) for s, b in acq]}"
         )
         if last:
@@ -617,12 +621,13 @@ class smc_i2c1_target_ack_ctrl_test_seq(SmcCsrSeq):
         nack1 = await self.csr_read(f"{label}_NACK_COUNT1", _reg("TARGET_NACK_COUNT", tgt))
         nack2 = await self.csr_read(f"{label}_NACK_COUNT2", _reg("TARGET_NACK_COUNT", tgt))
         assert acq[-1][0] == I2C_ACQ_SIGNAL_ERROR, f"{label}: ACQ stream {acq} lacks a final 0x6"
-        assert (nack1 & 0xFF, nack2 & 0xFF) == (1, 0), (
-            f"{label}: TARGET_NACK_COUNT read {nack1 & 0xFF} then {nack2 & 0xFF}, expected 1 then 0"
+        assert (nack1 & NACK_COUNT_BM, nack2 & NACK_COUNT_BM) == (1, 0), (
+            f"{label}: TARGET_NACK_COUNT read {nack1 & NACK_COUNT_BM} then "
+            f"{nack2 & NACK_COUNT_BM}, expected 1 then 0"
         )
         self.nack_rows.append(
             f"target I2C{tgt} (controller I2C{ctl}): NACK written at the hold with "
-            f"ACQ_FIFO_NEXT_DATA=0x{nxt & _ABYTE_BM:02x}; wire {frame} (0x{NACK_PAYLOAD[0]:02x} "
+            f"ACQ_FIFO_NEXT_DATA=0x{nxt & NEXT_DATA_BM:02x}; wire {frame} (0x{NACK_PAYLOAD[0]:02x} "
             f"NACKed); CONTROLLER_EVENTS=0x{events[0]:08x} CONTROLLER_HALT=1 (INTR_STATE="
             f"0x{intr:08x}); after CTRL=0, STOP and the written 0x1: CONTROLLER_EVENTS="
             f"0x{ev_after:08x} (INTR_STATE=0x{intr_after:08x}); no SIGNAL=0x0 entry carries "
@@ -630,7 +635,7 @@ class smc_i2c1_target_ack_ctrl_test_seq(SmcCsrSeq):
         )
         self.record_rows.append(
             f"target I2C{tgt}: ACQ {[(s, hex(b)) for s, b in acq]} ends SIGNAL=0x6; "
-            f"TARGET_NACK_COUNT {nack1 & 0xFF} then {nack2 & 0xFF}"
+            f"TARGET_NACK_COUNT {nack1 & NACK_COUNT_BM} then {nack2 & NACK_COUNT_BM}"
         )
         if last:
             self._chk("CHK-I2C1-ACKCTRL-SW-NACK", "; ".join(self.nack_rows))

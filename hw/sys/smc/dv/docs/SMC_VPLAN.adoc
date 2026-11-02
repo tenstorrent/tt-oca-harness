@@ -1815,7 +1815,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`smc_fw_i2c_fifo_full_test` |3 |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores until full, with the depth measured (no specification states it), RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
 |`smc_fw_uart_log_engine_single_entry_test` |2 |Log-engine golden path: one 16-byte SRAM entry fetched and written to UART0, returned through MCR.LOOP and read back from RBR in order; LOG_CTRL[0] hwclr; INTR_STATUS 0.
 |`smc_fw_uart_log_engine_boundary_backpressure_test` |3 |Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
-|`smc_fw_uart_log_engine_disable_during_xfer_test` |3 |CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
+|`smc_fw_uart_log_engine_disable_during_xfer_test` |3 |CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on a second abort landed a short spin after the trigger; replica 1 runs an entry.
 |`smc_fw_uart_log_engine_fetch_err_test` |3 |A log-engine fetch from an unmapped address latches INTR_STATUS.LOG_FETCH_ERR: INTR_TEST self-test, INTR_ENABLE gating, LOG_FETCH_ERR as an event (with the engine stopped a W1C holds) and a good fetch then running from a cleared status, sustained DECERR with LOG_CTRL not hwclr, WRITE_ERR staying clear, and the fault on replica 1.
 |`smc_fw_narrow_store_lane_test` |3 |CPU word stores into one half of a 64-bit register word, which put the word on the other half's byte lanes with their strobes clear, leave the other half's fields unchanged.
 |`smc_avsbus_clock_divider_test` |2 |A written AVSBus clock divider setting must reach the clock the block drives.
@@ -24908,7 +24908,9 @@ draws nothing from the seed.
 * `Trdstramactive` taken from 1 to 0 with `Trdstramenable` held at 1, with a captured trace still in the window.
 * `Trdstramrplow` read before and after each empty-buffer `Trdstramdata` read.
 * The CLA debug-bus mux in toggle mode (`CDbgMuxSelLo` `Dbmmode` 3, `Dbmid` 0), uncompressed (`Trdstformat` 0), traced into a window spanning the whole 16 KiB of the eight trace RAMs until the `Trdstramwplow` samples show the write pointer past the midpoint and wrapped back, in a bounded poll; the trace is then stopped with the DST enable cleared.
-* All eight 2 KiB segments of that window read out through `Trdstramdata`, 512 reads each from the segment start, with `Trdstramrplow` sampled after each of the first 16 reads and after the last; the number of data-returning reads and the bits the words carry are logged.
+* All eight 2 KiB segments of that window read out through `Trdstramdata`, 512 reads each from the
+  segment start, with `Trdstramrplow` sampled after each of the first 16 reads and after the last;
+  the number of pointer-advancing reads and the bits the words carry are logged.
 * `Trdstramrplow` placed on `Trdstramlimitlow` and one data read taking it back to `Trdstramstartlow`.
 
 *Test Procedure*:
@@ -24927,7 +24929,7 @@ Drive `smc_dfd_trace_sink_readout_test_seq`. Each checker below is a named compa
 |`CHK-DST-SINK-DEACTIVATE` |`Trdstramactive` went from 1 to 0 with the enable held and the change read back; a sink already inactive beforehand fails it
 |`CHK-DST-TOGGLE-EMPTY-RP` |On each of the 7 empty-buffer positions the `Trdstramrplow` reads before and after the `Trdstramdata` read, and the data read, each complete with a resolvable value; the pointer pair and the data word are logged beside the documented unchanged pointer, which the bench does not follow (observation only); a missing response, an X value or a timeout fails it
 |`CHK-DST-TOGGLE-FILL` |`CDbgMuxSelLo` reads back `Dbmmode` 3 and `Dbmid` 0 and `Trdstformat` reads back 0, and within the poll bound the `Trdstramwplow` samples show the write pointer at or beyond the 16 KiB window's midpoint 0x2000 and, at a later sample, below the highest position seen; every sample's pointer and wrap flag are logged, the flag never required since it stays set once an earlier leg has set it. A readback other than written, a pointer that never reaches the midpoint or never wraps back, or the poll bound running out fails it
-|`CHK-DST-TOGGLE-RP-ADVANCE` |In every segment each `Trdstramrplow` sample equals the segment start plus one word per data-returning read, wrapping from the limit to the start, the pointer does not move again once a read has left it in place, and the first read returns a word; any other pointer value, or a segment returning no word, fails it
+|`CHK-DST-TOGGLE-RP-ADVANCE` |In every segment each `Trdstramrplow` sample equals the segment start plus one word per read that advances the pointer, wrapping from the limit to the start, the pointer does not move again once a read has left it in place, and the first read advances it; any other pointer value, or a pointer left at the segment start, fails it. A pointer advance does not show that the read returned trace data, since the pointer also advances on reads of an empty buffer (SF-041); `CHK-DST-TOGGLE-PAYLOAD` carries the data claim
 |`CHK-DST-TOGGLE-PAYLOAD` |Every segment returns more than one distinct 32-bit word, and `CDbgMuxSelLo` still reads `Dbmmode` 3, `Dbmid` 0 after the read-out; the bits seen at 1 and at 0 per segment are logged. A segment of one constant word or a changed mux readback fails it
 |`CHK-DST-TOGGLE-RP-WRAP` |After the data read with the read pointer on `Trdstramlimitlow`, `Trdstramrplow` reads `Trdstramstartlow` (0); any other value fails it
 |`CHK-TIMEOUT-PATHS` |The two bounded waits, the first fill in action sweeps and the toggle fill in write-pointer polls, log their bound and last state; an expiry fails the test
@@ -29225,9 +29227,9 @@ handshake).
   (`hw/ip/efuse/doc/architecture.adoc`, shadow access without waiting for `fuse_sense_done`); its
   response and data are logged without a compare (SF-030).
 * Before the cold reset and again after sense done, R reads its non-zero word of the loaded
-  `+smc_efuse_hex` image, OKAY after sense done: the shadow registers are populated from the bank
-  at each boot (`architecture.adoc`, Shadow Register Subsystem), and a shadow left at its reset
-  value cannot match a non-zero image word.
+  `+smc_efuse_hex` image, OKAY after sense done. This shows R holds the bank word after the reboot;
+  it does not show the cold reset cleared R, since no read between the reset and sense done returns
+  data (the read during sense is logged, SF-030).
 
 *Test Procedure*:
 
@@ -39608,7 +39610,9 @@ draws nothing from the seed.
 * UART1-3 FCR.XMIT_FIFO_RESET discards the queued characters (at most the first leaves the line) and leaves the received byte in place.
 * UART1-3 THR writes past the FIFO depth inside one frame and an RBR read with the RX FIFO empty: LSR.DR stays 0; the bus responses, IIR, LSR, the combined interrupt line and the characters the peer receives are logged against SF-018.
 * The combined interrupt line `tb_uart_irq_combined` is logged at each error, OUT2, ITR and FIFO-access observation and never compared (SF-001).
-* UART1-3 MCR.OUT2 does not gate the interrupt: with ITR.TTBEI forcing, IIR reads 0xC2 after each OUT2 write.
+* UART1-3 MCR.OUT2 leaves the interrupt identification unchanged: with ITR.TTBEI forcing, IIR reads
+  0xC2 after each OUT2 write. Whether OUT2 gates `irq_o` (`architecture.adoc`) is not compared; the
+  combined line is logged (SF-001).
 * Not covered: the MCR DTR / OUT1 / OUT2 pad levels (SF-042). `smc_peripherals` leaves `uart_dtr_no`, `uart_out1_no` and `uart_out2_no` unconnected and the bench has no probe for them; MCR=0x0D / 0x00 is written as stimulus only.
 
 *Test Procedure*:
@@ -40744,8 +40748,9 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
   maximum pad level on every `clk_smc_i` rise are measured, not compared; the document does not
   state the pad behaviour with `UART_EN` clear.
 * Pad-12 `DATA_CTRL` with `interface_enable` 1, `enable_rx_tx` 1 and `core2pad` 1 then 0: the
-  fields read back the written values (compared, `gpio_intf.rdl`); the pad level after each write
-  is measured, not compared, for the same reason.
+  fields read back the written values (compared, `gpio_intf.rdl`); the pad level equals core2pad
+  after each write and after its read-back, within 64 clk_smc_i cycles (compared, gpio_intf.rdl
+  DATA_CTRL.interface_enable).
 * `UART_EN` set again: the same `THR` write produces exactly one frame decoded as 0xA5, the
   positive control that the stimulus and the pad decoder still work after the clear leg.
 
@@ -40767,9 +40772,9 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
   3-frame-time window; stamp S3, print `CHK-UART-PADMUX-OFF-TX-SHIFTED` after its compare and the
   measured `CHK-UART-PADMUX-OFF-PAD-MEASURED`.
 . With `UART_EN` still 0 write pad-12 `DATA_CTRL` with `interface_enable`, `enable_rx_tx` 1 and
-  `core2pad` 1, sample the pad after the write and after the read-back, repeat with `core2pad` 0,
-  then write the saved `DATA_CTRL` back and read it; stamp S4 and print
-  `CHK-UART-PADMUX-GPIO-LEVEL-MEASURED`.
+  `core2pad` 1, require the pad to equal `core2pad` within 64 `clk_smc_i` cycles after the write and
+  again after the read-back, repeat with `core2pad` 0, then write the saved `DATA_CTRL` back and
+  read it; stamp S4 and print `CHK-UART-PADMUX-GPIO-LEVEL-MEASURED`.
 . Write `UART_EN` 1 and read it back; write `THR` 0xA5; capture the frame, poll `LSR` to idle and
   wait one frame time; require one frame decoded as 0xA5; stamp S5 and print
   `CHK-UART-PADMUX-FRAME-RECOVER`.
@@ -40790,8 +40795,9 @@ cleared and set, and the UART transmits with `UART_EN` clear while the pad is on
 |`CHK-UART-PADMUX-OFF-PAD-MEASURED` |Measured, not compared: frames decoded, their bytes and the
   minimum and maximum pad-12 level over the 3-frame-time window; an X/Z sample or no sample fails
 |`CHK-UART-PADMUX-GPIO-LEVEL-MEASURED` |Pad-12 `DATA_CTRL` `interface_enable`, `enable_rx_tx` and
-  `core2pad` read back the written values (compared) and the saved value after the restore; the
-  pad level after each write is measured, not compared, and an X/Z sample fails
+  `core2pad` read back the written values (compared) and the saved value after the restore; the pad
+  level equals `core2pad` within 64 `clk_smc_i` cycles after each write and after its read-back
+  (compared, `gpio_intf.rdl` `DATA_CTRL.interface_enable`), and an X/Z sample fails
 |`CHK-UART-PADMUX-FRAME-RECOVER` |With `UART_EN` read back 1 again the same `THR` write yields
   exactly one frame decoded as 0xA5 within 5000 us
 |`CHK-NONVAC` |Steps S1 to S6 ran in order with strictly increasing simulation-time stamps and the
@@ -41562,7 +41568,7 @@ draws nothing from the seed.
 |===
 |Checker |Description
 |`CHK-FW-I2C-SANITY-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
-|`CHK-FW-I2C-WIRE-TRAFFIC` |Emitted once per floor, twice here: at least one acknowledged write frame to 0x10 carrying at least 3 data bytes (the write with STOP), and at least one frame to 0x55 whose address byte no target acknowledged (the halt provocation). Decoded passively from the pads, not reported by the firmware
+|`CHK-FW-I2C-WIRE-TRAFFIC` |Emitted once per floor, twice here: at least one acknowledged write frame to 0x10 carrying at least 3 data bytes and closed by a STOP (the write with STOP), and at least one frame to 0x55 whose address byte no target acknowledged (the halt provocation). Decoded passively from the pads, not reported by the firmware
 |===
 
 *Pass Criteria*: the boot token and both wire floors hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
@@ -41765,7 +41771,7 @@ draws nothing from the seed.
 [arabic]
 . Build `i2c_tx_stretch_timeout_recovery` through `[c_build.default]`, stage `i2c_tx_stretch_timeout_recovery.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, and arm the wire monitor.
 . Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
-. Grade the decoded frames: at least one acknowledged read frame to 0x10 (the stretched read) and at least one acknowledged write frame to 0x10 carrying at least 16 data bytes (the recovery write).
+. Grade the decoded frames: at least one acknowledged read frame to 0x10 closed by a STOP (the stretched read) and at least one acknowledged write frame to 0x10 carrying at least 16 data bytes (the recovery write).
 
 *Checkers*:
 
@@ -41773,7 +41779,7 @@ draws nothing from the seed.
 |===
 |Checker |Description
 |`CHK-FW-I2C-TX-STRETCH-TIMEOUT-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
-|`CHK-FW-I2C-WIRE-TRAFFIC` |Emitted once per floor, twice here: at least one acknowledged read frame to 0x10, and at least one acknowledged write frame to 0x10 carrying at least 16 data bytes. Both transfers crossed the pads, so the recovery followed a real stretched read
+|`CHK-FW-I2C-WIRE-TRAFFIC` |Emitted once per floor, twice here: at least one acknowledged read frame to 0x10 closed by a STOP, and at least one acknowledged write frame to 0x10 carrying at least 16 data bytes. Both transfers crossed the pads, so the recovery followed a real stretched read
 |===
 
 *Pass Criteria*: the boot token and both wire floors hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
@@ -41916,7 +41922,17 @@ draws nothing from the seed.
 *Test Coverage*:
 
 * Scenarios A, B, D and E on wrap 0: A, an 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request into a 64-byte slot written against `uart_tx_ready` low -- the transmitter reports ready only while its TX FIFO holds no data, so each byte the engine fetches waits for the serialiser -- its 64 bytes read back in order from RBR while the transfer runs and no 65th byte accepted; D, a 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to one 8-byte beat. A, D and E read back exactly the requested or clamped byte count from RBR and require no extra byte. Those compares are the firmware's. `INTR_STATUS.LOG_WRITE_ERR` is not a claim of this image: the log-write master targets the wrapper's own UART block, which answers every write OKAY.
-* What the bench observes on its own: `tb_uart0_log_write_stalled`, published by `tb_top` as a fetched byte waiting at the wrap-0 log engine's read-data FIFO while its UART transmit-ready input is low, is sampled on every `clk_smc_i` edge while the image runs and must be 1 on at least one cycle and not on all of them: the engine's write FSM was held off with a byte waiting. The transmit-ready input alone is not the observable, because it is also low on cycles where the engine has nothing to write. The count covers the whole image; A, D and E queue eight to twenty-four bytes and can stall the same way, so the count is evidence that the log-write FSM honours `uart_tx_ready`, and B's 64-byte transfer is the scenario whose bytes the firmware compares under it. After the PASS word the SPM source holds E's 0xE0..0xEF in its first 16 bytes and B's 0x50..0x7F behind them -- B was the only scenario to write past byte 16 -- and the engine reads back programmed as E left it, with CTRL.EN and MCR.LOOP cleared by the cleanup.
+* What the bench observes on its own: `tb_uart0_log_write_stalled`, published by `tb_top` as a
+  fetched byte waiting at the wrap-0 log engine's read-data FIFO while its UART transmit-ready input
+  is low, is sampled on every `clk_smc_i` edge while the image runs and must be 1 on at least one
+  cycle and not on all of them: the engine's write FSM was held off with a byte waiting. The
+  transmit-ready input alone is not the observable, because it is also low on cycles where the
+  engine has nothing to write. The count covers the whole image; A, D and E queue eight to
+  twenty-four bytes and can stall the same way, so the count is evidence that backpressure occurred
+  while the engine held fetched data, and B's 64-byte transfer is the scenario whose bytes the
+  firmware compares under it. After the PASS word the SPM source holds E's 0xE0..0xEF in its first
+  16 bytes and B's 0x50..0x7F behind them -- B was the only scenario to write past byte 16 -- and
+  the engine reads back programmed as E left it, with CTRL.EN and MCR.LOOP cleared by the cleanup.
 
 *Test Procedure*:
 
@@ -41934,7 +41950,11 @@ draws nothing from the seed.
 |`CHK-FW-LOG-ENGINE-BOUNDARY-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
 |`CHK-FW-LOG-ENGINE-CSR-STATE` |Wrap 0 reads back as scenario E left it: REGION_SIZE 0xF0 at SPM + 0x40000, WRITE_ADDR = UART0 offset 0 (THR/RBR), CTRL.EN and UART0 MCR.LOOP cleared
 |`CHK-FW-LOG-ENGINE-SPM-PATTERN` |Bytes 0..15 of the source read 0xE0..0xEF and bytes 16..63 read 0x50..0x7F over SEP_IN AXI
-|`CHK-FW-LOG-ENGINE-TX-BACKPRESSURE` |`tb_uart0_log_write_stalled` sampled 1 on at least one and not every `clk_smc_i` cycle while the image ran: a fetched byte waited at the engine's read-data FIFO while the UART reported not ready, so the log-write FSM honours `uart_tx_ready`; the firmware's own compare of B's 64 looped-back bytes is what shows the writes held off during the longest transfer were not dropped
+|`CHK-FW-LOG-ENGINE-TX-BACKPRESSURE` |`tb_uart0_log_write_stalled` sampled 1 on at least one and not
+every `clk_smc_i` cycle while the image ran: a fetched byte waited at the engine's read-data FIFO
+while the UART reported not ready, so backpressure occurred during the transfer; the firmware's own
+compare of B's 64 looped-back bytes is what shows the writes held off during the longest transfer
+were not dropped
 |===
 
 *Pass Criteria*: all four checkers hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
@@ -41966,11 +41986,21 @@ the RISC-V toolchain of the `c_compile` stage); `run_modes` `smoke`; `timeout_se
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
 
-*Objective*: CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
+*Objective*: CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes
+  than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its
+  bytes; four entries triggered together all hwclr; the same halt measurement on a second abort
+  landed a short spin after the trigger; replica 1 runs an entry.
 
 *Test Coverage*:
 
-* On wrap 0 with UART0 in MCR.LOOP: a 32-byte entry (as deep as the UART TX FIFO, so the writer is still moving bytes) triggered and CTRL.EN cleared one register access later, the loopback drained as bytes land and required to return at least one and fewer than 32 bytes, all from the slot and none once the UART is idle, with INTR_STATUS required to stay 0 while both error interrupts are enabled; a re-enable and a 16-byte re-trigger that must deliver exactly 16 bytes; four entries fired at once and all four LOG_CTRL words waited to hwclr; another 32-byte transfer aborted from the WAIT state with the same halt measurement and recovery; and a 16-byte entry on replica 1 (wrap 1). Every count, completion and status check is the firmware's.
+* On wrap 0 with UART0 in MCR.LOOP: a 32-byte entry (as deep as the UART TX FIFO, so the writer is
+  still moving bytes) triggered and CTRL.EN cleared one register access later, the loopback drained
+  as bytes land and required to return at least one and fewer than 32 bytes, all from the slot and
+  none once the UART is idle, with INTR_STATUS required to stay 0 while both error interrupts are
+  enabled; a re-enable and a 16-byte re-trigger that must deliver exactly 16 bytes; four entries
+  fired at once and all four LOG_CTRL words waited to hwclr; another 32-byte transfer aborted a
+  short spin after its trigger, with the same halt measurement and recovery; and a 16-byte entry on
+  replica 1 (wrap 1). Every count, completion and status check is the firmware's.
 * What the bench observes on its own: the 256-byte SPM source holds the multi-entry fill 0xC0 + (i & 0x3F) that the later scenarios reuse, and both engines read back programmed at that buffer with CTRL.EN and MCR.LOOP cleared on both wraps by the cleanup.
 
 *Test Procedure*:
@@ -41994,7 +42024,7 @@ draws nothing from the seed.
 *Pass Criteria*: all three checkers hold, the CSR compare on both wraps. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
 
 *Scope limit*: Every count, completion and status check of the halt, re-trigger, multi-entry,
-abort-from-WAIT and replica-1 scenarios is the firmware's; the bench claims only the final CSR
+second-abort and replica-1 scenarios is the firmware's; the bench claims only the final CSR
 state of both wraps and the SPM source.
 
 '''''
@@ -42531,7 +42561,7 @@ Drive `smc_gpio_intf_data_ctrl_write_sweep_test_seq`. Each checker below is a na
 |Checker |Description
 |`CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP` |All 65 DATA_CTRL instances read their RDL reset, carried `lsio_select` alone and then every other software-writable field with each `interrupt_type` value, matched the predicted word including `lsio_enable` and `pad2core` after every write, and returned to that reset; the scoreboard booked an exact compare for every predicted readback
 |`CHK-GPIO-INTF-IRQ-TYPE-SWEEP` |On each of the 65 instances the interrupt bit of that instance alone followed the pad both ways as active-high and as active-low level, pulsed once on the rising edge and once on the falling edge, stayed clear with `interrupt_enable` clear while the active-low level was active, and rose when the next write set `interrupt_enable`
-|`CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` |On each of the 65 instances under register control `DATA_CTRL.pad2core` read the bench-driven pad level both ways, `pad2core_en_o` carried the receiver enable, `core2pad_o` carried the `core2pad` field and `core2pad_en_o` stayed 0
+|`CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` |On each of the 65 instances under register control `DATA_CTRL.pad2core` read the bench-driven pad level both ways, `pad2core_en_o` carried the receiver enable, `core2pad_o` carried the `core2pad` field at 0 and at 1 and `core2pad_en_o` stayed 0
 |===
 
 *Pass Criteria*: `CHK-GPIO-INTF-DATA-CTRL-WRITE-SWEEP`, `CHK-GPIO-INTF-IRQ-TYPE-SWEEP`, `CHK-GPIO-INTF-PAD-RECEIVER-SWEEP` hold after their compares and every sequence assert holds.
@@ -45631,7 +45661,12 @@ draws nothing from the seed.
 |`CHK-TELEMETRY-POP-EMPTY` |A pop on an empty buffer left it empty and not full, and the next message read back its own probe ID
 |`CHK-TELEMETRY-THRESHOLD-INTR` |`INTR_STATUS.BUFFER_THRESHOLD` was set exactly while more messages than the threshold were buffered, filling and draining
 |`CHK-TELEMETRY-BUFFER-OVERFLOW` |`BUFFER_FULL` set and stayed set through two more messages, and the drain returned exactly the depth's worth of messages as an in-order run of the IDs sent
-|`CHK-TELEMETRY-MISSING-LAST` |`MISSING_LAST` set on the first packet past the maximum a message can have, not before, and cleared on a written one
+|`CHK-TELEMETRY-MISSING-LAST` |`MISSING_LAST` sets at a measured packet count N (2..16) sent without
+the last-packet flag and stays clear on the N−1 before it; N is measured, not compared with a
+documented capacity; a written one clears it. `CHK-TELEMETRY-FULL-MESSAGE` cross-checks N with an
+N-packet flagged message. No `telemetry_receiver` document states the packet capacity:
+`architecture.adoc` derives it from `MAX_NUM_COUNTERS_PER_MESSAGE` and `interface.adoc` gives that
+parameter's default of 4, but neither gives a packet count
 |`CHK-TELEMETRY-FULL-MESSAGE` |A message of the maximum size with its last packet flagged reached the buffer without `MISSING_LAST`
 |`CHK-TELEMETRY-PARTIAL-FLUSH` |A message one beat short completed nothing and raised nothing, and after a flush with a beat presented the next message read back intact
 |`CHK-TELEM12-FULL` |On receivers 1 and 2, eight messages gave `STATUS` = 0x10 with the first probe ID visible, not before the eighth, and the first pop after the overflow gave `STATUS` = 0x00
@@ -45811,7 +45846,13 @@ draws nothing from the seed.
 ** `TARGET_FIFO_STATUS.ACQLVL` must show exactly two entries.
 * A read cannot unblock this state. The target holds a read until the acquisition FIFO is empty, and the acquisition FIFO cannot empty into a full transmit FIFO. Software breaks the tie by reading `ACQDATA`, which must return the waiting byte as a data entry. The STOP entry must then leave on its own.
 * A read of the whole transmit FIFO must return the bytes loaded through `TXDATA`, in order, followed by the first written byte looped back. It must leave the acquisition FIFO empty.
-* I2C1 as a target at 0x26 with `ACQ_START_STOP_EN`: with `LLPBK=1` every SDA level sampled at the SCL high of each written data bit of 0x5A, 0xC3 must equal the driven bit; the acknowledge bits and acquisition entries are logged, not compared (SF-013). With `LLPBK=0` the acquisition FIFO must hold START with 0x26 << 1, 0x5A, 0xC3 and STOP.
+* I2C1 as a target at 0x26 with `ACQ_START_STOP_EN`: with `LLPBK=1` every SDA level sampled at the
+  SCL high of each written data bit of 0x5A, 0xC3 must equal the driven bit, and a two-byte read of 0x26 that follows, with the transmit FIFO empty
+  before the write, must return 0x5A, 0xC3; the DUT's own SDA pull-down on the written bits, the
+  acknowledge bits and the acquisition entries are logged, not compared: whether `LLPBK` drives
+  the received data back onto SDA during the write is a question for the I2C owner (the RDL says
+  the target "sends all received SDA data back out"). With `LLPBK=0` the DUT pulls SDA low on no
+  written data bit and the acquisition FIFO must hold START with 0x26 << 1, 0x5A, 0xC3 and STOP.
 * I2C1 with `OVRD.TXOVRDEN=1` and each (`SCLVAL`, `SDAVAL`) pair: the pads must read the values (0 low, 1 released) and `VAL` bit 0 and bit 16 must equal the pads, also while the bench pulls each line low with both released. After `TXOVRDEN=0` an ordinary write of 0x20, 0x5C must land with `HOSTIDLE=1`. The full `VAL` is logged (SF-014).
 * A `READB` of 256 bytes with no `RDATA` pops must set `STATUS.RXFULL`; the bytes popped until `RXEMPTY=1` must be one in-order run of consecutive EEPROM bytes, and a written 0x8 must clear `RX_OVERFLOW`. Whether `RX_OVERFLOW` set, the level at full and the bytes retained are logged (SF-004). `FIFO_CTRL.RXRST` after a four-byte refill must leave `RXEMPTY=1` and `RXLVL=0`.
 * A clean write must leave `SCL_INTERFERENCE` clear; SCL pulled low for 100 ns inside the controller-driven high of the address acknowledge pulse must set it, and a written 0x20 must clear it.
@@ -45838,8 +45879,11 @@ draws nothing from the seed.
 |Checker |Description
 |`CHK-I2C-TGT-LOOPBACK-BLOCKED` |With one free transmit entry, the second written byte and its STOP waited in the acquisition FIFO, `ACQDATA` returned the byte as data, and the STOP then left
 |`CHK-I2C-TGT-LOOPBACK-ECHO` |The read returned the `TXDATA` bytes in order and then the first written byte, and left the acquisition FIFO empty
-|`CHK-I2C1-LLPBK-ECHO` |With I2C1 `LLPBK=1` each sampled SDA data bit equals the bit the bench drove, 16 of 16; the acquisition entries are logged (SF-013)
-|`CHK-I2C1-LLPBK-OFF` |With `LLPBK=0` the acquisition FIFO holds START/0x26 << 1, 0x5A, 0xC3, STOP (`SIGNAL` 0x1, 0x0, 0x0, 0x2)
+|`CHK-I2C1-LLPBK-ECHO` |With I2C1 `LLPBK=1` each sampled SDA data bit equals the bit the bench drove, 16 of 16, and a
+two-byte read that follows the write into an empty transmit FIFO returns 0x5A, 0xC3; the DUT SDA
+pull-down on the written bits, the acknowledge bits and the acquisition entries are logged; whether
+`LLPBK` drives the received data back onto SDA during the write is a question for the I2C owner
+|`CHK-I2C1-LLPBK-OFF` |With `LLPBK=0` the acquisition FIFO holds START/0x26 << 1, 0x5A, 0xC3, STOP (`SIGNAL` 0x1, 0x0, 0x0, 0x2) and the DUT SDA pull-down is 0 on all 16 data bits
 |`CHK-I2C1-OVRD-PADS` |For each (`SCLVAL`, `SDAVAL`) the pads read exactly those values; after `TXOVRDEN=0` the EEPROM receives 0x20, 0x5C and `STATUS.HOSTIDLE=1`
 |`CHK-I2C1-OVRD-VAL` |`VAL` bit 0 (`SCL_RX`) and bit 16 (`SDA_RX`) equal the pads for every override and each bench-driven low; the full `VAL` is logged (SF-014)
 |`CHK-I2C1-RX-OVERFLOW` |A 256-byte read without pops sets `RXFULL`, the popped bytes are one in-order run of consecutive EEPROM bytes ending with `RXEMPTY=1`, and a written 0x8 leaves `RX_OVERFLOW=0`; `RX_OVERFLOW`, the level at full and the retained bytes are logged (SF-004)
