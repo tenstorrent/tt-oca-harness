@@ -152,7 +152,7 @@ reaches its wait before the interrupt fires.
 |CHK-WDT-REBARK
 |Re-enabling fires a second bark — the mechanism is re-armable, not one-shot.
 |CHK-BITE
-|The bite reset request reaches the real output pin.
+|The bite reset request reaches the real output pin, after the second bark: `wdt_timer_rst_req_o` reads 0 at the CPU release (`CTRL-BITE-ARM`), and the first clock it reads 1 comes after `CHK-WDT-REBARK PASS`. A pin that never rises, or rises before the second bark, fails. Evidence: `CHK-BITE PASS: release_level=0 first_high_clk=<c> rebark_clk=<c> bound=<n>`.
 |CHK-SWRST-DEFAULT
 |The software reset register holds its specified default of `0x7E`: the firmware logs the value it reads first, and the testbench compares it with the RDL reset of `SW_RESET_N` (`hw/sys/sep/regs/sep.rdl`). Evidence: `CHK-SWRST-DEFAULT PASS: read=0x0000007e expected=0x0000007e (RDL reset)`.
 |CHK-SWRST-WIRE

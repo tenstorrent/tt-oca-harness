@@ -207,19 +207,22 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         self.ras_chk = RasChkLines(self.logger, self.random_seed())
         self.ras_lines: dict[str, BitMark] = {}
         self.ras_writes: list[tuple[str, BitMark]] = []
+        self.bite_req: BitMark | None = None
         follow = None
 
         async def _bite_idle() -> None:
             nonlocal follow
             assert self.rd_known(cocotb.top.wdt_timer_rst_req_o) == 0, (
-                "CHK-BITE FAIL: wdt_timer_rst_req_o asserted before firmware "
+                "CTRL-BITE-ARM FAIL: wdt_timer_rst_req_o asserted before firmware "
                 "enabled the WDT, so a later 1 cannot be attributed to BITE"
             )
+            self.logger.info("CTRL-BITE-ARM PASS: wdt_timer_rst_req_o=0 at CPU release")
             # The CPU is released; the tap records every LSU access of the firmware.
             lsu_tap.start()
             self.ras.start()
             self.ras_rel = self.ras.mark()
             follow = cocotb.start_soon(self._ras_follow(lsu_tap))
+            cocotb.start_soon(self._bite_req_watch())
 
         await self.boot_firmware(
             self.sb,
@@ -311,22 +314,20 @@ class sep_reset_wdt_sanity_test(sep_base_test):
         # Now observe the BITE: the still-enabled WDT reaches BITE_THOLD
         # and asserts the real wdt_timer_rst_req_o output.
         dut = cocotb.top
-        bite_seen = self.rd_known(dut.wdt_timer_rst_req_o) == 1
         for _ in range(_BITE_POLL_CYCLES):
-            if bite_seen:
+            if self.bite_req is not None:
                 break
             await RisingEdge(dut.clk_i)
-            if self.rd_known(dut.wdt_timer_rst_req_o):
-                bite_seen = True
-                break
-        assert bite_seen, (
-            "CHK-BITE: wdt_timer_rst_req_o never asserted after re-bark "
-            "(BITE reset request not observed)"
+        req = self.bite_req
+        rebark = self.ras_lines.get(_WDT_REBARK_LINE)
+        line = (
+            f"release_level=0 first_high_clk={req.clk if req else 'none'} "
+            f"rebark_clk={rebark.clk if rebark else 'none'} bound={_BITE_POLL_CYCLES}"
         )
-        self.logger.info(
-            "CHK-BITE PASS: wdt_timer_rst_req_o asserted -> WDT BITE reset request observed"
-        )
-        await self._grade_bite(self.ras.mark())
+        if req is None or rebark is None or req.clk <= rebark.clk:
+            raise AssertionError(f"CHK-BITE FAIL: {line} expected first_high_clk > rebark_clk")
+        self.logger.info("CHK-BITE PASS: %s", line)
+        await self._grade_bite(req)
         follow.cancel()
         await RisingEdge(dut.clk_i)
         close_graded_window(self.logger)
@@ -506,6 +507,13 @@ class sep_reset_wdt_sanity_test(sep_base_test):
             intr_state_write_clk=w2.clk if w2 is not None else "none",
             falls_after_rise=self._span(fld, "fall", r2[0], self.ras.clk)[:4] if r2 else "none",
         )
+
+    async def _bite_req_watch(self) -> None:
+        """Mark the first clock ``wdt_timer_rst_req_o`` reads 1 after the CPU release."""
+        dut = cocotb.top
+        while not self.rd_known(dut.wdt_timer_rst_req_o):
+            await RisingEdge(dut.clk_i)
+        self.bite_req = self.ras.mark()
 
     async def _grade_bite(self, req: BitMark) -> None:
         """CHK-RAS-WDT_BITE-*: idle window, rise near the bite request, hold."""
