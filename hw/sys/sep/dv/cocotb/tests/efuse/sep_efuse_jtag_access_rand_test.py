@@ -18,7 +18,7 @@ shadow word at the frontdoor and requires the code of the drawn state. JTAG and
 frontdoor accesses never overlap, except one frontdoor read and one JTAG read of the
 shadow word of p, started on the same clock after every other graded access and
 before the deny-write controls, while no shadow write of the leaf has landed.
-CHK-JTAG-CONCURRENT grades the JTAG response not OKAY and the frontdoor read data
+CHK-JTAG-CONCURRENT grades the JTAG response SLVERR or DECERR and the frontdoor read data
 equal to the staged word, and logs the frontdoor response code;
 ``CTRL-JTAG-CONCURRENT-OVERLAP`` requires both AR handshakes before either read
 completes; ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data, the clock each read
@@ -34,7 +34,7 @@ Mechanism and Token Submission):
                     is reached; in RMA_SIP a token word read returns the word last
                     written; a match read of a channel with a go returns the SHA-256
                     golden of its last go (Match 0x15, Mismatch 0x2a). A shadow word or
-                    interface-control access answers a response that is not OKAY and
+                    interface-control access answers SLVERR or DECERR and
                     the target reads the same at the frontdoor before and after; the
                     bit p reads 0 at the direct read at the end. PROD and RMA_SIP
                     grade the same way. No program command reaches
@@ -52,7 +52,7 @@ Mechanism and Token Submission):
                     probe), a JTAG write of ``TOKEN_T1`` into the SIP array and a go
                     give the SIP match 0x15 at a frontdoor read.
   CHK-JTAG-CONCURRENT  the concurrent pair, after every other graded access and before
-                    the deny-write controls: JTAG response not OKAY, frontdoor data
+                    the deny-write controls: JTAG response SLVERR or DECERR, frontdoor data
                     equal to the staged word.
   OBS-JTAG-ALLOW-RESP  the response code of each token-block access: no TT text states
                     the response of an access JTAG may make.
@@ -68,7 +68,8 @@ whose go is on the chiplet channel runs it too: the 0x15 of CHK-JTAG-TOKEN alway
 follows a known 0x2a on the SIP channel.
 
 A match read of a channel with no go since power-on logs ``OBS-JTAG-MATCH-NOGO``.
-The response code of a denied access and the data of a denied read are not graded.
+Which of the two error codes a denied access answers, and the data of a denied read,
+are not graded.
 """
 
 from __future__ import annotations
@@ -109,6 +110,7 @@ from env.sep_efuse_plan import (
 )
 from env.sep_efuse_test_lib import SenseClock, SepEfuseFd, bit, direct_word, hook_fail
 from env.sep_fcov_gate import close_graded_window, open_graded_window
+from ocah_axi_vip import RESP_DECERR, RESP_SLVERR
 from sep_base_test import sep_base_test
 from sep_reg_meta import EFUSE_INTERFACE_CTRL, SEP_LIFECYCLE_CTRL, register_fields
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -119,6 +121,8 @@ FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 DBG_MASK = DBG1_MASK | DBG2_MASK
 M32 = 0xFFFF_FFFF
 OKAY = 0
+# otp_fuse_controller.adoc states an error response for a denied access, not which one.
+ERROR_RESP = (RESP_SLVERR, RESP_DECERR)
 READ_ADDR_ERROR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_read_addr_error"
 )
@@ -219,7 +223,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         after = await self.fd.rd(addr)
         unchanged = before & mask == after & mask
         self._jtag_line(
-            unchanged and resp != OKAY,
+            unchanged and resp in ERROR_RESP,
             acc,
             "deny",
             resp,
@@ -353,13 +357,18 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         cannot be undone. The status clear goes first, then ``EFUSE_READ_CTRL`` (its RW
         fields read back the written ``read_enable`` and ``efuse_addr`` after a write of 0
         and then of the pattern; it is then written 0), so a lock bit that a shadow
-        control sets cannot refuse their reads.
+        control sets cannot refuse their reads. The ``LOCKS`` and ``LOCKS_SPARE`` controls
+        run after the other shadow controls, so a lock bit they set cannot refuse the
+        frontdoor read or write of a field whose control comes later.
         """
         await self._status_clear_control(w)
         seen: set[tuple[int, int]] = set()
         accs = [a for a in self.p.leg["denied"] if a["op"] == "wr"]
         rd_ctl = [a for a in accs if a.get("reg") == "EFUSE_READ_CTRL"]
-        shadow = [a for a in accs if a["cls"] == "shadow"]
+        shadow = sorted(
+            (a for a in accs if a["cls"] == "shadow"),
+            key=lambda a: a["field"] in ("LOCKS", "LOCKS_SPARE"),
+        )
         for acc in rd_ctl + shadow:
             key = (acc["addr"], acc["data"])
             if key in seen:
@@ -395,7 +404,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
     async def _concurrent_read(self, word: int, ignore_mask: int) -> None:
         """A frontdoor read and a JTAG read of one shadow word, started on the same clock.
 
-        CHK-JTAG-CONCURRENT: the JTAG read answers a response that is not OKAY
+        CHK-JTAG-CONCURRENT: the JTAG read answers SLVERR or DECERR
         (``otp_fuse_controller.adoc``, Shadow Register and JTAG Access Control), and the
         frontdoor read returns the staged word, outside ``ignore_mask`` (the bit c when
         it shares the word). The frontdoor response code is logged in the same line. ``OBS-EF-ARB-CONCURRENT`` logs the JTAG data,
@@ -465,7 +474,7 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         keep = ~ignore_mask & M32
         self.chk.ok(
             "JTAG-CONCURRENT",
-            jtag_resp != OKAY and fd_rdata & keep == staged & keep,
+            jtag_resp in ERROR_RESP and fd_rdata & keep == staged & keep,
             state=self.state,
             word=word,
             jtag_resp=jtag_resp,
