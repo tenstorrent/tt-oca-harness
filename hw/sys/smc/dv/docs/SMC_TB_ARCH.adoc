@@ -263,6 +263,7 @@ takes over (see <<sv-uvm-realization>>).
 |DTP CSR |Idle `smc_wrapper` boundary; resp tied off; no TB terminator
 |GPIO |DV-only `tb_gpio_ext_drive_en/value`
 |Mailbox |DV-only `tb_sep_mailbox_interrupts` + `tb_mailbox_irq_any`
+|eFuse |DV-only `tb_sep_security_disable` on `sep_security_disable_i` of the primary DUT (`+smc_sep_security_disable`, default 0); `tb_efuse_bank_stall_en/rd/wr` force the bank-model stall counts
 |Sideband |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug`
 |Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i` into the `pll_wrap`
 oscillators (`+pll_osc_bench`), plus power-good and `rst_cold_ni`; under SV-UVM the model
