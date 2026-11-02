@@ -90,7 +90,9 @@ Checkers:
                    every total reads 0 at the start (CTRL-HT-TOP-ZERO); the same
                    windows trip the APT and Markov low side of the same tester
                    (CHK-HT-TOP-ZERO); the ones leg of the same shard makes
-                   APT_HI_TOTAL_FAILS non-zero (CHK-HT-TOP-ONE).
+                   APT_HI_TOTAL_FAILS non-zero (CHK-HT-TOP-ONE); the Markov high
+                   limit trial (shard 2) sets bit 4 in all 12 generators
+                   (CHK-HT-LIMIT tester=mkv_hi).
   CHK-HT-TOP-ONE   constant ones, compressor in use, whitening off,
                    APT_PROPORTION_LO = 0: HEALTH_TEST_STATUS bit 3 (the 32-bit
                    tester, high side only) and a non-zero APT_HI_TOTAL_FAILS (any
