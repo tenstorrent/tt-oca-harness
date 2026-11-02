@@ -58,7 +58,7 @@ at the end of the graded body:
          fill_stall 1.
   SHAPE  1 on every clock from that rise to the first clock with
          ``pool_edn_ack_o`` 1 after the EDN re-enable.
-  CLEAR  0 at most 20000 clocks after that acknowledge.
+  CLEAR  0 at most STALL_RAS_CLEAR_LAG (2) clocks after that acknowledge.
 The field before the first fill (OBS-RAS-ENTROPY_FILL_STALL-BRINGUP), the rise
 delay and the fall delay (OBS-RAS-ENTROPY_FILL_STALL-DELAY) are logged only.
 
@@ -117,7 +117,7 @@ STALL_POLL_STEP = 64
 # the wait in a few polls. A pool that does not fill fails CHK-POOL-FILL at this
 # ceiling, well inside the testlist timeout.
 FILL_POLL_CAP = 4096
-# The CHK-STALL-CLEAR bound, in clocks, also bounds the RAS field fall.
+# The CHK-STALL-CLEAR bound, in clocks; also the wait limit for the RAS field fall.
 STALL_CLEAR_CAP = 20000
 # DV-owned allowance, in clocks, from the acknowledge to the RAS field fall: the field
 # holds "until the next acknowledge" (port_table.adoc:130, delegating to the sep_pkg
