@@ -28,7 +28,7 @@ addrmap chip_config {
         field {
             sw = r;
             hw = w;
-            desc = "Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)";
+            desc = "Chip ID, a constant fixed when the SMC is integrated, not read from fuses (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet). The register has no storage: a read returns that constant, and the reset value is the default constant.";
         } chip_id [31:0] = 0x0;
     };
 
@@ -36,7 +36,7 @@ addrmap chip_config {
         field {
             sw = r;
             hw = w;
-            desc = "Lifecycle state value from SEP. Default to invalid state";
+            desc = "Lifecycle state from SEP, differentially encoded: {~raw[3:0], raw[3:0]}. The register has no storage: each read returns the value SEP drives at that moment, neither latched nor decoded. The reset value 0x0F is the INVALID encoding 4'b1111, the fail-safe state, and is what SEP itself drives until fuse sensing completes. An SMU built without SEP drives 0xF0 (TEST_DEV).";
         } lc_state[7:0] = 0x0f;
     };
 

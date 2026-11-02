@@ -38,6 +38,7 @@ package smc_env_pkg;
   `include "smc_fabric_reg_ref_model.svh"
   `include "smc_mailbox_fifo_ref_model.svh"
   `include "smc_scoreboard.svh"
+  `include "smc_sep_in_history.svh"
   `include "smc_env.svh"
 
 endpackage : smc_env_pkg
