@@ -1691,6 +1691,20 @@ module smc_uvm_top
                                 u_dut.u_smc.cpu_axi_mmio_port_req.b_ready,
                                 u_dut.u_smc.cpu_axi_mmio_port_resp.w_ready,
                                 u_dut.u_smc.cpu_axi_mmio_port_resp.aw_ready};
+    // The cluster side of the two CPU isolation blocks, same bit order: the
+    // L2 frontend isolate's master port and the MMIO isolate's slave port.
+    assign tb_cpu_l2_iso_valid =
+        {u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_resp.r_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.ar_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_resp.b_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.w_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.l2_frontend_axi_isolated_req.aw_valid};
+    assign tb_cpu_mmio_cpu_valid =
+        {u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_resp.r_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.ar_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_resp.b_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.w_valid,
+         u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.mmio_axi_cpu_req.aw_valid};
 
     // Hierarchical CPU debug (pre-isolate-clamp PC + boundary isolate).
     assign tb_cpu_wb_pc0 =

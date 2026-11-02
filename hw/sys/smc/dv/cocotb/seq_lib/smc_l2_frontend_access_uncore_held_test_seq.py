@@ -141,43 +141,15 @@ PLANNED = {
 C_CELLS = tuple(f"C_{p}_WRITE_B" for p in PORTS) + tuple(f"C_{p}_READBACK" for p in PORTS)
 
 
-# Cluster-side struct ports of the two isolation blocks. The nets are packed structs, so
-# each VALID is located by its bit position in the AXI_TYPEDEF_ALL layout; the handle
-# width is checked against that layout before any sample is taken.
-_CPU = ("u_dut", "u_smc", "u_smc_cpu_wrapper", "u_smc_cpu")
-L2_ISO = (*_CPU, "u_l2_frontend_axi_isolate")
-MMIO_ISO = (*_CPU, "u_mmio_axi_isolate")
-NETS = {
-    "l2_req": ((*L2_ISO, "mst_req_o"), (*_CPU, "l2_frontend_axi_isolated_req")),
-    "l2_resp": ((*L2_ISO, "mst_resp_i"), (*_CPU, "l2_frontend_axi_isolated_resp")),
-    "mmio_req": ((*MMIO_ISO, "slv_req_i"), (*_CPU, "mmio_axi_cpu_req")),
-    "mmio_resp": ((*MMIO_ISO, "slv_resp_o"), (*_CPU, "mmio_axi_cpu_resp")),
+# Cluster side of the two isolation blocks: tb_top taps, each bit order [4:0] =
+# {r, ar, b, w, aw}, the L2 frontend isolate's master port and the MMIO isolate's slave port.
+TAPS = {
+    "l2_req": "tb_cpu_l2_iso_valid",
+    "l2_resp": "tb_cpu_l2_iso_valid",
+    "mmio_req": "tb_cpu_mmio_cpu_valid",
+    "mmio_resp": "tb_cpu_mmio_cpu_valid",
 }
-L2_ID_W, L2_ADDR_W = 8, 32
-MMIO_ID_W, MMIO_ADDR_W = 3, 56
-USER_W, DATA_W = 12, 64
-
-
-def _req_layout(id_w: int, addr_w: int) -> tuple[int, dict[str, int]]:
-    ar = id_w + addr_w + 8 + 3 + 2 + 1 + 4 + 3 + 4 + 4 + USER_W
-    aw = ar + 6
-    w = DATA_W + DATA_W // 8 + 1 + USER_W
-    pos = {"ar_valid": 1, "w_valid": 2 + ar + 1, "aw_valid": 2 + ar + 2 + w}
-    return 2 + ar + 2 + w + 1 + aw, pos
-
-
-def _resp_layout(id_w: int) -> tuple[int, dict[str, int]]:
-    r = id_w + DATA_W + 2 + 1 + USER_W
-    b = id_w + 2 + USER_W
-    return r + 1 + b + 1 + 3, {"r_valid": r, "b_valid": r + 1 + b}
-
-
-LAYOUT = {
-    "l2_req": _req_layout(L2_ID_W, L2_ADDR_W),
-    "l2_resp": _resp_layout(L2_ID_W),
-    "mmio_req": _req_layout(MMIO_ID_W, MMIO_ADDR_W),
-    "mmio_resp": _resp_layout(MMIO_ID_W),
-}
+TAP_BIT = {"r_valid": 4, "ar_valid": 3, "b_valid": 2, "w_valid": 1, "aw_valid": 0}
 CLUSTER_DRIVEN = (
     ("mmio_req", "aw_valid"),
     ("mmio_req", "w_valid"),
@@ -211,13 +183,6 @@ def _rname(code: int | None) -> str:
 
 def _hx(value: int | None) -> str:
     return "X" if value is None else f"0x{value:016x}"
-
-
-def _resolve(path: tuple[str, ...]):
-    handle = cocotb.top
-    for name in path:
-        handle = getattr(handle, name)
-    return handle
 
 
 @dataclass
@@ -373,20 +338,7 @@ class ClusterValidSampler:
     def __init__(self, dut) -> None:
         self.dut = dut
         self.stop = False
-        self.handles = {}
-        self.paths = {}
-        for key, candidates in NETS.items():
-            for path in candidates:
-                try:
-                    handle = _resolve(path)
-                except AttributeError:
-                    continue
-                self.handles[key] = handle
-                self.paths[key] = ".".join(path)
-                break
-        self.layout_ok = False
-        self.layout_note = ""
-        self.fields: dict[tuple[str, str], object] = {}
+        self.handles = {key: getattr(dut, name) for key, name in TAPS.items()}
         self.armed = False
         self.edges = 0
         self.hold_edges: list[int] = []
@@ -398,35 +350,8 @@ class ClusterValidSampler:
         self.isolate_xz = 0
         self.running_seen: dict[str, int] = {"l2_req.ar_valid": 0, "l2_resp.r_valid": 0}
 
-    def check_layout(self) -> bool:
-        problems = []
-        for key, (width, _pos) in LAYOUT.items():
-            handle = self.handles.get(key)
-            if handle is None:
-                problems.append(f"{key}: no handle at {['.'.join(p) for p in NETS[key]]}")
-                continue
-            try:
-                got = len(handle)
-            except TypeError:
-                got = None
-            if got is None or got != width:
-                try:
-                    for field in LAYOUT[key][1]:
-                        self.fields[(key, field)] = getattr(handle, field)
-                except AttributeError:
-                    problems.append(f"{key}: width {got}, layout {width}, no member handles")
-        self.layout_ok = not problems
-        mode = "member handles" if self.fields else "widths match the packed layout"
-        self.layout_note = "; ".join(problems) if problems else mode
-        return self.layout_ok
-
     def _bit(self, key: str, field: str) -> str:
-        member = self.fields.get((key, field))
-        if member is not None:
-            return str(member.value).lower()
-        width, pos = LAYOUT[key]
-        text = str(self.handles[key].value)
-        return text[width - 1 - pos[field]].lower()
+        return str(self.handles[key].value)[4 - TAP_BIT[field]].lower()
 
     async def run(self) -> None:
         clk = self.dut.clk_smc_i
@@ -437,8 +362,6 @@ class ClusterValidSampler:
             if self.stop:
                 break
             await ReadOnly()
-            if not self.layout_ok:
-                continue
             for name in self.running_seen:
                 key, field = name.split(".")
                 if self._bit(key, field) == "1":
@@ -567,7 +490,6 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         return True
 
     def _vip(self, port: str):
-
         axi = getattr(self.env, AGENT[port]).driver.axi
         assert axi is not None, f"{port}: the AXI VIP is not attached after bring-up"
         return axi
@@ -911,14 +833,6 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.sampler = SmcPortHandshakeSampler(dut)
         cocotb.start_soon(self.sampler.run())
         self.valids = ClusterValidSampler(dut)
-        layout = self.valids.check_layout()
-        cocotb.log.info(
-            "INFO-VALID-NETS: %s; %s",
-            ", ".join(f"{k}={v}" for k, v in self.valids.paths.items()),
-            self.valids.layout_note,
-        )
-        if not layout:
-            self.findings["VALIDS"].append(f"cluster-side nets unusable: {self.valids.layout_note}")
         self.valids_task = cocotb.start_soon(self.valids.run())
         await self._setup("S1")
         self._mark("ADMIT", 1)

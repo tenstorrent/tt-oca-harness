@@ -24939,9 +24939,9 @@ driven through the VIP event API with a fixed data-path AXI ID per port and two 
 for the CPU-control read inside the window and the RESET_CTRL / RESET_TIMEOUT accesses; a
 passive per-port handshake sampler on `clk_smc_i` recording every AR, AW, W, R and B handshake
 (address, ID, length, response, data, last), which is the grading source; a passive per-edge
-sampler of the cluster-side struct ports of the two isolation blocks (`u_l2_frontend_axi_isolate`
-`mst_req_o` / `mst_resp_i`, `u_mmio_axi_isolate` `slv_req_i` / `slv_resp_o`), each VALID read at
-its bit position in the AXI typedef layout after the handle width is checked against that layout;
+sampler of the cluster-side VALIDs of the two isolation blocks (`u_l2_frontend_axi_isolate`
+`mst_req_o` / `mst_resp_i`, `u_mmio_axi_isolate` `slv_req_i` / `slv_resp_o`) through the tb_top
+taps `tb_cpu_l2_iso_valid` and `tb_cpu_mmio_cpu_valid`;
 `tb_cpu_reset_applied` gating the per-edge sampling; `tb_cpu_isolate_req`, `tb_cpu_drained`,
 `tb_cpu_l2_isolated`, `tb_cpu_mmio_isolated`, `tb_cpu_l2_pending_ar` / `_aw` and
 `rst_primary_smc_clk_no` printed on every classification line. Every address comes from the

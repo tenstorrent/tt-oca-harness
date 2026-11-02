@@ -450,6 +450,8 @@
 `SMC_TB_OUT(logic [4:0], tb_cpu_front_ready)
 `SMC_TB_OUT(logic [4:0], tb_cpu_mmio_valid)
 `SMC_TB_OUT(logic [4:0], tb_cpu_mmio_ready)
+`SMC_TB_OUT(logic [4:0], tb_cpu_l2_iso_valid)
+`SMC_TB_OUT(logic [4:0], tb_cpu_mmio_cpu_valid)
 
 // Output-fabric observability (U6-2). SLVERR on this boundary comes from
 // the SYS_OUT slave agent's fault programming, not a DUT Force / starve knob.
