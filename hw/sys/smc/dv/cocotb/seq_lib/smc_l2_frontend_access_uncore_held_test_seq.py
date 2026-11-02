@@ -9,11 +9,16 @@ rules transcribed in the ocah_axi_sva header (a master in reset drives VALID low
 With RESET_TIMEOUT at its reset value (drain mode, timer disabled) and no L2-frontend
 traffic outstanding, a SEP_IN RESET_CTRL write clears uncore_reset_n and reset_applied has
 to set. While it is set, scratchpad and boot-ROM requests presented on the three ports get
-no response for a counted window and complete after the release; CPU_CTRL stays reachable
-because the CPU-control block sits in front of the isolation block. The cluster-driven
-VALIDs at the cluster side of the two isolation blocks are sampled on every clk_smc_i edge
-of the hold. Every request is graded from a passive per-port handshake sampler; the values
-the specification leaves open (SF-016, SF-017, SF-018, SF-019, SF-026) are OBS lines.
+no response for a counted window; the blocked reads of episodes A and B complete after the
+release. Episode C presents blocked writes; on one AXI4 interface W beats follow AW order, so
+a blocked write can hold the SEP_IN RESET_CTRL write that releases the uncore. Whether that
+release completes is an observation (SF-026); when it does not, the reset agent's cold reset
+recovers the bench and the setup runs again before the fresh bursts. The VALIDs at the
+cluster side of the two isolation blocks are sampled on every clk_smc_i edge of the hold and
+recorded. Every graded request is checked from a passive per-port handshake sampler; the
+values the specification leaves open (SF-016, SF-017, SF-018, SF-019, SF-026) are OBS lines,
+each printed inside its ``CHK-OBS-*`` line where the contract names one and on its own
+``EVIDENCE:`` line, never compared.
 """
 
 from __future__ import annotations
@@ -23,7 +28,9 @@ from dataclasses import dataclass
 import cocotb
 from cocotb.triggers import ClockCycles, First, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from env.smc_reset_item import SmcResetItem, SmcResetOp
 
+from ._one_shot import _OneShot
 from .smc_addr_map import (
     LOCAL_BASE_RESET,
     SPM_MEMORY_BASE,
@@ -38,6 +45,7 @@ from .smc_output_fabric_vip_utils import (
     INBOUND0_START,
     PASS_ALL_CONFIG,
 )
+from .smc_reset_seq_base import SmcResetSeqBase
 
 OKAY, EXOKAY, SLVERR, DECERR = 0, 1, 2, 3
 _RESP = {OKAY: "OKAY", EXOKAY: "EXOKAY", SLVERR: "SLVERR", DECERR: "DECERR", None: "X"}
@@ -99,6 +107,8 @@ WINDOW_N = 2048
 CTRL_ISSUE_EDGE = 512
 CTRL_WINDOW = 1024
 RELEASE_BOUND = 400_000
+# Episode C observation waits: the release write and, if it completes, each blocked write's B.
+OBS_RELEASE_BOUND = ACCESS_BOUND
 
 FENCE = (
     "ADMIT",
@@ -109,10 +119,11 @@ FENCE = (
     "RELEASE_A",
     "EPISODE_B",
     "EPISODE_C",
-    "VALIDS",
+    "RECOVERY",
     "FRESH",
+    "VALIDS",
 )
-FENCE_STEP = dict(zip(FENCE, ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10")))
+FENCE_STEP = dict(zip(FENCE, ("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S8", "S10", "S9")))
 PLANNED = {
     "ADMIT": 1,
     "RUNNING_CTRL": 9,
@@ -122,9 +133,13 @@ PLANNED = {
     "RELEASE_A": 3,
     "EPISODE_B": 3,
     "EPISODE_C": 3,
-    "VALIDS": 1,
+    "RECOVERY": 1,
     "FRESH": 6,
+    "VALIDS": 1,
 }
+# Episode-C completion cells; each prints INFO-CELL-NOT-DRIVABLE when the release stalls.
+C_CELLS = tuple(f"C_{p}_WRITE_B" for p in PORTS) + tuple(f"C_{p}_READBACK" for p in PORTS)
+
 
 # Cluster-side struct ports of the two isolation blocks. The nets are packed structs, so
 # each VALID is located by its bit position in the AXI_TYPEDEF_ALL layout; the handle
@@ -377,6 +392,8 @@ class ClusterValidSampler:
         self.hold_edges: list[int] = []
         self.cluster_high: list[str] = []
         self.cluster_xz: list[str] = []
+        self.cluster_high_n = 0
+        self.cluster_xz_n = 0
         self.isolate_high: dict[str, list[int]] = {f"{k}.{f}": [] for k, f in ISOLATION_DRIVEN}
         self.isolate_xz = 0
         self.running_seen: dict[str, int] = {"l2_req.ar_valid": 0, "l2_resp.r_valid": 0}
@@ -415,8 +432,10 @@ class ClusterValidSampler:
         clk = self.dut.clk_smc_i
         applied = self.dut.tb_cpu_reset_applied
         hold = 0
-        while not self.stop:
+        while True:
             await RisingEdge(clk)
+            if self.stop:
+                break
             await ReadOnly()
             if not self.layout_ok:
                 continue
@@ -437,10 +456,14 @@ class ClusterValidSampler:
             now = int(get_sim_time("ps"))
             for key, field in CLUSTER_DRIVEN:
                 bit = self._bit(key, field)
-                if bit == "1" and len(self.cluster_high) < 16:
-                    self.cluster_high.append(f"{key}.{field}@{now}ps")
-                elif bit not in ("0", "1") and len(self.cluster_xz) < 16:
-                    self.cluster_xz.append(f"{key}.{field}={bit}@{now}ps")
+                if bit == "1":
+                    self.cluster_high_n += 1
+                    if len(self.cluster_high) < 16:
+                        self.cluster_high.append(f"{key}.{field}@{now}ps")
+                elif bit != "0":
+                    self.cluster_xz_n += 1
+                    if len(self.cluster_xz) < 16:
+                        self.cluster_xz.append(f"{key}.{field}={bit}@{now}ps")
             for key, field in ISOLATION_DRIVEN:
                 bit = self._bit(key, field)
                 if bit == "1":
@@ -469,21 +492,42 @@ class _Req:
     done_ps: int | None = None
 
 
-class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
+class smc_l2_frontend_access_uncore_held_test_seq(SmcResetSeqBase, SmcCsrSeq):
     """Drive the drained uncore reset, the blocked requests, the release and the fresh accesses."""
 
     def __init__(self, name: str = "smc_l2_frontend_access_uncore_held_test_seq") -> None:
         super().__init__(name)
         self.sampler: SmcPortHandshakeSampler | None = None
         self.valids: ClusterValidSampler | None = None
+        self.valids_task = None
+
         self.fence: list[tuple[str, int, int, int]] = []
         self.findings: dict[str, list[str]] = {
             k: [] for k in ("DRAIN", "BLOCK", "RECONNECT", "VALIDS", "CTRL", "OTHER")
         }
-        self.counts = {"drain": 0, "blocked": 0, "reconnect": 0, "fresh": 0, "ctrl": 0}
+        self.counts = {
+            "drain": 0,
+            "cleared": 0,
+            "blocked": 0,
+            "blocked_rd": 0,
+            "reconnect": 0,
+            "fresh": 0,
+            "ctrl": 0,
+        }
         self.waits = 0
         self.expired = 0
         self.wait_log: list[str] = []
+        self.obs_waits = 0
+        self.obs_expired = 0
+        self.obs_wait_log: list[str] = []
+        self.evidence: list[str] = []
+        self.chk_obs: dict[str, list[str]] = {
+            "CHK-OBS-ISO-RECONNECT": [],
+            "CHK-OBS-FRONTPORT-WHILE-BLOCKED": [],
+            "CHK-OBS-ISO-VALIDS-ISOLATE": [],
+            "CHK-OBS-ISO-VALIDS-CLUSTER": [],
+        }
+        self.recovery = "none"
         self.max_wait = {"access": 0, "release": 0, "poll": 0}
         self.ctrl_word: int | None = None
         self.idle_ctrl: int | None = None
@@ -494,7 +538,36 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
 
     # ------------------------------------------------------------------ helpers
 
+    async def _dispatch_reset_item(self, item: SmcResetItem) -> None:
+        await _OneShot(item, "reset_os").start(self.env.reset_agent.sequencer)
+
+    def _obs(self, text: str, chk: str | None = None) -> None:
+        """Log an OBS line now and keep it for its EVIDENCE line and its CHK-OBS line."""
+        cocotb.log.info("%s", text)
+        self.evidence.append(text)
+        if chk is not None:
+            self.chk_obs[chk].append(text)
+
+    async def _obs_wait(self, req: _Req, bound: int, what: str) -> bool:
+        """Bounded observation wait: expiry is recorded and counted apart, never a failure."""
+        self.obs_waits += 1
+        if not req.event.is_set():
+            await First(req.event.wait(), ClockCycles(cocotb.top.clk_smc_i, bound))
+        if not req.event.is_set():
+            self.obs_expired += 1
+            self.obs_wait_log.append(f"{what}: bound {bound} edges, last=expired")
+            return False
+        await ReadOnly()
+        await RisingEdge(cocotb.top.clk_smc_i)
+        req.done_ps = int(get_sim_time("ps"))
+        self.obs_wait_log.append(
+            f"{what}: bound {bound} edges, completed after "
+            f"{(req.done_ps - req.t0) // self.period_ps}"
+        )
+        return True
+
     def _vip(self, port: str):
+
         axi = getattr(self.env, AGENT[port]).driver.axi
         assert axi is not None, f"{port}: the AXI VIP is not attached after bring-up"
         return axi
@@ -716,6 +789,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
             _hx(rb),
             _hx(word),
         )
+        self.counts["drain"] += 1
         if self.valids is not None:
             self.valids.armed = True
 
@@ -737,7 +811,7 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
         word = await self._poll_applied(f"{tag}_CLEARED", 0)
         if word is None or word & TIMED_OUT:
             self.findings["DRAIN"].append(f"{tag}: RESET_TIMEOUT {_hx(word)} after the release")
-        self.counts["drain"] += 1
+        self.counts["cleared"] += 1
         if self.valids is not None:
             self.valids.armed = False
 
@@ -780,13 +854,10 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
             def edge_of(hs: list[_Hs]) -> str:
                 return "none" if not hs else str((hs[0].time_ps - t_start) // period_ps)
 
-            cocotb.log.info(
-                "OBS-ISO-BLOCK-READY: port=%s kind=%s %sready=%s%s sf=SF-016",
-                req.port,
-                "wr" if req.write else "rd",
-                addr_chan,
-                edge_of(acc),
-                f" wready={edge_of(w)}" if req.write else "",
+            self._obs(
+                f"OBS-ISO-BLOCK-READY: port={req.port} kind={'wr' if req.write else 'rd'} "
+                f"episode={tag} {addr_chan}ready={edge_of(acc)}"
+                f"{f' wready={edge_of(w)}' if req.write else ''} sf=SF-016"
             )
             self.counts["blocked"] += 1
         if ctrl_read:
@@ -797,56 +868,45 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
             edge = (
                 "none" if ctrl.done_ps is None else str((ctrl.done_ps - t_start) // self.period_ps)
             )
-            cocotb.log.info(
-                "OBS-FRONTPORT-WHILE-BLOCKED: completed=%s edge=%s issued_edge=%d window=%d "
-                "sf=SF-026",
-                "y" if done else "n",
-                edge,
-                CTRL_ISSUE_EDGE,
-                CTRL_WINDOW,
+            self._obs(
+                f"OBS-FRONTPORT-WHILE-BLOCKED: completed={'y' if done else 'n'} edge={edge} "
+                f"issued_edge={CTRL_ISSUE_EDGE} window={CTRL_WINDOW} sf=SF-026",
+                "CHK-OBS-FRONTPORT-WHILE-BLOCKED",
             )
         return ctrl
 
     async def _complete_blocked(self, reqs: list[_Req], tag: str, release_ps: int) -> None:
+        """Episodes A and B: each blocked read completes with one R beat, OKAY; a boot-ROM read
+        returns the word the S1 read of the same address returned. The scratchpad word W0 a
+        blocked read returns is recorded only (SF-018)."""
         period_ps = self.period_ps
         for req in reqs:
             await self._wait(req, RELEASE_BOUND, "release")
             hs = self._grade(req, "RECONNECT")
             latency = "none" if not hs else str((hs[0].time_ps - release_ps) // period_ps)
-            data = None if req.write or not hs else hs[0].data
-            cocotb.log.info(
-                "OBS-ISO-RECONNECT: port=%s latency=%s rdata=%s request=%s sf=SF-017,SF-018",
-                req.port,
-                latency,
-                _hx(data) if not req.write else "n/a",
-                req.label,
+            data = None if not hs else hs[0].data
+            if req.addr != W_ADDR[0]:
+                want = self.rom_ref.get(f"{req.port}@{req.addr:x}")
+                if data is None or data != want:
+                    self.findings["RECONNECT"].append(
+                        f"{tag} {req.port} {req.label} 0x{req.addr:x}: read {_hx(data)}, "
+                        f"the S1 read of the same boot-ROM word returned {_hx(want)}"
+                    )
+            self._obs(
+                f"OBS-ISO-RECONNECT: port={req.port} latency={latency} rdata={_hx(data)} "
+                f"request={req.label} sf=SF-017,SF-018",
+                "CHK-OBS-ISO-RECONNECT",
             )
             self.counts["reconnect"] += 1
+            self.counts["blocked_rd"] += 1
 
     async def _admit(self) -> None:
         dut = cocotb.top
-        await self.wait_fuse_sense_done(FUSE_WAIT_BOUND_SMC_CYCLES)
-        states = []
-        for name in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
-            sig = getattr(dut, name)
-            assert sig.value.is_resolvable, f"{name} is X/Z after the wait"
-            states.append(f"{name}={int(sig.value)}")
-        self.fuse_state = ",".join(states)
-        self.waits += 3
+        await self._boot_wait()
         await RisingEdge(dut.clk_smc_i)
         t1 = int(get_sim_time("ps"))
         await RisingEdge(dut.clk_smc_i)
         self.period_ps = max(1, int(get_sim_time("ps")) - t1)
-        for cycle in range(BOOT_BOUND + 1):
-            value = dut.tb_cpu_cluster_isolate.value
-            if value.is_resolvable and int(value) == 0:
-                break
-            await RisingEdge(dut.clk_smc_i)
-        else:
-            self.expired += 1
-            raise _Unanswered(f"tb_cpu_cluster_isolate still not 0 after {BOOT_BOUND} edges")
-        self.waits += 1
-        self.wait_log.append(f"cluster boundary de-isolated after {cycle} edges")
 
         self.sampler = SmcPortHandshakeSampler(dut)
         cocotb.start_soon(self.sampler.run())
@@ -859,8 +919,36 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
         )
         if not layout:
             self.findings["VALIDS"].append(f"cluster-side nets unusable: {self.valids.layout_note}")
-        cocotb.start_soon(self.valids.run())
+        self.valids_task = cocotb.start_soon(self.valids.run())
+        await self._setup("S1")
+        self._mark("ADMIT", 1)
 
+    async def _boot_wait(self) -> None:
+        """Fuse sense done and the cluster boundary de-isolated, each bounded."""
+        dut = cocotb.top
+        await self.wait_fuse_sense_done(FUSE_WAIT_BOUND_SMC_CYCLES)
+        states = []
+        for name in ("tb_fuse_sense_done", "tb_fuse_reset_n", "tb_rst_warm_smc_clk_n"):
+            sig = getattr(dut, name)
+            assert sig.value.is_resolvable, f"{name} is X/Z after the wait"
+            states.append(f"{name}={int(sig.value)}")
+        self.fuse_state = ",".join(states)
+        self.waits += 3
+        for cycle in range(BOOT_BOUND + 1):
+            value = dut.tb_cpu_cluster_isolate.value
+            if value.is_resolvable and int(value) == 0:
+                break
+            await RisingEdge(dut.clk_smc_i)
+        else:
+            self.expired += 1
+            raise _Unanswered(f"tb_cpu_cluster_isolate still not 0 after {BOOT_BOUND} edges")
+        self.waits += 1
+        self.wait_log.append(f"cluster boundary de-isolated after {cycle} edges")
+
+    async def _setup(self, tag: str) -> None:
+        """S1 setup: pass-all inbound entry 0, the admit control, the idle CPU-control words,
+        the scratchpad reference words W0..W3 and the boot-ROM reference words."""
+        assert self.valids is not None
         for name, addr, value in (
             ("CONFIG", INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG),
             ("START", INBOUND0_START, 0),
@@ -875,8 +963,9 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
             f"SYS_IN LOCAL_BASE through pass-all entry 0 read {_hx(got)}: {self.findings['OTHER']}"
         )
         cocotb.log.info(
-            "CTRL-M1-ADMIT: SYS_IN 64-bit read of LOCAL_BASE @ 0x%x through pass-all inbound entry 0 "
-            "answered OKAY %s",
+            "CTRL-M1-ADMIT: %s SYS_IN 64-bit read of LOCAL_BASE @ 0x%x through pass-all inbound "
+            "entry 0 answered OKAY %s",
+            tag,
             LOCAL_BASE_REG,
             _hx(got),
         )
@@ -893,12 +982,13 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
             if rb != value:
                 self.findings["OTHER"].append(f"W{i} seed read back {_hx(rb)}, want {_hx(value)}")
         for port, addr in (("SEP_IN", ROM_A), ("SYS_IN", ROM_B), ("JTAG_IN", ROM_B)):
-            self.rom_ref[port] = await self._do(port, "ROM_REF", addr)
+            self.rom_ref[f"{port}@{addr:x}"] = await self._do(port, "ROM_REF", addr)
         seen = dict(self.valids.running_seen)
         cocotb.log.info(
-            "CTRL-M1-VALID-MAP: running uncore, decoded L2 ar_valid high on %d edges and r_valid "
-            "high on %d edges of the S1 scratchpad and ROM traffic; RESET_CTRL %s RESET_TIMEOUT %s; "
-            "ROM %s",
+            "CTRL-M1-VALID-MAP: %s running uncore, decoded L2 ar_valid high on %d edges and "
+            "r_valid high on %d edges of the scratchpad and ROM traffic so far; RESET_CTRL %s "
+            "RESET_TIMEOUT %s; ROM %s",
+            tag,
             seen["l2_req.ar_valid"],
             seen["l2_resp.r_valid"],
             _hx(ctrl),
@@ -909,7 +999,6 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
             self.findings["VALIDS"].append(
                 f"decoded L2 VALID bits never rose under running traffic: {seen}"
             )
-        self._mark("ADMIT", 1)
 
     async def _episode_reads(self, tag: str, plan: tuple[tuple[str, int], ...], ctrl_read: bool):
         reqs = [
@@ -958,31 +1047,17 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
             release = await self._release("B")
             await self._complete_blocked(reqs, "B", release)
             await self._released("B")
+            await self._read_w("after_sw_uncore_reset")
             self._mark("EPISODE_B", len(reqs))
 
-            await self._hold("C")
-            reqs = [
-                self._start(port, "C_W_BLOCKED", addr, write=True, data=data, ident=DATA_ID[port])
-                for port, (addr, data) in W_PRIME.items()
-            ]
-            await self._window(reqs, "C")
-            release = await self._release("C")
-            await self._complete_blocked(reqs, "C", release)
-            await self._released("C")
-            for port, (addr, data) in W_PRIME.items():
-                got = await self._do(port, "C_W_READBACK", addr, bucket="RECONNECT")
-                if got != data:
-                    self.findings["RECONNECT"].append(
-                        f"{port} blocked write 0x{addr:x} read back {_hx(got)}, want {_hx(data)}"
-                    )
-            self._mark("EPISODE_C", len(reqs))
+            await self._episode_c()
+            await self._fresh()
 
-            assert self.valids is not None
+            assert self.valids is not None and self.valids_task is not None
             self.valids.stop = True
+            await self.valids_task
             self._report_valids()
             self._mark("VALIDS", self.valids.edges)
-
-            await self._fresh()
         except _Unanswered as exc:
             self.aborted = str(exc)
         finally:
@@ -1001,6 +1076,116 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
                 self._probe_state(),
             )
         self._report()
+
+    async def _episode_c(self) -> None:
+        """S8: blocked writes, then the release attempt under them, observed (SF-026)."""
+        assert self.sampler is not None and self.idle_ctrl is not None
+        await self._hold("C")
+        reqs = [
+            self._start(port, "C_W_BLOCKED", addr, write=True, data=data, ident=DATA_ID[port])
+            for port, (addr, data) in W_PRIME.items()
+        ]
+        await self._window(reqs, "C")
+        rel = self._start(
+            "SEP_IN",
+            "C_RESET_CTRL_RELEASE",
+            RESET_CTRL,
+            write=True,
+            data=self.idle_ctrl,
+            ident=SEP_RESET_ID,
+        )
+        done = await self._obs_wait(rel, OBS_RELEASE_BOUND, "C release SEP_IN RESET_CTRL write")
+        b_rel = self.sampler.since("SEP_IN", rel.t0, "b", SEP_RESET_ID)
+        edge = (
+            "none" if not (done and b_rel) else str((b_rel[0].time_ps - rel.t0) // self.period_ps)
+        )
+        bresp = "none" if not b_rel else _rname(b_rel[0].resp)
+        if not done:
+            self._classify(
+                "observation-wait-expired (SF-026 hazard, recorded, not graded)",
+                rel,
+                "SEP_IN",
+                OBS_RELEASE_BOUND,
+                "C_RESET_CTRL_RELEASE write not answered while three scratchpad writes are "
+                "blocked at the isolated L2 frontend",
+            )
+        else:
+            release_ps = b_rel[0].time_ps if b_rel else (rel.done_ps or rel.t0)
+            for req in reqs:
+                await self._obs_wait(req, OBS_RELEASE_BOUND, f"C {req.port} blocked write B")
+                b = self.sampler.since(req.port, req.t0, "b", req.ident)
+                latency = "none" if not b else str((b[0].time_ps - release_ps) // self.period_ps)
+                self._obs(
+                    f"OBS-ISO-RECONNECT: port={req.port} latency={latency} rdata=n/a "
+                    f"bresp={'none' if not b else _rname(b[0].resp)} request={req.label} "
+                    "sf=SF-017,SF-026",
+                    "CHK-OBS-ISO-RECONNECT",
+                )
+        written = [r for r in reqs if self.sampler.since(r.port, r.t0, "b", r.ident)]
+        cold = not done or len(written) < len(reqs)
+        self.recovery = "cold" if cold else "none"
+        self._obs(
+            f"OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE: release_completed={'y' if done else 'n'} "
+            f"edge={edge} bresp={bresp} blocked_writes_completed={len(written)}/{len(reqs)} "
+            f"recovery={self.recovery} bound={OBS_RELEASE_BOUND} sf=SF-026"
+        )
+        if self.valids is not None:
+            self.valids.armed = False
+        self._mark("EPISODE_C", len(reqs))
+        if not cold:
+            for port, (addr, data) in W_PRIME.items():
+                req = self._start(port, "C_W_READBACK", addr, write=False, ident=DATA_ID[port])
+                ok = await self._obs_wait(req, OBS_RELEASE_BOUND, f"C {port} readback")
+                r = self.sampler.since(port, req.t0, "r", req.ident) if ok else []
+                cocotb.log.info(
+                    "INFO-C-READBACK: %s 0x%x read %s, the blocked write carried %s "
+                    "(recorded, not graded: SF-026)",
+                    port,
+                    addr,
+                    _hx(r[0].data) if r else "none",
+                    _hx(data),
+                )
+            self._mark("RECOVERY", 1)
+            return
+        done_ports = {r.port for r in written}
+        for cell in C_CELLS:
+            port = cell.split("_")[1] + "_IN"
+            if cell.endswith("_WRITE_B") and port in done_ports:
+                continue
+            cocotb.log.info(
+                "INFO-CELL-NOT-DRIVABLE: %s (episode-C completion; the uncore release did not "
+                "complete under the blocked writes, cold recovery follows; SF-026)",
+                cell,
+            )
+        self._mark("RECOVERY", await self._cold_recovery())
+
+    async def _cold_recovery(self) -> int:
+        """The reset agent's cold reset and the bring-up, then the S1 setup again."""
+        await self._send(SmcResetOp.COLD_RST_LO)
+        await self._wait_state(
+            "C recovery cold assert",
+            expect_powergood_stable=1,
+            expect_rst_cold_stable_ref_clk_n=0,
+            expect_rst_primary_ref_clk_n=0,
+            expect_rst_primary_smc_clk_n=0,
+            expect_left_stable=True,
+        )
+        await self._send(SmcResetOp.COLD_RST_HI)
+        await self._wait_released("C recovery cold release")
+        self.waits += 2
+        await self._boot_wait()
+        await self._setup("RECOVERY")
+        return 4
+
+    async def _read_w(self, when: str) -> None:
+        """OBS-ISO-RECONNECT: W0..W3 as SEP_IN reads them now (SF-018, never compared)."""
+        words = [await self._do("SEP_IN", f"W{i}_{when}", a) for i, a in enumerate(W_ADDR)]
+        self._obs(
+            f"OBS-ISO-RECONNECT: port=SEP_IN latency=n/a rdata=n/a when={when} "
+            f"w0..w3={','.join(_hx(w) for w in words)} seeded={','.join(_hx(w) for w in W_REF)} "
+            "sf=SF-018",
+            "CHK-OBS-ISO-RECONNECT",
+        )
 
     async def _fresh(self) -> None:
         n = 0
@@ -1037,30 +1222,31 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
                 self.findings["RECONNECT"].append(f"{port} fresh burst read data differs")
             n += 2
             self.counts["fresh"] += 2
-        words = [await self._do("SEP_IN", f"W{i}_AFTER", a) for i, a in enumerate(W_ADDR)]
-        cocotb.log.info(
-            "OBS-ISO-RECONNECT: port=SEP_IN latency=n/a rdata=n/a w0..w3=%s seeded=%s sf=SF-018",
-            ",".join(_hx(w) for w in words),
-            ",".join(_hx(w) for w in W_REF),
-        )
+        await self._read_w(f"fresh_after_recovery_{self.recovery}")
         self._mark("FRESH", n)
 
     def _report_valids(self) -> None:
+        """S9: both VALID groups recorded over every sampled hold edge (SF-019, SF-003)."""
         v = self.valids
         assert v is not None
         if v.edges == 0:
             self.findings["VALIDS"].append("no edge sampled with reset_applied=1")
-        if v.cluster_high:
-            self.findings["VALIDS"].append(f"cluster-driven VALID high: {v.cluster_high}")
-        if v.cluster_xz:
-            self.findings["VALIDS"].append(f"cluster-driven VALID X/Z: {v.cluster_xz}")
+        if v.isolate_xz:
+            self.findings["VALIDS"].append(
+                f"isolation-driven VALID X/Z on {v.isolate_xz} samples (OBS-ISO-VALIDS-ISOLATE)"
+            )
+        high = f"{v.cluster_high_n}:{v.cluster_high}" if v.cluster_high_n else "none"
+        self._obs(
+            f"OBS-ISO-VALIDS-CLUSTER: edges={v.edges} holds={len(v.hold_edges)} high={high} "
+            f"xz={v.cluster_xz_n}{f':{v.cluster_xz}' if v.cluster_xz else ''} "
+            f"hold_edges={v.hold_edges} sf=SF-019",
+            "CHK-OBS-ISO-VALIDS-CLUSTER",
+        )
         highs = {k: (f"{len(t)}@{t[0]}ps" if t else "none") for k, t in v.isolate_high.items()}
-        cocotb.log.info(
-            "OBS-ISO-VALIDS-ISOLATE: edges=%d holds=%s high_edges=%s xz=%d sf=SF-019",
-            v.edges,
-            v.hold_edges,
-            highs,
-            v.isolate_xz,
+        self._obs(
+            f"OBS-ISO-VALIDS-ISOLATE: edges={v.edges} holds={v.hold_edges} high_edges={highs} "
+            f"xz={v.isolate_xz} sf=SF-019",
+            "CHK-OBS-ISO-VALIDS-ISOLATE",
         )
 
     # ---------------------------------------------------------------- report
@@ -1069,40 +1255,54 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
         f = self.findings
         if self.sampler is not None and self.sampler.unresolved:
             f["OTHER"].append(f"X on inbound handshake lines: {self.sampler.unresolved}")
+        if not self.aborted:
+            if self.counts["drain"] != 3 or self.counts["cleared"] != 2:
+                f["DRAIN"].append(
+                    f"{self.counts['drain']} holds applied (want 3), {self.counts['cleared']} "
+                    "graded releases cleared (want 2: episodes A and B)"
+                )
+            for chk, lines in self.chk_obs.items():
+                if not lines:
+                    f["OTHER"].append(f"{chk}: no OBS line")
+                elif any("=X" in line for line in lines):
+                    f["OTHER"].append(f"{chk}: X sample in {[x for x in lines if '=X' in x]}")
         for key, items in f.items():
             for item in items:
                 cocotb.log.info("INFO-FINDING: %s %s", key, item)
+        for text in self.evidence:
+            cocotb.log.info("EVIDENCE: %s", text)
         if self.aborted:
             return
         if not f["DRAIN"]:
             cocotb.log.info(
                 "CHK-ISO-DRAIN-APPLIED: %d episodes, set after drain, timeout 0, readback bit8=0, "
                 "cleared after release (RESET_CTRL OKAY, reset_applied 1 within %d reads, "
-                "reset_timeout 0, reset_applied 0 after each release)",
+                "reset_timeout 0 in every episode; reset_applied 0 after the %d graded releases "
+                "of episodes A and B; the episode-C release is OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE)",
                 self.counts["drain"],
                 POLL_BOUND,
+                self.counts["cleared"],
             )
         if not f["BLOCK"] and not f["RECONNECT"]:
             cocotb.log.info(
-                "CHK-ISO-BLOCK-NO-RESPONSE: %d requests, 0 responses during %d-edge windows, all "
-                "answered after release",
+                "CHK-ISO-BLOCK-NO-RESPONSE: %d requests, 0 responses during %d-edge windows; the "
+                "%d blocked reads of episodes A and B answered after release; the completion of "
+                "the 3 episode-C writes is OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE (recovery=%s)",
                 self.counts["blocked"],
                 WINDOW_N,
+                self.counts["blocked_rd"],
+                self.recovery,
             )
         if not f["RECONNECT"]:
             cocotb.log.info(
-                "CHK-ISO-RECONNECT: %d blocked requests completed OKAY, fresh bursts OKAY with "
-                "data (%d AxLEN=%d accesses), blocked writes read back, reset_applied 0",
-                self.counts["reconnect"],
+                "CHK-ISO-RECONNECT: %d blocked reads completed OKAY (episodes A, B; one R beat "
+                "each, RLAST, boot-ROM words equal to their S1 reads), fresh bursts OKAY with "
+                "data (%d AxLEN=%d accesses after recovery=%s, every W beat accepted, one B, "
+                "AxLEN+1 R beats, RLAST last only), reset_applied 0 after each graded release",
+                self.counts["blocked_rd"],
                 self.counts["fresh"],
                 FRESH_BEATS - 1,
-            )
-        if not f["VALIDS"] and self.valids is not None:
-            cocotb.log.info(
-                "CHK-ISO-VALIDS-CLUSTER: %d sampled edges over %d holds, 0 VALID high "
-                "(MMIO aw/w/ar_valid, L2 r/b_valid, no X or Z)",
-                self.valids.edges,
-                len(self.valids.hold_edges),
+                self.recovery,
             )
         if not f["CTRL"]:
             cocotb.log.info(
@@ -1110,6 +1310,14 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
                 "readback exact",
                 self.counts["ctrl"],
             )
+        if not f["OTHER"] and not f["VALIDS"]:
+            for chk, lines in self.chk_obs.items():
+                cocotb.log.info(
+                    "%s: %d OBS line(s), recorded never compared, no X sample; %s",
+                    chk,
+                    len(lines),
+                    lines[-1],
+                )
 
     def log_timeout_paths(self) -> None:
         text = (
@@ -1118,12 +1326,16 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
             f"{self.fuse_state}; cluster de-isolate bounded {BOOT_BOUND} edges; every access "
             f"bounded {ACCESS_BOUND} clk_smc_i edges by First(event, ClockCycles), longest "
             f"{self.max_wait['access']}; RESET_TIMEOUT polls bounded {POLL_BOUND} reads, longest "
-            f"{self.max_wait['poll']}; blocked-request completion after release bounded "
+            f"{self.max_wait['poll']}; blocked-read completion after a graded release bounded "
             f"{RELEASE_BOUND} edges, longest {self.max_wait['release']}; counted windows "
             f"{WINDOW_N} edges (silence is the stated behaviour); in-window CPU-control read "
-            f"window {CTRL_WINDOW} edges; expiry prints INFO-CLASSIFY (last AR/AW/W/R/B, "
-            f"rst_primary_smc_clk_no, isolate and drain probes) and fails the leaf; "
-            f"{'; '.join(self.wait_log) or 'no expiry'}"
+            f"window {CTRL_WINDOW} edges; cold-recovery reset waits "
+            f"{'; '.join(self._timeout_paths) or 'not needed'}; expiry prints INFO-CLASSIFY "
+            f"(last AR/AW/W/R/B, rst_primary_smc_clk_no, isolate and drain probes) and fails "
+            f"the leaf; {'; '.join(self.wait_log) or 'no expiry'}; observation waits "
+            f"{self.obs_waits} counted apart, {self.obs_expired} expired (episode-C release "
+            f"under blocked writes, SF-026: recorded on OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE, not "
+            f"graded): {'; '.join(self.obs_wait_log) or 'none'}"
         )
         if self.expired:
             cocotb.log.info("INFO-TIMEOUT-PATHS: %s", text)
@@ -1143,7 +1355,12 @@ class smc_l2_frontend_access_uncore_held_test_seq(SmcCsrSeq):
         if problems:
             cocotb.log.info("INFO-NONVAC-BROKEN: %s (%s)", "; ".join(problems), detail)
             return
-        cocotb.log.info("CHK-NONVAC: %s (time and count per term: %s)", " < ".join(FENCE), detail)
+        cocotb.log.info(
+            "CHK-NONVAC: %s (counts and times per term: %s; RECOVERY counts the cold-reset items, "
+            "1 when none was needed)",
+            " < ".join(FENCE),
+            detail,
+        )
 
     def raise_findings(self) -> None:
         failed = [f"{k}: {v[0]} (+{len(v) - 1})" for k, v in self.findings.items() if v]

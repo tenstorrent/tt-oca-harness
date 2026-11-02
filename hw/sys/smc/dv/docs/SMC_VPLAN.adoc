@@ -24927,8 +24927,9 @@ drawn from the seed.
 
 *Objective*: A software uncore reset requested through `RESET_CTRL` with nothing outstanding
 drains and applies; while it holds, L2-frontend requests from the three inbound ports are blocked
-rather than answered and complete after the release, CPU_CTRL stays reachable, the cluster-driven
-VALIDs stay low, and fresh accesses complete afterwards.
+rather than answered, the blocked reads complete after the release, CPU_CTRL stays reachable, and
+fresh accesses complete afterwards. The release attempted while scratchpad writes are blocked and
+the cluster-side VALIDs during the hold are recorded, not graded.
 
 *Test Coverage*:
 
@@ -24942,17 +24943,27 @@ VALIDs stay low, and fresh accesses complete afterwards.
   read on SEP_IN; episode B, the scratchpad read on SEP_IN and boot-ROM reads on SYS_IN and
   JTAG_IN; episode C, 64-bit scratchpad writes on the three ports. Each is presented while
   `reset_applied` is 1 and watched for 2048 `clk_smc_i` edges.
-* Release: each blocked request completes with one beat or one B after the SEP_IN release write;
-  the episode C words read back.
-* Cluster-side VALIDs on every edge while `reset_applied` is 1.
-* Fresh access: an INCR write then read with AxLEN 7 of fresh scratchpad words on each port, and
-  the seeded words W0..W3 read.
+* Release, episodes A and B: each blocked read completes with one R beat, OKAY, after the SEP_IN
+  release write; a boot-ROM read returns the word the setup read of the same address returned.
+* Release, episode C: the SEP_IN `RESET_CTRL` release write is attempted while the three
+  scratchpad writes are blocked and given a bounded observation wait. If it completes, each
+  write's B and the readback of W1'..W3' are recorded; if it does not, the episode-C completion
+  cells print `INFO-CELL-NOT-DRIVABLE` and the reset agent's cold reset (`COLD_RST_LO` /
+  `COLD_RST_HI` and the bring-up) recovers the bench, after which the setup runs again.
+* Cluster-side VALIDs on every edge while `reset_applied` is 1, recorded.
+* Fresh access, after the recovery: an INCR write then read with AxLEN 7 of fresh scratchpad
+  words on each port, and the words W0..W3 read.
 * Observation only, never compared: `OBS-ISO-RECONNECT` (latency from the release B to each
-  blocked R or B, the data a blocked read returned, W0..W3 after the reset; SF-017, SF-018),
-  `OBS-ISO-VALIDS-ISOLATE` (the isolation-driven VALIDs into the cluster; SF-019),
-  `OBS-FRONTPORT-WHILE-BLOCKED` (whether the SEP_IN CPU-control read issued inside the episode A
-  window completes within its 1024-edge window; SF-026) and `OBS-ISO-BLOCK-READY` (the edge
-  ARREADY, AWREADY and WREADY were given for each blocked request, or none; SF-016).
+  blocked R or B, the data a blocked read returned, W0..W3 after the software uncore reset and
+  after the recovery; SF-017, SF-018), `OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE` (whether the episode-C
+  release completed, when, how many blocked writes then completed and whether a cold recovery
+  followed; SF-026), `OBS-ISO-VALIDS-CLUSTER` (the cluster-driven VALIDs: sampled edges, holds and
+  every high or X sample; SF-019), `OBS-ISO-VALIDS-ISOLATE` (the isolation-driven VALIDs into the
+  cluster; SF-019), `OBS-FRONTPORT-WHILE-BLOCKED` (whether the SEP_IN CPU-control read issued
+  inside the episode A window completes within its 1024-edge window; SF-026) and
+  `OBS-ISO-BLOCK-READY` (the edge ARREADY, AWREADY and WREADY were given for each blocked
+  request, or none; SF-016). Each prints on its own `EVIDENCE:` line, and inside its `CHK-OBS-*`
+  line where the contract names one.
 
 *Test Procedure*:
 
@@ -24970,15 +24981,22 @@ VALIDs stay low, and fresh accesses complete afterwards.
   read at window edge 512.
 . RELEASE_A (S6): the SEP_IN release write, the blocked reads and the CPU-control read completed,
   `reset_applied` polled to 0.
-. EPISODE_B (S7) and EPISODE_C (S8): drain and hold, present, count 2048 edges, release, complete;
-  episode C reads the written words back.
-. VALIDS (S9): report the per-edge VALID samples of the three holds.
+. EPISODE_B (S7): drain and hold, present, count 2048 edges, release, complete, `reset_applied`
+  polled to 0; read W0..W3 (`OBS-ISO-RECONNECT`).
+. EPISODE_C (S8): drain and hold, present the three writes, count 2048 edges, attempt the release
+  with a 20 000-edge observation wait and print `OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE`.
+. RECOVERY (S8): when the release completed, the B of each write and the readbacks are recorded;
+  otherwise `INFO-CELL-NOT-DRIVABLE` for the episode-C completion cells, the cold reset through
+  the reset agent, the fuse sense and de-isolation waits, and the S1 setup again.
 . FRESH (S10): the AxLEN 7 bursts and the W0..W3 reads.
+. VALIDS (S9): report the per-edge VALID samples of the three holds.
 . TIMEOUT (S11): every access is bounded 20 000 `clk_smc_i` edges, every poll 64 reads and every
-  completion after a release 400 000 edges; an expiry prints `INFO-CLASSIFY` with the last AR, AW,
-  W, R and B handshake of the port, `rst_primary_smc_clk_no` and the isolate and drain probes and
-  fails the leaf. Print each checker only when it has no finding, then `CHK-TIMEOUT-PATHS` and the
-  `CHK-NONVAC` fence, and only then fail the leaf on any finding.
+  completion after a graded release 400 000 edges; an expiry prints `INFO-CLASSIFY` with the last
+  AR, AW, W, R and B handshake of the port, `rst_primary_smc_clk_no` and the isolate and drain
+  probes and fails the leaf. The episode-C release wait and the waits that follow it are
+  observation waits: an expiry is recorded on the OBS line and counted apart. Print each checker
+  only when it has no finding, then `CHK-TIMEOUT-PATHS` and the `CHK-NONVAC` fence, and only then
+  fail the leaf on any finding.
 
 *Checkers*:
 
@@ -24987,27 +25005,45 @@ VALIDs stay low, and fresh accesses complete afterwards.
 |Checker |Description
 |`CHK-ISO-DRAIN-APPLIED` |In every episode the `RESET_CTRL` write answers OKAY, `reset_applied`
 reads 1 within 64 reads with `reset_timeout` 0, `RESET_CTRL` reads back with bit 8 0 and the core
-fields as written, and `reset_applied` reads 0 after the release
+fields as written, and `reset_applied` reads 0 after the graded releases of episodes A and B
 |`CHK-ISO-BLOCK-NO-RESPONSE` |No R beat or B for any request presented while `reset_applied` is
-1 during its 2048-edge window, and every such request completes after the release
-|`CHK-ISO-RECONNECT` |Each blocked read completes with one R beat OKAY and RLAST, each blocked
-write with one B OKAY and its word reads back, the fresh AxLEN 7 bursts answer OKAY with eight W
-beats, one B, eight R beats, RLAST on the last only and the written data, and `reset_applied`
-reads 0
-|`CHK-ISO-VALIDS-CLUSTER` |MMIO AWVALID, WVALID and ARVALID and L2-frontend RVALID and BVALID at
-the cluster side read 0, not X or Z, on every sampled edge of the three holds
+1 during its 2048-edge window, and every blocked read of episodes A and B completes after the
+release
+|`CHK-ISO-RECONNECT` |Each blocked read of episodes A and B completes with one R beat OKAY and
+RLAST, a boot-ROM read with the word its setup read returned; the fresh AxLEN 7 bursts after the
+recovery answer OKAY with eight W beats, one B, eight R beats, RLAST on the last only and the
+written data, and `reset_applied` reads 0 after each graded release
 |`CHK-FRONTPORT-CTRL` |On each port, running and held, the `SCRATCH[0]` write and read and the
 `RESET_TIMEOUT` read answer OKAY, and `SCRATCH[0]` reads back the written low word with bits
 63:32 zero
+|`CHK-OBS-ISO-RECONNECT` |`OBS-ISO-RECONNECT` lines present without an X sample; recorded, never
+compared (SF-017, SF-018)
+|`CHK-OBS-FRONTPORT-WHILE-BLOCKED` |`OBS-FRONTPORT-WHILE-BLOCKED` present; recorded, never compared
+(SF-026)
+|`CHK-OBS-ISO-VALIDS-CLUSTER` |`OBS-ISO-VALIDS-CLUSTER: edges=<n> holds=<k> high=<list\|none>
+xz=<n>` with at least one sampled edge; recorded, never compared: no pinned line states VALID low
+under a software uncore hold, and the AXI reset rule binds to ARESETn, which stays released
+(SF-019)
+|`CHK-OBS-ISO-VALIDS-ISOLATE` |`OBS-ISO-VALIDS-ISOLATE` present without an X or Z sample;
+recorded, never compared (SF-019)
+|`OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE` |`release_completed=<y/n> edge=<e\|none>
+blocked_writes_completed=<n>/3 recovery=<none\|cold>`; the uncore-release hazard under blocked
+writes, recorded, never graded (SF-026)
+|`OBS-ISO-BLOCK-READY` |The edge ARREADY, AWREADY and WREADY were given for each blocked
+request; recorded, never compared (SF-016)
 |`CHK-NONVAC` |Ordered fence ADMIT < RUNNING_CTRL < HOLD < HELD_CTRL < BLOCKED_A < RELEASE_A <
-EPISODE_B < EPISODE_C < VALIDS < FRESH with each term's time and count against its planned count
-|`CHK-TIMEOUT-PATHS` |Every bounded wait logs its bound and longest wait, and none expired
+EPISODE_B < EPISODE_C < RECOVERY < FRESH < VALIDS with each term's time and count against its
+planned count; RECOVERY counts the cold-reset items, or 1 when no recovery was needed
+|`CHK-TIMEOUT-PATHS` |Every bounded wait logs its bound and longest wait, and none of the
+fail-on-expiry waits expired; the episode-C observation waits are counted apart
 |===
 
-*Scope limit*: The reconnect latency, the scratchpad contents after the reset, the
-isolation-driven VALIDs, whether the CPU-control read completes while an L2-frontend read is
-blocked and whether the isolation block withholds READY are printed and not compared, because the
-specification does not state them (SF-016, SF-017, SF-018, SF-019, SF-026).
+*Scope limit*: The reconnect latency, the scratchpad contents after the reset, the cluster-driven
+and isolation-driven VALIDs during the hold, whether the CPU-control read completes while an
+L2-frontend read is blocked, whether the uncore release completes while L2-frontend writes are
+blocked, and whether the isolation block withholds READY are printed and not compared, because the
+specification does not state them (SF-016, SF-017, SF-018, SF-019, SF-026). The completion of the
+episode-C writes is not graded; see <<smc-known-limitations>>.
 
 '''''
 
@@ -51112,7 +51148,9 @@ in <<smc-deferred-disposition>>.
 |A read whose AR the front port accepted before the drain request but that the isolate never counted as pending is not drained before the uncore reset applies and completes only after the reconnect; status reads from every manager stall behind it meanwhile |`smc_sw_uncore_reset_drain_isolate_test` counts only the isolate-pending reads in `CHK-DRAIN-HANDSHAKE-ORDER` and `CHK-DRAIN-PENDING-READS-COMPLETE`, records the other read as `OBS-DRAIN-FRONTPORT-ACCEPTED-NOT-PENDING ... sf=SF-005,SF-006` and grades only its completion after the reconnect; the status reads issued meanwhile are `OBS-STATUS-READ-UNDER-STALL` |Designer question under SF-005 / SF-006 / SF-026 (is such a read outstanding for the drain?), draft on file; grade it against the drain once answered
 |The force-mode flush of the software uncore reset presents a stale R beat with ID 0 and no open AR on SYS_IN as the forced reset applies, the behaviour issue #2449 accepts as a known limitation of force-mode reset (#2318 and #2323 are folded into #2449) |`smc_sw_uncore_reset_drain_isolate_test` keeps the SYS_IN protocol checker (`u_sys_in_axi_sva`) and every other inbound and CPU-port checker on, and therefore does not drive the force episode: it prints `INFO-CELL-NOT-DRIVABLE: force episode S7 (ruling #2449, covered by the pinned wedge leaves)` and `OBS-DRAIN-FLUSH-RESPONSES: episode=not-driven ruling=#2449`; the force-mode flush, its request status and its stale response are covered by the pinned wedge leaves (`smc_cpu_l2_read_wedge_test` family) |Ruling #2449 (known limitation of force-mode reset, with #2318 folded in)
 |The partial-strobe semantics of a 64-bit AXI-Lite write to `CPU_CTRL.REFERENCE_COUNTER` are unstated: which byte lanes load the reference counter, and whether a partial-strobe or WSTRB 0x00 write counts as a write for the register's write-once-then-poll rule (SF-012, #3425 item 5) |`smc_axil_narrow_zero_strobe_write_test` observes them: it records the readback of every driven strobe as an `OBS-PLAIN-STROBE` line and never compares it, polls only the strobed lanes above lane 0 until they read the written byte, issues the WSTRB 0x00 write last and does not poll it, and does not drive the lane-0-only strobe WSTRB 0x01 on REFERENCE_COUNTER (`INFO-CELL-NOT-DRIVABLE`), which has no lane the write-then-poll protocol can observe |Grade the lanes and drive WSTRB 0x01 once SF-012 states the partial-strobe rule
-|A unit whose aperture straddles `BASE + REGION_SIZE` stays reachable below the limit: at `REGION_SIZE` 0x10_0000 the scratchpad answers OKAY at `BASE + 0x6_0000` and the write lands, while three texts (`memmap.adoc`, the `REGION_SIZE` description and the integrator guide) promise DECERR for such a unit |`smc_err_slv_response_content_test` grades S9 per address (DECERR at `BASE + 0x10_0000`, at the limit) and records the accesses below the limit as `OBS-ERRC-REGIONSIZE-STRADDLE` without comparing them |SPEC issue #3551: the owner either rewords the three texts to the per-address rule or adds a unit-extent check; the OBS line becomes a graded check once that ruling lands
+|A scratchpad write blocked at the isolated L2 frontend during a software uncore reset can hold the SEP_IN `RESET_CTRL` write that releases the uncore: on one AXI4 interface W beats follow AW order, so the release's W waits behind the blocked write's |`smc_l2_frontend_access_uncore_held_test` cannot release the uncore under blocked writes without a cold reset; it records the attempt in `OBS-ISO-RELEASE-UNDER-BLOCKED-WRITE`, prints `INFO-CELL-NOT-DRIVABLE` for the episode-C completion cells and recovers with the reset agent's cold reset. The completion of a blocked write is observed, never graded |Hazard question for the designer (SF-026): state whether CPU-control accesses, the uncore release included, stay reachable while an L2-frontend request is blocked; grade the episode-C release and write completion once that is stated
+|A unit whose aperture straddles `BASE + REGION_SIZE` stays reachable below the limit:
+ at `REGION_SIZE` 0x10_0000 the scratchpad answers OKAY at `BASE + 0x6_0000` and the write lands, while three texts (`memmap.adoc`, the `REGION_SIZE` description and the integrator guide) promise DECERR for such a unit |`smc_err_slv_response_content_test` grades S9 per address (DECERR at `BASE + 0x10_0000`, at the limit) and records the accesses below the limit as `OBS-ERRC-REGIONSIZE-STRADDLE` without comparing them |SPEC issue #3551: the owner either rewords the three texts to the per-address rule or adds a unit-extent check; the OBS line becomes a graded check once that ruling lands
 |===
 
 [[smc-held-out-testcases]]
