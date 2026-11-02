@@ -499,6 +499,15 @@ tags = ["cpu", "isolate_flush", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_l2_frontend_access_uncore_held_test"
+module = "smc_l2_frontend_access_uncore_held_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "cpu"]
+run_modes = ["smoke"]
+args = ["+axi_sva_need_sep_in", "+axi_sva_need_sys_in", "+axi_sva_need_jtag_in"]
+
+[[tests]]
 name = "smc_cpu_mmio_read_wedge_test"
 module = "smc_cpu_mmio_read_wedge_test"
 seed = 1

@@ -1114,10 +1114,13 @@ never reverses.
 |`smc_alias_remap_attr_test` |2 |Alias remap replaces AxCACHE, holds attributes, shares one table.
 |`smc_alias_remap_translate_test` |2 |Alias remap adds the region offset: edges, carry, open cases.
 |`smc_axi_inbound_ports_burst_test` |3 |Round trips and INCR bursts on all three inbound AXI ports.
+|`smc_axi_fabric_burst_type_islands_test` |3 |FIXED, WRAP and INCR bursts at register islands and decode edges.
 |`smc_ext_window_routing_test` |3 |eFuse SHIM and external window accesses route to the right port.
 |`smc_gap_decode_response_test` |3 |Gap, 0x1_7000 window and debug aperture responses on all ports.
 |`smc_inbound_concurrency_limits_test` |3 |Outstanding limits and concurrent reads on inbound ports.
 |`smc_inbound_outside_window_decerr_test` |3 |DECERR outside both windows and at BASE+REGION_SIZE.
+|`smc_err_slv_response_content_test` |3 |Error-subordinate code, beats, IDs and data word on all ports.
+|`smc_infilt_window_cfg_reexposure_test` |3 |SYS_IN reads, writes, locks and self-deny through an inbound window over the filter control and base config.
 |`smc_inbound_window_port_matrix_test` |3 |Window reads and storage on all three ports at both bases.
 |`smc_instance_storage_isolation_test` |3 |Write-all-then-read-all isolation of each register array.
 |`smc_invalid_probe_recovery_test` |3 |Valid accesses answer OKAY after DECERR probe runs.
@@ -1382,6 +1385,7 @@ generated reset words and written patterns, with each measured period equal to t
 |`smc_cpu_firmware_boot_test` |2 |ROM boot to the PASS magic with exact CHK evidence.
 |`smc_cpu_l2_read_wedge_test` |2 |Force-mode timeout flush recovers an L2 read drain while SEP_IN holds R.
 |`smc_cpu_l2_write_wedge_test` |3 |Force-mode timeout flush recovers an L2 write drain and absorbs late W beats.
+|`smc_l2_frontend_access_uncore_held_test` |3 |L2-frontend requests blocked and completed across a drained uncore reset, CPU_CTRL reachable and cluster VALIDs low during the hold.
 |`smc_cpu_mmio_read_wedge_test` |3 |Force-mode timeout flush absorbs a withheld SYS_OUT R and firmware repeats the read.
 |`smc_cpu_mmio_write_wedge_test` |3 |Force-mode timeout flush absorbs a withheld SYS_OUT B and firmware repeats the write.
 |`smc_cpu_sanity_test` |1 |Run CPU-control CSR map coverage and optional firmware boot contract.
@@ -11721,6 +11725,475 @@ data are recorded without an expected value. Enrolled in: `all`, `hosted`.
 outside-window classes is printed and not compared. The responses and read data of the last word
 below `BASE + REGION_SIZE` are printed, not compared, because the bench does not separate that
 answer from a region-demux DECERR.
+
+'''''
+
+[[sec-570-smc_err_slv_response_content_test]]
+===== 570 `smc_err_slv_response_content_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smc_err_slv_response_content_test`
+
+*BFM / Model*: `ocah_axi_vip` (AXI) masters on SEP_IN (`s_axi_*`, `env.sep_in_axi_agent`), SYS_IN
+(`sys_axi_*`, `env.sys_in_axi_agent`) and JTAG_IN (`jtag_axi_*`, `env.jtag_axi_agent`) with a fixed
+AXI ID per port; a passive per-port handshake sampler on `clk_smc_i` recording every AR, AW, W, R
+and B handshake of the three ports (address, ID, length, burst, response, data, last), which is
+the grading source because the bench item returns one merged response code;
+`env.axi_monitor.expected_decerr_addrs` for every planned error address; the SYS_OUT responder
+counters (`tb_output_axi_write_count`, `tb_output_axi_read_count`); `axi_hs_periph` as an
+attribution print; `tb_fuse_sense_done`, `tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` for the
+bring-up wait. Every address comes from the generated SMC address map (`smc_addr.h`,
+`smc_memory_map.py`): apertures, decoded extents, misc-wrapper sub-blocks and the gaps between unit
+apertures.
+
+*Run mode*: one testlist entry in `testlists/fabric.toml`; group `all`; `run_modes` `smoke`;
+`timeout_sec` 3600; tags `ci`, `fabric`; seed 1; args `+axi_sva_need_sep_in`
+`+axi_sva_need_sys_in` `+axi_sva_need_jtag_in`; tool VCS (cocotb). The ten `ocah_axi_sva`
+instances stay on; no assertion-off plusarg is passed.
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
+drawn from the seed.
+
+*Objective*: Every SMC error subordinate the inbound ports reach answers with the stated code, beat
+count, IDs and data word, and the port stays live afterwards.
+
+*Test Coverage*:
+
+* Nine error families, each on the port cells its scenarios list: outside both apertures
+  (`GLOBAL_BASE + REGION_SIZE`, `GLOBAL_BASE - 0x1000`; SEP_IN, SYS_IN), units past the reset
+  `REGION_SIZE` (PLIC, CLINT, core-0 BEU bases; SEP_IN, SYS_IN), the six reserved gaps at the local
+  and the global base, the Debug Module window (+0x1000, +0x1400, +0x1860), the first slot past
+  the extent and the last slot of the seven 64-bit islands and of the reset unit and misc wrapper,
+  the four misc-wrapper holes, the two GPIO past-slot words, and the first register of the five
+  gated peripheral windows with every `CLOCK_GATE_CONTROL` enable set from SEP_IN for that family.
+* Per location: a 64-bit single read, two 32-bit reads at +0 and +4, a 64-bit write, INCR read
+  bursts with AxLEN 1, 3, 15 and 255 and INCR write bursts with AxLEN 1, 15 and 255 (PLIC: 3 and
+  255), each placed so it holds the location, stays in its error range and inside one 4 KiB page,
+  and narrow reads (AxSIZE 0 at offsets 0..7, AxSIZE 1 at 0, 2, 4, 6). A length the placement rule
+  cannot drive prints `INFO-CELL-NOT-DRIVABLE <cell> range=<bytes>` and counts against the planned
+  cell list.
+* Graded per access from the sampler: one AR or AW with the issued address, ID and length; the
+  response code of every single, paired and narrow beat and of every write burst B (DECERR, SLVERR
+  for the gated windows); exactly AxLEN+1 R beats with RID equal to ARID, RLAST on the last beat
+  only and no EXOKAY; every W beat accepted with WLAST on beat AxLEN and exactly one B with BID
+  equal to AWID; `RDATA[31:0]` = 0xBADCAB1E of a 64-bit read and the 0xBADCAB1E word in the
+  addressed half of each 32-bit read where `memmap.adoc` states the word.
+* Bystanders: `SCRATCH_COLD[0..7]`, `CPU_CTRL.SCRATCH[0..3]`, `SCRATCH_COLD_WARM[7]`, alias
+  remap 7, M-mode remap 7 and Xvisor remap 7 `REGION_ATTRS`, inbound and outbound filter 15
+  `END_ADDR` and one scratchpad word hold distinct values the leaf wrote; `CPU_CTRL.DUMMY_ROM_NULL[3]`,
+  `CHIP_CONFIG.LC_STATE`, GPIO interface 64 `ACCESS_FILTER` and the three split-slot registers hold
+  the value read at setup. They are re-read from SEP_IN, with the SYS_OUT responder counters, after
+  each family's single writes and write bursts.
+* A fresh 64-bit read of `LOCAL_BASE` on the same port and ID answers OKAY 0x0000_0000_C000_0000
+  after each family location.
+* Straddling unit: at `REGION_SIZE` 0x10_0000 a 64-bit read and write at `BASE + 0x6_0000` on
+  SYS_IN and SEP_IN answer DECERR; after the restore to 0x100_0000 the seeded word is unchanged and
+  a written word reads back with OKAY.
+* Gate redirect: for each gated peripheral and port, the first read after the B of the enabling
+  `CLOCK_GATE_CONTROL` write answers SLVERR with 0xBADCAB1E and the first read after the B of the
+  clearing write answers OKAY.
+* Split slots (reset unit `+0x20C8`, misc wrapper `+0x2A08`, base config `+0x1_0048`): the 32-bit
+  +0 read answers OKAY, with the documented reset for the reset unit
+  (`ISOLATE_REQ_FLR_RESET_COUNTER_VALUE` 0x0) and the base config
+  (`HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD` 0x1000); the 32-bit +4 read answers DECERR with
+  0xBADCAB1E in lanes 63:32, the 64-bit read returns one beat with RLAST and the 64-bit write one B.
+  The misc wrapper +0 word is the read-only `NDMRESET_CLUSTER_COUNT` (the number of connected
+  clusters, an integration value no pinned source states numerically) and is an OBS line.
+* Observation only, never compared, each line naming its findings: `OBS-ERRC-OUTSIDE`,
+  `OBS-ERRC-REGIONSIZE`, `OBS-ERRC-GAP`, `OBS-ERRC-DEBUGWIN`, `OBS-ERRC-PASTEXT64`,
+  `OBS-ERRC-PASTEXT32`, `OBS-ERRC-MISCHOLE`, `OBS-ERRC-GPIOPAST` and `OBS-ERRC-CLKGATE` (RRESP and
+  RDATA of every read beat, run-length per burst, and the lanes of each narrow read; SF-002,
+  SF-003, SF-004, SF-005, SF-006, SF-010, SF-020, SF-027), `OBS-ERRC-REGIONSIZE-STRADDLE` (SF-003)
+  `OBS-ERRC-SPLITSLOT` (merged code and data of the 64-bit read, the write BRESP and whether +0
+  took the low word; SF-004, SF-010) and `OBS-ERRC-SPLITSLOT-NDMCOUNT` (the misc wrapper +0 word on
+  every port). `INFO-PATH` prints the peripheral AXI-Lite handshake count
+  of each gap and 32-bit island read (SF-020, SF-010).
+
+*Test Procedure*:
+
+[arabic]
+. ADMIT: wait for the fuse sense (bounded by 200 000 `clk_smc_i` cycles), start the sampler,
+  register every planned error address, program inbound filter entry 0 pass-all from SEP_IN and
+  read it back; `CTRL-M9-ADMIT`: a SYS_IN 64-bit read of `LOCAL_BASE` answers OKAY
+  0x0000_0000_C000_0000. Seed and snapshot the bystanders and record the responder counters.
+. SINGLE_READS, WORD_PAIRS, SINGLE_WRITES, READ_BURSTS, WRITE_BURSTS and NARROW, each over every
+  family, port and location, followed by LIVENESS. Error injection. Point: the inbound port at each
+  error location. Kind: the access shape of the phase. Expected response: the stated code per beat,
+  the stated beat and B counts and IDs, the stated data word; the bystanders and responder counters
+  unchanged after each family's writes.
+. STRADDLE: the `REGION_SIZE` 0x10_0000 refusal and the restore positive control, with a
+  `LOCAL_BASE` read on each port after the restore.
+. GATE_REDIRECT: the set and clear sequence per gated peripheral and port.
+. SPLIT_SLOTS: the four accesses per split slot and port, restoring the reset unit and base config
+  +0 registers from SEP_IN with a 32-bit write of their reset value (the read-only misc wrapper +0
+  is not written), then a `LOCAL_BASE` read per port.
+. Print one `INFO-CELL` line per planned cell, compare the cell count of each family with the
+  feature list, then print each family checker only when it has no finding. Print
+  `CHK-TIMEOUT-PATHS` and the `CHK-NONVAC` fence, and only then fail the leaf on any finding.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ERRC-OUTSIDE` |Outside both apertures on SEP_IN and SYS_IN: DECERR on every single, paired,
+narrow and write-burst answer, one beat or AxLEN+1 beats with RID and RLAST as stated, one B with
+BID per write, bystanders and responder counters unchanged, liveness OKAY; read data is OBS
+|`CHK-ERRC-REGIONSIZE` |PLIC, CLINT and BEU0 at the reset `REGION_SIZE` answer DECERR as stated,
+the straddling scratchpad unit is refused at 0x10_0000 and keeps D0, and D2 reads back OKAY at
+0x100_0000
+|`CHK-ERRC-GAP` |The six reserved gaps at both bases on the three ports answer DECERR with
+`RDATA[31:0]` = 0xBADCAB1E and the word in the addressed half of each 32-bit read
+|`CHK-ERRC-DEBUGWIN` |The Debug Module window answers DECERR with 0xBADCAB1E on the three ports
+|`CHK-ERRC-PASTEXT64` |The first slot past the extent and the last slot of the seven 64-bit
+islands answer DECERR with 0xBADCAB1E
+|`CHK-ERRC-PASTEXT32` |The past-extent words of the reset unit and the misc wrapper answer DECERR
+with 0xBADCAB1E through the 64-bit inbound ports
+|`CHK-ERRC-MISCHOLE` |The four misc-wrapper holes answer DECERR with 0xBADCAB1E
+|`CHK-ERRC-GPIOPAST` |The two GPIO past-slot words answer DECERR with 0xBADCAB1E
+|`CHK-ERRC-CLKGATE` |The five gated windows answer SLVERR with 0xBADCAB1E while their enable is
+set, the first read after the enabling B answers SLVERR and the first read after the clearing B
+answers OKAY
+|`CHK-ERRC-SPLITSLOT` |Each split slot: +0 OKAY (reset unit 0x0 and base config 0x1000 compared;
+misc wrapper word on `OBS-ERRC-SPLITSLOT-NDMCOUNT`), +4 DECERR with 0xBADCAB1E in lanes 63:32, one
+beat for the 64-bit read, one B for the 64-bit write, liveness OKAY
+|`CHK-NONVAC` |Ordered fence ADMIT < SINGLE_READS < WORD_PAIRS < SINGLE_WRITES < READ_BURSTS <
+WRITE_BURSTS < NARROW < LIVENESS < STRADDLE < GATE_REDIRECT < SPLIT_SLOTS, each term with its time
+and an access count no lower than the planned count
+|`CHK-TIMEOUT-PATHS` |Every access is bounded at 100 000 ns, its expiry printing `INFO-CLASSIFY`
+with the last handshake of each channel and `rst_primary_smc_clk_no` and failing the leaf; the fuse
+waits are bounded at 200 000 `clk_smc_i` cycles; 0 expired
+|===
+
+*Pass Criteria*: every graded code, beat count, ID, RLAST, B count and stated word matches, the
+bystanders and responder counters are unchanged, every liveness read answers OKAY with the
+`LOCAL_BASE` reset, every family reaches its planned cell count with each non-drivable burst cell
+printed, and no access goes unanswered. A FAIL on a stated value is a finding. Enrolled in: `all`.
+
+*Scope limit*: The read data that accompanies an outside-aperture or past-`REGION_SIZE` answer, the
+second word of a 64-bit read, the per-beat code and data of a read burst, the lanes of a narrow
+read and the merged answer of a split slot wait on SF-002, SF-003, SF-004, SF-005, SF-006 and
+SF-010 and are OBS lines. `NDMRESET_CLUSTER_COUNT` reports an integration value and is an OBS line. Which crossbar answers a gap (SF-020) is attributed only by the
+peripheral AXI-Lite handshake count. `ocah_axi_sva` fires are read from the kept log.
+
+'''''
+
+[[sec-571-smc_axi_fabric_burst_type_islands_test]]
+===== 571 `smc_axi_fabric_burst_type_islands_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smc_axi_fabric_burst_type_islands_test`
+
+*BFM / Model*: `ocah_axi_vip` (AXI) masters on SEP_IN (`s_axi_*`, `env.sep_in_axi_agent`), SYS_IN
+(`sys_axi_*`, `env.sys_in_axi_agent`) and JTAG_IN (`jtag_axi_*`, `env.jtag_axi_agent`) with a fixed
+AXI ID per port, issuing FIXED, WRAP and INCR bursts of full-width beats and single strobed or
+narrow writes; a passive per-port handshake sampler on `clk_smc_i` recording every AR, AW, W, R
+and B handshake of the three ports (address, ID, length, burst, response, data, last), which is
+the grading source because the bench item returns one merged response code; the reset agent for
+the `rst_cool_ni` primary reset of the last leg; `env.axi_monitor.expected_decerr_addrs` for the
+start address of every burst whose response the specification leaves open; `tb_fuse_sense_done`,
+`tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` for the bring-up waits. Every address comes from the
+generated SMC address map (`smc_addr.h`, `smc_memory_map.py`) and every field mask and reset value
+from the generated register headers.
+
+*Run mode*: one testlist entry in `testlists/fabric.toml`; group `all`; `run_modes` `smoke`;
+`timeout_sec` 3600; tags `ci`, `fabric`; seed 1; args `+axi_sva_need_sep_in`
+`+axi_sva_need_sys_in` `+axi_sva_need_jtag_in`; tool VCS (cocotb). The ten `ocah_axi_sva`
+instances stay on; no assertion-off plusarg is passed.
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
+drawn from the seed.
+
+*Objective*: FIXED, WRAP and INCR bursts from every inbound port complete with the AXI beat count,
+RLAST and one B at every register island and decode edge, and leave every register outside the
+IHI 0022 burst footprint unchanged.
+
+*Test Coverage*:
+
+* Register islands, each a 32-byte window that holds the named registers and no other register of
+  the generated map (checked at setup): alias remap slot 2, the base-config hang-detector window
+  (`HANG_DET_SYS_AXI_*`, `HANG_DET_SEP_AXI_*`), CPU-control `SCRATCH[4..7]`, misc
+  `SCRATCH_COLD[0..7]` and `SCRATCH_COLD_WARM[0..7]`, and the reset-unit FLR counters
+  (`ISOLATE_REQ_VIS`, `ISOLATE_REQ_FLR_COUNTER_VALUE`, `ISOLATE_REQ_FLR_RESET_COUNTER_VALUE`).
+  Per port and island: INCR write and read (AxLEN=3), FIXED write of four distinct words and FIXED
+  read (AxLEN=3) at +0x8 (+0x0 for the reset unit), WRAP write and read (AxLEN=3, first beat at
+  +0x10). Before each write the registers the previous burst touched are re-seeded from SEP_IN
+  with fresh distinct values; after it every island register and the neighbours outside the
+  window are read from SEP_IN. Alias `REGION_ATTRS.valid` and the hang-detector `enable` and
+  `irq_test` bits stay 0 in every written value; both hang-detector `CTRL` registers are seeded with
+  `irq_en`=1, which no burst beat sets.
+* Partial strobes: WSTRB=0xF0 to `SCRATCH_COLD[0]/[1]`, `SCRATCH_COLD_WARM[0]/[1]` and
+  `ISOLATE_REQ_VIS`/`ISOLATE_REQ_FLR_COUNTER_VALUE`, WSTRB=0x0F to the misc pairs, WSTRB=0x30 to
+  the cold pair, WSTRB=0xF0 all-ones to `CPU_CTRL.SCRATCH[12]`, and a 64-bit read of each misc pair.
+* GPIO slots 19..23 with AxPROT privileged: INCR write and read from slot 20 + 0x8, FIXED write and
+  read of the slot 21 word, WRAP write and read (AxLEN=1) from slot 21 + 0x8. Before the bursts
+  each slot is seeded from SEP_IN with values distinct per slot in `DATA_CTRL` (`core2pad`,
+  `interrupt_type`), `DATA_CTRL_ENABLE` (`use_reg_*`, `use_reg_tx` set whenever `use_reg_core2pad`
+  is) and `ACCESS_FILTER` (`awprot_requirement`, `arprot_requirement`), with `interface_enable`,
+  `enable_rx_tx` and both filter enables 0, and restored afterwards; every write carries the values
+  read before it.
+* Scratchpad: INCR write and read with AxLEN 0, 7 and 255 crossing 64-byte stripes in one page,
+  WRAP write and read with AxLEN 1, 3, 7 and 15 starting mid-window, FIXED write and read
+  (AxLEN=3), narrow writes (AxSIZE 0, 1, 2) and a WSTRB=0x5A write each followed by a 64-bit read,
+  guard words below and above each footprint, and an INCR write (AxLEN=3) to the scratchpad ROM
+  with the ROM words read before and after.
+* Alias slot edge (slots 3..6, k = 4): INCR write and read from slot k + 0x10, WRAP write and read
+  (AxLEN=7, 64-byte window over slots k and k+1, first beat at slot k+1 + 0x10), WRAP write
+  (AxLEN=3, 32-byte window = slot k, first beat at slot k + 0x10).
+* Extent edges: INCR read and write (AxLEN=3) starting on the last live register of the CPU
+  control (+0x2B8), alias slot 7, inbound filter entry 15 (written with its current value), misc
+  wrapper (+0x208), reset unit (+0xC8) and GPIO slot 64, with the registers below each start read
+  before and after. `DUMMY_ROM_NULL[1]`/`[2]` are seeded with distinct non-zero values and
+  `NDMRESET_PROCESS` with a distinct value in the bits at or above `NDMRESET_CLUSTER_COUNT` before
+  the write, and restored after it.
+* Rule and window ends: INCR write and read (AxLEN=7) ending on the last scratchpad word with the
+  first CLA word read before and after, an INCR read (AxLEN=7) ending on the last word of the CPU
+  control aperture, and INCR read and write (AxLEN=15) ending on the last word below
+  `BASE + REGION_SIZE` (SYS_IN at the global base).
+* Last leg: core-0 watchdog registers read, `REGION_SIZE` written 0x400, INCR read and write
+  (AxLEN=3) from `BASE + 0x3F0` across the window end on each port, a SEP_IN `REGION_SIZE` restore
+  write, the watchdog registers re-read, a primary reset through `rst_cool_ni`, inbound entry 0
+  re-programmed, `REGION_SIZE` read and a `LOCAL_BASE` read per port.
+* A fresh 64-bit read of `LOCAL_BASE` on the same port after each island, the GPIO, scratchpad,
+  slot-edge and extent-edge families, after the rule ends and after the recovery.
+* Observation only, never compared, each line naming its findings: `OBS-BT-ISLAND64` (SF-007),
+  `OBS-BT-ISLAND32` (SF-007, SF-010), `OBS-BT-STRB-UPPER` (SF-010, SF-011), `OBS-BT-GPIO` (SF-007,
+  SF-024), `OBS-BT-SPM` (SF-022), `OBS-BT-SLOTEDGE` (SF-007, SF-008), `OBS-BT-EXTENTEDGE` (SF-005,
+  SF-008), `OBS-BT-RULEEDGE` (SF-005) and `OBS-BT-REGIONEDGE` (SF-005, SF-008, SF-025): response
+  codes, per-beat read data and beat addresses, the values in the footprint, the scratchpad
+  landing of each WRAP and FIXED beat and the response of the restore write at 1 KiB.
+
+*Test Procedure*:
+
+[arabic]
+. ADMIT: wait for the fuse sense (bounded by 200 000 `clk_smc_i` cycles), start the sampler,
+  register the open-response burst addresses, program inbound filter entry 0 pass-all with
+  `allow_burst`=1 and read it back; `CTRL-M4-ADMIT`: a SYS_IN 64-bit read of `LOCAL_BASE` answers
+  OKAY 0x0000_0000_C000_0000. Check each island window, check that alias slots 0 and 7 have
+  `valid`=0, seed every island register from SEP_IN and read it back.
+. ISLAND64, ISLAND32: the six shapes per port and island, then `LOCAL_BASE` on that port.
+. STROBES, GPIO, SPM, SLOT_EDGE, EXTENT_EDGE, RULE_ENDS per port, each family followed by a
+  `LOCAL_BASE` read; LIVENESS closes with one `LOCAL_BASE` read per port.
+. WINDOW_1K: the last leg above, with the reset waits bounded (primary asserted within 400
+  `clk_ref_i` cycles, all reset observables released within 2000).
+. Print one `INFO-CELL` line per planned cell and each family checker only when it has no
+  finding. Print `CHK-TIMEOUT-PATHS` and the `CHK-NONVAC` fence, and only then fail the leaf on any
+  finding.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-BT-ISLAND64` |For each burst shape, 64-bit island and port: every W beat accepted with WLAST
+on beat AxLEN and one B with BID=AWID and no EXOKAY; AxLEN+1 R beats with RID=ARID, RLAST on the
+last beat only and no EXOKAY; every register outside the burst footprint reads its reference;
+liveness OKAY
+|`CHK-BT-ISLAND32` |The same through the 64-to-32-bit downsizer on the misc scratch words and the
+reset-unit FLR counters
+|`CHK-BT-STRB-UPPER` |WSTRB=0xF0: OKAY, +4 takes D[63:32], +0 keeps its value (`ISOLATE_REQ_VIS`
+its reset value); WSTRB=0x0F: +0 takes D[31:0], +4 kept; WSTRB=0x30: +0 kept; CPU-control
+`SCRATCH` reads bits [63:32]=0 and its value in [31:0]; the 64-bit pair read assembles +0 and +4
+|`CHK-BT-GPIO` |GPIO burst protocol as above, slots and words outside the footprint keep their
+read-before contents, liveness OKAY
+|`CHK-BT-SPM` |INCR: OKAY and every beat reads the data written; WRAP and FIXED: protocol held and
+the guard words outside the window or the neighbouring words kept; narrow and strobed writes change
+only the strobed bytes with OKAY; the ROM write answers one B with SLVERR and the ROM words are
+unchanged; liveness OKAY
+|`CHK-BT-SLOTEDGE` |Slot-edge burst protocol, every register of slots k-1..k+2 outside the
+footprint keeps its reference, liveness OKAY
+|`CHK-BT-EXTENTEDGE` |Extent-edge burst protocol, every writable register below the burst start
+keeps its value, liveness OKAY; the read-only `NDMRESET_REQUEST` is printed as
+`INFO-PROTOCOL-ONLY`
+|`CHK-BT-RULEEDGE` |The scratchpad-end burst answers OKAY with the written data and the first CLA
+word is unchanged; the CPU-control-end read returns AxLEN+1 beats with RLAST on the last only
+|`CHK-BT-REGIONEDGE` |Window-end burst protocol at the reset `REGION_SIZE` and at 0x400, the core-0
+watchdog registers unchanged, `REGION_SIZE` reads 0x0100_0000 after the primary reset and the
+`LOCAL_BASE` read on each port answers OKAY
+|`CHK-NONVAC` |Ordered fence ADMIT < ISLAND64 < ISLAND32 < STROBES < GPIO < SPM < SLOT_EDGE <
+EXTENT_EDGE < RULE_ENDS < LIVENESS < WINDOW_1K, each term with its time and a count no lower than
+the planned count
+|`CHK-TIMEOUT-PATHS` |Every access is bounded at 100 000 ns, its expiry printing `INFO-CLASSIFY`
+with the last handshake of each channel and `rst_primary_smc_clk_no` and failing the leaf; the
+fuse waits are bounded at 200 000 `clk_smc_i` cycles and the reset waits by `clk_ref_i` counts;
+0 expired
+|===
+
+*Pass Criteria*: every graded beat count, ID, RLAST, B count, stated response and compared value
+matches, every out-of-footprint register keeps its reference, every liveness read answers OKAY
+with the `LOCAL_BASE` reset, every family reaches its planned cell count and no access goes
+unanswered. A FAIL on a stated value is a finding. Enrolled in: `all`.
+
+*Scope limit*: Response codes of bursts that the AXI-to-AXI-Lite conversion, the downsizer, the
+GPIO access filter or the L2 frontend answer, the landing of beats inside a footprint, beats past a
+decoded extent or the window end and the `REGION_SIZE` restore path wait on SF-005, SF-007, SF-008,
+SF-010, SF-011, SF-022, SF-024 and SF-025 and are OBS lines. The reset-unit island window ends past
+the decoded extent of the reset unit, so its WRAP first beat and the upper words of its INCR bursts
+address the past-extent region. `NDMRESET_REQUEST` below the misc wrapper extent edge is read-only
+in the RDL, so a stray beat cannot change it: its reads are protocol graded and printed as
+`INFO-PROTOCOL-ONLY`, and no integrity claim is made for it. `ocah_axi_sva` fires are read from the
+kept log.
+
+'''''
+
+[[sec-572-smc_infilt_window_cfg_reexposure_test]]
+===== 572 `smc_infilt_window_cfg_reexposure_test`
+
+*Phase*: 3
+
+*Area*: FABRIC
+
+*Source Module*: `smc_infilt_window_cfg_reexposure_test`
+
+*BFM / Model*: `ocah_axi_vip` (AXI) masters on SEP_IN (`s_axi_*`, `env.sep_in_axi_agent`) and SYS_IN
+(`sys_axi_*`, `env.sys_in_axi_agent`) with a fixed AXI ID per port and AxPROT 0 on SYS_IN; a passive
+per-port handshake sampler on `clk_smc_i` recording every AR, AW, W, R and B handshake of the two
+ports (address, ID, length, burst, response, data, last), which is the grading source because the
+bench item returns one merged response code; a lowest-hit decode model of the inbound filter
+(`fabric.adoc` inbound filtering, `filter_ctrl.rdl` match fields and granule) whose input is the
+configuration of all sixteen inbound entries read back from SEP_IN; the reset agent for the
+`rst_cool_ni` primary reset of the last leg; `env.axi_monitor.expected_decerr_addrs` for the SEP_IN
+locked-entry writes and the SEP_IN accesses after the `REGION_SIZE` shrink; `tb_fuse_sense_done`,
+`tb_fuse_reset_n` and `tb_rst_warm_smc_clk_n` for the bring-up waits. Every address comes from the
+generated SMC address map (`smc_addr.h`, `smc_memory_map.py`) and every field mask and reset value
+from the generated register headers (`filter_ctrl.h`, `smc_base_config.h`, `cpu_ctrl.h`).
+
+*Run mode*: one testlist entry in `testlists/fabric.toml`; group `all`; `run_modes` `smoke`;
+`timeout_sec` 3600; tags `ci`, `fabric`; seed 1; args `+axi_sva_need_sep_in`
+`+axi_sva_need_sys_in`; tool VCS (cocotb). The ten `ocah_axi_sva` instances stay on; no
+assertion-off plusarg is passed.
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
+drawn from the seed.
+
+*Objective*: Traffic from the filtered SYS_IN port, admitted by an inbound entry whose window covers
+the inbound-filter control registers and the base-config block, reads and writes them as their
+register descriptions and the inbound decode rule state; a locked entry refuses every write with
+DECERR, and `allow_burst` selects burst matching and the address granule.
+
+*Test Coverage*:
+
+* Entries programmed from SEP_IN and read back: E=4 (read, write, enabled, `allow_ns` 0, `src_id`
+  0, `allow_burst` 1, `BASE + 0x1_0000` .. `BASE + 0x1_5FFF` at the local addresses SYS_IN issues),
+  j=2 with a disabled pattern, L=8 with a disabled configuration, U=10 over the UART window, G=11
+  over the base-config page from the reset global base to the moved global base (disabled until
+  the global-base leg), B=3 over `CPU_CTRL.SCRATCH[0..7]` with `allow_burst` 0; entry 12 is left at
+  reset. Each entry is written disabled with its final `allow_burst` before its range, so the
+  range write-back uses the granule of the new configuration.
+* Window reads through E: entry j, entry 12 (`FILTER_CONFIG` 0x3000, `START_ADDR` 0x0, `END_ADDR`
+  0x7), locked entry L, `GLOBAL_BASE`, `LOCAL_BASE`, `REGION_SIZE`; with E disabled from SEP_IN the
+  read answers DECERR and with E re-enabled OKAY.
+* Unlocked writes to entry j through E and their SEP_IN readback, then a write of 0 to the read-only
+  `data_bus_width` with every bit outside the fields set.
+* Lowest hit: entry j (below E) and entry 7 (above E) rewritten from SYS_IN as enabled deny entries
+  over `HANG_DET_SYS_AXI_TIMEOUT_THRESHOLD` (T); after a SEP_IN readback of all entries, a SYS_IN
+  read and write of T and a read of `LOCAL_BASE` outside the deny range, each graded against the
+  decode model; T is re-read from SEP_IN and restored.
+* Locking: a SEP_IN write and readback of L before the lock, a SYS_IN write of L, the lock set from
+  SEP_IN; then SYS_IN writes of L's three registers with `filter_ib_reg_cg_en` 0 and 1, a write
+  clearing `locked`, an INCR write burst (AxLEN=2) over L's three registers, an INCR write burst
+  (AxLEN=2) from L `END_ADDR` into entry 9 `FILTER_CONFIG`, and the three writes from SEP_IN, each
+  followed by SYS_IN and SEP_IN reads of L and a SEP_IN read of entry 9. The locked-entry window
+  read of the READS family is taken here, after the lock, because the lock positive control needs
+  L unlocked.
+* Self deny: SYS_IN writes through E clearing E `write_allowed`, clearing E `entry_enabled`, and
+  clearing it again while entry F=6 admits the same window; after each, a SEP_IN readback of all
+  entries and the next SYS_IN accesses graded against the decode model; SEP_IN restores E.
+* Base config through E: a `LOCAL_BASE` write, `CLOCK_GATE_CONTROL.uart_cg_en` set and cleared with
+  a 32-bit read of the first UART register through U after each, a 20-bit threshold write and
+  readback, and `GLOBAL_BASE` moved to 0x5000_0000 with `LOCAL_BASE` read through G at the old and
+  the new global address (a bounded poll of at most 16 reads waits for the new window), restored
+  from SEP_IN.
+* `allow_burst` through B: a single-beat read, INCR read and write bursts (AxLEN=3) at `allow_burst`
+  0 and 1 with the scratch words read from SEP_IN before and after, and an entry with
+  `START_ADDR` = `END_ADDR` = `SCRATCH[2] + 4` at `allow_burst` 0 and 1 read at `SCRATCH[2]` (inside
+  the 8-byte granule), `SCRATCH[3]` (inside the 4 KiB granule only) and the iDMA `CONFIG` register
+  (outside the 4 KiB granule).
+* Last leg: `REGION_SIZE` written 0x1_0000 from SYS_IN, `LOCAL_BASE` read from SYS_IN and SEP_IN,
+  a SEP_IN restore write, a primary reset through `rst_cool_ni`, `REGION_SIZE` read from SEP_IN,
+  E re-programmed and a SYS_IN liveness read.
+* A fresh 64-bit SYS_IN read of `LOCAL_BASE` through E ends every family.
+* Observation only, never compared, each line naming its findings: `OBS-FWIN-READ` (the address E
+  compares; SF-012), `OBS-FWIN-WRUNLOCKED` (BRESP and SEP_IN readback of each SYS_IN write to an
+  unlocked entry; SF-021), `OBS-FWIN-WRLOCKED` (BRESP of the burst spanning L and entry 9, entry 9
+  afterwards, BRESP and landing of the pre-lock SYS_IN write; SF-015, SF-021), `OBS-FWIN-SELFDENY`
+  (BRESP and SEP_IN readback of each self-deny write; SF-014), `OBS-FWIN-BASECFG` (BRESP of the
+  `GLOBAL_BASE` write, the first poll read that sees the new window, BRESP of the shrink and of the
+  SEP_IN restore; SF-023, SF-025) and `OBS-INFILT-BURST` (per-beat RRESP and RDATA, BRESP and the
+  scratch landing of each burst; SF-005, SF-007).
+
+*Test Procedure*:
+
+[arabic]
+. ADMIT: wait for the fuse sense (bounded by 200 000 `clk_smc_i` cycles), start the sampler,
+  program and read back the entries; `CTRL-M6-ADMIT`: a SYS_IN 64-bit read of `LOCAL_BASE` through
+  E answers OKAY 0x0000_0000_C000_0000.
+. READS, UNLOCKED, LOWEST_HIT, PRELOCK, LOCKED, SELF_DENY, BASE_CONFIG and ALLOW_BURST as above.
+  Point: SYS_IN through E, U, G or B. Kind: single 64-bit and 32-bit accesses and INCR bursts.
+  Expected response: the register descriptions, the lock description and the decode of the
+  read-back configuration.
+. SHRINK: the last leg, with the reset waits bounded (primary asserted within 400 `clk_ref_i`
+  cycles, all reset observables released within 2000).
+. Print one `INFO-CELL` line per planned cell and each checker only when its family has no
+  finding. Print `CHK-TIMEOUT-PATHS` and the `CHK-NONVAC` fence, and only then fail the leaf on any
+  finding.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FWIN-READ` |Every SYS_IN read through E answers OKAY: entry j returns its SEP_IN-programmed
+fields with `data_bus_width` 0x3, entry 12 returns 0x0000_0000_0000_3000 / 0x0 / 0x7, entry L its
+locked configuration with `locked`=1 and its range, `GLOBAL_BASE` 0x4000_0000, `LOCAL_BASE`
+0xC000_0000, `REGION_SIZE` 0x0100_0000; with E disabled DECERR and re-enabled OKAY
+|`CHK-FWIN-WRUNLOCKED` |The SYS_IN write to the read-only field answers OKAY and `data_bus_width`
+reads 0x3 with the non-field bits 0; the SYS_IN accesses to T and outside the deny range answer as
+the lowest hitting entry of the read-back configuration dictates
+|`CHK-FWIN-WRLOCKED` |The SEP_IN write before the lock answers OKAY and reads back as written;
+every write to locked L (SYS_IN at both gate settings, the lock clear, the AxLEN=2 burst, SEP_IN)
+answers DECERR with every W beat accepted and one B; SYS_IN and SEP_IN reads of L return the locked
+values with `locked`=1, also after the spanning burst; the next SYS_IN read through E answers OKAY
+|`CHK-FWIN-SELFDENY` |After each self-deny write the next SYS_IN accesses answer as the read-back
+E dictates: with `write_allowed` 0 the write answers DECERR and T is unchanged while the read
+answers OKAY with T; with E disabled and no other hit both answer DECERR; with F admitting the
+window OKAY; the SEP_IN restores answer OKAY and the next SYS_IN read OKAY
+|`CHK-FWIN-BASECFG` |`LOCAL_BASE` write OKAY and still 0xC000_0000; the UART read after the gate
+is set answers SLVERR with `RDATA[31:0]` = 0xBADCAB1E and after the clear OKAY; the threshold reads
+back the written 20-bit value; once the new window applies the old global address answers DECERR
+and the new one OKAY with 0xC000_0000; after the shrink the base-config reads from SYS_IN and
+SEP_IN answer DECERR, and after the primary reset `REGION_SIZE` reads 0x0100_0000
+|`CHK-INFILT-BURST` |The single-beat read through B answers OKAY with the scratch value; at
+`allow_burst` 0 the bursts return AxLEN+1 R beats with RLAST on the last only and no EXOKAY and one
+B with DECERR, and the scratch words are unchanged; at `allow_burst` 1 the bursts keep the protocol
+and are not refused; inside the granule OKAY and outside DECERR; the SYS_IN read through E answers
+OKAY 0x0000_0000_C000_0000
+|`CHK-NONVAC` |Ordered fence ADMIT < READS < UNLOCKED < LOWEST_HIT < PRELOCK < LOCKED < SELF_DENY <
+BASE_CONFIG < ALLOW_BURST < SHRINK, each term with its time and a SYS_IN access count no lower than
+the planned count
+|`CHK-TIMEOUT-PATHS` |Every access is bounded at 100 000 ns, its expiry printing `INFO-CLASSIFY`
+with the last handshake of each channel and `rst_primary_smc_clk_no` and failing the leaf; the
+fuse waits are bounded at 200 000 `clk_smc_i` cycles, the global-base poll at 16 reads and the
+reset waits by `clk_ref_i` counts; 0 expired
+|===
+
+*Pass Criteria*: every graded response, beat count, ID, RLAST, B count and compared value matches,
+every decode agrees with the read-back configuration, every liveness read answers OKAY with the
+`LOCAL_BASE` reset, every planned cell is driven and no access goes unanswered. A FAIL on a stated
+value is a finding. Enrolled in: `all`.
+
+*Scope limit*: The landing of SYS_IN writes to unlocked filter configuration (accepted behaviour
+under SF-021), the address the inbound filter compares (SF-012), the response and timing of a
+write that changes the admitting entry (SF-014), a burst spanning a locked and an unlocked entry
+(SF-015), when a `GLOBAL_BASE` write applies (SF-023), the `REGION_SIZE` recovery path (SF-025) and
+the beat codes and landing of filtered bursts (SF-005, SF-007) are OBS lines. `ocah_axi_sva` fires
+are read from the kept log.
 
 '''''
 
@@ -24087,6 +24560,124 @@ in-flight window response are recorded without comparison.
 *Scope limit*: The DECERR read data and the response (OKAY or DECERR) of the window access that is
 outstanding with a `REGION_SIZE` write are measured and printed and not compared, because the
 specification does not state them.
+
+'''''
+
+
+[[sec-573-smc_l2_frontend_access_uncore_held_test]]
+===== 573 `smc_l2_frontend_access_uncore_held_test`
+
+*Phase*: 3
+
+*Area*: CPU
+
+*Source Module*: `smc_l2_frontend_access_uncore_held_test`
+
+*BFM / Model*: `ocah_axi_vip` (AXI) masters on SYS_IN (`sys_axi_*`, `env.sys_in_axi_agent`),
+SEP_IN (`s_axi_*`, `env.sep_in_axi_agent`) and JTAG_IN (`jtag_axi_*`, `env.jtag_axi_agent`),
+driven through the VIP event API with a fixed data-path AXI ID per port and two more SEP_IN IDs
+for the CPU-control read inside the window and the RESET_CTRL / RESET_TIMEOUT accesses; a
+passive per-port handshake sampler on `clk_smc_i` recording every AR, AW, W, R and B handshake
+(address, ID, length, response, data, last), which is the grading source; a passive per-edge
+sampler of the cluster-side struct ports of the two isolation blocks (`u_l2_frontend_axi_isolate`
+`mst_req_o` / `mst_resp_i`, `u_mmio_axi_isolate` `slv_req_i` / `slv_resp_o`), each VALID read at
+its bit position in the AXI typedef layout after the handle width is checked against that layout;
+`tb_cpu_reset_applied` gating the per-edge sampling; `tb_cpu_isolate_req`, `tb_cpu_drained`,
+`tb_cpu_l2_isolated`, `tb_cpu_mmio_isolated`, `tb_cpu_l2_pending_ar` / `_aw` and
+`rst_primary_smc_clk_no` printed on every classification line. Every address comes from the
+generated SMC address map (`smc_addr.h`).
+
+*Run mode*: one testlist entry in `testlists/cpu.toml`; group `all`; `run_modes` `smoke`;
+`timeout_sec` 3600; tags `ci`, `cpu`; seed 1; args `+axi_sva_need_sep_in` `+axi_sva_need_sys_in`
+`+axi_sva_need_jtag_in`; tool VCS (cocotb). The ten `ocah_axi_sva` instances stay on; no
+assertion-off plusarg is passed.
+
+*Randomization*: RAND-NONE: directed, every stimulus value is pinned by the sequence and nothing is
+drawn from the seed.
+
+*Objective*: A software uncore reset requested through `RESET_CTRL` with nothing outstanding
+drains and applies; while it holds, L2-frontend requests from the three inbound ports are blocked
+rather than answered and complete after the release, CPU_CTRL stays reachable, the cluster-driven
+VALIDs stay low, and fresh accesses complete afterwards.
+
+*Test Coverage*:
+
+* Drain and hold, three episodes: `RESET_CTRL` written from SEP_IN with `uncore_reset_n` 0 and every
+  other field as read at idle, `RESET_TIMEOUT` at its reset value (drain mode, `timeout_value` 0),
+  `reset_applied` polled to 1 with `reset_timeout` 0, `RESET_CTRL` read back, then released and
+  `reset_applied` polled to 0.
+* CPU-control path: on each port a 64-bit write and read of `CPU_CTRL.SCRATCH[0]` and a read of
+  `RESET_TIMEOUT`, once with the uncore running and once while it is held.
+* Blocked requests: episode A, 64-bit scratchpad reads of W0 on SYS_IN and JTAG_IN and a boot-ROM
+  read on SEP_IN; episode B, the scratchpad read on SEP_IN and boot-ROM reads on SYS_IN and
+  JTAG_IN; episode C, 64-bit scratchpad writes on the three ports. Each is presented while
+  `reset_applied` is 1 and watched for 2048 `clk_smc_i` edges.
+* Release: each blocked request completes with one beat or one B after the SEP_IN release write;
+  the episode C words read back.
+* Cluster-side VALIDs on every edge while `reset_applied` is 1.
+* Fresh access: an INCR write then read with AxLEN 7 of fresh scratchpad words on each port, and
+  the seeded words W0..W3 read.
+* Observation only, never compared: `OBS-ISO-RECONNECT` (latency from the release B to each
+  blocked R or B, the data a blocked read returned, W0..W3 after the reset; SF-017, SF-018),
+  `OBS-ISO-VALIDS-ISOLATE` (the isolation-driven VALIDs into the cluster; SF-019),
+  `OBS-FRONTPORT-WHILE-BLOCKED` (whether the SEP_IN CPU-control read issued inside the episode A
+  window completes within its 1024-edge window; SF-026) and `OBS-ISO-BLOCK-READY` (the edge
+  ARREADY, AWREADY and WREADY were given for each blocked request, or none; SF-016).
+
+*Test Procedure*:
+
+[arabic]
+. ADMIT (S1): wait for the fuse sense and the cluster boundary de-isolation, start both samplers,
+  check the cluster-side handle widths, program inbound filter entry 0 pass-all from SEP_IN;
+  `CTRL-M1-ADMIT`: a SYS_IN 64-bit read of `LOCAL_BASE` answers OKAY with its reset value. Read
+  `RESET_TIMEOUT` (reset value 0) and `RESET_CTRL` (uncore and every core released), write and
+  read back W0..W3, read the boot-ROM words; `CTRL-M1-VALID-MAP`: the decoded L2 ARVALID and
+  RVALID bits rise under that running traffic.
+. RUNNING_CTRL (S2): the CPU-control accesses on the three ports with the uncore running.
+. HOLD (S3): the drain and hold of episode A.
+. HELD_CTRL (S4): the CPU-control accesses on the three ports while the uncore is held.
+. BLOCKED_A (S5): present the episode A reads, count 2048 edges, issue the SEP_IN `SCRATCH[0]`
+  read at window edge 512.
+. RELEASE_A (S6): the SEP_IN release write, the blocked reads and the CPU-control read completed,
+  `reset_applied` polled to 0.
+. EPISODE_B (S7) and EPISODE_C (S8): drain and hold, present, count 2048 edges, release, complete;
+  episode C reads the written words back.
+. VALIDS (S9): report the per-edge VALID samples of the three holds.
+. FRESH (S10): the AxLEN 7 bursts and the W0..W3 reads.
+. TIMEOUT (S11): every access is bounded 20 000 `clk_smc_i` edges, every poll 64 reads and every
+  completion after a release 400 000 edges; an expiry prints `INFO-CLASSIFY` with the last AR, AW,
+  W, R and B handshake of the port, `rst_primary_smc_clk_no` and the isolate and drain probes and
+  fails the leaf. Print each checker only when it has no finding, then `CHK-TIMEOUT-PATHS` and the
+  `CHK-NONVAC` fence, and only then fail the leaf on any finding.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ISO-DRAIN-APPLIED` |In every episode the `RESET_CTRL` write answers OKAY, `reset_applied`
+reads 1 within 64 reads with `reset_timeout` 0, `RESET_CTRL` reads back with bit 8 0 and the core
+fields as written, and `reset_applied` reads 0 after the release
+|`CHK-ISO-BLOCK-NO-RESPONSE` |No R beat or B for any request presented while `reset_applied` is
+1 during its 2048-edge window, and every such request completes after the release
+|`CHK-ISO-RECONNECT` |Each blocked read completes with one R beat OKAY and RLAST, each blocked
+write with one B OKAY and its word reads back, the fresh AxLEN 7 bursts answer OKAY with eight W
+beats, one B, eight R beats, RLAST on the last only and the written data, and `reset_applied`
+reads 0
+|`CHK-ISO-VALIDS-CLUSTER` |MMIO AWVALID, WVALID and ARVALID and L2-frontend RVALID and BVALID at
+the cluster side read 0, not X or Z, on every sampled edge of the three holds
+|`CHK-FRONTPORT-CTRL` |On each port, running and held, the `SCRATCH[0]` write and read and the
+`RESET_TIMEOUT` read answer OKAY, and `SCRATCH[0]` reads back the written low word with bits
+63:32 zero
+|`CHK-NONVAC` |Ordered fence ADMIT < RUNNING_CTRL < HOLD < HELD_CTRL < BLOCKED_A < RELEASE_A <
+EPISODE_B < EPISODE_C < VALIDS < FRESH with each term's time and count against its planned count
+|`CHK-TIMEOUT-PATHS` |Every bounded wait logs its bound and longest wait, and none expired
+|===
+
+*Scope limit*: The reconnect latency, the scratchpad contents after the reset, the
+isolation-driven VALIDs, whether the CPU-control read completes while an L2-frontend read is
+blocked and whether the isolation block withholds READY are printed and not compared, because the
+specification does not state them (SF-016, SF-017, SF-018, SF-019, SF-026).
 
 '''''
 
