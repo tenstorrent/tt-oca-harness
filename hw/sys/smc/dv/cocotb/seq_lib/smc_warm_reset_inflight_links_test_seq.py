@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_002 ANCHOR: smc_warm_reset_inflight_links_test
-# DV-TESTCASE-CONTRACT-REVISION: 3 RECORD-SHA256: 173c16a57aeefee8b493a1b6ce89e34eb8a02d4cca35d8248c120da6c43c44d1
+# DV-TESTCASE-CONTRACT-REVISION: 5 RECORD-SHA256: ee66ec136cc40520ee3b583fa72c0439bf9680d9f9e962afad4ee03706e6d996
 # DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Warm reset entered through the watchdog reset input and the JTAG override, with accesses pending.
 
@@ -66,6 +66,7 @@ from .smc_addr_map import (
     jtag_smc_reset_ctrl_bit,
     smc_addr,
     smc_indexed_addr,
+    uart_log_engine_ctrl_u32,
 )
 from .smc_base_test_seq import wait_fuse_sense_done
 from .smc_output_fabric_vip_utils import (
@@ -86,6 +87,8 @@ SCRATCH_COLD_WARM = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SC
 UART0_REG = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR", 0
 )
+# UART_EN is sw=rw with reset 0 (uart_log_engine_ctrl.rdl), so 1 is a non-reset value.
+UART0_PROGRAMMED = uart_log_engine_ctrl_u32("UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 EFUSE_WORD = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 WDT3_CTRL = smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_CTRL_BASE_ADDR")
 WDT3_COUNT = smc_addr("SMC_TOP_SMC_CLUSTER_CORE3_WDT_COUNT_BASE_ADDR")
@@ -580,6 +583,8 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         self.fence: list[tuple[str, int, int]] = []
         self.ej = None
         self.bounded = False
+        self.fuse_shadow = None
+        self.uart_orig = None
         self.wedged: dict[str, str] = {}
         self.skipped: list[str] = []
         self._token = "CHK-NONVAC"
@@ -987,11 +992,13 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         )
         self.fuse_shadow = shadow
 
-    async def _restore_fuse_shadow(self) -> None:
+    async def _restore_end(self) -> None:
         if self.fuse_shadow is not None:
             await self.csr_write(
                 "EFUSE_SHADOW_RESTORE", EFUSE_WORD, self.fuse_shadow & 0xFFFF_FFFF, length=4
             )
+        if self.uart_orig is not None:
+            await self.csr_write("UART0_RESTORE", UART0_REG, self.uart_orig, length=4)
 
     # --- pending set (S3) ---------------------------------------------------------------
     async def _arm(self, rec, mon) -> None:
@@ -1037,6 +1044,8 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             out[raw.link] += int(not raw.event.is_set())
         out["EFUSE_JTAG"] = 0 if rec.ej_event.is_set() else 1
         labels = {raw.label for raw in rec.pending if not raw.event.is_set()}
+        if not rec.ej_event.is_set():
+            labels.add("efuse_jtag")
         return {"outstanding": out, "labels": labels}
 
     def _inflight_problems(self, rec) -> list[str]:
@@ -1524,9 +1533,12 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         await self._core3_held()
         # Written after the JTAG entry so that only this warm reset can clear it.
         await self._write_check("CHAIN_SCRATCH_COLD_WARM", SCRATCH_COLD_WARM, WARM_REF, 4)
+        self.uart_orig = await self._rd("UART0_ORIG", UART0_REG, 4)
+        await self.csr_write("UART0_PROGRAM", UART0_REG, UART0_PROGRAMMED, length=4)
         self.uart_pre = await self._rd("UART0_PRE", UART0_REG, 4)
         self.outfilt_pre = await self._rd("OUTBOUND_FILTER_PRE", OUTBOUND0_FILTER_CONFIG)
         self.attr_before = await self._rd("SMC_ATTRIBUTES_BEFORE", SMC_ATTRIBUTES)
+        await self.csr_write("EFUSE_SHADOW_MARK", EFUSE_WORD, FUSE_SHADOW_MARK, length=4)
         self.ej_pre_value = await self._ej_read("chain_pre")
         assert self._v("tb_wdt_first_timeout_seen") == 0, (
             "chain: a first timeout is already latched"
@@ -1551,6 +1563,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         )
         rec.warm_at_first = self._v("tb_rst_warm_smc_clk_n")
         rec.a = a
+        rec.t_first = int(get_sim_time("ps"))
         lmon = _WarmMonitor(self, links=True)
         lmon.start()
         b = await self._wait_smc(
@@ -1560,6 +1573,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             lambda: f"warm={self._v('tb_rst_warm_smc_clk_n')} {mon.state_text}",
         )
         rec.b = a + b
+        rec.t_second = int(get_sim_time("ps"))
         rec.primary_at_assert = self._v("rst_primary_smc_clk_no")
         await self._wait_release("chain1", mon)
         await self._wait_uncore("chain1", mon)
@@ -1588,12 +1602,25 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         await self.csr_write("chain2_KEY_FEED", WDT3_KEY, WDT_MAGIC_KEY)
         await self.csr_write("chain2_FEED", WDT3_FEED, WDT_FEED_VALUE)
         rec.warm_at_feed = self._v("tb_rst_warm_smc_clk_n")
+        ft = SimpleNamespace(n=0, prev=self._v("tb_wdt_first_timeout"), rises=[], low=0)
+        rec.first_at_feed = ft.prev
+
+        def _watch_first() -> None:
+            value = self._v("tb_wdt_first_timeout")
+            if value and not ft.prev:
+                ft.rises.append(ft.n)
+            ft.low += int(not value)
+            ft.prev = value
+            ft.n += 1
+
         rec.b2 = await self._wait_smc(
             "S7.second_run_warm",
             lambda: self._v("tb_rst_warm_smc_clk_n") == 0,
             WDT_SECOND_BOUND_SMC,
             lambda: f"warm={self._v('tb_rst_warm_smc_clk_n')} {mon.state_text}",
+            each=_watch_first,
         )
+        rec.first_rises, rec.first_low = ft.rises, ft.low
         await self._wait_release("chain2", mon)
         rec.mon2 = mon
         await mon.finish()
@@ -1655,7 +1682,6 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
 
         await self._fuse_alone()
         self._stamp("FUSE_WINDOW", len(self.obs["OBS-FUSE-WINDOW-ACCESS"]))
-        await self._restore_fuse_shadow()
         await self._setup_after_fuse_window()
 
         self.wdt = self.jtag = None
@@ -1676,6 +1702,8 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
                 self.vector = await self._vector()
         except AssertionError as exc:
             self._fail("CHK-NONVAC", f"step aborted: {exc}")
+        if "SEP" not in self.wedged:
+            await self._restore_end()
         self._ref_run = False
         await counter
         self._report()
@@ -1797,19 +1825,22 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         threshold = c.kept["THRESHOLD"][0]
         if (
             threshold != THRESHOLD_REF
-            or c.uart_after != self.uart_pre
+            or c.uart_after != UART0_PROGRAMMED
+            or self.uart_pre != UART0_PROGRAMMED
             or c.outfilt_after != self.outfilt_pre
         ):
             self._fail(
                 "CHK-INTERCONNECT-KEPT-ACROSS-WDT-WARM",
-                f"threshold 0x{threshold:x}, UART0 0x{c.uart_after:x} vs 0x{self.uart_pre:x}, "
+                f"threshold 0x{threshold:x}, UART0 0x{c.uart_after:x} (read back 0x{self.uart_pre:x}"
+                f" before the entry) vs programmed 0x{UART0_PROGRAMMED:x}, "
                 f"outbound filter 0x{c.outfilt_after:x} vs 0x{self.outfilt_pre:x}",
             )
         lines.append(
             (
                 "CHK-INTERCONNECT-KEPT-ACROSS-WDT-WARM",
-                f"threshold 0x{threshold:x} kept, UART0 register == pre-reset value "
-                f"0x{self.uart_pre:x}, outbound filter == pre-reset value (wdt-chain)",
+                f"threshold 0x{threshold:x} kept, UART0 log-engine CTRL == programmed non-reset "
+                f"value 0x{UART0_PROGRAMMED:x} (UART_EN, read back 0x{self.uart_pre:x} before "
+                f"the entry), outbound filter == pre-reset value (wdt-chain)",
             )
         )
 
@@ -1859,23 +1890,30 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
                 f"write count +{c.ext[0]}, read count +{c.ext[1]}, both OKAY, via JTAG_IN",
             )
         )
-        if c.efuse_value != self.ej_pre_value:
+        if c.efuse_value != FUSE_SHADOW_MARK or self.ej_pre_value != FUSE_SHADOW_MARK:
             self._fail(
                 "CHK-FRESH-ACCESS-EFUSE-JTAG-WARM",
-                f"0x{c.efuse_value:x} vs 0x{self.ej_pre_value:x}",
+                f"0x{c.efuse_value:x} (pre-reset read 0x{self.ej_pre_value:x}) vs marker "
+                f"0x{FUSE_SHADOW_MARK:x}",
             )
         lines.append(
             (
                 "CHK-FRESH-ACCESS-EFUSE-JTAG-WARM",
-                f"read completed, word == pre-reset value 0x{self.ej_pre_value:08x}",
+                f"read completed, word == shadow marker 0x{FUSE_SHADOW_MARK:08x} written through "
+                f"SEP_IN before the chain entry (pre-reset read 0x{self.ej_pre_value:08x})",
             )
         )
-        if c.uart_value != self.uart_pre:
-            self._fail("CHK-FRESH-ACCESS-PERIPH-WARM", f"0x{c.uart_value:x} vs 0x{self.uart_pre:x}")
+        if c.uart_value != UART0_PROGRAMMED or self.uart_pre != UART0_PROGRAMMED:
+            self._fail(
+                "CHK-FRESH-ACCESS-PERIPH-WARM",
+                f"0x{c.uart_value:x} (read back 0x{self.uart_pre:x} before the entry) vs "
+                f"programmed 0x{UART0_PROGRAMMED:x}",
+            )
         lines.append(
             (
                 "CHK-FRESH-ACCESS-PERIPH-WARM",
-                f"UART0 register read OKAY, value == pre-reset value 0x{self.uart_pre:x}",
+                f"UART0 log-engine CTRL read OKAY, value == programmed non-reset value "
+                f"0x{UART0_PROGRAMMED:x} (UART_EN)",
             )
         )
 
@@ -1908,35 +1946,57 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         )
 
         # CHK-WDT-SECOND-STAGE-WARM / CHK-WDT-LATCH-NOT-WITHDRAWN
+        # The chain monitor started before the arm: its first warm window must open at the
+        # second-stage assertion, not before the first timeout.
+        m1_open = m1.assert_ps is not None and c.t_first <= m1.assert_ps <= c.t_second
         if (
             c.early
             or c.warm_at_first != 1
             or c.b <= c.a
             or c.primary_at_assert != 1
             or m1.primary_high != m1.window_samples
+            or not m1_open
         ):
             self._fail(
                 "CHK-WDT-SECOND-STAGE-WARM",
                 f"warm low before the first timeout {c.early[:3]}, warm at first timeout "
-                f"{c.warm_at_first}, edges {c.a}/{c.b}, primary {c.primary_at_assert}",
+                f"{c.warm_at_first}, edges {c.a}/{c.b}, primary {c.primary_at_assert}, "
+                f"pre-arm monitor window opened at {m1.assert_ps} ps (first timeout "
+                f"{c.t_first} ps, second-stage assertion {c.t_second} ps)",
             )
         lines.append(
             (
                 "CHK-WDT-SECOND-STAGE-WARM",
                 f"first_timeout_seen at edge {c.a} with warm {c.warm_at_first}; warm low at edge "
-                f"{c.b} > {c.a}, primary high",
+                f"{c.b} > {c.a}, primary high; the monitor started before the arm recorded no "
+                f"warm window before the second-stage assertion (first window opened at "
+                f"{m1.assert_ps} ps, first timeout {c.t_first} ps, assertion seen {c.t_second} ps)",
             )
         )
         if c.warm_at_feed != 1 or c.reasserted or c.mon2.primary_high != c.mon2.window_samples:
             self._fail(
                 "CHK-WDT-LATCH-NOT-WITHDRAWN",
-                f"warm at the FEED {c.warm_at_feed}, re-assertions {c.reasserted}",
+                f"warm at the FEED {c.warm_at_feed}, re-assertions {c.reasserted}, primary high "
+                f"{c.mon2.primary_high}/{c.mon2.window_samples} warm-window edges",
             )
         lines.append(
             (
                 "CHK-WDT-LATCH-NOT-WITHDRAWN",
-                f"feed written, warm asserted at edge {c.b2}; no re-assertion in {WDT_QUIET_EDGES} edges",
+                f"feed written, warm asserted at edge {c.b2} after the FEED; no re-assertion in "
+                f"{WDT_QUIET_EDGES} edges",
             )
+        )
+        # The contract stimulus re-reaches compare right after the FEED, so a fresh
+        # first-timeout rise cannot be told from a latch the FEED left set: printed only.
+        refire = c.first_rises[0] if c.first_rises else "none"
+        cocotb.log.info(
+            "OBS-WDT-FEED-REFIRE: refire_edge=%s warm_edge=%d open-question=wdt-feed-rearm "
+            "(tb_wdt_first_timeout %d at the FEED, low at %d edges, rises at %s)",
+            refire,
+            c.b2,
+            c.first_at_feed,
+            c.first_low,
+            c.first_rises[:3],
         )
 
     def _emit(self) -> None:
@@ -2025,6 +2085,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             f"mmio_isolated high {iso['mmio_isolated'][0]}/{n} flush l2={iso['l2_flush'][0]} "
             f"mmio={iso['mmio_flush'][0]} (first/last l2_isolated {iso['l2_isolated'][1]}/"
             f"{iso['l2_isolated'][2]} mmio_isolated {iso['mmio_isolated'][1]}/{iso['mmio_isolated'][2]})"
+            f" sf=SF-007"
         )
         port = "high" if mon.window_samples and mon.primary_high == mon.window_samples else "low"
         if mon.uncore_low_n == 0:
@@ -2039,7 +2100,7 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
             data = "none" if value is None else f"0x{value:x}"
             obs["OBS-WARM-WINDOW-ACCESS"].append(
                 f"OBS-WARM-WINDOW-ACCESS: target={raw.label} resp={'none' if code is None else code} "
-                f"data={data} completed={raw.fate}"
+                f"data={data} completed={raw.fate} sf=SF-002"
             )
         if c is not None and hasattr(c, "fresh_window"):
             for name, value in c.fresh_window.items():
@@ -2060,17 +2121,18 @@ class smc_warm_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_pass
         }
         obs["OBS-ATTRIBUTES"].append(
             f"OBS-ATTRIBUTES: before=0x{self.attr_before:x} after=0x{self.attr_after:x} "
-            f"changed={changed} fields_before={fields_b} fields_after={fields_a}"
+            f"changed={changed} fields_before={fields_b} fields_after={fields_a} sf=SF-032"
         )
         if v is None:
             obs["OBS-WARM-VECTOR"].append(
                 f"OBS-WARM-VECTOR: NOT-SAMPLED window={VECTOR_WINDOW_EDGES} vector3=0x{VECTOR3_OBS:X} "
-                f"(SEP_IN wedged by {self.wedged.get('SEP', '?')})"
+                f"(SEP_IN wedged by {self.wedged.get('SEP', '?')}) sf=SF-025"
             )
         else:
             obs["OBS-WARM-VECTOR"].append(
-                f"OBS-WARM-VECTOR: rom_read_count_delta={v.delta} window={VECTOR_WINDOW_EDGES} "
-                f"vector3=0x{VECTOR3_OBS:X}"
+                f"OBS-WARM-VECTOR: rom_read_count_delta={v.delta} (the cluster's ROM read count, "
+                f"every core's fetches) window={VECTOR_WINDOW_EDGES} vector3=0x{VECTOR3_OBS:X} "
+                f"sf=SF-025"
             )
         for token, key in (
             ("CHK-OBS-WARM-PHASE-FATE", "OBS-WARM-PHASE-FATE"),
