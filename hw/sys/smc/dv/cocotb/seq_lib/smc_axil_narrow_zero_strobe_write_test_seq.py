@@ -2,14 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_006 ANCHOR: smc_axil_narrow_zero_strobe_write_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: a0f0dec2d7f1e904e581164cc537956b2bbf3ae31b06cb4a0e604929fc377dcc
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Narrow and zero-strobe writes over SEP_IN to the 64-bit AXI-Lite register links.
 
 Every access goes through SEP_IN, one at a time, with an explicit WSTRB where a
 step names a strobe; a disabled lane carries its byte of the written data.
 
 * PLAIN: CPU_CTRL RESET_VECTOR, SCRATCH, REFERENCE_COUNTER and DUMMY_ROM_NULL take
-  one 64-bit pattern under eleven strobes and a full-width restore.
+  one 64-bit pattern under eleven strobes and a full-width restore. REFERENCE_COUNTER
+  follows its write-once-then-poll rule: each strobed lane above lane 0 is written with a
+  byte that differs from its pre-write byte and polled until it reads that byte, WSTRB 0x01
+  is not driven, and WSTRB 0x00 is its last write.
 * RESET_UNIT / BASE_CONFIG / ZERO_STROBE: the 32-bit reset-unit registers on the 64-bit
   link, GLOBAL_BASE and REGION_SIZE with their own value, and WSTRB 0x00 writes.
 * WATCHDOG: the byte-enable rule and the KEY protocol of the core 3 watchdog (`wdt.adoc`).
@@ -73,6 +76,9 @@ UNBACKED_LOCAL = 0xC000_1900
 ZEROER_POLL_BOUND = 20_000
 PULSE_BOUND = 400
 FLR_POLL_BOUND = 64
+REFCNT_POLL_BOUND = 64
+# REFERENCE_COUNTER strobes the write-then-poll rule leaves without an observable lane.
+REFCNT_NOT_DRIVEN = (0x01,)
 PROBE_EDGES = 128
 
 TERMS = (
@@ -91,7 +97,7 @@ TERMS = (
 # Writes planned per fence term (strobe patterns x registers, restores and unlocks).
 PLANNED_WRITES = {
     "SETUP": 6,
-    "PLAIN": 13 * (len(STROBES) + 1),
+    "PLAIN": 13 * (len(STROBES) + 1) - len(REFCNT_NOT_DRIVEN),
     "RESET_UNIT": 4 + 3,
     "BASE_CONFIG": 2 * (len(BASE_STROBES) + 1),
     "ZERO_STROBE": 3 * 2,
@@ -103,13 +109,15 @@ PLANNED_WRITES = {
     "LOCKS": 8,
 }
 PLANNED_OBS = {
-    "OBS-PLAIN-STROBE": 13 * len(STROBES) + 10 + 2 * len(BASE_STROBES),
+    "OBS-PLAIN-STROBE": 13 * len(STROBES) - len(REFCNT_NOT_DRIVEN) + 10 + 2 * len(BASE_STROBES),
     "OBS-ZERO-STROBE": 5,
     "OBS-MUTEX-NARROW-RELEASE": 3,
     "OBS-MAILBOX-ACCESS": 7,
     "OBS-ZEROER-NARROW": 5,
     "OBS-SIDEEFFECT-NARROW": 16,
 }
+# Narrow writes: plain strobes, reset-unit pairs, base configuration and the WSTRB 0x00 targets.
+PLANNED_NARROW = 13 * len(STROBES) - len(REFCNT_NOT_DRIVEN) + 5 + 2 * len(BASE_STROBES) + 3
 CHECKERS = (
     "CHK-NARROW-WRITE-ACCEPTED",
     "CHK-FULL-WIDTH-RESTORE",
@@ -386,7 +394,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
         self.flr_reset_cnt = _reg("smc_reset_unit/ISOLATE_REQ_FLR_RESET_COUNTER_VALUE")
         self.gbase = _reg("smc_base_config/GLOBAL_BASE")
         self.rsize = _reg("smc_base_config/REGION_SIZE")
-        self.filter_start = _reg("smc_inbound_filter_ctrl[15]/START_ADDR")
+        self.filter_start = _reg("smc_inbound_filter_ctrl_wrap/filter_ctrl[15]/START_ADDR")
         self.scratch0 = self.plain[4]
         self.reset_ctrl = _reg("smc_cpu_ctrl/RESET_CTRL")
         self.wdt_to_reset = _reg("smc_cpu_ctrl/WDT_TIMEOUT_RESET")
@@ -434,9 +442,77 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
     def _pre(self, reg: RdlReg) -> int:
         return self.saved[reg.path]
 
+    @staticmethod
+    def _lanes(strobe: int) -> list[int]:
+        return [b for b in range(1, 8) if strobe >> b & 1]
+
+    async def _refcnt_poll(self, label: str, addr: int, wrote: int, lanes: list[int]) -> int:
+        """Poll REFERENCE_COUNTER until every lane in `lanes` reads its byte of `wrote`.
+
+        cpu_ctrl.rdl REFERENCE_COUNTER: write once, then poll until the readback reflects the
+        written value before writing again. Lane 0 advances, so only lanes above it are polled;
+        each of them was written with a byte different from its pre-write byte.
+        """
+        mask = sum(0xFF << (8 * b) for b in lanes)
+        assert mask, f"{label}: no lane above lane 0 to poll"
+        rb = 0
+        for i in range(REFCNT_POLL_BOUND):
+            rb = await self._rd(f"{label}_POLL", addr, 8)
+            if rb & mask == wrote & mask:
+                self._bounded.append(
+                    (f"refcnt_{label}", f"{REFCNT_POLL_BOUND} polls", f"reflected after {i + 1}")
+                )
+                return rb
+        raise AssertionError(
+            f"{label}: REFERENCE_COUNTER lanes 0x{mask:x} never read 0x{wrote & mask:x} "
+            f"within {REFCNT_POLL_BOUND} polls, last readback 0x{rb:x}"
+        )
+
+    async def _refcnt_write(self, name: str, addr: int, s: int) -> None:
+        pre = await self._rd(f"{name}_W{s:02X}_PRE", addr, 8)
+        data = PATTERN
+        for b in self._lanes(s):
+            # Half-word strobes complement the pre byte, single-byte strobes XOR it with the
+            # pattern byte, so no lane ends the sweep back at its saved byte.
+            flip = 0xFF if bin(s).count("1") > 1 else (PATTERN >> (8 * b)) & 0xFF
+            byte = ((pre >> (8 * b)) & 0xFF) ^ flip
+            data = (data & ~(0xFF << (8 * b))) | (byte << (8 * b))
+        resp = await self._wr(f"{name}_W{s:02X}", addr, data, 8, s)
+        rb = await self._rd(f"{name}_W{s:02X}_RB", addr, 8)
+        if s:
+            await self._refcnt_poll(f"{name}_W{s:02X}", addr, data, self._lanes(s))
+        self._narrow(name, resp)
+        self._obs(
+            "OBS-PLAIN-STROBE",
+            f"reg={name} wstrb=0x{s:02x} bresp={RESP_NAME[resp]} "
+            f"wrote={_hx(data)} readback={_hx(rb)}",
+        )
+
+    async def _refcnt(self, reg: RdlReg) -> None:
+        name = reg.path.split("/")[-1]
+        cocotb.log.info(
+            "INFO-CELL-NOT-DRIVABLE: REFERENCE_COUNTER WSTRB 0x01 (write-then-poll protocol has "
+            "no observable lane; SF-012)"
+        )
+        for s in STROBES:
+            if s and s not in REFCNT_NOT_DRIVEN:
+                await self._refcnt_write(name, reg.addr, s)
+        saved = self._pre(reg)
+        pre = await self._rd(f"{name}_RESTORE_PRE", reg.addr, 8)
+        upper = ALL64 & ~0xFF
+        assert pre & upper != saved & upper, (
+            f"{name}: lanes 1..7 read 0x{pre:x} before the restore, equal to the saved 0x{saved:x}"
+        )
+        await self._restore_check(name, reg.addr, saved, 8, False)
+        await self._refcnt_poll(f"{name}_RESTORE", reg.addr, saved, list(range(1, 8)))
+        await self._refcnt_write(name, reg.addr, 0x00)
+
     async def _plain(self) -> None:
         # S2.
         for reg in self.plain:
+            if reg is self.plain[8]:
+                await self._refcnt(reg)
+                continue
             name = reg.path.split("/")[-1]
             for s in STROBES:
                 resp = await self._wr(f"{name}_W{s:02X}", reg.addr, PATTERN, 8, s)
@@ -447,7 +523,7 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                     f"reg={name} wstrb=0x{s:02x} bresp={RESP_NAME[resp]} "
                     f"wrote={_hx(PATTERN)} readback={_hx(rb)}",
                 )
-            await self._restore_check(name, reg.addr, self._pre(reg), 8, reg is not self.plain[8])
+            await self._restore_check(name, reg.addr, self._pre(reg), 8, True)
         self._mark("PLAIN")
 
     async def _reset_unit(self) -> None:
@@ -561,9 +637,11 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
                 await self._restore_check(name, reg.addr, self._pre(reg), 8, True)
         m = len(self.narrow_regs)
         n = len(self.narrow_resps)
+        assert n == PLANNED_NARROW, f"{n} narrow writes, the plan has {PLANNED_NARROW}"
         self._chk(
             "CHK-NARROW-WRITE-ACCEPTED",
-            f"{n} writes over {m} registers each with one legal B response",
+            f"{n}/{PLANNED_NARROW} planned writes over {m} registers each with one legal B "
+            f"response; the plan excludes the not-driven REFERENCE_COUNTER WSTRB 0x01",
         )
         assert self.restored == 20, f"{self.restored} registers restored, the plan has 20"
         self._chk(
@@ -1165,5 +1243,6 @@ class smc_axil_narrow_zero_strobe_write_test_seq(output_fabric_pass_all_cfg_seq)
             " < ".join(TERMS)
             + "; terms "
             + ", ".join(f"{t}(writes={c}/{PLANNED_WRITES[t]})@{s}ns" for t, c, s in self._stamps)
+            + "; PLAIN excludes the not-driven REFERENCE_COUNTER WSTRB 0x01"
             + f"; checker lines {','.join(self.chk_seen)}; SEP_IN accesses {self.accesses}",
         )

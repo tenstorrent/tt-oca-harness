@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_006 ANCHOR: smc_axil_narrow_zero_strobe_write_test
 # DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: a0f0dec2d7f1e904e581164cc537956b2bbf3ae31b06cb4a0e604929fc377dcc
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Narrow and zero-strobe writes over SEP_IN to the 64-bit AXI-Lite register links.
 
 Plain CPU_CTRL registers, reset-unit 32-bit registers on the 64-bit link, the base
