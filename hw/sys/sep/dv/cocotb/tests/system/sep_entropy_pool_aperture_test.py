@@ -125,6 +125,14 @@ STALL_CLEAR_CAP = 20000
 STALL_RAS_CLEAR_LAG = 2
 
 
+async def _capture_ar_at(addr: int) -> dict[str, int]:
+    """The next AR handshake at ``addr``; background reads at other addresses are skipped."""
+    while True:
+        ar = await capture_addr_handshake("ar")
+        if ar["addr"] == addr:
+            return ar
+
+
 class _LevelStep:
     """CHK-POOL-LEVEL-STEP: the fifo_level step between two 64-bit STATUS reads.
 
@@ -390,7 +398,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         mon.open_error_rdata_window()
         try:
             for label, addr in HALF_UPPER:
-                ar_task = cocotb.start_soon(capture_addr_handshake("ar"))
+                ar_task = cocotb.start_soon(_capture_ar_at(addr))
                 half = await pool.access(addr, expect_error=True, nbytes=4)
                 ar = take_handshake(ar_task)
                 # AxSIZE 2 is a 4-byte beat (AMBA IHI 0022, A3.4.1), so the refusal
