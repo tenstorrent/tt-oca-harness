@@ -240,6 +240,7 @@ args = [
     "+axi_sva_need_cpu_front",
     "+axi_sva_need_otp_jtag",
     "+axi_sva_need_periph",
+    "+smc_hold_cpu_boot",
 ]
 
 [[tests]]
