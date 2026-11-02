@@ -64,8 +64,7 @@ class SmcEnv(uvm_env):
         # answers blocked accesses with DECERR, and neither port's tests
         # register expected-DECERR addresses on a monitor. They also tally a
         # response beat with no recorded request instead of failing it
-        # (fail_unmatched=False): neither port had a monitor before, so no
-        # leaf on them has been held to request/response pairing.
+        # (fail_unmatched=False).
         self.axi_monitor = SmcAxiMonitor("axi_monitor", self)
         self.sep_in_axi_monitor = self.axi_monitor
         self.sys_in_axi_monitor = SmcAxiMonitor(

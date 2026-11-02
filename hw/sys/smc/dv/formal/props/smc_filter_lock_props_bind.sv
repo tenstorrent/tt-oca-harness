@@ -6,7 +6,7 @@
 // reach the property module through this port list only; the RTL carries no properties.
 
 bind smc_internal_regs smc_filter_lock_props #(
-  .ENTRY (0)
+  .ENTRY(0)
 ) u_smc_filter_lock_props (
   .clk_i     (clk_smc_i),
   .rst_ni    (rst_primary_smc_clk_ni),

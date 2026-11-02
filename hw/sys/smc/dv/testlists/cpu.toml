@@ -498,12 +498,9 @@ run_modes = ["smoke"]
 # tb_top to hold off that one arbiter instance's checks.
 # The isolate flush then discards the CPU's stale read response above the
 # demux, and the SYS_IN path presents an R beat with no open AR; the bound AXI
-# checkers report it on every simulator. The design owner ruled the force-mode
-# withdrawal a known limitation, so the leaf is graded as expected to fail. The
-# cocotb result file records the simulator stop, not the firing rule, so no
-# failure signature is matched; the fire itself is in the leaf log.
+# checkers report it on every simulator and the leaf fails on that fire. On
+# Verilator the fire stops the simulation before the leaf's later checks run.
 args = ["+smc_front_port_r_arb_assertoff"]
-expect_fail = "the force-mode isolate flush leaves a stale SYS_IN R beat with no open AR, which the bound AXI checkers report"
 
 [[tests]]
 name = "smc_cpu_l2_write_wedge_test"

@@ -22,9 +22,9 @@ the requests. The encoding the DUT forwards on each link is an observation
 Grading, per request, from the port pins the leaf samples on every clk_smc_i
 edge: exactly one B for a write and AxLEN+1 R beats with RID=ARID and RLAST on
 the last beat only for a read, never EXOKAY, within a counted bound. The
-response codes themselves are observations (SF-015, SF-012). The crossing
-write's BRESP is compared with the combination rule of memmap.adoc:64-67 over
-the single-beat reference codes measured first at every beat address. After
+response codes themselves are observations (SF-015, SF-012), the crossing
+write's BRESP among them: it is recorded beside the write-split rule of
+memmap.adoc:64-67 over the single-beat reference codes and never compared. After
 each request the reference set (scratch_cold SCRATCH[0..7] and one
 SMC_BASE_CONFIG register) is read back, and only registers inside the
 request's footprint may differ (memmap.adoc:63-67, 155-176); a fresh legal

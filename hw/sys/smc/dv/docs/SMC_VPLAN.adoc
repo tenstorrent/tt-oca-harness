@@ -1069,7 +1069,7 @@ while `CPU_CTRL.WDT_TIMEOUT` keeps its programmed value.
 |`smc_remap_cla_test` |2 |ALIAS_REMAP address translation, remap-table reset sweep, CLA window.
 |`smc_sep_in_axi_flow_control_test` |3 |SEP_IN keeps writes and reads outstanding while the manager holds BREADY and RREADY low; every access still returns its own address's word.
 |`smc_sep_in_axi_shape_test` |2 |Narrow AxSIZE with byte strobes, a multi-beat INCR burst, and the FIXED and WRAP bursts the data-width converter rejects.
-|`smc_axi_illegal_encoding_inject_test` |3 |WRAP AxLEN 0, reserved-burst and 4 KiB-crossing writes and reads on SEP_IN and SYS_IN are each answered, leave registers outside their footprint unchanged and leave the port answering; the crossing write's BRESP follows the register-unit write-split rule; the two inbound checkers see a legal view through `+smc_axi_wrap_len1_inject`.
+|`smc_axi_illegal_encoding_inject_test` |3 |WRAP AxLEN 0, reserved-burst and 4 KiB-crossing writes and reads on SEP_IN and SYS_IN are each answered, leave registers outside their footprint unchanged and leave the port answering; the crossing write's BRESP is recorded as an observation under SF-012 and never compared; the two inbound checkers see a legal view through `+smc_axi_wrap_len1_inject`.
 |`smc_sys_axi_in_port_test` |2 |With inbound filter entry 0 admitting, `sys_axi_in` carries a read of a non-zero generated reset and a write both ports read back.
 |`smc_sys_out_aw_w_split_test` |3 |Discriminate a SYS_OUT write hang: AW vs W at both ends.
 |`smc_xvisor_remap_test` |2 |Hypervisor remap table (0xC001_4000) sweep.
@@ -8902,8 +8902,8 @@ burst-legal and 4 KiB rules of `u_sep_in_axi_sva`, `u_sys_in_axi_sva`, `u_sep_re
 
 *Scope limit*: The response codes of the illegal requests and whether a write stored its data are
 observation lines (`OBS-G11-WRAP-LEN0`, `OBS-G11-RSVD-BURST`, `OBS-G11-4KB`, `OBS-G11-FORWARDED`; SF-015, and SF-012 for
-the past-extent beats of the crossing burst); only the crossing write's BRESP is compared, through
-the write-split rule over the measured reference codes.
+the past-extent beats of the crossing burst); the crossing write's BRESP is recorded beside the
+write-split rule over the measured reference codes as an observation under SF-012, never compared.
 
 '''''
 
@@ -42841,8 +42841,7 @@ Drive `smc_efuse_jtag_otp_data_walk_test_seq`. Each checker below is a named com
 
 *Run mode*: one testlist entry in `testlists/cpu.toml`; groups `all`, `hosted`, `cpu`; `run_modes`
 `smoke`; `timeout_sec` 1800; tags `cpu`, `isolate_flush`, `pyuvm`; seed 1; args
-`+smc_front_port_r_arb_assertoff`; `expect_fail` (the stale-R checker rules `OCAH_AXI_R_ID_OUTSTANDING` and
-`OCAH_AXI_R_NOT_BEFORE_AR` fire); tool Verilator (cocotb).
+`+smc_front_port_r_arb_assertoff`; tool Verilator (cocotb).
 
 *Randomization*: RAND-NONE: directed, every stimulus value is pinned by the entry and the sequence
 draws nothing from the seed.
@@ -50460,7 +50459,8 @@ in <<smc-deferred-disposition>>.
 |UART0 transmits two stop bits for a 5-bit word with `LCR.STB` set, where `uart_16550_main.rdl` describes 1.5 |`smc_uart_baud_word_parity_format_test` measures the frame length on the TX pad for every format; for the two 5-bit `STB = 1` formats it admits either 1.5 or 2 stop bits, records which one was measured, and so does not claim the RDL count for them (one stop bit still fails). Every other format is held to the RDL count |Fix the transmitter or the RDL description, then drop the admitted alternative so the two formats are held to one count
 |`INTR_STATUS.LOG_WRITE_ERR` has no firmware-reachable stimulus in this wrap |The log-write AXI-Lite master targets the wrapper's own `uart_16550` block, which ties write-error to 0 and answers every write OKAY. `smc_fw_uart_log_engine_boundary_backpressure_test` covers length and TX backpressure only; `INTR_TEST.LOG_WRITE_ERR` proves the interrupt plumbing, not error detection |A bench-side fault injector on the log-write AXI-Lite B channel
 |A force-mode CPU reset withdraws the R beat the CPU is presenting to the front-port demux without `ready` (`cocotb/seq_lib/README_cpu_isolate_flush.md`) |`smc_cpu_l2_read_wedge_test` reaches that state on purpose, and the front-port R arbiter's request-stability assertions (`rr_arb_tree` `req1` and `lock_req`) report the withdrawal on the reset cycle. The leaf passes `+smc_front_port_r_arb_assertoff` and `tb_top` holds off that one arbiter instance's assertions for that leaf only; every other leaf keeps them, the leaf's five checkers are unchanged, and the two CPU-port AXI protocol checkers of `tb_top` are held off with the same plusarg; the SYS_IN protocol checker is not, and on VCS it reports the stale R the isolate flush leaves on SYS_IN (next row) |A CPU reset cannot preserve a beat the fabric side has stopped accepting, and the design owner records this as a limitation of force mode rather than a defect (#2449, closed as not planned). Re-arm the checks if force mode ever holds or flushes the beat under `ready`
-|After the force-mode CPU reset the isolate flush discards the CPU's stale read response above the demux, and an R with no open AR appears on SYS_IN |`smc_cpu_l2_read_wedge_test` fires `u_sys_in_axi_sva` and `u_filtered_sys_axi_sva` `OCAH_AXI_R_NOT_BEFORE_AR` / `OCAH_AXI_R_ID_OUTSTANDING` on both simulators and its entry carries `expect_fail`; the leaf's own `CHK-CPU-ISO-FLUSH-STALE-RESP-ABSORBED` records that the bench absorbs the beat |Design-owner ruling on whether a discarded response may reach SYS_IN. #2318 reports that beat (the demux forwards the R the flush cleared) and is closed as a duplicate of #2449, whose ruling covers the withdrawal at the front port and not the beat on SYS_IN; until that ruling is extended or the beat is held, the leaf stays RED and is not masked
+|The zeroer asserts WLAST only in the cycle WREADY rises, so the last beat of every zeroer burst changes its payload while WVALID is high and WREADY is low |`u_dma_axi_sva` `OCAH_AXI_W_PAYLOAD_STABLE` fires in every zeroer-family leaf and in `smc_cg_zeroer_activity_bringup_test` and `smc_state_fault_inject_test` on both simulators; those leaves fail and are not masked |Issue #3571 (RTL, `hw/ip/zeroer/rtl/zeroer.sv`); the leaves pass once the zeroer holds WLAST for the whole last beat
+|After the force-mode CPU reset the isolate flush discards the CPU's stale read response above the demux, and an R with no open AR appears on SYS_IN |`smc_cpu_l2_read_wedge_test` fires `u_sys_in_axi_sva` and `u_filtered_sys_axi_sva` `OCAH_AXI_R_NOT_BEFORE_AR` / `OCAH_AXI_R_ID_OUTSTANDING` on both simulators; on Verilator the first fire stops the simulation before the leaf's later checks run, on VCS the leaf's own `CHK-CPU-ISO-FLUSH-STALE-R-DISCARDED` records that the bench absorbs the beat |Design-owner ruling on whether a discarded response may reach SYS_IN. #2318 reports that beat (the demux forwards the R the flush cleared) and is closed as a duplicate of #2449, whose ruling covers the withdrawal at the front port and not the beat on SYS_IN; until that ruling is extended or the beat is held, the leaf stays RED and is not masked
 |The cocotb AXI master drives the write strobes of a narrow FIXED burst on rotating byte lanes |`smc_sep_in_axi_shape_test` and `smc_axi_random_stress_test` are RED on VCS on `OCAH_AXI_W_STRB_IN_LANES` from the inbound and CPU front-port checkers; the defect is in the bench master, not in the SMC |Pull request #3448 fixes the master; both leaves are GREEN with it, and neither is masked
 |===
 

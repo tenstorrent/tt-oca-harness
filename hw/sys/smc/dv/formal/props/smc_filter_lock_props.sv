@@ -40,22 +40,22 @@ module smc_filter_lock_props #(
   input filter_ctrl_reg_pkg::filter_ctrl__out_t  cfg_i       // outbound_filter_ctrl_o[ENTRY]
 );
 
-  localparam logic [1:0]  RespOkay   = 2'b00;
-  localparam logic [1:0]  RespDecerr = 2'b11;
-  localparam logic [4:0]  OffConfig  = 5'h00;
-  localparam logic [4:0]  OffStart   = 5'h08;
-  localparam logic [4:0]  OffEnd     = 5'h10;
+  localparam logic [1:0] RespOkay = 2'b00;
+  localparam logic [1:0] RespDecerr = 2'b11;
+  localparam logic [4:0] OffConfig = 5'h00;
+  localparam logic [4:0] OffStart = 5'h08;
+  localparam logic [4:0] OffEnd = 5'h10;
   // Software-writable FILTER_CONFIG fields (filter_ctrl.rdl): read_allowed[0], write_allowed[1],
   // entry_enabled[4], allow_ns[8], src_id[19:16], group_id[23:20], allow_burst[24], locked[63].
-  localparam logic [63:0] CfgSwMask  = 64'h8000_0000_01FF_0113;
+  localparam logic [63:0] CfgSwMask = 64'h8000_0000_01FF_0113;
 
   function automatic logic is_entry(input logic [31:0] addr);
     return addr[8:5] == 4'(ENTRY);
   endfunction
 
   function automatic logic is_entry_reg(input logic [31:0] addr);
-    return is_entry(addr) && (addr[4:0] == OffConfig || addr[4:0] == OffStart ||
-                              addr[4:0] == OffEnd);
+    return is_entry(addr) &&
+        (addr[4:0] == OffConfig || addr[4:0] == OffStart || addr[4:0] == OffEnd);
   endfunction
 
   function automatic logic is_entry_config(input logic [31:0] addr);
@@ -86,7 +86,7 @@ module smc_filter_lock_props #(
   // handshake, each held until the response handshake.
   logic [31:0] wr_addr_q, rd_addr_q;
   logic [63:0] wr_data_q;
-  logic        aw_pending_q, w_pending_q, rd_pending_q;
+  logic aw_pending_q, w_pending_q, rd_pending_q;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       wr_addr_q    <= '0;
@@ -120,11 +120,12 @@ module smc_filter_lock_props #(
   // Lock state: set at the B handshake of the lock write and held to reset, with the locked
   // configuration captured from that write's data. A write or a read whose address handshake
   // falls after that B is marked at the handshake.
-  logic        lock_set;
-  logic        locked_q, wr_after_lock_q, rd_after_lock_q;
+  logic lock_set;
+  logic locked_q, wr_after_lock_q, rd_after_lock_q;
   logic [63:0] locked_cfg_q;
-  assign lock_set = b_hs && aw_pending_q && w_pending_q && !locked_q &&
-                    is_entry_config(wr_addr_q) && wr_data_q[63] && resp_i.b.resp == RespOkay;
+  assign lock_set = b_hs && aw_pending_q && w_pending_q && !locked_q && is_entry_config(
+      wr_addr_q
+  ) && wr_data_q[63] && resp_i.b.resp == RespOkay;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
