@@ -1224,7 +1224,7 @@ of 1 to bit 0 and sets with a zero hold count.
 |`smc_cool_reset_x_cold_reset_test` |3 |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
 |`smc_cpu_reset_pulse_test` |3 |A SEP_IN core-reset pulse on core 1, timed at the cluster boundary and run with core 1's level reset held, a core level reset that applies without a drain, and a withheld uncore reset whose timeout fires in give-up mode; pulses on cores 0, 2 and 3, level reset and release of cores 2 and 3 without a drain, debug-module reset release and re-assertion, and the `RESET_VECTOR[1..3]` reset value and bit-17 storage.
 |`smc_cpu_reset_source_test` |3 |SW core0 level reset reaches core 0's cluster reset without a drain; no FLR isolate_req_o.
-|`smc_axi_partial_reset_open_txn_test` |3 |AXI transactions open across a core-only reset and a watchdog-entered warm reset: the held-core boundary keeps carrying traffic, the warm reset holds for at least 32 reference clock cycles after the watchdog input releases, every link answers after each release, and every `ocah_axi_sva` instance of the bench stays silent, two of them on the link's own partial reset.
+|`smc_axi_partial_reset_open_txn_test` |3 |AXI transactions open across a core-only reset and a watchdog-entered warm reset: the held-core boundary keeps carrying traffic, the warm reset holds for 32 reference clock cycles after the watchdog input releases, every link answers after each release, and every `ocah_axi_sva` instance of the bench stays silent, two of them on the link's own partial reset.
 |`smc_spm_access_core_reset_test` |3 |Scratchpad reads and writes over SEP_IN complete while each core, then every core, is held in reset.
 |`smc_beu_access_core_reset_test` |3 |A core's BEU answers SEP_IN with SLVERR, not a hang, while that core is held in reset; the other cores' BEUs still answer.
 |`smc_flr_sanity_test` |1 |Run the SMC OSS FLR post-release sanity scenario.
@@ -8880,10 +8880,10 @@ port's last AW/W/AR/B/R handshake and the reset sample on an INFO-CLASSIFY line 
 |`CHK-G11-WRAP-LEN0-ANSWERED` |Per port, the WRAP AxLEN 0 write gets exactly one B and the read exactly AxLEN+1 R beats with RID=ARID and RLAST on the last beat only, never EXOKAY, within the bound; the codes are `OBS-G11-WRAP-LEN0`
 |`CHK-G11-RSVD-BURST-ANSWERED` |The same for the reserved-burst write and read; the codes are `OBS-G11-RSVD-BURST`
 |`CHK-G11-4KB-ANSWERED` |The same for the crossing write and read; the per-beat codes are `OBS-G11-4KB`
-|`CHK-G11-SPLIT-BRESP` |Per port, the crossing write's BRESP is the last beat's reference code when that is SLVERR or DECERR, else SLVERR when an earlier beat's reference code was an error, else OKAY (`memmap.adoc` 64-67)
+|`OBS-G11-SPLIT-BRESP` |Per port, the crossing write's BRESP and the write-split rule (`memmap.adoc` 64-67) applied to the design's own single-beat codes, recorded and never compared: the burst's past-extent beats have no stated response code (SF-012)
 |`CHK-G11-FOOTPRINT` |After each of the twelve requests every reference register outside the request's footprint keeps its seeded value
 |`CHK-G11-LIVENESS` |After each of the twelve requests the fresh legal read on the same port answers OKAY with the seeded value
-|`CHK-G11-INJECT-MASK` |Twelve CTRL-INJECT lines; at every address handshake the port carries the real encoding, and the view of the port checker and of the fabric-link checker trips none of the WRAP-length, burst-legal and 4 KiB rules
+|`CHK-G11-INJECT-MASK` |Twelve CTRL-INJECT lines; at every address handshake the port carries the real encoding, the view of the port checker and of the fabric-link checker trips none of the WRAP-length, burst-legal and 4 KiB rules, and no forwarded request has an unresolved fabric-link probe
 |`CHK-TIMEOUT-PATHS` |Every bounded wait has an expiry path and none expired
 |`CHK-NONVAC` |The stage stamps setup, wrap_len0, reserved_burst, crossing, footprint and liveness are present and in order, with per-stage counts
 |===
@@ -18241,7 +18241,7 @@ and silent.
   stays connected and its uncore reset stays high on every edge of the hold, so the uncore-domain
   MMIO checker keeps grading the port and no own-domain reset edge occurs in this leg.
 * Leg B, warm reset entered through `tb_sep_wdt_reset_n`: the warm reset asserts while the input is
-  low and stays low for at least 32 reference clock cycles after it releases (`clk_rst.adoc`
+  low and stays low for 32 reference clock cycles after it releases (`clk_rst.adoc`
   213-216). SEP_IN reads of `SCRATCH_COLD` and SYS_OUT writes stay open across the edge; no
   `SCRATCH_COLD_WARM` access is open across it. Their outcome is measured, not compared (SF-003).
 * After each release one fresh access on SEP_IN, SYS_IN, JTAG_IN, SYS_OUT, the CPU front port (a
@@ -18282,7 +18282,7 @@ with the last AW/W/AR/B/R handshake of the link and the reset samples.
 |===
 |Checker |Description
 |`CHK-G2-CORE-HELD-TRAFFIC` |While core 0 is held the isolate request and the MMIO isolated status stay low and the uncore reset stays high, the SEP_IN and SYS_IN reads opened before the reset complete with OKAY, RLAST and their words, and `SMC_BASE_CONFIG` answers OKAY on both ports
-|`CHK-G2-WARM-ENTRY` |The warm reset asserts while `tb_sep_wdt_reset_n` is low and releases at least 32 reference clock cycles after it releases
+|`CHK-G2-WARM-ENTRY` |The warm reset asserts while `tb_sep_wdt_reset_n` is low and releases 32 reference clock cycles after it releases
 |`CHK-G2-LIVENESS` |After leg A every one of the six links answers a fresh access OKAY; after leg B every link's fresh access is answered (codes logged as `OBS-G2-WARM-OPEN-TXN`)
 |`CHK-G2-TRACK-CLEARED` |After each release the first fresh access on the CPU front port, the CPU MMIO port and the misc warm leg answers OKAY
 |`CHK-G2-PRIMARY-RECONCILED` |Every transaction open at either edge is completed or recorded unanswered with its samples; an unanswered one fails the leaf

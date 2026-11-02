@@ -39,12 +39,11 @@ class smc_axi_illegal_encoding_inject_test(smc_base_test):
         "CHK-G11-INJECT-MASK",
         "CHK-G11-LIVENESS",
         "CHK-G11-RSVD-BURST-ANSWERED",
-        "CHK-G11-SPLIT-BRESP",
         "CHK-G11-WRAP-LEN0-ANSWERED",
         "CHK-NONVAC",
         "CHK-TIMEOUT-PATHS",
     )
-    min_evidence = 9
+    min_evidence = 8
 
     async def run_scenario(self) -> None:
         seq = smc_axi_illegal_encoding_inject_test_seq("axi_illegal_encoding_inject_seq")

@@ -356,6 +356,7 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
         self.ctrl_lines = 0
         self.dut_burst_real = 0
         self.masked_fires = 0
+        self.fwd_unresolved = 0
 
     # ------------------------------------------------------------------
     # Bookkeeping
@@ -583,11 +584,18 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
         self.masked_fires += len(trips)
         req.fwd_recs = getattr(self.fwd[req.port], ch)[req.fwd_mark :]
         fwd = req.fwd_recs[0] if req.fwd_recs else None
+        fwd_probe_ok = fwd is not None and None not in (
+            fwd["sva_addr"],
+            fwd["sva_len"],
+            fwd["sva_burst"],
+        )
         fwd_trips = (
             rule_trips(fwd["sva_addr"], fwd["sva_len"], fwd["sva_size"], fwd["sva_burst"])
-            if fwd is not None and None not in (fwd["sva_addr"], fwd["sva_len"], fwd["sva_burst"])
+            if fwd_probe_ok
             else []
         )
+        if fwd is not None and not fwd_probe_ok:
+            self.fwd_unresolved += 1
         self.masked_fires += len(fwd_trips)
         if fwd is None:
             cocotb.log.info(
@@ -851,8 +859,7 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
                 f"BRESP={bresp_name}; RRESP {rhist} per-beat={''.join(str(c)[0] for c in rresp)}"
             )
         cocotb.log.info(
-            "OBS-G11-4KB: %s (observation, SF-015 and SF-012; compared only through "
-            "CHK-G11-SPLIT-BRESP)",
+            "OBS-G11-4KB: %s (observation, SF-015 and SF-012; never compared)",
             " || ".join(obs_4kb),
         )
         answered = {
@@ -871,18 +878,16 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
         )
         for port in PORTS:
             got, want = split[port]
-            assert got == want, (
-                f"{port} crossing write BRESP {got}, want {want} by the write-split rule "
-                f"(memmap.adoc:64-67) over the reference codes"
-            )
             cocotb.log.info(
-                "CHK-G11-SPLIT-BRESP: port=%s bresp=%s expected=%s (memmap.adoc:64-67 over %d "
-                "single-beat reference codes; start 0x%x selects misc_wrap, a register unit)",
+                "OBS-G11-SPLIT-BRESP: port=%s bresp=%s split_rule_over_single_beat_codes=%s "
+                "(observation, SF-012: the single-beat codes come from the design's own answers "
+                "to beats routed by their own address, so the burst's past-extent beats have no "
+                "stated code to compare against; start 0x%x selects misc_wrap, %d beats)",
                 port,
                 got,
                 want,
-                CROSS_BEATS,
                 CROSS_START,
+                CROSS_BEATS,
             )
         self._stage("crossing", f"reqs={2 * len(PORTS)} ref_writes={len(PORTS) * CROSS_BEATS}")
 
@@ -905,14 +910,20 @@ class smc_axi_illegal_encoding_inject_test_seq(output_fabric_pass_all_cfg_seq):
             f"CTRL-INJECT lines {self.ctrl_lines}, DUT-side encoding real on {self.dut_burst_real}"
         )
         assert self.masked_fires == 0, f"{self.masked_fires} masked rule(s) tripped on the view"
+        assert self.fwd_unresolved == 0, (
+            f"{self.fwd_unresolved} forwarded request(s) with an unresolved fabric-link probe"
+        )
         cocotb.log.info(
-            "CHK-G11-INJECT-MASK: ctrl_lines=%d dut_burst_real=%d masked_fires=%d (the views of "
-            "u_sep_in_axi_sva, u_sys_in_axi_sva, u_sep_remap_axi_sva and u_filtered_sys_axi_sva "
-            "of every illegal request evaluated against the WRAP-length, burst-legal and 4 KiB "
-            "rules; every other rule fire is an $error line the log scan grades)",
+            "CHK-G11-INJECT-MASK: ctrl_lines=%d dut_burst_real=%d masked_fires=%d "
+            "fwd_unresolved=%d (the views of u_sep_in_axi_sva, u_sys_in_axi_sva, "
+            "u_sep_remap_axi_sva and u_filtered_sys_axi_sva of every illegal request evaluated "
+            "against the WRAP-length, burst-legal and 4 KiB rules; a forwarded request whose "
+            "fabric-link probe reads X counts as unresolved; every other rule fire is an $error "
+            "line the log scan grades)",
             self.ctrl_lines,
             self.dut_burst_real,
             self.masked_fires,
+            self.fwd_unresolved,
         )
 
         # S9

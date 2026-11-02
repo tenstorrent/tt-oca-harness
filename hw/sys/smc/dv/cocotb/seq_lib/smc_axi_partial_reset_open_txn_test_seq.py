@@ -10,7 +10,7 @@ complete with OKAY and RLAST, a non-cluster register answers OKAY on both
 ports, and after the release every link answers a fresh access with OKAY.
 
 Leg B pulses the SEP watchdog reset input. The watchdog reset term holds the
-warm reset for at least 32 reference clock cycles after the input releases
+warm reset for 32 reference clock cycles after the input releases
 (clk_rst.adoc:213-216), counted on the reference clock. SEP_IN reads of
 SCRATCH_COLD and SYS_OUT writes stay open across the warm edge on cold-domain
 targets; no SCRATCH_COLD_WARM access is open across it. Their outcome and the
@@ -700,13 +700,13 @@ class smc_axi_partial_reset_open_txn_test_seq(output_fabric_pass_all_cfg_seq):
             raise self._expire(
                 f"warm reset release in {REF_BOUND} reference clock edges", "SEP_IN", "design-side"
             )
-        assert ref_cycles >= WARM_HOLD_REF_CYCLES, (
+        assert ref_cycles == WARM_HOLD_REF_CYCLES, (
             f"warm reset released {ref_cycles} reference clock cycles after tb_sep_wdt_reset_n "
-            f"released, want >= {WARM_HOLD_REF_CYCLES} (clk_rst.adoc:213-216)"
+            f"released, want {WARM_HOLD_REF_CYCLES} (clk_rst.adoc:213-216)"
         )
         self._chk(
             "CHK-G2-WARM-ENTRY",
-            f"ref_cycles_after_release={ref_cycles} (>= {WARM_HOLD_REF_CYCLES}, clk_rst.adoc:213-216; "
+            f"ref_cycles_after_release={ref_cycles} (want {WARM_HOLD_REF_CYCLES}, clk_rst.adoc:213-216; "
             f"tb_rst_warm_smc_clk_n asserted at {warm_ns} ns while tb_sep_wdt_reset_n was low)",
         )
         self._stage("legB_enter")
