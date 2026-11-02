@@ -540,14 +540,15 @@ module smc_padring #(
     // Assertion to protect against truncation on casts
     `OCAH_ASSERT_STATIC(
         GpioIntfSizeFits_A,
-        smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::AddrWidth))
+        smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::AddrWidth))
 
     // GPIO interface
     gpio #(
       .MAX_TRANS                  (MAX_TRANS),
       .INPUT_BY_DEFAULT           (InputByDefault),
 
-      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::AddrWidth'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE))
+      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::AddrWidth'(
+          smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_WRAP_GPIO_INTF_SIZE))
     ) u_gpio_interface (
       .clk_i                  (clk_i),
       .rst_primary_ni         (rst_primary_ni),

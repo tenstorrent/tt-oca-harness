@@ -277,6 +277,19 @@ only the CPU isolation blocks: a block elsewhere in the fabric that holds a
 response can leave its route or AXI ID blocked, and must be recovered separately
 or by cold reset.
 
+[[smc-hart0-park]]
+To reset hart 0 while the production ROM runs on it, first ask the ROM to park
+it. Write `0x5052_4B31` to scratch register 3 (`0x4003_9098` in the SEP's view)
+and poll bit 4 (`HART0_PARKED`) of scratch register 9. The ROM checks the request
+between OCCP commands. It then writes back and invalidates its L1 data cache,
+sets the bit, and loops on `wfi` with interrupts disabled. Once the bit is set,
+hart 0 has no dirty cache lines and no outstanding accesses, so a core reset does
+not discard any of its writes. The ROM also parks hart 0, and sets the same bit,
+after `AuthenticateImage`, on each boot halt and on a trap, so check the bit
+before writing the request. The bit describes hart 0 only while it runs the ROM:
+software that hart 0 runs next must clear it first. Clear the request once hart 0
+is parked; the ROM also clears it on entry.
+
 A safe startup scenario, subject to the warning above, is when three of four
 harts remain parked after ROM boot and must start at a different firmware
 address. Before they join normal coherent operation, software can program a

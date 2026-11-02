@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef FILTER_CTRL_WRAP_RDL
+`define FILTER_CTRL_WRAP_RDL
+
+`include "filter_ctrl.rdl"
+
+addrmap filter_ctrl_wrap #(
+    longint unsigned NUM_ENTRIES = 16
+) {
+    name = "AXI Filter Wrapper Address Map";
+    desc = "Wrapper address map instantiating one filter control register block per filter entry.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    filter_ctrl    filter_ctrl[NUM_ENTRIES]    @0x0 += 0x20;
+};
+
+`endif

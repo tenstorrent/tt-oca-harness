@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from env.sep_chk_log import word_digest
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import CHeaderRegBlock, ip_c_header
 
@@ -66,6 +67,29 @@ A_ENTRY_LOCK = _csr("IRQ_ENTRY_LOCK")
 A_DEBUG = _csr("DEBUG")
 A_OTP_LOCK = _csr("OTP_READ_LOCK")
 A_OTP_LOCK_COLD = _csr("OTP_READ_LOCK_COLD")
+# Reads of the write-only IRQ_SET and of the virtual UART and testbench words, and
+# writes to the read-only registers. A read of a readable register expects OKAY;
+# the IRQ_SET read and the read-only writes log their response.
+OBS_READS = tuple(
+    (reg, _csr(reg))
+    for reg in (
+        "IRQ_SET",
+        "VUART_TX",
+        "VUART_RX",
+        "VUART_STATUS",
+        "TB_RESULT",
+        "TB_SIGNATURE",
+        "TB_ERRCODE",
+        "TB_SUBTEST",
+        "TB_CMD",
+        "TB_CMD_ARG",
+        "TB_CMD_STATUS",
+        "TB_CMD_RESULT",
+    )
+)
+OBS_RO_WRITES = tuple(
+    (reg, _csr(reg)) for reg in ("CTRL", "DEBUG", "OTP_LIFE_CYCLE", "OTP_DEMOTION_STATE")
+)
 A_SMP_DATA = km_addr("DRBG_SAMPLER_DATA_BASE_ADDR")
 A_SMP_CFG = km_addr("DRBG_SAMPLER_CFG_BASE_ADDR")
 A_MBOX_KM_STATUS = km_addr("MAILBOX_KM_KM_STATUS_BASE_ADDR")
@@ -129,6 +153,17 @@ OTP_LOCK_RESET = KM_CSR.reset("OTP_READ_LOCK_REG")
 OTP_COLD_RESET = KM_CSR.reset("OTP_READ_LOCK_COLD_REG")
 CBD_RESET = KM_CSR.reset("BOOT_STATUS_REG") & CBD_BIT
 CFG_RESET = KM_SMP.reset("CFG_REG")
+# Software-written words (sw = rw, hw = r) that no master writes in this leaf: a
+# read returns the RDL reset.
+RESET_READS = {
+    reg: KM_CSR.reset(f"{reg}_REG")
+    for reg in ("VUART_TX", "TB_RESULT", "TB_SIGNATURE", "TB_ERRCODE", "TB_SUBTEST", "TB_CMD_ARG")
+}
+# VUART_STATUS fields (sw = r, hw = w) and their RDL resets, graded field by field.
+VUART_STATUS_FIELDS = tuple(
+    (n, m["bm"], m["bp"], m["reset"])
+    for n, m in sorted(KM_CSR.fields("VUART_STATUS_REG").items(), key=lambda t: t[1]["bp"])
+)
 
 # The register text of km_csr.adoc and km_drbg_sampler.adoc states the same
 # resets as the RDL; a mismatch is a specification conflict, not a leaf result.
@@ -317,7 +352,8 @@ def _sram_round(rng: SepSeededRng, index: int) -> SramRound:
 
 def _wrong_codes(rng: SepSeededRng) -> list[int]:
     neighbours = [SOFT_RST_CODE ^ (1 << b) for b in range(32)]
-    codes = [0x0000_0000, 0xFFFF_FFFF, rng.choice(neighbours)]
+    # Code 0 follows a non-zero code, so its readback differs from the value before it.
+    codes = [0xFFFF_FFFF, 0x0000_0000, rng.choice(neighbours)]
     while len(codes) < 5:
         v = rng.choice(neighbours) if rng.getrandbits(1) else rng.getrandbits(32)
         if v != SOFT_RST_CODE and v not in codes:
@@ -446,40 +482,42 @@ def draw_plan(seed: int) -> Plan:
 
 
 def plan_draw_lines(p: Plan) -> list[str]:
-    """One ``DRAW`` line per drawn dimension, in draw order."""
+    """One ``INFO-DRAW`` line per drawn dimension, in draw order."""
     h = lambda v: f"0x{v:08x}"  # noqa: E731
     out = [
-        f"DRAW version_wr={h(p.ver_wr)}",
-        "DRAW irq_walk=" + ",".join(f"{i}/{j}" for i, j in p.walk),
-        "DRAW irq_set_masks=" + ",".join(f"0x{m:03x}" for m in p.set_masks),
-        "DRAW en_order=" + ",".join(p.en_order),
-        f"DRAW en_a e=0x{p.en_a.e:03x} s=0x{p.en_a.s:03x}",
-        f"DRAW en_b e=0x{p.en_b.e:03x} s=0x{p.en_b.s:03x}",
-        "DRAW en_c=" + ",".join(f"src{c.src}:e=0x{c.e:03x}:s=0x{c.s:03x}" for c in p.en_c),
-        f"DRAW en_d e=0x{p.en_d.e:03x} s=0x{p.en_d.s:03x}",
-        f"DRAW scrambler_key k={h(p.scr_k)} k2={h(p.scr_k2)}",
-        f"DRAW irq_entry aligned={h(p.entry_aligned)} unaligned={h(p.entry_unaligned)} "
+        f"INFO-DRAW version_wr={h(p.ver_wr)}",
+        "INFO-DRAW irq_walk=" + ",".join(f"{i}/{j}" for i, j in p.walk),
+        "INFO-DRAW irq_set_masks=" + ",".join(f"0x{m:03x}" for m in p.set_masks),
+        "INFO-DRAW en_order=" + ",".join(p.en_order),
+        f"INFO-DRAW en_a e=0x{p.en_a.e:03x} s=0x{p.en_a.s:03x}",
+        f"INFO-DRAW en_b e=0x{p.en_b.e:03x} s=0x{p.en_b.s:03x}",
+        "INFO-DRAW en_c=" + ",".join(f"src{c.src}:e=0x{c.e:03x}:s=0x{c.s:03x}" for c in p.en_c),
+        f"INFO-DRAW en_d e=0x{p.en_d.e:03x} s=0x{p.en_d.s:03x}",
+        f"INFO-DRAW scrambler_key k_sha={word_digest([p.scr_k])} k2_sha={word_digest([p.scr_k2])}",
+        f"INFO-DRAW irq_entry aligned={h(p.entry_aligned)} unaligned={h(p.entry_unaligned)} "
         f"v2={h(p.entry_v2)}",
-        "DRAW size_addrs=" + ",".join(f"0x{a:04x}" for a in p.size_addrs),
-        "DRAW size_tags=" + ",".join(h(t) for t in p.size_tags),
-        "DRAW park_w=" + ",".join(str(w) for w in p.park_w) + " first=max(fall-delay reference)",
+        "INFO-DRAW size_addrs=" + ",".join(f"0x{a:04x}" for a in p.size_addrs),
+        "INFO-DRAW size_tags=" + ",".join(h(t) for t in p.size_tags),
+        "INFO-DRAW park_w="
+        + ",".join(str(w) for w in p.park_w)
+        + " first=max(fall-delay reference)",
     ]
     for r in p.sram_rounds:
         out.append(
-            f"DRAW sram_round={r.index} lock=0x{r.lock:08x} m=0x{r.m:08x} m2=0x{r.m2:08x} "
+            f"INFO-DRAW sram_round={r.index} lock=0x{r.lock:08x} m=0x{r.m:08x} m2=0x{r.m2:08x} "
             f"rel=0x{r.rel_addr:04x}/{h(r.rel_val)}"
         )
         out.append(
-            f"DRAW sram_round={r.index} stores="
+            f"INFO-DRAW sram_round={r.index} stores="
             + ",".join(f"0x{a:04x}:{h(r.init[a])}>{h(r.store[a])}" for a in r.addrs)
             + " r31="
             + ",".join(f"0x{a:04x}:{h(r.init[a])}>{h(r.store[a])}" for a in R31_FIXED)
         )
-    out.append("DRAW wrong_codes=" + ",".join(h(c) for c in p.wrong_codes))
-    out.append("DRAW reset_order=" + ",".join(w.kind for w in p.rounds))
+    out.append("INFO-DRAW wrong_codes=" + ",".join(h(c) for c in p.wrong_codes))
+    out.append("INFO-DRAW reset_order=" + ",".join(w.kind for w in p.rounds))
     for k, w in enumerate(p.rounds):
         out.append(
-            f"DRAW witness round={k} kind={w.kind} otp_cold_bit={w.otp_cold_bit} "
+            f"INFO-DRAW witness round={k} kind={w.kind} otp_cold_bit={w.otp_cold_bit} "
             f"otp_bit={w.otp_bit} sram_lock=0x{w.sram_lock:08x} mbox={h(w.mbox_word)} sram="
             + ",".join(f"0x{a:04x}:{h(v)}" for a, v in w.sram)
         )

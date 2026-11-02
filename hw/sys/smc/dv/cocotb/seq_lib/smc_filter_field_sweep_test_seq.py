@@ -41,7 +41,9 @@ _DIRS = ("INBOUND", "OUTBOUND")
 
 
 def _filter_reg_addr(direction: str, entry: int, field: str) -> int:
-    return getattr(_smc_reg, f"SMC_{direction}_FILTER_CTRL_{entry}__{field}_REG_ADDR")
+    return getattr(
+        _smc_reg, f"SMC_{direction}_FILTER_CTRL_WRAP_FILTER_CTRL_{entry}__{field}_REG_ADDR"
+    )
 
 
 class smc_filter_field_sweep_test_seq(SmcCsrSeq):

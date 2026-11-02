@@ -50,6 +50,17 @@ clocks, so the sweep places the clear at every phase of one acknowledge period.
 The phase of a trial is the clocks from the last adapter acknowledge of the client
 to the rise of ``trng_reset_active_probe_o``.
 
+Pool read in flight (after the pool leg, outside the graded window): one pool DATA
+read started together with the TRNG reset write, with one word in the pool.
+``CHK-XRST-POOL-INFLIGHT`` grades the stated outcome: the responder is not reset and
+stays responsive (``reset_controller.adoc``), so the read completes; a DATA read pops
+the word or, on an empty pool, returns SLVERR (``entropy_pool.adoc``), so the response
+is SLVERR or OKAY with the sent pair. Control: one word in the pool, the read address
+handshake at or before the reset rise and the response not before it.
+``OBS-XRST-POOL-DATA-INFLIGHT`` logs which of the two outcomes occurs, the data and the
+clocks from the read address handshake to the reset rise and from the rise to the
+response (no text states which outcome wins the race).
+
 Checkers:
   CHK-XRST-POOL    a pool STATUS read issued and answered inside the clear returns
                    OKAY and fifo_level 0. Control: fifo_level = N before the reset.
@@ -76,6 +87,19 @@ Checkers:
                    acknowledged in the pre-reset leg, the held beat shows on at
                    least one clock of the clear, and at least one stale word is
                    buffered at the set-up clear.
+  CHK-XRST-URNDFIRST  per OTBN RND trial: after the ``CMD`` = EXECUTE write the
+                   first rise of ``crypto_edn_req_o[3]`` (OTBN URND) comes on a
+                   clock strictly before the first rise of ``crypto_edn_req_o[2]``
+                   (OTBN RND). OTBN reseeds the URND PRNG from the EDN when it starts
+                   execution, before it fetches the instruction at address zero
+                   (``vendor/lowRISC/opentitan/upstream/hw/ip/otbn/doc/theory_of_operation.md``
+                   :80, :132-134; ``otbn.hjson`` ``SecSkipUrndReseedAtStart``
+                   default 0), and RND asks the EDN only on a read or a prefetch
+                   (ToO:66, :70-71); the program reads RND first at its second
+                   instruction. Client numbers: ``hw/sys/sep/doc/trng.adoc`` :93.
+                   Control ``CTRL-XRST-URNDFIRST``: bit 3 reads 0 on the first
+                   traced clock, so the rise is the EXECUTE reseed and not a
+                   request still high from an earlier one.
   CHK-ADAPTER-CLEAR-HOLD  per adapter-clear trial: on every clock with
                    ``src_req_i && src_ack_o`` of a client synchronizer, the word the
                    client takes (``crypto_edn_sync_data_o``) equals the word that
@@ -122,6 +146,7 @@ from seq_lib.sep_entropy_pool_seq import (
     POOL_POP,
     POOL_STATUS,
     RESP_OKAY,
+    RESP_SLVERR,
     SepEntropyPool,
     pool_level,
 )
@@ -578,8 +603,10 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         "CHK-XRST-PAUSE",
         "CHK-XRST-RESUME",
         "CHK-XRST-STALE",
+        "CHK-XRST-POOL-INFLIGHT",
         "CHK-XRST-CLIENT",
         "CHK-XRST-OTBN",
+        "CHK-XRST-URNDFIRST",
         "CHK-ADAPTER-CLEAR-HOLD",
         "CHK-ADAPTER-CLEAR-RND",
     )
@@ -590,11 +617,11 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         self.reg = _Reg(self)
         await self.reg._wr(SEL_ADDR, SEL_EXT_12)
         self.logger.info(
-            "BASELINE sw_reset_n=0x%02x ext_trng_src_sel=0x%x", self.swrst.value, SEL_EXT_12
+            "INFO-BASELINE sw_reset_n=0x%02x ext_trng_src_sel=0x%x", self.swrst.value, SEL_EXT_12
         )
         seed = self.random_seed()
         plan = draw_plan(seed)
-        self.logger.info("PLAN seed=%d %s", seed, plan.describe())
+        self.logger.info("INFO-PLAN seed=%d %s", seed, plan.describe())
         self.plan = plan
         self.chk = SepChkLog(self, TEST, seed)
         self.aes = SepAes(self)
@@ -994,6 +1021,69 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
             stale_pairs=stale, order_ok=int(pops == expect), bad_resp=bad_resp,
             pre_reset_level=pre_reset_level,
         )  # fmt: skip
+        await self._pool_inflight_obs()
+
+    async def _pool_inflight_obs(self) -> None:
+        """A pool DATA read started with the TRNG reset write; its response is logged."""
+        dut = cocotb.top
+        w = self._next_word()
+        self.ext.send(2, [w, w])
+        if not await self._settle(2, 2, SETTLE_CAP):
+            raise AssertionError(f"in-flight pair not taken in {SETTLE_CAP}")
+        await self._until(lambda: self.trace.pool_quiet >= POOL_QUIET, SETTLE_CAP)
+        level = pool_level(await self.pool.status())
+        ar: dict[str, int] = {}
+
+        async def watch_ar() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if (
+                    self.rd(dut.s_axi_arvalid, allow_unknown=True) == 1
+                    and self.rd(dut.s_axi_arready, allow_unknown=True) == 1
+                    and self.rd(dut.s_axi_araddr, allow_unknown=True) == POOL_POP
+                ):
+                    ar["clk"] = self.trace.clk
+                    return
+
+        watcher = cocotb.start_soon(watch_ar())
+        pop = cocotb.start_soon(self.pool.access(POOL_POP, allow_timeout=True))
+        rise = cocotb.start_soon(self._wait_probe(1, "trng reset rise"))
+        await self.swrst.park("trng")
+        await rise
+        t_rise = self.trace.clk
+        await self._until(lambda: pop.done(), SETTLE_CAP)
+        t_resp = self.trace.clk if pop.done() else None
+        await RisingEdge(dut.clk_i)
+        await self.swrst.release("trng")
+        await self._wait_probe(0, "trng reset fall")
+        await RisingEdge(dut.clk_i)
+        seq = await pop
+        _kill(watcher)
+        t_ar = ar.get("clk")
+        self.chk.ctrl(
+            "XRST-POOL-INFLIGHT",
+            level == 1 and t_ar is not None and t_ar <= t_rise
+            and (t_resp is None or t_resp >= t_rise),
+            level_before=level, ar_to_rise_clk=t_rise - t_ar if t_ar is not None else "na",
+        )  # fmt: skip
+        pair = (w << 32) | w
+        data = (seq.rdata or 0) & 0xFFFF_FFFF_FFFF_FFFF
+        self.chk.ok(
+            "XRST-POOL-INFLIGHT",
+            not seq.timed_out
+            and (seq.resp_code == RESP_SLVERR or (seq.resp_code == RESP_OKAY and data == pair)),
+            timed_out=int(seq.timed_out), resp=seq.resp_code, legal="SLVERR|OKAY+sent_pair",
+        )  # fmt: skip
+        self.chk.obs(
+            "XRST-POOL-DATA-INFLIGHT",
+            level_before=level,
+            resp=seq.resp_code,
+            rdata=f"0x{(seq.rdata or 0) & 0xFFFF_FFFF_FFFF_FFFF:016x}",
+            timed_out=int(seq.timed_out),
+            ar_to_rise_clk=t_rise - ar["clk"] if "clk" in ar else "na",
+            rise_to_resp_clk=t_resp - t_rise if t_resp is not None else "na",
+        )
 
     # --- consumer trials ----------------------------------------------------------------
     async def _trials(self) -> None:
@@ -1037,7 +1127,6 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         await self._trng_reset()
         setup_rows = self.trace.end()
         s_trial: set[int] = set()
-        urnd_first: list[str] = []
         if client == "otbn_rnd":
 
             def gate() -> bool:
@@ -1055,10 +1144,18 @@ class sep_trng_ext_sink_reset_rand_test(sep_base_test):
         )
         if client == "otbn_rnd":
             rows = self.trace.snapshot()
+            urnd_at_begin = _bit(rows[0].creq, 3) if rows else None
             r3 = next((r.clk for r in rows if _bit(r.creq, 3) == 1), None)
             r2 = next((r.clk for r in rows if _bit(r.creq, 2) == 1), None)
-            urnd_first.append(str(int(r3 is not None and (r2 is None or r3 < r2))))
-            self.chk.obs("XRST-URNDFIRST", urnd_before_rnd=urnd_first[0], attempt=attempt)
+            self.chk.ctrl("XRST-URNDFIRST", urnd_at_begin == 0, urnd_at_begin=urnd_at_begin)
+            self.chk.ok(
+                "XRST-URNDFIRST",
+                r3 is not None and (r2 is None or r3 < r2),
+                urnd_before_rnd=int(r3 is not None and (r2 is None or r3 < r2)),
+                urnd_rise_clk="none" if r3 is None else r3,
+                rnd_rise_clk="none" if r2 is None else r2,
+                attempt=attempt,
+            )
         if n is None:
             self.trace.end()
             await self._stop_feeders()

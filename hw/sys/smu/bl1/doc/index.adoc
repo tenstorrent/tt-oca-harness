@@ -140,16 +140,18 @@ Boot ROM clears it on entry.
 |Hart 0 parked
 |SMC scratch 9, bit 4
 |Set only by the SMC Boot ROM's park routine, after the routine has written back its data
-cache. The ROM clears it on entry.
+cache. It describes hart 0 only while hart 0 runs the ROM: the ROM clears it on entry, and SMC
+BL1 clears it before anything else.
 |===
 
 The SMC Boot ROM stops hart 0 through one park routine. That covers the park after
-`AuthenticateImage`, each ROM halt, and a park on request. The routine:
+`AuthenticateImage`, each ROM halt, a trap, and a park on request. The routine:
 
+. disables interrupts;
 . completes outstanding memory accesses;
 . writes back and invalidates its data cache;
 . sets the parked bit;
-. disables interrupts and waits in `wfi`.
+. waits in `wfi`.
 
 The OCCP command loop checks the park request between commands.
 
@@ -211,6 +213,8 @@ If a step fails after the release, SEP BL1:
 
 SMC BL1:
 
+* clears the parked bit before anything else, so the bit never reports a running hart 0 as
+  parked;
 * sets its own trap vector, stack and global pointer, because the SMC Boot ROM's start-up code
   does not run for it;
 * copies its initialised data into the writable window and never writes inside its image

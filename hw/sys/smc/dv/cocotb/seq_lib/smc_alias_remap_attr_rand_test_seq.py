@@ -55,7 +55,9 @@ _CHECKERS = (
 
 
 def _reg(kind: str, region: int) -> int:
-    return smc_indexed_addr(f"SMC_TOP_SMC_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", region)
+    return smc_indexed_addr(
+        f"SMC_TOP_SMC_ALIAS_REMAP_WRAP_ALIAS_REMAP_REGION_REGION_{kind}_BASE_ADDR", region
+    )
 
 
 def _outside_apertures(lo: int, hi: int) -> bool:

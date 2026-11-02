@@ -179,8 +179,7 @@ class sep_abr_mlkem_kat_test(sep_base_test):
         ver0 = await kem.rd32(MLKEM_VERSION0)
         ver1 = await kem.rd32(MLKEM_VERSION1)
         self.logger.info(
-            "ABR ML-KEM identity words (information only): NAME0=0x%08x NAME1=0x%08x "
-            "VERSION0=0x%08x VERSION1=0x%08x",
+            "OBS-ABR-MLKEM-ID: NAME0=0x%08x NAME1=0x%08x VERSION0=0x%08x VERSION1=0x%08x",
             name0,
             name1,
             ver0,
