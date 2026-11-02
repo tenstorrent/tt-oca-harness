@@ -353,13 +353,18 @@ class sep_efuse_jtag_access_rand_test(sep_base_test):
         cannot be undone. The status clear goes first, then ``EFUSE_READ_CTRL`` (its RW
         fields read back the written ``read_enable`` and ``efuse_addr`` after a write of 0
         and then of the pattern; it is then written 0), so a lock bit that a shadow
-        control sets cannot refuse their reads.
+        control sets cannot refuse their reads. The ``LOCKS`` and ``LOCKS_SPARE`` controls
+        run after the other shadow controls, so a lock bit they set cannot refuse the
+        frontdoor read or write of a field whose control comes later.
         """
         await self._status_clear_control(w)
         seen: set[tuple[int, int]] = set()
         accs = [a for a in self.p.leg["denied"] if a["op"] == "wr"]
         rd_ctl = [a for a in accs if a.get("reg") == "EFUSE_READ_CTRL"]
-        shadow = [a for a in accs if a["cls"] == "shadow"]
+        shadow = sorted(
+            (a for a in accs if a["cls"] == "shadow"),
+            key=lambda a: a["field"] in ("LOCKS", "LOCKS_SPARE"),
+        )
         for acc in rd_ctl + shadow:
             key = (acc["addr"], acc["data"])
             if key in seen:
