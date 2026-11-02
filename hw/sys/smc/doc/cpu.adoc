@@ -445,6 +445,31 @@ register.
 |`dtmcs.idle` |5 |Run-Test/Idle cycles to spend between DMI accesses
 |===
 
+A `dmi` scan captures an `op` of 0 when the previous access succeeded, 1 when
+it failed, and 3 when it is still in progress. The failure code is 1, not the
+2 of the specification. A failed or in-progress access makes the next `dmi`
+updates no-ops until `dtmcs.dmireset` is written; `dtmcs.dmistat` reports the
+sticky condition as 3 after a failure and 1 after a scan that found an access
+in progress. The DMI access captured after a failure reports `op` 0, so read
+`dmistat` to detect a dropped access.
+
+The DMI is split across two reset domains. `dmcontrol`, `hawindowsel` and
+`hawindow` live on TCK and are reset only by the JTAG reset. Every other DMI
+register is in the part of the Debug Module that `CPU_CTRL.RESET_CTRL` resets,
+and is reached only while `dmcontrol.dmactive` is 1 and that part has
+acknowledged it out of reset. While `RESET_CTRL` holds the Debug Module in
+reset, therefore:
+
+* `dmcontrol`, `hawindowsel` and `hawindow` read and write normally, with
+  `op` 0; `dmactive` can be written to 1 and reads back.
+* An access to any other DMI register, `dmstatus` included, is refused: the
+  `dmi` scan that follows captures `op` 1 with data 0, `dtmcs.dmistat` reads
+  3, and later accesses are dropped until `dtmcs.dmireset` is written.
+
+After `RESET_CTRL` releases the Debug Module with `dmactive` at 1, the
+acknowledgement passes a three-stage synchronizer on the SMC clock and another
+on TCK. An access made before it arrives fails the same way.
+
 [[smc-debug-module-configuration]]
 === Debug Module Configuration
 
