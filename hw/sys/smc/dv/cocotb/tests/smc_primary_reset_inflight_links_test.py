@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_001 ANCHOR: smc_primary_reset_inflight_links_test
-# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: a6ebab7780ddd42d5d0db835731a4e2525a599429ff2ca272dfc564d0313998e
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 76b6465141e11bd6f19e49d95a2aa9b35227743cd71a3128192bf598cc33d8cc
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Primary reset with accesses pending on every steerable AXI link, entered three ways.
 
 The cool pin, the JTAG cool override and the FLR timed cool reset each land while reads and

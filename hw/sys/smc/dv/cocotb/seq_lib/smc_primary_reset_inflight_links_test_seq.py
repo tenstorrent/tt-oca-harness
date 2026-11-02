@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # DV-TESTCASE-CONTRACT: SMC_SEP_SCN_001 ANCHOR: smc_primary_reset_inflight_links_test
-# DV-TESTCASE-CONTRACT-REVISION: 1 RECORD-SHA256: a6ebab7780ddd42d5d0db835731a4e2525a599429ff2ca272dfc564d0313998e
-# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
+# DV-TESTCASE-CONTRACT-REVISION: 2 RECORD-SHA256: 76b6465141e11bd6f19e49d95a2aa9b35227743cd71a3128192bf598cc33d8cc
+# DV-TESTCASE-CONTRACT-SOURCE: hw/sys/smc/dv/ai/dv_vplan_gen/SMC_SEP_SCN_VPLAN_DETAIL.md @ artifact_revision 2 ENV: cocotb
 """Primary reset entered three ways while accesses are pending on every steerable AXI link.
 
 Entries: the cool pin held for 40 ``clk_ref_i`` samples, the JTAG cool override, and the
@@ -347,6 +347,7 @@ class _LinkMonitor:
             "ej_r": links["EFUSE_JTAG"]["r"][0],
             "dtp": dtp,
             "sep_wvalid": links["SEP_IN"]["w"][0],
+            "l2f_r": links["CPU_FRONT"]["r"][0],
         }
 
     def _pre(self, links, hs, dtp, g) -> None:
@@ -474,6 +475,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         self.ej_pre_value = None
         self.dtp_event = None
         self.expected_aborted_items = EXPECTED_ABORTED_SEQUENCER_ITEMS
+        self.expired_waits = 0
 
     async def _dispatch_reset_item(self, item: SmcResetItem) -> None:
         assert self.dispatch_reset is not None, "dispatch_reset not bound by the test"
@@ -504,6 +506,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                 self._bound(label, f"{bound}clk_smc_i", f"reached after {n} edges, {state()}")
                 return n
             await RisingEdge(clk)
+        self.expired_waits += 1
         raise AssertionError(f"{label}: not reached within {bound} clk_smc_i edges; {state()}")
 
     async def _wait_ref(self, label: str, cond, bound: int, state) -> int:
@@ -513,6 +516,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                 self._bound(label, f"{bound}clk_ref_i", f"reached after {n} edges, {state()}")
                 return n
             await RisingEdge(clk)
+        self.expired_waits += 1
         raise AssertionError(f"{label}: not reached within {bound} clk_ref_i edges; {state()}")
 
     # --- bench access helpers ---------------------------------------------------------
@@ -541,6 +545,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         try:
             await with_timeout(task, JOIN_BOUND_NS, "ns")
         except SimTimeoutError as exc:
+            self.expired_waits += 1
             raise AssertionError(
                 f"{port} {label}: access not finished within {JOIN_BOUND_NS} ns"
             ) from exc
@@ -559,6 +564,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         try:
             await with_timeout(event.wait(), EJ_BOUND_NS, "ns")
         except SimTimeoutError as exc:
+            self.expired_waits += 1
             raise AssertionError(
                 f"{label}: eFuse JTAG read of 0x{addr:x} not answered within {EJ_BOUND_NS} ns"
             ) from exc
@@ -863,10 +869,12 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         name = rec.name
         rec.fresh = {}
         rec.fresh_idx = {}
+        rec.resp = {}
         start_sep_in = mon.n
-        await self._okay("SEP", SmcSysAxiOp.WRITE, f"{name}_sep_wr", FRESH_SEP, FRESH_SEP_DATA)
+        wr = await self._okay("SEP", SmcSysAxiOp.WRITE, f"{name}_sep_wr", FRESH_SEP, FRESH_SEP_DATA)
         read = await self._okay("SEP", SmcSysAxiOp.READ, f"{name}_sep_rd", FRESH_SEP)
         rec.fresh_idx["SEP_IN"] = (start_sep_in, mon.n)
+        rec.resp["SEP_IN"] = (wr.resp_code, read.resp_code)
         rec.sep_read = read.rdata
         rec.l2_pending = (self._v("tb_cpu_l2_pending_ar"), self._v("tb_cpu_l2_pending_aw"))
         await self._effects(rec)
@@ -874,25 +882,32 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         await self.program_outbound_pass_all()
 
         start_sys_in = mon.n
-        await self._okay("SYS", SmcSysAxiOp.WRITE, f"{name}_sys_wr", FRESH_SYS, FRESH_SYS_DATA)
+        wr = await self._okay("SYS", SmcSysAxiOp.WRITE, f"{name}_sys_wr", FRESH_SYS, FRESH_SYS_DATA)
         read = await self._okay("SYS", SmcSysAxiOp.READ, f"{name}_sys_rd", FRESH_SYS)
         rec.fresh_idx["SYS_IN"] = (start_sys_in, mon.n)
+        rec.resp["SYS_IN"] = (wr.resp_code, read.resp_code)
         rec.sys_read = read.rdata
 
         start_jtag_in = mon.n
-        await self._okay("JTAG", SmcSysAxiOp.WRITE, f"{name}_jtag_wr", FRESH_JTAG, FRESH_JTAG_DATA)
+        wr = await self._okay(
+            "JTAG", SmcSysAxiOp.WRITE, f"{name}_jtag_wr", FRESH_JTAG, FRESH_JTAG_DATA
+        )
         read = await self._okay("JTAG", SmcSysAxiOp.READ, f"{name}_jtag_rd", FRESH_JTAG)
         rec.fresh_idx["JTAG_IN"] = (start_jtag_in, mon.n)
+        rec.resp["JTAG_IN"] = (wr.resp_code, read.resp_code)
         rec.jtag_read = read.rdata
 
         start_sys_out = mon.n
         writes0, reads0 = self._v("tb_output_axi_write_count"), self._v("tb_output_axi_read_count")
-        await self._okay("JTAG", SmcSysAxiOp.WRITE, f"{name}_ext_wr", EXT_FRESH, FRESH_EXT_DATA)
+        wr = await self._okay(
+            "JTAG", SmcSysAxiOp.WRITE, f"{name}_ext_wr", EXT_FRESH, FRESH_EXT_DATA
+        )
         writes1 = self._v("tb_output_axi_write_count")
         read = await self._okay("JTAG", SmcSysAxiOp.READ, f"{name}_ext_rd", EXT_FRESH)
         reads1 = self._v("tb_output_axi_read_count")
         rec.fresh_idx["SYS_OUT"] = (start_sys_out, mon.n)
         rec.ext = (writes1 - writes0, reads1 - reads0, read.rdata & 0xFFFF_FFFF)
+        rec.resp["SYS_OUT"] = (wr.resp_code, read.resp_code)
 
         await wait_fuse_sense_done(FUSE_SENSE_BOUND_SMC)
         self._bound(f"{name}.fuse_sense", f"{FUSE_SENSE_BOUND_SMC}clk_smc_i", "sense done")
@@ -904,6 +919,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         read = await self._okay("SEP", SmcSysAxiOp.READ, f"{name}_uart", UART0_REG, length=4)
         rec.fresh_idx["PERIPH"] = (start_periph, mon.n)
         rec.uart_value = read.rdata & 0xFFFF_FFFF
+        rec.resp["PERIPH"] = (None, read.resp_code)
 
         if name != "flr":
             await self._flr_counters(f"{name}_rearm")
@@ -1100,18 +1116,26 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                 fails.append(f"{token}: {label} wrong {bad}")
             return want
 
+        def resp(link, idx):
+            return self._joined(recs[n].resp[link][idx] for n in ENTRIES)
+
+        def words(attr, width=16):
+            return self._joined(f"0x{getattr(recs[n], attr):0{width}x}" for n in ENTRIES)
+
         fresh("CHK-FRESH-ACCESS-SYS-IN", "sys_read", FRESH_SYS_DATA, "SYS_IN read")
         lines.append(
             (
                 "CHK-FRESH-ACCESS-SYS-IN",
-                f"pin/jtag/flr: write OKAY, read 0x{FRESH_SYS_DATA:016x} (3/3 entries)",
+                f"pin/jtag/flr: BRESP {resp('SYS_IN', 0)}, RRESP {resp('SYS_IN', 1)}, read "
+                f"{words('sys_read')} (expected 0x{FRESH_SYS_DATA:016x})",
             )
         )
         fresh("CHK-FRESH-ACCESS-JTAG-IN", "jtag_read", FRESH_JTAG_DATA, "JTAG_IN read")
         lines.append(
             (
                 "CHK-FRESH-ACCESS-JTAG-IN",
-                f"pin/jtag/flr: write OKAY, read 0x{FRESH_JTAG_DATA:016x} (3/3 entries)",
+                f"pin/jtag/flr: BRESP {resp('JTAG_IN', 0)}, RRESP {resp('JTAG_IN', 1)}, read "
+                f"{words('jtag_read')} (expected 0x{FRESH_JTAG_DATA:016x})",
             )
         )
         fresh("CHK-FRESH-ACCESS-SEP-IN", "sep_read", FRESH_SEP_DATA, "SEP_IN read")
@@ -1121,8 +1145,9 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         lines.append(
             (
                 "CHK-FRESH-ACCESS-SEP-IN",
-                f"pin/jtag/flr: write OKAY, read 0x{FRESH_SEP_DATA:016x}, L2 pending AR/AW 0/0 "
-                f"(3/3 entries)",
+                f"pin/jtag/flr: BRESP {resp('SEP_IN', 0)}, RRESP {resp('SEP_IN', 1)}, read "
+                f"{words('sep_read')} (expected 0x{FRESH_SEP_DATA:016x}), L2 pending AR/AW "
+                f"{self._joined(f'{ar}/{aw}' for ar, aw in (l2[n] for n in ENTRIES))}",
             )
         )
         ext = {n: r.ext for n, r in recs.items()}
@@ -1131,7 +1156,12 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         lines.append(
             (
                 "CHK-FRESH-ACCESS-SYS-OUT",
-                "pin/jtag/flr: write count +1, read count +1, both OKAY, via JTAG_IN (3/3 entries)",
+                f"pin/jtag/flr via JTAG_IN: write count "
+                f"{self._joined(f'+{ext[n][0]}' for n in ENTRIES)}, read count "
+                f"{self._joined(f'+{ext[n][1]}' for n in ENTRIES)}, BRESP {resp('SYS_OUT', 0)}, "
+                f"RRESP {resp('SYS_OUT', 1)}, read "
+                f"{self._joined(f'0x{ext[n][2]:08x}' for n in ENTRIES)} "
+                f"(expected 0x{FRESH_EXT_DATA:08x})",
             )
         )
         efuse = {n: r.efuse_value for n, r in recs.items()}
@@ -1142,8 +1172,8 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         lines.append(
             (
                 "CHK-FRESH-ACCESS-EFUSE-JTAG",
-                f"pin/jtag/flr: read completed, word == pre-reset value 0x{self.ej_pre_value:08x} "
-                f"(3/3 entries)",
+                f"pin/jtag/flr: read completed, word {words('efuse_value', 8)} vs pre-reset value "
+                f"0x{self.ej_pre_value:08x}",
             )
         )
         uart = {n: r.uart_value for n, r in recs.items()}
@@ -1152,8 +1182,8 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         lines.append(
             (
                 "CHK-FRESH-ACCESS-PERIPH",
-                f"pin/jtag/flr: UART0 register read OKAY, value == reset value "
-                f"0x{UART0_RESET:x} (3/3 entries)",
+                f"pin/jtag/flr: UART0 register RRESP {resp('PERIPH', 1)}, value "
+                f"{words('uart_value', 1)} vs reset value 0x{UART0_RESET:x}",
             )
         )
 
@@ -1174,16 +1204,23 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                     delta_bad.append(f"{n} {link}: {d}")
         if orphan or delta_bad or pairs < 15:
             fails.append(f"CHK-NO-ORPHAN-RESPONSE: {orphan} {delta_bad} pairs={pairs}")
+        deltas = "; ".join(
+            f"{link} "
+            + "|".join(
+                "/".join(str(recs[n].fresh[link][ch]) for ch in ("ar", "r", "aw", "b"))
+                for n in ENTRIES
+            )
+            for link in ORPHAN_LINKS
+        )
         lines.append(
             (
                 "CHK-NO-ORPHAN-RESPONSE",
-                f"per link R<=AR and B<=AW at every edge; fresh deltas AR/R/AW/B = 1/1/1/1 on 4 "
-                f"links x 3 entries (SYS_IN, JTAG_IN, SEP_IN, SYS_OUT) and 1/1/0/0 on the "
-                f"read-only eFuse JTAG fresh access; {pairs} link-entry pairs checked",
+                f"per link R<=AR and B<=AW at every edge, orphan responses {len(orphan)}; fresh "
+                f"deltas AR/R/AW/B pin|jtag|flr: {deltas}; {pairs} link-entry pairs checked",
             )
         )
 
-        def valid_check(token, links, label):
+        def valid_check(token, links):
             bad = []
             per_entry = {}
             for link in links:
@@ -1194,37 +1231,49 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                         bad.append(f"{n} {link}: {edges} edges {r.mon.valid_violations[link][:3]}")
             if bad:
                 fails.append(f"{token}: {bad}")
-            return per_entry
+            return per_entry, violations(links)
 
-        per = valid_check(
-            "CHK-VALID-LOW-INBOUND", ("SYS_IN", "JTAG_IN", "SEP_IN", "EFUSE_JTAG"), "inbound"
+        def violations(links):
+            return sum(len(r.mon.valid_violations[link]) for r in recs.values() for link in links)
+
+        per, nviol = valid_check(
+            "CHK-VALID-LOW-INBOUND", ("SYS_IN", "JTAG_IN", "SEP_IN", "EFUSE_JTAG")
         )
         edges = per["SYS_IN"]
         lines.append(
             (
                 "CHK-VALID-LOW-INBOUND",
                 f"B/R VALID low at {sum(edges)} edges x 4 links x 3 entries (per entry "
-                f"{self._joined(edges)}); 0 violations",
+                f"{self._joined(edges)}); {nviol} violations",
             )
         )
-        per = valid_check("CHK-VALID-LOW-SYS-OUT", ("SYS_OUT", "PERIPH"), "outbound")
+        per, nviol = valid_check("CHK-VALID-LOW-SYS-OUT", ("SYS_OUT", "PERIPH"))
         edges = per["SYS_OUT"]
         lines.append(
             (
                 "CHK-VALID-LOW-SYS-OUT",
                 f"AW/W/AR VALID low from edge 2 at {sum(edges)} edges x 2 links x 3 entries "
-                f"(per entry {self._joined(edges)}); 0 violations",
+                f"(per entry {self._joined(edges)}); {nviol} violations",
             )
         )
-        per = valid_check("CHK-VALID-LOW-CLUSTER", ("CPU_FRONT", "CPU_MMIO"), "cluster")
+        per, nviol = valid_check("CHK-VALID-LOW-CLUSTER", ("CPU_FRONT",))
+        l2f_before = self._joined(recs[n].mon.assert_state["prev"].get("l2f_r") for n in ENTRIES)
         lines.append(
             (
                 "CHK-VALID-LOW-CLUSTER",
-                f"L2F B/R and MMIO AW/W/AR VALID low at {sum(per['CPU_FRONT'])} edges x 3 entries "
-                f"(L2F B/R per entry {self._joined(per['CPU_FRONT'])}; MMIO AW/W/AR "
-                f"{sum(per['CPU_MMIO'])} edges sampled with no MMIO traffic, c-fw MMIO leg "
-                f"deferred); 0 violations",
+                f"L2F B/R VALID low at {sum(per['CPU_FRONT'])} edges x 3 entries (per entry "
+                f"{self._joined(per['CPU_FRONT'])}; L2F R VALID at the sample before the "
+                f"assertion {l2f_before}); {nviol} violations; MMIO leg not driven "
+                f"(c-fw image deferred)",
             )
+        )
+        mmio_edges = [r.mon.valid_edges["CPU_MMIO"] for r in recs.values()]
+        cocotb.log.info("INFO-CELL-NOT-DRIVABLE: MMIO rows (c-fw image not staged)")
+        cocotb.log.info(
+            "CPU MMIO AW/W/AR sampled, not claimed: %s edges (per entry %s), %d VALID high",
+            sum(mmio_edges),
+            self._joined(mmio_edges),
+            violations(("CPU_MMIO",)),
         )
 
         dtp_bad = []
@@ -1246,8 +1295,13 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         lines.append(
             (
                 "CHK-DTP-LINK-REQUEST-PHASE",
-                "pin/jtag/flr: active 1 before, 0 in reset from edge 2, 1 after fresh request; "
-                "B/R handshakes 0",
+                f"pin/jtag/flr: active before {self._joined(dtp_pre[n] for n in ENTRIES)}, active "
+                f"samples in reset from edge 2 "
+                f"{self._joined(len(recs[n].mon.valid_violations['DTP']) for n in ENTRIES)}, "
+                f"active after fresh request in "
+                f"{self._joined(recs[n].dtp_wait for n in ENTRIES)} clk_smc_i edges; "
+                f"nonzero response samples "
+                f"{self._joined(recs[n].mon.dtp_resp_nonzero for n in ENTRIES)}",
             )
         )
         dtp_edges = [r.mon.valid_edges["DTP"] for r in recs.values()]
@@ -1255,7 +1309,8 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             (
                 "CHK-VALID-LOW-DTP",
                 f"AW/W/AR VALID low from edge 2 at {sum(dtp_edges)} edges x 3 entries (per entry "
-                f"{self._joined(dtp_edges)}); high before reset {sum(1 for v in dtp_pre.values() if v == 1)}/3",
+                f"{self._joined(dtp_edges)}); high before reset "
+                f"{sum(1 for v in dtp_pre.values() if v == 1)}/3",
             )
         )
 
@@ -1264,6 +1319,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             fails.append(f"CHK-INFLIGHT-AT-ASSERT: {inflight}")
         out = {k: self._joined(recs[n].outstanding[k] for n in ENTRIES) for k in PLANNED_ITEMS}
         out["DTP"] = self._joined(recs[n].outstanding["DTP"] for n in ENTRIES)
+        aborted = {k: self._joined(recs[n].aborted[k] for n in ENTRIES) for k in out}
         mmio = self._joined(
             recs[n].mon.assert_state["mmio_ar"] + recs[n].mon.assert_state["mmio_aw"]
             for n in ENTRIES
@@ -1273,7 +1329,9 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                 "CHK-INFLIGHT-AT-ASSERT",
                 f"pin/jtag/flr: outstanding at assert SEP_IN {out['SEP_IN']} SYS_IN "
                 f"{out['SYS_IN']} JTAG_IN {out['JTAG_IN']} eFuse {out['EFUSE_JTAG']} dtp "
-                f"{out['DTP']} mmio {mmio}; reset_aborted == outstanding",
+                f"{out['DTP']} mmio {mmio}; reset_aborted SEP_IN {aborted['SEP_IN']} SYS_IN "
+                f"{aborted['SYS_IN']} JTAG_IN {aborted['JTAG_IN']} eFuse {aborted['EFUSE_JTAG']} "
+                f"dtp {aborted['DTP']}",
             )
         )
 
@@ -1347,7 +1405,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
                 obs["OBS-COOL-PHASE-FATE"].append(
                     f"OBS-COOL-PHASE-FATE: entry={n} link={link} items={item_counts[link]} "
                     f"aborted={aborted[link]} late_resp={code} ar={c['ar']} r={c['r']} "
-                    f"aw={c['aw']} b={c['b']}"
+                    f"aw={c['aw']} b={c['b']} sf=SF-001"
                 )
             mon = r.mon
             to_ar = (
@@ -1362,12 +1420,12 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
             )
             obs["OBS-COOL-RELEASE-LATENCY"].append(
                 f"OBS-COOL-RELEASE-LATENCY: entry={n} release_to_ar={to_ar} release_to_r={to_r} "
-                f"clk_smc_i cycles"
+                f"clk_smc_i cycles sf=SF-008"
             )
             for link, high in mon.first_edge.items():
                 obs["OBS-VALID-FIRST-EDGE"].append(
                     f"OBS-VALID-FIRST-EDGE: link={link} entry={n} "
-                    f"valids_high_at_first_edge={','.join(high) or 'none'}"
+                    f"valids_high_at_first_edge={','.join(high) or 'none'} sf=SF-003"
                 )
         j = recs["jtag"]
         fall = j.mon.assert_ref - j.ref_write
@@ -1375,7 +1433,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         passed = "yes" if fall >= 32 else "no"
         obs["OBS-JTAG-COOL-OVERRIDE"].append(
             f"OBS-JTAG-COOL-OVERRIDE: write_to_fall={fall} value1_to_release={rise} "
-            f"deglitch_passed={passed}"
+            f"deglitch_passed={passed} sf=SF-024"
         )
 
     def _fence_check(self, recs, fails: list[str]) -> str:
@@ -1406,4 +1464,7 @@ class smc_primary_reset_inflight_links_test_seq(SmcResetSeqBase, output_fabric_p
         )
 
     def _timeout_summary(self) -> str:
-        return f"{len(self._timeout_paths)} bounded waits, bound/last-state per wait, 0 expired"
+        return (
+            f"{len(self._timeout_paths)} bounded waits, bound/last-state per wait, "
+            f"{self.expired_waits} expired"
+        )
