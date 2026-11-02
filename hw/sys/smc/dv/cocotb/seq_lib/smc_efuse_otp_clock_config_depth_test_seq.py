@@ -42,9 +42,9 @@ _CHIP_CONFIG = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 VERSION_LO_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 VERSION_HI_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_HI__VERSION_HI_reset")
 
-# CHIP_ID / LC_STATE are fuse-derived mirrors whose expected
-# content is not published in any artifact this bench can read, so they carry no
-# expectation and are OBSERVED ONLY -- they prove decode/reachability, nothing
+# CHIP_ID is an integration constant and LC_STATE a live mirror of the SEP
+# lifecycle state; neither is fuse-derived in SMC. Their content depends on the
+# integration and the SEP fuses, so they carry no expectation and are OBSERVED ONLY -- they prove decode/reachability, nothing
 # about their content ([EXACT-EXPECTATION]).
 EFUSE_PROXY_READS = [
     ("CHIP_CONFIG_VERSION_LO", _CHIP_CONFIG, VERSION_LO_RESET),
