@@ -442,7 +442,8 @@ Observation probe groups:
    `sep_km_handover_rand_test` (CHK-HO-SIDELOAD-BUS),
    `sep_km_fault_inject_rand_test` (CHK-KEYCRC, CHK-XFER-STOP),
    `sep_km_sideload_share_walk_test` (CHK-XFER-SHORT-KEY),
-   `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS).
+   `sep_km_abr_mlkem_sideload_test` (CHK-KEM-KEY-OFFSETS),
+   `sep_km_crossbar_efuse_window_rand_test` (CHK-XBAR-SHARE-ZERO).
 ** KM-OUTFIFO (`km_outfifo_depth_o[8:0]`): the fill level of the outbound
    FIFO of the Key Manager mailbox, on every clock. User:
    `sep_km_fault_inject_rand_test` (CHK-SHRED-FIRST).

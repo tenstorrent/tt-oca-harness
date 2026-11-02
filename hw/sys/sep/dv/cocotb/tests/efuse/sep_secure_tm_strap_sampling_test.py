@@ -43,7 +43,9 @@ Checkers:
                    all four events, so a resample at an event changes it.
                    In the leg-D strap-0 boot ``secure_tm_o`` reads 0 on every
                    sample from the release to the strap flip (the clear and the
-                   capture of strap 0 both give 0).
+                   capture of strap 0 both give 0). In legs C and D the
+                   recorded strap reads the flipped value on every sample of
+                   the hold window.
                    Control: leg A shows ``secure_tm_o`` = 1. The leg-B
                    ``wdt_rst_ni`` pulse reads ``sep_cpu_reset_n_o`` low, the
                    override pulse reads ``dbg_sep_reset_n_o`` low and, on the
@@ -249,6 +251,15 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
 
     def _window(self, a: int, b: int, key: str = "stm") -> list:
         return [self.rec[i][key] for i in range(a, b + 1)]
+
+    def _strap_flipped(self, f0: int, f1: int, want: int, leg: str) -> int:
+        """Every strap sample from the flip ``f0`` to ``f1`` - 1 reads ``want``; their count."""
+        straps = self._window(f0, f1 - 1, "strap")
+        assert all(v == want for v in straps), (
+            f"CHK-STM-RETAIN FAIL: leg={leg}: test_en_strap_i did not read {want} at samples "
+            f"{[f0 + i for i, v in enumerate(straps) if v != want][:8]}"
+        )
+        return len(straps)
 
     # -- stimulus --------------------------------------------------------------
 
@@ -711,12 +722,15 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         dut.test_en_strap_i.value = 0
         f0 = self._now()
         f1 = await self._hold()
+        n_strap = self._strap_flipped(f0, f1, 0, "C strap 1->0")
         vals = self._window(f0, f1 - 1)
         assert all(v == 1 for v in vals), (
             f"CHK-STM-RETAIN FAIL: leg=C strap 1->0 at sample {f0} (sense+{c}): secure_tm_o "
             f"left 1 at samples {[f0 + i for i, v in enumerate(vals) if v != 1][:8]}"
         )
-        retain.append(f"leg=C events=strap_1to0@sense+{c} value=1 cycles={f1 - f0}")
+        retain.append(
+            f"leg=C events=strap_1to0@sense+{c} value=1 cycles={f1 - f0} strap_samples={n_strap}"
+        )
         close_graded_window(self.logger)
 
         # Leg C, strap 0 -> 1.
@@ -728,12 +742,15 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         dut.test_en_strap_i.value = 1
         f0 = self._now()
         f1 = await self._hold()
+        n_strap = self._strap_flipped(f0, f1, 1, "C strap 0->1")
         vals = self._window(f0, f1 - 1)
         assert all(v == 0 for v in vals), (
             f"CHK-STM-RETAIN FAIL: leg=C strap 0->1 at sample {f0} (sense+{c}): secure_tm_o "
             f"left 0 at samples {[f0 + i for i, v in enumerate(vals) if v != 0][:8]}"
         )
-        retain.append(f"leg=C events=strap_0to1@sense+{c} value=0 cycles={f1 - f0}")
+        retain.append(
+            f"leg=C events=strap_0to1@sense+{c} value=0 cycles={f1 - f0} strap_samples={n_strap}"
+        )
         close_graded_window(self.logger)
 
         # Leg D0: early-capture control, no match, strap 1.
@@ -893,6 +910,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
             f"{[rel + i for i, v in enumerate(pre_flip) if v != 0][:8]}"
         )
         f1 = await self._hold()
+        n_strap = self._strap_flipped(f0, f1, 1, "D strap 0->1")
         vals = self._window(f0, f1 - 1)
         self._require_match(rel, f1 - 1, "CHK-STM-RETAIN", "strap=0 window")
         done_d = self._window(rel, f1 - 1, "done")
@@ -905,7 +923,7 @@ class sep_secure_tm_strap_sampling_test(sep_base_test):
         )
         retain.append(
             f"leg=D events=strap_0to1@release+{c} value=0 cycles={f1 - f0} "
-            f"pre_flip_samples={len(pre_flip)}"
+            f"pre_flip_samples={len(pre_flip)} strap_samples={n_strap}"
         )
         close_graded_window(self.logger)
         await self._later_sense(t_sense)

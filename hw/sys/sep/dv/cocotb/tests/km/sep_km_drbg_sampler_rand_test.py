@@ -1376,7 +1376,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 kp.rd(pl.A_STATUS),
                 kp.rdloop(pl.A_DATA, pl.GOOD_LOOP_READS, stride=0),
                 kp.rd(pl.A_STATUS),
-                kp.rdloop(pl.A_DATA, pl.EXTRA_READS, stride=0),
+                *[kp.rd(pl.A_DATA) for _ in range(pl.EXTRA_READS)],
                 kp.rd(pl.A_STATUS),
                 kp.wr(pl.A_STATUS, 0),
                 kp.rd(pl.A_STATUS),
@@ -1385,8 +1385,14 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
                 kp.wr(pl.A_CFG, pl.cfg(pl.RESET_T, 0)),
             ]
             res = await self._run(ops, timeout_cycles=_GOOD_LOOP_CYCLES)
-            g = [pl.st(self._status(res[i].value), "COUNT_GOOD") for i in (2, 4, 6, 8, 10)]
+            ne = pl.EXTRA_READS
+            g = [
+                pl.st(self._status(res[i].value), "COUNT_GOOD")
+                for i in (2, 4, 5 + ne, 7 + ne, 9 + ne)
+            ]
+            extra_ok = sum(1 for r in res[5 : 5 + ne] if r.flags_known and (r.slv, r.dec) == (0, 0))
             good = {
+                "extra_reads_ok": extra_ok,
                 "start": g[0],
                 "sat": g[1],
                 "extra": g[2],
@@ -1417,6 +1423,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             good["start"] == 0
             and good["sat"] == pl.COUNT_GOOD_MAX
             and good["extra"] == pl.COUNT_GOOD_MAX
+            and good["extra_reads_ok"] == pl.EXTRA_READS
             and good["zero_write"] == pl.COUNT_GOOD_MAX
             and good["clear"] == 0
             and not good["acc"]
@@ -1429,6 +1436,7 @@ class sep_km_drbg_sampler_rand_test(sep_base_test):
             bad_after_extra=f"0x{bd['extra']:x}",
             good_sat=f"0x{good['sat']:x}" if good else "skipped",
             good_after_extra=f"0x{good['extra']:x}" if good else "skipped",
+            good_extra_reads_ok=f"{good['extra_reads_ok']}/{pl.EXTRA_READS}" if good else "skipped",
             zero_write="kept"
             if bd["zero_write"] == pl.COUNT_BAD_MAX
             and gl["zero_write"] == gl["before"]

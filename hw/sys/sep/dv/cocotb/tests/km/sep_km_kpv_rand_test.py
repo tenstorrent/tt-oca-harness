@@ -38,7 +38,7 @@ Checkers:
                    erase bit per erase write of the sequence (1, or 5 in the
                    erase cell), so an erase write that is lost fails.
   CHK-KPV-STATE    W: read returns the record, no SLVERR. R: write completes
-                   with no SLVERR. WR: write refused with SLVERR and the 16
+                   with no SLVERR and lands (KM-KPV snapshot after the write). WR: write refused with SLVERR and the 16
                    stored words of the slot unchanged (KM-KPV snapshot before
                    and after the write), read 0 with SLVERR. Sealed: write
                    refused with SLVERR, read returns the record. Control: the
@@ -91,7 +91,9 @@ Checkers:
                    ``rsvd`` R 0x0).
   CHK-KSCR-RST     a warm reset keeps the KPV scrambler enable, lock and key (the
                    24 cells still read D); a cold reset clears KPV_SCRAMBLER_CTRL.
-                   Controls: the enable-0 twin cells and the enable-1 cells read D.
+                   Controls: the enable-0 twin cells and the enable-1 cells read D;
+                   KPV_SCRAMBLER_KEY reads the written key before the enable and
+                   lock writes.
   CHK-WIPE-KPV     a KM_WIPE_CTRL rising edge clears all 1024 KPV words, all 64
                    CTRL, the KPV scrambler key, enable and lock, sets
                    IRQ_STATUS.WIPE_STATE, and the KM CPU runs the next list.
@@ -691,7 +693,7 @@ class sep_km_kpv_rand_test(sep_base_test):
                 groups = [
                     [kp.wrblk(base, rec)],
                     [kp.wr(ca, _STATE_BITS[st])],
-                    self._tapped_wr(wa, vne) if st == "WR" else [kp.wr(wa, vne)],
+                    self._tapped_wr(wa, vne) if st in ("R", "WR") else [kp.wr(wa, vne)],
                     [kp.rd(wa)],
                     [kp.wr(ca, 0)],
                     _erase_ops(s),
@@ -707,13 +709,14 @@ class sep_km_kpv_rand_test(sep_base_test):
                     ]
                 res = await self._watched(w, groups)
                 self._erase_done(res[5], s)
-                wr = res[2][1] if st == "WR" else res[2][0]
+                wr = res[2][1] if st in ("R", "WR") else res[2][0]
                 wr_slv, rd, rd_slv = wr.slv, res[3][0].value, res[3][0].slv
                 if st == "W":
                     graded = rd == rec[wk] and rd_slv == 0
                     self.chk.ctrl("KPV-STATE-W-WRITE", wr_slv == 1, slot=s, wr_slv=wr_slv)
                 elif st == "R":
-                    graded = wr_slv == 0
+                    landed = self.taps[self.group_taps[2][0] + 1][s * m.N_WORDS + wk]
+                    graded = wr_slv == 0 and landed == vne
                     self.chk.ctrl(
                         "KPV-STATE-R-READ",
                         rd == 0 and rd_slv == 1,
@@ -736,6 +739,8 @@ class sep_km_kpv_rand_test(sep_base_test):
                     )
                     graded = wr_slv == 1 and kept and rd == 0 and rd_slv == 1
                 fields = {"wr_slv": wr_slv}
+                if st == "R":
+                    fields["wr_landed"] = int(landed == vne)
                 if st == "WR":
                     fields["wr_dropped"] = kept
                 self.chk.ok(
@@ -1018,7 +1023,7 @@ class sep_km_kpv_rand_test(sep_base_test):
         groups += [[kp.wr(m.word_addr(s, w), v)] for (s, w), v in zip(cells, d, strict=True)]
         groups += [[kp.rd(m.word_addr(s, w))] for (s, w) in cells]
         groups += [_erase_ops(s) for s in p.scr_slots]
-        groups += [[kp.wr(m.SCR_KEY, p.kk)], [kp.wr(m.SCR_CTRL, m.SCR_ENABLE)]]
+        groups += [[kp.wr(m.SCR_KEY, p.kk)], [kp.rd(m.SCR_KEY)], [kp.wr(m.SCR_CTRL, m.SCR_ENABLE)]]
         if p.lock_before:
             groups.append([kp.wr(m.SCR_CTRL, m.SCR_ENABLE | m.SCR_LOCK)])
         groups += [[kp.wr(m.word_addr(s, w), v)] for (s, w), v in zip(cells, d, strict=True)]
@@ -1034,7 +1039,14 @@ class sep_km_kpv_rand_test(sep_base_test):
             self._erase_done(res[ns + 2 * nc + i], s)
         twin = res[ns + nc : ns + 2 * nc]
         self.twin_equal = sum(1 for r, v in zip(twin, d, strict=True) if r[0].value == v)
-        off = 2 * ns + 2 * nc + 2 + (1 if p.lock_before else 0) + nc
+        key_pre = res[2 * ns + 2 * nc + 1][0]
+        self.controls["kscr_key_pre"] = self.chk.ctrl(
+            "KSCR-KEY-PRE",
+            key_pre.known and key_pre.slv == 0 and key_pre.value == p.kk,
+            key=_hk(key_pre.value) if key_pre.known else "X",
+            rd_slv=key_pre.slv,
+        )
+        off = 2 * ns + 2 * nc + 3 + (1 if p.lock_before else 0) + nc
         logical = res[off : off + nc]
         self.logical_ok = sum(1 for r, v in zip(logical, d, strict=True) if r[0].value == v)
         self.scr_pre = self._scr(res[-1 - len(p.drawn)][0].value)

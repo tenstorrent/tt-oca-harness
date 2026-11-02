@@ -52,8 +52,10 @@ Checks (anchor):
                   write-only and reads return zero (``architecture.adoc`` "Key
                   Delivery"; ``<eng>_wrapper_key.rdl`` ``KEY_SHARE0``) (POKE
                   readback), in the decode walk and again after a clean write of
-                  a drawn non-zero word. The response class of these reads is
-                  logged
+                  a drawn non-zero word; that write makes exactly one AW
+                  handshake at the window's first word on the window's
+                  key-path port (``KM-BUS`` tap). The response class of these
+                  reads is logged
   CHK-EFW-RD      40 KM reads of the eFuse maps equal the host reads of the same
                   register (KM readback vs host readback, staged fuse model)
   CHK-EFW-RD-TM   the same with ``secure_tm_o`` = 1; register reads keep their
@@ -210,6 +212,14 @@ _SHARE_ZERO_KEYS = (
     "main:hmac_wrapper_key",
     "main:abr_wrapper_key",
 )
+# Key-path port index of each key window on ``km_key_aw_*`` (KM-BUS).
+_KEY_PORT = {
+    "main:otbn_wrapper_key": 0,
+    "main:aes_wrapper_key": 1,
+    "main:hmac_wrapper_key": 2,
+    "main:kmac_wrapper_key": 3,
+    "main:abr_wrapper_key": 4,
+}
 _SHARE_ZERO_CONTRACT = (
     "key_manager/doc/architecture.adoc:282-283(Key_Delivery),"
     "{aes,otbn,kmac,hmac}_wrapper_key.rdl:37,abr_wrapper_key.rdl:44(KEY_SHARE0)"
@@ -939,8 +949,12 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
 
     async def _share_write_read(
         self, rng: SepSeededRng
-    ) -> list[tuple[str, int, kp.PokeResult, kp.PokeResult]]:
-        """KEY_SHARE0[0] of each key window: write a drawn non-zero word, then read it."""
+    ) -> list[tuple[str, int, kp.PokeResult, kp.PokeResult, list[int]]]:
+        """KEY_SHARE0[0] of each key window: write a drawn non-zero word, then read it.
+
+        Each entry carries the AW addresses that the window's key-path port
+        (``KM-BUS``) handshook during the batch.
+        """
         ops: list[kp.PokeOp] = []
         data: list[int] = []
         for key in _SHARE_ZERO_KEYS:
@@ -948,9 +962,22 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             self._draw(f"share.wdata.{_short(key)}", d)
             data.append(d)
             ops += [kp.wr(_ROW[key]["base"], d), kp.rd(_ROW[key]["base"])]
+        aw: list[tuple[int, int]] = []
+        mon = cocotb.start_soon(self._key_aw_monitor(aw))
         res = await self._run(ops, allow_unknown=True)
+        await ClockCycles(cocotb.top.clk_i, 4)
+        if hasattr(mon, "cancel"):
+            mon.cancel()
+        else:
+            mon.kill()
         return [
-            (key, d, res[2 * i], res[2 * i + 1])
+            (
+                key,
+                d,
+                res[2 * i],
+                res[2 * i + 1],
+                [a for p, a in aw if p == _KEY_PORT[key]],
+            )
             for i, (key, d) in enumerate(zip(_SHARE_ZERO_KEYS, data, strict=True))
         ]
 
@@ -1113,15 +1140,19 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
         for d, name in (("rd", "load"), ("wr", "store")):
             if not vrom_graded[d]:
                 problems["CHK-XBAR-RSV"].append(f"no VROM {name} cell answered DECERR")
-        for key, data, wr, rd in share_wr:
+        for key, data, wr, rd, aw in share_wr:
+            base = _ROW[key]["base"]
             rd_txt = f"0x{rd.value:08x}" if rd.known else "X"
+            aw_txt = ",".join(f"0x{a:08x}" for a in aw) or "none"
             line = (
-                f"contract={_SHARE_ZERO_CONTRACT} win={_short(key)} off=0x{_ROW[key]['base']:05x} "
+                f"contract={_SHARE_ZERO_CONTRACT} win={_short(key)} off=0x{base:05x} "
                 f"kind=after_write wrote=0x{data:08x} wr_slv={wr.slv} wr_dec={wr.dec} "
+                f"aw_port={_KEY_PORT[key]} aw_hs={len(aw)} aw_addr={aw_txt} "
                 f"rd={rd_txt} rd_slv={rd.slv} rd_dec={rd.dec} exp=0x00000000"
             )
             wr_ok = wr.known and wr.clean and (wr.slv, wr.dec) == (0, 0)
-            if wr_ok and rd.known and rd.value == 0:
+            landed = len(aw) == 1 and (aw[0] & 0xFFF) == (base & 0xFFF)
+            if wr_ok and landed and rd.known and rd.value == 0:
                 passes["CHK-XBAR-SHARE-ZERO"].append(f"seed={seed} {line}")
             else:
                 problems["CHK-XBAR-SHARE-ZERO"].append(line)
@@ -1243,6 +1274,24 @@ class sep_km_crossbar_efuse_window_rand_test(sep_base_test):
             v, r = self._known(valid), self._known(ready)
             if v and r:
                 sink.append(self.rd(addr))
+
+    async def _key_aw_monitor(self, sink: list[tuple[int, int]]) -> None:
+        """``(port, address)`` of each AW handshake on the five key-path ports (KM-BUS).
+
+        A clock with VALID or READY unknown counts in ``mon_xz`` and is no handshake.
+        """
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            hs = self._known(dut.km_key_aw_valid_o) & self._known(dut.km_key_aw_ready_o)
+            if hs:
+                addrs = self.rd(dut.km_key_aw_addr_o)
+                sink += [
+                    (p, (addrs >> (32 * p)) & WORD_MASK)
+                    for p in range(len(_KEY_PORT))
+                    if (hs >> p) & 1
+                ]
 
     def _known(self, sig) -> int:
         """``sig`` as int; an unknown bit counts one clock in ``mon_xz`` and reads 0."""
