@@ -79,7 +79,7 @@ from env.sep_fcov_gate import close_graded_window, open_graded_window
 from env.sep_ras_map import RasChkLines, check_tap_width, ras_bit
 from ocah_axi_vip import AxiTimingProfile
 from sep_base_test import sep_base_test
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq, capture_addr_handshake, take_handshake
 from seq_lib.sep_entropy_pool_seq import (
     FIFO_DEPTH,
     HALF_UPPER,
@@ -386,10 +386,20 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
         idx, hi_first = hits[0]
         mon = self.env.axi_monitor
+        half_ar: list[int] = []
         mon.open_error_rdata_window()
         try:
             for label, addr in HALF_UPPER:
+                ar_task = cocotb.start_soon(capture_addr_handshake("ar"))
                 half = await pool.access(addr, expect_error=True, nbytes=4)
+                ar = take_handshake(ar_task)
+                # AxSIZE 2 is a 4-byte beat (AMBA IHI 0022, A3.4.1), so the refusal
+                # graded below answers a 32-bit read and not a wider one.
+                assert ar is not None and ar["addr"] == addr and ar["size"] == 2, (
+                    f"CHK-HALF-READ FAIL: {label} upper-word read presented AR={ar}, "
+                    f"expected addr=0x{addr:08x} size=2"
+                )
+                half_ar.append(ar["size"])
                 assert half.resp_code == RESP_SLVERR and half.rdata == 0 and not half.timed_out, (
                     f"CHK-HALF-READ FAIL: 32-bit read of the {label} upper word "
                     f"0x{addr:08x} resp={half.resp_code} rdata=0x{half.rdata:x} "
@@ -417,11 +427,12 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         self._pop_next = idx + 4
         self._pop_hi_first = hi_first
         self.logger.info(
-            "CHK-HALF-READ PASS: %d 32-bit upper-word reads (%s) -> SLVERR RDATA=0, "
-            "fifo_level held at %d; the next 64-bit pop returned 0x%016x, the word "
+            "CHK-HALF-READ PASS: %d 32-bit upper-word reads (%s, arsize=%s) -> SLVERR "
+            "RDATA=0, fifo_level held at %d; the next 64-bit pop returned 0x%016x, the word "
             "after 0x%016x in the captured EDN stream (beat %d, %s)",
             len(HALF_UPPER),
             ",".join(f"0x{a:08x}" for _l, a in HALF_UPPER),
+            ",".join(map(str, half_ar)),
             level1,
             after.rdata,
             before.rdata,
